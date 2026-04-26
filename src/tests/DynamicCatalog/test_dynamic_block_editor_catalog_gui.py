@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import sys
 
 import pytest
@@ -7,6 +8,7 @@ from PySide6 import QtCore, QtWidgets
 from PySide6.QtTest import QTest
 
 import VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor as dynamic_block_editor_module
+import VeraGridEngine.api as gce
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import get_modal_template_metadata
 from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import LookupArrayLinearDialog
@@ -18,6 +20,7 @@ from VeraGridEngine.Templates.BasicBlockCatalog import get_basic_block_catalog_d
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import BlockType
 from VeraGridEngine.enumerations import DynamicSimulationMode
+from VeraGridEngine.enumerations import ShuntConnectionType
 
 pytestmark = pytest.mark.filterwarnings("error")
 
@@ -112,18 +115,22 @@ def _count_descriptor_leaves(editor: DynamicBlockEditorGUI,
     return count
 
 
-def _build_editor(mode: DynamicSimulationMode = DynamicSimulationMode.EMT) -> DynamicBlockEditorGUI:
+def _build_editor(mode: DynamicSimulationMode = DynamicSimulationMode.EMT,
+                  api_object=None,
+                  circuit=None) -> DynamicBlockEditorGUI:
     """
     Build one dynamic block editor instance for GUI tests.
     """
 
     _get_app()
+    resolved_api_object = api_object if api_object is not None else _ApiStub()
     editor = DynamicBlockEditorGUI(
         var_factory=VarFactory(),
         block=Block(),
-        api_object=_ApiStub(),
+        api_object=resolved_api_object,
         mode=mode,
         templates_list=list(),
+        circuit=circuit,
         main_editor=False,
         modal=False,
     )
@@ -174,6 +181,36 @@ def _port_name_prefixes(block_item) -> list[str]:
             prefixes.append(full_name)
 
     return prefixes
+
+
+def _find_prefixed_event_constant(block: Block, prefix: str) -> float:
+    """
+    Find one constant-valued event entry whose key name starts with ``prefix``.
+    """
+
+    parameter_var, parameter_expr = next(
+        ((var, expr) for var, expr in block.event_dict.items() if var.name.startswith(prefix)),
+        (None, None),
+    )
+    if parameter_var is not None and parameter_expr is not None:
+        assert parameter_expr.value is not None
+        return float(parameter_expr.value)
+    else:
+        pass
+
+    child: Block
+    for child in block.children:
+        parameter_var, parameter_expr = next(
+            ((var, expr) for var, expr in child.event_dict.items() if var.name.startswith(prefix)),
+            (None, None),
+        )
+        if parameter_var is not None and parameter_expr is not None:
+            assert parameter_expr.value is not None
+            return float(parameter_expr.value)
+        else:
+            pass
+
+    raise AssertionError(f"Missing event constant with prefix '{prefix}'")
 
 
 def test_emt_editor_exposes_basic_block_catalog_under_basic() -> None:
@@ -529,6 +566,476 @@ def test_emt_phase_wizard_block_supports_modify_template(monkeypatch) -> None:
     assert modal_config is not None
     assert modal_config["phase_b"] is True
     assert modal_config["phase_c"] is True
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
+def test_simple_r_emt_shunt_block_is_created_and_supports_modify_template(monkeypatch) -> None:
+    circuit = gce.MultiCircuit(Sbase=25.0, fbase=60.0)
+    bus = gce.Bus(name="BusSimpleR", Vnom=13.8)
+    load = gce.Load(name="LoadSimpleR")
+    load.bus = bus
+    editor = _build_editor(DynamicSimulationMode.EMT, api_object=load, circuit=circuit)
+    phase_voltage_sq = (bus.Vnom / math.sqrt(3.0)) ** 2
+    dialog_component_kinds: list[str] = list()
+
+    class _CreateDialogStub:
+        def __init__(self,
+                     component_kind: str,
+                     parent=None,
+                     initial_config=None,
+                     nominal_voltage_kv=None,
+                     base_power_mva=None,
+                     base_frequency_hz=None) -> None:
+            _unused = (parent, initial_config, nominal_voltage_kv, base_power_mva, base_frequency_hz)
+            dialog_component_kinds.append(component_kind)
+
+        def exec(self) -> int:
+            return int(QtWidgets.QDialog.DialogCode.Accepted)
+
+        def get_configuration(self) -> dict[str, object]:
+            return dict({
+                "include_r": True,
+                "include_l": False,
+                "include_c": False,
+                "phA": True,
+                "phB": False,
+                "phC": False,
+                "connection_type": ShuntConnectionType.GroundedStar,
+                "input_mode": "physical",
+                "resistance_ohm": 25.0,
+                "inductive_value": 0.01,
+                "capacitive_value": 1.0e-6,
+            })
+
+    class _ModifyDialogStub:
+        def __init__(self,
+                     component_kind: str,
+                     parent=None,
+                     initial_config=None,
+                     nominal_voltage_kv=None,
+                     base_power_mva=None,
+                     base_frequency_hz=None) -> None:
+            _unused = (parent, initial_config, nominal_voltage_kv, base_power_mva, base_frequency_hz)
+            dialog_component_kinds.append(component_kind)
+
+        def exec(self) -> int:
+            return int(QtWidgets.QDialog.DialogCode.Accepted)
+
+        def get_configuration(self) -> dict[str, object]:
+            return dict({
+                "include_r": True,
+                "include_l": False,
+                "include_c": False,
+                "phA": True,
+                "phB": True,
+                "phC": False,
+                "connection_type": ShuntConnectionType.NeutralStar,
+                "input_mode": "physical",
+                "resistance_ohm": 50.0,
+                "inductive_value": 0.01,
+                "capacitive_value": 1.0e-6,
+            })
+
+    monkeypatch.setattr(dynamic_block_editor_module, "ShuntComponentEmtDialog", _CreateDialogStub)
+    block_item = editor.create_library_payload_item(BlockType.R_LOAD_EMT, 10.0, 20.0)
+    assert block_item is not None
+    assert dialog_component_kinds == ["R"]
+
+    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    assert modal_kind == "shunt_component_emt"
+    assert modal_config is not None
+    assert modal_config["block_type"] == BlockType.R_LOAD_EMT.name
+    assert any(node.tpe == BlockType.GROUNDING_LINK_EMT.name for node in block_item.subsys.diagram.node_data.values())
+    assert _find_prefixed_event_constant(block_item.subsys, "R_A_") == pytest.approx(25.0)
+    assert load.Pa == pytest.approx(phase_voltage_sq / 25.0)
+    assert load.conn == ShuntConnectionType.GroundedStar
+
+    monkeypatch.setattr(dynamic_block_editor_module, "ShuntComponentEmtDialog", _ModifyDialogStub)
+    editor.modify_scene_item_template(block_item)
+
+    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    assert modal_kind == "shunt_component_emt"
+    assert modal_config is not None
+    assert modal_config["phB"] is True
+    assert not any(node.tpe == BlockType.GROUNDING_LINK_EMT.name for node in block_item.subsys.diagram.node_data.values())
+    assert _find_prefixed_event_constant(block_item.subsys, "R_A_") == pytest.approx(50.0)
+    assert load.Pa == pytest.approx(phase_voltage_sq / 50.0)
+    assert load.Pb == pytest.approx(phase_voltage_sq / 50.0)
+    assert load.conn == ShuntConnectionType.NeutralStar
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
+def test_simple_r_emt_shunt_block_supports_delta_configuration(monkeypatch) -> None:
+    circuit = gce.MultiCircuit(Sbase=25.0, fbase=60.0)
+    bus = gce.Bus(name="BusSimpleRDelta", Vnom=13.8)
+    load = gce.Load(name="LoadSimpleRDelta")
+    load.bus = bus
+    editor = _build_editor(DynamicSimulationMode.EMT, api_object=load, circuit=circuit)
+    line_voltage_sq = bus.Vnom * bus.Vnom
+
+    class _CreateDialogStub:
+        def __init__(self,
+                     component_kind: str,
+                     parent=None,
+                     initial_config=None,
+                     nominal_voltage_kv=None,
+                     base_power_mva=None,
+                     base_frequency_hz=None) -> None:
+            _unused = (parent, initial_config, nominal_voltage_kv, base_power_mva, base_frequency_hz)
+            assert component_kind == "R"
+
+        def exec(self) -> int:
+            return int(QtWidgets.QDialog.DialogCode.Accepted)
+
+        def get_configuration(self) -> dict[str, object]:
+            return dict({
+                "include_r": True,
+                "include_l": False,
+                "include_c": False,
+                "phA": True,
+                "phB": True,
+                "phC": False,
+                "connection_type": ShuntConnectionType.Delta,
+                "input_mode": "physical",
+                "resistance_ohm": 25.0,
+                "inductive_value": 0.01,
+                "capacitive_value": 1.0e-6,
+            })
+
+    monkeypatch.setattr(dynamic_block_editor_module, "ShuntComponentEmtDialog", _CreateDialogStub)
+    block_item = editor.create_library_payload_item(BlockType.R_LOAD_EMT, 10.0, 20.0)
+    assert block_item is not None
+
+    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    assert modal_kind == "shunt_component_emt"
+    assert modal_config is not None
+    assert modal_config["connection_type"] == ShuntConnectionType.Delta
+    assert not any(node.tpe == BlockType.GROUNDING_LINK_EMT.name for node in block_item.subsys.diagram.node_data.values())
+    assert _find_prefixed_event_constant(block_item.subsys, "R_AB_") == pytest.approx(25.0)
+    assert load.Pa == pytest.approx(line_voltage_sq / 25.0)
+    assert load.Pb == pytest.approx(0.0)
+    assert load.Pc == pytest.approx(0.0)
+    assert load.conn == ShuntConnectionType.Delta
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
+def test_exponential_load_emt_block_is_created_and_supports_modify_template(monkeypatch) -> None:
+    circuit = gce.MultiCircuit(Sbase=25.0, fbase=60.0)
+    bus = gce.Bus(name="BusExp", Vnom=13.8)
+    load = gce.Load(name="LoadExp")
+    load.bus = bus
+    editor = _build_editor(DynamicSimulationMode.EMT, api_object=load, circuit=circuit)
+
+    class _CreateDialogStub:
+        def __init__(self, title: str, parent=None, initial_config=None) -> None:
+            _unused = (parent, initial_config)
+            assert title == "Configure EMT Exponential Load"
+
+        def exec(self) -> int:
+            return int(QtWidgets.QDialog.DialogCode.Accepted)
+
+        def get_configuration(self) -> dict[str, object]:
+            return dict({
+                "phA": True,
+                "phB": False,
+                "phC": False,
+                "connection_type": ShuntConnectionType.GroundedStar,
+            })
+
+    class _ModifyDialogStub:
+        def __init__(self, title: str, parent=None, initial_config=None) -> None:
+            _unused = (parent, initial_config)
+            assert title == "Configure EMT Exponential Load"
+
+        def exec(self) -> int:
+            return int(QtWidgets.QDialog.DialogCode.Accepted)
+
+        def get_configuration(self) -> dict[str, object]:
+            return dict({
+                "phA": True,
+                "phB": True,
+                "phC": False,
+                "connection_type": ShuntConnectionType.NeutralStar,
+            })
+
+    monkeypatch.setattr(dynamic_block_editor_module, "LoadTopologyEmtDialog", _CreateDialogStub)
+    block_item = editor.create_library_payload_item(BlockType.EXP_LOAD_EMT, 10.0, 20.0)
+    assert block_item is not None
+
+    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    assert modal_kind == "load_topology_emt"
+    assert modal_config is not None
+    assert modal_config["block_type"] == BlockType.EXP_LOAD_EMT.name
+    assert any(node.tpe == BlockType.GROUNDING_LINK_EMT.name for node in block_item.subsys.diagram.node_data.values())
+    assert load.conn == ShuntConnectionType.GroundedStar
+
+    monkeypatch.setattr(dynamic_block_editor_module, "LoadTopologyEmtDialog", _ModifyDialogStub)
+    editor.modify_scene_item_template(block_item)
+
+    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    assert modal_kind == "load_topology_emt"
+    assert modal_config is not None
+    assert modal_config["phB"] is True
+    assert not any(node.tpe == BlockType.GROUNDING_LINK_EMT.name for node in block_item.subsys.diagram.node_data.values())
+    assert load.conn == ShuntConnectionType.NeutralStar
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
+def test_zip_load_emt_block_supports_delta_configuration(monkeypatch) -> None:
+    circuit = gce.MultiCircuit(Sbase=25.0, fbase=60.0)
+    bus = gce.Bus(name="BusZipDelta", Vnom=13.8)
+    load = gce.Load(name="LoadZipDelta")
+    load.bus = bus
+    editor = _build_editor(DynamicSimulationMode.EMT, api_object=load, circuit=circuit)
+
+    class _CreateDialogStub:
+        def __init__(self, title: str, parent=None, initial_config=None) -> None:
+            _unused = (parent, initial_config)
+            assert title == "Configure EMT ZIP Load"
+
+        def exec(self) -> int:
+            return int(QtWidgets.QDialog.DialogCode.Accepted)
+
+        def get_configuration(self) -> dict[str, object]:
+            return dict({
+                "phA": True,
+                "phB": True,
+                "phC": True,
+                "connection_type": ShuntConnectionType.Delta,
+            })
+
+    monkeypatch.setattr(dynamic_block_editor_module, "LoadTopologyEmtDialog", _CreateDialogStub)
+    block_item = editor.create_library_payload_item(BlockType.ZIP_LOAD_EMT, 10.0, 20.0)
+    assert block_item is not None
+
+    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    assert modal_kind == "load_topology_emt"
+    assert modal_config is not None
+    assert modal_config["block_type"] == BlockType.ZIP_LOAD_EMT.name
+    assert modal_config["connection_type"] == ShuntConnectionType.Delta
+    assert not any(node.tpe == BlockType.GROUNDING_LINK_EMT.name for node in block_item.subsys.diagram.node_data.values())
+    assert load.conn == ShuntConnectionType.Delta
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
+def test_rlc_combo_emt_block_is_created_and_supports_modify_template(monkeypatch) -> None:
+    circuit = gce.MultiCircuit(Sbase=25.0, fbase=60.0)
+    bus = gce.Bus(name="BusRlc", Vnom=13.8)
+    load = gce.Load(name="LoadRlc")
+    load.bus = bus
+    editor = _build_editor(DynamicSimulationMode.EMT, api_object=load, circuit=circuit)
+    phase_voltage_sq = (bus.Vnom / math.sqrt(3.0)) ** 2
+    create_dialog_base_values: dict[str, float | None] = dict()
+    modify_dialog_base_values: dict[str, float | None] = dict()
+
+    class _CreateDialogStub:
+        def __init__(self,
+                     parent=None,
+                     initial_config=None,
+                     nominal_voltage_kv=None,
+                     base_power_mva=None,
+                     base_frequency_hz=None) -> None:
+            _unused = (parent, initial_config)
+            create_dialog_base_values["nominal_voltage_kv"] = nominal_voltage_kv
+            create_dialog_base_values["base_power_mva"] = base_power_mva
+            create_dialog_base_values["base_frequency_hz"] = base_frequency_hz
+
+        def exec(self) -> int:
+            return int(QtWidgets.QDialog.DialogCode.Accepted)
+
+        def get_configuration(self) -> dict[str, object]:
+            return dict({
+                "include_r": True,
+                "include_l": True,
+                "include_c": False,
+                "phA": True,
+                "phB": False,
+                "phC": False,
+                "connection_type": ShuntConnectionType.GroundedStar,
+                "input_mode": "physical",
+                "resistance_ohm": 100.0,
+                "inductive_value": 0.05,
+                "capacitive_value": 1.0e-6,
+            })
+
+    class _ModifyDialogStub:
+        def __init__(self,
+                     parent=None,
+                     initial_config=None,
+                     nominal_voltage_kv=None,
+                     base_power_mva=None,
+                     base_frequency_hz=None) -> None:
+            _unused = (parent, initial_config)
+            modify_dialog_base_values["nominal_voltage_kv"] = nominal_voltage_kv
+            modify_dialog_base_values["base_power_mva"] = base_power_mva
+            modify_dialog_base_values["base_frequency_hz"] = base_frequency_hz
+
+        def exec(self) -> int:
+            return int(QtWidgets.QDialog.DialogCode.Accepted)
+
+        def get_configuration(self) -> dict[str, object]:
+            return dict({
+                "include_r": True,
+                "include_l": True,
+                "include_c": True,
+                "phA": True,
+                "phB": True,
+                "phC": False,
+                "connection_type": ShuntConnectionType.NeutralStar,
+                "input_mode": "reactance",
+                "resistance_ohm": 50.0,
+                "inductive_value": 18.0,
+                "capacitive_value": 220.0,
+            })
+
+    monkeypatch.setattr(dynamic_block_editor_module, "RlcComboEmtDialog", _CreateDialogStub)
+    block_item = editor.create_library_payload_item(BlockType.RLC_COMBO_EMT, 10.0, 20.0)
+    assert block_item is not None
+    assert create_dialog_base_values == {
+        "nominal_voltage_kv": 13.8,
+        "base_power_mva": 25.0,
+        "base_frequency_hz": 60.0,
+    }
+
+    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    assert modal_kind == "rlc_combo_emt"
+    assert modal_config is not None
+    assert modal_config["include_c"] is False
+    assert modal_config["input_mode"] == "physical"
+    assert any(node.tpe == BlockType.GROUNDING_LINK_EMT.name for node in block_item.subsys.diagram.node_data.values())
+    assert load.conn == ShuntConnectionType.GroundedStar
+    assert _find_prefixed_event_constant(block_item.subsys, "R_A_") == pytest.approx(100.0)
+    assert _find_prefixed_event_constant(block_item.subsys, "L_A_") == pytest.approx(0.05)
+    assert load.Pa == pytest.approx(phase_voltage_sq / 100.0)
+    assert load.Pb == pytest.approx(0.0)
+    assert load.Qa == pytest.approx(phase_voltage_sq / (2.0 * math.pi * circuit.fBase * 0.05))
+
+    monkeypatch.setattr(dynamic_block_editor_module, "RlcComboEmtDialog", _ModifyDialogStub)
+    editor.modify_scene_item_template(block_item)
+    expected_inductance = 18.0 / (2.0 * math.pi * circuit.fBase)
+    expected_capacitance = 1.0 / (2.0 * math.pi * circuit.fBase * 220.0)
+
+    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    assert modal_kind == "rlc_combo_emt"
+    assert modal_config is not None
+    assert modal_config["include_c"] is True
+    assert modal_config["phB"] is True
+    assert modal_config["input_mode"] == "reactance"
+    assert modify_dialog_base_values == {
+        "nominal_voltage_kv": 13.8,
+        "base_power_mva": 25.0,
+        "base_frequency_hz": 60.0,
+    }
+    assert not any(node.tpe == BlockType.GROUNDING_LINK_EMT.name for node in block_item.subsys.diagram.node_data.values())
+    assert load.conn == ShuntConnectionType.NeutralStar
+    assert _find_prefixed_event_constant(block_item.subsys, "R_A_") == pytest.approx(50.0)
+    assert _find_prefixed_event_constant(block_item.subsys, "L_A_") == pytest.approx(expected_inductance)
+    assert _find_prefixed_event_constant(block_item.subsys, "C_A_") == pytest.approx(expected_capacitance)
+    expected_phase_p = phase_voltage_sq / 50.0
+    expected_phase_q = phase_voltage_sq / 18.0 + phase_voltage_sq / 220.0
+    assert load.Pa == pytest.approx(expected_phase_p)
+    assert load.Pb == pytest.approx(expected_phase_p)
+    assert load.Pc == pytest.approx(0.0)
+    assert load.Qa == pytest.approx(expected_phase_q)
+    assert load.Qb == pytest.approx(expected_phase_q)
+    assert load.Qc == pytest.approx(0.0)
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
+def test_ground_emt_block_is_available_from_library() -> None:
+    editor = _build_editor(DynamicSimulationMode.EMT)
+    block_item = editor.create_library_payload_item(BlockType.GROUND_EMT, 10.0, 20.0)
+
+    assert block_item is not None
+    assert len(block_item.inputs) == 1
+    assert len(block_item.outputs) == 1
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
+def test_grounding_link_emt_block_is_created_and_supports_modify_template(monkeypatch) -> None:
+    editor = _build_editor(DynamicSimulationMode.EMT)
+
+    class _CreateDialogStub:
+        def __init__(self,
+                     parent=None,
+                     initial_config=None,
+                     nominal_voltage_kv=None,
+                     base_power_mva=None,
+                     base_frequency_hz=None) -> None:
+            _unused = (parent, initial_config, nominal_voltage_kv, base_power_mva, base_frequency_hz)
+
+        def exec(self) -> int:
+            return int(QtWidgets.QDialog.DialogCode.Accepted)
+
+        def get_configuration(self) -> dict[str, object]:
+            return dict({
+                "include_r": True,
+                "include_l": True,
+                "include_c": False,
+                "input_mode": "physical",
+                "resistance_ohm": 20.0,
+                "inductive_value": 0.04,
+                "capacitive_value": 1.0e-6,
+            })
+
+    class _ModifyDialogStub:
+        def __init__(self,
+                     parent=None,
+                     initial_config=None,
+                     nominal_voltage_kv=None,
+                     base_power_mva=None,
+                     base_frequency_hz=None) -> None:
+            _unused = (parent, initial_config, nominal_voltage_kv, base_power_mva, base_frequency_hz)
+
+        def exec(self) -> int:
+            return int(QtWidgets.QDialog.DialogCode.Accepted)
+
+        def get_configuration(self) -> dict[str, object]:
+            return dict({
+                "include_r": True,
+                "include_l": False,
+                "include_c": True,
+                "input_mode": "reactance",
+                "resistance_ohm": 40.0,
+                "inductive_value": 10.0,
+                "capacitive_value": 150.0,
+            })
+
+    monkeypatch.setattr(dynamic_block_editor_module, "GroundingLinkEmtDialog", _CreateDialogStub)
+    block_item = editor.create_library_payload_item(BlockType.GROUNDING_LINK_EMT, 10.0, 20.0)
+    assert block_item is not None
+
+    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    assert modal_kind == "grounding_link_emt"
+    assert modal_config is not None
+    assert modal_config["include_l"] is True
+    assert _find_prefixed_event_constant(block_item.subsys, "R_") == pytest.approx(20.0)
+    assert _find_prefixed_event_constant(block_item.subsys, "L_") == pytest.approx(0.04)
+
+    monkeypatch.setattr(dynamic_block_editor_module, "GroundingLinkEmtDialog", _ModifyDialogStub)
+    editor.modify_scene_item_template(block_item)
+
+    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    assert modal_kind == "grounding_link_emt"
+    assert modal_config is not None
+    assert modal_config["include_c"] is True
+    assert modal_config["include_l"] is False
+    assert _find_prefixed_event_constant(block_item.subsys, "R_") == pytest.approx(40.0)
+    assert _find_prefixed_event_constant(block_item.subsys, "C_") == pytest.approx(1.0 / (2.0 * math.pi * 50.0 * 150.0))
 
     editor.has_unapplied_changes = False
     editor.close()

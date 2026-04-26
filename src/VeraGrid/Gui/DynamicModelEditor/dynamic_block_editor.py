@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import math
 import uuid
 import re
 import copy
@@ -23,9 +24,10 @@ from PySide6.QtCore import QAbstractItemModel, QLineF
 from PySide6.QtCore import Qt, QPointF, QModelIndex, Signal, QAbstractTableModel
 
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
+from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType, \
-    DynamicSimulationMode
+    DynamicSimulationMode, ShuntConnectionType
 from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms, get_bus_rms_algebraic_vars
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template, get_bus_emt_algebraic_vars
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
@@ -41,7 +43,11 @@ from VeraGridEngine.Templates.BasicBlockCatalog.lookup_array_runtime_templates i
 from VeraGridEngine.Templates.BasicBlockCatalog.lookup_array_runtime_templates import build_lookup_matrix_linear_runtime_template
 from VeraGridEngine.Templates.BasicBlockCatalog.lookup_array_runtime_templates import build_lookup_array_spline_runtime_template
 from VeraGridEngine.Templates.BasicBlockCatalog.lookup_array_runtime_templates import build_lookup_matrix_spline_runtime_template
+from VeraGridEngine.Templates.Emt.load_exponential_emt_template import get_exponential_load_emt
+from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_grounding_link_emt_template
 from VeraGridEngine.Templates.Emt.switch_emt_template import get_switch_emt_template
+from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_rlc_combo_emt_template
+from VeraGridEngine.Templates.Emt.load_zip_emt_template import get_load_ZIP_emt_template
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGrid.Gui.DynamicModelEditor.block_editor import Ui_BlockEditorWindow
@@ -49,6 +55,10 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_utilities import create_bloc
     create_emt_wizard_block
 from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import LookupArrayLinearDialog
 from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import LookupMatrixLinearDialog
+from VeraGrid.Gui.DynamicModelEditor.grounding_link_emt_dialog import GroundingLinkEmtDialog
+from VeraGrid.Gui.DynamicModelEditor.load_topology_emt_dialog import LoadTopologyEmtDialog
+from VeraGrid.Gui.DynamicModelEditor.rlc_combo_emt_dialog import RlcComboEmtDialog
+from VeraGrid.Gui.DynamicModelEditor.shunt_component_emt_dialog import ShuntComponentEmtDialog
 from VeraGrid.Gui.DynamicModelEditor.switch_emt_dialog import SwitchEmtDialog
 from VeraGrid.Gui.Icons.icon_associations import device_type_icons
 from VeraGridEngine.Utils.Symbolic.symbolic import (symbolic_to_string, string_to_symbolic,
@@ -121,6 +131,50 @@ def set_modal_template_metadata(block: Block, kind: str, config: Dict[str, Any])
     """
     setattr(block, MODAL_TEMPLATE_KIND_ATTR, kind)
     setattr(block, MODAL_TEMPLATE_CONFIG_ATTR, copy.deepcopy(config))
+
+
+def _iter_child_blocks(block: Block) -> List[Block]:
+    """
+    Return all descendant blocks of one block.
+
+    :param block: Root block.
+    :return: Descendant blocks.
+    """
+    descendants: List[Block] = list()
+    child_block: Block
+
+    for child_block in block.children:
+        descendants.append(child_block)
+        descendants.extend(_iter_child_blocks(child_block))
+
+    return descendants
+
+
+def _get_shunt_component_kind(block_type: BlockType) -> str | None:
+    """
+    Return the single-component shunt kind handled by one block type.
+
+    :param block_type: Candidate block type.
+    :return: ``R``, ``L``, ``C`` or ``None``.
+    """
+    if block_type == BlockType.R_LOAD_EMT:
+        return "R"
+    elif block_type == BlockType.L_LOAD_EMT:
+        return "L"
+    elif block_type == BlockType.C_LOAD_EMT:
+        return "C"
+    else:
+        return None
+
+
+def _is_load_topology_block_type(block_type: BlockType) -> bool:
+    """
+    Return whether one block type uses the EMT load-topology modal.
+
+    :param block_type: Candidate block type.
+    :return: Boolean state.
+    """
+    return block_type in {BlockType.EXP_LOAD_EMT, BlockType.ZIP_LOAD_EMT}
 
 
 def get_modal_template_metadata(block: Block | None) -> tuple[str | None, Dict[str, Any] | None]:
@@ -3694,6 +3748,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 LibraryLeafSpec("Emt pi line", BlockType.EMT_PI_LINE),
                 LibraryLeafSpec("Emt Bergeron line", BlockType.EMT_BERGERON_LINE),
                 LibraryLeafSpec("Switch EMT", BlockType.SWITCH_EMT),
+                LibraryLeafSpec("Ground EMT", BlockType.GROUND_EMT),
+                LibraryLeafSpec("Grounding Link EMT", BlockType.GROUNDING_LINK_EMT),
+                LibraryLeafSpec("RLC Combo", BlockType.RLC_COMBO_EMT),
                 LibraryLeafSpec("R load", BlockType.R_LOAD_EMT),
                 LibraryLeafSpec("L load", BlockType.L_LOAD_EMT),
                 LibraryLeafSpec("C load", BlockType.C_LOAD_EMT),
@@ -4162,7 +4219,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         block_model: Block | None = create_block_of_type(
             var_factory=self.var_factory,
             block_type=block_type,
-            item_name=item_name
+            item_name=item_name,
+            api_object=self.api_object,
         )
 
         if block_model is not None:
@@ -4367,6 +4425,700 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             return None
 
+    def create_rlc_combo_emt_block_item(self, x_pos: float, y_pos: float) -> BlockItem | None:
+        """
+        Create one combined EMT RLC shunt block configured through its modal.
+
+        :param x_pos: Drop x position.
+        :param y_pos: Drop y position.
+        :return: Created block item or None when the dialog is cancelled.
+        """
+        dialog = self._build_rlc_combo_emt_dialog()
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            rlc_config = dialog.get_configuration()
+        else:
+            return None
+
+        try:
+            template_kwargs = self._build_rlc_combo_emt_template_kwargs(rlc_config)
+        except ValueError as exc:
+            QtWidgets.QMessageBox.warning(self, "RLC Combo", str(exc))
+            return None
+
+        count: int = self.block_counters.get(BlockType.RLC_COMBO_EMT, 0) + 1
+        item_name: str = f"rlc_combo_emt_{count}"
+        block_item: BlockItem = BlockItem(var_factory=self.var_factory, name=item_name)
+        block_model = get_shunt_rlc_combo_emt_template(vf=self.var_factory, name=item_name, **template_kwargs).block
+        set_modal_template_metadata(block_model, kind="rlc_combo_emt", config=dict(rlc_config))
+        self._annotate_internal_grounding_link_blocks(block_model)
+        self._sync_rlc_combo_load_base_values(template_kwargs)
+
+        if isinstance(self.api_object, InjectionParent):
+            try:
+                self.api_object.conn = rlc_config["connection_type"]
+            except Exception:
+                pass
+        else:
+            pass
+
+        self.block_counters[BlockType.RLC_COMBO_EMT] = count
+        block_item.set_subsystem(block_model)
+        block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
+        block_item.build_item()
+        self.main_block.add(block_model)
+        self.scene.addItem(block_item)
+        block_item.setPos(QtCore.QPointF(x_pos, y_pos))
+        self.diagram.add_node(
+            name=item_name,
+            x=x_pos,
+            y=y_pos,
+            tpe=BlockType.RLC_COMBO_EMT.name,
+            device_uid=block_model.uid,
+        )
+        self.mark_unapplied_changes()
+        return block_item
+
+    def create_shunt_component_emt_block_item(self,
+                                              block_type: BlockType,
+                                              x_pos: float,
+                                              y_pos: float) -> BlockItem | None:
+        """
+        Create one modal-configured single-component EMT shunt block.
+
+        :param block_type: ``R_LOAD_EMT``, ``L_LOAD_EMT`` or ``C_LOAD_EMT``.
+        :param x_pos: Drop x position.
+        :param y_pos: Drop y position.
+        :return: Created block item or None when the dialog is cancelled.
+        """
+        dialog = self._build_shunt_component_emt_dialog(block_type=block_type)
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            shunt_config = dialog.get_configuration()
+        else:
+            return None
+
+        try:
+            template_kwargs = self._build_shunt_component_emt_template_kwargs(block_type=block_type, modal_config=shunt_config)
+        except ValueError as exc:
+            QtWidgets.QMessageBox.warning(self, "EMT Shunt", str(exc))
+            return None
+
+        count: int = self.block_counters.get(block_type, 0) + 1
+        item_name: str = f"{block_type.name}_{count}"
+        block_item: BlockItem = BlockItem(var_factory=self.var_factory, name=item_name)
+        block_model = get_shunt_rlc_combo_emt_template(vf=self.var_factory, name=item_name, **template_kwargs).block
+        set_modal_template_metadata(block_model, kind="shunt_component_emt", config=dict(shunt_config, block_type=block_type.name))
+        self._annotate_internal_grounding_link_blocks(block_model)
+        self._sync_rlc_combo_load_base_values(template_kwargs)
+
+        if isinstance(self.api_object, InjectionParent):
+            try:
+                self.api_object.conn = shunt_config["connection_type"]
+            except Exception:
+                pass
+        else:
+            pass
+
+        self.block_counters[block_type] = count
+        block_item.set_subsystem(block_model)
+        block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
+        block_item.build_item()
+        self.main_block.add(block_model)
+        self.scene.addItem(block_item)
+        block_item.setPos(QtCore.QPointF(x_pos, y_pos))
+        self.diagram.add_node(
+            name=item_name,
+            x=x_pos,
+            y=y_pos,
+            tpe=block_type.name,
+            device_uid=block_model.uid,
+        )
+        self.mark_unapplied_changes()
+        return block_item
+
+    def create_load_topology_emt_block_item(self,
+                                            block_type: BlockType,
+                                            x_pos: float,
+                                            y_pos: float) -> BlockItem | None:
+        """
+        Create one modal-configured EMT load block with explicit neutral/ground topology.
+
+        :param block_type: ``EXP_LOAD_EMT`` or ``ZIP_LOAD_EMT``.
+        :param x_pos: Drop x position.
+        :param y_pos: Drop y position.
+        :return: Created block item or None when the dialog is cancelled.
+        """
+        dialog = self._build_load_topology_emt_dialog(block_type=block_type)
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            load_config = dialog.get_configuration()
+        else:
+            return None
+
+        count: int = self.block_counters.get(block_type, 0) + 1
+        item_name: str = f"{block_type.name}_{count}"
+        block_item: BlockItem = BlockItem(var_factory=self.var_factory, name=item_name)
+        block_model = self._build_load_topology_emt_block_model(
+            block_type=block_type,
+            item_name=item_name,
+            modal_config=load_config,
+        )
+        if block_model is None:
+            return None
+        else:
+            pass
+
+        set_modal_template_metadata(block_model, kind="load_topology_emt", config=dict(load_config, block_type=block_type.name))
+        self._annotate_internal_grounding_link_blocks(block_model)
+
+        if isinstance(self.api_object, InjectionParent):
+            try:
+                self.api_object.conn = load_config["connection_type"]
+            except Exception:
+                pass
+        else:
+            pass
+
+        self.block_counters[block_type] = count
+        block_item.set_subsystem(block_model)
+        block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
+        block_item.build_item()
+        self.main_block.add(block_model)
+        self.scene.addItem(block_item)
+        block_item.setPos(QtCore.QPointF(x_pos, y_pos))
+        self.diagram.add_node(
+            name=item_name,
+            x=x_pos,
+            y=y_pos,
+            tpe=block_type.name,
+            device_uid=block_model.uid,
+        )
+        self.mark_unapplied_changes()
+        return block_item
+
+    def create_grounding_link_emt_block_item(self, x_pos: float, y_pos: float) -> BlockItem | None:
+        """
+        Create one modal-configured EMT grounding-link block.
+
+        :param x_pos: Drop x position.
+        :param y_pos: Drop y position.
+        :return: Created block item or None when the dialog is cancelled.
+        """
+        dialog = self._build_grounding_link_emt_dialog()
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            grounding_config = dialog.get_configuration()
+        else:
+            return None
+
+        try:
+            template_kwargs = self._build_grounding_link_emt_template_kwargs(grounding_config)
+        except ValueError as exc:
+            QtWidgets.QMessageBox.warning(self, "Grounding Link", str(exc))
+            return None
+
+        count: int = self.block_counters.get(BlockType.GROUNDING_LINK_EMT, 0) + 1
+        item_name: str = f"grounding_link_emt_{count}"
+        block_item: BlockItem = BlockItem(var_factory=self.var_factory, name=item_name)
+        block_model = get_grounding_link_emt_template(vf=self.var_factory, name=item_name, **template_kwargs).block
+        set_modal_template_metadata(block_model, kind="grounding_link_emt", config=dict(grounding_config))
+
+        self.block_counters[BlockType.GROUNDING_LINK_EMT] = count
+        block_item.set_subsystem(block_model)
+        block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
+        block_item.build_item()
+        self.main_block.add(block_model)
+        self.scene.addItem(block_item)
+        block_item.setPos(QtCore.QPointF(x_pos, y_pos))
+        self.diagram.add_node(
+            name=item_name,
+            x=x_pos,
+            y=y_pos,
+            tpe=BlockType.GROUNDING_LINK_EMT.name,
+            device_uid=block_model.uid,
+        )
+        self.mark_unapplied_changes()
+        return block_item
+
+    def _build_rlc_combo_emt_dialog(self,
+                                    initial_config: Dict[str, Any] | None = None) -> RlcComboEmtDialog:
+        """
+        Build the modal dialog used by the EMT combined RLC workflow.
+
+        :param initial_config: Optional persisted modal configuration.
+        :return: Configured dialog instance.
+        """
+        nominal_voltage_kv, base_power_mva, base_frequency_hz = self._get_rlc_combo_base_values()
+        return RlcComboEmtDialog(
+            self,
+            initial_config=initial_config,
+            nominal_voltage_kv=nominal_voltage_kv,
+            base_power_mva=base_power_mva,
+            base_frequency_hz=base_frequency_hz,
+        )
+
+    def _build_grounding_link_emt_dialog(self,
+                                         initial_config: Dict[str, Any] | None = None) -> GroundingLinkEmtDialog:
+        """
+        Build the modal dialog used by the EMT grounding-link workflow.
+
+        :param initial_config: Optional persisted modal configuration.
+        :return: Configured dialog instance.
+        """
+        nominal_voltage_kv, base_power_mva, base_frequency_hz = self._get_rlc_combo_base_values()
+        return GroundingLinkEmtDialog(
+            self,
+            initial_config=initial_config,
+            nominal_voltage_kv=nominal_voltage_kv,
+            base_power_mva=base_power_mva,
+            base_frequency_hz=base_frequency_hz,
+        )
+
+    def _build_shunt_component_emt_dialog(self,
+                                          block_type: BlockType,
+                                          initial_config: Dict[str, Any] | None = None) -> ShuntComponentEmtDialog:
+        """
+        Build the modal dialog used by one simple EMT shunt block.
+
+        :param block_type: ``R_LOAD_EMT``, ``L_LOAD_EMT`` or ``C_LOAD_EMT``.
+        :param initial_config: Optional persisted modal configuration.
+        :return: Configured dialog instance.
+        """
+        component_kind: str | None = _get_shunt_component_kind(block_type)
+        nominal_voltage_kv, base_power_mva, base_frequency_hz = self._get_rlc_combo_base_values()
+
+        if component_kind is None:
+            raise ValueError(f"Unsupported simple EMT shunt block type '{block_type.name}'")
+        else:
+            pass
+
+        return ShuntComponentEmtDialog(
+            component_kind=component_kind,
+            parent=self,
+            initial_config=initial_config,
+            nominal_voltage_kv=nominal_voltage_kv,
+            base_power_mva=base_power_mva,
+            base_frequency_hz=base_frequency_hz,
+        )
+
+    @staticmethod
+    def _get_load_topology_dialog_title(block_type: BlockType) -> str:
+        """
+        Return the dialog title for one EMT load-topology block.
+
+        :param block_type: ``EXP_LOAD_EMT`` or ``ZIP_LOAD_EMT``.
+        :return: Window title.
+        """
+        if block_type == BlockType.EXP_LOAD_EMT:
+            return "Configure EMT Exponential Load"
+        elif block_type == BlockType.ZIP_LOAD_EMT:
+            return "Configure EMT ZIP Load"
+        else:
+            raise ValueError(f"Unsupported EMT load-topology block type '{block_type.name}'")
+
+    def _build_load_topology_emt_dialog(self,
+                                        block_type: BlockType,
+                                        initial_config: Dict[str, Any] | None = None) -> LoadTopologyEmtDialog:
+        """
+        Build the modal dialog used by one EMT load-topology block.
+
+        :param block_type: ``EXP_LOAD_EMT`` or ``ZIP_LOAD_EMT``.
+        :param initial_config: Optional persisted modal configuration.
+        :return: Configured dialog instance.
+        """
+        return LoadTopologyEmtDialog(
+            title=self._get_load_topology_dialog_title(block_type),
+            parent=self,
+            initial_config=initial_config,
+        )
+
+    @staticmethod
+    def _annotate_internal_grounding_link_blocks(block_model: Block) -> None:
+        """
+        Attach modal metadata to auto-generated internal grounding-link blocks.
+
+        :param block_model: Parent block that may own nested grounding-link children.
+        :return: None.
+        """
+        child_block: Block
+        grounding_config: Dict[str, Any] = dict({
+            "solid_connection": True,
+            "include_r": False,
+            "include_l": False,
+            "include_c": False,
+            "input_mode": "physical",
+            "resistance_ohm": 1.0,
+            "inductive_value": 0.01,
+            "capacitive_value": 1.0e-6,
+        })
+
+        for child_block in _iter_child_blocks(block_model):
+            if child_block.name.endswith("_grounding_link"):
+                set_modal_template_metadata(child_block, kind="grounding_link_emt", config=grounding_config)
+            else:
+                pass
+
+    def _get_rlc_combo_base_values(self) -> tuple[float | None, float | None, float | None]:
+        """
+        Resolve the host base values used by the EMT combined RLC modal.
+
+        :return: ``(Vnom_kV, Sbase_MVA, fbase_Hz)`` tuple.
+        """
+        nominal_voltage_kv: float | None = None
+        base_power_mva: float | None = None
+        base_frequency_hz: float | None = None
+
+        if isinstance(self.api_object, InjectionParent):
+            bus = self.api_object.bus
+            if bus is not None:
+                try:
+                    nominal_voltage_kv = float(bus.Vnom)
+                except (TypeError, ValueError):
+                    nominal_voltage_kv = None
+            else:
+                pass
+        else:
+            pass
+
+        if self.circuit is not None:
+            try:
+                base_power_mva = float(self.circuit.Sbase)
+            except (AttributeError, TypeError, ValueError):
+                base_power_mva = None
+
+            try:
+                base_frequency_hz = float(self.circuit.fBase)
+            except (AttributeError, TypeError, ValueError):
+                base_frequency_hz = None
+        else:
+            pass
+
+        return nominal_voltage_kv, base_power_mva, base_frequency_hz
+
+    def _get_rlc_combo_base_frequency_hz(self) -> float:
+        """
+        Return the frequency used to convert reactances into EMT L/C values.
+
+        :return: Frequency in hertz.
+        """
+        _, _, base_frequency_hz = self._get_rlc_combo_base_values()
+
+        if base_frequency_hz is not None and base_frequency_hz > 0.0:
+            return base_frequency_hz
+        else:
+            return 50.0
+
+    def _build_rlc_direct_values_from_modal_config(self, modal_config: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Convert one R/L/C modal configuration into direct EMT values.
+
+        :param modal_config: Raw modal configuration.
+        :return: Direct-value dictionary shared by EMT RLC modal builders.
+        :raises ValueError: If the modal configuration is not numerically valid.
+        """
+        include_r: bool = bool(modal_config.get("include_r", False))
+        include_l: bool = bool(modal_config.get("include_l", False))
+        include_c: bool = bool(modal_config.get("include_c", False))
+        solid_connection: bool = bool(modal_config.get("solid_connection", False))
+        input_mode: str = str(modal_config.get("input_mode", "physical"))
+        resistance_ohm: float = float(modal_config.get("resistance_ohm", 1.0))
+        inductive_value: float = float(modal_config.get("inductive_value", 0.01))
+        capacitive_value: float = float(modal_config.get("capacitive_value", 1.0e-6))
+        angular_frequency: float = 2.0 * math.pi * self._get_rlc_combo_base_frequency_hz()
+
+        if solid_connection:
+            return dict({
+                "solid_connection": True,
+                "include_r": False,
+                "include_l": False,
+                "include_c": False,
+                "direct_r_value": None,
+                "direct_l_value": None,
+                "direct_c_value": None,
+            })
+        else:
+            pass
+
+        if input_mode in {"physical", "reactance"}:
+            pass
+        else:
+            raise ValueError(f"Unsupported RLC input mode '{input_mode}'.")
+
+        if include_r and resistance_ohm <= 0.0:
+            raise ValueError("Resistance must be greater than zero when the resistor branch is enabled.")
+        else:
+            pass
+
+        if include_l and inductive_value <= 0.0:
+            if input_mode == "reactance":
+                raise ValueError("Inductive reactance must be greater than zero when the inductor branch is enabled.")
+            else:
+                raise ValueError("Inductance must be greater than zero when the inductor branch is enabled.")
+        else:
+            pass
+
+        if include_c and capacitive_value <= 0.0:
+            if input_mode == "reactance":
+                raise ValueError("Capacitive reactance must be greater than zero when the capacitor branch is enabled.")
+            else:
+                raise ValueError("Capacitance must be greater than zero when the capacitor branch is enabled.")
+        else:
+            pass
+
+        direct_l_value: float | None = None
+        if include_l:
+            if input_mode == "physical":
+                direct_l_value = inductive_value
+            else:
+                direct_l_value = inductive_value / angular_frequency
+        else:
+            pass
+
+        direct_c_value: float | None = None
+        if include_c:
+            if input_mode == "physical":
+                direct_c_value = capacitive_value
+            else:
+                direct_c_value = 1.0 / (angular_frequency * capacitive_value)
+        else:
+            pass
+
+        return dict({
+            "solid_connection": False,
+            "include_r": include_r,
+            "include_l": include_l,
+            "include_c": include_c,
+            "direct_r_value": resistance_ohm if include_r else None,
+            "direct_l_value": direct_l_value,
+            "direct_c_value": direct_c_value,
+        })
+
+    def _build_rlc_combo_emt_template_kwargs(self, modal_config: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Convert one modal configuration into the EMT template builder arguments.
+
+        ``Physical R/L/C`` values are forwarded directly. ``R + Reactances`` is
+        converted into the physical inductance and capacitance expected by the
+        current EMT child templates.
+
+        :param modal_config: Raw modal configuration.
+        :return: Template-builder keyword arguments.
+        :raises ValueError: If the modal configuration is not numerically valid.
+        """
+        template_kwargs: Dict[str, Any] = dict(self._build_rlc_direct_values_from_modal_config(modal_config))
+        if "solid_connection" in template_kwargs:
+            del template_kwargs["solid_connection"]
+        else:
+            pass
+        template_kwargs.update({
+            "phA": bool(modal_config.get("phA", True)),
+            "phB": bool(modal_config.get("phB", True)),
+            "phC": bool(modal_config.get("phC", True)),
+            "connection_type": modal_config.get("connection_type", ShuntConnectionType.GroundedStar),
+        })
+
+        return template_kwargs
+
+    def _build_grounding_link_emt_template_kwargs(self, modal_config: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Convert one grounding-link modal configuration into template arguments.
+
+        :param modal_config: Raw modal configuration.
+        :return: Template-builder keyword arguments.
+        """
+        return self._build_rlc_direct_values_from_modal_config(modal_config)
+
+    def _build_shunt_component_emt_template_kwargs(self,
+                                                   block_type: BlockType,
+                                                   modal_config: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Convert one single-component EMT shunt modal configuration into template arguments.
+
+        :param block_type: ``R_LOAD_EMT``, ``L_LOAD_EMT`` or ``C_LOAD_EMT``.
+        :param modal_config: Raw modal configuration.
+        :return: Template-builder keyword arguments.
+        """
+        template_kwargs: Dict[str, Any] = dict(self._build_rlc_direct_values_from_modal_config(modal_config))
+        if "solid_connection" in template_kwargs:
+            del template_kwargs["solid_connection"]
+        else:
+            pass
+
+        component_kind: str | None = _get_shunt_component_kind(block_type)
+        if component_kind == "R":
+            template_kwargs["include_r"] = True
+            template_kwargs["include_l"] = False
+            template_kwargs["include_c"] = False
+        elif component_kind == "L":
+            template_kwargs["include_r"] = False
+            template_kwargs["include_l"] = True
+            template_kwargs["include_c"] = False
+        elif component_kind == "C":
+            template_kwargs["include_r"] = False
+            template_kwargs["include_l"] = False
+            template_kwargs["include_c"] = True
+        else:
+            raise ValueError(f"Unsupported simple EMT shunt block type '{block_type.name}'")
+
+        template_kwargs.update({
+            "phA": bool(modal_config.get("phA", True)),
+            "phB": bool(modal_config.get("phB", True)),
+            "phC": bool(modal_config.get("phC", True)),
+            "connection_type": modal_config.get("connection_type", ShuntConnectionType.GroundedStar),
+        })
+        return template_kwargs
+
+    def _build_load_topology_emt_block_model(self,
+                                             block_type: BlockType,
+                                             item_name: str,
+                                             modal_config: Dict[str, Any]) -> Block | None:
+        """
+        Build one EMT load block with explicit neutral/ground topology.
+
+        :param block_type: ``EXP_LOAD_EMT`` or ``ZIP_LOAD_EMT``.
+        :param item_name: Symbolic block name.
+        :param modal_config: Modal configuration.
+        :return: Block model or ``None``.
+        """
+        ph_a: bool = bool(modal_config.get("phA", True))
+        ph_b: bool = bool(modal_config.get("phB", True))
+        ph_c: bool = bool(modal_config.get("phC", True))
+        connection_type = modal_config.get("connection_type", ShuntConnectionType.GroundedStar)
+
+        if block_type == BlockType.EXP_LOAD_EMT:
+            block_model = get_exponential_load_emt(
+                vf=self.var_factory,
+                phA=ph_a,
+                phB=ph_b,
+                phC=ph_c,
+                connection_type=connection_type,
+                name=item_name,
+            ).block
+        elif block_type == BlockType.ZIP_LOAD_EMT:
+            block_model = get_load_ZIP_emt_template(
+                vf=self.var_factory,
+                phA=ph_a,
+                phB=ph_b,
+                phC=ph_c,
+                connection_type=connection_type,
+                name=item_name,
+            ).block
+        else:
+            raise ValueError(f"Unsupported EMT load-topology block type '{block_type.name}'")
+
+        block_model.name = item_name
+        return block_model
+
+    def _sync_rlc_combo_load_base_values(self, template_kwargs: Dict[str, Any]) -> None:
+        """
+        Sync one real load API object with the equivalent RLC snapshot powers.
+
+        The combined EMT template now stores physical R/L/C values directly so it
+        can work standalone. When the editor is attached to a real load, we also
+        refresh the load snapshot powers so the power-flow-based EMT initialization
+        stays aligned with the same electrical values.
+
+        :param template_kwargs: Resolved EMT template arguments.
+        :return: None.
+        """
+        if isinstance(self.api_object, Load):
+            load: Load = self.api_object
+        else:
+            return
+
+        if load.bus is None or load.bus.is_dc:
+            return
+        else:
+            pass
+
+        nominal_voltage_kv: float = float(load.bus.Vnom)
+        phase_voltage_kv: float = nominal_voltage_kv / math.sqrt(3.0)
+        phase_voltage_sq: float = phase_voltage_kv * phase_voltage_kv
+        line_voltage_sq: float = nominal_voltage_kv * nominal_voltage_kv
+        angular_frequency: float = 2.0 * math.pi * self._get_rlc_combo_base_frequency_hz()
+        direct_r_value: float | None = template_kwargs.get("direct_r_value", None)
+        direct_l_value: float | None = template_kwargs.get("direct_l_value", None)
+        direct_c_value: float | None = template_kwargs.get("direct_c_value", None)
+        connection_type = template_kwargs.get("connection_type", ShuntConnectionType.GroundedStar)
+        phase_enabled: List[bool] = list([
+            bool(template_kwargs.get("phA", True)),
+            bool(template_kwargs.get("phB", True)),
+            bool(template_kwargs.get("phC", True)),
+        ])
+        active_powers: List[float] = list([0.0, 0.0, 0.0])
+        reactive_powers: List[float] = list([0.0, 0.0, 0.0])
+        idx: int
+
+        if connection_type == ShuntConnectionType.Delta:
+            branch_specs: list[tuple[int, int, int]] = list()
+            if phase_enabled[0] and phase_enabled[1]:
+                branch_specs.append((0, 0, 1))
+            else:
+                pass
+
+            if phase_enabled[1] and phase_enabled[2]:
+                branch_specs.append((1, 1, 2))
+            else:
+                pass
+
+            if phase_enabled[2] and phase_enabled[0]:
+                branch_specs.append((2, 2, 0))
+            else:
+                pass
+
+            for idx, _phase_from, _phase_to in branch_specs:
+                if direct_r_value is not None:
+                    active_powers[idx] = active_powers[idx] + line_voltage_sq / direct_r_value
+                else:
+                    pass
+
+                if direct_l_value is not None:
+                    reactive_powers[idx] = reactive_powers[idx] + line_voltage_sq / (angular_frequency * direct_l_value)
+                else:
+                    pass
+
+                if direct_c_value is not None:
+                    reactive_powers[idx] = reactive_powers[idx] + line_voltage_sq * angular_frequency * direct_c_value
+                else:
+                    pass
+        else:
+            for idx in range(3):
+                if phase_enabled[idx]:
+                    if direct_r_value is not None:
+                        active_powers[idx] = active_powers[idx] + phase_voltage_sq / direct_r_value
+                    else:
+                        pass
+
+                    if direct_l_value is not None:
+                        reactive_powers[idx] = reactive_powers[idx] + phase_voltage_sq / (angular_frequency * direct_l_value)
+                    else:
+                        pass
+
+                    if direct_c_value is not None:
+                        reactive_powers[idx] = reactive_powers[idx] + phase_voltage_sq * angular_frequency * direct_c_value
+                    else:
+                        pass
+                else:
+                    pass
+
+        load.Pa = active_powers[0]
+        load.Pb = active_powers[1]
+        load.Pc = active_powers[2]
+        load.Qa = reactive_powers[0]
+        load.Qb = reactive_powers[1]
+        load.Qc = reactive_powers[2]
+        load.P = sum(active_powers)
+        load.Q = sum(reactive_powers)
+        load.Pa_prof.default_value = load.Pa
+        load.Pb_prof.default_value = load.Pb
+        load.Pc_prof.default_value = load.Pc
+        load.Qa_prof.default_value = load.Qa
+        load.Qb_prof.default_value = load.Qb
+        load.Qc_prof.default_value = load.Qc
+        load.P_prof.default_value = load.P
+        load.Q_prof.default_value = load.Q
+
     def create_inverse_lookup_array_linear_descriptor_item(self,
                                                            descriptor: BasicBlockTemplateDescriptor,
                                                            x_pos: float,
@@ -4545,16 +5297,25 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             BlockType.EMT_PI_LINE,
             BlockType.EMT_BERGERON_LINE,
             BlockType.SWITCH_EMT,
-            BlockType.R_LOAD_EMT,
-            BlockType.L_LOAD_EMT,
-            BlockType.C_LOAD_EMT,
-            BlockType.EXP_LOAD_EMT,
-            BlockType.ZIP_LOAD_EMT,
+            BlockType.GROUNDING_LINK_EMT,
+            BlockType.RLC_COMBO_EMT,
         }:
             if payload == BlockType.SWITCH_EMT:
                 return self.create_switch_emt_block_item(x_pos=x_pos, y_pos=y_pos)
+            elif payload == BlockType.GROUNDING_LINK_EMT:
+                return self.create_grounding_link_emt_block_item(x_pos=x_pos, y_pos=y_pos)
+            elif payload == BlockType.RLC_COMBO_EMT:
+                return self.create_rlc_combo_emt_block_item(x_pos=x_pos, y_pos=y_pos)
             else:
                 return self.create_emt_wizard_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
+        elif isinstance(payload, BlockType) and _is_load_topology_block_type(payload):
+            return self.create_load_topology_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
+        elif isinstance(payload, BlockType) and payload in {
+            BlockType.R_LOAD_EMT,
+            BlockType.L_LOAD_EMT,
+            BlockType.C_LOAD_EMT,
+        }:
+            return self.create_shunt_component_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
         elif isinstance(payload, BlockType):
             return self.create_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
         elif isinstance(payload, BasicBlockTemplateDescriptor):
@@ -6027,6 +6788,14 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self._modify_lookup_matrix_like_block(item, modal_config, build_lookup_matrix_linear_runtime_template)
         elif modal_kind == "lookup_matrix_spline":
             self._modify_lookup_matrix_like_block(item, modal_config, build_lookup_matrix_spline_runtime_template)
+        elif modal_kind == "grounding_link_emt":
+            self._modify_grounding_link_emt_block(item, modal_config)
+        elif modal_kind == "load_topology_emt":
+            self._modify_load_topology_emt_block(item, modal_config)
+        elif modal_kind == "shunt_component_emt":
+            self._modify_shunt_component_emt_block(item, modal_config)
+        elif modal_kind == "rlc_combo_emt":
+            self._modify_rlc_combo_emt_block(item, modal_config)
         elif modal_kind == "switch_emt":
             self._modify_switch_emt_block(item, modal_config)
         else:
@@ -6054,7 +6823,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         source_clone.uid = preserved_uid
         copy_block_state(source_block=source_clone, target_block=target_block)
         target_block.uid = preserved_uid
-        target_block.diagram = preserved_diagram
+
+        if source_clone.diagram.node_data:
+            target_block.diagram = source_clone.diagram
+        else:
+            target_block.diagram = preserved_diagram
         set_modal_template_metadata(target_block, modal_kind, modal_config)
         self.rebuild_scene_from_diagram()
         self.select_block_by_uid(preserved_uid)
@@ -6175,6 +6948,45 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         block_type_name: str = str(modal_config["block_type"])
         block_type = BlockType[block_type_name]
+
+        if _get_shunt_component_kind(block_type) is not None:
+            migrated_config: Dict[str, Any] = dict({
+                "block_type": block_type.name,
+                "phA": bool(modal_config.get("phase_a", True)),
+                "phB": bool(modal_config.get("phase_b", True)),
+                "phC": bool(modal_config.get("phase_c", True)),
+                "connection_type": (
+                    ShuntConnectionType.NeutralStar
+                    if bool(modal_config.get("phase_n", False))
+                    else ShuntConnectionType.GroundedStar
+                ),
+                "input_mode": "physical",
+                "include_r": block_type == BlockType.R_LOAD_EMT,
+                "include_l": block_type == BlockType.L_LOAD_EMT,
+                "include_c": block_type == BlockType.C_LOAD_EMT,
+                "resistance_ohm": 1.0,
+                "inductive_value": 0.01,
+                "capacitive_value": 1.0e-6,
+            })
+            self._modify_shunt_component_emt_block(item, migrated_config)
+            return
+        elif _is_load_topology_block_type(block_type):
+            migrated_config = dict({
+                "block_type": block_type.name,
+                "phA": bool(modal_config.get("phase_a", True)),
+                "phB": bool(modal_config.get("phase_b", True)),
+                "phC": bool(modal_config.get("phase_c", True)),
+                "connection_type": (
+                    ShuntConnectionType.NeutralStar
+                    if bool(modal_config.get("phase_n", False))
+                    else ShuntConnectionType.GroundedStar
+                ),
+            })
+            self._modify_load_topology_emt_block(item, migrated_config)
+            return
+        else:
+            pass
+
         new_block = create_emt_wizard_block(
             phase_n,
             phase_a,
@@ -6219,6 +7031,175 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         new_block = get_switch_emt_template(vf=self.var_factory, name=item.subsys.name, **switch_config).block
         self._replace_scene_block_from_template(item, new_block, "switch_emt", dict(switch_config))
+
+    def _modify_rlc_combo_emt_block(self, item: BlockItem, modal_config: Dict[str, Any]) -> None:
+        """
+        Reconfigure one modal-created EMT combined RLC shunt block.
+
+        :param item: Target block item.
+        :param modal_config: Stored modal configuration.
+        :return: None.
+        """
+        dialog = self._build_rlc_combo_emt_dialog(initial_config=modal_config)
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            rlc_config = dialog.get_configuration()
+        else:
+            return
+
+        try:
+            template_kwargs = self._build_rlc_combo_emt_template_kwargs(rlc_config)
+        except ValueError as exc:
+            QtWidgets.QMessageBox.warning(self, "RLC Combo", str(exc))
+            return
+
+        if item.subsys is None:
+            return
+        else:
+            pass
+
+        if isinstance(self.api_object, InjectionParent):
+            try:
+                self.api_object.conn = rlc_config["connection_type"]
+            except Exception:
+                pass
+        else:
+            pass
+
+        new_block = get_shunt_rlc_combo_emt_template(vf=self.var_factory, name=item.subsys.name, **template_kwargs).block
+        self._annotate_internal_grounding_link_blocks(new_block)
+        self._sync_rlc_combo_load_base_values(template_kwargs)
+        self._replace_scene_block_from_template(item, new_block, "rlc_combo_emt", dict(rlc_config))
+
+    def _modify_grounding_link_emt_block(self, item: BlockItem, modal_config: Dict[str, Any]) -> None:
+        """
+        Reconfigure one modal-created EMT grounding-link block.
+
+        :param item: Target block item.
+        :param modal_config: Stored modal configuration.
+        :return: None.
+        """
+        dialog = self._build_grounding_link_emt_dialog(initial_config=modal_config)
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            grounding_config = dialog.get_configuration()
+        else:
+            return
+
+        try:
+            template_kwargs = self._build_grounding_link_emt_template_kwargs(grounding_config)
+        except ValueError as exc:
+            QtWidgets.QMessageBox.warning(self, "Grounding Link", str(exc))
+            return
+
+        if item.subsys is None:
+            return
+        else:
+            pass
+
+        nested_variant: bool = len(item.subsys.external_mapping) == 0
+        new_block = get_grounding_link_emt_template(
+            vf=self.var_factory,
+            name=item.subsys.name,
+            nested=nested_variant,
+            **template_kwargs,
+        ).block
+        self._replace_scene_block_from_template(item, new_block, "grounding_link_emt", dict(grounding_config))
+
+    def _modify_load_topology_emt_block(self, item: BlockItem, modal_config: Dict[str, Any]) -> None:
+        """
+        Reconfigure one modal-created EMT load-topology block.
+
+        :param item: Target block item.
+        :param modal_config: Stored modal configuration.
+        :return: None.
+        """
+        block_type_name: str = str(modal_config.get("block_type", ""))
+        block_type: BlockType = BlockType[block_type_name]
+        dialog = self._build_load_topology_emt_dialog(block_type=block_type, initial_config=modal_config)
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            load_config = dialog.get_configuration()
+        else:
+            return
+
+        if item.subsys is None:
+            return
+        else:
+            pass
+
+        new_block = self._build_load_topology_emt_block_model(
+            block_type=block_type,
+            item_name=item.subsys.name,
+            modal_config=load_config,
+        )
+        if new_block is None:
+            return
+        else:
+            pass
+
+        self._annotate_internal_grounding_link_blocks(new_block)
+
+        if isinstance(self.api_object, InjectionParent):
+            try:
+                self.api_object.conn = load_config["connection_type"]
+            except Exception:
+                pass
+        else:
+            pass
+
+        self._replace_scene_block_from_template(
+            item,
+            new_block,
+            "load_topology_emt",
+            dict(load_config, block_type=block_type.name),
+        )
+
+    def _modify_shunt_component_emt_block(self, item: BlockItem, modal_config: Dict[str, Any]) -> None:
+        """
+        Reconfigure one modal-created simple EMT shunt block.
+
+        :param item: Target block item.
+        :param modal_config: Stored modal configuration.
+        :return: None.
+        """
+        block_type_name: str = str(modal_config.get("block_type", ""))
+        block_type: BlockType = BlockType[block_type_name]
+        dialog = self._build_shunt_component_emt_dialog(block_type=block_type, initial_config=modal_config)
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            shunt_config = dialog.get_configuration()
+        else:
+            return
+
+        try:
+            template_kwargs = self._build_shunt_component_emt_template_kwargs(block_type=block_type, modal_config=shunt_config)
+        except ValueError as exc:
+            QtWidgets.QMessageBox.warning(self, "EMT Shunt", str(exc))
+            return
+
+        if item.subsys is None:
+            return
+        else:
+            pass
+
+        if isinstance(self.api_object, InjectionParent):
+            try:
+                self.api_object.conn = shunt_config["connection_type"]
+            except Exception:
+                pass
+        else:
+            pass
+
+        new_block = get_shunt_rlc_combo_emt_template(vf=self.var_factory, name=item.subsys.name, **template_kwargs).block
+        self._annotate_internal_grounding_link_blocks(new_block)
+        self._sync_rlc_combo_load_base_values(template_kwargs)
+        self._replace_scene_block_from_template(
+            item,
+            new_block,
+            "shunt_component_emt",
+            dict(shunt_config, block_type=block_type.name),
+        )
 
     def get_scene_item_by_block_uid(self, block_uid: int) -> BlockItem | GenericBlockItem | None:
         """

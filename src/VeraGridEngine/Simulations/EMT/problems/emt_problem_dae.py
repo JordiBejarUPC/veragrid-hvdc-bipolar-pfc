@@ -1287,6 +1287,25 @@ class EmtProblemDae(EmtProblemTemplate):
             VarPowerFlowRefferenceType.v_C,
         }
 
+        def _has_internal_grounding_link(mdl: Block) -> bool:
+            diagram_node = None
+            for diagram_node in mdl.diagram.node_data.values():
+                if diagram_node.tpe in {"GROUNDING_LINK_EMT", "GROUND_EMT"}:
+                    return True
+                else:
+                    pass
+
+            nested_block: Block
+            for nested_block in mdl.children:
+                if nested_block.name.endswith("_grounding_link"):
+                    return True
+                elif _has_internal_grounding_link(nested_block):
+                    return True
+                else:
+                    pass
+
+            return False
+
         for br in self.grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
             try:
                 br_emt_model = br.emt_model
@@ -1382,6 +1401,13 @@ class EmtProblemDae(EmtProblemTemplate):
                             bus_phase_connections[(inj_bus, in_var.ref)].add(f"injection:{inj.idtag}")
                         else:
                             pass
+
+                    if _has_internal_grounding_link(inj_emt_model):
+                        bus_phase_connections[(inj_bus, VarPowerFlowRefferenceType.v_N)].add(
+                            f"internal_ground:{inj.idtag}"
+                        )
+                    else:
+                        pass
             else:
                 pass
 
