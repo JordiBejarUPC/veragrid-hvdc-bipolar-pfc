@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict
+from typing import Dict, List, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -33,13 +33,28 @@ import VeraGridEngine.api as gce
 def _get_switch_demo_options() -> EmtOptions:
     return EmtOptions(
         time_step=5e-6,
-        simulation_time=0.06,
+        simulation_time=0.08,
         tolerance=1e-6,
         solver_type=EmtSolverTypes.Symbolic,
         initialization_method=EmtInitializationMethod.Auto,
         integration_method=DynamicIntegrationMethod.DaeTrapezoidal,
         verbose=0,
     )
+
+
+def _build_switch_sequence() -> List[Tuple[float, float]]:
+    """
+    Return the richer switch open/close event sequence used by the demo.
+
+    :return: Ordered `(time, mode)` pairs.
+    """
+    return list([
+        (0.015, 0.0),
+        (0.028, 1.0),
+        (0.041, 0.0),
+        (0.056, 1.0),
+        (0.068, 0.0),
+    ])
 
 
 def _build_switch_demo_grid() -> tuple[gce.MultiCircuit, gce.Generator, gce.Switch, gce.Load]:
@@ -109,8 +124,21 @@ def run_switch_emt_case(enable_plots: bool = True) -> Dict[str, object]:
 
     event_group = EmtEventsGroup(name="switch_emt_demo")
     grid.add_emt_events_group(event_group)
-    grid.add_emt_event(EmtEvent(device=switch, parameter=switch_mode_var, time=0.02, value=0.0, group=event_group, force_step_alignment=True))
-    grid.add_emt_event(EmtEvent(device=switch, parameter=switch_mode_var, time=0.04, value=1.0, group=event_group, force_step_alignment=True))
+    event_time: float
+    event_value: float
+    event_schedule: List[Tuple[float, float]] = _build_switch_sequence()
+
+    for event_time, event_value in event_schedule:
+        grid.add_emt_event(
+            EmtEvent(
+                device=switch,
+                parameter=switch_mode_var,
+                time=event_time,
+                value=event_value,
+                group=event_group,
+                force_step_alignment=True,
+            )
+        )
 
     problem = EmtProblemDae(grid=grid, options=_get_switch_demo_options(), pf_results=None, pf_results_3ph=pf_res_3ph)
     problem.set_events_group(event_group)
@@ -128,11 +156,14 @@ def run_switch_emt_case(enable_plots: bool = True) -> Dict[str, object]:
     mode_idx = problem.uid2idx_event_params[switch_mode_var.uid]
     mode_trace = np.zeros(len(tme), dtype=float)
     sample_index: int
-    runtime_values = problem.event_params_values.copy()
+    current_mode_value: float = float(problem.event_params_values[mode_idx])
+    event_cursor: int = 0
 
     for sample_index in range(len(tme)):
-        runtime_values = problem.def_event_params_fn(runtime_values, float(tme[sample_index]))
-        mode_trace[sample_index] = float(runtime_values[mode_idx])
+        while event_cursor < len(event_schedule) and float(tme[sample_index]) >= float(event_schedule[event_cursor][0]):
+            current_mode_value = float(event_schedule[event_cursor][1])
+            event_cursor += 1
+        mode_trace[sample_index] = current_mode_value
 
     bus1_var = find_name_in_block("v_A_Bus1_emt_template", problem.sys_block)
     if bus1_var is None:
@@ -147,33 +178,49 @@ def run_switch_emt_case(enable_plots: bool = True) -> Dict[str, object]:
         "switch_mode": mode_trace,
         "bus1_v_a": np.asarray(y_hist[:, problem.get_var_idx(bus1_var)], dtype=float),
         "switch_i_a": np.asarray(y_hist[:, problem.get_var_idx(current_var)], dtype=float),
+        "event_times": np.asarray([item[0] for item in event_schedule], dtype=float),
+        "event_values": np.asarray([item[1] for item in event_schedule], dtype=float),
     })
 
     output_dir: Path = get_plot_results_directory("switch_emt", "symbolic")
-    png_path: Path = output_dir / "switch_emt_demo.png"
+    mode_png_path: Path = output_dir / "switch_emt_mode_sequence.png"
+    response_png_path: Path = output_dir / "switch_emt_bus_voltage_and_current.png"
 
-    figure, axes = plt.subplots(2, 1, figsize=(10, 7), sharex=True)
-    axes[0].step(traces["time"], traces["switch_mode"], where="post", label="switch_mode")
+    figure_mode = plt.figure(figsize=(10, 4))
+    axis_mode = figure_mode.add_subplot(1, 1, 1)
+    axis_mode.step(traces["time"], traces["switch_mode"], where="post", label="switch_mode", color="tab:blue")
+    axis_mode.scatter(traces["event_times"], traces["event_values"], color="tab:red", zorder=3, label="scheduled events")
+    axis_mode.grid(True)
+    axis_mode.legend()
+    axis_mode.set_ylabel("Mode")
+    axis_mode.set_xlabel("Time [s]")
+    axis_mode.set_title("Switch EMT Mode Sequence")
+    figure_mode.tight_layout()
+    figure_mode.savefig(mode_png_path, dpi=200, bbox_inches="tight")
+
+    figure_response, axes = plt.subplots(2, 1, figsize=(10, 7), sharex=True)
+    axes[0].plot(traces["time"], traces["bus1_v_a"], label="Bus1 v_A", color="tab:green")
     axes[0].grid(True)
     axes[0].legend()
-    axes[0].set_ylabel("Mode")
-    axes[0].set_title("Switch EMT Demo")
+    axes[0].set_ylabel("Voltage")
+    axes[0].set_title("Switch EMT Electrical Response")
 
-    axes[1].plot(traces["time"], traces["bus1_v_a"], label="Bus1 v_A")
-    axes[1].plot(traces["time"], traces["switch_i_a"], label="Switch if_A", linestyle="--")
+    axes[1].plot(traces["time"], traces["switch_i_a"], label="Switch if_A", linestyle="--", color="tab:orange")
     axes[1].grid(True)
     axes[1].legend()
     axes[1].set_xlabel("Time [s]")
-    axes[1].set_ylabel("Value")
-    figure.tight_layout()
-    figure.savefig(png_path, dpi=200, bbox_inches="tight")
+    axes[1].set_ylabel("Current")
+    figure_response.tight_layout()
+    figure_response.savefig(response_png_path, dpi=200, bbox_inches="tight")
 
     if enable_plots:
         plt.show()
     else:
-        plt.close(figure)
+        plt.close(figure_mode)
+        plt.close(figure_response)
 
-    traces["png_path"] = str(png_path)
+    traces["mode_png_path"] = str(mode_png_path)
+    traces["response_png_path"] = str(response_png_path)
     return traces
 
 
