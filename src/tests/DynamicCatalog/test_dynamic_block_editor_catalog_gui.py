@@ -8,6 +8,7 @@ from PySide6.QtTest import QTest
 
 import VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor as dynamic_block_editor_module
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
+from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import get_modal_template_metadata
 from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import LookupArrayLinearDialog
 from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import LookupMatrixLinearDialog
 from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import _parse_clipboard_grid
@@ -15,6 +16,7 @@ from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Templates.BasicBlockCatalog import BasicBlockTemplateDescriptor
 from VeraGridEngine.Templates.BasicBlockCatalog import get_basic_block_catalog_descriptor_by_key
 from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.enumerations import BlockType
 from VeraGridEngine.enumerations import DynamicSimulationMode
 
 pytestmark = pytest.mark.filterwarnings("error")
@@ -441,6 +443,92 @@ def test_lookup_array_linear_descriptor_uses_modal_points_to_build_block(monkeyp
     assert block_item is not None
     assert any(var.name.startswith("arr_x3_") for var in block_item.subsys.event_dict.keys())
     assert any(var.name.startswith("arr_y3_") for var in block_item.subsys.event_dict.keys())
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
+def test_lookup_array_linear_modal_created_block_supports_modify_template(monkeypatch) -> None:
+    editor = _build_editor(DynamicSimulationMode.EMT)
+    descriptor = get_basic_block_catalog_descriptor_by_key()["lookup_array_linear"]
+
+    class _CreateDialogStub:
+        def __init__(self, block_label: str, initial_points=None, parent=None) -> None:
+            _unused = (block_label, initial_points, parent)
+
+        def exec(self) -> int:
+            return int(QtWidgets.QDialog.DialogCode.Accepted)
+
+        def get_points(self) -> tuple[list[float], list[float]]:
+            return [0.0, 1.0, 2.0], [0.0, 10.0, 20.0]
+
+    class _ModifyDialogStub:
+        def __init__(self, block_label: str, initial_points=None, parent=None) -> None:
+            _unused = (block_label, initial_points, parent)
+
+        def exec(self) -> int:
+            return int(QtWidgets.QDialog.DialogCode.Accepted)
+
+        def get_points(self) -> tuple[list[float], list[float]]:
+            return [0.0, 2.0, 4.0], [0.0, 40.0, 80.0]
+
+    monkeypatch.setattr(dynamic_block_editor_module, "LookupArrayLinearDialog", _CreateDialogStub)
+    block_item = editor.create_library_payload_item(descriptor, 10.0, 20.0)
+    assert block_item is not None
+
+    monkeypatch.setattr(dynamic_block_editor_module, "LookupArrayLinearDialog", _ModifyDialogStub)
+    editor.modify_scene_item_template(block_item)
+
+    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    assert modal_kind == "lookup_array_1d"
+    assert modal_config is not None
+    assert modal_config["x_points"] == [0.0, 2.0, 4.0]
+    assert modal_config["y_points"] == [0.0, 40.0, 80.0]
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
+def test_emt_phase_wizard_block_supports_modify_template(monkeypatch) -> None:
+    editor = _build_editor(DynamicSimulationMode.EMT)
+
+    class _CreateDialogStub:
+        def __init__(self, parent=None, initial_values=None) -> None:
+            _unused = (parent, initial_values)
+
+        def exec(self) -> int:
+            return int(QtWidgets.QDialog.DialogCode.Accepted)
+
+        def get_values(self) -> tuple[bool, bool, bool, bool]:
+            return False, True, False, False
+
+    class _ModifyDialogStub:
+        def __init__(self, parent=None, initial_values=None) -> None:
+            _unused = (parent, initial_values)
+
+        def exec(self) -> int:
+            return int(QtWidgets.QDialog.DialogCode.Accepted)
+
+        def get_values(self) -> tuple[bool, bool, bool, bool]:
+            return False, True, True, True
+
+    monkeypatch.setattr(dynamic_block_editor_module, "EmtTemplateWizardDialog", _CreateDialogStub)
+    block_item = editor.create_library_payload_item(BlockType.EMT_PI_LINE, 10.0, 20.0)
+    assert block_item is not None
+
+    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    assert modal_kind == "emt_phase_wizard"
+    assert modal_config is not None
+    assert modal_config["phase_b"] is False
+
+    monkeypatch.setattr(dynamic_block_editor_module, "EmtTemplateWizardDialog", _ModifyDialogStub)
+    editor.modify_scene_item_template(block_item)
+
+    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    assert modal_kind == "emt_phase_wizard"
+    assert modal_config is not None
+    assert modal_config["phase_b"] is True
+    assert modal_config["phase_c"] is True
 
     editor.has_unapplied_changes = False
     editor.close()

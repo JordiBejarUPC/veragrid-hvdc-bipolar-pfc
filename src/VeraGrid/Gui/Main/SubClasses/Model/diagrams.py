@@ -47,6 +47,7 @@ from VeraGrid.Gui.Main.object_select_window import ObjectSelectWindow, ListSelec
 from VeraGrid.Gui.Diagrams.MapWidget.Tiles.TileProviders.cartodb import CartoDbTiles
 from VeraGrid.Gui.object_proxy_model import ObjectModelFilterProxy
 from VeraGrid.Gui.dynamic_events_editor_dialog import DynamicEventDialogue, DynamicEventsGroupsDialog
+from VeraGrid.Gui.dynamic_events_editor_dialog import collect_block_runtime_event_parameters
 from VeraGrid.Gui.Diagrams.MapWidget.Substation.substation_graphic_item import SubstationGraphicItem
 from VeraGrid.Gui.ShortCircuitEditor.short_circuit_selector import ShortCircuitSelector
 from VeraGrid.Gui.general_dialogues import (CheckListDialogue, StartEndSelectionDialogue,
@@ -2876,8 +2877,7 @@ class DiagramsMain(CompiledArraysMain):
 
 
                 else:
-                    emt_event_parameters = list(target_device.emt_model.event_dict.keys()) + list(target_device.emt_model.mode_dict.keys())
-                    mode_parameter_uids = set(var.uid for var in target_device.emt_model.mode_dict.keys())
+                    emt_event_parameters, mode_parameter_uids = collect_block_runtime_event_parameters(target_device.emt_model)
                     emt_events_dialog = DynamicEventDialogue(circuit=self.circuit,
                                                              parameters_list=emt_event_parameters,
                                                              target_device_name=target_device.type_name + ": " + target_device.name,

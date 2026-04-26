@@ -884,6 +884,7 @@ class EmtProblemDae(EmtProblemTemplate):
         t_phase_start = _tic()
         self.initialization_report = run_emt_native_initialization(problem=self, options=self.options)
         self._seed_all_switched_vsc_models()
+        self._seed_all_switch_models()
         self.init_guess.update(self._temp_post_init_guess)
         self.diff_init_guess.update(self._temp_post_diff_init_guess)
         native_init_s: float = _toc(t_phase_start)
@@ -4781,6 +4782,14 @@ class EmtProblemDae(EmtProblemTemplate):
                     else:
                         self._event_params_values[runtime_idx] = float(value)
                         self._event_parameters_eqs[runtime_idx] = self.grid.var_factory.add_const(float(value))
+                        if "_runtime_all_eqs_source" in self.__dict__:
+                            self._runtime_all_eqs_source[runtime_idx] = self.grid.var_factory.add_const(float(value))
+                        else:
+                            pass
+                        if "_runtime_parameter_eqs0" in self.__dict__:
+                            self._runtime_parameter_eqs0[runtime_idx] = self.grid.var_factory.add_const(float(value))
+                        else:
+                            pass
                 else:
                     pass
             else:
@@ -4813,6 +4822,14 @@ class EmtProblemDae(EmtProblemTemplate):
                     else:
                         self._event_params_values[runtime_idx] = float(value)
                         self._event_parameters_eqs[runtime_idx] = self.grid.var_factory.add_const(float(value))
+                        if "_runtime_all_eqs_source" in self.__dict__:
+                            self._runtime_all_eqs_source[runtime_idx] = self.grid.var_factory.add_const(float(value))
+                        else:
+                            pass
+                        if "_runtime_parameter_eqs0" in self.__dict__:
+                            self._runtime_parameter_eqs0[runtime_idx] = self.grid.var_factory.add_const(float(value))
+                        else:
+                            pass
                 else:
                     pass
             else:
@@ -5288,6 +5305,41 @@ class EmtProblemDae(EmtProblemTemplate):
                 )
 
             vsc_index += 1
+
+    def _seed_all_switch_models(self) -> None:
+        """
+        Seed all EMT switch models from the static switch active state when requested.
+
+        :return: None.
+        """
+        branch_obj: Any
+
+        for branch_obj in self.grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
+            if branch_obj.device_type == DeviceType.SwitchDevice:
+                mdl = getattr(branch_obj, "emt_model", None)
+
+                if mdl is None:
+                    pass
+                else:
+                    model_name: str = _get_block_name(mdl)
+                    seed_from_pf: float = self._get_internal_runtime_default(
+                        mdl,
+                        f"switch_seed_from_pf_{model_name}",
+                        1.0,
+                    )
+
+                    if seed_from_pf > 0.5:
+                        initial_closed: float = 1.0 if bool(branch_obj.active) else 0.0
+                    else:
+                        initial_closed = self._get_internal_mode_default(
+                            mdl,
+                            f"switch_closed_mode_{model_name}",
+                            1.0,
+                        )
+
+                    self.set_internal_mode_if_exists(mdl, f"switch_closed_mode_{model_name}", initial_closed)
+            else:
+                pass
 
     def _initialize_mode_event_state(self) -> None:
         """
@@ -5890,6 +5942,15 @@ class EmtProblemDae(EmtProblemTemplate):
 
         api_obj_mapping: Any = br.emt_model.api_obj_mapping
         if not isinstance(api_obj_mapping, dict):
+            return
+
+        if br.device_type == DeviceType.SwitchDevice:
+            eps_value: float = 1.0e-12
+            r_value: float = float(getattr(br, "R", 0.0))
+            x_value: float = float(getattr(br, "X", 0.0))
+            z_magnitude: float = np.sqrt(r_value * r_value + x_value * x_value)
+            g_closed_value: float = 1.0 / max(abs(z_magnitude), eps_value)
+            self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.g, g_closed_value)
             return
 
         if isinstance(br, DcLine):

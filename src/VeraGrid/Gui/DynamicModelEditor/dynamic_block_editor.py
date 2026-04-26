@@ -41,6 +41,7 @@ from VeraGridEngine.Templates.BasicBlockCatalog.lookup_array_runtime_templates i
 from VeraGridEngine.Templates.BasicBlockCatalog.lookup_array_runtime_templates import build_lookup_matrix_linear_runtime_template
 from VeraGridEngine.Templates.BasicBlockCatalog.lookup_array_runtime_templates import build_lookup_array_spline_runtime_template
 from VeraGridEngine.Templates.BasicBlockCatalog.lookup_array_runtime_templates import build_lookup_matrix_spline_runtime_template
+from VeraGridEngine.Templates.Emt.switch_emt_template import get_switch_emt_template
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGrid.Gui.DynamicModelEditor.block_editor import Ui_BlockEditorWindow
@@ -48,6 +49,7 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_utilities import create_bloc
     create_emt_wizard_block
 from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import LookupArrayLinearDialog
 from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import LookupMatrixLinearDialog
+from VeraGrid.Gui.DynamicModelEditor.switch_emt_dialog import SwitchEmtDialog
 from VeraGrid.Gui.Icons.icon_associations import device_type_icons
 from VeraGridEngine.Utils.Symbolic.symbolic import (symbolic_to_string, string_to_symbolic,
                                                     get_symbolic_parser_function_names,
@@ -82,6 +84,8 @@ TEMPLATE_NODE_TYPE: str = "TEMPLATE"
 PARAMETER_VALUE_TYPE_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 500
 PARAMETER_EDITABLE_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 501
 LIBRARY_SEARCH_TEXT_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 502
+MODAL_TEMPLATE_KIND_ATTR: str = "_modal_template_kind"
+MODAL_TEMPLATE_CONFIG_ATTR: str = "_modal_template_config"
 LOOKUP_ARRAY_LINEAR_DESCRIPTOR_KEYS: set[str] = {
     "lookup_array_linear",
     "lookup_array_linear_noclipping",
@@ -104,6 +108,40 @@ LOOKUP_MATRIX_SPLINE_DESCRIPTOR_KEYS: set[str] = {
     "lookup_matrix_spline",
     "lookup_matrix_object_spline",
 }
+
+
+def set_modal_template_metadata(block: Block, kind: str, config: Dict[str, Any]) -> None:
+    """
+    Persist the modal-builder metadata on one block.
+
+    :param block: Target block.
+    :param kind: Stable modal kind key.
+    :param config: Serializable modal configuration.
+    :return: None.
+    """
+    setattr(block, MODAL_TEMPLATE_KIND_ATTR, kind)
+    setattr(block, MODAL_TEMPLATE_CONFIG_ATTR, copy.deepcopy(config))
+
+
+def get_modal_template_metadata(block: Block | None) -> tuple[str | None, Dict[str, Any] | None]:
+    """
+    Return the modal-builder metadata stored on one block.
+
+    :param block: Candidate block.
+    :return: `(kind, config)` or `(None, None)` when absent.
+    """
+    if block is None:
+        return None, None
+    else:
+        pass
+
+    kind: Any = getattr(block, MODAL_TEMPLATE_KIND_ATTR, None)
+    config: Any = getattr(block, MODAL_TEMPLATE_CONFIG_ATTR, None)
+
+    if isinstance(kind, str) and isinstance(config, dict):
+        return kind, copy.deepcopy(config)
+    else:
+        return None, None
 
 
 def _new_uid() -> int:
@@ -854,7 +892,9 @@ class EmtTemplateWizardDialog(QDialog):
     Dialog to configure EMT template wizard block phases.
     """
 
-    def __init__(self, parent=None):
+    def __init__(self,
+                 parent=None,
+                 initial_values: tuple[bool, bool, bool, bool] | None = None):
         super().__init__(parent)
         self.setWindowTitle("Configure EMT Block Phases")
 
@@ -872,6 +912,14 @@ class EmtTemplateWizardDialog(QDialog):
         layout.addWidget(self.phase_a_check)
         layout.addWidget(self.phase_b_check)
         layout.addWidget(self.phase_c_check)
+
+        if initial_values is not None:
+            self.phase_n_check.setChecked(bool(initial_values[0]))
+            self.phase_a_check.setChecked(bool(initial_values[1]))
+            self.phase_b_check.setChecked(bool(initial_values[2]))
+            self.phase_c_check.setChecked(bool(initial_values[3]))
+        else:
+            pass
 
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         buttons.accepted.connect(self.accept)
@@ -3120,6 +3168,28 @@ class DiagramScene(QGraphicsScene):
         else:
             pass
 
+    def edit_context_item(self) -> None:
+        """
+        Open the hierarchy editor for the item currently selected by the context menu.
+
+        :return: None.
+        """
+        if self.context_item is not None:
+            self.editor.edit_scene_item(self.context_item)
+        else:
+            pass
+
+    def modify_context_item_template(self) -> None:
+        """
+        Reopen the modal configuration for the selected block when available.
+
+        :return: None.
+        """
+        if self.context_item is not None:
+            self.editor.modify_scene_item_template(self.context_item)
+        else:
+            pass
+
     def contextMenuEvent(self, event: QtWidgets.QGraphicsSceneContextMenuEvent) -> None:
         """
         Show scene actions for blocks and connections.
@@ -3133,6 +3203,25 @@ class DiagramScene(QGraphicsScene):
             if isinstance(item, (BlockItem, GenericBlockItem, ConnectionItem)):
                 menu: QMenu = QMenu()
                 self.context_item = item
+
+                if isinstance(item, (BlockItem, GenericBlockItem)):
+                    if isinstance(item, BlockItem) and item.subsys is not None:
+                        modal_kind, _modal_config = get_modal_template_metadata(item.subsys)
+                    else:
+                        modal_kind = None
+
+                    if modal_kind is not None:
+                        modify_action: QAction = QAction("Modify Template", menu)
+                        modify_action.triggered.connect(self.modify_context_item_template)
+                        menu.addAction(modify_action)
+                    else:
+                        pass
+
+                    edit_action: QAction = QAction("Edit Hierarchy", menu)
+                    edit_action.triggered.connect(self.edit_context_item)
+                    menu.addAction(edit_action)
+                else:
+                    pass
 
                 remove_action: QAction = QAction("Remove", menu)
                 remove_action.triggered.connect(self.remove_context_item)
@@ -3604,6 +3693,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 LibraryLeafSpec("Generic", BlockType.GENERIC),
                 LibraryLeafSpec("Emt pi line", BlockType.EMT_PI_LINE),
                 LibraryLeafSpec("Emt Bergeron line", BlockType.EMT_BERGERON_LINE),
+                LibraryLeafSpec("Switch EMT", BlockType.SWITCH_EMT),
                 LibraryLeafSpec("R load", BlockType.R_LOAD_EMT),
                 LibraryLeafSpec("L load", BlockType.L_LOAD_EMT),
                 LibraryLeafSpec("C load", BlockType.C_LOAD_EMT),
@@ -3808,6 +3898,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
 
         self.ui.toolBox.setCurrentWidget(self.ui.page_7)
+        self.activateWindow()
+        self.raise_()
         self.ui.librarySearchLineEdit.setFocus(QtCore.Qt.FocusReason.ShortcutFocusReason)
         self.ui.librarySearchLineEdit.selectAll()
 
@@ -4015,6 +4107,18 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                                   block_type=block_type, item_name=item_name)
 
             if block_model is not None:
+                set_modal_template_metadata(
+                    block_model,
+                    kind="emt_phase_wizard",
+                    config=dict({
+                        "block_type": block_type.name,
+                        "phase_n": phase_n,
+                        "phase_a": phase_a,
+                        "phase_b": phase_b,
+                        "phase_c": phase_c,
+                    }),
+                )
+
                 # The symbolic block has to be attached first so the graphics item can build its ports from it.
                 self.block_counters[block_type] = count
                 block_item.set_subsystem(block_model)
@@ -4210,7 +4314,58 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             clip=clip_enabled,
             name=item_name,
         )
+        set_modal_template_metadata(
+            template.block,
+            kind="lookup_array_1d",
+            config=dict({
+                "descriptor_key": descriptor.template_key,
+                "display_label": descriptor.display_label,
+                "x_points": x_points,
+                "y_points": y_points,
+            }),
+        )
         return self.create_template_block_item(template=template, x_pos=x_pos, y_pos=y_pos)
+
+    def create_switch_emt_block_item(self, x_pos: float, y_pos: float) -> BlockItem | None:
+        """
+        Create one EMT switch block configured through the switch modal.
+
+        :param x_pos: Drop x position.
+        :param y_pos: Drop y position.
+        :return: Created block item or None when the dialog is cancelled.
+        """
+        dialog = SwitchEmtDialog(self)
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            switch_config = dialog.get_switch_configuration()
+            count: int = self.block_counters.get(BlockType.SWITCH_EMT, 0) + 1
+            item_name: str = f"switch_emt_{count}"
+            block_item: BlockItem = BlockItem(var_factory=self.var_factory, name=item_name)
+            block_model = get_switch_emt_template(vf=self.var_factory, name=item_name, **switch_config).block
+            set_modal_template_metadata(
+                block_model,
+                kind="switch_emt",
+                config=dict(switch_config),
+            )
+
+            self.block_counters[BlockType.SWITCH_EMT] = count
+            block_item.set_subsystem(block_model)
+            block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
+            block_item.build_item()
+            self.main_block.add(block_model)
+            self.scene.addItem(block_item)
+            block_item.setPos(QtCore.QPointF(x_pos, y_pos))
+            self.diagram.add_node(
+                name=item_name,
+                x=x_pos,
+                y=y_pos,
+                tpe=BlockType.SWITCH_EMT.name,
+                device_uid=block_model.uid,
+            )
+            self.mark_unapplied_changes()
+            return block_item
+        else:
+            return None
 
     def create_inverse_lookup_array_linear_descriptor_item(self,
                                                            descriptor: BasicBlockTemplateDescriptor,
@@ -4239,6 +4394,16 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             x_points=x_points,
             y_points=y_points,
             name=item_name,
+        )
+        set_modal_template_metadata(
+            template.block,
+            kind="lookup_array_inverse",
+            config=dict({
+                "descriptor_key": descriptor.template_key,
+                "display_label": descriptor.display_label,
+                "x_points": x_points,
+                "y_points": y_points,
+            }),
         )
         return self.create_template_block_item(template=template, x_pos=x_pos, y_pos=y_pos)
 
@@ -4269,6 +4434,16 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             x_points=x_points,
             y_points=y_points,
             name=item_name,
+        )
+        set_modal_template_metadata(
+            template.block,
+            kind="lookup_array_spline",
+            config=dict({
+                "descriptor_key": descriptor.template_key,
+                "display_label": descriptor.display_label,
+                "x_points": x_points,
+                "y_points": y_points,
+            }),
         )
         return self.create_template_block_item(template=template, x_pos=x_pos, y_pos=y_pos)
 
@@ -4301,6 +4476,17 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             z_matrix=z_matrix,
             name=item_name,
         )
+        set_modal_template_metadata(
+            template.block,
+            kind="lookup_matrix_linear",
+            config=dict({
+                "descriptor_key": descriptor.template_key,
+                "display_label": descriptor.display_label,
+                "x_points": x_points,
+                "y_points": y_points,
+                "z_matrix": z_matrix,
+            }),
+        )
         return self.create_template_block_item(template=template, x_pos=x_pos, y_pos=y_pos)
 
     def create_lookup_matrix_spline_descriptor_item(self,
@@ -4332,6 +4518,17 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             z_matrix=z_matrix,
             name=item_name,
         )
+        set_modal_template_metadata(
+            template.block,
+            kind="lookup_matrix_spline",
+            config=dict({
+                "descriptor_key": descriptor.template_key,
+                "display_label": descriptor.display_label,
+                "x_points": x_points,
+                "y_points": y_points,
+                "z_matrix": z_matrix,
+            }),
+        )
         return self.create_template_block_item(template=template, x_pos=x_pos, y_pos=y_pos)
 
     def create_library_payload_item(self,
@@ -4347,13 +4544,17 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         elif isinstance(payload, BlockType) and payload in {
             BlockType.EMT_PI_LINE,
             BlockType.EMT_BERGERON_LINE,
+            BlockType.SWITCH_EMT,
             BlockType.R_LOAD_EMT,
             BlockType.L_LOAD_EMT,
             BlockType.C_LOAD_EMT,
             BlockType.EXP_LOAD_EMT,
             BlockType.ZIP_LOAD_EMT,
         }:
-            return self.create_emt_wizard_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
+            if payload == BlockType.SWITCH_EMT:
+                return self.create_switch_emt_block_item(x_pos=x_pos, y_pos=y_pos)
+            else:
+                return self.create_emt_wizard_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
         elif isinstance(payload, BlockType):
             return self.create_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
         elif isinstance(payload, BasicBlockTemplateDescriptor):
@@ -5747,6 +5948,277 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     self.equations_table_model.set_block(self._selected_side_block)
                 else:
                     pass
+
+    def edit_scene_item(self, item: BlockItem | GenericBlockItem | ConnectionItem) -> None:
+        """
+        Open an editor for the selected scene item when supported.
+
+        :param item: Scene item selected from the context menu.
+        :return: None.
+        """
+        if isinstance(item, GenericBlockItem):
+            item.editor_window.show()
+            item.editor_window.raise_()
+            item.editor_window.activateWindow()
+        else:
+            if isinstance(item, BlockItem):
+                self.open_block_subeditor(item)
+            else:
+                pass
+
+    def open_block_subeditor(self, item: BlockItem) -> None:
+        """
+        Open a nested block editor for one block item.
+
+        :param item: Target block item.
+        :return: None.
+        """
+        if item.subsys is None:
+            return
+        else:
+            pass
+
+        editor_window = getattr(item, "editor_window", None)
+
+        if editor_window is None:
+            editor_window = DynamicBlockEditorGUI(
+                var_factory=self.var_factory,
+                block=item.subsys,
+                api_object=self.api_object,
+                mode=self.mode,
+                modal=False,
+            )
+            item.editor_window = editor_window
+        else:
+            pass
+
+        editor_window.show()
+        editor_window.raise_()
+        editor_window.activateWindow()
+
+    def modify_scene_item_template(self, item: BlockItem | GenericBlockItem | ConnectionItem) -> None:
+        """
+        Reopen the modal configuration of a block item when metadata is available.
+
+        :param item: Scene item selected from the context menu.
+        :return: None.
+        """
+        if not isinstance(item, BlockItem) or item.subsys is None:
+            return
+        else:
+            pass
+
+        modal_kind, modal_config = get_modal_template_metadata(item.subsys)
+
+        if modal_kind is None or modal_config is None:
+            return
+        else:
+            pass
+
+        if modal_kind == "lookup_array_1d":
+            self._modify_lookup_array_like_block(item, modal_config, build_lookup_array_linear_runtime_template)
+        elif modal_kind == "lookup_array_inverse":
+            self._modify_lookup_array_like_block(item, modal_config, build_inverse_lookup_array_linear_runtime_template)
+        elif modal_kind == "lookup_array_spline":
+            self._modify_lookup_array_like_block(item, modal_config, build_lookup_array_spline_runtime_template)
+        elif modal_kind == "emt_phase_wizard":
+            self._modify_emt_phase_wizard_block(item, modal_config)
+        elif modal_kind == "lookup_matrix_linear":
+            self._modify_lookup_matrix_like_block(item, modal_config, build_lookup_matrix_linear_runtime_template)
+        elif modal_kind == "lookup_matrix_spline":
+            self._modify_lookup_matrix_like_block(item, modal_config, build_lookup_matrix_spline_runtime_template)
+        elif modal_kind == "switch_emt":
+            self._modify_switch_emt_block(item, modal_config)
+        else:
+            pass
+
+    def _replace_scene_block_from_template(self, item: BlockItem, new_block: Block, modal_kind: str, modal_config: Dict[str, Any]) -> None:
+        """
+        Replace one scene block contents while preserving its identity and diagram node.
+
+        :param item: Existing scene block item.
+        :param new_block: Newly built block contents.
+        :param modal_kind: Modal kind metadata key.
+        :param modal_config: Modal configuration metadata.
+        :return: None.
+        """
+        if item.subsys is None:
+            return
+        else:
+            pass
+
+        target_block: Block = item.subsys
+        preserved_uid: int = target_block.uid
+        preserved_diagram = target_block.diagram
+        source_clone: Block = clone_block_for_editing(new_block)
+        source_clone.uid = preserved_uid
+        copy_block_state(source_block=source_clone, target_block=target_block)
+        target_block.uid = preserved_uid
+        target_block.diagram = preserved_diagram
+        set_modal_template_metadata(target_block, modal_kind, modal_config)
+        self.rebuild_scene_from_diagram()
+        self.select_block_by_uid(preserved_uid)
+        self.mark_unapplied_changes()
+
+    def _modify_lookup_array_like_block(self, item: BlockItem, modal_config: Dict[str, Any], builder) -> None:
+        """
+        Reconfigure one modal-created 1D lookup block.
+
+        :param item: Target block item.
+        :param modal_config: Stored modal configuration.
+        :param builder: Lookup builder callable.
+        :return: None.
+        """
+        dialog = LookupArrayLinearDialog(
+            block_label=str(modal_config["display_label"]),
+            initial_points=list(zip(modal_config["x_points"], modal_config["y_points"])),
+            parent=self,
+        )
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            x_points, y_points = dialog.get_points()
+        else:
+            return
+
+        if item.subsys is None:
+            return
+        else:
+            pass
+
+        descriptor_key: str = str(modal_config["descriptor_key"])
+        if builder is build_lookup_array_linear_runtime_template:
+            new_block = builder(
+                vf=self.var_factory,
+                x_points=x_points,
+                y_points=y_points,
+                clip=descriptor_key not in {"lookup_array_linear_noclipping", "lookup_array_object_linear_noclipping"},
+                name=item.subsys.name,
+            ).block
+        else:
+            new_block = builder(
+                vf=self.var_factory,
+                x_points=x_points,
+                y_points=y_points,
+                name=item.subsys.name,
+            ).block
+
+        updated_config = dict(modal_config)
+        updated_config["x_points"] = x_points
+        updated_config["y_points"] = y_points
+        self._replace_scene_block_from_template(item, new_block, str(get_modal_template_metadata(item.subsys)[0]), updated_config)
+
+    def _modify_lookup_matrix_like_block(self, item: BlockItem, modal_config: Dict[str, Any], builder) -> None:
+        """
+        Reconfigure one modal-created 2D lookup block.
+
+        :param item: Target block item.
+        :param modal_config: Stored modal configuration.
+        :param builder: Lookup builder callable.
+        :return: None.
+        """
+        dialog = LookupMatrixLinearDialog(
+            block_label=str(modal_config["display_label"]),
+            initial_x_points=modal_config["x_points"],
+            initial_y_points=modal_config["y_points"],
+            initial_z_matrix=modal_config["z_matrix"],
+            parent=self,
+        )
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            x_points, y_points, z_matrix = dialog.get_matrix_data()
+        else:
+            return
+
+        if item.subsys is None:
+            return
+        else:
+            pass
+
+        new_block = builder(
+            vf=self.var_factory,
+            x_points=x_points,
+            y_points=y_points,
+            z_matrix=z_matrix,
+            name=item.subsys.name,
+        ).block
+        updated_config = dict(modal_config)
+        updated_config["x_points"] = x_points
+        updated_config["y_points"] = y_points
+        updated_config["z_matrix"] = z_matrix
+        self._replace_scene_block_from_template(item, new_block, str(get_modal_template_metadata(item.subsys)[0]), updated_config)
+
+    def _modify_emt_phase_wizard_block(self, item: BlockItem, modal_config: Dict[str, Any]) -> None:
+        """
+        Reconfigure one modal-created EMT phase-wizard block.
+
+        :param item: Target block item.
+        :param modal_config: Stored modal configuration.
+        :return: None.
+        """
+        initial_values = (
+            bool(modal_config.get("phase_n", False)),
+            bool(modal_config.get("phase_a", True)),
+            bool(modal_config.get("phase_b", True)),
+            bool(modal_config.get("phase_c", True)),
+        )
+        dialog = EmtTemplateWizardDialog(self, initial_values=initial_values)
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            phase_n, phase_a, phase_b, phase_c = dialog.get_values()
+        else:
+            return
+
+        if item.subsys is None:
+            return
+        else:
+            pass
+
+        block_type_name: str = str(modal_config["block_type"])
+        block_type = BlockType[block_type_name]
+        new_block = create_emt_wizard_block(
+            phase_n,
+            phase_a,
+            phase_b,
+            phase_c,
+            self.var_factory,
+            block_type=block_type,
+            item_name=item.subsys.name,
+        )
+
+        if new_block is None:
+            return
+        else:
+            pass
+
+        updated_config = dict(modal_config)
+        updated_config["phase_n"] = phase_n
+        updated_config["phase_a"] = phase_a
+        updated_config["phase_b"] = phase_b
+        updated_config["phase_c"] = phase_c
+        self._replace_scene_block_from_template(item, new_block, "emt_phase_wizard", updated_config)
+
+    def _modify_switch_emt_block(self, item: BlockItem, modal_config: Dict[str, Any]) -> None:
+        """
+        Reconfigure one modal-created EMT switch block.
+
+        :param item: Target block item.
+        :param modal_config: Stored modal configuration.
+        :return: None.
+        """
+        dialog = SwitchEmtDialog(self, initial_config=modal_config)
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            switch_config = dialog.get_switch_configuration()
+        else:
+            return
+
+        if item.subsys is None:
+            return
+        else:
+            pass
+
+        new_block = get_switch_emt_template(vf=self.var_factory, name=item.subsys.name, **switch_config).block
+        self._replace_scene_block_from_template(item, new_block, "switch_emt", dict(switch_config))
 
     def get_scene_item_by_block_uid(self, block_uid: int) -> BlockItem | GenericBlockItem | None:
         """
