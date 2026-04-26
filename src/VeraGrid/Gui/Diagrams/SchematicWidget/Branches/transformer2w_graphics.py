@@ -80,19 +80,19 @@ class TransformerGraphicItem(LineGraphicTemplateItem):
                            icon_path=":/Icons/icons/delete3.png")
 
             add_menu_entry(menu=menu,
-                           text="Edit template",
+                           text="Transformer editor",
                            function_ptr=self.edit,
                            icon_path=":/Icons/icons/edit.png")
 
             add_menu_entry(menu=menu,
                            text="RMS Editor",
                            function_ptr=self.edit_dynamic_rms,
-                           icon_path=":/Icons/icons/dyn_gray.png")
+                           icon_path=":/Icons/icons/dyn_edit.png")
 
             add_menu_entry(menu=menu,
                            text="EMT Editor",
                            function_ptr=self.edit_dynamic_emt,
-                           icon_path=":/Icons/icons/dyn_gray.png")
+                           icon_path=":/Icons/icons/dyn_emt_edit.png")
 
             menu.addSection('Tap changer')
 

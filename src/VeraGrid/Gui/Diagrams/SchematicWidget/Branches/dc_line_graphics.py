@@ -16,6 +16,8 @@ from VeraGridEngine.Devices.Branches.line import SequenceLineType, OverheadLineT
 from VeraGridEngine.Devices.Branches.dc_line import DcLine
 from VeraGridEngine.enumerations import DeviceType
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template import LineGraphicTemplateItem
+from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_manager import open_dynamic_editor
+from VeraGridEngine.enumerations import DynamicSimulationMode
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
@@ -25,6 +27,7 @@ class DcLineEditor(QDialog):
     """
     DcLineEditor
     """
+
     def __init__(self, branch: DcLine, Sbase: float = 100.0, templates=None, current_template=None):
         """
         Line Editor constructor
@@ -213,15 +216,12 @@ class DcLineEditor(QDialog):
                 warning_msg(text=f"The template {self.current_template.name} contains errors",
                             title="Load template")
 
-
-
     def load_template_btn_click(self):
         """
         Accept template values
         """
 
         if self.templates is not None:
-
             idx = self.catalogue_combo.currentIndex()
             template = self.templates[idx]
 
@@ -284,6 +284,16 @@ class DcLineGraphicItem(LineGraphicTemplateItem):
             edit_icon.addPixmap(QPixmap(":/Icons/icons/edit.png"))
             ra3.setIcon(edit_icon)
             ra3.triggered.connect(self.edit)
+
+            add_menu_entry(menu=menu,
+                           text="RMS Editor",
+                           function_ptr=self.edit_dynamic_rms,
+                           icon_path=":/Icons/icons/dyn_edit.png")
+
+            add_menu_entry(menu=menu,
+                           text="EMT Editor",
+                           function_ptr=self.edit_dynamic_emt,
+                           icon_path=":/Icons/icons/dyn_emt_edit.png")
 
             rabf = menu.addAction('Change bus')
             move_bus_icon = QIcon()
@@ -362,3 +372,20 @@ class DcLineGraphicItem(LineGraphicTemplateItem):
         if dlg.exec():
             pass
 
+    def edit_dynamic_rms(self):
+        """
+        Open the unified dynamic editor workspace for this generator.
+        """
+
+        open_dynamic_editor(api_object=self.api_object,
+                            circuit=self.editor.circuit,
+                            preferred_mode=DynamicSimulationMode.RMS)
+
+    def edit_dynamic_emt(self):
+        """
+        Open the unified dynamic editor workspace for this generator.
+        """
+
+        open_dynamic_editor(api_object=self.api_object,
+                            circuit=self.editor.circuit,
+                            preferred_mode=DynamicSimulationMode.EMT)

@@ -265,12 +265,12 @@ class Transformer3WGraphicItem(GenericDiagramWidget, QGraphicsRectItem):
                            checkeable=True,
                            checked_value=self.api_object.active)
 
-            menu.addSeparator()
-
             add_menu_entry(menu=menu,
-                           text="Edit",
+                           text="Transformer 3W editor",
                            function_ptr=self.edit,
                            icon_path=":/Icons/icons/edit.png")
+
+            menu.addSeparator()
 
             add_menu_entry(menu=menu,
                            text="Delete",
