@@ -2674,10 +2674,11 @@ def convert_dgs_svs_to_vsc(elmsvs: ElmSvs,
             rate = elmsvs.Srated # Rated Power [MVA]
             u_setpoint = elmsvs.usetp # Voltage Setpoint [pu]
 
+
             control1 = ConverterControlType.Pac
             control1_val = 0.0  # Active power injection of the SVS [MW]
 
-            control2 = ConverterControlType.Qac
+            control2 = ConverterControlType.Q_droop
             Qdroop = rate / kpd * 100
             Q = Qdroop * (np.abs(1.0) - u_setpoint)  # Reactive power injection of the SVS [MVAr]
             control2_val = Q  # Reactive power injection of the SVS [MVAr]
@@ -2718,8 +2719,8 @@ def convert_dgs_svs_to_vsc(elmsvs: ElmSvs,
         control1_val=control1_val,
         control2_val=control2_val,
         ysvs=ysvs,
-        control1_droop=kpd,
-        control1_droop_val=u_setpoint
+        control2_droop=kpd,
+        control2_droop_val=u_setpoint
     )
 
     return dc_bus, vsc
