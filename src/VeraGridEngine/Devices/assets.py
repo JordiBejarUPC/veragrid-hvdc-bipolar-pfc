@@ -8997,4 +8997,10 @@ class Assets:
                 tpe=DeviceType.LineDevice,
                 kwargs=dict(vf=self._var_factory, phN=False, phA=True, phB=True, phC=True, name="Bergeron"),
             ),
+            _build_lazy_emt_template(
+                builder=tem.get_jmarti_line_emt_template,
+                name="J_Marti",
+                tpe=DeviceType.LineDevice,
+                kwargs=dict(vf=self._var_factory, phN=False, phA=True, phB=True, phC=True, name="J_Marti"),
+            ),
         ]

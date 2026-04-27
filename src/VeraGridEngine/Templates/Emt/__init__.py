@@ -36,6 +36,7 @@ from VeraGridEngine.Templates.Emt.xfmr_emt_template import get_xfmr_emt_template
 # the following are functions that generate templates depending on the specific object
 
 from VeraGridEngine.Templates.Emt.bergeron_line_emt_template import get_bergeron_line_emt_template
+from VeraGridEngine.Templates.Emt.jmarti_line_emt_template import get_jmarti_line_emt_template
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
 # from VeraGridEngine.Templates.Emt.transformer_emt_template import get_transformer_emt_template
 # from VeraGridEngine.Templates.Emt.xfmr_emt_template import get_xfmr_emt_template

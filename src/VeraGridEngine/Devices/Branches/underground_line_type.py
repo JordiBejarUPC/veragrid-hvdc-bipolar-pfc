@@ -25,6 +25,8 @@ class UndergroundLineType(DynamicDevice):
         '_n_circuits',
         '_capex',
         '_opex',
+        '_jmarti_fit_bundle',
+        '_jmarti_runtime_data',
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
@@ -92,6 +94,46 @@ class UndergroundLineType(DynamicDevice):
 
         self.capex = float(capex)
         self.opex = float(opex)
+        self._jmarti_fit_bundle = None
+        self._jmarti_runtime_data = None
+
+    @property
+    def jmarti_fit_bundle(self):
+        """
+        Return the optional offline JMARTI fit bundle attached to the line template.
+
+        :return: Fit bundle or ``None``.
+        """
+        return self._jmarti_fit_bundle
+
+    @jmarti_fit_bundle.setter
+    def jmarti_fit_bundle(self, value) -> None:
+        """
+        Store one optional offline JMARTI fit bundle on the line template.
+
+        :param value: Fit bundle or ``None``.
+        :return: None.
+        """
+        self._jmarti_fit_bundle = value
+
+    @property
+    def jmarti_runtime_data(self):
+        """
+        Return the optional discretized JMARTI runtime data attached to the line template.
+
+        :return: Runtime data or ``None``.
+        """
+        return self._jmarti_runtime_data
+
+    @jmarti_runtime_data.setter
+    def jmarti_runtime_data(self, value) -> None:
+        """
+        Store one optional discretized JMARTI runtime data object on the line template.
+
+        :param value: Runtime data or ``None``.
+        :return: None.
+        """
+        self._jmarti_runtime_data = value
 
     def get_values(self, Sbase: float, length: float):
         """
