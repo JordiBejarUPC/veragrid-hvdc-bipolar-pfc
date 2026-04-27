@@ -1097,4 +1097,6 @@ def get_complete_generator_template_rms(vfactory: VarFactory, name="complete gen
     templ.block.in_vars = [genqec_mdl.in_vars[0], genqec_mdl.in_vars[1]]
     templ.block.out_vars = [genqec_mdl.out_vars[0], genqec_mdl.out_vars[1]]
 
+    templ.block.name = name
+
     return templ

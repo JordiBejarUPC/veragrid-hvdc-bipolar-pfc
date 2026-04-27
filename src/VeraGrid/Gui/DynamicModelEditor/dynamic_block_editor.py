@@ -77,157 +77,6 @@ PARAMETER_EDITABLE_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 501
 LIBRARY_SEARCH_TEXT_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 502
 
 
-class ParametersEditorDialog(QDialog):
-    """
-    Dialog to inspect and edit block parameters (event_dict, parameters, mode_dict).
-    """
-
-    def __init__(self,
-                 var_factory: VarFactory,
-                 block: Block,
-                 parent: Optional[QtWidgets.QWidget] = None):
-        super().__init__(parent)
-        self.var_factory = var_factory
-        self.block = block
-        self.setWindowTitle(f"Parameters Editor - {block.name}")
-        self.resize(500, 400)
-
-        layout: QVBoxLayout = QVBoxLayout(self)
-
-        self.table_view = QtWidgets.QTableView()
-        self.table_view.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
-        self.table_view.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
-        self.table_view.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
-        self.table_view.verticalHeader().setVisible(False)
-        self.table_view.doubleClicked.connect(self.on_double_click)
-        self.table_view.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        self.table_view.customContextMenuRequested.connect(self.show_context_menu)
-        layout.addWidget(self.table_view)
-
-        self.model = ParametersTableModel(var_factory=var_factory, block=block, parent=self.table_view)
-        self.table_view.setModel(self.model)
-        self.model.block_updated.connect(self.on_block_updated)
-
-        button_box = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
-        )
-        button_box.accepted.connect(self.accept)
-        button_box.rejected.connect(self.reject)
-        layout.addWidget(button_box)
-
-    def on_double_click(self, index: QtCore.QModelIndex) -> None:
-        if index.model() == self.model and index.column() == 2:
-            self.open_expression_editor(index.row())
-
-    def open_expression_editor(self, row_index: int) -> None:
-        row_data: BlockParameterRow | None = self.model.get_row(row_index)
-        expression_text: str
-        dialog: ExpressionTextEditorDialog
-        symbol_namespace: Dict[str, Expr]
-        parsed_expression: Expr | Comparison
-        expression_value: Expr
-
-        if row_data is not None and self.model.block is not None:
-            if row_data.value is not None and isinstance(row_data.value, Expr):
-                expression_text = symbolic_to_string(row_data.value)
-            else:
-                expression_text = str(row_data.value) if row_data.value is not None else ""
-            symbol_namespace = build_block_symbol_namespace(self.model.block)
-            dialog = ExpressionTextEditorDialog(
-                expression_text=expression_text,
-                symbol_namespace=symbol_namespace,
-                parent=self
-            )
-
-            if dialog.exec() == QDialog.DialogCode.Accepted:
-                try:
-                    parsed_expression = string_to_symbolic(dialog.get_expression_text(), symbol_namespace)
-
-                    if isinstance(parsed_expression, Comparison):
-                        expression_value = parsed_expression.to_expression()
-                    else:
-                        expression_value = parsed_expression
-
-                    self.model.set_value_from_expression(row_index, expression_value)
-                except Exception as exc:
-                    QtWidgets.QMessageBox.warning(
-                        self,
-                        "Expression Error",
-                        str(exc)
-                    )
-
-    def show_context_menu(self, position: QtCore.QPoint) -> None:
-        table_view: QtWidgets.QTableView = self.table_view
-        self.select_table_context_row(table_view=table_view, position=position)
-
-        has_selected_rows: bool = bool(table_view.selectionModel().selectedRows())
-
-        menu: QMenu = QMenu(table_view)
-        add_variable_action: QAction = menu.addAction("Add Variable")
-        remove_selected_action: QAction = menu.addAction("Remove Selected")
-
-        add_variable_action.setEnabled(self.block is not None)
-        remove_selected_action.setEnabled(self.block is not None and has_selected_rows)
-
-        selected_action: QAction | None = menu.exec(table_view.viewport().mapToGlobal(position))
-
-        if selected_action == add_variable_action:
-            self.open_add_variable_dialog()
-        elif selected_action == remove_selected_action:
-            self.remove_selected_parameters()
-
-    def select_table_context_row(self, table_view: QtWidgets.QTableView, position: QtCore.QPoint) -> None:
-        index = table_view.indexAt(position)
-        if index.isValid():
-            table_view.selectionModel().select(index, QtCore.QItemSelectionModel.SelectionFlag.Select)
-
-    def open_add_variable_dialog(self) -> None:
-        dialog = AddBlockVariableDialog(parent=self)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            name = dialog.get_name()
-            category = dialog.get_category()
-            parameter_value = dialog.get_parameter_value()
-
-            new_var = self.var_factory.add_var(name=name)
-
-            if category == "state":
-                self.block.state_vars.append(new_var)
-                if parameter_value != 0.0:
-                    self.block.init_values[new_var] = self.var_factory.add_const(parameter_value, name=name)
-            elif category == "algebraic":
-                self.block.algebraic_vars.append(new_var)
-            else:
-                raise ValueError(f"Unsupported category for VariablesTableModel: {category}")
-
-            self.model.set_block(self.block)
-            self.model.block_updated.emit(self.block.uid)
-
-    def remove_selected_parameters(self) -> None:
-        params_model = self.model
-        params_selected = [idx.row() for idx in self.table_view.selectionModel().selectedRows()]
-        if not params_selected:
-            return
-
-        for row_idx in params_selected:
-            row_data = params_model.rows[row_idx]
-            var = row_data.key_var
-            if row_data.kind == BlockParameterKind.EVENT_PARAMETER:
-                if var in self.block.event_dict:
-                    del self.block.event_dict[var]
-            elif row_data.kind == BlockParameterKind.FIXED_PARAMETER:
-                if var in self.block.parameters:
-                    del self.block.parameters[var]
-            elif row_data.kind == BlockParameterKind.MODE_PARAM:
-                if var in self.block.mode_dict:
-                    del self.block.mode_dict[var]
-
-        params_model.set_block(self.block)
-        params_model.block_updated.emit(self.block.uid)
-
-    def on_block_updated(self, block_uid: int) -> None:
-        self.model.set_block(self.block)
-
-
 def _new_uid() -> int:
     """
     Generate a fresh integer identifier.
@@ -237,24 +86,6 @@ def _new_uid() -> int:
     return uuid.uuid4().int
 
 
-def open_dyn_params_editor(var_factory: VarFactory, api_object: Any,
-                           preferred_mode: DynamicSimulationMode | None = None):
-    """
-    Opens the dynamic parameters editor dialog.
-
-    :param var_factory: Variable factory for creating new variables.
-    :param api_object: Device/API object containing rms_model or emt_model.
-    :param preferred_mode: Simulation mode (RMS or EMT).
-    :return: None
-    """
-    if preferred_mode == DynamicSimulationMode.RMS:
-        blk = api_object.rms_model
-        print("")
-    else:
-        blk = api_object.emt_model
-
-    dialog = ParametersEditorDialog(var_factory=var_factory, block=blk)
-    dialog.exec()
 
 
 def build_variables_rows(block: Block | None, rows: List[BlockParameterRow]):
@@ -3668,8 +3499,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.original_block: Block = block  # api_object.rms_model
 
         try:
-            if mode == DynamicSimulationMode.RMS and self.api_object.rms_template is not None:
+            if mode == DynamicSimulationMode.RMS and self.api_object.rms_template is not None and not block.diagram.node_data:
+                model_block = clone_block_for_editing(block)
                 self.main_block: Block = Block()
+                self.main_block.add(model_block)
             elif mode == DynamicSimulationMode.EMT and self.api_object.emt_template is not None:
                 self.main_block: Block = Block()
             else:
@@ -3678,7 +3511,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         except AttributeError:  # happens when editing templates from database (they are not connected to any physical device)
             self.main_block: Block = clone_block_for_editing(block)
 
+
         self.diagram: BlockDiagram = self.main_block.diagram
+
         self.circuit = circuit
         self.mode = mode
         self.main_editor = main_editor
@@ -3837,7 +3672,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         self.ui.doItButton.clicked.connect(self.apply_changes)
         self.scene.selectionChanged.connect(self.on_scene_selection_changed)
-        if not self.main_block.diagram.node_data:
+        if not self.main_block.empty() and not self.main_block.diagram.node_data:
+            for child in self.main_block.children:
+                self.generate_block_item_for_block(child)
+            # here we add the connection variables to the main block
+            if self.main_editor:
+                self.add_connection_vars()
+                self.add_api_obj_mapping()
+            self.add_connection_items()
+        elif not self.main_block.diagram.node_data:
             # here we add the connection variables to the main block
             if self.main_editor:
                 self.add_connection_vars()
@@ -4206,6 +4049,45 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             )
 
             # self.block_added.emit(block_item.subsys)
+
+            self.mark_unapplied_changes()
+
+            return block_item
+        else:
+            return None
+
+    def generate_block_item_for_block(self, block_model: Block) -> BlockItem | None:
+        """
+        Create and place a block item in the canvas scene.
+
+        :param block:
+        :param x_pos:
+        :param y_pos:
+        :return:
+        """
+        item_name: str = f"{block_model.name}"
+        block_item: BlockItem = BlockItem(var_factory=self.var_factory, name=item_name)
+
+
+        if block_model is not None:
+            # The symbolic block has to be attached first so the graphics item can build its ports from it.
+
+            block_item.set_subsystem(block_model)
+            block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
+            block_item.build_item()
+
+            # The editor block is the authoritative model container for later save/rebuild steps.
+            self.scene.addItem(block_item)
+            block_item.setPos(QtCore.QPointF(0, 0))
+
+            # Keep the diagram synchronized so later features can rebuild from the same data source.
+            self.diagram.add_node(
+                name=item_name,
+                x=0,
+                y=0,
+                tpe=block_model.name,
+                device_uid=block_model.uid
+            )
 
             self.mark_unapplied_changes()
 
