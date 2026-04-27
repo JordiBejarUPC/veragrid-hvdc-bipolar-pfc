@@ -3717,32 +3717,45 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             ],
         }
 
-        self.tree_structure: Dict[str, Any] = dict()
-        if mode == DynamicSimulationMode.RMS:
-            self.tree_structure["Basic"] = self.build_basic_library_branch()
-
-            self.tree_structure["Devices"] = device_rms_related_blocks.get(api_object.device_type, dict())
-
-        elif mode == DynamicSimulationMode.EMT:
-            self.tree_structure["Basic"] = self.build_basic_library_branch()
-            self.tree_structure["Devices"] = [
+        device_emt_related_blocks = {
+            DeviceType.GeneratorDevice: [
+                LibraryLeafSpec("Generic", BlockType.GENERIC),
                 LibraryLeafSpec("Generator", BlockType.EMT_GENERATOR),
                 LibraryLeafSpec("Thevenin eq. generator", BlockType.EMT_THEVENIN),
                 LibraryLeafSpec("Governor", BlockType.GOV_EMT),
                 LibraryLeafSpec("Stabilizer", BlockType.STAB_EMT),
                 LibraryLeafSpec("Exciter", BlockType.EXCITER_EMT),
+            ],
+            DeviceType.LineDevice: [
                 LibraryLeafSpec("Generic", BlockType.GENERIC),
                 LibraryLeafSpec("Emt pi line", BlockType.EMT_PI_LINE),
                 LibraryLeafSpec("Emt Bergeron line", BlockType.EMT_BERGERON_LINE),
+            ],
+            DeviceType.LoadDevice: [
+                LibraryLeafSpec("Generic", BlockType.GENERIC),
                 LibraryLeafSpec("R load", BlockType.R_LOAD_EMT),
                 LibraryLeafSpec("L load", BlockType.L_LOAD_EMT),
                 LibraryLeafSpec("C load", BlockType.C_LOAD_EMT),
                 LibraryLeafSpec("Exponential load", BlockType.EXP_LOAD_EMT),
                 LibraryLeafSpec("ZIP load", BlockType.ZIP_LOAD_EMT),
                 LibraryLeafSpec("DC load", BlockType.DC_LOAD_EMT),
+            ],
+            DeviceType.TransformerTypeDevice: [
+                LibraryLeafSpec("Generic", BlockType.GENERIC),
                 LibraryLeafSpec("Transformer", BlockType.TRAFO_EMT),
                 LibraryLeafSpec("XFMR Transformer", BlockType.XFMR_TRANSFORMER),
-            ]
+            ],
+        }
+
+        self.tree_structure: Dict[str, Any] = dict()
+        if mode == DynamicSimulationMode.RMS:
+            self.tree_structure["Basic"] = self.build_basic_library_branch()
+            self.tree_structure["Devices"] = device_rms_related_blocks.get(api_object.device_type, dict())
+
+        elif mode == DynamicSimulationMode.EMT:
+            self.tree_structure["Basic"] = self.build_basic_library_branch()
+            self.tree_structure["Devices"] = device_emt_related_blocks.get(api_object.device_type, dict())
+
         else:
             pass
 
