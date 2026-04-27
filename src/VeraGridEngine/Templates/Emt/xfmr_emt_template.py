@@ -103,7 +103,7 @@ def get_xfmr_emt_template(
     * transformer_open_circuit_loss_kw
     * transformer_short_circuit_voltage_pct
     * transformer_short_circuit_loss_kw
-    * transformer_tap_ratio
+    * transformer_tap_module
     * transformer_from_connection_**
     * transformer_to_connection_**
 
@@ -185,7 +185,7 @@ def get_xfmr_emt_template(
     templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.transformer_open_circuit_loss_kw] = xfmr_oc_loss_kw
     templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.transformer_short_circuit_voltage_pct] = xfmr_sc_voltage_pct
     templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.transformer_short_circuit_loss_kw] = xfmr_sc_loss_kw
-    templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.transformer_tap_ratio] = xfmr_tap_module
+    templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.transformer_tap_module] = xfmr_tap_module
 
     # ------------------------------------------------------------------
     # Mapped winding-connection matrices.

@@ -21,8 +21,6 @@ from typing import Dict, List, Any, Set, Optional, Tuple
 from itertools import chain
 
 from VeraGridEngine.Devices import MultiCircuit
-from VeraGridEngine.Devices.Branches.dc_line import DcLine
-from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGridEngine.Simulations.driver_template import DummySignal
 from VeraGridEngine.Devices.Events.emt_events_group import EmtEventsGroup
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
@@ -33,7 +31,6 @@ from VeraGridEngine.enumerations import (
     ParamPowerFlowRefferenceType,
     DeviceType,
     EmtLineTypes,
-    ConverterControlType,
     WindingType,
 )
 from VeraGridEngine.basic_structures import Logger, CxVec
@@ -57,7 +54,7 @@ from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import (
     EmtBoundaryUpdateProtocol,
     EmtProblemTemplate,
 )
-from VeraGridEngine.Simulations.EMT.static_parameter_mapping import (
+from VeraGridEngine.Utils.Symbolic.static_parameter_mapping import (
     abc_to_nabc,
     assign_static_api_object_mapping_for_device,
     get_load_power_phase_values_pu_abc,
