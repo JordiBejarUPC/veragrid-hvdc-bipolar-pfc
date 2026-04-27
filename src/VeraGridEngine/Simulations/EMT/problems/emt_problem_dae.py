@@ -292,6 +292,16 @@ def _get_earliest_optional_time(first_time: Optional[float], second_time: Option
     else:
         return second_time
 
+
+def _continuous_event_spec_time_sort_key(event_spec: Dict[str, float | str | None]) -> float:
+    """
+    Return the sorting key used for one continuous-event specification.
+
+    :param event_spec: Continuous event specification dictionary.
+    :return: Event start time.
+    """
+    return float(event_spec["time"])
+
 def _get_block_name(mdl: Block) -> str:
     """
     Return the block name used for logging.
@@ -2162,8 +2172,8 @@ class EmtProblemDae(EmtProblemTemplate):
                         )
                     else:
                         if parameter_uid in continuous_events:
-                            transition_type = getattr(evt, "transition_type", DynamicEventTransitionType.Step)
-                            end_time = getattr(evt, "end_time", None)
+                            transition_type = evt.transition_type
+                            end_time = evt.end_time
 
                             if isinstance(transition_type, DynamicEventTransitionType):
                                 transition_text = transition_type.value
@@ -2190,7 +2200,7 @@ class EmtProblemDae(EmtProblemTemplate):
                 runtime_idx: int = self.uid2idx_event_params[parameter_uid]
                 sorted_specs: List[Dict[str, float | str | None]] = sorted(
                     event_specs,
-                    key=lambda item: float(item["time"]),
+                    key=_continuous_event_spec_time_sort_key,
                 )
                 active_expr: Any = active_runtime_eqs[runtime_idx]
                 event_spec: Dict[str, float | str | None]
@@ -2987,12 +2997,15 @@ class EmtProblemDae(EmtProblemTemplate):
                 ia_var = mdl.E(VarPowerFlowRefferenceType.i_A)
                 ib_var = mdl.E(VarPowerFlowRefferenceType.i_B)
                 ic_var = mdl.E(VarPowerFlowRefferenceType.i_C)
-                ia_inst = self._temp_init_guess.get(ia_var.uid, 0.0) if ia_var is not None else 0.0
-                ib_inst = self._temp_init_guess.get(ib_var.uid, 0.0) if ib_var is not None else 0.0
-                ic_inst = self._temp_init_guess.get(ic_var.uid, 0.0) if ic_var is not None else 0.0
-                neutral_inst = -(ia_inst + ib_inst + ic_inst)
-                self._temp_init_guess[neutral_var.uid] = float(neutral_inst)
-                self._temp_post_init_guess[neutral_var.uid] = float(neutral_inst)
+                if ia_var is None and ib_var is None and ic_var is None:
+                    pass
+                else:
+                    ia_inst = self._temp_init_guess.get(ia_var.uid, 0.0) if ia_var is not None else 0.0
+                    ib_inst = self._temp_init_guess.get(ib_var.uid, 0.0) if ib_var is not None else 0.0
+                    ic_inst = self._temp_init_guess.get(ic_var.uid, 0.0) if ic_var is not None else 0.0
+                    neutral_inst = -(ia_inst + ib_inst + ic_inst)
+                    self._temp_init_guess[neutral_var.uid] = float(neutral_inst)
+                    self._temp_post_init_guess[neutral_var.uid] = float(neutral_inst)
             else:
                 pass
 
@@ -5420,7 +5433,7 @@ class EmtProblemDae(EmtProblemTemplate):
 
         for branch_obj in self.grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
             if branch_obj.device_type == DeviceType.SwitchDevice:
-                mdl = getattr(branch_obj, "emt_model", None)
+                mdl = branch_obj.emt_model
 
                 if mdl is None:
                     pass
@@ -6050,8 +6063,8 @@ class EmtProblemDae(EmtProblemTemplate):
 
         if br.device_type == DeviceType.SwitchDevice:
             eps_value: float = 1.0e-12
-            r_value: float = float(getattr(br, "R", 0.0))
-            x_value: float = float(getattr(br, "X", 0.0))
+            r_value: float = float(br.R)
+            x_value: float = float(br.X)
             z_magnitude: float = np.sqrt(r_value * r_value + x_value * x_value)
             g_closed_value: float = 1.0 / max(abs(z_magnitude), eps_value)
             self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.g, g_closed_value)

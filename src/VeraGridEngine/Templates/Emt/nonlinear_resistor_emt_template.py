@@ -12,7 +12,7 @@ from VeraGridEngine.Templates.Emt.load_RLC_emt_template import _build_external_m
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_ground_emt_template
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import CmpOp, Comparison, Const, Expr, Var
-from VeraGridEngine.enumerations import DeviceType
+from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType
 
 
 def get_nonlinear_resistor_emt_template(
@@ -44,8 +44,8 @@ def get_nonlinear_resistor_emt_template(
     template.name = name
     template.block.name = name
 
-    node_voltage_var: Var = vf.add_var(name=f"v_N_{name}")
-    current_var: Var = vf.add_var(name=f"i_N_{name}")
+    node_voltage_var: Var = vf.add_var(name=f"v_N_{name}", reference=VarPowerFlowRefferenceType.v_N)
+    current_var: Var = vf.add_var(name=f"i_N_{name}", reference=VarPowerFlowRefferenceType.i_N)
     ground_node_var: Var = vf.add_var(name=f"v_gnd_{name}")
     abs_voltage_var: Var = vf.add_var(name=f"v_abs_{name}")
     one_const: Const = Const(1.0)
@@ -75,6 +75,9 @@ def get_nonlinear_resistor_emt_template(
     template.block.in_vars = [node_voltage_var]
     template.block.out_vars = [current_var]
     template.block.algebraic_vars = [ground_node_var, abs_voltage_var, current_var]
+    template.block.init_eqs[ground_node_var] = zero_const
+    template.block.init_eqs[abs_voltage_var] = sym.abs(voltage_drop)
+    template.block.init_eqs[current_var] = signed_current_expr
     template.block.algebraic_eqs = [
         abs_voltage_var - sym.abs(voltage_drop),
         current_var - signed_current_expr,

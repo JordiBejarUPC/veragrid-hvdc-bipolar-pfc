@@ -462,14 +462,40 @@ def test_lookup_array_linear_dialog_supports_copy_paste_and_delete_shortcuts() -
 
 def test_lookup_array_linear_dialog_header_click_selects_full_column() -> None:
     _get_app()
-    dialog = LookupArrayLinearDialog(block_label="Lookup array (linear)")
+    dialog: LookupArrayLinearDialog = LookupArrayLinearDialog(block_label="Lookup array (linear)")
 
     dialog.select_column_by_header(0)
     QtWidgets.QApplication.processEvents()
-    selected_indexes = dialog._table_widget.selectionModel().selectedIndexes()
+    selected_indexes: list[QtCore.QModelIndex] = dialog._table_widget.selectionModel().selectedIndexes()
 
     assert len(selected_indexes) == dialog._table_widget.rowCount()
     assert all(index.column() == 0 for index in selected_indexes)
+    dialog.close()
+
+
+def test_lookup_array_linear_dialog_supports_custom_axis_labels_and_preview() -> None:
+    _get_app()
+    dialog: LookupArrayLinearDialog = LookupArrayLinearDialog(
+        block_label="Nonlinear resistor EMT V-I curve",
+        initial_points=list([(0.0, 0.0), (1.0, 0.1), (1.5, 1.0)]),
+        x_label="V",
+        y_label="I",
+        preview_enabled=True,
+        preview_title="Nonlinear resistor EMT V-I curve",
+    )
+
+    assert dialog._table_widget.horizontalHeaderItem(0).text() == "V"
+    assert dialog._table_widget.horizontalHeaderItem(1).text() == "I"
+    button_texts: list[str] = list(button.text() for button in dialog.findChildren(QtWidgets.QPushButton))
+    assert "Sort by V" in button_texts
+    assert "Preview Curve" in button_texts
+
+    dialog.show_plot_preview()
+    QtWidgets.QApplication.processEvents()
+
+    assert dialog._preview_dialog is not None
+    assert dialog._preview_dialog.windowTitle() == "Nonlinear resistor EMT V-I curve"
+    dialog._preview_dialog.close()
     dialog.close()
 
 
@@ -1190,9 +1216,13 @@ def test_nonlinear_resistor_emt_block_is_created_and_supports_modify_template(mo
     editor = _build_editor(DynamicSimulationMode.EMT)
 
     class _CreateDialogStub:
-        def __init__(self, block_label: str, initial_points=None, parent=None) -> None:
+        def __init__(self, block_label: str, initial_points=None, parent=None, x_label: str = "", y_label: str = "", preview_enabled: bool = False, preview_title: str | None = None) -> None:
             _unused = (initial_points, parent)
             assert block_label == "Nonlinear resistor EMT V-I curve"
+            assert x_label == "V"
+            assert y_label == "I"
+            assert preview_enabled is True
+            assert preview_title == "Nonlinear resistor EMT V-I curve"
 
         def exec(self) -> int:
             return int(QtWidgets.QDialog.DialogCode.Accepted)
@@ -1201,9 +1231,13 @@ def test_nonlinear_resistor_emt_block_is_created_and_supports_modify_template(mo
             return [0.0, 1.0, 1.5], [0.0, 0.1, 1.0]
 
     class _ModifyDialogStub:
-        def __init__(self, block_label: str, initial_points=None, parent=None) -> None:
+        def __init__(self, block_label: str, initial_points=None, parent=None, x_label: str = "", y_label: str = "", preview_enabled: bool = False, preview_title: str | None = None) -> None:
             _unused = (initial_points, parent)
             assert block_label == "Nonlinear resistor EMT V-I curve"
+            assert x_label == "V"
+            assert y_label == "I"
+            assert preview_enabled is True
+            assert preview_title == "Nonlinear resistor EMT V-I curve"
 
         def exec(self) -> int:
             return int(QtWidgets.QDialog.DialogCode.Accepted)

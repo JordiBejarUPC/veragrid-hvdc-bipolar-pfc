@@ -8,6 +8,11 @@ from __future__ import annotations
 import re
 from typing import Sequence
 
+from matplotlib.axes import Axes
+from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
+import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
 
 
@@ -121,18 +126,35 @@ class LookupArrayLinearDialog(QtWidgets.QDialog):
     Modal dialog used to capture a one-dimensional lookup table.
     """
 
-    __slots__ = ("_table_widget", "_x_points", "_y_points", "_shortcuts")
+    __slots__ = (
+        "_table_widget",
+        "_x_points",
+        "_y_points",
+        "_shortcuts",
+        "_x_label",
+        "_y_label",
+        "_preview_title",
+        "_preview_dialog",
+    )
 
     def __init__(self,
                  block_label: str,
                  initial_points: Sequence[tuple[float, float]] | None = None,
-                 parent: QtWidgets.QWidget | None = None) -> None:
+                 parent: QtWidgets.QWidget | None = None,
+                 x_label: str = "X",
+                 y_label: str = "Y",
+                 preview_enabled: bool = False,
+                 preview_title: str | None = None) -> None:
         """
         Build the modal dialog.
 
         :param block_label: Visible lookup-table label.
         :param initial_points: Optional initial `(x, y)` rows.
         :param parent: Optional Qt parent.
+        :param x_label: Visible label for the first axis.
+        :param y_label: Visible label for the second axis.
+        :param preview_enabled: Whether to show one plot-preview button.
+        :param preview_title: Optional plot-preview window title.
         :return: None.
         """
         super().__init__(parent)
@@ -142,6 +164,10 @@ class LookupArrayLinearDialog(QtWidgets.QDialog):
         self._x_points: list[float] = list()
         self._y_points: list[float] = list()
         self._shortcuts: list[QtGui.QShortcut] = list()
+        self._x_label: str = str(x_label)
+        self._y_label: str = str(y_label)
+        self._preview_title: str = preview_title if preview_title is not None else f"{block_label} Preview"
+        self._preview_dialog: QtWidgets.QDialog | None = None
 
         main_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self)
         description_label: QtWidgets.QLabel = QtWidgets.QLabel(
@@ -153,7 +179,7 @@ class LookupArrayLinearDialog(QtWidgets.QDialog):
 
         self._table_widget = QtWidgets.QTableWidget(self)
         self._table_widget.setColumnCount(2)
-        self._table_widget.setHorizontalHeaderLabels(list(["X", "Y"]))
+        self._table_widget.setHorizontalHeaderLabels(list([self._x_label, self._y_label]))
         self._table_widget.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Stretch)
         self._table_widget.horizontalHeader().sectionClicked.connect(self.select_column_by_header)
         self._table_widget.verticalHeader().setVisible(False)
@@ -165,12 +191,18 @@ class LookupArrayLinearDialog(QtWidgets.QDialog):
         buttons_layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout()
         add_row_button: QtWidgets.QPushButton = QtWidgets.QPushButton("Add Row", self)
         remove_row_button: QtWidgets.QPushButton = QtWidgets.QPushButton("Remove Selected", self)
-        sort_button: QtWidgets.QPushButton = QtWidgets.QPushButton("Sort by X", self)
+        sort_button: QtWidgets.QPushButton = QtWidgets.QPushButton(f"Sort by {self._x_label}", self)
         paste_button: QtWidgets.QPushButton = QtWidgets.QPushButton("Paste", self)
+        preview_button: QtWidgets.QPushButton | None = None
         buttons_layout.addWidget(add_row_button)
         buttons_layout.addWidget(remove_row_button)
         buttons_layout.addWidget(sort_button)
         buttons_layout.addWidget(paste_button)
+        if preview_enabled:
+            preview_button = QtWidgets.QPushButton("Preview Curve", self)
+            buttons_layout.addWidget(preview_button)
+        else:
+            pass
         buttons_layout.addStretch()
         main_layout.addLayout(buttons_layout)
 
@@ -184,6 +216,10 @@ class LookupArrayLinearDialog(QtWidgets.QDialog):
         remove_row_button.clicked.connect(self.remove_selected_rows)
         sort_button.clicked.connect(self.sort_rows_by_x)
         paste_button.clicked.connect(self.paste_from_clipboard)
+        if preview_button is not None:
+            preview_button.clicked.connect(self.show_plot_preview)
+        else:
+            pass
         dialog_buttons.accepted.connect(self.accept_dialog)
         dialog_buttons.rejected.connect(self.reject)
 
@@ -428,6 +464,75 @@ class LookupArrayLinearDialog(QtWidgets.QDialog):
         :return: Tuple `(x_points, y_points)`.
         """
         return list(self._x_points), list(self._y_points)
+
+    def _clear_preview_dialog_reference(self, destroyed_obj: QtCore.QObject | None = None) -> None:
+        """
+        Drop the stored preview-dialog reference after the window closes.
+
+        :param destroyed_obj: Destroyed Qt object emitted by the signal.
+        :return: None.
+        """
+        _unused_destroyed_obj: QtCore.QObject | None = destroyed_obj
+        self._preview_dialog = None
+
+    def show_plot_preview(self) -> None:
+        """
+        Render the current lookup-table rows in one external preview window.
+
+        :return: None.
+        """
+        try:
+            x_points, y_points = self._read_points_from_table()
+        except ValueError as exc:
+            QtWidgets.QMessageBox.warning(self, "Lookup Table", str(exc))
+            return
+
+        pairs: list[tuple[float, float]] = list(zip(x_points, y_points))
+        pairs.sort(key=self._sort_pair_by_x)
+
+        if len(pairs) < 2:
+            QtWidgets.QMessageBox.warning(self, "Lookup Table", "Lookup tables require at least two points.")
+            return
+        else:
+            pass
+
+        if self._preview_dialog is not None:
+            self._preview_dialog.close()
+        else:
+            pass
+
+        # The preview lives in a separate dialog so the user can keep editing the
+        # lookup points while visually checking the resulting curve shape.
+        preview_dialog: QtWidgets.QDialog = QtWidgets.QDialog(self)
+        preview_dialog.setWindowTitle(self._preview_title)
+        preview_dialog.resize(720, 440)
+        preview_dialog.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose, True)
+        preview_dialog.destroyed.connect(self._clear_preview_dialog_reference)
+
+        layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(preview_dialog)
+        figure: Figure = Figure(figsize=(7, 4))
+        axis: Axes = figure.add_subplot(111)
+        canvas: FigureCanvas = FigureCanvas(figure)
+        toolbar: NavigationToolbar = NavigationToolbar(canvas, preview_dialog)
+        layout.addWidget(toolbar)
+        layout.addWidget(canvas)
+
+        # The preview intentionally plots the sorted point sequence because the
+        # effective lookup law always depends on the monotonic x-axis ordering.
+        x_values: np.ndarray = np.asarray([pair[0] for pair in pairs], dtype=float)
+        y_values: np.ndarray = np.asarray([pair[1] for pair in pairs], dtype=float)
+        axis.plot(x_values, y_values, marker="o", color="tab:blue")
+        axis.grid(True)
+        axis.set_xlabel(self._x_label)
+        axis.set_ylabel(self._y_label)
+        axis.set_title(self._preview_title)
+        figure.tight_layout()
+        canvas.draw()
+
+        self._preview_dialog = preview_dialog
+        preview_dialog.show()
+        preview_dialog.raise_()
+        preview_dialog.activateWindow()
 
     def _read_points_from_table(self) -> tuple[list[float], list[float]]:
         """

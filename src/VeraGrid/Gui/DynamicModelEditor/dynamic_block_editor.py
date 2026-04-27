@@ -131,8 +131,8 @@ def set_modal_template_metadata(block: Block, kind: str, config: Dict[str, Any])
     :param config: Serializable modal configuration.
     :return: None.
     """
-    setattr(block, MODAL_TEMPLATE_KIND_ATTR, kind)
-    setattr(block, MODAL_TEMPLATE_CONFIG_ATTR, copy.deepcopy(config))
+    block.__dict__[MODAL_TEMPLATE_KIND_ATTR] = kind
+    block.__dict__[MODAL_TEMPLATE_CONFIG_ATTR] = copy.deepcopy(config)
 
 
 def _iter_child_blocks(block: Block) -> List[Block]:
@@ -191,8 +191,8 @@ def get_modal_template_metadata(block: Block | None) -> tuple[str | None, Dict[s
     else:
         pass
 
-    kind: Any = getattr(block, MODAL_TEMPLATE_KIND_ATTR, None)
-    config: Any = getattr(block, MODAL_TEMPLATE_CONFIG_ATTR, None)
+    kind: Any = block.__dict__.get(MODAL_TEMPLATE_KIND_ATTR, None)
+    config: Any = block.__dict__.get(MODAL_TEMPLATE_CONFIG_ATTR, None)
 
     if isinstance(kind, str) and isinstance(config, dict):
         return kind, copy.deepcopy(config)
@@ -207,6 +207,26 @@ def _new_uid() -> int:
     :return:
     """
     return uuid.uuid4().int
+
+
+def _grid_node_f_cost_sort_key(node: Any) -> float:
+    """
+    Return the A* sorting key for one grid node.
+
+    :param node: Router grid node.
+    :return: Node total cost.
+    """
+    return float(node.f_cost)
+
+
+def _library_leaf_label_sort_key(leaf: "LibraryLeafSpec") -> str:
+    """
+    Return the case-insensitive sort key for one library leaf.
+
+    :param leaf: Library leaf specification.
+    :return: Lower-case label.
+    """
+    return leaf.label.lower()
 
 
 class BlockPositionChangedCallback:
@@ -355,18 +375,19 @@ class OrthogonalRouter:
 
         items = scene.items(rect)
         for item in items:
-            if isinstance(item, (ConnectionItem,)):
-                continue
-            if isinstance(item, (PortItem,)):
-                continue
-            if isinstance(item, BranchingItem):
-                continue
-            if item.flags() & QGraphicsItem.GraphicsItemFlag.ItemIsMovable:
-                if source_port and item == source_port.subsystem:
-                    continue
-                if target_port and item == target_port.subsystem:
-                    continue
-                return True
+            if isinstance(item, (ConnectionItem, PortItem, BranchingItem)):
+                pass
+            else:
+                if item.flags() & QGraphicsItem.GraphicsItemFlag.ItemIsMovable:
+                    if source_port is not None and item == source_port.subsystem:
+                        pass
+                    else:
+                        if target_port is not None and item == target_port.subsystem:
+                            pass
+                        else:
+                            return True
+                else:
+                    pass
         return False
 
     @staticmethod
@@ -402,7 +423,7 @@ class OrthogonalRouter:
         open_set.append(start_node)
 
         while open_set:
-            open_set.sort(key=lambda n: n.f_cost)
+            open_set.sort(key=_grid_node_f_cost_sort_key)
             current = open_set.pop(0)
 
             if current.x == end_gx and current.y == end_gy:
@@ -413,36 +434,44 @@ class OrthogonalRouter:
 
             for gx, gy, direction in OrthogonalRouter._get_neighbors(current):
                 if (gx, gy) in closed_set:
-                    continue
+                    pass
+                else:
+                    if OrthogonalRouter._is_blocked(gx, gy, scene, source_port, target_port):
+                        pass
+                    else:
+                        g_cost = current.g_cost + OrthogonalRouter.BASE_COST
 
-                if OrthogonalRouter._is_blocked(gx, gy, scene, source_port, target_port):
-                    continue
+                        if current.direction is not None and current.direction != direction:
+                            g_cost += OrthogonalRouter.TURN_COST
+                        else:
+                            pass
 
-                g_cost = current.g_cost + OrthogonalRouter.BASE_COST
+                        neighbor = OrthogonalRouter.GridNode(gx, gy)
 
-                if current.direction is not None and current.direction != direction:
-                    g_cost += OrthogonalRouter.TURN_COST
+                        in_open = False
+                        for node in open_set:
+                            if node.x == gx and node.y == gy:
+                                in_open = True
+                                if g_cost < node.g_cost:
+                                    node.g_cost = g_cost
+                                    node.f_cost = node.g_cost + node.h_cost
+                                    node.parent = current
+                                    node.direction = direction
+                                else:
+                                    pass
+                                break
+                            else:
+                                pass
 
-                neighbor = OrthogonalRouter.GridNode(gx, gy)
-
-                in_open = False
-                for node in open_set:
-                    if node.x == gx and node.y == gy:
-                        in_open = True
-                        if g_cost < node.g_cost:
-                            node.g_cost = g_cost
-                            node.f_cost = node.g_cost + node.h_cost
-                            node.parent = current
-                            node.direction = direction
-                        break
-
-                if not in_open:
-                    neighbor.g_cost = g_cost
-                    neighbor.h_cost = OrthogonalRouter._heuristic(gx, gy, end_gx, end_gy)
-                    neighbor.f_cost = neighbor.g_cost + neighbor.h_cost
-                    neighbor.parent = current
-                    neighbor.direction = direction
-                    open_set.append(neighbor)
+                        if not in_open:
+                            neighbor.g_cost = g_cost
+                            neighbor.h_cost = OrthogonalRouter._heuristic(gx, gy, end_gx, end_gy)
+                            neighbor.f_cost = neighbor.g_cost + neighbor.h_cost
+                            neighbor.parent = current
+                            neighbor.direction = direction
+                            open_set.append(neighbor)
+                        else:
+                            pass
 
         fallback_path = build_orthogonal_connection_path(source_pos, target_pos)
         return fallback_path
@@ -484,9 +513,6 @@ class OrthogonalRouter:
         prev_dir = None
 
         for i in range(1, len(points) - 1):
-            if i == 0:
-                continue
-
             dx1 = points[i].x() - points[i - 1].x()
             dy1 = points[i].y() - points[i - 1].y()
             dx2 = points[i + 1].x() - points[i].x()
@@ -645,10 +671,7 @@ class LibraryTreeFilterProxyModel(QtCore.QSortFilterProxyModel):
         super().__init__(parent)
         self._search_role = search_role
         self.setRecursiveFilteringEnabled(True)
-        if hasattr(self, "setAutoAcceptChildRows"):
-            self.setAutoAcceptChildRows(True)
-        else:
-            pass
+        self.setAutoAcceptChildRows(True)
         self.setFilterCaseSensitivity(QtCore.Qt.CaseSensitivity.CaseInsensitive)
         self.setFilterRole(search_role)
         self.setFilterKeyColumn(0)
@@ -2394,7 +2417,7 @@ class InspectModel(QWidget):
             self.list_eqns.addItem(item)
 
         # Recurse into submodels
-        for submodel in getattr(model, "children", []):
+        for submodel in model.children:
             self.refresh_lists(submodel, clear=False)
 
 
@@ -2430,6 +2453,7 @@ class GenericBlockItem(QGraphicsRectItem):
 
         self.resize_handle: ResizeHandle | None = None
         self.resizing_from_handle = False
+        self._suppress_resize: bool = False
 
         self.name_item = QGraphicsTextItem(self.subsys.name, self)
         self.inputs: List[PortItem] = list()
@@ -2544,7 +2568,7 @@ class GenericBlockItem(QGraphicsRectItem):
         self.update_handle_position()
 
     def set_rectangle(self, x, y, w, h):
-        if not getattr(self, '_suppress_resize', False):
+        if not self._suppress_resize:
             self._set_rect_internal(w, h)
 
     def get_minimum_block_size(self) -> tuple[float, float]:
@@ -2698,6 +2722,7 @@ class BlockItem(QGraphicsRectItem):
         self.outputs: List[PortItem] = list()
         self.input_labels: List[QGraphicsTextItem] = list()
         self.output_labels: List[QGraphicsTextItem] = list()
+        self.editor_window: DynamicBlockEditorGUI | None = None
 
         self.setFlags(
             QGraphicsItem.GraphicsItemFlag.ItemIsMovable |
@@ -4030,7 +4055,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             if isinstance(branch_data, list):
                 leaf: LibraryLeafSpec
-                for leaf in sorted(branch_data, key=lambda item: item.label.lower()):
+                for leaf in sorted(branch_data, key=_library_leaf_label_sort_key):
                     item: QtGui.QStandardItem = QtGui.QStandardItem(leaf.label)
                     item.setEditable(False)
                     item.setData(leaf.search_text if leaf.search_text else leaf.label, LIBRARY_SEARCH_TEXT_ROLE)
@@ -4654,8 +4679,12 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
         dialog = LookupArrayLinearDialog(
             block_label="Nonlinear resistor EMT V-I curve",
-            initial_points=[(0.0, 0.0), (1.0, 0.1), (1.5, 1.0), (2.0, 10.0)],
+            initial_points=list([(0.0, 0.0), (1.0, 0.1), (1.5, 1.0), (2.0, 10.0)]),
             parent=self,
+            x_label="V",
+            y_label="I",
+            preview_enabled=True,
+            preview_title="Nonlinear resistor EMT V-I curve",
         )
 
         if dialog.exec() == QDialog.DialogCode.Accepted:
@@ -4849,10 +4878,16 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         if initial_config is not None:
             resolved_config = dict(initial_config)
         else:
-            resolved_config = dict({
-                "conn_f": getattr(self.api_object, "conn_f", WindingType.GroundedStar),
-                "conn_t": getattr(self.api_object, "conn_t", WindingType.GroundedStar),
-            })
+            if isinstance(self.api_object, BranchParent):
+                resolved_config = dict({
+                    "conn_f": self.api_object.conn_f,
+                    "conn_t": self.api_object.conn_t,
+                })
+            else:
+                resolved_config = dict({
+                    "conn_f": WindingType.GroundedStar,
+                    "conn_t": WindingType.GroundedStar,
+                })
 
         return TransformerTopologyEmtDialog(
             title=self._get_transformer_topology_dialog_title(block_type),
@@ -6943,7 +6978,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
-        editor_window = getattr(item, "editor_window", None)
+        editor_window: DynamicBlockEditorGUI | None = item.editor_window
 
         if editor_window is None:
             editor_window = DynamicBlockEditorGUI(
@@ -7330,6 +7365,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             block_label="Nonlinear resistor EMT V-I curve",
             initial_points=initial_points,
             parent=self,
+            x_label="V",
+            y_label="I",
+            preview_enabled=True,
+            preview_title="Nonlinear resistor EMT V-I curve",
         )
 
         if dialog.exec() == QDialog.DialogCode.Accepted:
@@ -7679,25 +7718,31 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         for uid, con in self.diagram.con_data.items():
             src_item: BlockItem | None = uid_to_blockitem.get(con.from_uid, None)
             dst_item: BlockItem | None = uid_to_blockitem.get(con.to_uid, None)
+            src_port: PortItem | None = None
+            dst_port: PortItem | None = None
 
             if src_item is not None and dst_item is not None:
                 try:
-                    src_port: PortItem = src_item.outputs[con.port_number_from]
-                    dst_port: PortItem = dst_item.inputs[con.port_number_to]
+                    src_port = src_item.outputs[con.port_number_from]
+                    dst_port = dst_item.inputs[con.port_number_to]
                 except IndexError:
-                    continue
+                    src_port = None
+                    dst_port = None
 
-                elbow_points: List[QPointF] = [QPointF(x, y) for x, y in con.elbow_points] if con.elbow_points else []
-                connection: ConnectionItem = ConnectionItem(
-                    src_port, dst_port,
-                    diagram=self.diagram,
-                    con_uid=uid
-                )
+                if src_port is not None and dst_port is not None:
+                    elbow_points: List[QPointF] = [QPointF(x, y) for x, y in con.elbow_points] if con.elbow_points else []
+                    connection: ConnectionItem = ConnectionItem(
+                        src_port, dst_port,
+                        diagram=self.diagram,
+                        con_uid=uid
+                    )
 
-                pen: QPen = connection.pen()
-                pen.setColor(QColor(con.color))
-                connection.setPen(pen)
-                self.scene.addItem(connection)
+                    pen: QPen = connection.pen()
+                    pen.setColor(QColor(con.color))
+                    connection.setPen(pen)
+                    self.scene.addItem(connection)
+                else:
+                    pass
             else:
                 pass
 
