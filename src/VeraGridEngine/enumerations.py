@@ -2501,6 +2501,7 @@ class SimulationTypes(Enum):
     InputsAnalysis_run = 'Inputs Analysis'
     OptimalNetTransferCapacityTimeSeries_run = 'Optimal net transfer capacity time series'
     InvestmentsEvaluation_run = 'Investments evaluation'
+    CatalogueOptimization_run = 'Catalogue optimization'
     TopologyProcessor_run = 'Topology Processor'
     NodalCapacityTimeSeries_run = 'Nodal capacity time series'
     Reliability_run = "Reliability"
