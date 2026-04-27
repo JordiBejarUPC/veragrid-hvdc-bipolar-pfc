@@ -1038,7 +1038,8 @@ def multi_island_pf(multi_circuit: MultiCircuit,
         control_taps_phase=options.control_taps_phase,
         control_remote_voltage=options.control_remote_voltage,
         logger=logger,
-        fill_three_phase=False  # This worker is only for positive sequence
+        fill_three_phase=False,  # This worker is only for positive sequence
+        consider_grounded_buses=len(multi_circuit.vsc_devices) > 0
     )
 
     res = multi_island_pf_nc(nc=nc, options=options, logger=logger)
