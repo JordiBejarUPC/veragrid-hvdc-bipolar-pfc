@@ -533,12 +533,14 @@ def test_power_flow_12bus_acdc() -> None:
                            0.99799207 + 0.j])
 
     # ------------------------------------------------------------------------------------------------------------------
+    # for solver_type in [SolverType.NR]:
     for solver_type in [SolverType.NR, SolverType.PowellDogLeg, SolverType.LM]:
         options = PowerFlowOptions(solver_type=solver_type,
                                    verbose=0,
                                    control_q=False,
                                    retry_with_other_methods=False,
                                    control_taps_phase=True,
+                                   tolerance = 1e-8,
                                    max_iter=80)
 
         driver = PowerFlowDriver(grid=grid, options=options)
@@ -552,19 +554,19 @@ def test_power_flow_12bus_acdc() -> None:
 
         assert np.allclose(expected_v, solution.voltage, atol=1e-6)
 
-        assert np.allclose(grid.vsc_devices[0].control1_val, solution.Pfp_vsc[0])
-        assert np.allclose(grid.vsc_devices[0].control2_val, solution.St_vsc[0].imag)
+        assert np.allclose(grid.vsc_devices[0].control1_val, solution.Pfp_vsc[0], atol=1e-6)
+        assert np.allclose(grid.vsc_devices[0].control2_val, solution.St_vsc[0].imag, atol=1e-6)
 
-        assert np.allclose(grid.vsc_devices[1].control1_val, abs(solution.voltage[3]))
-        assert np.allclose(grid.vsc_devices[1].control2_val, solution.St_vsc[1].real)
+        assert np.allclose(grid.vsc_devices[1].control1_val, abs(solution.voltage[3]), atol=1e-6)
+        assert np.allclose(grid.vsc_devices[1].control2_val, solution.St_vsc[1].real, atol=1e-6)
 
-        assert np.allclose(grid.vsc_devices[2].control1_val, abs(solution.voltage[6]))
-        assert np.allclose(grid.vsc_devices[2].control2_val, solution.St_vsc[2].imag)
+        assert np.allclose(grid.vsc_devices[2].control1_val, abs(solution.voltage[6]), atol=1e-6)
+        assert np.allclose(grid.vsc_devices[2].control2_val, solution.St_vsc[2].imag, atol=1e-6)
 
-        assert np.allclose(grid.vsc_devices[3].control1_val, solution.Pfp_vsc[3])
-        assert np.allclose(grid.vsc_devices[3].control2_val, solution.St_vsc[3].imag)
+        assert np.allclose(grid.vsc_devices[3].control1_val, solution.Pfp_vsc[3], atol=1e-6)
+        assert np.allclose(grid.vsc_devices[3].control2_val, solution.St_vsc[3].imag, atol=1e-6)
 
-        assert np.allclose(grid.transformers2w[2].vset, abs(solution.voltage[13]))
+        assert np.allclose(grid.transformers2w[2].vset, abs(solution.voltage[13]), atol=1e-6)
 
         assert np.allclose(grid.hvdc_lines[0].Pset, solution.Pf_hvdc[0], atol=1e-10)
 

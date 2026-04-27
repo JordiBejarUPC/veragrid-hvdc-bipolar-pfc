@@ -760,7 +760,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                         u_cbr_m.append(k)
                 else:
                     self.logger.add_error("Controlled bus index outside of the island, skipping control",
-                                          device=self.nc.passive_branch_data.idtag[k], )
+                                          device=self.nc.passive_branch_data.idtag[k])
 
             elif ctrl_m == TapModuleControl.Qf:
                 u_cbr_m.append(k)
@@ -1368,7 +1368,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                 elif control1 == ConverterControlType.Pac and control2 == ConverterControlType.Vm_ac:
                     if control2_bus_device > -1:
                         self.is_vm_controlled[control2_bus_device] = True
-                        self.is_q_controlled[control2_bus_device] = False
+                        self.is_q_controlled[control2_bus_device] = True
                     if control1_branch_device > -1:
                         u_vsc_pfp.append(control1_branch_device)
                         if self.nc.vsc_data.F_dcn[k] > -1:
@@ -1677,8 +1677,6 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         Pfn_vsc_ = self.Pfn_vsc.copy()
         Pt_vsc_ = self.Pt_vsc.copy()
         Qt_vsc_ = self.Qt_vsc.copy()
-        Pt_ref_ = self.Pt_vsc.copy()
-        Qt_ref_ = self.Qt_vsc.copy()
 
         # update the vectors
         Va_[self.i_u_va] = x[0:a]
@@ -1913,9 +1911,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             Pf_cbr - self.cbr_pf_set,
             Pt_cbr - self.cbr_pt_set,
             Qf_cbr - self.cbr_qf_set,
-            Qt_cbr - self.cbr_qt_set,
-            Pt_ref_[self.u_vsc_pt] - Pt_vsc_[self.u_vsc_pt],
-            Qt_ref_[self.u_vsc_qt] - Qt_vsc_[self.u_vsc_qt]
+            Qt_cbr - self.cbr_qt_set
         ]
 
         tm[7] = time.time()
