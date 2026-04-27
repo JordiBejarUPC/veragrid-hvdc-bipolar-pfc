@@ -3,9 +3,11 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-from typing import Dict
+import uuid
+from typing import Dict, List, Tuple
 
 from VeraGridEngine.enumerations import (
+    BlockType,
     DeviceType,
     ParamPowerFlowRefferenceType,
     VarPowerFlowRefferenceType,
@@ -13,7 +15,103 @@ from VeraGridEngine.enumerations import (
 )
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
-from VeraGridEngine.Utils.Symbolic.block import Var, Expr
+from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_grounding_link_emt_template
+from VeraGridEngine.Utils.Symbolic.block import Block, Var, Expr
+
+
+def _create_transformer_editor_connection_child(var: Var, is_input: bool, name: str) -> Block:
+    """
+    Build one visual-only connection child used by ``Edit Hierarchy``.
+
+    :param var: Shared root-port variable.
+    :param is_input: True for one input connector.
+    :param name: Child block name.
+    :return: Lightweight block exposing the shared port variable.
+    """
+    child_block: Block = Block(name=name)
+
+    if is_input:
+        child_block.out_vars.append(var)
+    else:
+        child_block.in_vars.append(var)
+
+    return child_block
+
+
+def _attach_transformer_editor_diagram(root_block: Block,
+                                       input_vars: List[Var],
+                                       output_vars: List[Var],
+                                       grounding_pairs: List[Tuple[Var, Block]]) -> None:
+    """
+    Attach one persisted minimal editor diagram for an EMT transformer block.
+
+    :param root_block: Transformer root block.
+    :param input_vars: Public input variables.
+    :param output_vars: Public output variables.
+    :param grounding_pairs: Pairs ``(neutral_input_var, grounding_link_block)``.
+    :return: None.
+    """
+    input_blocks_by_name: Dict[str, Block] = dict()
+    input_index: int
+    output_index: int
+    grounding_index: int
+    input_var: Var
+    output_var: Var
+    grounding_pair: Tuple[Var, Block]
+
+    for input_index, input_var in enumerate(input_vars):
+        input_block: Block = _create_transformer_editor_connection_child(
+            var=input_var,
+            is_input=True,
+            name=input_var.name,
+        )
+        root_block.add(input_block)
+        root_block.diagram.add_node(
+            name=input_block.name,
+            x=40.0,
+            y=80.0 + 80.0 * float(input_index),
+            tpe=BlockType.INPUT_CONN.name,
+            device_uid=input_block.uid,
+        )
+        input_blocks_by_name[input_var.name] = input_block
+
+    for output_index, output_var in enumerate(output_vars):
+        output_block: Block = _create_transformer_editor_connection_child(
+            var=output_var,
+            is_input=False,
+            name=output_var.name,
+        )
+        root_block.add(output_block)
+        root_block.diagram.add_node(
+            name=output_block.name,
+            x=640.0,
+            y=80.0 + 50.0 * float(output_index),
+            tpe=BlockType.OUTPUT_CONN.name,
+            device_uid=output_block.uid,
+        )
+
+    for grounding_index, grounding_pair in enumerate(grounding_pairs):
+        neutral_input_var, grounding_link_block = grounding_pair
+        root_block.diagram.add_node(
+            name=grounding_link_block.name,
+            x=340.0,
+            y=180.0 + 140.0 * float(grounding_index),
+            tpe=BlockType.GROUNDING_LINK_EMT.name,
+            device_uid=grounding_link_block.uid,
+        )
+        neutral_input_block: Block | None = input_blocks_by_name.get(neutral_input_var.name, None)
+
+        if neutral_input_block is not None:
+            root_block.diagram.add_branch(
+                connectionitem_uid=uuid.uuid4().int,
+                device_uid_from=neutral_input_block.uid,
+                device_uid_to=grounding_link_block.uid,
+                port_number_from=0,
+                port_number_to=0,
+                color="#587291",
+            )
+        else:
+            pass
 
 
 
@@ -89,6 +187,10 @@ def get_transformer_emt_template(
     # ------------------------------------------------------------------
     vf_n: Var | None = None
     vt_n: Var | None = None
+    from_ground_current: Var | None = None
+    to_ground_current: Var | None = None
+    from_grounding_link_block: Block | None = None
+    to_grounding_link_block: Block | None = None
 
     if from_has_neutral_port:
         vf_n = vf.add_var(name=f"vf_N_{name}", reference=VarPowerFlowRefferenceType.vf_N)
@@ -97,6 +199,40 @@ def get_transformer_emt_template(
 
     if to_has_neutral_port:
         vt_n = vf.add_var(name=f"vt_N_{name}", reference=VarPowerFlowRefferenceType.vt_N)
+    else:
+        pass
+
+    if conn_f == WindingType.GroundedStar and vf_n is not None:
+        from_grounding_link_template: EmtModelTemplate = get_grounding_link_emt_template(
+            vf=vf,
+            include_r=False,
+            include_l=False,
+            include_c=False,
+            solid_connection=True,
+            nested=True,
+            name=name + "_from_grounding_link",
+        )
+        from_grounding_link_template.block.connect(from_grounding_link_template.block.in_vars, [vf_n])
+        from_ground_current = from_grounding_link_template.block.out_vars[0]
+        from_grounding_link_block = from_grounding_link_template.block
+        templ.block.add(from_grounding_link_block)
+    else:
+        pass
+
+    if conn_t == WindingType.GroundedStar and vt_n is not None:
+        to_grounding_link_template: EmtModelTemplate = get_grounding_link_emt_template(
+            vf=vf,
+            include_r=False,
+            include_l=False,
+            include_c=False,
+            solid_connection=True,
+            nested=True,
+            name=name + "_to_grounding_link",
+        )
+        to_grounding_link_template.block.connect(to_grounding_link_template.block.in_vars, [vt_n])
+        to_ground_current = to_grounding_link_template.block.out_vars[0]
+        to_grounding_link_block = to_grounding_link_template.block
+        templ.block.add(to_grounding_link_block)
     else:
         pass
 
@@ -230,12 +366,26 @@ def get_transformer_emt_template(
         alg_eqs.append(it_act[idx] - i_t[idx])
 
     if if_n_act is not None:
-        alg_eqs.append(if_n_act + if_act[0] + if_act[1] + if_act[2])
+        neutral_from_kcl: Expr = if_n_act + if_act[0] + if_act[1] + if_act[2]
+
+        if from_ground_current is not None:
+            neutral_from_kcl = neutral_from_kcl + from_ground_current
+        else:
+            pass
+
+        alg_eqs.append(neutral_from_kcl)
     else:
         pass
 
     if it_n_act is not None:
-        alg_eqs.append(it_n_act + it_act[0] + it_act[1] + it_act[2])
+        neutral_to_kcl: Expr = it_n_act + it_act[0] + it_act[1] + it_act[2]
+
+        if to_ground_current is not None:
+            neutral_to_kcl = neutral_to_kcl + to_ground_current
+        else:
+            pass
+
+        alg_eqs.append(neutral_to_kcl)
     else:
         pass
 
@@ -308,5 +458,23 @@ def get_transformer_emt_template(
         diff_init_eqs[di_t[idx]] = (l1 * secondary_rhs - m12 * primary_rhs) / (det_l + c_eps)
 
     templ.block.diff_init_eqs = diff_init_eqs
+
+    grounding_pairs: List[Tuple[Var, Block]] = list()
+    if vf_n is not None and from_grounding_link_block is not None:
+        grounding_pairs.append((vf_n, from_grounding_link_block))
+    else:
+        pass
+
+    if vt_n is not None and to_grounding_link_block is not None:
+        grounding_pairs.append((vt_n, to_grounding_link_block))
+    else:
+        pass
+
+    _attach_transformer_editor_diagram(
+        root_block=templ.block,
+        input_vars=input_vars,
+        output_vars=output_vars,
+        grounding_pairs=grounding_pairs,
+    )
 
     return templ

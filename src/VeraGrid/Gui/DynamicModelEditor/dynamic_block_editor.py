@@ -382,6 +382,25 @@ def _library_leaf_label_sort_key(leaf: "LibraryLeafSpec") -> str:
     return leaf.label.lower()
 
 
+def _transformer_modal_config_allows_modify(modal_kind: str | None, modal_config: Dict[str, Any] | None) -> bool:
+    """
+    Return whether one modal-created block should expose ``Modify Template``.
+
+    Transformer EMT blocks whose topology is inherited automatically from the
+    owning device or transformer type do not need a manual modify action because
+    reopening the dialog would only duplicate information already owned by the
+    host object.
+
+    :param modal_kind: Stored modal kind.
+    :param modal_config: Stored modal configuration.
+    :return: ``True`` when the context action should be visible.
+    """
+    if modal_kind == "transformer_topology_emt" and isinstance(modal_config, dict):
+        return bool(modal_config.get("allow_modify_template", True))
+    else:
+        return modal_kind is not None
+
+
 def open_dyn_params_editor(var_factory: VarFactory, api_object: Any,
                            preferred_mode: DynamicSimulationMode | None = None):
     """
@@ -3500,11 +3519,12 @@ class DiagramScene(QGraphicsScene):
 
                 if isinstance(item, (BlockItem, GenericBlockItem)):
                     if isinstance(item, BlockItem) and item.subsys is not None:
-                        modal_kind, _modal_config = get_modal_template_metadata(item.subsys)
+                        modal_kind, modal_config = get_modal_template_metadata(item.subsys)
                     else:
                         modal_kind = None
+                        modal_config = None
 
-                    if modal_kind is not None:
+                    if _transformer_modal_config_allows_modify(modal_kind, modal_config):
                         modify_action: QAction = QAction("Modify Template", menu)
                         modify_action.triggered.connect(self.modify_context_item_template)
                         menu.addAction(modify_action)
@@ -3964,6 +3984,21 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.templates_list: List[
             RmsModelTemplate | EmtModelTemplate | FmuTemplate] = templates_list if templates_list is not None else list()
 
+        common_emt_device_blocks: List[LibraryLeafSpec] = list([
+            LibraryLeafSpec("Generic", BlockType.GENERIC),
+            LibraryLeafSpec("Switch EMT", BlockType.SWITCH_EMT),
+            LibraryLeafSpec("Ground EMT", BlockType.GROUND_EMT),
+            LibraryLeafSpec("Grounding Link EMT", BlockType.GROUNDING_LINK_EMT),
+            LibraryLeafSpec("Nonlinear Resistor EMT", BlockType.NONLINEAR_RESISTOR_EMT),
+            LibraryLeafSpec("RLC Combo", BlockType.RLC_COMBO_EMT),
+            LibraryLeafSpec("R load", BlockType.R_LOAD_EMT),
+            LibraryLeafSpec("L load", BlockType.L_LOAD_EMT),
+            LibraryLeafSpec("C load", BlockType.C_LOAD_EMT),
+            LibraryLeafSpec("Exponential load", BlockType.EXP_LOAD_EMT),
+            LibraryLeafSpec("ZIP load", BlockType.ZIP_LOAD_EMT),
+            LibraryLeafSpec("DC load", BlockType.DC_LOAD_EMT),
+        ])
+
         device_rms_related_blocks = {
             DeviceType.GeneratorDevice: [
                 LibraryLeafSpec("Generic", BlockType.GENERIC),
@@ -3985,7 +4020,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         device_emt_related_blocks = {
             DeviceType.GeneratorDevice: [
-                LibraryLeafSpec("Generic", BlockType.GENERIC),
                 LibraryLeafSpec("Generator", BlockType.EMT_GENERATOR),
                 LibraryLeafSpec("Thevenin eq. generator", BlockType.EMT_THEVENIN),
                 LibraryLeafSpec("Governor", BlockType.GOV_EMT),
@@ -3993,34 +4027,19 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 LibraryLeafSpec("Exciter", BlockType.EXCITER_EMT),
             ],
             DeviceType.LineDevice: [
-                LibraryLeafSpec("Generic", BlockType.GENERIC),
                 LibraryLeafSpec("Emt pi line", BlockType.EMT_PI_LINE),
                 LibraryLeafSpec("Emt Bergeron line", BlockType.EMT_BERGERON_LINE),
-                LibraryLeafSpec("Switch EMT", BlockType.SWITCH_EMT),
             ],
-            DeviceType.LoadDevice: [
-                LibraryLeafSpec("Generic", BlockType.GENERIC),
-                LibraryLeafSpec("Ground EMT", BlockType.GROUND_EMT),
-                LibraryLeafSpec("Grounding Link EMT", BlockType.GROUNDING_LINK_EMT),
-                LibraryLeafSpec("Nonlinear Resistor EMT", BlockType.NONLINEAR_RESISTOR_EMT),
-                LibraryLeafSpec("RLC Combo", BlockType.RLC_COMBO_EMT),
-                LibraryLeafSpec("R load", BlockType.R_LOAD_EMT),
-                LibraryLeafSpec("L load", BlockType.L_LOAD_EMT),
-                LibraryLeafSpec("C load", BlockType.C_LOAD_EMT),
-                LibraryLeafSpec("Exponential load", BlockType.EXP_LOAD_EMT),
-                LibraryLeafSpec("ZIP load", BlockType.ZIP_LOAD_EMT),
-                LibraryLeafSpec("DC load", BlockType.DC_LOAD_EMT),
-            ],
+            DeviceType.LoadDevice: list(),
             DeviceType.Transformer2WDevice: [
-                LibraryLeafSpec("Generic", BlockType.GENERIC),
                 LibraryLeafSpec("Transformer", BlockType.TRAFO_EMT),
                 LibraryLeafSpec("XFMR Transformer", BlockType.XFMR_TRANSFORMER),
             ],
             DeviceType.TransformerTypeDevice: [
-                LibraryLeafSpec("Generic", BlockType.GENERIC),
                 LibraryLeafSpec("Transformer", BlockType.TRAFO_EMT),
                 LibraryLeafSpec("XFMR Transformer", BlockType.XFMR_TRANSFORMER),
             ],
+            DeviceType.VscDevice: list(),
         }
 
         self.tree_structure: Dict[str, Any] = dict()
@@ -4030,7 +4049,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         elif mode == DynamicSimulationMode.EMT:
             self.tree_structure["Basic"] = self.build_basic_library_branch()
-            self.tree_structure["Devices"] = device_emt_related_blocks.get(api_object.device_type, dict())
+            specific_emt_blocks: List[LibraryLeafSpec] = list(device_emt_related_blocks.get(api_object.device_type, list()))
+            self.tree_structure["Devices"] = list(common_emt_device_blocks + specific_emt_blocks)
 
         else:
             pass
@@ -4993,6 +5013,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
             if dialog.exec() == QDialog.DialogCode.Accepted:
                 topology_config = dialog.get_configuration()
+                topology_config["allow_modify_template"] = True
             else:
                 return None
         else:
@@ -5054,12 +5075,14 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             return dict({
                 "conn_f": self.api_object.conn_f,
                 "conn_t": self.api_object.conn_t,
+                "allow_modify_template": False,
             })
         else:
             if isinstance(self.api_object, TransformerType):
                 return dict({
                     "conn_f": self.api_object.conn_hv,
                     "conn_t": self.api_object.conn_lv,
+                    "allow_modify_template": False,
                 })
             else:
                 return None
@@ -7543,6 +7566,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
             if dialog.exec() == QDialog.DialogCode.Accepted:
                 topology_config = dialog.get_configuration()
+                topology_config["allow_modify_template"] = True
             else:
                 return
         else:

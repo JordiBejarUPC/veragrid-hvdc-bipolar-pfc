@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Templates.Emt.xfmr_emt_template import get_xfmr_emt_template
+from VeraGridEngine.enumerations import BlockType
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, WindingType
 
 
@@ -24,6 +25,7 @@ def test_xfmr_emt_template_exposes_neutral_ports_for_grounded_star_sides() -> No
     assert templ.block.external_mapping[VarPowerFlowRefferenceType.vt_N] is templ.block.in_vars[4]
     assert templ.block.external_mapping[VarPowerFlowRefferenceType.if_N] is templ.block.out_vars[0]
     assert templ.block.external_mapping[VarPowerFlowRefferenceType.it_N] is templ.block.out_vars[4]
+    assert any(node.tpe == BlockType.GROUNDING_LINK_EMT.name for node in templ.block.diagram.node_data.values())
 
 
 def test_xfmr_emt_template_exposes_neutral_only_on_star_side_of_delta_wye() -> None:
@@ -45,3 +47,18 @@ def test_xfmr_emt_template_exposes_neutral_only_on_star_side_of_delta_wye() -> N
     assert templ.block.external_mapping[VarPowerFlowRefferenceType.if_N] is None
     assert templ.block.external_mapping[VarPowerFlowRefferenceType.vt_N] is templ.block.in_vars[3]
     assert templ.block.external_mapping[VarPowerFlowRefferenceType.it_N] is templ.block.out_vars[3]
+
+
+def test_xfmr_emt_template_treats_zigzag_as_one_non_neutral_side() -> None:
+    vf = VarFactory()
+    templ = get_xfmr_emt_template(
+        vf=vf,
+        conn_f=WindingType.ZigZag,
+        conn_t=WindingType.GroundedStar,
+        name="xfmr_z_yg",
+    )
+    input_names = [var.name for var in templ.block.in_vars]
+
+    assert input_names[:3] == ["vf_A_xfmr_z_yg", "vf_B_xfmr_z_yg", "vf_C_xfmr_z_yg"]
+    assert templ.block.external_mapping[VarPowerFlowRefferenceType.vf_N] is None
+    assert templ.block.external_mapping[VarPowerFlowRefferenceType.if_N] is None
