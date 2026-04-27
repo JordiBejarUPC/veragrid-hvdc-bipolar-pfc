@@ -147,6 +147,11 @@ def test_short_circuit_vsc_14buses_disconnection():
     """
     grid = vge.open_file('data/grids/ieee14_voltage_disconnection.veragrid')
 
+    for bus in range(len(grid.buses)):
+        grid.buses[bus].is_grounded = False
+
+    vge.save_file(grid, 'data/grids/ieee14_voltage_disconnection.veragrid')
+
     # ------------------------------------------------------------------------------------------------------------------
     #   AC/DC Power Flow under healthy conditions
     # ------------------------------------------------------------------------------------------------------------------
@@ -190,6 +195,21 @@ def test_ieee14_droop_vsc():
     simulation of PowerFactory.
     """
     grid = vge.open_file('data/grids/test_ieee14_droop_vsc.veragrid')
+
+    # for bus in range(len(grid.buses)):
+    #     grid.buses[bus].is_grounded = False
+    #
+    # for vsc in range(len(grid.vsc_devices)):
+    #     grid.vsc_devices[vsc].control2 = ConverterControlType.Q_droop
+    #     grid.vsc_devices[vsc].control2_val = 0.0
+    #     grid.vsc_devices[vsc].control2_val_max = 990.0
+    #     grid.vsc_devices[vsc].control2_val_min = -990.0
+    #     grid.vsc_devices[vsc].control2_val_droop = 5.0
+    #     grid.vsc_devices[vsc].control2_droop_val = 1.0
+    #     grid.vsc_devices[vsc].control2_droop_val_min = 0.9
+    #     grid.vsc_devices[vsc].control2_droop_val_max = 1.1
+    #
+    # vge.save_file(grid, 'data/grids/test_ieee14_droop_vsc.veragrid')
 
     # ------------------------------------------------------------------------------------------------------------------
     #   AC/DC Power Flow under healthy conditions
