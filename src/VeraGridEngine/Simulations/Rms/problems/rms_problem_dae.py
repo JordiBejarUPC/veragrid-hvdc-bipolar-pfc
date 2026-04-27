@@ -21,6 +21,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResu
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Utils.Symbolic.explicit_initialization_symbolic import (init_explicit_common,
     build_rms_single_equation_compiler)
+from VeraGridEngine.Simulations.Rms.initialization import init_pseudo_transient
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_template import RmsProblemTemplate
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Devices.Substation.bus import Bus
@@ -426,6 +427,29 @@ class RmsProblemDae(RmsProblemTemplate):
                             compile_single_equation=compile_single_equation,
                             verbose=bool(self.options.verbose > 0),
                         )
+                    elif self.options.initialization_method == RmsInitializationMethod.PseudoTransient:
+                        self.init_guess = init_pseudo_transient(
+                            mdl=elm.rms_model,
+                            sys_vars=self.sys_vars,
+                            variable_parameters=self._variable_parameters,
+                            event_parameters_eqs=self._event_parameters_eqs0,
+                            constant_parameters=self._constant_parameters,
+                            init_guess=self.init_guess,
+                            uid2idx_vars=self._uid2idx_vars,
+                            uid2idx_params=self._uid2idx_params,
+                            uid2idx_event_params=self._uid2idx_event_params,
+                            compiler_names_dict=self._compiler_names_dict,
+                            alias_names_dict=self._alias_names_dict,
+                            VARIABLE_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
+                            TIME_NAME=self.TIME_NAME,
+                            VARS_NAME=self.VARS_NAME,
+                            DIFF_NAME=self.DIFF_NAME,
+                            CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
+                            dtau0=1.0,
+                            max_iter=max(500, int(self.options.max_iter)),
+                            tol=1e-8,
+                            verbose=bool(self.options.verbose > 0),
+                        )
 
                 # add model to system block
                 self.sys_block.add(elm.rms_model)
@@ -593,6 +617,30 @@ class RmsProblemDae(RmsProblemTemplate):
                         uid2idx_event_params=self._uid2idx_event_params,
                         params_array=params_array,
                         compile_single_equation=compile_single_equation,
+                        verbose=bool(self.options.verbose > 0),
+                    )
+
+                elif self.options.initialization_method == RmsInitializationMethod.PseudoTransient:
+                    self.init_guess = init_pseudo_transient(
+                        mdl=elm.rms_model,
+                        sys_vars=self.sys_vars,
+                        variable_parameters=self._variable_parameters,
+                        event_parameters_eqs=self._event_parameters_eqs0,
+                        constant_parameters=self._constant_parameters,
+                        init_guess=self.init_guess,
+                        uid2idx_vars=self._uid2idx_vars,
+                        uid2idx_params=self._uid2idx_params,
+                        uid2idx_event_params=self._uid2idx_event_params,
+                        compiler_names_dict=self._compiler_names_dict,
+                        alias_names_dict=self._alias_names_dict,
+                        VARIABLE_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
+                        TIME_NAME=self.TIME_NAME,
+                        VARS_NAME=self.VARS_NAME,
+                        DIFF_NAME=self.DIFF_NAME,
+                        CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
+                        dtau0=1e-4,
+                        max_iter=max(500, int(self.options.max_iter)),
+                        tol=1e-8,
                         verbose=bool(self.options.verbose > 0),
                     )
 
@@ -806,7 +854,27 @@ class RmsProblemDae(RmsProblemTemplate):
                     )
 
                 elif self.options.initialization_method == RmsInitializationMethod.PseudoTransient:
-                    raise ValueError("Not implemented initialization method")
+                    self.init_guess = init_pseudo_transient(
+                        mdl=elm.rms_model,
+                        sys_vars=self.sys_vars,
+                        variable_parameters=self._variable_parameters,
+                        event_parameters_eqs=self._event_parameters_eqs0,
+                        constant_parameters=self._constant_parameters,
+                        init_guess=self.init_guess,
+                        uid2idx_vars=self._uid2idx_vars,
+                        uid2idx_params=self._uid2idx_params,
+                        uid2idx_event_params=self._uid2idx_event_params,
+                        compiler_names_dict=self._compiler_names_dict,
+                        alias_names_dict=self._alias_names_dict,
+                        VARIABLE_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
+                        TIME_NAME=self.TIME_NAME,
+                        VARS_NAME=self.VARS_NAME,
+                        DIFF_NAME=self.DIFF_NAME,
+                        CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
+                        max_iter=100,
+                        tol=1e-5,
+                        verbose=bool(self.options.verbose > 0),
+                    )
 
                 # elif self.options.initialization_method == RmsInitializationMethod.CustomValues:
                 #
@@ -1796,6 +1864,8 @@ class RmsProblemDae(RmsProblemTemplate):
         x = np.zeros(len(self._state_vars) + len(self._algebraic_vars))
 
         for uid, val in self.init_guess.items():
+            if uid not in self._uid2idx_vars:
+                continue
             i = self._uid2idx_vars[uid]
             x[i] = val
         return x

@@ -6,6 +6,8 @@
 
 import cProfile
 import time
+from copy import deepcopy
+import traceback
 from typing import Dict, List, Tuple, Any
 import numpy as np
 from collections import defaultdict, deque
@@ -17,6 +19,7 @@ from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicVector, Sym
 from VeraGridEngine.Utils.Symbolic.symbolic import get_expression_vars
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, find_vars_order
+from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 from VeraGridEngine.basic_structures import Vec
 
 
@@ -444,6 +447,7 @@ class PseudoTransientInitProblem:
     
     def __init__(self,
                  block: Block,
+                 x_global: Vec,
                  compiler_names_dict: Dict[int, str],
                  alias_names_dict: Dict[int, str],
                  uid2idx_vars: Dict[int, int],
@@ -456,12 +460,18 @@ class PseudoTransientInitProblem:
         """
         Initialize problem for pseudo-transient initialization.
         """
+
+        self.x_global = x_global
         self.block = block
         self.compiler_names_dict = compiler_names_dict
         self.alias_names_dict = alias_names_dict
-        self._uid2idx_vars = uid2idx_vars
+        self._uid2idx_vars_global = uid2idx_vars
         self._variable_parameters = variable_parameters
         self._constant_parameters = constant_parameters
+
+        event_uid_map = {v.uid: eq for v, eq in block.event_dict.items()}
+        mode_uid_map = {v.uid: eq for v, eq in block.mode_dict.items()}
+        param_uid_map = {v.uid: c for v, c in block.parameters.items()}
         
         # Get block's variables (state + algebraic)
         self._state_vars = list(block.state_vars)
@@ -470,11 +480,35 @@ class PseudoTransientInitProblem:
         self._n_vars = len(self._all_vars)
         self._n_states = len(self._state_vars)
         self._diff_vars = list(block.diff_vars)
+
+        # Build local indexing for this block initialization problem.
+        self._uid2idx_vars = {v.uid: i for i, v in enumerate(self._all_vars)}
+        self._uid2idx_diff = {v.uid: i for i, v in enumerate(self._diff_vars)}
+
+        self._compiler_names_dict_local = dict(compiler_names_dict)
+        self._alias_names_dict_local = dict(alias_names_dict)
+
+        for uid, i in self._uid2idx_vars.items():
+            self._compiler_names_dict_local[uid] = f"{VARS_NAME}[{i}]"
+            self._alias_names_dict_local[uid] = f"{VARS_NAME}_{i}"
+
+        for uid, i in self._uid2idx_diff.items():
+            self._compiler_names_dict_local[uid] = f"{DIFF_NAME}[{i}]"
+            self._alias_names_dict_local[uid] = f"{DIFF_NAME}_{i}"
         
         # Initialize parameter arrays
-        self._variable_parameters_values = np.ones(len(variable_parameters))
+        self._variable_parameters_values = np.zeros(len(variable_parameters), dtype=float)
+        for i, p in enumerate(variable_parameters):
+            if p.uid in event_uid_map:
+                eq = event_uid_map[p.uid]
+                if isinstance(eq, Const) and eq.value is not None:
+                    self._variable_parameters_values[i] = float(eq.value)
+            elif p.uid in mode_uid_map:
+                eq = mode_uid_map[p.uid]
+                if isinstance(eq, Const) and eq.value is not None:
+                    self._variable_parameters_values[i] = float(eq.value)
         self._constant_params = np.array([
-            block.parameters.get(p).value if p in block.parameters and block.parameters.get(p) else 0.0
+            (param_uid_map[p.uid].value if p.uid in param_uid_map and param_uid_map[p.uid] is not None else 0.0)
             for p in constant_parameters
         ], dtype=float)
         
@@ -491,8 +525,8 @@ class PseudoTransientInitProblem:
         if all_eqs:
             self._rhs_fn = SymbolicVector(
                 all_eqs,
-                self.compiler_names_dict,
-                self.alias_names_dict,
+                self._compiler_names_dict_local,
+                self._alias_names_dict_local,
                 VARS_NAME,
                 DIFF_NAME,
                 VARIABLE_PARAMS_NAME,
@@ -506,7 +540,7 @@ class PseudoTransientInitProblem:
             vars=self._all_vars,
             uid2idx_vars=self._uid2idx_vars,
             diff_vars=self._diff_vars,
-            compiler_names_dict=self.compiler_names_dict
+            compiler_names_dict=self._compiler_names_dict_local
         )
     
     def get_all_vars_number(self) -> int:
@@ -523,6 +557,12 @@ class PseudoTransientInitProblem:
     
     def get_algebraic_vars(self):
         return self._algebraic_vars
+
+    def algebraic_vars(self):
+        return self._algebraic_vars
+
+    def state_vars(self):
+        return self._state_vars
     
     def rhs_algebraic(self, x: Vec, dx: Vec) -> Vec:
         """Evaluate RHS for algebraic equations."""
@@ -562,17 +602,18 @@ class PseudoTransientInitProblem:
             return sp.csc_matrix((0, 0))
 
         # Compute RHS at current point
-        rhs = self._compute_rhs_full(x, dx, h)
+        rhs = np.array(self._compute_rhs_full(x, dx, h), dtype=float, copy=True)
 
         # Numerical Jacobian
-        eps = 1e-8
+        base_eps = 1e-7
         J_dense = np.zeros((len(rhs), n_total))
 
         for j in range(n_total):
             x_perturbed = x.copy()
-            x_perturbed[j] += eps
-            rhs_perturbed = self._compute_rhs_full(x_perturbed, dx, h)
-            J_dense[:, j] = (rhs_perturbed - rhs) / eps
+            step = base_eps * (1.0 + abs(float(x[j])))
+            x_perturbed[j] += step
+            rhs_perturbed = np.array(self._compute_rhs_full(x_perturbed, dx, h), dtype=float, copy=True)
+            J_dense[:, j] = (rhs_perturbed - rhs) / step
 
         return sp.csc_matrix(J_dense)
 
@@ -636,9 +677,10 @@ def init_pseudo_transient(mdl: Block,
                           VARS_NAME: str,
                           DIFF_NAME: str,
                           CONSTANT_PARAMS_NAME: str,
-                          dtau0: float = 1e0,
-                          max_iter: int = 1000,
-                          tol: float = 1e-6):
+                          dtau0: float = 1e-3,
+                          max_iter: int = 100,
+                          tol: float = 1e-6,
+                          verbose: bool = False):
     """
     Initialize model using pseudo-transient method.
     
@@ -647,10 +689,66 @@ def init_pseudo_transient(mdl: Block,
     """
     # Import here to avoid circular imports
     from VeraGridEngine.Simulations.Rms.numerical.pseudo_transient import PseudoTransient
+
+    # Work on a copy so initialization rewrites do not alter the original model.
+    mdl_work = deepcopy(mdl)
+    mdl_work.unify_blocks()
+
+    # Build global snapshot vector from current init guess.
+    x_global = np.zeros(len(uid2idx_vars), dtype=float)
+    for uid, val in init_guess.items():
+        if uid in uid2idx_vars and val is not None:
+            gidx = uid2idx_vars[uid]
+            if 0 <= gidx < x_global.size:
+                x_global[gidx] = float(val)
+
+    # Freeze PF anchors in this local model: P, Q, Vm, Va, Vdc.
+    for pf_ref in (
+        VarPowerFlowRefferenceType.P,
+        VarPowerFlowRefferenceType.Q,
+        VarPowerFlowRefferenceType.Vm,
+        VarPowerFlowRefferenceType.Va,
+        VarPowerFlowRefferenceType.Vdc,
+    ):
+        if pf_ref not in mdl_work.external_mapping:
+            continue
+        pf_var = mdl_work.external_mapping[pf_ref]
+        if not isinstance(pf_var, Var):
+            continue
+        if pf_var.uid not in uid2idx_vars:
+            continue
+
+        pf_val = x_global[uid2idx_vars[pf_var.uid]]
+        mdl_work.update_model(pf_var, Const(float(pf_val)))
+
+        for blk in mdl_work.get_all_blocks():
+            remove_alg_idx = [i for i, v in enumerate(blk.algebraic_vars)
+                              if isinstance(v, Var) and v.uid == pf_var.uid]
+            for i in reversed(remove_alg_idx):
+                if i < len(blk.algebraic_eqs):
+                    del blk.algebraic_eqs[i]
+                del blk.algebraic_vars[i]
+
+            blk.state_vars = [v for v in blk.state_vars if isinstance(v, Var) and v.uid != pf_var.uid]
+            blk.diff_vars = [v for v in blk.diff_vars if isinstance(v, Var) and v.uid != pf_var.uid]
+
+    # Promote unresolved event parameters (Const(None)) to algebraic unknowns when init eq exists.
+    for blk in mdl_work.get_all_blocks():
+        unresolved = [
+            var for var, value in blk.event_dict.items()
+            if isinstance(var, Var) and isinstance(value, Const) and value.value is None
+        ]
+        for var in unresolved:
+            if not any(v.uid == var.uid for v in blk.algebraic_vars):
+                blk.algebraic_vars.append(var)
+            if var in blk.init_eqs:
+                blk.algebraic_eqs.append(var - blk.init_eqs[var])
+            del blk.event_dict[var]
     
     # Create problem for this device
     problem = PseudoTransientInitProblem(
-        block=mdl,
+        block=mdl_work,
+        x_global=x_global,
         compiler_names_dict=compiler_names_dict,
         alias_names_dict=alias_names_dict,
         uid2idx_vars=uid2idx_vars,
@@ -661,30 +759,80 @@ def init_pseudo_transient(mdl: Block,
         VARIABLE_PARAMS_NAME=VARIABLE_PARAMS_NAME,
         CONSTANT_PARAMS_NAME=CONSTANT_PARAMS_NAME
     )
+    # Attach global index maps for richer diagnostics in the pseudo-transient solver.
+    problem._uid2idx_params = uid2idx_params
+    problem._uid2idx_event_params = uid2idx_event_params
     
     # Use the existing PseudoTransient solver
     # Note: h parameter is not used for initialization, we set it to 1.0
+
     solver = PseudoTransient(
         problem=problem,
         h=1.0,
-        dtau0=dtau0,
-        dtau_max=1e2,
+        dtau0=1e-3,
+        dtau_max=1e4,
         dtau_min=1e-5,
         tol=tol,
-        max_iter=max_iter
+        max_iter=1000,
+        verbose=verbose,
     )
     
-    # Build initial guess from existing init_guess
-    x0 = np.ones(problem.get_all_vars_number())
-    for uid, val in init_guess.items():
-        if uid in uid2idx_vars:
-            idx = uid2idx_vars[uid]
-            if idx < len(x0):
-                x0[idx] = val
+    # Build initial guess: random baseline, then overwrite with known init_guess values.
+    x0 = np.random.rand(problem.get_all_vars_number())
+    local_vars = list(mdl_work.state_vars) + list(mdl_work.algebraic_vars)
+    for local_idx, var in enumerate(local_vars):
+        if local_idx >= len(x0):
+            continue
+        if var.uid in init_guess and init_guess[var.uid] is not None:
+            x0[local_idx] = float(init_guess[var.uid])
+
+    # Re-evaluate runtime variable parameters from declared equations.
+    ev0 = np.array(problem._variable_parameters_values, dtype=float, copy=True)
+    params0 = np.array(problem._constant_params, dtype=float, copy=True)
+    dx0 = np.zeros(problem.get_diff_var_number(), dtype=float)
+    uid2idx_diff_empty: Dict[int, int] = dict()
+
+    problem._variable_parameters_values = ev0
     
     # Run pseudo-transient simulation
-    x_solution, init_guess_result = solver.simulate(plot=False)
-    
-    # Update init_guess with solution
-    for var, value in init_guess_result.items():
-        init_guess[var.uid] = value
+    x_solution, _ = solver.simulate(plot=bool(verbose), x0=x0)
+
+    # Validate final residual; fail fast on poor initialization.
+    dx_check = np.zeros(problem.get_diff_var_number(), dtype=float)
+    rhs_state = problem.rhs_state(x_solution, dx_check)
+    rhs_algeb = problem.rhs_algebraic(x_solution, dx_check)
+    residual_vec = np.r_[rhs_state, rhs_algeb]
+
+    if not np.all(np.isfinite(residual_vec)):
+        bad_idx = np.where(~np.isfinite(residual_vec))[0]
+        bad_vals = residual_vec[bad_idx]
+        raise RuntimeError(
+            f"PseudoTransient final residual has NaN/Inf: bad_idx={bad_idx.tolist()}, "
+            f"bad_vals={bad_vals.tolist()}"
+        )
+
+    residual_inf = float(np.linalg.norm(residual_vec, np.inf)) if residual_vec.size > 0 else 0.0
+    residual_tol = max(float(tol), 1e-6)
+    if residual_inf > residual_tol:
+        raise RuntimeError(
+            f"PseudoTransient final residual too large: "
+            f"||r||_inf={residual_inf:.6e} > {residual_tol:.6e}"
+        )
+
+    # Update recovered values:
+    # - system variables go to init_guess
+    # - promoted runtime parameters go back to event_parameters_eqs as Const
+    for local_idx, var in enumerate(local_vars):
+        if local_idx >= len(x_solution):
+            continue
+
+        value = float(x_solution[local_idx])
+
+        if var.uid in uid2idx_vars:
+            init_guess[var.uid] = value
+        elif var.uid in uid2idx_event_params:
+            ep_idx = uid2idx_event_params[var.uid]
+            if 0 <= ep_idx < len(event_parameters_eqs):
+                event_parameters_eqs[ep_idx] = Const(value)
+
+    return init_guess
