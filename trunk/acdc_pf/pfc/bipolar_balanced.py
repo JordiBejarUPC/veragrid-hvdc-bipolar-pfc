@@ -36,6 +36,7 @@ grid.add_bus(bus3)
 bus4 = gce.Bus(name = "Bus4",
                Vnom=Ub,
                is_dc=True,
+               Vm0=1.01,
                Va0=3.14)
 grid.add_bus(bus4)
 

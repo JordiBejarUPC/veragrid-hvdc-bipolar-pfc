@@ -9,15 +9,16 @@ from PySide6.QtCore import Qt, QPoint, QRectF, QPointF
 from PySide6.QtGui import QIcon, QPixmap, QPainter, QPen, QBrush, QColor, QCursor, QTransform, QFont
 from PySide6.QtWidgets import QMenu, QGraphicsItem, QGraphicsRectItem, QGraphicsSceneMouseEvent
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_manager import open_dynamic_editor
-from VeraGridEngine.enumerations import DynamicSimulationMode
 
 from VeraGrid.Gui.gui_functions import add_menu_entry
+from VeraGrid.Gui.Diagrams.SchematicWidget.terminal_item import BarTerminalItem, RoundTerminalItem
 from VeraGrid.Gui.Diagrams.generic_graphics import GenericDiagramWidget, ACTIVE, DEACTIVATED
 from VeraGridEngine.Devices.Branches.vsc import VSC
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.enumerations import (ConverterControlType,
                                          SchematicAutoRouteStyle,
                                          SchematicRouteKind,
+                                         DynamicSimulationMode,
                                          TerminalType)  # Assuming VSC controls might be relevant later
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
