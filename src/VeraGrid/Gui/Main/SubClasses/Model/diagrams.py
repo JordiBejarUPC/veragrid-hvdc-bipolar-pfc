@@ -88,7 +88,7 @@ class VideoExportWorker(QtCore.QThread):
         self.current_study = current_study
         self.grid_colour_function: Callable[[ALL_EDITORS, str, int, bool], None] = grid_colour_function
 
-        self.logger = Logger()
+        self.logger: Logger = Logger()
 
     def run(self):
         """
@@ -2546,8 +2546,7 @@ class DiagramsMain(CompiledArraysMain):
         :return:
         """
         if self.video_thread.logger.has_logs():
-            dlg = LogsDialogue("Video export", self.video_thread.logger, True)
-            dlg.exec()
+            self.show_logs(self.video_thread.logger, "Video export")
 
     def set_xy_from_lat_lon(self):
         """

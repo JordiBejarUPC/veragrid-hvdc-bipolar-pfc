@@ -200,6 +200,157 @@ def get_modal_template_metadata(block: Block | None) -> tuple[str | None, Dict[s
         return None, None
 
 
+class ParametersEditorDialog(QDialog):
+    """
+    Dialog to inspect and edit block parameters (event_dict, parameters, mode_dict).
+    """
+
+    def __init__(self,
+                 var_factory: VarFactory,
+                 block: Block,
+                 parent: Optional[QtWidgets.QWidget] = None):
+        super().__init__(parent)
+        self.var_factory = var_factory
+        self.block = block
+        self.setWindowTitle(f"Parameters Editor - {block.name}")
+        self.resize(500, 400)
+
+        layout: QVBoxLayout = QVBoxLayout(self)
+
+        self.table_view = QtWidgets.QTableView()
+        self.table_view.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
+        self.table_view.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
+        self.table_view.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
+        self.table_view.verticalHeader().setVisible(False)
+        self.table_view.doubleClicked.connect(self.on_double_click)
+        self.table_view.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.table_view.customContextMenuRequested.connect(self.show_context_menu)
+        layout.addWidget(self.table_view)
+
+        self.model = ParametersTableModel(var_factory=var_factory, block=block, parent=self.table_view)
+        self.table_view.setModel(self.model)
+        self.model.block_updated.connect(self.on_block_updated)
+
+        button_box = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        button_box.accepted.connect(self.accept)
+        button_box.rejected.connect(self.reject)
+        layout.addWidget(button_box)
+
+    def on_double_click(self, index: QtCore.QModelIndex) -> None:
+        if index.model() == self.model and index.column() == 2:
+            self.open_expression_editor(index.row())
+
+    def open_expression_editor(self, row_index: int) -> None:
+        row_data: BlockParameterRow | None = self.model.get_row(row_index)
+        expression_text: str
+        dialog: ExpressionTextEditorDialog
+        symbol_namespace: Dict[str, Expr]
+        parsed_expression: Expr | Comparison
+        expression_value: Expr
+
+        if row_data is not None and self.model.block is not None:
+            if row_data.value is not None and isinstance(row_data.value, Expr):
+                expression_text = symbolic_to_string(row_data.value)
+            else:
+                expression_text = str(row_data.value) if row_data.value is not None else ""
+            symbol_namespace = build_block_symbol_namespace(self.model.block)
+            dialog = ExpressionTextEditorDialog(
+                expression_text=expression_text,
+                symbol_namespace=symbol_namespace,
+                parent=self
+            )
+
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                try:
+                    parsed_expression = string_to_symbolic(dialog.get_expression_text(), symbol_namespace)
+
+                    if isinstance(parsed_expression, Comparison):
+                        expression_value = parsed_expression.to_expression()
+                    else:
+                        expression_value = parsed_expression
+
+                    self.model.set_value_from_expression(row_index, expression_value)
+                except Exception as exc:
+                    QtWidgets.QMessageBox.warning(
+                        self,
+                        "Expression Error",
+                        str(exc)
+                    )
+
+    def show_context_menu(self, position: QtCore.QPoint) -> None:
+        table_view: QtWidgets.QTableView = self.table_view
+        self.select_table_context_row(table_view=table_view, position=position)
+
+        has_selected_rows: bool = bool(table_view.selectionModel().selectedRows())
+
+        menu: QMenu = QMenu(table_view)
+        add_variable_action: QAction = menu.addAction("Add Variable")
+        remove_selected_action: QAction = menu.addAction("Remove Selected")
+
+        add_variable_action.setEnabled(self.block is not None)
+        remove_selected_action.setEnabled(self.block is not None and has_selected_rows)
+
+        selected_action: QAction | None = menu.exec(table_view.viewport().mapToGlobal(position))
+
+        if selected_action == add_variable_action:
+            self.open_add_variable_dialog()
+        elif selected_action == remove_selected_action:
+            self.remove_selected_parameters()
+
+    def select_table_context_row(self, table_view: QtWidgets.QTableView, position: QtCore.QPoint) -> None:
+        index = table_view.indexAt(position)
+        if index.isValid():
+            table_view.selectionModel().select(index, QtCore.QItemSelectionModel.SelectionFlag.Select)
+
+    def open_add_variable_dialog(self) -> None:
+        dialog = AddBlockVariableDialog(parent=self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            name = dialog.get_name()
+            category = dialog.get_category()
+            parameter_value = dialog.get_parameter_value()
+
+            new_var = self.var_factory.add_var(name=name)
+
+            if category == "state":
+                self.block.state_vars.append(new_var)
+                if parameter_value != 0.0:
+                    self.block.init_values[new_var] = self.var_factory.add_const(parameter_value, name=name)
+            elif category == "algebraic":
+                self.block.algebraic_vars.append(new_var)
+            else:
+                raise ValueError(f"Unsupported category for VariablesTableModel: {category}")
+
+            self.model.set_block(self.block)
+            self.model.block_updated.emit(self.block.uid)
+
+    def remove_selected_parameters(self) -> None:
+        params_model = self.model
+        params_selected = [idx.row() for idx in self.table_view.selectionModel().selectedRows()]
+        if not params_selected:
+            return
+
+        for row_idx in params_selected:
+            row_data = params_model.rows[row_idx]
+            var = row_data.key_var
+            if row_data.kind == BlockParameterKind.EVENT_PARAMETER:
+                if var in self.block.event_dict:
+                    del self.block.event_dict[var]
+            elif row_data.kind == BlockParameterKind.FIXED_PARAMETER:
+                if var in self.block.parameters:
+                    del self.block.parameters[var]
+            elif row_data.kind == BlockParameterKind.MODE_PARAM:
+                if var in self.block.mode_dict:
+                    del self.block.mode_dict[var]
+
+        params_model.set_block(self.block)
+        params_model.block_updated.emit(self.block.uid)
+
+    def on_block_updated(self, block_uid: int) -> None:
+        self.model.set_block(self.block)
+
+
 def _new_uid() -> int:
     """
     Generate a fresh integer identifier.
@@ -227,6 +378,206 @@ def _library_leaf_label_sort_key(leaf: "LibraryLeafSpec") -> str:
     :return: Lower-case label.
     """
     return leaf.label.lower()
+
+
+def open_dyn_params_editor(var_factory: VarFactory, api_object: Any,
+                           preferred_mode: DynamicSimulationMode | None = None):
+    """
+    Opens the dynamic parameters editor dialog.
+
+    :param var_factory: Variable factory for creating new variables.
+    :param api_object: Device/API object containing rms_model or emt_model.
+    :param preferred_mode: Simulation mode (RMS or EMT).
+    :return: None
+    """
+    if preferred_mode == DynamicSimulationMode.RMS:
+        blk = api_object.rms_model
+        print("")
+    else:
+        blk = api_object.emt_model
+
+    dialog = ParametersEditorDialog(var_factory=var_factory, block=blk)
+    dialog.exec()
+
+
+def build_variables_rows(block: Block | None, rows: List[BlockParameterRow]):
+    if block is not None:
+        build_block_variables_rows(block, rows)
+        if block.children:
+            for child in block.children:
+                build_variables_rows(child, rows)
+
+
+def build_block_variables_rows(block: Block, rows: List[BlockParameterRow]):
+    for var in block.state_vars:
+        init_eq = block.init_eqs.get(var)
+        rows.append(BlockParameterRow(
+            name=var.name,
+            kind=BlockParameterKind.STATE_VAR,
+            key_var=var,
+            value=block.init_values.get(var, ""),
+            editable_name=True,
+            editable_value=True,
+            value_type=float,
+            init_eq=init_eq
+        ))
+
+    for var in block.algebraic_vars:
+        init_eq = block.init_eqs.get(var)
+        rows.append(BlockParameterRow(
+            name=var.name,
+            kind=BlockParameterKind.ALGEBRAIC_VAR,
+            key_var=var,
+            value="",
+            editable_name=True,
+            editable_value=False,
+            value_type=str,
+            init_eq=init_eq
+        ))
+
+
+def build_parameters_rows(table_model, block: Block | None, rows: List[BlockParameterRow]):
+    if block is not None:
+        build_block_parameters_rows(table_model, block, rows)
+        if block.children:
+            for child in block.children:
+                build_block_parameters_rows(table_model, child, rows)
+
+
+def build_block_parameters_rows(table_model: Any, blk: Block, rows: List[BlockParameterRow]):
+    for var, expr in blk.event_dict.items():
+        if isinstance(expr, Const):
+            rows.append(BlockParameterRow(
+                name=var.name,
+                kind=BlockParameterKind.EVENT_PARAMETER,
+                key_var=var,
+                value=expr.value,
+                editable_name=True,
+                editable_value=True,
+                value_type=table_model.get_python_value_type(expr.value),
+                source_dict_name="event_dict"
+            ))
+        else:
+            rows.append(BlockParameterRow(
+                name=var.name,
+                kind=BlockParameterKind.EVENT_PARAMETER,
+                key_var=var,
+                value=expr,
+                editable_name=True,
+                editable_value=True,
+                value_type=str,
+                source_dict_name="event_dict"
+            ))
+
+    for var, expr in blk.mode_dict.items():
+        if isinstance(expr, Const):
+            rows.append(BlockParameterRow(
+                name=var.name,
+                kind=BlockParameterKind.MODE_PARAMETER,
+                key_var=var,
+                value=expr.value,
+                editable_name=True,
+                editable_value=True,
+                value_type=table_model.get_python_value_type(expr.value),
+                source_dict_name="mode_dict"
+            ))
+        else:
+            rows.append(BlockParameterRow(
+                name=var.name,
+                kind=BlockParameterKind.MODE_PARAMETER,
+                key_var=var,
+                value=expr,
+                editable_name=True,
+                editable_value=True,
+                value_type=str,
+                source_dict_name="mode_dict"
+            ))
+
+    for var, const in blk.parameters.items():
+        rows.append(BlockParameterRow(
+            name=var.name,
+            kind=BlockParameterKind.FIXED_PARAMETER,
+            key_var=var,
+            value=const.value,
+            editable_name=True,
+            editable_value=True,
+            value_type=table_model.get_python_value_type(const.value),
+            source_dict_name="parameters"
+        ))
+
+    return rows
+
+
+def update_source_dict(block: Block | None, row: BlockParameterRow, value: Any, old_expr: Any = None) -> None:
+    if block is not None and row is not None:
+        update_param_value(block, row, value, old_expr)
+        if block.children:
+            for child in block.children:
+                update_source_dict(child, row, value, old_expr)
+
+
+def update_param_value(blk: Block, row: BlockParameterRow, value: Any, old_expr: Any):
+    if blk is not None and row is not None:
+        if row.key_var is not None:
+            if row.kind == BlockParameterKind.EVENT_PARAMETER:
+                if row.key_var in blk.event_dict:
+                    blk.event_dict[row.key_var] = value
+            elif row.kind == BlockParameterKind.MODE_PARAMETER:
+                if row.key_var in blk.mode_dict:
+                    blk.mode_dict[row.key_var] = value
+            elif row.kind == BlockParameterKind.FIXED_PARAMETER:
+                if row.key_var in blk.parameters:
+                    blk.parameters[row.key_var] = value
+            elif row.kind == BlockParameterKind.STATE_VAR:
+                if row.key_var in blk.init_eqs:
+                    blk.init_eqs[row.key_var] = value
+            elif row.kind == BlockParameterKind.ALGEBRAIC_VAR:
+                if row.key_var in blk.init_eqs:
+                    blk.init_eqs[row.key_var] = value
+        if row.kind == BlockParameterKind.STATE_EQUATION and row.item_index is not None:
+            if old_expr is not None and old_expr in blk.state_eqs:
+                blk.state_eqs[row.item_index] = value
+        elif row.kind == BlockParameterKind.ALGEBRAIC_EQUATION and row.item_index is not None:
+            if old_expr is not None and old_expr in blk.algebraic_eqs:
+                blk.algebraic_eqs[row.item_index] = value
+
+
+def build_equations_rows(block: Block | None, rows):
+    """
+
+    :return:
+    """
+    if block is not None:
+        build_block_equations_rows(block, rows)
+        if block.children:
+            for child in block.children:
+                build_equations_rows(child, rows)
+
+
+def build_block_equations_rows(blk: Block, rows: List[BlockParameterRow]):
+    for idx, eq in enumerate(blk.state_eqs):
+        rows.append(BlockParameterRow(
+            name=f"State Eq {idx + 1}",
+            kind=BlockParameterKind.STATE_EQUATION,
+            key_var=None,
+            value=eq,
+            editable_name=False,
+            editable_value=True,
+            value_type=str,
+            item_index=idx
+        ))
+
+    for idx, eq in enumerate(blk.algebraic_eqs):
+        rows.append(BlockParameterRow(
+            name=f"Algebraic Eq {idx + 1}",
+            kind=BlockParameterKind.ALGEBRAIC_EQUATION,
+            key_var=None,
+            value=eq,
+            editable_name=False,
+            editable_value=True,
+            value_type=str,
+            item_index=idx
+        ))
 
 
 class BlockPositionChangedCallback:
@@ -1628,6 +1979,7 @@ class BlockParameterKind(Enum):
     EVENT_PARAMETER = "Event Parameter"
     MODE_PARAMETER = "Mode Parameter"
     FIXED_PARAMETER = "Parameter"
+    MODE_PARAM = "Mode Parameter"
 
 
 class BlockParameterRow:
@@ -1815,41 +2167,9 @@ class VariablesTableModel(QtCore.QAbstractTableModel):
     def set_block(self, block: Block | None) -> None:
         self.beginResetModel()
         self.block = block
-        self.rows = self._build_rows()
+        self.rows: List[BlockParameterRow] = list()
+        build_variables_rows(self.block, self.rows)
         self.endResetModel()
-
-    def _build_rows(self) -> List[BlockParameterRow]:
-        rows = []
-        if self.block is None:
-            return rows
-
-        for var in self.block.state_vars:
-            init_eq = self.block.init_eqs.get(var)
-            rows.append(BlockParameterRow(
-                name=var.name,
-                kind=BlockParameterKind.STATE_VAR,
-                key_var=var,
-                value=self.block.init_values.get(var, ""),
-                editable_name=True,
-                editable_value=True,
-                value_type=float,
-                init_eq=init_eq
-            ))
-
-        for var in self.block.algebraic_vars:
-            init_eq = self.block.init_eqs.get(var)
-            rows.append(BlockParameterRow(
-                name=var.name,
-                kind=BlockParameterKind.ALGEBRAIC_VAR,
-                key_var=var,
-                value="",
-                editable_name=True,
-                editable_value=False,
-                value_type=str,
-                init_eq=init_eq
-            ))
-
-        return rows
 
     def rowCount(self, parent=QtCore.QModelIndex()) -> int:
         return len(self.rows)
@@ -1907,7 +2227,7 @@ class VariablesTableModel(QtCore.QAbstractTableModel):
             row.init_eq = init_eq
             refresh_block_parameter_row_cache(row)
             if self.block is not None and row.key_var is not None:
-                self.block.init_eqs[row.key_var] = init_eq
+                update_source_dict(self.block, row, init_eq)
             index = self.index(row_index, 2)
             self.dataChanged.emit(index, index, [QtCore.Qt.ItemDataRole.EditRole])
 
@@ -1980,85 +2300,22 @@ class ParametersTableModel(QtCore.QAbstractTableModel):
 
     block_updated = Signal(object)
 
-    def __init__(self, var_factory: VarFactory, parent: Optional[QtCore.QObject] = None):
+    def __init__(self, var_factory: VarFactory, block=Block(), parent: Optional[QtCore.QObject] = None):
         super().__init__(parent)
         self.var_factory = var_factory
         self.block = None
         self.rows = []
         self.headers = ["Type", "Name", "Value"]
+        if block is not None:
+            self.block = block
+            build_parameters_rows(self, self.block, self.rows)
 
     def set_block(self, block: Block | None) -> None:
         self.beginResetModel()
         self.block = block
-        self.rows = self._build_rows()
+        self.rows: List[BlockParameterRow] = list()
+        build_parameters_rows(self, self.block, self.rows)
         self.endResetModel()
-
-    def _build_rows(self) -> List[BlockParameterRow]:
-        rows = []
-        if self.block is None:
-            return rows
-
-        for var, expr in self.block.event_dict.items():
-            if isinstance(expr, Const):
-                rows.append(BlockParameterRow(
-                    name=var.name,
-                    kind=BlockParameterKind.EVENT_PARAMETER,
-                    key_var=var,
-                    value=expr.value,
-                    editable_name=True,
-                    editable_value=True,
-                    value_type=self.get_python_value_type(expr.value),
-                    source_dict_name="event_dict"
-                ))
-            else:
-                rows.append(BlockParameterRow(
-                    name=var.name,
-                    kind=BlockParameterKind.EVENT_PARAMETER,
-                    key_var=var,
-                    value=expr,
-                    editable_name=True,
-                    editable_value=True,
-                    value_type=str,
-                    source_dict_name="event_dict"
-                ))
-
-        for var, expr in self.block.mode_dict.items():
-            if isinstance(expr, Const):
-                rows.append(BlockParameterRow(
-                    name=var.name,
-                    kind=BlockParameterKind.MODE_PARAMETER,
-                    key_var=var,
-                    value=expr.value,
-                    editable_name=True,
-                    editable_value=True,
-                    value_type=self.get_python_value_type(expr.value),
-                    source_dict_name="mode_dict"
-                ))
-            else:
-                rows.append(BlockParameterRow(
-                    name=var.name,
-                    kind=BlockParameterKind.MODE_PARAMETER,
-                    key_var=var,
-                    value=expr,
-                    editable_name=True,
-                    editable_value=True,
-                    value_type=str,
-                    source_dict_name="mode_dict"
-                ))
-
-        for var, const in self.block.parameters.items():
-            rows.append(BlockParameterRow(
-                name=var.name,
-                kind=BlockParameterKind.FIXED_PARAMETER,
-                key_var=var,
-                value=const.value,
-                editable_name=True,
-                editable_value=True,
-                value_type=self.get_python_value_type(const.value),
-                source_dict_name="parameters"
-            ))
-
-        return rows
 
     def rowCount(self, parent=QtCore.QModelIndex()) -> int:
         return len(self.rows)
@@ -2098,29 +2355,19 @@ class ParametersTableModel(QtCore.QAbstractTableModel):
             elif index.column() == 2 and row.editable_value:
                 row.value = value
                 refresh_block_parameter_row_cache(row)
-                self._update_source_dict(row, value)
+                update_source_dict(self.block, row, value)
             else:
                 return False
             self.dataChanged.emit(index, index, [role])
             return True
         return False
 
-    def _update_source_dict(self, row: BlockParameterRow, value: Any) -> None:
-        if self.block is None or row.key_var is None or row.source_dict_name is None:
-            return
-        if row.source_dict_name == "event_dict":
-            self.block.event_dict[row.key_var] = value
-        elif row.source_dict_name == "mode_dict":
-            self.block.mode_dict[row.key_var] = value
-        elif row.source_dict_name == "parameters":
-            self.block.parameters[row.key_var] = value
-
     def set_value_from_expression(self, row_index: int, expr: Expr) -> None:
         if 0 <= row_index < len(self.rows):
             row = self.rows[row_index]
             row.value = expr
             refresh_block_parameter_row_cache(row)
-            self._update_source_dict(row, expr)
+            update_source_dict(self.block, row, expr)
             index = self.index(row_index, 2)
             self.dataChanged.emit(index, index, [QtCore.Qt.ItemDataRole.EditRole])
 
@@ -2173,6 +2420,7 @@ class EquationsTableModel(QtCore.QAbstractTableModel):
         self.block = None
         self.rows = []
         self.headers = ["Type", "Equation"]
+        self.symbol_namespace = None
 
     def set_block(self, block: Block | None) -> None:
         """
@@ -2182,43 +2430,9 @@ class EquationsTableModel(QtCore.QAbstractTableModel):
         """
         self.beginResetModel()
         self.block = block
-        self.rows = self._build_rows()
+        self.rows: List[BlockParameterRow] = list()
+        build_equations_rows(self.block, self.rows)
         self.endResetModel()
-
-    def _build_rows(self) -> List[BlockParameterRow]:
-        """
-
-        :return:
-        """
-        rows = []
-        if self.block is None:
-            return rows
-
-        for idx, eq in enumerate(self.block.state_eqs):
-            rows.append(BlockParameterRow(
-                name=f"State Eq {idx + 1}",
-                kind=BlockParameterKind.STATE_EQUATION,
-                key_var=None,
-                value=eq,
-                editable_name=False,
-                editable_value=True,
-                value_type=str,
-                item_index=idx
-            ))
-
-        for idx, eq in enumerate(self.block.algebraic_eqs):
-            rows.append(BlockParameterRow(
-                name=f"Algebraic Eq {idx + 1}",
-                kind=BlockParameterKind.ALGEBRAIC_EQUATION,
-                key_var=None,
-                value=eq,
-                editable_name=False,
-                editable_value=True,
-                value_type=str,
-                item_index=idx
-            ))
-
-        return rows
 
     def rowCount(self, parent=QtCore.QModelIndex()) -> int:
         """
@@ -2271,18 +2485,15 @@ class EquationsTableModel(QtCore.QAbstractTableModel):
         if not index.isValid():
             return False
         row = self.rows[index.row()]
+        old_expr = row.value
         if role == QtCore.Qt.ItemDataRole.EditRole:
             if index.column() == 1:
                 try:
-                    new_expr = string_to_symbolic(value)
+
+                    new_expr = string_to_symbolic(value, self.symbol_namespace)
                     row.value = new_expr
                     refresh_block_parameter_row_cache(row)
-                    if row.kind == BlockParameterKind.STATE_EQUATION and row.item_index is not None:
-                        self.block.state_eqs[row.item_index] = new_expr
-                    elif row.kind == BlockParameterKind.ALGEBRAIC_EQUATION and row.item_index is not None:
-                        self.block.algebraic_eqs[row.item_index] = new_expr
-                    else:
-                        return False
+                    update_source_dict(self.block, row, row.value, old_expr)
                     self.dataChanged.emit(index, index, [role])
                     self.block_updated.emit(self.block.uid)
                     return True
@@ -3640,6 +3851,7 @@ class DynamicsLibraryTreeModel(QtGui.QStandardItemModel):
 
         return mime_data
 
+
 @dataclass
 class ConnectionVarSpec:
     """
@@ -3649,6 +3861,7 @@ class ConnectionVarSpec:
     direction: str
     reference: VarPowerFlowRefferenceType
     visible_name: str
+
 
 class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     """
@@ -3666,8 +3879,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                  circuit: Any | None = None,
                  main_editor=False,
                  modal: bool = True,
-                 workspace_embedded: bool = False,
-                  ):
+                 workspace_embedded: bool = False):
         """
         Initializes a dynamic block editor window used for editing and managing blocks within a graphical model.
 
@@ -3750,31 +3962,45 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.templates_list: List[
             RmsModelTemplate | EmtModelTemplate | FmuTemplate] = templates_list if templates_list is not None else list()
 
-        self.tree_structure: Dict[str, Any] = dict()
-        if mode == DynamicSimulationMode.RMS:
-            self.tree_structure["Basic"] = self.build_basic_library_branch()
-            self.tree_structure["Devices"] = [
+        device_rms_related_blocks = {
+            DeviceType.GeneratorDevice: [
+                LibraryLeafSpec("Generic", BlockType.GENERIC),
                 LibraryLeafSpec("Generator basic", BlockType.GENRAW),
                 LibraryLeafSpec("Generator QEC", BlockType.GENQEC),
                 LibraryLeafSpec("Governor", BlockType.GOV_RMS),
                 LibraryLeafSpec("Stabilizer", BlockType.STAB_RMS),
                 LibraryLeafSpec("Exciter", BlockType.EXCITER_RMS),
-                LibraryLeafSpec("Line", BlockType.LINE_RMS),
-                LibraryLeafSpec("Load", BlockType.LOAD_RMS),
+            ],
+            DeviceType.LineDevice: [
                 LibraryLeafSpec("Generic", BlockType.GENERIC),
-            ]
-        elif mode == DynamicSimulationMode.EMT:
-            self.tree_structure["Basic"] = self.build_basic_library_branch()
-            self.tree_structure["Devices"] = [
+                LibraryLeafSpec("Line", BlockType.LINE_RMS),
+            ],
+            DeviceType.LoadDevice: [
+                LibraryLeafSpec("Generic", BlockType.GENERIC),
+                LibraryLeafSpec("Load", BlockType.LOAD_RMS),
+            ],
+        }
+
+        device_emt_related_blocks = {
+            DeviceType.GeneratorDevice: [
+                LibraryLeafSpec("Generic", BlockType.GENERIC),
                 LibraryLeafSpec("Generator", BlockType.EMT_GENERATOR),
                 LibraryLeafSpec("Thevenin eq. generator", BlockType.EMT_THEVENIN),
                 LibraryLeafSpec("Governor", BlockType.GOV_EMT),
                 LibraryLeafSpec("Stabilizer", BlockType.STAB_EMT),
                 LibraryLeafSpec("Exciter", BlockType.EXCITER_EMT),
+            ],
+            DeviceType.LineDevice: [
                 LibraryLeafSpec("Generic", BlockType.GENERIC),
                 LibraryLeafSpec("Emt pi line", BlockType.EMT_PI_LINE),
                 LibraryLeafSpec("Emt Bergeron line", BlockType.EMT_BERGERON_LINE),
                 LibraryLeafSpec("Switch EMT", BlockType.SWITCH_EMT),
+            ],
+            DeviceType.LoadDevice: [
+                LibraryLeafSpec("Generic", BlockType.GENERIC),
+            ],
+            DeviceType.LoadDevice: [
+                LibraryLeafSpec("Generic", BlockType.GENERIC),
                 LibraryLeafSpec("Ground EMT", BlockType.GROUND_EMT),
                 LibraryLeafSpec("Grounding Link EMT", BlockType.GROUNDING_LINK_EMT),
                 LibraryLeafSpec("Nonlinear Resistor EMT", BlockType.NONLINEAR_RESISTOR_EMT),
@@ -3785,15 +4011,30 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 LibraryLeafSpec("Exponential load", BlockType.EXP_LOAD_EMT),
                 LibraryLeafSpec("ZIP load", BlockType.ZIP_LOAD_EMT),
                 LibraryLeafSpec("DC load", BlockType.DC_LOAD_EMT),
+            ],
+            DeviceType.TransformerTypeDevice: [
+                LibraryLeafSpec("Generic", BlockType.GENERIC),
                 LibraryLeafSpec("Transformer", BlockType.TRAFO_EMT),
                 LibraryLeafSpec("XFMR Transformer", BlockType.XFMR_TRANSFORMER),
-            ]
+            ],
+        }
+
+        self.tree_structure: Dict[str, Any] = dict()
+        if mode == DynamicSimulationMode.RMS:
+            self.tree_structure["Basic"] = self.build_basic_library_branch()
+            self.tree_structure["Devices"] = device_rms_related_blocks.get(api_object.device_type, dict())
+
+        elif mode == DynamicSimulationMode.EMT:
+            self.tree_structure["Basic"] = self.build_basic_library_branch()
+            self.tree_structure["Devices"] = device_emt_related_blocks.get(api_object.device_type, dict())
+
         else:
             pass
 
         if self.templates_list:
             self.tree_structure["Templates"] = {
-                "Available": [LibraryLeafSpec(template.name, template, template.name) for template in self.templates_list]
+                "Available": [LibraryLeafSpec(template.name, template, template.name) for template in
+                              self.templates_list]
             }
         else:
             pass
@@ -3932,7 +4173,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         descriptor: BasicBlockTemplateDescriptor
         for descriptor in get_editor_ready_basic_block_catalog_descriptors():
-            category_path: tuple[str, ...] = descriptor.category_path[1:] if descriptor.category_path and descriptor.category_path[0] == "Native" else descriptor.category_path
+            category_path: tuple[str, ...] = descriptor.category_path[1:] if descriptor.category_path and \
+                                                                             descriptor.category_path[
+                                                                                 0] == "Native" else descriptor.category_path
             if len(category_path) == 0:
                 category_path = ("Miscellaneous", "Other")
             else:
@@ -5747,71 +5990,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         self._materialize_connection_specs(specs)
 
-    # def add_connection_vars(self):
-    #     """
-    #     Add a block with bus connection variables to connect the device
-    #     :return:
-    #     """
-    #     if self.mode == DynamicSimulationMode.EMT:
-    #         self.add_emt_connection_vars()
-    #         self.add_emt_external_mapping_vars()
-    #         return
-    #
-    #     elif self.mode == DynamicSimulationMode.RMS:
-    #
-    #         if isinstance(self.api_object, BranchParent):
-    #
-    #             # connect bus variables
-    #             if self.api_object.bus_from.rms_model.empty():
-    #                 initialize_bus_rms(self.api_object.bus_from, self.var_factory)
-    #
-    #             Vmf, Vaf = get_bus_rms_algebraic_vars(self.api_object.bus_from.rms_model)
-    #
-    #             if self.api_object.bus_to.rms_model.empty():
-    #                 initialize_bus_rms(self.api_object.bus_to, self.var_factory)
-    #
-    #             Vmt, Vat = get_bus_rms_algebraic_vars(self.api_object.bus_to.rms_model)
-    #
-    #             self.main_block.in_vars.append(Vmf)
-    #             self.main_block.in_vars.append(Vaf)
-    #             self.main_block.in_vars.append(Vmt)
-    #             self.main_block.in_vars.append(Vat)
-    #
-    #             self.main_block.external_mapping.update(
-    #                 {VarPowerFlowRefferenceType.Vmf: Vmf})
-    #             self.main_block.external_mapping.update(
-    #                 {VarPowerFlowRefferenceType.Vaf: Vaf})
-    #
-    #             self.main_block.external_mapping.update(
-    #                 {VarPowerFlowRefferenceType.Vmt: Vmt})
-    #             self.main_block.external_mapping.update(
-    #                 {VarPowerFlowRefferenceType.Vat: Vat})
-    #
-    #         elif isinstance(self.api_object, InjectionParent):
-    #
-    #             # connect bus variables
-    #             if self.api_object.bus.rms_model.empty():
-    #                 initialize_bus_rms(self.api_object.bus, self.var_factory)
-    #
-    #             Vm, Va = get_bus_rms_algebraic_vars(self.api_object.bus.rms_model)
-    #             self.main_block.in_vars.append(Vm)
-    #             self.main_block.in_vars.append(Va)
-    #
-    #             self.main_block.external_mapping.update(
-    #                 {VarPowerFlowRefferenceType.Vm: Vm})
-    #             self.main_block.external_mapping.update(
-    #                 {VarPowerFlowRefferenceType.Va: Va})
-    #
-    #             # add connection variables
-    #             P = self.var_factory.add_var('net_conn_P', VarPowerFlowRefferenceType.P, True)
-    #             Q = self.var_factory.add_var('net_conn_Q', VarPowerFlowRefferenceType.Q, True)
-    #
-    #             self.main_block.out_vars.append(P)
-    #             self.main_block.out_vars.append(Q)
-    #
-    #             self.main_block.external_mapping.update({VarPowerFlowRefferenceType.P: P})
-    #             self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Q: Q})
-
     def add_connection_items(self):
         """
         for every input and output var in the main block of the editor we build a block item to connect connection variables
@@ -6005,139 +6183,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 else:
                     pass
             return pairs
-
-    # def add_external_mapping_block(self):
-    #     """
-    #     Add a block with the external mapping vars needed to connect the device to the grid
-    #     :return:
-    #     """
-    #     if self.mode == DynamicSimulationMode.EMT:
-    #         self.add_emt_external_mapping_vars()
-    #         return
-    #     else:
-    #         pass
-    #
-    #     bus_con_item = None
-    #     tpe = BlockType.EXTERNAL_MAPPING
-    #
-    #     if isinstance(self.api_object, BranchParent):
-    #
-    #         # add mapping bus from
-    #         x0, y0 = 200, 200
-    #         name = "mapping From"
-    #         bus_from_mapping_item = BlockItem(var_factory=self.var_factory, name=name)
-    #
-    #         Pf = self.var_factory.add_var('network_conn_Pf', VarPowerFlowRefferenceType.Pf, True)
-    #         Qf = self.var_factory.add_var('network_conn_Qf', VarPowerFlowRefferenceType.Qf, True)
-    #
-    #         bus_from_mapping_blk = Block(
-    #             in_vars=[Pf, Qf],
-    #             name=name
-    #         )
-    #
-    #         self.main_block.add(bus_from_mapping_blk)
-    #
-    #         bus_from_mapping_item.set_subsystem(bus_from_mapping_blk)
-    #         bus_from_mapping_item.build_item()
-    #
-    #         if bus_from_mapping_item.subsys is not None:
-    #             self.scene.addItem(bus_from_mapping_item)
-    #             bus_from_mapping_item.setPos(x0, y0)
-    #             # save nodes in diagram
-    #             self.diagram.add_node(
-    #                 name=name,
-    #                 x=x0,
-    #                 y=y0,
-    #                 tpe=tpe.name,
-    #                 device_uid=bus_from_mapping_item.subsys.uid,
-    #             )
-    #         self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Pf: bus_from_mapping_blk.in_vars[0]})
-    #         self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Qf: bus_from_mapping_blk.in_vars[1]})
-    #
-    #         # add con bus to
-    #         name = "mapping To"
-    #         x0, y0 = 0, 200
-    #
-    #         bus_to_mapping_item = BlockItem(var_factory=self.var_factory, name=name)
-    #
-    #         bus_to_mapping_blk = Block(
-    #             in_vars=[
-    #                 self.var_factory.add_var('network_conn_Pt', VarPowerFlowRefferenceType.Pt, True),  # Pt
-    #                 self.var_factory.add_var('network_conn_Qt', VarPowerFlowRefferenceType.Qt, True)  # Qt
-    #             ],
-    #             name=name
-    #         )
-    #         self.main_block.add(bus_to_mapping_blk)
-    #
-    #         bus_to_mapping_item.set_subsystem(bus_to_mapping_blk)
-    #         bus_to_mapping_item.build_item()
-    #
-    #         # Add to scene
-    #         bus_to_mapping_item.setPos(QPointF(x0, y0))
-    #         if bus_to_mapping_item.subsys is not None:
-    #             self.scene.addItem(bus_to_mapping_item)
-    #             bus_to_mapping_item.setPos(QPointF(x0, y0))
-    #             # save nodes in diagram
-    #             self.diagram.add_node(
-    #                 name=name,
-    #                 x=x0,
-    #                 y=y0,
-    #                 tpe=tpe.name,
-    #                 device_uid=bus_to_mapping_item.subsys.uid,
-    #             )
-    #         self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Pt: bus_to_mapping_blk.in_vars[0]})
-    #         self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Qt: bus_to_mapping_blk.in_vars[1]})
-    #
-    #     elif isinstance(self.api_object, InjectionParent):
-    #
-    #         P = self.var_factory.add_var('net_conn_P', VarPowerFlowRefferenceType.P, True)
-    #         Q = self.var_factory.add_var('net_conn_Q', VarPowerFlowRefferenceType.Q, True)
-    #
-    #         self.main_block.in_vars.append(P)
-    #         self.main_block.in_vars.append(Q)
-    #
-    #         self.main_block.external_mapping.update({VarPowerFlowRefferenceType.P: P})
-    #         self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Q: Q})
-    #
-    #
-    #     # we will use this to build the blocks
-    #     elif isinstance(self.api_object, InjectionParent):
-    #         x0, y0 = 0, 0
-    #         name = "mapping Bus"
-    #
-    #         bus_mapping_item = BlockItem(var_factory=self.var_factory, name=name)
-    #         P = self.var_factory.add_var('net_conn_P', VarPowerFlowRefferenceType.P, True)
-    #         Q = self.var_factory.add_var('net_conn_Q', VarPowerFlowRefferenceType.Q, True)
-    #
-    #         self.main_block.external_mapping.update({VarPowerFlowRefferenceType.P: P})
-    #         self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Q: Q})
-    #
-    #         bus_mapping_blk = Block(
-    #             in_vars=[P, Q],
-    #             name=name
-    #         )
-    #
-    #         self.main_block.add(bus_mapping_blk)
-    #
-    #         bus_mapping_item.set_subsystem(bus_mapping_blk)
-    #         bus_mapping_item.build_item()
-    #
-    #         if bus_mapping_item.subsys is not None:
-    #             self.scene.addItem(bus_mapping_item)
-    #             bus_mapping_item.setPos(x0, y0)
-    #             # save nodes in diagram
-    #             self.diagram.add_node(
-    #                 name=name,
-    #                 x=x0,
-    #                 y=y0,
-    #                 tpe=tpe.name,
-    #                 device_uid=bus_mapping_item.subsys.uid,
-    #             )
-    #         self.main_block.external_mapping.update({VarPowerFlowRefferenceType.P: bus_mapping_blk.in_vars[0]})
-    #         self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Q: bus_mapping_blk.in_vars[1]})
-    #
-    #     else:
-    #         pass
 
     def _materialize_connection_specs(self, specs: List[ConnectionVarSpec]) -> None:
         """
@@ -6852,17 +6897,20 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         if row_data is not None and self.equations_table_model.block is not None:
             if isinstance(row_data.value, Expr):
+                old_expr = row_data.value
                 expression_text = symbolic_to_string(row_data.value)
-                symbol_namespace = build_block_symbol_namespace(self.equations_table_model.block)
+                self.equations_table_model.symbol_namespace = build_block_symbol_namespace(
+                    self.equations_table_model.block)
                 dialog = ExpressionTextEditorDialog(
                     expression_text=expression_text,
-                    symbol_namespace=symbol_namespace,
+                    symbol_namespace=self.equations_table_model.symbol_namespace,
                     parent=self
                 )
 
                 if dialog.exec() == QDialog.DialogCode.Accepted:
                     try:
-                        parsed_expression = string_to_symbolic(dialog.get_expression_text(), symbol_namespace)
+                        parsed_expression = string_to_symbolic(dialog.get_expression_text(),
+                                                               self.equations_table_model.symbol_namespace)
 
                         if isinstance(parsed_expression, Comparison):
                             expression_value = parsed_expression.to_expression()

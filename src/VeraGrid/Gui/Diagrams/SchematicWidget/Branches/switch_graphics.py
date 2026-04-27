@@ -70,12 +70,12 @@ class SwitchGraphicItem(LineGraphicTemplateItem):
             add_menu_entry(menu=menu,
                            text="RMS Editor",
                            function_ptr=self.edit_dynamic_rms,
-                           icon_path=":/Icons/icons/dyn_gray.png")
+                           icon_path=":/Icons/icons/dyn_edit.png")
 
             add_menu_entry(menu=menu,
                            text="EMT Editor",
                            function_ptr=self.edit_dynamic_emt,
-                           icon_path=":/Icons/icons/dyn_gray.png")
+                           icon_path=":/Icons/icons/dyn_emt_edit.png")
 
             rabf = menu.addAction('Change bus')
             move_bus_icon = QIcon()

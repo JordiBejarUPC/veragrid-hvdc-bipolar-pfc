@@ -307,45 +307,15 @@ def get_emt_ideal_converter(
     # This mapping tells EmtProblemDae how to connect the converter
     # to the buses based on the device configuration
     converter_block.external_mapping = {
-        VarPowerFlowRefferenceType.v_N: None,
         VarPowerFlowRefferenceType.v_A: v_A,
         VarPowerFlowRefferenceType.v_B: v_B,
         VarPowerFlowRefferenceType.v_C: v_C,
 
         VarPowerFlowRefferenceType.Vdc: v_dc,
 
-        VarPowerFlowRefferenceType.i_N: None,
         VarPowerFlowRefferenceType.i_A: i_A,
         VarPowerFlowRefferenceType.i_B: i_B,
         VarPowerFlowRefferenceType.i_C: i_C,
-
-        VarPowerFlowRefferenceType.if_N: None,
-        VarPowerFlowRefferenceType.if_A: None,
-        VarPowerFlowRefferenceType.if_B: None,
-        VarPowerFlowRefferenceType.if_C: None,
-
-        VarPowerFlowRefferenceType.it_N: None,
-        VarPowerFlowRefferenceType.it_A: None,
-        VarPowerFlowRefferenceType.it_B: None,
-        VarPowerFlowRefferenceType.it_C: None,
-
-        VarPowerFlowRefferenceType.Sf_A: None,
-        VarPowerFlowRefferenceType.Sf_B: None,
-        VarPowerFlowRefferenceType.Sf_C: None,
-
-        VarPowerFlowRefferenceType.St_A: None,
-        VarPowerFlowRefferenceType.St_B: None,
-        VarPowerFlowRefferenceType.St_C: None,
-
-        VarPowerFlowRefferenceType.d_v_N_f: None,
-        VarPowerFlowRefferenceType.d_v_A_f: None,
-        VarPowerFlowRefferenceType.d_v_B_f: None,
-        VarPowerFlowRefferenceType.d_v_C_f: None,
-
-        VarPowerFlowRefferenceType.d_v_N_t: None,
-        VarPowerFlowRefferenceType.d_v_A_t: None,
-        VarPowerFlowRefferenceType.d_v_B_t: None,
-        VarPowerFlowRefferenceType.d_v_C_t: None,
 
         # For KCL at DC bus (bus_from)
         VarPowerFlowRefferenceType.Idc: i_dc,

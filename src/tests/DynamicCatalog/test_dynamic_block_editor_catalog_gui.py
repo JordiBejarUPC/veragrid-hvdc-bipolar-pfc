@@ -20,6 +20,7 @@ from VeraGridEngine.Templates.BasicBlockCatalog import get_basic_block_catalog_d
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import BlockType
 from VeraGridEngine.enumerations import DynamicSimulationMode
+from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.enumerations import ShuntConnectionType
 from VeraGridEngine.enumerations import WindingType
 
@@ -31,12 +32,13 @@ class _ApiStub:
     Minimal API object accepted by the dynamic block editor tests.
     """
 
-    __slots__ = ("name", "rms_template", "emt_template")
+    __slots__ = ("name", "rms_template", "emt_template", "device_type")
 
     def __init__(self) -> None:
         self.name = "Stub"
         self.rms_template = None
         self.emt_template = None
+        self.device_type = DeviceType.NoDevice
 
 
 def _get_app() -> QtWidgets.QApplication:

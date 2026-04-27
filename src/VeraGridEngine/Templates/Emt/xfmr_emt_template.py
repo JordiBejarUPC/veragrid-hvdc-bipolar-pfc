@@ -106,7 +106,7 @@ def get_xfmr_emt_template(
     * transformer_open_circuit_loss_kw
     * transformer_short_circuit_voltage_pct
     * transformer_short_circuit_loss_kw
-    * transformer_tap_ratio
+    * transformer_tap_module
     * transformer_from_connection_**
     * transformer_to_connection_**
 
@@ -200,7 +200,7 @@ def get_xfmr_emt_template(
     templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.transformer_open_circuit_loss_kw] = xfmr_oc_loss_kw
     templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.transformer_short_circuit_voltage_pct] = xfmr_sc_voltage_pct
     templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.transformer_short_circuit_loss_kw] = xfmr_sc_loss_kw
-    templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.transformer_tap_ratio] = xfmr_tap_module
+    templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.transformer_tap_module] = xfmr_tap_module
 
     # ------------------------------------------------------------------
     # Mapped winding-connection matrices.
@@ -705,20 +705,6 @@ def get_xfmr_emt_template(
         vt_keys["A"]: None,
         vt_keys["B"]: None,
         vt_keys["C"]: None,
-        Sf_keys["A"]: None,
-        Sf_keys["B"]: None,
-        Sf_keys["C"]: None,
-        St_keys["A"]: None,
-        St_keys["B"]: None,
-        St_keys["C"]: None,
-        d_vf_keys["N"]: None,
-        d_vf_keys["A"]: None,
-        d_vf_keys["B"]: None,
-        d_vf_keys["C"]: None,
-        d_vt_keys["N"]: None,
-        d_vt_keys["A"]: None,
-        d_vt_keys["B"]: None,
-        d_vt_keys["C"]: None,
     }
 
     mapping[vf_keys["N"]] = v_f_n

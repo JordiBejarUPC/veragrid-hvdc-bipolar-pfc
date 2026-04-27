@@ -654,143 +654,195 @@ def power_flow_post_process_linear(Sbus: CxVec, V: CxVec,
 
 @nb.njit(cache=True)
 def split_bus_quantity(
-    Qbus: Vec,
-    gen_bus_idx: IntVec,
-    Qmin_gen: Vec,
-    Qmax_gen: Vec,
-    gen_status: BoolVec,
-    is_controlling: BoolVec,
-    Q0_gen: Vec,
-    atol: float = 1e-12,
-) -> Vec:
+        Qbus: Vec,
+        gen_bus_idx: IntVec,
+        Qmin_gen: Vec,
+        Qmax_gen: Vec,
+        gen_status: BoolVec,
+        is_controlling: BoolVec,
+        Q0_gen: Vec,
+        batt_bus_idx: IntVec,
+        Qmin_batt: Vec,
+        Qmax_batt: Vec,
+        batt_status: BoolVec,
+        batt_is_controlling: BoolVec,
+        Q0_batt: Vec,
+        atol: float = 1e-12,
+) -> Tuple[Vec, Vec]:
     """
-    Split a per-bus reactive power quantity among online generators.
+    Split a per-bus reactive power quantity among online generators and batteries.
 
-    The function separates generators into two groups:
+    The function separates generator-like elements into two families:
 
-    1. Online non-controlling generators.
-       These are assigned their initial reactive power set point ``Q0_gen``.
-       Their contribution is subtracted from the bus reactive power that must
-       be shared.
+    1. Generators.
+    2. Batteries.
 
-    2. Online controlling generators.
-       These share the remaining bus reactive power according to their
-       available reactive capability between ``Qmin_gen`` and ``Qmax_gen``.
+    Both families are treated as reactive power providers connected to buses.
+    The bus-level reactive power ``Qbus`` is split among all online controlling
+    elements at each bus, regardless of whether the element is a generator or a
+    battery.
+
+    Online non-controlling generators and online non-controlling batteries are
+    assigned their initial reactive power set point ``Q0``. Their contribution
+    is subtracted from the bus reactive power before the controlling elements
+    share the remaining value.
 
     For each bus ``i``, the fixed non-controlling contribution is:
 
     .. math::
 
         Qfixed_i =
-        \\sum_{k \\in G_i,\\ online,\\ not\\ controlling} Q0_k
+        \\sum_{k \\in G_i,\\ online,\\ not\\ controlling} Q0^{gen}_k
+        +
+        \\sum_{m \\in B_i,\\ online,\\ not\\ controlling} Q0^{batt}_m
 
-    The reactive power left for controlling generators is:
+    The reactive power left for controlling elements is:
 
     .. math::
 
         Qctrl_i = Qbus_i - Qfixed_i
 
-    The controlling generators are then placed at the same normalized position
-    between their own reactive limits:
+    The aggregate controlling limits include both generators and batteries:
 
     .. math::
 
-        Qg_k = Qmin_k + r_i (Qmax_k - Qmin_k)
+        Qctrl^{min}_i =
+        \\sum_{k \\in G_i,\\ online,\\ controlling} Qmin^{gen}_k
+        +
+        \\sum_{m \\in B_i,\\ online,\\ controlling} Qmin^{batt}_m
 
-    where:
+    .. math::
+
+        Qctrl^{max}_i =
+        \\sum_{k \\in G_i,\\ online,\\ controlling} Qmax^{gen}_k
+        +
+        \\sum_{m \\in B_i,\\ online,\\ controlling} Qmax^{batt}_m
+
+    The normalized sharing factor at each bus is:
 
     .. math::
 
         r_i =
         \\frac{
-            Qctrl_i - \\sum Qmin_k
+            Qctrl_i - Qctrl^{min}_i
         }{
-            \\sum Qmax_k - \\sum Qmin_k
+            Qctrl^{max}_i - Qctrl^{min}_i
         }
 
-    The requested controlling reactive power is clipped to the aggregate
-    controlling capability before ``r_i`` is computed. Therefore, online
-    controlling generators remain inside their individual limits.
+    after clipping ``Qctrl_i`` to the aggregate controlling capability.
 
-    Offline generators receive zero reactive power.
+    Final assignments are:
+
+    * Offline generators receive zero.
+    * Offline batteries receive zero.
+    * Online non-controlling generators receive ``Q0_gen``.
+    * Online non-controlling batteries receive ``Q0_batt``.
+    * Online controlling generators share the residual bus Q using their own
+      ``Qmin_gen`` and ``Qmax_gen``.
+    * Online controlling batteries share the residual bus Q using their own
+      ``Qmin_batt`` and ``Qmax_batt``.
+
+    This function assumes that generators and batteries use the same reactive
+    power sign convention as ``Qbus``.
 
     This function assumes that all arrays have compatible sizes and that
-    ``gen_bus_idx`` contains valid zero-based bus indices. Input validation
-    should be done by the caller or by a Python wrapper outside this Numba
-    function.
+    ``gen_bus_idx`` and ``batt_bus_idx`` contain valid zero-based bus indices.
+    Input validation should be done by the caller or by a Python wrapper outside
+    this Numba function.
 
     :param Qbus:
-        Total reactive generator power requested at each bus.
-    :type Qbus: numpy.ndarray
+        Total reactive generator-like power requested at each bus.
+    :type Qbus: Vec
     :param gen_bus_idx:
         Bus index of each generator.
-    :type gen_bus_idx: numpy.ndarray
+    :type gen_bus_idx: IntVec
     :param Qmin_gen:
         Minimum reactive power limit of each generator.
-    :type Qmin_gen: numpy.ndarray
+    :type Qmin_gen: Vec
     :param Qmax_gen:
         Maximum reactive power limit of each generator.
-    :type Qmax_gen: numpy.ndarray
+    :type Qmax_gen: Vec
     :param gen_status:
-        Generator status vector. Nonzero means online, zero means offline.
-    :type gen_status: numpy.ndarray
+        Generator status vector. ``True`` means online.
+    :type gen_status: BoolVec
     :param is_controlling:
-        Generator control flag. Nonzero means the generator participates in
-        sharing the remaining bus reactive power.
-    :type is_controlling: numpy.ndarray
+        Generator control flag. ``True`` means the generator participates in
+        reactive power sharing.
+    :type is_controlling: BoolVec
     :param Q0_gen:
-        Initial or fixed reactive power set point of each generator. This value
-        is used directly for online non-controlling generators.
-    :type Q0_gen: numpy.ndarray
+        Initial or fixed reactive power set point of each generator.
+    :type Q0_gen: Vec
+    :param batt_bus_idx:
+        Bus index of each battery.
+    :type batt_bus_idx: IntVec
+    :param Qmin_batt:
+        Minimum reactive power limit of each battery.
+    :type Qmin_batt: Vec
+    :param Qmax_batt:
+        Maximum reactive power limit of each battery.
+    :type Qmax_batt: Vec
+    :param batt_status:
+        Battery status vector. ``True`` means online.
+    :type batt_status: BoolVec
+    :param batt_is_controlling:
+        Battery control flag. ``True`` means the battery participates in
+        reactive power sharing.
+    :type batt_is_controlling: BoolVec
+    :param Q0_batt:
+        Initial or fixed reactive power set point of each battery.
+    :type Q0_batt: Vec
     :param atol:
         Tolerance used to detect zero aggregate reactive range.
     :type atol: float
     :return:
-        Reactive power assigned to each generator.
-    :rtype: numpy.ndarray
+        Reactive power assigned to generators and batteries.
+    :rtype: Tuple[Vec, Vec]
     """
 
-    # Sizes are known from the input arrays, so the function allocates all
-    # required memory before starting the algorithm.
+    # Sizes are known from the input arrays, so all memory required by the
+    # algorithm is allocated before doing any numerical work.
     n_bus: int = len(Qbus)
     n_gen: int = len(gen_bus_idx)
+    n_batt: int = len(batt_bus_idx)
 
-    # Final generator reactive power. Offline generators remain zero.
-    q_gen: np.ndarray = Q0_gen.copy()
+    # Final reactive power of generators and batteries.
+    # These start from Q0 because non-controlling online elements preserve Q0.
+    # Controlling and offline elements are overwritten in the final passes.
+    q_gen: Vec = Q0_gen.copy()
+    q_batt: Vec = Q0_batt.copy()
 
-    # Fixed non-controlling generator contribution per bus.
-    # This is subtracted from Qbus before the controlling generators share the
-    # remaining reactive power.
-    qfixed_per_bus: np.ndarray = np.zeros(n_bus, dtype=np.float64)
+    # Fixed non-controlling contribution per bus.
+    # This includes both generators and batteries that are online but not
+    # controlling.
+    qfixed_per_bus: Vec = np.zeros(n_bus, dtype=np.float64)
 
-    # Aggregate reactive limits of online controlling generators only.
-    qmin_control_per_bus: np.ndarray = np.zeros(n_bus, dtype=np.float64)
-    qmax_control_per_bus: np.ndarray = np.zeros(n_bus, dtype=np.float64)
+    # Aggregate reactive limits of online controlling elements.
+    # These include both controlling generators and controlling batteries.
+    qmin_control_per_bus: Vec = np.zeros(n_bus, dtype=np.float64)
+    qmax_control_per_bus: Vec = np.zeros(n_bus, dtype=np.float64)
 
-    # Number of online controlling generators per bus.
-    # This distinguishes buses with no participating generators from buses with
-    # participating generators that have zero reactive range.
+    # Number of online controlling elements per bus.
+    # This counts both controlling generators and controlling batteries.
     control_count_per_bus: np.ndarray = np.zeros(n_bus, dtype=np.int64)
 
-    # Normalized sharing factor per bus for controlling generators.
-    qshare_per_bus: np.ndarray = np.zeros(n_bus, dtype=np.float64)
+    # Normalized bus sharing factor for online controlling elements.
+    qshare_per_bus: Vec = np.zeros(n_bus, dtype=np.float64)
 
     # -------------------------------------------------------------------------
     # First generator pass.
     # -------------------------------------------------------------------------
-    # Build two bus-level quantities:
+    # Build part of the bus-level aggregate quantities from generators:
     #
-    # 1. The fixed Q contribution from online non-controlling generators.
-    # 2. The aggregate Qmin/Qmax capability of online controlling generators.
-    #
-    # This pass is necessary because the controlling generators must only share
-    # the residual bus reactive power after fixed generators have been assigned.
+    # 1. Online non-controlling generators add Q0_gen to qfixed_per_bus.
+    # 2. Online controlling generators add Qmin_gen and Qmax_gen to the
+    #    aggregate controlling capability.
+    # 3. Offline generators add nothing.
     # -------------------------------------------------------------------------
     for gen_idx in range(n_gen):
         bus_idx = gen_bus_idx[gen_idx]
 
-        if gen_status[gen_idx] != 0:
-            if is_controlling[gen_idx] != 0:
+        if gen_status[gen_idx]:
+            if is_controlling[gen_idx]:
                 qmin_control_per_bus[bus_idx] += Qmin_gen[gen_idx]
                 qmax_control_per_bus[bus_idx] += Qmax_gen[gen_idx]
                 control_count_per_bus[bus_idx] += 1
@@ -807,28 +859,55 @@ def split_bus_quantity(
             control_count_per_bus[bus_idx] += 0
 
     # -------------------------------------------------------------------------
+    # First battery pass.
+    # -------------------------------------------------------------------------
+    # Add the battery contribution to the same bus-level aggregate quantities.
+    #
+    # This is what makes generators and batteries share the same residual
+    # reactive power pool at each bus.
+    # -------------------------------------------------------------------------
+    for batt_idx in range(n_batt):
+        bus_idx = batt_bus_idx[batt_idx]
+
+        if batt_status[batt_idx]:
+            if batt_is_controlling[batt_idx]:
+                qmin_control_per_bus[bus_idx] += Qmin_batt[batt_idx]
+                qmax_control_per_bus[bus_idx] += Qmax_batt[batt_idx]
+                control_count_per_bus[bus_idx] += 1
+                qfixed_per_bus[bus_idx] += 0.0
+            else:
+                qfixed_per_bus[bus_idx] += Q0_batt[batt_idx]
+                qmin_control_per_bus[bus_idx] += 0.0
+                qmax_control_per_bus[bus_idx] += 0.0
+                control_count_per_bus[bus_idx] += 0
+        else:
+            qfixed_per_bus[bus_idx] += 0.0
+            qmin_control_per_bus[bus_idx] += 0.0
+            qmax_control_per_bus[bus_idx] += 0.0
+            control_count_per_bus[bus_idx] += 0
+
+    # -------------------------------------------------------------------------
     # Bus pass.
     # -------------------------------------------------------------------------
-    # For each bus, compute the residual Q to be shared by controlling
-    # generators:
+    # Compute one normalized sharing factor per bus.
     #
-    #   Qcontrol_required = Qbus - Qfixed
-    #
-    # Then compute the normalized sharing factor of the controlling generators.
+    # The same factor is later applied to both controlling generators and
+    # controlling batteries connected to the bus.
     # -------------------------------------------------------------------------
     for bus_idx in range(n_bus):
         qfixed_value = qfixed_per_bus[bus_idx]
+
         qmin_control_value = qmin_control_per_bus[bus_idx]
         qmax_control_value = qmax_control_per_bus[bus_idx]
         qrange_control_value = qmax_control_value - qmin_control_value
+
         qcontrol_required_value = Qbus[bus_idx] - qfixed_value
         control_count_value = control_count_per_bus[bus_idx]
 
         if control_count_value > 0:
-            # There is at least one online controlling generator at this bus.
             if qrange_control_value > atol:
-                # Clip the required controlling Q to the aggregate capability
-                # of the online controlling generators.
+                # Clip the residual controlling request to the combined
+                # controlling capability of generators and batteries.
                 if qcontrol_required_value < qmin_control_value:
                     qcontrol_limited_value = qmin_control_value
                 else:
@@ -837,12 +916,10 @@ def split_bus_quantity(
                     else:
                         qcontrol_limited_value = qcontrol_required_value
 
-                # Compute the normalized sharing position between aggregate
-                # controlling Qmin and Qmax.
+                # Compute the normalized bus loading factor.
                 qshare_value = (qcontrol_limited_value - qmin_control_value) / qrange_control_value
 
-                # Numerical safety. The clipping above should already keep this
-                # inside [0.0, 1.0], but the guard protects against roundoff.
+                # Numerical safety after clipping.
                 if qshare_value < 0.0:
                     qshare_per_bus[bus_idx] = 0.0
                 else:
@@ -851,22 +928,17 @@ def split_bus_quantity(
                     else:
                         qshare_per_bus[bus_idx] = qshare_value
             else:
-                # The controlling generators at this bus have no aggregate
-                # reactive range. They will be assigned Qmin in the final pass.
+                # There are controlling elements, but their aggregate reactive
+                # range is zero. They will be assigned their Qmin values.
                 qshare_per_bus[bus_idx] = 0.0
         else:
-            # There are no online controlling generators at this bus. Only the
-            # fixed non-controlling Q0 values can be assigned.
+            # There are no online controlling elements at this bus.
             qshare_per_bus[bus_idx] = 0.0
 
     # -------------------------------------------------------------------------
     # Second generator pass.
     # -------------------------------------------------------------------------
-    # Assign final generator reactive powers:
-    #
-    # - Offline generators receive zero.
-    # - Online non-controlling generators receive Q0_gen.
-    # - Online controlling generators share the residual bus Q.
+    # Assign final generator reactive power.
     # -------------------------------------------------------------------------
     for gen_idx in range(n_gen):
         bus_idx = gen_bus_idx[gen_idx]
@@ -877,11 +949,32 @@ def split_bus_quantity(
                 qmax_gen_value = Qmax_gen[gen_idx]
                 qrange_gen_value = qmax_gen_value - qmin_gen_value
 
-                q_gen[gen_idx] =  qmin_gen_value  + qshare_per_bus[bus_idx] * qrange_gen_value
+                q_gen[gen_idx] = qmin_gen_value + qshare_per_bus[bus_idx] * qrange_gen_value
 
             else:
                 q_gen[gen_idx] = Q0_gen[gen_idx]
         else:
             q_gen[gen_idx] = 0.0
 
-    return q_gen
+    # -------------------------------------------------------------------------
+    # Second battery pass.
+    # -------------------------------------------------------------------------
+    # Assign final battery reactive power using the same bus sharing factors that
+    # were used for generators.
+    # -------------------------------------------------------------------------
+    for batt_idx in range(n_batt):
+        bus_idx = batt_bus_idx[batt_idx]
+
+        if batt_status[batt_idx]:
+            if batt_is_controlling[batt_idx]:
+                qmin_batt_value = Qmin_batt[batt_idx]
+                qmax_batt_value = Qmax_batt[batt_idx]
+                qrange_batt_value = qmax_batt_value - qmin_batt_value
+
+                q_batt[batt_idx] = qmin_batt_value + qshare_per_bus[bus_idx] * qrange_batt_value
+            else:
+                q_batt[batt_idx] = Q0_batt[batt_idx]
+        else:
+            q_batt[batt_idx] = 0.0
+
+    return q_gen, q_batt

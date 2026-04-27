@@ -15,7 +15,7 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template impor
 from VeraGrid.Gui.gui_functions import add_menu_entry
 from VeraGrid.Gui.messages import yes_no_question
 from VeraGrid.Gui.Diagrams.generic_graphics import ACTIVE, DEACTIVATED, OTHER
-from VeraGrid.Gui.Diagrams.Editors.line_editor import LineEditor
+from VeraGrid.Gui.DeviceEditors.LineEditor.line_editor import LineEditor
 
 from VeraGridEngine.Devices.types import BRANCH_TYPES, ALL_DEV_TYPES
 from VeraGridEngine.enumerations import DeviceType
