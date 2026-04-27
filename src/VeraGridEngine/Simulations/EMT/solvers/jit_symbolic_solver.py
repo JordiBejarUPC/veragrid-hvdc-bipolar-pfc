@@ -598,7 +598,7 @@ class JitSymbolicSolver:
             jacobian_builds=0.0,
             total_s=0.0,
         )
-        self._last_runtime_stats: Dict[str, float] = dict()
+        self._last_runtime_stats: Dict[str, Any] = dict()
         self._last_sim_loop_time: float = 0.0
 
     # ==============================================================================
@@ -985,6 +985,9 @@ class JitSymbolicSolver:
         total_newton_iterations: int = 0
         jacobian_evaluation_count: int = 0
         aligned_substep_count: int = 0
+        failed_substep_count: int = 0
+        first_failed_time_s: float = float("nan")
+        failed_substep_times_s: list[float] = list()
 
         for i in range(self.steps):
 
@@ -1185,6 +1188,12 @@ class JitSymbolicSolver:
 
                 if not substep_converged:
                     converged = False
+                    failed_substep_count += 1
+                    failed_substep_times_s.append(float(t_curr))
+                    if np.isnan(first_failed_time_s):
+                        first_failed_time_s = float(t_curr)
+                    else:
+                        pass
                     if i == 0 and is_first_local_step:
                         well_initialized = False
 
@@ -1235,6 +1244,9 @@ class JitSymbolicSolver:
             jacobian_evaluations=float(jacobian_evaluation_count),
             aligned_substeps=float(aligned_substep_count),
             macro_steps=float(self.steps),
+            failed_substeps=float(failed_substep_count),
+            first_failed_time_s=float(first_failed_time_s),
+            failed_substep_times_s=list(failed_substep_times_s),
         )
 
         return self.t, self.y, self.dy, well_initialized, converged
@@ -1248,12 +1260,12 @@ class JitSymbolicSolver:
         """
         return dict(self._backend_build_stats)
 
-    def get_last_runtime_stats(self) -> Dict[str, float]:
+    def get_last_runtime_stats(self) -> Dict[str, Any]:
         """
         Return runtime statistics collected during the latest simulation.
 
         :return: Runtime statistics.
-        :rtype: Dict[str, float]
+        :rtype: Dict[str, Any]
         """
         return dict(self._last_runtime_stats)
 

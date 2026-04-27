@@ -3058,19 +3058,25 @@ def assign_line_static_api_mapping(
         )
 
         if matrices_are_valid:
-            determinant_value: float = float(np.linalg.det(l_full))
+            linv_full: np.ndarray
 
-            if abs(determinant_value) <= 1.0e-20:
+            try:
+                # The physically meaningful criterion is invertibility, not the
+                # absolute determinant magnitude. Small but diagonal inductance
+                # matrices are valid after per-unit scaling and should not be
+                # rejected only because their determinant is numerically tiny.
+                linv_full = np.linalg.inv(l_full)
+            except np.linalg.LinAlgError:
+                determinant_value: float = float(np.linalg.det(l_full))
                 add_static_mapping_warning(
                     logger=logger,
                     device_name=device_name,
                     message="Line static mapping skipped because inductance matrix is singular.",
                     value=str(determinant_value),
-                    expected_value="non-zero determinant",
+                    expected_value="invertible inductance matrix",
                     device_property="line_inductance_matrix",
                 )
             else:
-                linv_full: np.ndarray = np.linalg.inv(l_full)
                 r_keys: List[List[ParamPowerFlowRefferenceType]] = get_line_r_keys()
                 linv_keys: List[List[ParamPowerFlowRefferenceType]] = get_line_linv_keys()
                 c_keys: List[List[ParamPowerFlowRefferenceType]] = get_line_c_keys()

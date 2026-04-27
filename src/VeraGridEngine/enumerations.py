@@ -2741,6 +2741,32 @@ class DynamicIntegrationMethod(Enum):
         return list(enum_item.value for enum_item in cls)
 
 
+class DynamicEventTransitionType(Enum):
+    """
+    Transition profile used by one dynamic runtime event.
+    """
+
+    Step = "step"
+    Ramp = "ramp"
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        try:
+            return DynamicEventTransitionType[s]
+        except KeyError:
+            return s
+
+    @classmethod
+    def list(cls):
+        return list(enum_item.value for enum_item in cls)
+
+
 class EmtSolverTypes(Enum):
     """
     Jacobian construction backends for implicit solvers.
@@ -3737,6 +3763,11 @@ class BlockType(Enum):
     EXCITER_EMT = "EXCITER_EMT"
     EMT_PI_LINE = "EMT_PI_LINE"
     EMT_BERGERON_LINE = "EMT_BERGERON_LINE"
+    SWITCH_EMT = "SWITCH_EMT"
+    GROUND_EMT = "GROUND_EMT"
+    GROUNDING_LINK_EMT = "GROUNDING_LINK_EMT"
+    NONLINEAR_RESISTOR_EMT = "NONLINEAR_RESISTOR_EMT"
+    RLC_COMBO_EMT = "RLC_COMBO_EMT"
     R_LOAD_EMT = "R_LOAD_EMT"
     L_LOAD_EMT = "L_LOAD_EMT"
     C_LOAD_EMT = "C_LOAD_EMT"

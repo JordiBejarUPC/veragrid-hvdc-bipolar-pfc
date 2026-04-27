@@ -63,6 +63,10 @@ from dynamics_emt.support.switched_converter_handover_case import (
 )
 
 
+LONG_ANALYSIS_FILTER_R_EQ_PU: float = 0.04
+LONG_ANALYSIS_FILTER_L_EQ_PU: float = 1.5
+
+
 def build_long_analysis_emt_options() -> EmtOptions:
     """
     Build the EMT options used by the long-horizon switched-converter analysis.
@@ -88,6 +92,8 @@ def main() -> SwitchedConverterHandoverTrace:
     """
     trace: SwitchedConverterHandoverTrace = simulate_switched_converter_handover(
         emt_options=build_long_analysis_emt_options(),
+        r_eq_pu=LONG_ANALYSIS_FILTER_R_EQ_PU,
+        l_eq_pu=LONG_ANALYSIS_FILTER_L_EQ_PU,
     )
     plot_path: Path = get_plot_output_path(file_name="switched_converter_handover_long_analysis.png")
 
