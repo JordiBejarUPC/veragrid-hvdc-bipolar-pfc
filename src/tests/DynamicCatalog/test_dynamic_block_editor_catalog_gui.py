@@ -21,6 +21,7 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import BlockType
 from VeraGridEngine.enumerations import DynamicSimulationMode
 from VeraGridEngine.enumerations import ShuntConnectionType
+from VeraGridEngine.enumerations import WindingType
 
 pytestmark = pytest.mark.filterwarnings("error")
 
@@ -181,6 +182,18 @@ def _port_name_prefixes(block_item) -> list[str]:
             prefixes.append(full_name)
 
     return prefixes
+
+
+def _port_full_names(block_item) -> list[str]:
+    """
+    Extract full input port names from one block item.
+    """
+
+    names: list[str] = list()
+    for port in block_item.inputs:
+        assert port.base_var is not None
+        names.append(port.base_var.name)
+    return names
 
 
 def _find_prefixed_event_constant(block: Block, prefix: str) -> float:
@@ -828,6 +841,138 @@ def test_zip_load_emt_block_supports_delta_configuration(monkeypatch) -> None:
     editor.close()
 
 
+def test_transformer_emt_block_supports_topology_modal_and_modify_template(monkeypatch) -> None:
+    circuit = gce.MultiCircuit(Sbase=25.0, fbase=60.0)
+    bus0 = gce.Bus(name="BusTf0", Vnom=13.8)
+    bus1 = gce.Bus(name="BusTf1", Vnom=13.8)
+    transformer = gce.Transformer2W(name="TrafoGui", bus_from=bus0, bus_to=bus1)
+    editor = _build_editor(DynamicSimulationMode.EMT, api_object=transformer, circuit=circuit)
+
+    class _CreateDialogStub:
+        def __init__(self, title: str, parent=None, initial_config=None) -> None:
+            _unused = (parent, initial_config)
+            assert title == "Configure EMT Transformer Topology"
+
+        def exec(self) -> int:
+            return int(QtWidgets.QDialog.DialogCode.Accepted)
+
+        def get_configuration(self) -> dict[str, object]:
+            return dict({
+                "conn_f": WindingType.Delta,
+                "conn_t": WindingType.GroundedStar,
+            })
+
+    class _ModifyDialogStub:
+        def __init__(self, title: str, parent=None, initial_config=None) -> None:
+            _unused = (parent, initial_config)
+            assert title == "Configure EMT Transformer Topology"
+
+        def exec(self) -> int:
+            return int(QtWidgets.QDialog.DialogCode.Accepted)
+
+        def get_configuration(self) -> dict[str, object]:
+            return dict({
+                "conn_f": WindingType.GroundedStar,
+                "conn_t": WindingType.GroundedStar,
+            })
+
+    monkeypatch.setattr(dynamic_block_editor_module, "TransformerTopologyEmtDialog", _CreateDialogStub)
+    block_item = editor.create_library_payload_item(BlockType.TRAFO_EMT, 10.0, 20.0)
+    assert block_item is not None
+
+    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    assert modal_kind == "transformer_topology_emt"
+    assert modal_config is not None
+    assert modal_config["conn_f"] == WindingType.Delta
+    assert modal_config["conn_t"] == WindingType.GroundedStar
+    assert _port_full_names(block_item)[:3] == ["vf_A_transformer_emt_template", "vf_B_transformer_emt_template", "vf_C_transformer_emt_template"]
+    assert _port_full_names(block_item)[3:] == ["vt_N_transformer_emt_template", "vt_A_transformer_emt_template", "vt_B_transformer_emt_template", "vt_C_transformer_emt_template"]
+    assert transformer.conn_f == WindingType.Delta
+    assert transformer.conn_t == WindingType.GroundedStar
+
+    monkeypatch.setattr(dynamic_block_editor_module, "TransformerTopologyEmtDialog", _ModifyDialogStub)
+    editor.modify_scene_item_template(block_item)
+    updated_item = editor.get_scene_item_by_block_uid(block_item.subsys.uid)
+    assert updated_item is not None
+
+    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    assert modal_kind == "transformer_topology_emt"
+    assert modal_config is not None
+    assert modal_config["conn_f"] == WindingType.GroundedStar
+    assert modal_config["conn_t"] == WindingType.GroundedStar
+    assert _port_full_names(updated_item)[:4] == ["vf_N_transformer_emt_template", "vf_A_transformer_emt_template", "vf_B_transformer_emt_template", "vf_C_transformer_emt_template"]
+    assert _port_full_names(updated_item)[4:] == ["vt_N_transformer_emt_template", "vt_A_transformer_emt_template", "vt_B_transformer_emt_template", "vt_C_transformer_emt_template"]
+    assert transformer.conn_f == WindingType.GroundedStar
+    assert transformer.conn_t == WindingType.GroundedStar
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
+def test_xfmr_emt_block_supports_topology_modal_and_modify_template(monkeypatch) -> None:
+    circuit = gce.MultiCircuit(Sbase=25.0, fbase=60.0)
+    bus0 = gce.Bus(name="BusXf0", Vnom=13.8)
+    bus1 = gce.Bus(name="BusXf1", Vnom=13.8)
+    transformer = gce.Transformer2W(name="XfmrGui", bus_from=bus0, bus_to=bus1)
+    editor = _build_editor(DynamicSimulationMode.EMT, api_object=transformer, circuit=circuit)
+
+    class _CreateDialogStub:
+        def __init__(self, title: str, parent=None, initial_config=None) -> None:
+            _unused = (parent, initial_config)
+            assert title == "Configure EMT XFMR Transformer Topology"
+
+        def exec(self) -> int:
+            return int(QtWidgets.QDialog.DialogCode.Accepted)
+
+        def get_configuration(self) -> dict[str, object]:
+            return dict({
+                "conn_f": WindingType.Delta,
+                "conn_t": WindingType.GroundedStar,
+            })
+
+    class _ModifyDialogStub:
+        def __init__(self, title: str, parent=None, initial_config=None) -> None:
+            _unused = (parent, initial_config)
+            assert title == "Configure EMT XFMR Transformer Topology"
+
+        def exec(self) -> int:
+            return int(QtWidgets.QDialog.DialogCode.Accepted)
+
+        def get_configuration(self) -> dict[str, object]:
+            return dict({
+                "conn_f": WindingType.GroundedStar,
+                "conn_t": WindingType.GroundedStar,
+            })
+
+    monkeypatch.setattr(dynamic_block_editor_module, "TransformerTopologyEmtDialog", _CreateDialogStub)
+    block_item = editor.create_library_payload_item(BlockType.XFMR_TRANSFORMER, 10.0, 20.0)
+    assert block_item is not None
+
+    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    assert modal_kind == "transformer_topology_emt"
+    assert modal_config is not None
+    assert modal_config["conn_f"] == WindingType.Delta
+    assert modal_config["conn_t"] == WindingType.GroundedStar
+    assert _port_full_names(block_item)[:3] == ["vf_A_xfmr_emt_template", "vf_B_xfmr_emt_template", "vf_C_xfmr_emt_template"]
+    assert _port_full_names(block_item)[3:] == ["vt_N_xfmr_emt_template", "vt_A_xfmr_emt_template", "vt_B_xfmr_emt_template", "vt_C_xfmr_emt_template"]
+
+    monkeypatch.setattr(dynamic_block_editor_module, "TransformerTopologyEmtDialog", _ModifyDialogStub)
+    editor.modify_scene_item_template(block_item)
+    updated_item = editor.get_scene_item_by_block_uid(block_item.subsys.uid)
+    assert updated_item is not None
+
+    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    assert modal_kind == "transformer_topology_emt"
+    assert modal_config is not None
+    assert modal_config["conn_f"] == WindingType.GroundedStar
+    assert modal_config["conn_t"] == WindingType.GroundedStar
+    assert _port_full_names(updated_item)[:4] == ["vf_N_xfmr_emt_template", "vf_A_xfmr_emt_template", "vf_B_xfmr_emt_template", "vf_C_xfmr_emt_template"]
+    assert _port_full_names(updated_item)[4:] == ["vt_N_xfmr_emt_template", "vt_A_xfmr_emt_template", "vt_B_xfmr_emt_template", "vt_C_xfmr_emt_template"]
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
 def test_rlc_combo_emt_block_is_created_and_supports_modify_template(monkeypatch) -> None:
     circuit = gce.MultiCircuit(Sbase=25.0, fbase=60.0)
     bus = gce.Bus(name="BusRlc", Vnom=13.8)
@@ -1036,6 +1181,56 @@ def test_grounding_link_emt_block_is_created_and_supports_modify_template(monkey
     assert modal_config["include_l"] is False
     assert _find_prefixed_event_constant(block_item.subsys, "R_") == pytest.approx(40.0)
     assert _find_prefixed_event_constant(block_item.subsys, "C_") == pytest.approx(1.0 / (2.0 * math.pi * 50.0 * 150.0))
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
+def test_nonlinear_resistor_emt_block_is_created_and_supports_modify_template(monkeypatch) -> None:
+    editor = _build_editor(DynamicSimulationMode.EMT)
+
+    class _CreateDialogStub:
+        def __init__(self, block_label: str, initial_points=None, parent=None) -> None:
+            _unused = (initial_points, parent)
+            assert block_label == "Nonlinear resistor EMT V-I curve"
+
+        def exec(self) -> int:
+            return int(QtWidgets.QDialog.DialogCode.Accepted)
+
+        def get_points(self) -> tuple[list[float], list[float]]:
+            return [0.0, 1.0, 1.5], [0.0, 0.1, 1.0]
+
+    class _ModifyDialogStub:
+        def __init__(self, block_label: str, initial_points=None, parent=None) -> None:
+            _unused = (initial_points, parent)
+            assert block_label == "Nonlinear resistor EMT V-I curve"
+
+        def exec(self) -> int:
+            return int(QtWidgets.QDialog.DialogCode.Accepted)
+
+        def get_points(self) -> tuple[list[float], list[float]]:
+            return [0.0, 1.2, 1.8], [0.0, 0.2, 1.5]
+
+    monkeypatch.setattr(dynamic_block_editor_module, "LookupArrayLinearDialog", _CreateDialogStub)
+    block_item = editor.create_library_payload_item(BlockType.NONLINEAR_RESISTOR_EMT, 10.0, 20.0)
+    assert block_item is not None
+
+    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    assert modal_kind == "nonlinear_resistor_emt"
+    assert modal_config is not None
+    assert modal_config["voltage_points"] == [0.0, 1.0, 1.5]
+    assert modal_config["current_points"] == [0.0, 0.1, 1.0]
+    assert len(block_item.inputs) == 1
+    assert len(block_item.outputs) == 1
+
+    monkeypatch.setattr(dynamic_block_editor_module, "LookupArrayLinearDialog", _ModifyDialogStub)
+    editor.modify_scene_item_template(block_item)
+
+    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    assert modal_kind == "nonlinear_resistor_emt"
+    assert modal_config is not None
+    assert modal_config["voltage_points"] == [0.0, 1.2, 1.8]
+    assert modal_config["current_points"] == [0.0, 0.2, 1.5]
 
     editor.has_unapplied_changes = False
     editor.close()

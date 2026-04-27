@@ -27,7 +27,7 @@ from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
 from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType, \
-    DynamicSimulationMode, ShuntConnectionType
+    DynamicSimulationMode, ShuntConnectionType, WindingType
 from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms, get_bus_rms_algebraic_vars
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template, get_bus_emt_algebraic_vars
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
@@ -45,6 +45,7 @@ from VeraGridEngine.Templates.BasicBlockCatalog.lookup_array_runtime_templates i
 from VeraGridEngine.Templates.BasicBlockCatalog.lookup_array_runtime_templates import build_lookup_matrix_spline_runtime_template
 from VeraGridEngine.Templates.Emt.load_exponential_emt_template import get_exponential_load_emt
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_grounding_link_emt_template
+from VeraGridEngine.Templates.Emt.nonlinear_resistor_emt_template import get_nonlinear_resistor_emt_template
 from VeraGridEngine.Templates.Emt.switch_emt_template import get_switch_emt_template
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_rlc_combo_emt_template
 from VeraGridEngine.Templates.Emt.load_zip_emt_template import get_load_ZIP_emt_template
@@ -59,6 +60,7 @@ from VeraGrid.Gui.DynamicModelEditor.grounding_link_emt_dialog import GroundingL
 from VeraGrid.Gui.DynamicModelEditor.load_topology_emt_dialog import LoadTopologyEmtDialog
 from VeraGrid.Gui.DynamicModelEditor.rlc_combo_emt_dialog import RlcComboEmtDialog
 from VeraGrid.Gui.DynamicModelEditor.shunt_component_emt_dialog import ShuntComponentEmtDialog
+from VeraGrid.Gui.DynamicModelEditor.transformer_topology_emt_dialog import TransformerTopologyEmtDialog
 from VeraGrid.Gui.DynamicModelEditor.switch_emt_dialog import SwitchEmtDialog
 from VeraGrid.Gui.Icons.icon_associations import device_type_icons
 from VeraGridEngine.Utils.Symbolic.symbolic import (symbolic_to_string, string_to_symbolic,
@@ -3750,6 +3752,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 LibraryLeafSpec("Switch EMT", BlockType.SWITCH_EMT),
                 LibraryLeafSpec("Ground EMT", BlockType.GROUND_EMT),
                 LibraryLeafSpec("Grounding Link EMT", BlockType.GROUNDING_LINK_EMT),
+                LibraryLeafSpec("Nonlinear Resistor EMT", BlockType.NONLINEAR_RESISTOR_EMT),
                 LibraryLeafSpec("RLC Combo", BlockType.RLC_COMBO_EMT),
                 LibraryLeafSpec("R load", BlockType.R_LOAD_EMT),
                 LibraryLeafSpec("L load", BlockType.L_LOAD_EMT),
@@ -4641,6 +4644,121 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.mark_unapplied_changes()
         return block_item
 
+    def create_nonlinear_resistor_emt_block_item(self, x_pos: float, y_pos: float) -> BlockItem | None:
+        """
+        Create one modal-configured ATP-like EMT nonlinear resistor block.
+
+        :param x_pos: Drop x position.
+        :param y_pos: Drop y position.
+        :return: Created block item or None when the dialog is cancelled.
+        """
+        dialog = LookupArrayLinearDialog(
+            block_label="Nonlinear resistor EMT V-I curve",
+            initial_points=[(0.0, 0.0), (1.0, 0.1), (1.5, 1.0), (2.0, 10.0)],
+            parent=self,
+        )
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            voltage_points, current_points = dialog.get_points()
+        else:
+            return None
+
+        count: int = self.block_counters.get(BlockType.NONLINEAR_RESISTOR_EMT, 0) + 1
+        item_name: str = f"nonlinear_resistor_emt_{count}"
+        block_item: BlockItem = BlockItem(var_factory=self.var_factory, name=item_name)
+        block_model = get_nonlinear_resistor_emt_template(
+            vf=self.var_factory,
+            voltage_points=voltage_points,
+            current_points=current_points,
+            name=item_name,
+        ).block
+        set_modal_template_metadata(
+            block_model,
+            kind="nonlinear_resistor_emt",
+            config=dict({
+                "voltage_points": voltage_points,
+                "current_points": current_points,
+            }),
+        )
+
+        self.block_counters[BlockType.NONLINEAR_RESISTOR_EMT] = count
+        block_item.set_subsystem(block_model)
+        block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
+        block_item.build_item()
+        self.main_block.add(block_model)
+        self.scene.addItem(block_item)
+        block_item.setPos(QtCore.QPointF(x_pos, y_pos))
+        self.diagram.add_node(
+            name=item_name,
+            x=x_pos,
+            y=y_pos,
+            tpe=BlockType.NONLINEAR_RESISTOR_EMT.name,
+            device_uid=block_model.uid,
+        )
+        self.mark_unapplied_changes()
+        return block_item
+
+    def create_transformer_topology_emt_block_item(self,
+                                                   block_type: BlockType,
+                                                   x_pos: float,
+                                                   y_pos: float) -> BlockItem | None:
+        """
+        Create one modal-configured EMT transformer block.
+
+        :param block_type: ``TRAFO_EMT`` or ``XFMR_TRANSFORMER``.
+        :param x_pos: Drop x position.
+        :param y_pos: Drop y position.
+        :return: Created block item or None when the dialog is cancelled.
+        """
+        dialog = self._build_transformer_topology_emt_dialog(block_type=block_type)
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            topology_config = dialog.get_configuration()
+        else:
+            return None
+
+        count: int = self.block_counters.get(block_type, 0) + 1
+        item_name: str = f"{block_type.name}_{count}"
+        block_item: BlockItem = BlockItem(var_factory=self.var_factory, name=item_name)
+        block_model = self._build_transformer_topology_emt_block_model(
+            block_type=block_type,
+            item_name=item_name,
+            modal_config=topology_config,
+        )
+
+        if block_model is None:
+            return None
+        else:
+            pass
+
+        set_modal_template_metadata(block_model, kind="transformer_topology_emt", config=dict(topology_config, block_type=block_type.name))
+
+        if isinstance(self.api_object, BranchParent):
+            try:
+                self.api_object.conn_f = topology_config["conn_f"]
+                self.api_object.conn_t = topology_config["conn_t"]
+            except Exception:
+                pass
+        else:
+            pass
+
+        self.block_counters[block_type] = count
+        block_item.set_subsystem(block_model)
+        block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
+        block_item.build_item()
+        self.main_block.add(block_model)
+        self.scene.addItem(block_item)
+        block_item.setPos(QtCore.QPointF(x_pos, y_pos))
+        self.diagram.add_node(
+            name=item_name,
+            x=x_pos,
+            y=y_pos,
+            tpe=block_type.name,
+            device_uid=block_model.uid,
+        )
+        self.mark_unapplied_changes()
+        return block_item
+
     def _build_rlc_combo_emt_dialog(self,
                                     initial_config: Dict[str, Any] | None = None) -> RlcComboEmtDialog:
         """
@@ -4700,6 +4818,46 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             nominal_voltage_kv=nominal_voltage_kv,
             base_power_mva=base_power_mva,
             base_frequency_hz=base_frequency_hz,
+        )
+
+    @staticmethod
+    def _get_transformer_topology_dialog_title(block_type: BlockType) -> str:
+        """
+        Return the dialog title for one EMT transformer block.
+
+        :param block_type: ``TRAFO_EMT`` or ``XFMR_TRANSFORMER``.
+        :return: Window title.
+        """
+        if block_type == BlockType.TRAFO_EMT:
+            return "Configure EMT Transformer Topology"
+        elif block_type == BlockType.XFMR_TRANSFORMER:
+            return "Configure EMT XFMR Transformer Topology"
+        else:
+            raise ValueError(f"Unsupported EMT transformer block type '{block_type.name}'")
+
+    def _build_transformer_topology_emt_dialog(self,
+                                               block_type: BlockType,
+                                               initial_config: Dict[str, Any] | None = None) -> TransformerTopologyEmtDialog:
+        """
+        Build the modal dialog used by one EMT transformer block.
+
+        :param block_type: ``TRAFO_EMT`` or ``XFMR_TRANSFORMER``.
+        :param initial_config: Optional persisted modal configuration.
+        :return: Configured dialog instance.
+        """
+        resolved_config: Dict[str, Any]
+        if initial_config is not None:
+            resolved_config = dict(initial_config)
+        else:
+            resolved_config = dict({
+                "conn_f": getattr(self.api_object, "conn_f", WindingType.GroundedStar),
+                "conn_t": getattr(self.api_object, "conn_t", WindingType.GroundedStar),
+            })
+
+        return TransformerTopologyEmtDialog(
+            title=self._get_transformer_topology_dialog_title(block_type),
+            parent=self,
+            initial_config=resolved_config,
         )
 
     @staticmethod
@@ -5010,6 +5168,44 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         block_model.name = item_name
         return block_model
 
+    def _build_transformer_topology_emt_block_model(self,
+                                                    block_type: BlockType,
+                                                    item_name: str,
+                                                    modal_config: Dict[str, Any]) -> Block | None:
+        """
+        Build one EMT transformer block with explicit winding topology.
+
+        :param block_type: ``TRAFO_EMT`` or ``XFMR_TRANSFORMER``.
+        :param item_name: Symbolic block name.
+        :param modal_config: Modal configuration.
+        :return: Block model or ``None``.
+        """
+        conn_f = modal_config.get("conn_f", WindingType.GroundedStar)
+        conn_t = modal_config.get("conn_t", WindingType.GroundedStar)
+
+        if block_type == BlockType.TRAFO_EMT:
+            block_model = create_block_of_type(
+                var_factory=self.var_factory,
+                block_type=block_type,
+                item_name=item_name,
+                api_object=type("_TrafoApiConfig", (), {"conn_f": conn_f, "conn_t": conn_t})(),
+            )
+        elif block_type == BlockType.XFMR_TRANSFORMER:
+            block_model = create_block_of_type(
+                var_factory=self.var_factory,
+                block_type=block_type,
+                item_name=item_name,
+                api_object=type("_XfmrApiConfig", (), {"conn_f": conn_f, "conn_t": conn_t})(),
+            )
+        else:
+            raise ValueError(f"Unsupported EMT transformer block type '{block_type.name}'")
+
+        if block_model is None:
+            return None
+        else:
+            block_model.name = item_name
+            return block_model
+
     def _sync_rlc_combo_load_base_values(self, template_kwargs: Dict[str, Any]) -> None:
         """
         Sync one real load API object with the equivalent RLC snapshot powers.
@@ -5298,12 +5494,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             BlockType.EMT_BERGERON_LINE,
             BlockType.SWITCH_EMT,
             BlockType.GROUNDING_LINK_EMT,
+            BlockType.NONLINEAR_RESISTOR_EMT,
             BlockType.RLC_COMBO_EMT,
         }:
             if payload == BlockType.SWITCH_EMT:
                 return self.create_switch_emt_block_item(x_pos=x_pos, y_pos=y_pos)
             elif payload == BlockType.GROUNDING_LINK_EMT:
                 return self.create_grounding_link_emt_block_item(x_pos=x_pos, y_pos=y_pos)
+            elif payload == BlockType.NONLINEAR_RESISTOR_EMT:
+                return self.create_nonlinear_resistor_emt_block_item(x_pos=x_pos, y_pos=y_pos)
             elif payload == BlockType.RLC_COMBO_EMT:
                 return self.create_rlc_combo_emt_block_item(x_pos=x_pos, y_pos=y_pos)
             else:
@@ -5316,6 +5515,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             BlockType.C_LOAD_EMT,
         }:
             return self.create_shunt_component_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
+        elif isinstance(payload, BlockType) and payload in {
+            BlockType.TRAFO_EMT,
+            BlockType.XFMR_TRANSFORMER,
+        }:
+            return self.create_transformer_topology_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
         elif isinstance(payload, BlockType):
             return self.create_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
         elif isinstance(payload, BasicBlockTemplateDescriptor):
@@ -6790,8 +6994,12 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self._modify_lookup_matrix_like_block(item, modal_config, build_lookup_matrix_spline_runtime_template)
         elif modal_kind == "grounding_link_emt":
             self._modify_grounding_link_emt_block(item, modal_config)
+        elif modal_kind == "nonlinear_resistor_emt":
+            self._modify_nonlinear_resistor_emt_block(item, modal_config)
         elif modal_kind == "load_topology_emt":
             self._modify_load_topology_emt_block(item, modal_config)
+        elif modal_kind == "transformer_topology_emt":
+            self._modify_transformer_topology_emt_block(item, modal_config)
         elif modal_kind == "shunt_component_emt":
             self._modify_shunt_component_emt_block(item, modal_config)
         elif modal_kind == "rlc_combo_emt":
@@ -7106,6 +7314,50 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         ).block
         self._replace_scene_block_from_template(item, new_block, "grounding_link_emt", dict(grounding_config))
 
+    def _modify_nonlinear_resistor_emt_block(self, item: BlockItem, modal_config: Dict[str, Any]) -> None:
+        """
+        Reconfigure one modal-created nonlinear resistor EMT block.
+
+        :param item: Target block item.
+        :param modal_config: Stored modal configuration.
+        :return: None.
+        """
+        initial_points = list(zip(
+            list(float(value) for value in modal_config.get("voltage_points", [0.0, 1.0, 2.0])),
+            list(float(value) for value in modal_config.get("current_points", [0.0, 10.0, 20.0])),
+        ))
+        dialog = LookupArrayLinearDialog(
+            block_label="Nonlinear resistor EMT V-I curve",
+            initial_points=initial_points,
+            parent=self,
+        )
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            voltage_points, current_points = dialog.get_points()
+        else:
+            return
+
+        if item.subsys is None:
+            return
+        else:
+            pass
+
+        new_block = get_nonlinear_resistor_emt_template(
+            vf=self.var_factory,
+            voltage_points=voltage_points,
+            current_points=current_points,
+            name=item.subsys.name,
+        ).block
+        self._replace_scene_block_from_template(
+            item,
+            new_block,
+            "nonlinear_resistor_emt",
+            dict({
+                "voltage_points": voltage_points,
+                "current_points": current_points,
+            }),
+        )
+
     def _modify_load_topology_emt_block(self, item: BlockItem, modal_config: Dict[str, Any]) -> None:
         """
         Reconfigure one modal-created EMT load-topology block.
@@ -7153,6 +7405,54 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             new_block,
             "load_topology_emt",
             dict(load_config, block_type=block_type.name),
+        )
+
+    def _modify_transformer_topology_emt_block(self, item: BlockItem, modal_config: Dict[str, Any]) -> None:
+        """
+        Reconfigure one modal-created EMT transformer block.
+
+        :param item: Target block item.
+        :param modal_config: Stored modal configuration.
+        :return: None.
+        """
+        block_type_name: str = str(modal_config.get("block_type", ""))
+        block_type: BlockType = BlockType[block_type_name]
+        dialog = self._build_transformer_topology_emt_dialog(block_type=block_type, initial_config=modal_config)
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            topology_config = dialog.get_configuration()
+        else:
+            return
+
+        if item.subsys is None:
+            return
+        else:
+            pass
+
+        if isinstance(self.api_object, BranchParent):
+            try:
+                self.api_object.conn_f = topology_config["conn_f"]
+                self.api_object.conn_t = topology_config["conn_t"]
+            except Exception:
+                pass
+        else:
+            pass
+
+        new_block = self._build_transformer_topology_emt_block_model(
+            block_type=block_type,
+            item_name=item.subsys.name,
+            modal_config=topology_config,
+        )
+        if new_block is None:
+            return
+        else:
+            pass
+
+        self._replace_scene_block_from_template(
+            item,
+            new_block,
+            "transformer_topology_emt",
+            dict(topology_config, block_type=block_type.name),
         )
 
     def _modify_shunt_component_emt_block(self, item: BlockItem, modal_config: Dict[str, Any]) -> None:
