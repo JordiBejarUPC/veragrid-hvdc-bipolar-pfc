@@ -11,7 +11,7 @@ from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Templates.BasicBlockCatalog import BasicBlockTemplateDescriptor
 from VeraGridEngine.Templates.BasicBlockCatalog import get_basic_block_catalog_descriptor_by_key
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.enumerations import DynamicSimulationMode
+from VeraGridEngine.enumerations import DynamicSimulationMode, DeviceType
 
 pytestmark = pytest.mark.filterwarnings("error")
 
@@ -21,12 +21,13 @@ class _ApiStub:
     Minimal API object accepted by the dynamic block editor tests.
     """
 
-    __slots__ = ("name", "rms_template", "emt_template")
+    __slots__ = ("name", "rms_template", "emt_template", "device_type")
 
     def __init__(self) -> None:
         self.name = "Stub"
         self.rms_template = None
         self.emt_template = None
+        self.device_type = DeviceType.NoDevice
 
 
 def _get_app() -> QtWidgets.QApplication:
