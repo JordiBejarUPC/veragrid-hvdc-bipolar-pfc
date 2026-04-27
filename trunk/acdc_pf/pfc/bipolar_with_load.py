@@ -14,10 +14,6 @@ a = 0.5515/Sb
 b = 0.887*(Ib/Sb)
 c = 3.77*((Ib**2)/Sb)
 
-rlin_12 = 0.2
-rlin_13 = 0.3
-rlin_23 = 0.1
-
 grid = gce.MultiCircuit(
     name="Bipolar_system",
     Sbase=Sb
@@ -42,6 +38,7 @@ grid.add_bus(bus3)
 bus4 = gce.Bus(name = "Bus4",
                Vnom=Ub,
                is_dc=True,
+               Vm0=1.01,
                Va0=3.14)
 grid.add_bus(bus4)
 
