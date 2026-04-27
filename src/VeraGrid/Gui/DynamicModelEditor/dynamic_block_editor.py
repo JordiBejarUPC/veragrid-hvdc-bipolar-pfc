@@ -6210,7 +6210,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         self._ensure_emt_bus_model(bus)
         if bus.is_dc:
-            return list()
+            pairs: List[tuple[VarPowerFlowRefferenceType, Any]] = list()
+
+            vdc, _, _, _ = get_bus_emt_algebraic_vars(bus.emt_model)
+
+            ref = VarPowerFlowRefferenceType.Vdc
+            if vdc is not None:
+                pairs.append((ref, vdc))
+
+            return pairs
         else:
             v_n, v_a, v_b, v_c = get_bus_emt_algebraic_vars(bus.emt_model)
             if side == "from":
@@ -6358,6 +6366,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             VarPowerFlowRefferenceType.if_A: f"net_conn_i_A_{safe_bus_from}_{self.api_object.name}",
             VarPowerFlowRefferenceType.if_B: f"net_conn_i_B_{safe_bus_from}_{self.api_object.name}",
             VarPowerFlowRefferenceType.if_C: f"net_conn_i_C_{safe_bus_from}_{self.api_object.name}",
+            VarPowerFlowRefferenceType.Idc: f"net_conn_i_DC_{safe_bus_from}_{self.api_object.name}",
         }
 
         current_name_map_to: Dict[VarPowerFlowRefferenceType, str] = {
@@ -6365,10 +6374,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             VarPowerFlowRefferenceType.it_A: f"net_conn_i_A_{safe_bus_to}_{self.api_object.name}",
             VarPowerFlowRefferenceType.it_B: f"net_conn_i_B_{safe_bus_to}_{self.api_object.name}",
             VarPowerFlowRefferenceType.it_C: f"net_conn_i_C_{safe_bus_to}_{self.api_object.name}",
+            VarPowerFlowRefferenceType.Idc: f"net_conn_i_DC_{safe_bus_from}_{self.api_object.name}",
         }
 
-        current_refs_from = self._build_emt_branch_current_refs(self.api_object.bus_from, "from")
-        current_refs_to = self._build_emt_branch_current_refs(self.api_object.bus_to, "to")
+        current_refs_from = self._build_emt_branch_current_refs(bus=self.api_object.bus_from,
+                                                           side="from",
+                                                                voltage_pairs = voltage_pairs_from)
+        current_refs_to = self._build_emt_branch_current_refs(bus=self.api_object.bus_to,
+                                                         side="to",
+                                                              voltage_pairs = voltage_pairs_to)
 
         for reference in current_refs_from:
             visible_name = current_name_map_from.get(reference, None)
@@ -6411,7 +6425,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     pass
             return current_refs
 
-    def _build_emt_branch_current_refs(self, bus: Any, side: str) -> List[VarPowerFlowRefferenceType]:
+    def _build_emt_branch_current_refs(self,
+                                       bus: Any,
+                                       side: str,
+                                       voltage_pairs: List[tuple[VarPowerFlowRefferenceType, Any]]
+                                       ) -> List[VarPowerFlowRefferenceType]:
         """
         Return the ordered EMT branch-current references that should be exposed for one branch side.
 
@@ -6420,13 +6438,13 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return: EMT branch current references.
         """
 
-        voltage_pairs = self.get_branch_emt_voltage_pairs(bus, side)
         if side == "from":
             voltage_to_current_map: Dict[VarPowerFlowRefferenceType, VarPowerFlowRefferenceType] = dict()
             voltage_to_current_map[VarPowerFlowRefferenceType.vf_N] = VarPowerFlowRefferenceType.if_N
             voltage_to_current_map[VarPowerFlowRefferenceType.vf_A] = VarPowerFlowRefferenceType.if_A
             voltage_to_current_map[VarPowerFlowRefferenceType.vf_B] = VarPowerFlowRefferenceType.if_B
             voltage_to_current_map[VarPowerFlowRefferenceType.vf_C] = VarPowerFlowRefferenceType.if_C
+            voltage_to_current_map[VarPowerFlowRefferenceType.Vdc] = VarPowerFlowRefferenceType.Idc
         else:
             if side == "to":
                 voltage_to_current_map = dict()
@@ -6434,6 +6452,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 voltage_to_current_map[VarPowerFlowRefferenceType.vt_A] = VarPowerFlowRefferenceType.it_A
                 voltage_to_current_map[VarPowerFlowRefferenceType.vt_B] = VarPowerFlowRefferenceType.it_B
                 voltage_to_current_map[VarPowerFlowRefferenceType.vt_C] = VarPowerFlowRefferenceType.it_C
+                voltage_to_current_map[VarPowerFlowRefferenceType.Vdc] = VarPowerFlowRefferenceType.Idc
             else:
                 raise ValueError(f"Unsupported branch EMT side {side}")
 
