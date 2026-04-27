@@ -288,14 +288,12 @@ class RmsProblemDae(RmsProblemTemplate):
 
         # initialize branches
         for branch_num, elm in enumerate(self.grid.get_branches_iter(add_vsc=False, add_hvdc=False, add_switch=True)):
-            # Todo: missing default initialization for the model
 
             if elm.rms_model.empty():
                 self.logger.add_error("No RMS model",
                                       device_class=elm.device_type.value,
                                       device=elm.name)
             else:
-                elm.rms_model.unify_blocks()
                 # get parameters from api object
                 if ParamPowerFlowRefferenceType.g in elm.rms_model.api_obj_mapping:
                     elm.rms_model.parameters[
