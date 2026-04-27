@@ -425,8 +425,7 @@ class TimeEventsMain(DataBaseTableMain):
                 pass
 
         if logger.has_logs():
-            dlg = LogsDialogue("Set profile", logger=logger)
-            dlg.exec()
+            self.show_logs(name="Set profile", logger=logger)
 
     def re_index_time(self):
         """
@@ -528,8 +527,7 @@ class TimeEventsMain(DataBaseTableMain):
                 self.display_profiles(proxy_mdl=self.get_current_objects_model_view())
 
                 if logger.has_logs():
-                    dialogue = LogsDialogue(name="Import profiles", logger=logger)
-                    dialogue.exec()
+                    self.show_logs(name="Import profiles", logger=logger)
 
         else:
             warning_msg("The import of profiles from many grid models "

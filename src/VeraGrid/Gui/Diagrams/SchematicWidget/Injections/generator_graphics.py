@@ -71,16 +71,6 @@ class GeneratorGraphicItem(InjectionTemplateGraphicItem):
                        function_ptr=self.set_regulation_bus)
 
         add_menu_entry(menu=menu,
-                       text="RMS Editor",
-                       function_ptr=self.edit_dynamic_rms,
-                       icon_path=":/Icons/icons/dyn_gray.png")
-
-        add_menu_entry(menu=menu,
-                       text="EMT Editor",
-                       function_ptr=self.edit_dynamic_emt,
-                       icon_path=":/Icons/icons/dyn_gray.png")
-
-        add_menu_entry(menu=menu,
                        text="edit rms dynamic parameters",
                        function_ptr=self.edit_rms_dynamic_parameters,
                        icon_path=":/Icons/icons/dyn_gray.png")
@@ -227,9 +217,9 @@ class GeneratorGraphicItem(InjectionTemplateGraphicItem):
 
                         self.plot()
                     else:
-                        raise Exception("Wrong length from the solar photovoltaic wizard")
+                        self.editor.gui.show_error_toast("Wrong length from the solar photovoltaic wizard")
         else:
-            info_msg("You need to have time profiles for this function")
+            self.editor.gui.show_error_toast("You need to have time profiles for this function")
 
     def wind_farm_wizard(self):
         """
@@ -256,6 +246,6 @@ class GeneratorGraphicItem(InjectionTemplateGraphicItem):
                                                          expected_size=self.api_object.P_prof.size())
                         self.plot()
                     else:
-                        raise Exception("Wrong length from the wind farm wizard")
+                        self.editor.gui.show_error_toast("Wrong length from the wind farm wizard")
         else:
-            info_msg("You need to have time profiles for this function")
+            self.editor.gui.show_error_toast("You need to have time profiles for this function")

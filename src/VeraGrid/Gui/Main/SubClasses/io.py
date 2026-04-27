@@ -373,7 +373,6 @@ class IoMain(ScenariosMain):
                 # assign the loaded circuit
                 self.new_project_now(create_default_diagrams=False)
 
-
                 if self.open_file_thread_object.multiverse is not None:
                     # A multiverse file already contains the complete scenario tree and active
                     # scenario. Reassigning through self.circuit would rebuild a fresh
@@ -796,7 +795,7 @@ class IoMain(ScenariosMain):
             diagram = self.get_selected_diagram_widget()
             if diagram is not None:
                 if isinstance(diagram, SchematicWidget):
-                    diagram.name.setText(f"Random grid {self.circuit.get_bus_number()} buses")
+                    diagram.name = f"Random grid {self.circuit.get_bus_number()} buses"
 
             # set base magnitudes
             self.ui.sbase_doubleSpinBox.setValue(self.circuit.Sbase)
@@ -885,8 +884,8 @@ class IoMain(ScenariosMain):
 
         if self.export_all_thread_object is not None:
             if self.export_all_thread_object.logger.has_logs():
-                dlg = LogsDialogue('Export all', self.export_all_thread_object.logger)
-                dlg.exec()
+                self.show_logs(name='Export all',
+                               logger=self.export_all_thread_object.logger)
 
         if len(self.stuff_running_now) == 0:
             self.UNLOCK()
@@ -940,8 +939,7 @@ class IoMain(ScenariosMain):
                                                                          data_dict=data_dict)
 
                     if logger.has_logs():
-                        dlg = LogsDialogue(name="Results parsing", logger=logger, expand_all=True)
-                        dlg.exec()
+                        self.show_logs(name="Results parsing", logger=logger, expand_all=True)
 
                     self.update_available_results()
                 else:
@@ -996,7 +994,6 @@ class IoMain(ScenariosMain):
         Add default catalogue to circuit
         """
 
-
         for tpe in get_transformer_catalogue():
             self.circuit.add_transformer_type(tpe)
 
@@ -1014,7 +1011,6 @@ class IoMain(ScenariosMain):
         else:
             self.circuit.rms_models = list()
             self.circuit.add_rms_model_catalogue()
-
 
         if not self.circuit.emt_models:
             self.circuit.add_emt_model_catalogue()
@@ -1046,8 +1042,7 @@ class IoMain(ScenariosMain):
                 data, logger = load_catalogue(fname=filename)
 
                 if logger.has_logs():
-                    dlg = LogsDialogue('Open catalogue logger', logger)
-                    dlg.exec()
+                    self.show_logs(name='Open catalogue logger', logger=logger)
 
                 self.circuit.add_catalogue(data)
                 self.show_info_toast("Catalogue loaded!")

@@ -47,15 +47,20 @@ class ControllableShuntGraphicItem(InjectionTemplateGraphicItem):
         @param event:
         @return:
         """
-        menu = self.get_base_context_menu()
-        menu.addSection("Controllable shunt")
+        if self.api_object is not None:
+            menu = self.get_base_context_menu()
+            menu.addSection("Controllable shunt")
 
-        add_menu_entry(menu=menu,
-                       text="Editor",
-                       function_ptr=self.edit,
-                       icon_path=":/Icons/icons/edit.png")
+            add_menu_entry(menu=menu,
+                           text="Editor",
+                           function_ptr=self.edit,
+                           icon_path=":/Icons/icons/edit.png")
 
-        menu.exec_(event.screenPos())
+            menu.exec(event.screenPos())
+
+        else:
+            self.editor.gui.show_error_toast("The graphic has no API object!")
+
 
     def edit(self):
         """
@@ -65,3 +70,4 @@ class ControllableShuntGraphicItem(InjectionTemplateGraphicItem):
         dlg = ControllableShuntEditor(api_object=self.api_object)
         if dlg.exec():
             pass
+

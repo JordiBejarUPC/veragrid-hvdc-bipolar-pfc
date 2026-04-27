@@ -25,6 +25,7 @@ from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.multiverse import MultiVerse
 import VeraGridEngine.Simulations as sim
 from VeraGridEngine.enumerations import EngineType, DeviceType, SimulationTypes
+from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
 from VeraGridEngine.DataStructures.numerical_circuit import NumericalCircuit
 
@@ -66,6 +67,7 @@ from VeraGrid.Gui.ProceduralGrid.procedural_grid import ProceduralGridWindow
 from VeraGrid.Gui.AiAgent.ai_chat_dialogue import AiChatDialogue, AiBackendState
 from VeraGrid.Gui.AiAgent.ai_backend import ProviderType
 from VeraGridEngine.IO.file_system import get_create_veragrid_folder
+from VeraGrid.Gui.general_dialogues import LogsDialogue
 
 
 def terminate_thread(thread):
@@ -1217,3 +1219,15 @@ class BaseMainGui(QMainWindow):
         else:
             # not marked ...
             return None
+
+    def show_logs(self, logger: Logger, name="Logs", expand_all=True):
+        """
+        Show logger
+        :param logger:
+        :param name
+        :param expand_all
+        :return:
+        """
+        dlg = LogsDialogue(name=name, logger=logger, expand_all=expand_all)
+        dlg.setModal(True)
+        dlg.exec()
