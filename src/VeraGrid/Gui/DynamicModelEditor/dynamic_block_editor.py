@@ -237,7 +237,8 @@ def _new_uid() -> int:
     return uuid.uuid4().int
 
 
-def open_dyn_params_editor(var_factory: VarFactory, api_object: Any, preferred_mode: DynamicSimulationMode | None = None):
+def open_dyn_params_editor(var_factory: VarFactory, api_object: Any,
+                           preferred_mode: DynamicSimulationMode | None = None):
     """
     Opens the dynamic parameters editor dialog.
 
@@ -255,6 +256,7 @@ def open_dyn_params_editor(var_factory: VarFactory, api_object: Any, preferred_m
     dialog = ParametersEditorDialog(var_factory=var_factory, block=blk)
     dialog.exec()
 
+
 def build_variables_rows(block: Block | None, rows: List[BlockParameterRow]):
     if block is not None:
         build_block_variables_rows(block, rows)
@@ -264,7 +266,6 @@ def build_variables_rows(block: Block | None, rows: List[BlockParameterRow]):
 
 
 def build_block_variables_rows(block: Block, rows: List[BlockParameterRow]):
-
     for var in block.state_vars:
         init_eq = block.init_eqs.get(var)
         rows.append(BlockParameterRow(
@@ -293,7 +294,6 @@ def build_block_variables_rows(block: Block, rows: List[BlockParameterRow]):
 
 
 def build_parameters_rows(table_model, block: Block | None, rows: List[BlockParameterRow]):
-
     if block is not None:
         build_block_parameters_rows(table_model, block, rows)
         if block.children:
@@ -301,8 +301,7 @@ def build_parameters_rows(table_model, block: Block | None, rows: List[BlockPara
                 build_block_parameters_rows(table_model, child, rows)
 
 
-def build_block_parameters_rows(table_model: Any, blk: Block, rows:List[BlockParameterRow]):
-
+def build_block_parameters_rows(table_model: Any, blk: Block, rows: List[BlockParameterRow]):
     for var, expr in blk.event_dict.items():
         if isinstance(expr, Const):
             rows.append(BlockParameterRow(
@@ -341,12 +340,14 @@ def build_block_parameters_rows(table_model: Any, blk: Block, rows:List[BlockPar
 
     return rows
 
+
 def update_source_dict(block: Block | None, row: BlockParameterRow, value: Any, old_expr: Any = None) -> None:
     if block is not None and row is not None:
         update_param_value(block, row, value, old_expr)
         if block.children:
             for child in block.children:
                 update_source_dict(child, row, value, old_expr)
+
 
 def update_param_value(blk: Block, row: BlockParameterRow, value: Any, old_expr: Any):
     if blk is not None and row is not None:
@@ -382,6 +383,7 @@ def build_equations_rows(block: Block | None, rows):
             for child in block.children:
                 build_equations_rows(child, rows)
 
+
 def build_block_equations_rows(blk: Block, rows: List[BlockParameterRow]):
     for idx, eq in enumerate(blk.state_eqs):
         rows.append(BlockParameterRow(
@@ -406,8 +408,6 @@ def build_block_equations_rows(blk: Block, rows: List[BlockParameterRow]):
             value_type=str,
             item_index=idx
         ))
-
-
 
 
 class BlockPositionChangedCallback:
@@ -1949,7 +1949,6 @@ class VariablesTableModel(QtCore.QAbstractTableModel):
         build_variables_rows(self.block, self.rows)
         self.endResetModel()
 
-
     def rowCount(self, parent=QtCore.QModelIndex()) -> int:
         return len(self.rows)
 
@@ -2080,7 +2079,7 @@ class ParametersTableModel(QtCore.QAbstractTableModel):
 
     block_updated = Signal(object)
 
-    def __init__(self, var_factory: VarFactory, block = Block(), parent: Optional[QtCore.QObject] = None):
+    def __init__(self, var_factory: VarFactory, block=Block(), parent: Optional[QtCore.QObject] = None):
         super().__init__(parent)
         self.var_factory = var_factory
         self.block = None
@@ -3589,6 +3588,7 @@ class DynamicsLibraryTreeModel(QtGui.QStandardItemModel):
 
         return mime_data
 
+
 @dataclass
 class ConnectionVarSpec:
     """
@@ -3598,6 +3598,7 @@ class ConnectionVarSpec:
     direction: str
     reference: VarPowerFlowRefferenceType
     visible_name: str
+
 
 class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     """
@@ -3615,8 +3616,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                  circuit: Any | None = None,
                  main_editor=False,
                  modal: bool = True,
-                 workspace_embedded: bool = False,
-                  ):
+                 workspace_embedded: bool = False):
         """
         Initializes a dynamic block editor window used for editing and managing blocks within a graphical model.
 
@@ -3698,19 +3698,31 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.templates_list: List[
             RmsModelTemplate | EmtModelTemplate | FmuTemplate] = templates_list if templates_list is not None else list()
 
-        self.tree_structure: Dict[str, Any] = dict()
-        if mode == DynamicSimulationMode.RMS:
-            self.tree_structure["Basic"] = self.build_basic_library_branch()
-            self.tree_structure["Devices"] = [
+        device_rms_related_blocks = {
+            DeviceType.GeneratorDevice: [
+                LibraryLeafSpec("Generic", BlockType.GENERIC),
                 LibraryLeafSpec("Generator basic", BlockType.GENRAW),
                 LibraryLeafSpec("Generator QEC", BlockType.GENQEC),
                 LibraryLeafSpec("Governor", BlockType.GOV_RMS),
                 LibraryLeafSpec("Stabilizer", BlockType.STAB_RMS),
                 LibraryLeafSpec("Exciter", BlockType.EXCITER_RMS),
-                LibraryLeafSpec("Line", BlockType.LINE_RMS),
-                LibraryLeafSpec("Load", BlockType.LOAD_RMS),
+            ],
+            DeviceType.LineDevice: [
                 LibraryLeafSpec("Generic", BlockType.GENERIC),
-            ]
+                LibraryLeafSpec("Line", BlockType.LINE_RMS),
+            ],
+            DeviceType.LoadDevice: [
+                LibraryLeafSpec("Generic", BlockType.GENERIC),
+                LibraryLeafSpec("Load", BlockType.LOAD_RMS),
+            ],
+        }
+
+        self.tree_structure: Dict[str, Any] = dict()
+        if mode == DynamicSimulationMode.RMS:
+            self.tree_structure["Basic"] = self.build_basic_library_branch()
+
+            self.tree_structure["Devices"] = device_rms_related_blocks.get(api_object.device_type, dict())
+
         elif mode == DynamicSimulationMode.EMT:
             self.tree_structure["Basic"] = self.build_basic_library_branch()
             self.tree_structure["Devices"] = [
@@ -3736,7 +3748,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         if self.templates_list:
             self.tree_structure["Templates"] = {
-                "Available": [LibraryLeafSpec(template.name, template, template.name) for template in self.templates_list]
+                "Available": [LibraryLeafSpec(template.name, template, template.name) for template in
+                              self.templates_list]
             }
         else:
             pass
@@ -3865,7 +3878,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         descriptor: BasicBlockTemplateDescriptor
         for descriptor in get_editor_ready_basic_block_catalog_descriptors():
-            category_path: tuple[str, ...] = descriptor.category_path[1:] if descriptor.category_path and descriptor.category_path[0] == "Native" else descriptor.category_path
+            category_path: tuple[str, ...] = descriptor.category_path[1:] if descriptor.category_path and \
+                                                                             descriptor.category_path[
+                                                                                 0] == "Native" else descriptor.category_path
             if len(category_path) == 0:
                 category_path = ("Miscellaneous", "Other")
             else:
@@ -5590,7 +5605,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             if isinstance(row_data.value, Expr):
                 old_expr = row_data.value
                 expression_text = symbolic_to_string(row_data.value)
-                self.equations_table_model.symbol_namespace = build_block_symbol_namespace(self.equations_table_model.block)
+                self.equations_table_model.symbol_namespace = build_block_symbol_namespace(
+                    self.equations_table_model.block)
                 dialog = ExpressionTextEditorDialog(
                     expression_text=expression_text,
                     symbol_namespace=self.equations_table_model.symbol_namespace,
@@ -5599,7 +5615,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
                 if dialog.exec() == QDialog.DialogCode.Accepted:
                     try:
-                        parsed_expression = string_to_symbolic(dialog.get_expression_text(), self.equations_table_model.symbol_namespace)
+                        parsed_expression = string_to_symbolic(dialog.get_expression_text(),
+                                                               self.equations_table_model.symbol_namespace)
 
                         if isinstance(parsed_expression, Comparison):
                             expression_value = parsed_expression.to_expression()

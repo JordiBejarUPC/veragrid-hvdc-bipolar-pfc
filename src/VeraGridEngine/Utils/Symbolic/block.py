@@ -717,10 +717,12 @@ class Block:
 
         if self.procedural_logic:
             from VeraGridEngine.Utils.procedural_logic import clone_procedural_logic_entries
-            self.procedural_logic = clone_procedural_logic_entries(self.procedural_logic, {old: new, old.name: new})
+            self.procedural_logic = clone_procedural_logic_entries(self.procedural_logic,
+                                                                   var_mapping={old: new, old.name: new})
 
-    def update_model(self, old, new):
-        """<
+    def update_model(self, old: List[Var | Expr], new: List[Var | Expr]):
+        """
+        Replace variables
         :param old:
         :param new:
         :return:
@@ -741,6 +743,12 @@ class Block:
 
 
 def find_name_in_block(name: str, block: Block) -> Var | None:
+    """
+
+    :param name:
+    :param block:
+    :return:
+    """
     for lst in [block.in_vars, block.out_vars, block.algebraic_vars, block.state_vars, block.diff_vars]:
         for var in lst:
             if name == var.name:

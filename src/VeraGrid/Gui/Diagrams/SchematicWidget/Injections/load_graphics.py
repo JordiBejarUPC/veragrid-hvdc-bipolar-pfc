@@ -14,7 +14,7 @@ from VeraGrid.Gui.profile_wizard_utils import fill_substation_weather_profiles
 from VeraGrid.Gui.Diagrams.generic_graphics import Polygon
 from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.injections_template_graphics import InjectionTemplateGraphicItem
 from VeraGridEngine.Devices.Injections.load import Load
-from VeraGrid.Gui.LoadDesigner.load_designer import LoadDesigner
+from VeraGrid.Gui.DeviceEditors.LoadDesigner.load_designer import LoadDesigner
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget

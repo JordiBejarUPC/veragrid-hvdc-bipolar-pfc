@@ -6376,7 +6376,8 @@ class Assets:
 
     def get_dynamic_templates_by_device_type_and_domain(self,
                                                         tpe: DeviceType,
-                                                        domain: FmuTemplateDomain) -> List[dev.RmsModelTemplate | dev.EmtModelTemplate | dev.FmuTemplate]:
+                                                        domain: FmuTemplateDomain) -> List[
+        dev.RmsModelTemplate | dev.EmtModelTemplate | dev.FmuTemplate]:
         """
         Get all reusable templates for one device type and one simulation domain.
 
@@ -6402,7 +6403,8 @@ class Assets:
         return native_templates
 
     def get_dynamic_templates_by_domain(self,
-                                        domain: FmuTemplateDomain) -> List[dev.RmsModelTemplate | dev.EmtModelTemplate | dev.FmuTemplate]:
+                                        domain: FmuTemplateDomain) -> List[
+        dev.RmsModelTemplate | dev.EmtModelTemplate | dev.FmuTemplate]:
         """
         Get all reusable templates registered for one simulation domain.
 
@@ -8670,13 +8672,16 @@ class Assets:
         else:
             raise Exception(f'elm_type not understood: {elm_type.value}')
 
-        if (DeviceType.RmsModelTemplateDevice in dictionary_of_lists) or (DeviceType.EmtModelTemplateDevice in dictionary_of_lists):
+        if (DeviceType.RmsModelTemplateDevice in dictionary_of_lists) or (
+                DeviceType.EmtModelTemplateDevice in dictionary_of_lists):
             dictionary_of_lists[DeviceType.FmuTemplateDevice] = self.get_fmu_templates_by_device_type(elm_type)
-            dictionary_of_lists[("rms_fmu_template", DeviceType.FmuTemplateDevice)] = self.get_fmu_templates_by_device_type_and_domain(
+            dictionary_of_lists[
+                ("rms_fmu_template", DeviceType.FmuTemplateDevice)] = self.get_fmu_templates_by_device_type_and_domain(
                 elm_type,
                 FmuTemplateDomain.RMS,
             )
-            dictionary_of_lists[("emt_fmu_template", DeviceType.FmuTemplateDevice)] = self.get_fmu_templates_by_device_type_and_domain(
+            dictionary_of_lists[
+                ("emt_fmu_template", DeviceType.FmuTemplateDevice)] = self.get_fmu_templates_by_device_type_and_domain(
                 elm_type,
                 FmuTemplateDomain.EMT,
             )
@@ -8769,7 +8774,6 @@ class Assets:
             tem.get_transformer_emt_template(vf=self._var_factory),
             tem.get_xfmr_emt_template(vf=self._var_factory),
 
-
             # the following are functions that generate templates depending on phases or things
             tem.get_shunt_c_emt_template(vf=self._var_factory, phA=True, phB=True, phC=True),
             tem.get_shunt_l_emt_template(vf=self._var_factory, phA=True, phB=True, phC=True),
@@ -8778,6 +8782,5 @@ class Assets:
             tem.get_load_ZIP_emt_template(vf=self._var_factory, phA=True, phB=True, phC=True),
             tem.get_pi_line_emt_template(vf=self._var_factory, phN=False, phA=True, phB=True, phC=True),
             tem.get_bergeron_line_emt_template(vf=self._var_factory, phN=False, phA=True, phB=True, phC=True),
-
 
         ]
