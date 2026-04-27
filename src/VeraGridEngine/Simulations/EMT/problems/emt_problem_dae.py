@@ -184,6 +184,26 @@ class EmtTopologyError(Exception):
         super().__init__(self.message)
 
 
+class EmtInterfaceValidationError(ValueError):
+    """
+    Exception raised when one EMT interface is incompatible with the bus shell.
+
+    The dynamic editor may expose a maximum editable interface that is broader
+    than the currently configured static network. This exception reports those
+    mismatches explicitly before EMT assembly can silently skip substitutions.
+    """
+
+    def __init__(self, message: str):
+        """
+        Build one explicit EMT interface-validation error.
+
+        :param message: Descriptive interface mismatch report.
+        :return: None.
+        """
+        self.message = message
+        super().__init__(self.message)
+
+
 def _unique_keep_order(seq: List[Var]) -> List[Var]:
     """
     Remove duplicated variables by UID while preserving the first appearance order.
@@ -859,6 +879,10 @@ class EmtProblemDae(EmtProblemTemplate):
         validate_models_s: float = _toc(t_phase_start)
         t_phase_start = _tic()
 
+        self._validate_dynamic_emt_interfaces()
+        validate_interfaces_s: float = _toc(t_phase_start)
+        t_phase_start = _tic()
+
         # build on local sys_block
         self._build_structure_and_collect(sys_block, grid)
         structure_collect_s: float = _toc(t_phase_start)
@@ -1272,6 +1296,779 @@ class EmtProblemDae(EmtProblemTemplate):
                 errors.append(f"  - Device '{dev_name}' ({dev_type}) {details} has no emt_model assigned (emt_model is empty)")
             error_msg = "TopologyError: Some devices are missing their emt_model. Assign EMT models before creating EmtProblemDae:\n" + "\n".join(errors)
             raise EmtTopologyError(error_msg)
+
+    def _validate_dynamic_emt_interfaces(self) -> None:
+        """
+        Validate that dynamic EMT ports are compatible with the static bus shells.
+
+        The editor may expose a broader maximum EMT interface than the current
+        network configuration. Before any symbolic rewiring or KCL assembly takes
+        place, this validation checks that every exposed electrical reference can
+        be reconciled with the corresponding bus domain and EMT bus shell.
+
+        :raises EmtInterfaceValidationError: If any device exposes incompatible
+            AC, neutral, or DC EMT references.
+        :return: None.
+        """
+        errors: List[str] = list()
+        branch: Any
+        injection: Any
+
+        for branch in self.grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
+            errors.extend(self._validate_branch_emt_interface(branch))
+
+        for injection in self.grid.get_injection_devices_iter():
+            errors.extend(self._validate_injection_emt_interface(injection))
+
+        if len(errors) > 0:
+            error_msg = "EMT interface validation failed:\n" + "\n".join(errors)
+            raise EmtInterfaceValidationError(error_msg)
+        else:
+            pass
+
+    def _validate_injection_emt_interface(self, injection: Any) -> List[str]:
+        """
+        Validate the external EMT interface exposed by one injection device.
+
+        :param injection: Injection device to validate.
+        :return: List of validation errors for this device.
+        """
+        present_refs: Set[VarPowerFlowRefferenceType] = self._get_present_external_refs(injection.emt_model)
+        errors: List[str] = list()
+
+        errors.extend(self._validate_injection_bus_contract(
+            device=injection,
+            bus=injection.bus,
+            side="injection",
+            present_refs=present_refs,
+        ))
+
+        return errors
+
+    def _validate_injection_bus_contract(self,
+                                         device: Any,
+                                         bus: Any,
+                                         side: str,
+                                         present_refs: Set[VarPowerFlowRefferenceType]) -> List[str]:
+        """
+        Validate one injection-style EMT interface against one bus shell.
+
+        :param device: Device exposing the interface.
+        :param bus: Connected bus.
+        :param side: User-facing side label.
+        :param present_refs: Non-null external references exposed by the device.
+        :return: List of validation errors.
+        """
+        errors: List[str] = list()
+        ac_voltage_refs: List[VarPowerFlowRefferenceType] = list([
+            VarPowerFlowRefferenceType.v_N,
+            VarPowerFlowRefferenceType.v_A,
+            VarPowerFlowRefferenceType.v_B,
+            VarPowerFlowRefferenceType.v_C,
+        ])
+        ac_current_to_voltage: Dict[VarPowerFlowRefferenceType, VarPowerFlowRefferenceType] = dict({
+            VarPowerFlowRefferenceType.i_N: VarPowerFlowRefferenceType.v_N,
+            VarPowerFlowRefferenceType.i_A: VarPowerFlowRefferenceType.v_A,
+            VarPowerFlowRefferenceType.i_B: VarPowerFlowRefferenceType.v_B,
+            VarPowerFlowRefferenceType.i_C: VarPowerFlowRefferenceType.v_C,
+        })
+        supported_bus_voltage_refs: Set[VarPowerFlowRefferenceType] = self._get_bus_voltage_refs(bus)
+        voltage_ref: VarPowerFlowRefferenceType
+        current_ref: VarPowerFlowRefferenceType
+        required_voltage_ref: VarPowerFlowRefferenceType
+
+        if bus.is_dc:
+            for voltage_ref in ac_voltage_refs:
+                if voltage_ref in present_refs:
+                    errors.append(self._build_emt_interface_error(
+                        device=device,
+                        bus=bus,
+                        side=side,
+                        reference=voltage_ref,
+                        detail="AC phase reference exposed on a DC bus.",
+                    ))
+                else:
+                    pass
+
+            for current_ref in ac_current_to_voltage.keys():
+                if current_ref in present_refs:
+                    errors.append(self._build_emt_interface_error(
+                        device=device,
+                        bus=bus,
+                        side=side,
+                        reference=current_ref,
+                        detail="AC current reference exposed on a DC bus.",
+                    ))
+                else:
+                    pass
+
+            if VarPowerFlowRefferenceType.Vdc in present_refs and VarPowerFlowRefferenceType.Vdc not in supported_bus_voltage_refs:
+                errors.append(self._build_emt_interface_error(
+                    device=device,
+                    bus=bus,
+                    side=side,
+                    reference=VarPowerFlowRefferenceType.Vdc,
+                    detail="DC voltage reference exposed but the bus EMT shell has no Vdc variable.",
+                ))
+            else:
+                pass
+
+            if VarPowerFlowRefferenceType.Idc in present_refs:
+                if VarPowerFlowRefferenceType.Vdc not in present_refs:
+                    errors.append(self._build_emt_interface_error(
+                        device=device,
+                        bus=bus,
+                        side=side,
+                        reference=VarPowerFlowRefferenceType.Idc,
+                        detail="DC current reference exposed without a compatible Vdc input reference.",
+                    ))
+                else:
+                    pass
+
+                if VarPowerFlowRefferenceType.Vdc not in supported_bus_voltage_refs:
+                    errors.append(self._build_emt_interface_error(
+                        device=device,
+                        bus=bus,
+                        side=side,
+                        reference=VarPowerFlowRefferenceType.Idc,
+                        detail="DC current reference exposed but the bus EMT shell has no Vdc variable.",
+                    ))
+                else:
+                    pass
+            else:
+                pass
+        else:
+            if VarPowerFlowRefferenceType.Vdc in present_refs:
+                errors.append(self._build_emt_interface_error(
+                    device=device,
+                    bus=bus,
+                    side=side,
+                    reference=VarPowerFlowRefferenceType.Vdc,
+                    detail="DC voltage reference exposed on an AC bus.",
+                ))
+            else:
+                pass
+
+            if VarPowerFlowRefferenceType.Idc in present_refs:
+                errors.append(self._build_emt_interface_error(
+                    device=device,
+                    bus=bus,
+                    side=side,
+                    reference=VarPowerFlowRefferenceType.Idc,
+                    detail="DC current reference exposed on an AC bus.",
+                ))
+            else:
+                pass
+
+            for voltage_ref in ac_voltage_refs:
+                if voltage_ref in present_refs and voltage_ref not in supported_bus_voltage_refs:
+                    errors.append(self._build_emt_interface_error(
+                        device=device,
+                        bus=bus,
+                        side=side,
+                        reference=voltage_ref,
+                        detail="Voltage reference exposed but the bus EMT shell does not support it.",
+                    ))
+                else:
+                    pass
+
+            for current_ref, required_voltage_ref in ac_current_to_voltage.items():
+                if current_ref in present_refs:
+                    if required_voltage_ref not in present_refs:
+                        errors.append(self._build_emt_interface_error(
+                            device=device,
+                            bus=bus,
+                            side=side,
+                            reference=current_ref,
+                            detail=(
+                                f"Current reference exposed without a compatible "
+                                f"{required_voltage_ref.value} input reference."
+                            ),
+                        ))
+                    else:
+                        pass
+
+                    if required_voltage_ref not in supported_bus_voltage_refs:
+                        errors.append(self._build_emt_interface_error(
+                            device=device,
+                            bus=bus,
+                            side=side,
+                            reference=current_ref,
+                            detail="Current reference exposed but the bus EMT shell does not support the corresponding voltage phase.",
+                        ))
+                    else:
+                        pass
+                else:
+                    pass
+
+        return errors
+
+    def _validate_branch_emt_interface(self, branch: Any) -> List[str]:
+        """
+        Validate the external EMT interface exposed by one branch device.
+
+        :param branch: Branch device to validate.
+        :return: List of validation errors for this branch.
+        """
+        present_refs: Set[VarPowerFlowRefferenceType] = self._get_present_external_refs(branch.emt_model)
+        errors: List[str] = list()
+
+        errors.extend(self._validate_branch_side_emt_interface(
+            device=branch,
+            bus=branch.bus_from,
+            side="from",
+            present_refs=present_refs,
+            voltage_map=dict({
+                VarPowerFlowRefferenceType.vf_N: VarPowerFlowRefferenceType.v_N,
+                VarPowerFlowRefferenceType.vf_A: VarPowerFlowRefferenceType.v_A,
+                VarPowerFlowRefferenceType.vf_B: VarPowerFlowRefferenceType.v_B,
+                VarPowerFlowRefferenceType.vf_C: VarPowerFlowRefferenceType.v_C,
+                VarPowerFlowRefferenceType.Vf_dc: VarPowerFlowRefferenceType.Vdc,
+            }),
+            current_to_voltage_map=dict({
+                VarPowerFlowRefferenceType.if_N: VarPowerFlowRefferenceType.vf_N,
+                VarPowerFlowRefferenceType.if_A: VarPowerFlowRefferenceType.vf_A,
+                VarPowerFlowRefferenceType.if_B: VarPowerFlowRefferenceType.vf_B,
+                VarPowerFlowRefferenceType.if_C: VarPowerFlowRefferenceType.vf_C,
+                VarPowerFlowRefferenceType.If_dc: VarPowerFlowRefferenceType.Vf_dc,
+            }),
+        ))
+
+        errors.extend(self._validate_branch_side_emt_interface(
+            device=branch,
+            bus=branch.bus_to,
+            side="to",
+            present_refs=present_refs,
+            voltage_map=dict({
+                VarPowerFlowRefferenceType.vt_N: VarPowerFlowRefferenceType.v_N,
+                VarPowerFlowRefferenceType.vt_A: VarPowerFlowRefferenceType.v_A,
+                VarPowerFlowRefferenceType.vt_B: VarPowerFlowRefferenceType.v_B,
+                VarPowerFlowRefferenceType.vt_C: VarPowerFlowRefferenceType.v_C,
+                VarPowerFlowRefferenceType.Vt_dc: VarPowerFlowRefferenceType.Vdc,
+            }),
+            current_to_voltage_map=dict({
+                VarPowerFlowRefferenceType.it_N: VarPowerFlowRefferenceType.vt_N,
+                VarPowerFlowRefferenceType.it_A: VarPowerFlowRefferenceType.vt_A,
+                VarPowerFlowRefferenceType.it_B: VarPowerFlowRefferenceType.vt_B,
+                VarPowerFlowRefferenceType.it_C: VarPowerFlowRefferenceType.vt_C,
+                VarPowerFlowRefferenceType.It_dc: VarPowerFlowRefferenceType.Vt_dc,
+            }),
+        ))
+
+        errors.extend(self._validate_shared_branch_emt_interface(branch, present_refs))
+        errors.extend(self._validate_branch_dc_mapping_collisions(branch))
+
+        return errors
+
+    def _validate_branch_side_emt_interface(self,
+                                            device: Any,
+                                            bus: Any,
+                                            side: str,
+                                            present_refs: Set[VarPowerFlowRefferenceType],
+                                            voltage_map: Dict[VarPowerFlowRefferenceType, VarPowerFlowRefferenceType],
+                                            current_to_voltage_map: Dict[VarPowerFlowRefferenceType, VarPowerFlowRefferenceType]) -> List[str]:
+        """
+        Validate one side-specific branch EMT contract against one terminal bus.
+
+        :param device: Branch device exposing the interface.
+        :param bus: Terminal bus to validate against.
+        :param side: ``from`` or ``to``.
+        :param present_refs: Non-null external references exposed by the branch.
+        :param voltage_map: Mapping from branch voltage refs to bus voltage refs.
+        :param current_to_voltage_map: Mapping from branch current refs to branch voltage refs.
+        :return: List of validation errors.
+        """
+        errors: List[str] = list()
+        supported_bus_voltage_refs: Set[VarPowerFlowRefferenceType] = self._get_bus_voltage_refs(bus)
+        branch_voltage_ref: VarPowerFlowRefferenceType
+        bus_voltage_ref: VarPowerFlowRefferenceType
+        current_ref: VarPowerFlowRefferenceType
+        required_branch_voltage_ref: VarPowerFlowRefferenceType
+        required_bus_voltage_ref: VarPowerFlowRefferenceType
+
+        for branch_voltage_ref, bus_voltage_ref in voltage_map.items():
+            if branch_voltage_ref in present_refs:
+                if bus.is_dc and bus_voltage_ref != VarPowerFlowRefferenceType.Vdc:
+                    errors.append(self._build_emt_interface_error(
+                        device=device,
+                        bus=bus,
+                        side=side,
+                        reference=branch_voltage_ref,
+                        detail="AC branch voltage reference exposed on a DC bus.",
+                    ))
+                elif (not bus.is_dc) and bus_voltage_ref == VarPowerFlowRefferenceType.Vdc:
+                    errors.append(self._build_emt_interface_error(
+                        device=device,
+                        bus=bus,
+                        side=side,
+                        reference=branch_voltage_ref,
+                        detail="DC branch voltage reference exposed on an AC bus.",
+                    ))
+                elif bus_voltage_ref not in supported_bus_voltage_refs:
+                    errors.append(self._build_emt_interface_error(
+                        device=device,
+                        bus=bus,
+                        side=side,
+                        reference=branch_voltage_ref,
+                        detail="Voltage reference exposed but the terminal bus EMT shell does not support it.",
+                    ))
+                else:
+                    pass
+            else:
+                pass
+
+        for current_ref, required_branch_voltage_ref in current_to_voltage_map.items():
+            if current_ref in present_refs:
+                required_bus_voltage_ref = voltage_map[required_branch_voltage_ref]
+
+                if required_branch_voltage_ref not in present_refs:
+                    errors.append(self._build_emt_interface_error(
+                        device=device,
+                        bus=bus,
+                        side=side,
+                        reference=current_ref,
+                        detail=(
+                            f"Current reference exposed without a compatible "
+                            f"{required_branch_voltage_ref.value} input reference."
+                        ),
+                    ))
+                else:
+                    pass
+
+                if bus.is_dc and required_bus_voltage_ref != VarPowerFlowRefferenceType.Vdc:
+                    errors.append(self._build_emt_interface_error(
+                        device=device,
+                        bus=bus,
+                        side=side,
+                        reference=current_ref,
+                        detail="AC branch current reference exposed on a DC bus.",
+                    ))
+                elif (not bus.is_dc) and required_bus_voltage_ref == VarPowerFlowRefferenceType.Vdc:
+                    errors.append(self._build_emt_interface_error(
+                        device=device,
+                        bus=bus,
+                        side=side,
+                        reference=current_ref,
+                        detail="DC branch current reference exposed on an AC bus.",
+                    ))
+                elif required_bus_voltage_ref not in supported_bus_voltage_refs:
+                    errors.append(self._build_emt_interface_error(
+                        device=device,
+                        bus=bus,
+                        side=side,
+                        reference=current_ref,
+                        detail="Current reference exposed but the terminal bus EMT shell does not support the corresponding voltage phase.",
+                    ))
+                else:
+                    pass
+            else:
+                pass
+
+        return errors
+
+    def _validate_shared_branch_emt_interface(self,
+                                              branch: Any,
+                                              present_refs: Set[VarPowerFlowRefferenceType]) -> List[str]:
+        """
+        Validate shared EMT branch references used by VSC-style branch models.
+
+        Some branch EMT templates use a single AC-side contract ``v_A/B/C`` and a
+        single DC-side contract ``Vdc``/``Idc`` instead of side-specific branch
+        terminal references. This validator allows that contract only when the
+        network has exactly one compatible side for it.
+
+        Two-sided DC branches are handled separately by
+        ``_validate_branch_dc_mapping_collisions`` because legacy DC branch
+        templates may expose shared ``Vdc`` / ``Idc`` only as aliases of their
+        explicit terminal variables.
+
+        :param branch: Branch device to validate.
+        :param present_refs: Non-null external references exposed by the branch.
+        :return: List of validation errors.
+        """
+        errors: List[str] = list()
+        shared_ac_refs: Set[VarPowerFlowRefferenceType] = set([
+            VarPowerFlowRefferenceType.v_N,
+            VarPowerFlowRefferenceType.v_A,
+            VarPowerFlowRefferenceType.v_B,
+            VarPowerFlowRefferenceType.v_C,
+            VarPowerFlowRefferenceType.i_N,
+            VarPowerFlowRefferenceType.i_A,
+            VarPowerFlowRefferenceType.i_B,
+            VarPowerFlowRefferenceType.i_C,
+        ])
+        shared_dc_refs: Set[VarPowerFlowRefferenceType] = set([
+            VarPowerFlowRefferenceType.Vdc,
+            VarPowerFlowRefferenceType.Idc,
+        ])
+        shared_ac_present: Set[VarPowerFlowRefferenceType] = present_refs.intersection(shared_ac_refs)
+        shared_dc_present: Set[VarPowerFlowRefferenceType] = present_refs.intersection(shared_dc_refs)
+        ac_side_count: int = self._count_branch_sides_by_domain(branch, is_dc=False)
+        dc_side_count: int = self._count_branch_sides_by_domain(branch, is_dc=True)
+
+        if len(shared_ac_present) > 0:
+            if ac_side_count == 1:
+                if branch.bus_from.is_dc:
+                    errors.extend(self._validate_injection_bus_contract(
+                        device=branch,
+                        bus=branch.bus_to,
+                        side="to",
+                        present_refs=shared_ac_present,
+                    ))
+                else:
+                    errors.extend(self._validate_injection_bus_contract(
+                        device=branch,
+                        bus=branch.bus_from,
+                        side="from",
+                        present_refs=shared_ac_present,
+                    ))
+            else:
+                errors.extend(self._build_shared_branch_domain_errors(
+                    branch=branch,
+                    refs=shared_ac_present,
+                    expected_domain="AC",
+                    side_count=ac_side_count,
+                ))
+        else:
+            pass
+
+        if len(shared_dc_present) > 0:
+            if dc_side_count == 1:
+                if branch.bus_from.is_dc:
+                    errors.extend(self._validate_injection_bus_contract(
+                        device=branch,
+                        bus=branch.bus_from,
+                        side="from",
+                        present_refs=shared_dc_present,
+                    ))
+                else:
+                    errors.extend(self._validate_injection_bus_contract(
+                        device=branch,
+                        bus=branch.bus_to,
+                        side="to",
+                        present_refs=shared_dc_present,
+                    ))
+            elif dc_side_count == 2:
+                # Two-sided DC branches may legally expose shared aliases when the
+                # real contract is still the explicit Vf/Vt and If/It terminal set.
+                pass
+            else:
+                errors.extend(self._build_shared_branch_domain_errors(
+                    branch=branch,
+                    refs=shared_dc_present,
+                    expected_domain="DC",
+                    side_count=dc_side_count,
+                ))
+        else:
+            pass
+
+        return errors
+
+    def _is_valid_legacy_shared_dc_branch_alias(self,
+                                                branch: Any,
+                                                reference: VarPowerFlowRefferenceType) -> bool:
+        """
+        Return whether one shared DC branch reference is a valid legacy alias.
+
+        Legacy two-sided DC branch templates may keep exposing ``Vdc`` or ``Idc``
+        for backward compatibility even though EMT assembly now uses the explicit
+        terminal contract ``Vf_dc`` / ``Vt_dc`` and ``If_dc`` / ``It_dc``.
+        The shared reference is accepted only when both DC sides are present and
+        the shared mapping aliases one of the already explicit terminal variables.
+
+        :param branch: Branch device to inspect.
+        :param reference: Shared DC reference to validate.
+        :return: ``True`` when the shared reference is a safe legacy alias.
+        """
+        external_mapping: Optional[Dict[Any, Var]] = _get_external_mapping(branch.emt_model)
+        shared_var: Var | None
+        from_var: Var | None
+        to_var: Var | None
+
+        if external_mapping is None:
+            return False
+        else:
+            pass
+
+        if not (branch.bus_from.is_dc and branch.bus_to.is_dc):
+            return False
+        else:
+            pass
+
+        if reference == VarPowerFlowRefferenceType.Vdc:
+            shared_var = external_mapping.get(VarPowerFlowRefferenceType.Vdc, None)
+            from_var = external_mapping.get(VarPowerFlowRefferenceType.Vf_dc, None)
+            to_var = external_mapping.get(VarPowerFlowRefferenceType.Vt_dc, None)
+        elif reference == VarPowerFlowRefferenceType.Idc:
+            shared_var = external_mapping.get(VarPowerFlowRefferenceType.Idc, None)
+            from_var = external_mapping.get(VarPowerFlowRefferenceType.If_dc, None)
+            to_var = external_mapping.get(VarPowerFlowRefferenceType.It_dc, None)
+        else:
+            return False
+
+        if shared_var is None or from_var is None or to_var is None:
+            return False
+        else:
+            pass
+
+        if shared_var.uid == from_var.uid:
+            return True
+        else:
+            pass
+
+        if shared_var.uid == to_var.uid:
+            return True
+        else:
+            return False
+
+    def _build_shared_branch_domain_errors(self,
+                                           branch: Any,
+                                           refs: Set[VarPowerFlowRefferenceType],
+                                           expected_domain: str,
+                                           side_count: int) -> List[str]:
+        """
+        Build explicit errors for ambiguous shared branch-domain references.
+
+        :param branch: Branch device exposing the references.
+        :param refs: Shared references that could not be assigned safely.
+        :param expected_domain: Domain required by the shared references.
+        :param side_count: Number of compatible terminal buses found.
+        :return: List of formatted error strings.
+        """
+        errors: List[str] = list()
+        reference: VarPowerFlowRefferenceType
+
+        for reference in refs:
+            errors.append(
+                f"  - Device '{self._get_device_name(branch)}' ({self._get_device_type_label(branch)}) "
+                f"branch ref '{reference.value}' is a shared {expected_domain} interface, but the branch has "
+                f"{side_count} compatible {expected_domain} side(s). Use side-specific EMT references instead."
+            )
+
+        return errors
+
+    def _validate_branch_dc_mapping_collisions(self, branch: Any) -> List[str]:
+        """
+        Validate that branch DC terminal mappings cannot collide across sides.
+
+        :param branch: Branch device to validate.
+        :return: List of validation errors.
+        """
+        errors: List[str] = list()
+        external_mapping: Optional[Dict[Any, Var]] = _get_external_mapping(branch.emt_model)
+        if_dc_var: Var | None
+        it_dc_var: Var | None
+        v_f_dc_var: Var | None
+        v_t_dc_var: Var | None
+        shared_v_dc_var: Var | None
+        shared_i_dc_var: Var | None
+
+        if external_mapping is None:
+            return errors
+        else:
+            pass
+
+        if_dc_var = external_mapping.get(VarPowerFlowRefferenceType.If_dc, None)
+        it_dc_var = external_mapping.get(VarPowerFlowRefferenceType.It_dc, None)
+        v_f_dc_var = external_mapping.get(VarPowerFlowRefferenceType.Vf_dc, None)
+        v_t_dc_var = external_mapping.get(VarPowerFlowRefferenceType.Vt_dc, None)
+        shared_v_dc_var = external_mapping.get(VarPowerFlowRefferenceType.Vdc, None)
+        shared_i_dc_var = external_mapping.get(VarPowerFlowRefferenceType.Idc, None)
+
+        if if_dc_var is not None and it_dc_var is not None and if_dc_var.uid == it_dc_var.uid:
+            errors.append(
+                f"  - Device '{self._get_device_name(branch)}' ({self._get_device_type_label(branch)}) "
+                "uses the same variable for both If_dc and It_dc. Branch DC terminal currents must be side-specific."
+            )
+        else:
+            pass
+
+        if v_f_dc_var is not None and v_t_dc_var is not None and v_f_dc_var.uid == v_t_dc_var.uid:
+            errors.append(
+                f"  - Device '{self._get_device_name(branch)}' ({self._get_device_type_label(branch)}) "
+                "uses the same variable for both Vf_dc and Vt_dc. Branch DC terminal voltages must be side-specific."
+            )
+        else:
+            pass
+
+        if branch.bus_from.is_dc and branch.bus_to.is_dc:
+            if shared_v_dc_var is not None:
+                if self._is_valid_legacy_shared_dc_branch_alias(branch, VarPowerFlowRefferenceType.Vdc):
+                    pass
+                else:
+                    errors.append(
+                        f"  - Device '{self._get_device_name(branch)}' ({self._get_device_type_label(branch)}) "
+                        "exposes shared Vdc on a two-sided DC branch without a full side-specific alias contract. "
+                        "Use Vf_dc and Vt_dc instead."
+                    )
+            else:
+                pass
+
+            if shared_i_dc_var is not None:
+                if self._is_valid_legacy_shared_dc_branch_alias(branch, VarPowerFlowRefferenceType.Idc):
+                    pass
+                else:
+                    errors.append(
+                        f"  - Device '{self._get_device_name(branch)}' ({self._get_device_type_label(branch)}) "
+                        "exposes shared Idc on a two-sided DC branch without a full side-specific alias contract. "
+                        "Use If_dc and It_dc instead."
+                    )
+            else:
+                pass
+        else:
+            pass
+
+        return errors
+
+    def _count_branch_sides_by_domain(self, branch: Any, is_dc: bool) -> int:
+        """
+        Count the number of branch terminal buses matching one electrical domain.
+
+        :param branch: Branch device to inspect.
+        :param is_dc: ``True`` for DC buses, ``False`` for AC buses.
+        :return: Number of matching terminal buses.
+        """
+        count: int = 0
+
+        if branch.bus_from.is_dc == is_dc:
+            count += 1
+        else:
+            pass
+
+        if branch.bus_to.is_dc == is_dc:
+            count += 1
+        else:
+            pass
+
+        return count
+
+    def _get_present_external_refs(self, mdl: Block) -> Set[VarPowerFlowRefferenceType]:
+        """
+        Return the set of non-null electrical external references exposed by one model.
+
+        :param mdl: Device block to inspect.
+        :return: Set of exposed external reference keys.
+        """
+        refs: Set[VarPowerFlowRefferenceType] = set()
+        external_mapping: Optional[Dict[Any, Var]] = _get_external_mapping(mdl)
+        reference: Any
+        mapped_var: Var | None
+
+        if external_mapping is None:
+            return refs
+        else:
+            pass
+
+        for reference, mapped_var in external_mapping.items():
+            if isinstance(reference, VarPowerFlowRefferenceType) and mapped_var is not None:
+                refs.add(reference)
+            else:
+                pass
+
+        return refs
+
+    def _get_bus_voltage_refs(self, bus: Any) -> Set[VarPowerFlowRefferenceType]:
+        """
+        Return the non-null bus-shell voltage references supported by one bus.
+
+        :param bus: Bus API object.
+        :return: Supported bus voltage references.
+        """
+        refs: Set[VarPowerFlowRefferenceType] = set()
+        reference: VarPowerFlowRefferenceType
+        candidate_refs: List[VarPowerFlowRefferenceType]
+
+        if bus.is_dc:
+            candidate_refs = list([VarPowerFlowRefferenceType.Vdc])
+        else:
+            candidate_refs = list([
+                VarPowerFlowRefferenceType.v_N,
+                VarPowerFlowRefferenceType.v_A,
+                VarPowerFlowRefferenceType.v_B,
+                VarPowerFlowRefferenceType.v_C,
+            ])
+
+        for reference in candidate_refs:
+            if _get_external_mapping_var_if_present(bus.emt_model, reference) is not None:
+                refs.add(reference)
+            else:
+                pass
+
+        return refs
+
+    def _build_emt_interface_error(self,
+                                   device: Any,
+                                   bus: Any,
+                                   side: str,
+                                   reference: VarPowerFlowRefferenceType,
+                                   detail: str) -> str:
+        """
+        Build one formatted EMT interface-validation error message.
+
+        :param device: Device that exposes the incompatible reference.
+        :param bus: Connected bus.
+        :param side: User-facing side label.
+        :param reference: Incompatible external reference.
+        :param detail: Specific mismatch explanation.
+        :return: Formatted error string.
+        """
+        category: str = self._get_emt_interface_ref_category(reference)
+        return (
+            f"  - Device '{self._get_device_name(device)}' ({self._get_device_type_label(device)}) "
+            f"bus '{bus.name}' side '{side}' ref '{reference.value}' [{category}]: {detail}"
+        )
+
+    def _get_emt_interface_ref_category(self, reference: VarPowerFlowRefferenceType) -> str:
+        """
+        Classify one EMT electrical reference for user-facing error messages.
+
+        :param reference: Electrical interface reference.
+        :return: Category label such as ``AC phase``, ``neutral``, or ``DC``.
+        """
+        if reference in {
+            VarPowerFlowRefferenceType.v_N,
+            VarPowerFlowRefferenceType.i_N,
+            VarPowerFlowRefferenceType.vf_N,
+            VarPowerFlowRefferenceType.if_N,
+            VarPowerFlowRefferenceType.vt_N,
+            VarPowerFlowRefferenceType.it_N,
+        }:
+            return "neutral"
+        elif reference in {
+            VarPowerFlowRefferenceType.Vdc,
+            VarPowerFlowRefferenceType.Idc,
+            VarPowerFlowRefferenceType.Vf_dc,
+            VarPowerFlowRefferenceType.Vt_dc,
+            VarPowerFlowRefferenceType.If_dc,
+            VarPowerFlowRefferenceType.It_dc,
+        }:
+            return "DC"
+        else:
+            return "AC phase"
+
+    def _get_device_name(self, device: Any) -> str:
+        """
+        Return one stable user-facing device name for diagnostics.
+
+        :param device: Device to describe.
+        :return: Device name when available.
+        """
+        try:
+            return str(device.name)
+        except Exception:
+            return str(type(device).__name__)
+
+    def _get_device_type_label(self, device: Any) -> str:
+        """
+        Return one stable user-facing device-type label for diagnostics.
+
+        :param device: Device to describe.
+        :return: Device-type label.
+        """
+        try:
+            return str(device.device_type.value)
+        except Exception:
+            return str(type(device).__name__)
 
     def _validate_connections(self) -> None:
         """
@@ -3057,20 +3854,23 @@ class EmtProblemDae(EmtProblemTemplate):
                 q_total += float(np.imag(phase_complex_power))
                 phase_index += 1
 
-            neutral_var = mdl.E(VarPowerFlowRefferenceType.i_N)
-            if neutral_var is not None:
-                ia_var = mdl.E(VarPowerFlowRefferenceType.i_A)
-                ib_var = mdl.E(VarPowerFlowRefferenceType.i_B)
-                ic_var = mdl.E(VarPowerFlowRefferenceType.i_C)
-                if ia_var is None and ib_var is None and ic_var is None:
-                    pass
-                else:
-                    ia_inst = self._temp_init_guess.get(ia_var.uid, 0.0) if ia_var is not None else 0.0
-                    ib_inst = self._temp_init_guess.get(ib_var.uid, 0.0) if ib_var is not None else 0.0
-                    ic_inst = self._temp_init_guess.get(ic_var.uid, 0.0) if ic_var is not None else 0.0
-                    neutral_inst = -(ia_inst + ib_inst + ic_inst)
-                    self._temp_init_guess[neutral_var.uid] = float(neutral_inst)
-                    self._temp_post_init_guess[neutral_var.uid] = float(neutral_inst)
+            # neutral_var = mdl.E(VarPowerFlowRefferenceType.i_N)
+            # if neutral_var is not None:
+            if VarPowerFlowRefferenceType.i_N in mdl.external_mapping:
+                neutral_var = mdl.E(VarPowerFlowRefferenceType.i_N)
+                if neutral_var is not None:
+                    ia_var = mdl.E(VarPowerFlowRefferenceType.i_A)
+                    ib_var = mdl.E(VarPowerFlowRefferenceType.i_B)
+                    ic_var = mdl.E(VarPowerFlowRefferenceType.i_C)
+                    if ia_var is None and ib_var is None and ic_var is None:
+                        pass
+                    else:
+                        ia_inst = self._temp_init_guess.get(ia_var.uid, 0.0) if ia_var is not None else 0.0
+                        ib_inst = self._temp_init_guess.get(ib_var.uid, 0.0) if ib_var is not None else 0.0
+                        ic_inst = self._temp_init_guess.get(ic_var.uid, 0.0) if ic_var is not None else 0.0
+                        neutral_inst = -(ia_inst + ib_inst + ic_inst)
+                        self._temp_init_guess[neutral_var.uid] = float(neutral_inst)
+                        self._temp_post_init_guess[neutral_var.uid] = float(neutral_inst)
             else:
                 pass
 

@@ -4011,6 +4011,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 LibraryLeafSpec("ZIP load", BlockType.ZIP_LOAD_EMT),
                 LibraryLeafSpec("DC load", BlockType.DC_LOAD_EMT),
             ],
+            # TODO: for transformers it should appear in all types of trafos
             DeviceType.Transformer2WDevice: [
                 LibraryLeafSpec("Generic", BlockType.GENERIC),
                 LibraryLeafSpec("Transformer", BlockType.TRAFO_EMT),
@@ -5960,6 +5961,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         # remove blocks and diagrams from main_block
         if item.subsys is not None:
+            self._remove_connection_interface_for_block(item)
+
             for child_block in list(self.main_block.children):
                 if child_block.uid == item.subsys.uid:
                     self.main_block.children.remove(child_block)
@@ -5976,6 +5979,80 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         # remove connections
         for conn in connections_to_remove:
             self.remove_connection_item(conn)
+
+    def _remove_connection_interface_for_block(self, item: BlockItem | GenericBlockItem) -> None:
+        """
+        Remove the saved top-level connection variable for one editor port block.
+
+        The connection blocks drawn on the canvas are only wrappers around the
+        actual root-block interface variables stored in ``main_block``. When the
+        user deletes one of those wrappers, the saved interface variable and its
+        external-mapping entry must be deleted as well so later EMT assembly sees
+        the edited interface exactly as shown in the editor.
+
+        :param item: Scene item being removed.
+        :return: None.
+        """
+        node_data: Any | None = None
+        connection_var: Var | None = None
+
+        if item.subsys is None:
+            return
+        else:
+            pass
+
+        node_data = self.diagram.node_data.get(item.subsys.uid, None)
+
+        if node_data is None:
+            return
+        else:
+            pass
+
+        if node_data.tpe == BlockType.INPUT_CONN.name:
+            if len(item.subsys.out_vars) > 0:
+                connection_var = item.subsys.out_vars[0]
+                self._remove_root_connection_var(connection_var=connection_var, direction="input")
+            else:
+                pass
+        elif node_data.tpe == BlockType.OUTPUT_CONN.name:
+            if len(item.subsys.in_vars) > 0:
+                connection_var = item.subsys.in_vars[0]
+                self._remove_root_connection_var(connection_var=connection_var, direction="output")
+            else:
+                pass
+        else:
+            pass
+
+    def _remove_root_connection_var(self, connection_var: Var, direction: str) -> None:
+        """
+        Remove one saved root-block interface variable and its mapping entries.
+
+        :param connection_var: Root-block network-connection variable to remove.
+        :param direction: ``input`` for ``main_block.in_vars`` or ``output`` for
+            ``main_block.out_vars``.
+        :return: None.
+        """
+        mapping_keys_to_remove: List[VarPowerFlowRefferenceType] = list()
+        mapping_key: VarPowerFlowRefferenceType
+        mapped_var: Var | None
+
+        if direction == "input":
+            self.main_block.in_vars = [var for var in self.main_block.in_vars if var.uid != connection_var.uid]
+        elif direction == "output":
+            self.main_block.out_vars = [var for var in self.main_block.out_vars if var.uid != connection_var.uid]
+        else:
+            raise ValueError(f"Unsupported root connection direction {direction}")
+
+        # Remove all external references that still point to the deleted port so
+        # the persisted block interface matches the visible editor interface.
+        for mapping_key, mapped_var in self.main_block.external_mapping.items():
+            if mapped_var is not None and mapped_var.uid == connection_var.uid:
+                mapping_keys_to_remove.append(mapping_key)
+            else:
+                pass
+
+        for mapping_key in mapping_keys_to_remove:
+            del self.main_block.external_mapping[mapping_key]
 
     def remove_item(self, item: BlockItem | GenericBlockItem | ConnectionItem) -> None:
         """
@@ -6294,82 +6371,68 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
     def _build_emt_injection_connection_specs(self) -> List[ConnectionVarSpec]:
         """
-        Build all EMT connection-variable specs for an injection device.
+        Build the default maximum EMT connection-variable specs for an injection device.
 
         :return:
         """
-        voltage_pairs = self.get_injection_emt_voltage_pairs(self.api_object.bus)
+        safe_bus_name: str = self._get_safe_bus_name(self.api_object.bus)
         specs: List[ConnectionVarSpec] = list()
 
-        reference: VarPowerFlowRefferenceType
-        variable: Any
-        for reference, variable in voltage_pairs:
-            specs.append(ConnectionVarSpec("input", reference, str(variable.name)))
+        # The editor must expose the full editable EMT contract up front. Static
+        # bus-domain and phase compatibility are validated later during EMT build.
+        specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.v_N, f"v_N_{safe_bus_name}"))
+        specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.v_A, f"v_A_{safe_bus_name}"))
+        specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.v_B, f"v_B_{safe_bus_name}"))
+        specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.v_C, f"v_C_{safe_bus_name}"))
+        specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.Vdc, f"Vdc_{safe_bus_name}"))
 
-        current_refs = self.build_emt_injection_current_refs(self.api_object.bus)
-        for reference in current_refs:
-            specs.append(ConnectionVarSpec("output", reference, f"net_conn_{reference.value}_{self.api_object.name}"))
+        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.i_N, f"net_conn_{VarPowerFlowRefferenceType.i_N.value}_{self.api_object.name}"))
+        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.i_A, f"net_conn_{VarPowerFlowRefferenceType.i_A.value}_{self.api_object.name}"))
+        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.i_B, f"net_conn_{VarPowerFlowRefferenceType.i_B.value}_{self.api_object.name}"))
+        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.i_C, f"net_conn_{VarPowerFlowRefferenceType.i_C.value}_{self.api_object.name}"))
+        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.Idc, f"net_conn_{VarPowerFlowRefferenceType.Idc.value}_{self.api_object.name}"))
 
         return specs
 
     def _build_emt_branch_connection_specs(self) -> List[ConnectionVarSpec]:
         """
-        Build all EMT connection-variable specs for a branch device.
+        Build the default maximum EMT connection-variable specs for a branch device.
 
-        Inputs expose the voltages of both terminal buses.
-        Outputs expose the currents of both terminal buses using the same visible-name
-        pattern as injection devices plus the bus-name suffix.
+        Inputs expose the full AC N/A/B/C plus DC contract for both terminal
+        buses. Outputs expose the matching current contract using side-specific
+        branch references so the saved editor interface cannot collide between
+        the two terminals.
 
         :return:
         """
         specs: List[ConnectionVarSpec] = list()
 
-        voltage_pairs_from = self.get_branch_emt_voltage_pairs(self.api_object.bus_from, "from")
-        voltage_pairs_to = self.get_branch_emt_voltage_pairs(self.api_object.bus_to, "to")
-
-        reference: VarPowerFlowRefferenceType
-        variable: Any
-        for reference, variable in voltage_pairs_from:
-            specs.append(ConnectionVarSpec("input", reference, str(variable.name)))
-
-        for reference, variable in voltage_pairs_to:
-            specs.append(ConnectionVarSpec("input", reference, str(variable.name)))
-
         safe_bus_from = self._get_safe_bus_name(self.api_object.bus_from)
         safe_bus_to = self._get_safe_bus_name(self.api_object.bus_to)
 
-        current_name_map_from: Dict[VarPowerFlowRefferenceType, str] = {
-            VarPowerFlowRefferenceType.if_N: f"net_conn_i_N_{safe_bus_from}_{self.api_object.name}",
-            VarPowerFlowRefferenceType.if_A: f"net_conn_i_A_{safe_bus_from}_{self.api_object.name}",
-            VarPowerFlowRefferenceType.if_B: f"net_conn_i_B_{safe_bus_from}_{self.api_object.name}",
-            VarPowerFlowRefferenceType.if_C: f"net_conn_i_C_{safe_bus_from}_{self.api_object.name}",
-            VarPowerFlowRefferenceType.Idc: f"net_conn_i_DC_{safe_bus_from}_{self.api_object.name}",
-        }
+        specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.vf_N, f"vf_N_{safe_bus_from}"))
+        specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.vf_A, f"vf_A_{safe_bus_from}"))
+        specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.vf_B, f"vf_B_{safe_bus_from}"))
+        specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.vf_C, f"vf_C_{safe_bus_from}"))
+        specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.Vf_dc, f"Vf_dc_{safe_bus_from}"))
 
-        current_name_map_to: Dict[VarPowerFlowRefferenceType, str] = {
-            VarPowerFlowRefferenceType.it_N: f"net_conn_i_N_{safe_bus_to}_{self.api_object.name}",
-            VarPowerFlowRefferenceType.it_A: f"net_conn_i_A_{safe_bus_to}_{self.api_object.name}",
-            VarPowerFlowRefferenceType.it_B: f"net_conn_i_B_{safe_bus_to}_{self.api_object.name}",
-            VarPowerFlowRefferenceType.it_C: f"net_conn_i_C_{safe_bus_to}_{self.api_object.name}",
-            VarPowerFlowRefferenceType.Idc: f"net_conn_i_DC_{safe_bus_from}_{self.api_object.name}",
-        }
+        specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.vt_N, f"vt_N_{safe_bus_to}"))
+        specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.vt_A, f"vt_A_{safe_bus_to}"))
+        specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.vt_B, f"vt_B_{safe_bus_to}"))
+        specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.vt_C, f"vt_C_{safe_bus_to}"))
+        specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.Vt_dc, f"Vt_dc_{safe_bus_to}"))
 
-        current_refs_from = self._build_emt_branch_current_refs(bus=self.api_object.bus_from,
-                                                           side="from",
-                                                                voltage_pairs = voltage_pairs_from)
-        current_refs_to = self._build_emt_branch_current_refs(bus=self.api_object.bus_to,
-                                                         side="to",
-                                                              voltage_pairs = voltage_pairs_to)
+        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.if_N, f"net_conn_{VarPowerFlowRefferenceType.if_N.value}_{safe_bus_from}_{self.api_object.name}"))
+        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.if_A, f"net_conn_{VarPowerFlowRefferenceType.if_A.value}_{safe_bus_from}_{self.api_object.name}"))
+        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.if_B, f"net_conn_{VarPowerFlowRefferenceType.if_B.value}_{safe_bus_from}_{self.api_object.name}"))
+        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.if_C, f"net_conn_{VarPowerFlowRefferenceType.if_C.value}_{safe_bus_from}_{self.api_object.name}"))
+        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.If_dc, f"net_conn_{VarPowerFlowRefferenceType.If_dc.value}_{safe_bus_from}_{self.api_object.name}"))
 
-        for reference in current_refs_from:
-            visible_name = current_name_map_from.get(reference, None)
-            if visible_name is not None:
-                specs.append(ConnectionVarSpec("output", reference, visible_name))
-
-        for reference in current_refs_to:
-            visible_name = current_name_map_to.get(reference, None)
-            if visible_name is not None:
-                specs.append(ConnectionVarSpec("output", reference, visible_name))
+        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.it_N, f"net_conn_{VarPowerFlowRefferenceType.it_N.value}_{safe_bus_to}_{self.api_object.name}"))
+        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.it_A, f"net_conn_{VarPowerFlowRefferenceType.it_A.value}_{safe_bus_to}_{self.api_object.name}"))
+        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.it_B, f"net_conn_{VarPowerFlowRefferenceType.it_B.value}_{safe_bus_to}_{self.api_object.name}"))
+        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.it_C, f"net_conn_{VarPowerFlowRefferenceType.it_C.value}_{safe_bus_to}_{self.api_object.name}"))
+        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.It_dc, f"net_conn_{VarPowerFlowRefferenceType.It_dc.value}_{safe_bus_to}_{self.api_object.name}"))
 
         return specs
 
