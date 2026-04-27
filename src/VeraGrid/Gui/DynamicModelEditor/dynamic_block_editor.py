@@ -231,24 +231,24 @@ def _library_leaf_label_sort_key(leaf: "LibraryLeafSpec") -> str:
     return leaf.label.lower()
 
 
-def open_dyn_params_editor(var_factory: VarFactory, api_object: Any,
-                           preferred_mode: DynamicSimulationMode | None = None):
-    """
-    Opens the dynamic parameters editor dialog.
-
-    :param var_factory: Variable factory for creating new variables.
-    :param api_object: Device/API object containing rms_model or emt_model.
-    :param preferred_mode: Simulation mode (RMS or EMT).
-    :return: None
-    """
-    if preferred_mode == DynamicSimulationMode.RMS:
-        blk = api_object.rms_model
-        print("")
-    else:
-        blk = api_object.emt_model
-
-    dialog = ParametersEditorDialog(var_factory=var_factory, block=blk)
-    dialog.exec()
+# def open_dyn_params_editor(var_factory: VarFactory, api_object: Any,
+#                            preferred_mode: DynamicSimulationMode | None = None):
+#     """
+#     Opens the dynamic parameters editor dialog.
+#
+#     :param var_factory: Variable factory for creating new variables.
+#     :param api_object: Device/API object containing rms_model or emt_model.
+#     :param preferred_mode: Simulation mode (RMS or EMT).
+#     :return: None
+#     """
+#     if preferred_mode == DynamicSimulationMode.RMS:
+#         blk = api_object.rms_model
+#         print("")
+#     else:
+#         blk = api_object.emt_model
+#
+#     dialog = ParametersEditorDialog(var_factory=var_factory, block=blk)
+#     dialog.exec()
 
 
 def build_variables_rows(block: Block | None, rows: List[BlockParameterRow]):
@@ -2763,7 +2763,7 @@ class BlockItem(QGraphicsRectItem):
     Graphics item representing a symbolic block.
     """
 
-    def __init__(self, var_factory: VarFactory, name: str, position_changed_callback=None):
+    def __init__(self, var_factory: VarFactory, name: str, api_object: ALL_DEV_TYPES | None = None, mode: DynamicSimulationMode = None, position_changed_callback=None):
         """
         Build the graphical block item.
 
@@ -2774,6 +2774,8 @@ class BlockItem(QGraphicsRectItem):
         super().__init__(0, 0, 100, 60)
 
         self.var_factory: VarFactory = var_factory
+        self.api_object = api_object
+        self.mode = mode
         self.name: str = name
         self.position_changed_callback = position_changed_callback
         self.resize_handle: ResizeHandle | None = None
@@ -2784,7 +2786,13 @@ class BlockItem(QGraphicsRectItem):
         self.outputs: List[PortItem] = list()
         self.input_labels: List[QGraphicsTextItem] = list()
         self.output_labels: List[QGraphicsTextItem] = list()
-        self.editor_window: DynamicBlockEditorGUI | None = None
+        if self.subsys is not None:
+            self.editor_window = DynamicBlockEditorGUI(
+                var_factory=self.var_factory,
+                block=self.subsys,
+                api_object=self.api_object,
+                mode=self.mode
+            )
 
         self.setFlags(
             QGraphicsItem.GraphicsItemFlag.ItemIsMovable |
@@ -2794,6 +2802,21 @@ class BlockItem(QGraphicsRectItem):
         self.setAcceptHoverEvents(True)
         self.setPen(QPen(Qt.GlobalColor.transparent, 0))
         self.setBrush(QBrush(DEFAULT_BLOCK_FILL))
+
+    def mouseDoubleClickEvent(self, event):
+        """
+        opens the editor
+        Parameters
+        ----------
+        event :
+
+        Returns
+        -------
+
+        """
+        print("clicking")
+        self.editor_window.show()
+
 
     def set_subsystem(self, block: Block) -> None:
         """
@@ -3782,12 +3805,14 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.original_block: Block = block  # api_object.rms_model
 
         try:
-            if mode == DynamicSimulationMode.RMS and self.api_object.rms_template is not None and not block.diagram.node_data:
+            if mode == DynamicSimulationMode.RMS and self.api_object.rms_template is not None and not block.diagram.node_data and main_editor:
                 model_block = clone_block_for_editing(block)
                 self.main_block: Block = Block()
                 self.main_block.add(model_block)
-            elif mode == DynamicSimulationMode.EMT and self.api_object.emt_template is not None:
+            elif mode == DynamicSimulationMode.EMT and self.api_object.emt_template is not None and not block.diagram.node_data and main_editor:
+                model_block = clone_block_for_editing(block)
                 self.main_block: Block = Block()
+                self.main_block.add(model_block)
             else:
                 self.main_block: Block = clone_block_for_editing(block)
 
@@ -4351,7 +4376,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
         count: int = self.block_counters.get(block_type, 0) + 1
         item_name: str = f"{block_type.name}_{count}"
-        block_item: BlockItem = BlockItem(var_factory=self.var_factory, name=item_name)
+        block_item: BlockItem = BlockItem(var_factory=self.var_factory, api_object=self.api_object, mode=self.mode, name=item_name)
         block_model: Block | None = create_block_of_type(
             var_factory=self.var_factory,
             block_type=block_type,
