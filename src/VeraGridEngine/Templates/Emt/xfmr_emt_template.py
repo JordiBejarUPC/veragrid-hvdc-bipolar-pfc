@@ -609,20 +609,6 @@ def get_xfmr_emt_template(
         vt_keys["A"]: None,
         vt_keys["B"]: None,
         vt_keys["C"]: None,
-        Sf_keys["A"]: None,
-        Sf_keys["B"]: None,
-        Sf_keys["C"]: None,
-        St_keys["A"]: None,
-        St_keys["B"]: None,
-        St_keys["C"]: None,
-        d_vf_keys["N"]: None,
-        d_vf_keys["A"]: None,
-        d_vf_keys["B"]: None,
-        d_vf_keys["C"]: None,
-        d_vt_keys["N"]: None,
-        d_vt_keys["A"]: None,
-        d_vt_keys["B"]: None,
-        d_vt_keys["C"]: None,
     }
 
     mapping[vf_keys["A"]] = v_f[0]

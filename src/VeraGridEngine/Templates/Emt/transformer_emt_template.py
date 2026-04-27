@@ -164,28 +164,13 @@ def get_transformer_emt_template(
     # External mapping for network stamping / PF seeding
     # ------------------------------------------------------------------
     templ.block.external_mapping = dict({
-        VarPowerFlowRefferenceType.if_N: None,
+        # VarPowerFlowRefferenceType.if_N: None,
         VarPowerFlowRefferenceType.if_A: if_act[0],
         VarPowerFlowRefferenceType.if_B: if_act[1],
         VarPowerFlowRefferenceType.if_C: if_act[2],
-        VarPowerFlowRefferenceType.it_N: None,
         VarPowerFlowRefferenceType.it_A: it_act[0],
         VarPowerFlowRefferenceType.it_B: it_act[1],
         VarPowerFlowRefferenceType.it_C: it_act[2],
-        VarPowerFlowRefferenceType.Sf_A: None,
-        VarPowerFlowRefferenceType.Sf_B: None,
-        VarPowerFlowRefferenceType.Sf_C: None,
-        VarPowerFlowRefferenceType.St_A: None,
-        VarPowerFlowRefferenceType.St_B: None,
-        VarPowerFlowRefferenceType.St_C: None,
-        VarPowerFlowRefferenceType.d_v_N_f: None,
-        VarPowerFlowRefferenceType.d_v_A_f: None,
-        VarPowerFlowRefferenceType.d_v_B_f: None,
-        VarPowerFlowRefferenceType.d_v_C_f: None,
-        VarPowerFlowRefferenceType.d_v_N_t: None,
-        VarPowerFlowRefferenceType.d_v_A_t: None,
-        VarPowerFlowRefferenceType.d_v_B_t: None,
-        VarPowerFlowRefferenceType.d_v_C_t: None,
     })
 
     # ------------------------------------------------------------------

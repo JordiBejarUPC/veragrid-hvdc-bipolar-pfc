@@ -285,7 +285,7 @@ def _get_bus_v_list(
     out: List[Any] = list()
 
     for key in ph_v_keys:
-        vk = bus_block.E(key)
+        vk: Optional[Any] = _get_external_mapping_var_if_present(mdl=bus_block, key=key)
 
         if vk is None:
             out.append(None)
@@ -300,6 +300,31 @@ def _get_external_mapping(mdl: Block) -> Optional[Dict[Any, Var]]:
         return None
     else:
         return external_mapping
+
+
+def _get_external_mapping_var_if_present(
+        mdl: Block,
+        key: VarPowerFlowRefferenceType,
+) -> Optional[Any]:
+    """
+    Return one mapped external variable if the model exposes the key.
+
+    This helper intentionally does not call ``mdl.E(key)`` because ``Block.E``
+    indexes ``external_mapping`` directly and raises ``KeyError`` when the key
+    is absent. User models are allowed to expose only a subset of optional
+    PowerFlow initialization keys.
+
+    :param mdl: Symbolic device block.
+    :param key: External mapping reference key.
+    :return: Mapped variable or expression, or ``None``.
+    """
+    external_mapping: Optional[Dict[Any, Var]] = _get_external_mapping(mdl)
+
+    if external_mapping is None:
+        return None
+    else:
+        mapped_var: Optional[Any] = external_mapping.get(key, None)
+        return mapped_var
 
 
 def _find_mode_var_by_name(block: Block, var_name: str) -> Optional[Var]:
@@ -1717,9 +1742,9 @@ class EmtProblemDae(EmtProblemTemplate):
                     else:
                         for ph in range(4):
                             if is_vsc:
-                                side_expr: Any | None = mdl.E(inj_i_keys[ph])
+                                side_expr: Any | None = _get_external_mapping_var_if_present(mdl=mdl, key=inj_i_keys[ph])
                             else:
-                                side_expr = mdl.E(current_keys[ph])
+                                side_expr = _get_external_mapping_var_if_present(mdl=mdl, key=current_keys[ph])
 
                             if side_expr is not None:
                                 I_kcl[side_bus_idx][ph] = I_kcl[side_bus_idx][ph] - side_expr
@@ -1850,7 +1875,10 @@ class EmtProblemDae(EmtProblemTemplate):
             )
 
             if inj.bus.is_dc:
-                i_dc_expr: Any | None = mdl.E(VarPowerFlowRefferenceType.Idc)
+                i_dc_expr: Any | None = _get_external_mapping_var_if_present(
+                    mdl=mdl,
+                    key=VarPowerFlowRefferenceType.Idc,
+                )
                 _accumulate_kcl_current(
                     i_kcl=I_kcl,
                     bus_index=b,
@@ -1861,7 +1889,7 @@ class EmtProblemDae(EmtProblemTemplate):
             else:
                 ph: int = 0
                 while ph < 4:
-                    i_expr: Any | None = mdl.E(inj_i_keys[ph])
+                    i_expr: Any | None = _get_external_mapping_var_if_present(mdl=mdl, key=inj_i_keys[ph])
                     _accumulate_kcl_current(
                         i_kcl=I_kcl,
                         bus_index=b,
@@ -1958,14 +1986,17 @@ class EmtProblemDae(EmtProblemTemplate):
             mdl.algebraic_eqs = list()
 
             if bus.is_dc:
-                v_dc_expr: Any | None = mdl.E(VarPowerFlowRefferenceType.Vdc)
+                v_dc_expr: Any | None = _get_external_mapping_var_if_present(
+                    mdl=mdl,
+                    key=VarPowerFlowRefferenceType.Vdc,
+                )
                 if v_dc_expr is not None:
                     mdl.algebraic_eqs.append(I_kcl[bus_idx][0])
                 else:
                     pass
             else:
                 for ph_idx, v_key in enumerate(ph_v_keys):
-                    v_expr: Any | None = mdl.E(v_key)
+                    v_expr: Any | None = _get_external_mapping_var_if_present(mdl=mdl, key=v_key)
                     if v_expr is not None:
                         mdl.algebraic_eqs.append(I_kcl[bus_idx][ph_idx])
                     else:
@@ -2907,7 +2938,11 @@ class EmtProblemDae(EmtProblemTemplate):
             self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.P, value=p_total)
             self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Q, value=q_total)
 
-            if mdl.E(VarPowerFlowRefferenceType.phi) is not None:
+            phi_var: Optional[Any] = _get_external_mapping_var_if_present(
+                mdl=mdl,
+                key=VarPowerFlowRefferenceType.phi,
+            )
+            if phi_var is not None:
                 a_operator: complex = np.exp(1j * 2.0 * np.pi / 3.0)
 
                 va: complex = complex(voltage_vector[1])
@@ -2962,7 +2997,8 @@ class EmtProblemDae(EmtProblemTemplate):
             phase_index = 0
             while phase_index < 4:
                 derivative_key: VarPowerFlowRefferenceType = voltage_derivative_keys[phase_index]
-                if mdl.E(derivative_key) is not None:
+                derivative_var: Optional[Any] = _get_external_mapping_var_if_present(mdl=mdl, key=derivative_key)
+                if derivative_var is not None:
                     phase_voltage = complex(voltage_vector[phase_index])
                     derivative_value: float = omega_base * np.sqrt(2.0) * float(np.real(phase_voltage))
                     self.set_external_param(mdl, derivative_key, derivative_value)
@@ -3000,7 +3036,7 @@ class EmtProblemDae(EmtProblemTemplate):
 
         else:
 
-            if mdl.E(VarPowerFlowRefferenceType.v_N) is not None:
+            if _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowRefferenceType.v_N) is not None:
                 V_N = self.power_flow_results_3ph.voltage_N[bus_index]
                 v_N: float = np.sqrt(2.0) * np.imag(V_N)
                 d_v_N: float = omega_base * np.sqrt(2.0) * np.real(V_N)
@@ -3010,7 +3046,7 @@ class EmtProblemDae(EmtProblemTemplate):
             else:
                 pass
 
-            if mdl.E(VarPowerFlowRefferenceType.v_A) is not None:
+            if _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowRefferenceType.v_A) is not None:
                 V_A = self.power_flow_results_3ph.voltage_A[bus_index]
                 v_A: float = np.sqrt(2.0) * np.imag(V_A)
                 d_v_A: float = omega_base * np.sqrt(2.0) * np.real(V_A)
@@ -3020,7 +3056,7 @@ class EmtProblemDae(EmtProblemTemplate):
             else:
                 pass
 
-            if mdl.E(VarPowerFlowRefferenceType.v_B) is not None:
+            if _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowRefferenceType.v_B) is not None:
                 V_B = self.power_flow_results_3ph.voltage_B[bus_index]
                 v_B: float = np.sqrt(2.0) * np.imag(V_B)
                 d_v_B: float = omega_base * np.sqrt(2.0) * np.real(V_B)
@@ -3030,7 +3066,7 @@ class EmtProblemDae(EmtProblemTemplate):
             else:
                 pass
 
-            if mdl.E(VarPowerFlowRefferenceType.v_C) is not None:
+            if _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowRefferenceType.v_C) is not None:
                 V_C = self.power_flow_results_3ph.voltage_C[bus_index]
                 v_C: float = np.sqrt(2.0) * np.imag(V_C)
                 d_v_C: float = omega_base * np.sqrt(2.0) * np.real(V_C)
@@ -3094,28 +3130,28 @@ class EmtProblemDae(EmtProblemTemplate):
             V_B: complex = V_bus * np.exp(-1j * alpha)
             V_C: complex = V_bus * np.exp(+1j * alpha)
 
-            if mdl.E(VarPowerFlowRefferenceType.v_N) is not None:
+            if _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowRefferenceType.v_N) is not None:
                 v_N: float = np.sqrt(2.0) * np.imag(V_N)
                 d_v_N: float = omega_base * np.sqrt(2.0) * np.real(V_N)
 
                 self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_N, v_N)
                 self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_N, d_v_N)
 
-            if mdl.E(VarPowerFlowRefferenceType.v_A) is not None:
+            if _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowRefferenceType.v_A) is not None:
                 v_A: float = np.sqrt(2.0) * np.imag(V_A)
                 d_v_A: float = omega_base * np.sqrt(2.0) * np.real(V_A)
 
                 self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_A, v_A)
                 self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_A, d_v_A)
 
-            if mdl.E(VarPowerFlowRefferenceType.v_B) is not None:
+            if _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowRefferenceType.v_B) is not None:
                 v_B: float = np.sqrt(2.0) * np.imag(V_B)
                 d_v_B: float = omega_base * np.sqrt(2.0) * np.real(V_B)
 
                 self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_B, v_B)
                 self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_B, d_v_B)
 
-            if mdl.E(VarPowerFlowRefferenceType.v_C) is not None:
+            if _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowRefferenceType.v_C) is not None:
                 v_C: float = np.sqrt(2.0) * np.imag(V_C)
                 d_v_C: float = omega_base * np.sqrt(2.0) * np.real(V_C)
 
@@ -3781,7 +3817,8 @@ class EmtProblemDae(EmtProblemTemplate):
             if sf_key is None:
                 pass
             else:
-                if mdl.E(sf_key) is not None and sf_array is not None:
+                sf_var: Optional[Any] = _get_external_mapping_var_if_present(mdl=mdl, key=sf_key)
+                if sf_var is not None and sf_array is not None:
                     pf_idx = vsc_index if is_vsc and vsc_index >= 0 else branch_index
                     sf_ph = sf_array[pf_idx] / sbase
                     self.set_if_exists(mdl=mdl, key=sf_key, value=float(np.real(sf_ph)))
@@ -3794,7 +3831,8 @@ class EmtProblemDae(EmtProblemTemplate):
             if st_key is None:
                 pass
             else:
-                if mdl.E(st_key) is not None and st_array is not None:
+                st_var: Optional[Any] = _get_external_mapping_var_if_present(mdl=mdl, key=st_key)
+                if st_var is not None and st_array is not None:
                     pf_idx = vsc_index if is_vsc and vsc_index >= 0 else branch_index
                     st_ph = st_array[pf_idx] / sbase
                     self.set_if_exists(mdl=mdl, key=st_key, value=float(np.real(st_ph)))
@@ -3806,12 +3844,12 @@ class EmtProblemDae(EmtProblemTemplate):
             if_key: VarPowerFlowRefferenceType = if_key_dict[ph]
             it_key: VarPowerFlowRefferenceType = it_key_dict[ph]
 
-            uses_currents: bool = (
-                    (mdl.E(if_key) is not None)
-                    or (mdl.E(it_key) is not None)
-            )
+            if_key_var: Optional[Any] = _get_external_mapping_var_if_present(mdl=mdl, key=if_key)
+            it_key_var: Optional[Any] = _get_external_mapping_var_if_present(mdl=mdl, key=it_key)
+            uses_currents: bool = if_key_var is not None or it_key_var is not None
 
             if uses_currents:
+                # Missing optional current mappings are skipped exactly like explicit None entries.
                 sf_array = sf_array_dict[ph]
                 st_array = st_array_dict[ph]
                 voltage_from_array = voltage_from_dict[ph]
@@ -3855,20 +3893,26 @@ class EmtProblemDae(EmtProblemTemplate):
             d_vt_key: VarPowerFlowRefferenceType = d_vt_key_dict[ph]
             voltage_from_array = voltage_from_dict[ph]
             voltage_to_array = voltage_to_dict[ph]
-            if mdl.E(d_vf_key) is not None:
+            d_vf_var: Optional[Any] = _get_external_mapping_var_if_present(mdl=mdl, key=d_vf_key)
+            if d_vf_var is not None:
                 if voltage_from_array is None:
                     vf_ph = 0.0 + 0.0j
                 else:
                     vf_ph = voltage_from_array[f_bus_idx]
                 d_vf: float = omega_base * np.sqrt(2.0) * np.real(vf_ph)
                 self.set_external_param(mdl, d_vf_key, d_vf)
-            if mdl.E(d_vt_key) is not None:
+            else:
+                pass
+            d_vt_var: Optional[Any] = _get_external_mapping_var_if_present(mdl=mdl, key=d_vt_key)
+            if d_vt_var is not None:
                 if voltage_to_array is None:
                     vt_ph = 0.0 + 0.0j
                 else:
                     vt_ph = voltage_to_array[t_bus_idx]
                 d_vt: float = omega_base * np.sqrt(2.0) * np.real(vt_ph)
                 self.set_external_param(mdl, d_vt_key, d_vt)
+            else:
+                pass
 
         self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Pf, value=float(np.real(sf_sum)))
         self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Qf, value=float(np.imag(sf_sum)))
@@ -4048,25 +4092,35 @@ class EmtProblemDae(EmtProblemTemplate):
                 st_ph = st_phase_total
 
             if sf_key is not None:
-                if mdl.E(sf_key) is not None:
+                sf_var: Optional[Any] = _get_external_mapping_var_if_present(mdl=mdl, key=sf_key)
+                if sf_var is not None:
                     self.set_if_exists(mdl=mdl, key=sf_key, value=float(np.real(sf_ph)))
                     sf_sum += sf_ph
+                else:
+                    pass
+            else:
+                pass
 
             if st_key is not None:
-                if mdl.E(st_key) is not None:
+                st_var: Optional[Any] = _get_external_mapping_var_if_present(mdl=mdl, key=st_key)
+                if st_var is not None:
                     self.set_if_exists(mdl=mdl, key=st_key, value=float(np.real(st_ph)))
                     st_sum += st_ph
+                else:
+                    pass
+            else:
+                pass
 
         for ph in phases:
             if_key: VarPowerFlowRefferenceType = if_key_dict[ph]
             it_key: VarPowerFlowRefferenceType = it_key_dict[ph]
 
-            uses_currents: bool = (
-                    (mdl.E(if_key) is not None)
-                    or (mdl.E(it_key) is not None)
-            )
+            if_key_var: Optional[Any] = _get_external_mapping_var_if_present(mdl=mdl, key=if_key)
+            it_key_var: Optional[Any] = _get_external_mapping_var_if_present(mdl=mdl, key=it_key)
+            uses_currents: bool = if_key_var is not None or it_key_var is not None
 
             if uses_currents:
+                # Missing optional current mappings are skipped exactly like explicit None entries.
                 vf_ph = voltage_dict[ph]
                 vt_ph = voltage_to_dict[ph]
 
@@ -4095,6 +4149,8 @@ class EmtProblemDae(EmtProblemTemplate):
 
                 self.set_if_exists(mdl=mdl, key=if_key, value=float(i_f0))
                 self.set_if_exists(mdl=mdl, key=it_key, value=float(i_t0))
+            else:
+                pass
 
         omega_base: float = 2.0 * np.pi * self.grid.fBase
         for ph in phases:
@@ -4104,13 +4160,19 @@ class EmtProblemDae(EmtProblemTemplate):
             vf_ph = voltage_dict[ph]
             vt_ph = voltage_to_dict[ph]
 
-            if mdl.E(d_vf_key) is not None:
+            d_vf_var: Optional[Any] = _get_external_mapping_var_if_present(mdl=mdl, key=d_vf_key)
+            if d_vf_var is not None:
                 d_vf: float = omega_base * np.sqrt(2.0) * np.real(vf_ph)
                 self.set_external_param(mdl, d_vf_key, d_vf)
+            else:
+                pass
 
-            if mdl.E(d_vt_key) is not None:
+            d_vt_var: Optional[Any] = _get_external_mapping_var_if_present(mdl=mdl, key=d_vt_key)
+            if d_vt_var is not None:
                 d_vt: float = omega_base * np.sqrt(2.0) * np.real(vt_ph)
                 self.set_external_param(mdl, d_vt_key, d_vt)
+            else:
+                pass
 
         if is_vsc and vsc_index >= 0:
             self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Pf, value=float(np.real(sf_total)))
@@ -5375,7 +5437,7 @@ class EmtProblemDae(EmtProblemTemplate):
         """
         Set a PF-derived value either as an event parameter if the mapped variable belongs to mdl.event_dict.
         """
-        var = mdl.E(key)
+        var: Optional[Any] = _get_external_mapping_var_if_present(mdl=mdl, key=key)
 
         if var is None:
             return

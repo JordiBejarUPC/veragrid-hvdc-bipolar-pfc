@@ -173,32 +173,12 @@ def _build_external_mapping(
     # The EMT connection workflow uses a fixed enum contract, so inactive phases
     # must still appear explicitly with ``None`` entries.
     mapping: Dict[VarPowerFlowRefferenceType, Var | None] = dict({
-        VarPowerFlowRefferenceType.v_N: None,
         VarPowerFlowRefferenceType.v_A: voltage_vars.get("A", None),
         VarPowerFlowRefferenceType.v_B: voltage_vars.get("B", None),
         VarPowerFlowRefferenceType.v_C: voltage_vars.get("C", None),
-        VarPowerFlowRefferenceType.P: None,
-        VarPowerFlowRefferenceType.Q: None,
-        VarPowerFlowRefferenceType.P_N: None,
-        VarPowerFlowRefferenceType.Q_N: None,
-        VarPowerFlowRefferenceType.P_A: None,
-        VarPowerFlowRefferenceType.Q_A: None,
-        VarPowerFlowRefferenceType.P_B: None,
-        VarPowerFlowRefferenceType.Q_B: None,
-        VarPowerFlowRefferenceType.P_C: None,
-        VarPowerFlowRefferenceType.Q_C: None,
-        VarPowerFlowRefferenceType.i_N: None,
         VarPowerFlowRefferenceType.i_A: current_vars.get("A", None),
         VarPowerFlowRefferenceType.i_B: current_vars.get("B", None),
         VarPowerFlowRefferenceType.i_C: current_vars.get("C", None),
-        VarPowerFlowRefferenceType.phi_v: None,
-        VarPowerFlowRefferenceType.phi: None,
-        VarPowerFlowRefferenceType.Vpk: None,
-        VarPowerFlowRefferenceType.Ipk: None,
-        VarPowerFlowRefferenceType.d_v_N: None,
-        VarPowerFlowRefferenceType.d_v_A: None,
-        VarPowerFlowRefferenceType.d_v_B: None,
-        VarPowerFlowRefferenceType.d_v_C: None,
     })
 
     return mapping
