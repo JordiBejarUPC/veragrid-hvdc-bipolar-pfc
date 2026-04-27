@@ -104,6 +104,7 @@ class SubstationGraphicItem(NodeTemplate, QGraphicsRectItem):
         self.voltage_level_graphics: List[VoltageLevelGraphicItem] = list()
 
         self.select_bus_dlg = None
+        self._drag_offset: QPointF | None = None
 
     @property
     def color(self) -> QColor:
@@ -322,6 +323,26 @@ class SubstationGraphicItem(NodeTemplate, QGraphicsRectItem):
 
         self.update_position_at_the_diagram()  # always update
 
+    def refresh_from_top_left(self, x: float, y: float) -> None:
+        """
+        Refresh graphics from a target top-left corner position.
+
+        :param x: top-left x in scene coordinates
+        :param y: top-left y in scene coordinates
+        """
+        width = self.rect().width()
+        height = self.rect().height()
+        self.setRect(x, y, width, height)
+
+        xc = x + width / 2.0
+        yc = y + height / 2.0
+        self.set_callbacks(xc, yc)
+
+        for vl_graphics in self.voltage_level_graphics:
+            vl_graphics.center_on_substation()
+
+        self.update_position_at_the_diagram()
+
     def get_center_pos(self) -> QPointF:
         """
         Get the center position
@@ -337,9 +358,13 @@ class SubstationGraphicItem(NodeTemplate, QGraphicsRectItem):
         """
 
         if self.hovered:
-            # super().mouseMoveEvent(event)
-            pos = self.mapToParent(event.pos())
-            self.refresh(pos=pos)
+            if self._drag_offset is not None:
+                scene_pos = event.scenePos()
+                x = scene_pos.x() - self._drag_offset.x()
+                y = scene_pos.y() - self._drag_offset.y()
+                self.refresh_from_top_left(x=x, y=y)
+            else:
+                pass
 
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent):
         """
@@ -353,6 +378,12 @@ class SubstationGraphicItem(NodeTemplate, QGraphicsRectItem):
         event.setAccepted(True)
         self.editor.map.view.disable_move = True
 
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._drag_offset = QPointF(event.scenePos().x() - self.rect().x(),
+                                        event.scenePos().y() - self.rect().y())
+        else:
+            self._drag_offset = None
+
         if self.api_object is not None:
             self.editor.set_editor_model(api_object=self.api_object)
 
@@ -362,6 +393,7 @@ class SubstationGraphicItem(NodeTemplate, QGraphicsRectItem):
         """
         # super().mouseReleaseEvent(event)
         self.editor.disableMove = True
+        self._drag_offset = None
         self.update_position_at_the_diagram()  # always update
 
     def hoverEnterEvent(self, event: QtWidgets.QGraphicsSceneHoverEvent) -> None:
