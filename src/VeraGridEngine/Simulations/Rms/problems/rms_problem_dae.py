@@ -288,14 +288,12 @@ class RmsProblemDae(RmsProblemTemplate):
 
         # initialize branches
         for branch_num, elm in enumerate(self.grid.get_branches_iter(add_vsc=False, add_hvdc=False, add_switch=True)):
-            # Todo: missing default initialization for the model
 
             if elm.rms_model.empty():
                 self.logger.add_error("No RMS model",
                                       device_class=elm.device_type.value,
                                       device=elm.name)
             else:
-                elm.rms_model.unify_blocks()
                 # get parameters from api object
                 if ParamPowerFlowRefferenceType.g in elm.rms_model.api_obj_mapping:
                     elm.rms_model.parameters[
@@ -313,12 +311,6 @@ class RmsProblemDae(RmsProblemTemplate):
                         elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.r]] = Const(elm.R)
                 if ParamPowerFlowRefferenceType.l in elm.rms_model.api_obj_mapping:
                     elm.rms_model.parameters[ elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.l]] = Const(elm.X)
-
-                # get variables from bus
-                # if elm.bus_from.rms_model.empty():
-                #     initialize_bus_rms(elm.bus_from, self.grid.var_factory)
-                # if elm.bus_to.rms_model.empty():
-                #     initialize_bus_rms(elm.bus_to, self.grid.var_factory)
 
                 Vmf, Vaf = get_bus_rms_algebraic_vars(elm.bus_from.rms_model)
                 Vmt, Vat = get_bus_rms_algebraic_vars(elm.bus_to.rms_model)
@@ -390,26 +382,6 @@ class RmsProblemDae(RmsProblemTemplate):
                         for param, const in elm.rms_model.parameters.items():
                             params_array[self._uid2idx_params[param.uid]] = const.value
 
-                        # OLD init_explicit path kept for reference
-                        # init_explicit(
-                        #     mdl=elm.rms_model,
-                        #     sys_vars=self.sys_vars,
-                        #     variable_parameters=self._variable_parameters,
-                        #     event_parameters_eqs=self._event_parameters_eqs0,
-                        #     constant_parameters=self._constant_parameters,
-                        #     init_guess=self.init_guess,
-                        #     uid2idx_vars=self.uid2idx_vars,
-                        #     uid2idx_params=self._uid2idx_params,
-                        #     uid2idx_event_params=self._uid2idx_event_params,
-                        #     compiler_names_dict=self._compiler_names_dict,
-                        #     alias_names_dict=self._alias_names_dict,
-                        #     VARIABLE_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
-                        #     TIME_NAME=self.TIME_NAME,
-                        #     VARS_NAME=self.VARS_NAME,
-                        #     DIFF_NAME=self.DIFF_NAME,
-                        #     CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME
-                        # )
-
                         # New init_explicit_common path
                         self.init_guess, diff_init_guess_common = init_explicit_common(
                             mdl=elm.rms_model,
@@ -455,9 +427,6 @@ class RmsProblemDae(RmsProblemTemplate):
                                       device=elm.name)
             else:
                 mdl = elm.rms_model
-
-                # flatten model to collect all variables including those from child blocks
-                # mdl.unify_blocks()
 
                 # get parameters from api object
                 if ParamPowerFlowRefferenceType.alpha1 in elm.rms_model.api_obj_mapping:
@@ -559,27 +528,6 @@ class RmsProblemDae(RmsProblemTemplate):
                     compile_single_equation = build_rms_single_equation_compiler(
                         rms_compiler_init)  # function to compile one equation
 
-                    # OLD init_explicit path kept for reference
-                    # missing: uid2idx_diff, sys_diff_vars, diff_init_guess, params_array
-
-                    # init_explicit(mdl=elm.rms_model,
-                    #               sys_vars=self.sys_vars,
-                    #               variable_parameters=self._variable_parameters,
-                    #               event_parameters_eqs=self._event_parameters_eqs0,
-                    #               constant_parameters=self._constant_parameters,
-                    #               init_guess=self.init_guess,
-                    #               uid2idx_vars=self.uid2idx_vars,
-                    #               uid2idx_params=self._uid2idx_params,
-                    #               uid2idx_event_params=self._uid2idx_event_params,
-                    #               compiler_names_dict=self._compiler_names_dict,
-                    #               alias_names_dict=self._alias_names_dict,
-                    #               VARIABLE_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
-                    #               TIME_NAME=self.TIME_NAME,
-                    #               VARS_NAME=self.VARS_NAME,
-                    #               DIFF_NAME=self.DIFF_NAME,
-                    #               CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME
-                    #               )
-
                     # New init_explicit_common path
                     self.init_guess, diff_init_guess_common = init_explicit_common(
                         mdl=elm.rms_model,
@@ -662,8 +610,6 @@ class RmsProblemDae(RmsProblemTemplate):
                                       device=elm.name)
             else:
                 bus_index = bus_dict[elm.bus]
-
-                # elm.rms_model.unify_blocks()
 
                 # get variables from bus
                 if elm.bus.rms_model.empty():

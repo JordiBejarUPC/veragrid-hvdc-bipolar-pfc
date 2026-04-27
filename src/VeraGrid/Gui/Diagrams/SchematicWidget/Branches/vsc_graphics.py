@@ -115,12 +115,12 @@ class VscGraphicItem(LineGraphicTemplateItem):
             add_menu_entry(menu=menu,
                            text="RMS Editor",
                            function_ptr=self.edit_dynamic_rms,
-                           icon_path=":/Icons/icons/dyn_gray.png")
+                           icon_path=":/Icons/icons/dyn_edit.png")
 
             add_menu_entry(menu=menu,
                            text="EMT Editor",
                            function_ptr=self.edit_dynamic_emt,
-                           icon_path=":/Icons/icons/dyn_gray.png")
+                           icon_path=":/Icons/icons/dyn_emt_edit.png")
 
             menu.addSeparator()
             self.add_auto_route_style_menu(menu=menu)

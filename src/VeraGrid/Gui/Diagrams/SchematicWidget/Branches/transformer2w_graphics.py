@@ -11,8 +11,7 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template impor
 from VeraGrid.Gui.Diagrams.SchematicWidget.terminal_item import BarTerminalItem, RoundTerminalItem
 from VeraGrid.Gui.messages import yes_no_question
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_manager import open_dynamic_editor
-from VeraGrid.Gui.Diagrams.Editors.transformer_editor import TransformerEditor
-from VeraGrid.Gui.Diagrams.Editors.transformer_taps_editor import TransformerTapsEditor
+from VeraGrid.Gui.DeviceEditors.TransformerEditor.transformer_editor import TransformerEditor
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W, TransformerType
 from VeraGridEngine.enumerations import DeviceType, TapModuleControl, DynamicSimulationMode
 
@@ -80,19 +79,19 @@ class TransformerGraphicItem(LineGraphicTemplateItem):
                            icon_path=":/Icons/icons/delete3.png")
 
             add_menu_entry(menu=menu,
-                           text="Edit template",
+                           text="Transformer editor",
                            function_ptr=self.edit,
                            icon_path=":/Icons/icons/edit.png")
 
             add_menu_entry(menu=menu,
                            text="RMS Editor",
                            function_ptr=self.edit_dynamic_rms,
-                           icon_path=":/Icons/icons/dyn_gray.png")
+                           icon_path=":/Icons/icons/dyn_edit.png")
 
             add_menu_entry(menu=menu,
                            text="EMT Editor",
                            function_ptr=self.edit_dynamic_emt,
-                           icon_path=":/Icons/icons/dyn_gray.png")
+                           icon_path=":/Icons/icons/dyn_emt_edit.png")
 
             menu.addSection('Tap changer')
 
@@ -205,8 +204,7 @@ class TransformerGraphicItem(LineGraphicTemplateItem):
 
         :return:
         """
-
-        dlg = TransformerTapsEditor(api_object=self.api_object.tap_changer)
+        dlg = TransformerEditor(self.api_object, grid=self.editor.circuit, modify_on_accept=True)
         if dlg.exec():
             pass
 

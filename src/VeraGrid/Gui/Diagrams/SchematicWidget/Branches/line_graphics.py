@@ -11,7 +11,7 @@ from PySide6.QtGui import QPen, QBrush
 from PySide6.QtWidgets import QMenu, QGraphicsRectItem, QGraphicsSceneContextMenuEvent
 from VeraGrid.Gui.gui_functions import add_menu_entry
 from VeraGrid.Gui.Diagrams.SchematicWidget.terminal_item import BarTerminalItem, RoundTerminalItem
-from VeraGrid.Gui.Diagrams.Editors.line_editor import LineEditor
+from VeraGrid.Gui.DeviceEditors.LineEditor.line_editor import LineEditor
 from VeraGrid.Gui.messages import yes_no_question, warning_msg
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template import LineGraphicTemplateItem
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_manager import open_dynamic_editor
@@ -118,19 +118,19 @@ class LineGraphicItem(LineGraphicTemplateItem):
                            checked_value=self.draw_labels)
 
             add_menu_entry(menu=menu,
-                           text="Editor",
+                           text="Line editor",
                            function_ptr=self.edit,
                            icon_path=":/Icons/icons/edit.png")
 
             add_menu_entry(menu=menu,
                            text="RMS Editor",
                            function_ptr=self.edit_dynamic_rms,
-                           icon_path=":/Icons/icons/dyn_gray.png")
+                           icon_path=":/Icons/icons/dyn_edit.png")
 
             add_menu_entry(menu=menu,
                            text="EMT Editor",
                            function_ptr=self.edit_dynamic_emt,
-                           icon_path=":/Icons/icons/dyn_gray.png")
+                           icon_path=":/Icons/icons/dyn_emt_edit.png")
 
             add_menu_entry(menu=menu,
                            text="Change bus",
