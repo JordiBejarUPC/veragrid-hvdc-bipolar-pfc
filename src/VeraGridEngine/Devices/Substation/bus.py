@@ -62,6 +62,7 @@ class Bus(DynamicBusDevice):
         GCProp(key='is_slack', units='', tpe=bool, definition='Force the bus to be of slack type.',
                profile_name=''),
         GCProp(key='is_dc', units='', tpe=bool, definition='Is this bus of DC type?.', profile_name=''),
+        GCProp(key='is_grounded', units='', tpe=bool, definition='Is this bus connected to ground?.', profile_name=''),
         GCProp(key='graphic_type', units='', tpe=BusGraphicType, definition='Graphic to use in the schematic.'),
         GCProp(key='Vnom', units='kV', tpe=float, definition='Nominal line voltage of the bus.', profile_name=''),
         GCProp(key='Vm0', units='p.u.', tpe=float, definition='Voltage module guess.', profile_name=''),
