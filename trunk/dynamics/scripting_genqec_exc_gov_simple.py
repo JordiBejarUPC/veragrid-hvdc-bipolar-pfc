@@ -11,6 +11,7 @@ from matplotlib import pyplot as plt
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
+from VeraGridEngine.Simulations.Rms.rms_results import RmsResults
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
@@ -292,14 +293,14 @@ solver = BackEulerImplicitIntegration(
 
 t, y, well_initialized, converged = solver.simulate()
 
-results = RmsResults(
-            time_array=pd.DatetimeIndex(pd.to_datetime(solver.t * 1e9)),
-            rms_events_group_names = rms_events_group_names,
-            variables=problem.state_and_algebraic_vars,
-            uid2idx=problem.uid2idx_vars,
-            vars_glob_name2uid=problem.vars_glob_name2uid,
-            devices_vars_info=problem.get_device_vars_dict()
-            )
+# results = RmsResults(
+#             time_array=pd.DatetimeIndex(pd.to_datetime(solver.t * 1e9)),
+#             rms_events_group_names = rms_events_group_names,
+#             variables=problem.state_and_algebraic_vars,
+#             uid2idx=problem.uid2idx_vars,
+#             vars_glob_name2uid=problem.vars_glob_name2uid,
+#             devices_vars_info=problem.get_device_vars_dict()
+#             )
 
 
 

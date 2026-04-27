@@ -171,6 +171,8 @@ class SubstationGraphicItem(NodeTemplate, QGraphicsRectItem):
         :return:
         """
         if r != self.size:
+            # Keep current center before updating dimensions.
+            old_center = self.get_center_pos()
             rect = self.rect()
             rect.setWidth(r)
             rect.setHeight(r)
@@ -185,18 +187,18 @@ class SubstationGraphicItem(NodeTemplate, QGraphicsRectItem):
             # Set the new rectangle with the updated dimensions
             self.setRect(new_x, new_y, r, r)
 
-            # update the callbacks position for the lines to move accordingly
-            r3 = r / 2
-            xc = new_x + r3
-            yc = new_y + r3
-            self.set_callbacks(xc, yc)
+            # Resizing around the same center does not move the hosted endpoints.
+            # Only trigger callbacks if a numeric drift moved the center.
+            new_center = self.get_center_pos()
+            if old_center != new_center:
+                self.set_callbacks(new_center.x(), new_center.y())
+            else:
+                pass
 
             for vl_graphics in self.voltage_level_graphics:
                 vl_graphics.center_on_substation()
 
             self.change_pen_width(0.05 * self.size)
-
-            self.update_position_at_the_diagram()
 
             self.resize_voltage_levels()
 

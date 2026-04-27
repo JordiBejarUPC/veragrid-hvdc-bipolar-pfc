@@ -22,6 +22,7 @@ else:
     sys.exit(1)
 
 import time, pickle, os
+import multiprocessing as mp
 from typing import Tuple, Any, List
 import numpy as np
 from memory_profiler import profile,LineProfiler, show_results
@@ -578,6 +579,7 @@ def main():
 
 if __name__ == "__main__":
     try:
+        mp.freeze_support()
         if REPORT_TIME:
             lp = LineProfiler()
             lp.add_function(main)

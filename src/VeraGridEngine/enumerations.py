@@ -2473,6 +2473,7 @@ class SimulationTypes(Enum):
     InputsAnalysis_run = 'Inputs Analysis'
     OptimalNetTransferCapacityTimeSeries_run = 'Optimal net transfer capacity time series'
     InvestmentsEvaluation_run = 'Investments evaluation'
+    CatalogueOptimization_run = 'Catalogue optimization'
     TopologyProcessor_run = 'Topology Processor'
     NodalCapacityTimeSeries_run = 'Nodal capacity time series'
     Reliability_run = "Reliability"
@@ -2944,6 +2945,7 @@ class EraSvdSolverType(Enum):
 
 class RmsInitializationMethod(Enum):
     Explicit = "Explicit"
+    ReducedExplicit = "ReducedExplicit"
     PseudoTransient = "PseudoTransient"
     CustomValues = "CustomValues"
 
@@ -3423,6 +3425,10 @@ class ParamPowerFlowRefferenceType(Enum):
     
     omega_base = "omega_base" # in rad/s
     Sbase = "Sbase" # in MVA
+
+    generator_share_enable = "generator_share_enable"
+    generator_share_p_ref = "generator_share_p_ref"
+    generator_share_q_ref = "generator_share_q_ref"
 
 
     def __str__(self):
