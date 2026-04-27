@@ -11,7 +11,7 @@ from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGrid.Gui.Diagrams.generic_graphics import Circle
 from VeraGrid.Gui.messages import yes_no_question
 from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.injections_template_graphics import InjectionTemplateGraphicItem
-from VeraGrid.Gui.Diagrams.Editors.generator_editor import GeneratorQCurveEditor
+from VeraGrid.Gui.DeviceEditors.GeneratorEditor.generator_editor import GeneratorQCurveEditor
 from VeraGrid.Gui.DeviceEditors.SolarPowerWizard.solar_power_wizzard import SolarPvWizard
 from VeraGrid.Gui.DeviceEditors.WindPowerWizard.wind_power_wizzard import WindFarmWizard
 from VeraGrid.Gui.profile_wizard_utils import fill_substation_weather_profiles

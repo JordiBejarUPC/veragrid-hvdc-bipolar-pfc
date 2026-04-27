@@ -10,7 +10,7 @@ import numpy as np
 
 from PySide6.QtWidgets import QGraphicsSceneContextMenuEvent
 from VeraGridEngine.Devices.Injections.generator import Generator
-from VeraGrid.Gui.Diagrams.Editors.generator_editor import GeneratorQCurveEditor
+from VeraGrid.Gui.DeviceEditors.GeneratorEditor.generator_editor import GeneratorQCurveEditor
 from VeraGrid.Gui.messages import yes_no_question
 from VeraGrid.Gui.Diagrams.MapWidget.Injections.map_injections_template_graphics import MapInjectionTemplateGraphicItem
 from VeraGrid.Gui.DeviceEditors.SolarPowerWizard.solar_power_wizzard import SolarPvWizard

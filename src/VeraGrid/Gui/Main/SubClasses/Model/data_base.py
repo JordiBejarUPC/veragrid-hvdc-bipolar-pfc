@@ -27,7 +27,7 @@ from VeraGridEngine.Topology.detect_substations import detect_substations, detec
 from VeraGrid.Gui.Analysis.object_plot_analysis import object_histogram_analysis
 from VeraGrid.Gui.messages import yes_no_question, warning_msg, info_msg
 from VeraGrid.Gui.Main.SubClasses.Model.diagrams import DiagramsMain
-from VeraGrid.Gui.Diagrams.Editors.line_editor import LineEditor
+from VeraGrid.Gui.DeviceEditors.LineEditor.line_editor import LineEditor
 from VeraGrid.Gui.DeviceEditors.TowerBuilder.LineBuilderDialogue import TowerBuilderGUI
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_manager import open_dynamic_editor
 from VeraGrid.Gui.FmuTemplateEditor.fmu_template_editor import FmuTemplateEditorDialog
@@ -37,9 +37,9 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidg
 from VeraGrid.Gui.GridReduce.grid_reduce import GridReduceDialogue
 from VeraGrid.Gui.SubstationDesigner.substation_designer import SubstationDesigner
 from VeraGrid.Gui.general_dialogues import LogsDialogue, CustomQuestionDialogue, CheckListDialogue
-from VeraGrid.Gui.Diagrams.Editors.transformer_editor import TransformerEditor
-from VeraGrid.Gui.Diagrams.Editors.transformer3w_editor import Transformer3WEditor
-from VeraGrid.Gui.Diagrams.Editors.controllable_shunt_editor import ControllableShuntEditor
+from VeraGrid.Gui.DeviceEditors.TransformerEditor.transformer_editor import TransformerEditor
+from VeraGrid.Gui.DeviceEditors.Transformer3wEditor.transformer3w_editor import Transformer3WEditor
+from VeraGrid.Gui.DeviceEditors.ControllableShuntEditor.controllable_shunt_editor import ControllableShuntEditor
 from VeraGrid.Gui.Icons.icon_associations import device_type_icons
 
 
