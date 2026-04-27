@@ -173,7 +173,9 @@ def create_block_of_type(var_factory: VarFactory,
         return blk
 
     elif block_type == BlockType.TRAFO_EMT:
-        blk = get_transformer_emt_template(var_factory).block
+        conn_f = getattr(api_object, "conn_f", None)
+        conn_t = getattr(api_object, "conn_t", None)
+        blk = get_transformer_emt_template(var_factory, conn_f=conn_f, conn_t=conn_t).block
         blk.name = item_name
         return blk
 

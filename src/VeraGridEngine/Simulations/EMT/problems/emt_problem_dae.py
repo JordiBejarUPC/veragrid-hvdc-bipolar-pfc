@@ -2982,6 +2982,20 @@ class EmtProblemDae(EmtProblemTemplate):
                 q_total += float(np.imag(phase_complex_power))
                 phase_index += 1
 
+            neutral_var = mdl.E(VarPowerFlowRefferenceType.i_N)
+            if neutral_var is not None:
+                ia_var = mdl.E(VarPowerFlowRefferenceType.i_A)
+                ib_var = mdl.E(VarPowerFlowRefferenceType.i_B)
+                ic_var = mdl.E(VarPowerFlowRefferenceType.i_C)
+                ia_inst = self._temp_init_guess.get(ia_var.uid, 0.0) if ia_var is not None else 0.0
+                ib_inst = self._temp_init_guess.get(ib_var.uid, 0.0) if ib_var is not None else 0.0
+                ic_inst = self._temp_init_guess.get(ic_var.uid, 0.0) if ic_var is not None else 0.0
+                neutral_inst = -(ia_inst + ib_inst + ic_inst)
+                self._temp_init_guess[neutral_var.uid] = float(neutral_inst)
+                self._temp_post_init_guess[neutral_var.uid] = float(neutral_inst)
+            else:
+                pass
+
             self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.P, value=p_total)
             self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Q, value=q_total)
 
@@ -3849,6 +3863,8 @@ class EmtProblemDae(EmtProblemTemplate):
 
         sf_sum: complex = 0.0 + 0.0j
         st_sum: complex = 0.0 + 0.0j
+        from_phase_currents: Dict[str, complex] = dict()
+        to_phase_currents: Dict[str, complex] = dict()
 
         for ph in phases:
             sf_key: Optional[VarPowerFlowRefferenceType] = sf_key_dict[ph]
@@ -3922,10 +3938,40 @@ class EmtProblemDae(EmtProblemTemplate):
                 print(f"if_key = {if_key} init from power flow with i_f0 = {i_f0}")
                 print(f"it_key = {it_key} init from power flow with i_t0 = {i_t0}")
 
+                if ph in {"A", "B", "C"}:
+                    from_phase_currents[ph] = complex(i_f)
+                    to_phase_currents[ph] = complex(i_t)
+                else:
+                    pass
+
                 self.set_if_exists(mdl=mdl, key=if_key, value=float(i_f0))
                 self.set_if_exists(mdl=mdl, key=it_key, value=float(i_t0))
             else:
                 pass
+
+        if mdl.E(VarPowerFlowRefferenceType.if_N) is not None:
+            i_f_neutral = -(from_phase_currents.get("A", 0.0 + 0.0j) + from_phase_currents.get("B", 0.0 + 0.0j) + from_phase_currents.get("C", 0.0 + 0.0j))
+            neutral_value = float(np.sqrt(2.0) * np.imag(i_f_neutral))
+            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.if_N, value=neutral_value)
+            neutral_if_var = mdl.E(VarPowerFlowRefferenceType.if_N)
+            if neutral_if_var is not None:
+                self._temp_post_init_guess[neutral_if_var.uid] = neutral_value
+            else:
+                pass
+        else:
+            pass
+
+        if mdl.E(VarPowerFlowRefferenceType.it_N) is not None:
+            i_t_neutral = -(to_phase_currents.get("A", 0.0 + 0.0j) + to_phase_currents.get("B", 0.0 + 0.0j) + to_phase_currents.get("C", 0.0 + 0.0j))
+            neutral_value = float(np.sqrt(2.0) * np.imag(i_t_neutral))
+            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.it_N, value=neutral_value)
+            neutral_it_var = mdl.E(VarPowerFlowRefferenceType.it_N)
+            if neutral_it_var is not None:
+                self._temp_post_init_guess[neutral_it_var.uid] = neutral_value
+            else:
+                pass
+        else:
+            pass
 
         omega_base: float = 2.0 * np.pi * self.grid.fBase
         for ph in phases:
@@ -4110,6 +4156,8 @@ class EmtProblemDae(EmtProblemTemplate):
 
         sf_sum: complex = 0.0 + 0.0j
         st_sum: complex = 0.0 + 0.0j
+        from_phase_currents: Dict[str, complex] = dict()
+        to_phase_currents: Dict[str, complex] = dict()
 
         for ph in phases:
             sf_key: Optional[VarPowerFlowRefferenceType] = sf_key_dict[ph]
@@ -4171,8 +4219,38 @@ class EmtProblemDae(EmtProblemTemplate):
                 i_f0: float = np.sqrt(2.0) * np.imag(i_f)
                 i_t0: float = np.sqrt(2.0) * np.imag(i_t)
 
+                if ph in {"A", "B", "C"}:
+                    from_phase_currents[ph] = complex(i_f)
+                    to_phase_currents[ph] = complex(i_t)
+                else:
+                    pass
+
                 self.set_if_exists(mdl=mdl, key=if_key, value=float(i_f0))
                 self.set_if_exists(mdl=mdl, key=it_key, value=float(i_t0))
+
+        if mdl.E(VarPowerFlowRefferenceType.if_N) is not None:
+            i_f_neutral = -(from_phase_currents.get("A", 0.0 + 0.0j) + from_phase_currents.get("B", 0.0 + 0.0j) + from_phase_currents.get("C", 0.0 + 0.0j))
+            neutral_value = float(np.sqrt(2.0) * np.imag(i_f_neutral))
+            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.if_N, value=neutral_value)
+            neutral_if_var = mdl.E(VarPowerFlowRefferenceType.if_N)
+            if neutral_if_var is not None:
+                self._temp_post_init_guess[neutral_if_var.uid] = neutral_value
+            else:
+                pass
+        else:
+            pass
+
+        if mdl.E(VarPowerFlowRefferenceType.it_N) is not None:
+            i_t_neutral = -(to_phase_currents.get("A", 0.0 + 0.0j) + to_phase_currents.get("B", 0.0 + 0.0j) + to_phase_currents.get("C", 0.0 + 0.0j))
+            neutral_value = float(np.sqrt(2.0) * np.imag(i_t_neutral))
+            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.it_N, value=neutral_value)
+            neutral_it_var = mdl.E(VarPowerFlowRefferenceType.it_N)
+            if neutral_it_var is not None:
+                self._temp_post_init_guess[neutral_it_var.uid] = neutral_value
+            else:
+                pass
+        else:
+            pass
 
         omega_base: float = 2.0 * np.pi * self.grid.fBase
         for ph in phases:

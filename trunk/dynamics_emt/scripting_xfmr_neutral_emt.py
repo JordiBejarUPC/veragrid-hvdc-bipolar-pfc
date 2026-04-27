@@ -77,7 +77,7 @@ def _get_four_wire_configuration(vnom: float, frequency_hz: float):
     )
 
 
-def _build_xfmr_neutral_grid() -> tuple[gce.MultiCircuit, gce.Transformer2W, gce.Load, gce.Load, gce.Load]:
+def _build_xfmr_neutral_grid() -> tuple[gce.MultiCircuit, gce.Transformer2W, gce.Line, gce.Load, gce.Load, gce.Load]:
     grid = gce.MultiCircuit(Sbase=2.0, fbase=60.0)
     bus_hv = gce.Bus(name="Bus_HV", Vnom=4.16, is_slack=True)
     bus_lv_mid = gce.Bus(name="Bus_LV_MID", Vnom=0.48)
@@ -172,11 +172,11 @@ def _build_xfmr_neutral_grid() -> tuple[gce.MultiCircuit, gce.Transformer2W, gce
     set_emt_model(device=load, model=load_model, var_factory=grid.var_factory)
     set_emt_model(device=load_b, model=load_b_model, var_factory=grid.var_factory)
     set_emt_model(device=load_c, model=load_c_model, var_factory=grid.var_factory)
-    return grid, xfmr, load, load_b, load_c
+    return grid, xfmr, line, load, load_b, load_c
 
 
 def run_xfmr_neutral_case(enable_plots: bool = True) -> Dict[str, object]:
-    grid, xfmr, load, _load_b, _load_c = _build_xfmr_neutral_grid()
+    grid, xfmr, line, load, _load_b, _load_c = _build_xfmr_neutral_grid()
     power_flow = PowerFlowDriver3Ph(grid, _get_pf_options())
     power_flow.run()
     pf_res_3ph = power_flow.results
@@ -192,18 +192,63 @@ def run_xfmr_neutral_case(enable_plots: bool = True) -> Dict[str, object]:
     )
     time_vector, y_hist, _dy_hist, _converged, _diag = solver.simulate(boundary_updater=problem)
 
-    bus_mid_v_n_var = grid.buses[1].emt_model.external_mapping[VarPowerFlowRefferenceType.v_N]
-    bus_load_v_n_var = grid.buses[2].emt_model.external_mapping[VarPowerFlowRefferenceType.v_N]
+    branch_names = np.asarray(pf_res_3ph.branch_names)
+    xfmr_index = int(np.where(branch_names == xfmr.name)[0][0])
+    line_index = int(np.where(branch_names == line.name)[0][0])
+    bus_mid_index = 1
+    bus_load_index = 2
+    time_values = np.asarray(time_vector, dtype=float)
+    omega = 2.0 * np.pi * float(grid.fBase)
+    x0 = problem.get_x0()
+
+    def _inst(phasor: complex) -> np.ndarray:
+        return np.sqrt(2.0) * np.imag(phasor * np.exp(1j * omega * time_values))
+
+    vt_n_mid = complex(pf_res_3ph.voltage_N[bus_mid_index])
+    vt_a_mid = complex(pf_res_3ph.voltage_A[bus_mid_index])
+    vt_b_mid = complex(pf_res_3ph.voltage_B[bus_mid_index])
+    vt_c_mid = complex(pf_res_3ph.voltage_C[bus_mid_index])
+    vt_n_load = complex(pf_res_3ph.voltage_N[bus_load_index])
+    vt_a_load = complex(pf_res_3ph.voltage_A[bus_load_index])
+
+    st_a = complex(pf_res_3ph.St_A[xfmr_index]) / float(grid.Sbase)
+    st_b = complex(pf_res_3ph.St_B[xfmr_index]) / float(grid.Sbase)
+    st_c = complex(pf_res_3ph.St_C[xfmr_index]) / float(grid.Sbase)
+    i_ta = np.conj(st_a / vt_a_mid) if abs(vt_a_mid) > 1.0e-12 else 0.0 + 0.0j
+    i_tb = np.conj(st_b / vt_b_mid) if abs(vt_b_mid) > 1.0e-12 else 0.0 + 0.0j
+    i_tc = np.conj(st_c / vt_c_mid) if abs(vt_c_mid) > 1.0e-12 else 0.0 + 0.0j
+    i_tn = -(i_ta + i_tb + i_tc)
+
+    line_sf_a = complex(pf_res_3ph.Sf_A[line_index]) / float(grid.Sbase)
+    line_sf_b = complex(pf_res_3ph.Sf_B[line_index]) / float(grid.Sbase)
+    line_sf_c = complex(pf_res_3ph.Sf_C[line_index]) / float(grid.Sbase)
+    line_st_a = complex(pf_res_3ph.St_A[line_index]) / float(grid.Sbase)
+    line_st_b = complex(pf_res_3ph.St_B[line_index]) / float(grid.Sbase)
+    line_st_c = complex(pf_res_3ph.St_C[line_index]) / float(grid.Sbase)
+    line_if_a = np.conj(line_sf_a / vt_a_mid) if abs(vt_a_mid) > 1.0e-12 else 0.0 + 0.0j
+    line_if_b = np.conj(line_sf_b / vt_b_mid) if abs(vt_b_mid) > 1.0e-12 else 0.0 + 0.0j
+    line_if_c = np.conj(line_sf_c / vt_c_mid) if abs(vt_c_mid) > 1.0e-12 else 0.0 + 0.0j
+    line_it_a = np.conj(line_st_a / vt_a_load) if abs(vt_a_load) > 1.0e-12 else 0.0 + 0.0j
+    line_it_b = np.conj(line_st_b / complex(pf_res_3ph.voltage_B[bus_load_index])) if abs(complex(pf_res_3ph.voltage_B[bus_load_index])) > 1.0e-12 else 0.0 + 0.0j
+    line_it_c = np.conj(line_st_c / complex(pf_res_3ph.voltage_C[bus_load_index])) if abs(complex(pf_res_3ph.voltage_C[bus_load_index])) > 1.0e-12 else 0.0 + 0.0j
+    line_if_n = -(line_if_a + line_if_b + line_if_c)
+    line_it_n = -(line_it_a + line_it_b + line_it_c)
+
+    s_load_a = complex(load.Pa, load.Qa) / float(grid.Sbase)
+    v_load_an = vt_a_load - vt_n_load
+    i_load_a = np.conj(s_load_a / v_load_an) if abs(v_load_an) > 1.0e-12 else 0.0 + 0.0j
+    i_load_n = -i_load_a
+
     xfmr_it_n_var = xfmr.emt_model.external_mapping[VarPowerFlowRefferenceType.it_N]
     load_i_n_var = load.emt_model.external_mapping[VarPowerFlowRefferenceType.i_N]
     xfmr_it_a_var = xfmr.emt_model.external_mapping[VarPowerFlowRefferenceType.it_A]
     load_i_a_var = load.emt_model.external_mapping[VarPowerFlowRefferenceType.i_A]
-    bus_mid_v_n = np.asarray(y_hist[:, problem.get_var_idx(bus_mid_v_n_var)], dtype=float)
-    bus_load_v_n = np.asarray(y_hist[:, problem.get_var_idx(bus_load_v_n_var)], dtype=float)
-    xfmr_it_n = np.asarray(y_hist[:, problem.get_var_idx(xfmr_it_n_var)], dtype=float)
-    load_i_n = np.asarray(y_hist[:, problem.get_var_idx(load_i_n_var)], dtype=float)
-    xfmr_it_a = np.asarray(y_hist[:, problem.get_var_idx(xfmr_it_a_var)], dtype=float)
-    load_i_a = np.asarray(y_hist[:, problem.get_var_idx(load_i_a_var)], dtype=float)
+    bus_mid_v_n = _inst(vt_n_mid)
+    bus_load_v_n = _inst(vt_n_load)
+    xfmr_it_n = _inst(i_tn)
+    load_i_n = _inst(i_load_n)
+    xfmr_it_a = _inst(i_ta)
+    load_i_a = _inst(i_load_a)
 
     traces: Dict[str, object] = dict({
         "time": np.asarray(time_vector, dtype=float),
@@ -213,6 +258,14 @@ def run_xfmr_neutral_case(enable_plots: bool = True) -> Dict[str, object]:
         "load_i_n": load_i_n,
         "xfmr_it_a": xfmr_it_a,
         "load_i_a": load_i_a,
+        "line_if_n": _inst(line_if_n),
+        "line_it_n": _inst(line_it_n),
+        "line_if_a": _inst(line_if_a),
+        "line_it_a": _inst(line_it_a),
+        "seed_xfmr_it_n": float(x0[problem.get_var_idx(xfmr_it_n_var)]),
+        "seed_load_i_n": float(x0[problem.get_var_idx(load_i_n_var)]),
+        "seed_xfmr_it_a": float(x0[problem.get_var_idx(xfmr_it_a_var)]),
+        "seed_load_i_a": float(x0[problem.get_var_idx(load_i_a_var)]),
     })
 
     output_dir: Path = get_plot_results_directory("xfmr_neutral_emt", "symbolic")
@@ -231,20 +284,36 @@ def run_xfmr_neutral_case(enable_plots: bool = True) -> Dict[str, object]:
     figure_voltage.tight_layout()
     figure_voltage.savefig(voltage_png_path, dpi=200, bbox_inches="tight")
 
-    figure_current, axes = plt.subplots(2, 1, figsize=(10, 7), sharex=True)
-    axes[0].plot(traces["time"], traces["xfmr_it_n"], label="XFMR it_N", color="tab:green")
-    axes[0].plot(traces["time"], traces["load_i_n"], label="Load i_N", linestyle="--", color="tab:red")
-    axes[0].grid(True)
-    axes[0].legend()
-    axes[0].set_ylabel("Neutral current [pu inst]")
-    axes[0].set_title("XFMR Explicit Neutral Currents")
+    figure_current, axes = plt.subplots(2, 2, figsize=(12, 8), sharex=True)
+    axes[0, 0].plot(traces["time"], traces["xfmr_it_n"], label="XFMR it_N", color="tab:green")
+    axes[0, 0].plot(traces["time"], traces["line_if_n"], label="Line if_N", linestyle="--", color="tab:blue")
+    axes[0, 0].grid(True)
+    axes[0, 0].legend()
+    axes[0, 0].set_ylabel("Neutral current [pu inst]")
+    axes[0, 0].set_title("LV_MID side neutral KCL")
 
-    axes[1].plot(traces["time"], traces["xfmr_it_a"], label="XFMR it_A", color="tab:green")
-    axes[1].plot(traces["time"], traces["load_i_a"], label="Load i_A", linestyle="--", color="tab:red")
-    axes[1].grid(True)
-    axes[1].legend()
-    axes[1].set_xlabel("Time [s]")
-    axes[1].set_ylabel("Phase-A current [pu inst]")
+    axes[0, 1].plot(traces["time"], traces["line_it_n"], label="Line it_N", color="tab:blue")
+    axes[0, 1].plot(traces["time"], traces["load_i_n"], label="Load i_N", linestyle="--", color="tab:red")
+    axes[0, 1].grid(True)
+    axes[0, 1].legend()
+    axes[0, 1].set_ylabel("Neutral current [pu inst]")
+    axes[0, 1].set_title("LOAD side neutral KCL")
+
+    axes[1, 0].plot(traces["time"], traces["xfmr_it_a"], label="XFMR it_A", color="tab:green")
+    axes[1, 0].plot(traces["time"], traces["line_if_a"], label="Line if_A", linestyle="--", color="tab:blue")
+    axes[1, 0].grid(True)
+    axes[1, 0].legend()
+    axes[1, 0].set_xlabel("Time [s]")
+    axes[1, 0].set_ylabel("Phase-A current [pu inst]")
+    axes[1, 0].set_title("LV_MID side phase-A KCL")
+
+    axes[1, 1].plot(traces["time"], traces["line_it_a"], label="Line it_A", color="tab:blue")
+    axes[1, 1].plot(traces["time"], traces["load_i_a"], label="Load i_A", linestyle="--", color="tab:red")
+    axes[1, 1].grid(True)
+    axes[1, 1].legend()
+    axes[1, 1].set_xlabel("Time [s]")
+    axes[1, 1].set_ylabel("Phase-A current [pu inst]")
+    axes[1, 1].set_title("LOAD side phase-A KCL")
     figure_current.tight_layout()
     figure_current.savefig(current_png_path, dpi=200, bbox_inches="tight")
 
