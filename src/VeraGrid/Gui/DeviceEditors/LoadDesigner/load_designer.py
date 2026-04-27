@@ -17,7 +17,7 @@ import requests
 from PySide6 import QtCore, QtWidgets
 from PySide6.QtWidgets import QApplication
 
-from VeraGrid.Gui.LoadDesigner.load_designer_ui import Ui_Dialog
+from VeraGrid.Gui.DeviceEditors.LoadDesigner.load_designer_ui import Ui_Dialog
 
 
 class LoadArchetype(Enum):

@@ -5,9 +5,9 @@
 import sys
 import openpyxl
 
-from PySide6 import QtCore, QtGui, QtWidgets
+from PySide6 import QtWidgets
 
-from VeraGrid.Gui.ProfilesInput.excel_sheet_selection import Ui_ExcelSelectionDialog
+from VeraGrid.Gui.FileDialogues.ProfilesInput.excel_sheet_selection import Ui_ExcelSelectionDialog
 
 
 class ExcelDialog(QtWidgets.QDialog):

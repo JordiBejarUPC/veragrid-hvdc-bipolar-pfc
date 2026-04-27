@@ -9,9 +9,9 @@ from typing import List
 import pandas as pd
 from PySide6 import QtWidgets
 
-from VeraGrid.Gui.TowerBuilder.tower_builder import Ui_TowerBuilderDialog
+from VeraGrid.Gui.DeviceEditors.TowerBuilder.tower_builder import Ui_TowerBuilderDialog
 import VeraGridEngine.Devices as dev
-from VeraGrid.Gui.TowerBuilder.table_models import TowerModel, WireInTower, WiresTable, Wire
+from VeraGrid.Gui.DeviceEditors.TowerBuilder.table_models import TowerModel, WireInTower, WiresTable, Wire
 from VeraGrid.Gui.pandas_model import PandasModel
 from VeraGrid.Gui.general_dialogues import LogsDialogue
 from VeraGridEngine.basic_structures import Logger

@@ -21,8 +21,8 @@ from matplotlib import pyplot as plt
 
 from VeraGrid.Gui.general_dialogues import LogsDialogue
 from VeraGrid.Gui.gui_functions import get_list_model
-from VeraGrid.Gui.ProfilesInput.profiles_from_data_gui import Ui_Dialog
-from VeraGrid.Gui.ProfilesInput.excel_dialog import ExcelDialog
+from VeraGrid.Gui.FileDialogues.ProfilesInput.profiles_from_data_gui import Ui_Dialog
+from VeraGrid.Gui.FileDialogues.ProfilesInput.excel_dialog import ExcelDialog
 from VeraGrid.Gui.messages import error_msg, info_msg
 from VeraGrid.Gui.toast_widget import ToastManager
 from VeraGridEngine import DeviceType

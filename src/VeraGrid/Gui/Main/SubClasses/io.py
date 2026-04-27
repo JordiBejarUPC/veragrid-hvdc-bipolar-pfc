@@ -14,16 +14,16 @@ import VeraGrid.Session.file_handler as filedrv
 from VeraGrid.Gui.GridMerge.grid_diff import GridDiffDialogue
 from VeraGrid.Gui.GridMerge.grid_merge import GridMergeDialogue
 from VeraGrid.plugins import install_plugin, get_plugin_info
-from VeraGrid.Gui.CoordinatesInput.coordinates_dialogue import CoordinatesInputGUI
+from VeraGrid.Gui.FileDialogues.CoordinatesInput.coordinates_dialogue import CoordinatesInputGUI
 from VeraGrid.Gui.general_dialogues import LogsDialogue, CustomQuestionDialogue, FileTypeSelector, CgmesOptionsSelector
 from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
 from VeraGrid.Gui.messages import yes_no_question, error_msg, warning_msg, info_msg
 from VeraGrid.Gui.GridGenerator.grid_generator_dialogue import GridGeneratorGUI
-from VeraGrid.Gui.RosetaExplorer.RosetaExplorer import RosetaExplorerGUI
+from VeraGrid.Gui.FileDialogues.RosetaExplorer.RosetaExplorer import RosetaExplorerGUI
 from VeraGrid.Gui.Main.SubClasses.Model.scenarios import ScenariosMain
-from VeraGrid.Gui.CGMESDialogue.cgmes_export import CgmesExportDialogue
-from VeraGrid.Gui.PsseDialogue.psse_export import PsseExportDialogue
-from VeraGrid.Gui.PsseDialogue.psse_import import PsseImportDialogue
+from VeraGrid.Gui.FileDialogues.CGMESDialogue.cgmes_export import CgmesExportDialogue
+from VeraGrid.Gui.FileDialogues.PsseDialogue.psse_export import PsseExportDialogue
+from VeraGrid.Gui.FileDialogues.PsseDialogue.psse_import import PsseImportDialogue
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Compilers.circuit_to_pgm import PGM_AVAILABLE
 from VeraGridEngine.IO.file_save import FileSavingOptions

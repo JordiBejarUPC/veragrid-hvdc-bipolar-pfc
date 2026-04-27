@@ -14,8 +14,8 @@ from VeraGrid.Gui.gui_functions import get_list_model, get_logger_tree_model
 
 from PySide6 import QtGui, QtCore
 from VeraGrid.Gui.messages import *
-from VeraGrid.Gui.RosetaExplorer.roseta_explorer import Ui_RosetaExplorer, QMainWindow
-from VeraGrid.Gui.RosetaExplorer.roseta_objects_model import RosetaObjectsModel
+from VeraGrid.Gui.FileDialogues.RosetaExplorer.roseta_explorer import Ui_RosetaExplorer, QMainWindow
+from VeraGrid.Gui.FileDialogues.RosetaExplorer.roseta_objects_model import RosetaObjectsModel
 from VeraGrid.Gui.gui_functions import add_menu_entry, populate_cim_item_children, get_cim_tree_model
 from VeraGrid.Gui.object_model import ObjectsModel
 from VeraGrid.Gui.pandas_model import PandasModel
@@ -471,7 +471,7 @@ class RosetaExplorerGUI(QMainWindow):
         """
         this_py_file = os.path.realpath(__file__)
         current_folder_path, current_folder_name = os.path.split(this_py_file)
-        index_path = os.path.join(current_folder_path, '..', '..', 'docs', 'html', 'index.html')
+        index_path = os.path.join(current_folder_path, '../..', '..', 'docs', 'html', 'index.html')
         if os.path.exists(index_path):
             webbrowser.open(index_path, new=2)
         else:

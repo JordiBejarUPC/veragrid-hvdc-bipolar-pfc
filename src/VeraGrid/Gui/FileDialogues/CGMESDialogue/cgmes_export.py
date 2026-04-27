@@ -7,7 +7,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 import os
 from PySide6 import QtWidgets
-from VeraGrid.Gui.CGMESDialogue.cgmes_export_gui import Ui_CgmesExportDialog
+from VeraGrid.Gui.FileDialogues.CGMESDialogue.cgmes_export_gui import Ui_CgmesExportDialog
 import VeraGrid.Session.file_handler as filedrv
 import VeraGrid.Gui.gui_functions as gf
 from VeraGridEngine.enumerations import CGMESVersions, FileType

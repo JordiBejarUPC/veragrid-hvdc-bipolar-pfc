@@ -12,7 +12,7 @@ import pvlib
 from matplotlib import pyplot as plt
 from PySide6 import QtCore, QtWidgets
 from VeraGrid.Gui.messages import error_msg
-from VeraGrid.Gui.SolarPowerWizard.solar_power_wizard_gui import Ui_MainWindow
+from VeraGrid.Gui.DeviceEditors.SolarPowerWizard.solar_power_wizard_gui import Ui_MainWindow
 from VeraGrid.Gui.pandas_model import PandasModel
 
 

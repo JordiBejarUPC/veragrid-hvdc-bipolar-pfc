@@ -17,7 +17,7 @@ from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.IO.file_open import FileOpen
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Utils.progress_bar import print_progress_bar
-from VeraGrid.Gui.ProfilesInput.profiles_from_models_gui import Ui_Dialog
+from VeraGrid.Gui.FileDialogues.ProfilesInput.profiles_from_models_gui import Ui_Dialog
 
 
 def extract_and_convert_to_datetime(filename, logger: Logger) -> pd.DatetimeIndex | None:

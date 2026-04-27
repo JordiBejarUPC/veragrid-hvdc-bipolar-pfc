@@ -6,7 +6,7 @@ import sys
 import pandas as pd
 from PySide6 import QtWidgets
 
-from VeraGrid.Gui.LoadCatalogue.SelectComponents import Ui_MainWindow
+from VeraGrid.Gui.FileDialogues.LoadCatalogue.SelectComponents import Ui_MainWindow
 from VeraGridEngine.Devices import TransformerType, UndergroundLineType, SequenceLineType
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 import VeraGrid.Session.synchronization_driver as syncdrv

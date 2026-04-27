@@ -12,7 +12,7 @@ import requests
 from matplotlib import pyplot as plt
 from PySide6 import QtCore, QtWidgets
 
-from VeraGrid.Gui.WindPowerWizard.wind_power_wizard_gui import Ui_MainWindow
+from VeraGrid.Gui.DeviceEditors.WindPowerWizard.wind_power_wizard_gui import Ui_MainWindow
 from VeraGrid.Gui.messages import error_msg
 from VeraGrid.Gui.pandas_model import PandasModel
 

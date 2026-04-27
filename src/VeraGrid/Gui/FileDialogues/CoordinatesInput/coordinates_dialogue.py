@@ -3,12 +3,11 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 import os
-import sys
 import pandas as pd
 from PySide6 import QtGui, QtCore, QtWidgets
 from typing import List, Tuple, Union
-from VeraGrid.Gui.CoordinatesInput.coordinates_input_gui import Ui_Dialog
-from VeraGrid.Gui.ProfilesInput.excel_dialog import ExcelDialog
+from VeraGrid.Gui.FileDialogues.CoordinatesInput.coordinates_input_gui import Ui_Dialog
+from VeraGrid.Gui.FileDialogues.ProfilesInput.excel_dialog import ExcelDialog
 from VeraGrid.Gui.general_dialogues import LogsDialogue
 from VeraGridEngine.Devices.Substation import Bus
 from VeraGridEngine.basic_structures import Logger
