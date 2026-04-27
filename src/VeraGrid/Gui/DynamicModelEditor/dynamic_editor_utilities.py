@@ -33,6 +33,7 @@ from VeraGridEngine.Templates.Emt.generator_emt_type_template import (get_simple
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
 from VeraGridEngine.Templates.Emt.bergeron_line_emt_template import get_bergeron_line_emt_template
+from VeraGridEngine.Templates.Emt.jmarti_line_emt_template import get_jmarti_line_emt_template
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import (get_shunt_r_emt_template,
                                                                  get_shunt_c_emt_template,
                                                                  get_shunt_l_emt_template,
@@ -229,11 +230,22 @@ def create_emt_wizard_block(phase_n: bool, phase_a: bool, phase_b: bool, phase_c
     # BERGERON LINE (line)
     elif block_type == BlockType.EMT_BERGERON_LINE:
         blk = get_bergeron_line_emt_template(vf=var_factory,
-                                       phN=phase_n,
-                                       phA=phase_a,
-                                       phB=phase_b,
-                                       phC=phase_c,
-                                       name=item_name).block
+                                        phN=phase_n,
+                                        phA=phase_a,
+                                        phB=phase_b,
+                                        phC=phase_c,
+                                        name=item_name).block
+        blk.name = item_name
+        return blk
+
+    # JMARTI LINE (line)
+    elif block_type == BlockType.EMT_JMARTI_LINE:
+        blk = get_jmarti_line_emt_template(vf=var_factory,
+                                           phN=phase_n,
+                                           phA=phase_a,
+                                           phB=phase_b,
+                                           phC=phase_c,
+                                           name=item_name).block
         blk.name = item_name
         return blk
 
