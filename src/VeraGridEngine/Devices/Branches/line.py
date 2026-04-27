@@ -69,8 +69,6 @@ class Line(BranchParent):
         'possible_underground_line_types',
         'possible_sequence_line_types',
         '_locations',
-        '_jmarti_fit_bundle',
-        '_jmarti_runtime_data',
         'Vmf',
         'Vmt',
         'Vaf',
@@ -259,8 +257,6 @@ class Line(BranchParent):
 
         # Line locations
         self._locations: LineLocations = LineLocations()
-        self._jmarti_fit_bundle = None
-        self._jmarti_runtime_data = None
 
 
     @property
@@ -440,44 +436,6 @@ class Line(BranchParent):
             self._locations.set(data=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a locations')
-
-    @property
-    def jmarti_fit_bundle(self):
-        """
-        Return the optional offline JMARTI fit bundle attached to the line.
-
-        :return: Fit bundle or ``None``.
-        """
-        return self._jmarti_fit_bundle
-
-    @jmarti_fit_bundle.setter
-    def jmarti_fit_bundle(self, value) -> None:
-        """
-        Store one optional offline JMARTI fit bundle on the line.
-
-        :param value: Fit bundle or ``None``.
-        :return: None.
-        """
-        self._jmarti_fit_bundle = value
-
-    @property
-    def jmarti_runtime_data(self):
-        """
-        Return the optional discretized JMARTI runtime data attached to the line.
-
-        :return: Runtime data or ``None``.
-        """
-        return self._jmarti_runtime_data
-
-    @jmarti_runtime_data.setter
-    def jmarti_runtime_data(self, value) -> None:
-        """
-        Store one optional discretized JMARTI runtime data object on the line.
-
-        :param value: Runtime data or ``None``.
-        :return: None.
-        """
-        self._jmarti_runtime_data = value
 
     @property
     def R_corrected(self):

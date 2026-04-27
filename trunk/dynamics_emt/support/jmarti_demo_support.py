@@ -20,6 +20,7 @@ from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_loewner_seed import build_
 from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_modal_processing import build_jmarti_modal_samples
 from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_modal_processing import estimate_jmarti_mode_delays
 from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_runtime import JMartiHistoryRuntime
+from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_runtime import set_jmarti_block_fit_bundle
 from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_vector_fit import build_jmarti_mode_vector_fit
 from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_fit_workflow import build_jmarti_fit_bundle_from_frequency_samples
 from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_fit_workflow import build_jmarti_frequency_samples_from_line
@@ -492,25 +493,6 @@ def build_demo_line_case_grid(model_tpe: EmtLineTypes) -> tuple[MultiCircuit, Li
     grid.add_emt_events_group(event_group)
     line.apply_template(line_template, grid.Sbase, grid.fBase, gce.Logger())
 
-    if model_tpe == EmtLineTypes.J_Marti:
-        line.jmarti_fit_bundle = build_jmarti_fit_bundle_from_frequency_samples(
-            samples=build_jmarti_frequency_samples_from_line(
-                line=line,
-                phase_n=False,
-                phase_a=True,
-                phase_b=True,
-                phase_c=True,
-                low_hz=10.0,
-                high_hz=5000.0,
-                sample_count=48,
-                nominal_frequency_hz=50.0,
-                sbase_mva=float(grid.Sbase),
-            ),
-            options=JMartiFitOptions(forced_model_order=1, vf_max_iterations=6),
-        )
-    else:
-        pass
-
     grid.add_line(obj=line)
     grid.add_load(bus=bus1, api_obj=load)
 
@@ -532,6 +514,29 @@ def build_demo_line_case_grid(model_tpe: EmtLineTypes) -> tuple[MultiCircuit, Li
                 raise ValueError(f"Unsupported EMT line model type '{model_tpe}'")
 
     load_model = get_shunt_r_emt_template(vf=grid.var_factory, phA=True, phB=True, phC=True, name="Load_R_demo").block
+
+    if model_tpe == EmtLineTypes.J_Marti:
+        set_jmarti_block_fit_bundle(
+            line_model,
+            build_jmarti_fit_bundle_from_frequency_samples(
+                samples=build_jmarti_frequency_samples_from_line(
+                    line=line,
+                    phase_n=False,
+                    phase_a=True,
+                    phase_b=True,
+                    phase_c=True,
+                    low_hz=10.0,
+                    high_hz=5000.0,
+                    sample_count=48,
+                    nominal_frequency_hz=50.0,
+                    sbase_mva=float(grid.Sbase),
+                ),
+                options=JMartiFitOptions(forced_model_order=1, vf_max_iterations=6),
+            ),
+        )
+    else:
+        pass
+
     set_emt_model(device=generator, model=generator_model, var_factory=grid.var_factory)
     set_emt_model(device=line, model=line_model, var_factory=grid.var_factory)
     set_emt_model(device=load, model=load_model, var_factory=grid.var_factory)

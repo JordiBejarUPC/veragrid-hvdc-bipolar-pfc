@@ -80,6 +80,10 @@ from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_fit_options import JMartiF
 from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_fit_workflow import build_jmarti_fit_bundle_from_frequency_samples
 from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_fit_workflow import build_jmarti_frequency_samples_from_line
 from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_fit_workflow import load_jmarti_frequency_samples_from_npz
+from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_runtime import get_jmarti_block_fit_bundle
+from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_runtime import get_jmarti_block_runtime_data
+from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_runtime import set_jmarti_block_fit_bundle
+from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_runtime import set_jmarti_block_runtime_data
 from dataclasses import dataclass
 
 # from VeraGridEngine.Templates.Rms.common import create_block_of_type, create_generic_block, create_emt_wizard_block
@@ -4730,7 +4734,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             return str(modal_config.get("fit_status", "J_Marti line"))
 
-    def _apply_jmarti_line_fit_configuration(self, modal_config: Dict[str, Any]) -> Dict[str, Any]:
+    def _apply_jmarti_line_fit_configuration(self, modal_config: Dict[str, Any]) -> tuple[Dict[str, Any], Any | None]:
         """
         Apply one JMARTI GUI configuration to the attached line object when possible.
 
@@ -4758,12 +4762,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             line_object = None
 
         fit_source_description = self._build_jmarti_fit_source_description(updated_config, line_object)
-
-        if line_object is not None:
-            line_object.jmarti_fit_bundle = None
-            line_object.jmarti_runtime_data = None
-        else:
-            pass
 
         if str(updated_config.get("data_source_mode", "auto_template")) == "import_frequency_samples":
             fallback_line_length_m: float | None
@@ -4844,18 +4842,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             )
             fit_diagnostics_text = self._build_jmarti_fit_diagnostics_text(fit_source_description, fit_bundle)
 
-            if line_object is not None:
-                line_object.jmarti_fit_bundle = fit_bundle
-            else:
-                pass
-        else:
-            pass
-
         updated_config["fit_ready"] = fit_ready
         updated_config["fit_source_description"] = fit_source_description
         updated_config["fit_status"] = fit_status
         updated_config["fit_diagnostics_text"] = fit_diagnostics_text
-        return updated_config
+        return updated_config, fit_bundle
 
     def create_jmarti_line_emt_block_item(self, x_pos: float, y_pos: float) -> BlockItem | None:
         """
@@ -4868,7 +4859,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         dialog = JMartiLineEmtDialog(self, initial_config=self._build_default_jmarti_line_modal_config())
 
         if dialog.exec() == QDialog.DialogCode.Accepted:
-            modal_config: Dict[str, Any] = self._apply_jmarti_line_fit_configuration(dialog.get_configuration())
+            modal_config, fit_bundle = self._apply_jmarti_line_fit_configuration(dialog.get_configuration())
         else:
             return None
 
@@ -4892,6 +4883,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             pass
 
         set_modal_template_metadata(block_model, kind="jmarti_line_emt", config=modal_config)
+        set_jmarti_block_fit_bundle(block_model, fit_bundle)
+        set_jmarti_block_runtime_data(block_model, None)
         self.block_counters[BlockType.EMT_JMARTI_LINE] = count
         block_item.set_subsystem(block_model)
         block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
@@ -7610,6 +7603,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             target_block.diagram = preserved_diagram
         set_modal_template_metadata(target_block, modal_kind, modal_config)
+        set_jmarti_block_fit_bundle(target_block, None)
+        set_jmarti_block_runtime_data(target_block, None)
+
+        if get_modal_template_metadata(source_clone)[0] == "jmarti_line_emt":
+            set_jmarti_block_fit_bundle(target_block, get_jmarti_block_fit_bundle(source_clone))
+            set_jmarti_block_runtime_data(target_block, get_jmarti_block_runtime_data(source_clone))
+        else:
+            pass
+
         self.rebuild_scene_from_diagram()
         self.select_block_by_uid(preserved_uid)
         self.mark_unapplied_changes()
@@ -7813,7 +7815,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         dialog = JMartiLineEmtDialog(self, initial_config=modal_config)
 
         if dialog.exec() == QDialog.DialogCode.Accepted:
-            updated_config = self._apply_jmarti_line_fit_configuration(dialog.get_configuration())
+            updated_config, fit_bundle = self._apply_jmarti_line_fit_configuration(dialog.get_configuration())
         else:
             return
 
@@ -7838,6 +7840,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
+        set_jmarti_block_fit_bundle(new_block, fit_bundle)
+        set_jmarti_block_runtime_data(new_block, None)
         self._replace_scene_block_from_template(item, new_block, "jmarti_line_emt", updated_config)
 
     def _modify_switch_emt_block(self, item: BlockItem, modal_config: Dict[str, Any]) -> None:

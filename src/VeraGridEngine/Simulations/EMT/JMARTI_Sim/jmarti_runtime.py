@@ -7,9 +7,6 @@ from typing import Any, List, Tuple
 import numpy as np
 
 from VeraGridEngine.Devices.Branches.line import Line
-from VeraGridEngine.Devices.Branches.overhead_line_type import OverheadLineType
-from VeraGridEngine.Devices.Branches.sequence_line_type import SequenceLineType
-from VeraGridEngine.Devices.Branches.underground_line_type import UndergroundLineType
 from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_fit_bundle import JMartiFitBundle
 from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_runtime_data import JMartiModeRuntimeData
 from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_runtime_data import JMartiRuntimeData
@@ -72,7 +69,7 @@ class JMartiHistoryRuntime:
         self.line = line
         self.block = line_block
         self.h = float(h)
-        self.runtime_data = _resolve_jmarti_runtime_data(line=line, time_step_s=self.h)
+        self.runtime_data = _resolve_jmarti_runtime_data(line=line, line_block=line_block, time_step_s=self.h)
 
         self.ph_labels: List[str] = list(["N", "A", "B", "C"])
         self.ph_mask: np.ndarray = np.asarray([
@@ -502,39 +499,98 @@ class JMartiHistoryRuntime:
             phase_index += 1
 
 
-def _resolve_jmarti_runtime_data(line: Any, time_step_s: float) -> JMartiRuntimeData:
+JMARTI_BLOCK_FIT_BUNDLE_ATTR: str = "_jmarti_fit_bundle"
+JMARTI_BLOCK_RUNTIME_DATA_ATTR: str = "_jmarti_runtime_data"
+
+
+def set_jmarti_block_fit_bundle(block: Block, fit_bundle: JMartiFitBundle | None) -> None:
+    """
+    Attach one optional JMARTI fit bundle to one EMT block.
+
+    :param block: Target EMT block.
+    :param fit_bundle: Optional offline fit bundle.
+    :return: None.
+    """
+    if fit_bundle is None:
+        block.__dict__.pop(JMARTI_BLOCK_FIT_BUNDLE_ATTR, None)
+    else:
+        block.__dict__[JMARTI_BLOCK_FIT_BUNDLE_ATTR] = fit_bundle
+
+
+def get_jmarti_block_fit_bundle(block: Block | None) -> JMartiFitBundle | None:
+    """
+    Return the optional JMARTI fit bundle attached to one EMT block.
+
+    :param block: Candidate EMT block.
+    :return: Attached fit bundle or ``None``.
+    """
+    if isinstance(block, Block):
+        fit_bundle = block.__dict__.get(JMARTI_BLOCK_FIT_BUNDLE_ATTR, None)
+
+        if isinstance(fit_bundle, JMartiFitBundle):
+            return fit_bundle
+        else:
+            return None
+    else:
+        return None
+
+
+def set_jmarti_block_runtime_data(block: Block, runtime_data: JMartiRuntimeData | None) -> None:
+    """
+    Attach one optional discretized JMARTI runtime data object to one EMT block.
+
+    :param block: Target EMT block.
+    :param runtime_data: Optional runtime data.
+    :return: None.
+    """
+    if runtime_data is None:
+        block.__dict__.pop(JMARTI_BLOCK_RUNTIME_DATA_ATTR, None)
+    else:
+        block.__dict__[JMARTI_BLOCK_RUNTIME_DATA_ATTR] = runtime_data
+
+
+def get_jmarti_block_runtime_data(block: Block | None) -> JMartiRuntimeData | None:
+    """
+    Return the optional JMARTI runtime data attached to one EMT block.
+
+    :param block: Candidate EMT block.
+    :return: Attached runtime data or ``None``.
+    """
+    if isinstance(block, Block):
+        runtime_data = block.__dict__.get(JMARTI_BLOCK_RUNTIME_DATA_ATTR, None)
+
+        if isinstance(runtime_data, JMartiRuntimeData):
+            return runtime_data
+        else:
+            return None
+    else:
+        return None
+
+
+def _resolve_jmarti_runtime_data(line: Any, line_block: Block, time_step_s: float) -> JMartiRuntimeData:
     """
     Resolve one discrete JMARTI runtime dataset from the line object.
 
     :param line: Line-like branch device.
+    :param line_block: EMT block carrying the JMARTI configuration and optional fit.
     :param time_step_s: EMT time step in seconds.
     :return: Runtime-ready JMARTI dataset.
     :raises ValueError: If no JMARTI fit information is attached to the line.
     """
-    if isinstance(line, Line):
-        if line.jmarti_runtime_data is not None:
-            return line.jmarti_runtime_data
+    if isinstance(line, Line) and isinstance(line_block, Block):
+        attached_runtime_data: JMartiRuntimeData | None = get_jmarti_block_runtime_data(line_block)
+
+        if attached_runtime_data is not None:
+            return attached_runtime_data
         else:
-            if isinstance(line.jmarti_fit_bundle, JMartiFitBundle):
-                runtime_data: JMartiRuntimeData = build_jmarti_runtime_data(line.jmarti_fit_bundle, time_step_s)
-                line.jmarti_runtime_data = runtime_data
+            attached_fit_bundle: JMartiFitBundle | None = get_jmarti_block_fit_bundle(line_block)
+
+            if attached_fit_bundle is not None:
+                runtime_data: JMartiRuntimeData = build_jmarti_runtime_data(attached_fit_bundle, time_step_s)
+                set_jmarti_block_runtime_data(line_block, runtime_data)
                 return runtime_data
             else:
-                if isinstance(line.template, (OverheadLineType, SequenceLineType, UndergroundLineType)):
-                    if line.template.jmarti_runtime_data is not None:
-                        runtime_data = line.template.jmarti_runtime_data
-                        line.jmarti_runtime_data = runtime_data
-                        return runtime_data
-                    else:
-                        if isinstance(line.template.jmarti_fit_bundle, JMartiFitBundle):
-                            runtime_data = build_jmarti_runtime_data(line.template.jmarti_fit_bundle, time_step_s)
-                            line.jmarti_runtime_data = runtime_data
-                            line.template.jmarti_runtime_data = runtime_data
-                            return runtime_data
-                        else:
-                            raise ValueError(f"JMARTI line '{line.name}' requires one fit bundle or one runtime data object")
-                else:
-                    raise ValueError(f"JMARTI line '{line.name}' requires one fit bundle or one runtime data object")
+                raise ValueError(f"JMARTI line '{line.name}' requires one fit bundle or one runtime data object attached to its EMT block")
     else:
         raise ValueError("JMARTI runtime expects a Line-compatible object")
 

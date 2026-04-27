@@ -17,6 +17,7 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import _transformer_mo
 from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import LookupArrayLinearDialog
 from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import LookupMatrixLinearDialog
 from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import _parse_clipboard_grid
+from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_runtime import get_jmarti_block_fit_bundle
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Templates.BasicBlockCatalog import BasicBlockTemplateDescriptor
 from VeraGridEngine.Templates.BasicBlockCatalog import get_basic_block_catalog_descriptor_by_key
@@ -767,7 +768,7 @@ def test_jmarti_line_emt_block_builds_sequence_fit_and_persists_diagnostics(monk
     monkeypatch.setattr(dynamic_block_editor_module, "JMartiLineEmtDialog", _DialogStub)
     block_item = editor.create_library_payload_item(BlockType.EMT_JMARTI_LINE, 10.0, 20.0)
     assert block_item is not None
-    assert line.jmarti_fit_bundle is not None
+    assert get_jmarti_block_fit_bundle(block_item.subsys) is not None
 
     modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
     assert modal_kind == "jmarti_line_emt"
@@ -861,7 +862,7 @@ def test_jmarti_line_emt_block_builds_fit_from_imported_npz(monkeypatch, tmp_pat
     monkeypatch.setattr(dynamic_block_editor_module, "JMartiLineEmtDialog", _DialogStub)
     block_item = editor.create_library_payload_item(BlockType.EMT_JMARTI_LINE, 10.0, 20.0)
     assert block_item is not None
-    assert line.jmarti_fit_bundle is not None
+    assert get_jmarti_block_fit_bundle(block_item.subsys) is not None
 
     modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
     assert modal_kind == "jmarti_line_emt"

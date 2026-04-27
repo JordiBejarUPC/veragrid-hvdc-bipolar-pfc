@@ -11,6 +11,7 @@ from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_loewner_seed import build_
 from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_modal_processing import build_jmarti_modal_samples
 from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_modal_processing import estimate_jmarti_mode_delays
 from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_runtime import JMartiHistoryRuntime
+from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_runtime import set_jmarti_block_runtime_data
 from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_runtime_data import build_jmarti_runtime_data
 from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_vector_fit import build_jmarti_mode_vector_fit
 from VeraGridEngine.Templates.Emt.jmarti_line_emt_template import get_jmarti_line_emt_template
@@ -168,9 +169,9 @@ def _build_jmarti_runtime_fixture() -> tuple[JMartiHistoryRuntime, np.ndarray, n
     line.ys.phA = True
     line.ys.phB = True
     line.ys.phC = False
-    line.jmarti_runtime_data = runtime_data
     vf = VarFactory()
     templ = get_jmarti_line_emt_template(vf=vf, phN=False, phA=True, phB=True, phC=False, name="JMartiLine").block
+    set_jmarti_block_runtime_data(templ, runtime_data)
     runtime = JMartiHistoryRuntime(line=line, line_block=templ, h=1.0e-4)
 
     v_f_vars = templ.in_vars[:2]

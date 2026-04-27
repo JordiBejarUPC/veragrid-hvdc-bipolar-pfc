@@ -10,6 +10,8 @@ from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_loewner_seed import build_
 from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_modal_processing import build_jmarti_modal_samples
 from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_modal_processing import estimate_jmarti_mode_delays
 from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_runtime import JMartiHistoryRuntime
+from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_runtime import get_jmarti_block_runtime_data
+from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_runtime import set_jmarti_block_fit_bundle
 from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_vector_fit import build_jmarti_mode_vector_fit
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
@@ -197,7 +199,6 @@ def test_jmarti_emt_problem_builds_one_history_runtime_and_runs_short_simulation
     grid.add_generator(bus=bus0, api_obj=generator)
     grid.add_overhead_line(line_template)
     line.apply_template(line_template, grid.Sbase, grid.fBase, gce.Logger())
-    line.jmarti_fit_bundle = _build_jmarti_fit_bundle_for_three_phase_line()
     grid.add_line(obj=line)
     grid.add_load(bus=bus1, api_obj=load)
 
@@ -205,7 +206,9 @@ def test_jmarti_emt_problem_builds_one_history_runtime_and_runs_short_simulation
         get_bus_emt_template(grid, bus)
 
     set_emt_model(device=generator, model=get_generator_thevenin_rl_emt_template(vf=grid.var_factory, name="Gen").block, var_factory=grid.var_factory)
-    set_emt_model(device=line, model=get_jmarti_line_emt_template(vf=grid.var_factory, phN=False, phA=True, phB=True, phC=True, name="Line").block, var_factory=grid.var_factory)
+    line_model = get_jmarti_line_emt_template(vf=grid.var_factory, phN=False, phA=True, phB=True, phC=True, name="Line").block
+    set_jmarti_block_fit_bundle(line_model, _build_jmarti_fit_bundle_for_three_phase_line())
+    set_emt_model(device=line, model=line_model, var_factory=grid.var_factory)
     set_emt_model(
         device=load,
         model=get_shunt_rlc_combo_emt_template(
@@ -229,7 +232,7 @@ def test_jmarti_emt_problem_builds_one_history_runtime_and_runs_short_simulation
 
     assert len(problem.history_models) == 1
     assert isinstance(problem.history_models[0], JMartiHistoryRuntime)
-    assert line.jmarti_runtime_data is not None
+    assert get_jmarti_block_runtime_data(line.emt_model) is not None
 
     solver = JitSymbolicSolver(
         problem=problem,
