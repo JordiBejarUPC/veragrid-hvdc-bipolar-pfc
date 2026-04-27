@@ -29,6 +29,7 @@ from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGridEngine.Utils.Symbolic.jit_compiler import RMSCompiler
 from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms, get_bus_rms_algebraic_vars
+from VeraGridEngine.Utils.procedural_logic import build_boundary_updater_from_block
 from VeraGridEngine.IO.fmu.importer.experimental_cs import (
     advance_rms_fmu_cs_devices,
     close_rms_fmu_cs_devices,
@@ -564,38 +565,35 @@ class RmsProblemDae(RmsProblemTemplate):
         slack_gen_snom = np.zeros(n, dtype=float)
 
         for dev in grid.get_injection_devices_iter():
-            if dev.rms_model.empty():
-                continue
             bidx = bus_dict[dev.bus]
-            if dev.bus.is_dc:
-                continue
+            if not dev.rms_model.empty() and not dev.bus.is_dc:
 
-            if dev.idtag in gen_idx_map and dev.bus.is_slack:
-                slack_gen_count[bidx] += 1
-                snom = dev.Snom
-                if snom <= 0.0:
-                    snom = 1.0
-                slack_gen_snom[bidx] += snom
-                continue
+                if dev.idtag in gen_idx_map and dev.bus.is_slack:
+                    slack_gen_count[bidx] += 1
+                    snom = dev.Snom
+                    if snom <= 0.0:
+                        snom = 1.0
+                    slack_gen_snom[bidx] += snom
+                    continue
 
-            Vbus_pf = self.power_flow_results.voltage[bidx]
-            if dev.idtag in gen_idx_map:
-                gidx = gen_idx_map[dev.idtag]
-                Sdev_pf = complex(float(dev.P), float(self.power_flow_results.gen_q[gidx])) / grid.Sbase
-            elif dev.idtag in batt_idx_map:
-                bdid = batt_idx_map[dev.idtag]
-                Sdev_pf = complex(float(dev.P), float(self.power_flow_results.battery_q[bdid])) / grid.Sbase
-            elif dev.idtag in shunt_idx_map:
-                g_sh = float(dev.G) / grid.Sbase
-                b_sh = float(dev.B) / grid.Sbase
-                Sdev_pf = complex(g_sh * (abs(Vbus_pf) ** 2), -b_sh * (abs(Vbus_pf) ** 2))
-            elif dev.idtag in loads_idx_map:
-                Sdev_pf = complex(-float(dev.P), -float(dev.Q)) / grid.Sbase
-            else:
-                Sdev_pf = complex(0.0, 0.0)
+                Vbus_pf = self.power_flow_results.voltage[bidx]
+                if dev.idtag in gen_idx_map:
+                    gidx = gen_idx_map[dev.idtag]
+                    Sdev_pf = complex(float(dev.P), float(self.power_flow_results.gen_q[gidx])) / grid.Sbase
+                elif dev.idtag in batt_idx_map:
+                    bdid = batt_idx_map[dev.idtag]
+                    Sdev_pf = complex(float(dev.P), float(self.power_flow_results.battery_q[bdid])) / grid.Sbase
+                elif dev.idtag in shunt_idx_map:
+                    g_sh = float(dev.G) / grid.Sbase
+                    b_sh = float(dev.B) / grid.Sbase
+                    Sdev_pf = complex(g_sh * (abs(Vbus_pf) ** 2), -b_sh * (abs(Vbus_pf) ** 2))
+                elif dev.idtag in loads_idx_map:
+                    Sdev_pf = complex(-float(dev.P), -float(dev.Q)) / grid.Sbase
+                else:
+                    Sdev_pf = complex(0.0, 0.0)
 
-            fixed_inj_p[bidx] += Sdev_pf.real
-            fixed_inj_q[bidx] += Sdev_pf.imag
+                fixed_inj_p[bidx] += Sdev_pf.real
+                fixed_inj_q[bidx] += Sdev_pf.imag
 
         residual_p = branch_bus_p - fixed_inj_p
         residual_q = branch_bus_q - fixed_inj_q
@@ -710,26 +708,6 @@ class RmsProblemDae(RmsProblemTemplate):
                     for param, const in elm.rms_model.parameters.items():
                         params_array[self._uid2idx_params[param.uid]] = const.value
 
-                    # OLD init_explicit path kept for reference
-                    # init_explicit(
-                    #     mdl=elm.rms_model,
-                    #     sys_vars=self.sys_vars,
-                    #     variable_parameters=self._variable_parameters,
-                    #     event_parameters_eqs=self._event_parameters_eqs0,
-                    #     constant_parameters=self._constant_parameters,
-                    #     init_guess=self.init_guess,
-                    #     uid2idx_vars=self.uid2idx_vars,
-                    #     uid2idx_params=self._uid2idx_params,
-                    #     uid2idx_event_params=self._uid2idx_event_params,
-                    #     compiler_names_dict=self._compiler_names_dict,
-                    #     alias_names_dict=self._alias_names_dict,
-                    #     VARIABLE_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
-                    #     TIME_NAME=self.TIME_NAME,
-                    #     VARS_NAME=self.VARS_NAME,
-                    #     DIFF_NAME=self.DIFF_NAME,
-                    #     CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME
-                    # )
-
                     # New init_explicit_common path
                     self.init_guess, diff_init_guess_common = init_explicit_common(
                         mdl=elm.rms_model,
@@ -754,11 +732,6 @@ class RmsProblemDae(RmsProblemTemplate):
 
                 elif self.options.initialization_method == RmsInitializationMethod.PseudoTransient:
                     raise ValueError("Not implemented initialization method")
-
-                # elif self.options.initialization_method == RmsInitializationMethod.CustomValues:
-                #
-                #     # Todo: add check to see if all the init values are there, otherwise raise error
-                #     init_custom(mdl=elm.rms_model, init_guess=self.init_guess)
 
                 # not implemented yet
                 # elif self.options.initialization_method == RmsInitializationMethod.PseudoTransient:
@@ -1056,8 +1029,6 @@ class RmsProblemDae(RmsProblemTemplate):
             self._initialize_latched_mode_defaults(t=0.0, x=self.get_x0())
 
         self._constant_params = np.array([const.value for const in self._parameters_values])
-
-        from VeraGridEngine.Utils.procedural_logic import build_boundary_updater_from_block
 
         self._block_boundary_updater = build_boundary_updater_from_block(self)
 
