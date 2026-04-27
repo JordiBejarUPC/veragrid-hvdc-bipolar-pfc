@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 
 from __future__ import annotations
+import copy
 from typing import Dict, Any, List
 
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
@@ -1070,7 +1071,7 @@ def _duplicate_block(block: Block,
     else:
         new_procedural_logic = list()
 
-    return Block(
+    new_block = Block(
         state_vars=new_state_vars,
         state_eqs=new_state_eqs,
         algebraic_vars=new_algebraic_vars,
@@ -1093,6 +1094,16 @@ def _duplicate_block(block: Block,
         api_obj_mapping=new_api_obj_mapping,
         name=block.name,
     )
+
+    extra_key: str
+    extra_value: Any
+    for extra_key, extra_value in block.__dict__.items():
+        if extra_key in new_block.__dict__:
+            pass
+        else:
+            setattr(new_block, extra_key, copy.deepcopy(extra_value))
+
+    return new_block
 
 
 def duplicate_block(block: Block, var_factory: VarFactory | None) -> Block:

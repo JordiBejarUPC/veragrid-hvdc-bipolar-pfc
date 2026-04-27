@@ -34,8 +34,9 @@ from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template imp
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
 from VeraGridEngine.Templates.Emt.bergeron_line_emt_template import get_bergeron_line_emt_template
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import (get_shunt_r_emt_template,
-                                                                get_shunt_c_emt_template,
-                                                                get_shunt_l_emt_template)
+                                                                 get_shunt_c_emt_template,
+                                                                 get_shunt_l_emt_template,
+                                                                 get_ground_emt_template)
 from VeraGridEngine.Templates.Emt.load_exponential_emt_template import get_exponential_load_emt
 from VeraGridEngine.Templates.Emt.load_zip_emt_template import get_load_ZIP_emt_template
 from VeraGridEngine.Templates.Emt.dc_load_emt_template import get_dc_load_emt_template
@@ -44,7 +45,8 @@ from VeraGridEngine.Templates.Emt.dc_load_emt_template import get_dc_load_emt_te
 
 def create_block_of_type(var_factory: VarFactory,
                          block_type: BlockType,
-                         item_name: str = "") -> Block | None:
+                         item_name: str = "",
+                         api_object=None) -> Block | None:
     """
     Create a Block appropriate for block_type.
     """
@@ -171,12 +173,21 @@ def create_block_of_type(var_factory: VarFactory,
         return blk
 
     elif block_type == BlockType.TRAFO_EMT:
-        blk = get_transformer_emt_template(var_factory).block
+        conn_f = getattr(api_object, "conn_f", None)
+        conn_t = getattr(api_object, "conn_t", None)
+        blk = get_transformer_emt_template(var_factory, conn_f=conn_f, conn_t=conn_t).block
         blk.name = item_name
         return blk
 
     elif block_type == BlockType.XFMR_TRANSFORMER:
-        blk = get_xfmr_emt_template(var_factory).block
+        conn_f = getattr(api_object, "conn_f", None)
+        conn_t = getattr(api_object, "conn_t", None)
+        blk = get_xfmr_emt_template(var_factory, conn_f=conn_f, conn_t=conn_t).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.GROUND_EMT:
+        blk = get_ground_emt_template(var_factory, item_name).block
         blk.name = item_name
         return blk
 

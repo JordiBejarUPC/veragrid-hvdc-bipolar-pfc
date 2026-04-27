@@ -21,19 +21,17 @@ from typing import Dict, List, Any, Set, Optional, Tuple
 from itertools import chain
 
 from VeraGridEngine.Devices import MultiCircuit
-from VeraGridEngine.Devices.Branches.dc_line import DcLine
-from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGridEngine.Simulations.driver_template import DummySignal
 from VeraGridEngine.Devices.Events.emt_events_group import EmtEventsGroup
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, piecewise, Const
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, piecewise, Const, hard_sat, heaviside
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import (
     VarPowerFlowRefferenceType,
     ParamPowerFlowRefferenceType,
     DeviceType,
+    DynamicEventTransitionType,
     EmtLineTypes,
-    ConverterControlType,
     WindingType,
 )
 from VeraGridEngine.basic_structures import Logger, CxVec
@@ -57,8 +55,11 @@ from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import (
     EmtBoundaryUpdateProtocol,
     EmtProblemTemplate,
 )
-from VeraGridEngine.Simulations.EMT.static_parameter_mapping import (
+from VeraGridEngine.Utils.Symbolic.static_parameter_mapping import (
+    abc_to_nabc,
     assign_static_api_object_mapping_for_device,
+    get_load_power_phase_values_pu_abc,
+    get_shunt_phase_values_pu_abc,
 )
 
 
@@ -94,6 +95,54 @@ def _xfmr_connection_matrix(winding_tpe: WindingType) -> np.ndarray:
             ], dtype=float) / np.sqrt(3.0)
         else:
             return np.eye(3, dtype=float)
+
+
+def _freeze_runtime_expr_at_time(expr: Any, time_var: Var, sample_time: float) -> Any:
+    """
+    Freeze one runtime expression at an explicit time value.
+
+    :param expr: Runtime expression to freeze.
+    :param time_var: Global symbolic time variable.
+    :param sample_time: Time used to evaluate the expression boundary.
+    :return: Time-frozen symbolic expression.
+    """
+    if isinstance(expr, (Expr, Var, Const)):
+        return expr.subs(dict({time_var: Const(float(sample_time))})).simplify()
+    else:
+        return expr
+
+
+def _build_ramp_runtime_expr(
+    time_var: Var,
+    start_time: float,
+    end_time: float,
+    before_expr: Any,
+    final_value: float,
+) -> Any:
+    """
+    Build one linear ramp transition on top of an existing runtime expression.
+
+    The expression keeps ``before_expr`` before ``start_time``, then transitions
+    linearly toward ``final_value`` until ``end_time``, and finally holds the
+    final value afterwards.
+
+    :param time_var: Global symbolic time variable.
+    :param start_time: Ramp start time.
+    :param end_time: Ramp end time.
+    :param before_expr: Expression active before the ramp starts.
+    :param final_value: Final runtime value after the ramp ends.
+    :return: Combined symbolic expression.
+    """
+    start_expr: Any = _freeze_runtime_expr_at_time(before_expr, time_var, start_time)
+    duration_expr: Const = Const(float(end_time - start_time))
+    time_offset_expr: Any = time_var - Const(float(start_time))
+    progress_expr: Any = hard_sat(time_offset_expr / duration_expr, Const(0.0), Const(1.0))
+    ramp_expr: Any = start_expr + progress_expr * (Const(float(final_value)) - start_expr)
+    started_expr: Any = heaviside(time_var - Const(float(start_time)))
+    ended_expr: Any = heaviside(time_var - Const(float(end_time)))
+    return (Const(1.0) - started_expr) * before_expr + started_expr * (
+        (Const(1.0) - ended_expr) * ramp_expr + ended_expr * Const(float(final_value))
+    )
 
 
 def _xfmr_phase_permutation_matrix(clock: int) -> np.ndarray:
@@ -246,6 +295,16 @@ def _get_earliest_optional_time(first_time: Optional[float], second_time: Option
     else:
         return second_time
 
+
+def _continuous_event_spec_time_sort_key(event_spec: Dict[str, float | str | None]) -> float:
+    """
+    Return the sorting key used for one continuous-event specification.
+
+    :param event_spec: Continuous event specification dictionary.
+    :return: Event start time.
+    """
+    return float(event_spec["time"])
+
 def _get_block_name(mdl: Block) -> str:
     """
     Return the block name used for logging.
@@ -285,7 +344,7 @@ def _get_bus_v_list(
     out: List[Any] = list()
 
     for key in ph_v_keys:
-        vk = bus_block.E(key)
+        vk: Optional[Any] = _get_external_mapping_var_if_present(mdl=bus_block, key=key)
 
         if vk is None:
             out.append(None)
@@ -300,6 +359,31 @@ def _get_external_mapping(mdl: Block) -> Optional[Dict[Any, Var]]:
         return None
     else:
         return external_mapping
+
+
+def _get_external_mapping_var_if_present(
+        mdl: Block,
+        key: VarPowerFlowRefferenceType,
+) -> Optional[Any]:
+    """
+    Return one mapped external variable if the model exposes the key.
+
+    This helper intentionally does not call ``mdl.E(key)`` because ``Block.E``
+    indexes ``external_mapping`` directly and raises ``KeyError`` when the key
+    is absent. User models are allowed to expose only a subset of optional
+    PowerFlow initialization keys.
+
+    :param mdl: Symbolic device block.
+    :param key: External mapping reference key.
+    :return: Mapped variable or expression, or ``None``.
+    """
+    external_mapping: Optional[Dict[Any, Var]] = _get_external_mapping(mdl)
+
+    if external_mapping is None:
+        return None
+    else:
+        mapped_var: Optional[Any] = external_mapping.get(key, None)
+        return mapped_var
 
 
 def _find_mode_var_by_name(block: Block, var_name: str) -> Optional[Var]:
@@ -838,6 +922,7 @@ class EmtProblemDae(EmtProblemTemplate):
         t_phase_start = _tic()
         self.initialization_report = run_emt_native_initialization(problem=self, options=self.options)
         self._seed_all_switched_vsc_models()
+        self._seed_all_switch_models()
         self.init_guess.update(self._temp_post_init_guess)
         self.diff_init_guess.update(self._temp_post_diff_init_guess)
         native_init_s: float = _toc(t_phase_start)
@@ -1229,14 +1314,6 @@ class EmtProblemDae(EmtProblemTemplate):
             VarPowerFlowRefferenceType.v_B,
             VarPowerFlowRefferenceType.v_C,
         ]
-
-        # ac_phases_value = [
-        #     VarPowerFlowRefferenceType.v_N.value,
-        #     VarPowerFlowRefferenceType.v_A.value,
-        #     VarPowerFlowRefferenceType.v_B.value,
-        #     VarPowerFlowRefferenceType.v_C.value,
-        # ]
-
         bus_phase_connections: Dict[Tuple[Any, VarPowerFlowRefferenceType], Set[str]] = dict()
         for bus in self.grid.buses:
             for phase in ac_phases:
@@ -1247,6 +1324,25 @@ class EmtProblemDae(EmtProblemTemplate):
             VarPowerFlowRefferenceType.v_B,
             VarPowerFlowRefferenceType.v_C,
         }
+
+        def _has_internal_grounding_link(mdl: Block) -> bool:
+            diagram_node = None
+            for diagram_node in mdl.diagram.node_data.values():
+                if diagram_node.tpe in {"GROUNDING_LINK_EMT", "GROUND_EMT"}:
+                    return True
+                else:
+                    pass
+
+            nested_block: Block
+            for nested_block in mdl.children:
+                if nested_block.name.endswith("_grounding_link"):
+                    return True
+                elif _has_internal_grounding_link(nested_block):
+                    return True
+                else:
+                    pass
+
+            return False
 
         for br in self.grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
             try:
@@ -1343,6 +1439,13 @@ class EmtProblemDae(EmtProblemTemplate):
                             bus_phase_connections[(inj_bus, in_var.ref)].add(f"injection:{inj.idtag}")
                         else:
                             pass
+
+                    if _has_internal_grounding_link(inj_emt_model):
+                        bus_phase_connections[(inj_bus, VarPowerFlowRefferenceType.v_N)].add(
+                            f"internal_ground:{inj.idtag}"
+                        )
+                    else:
+                        pass
             else:
                 pass
 
@@ -1717,9 +1820,9 @@ class EmtProblemDae(EmtProblemTemplate):
                     else:
                         for ph in range(4):
                             if is_vsc:
-                                side_expr: Any | None = mdl.E(inj_i_keys[ph])
+                                side_expr: Any | None = _get_external_mapping_var_if_present(mdl=mdl, key=inj_i_keys[ph])
                             else:
-                                side_expr = mdl.E(current_keys[ph])
+                                side_expr = _get_external_mapping_var_if_present(mdl=mdl, key=current_keys[ph])
 
                             if side_expr is not None:
                                 I_kcl[side_bus_idx][ph] = I_kcl[side_bus_idx][ph] - side_expr
@@ -1850,7 +1953,10 @@ class EmtProblemDae(EmtProblemTemplate):
             )
 
             if inj.bus.is_dc:
-                i_dc_expr: Any | None = mdl.E(VarPowerFlowRefferenceType.Idc)
+                i_dc_expr: Any | None = _get_external_mapping_var_if_present(
+                    mdl=mdl,
+                    key=VarPowerFlowRefferenceType.Idc,
+                )
                 _accumulate_kcl_current(
                     i_kcl=I_kcl,
                     bus_index=b,
@@ -1861,7 +1967,7 @@ class EmtProblemDae(EmtProblemTemplate):
             else:
                 ph: int = 0
                 while ph < 4:
-                    i_expr: Any | None = mdl.E(inj_i_keys[ph])
+                    i_expr: Any | None = _get_external_mapping_var_if_present(mdl=mdl, key=inj_i_keys[ph])
                     _accumulate_kcl_current(
                         i_kcl=I_kcl,
                         bus_index=b,
@@ -1958,14 +2064,17 @@ class EmtProblemDae(EmtProblemTemplate):
             mdl.algebraic_eqs = list()
 
             if bus.is_dc:
-                v_dc_expr: Any | None = mdl.E(VarPowerFlowRefferenceType.Vdc)
+                v_dc_expr: Any | None = _get_external_mapping_var_if_present(
+                    mdl=mdl,
+                    key=VarPowerFlowRefferenceType.Vdc,
+                )
                 if v_dc_expr is not None:
                     mdl.algebraic_eqs.append(I_kcl[bus_idx][0])
                 else:
                     pass
             else:
                 for ph_idx, v_key in enumerate(ph_v_keys):
-                    v_expr: Any | None = mdl.E(v_key)
+                    v_expr: Any | None = _get_external_mapping_var_if_present(mdl=mdl, key=v_key)
                     if v_expr is not None:
                         mdl.algebraic_eqs.append(I_kcl[bus_idx][ph_idx])
                     else:
@@ -2075,8 +2184,8 @@ class EmtProblemDae(EmtProblemTemplate):
 
         active_runtime_eqs: List[Any] = list(self._runtime_parameter_eqs0)
         scheduled_mode_events: Dict[int, List[Tuple[float, float, bool]]] = dict()
-        continuous_events: Dict[int, Dict[str, List[float]]] = {
-            parameter.uid: {"times": list(), "values": list()}
+        continuous_events: Dict[int, List[Dict[str, float | str | None]]] = {
+            parameter.uid: list()
             for parameter in self.get_runtime_continuous_parameters()
             if parameter.uid in self._continuous_event_parameter_uids
         }
@@ -2108,8 +2217,22 @@ class EmtProblemDae(EmtProblemTemplate):
                         )
                     else:
                         if parameter_uid in continuous_events:
-                            continuous_events[parameter_uid]["times"].append(float(evt.time))
-                            continuous_events[parameter_uid]["values"].append(float(evt.value))
+                            transition_type = evt.transition_type
+                            end_time = evt.end_time
+
+                            if isinstance(transition_type, DynamicEventTransitionType):
+                                transition_text = transition_type.value
+                            else:
+                                transition_text = str(transition_type)
+
+                            continuous_events[parameter_uid].append(
+                                dict({
+                                    "time": float(evt.time),
+                                    "value": float(evt.value),
+                                    "end_time": None if end_time is None else float(end_time),
+                                    "transition_type": transition_text,
+                                })
+                            )
                         else:
                             pass
                 else:
@@ -2117,19 +2240,49 @@ class EmtProblemDae(EmtProblemTemplate):
             else:
                 pass
 
-        for parameter_uid, info in continuous_events.items():
-            if len(info["times"]) != 0:
+        for parameter_uid, event_specs in continuous_events.items():
+            if len(event_specs) != 0:
                 runtime_idx: int = self.uid2idx_event_params[parameter_uid]
-                sort_idx: np.ndarray = np.argsort(np.asarray(info["times"], dtype=np.float64), kind="stable")
-                t_events: np.ndarray = np.asarray(info["times"], dtype=np.float64)[sort_idx]
-                new_values: np.ndarray = np.asarray(info["values"], dtype=np.float64)[sort_idx]
-
-                active_runtime_eqs[runtime_idx] = piecewise(
-                    time_var=self._glob_time,
-                    t_events=t_events,
-                    new_values=new_values,
-                    default_value=active_runtime_eqs[runtime_idx],
+                sorted_specs: List[Dict[str, float | str | None]] = sorted(
+                    event_specs,
+                    key=_continuous_event_spec_time_sort_key,
                 )
+                active_expr: Any = active_runtime_eqs[runtime_idx]
+                event_spec: Dict[str, float | str | None]
+
+                for event_spec in sorted_specs:
+                    if str(event_spec["transition_type"]) == DynamicEventTransitionType.Ramp.value:
+                        start_time: float = float(event_spec["time"])
+                        end_time_raw: float | str | None = event_spec["end_time"]
+
+                        if end_time_raw is None:
+                            raise ValueError("Ramp EMT events require an end_time")
+                        else:
+                            pass
+
+                        end_time: float = float(end_time_raw)
+
+                        if end_time > start_time:
+                            pass
+                        else:
+                            raise ValueError("Ramp EMT events require end_time greater than time")
+
+                        active_expr = _build_ramp_runtime_expr(
+                            time_var=self._glob_time,
+                            start_time=start_time,
+                            end_time=end_time,
+                            before_expr=active_expr,
+                            final_value=float(event_spec["value"]),
+                        )
+                    else:
+                        active_expr = piecewise(
+                            time_var=self._glob_time,
+                            t_events=np.asarray([float(event_spec["time"])], dtype=np.float64),
+                            new_values=np.asarray([float(event_spec["value"])], dtype=np.float64),
+                            default_value=active_expr,
+                        )
+
+                active_runtime_eqs[runtime_idx] = active_expr
             else:
                 pass
 
@@ -2271,12 +2424,23 @@ class EmtProblemDae(EmtProblemTemplate):
         :param sbase: System base power.
         :return: Complex power vector in NABC order.
         """
+        phase_p_pu_abc: np.ndarray
+        phase_q_pu_abc: np.ndarray
+        phase_p_pu_nabc: np.ndarray
+        phase_q_pu_nabc: np.ndarray
         power_vector: np.ndarray = _zero_ac_power_vector()
 
+        # Three-phase PF seeds must still tolerate balanced static-device data.
+        # Reuse the same explicit-or-balanced resolution as the generic static
+        # parameter mapper so seeded per-phase powers stay consistent.
+        phase_p_pu_abc, phase_q_pu_abc = get_load_power_phase_values_pu_abc(load=load, grid=self.grid)
+        phase_p_pu_nabc = abc_to_nabc(phase_values_abc=phase_p_pu_abc)
+        phase_q_pu_nabc = abc_to_nabc(phase_values_abc=phase_q_pu_abc)
+
         power_vector[0] = 0.0 + 0.0j
-        power_vector[1] = complex(-float(load.Pa) / sbase, -float(load.Qa) / sbase)
-        power_vector[2] = complex(-float(load.Pb) / sbase, -float(load.Qb) / sbase)
-        power_vector[3] = complex(-float(load.Pc) / sbase, -float(load.Qc) / sbase)
+        power_vector[1] = complex(-float(phase_p_pu_nabc[1]), -float(phase_q_pu_nabc[1]))
+        power_vector[2] = complex(-float(phase_p_pu_nabc[2]), -float(phase_q_pu_nabc[2]))
+        power_vector[3] = complex(-float(phase_p_pu_nabc[3]), -float(phase_q_pu_nabc[3]))
 
         return power_vector
 
@@ -2319,9 +2483,18 @@ class EmtProblemDae(EmtProblemTemplate):
         """
         voltage_vector: np.ndarray = self._get_bus_voltage_vector_3ph(bus_index)
         power_vector: np.ndarray = _zero_ac_power_vector()
-        g_phase: float = float(shunt.G) / (3.0 * sbase)
-        b_phase: float = float(shunt.B) / (3.0 * sbase)
+        g_phase_abc_pu: np.ndarray
+        b_phase_abc_pu: np.ndarray
+        g_phase_nabc_pu: np.ndarray
+        b_phase_nabc_pu: np.ndarray
         phase_index: int = 1
+
+        # Three-phase PF seeds must preserve explicit per-phase shunt data when it
+        # exists, but they must also derive phase values from balanced totals when
+        # the static device only carries positive-sequence quantities.
+        g_phase_abc_pu, b_phase_abc_pu = get_shunt_phase_values_pu_abc(shunt=shunt, grid=self.grid)
+        g_phase_nabc_pu = abc_to_nabc(phase_values_abc=g_phase_abc_pu)
+        b_phase_nabc_pu = abc_to_nabc(phase_values_abc=b_phase_abc_pu)
 
         power_vector[0] = 0.0 + 0.0j
 
@@ -2330,8 +2503,8 @@ class EmtProblemDae(EmtProblemTemplate):
             voltage_square: float = float(np.abs(phase_voltage) ** 2)
 
             power_vector[phase_index] = complex(
-                g_phase * voltage_square,
-                -b_phase * voltage_square,
+                float(g_phase_nabc_pu[phase_index]) * voltage_square,
+                -float(b_phase_nabc_pu[phase_index]) * voltage_square,
             )
             phase_index += 1
 
@@ -2884,10 +3057,31 @@ class EmtProblemDae(EmtProblemTemplate):
                 q_total += float(np.imag(phase_complex_power))
                 phase_index += 1
 
+            neutral_var = mdl.E(VarPowerFlowRefferenceType.i_N)
+            if neutral_var is not None:
+                ia_var = mdl.E(VarPowerFlowRefferenceType.i_A)
+                ib_var = mdl.E(VarPowerFlowRefferenceType.i_B)
+                ic_var = mdl.E(VarPowerFlowRefferenceType.i_C)
+                if ia_var is None and ib_var is None and ic_var is None:
+                    pass
+                else:
+                    ia_inst = self._temp_init_guess.get(ia_var.uid, 0.0) if ia_var is not None else 0.0
+                    ib_inst = self._temp_init_guess.get(ib_var.uid, 0.0) if ib_var is not None else 0.0
+                    ic_inst = self._temp_init_guess.get(ic_var.uid, 0.0) if ic_var is not None else 0.0
+                    neutral_inst = -(ia_inst + ib_inst + ic_inst)
+                    self._temp_init_guess[neutral_var.uid] = float(neutral_inst)
+                    self._temp_post_init_guess[neutral_var.uid] = float(neutral_inst)
+            else:
+                pass
+
             self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.P, value=p_total)
             self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Q, value=q_total)
 
-            if mdl.E(VarPowerFlowRefferenceType.phi) is not None:
+            phi_var: Optional[Any] = _get_external_mapping_var_if_present(
+                mdl=mdl,
+                key=VarPowerFlowRefferenceType.phi,
+            )
+            if phi_var is not None:
                 a_operator: complex = np.exp(1j * 2.0 * np.pi / 3.0)
 
                 va: complex = complex(voltage_vector[1])
@@ -2942,7 +3136,8 @@ class EmtProblemDae(EmtProblemTemplate):
             phase_index = 0
             while phase_index < 4:
                 derivative_key: VarPowerFlowRefferenceType = voltage_derivative_keys[phase_index]
-                if mdl.E(derivative_key) is not None:
+                derivative_var: Optional[Any] = _get_external_mapping_var_if_present(mdl=mdl, key=derivative_key)
+                if derivative_var is not None:
                     phase_voltage = complex(voltage_vector[phase_index])
                     derivative_value: float = omega_base * np.sqrt(2.0) * float(np.real(phase_voltage))
                     self.set_external_param(mdl, derivative_key, derivative_value)
@@ -2980,7 +3175,7 @@ class EmtProblemDae(EmtProblemTemplate):
 
         else:
 
-            if mdl.E(VarPowerFlowRefferenceType.v_N) is not None:
+            if _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowRefferenceType.v_N) is not None:
                 V_N = self.power_flow_results_3ph.voltage_N[bus_index]
                 v_N: float = np.sqrt(2.0) * np.imag(V_N)
                 d_v_N: float = omega_base * np.sqrt(2.0) * np.real(V_N)
@@ -2990,7 +3185,7 @@ class EmtProblemDae(EmtProblemTemplate):
             else:
                 pass
 
-            if mdl.E(VarPowerFlowRefferenceType.v_A) is not None:
+            if _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowRefferenceType.v_A) is not None:
                 V_A = self.power_flow_results_3ph.voltage_A[bus_index]
                 v_A: float = np.sqrt(2.0) * np.imag(V_A)
                 d_v_A: float = omega_base * np.sqrt(2.0) * np.real(V_A)
@@ -3000,7 +3195,7 @@ class EmtProblemDae(EmtProblemTemplate):
             else:
                 pass
 
-            if mdl.E(VarPowerFlowRefferenceType.v_B) is not None:
+            if _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowRefferenceType.v_B) is not None:
                 V_B = self.power_flow_results_3ph.voltage_B[bus_index]
                 v_B: float = np.sqrt(2.0) * np.imag(V_B)
                 d_v_B: float = omega_base * np.sqrt(2.0) * np.real(V_B)
@@ -3010,7 +3205,7 @@ class EmtProblemDae(EmtProblemTemplate):
             else:
                 pass
 
-            if mdl.E(VarPowerFlowRefferenceType.v_C) is not None:
+            if _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowRefferenceType.v_C) is not None:
                 V_C = self.power_flow_results_3ph.voltage_C[bus_index]
                 v_C: float = np.sqrt(2.0) * np.imag(V_C)
                 d_v_C: float = omega_base * np.sqrt(2.0) * np.real(V_C)
@@ -3074,28 +3269,28 @@ class EmtProblemDae(EmtProblemTemplate):
             V_B: complex = V_bus * np.exp(-1j * alpha)
             V_C: complex = V_bus * np.exp(+1j * alpha)
 
-            if mdl.E(VarPowerFlowRefferenceType.v_N) is not None:
+            if _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowRefferenceType.v_N) is not None:
                 v_N: float = np.sqrt(2.0) * np.imag(V_N)
                 d_v_N: float = omega_base * np.sqrt(2.0) * np.real(V_N)
 
                 self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_N, v_N)
                 self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_N, d_v_N)
 
-            if mdl.E(VarPowerFlowRefferenceType.v_A) is not None:
+            if _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowRefferenceType.v_A) is not None:
                 v_A: float = np.sqrt(2.0) * np.imag(V_A)
                 d_v_A: float = omega_base * np.sqrt(2.0) * np.real(V_A)
 
                 self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_A, v_A)
                 self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_A, d_v_A)
 
-            if mdl.E(VarPowerFlowRefferenceType.v_B) is not None:
+            if _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowRefferenceType.v_B) is not None:
                 v_B: float = np.sqrt(2.0) * np.imag(V_B)
                 d_v_B: float = omega_base * np.sqrt(2.0) * np.real(V_B)
 
                 self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_B, v_B)
                 self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_B, d_v_B)
 
-            if mdl.E(VarPowerFlowRefferenceType.v_C) is not None:
+            if _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowRefferenceType.v_C) is not None:
                 v_C: float = np.sqrt(2.0) * np.imag(V_C)
                 d_v_C: float = omega_base * np.sqrt(2.0) * np.real(V_C)
 
@@ -3751,6 +3946,8 @@ class EmtProblemDae(EmtProblemTemplate):
 
         sf_sum: complex = 0.0 + 0.0j
         st_sum: complex = 0.0 + 0.0j
+        from_phase_currents: Dict[str, complex] = dict()
+        to_phase_currents: Dict[str, complex] = dict()
 
         for ph in phases:
             sf_key: Optional[VarPowerFlowRefferenceType] = sf_key_dict[ph]
@@ -3761,7 +3958,8 @@ class EmtProblemDae(EmtProblemTemplate):
             if sf_key is None:
                 pass
             else:
-                if mdl.E(sf_key) is not None and sf_array is not None:
+                sf_var: Optional[Any] = _get_external_mapping_var_if_present(mdl=mdl, key=sf_key)
+                if sf_var is not None and sf_array is not None:
                     pf_idx = vsc_index if is_vsc and vsc_index >= 0 else branch_index
                     sf_ph = sf_array[pf_idx] / sbase
                     self.set_if_exists(mdl=mdl, key=sf_key, value=float(np.real(sf_ph)))
@@ -3774,7 +3972,8 @@ class EmtProblemDae(EmtProblemTemplate):
             if st_key is None:
                 pass
             else:
-                if mdl.E(st_key) is not None and st_array is not None:
+                st_var: Optional[Any] = _get_external_mapping_var_if_present(mdl=mdl, key=st_key)
+                if st_var is not None and st_array is not None:
                     pf_idx = vsc_index if is_vsc and vsc_index >= 0 else branch_index
                     st_ph = st_array[pf_idx] / sbase
                     self.set_if_exists(mdl=mdl, key=st_key, value=float(np.real(st_ph)))
@@ -3786,12 +3985,12 @@ class EmtProblemDae(EmtProblemTemplate):
             if_key: VarPowerFlowRefferenceType = if_key_dict[ph]
             it_key: VarPowerFlowRefferenceType = it_key_dict[ph]
 
-            uses_currents: bool = (
-                    (mdl.E(if_key) is not None)
-                    or (mdl.E(it_key) is not None)
-            )
+            if_key_var: Optional[Any] = _get_external_mapping_var_if_present(mdl=mdl, key=if_key)
+            it_key_var: Optional[Any] = _get_external_mapping_var_if_present(mdl=mdl, key=it_key)
+            uses_currents: bool = if_key_var is not None or it_key_var is not None
 
             if uses_currents:
+                # Missing optional current mappings are skipped exactly like explicit None entries.
                 sf_array = sf_array_dict[ph]
                 st_array = st_array_dict[ph]
                 voltage_from_array = voltage_from_dict[ph]
@@ -3824,10 +4023,40 @@ class EmtProblemDae(EmtProblemTemplate):
                 print(f"if_key = {if_key} init from power flow with i_f0 = {i_f0}")
                 print(f"it_key = {it_key} init from power flow with i_t0 = {i_t0}")
 
+                if ph in {"A", "B", "C"}:
+                    from_phase_currents[ph] = complex(i_f)
+                    to_phase_currents[ph] = complex(i_t)
+                else:
+                    pass
+
                 self.set_if_exists(mdl=mdl, key=if_key, value=float(i_f0))
                 self.set_if_exists(mdl=mdl, key=it_key, value=float(i_t0))
             else:
                 pass
+
+        if mdl.E(VarPowerFlowRefferenceType.if_N) is not None:
+            i_f_neutral = -(from_phase_currents.get("A", 0.0 + 0.0j) + from_phase_currents.get("B", 0.0 + 0.0j) + from_phase_currents.get("C", 0.0 + 0.0j))
+            neutral_value = float(np.sqrt(2.0) * np.imag(i_f_neutral))
+            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.if_N, value=neutral_value)
+            neutral_if_var = mdl.E(VarPowerFlowRefferenceType.if_N)
+            if neutral_if_var is not None:
+                self._temp_post_init_guess[neutral_if_var.uid] = neutral_value
+            else:
+                pass
+        else:
+            pass
+
+        if mdl.E(VarPowerFlowRefferenceType.it_N) is not None:
+            i_t_neutral = -(to_phase_currents.get("A", 0.0 + 0.0j) + to_phase_currents.get("B", 0.0 + 0.0j) + to_phase_currents.get("C", 0.0 + 0.0j))
+            neutral_value = float(np.sqrt(2.0) * np.imag(i_t_neutral))
+            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.it_N, value=neutral_value)
+            neutral_it_var = mdl.E(VarPowerFlowRefferenceType.it_N)
+            if neutral_it_var is not None:
+                self._temp_post_init_guess[neutral_it_var.uid] = neutral_value
+            else:
+                pass
+        else:
+            pass
 
         omega_base: float = 2.0 * np.pi * self.grid.fBase
         for ph in phases:
@@ -3835,20 +4064,26 @@ class EmtProblemDae(EmtProblemTemplate):
             d_vt_key: VarPowerFlowRefferenceType = d_vt_key_dict[ph]
             voltage_from_array = voltage_from_dict[ph]
             voltage_to_array = voltage_to_dict[ph]
-            if mdl.E(d_vf_key) is not None:
+            d_vf_var: Optional[Any] = _get_external_mapping_var_if_present(mdl=mdl, key=d_vf_key)
+            if d_vf_var is not None:
                 if voltage_from_array is None:
                     vf_ph = 0.0 + 0.0j
                 else:
                     vf_ph = voltage_from_array[f_bus_idx]
                 d_vf: float = omega_base * np.sqrt(2.0) * np.real(vf_ph)
                 self.set_external_param(mdl, d_vf_key, d_vf)
-            if mdl.E(d_vt_key) is not None:
+            else:
+                pass
+            d_vt_var: Optional[Any] = _get_external_mapping_var_if_present(mdl=mdl, key=d_vt_key)
+            if d_vt_var is not None:
                 if voltage_to_array is None:
                     vt_ph = 0.0 + 0.0j
                 else:
                     vt_ph = voltage_to_array[t_bus_idx]
                 d_vt: float = omega_base * np.sqrt(2.0) * np.real(vt_ph)
                 self.set_external_param(mdl, d_vt_key, d_vt)
+            else:
+                pass
 
         self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Pf, value=float(np.real(sf_sum)))
         self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Qf, value=float(np.imag(sf_sum)))
@@ -4012,6 +4247,8 @@ class EmtProblemDae(EmtProblemTemplate):
 
         sf_sum: complex = 0.0 + 0.0j
         st_sum: complex = 0.0 + 0.0j
+        from_phase_currents: Dict[str, complex] = dict()
+        to_phase_currents: Dict[str, complex] = dict()
 
         for ph in phases:
             sf_key: Optional[VarPowerFlowRefferenceType] = sf_key_dict[ph]
@@ -4028,25 +4265,35 @@ class EmtProblemDae(EmtProblemTemplate):
                 st_ph = st_phase_total
 
             if sf_key is not None:
-                if mdl.E(sf_key) is not None:
+                sf_var: Optional[Any] = _get_external_mapping_var_if_present(mdl=mdl, key=sf_key)
+                if sf_var is not None:
                     self.set_if_exists(mdl=mdl, key=sf_key, value=float(np.real(sf_ph)))
                     sf_sum += sf_ph
+                else:
+                    pass
+            else:
+                pass
 
             if st_key is not None:
-                if mdl.E(st_key) is not None:
+                st_var: Optional[Any] = _get_external_mapping_var_if_present(mdl=mdl, key=st_key)
+                if st_var is not None:
                     self.set_if_exists(mdl=mdl, key=st_key, value=float(np.real(st_ph)))
                     st_sum += st_ph
+                else:
+                    pass
+            else:
+                pass
 
         for ph in phases:
             if_key: VarPowerFlowRefferenceType = if_key_dict[ph]
             it_key: VarPowerFlowRefferenceType = it_key_dict[ph]
 
-            uses_currents: bool = (
-                    (mdl.E(if_key) is not None)
-                    or (mdl.E(it_key) is not None)
-            )
+            if_key_var: Optional[Any] = _get_external_mapping_var_if_present(mdl=mdl, key=if_key)
+            it_key_var: Optional[Any] = _get_external_mapping_var_if_present(mdl=mdl, key=it_key)
+            uses_currents: bool = if_key_var is not None or it_key_var is not None
 
             if uses_currents:
+                # Missing optional current mappings are skipped exactly like explicit None entries.
                 vf_ph = voltage_dict[ph]
                 vt_ph = voltage_to_dict[ph]
 
@@ -4073,8 +4320,40 @@ class EmtProblemDae(EmtProblemTemplate):
                 i_f0: float = np.sqrt(2.0) * np.imag(i_f)
                 i_t0: float = np.sqrt(2.0) * np.imag(i_t)
 
+                if ph in {"A", "B", "C"}:
+                    from_phase_currents[ph] = complex(i_f)
+                    to_phase_currents[ph] = complex(i_t)
+                else:
+                    pass
+
                 self.set_if_exists(mdl=mdl, key=if_key, value=float(i_f0))
                 self.set_if_exists(mdl=mdl, key=it_key, value=float(i_t0))
+            else:
+                pass
+
+        if mdl.E(VarPowerFlowRefferenceType.if_N) is not None:
+            i_f_neutral = -(from_phase_currents.get("A", 0.0 + 0.0j) + from_phase_currents.get("B", 0.0 + 0.0j) + from_phase_currents.get("C", 0.0 + 0.0j))
+            neutral_value = float(np.sqrt(2.0) * np.imag(i_f_neutral))
+            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.if_N, value=neutral_value)
+            neutral_if_var = mdl.E(VarPowerFlowRefferenceType.if_N)
+            if neutral_if_var is not None:
+                self._temp_post_init_guess[neutral_if_var.uid] = neutral_value
+            else:
+                pass
+        else:
+            pass
+
+        if mdl.E(VarPowerFlowRefferenceType.it_N) is not None:
+            i_t_neutral = -(to_phase_currents.get("A", 0.0 + 0.0j) + to_phase_currents.get("B", 0.0 + 0.0j) + to_phase_currents.get("C", 0.0 + 0.0j))
+            neutral_value = float(np.sqrt(2.0) * np.imag(i_t_neutral))
+            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.it_N, value=neutral_value)
+            neutral_it_var = mdl.E(VarPowerFlowRefferenceType.it_N)
+            if neutral_it_var is not None:
+                self._temp_post_init_guess[neutral_it_var.uid] = neutral_value
+            else:
+                pass
+        else:
+            pass
 
         omega_base: float = 2.0 * np.pi * self.grid.fBase
         for ph in phases:
@@ -4084,13 +4363,19 @@ class EmtProblemDae(EmtProblemTemplate):
             vf_ph = voltage_dict[ph]
             vt_ph = voltage_to_dict[ph]
 
-            if mdl.E(d_vf_key) is not None:
+            d_vf_var: Optional[Any] = _get_external_mapping_var_if_present(mdl=mdl, key=d_vf_key)
+            if d_vf_var is not None:
                 d_vf: float = omega_base * np.sqrt(2.0) * np.real(vf_ph)
                 self.set_external_param(mdl, d_vf_key, d_vf)
+            else:
+                pass
 
-            if mdl.E(d_vt_key) is not None:
+            d_vt_var: Optional[Any] = _get_external_mapping_var_if_present(mdl=mdl, key=d_vt_key)
+            if d_vt_var is not None:
                 d_vt: float = omega_base * np.sqrt(2.0) * np.real(vt_ph)
                 self.set_external_param(mdl, d_vt_key, d_vt)
+            else:
+                pass
 
         if is_vsc and vsc_index >= 0:
             self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Pf, value=float(np.real(sf_total)))
@@ -4710,6 +4995,14 @@ class EmtProblemDae(EmtProblemTemplate):
                     else:
                         self._event_params_values[runtime_idx] = float(value)
                         self._event_parameters_eqs[runtime_idx] = self.grid.var_factory.add_const(float(value))
+                        if "_runtime_all_eqs_source" in self.__dict__:
+                            self._runtime_all_eqs_source[runtime_idx] = self.grid.var_factory.add_const(float(value))
+                        else:
+                            pass
+                        if "_runtime_parameter_eqs0" in self.__dict__:
+                            self._runtime_parameter_eqs0[runtime_idx] = self.grid.var_factory.add_const(float(value))
+                        else:
+                            pass
                 else:
                     pass
             else:
@@ -4742,6 +5035,14 @@ class EmtProblemDae(EmtProblemTemplate):
                     else:
                         self._event_params_values[runtime_idx] = float(value)
                         self._event_parameters_eqs[runtime_idx] = self.grid.var_factory.add_const(float(value))
+                        if "_runtime_all_eqs_source" in self.__dict__:
+                            self._runtime_all_eqs_source[runtime_idx] = self.grid.var_factory.add_const(float(value))
+                        else:
+                            pass
+                        if "_runtime_parameter_eqs0" in self.__dict__:
+                            self._runtime_parameter_eqs0[runtime_idx] = self.grid.var_factory.add_const(float(value))
+                        else:
+                            pass
                 else:
                     pass
             else:
@@ -5218,6 +5519,41 @@ class EmtProblemDae(EmtProblemTemplate):
 
             vsc_index += 1
 
+    def _seed_all_switch_models(self) -> None:
+        """
+        Seed all EMT switch models from the static switch active state when requested.
+
+        :return: None.
+        """
+        branch_obj: Any
+
+        for branch_obj in self.grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
+            if branch_obj.device_type == DeviceType.SwitchDevice:
+                mdl = branch_obj.emt_model
+
+                if mdl is None:
+                    pass
+                else:
+                    model_name: str = _get_block_name(mdl)
+                    seed_from_pf: float = self._get_internal_runtime_default(
+                        mdl,
+                        f"switch_seed_from_pf_{model_name}",
+                        1.0,
+                    )
+
+                    if seed_from_pf > 0.5:
+                        initial_closed: float = 1.0 if bool(branch_obj.active) else 0.0
+                    else:
+                        initial_closed = self._get_internal_mode_default(
+                            mdl,
+                            f"switch_closed_mode_{model_name}",
+                            1.0,
+                        )
+
+                    self.set_internal_mode_if_exists(mdl, f"switch_closed_mode_{model_name}", initial_closed)
+            else:
+                pass
+
     def _initialize_mode_event_state(self) -> None:
         """
         Initialize the mode event cursor state.
@@ -5355,7 +5691,7 @@ class EmtProblemDae(EmtProblemTemplate):
         """
         Set a PF-derived value either as an event parameter if the mapped variable belongs to mdl.event_dict.
         """
-        var = mdl.E(key)
+        var: Optional[Any] = _get_external_mapping_var_if_present(mdl=mdl, key=key)
 
         if var is None:
             return
@@ -5722,45 +6058,45 @@ class EmtProblemDae(EmtProblemTemplate):
                 ConverterControlType.Imax: 8.0,
             }
 
-            self._assign_api_mapping_value_if_present(
-                mdl=vsc.emt_model,
-                key=ParamPowerFlowRefferenceType.Sbase,
-                value=self.grid.Sbase,
+            self._assign_vsc_event_param_if_present(
+                vsc,
+                ParamPowerFlowRefferenceType.Sbase,
+                self.grid.Sbase,
             )
-            self._assign_api_mapping_value_if_present(
-                mdl=vsc.emt_model,
-                key=ParamPowerFlowRefferenceType.omega_base,
-                value=2.0 * np.pi * self.grid.fBase,
+            self._assign_vsc_event_param_if_present(
+                vsc,
+                ParamPowerFlowRefferenceType.omega_base,
+                2.0 * np.pi * self.grid.fBase,
             )
-            self._assign_api_mapping_value_if_present(
-                mdl=vsc.emt_model,
-                key=ParamPowerFlowRefferenceType.P0,
-                value=p0_vsc,
+            self._assign_vsc_event_param_if_present(
+                vsc,
+                ParamPowerFlowRefferenceType.P0,
+                p0_vsc,
             )
-            self._assign_api_mapping_value_if_present(
-                mdl=vsc.emt_model,
-                key=ParamPowerFlowRefferenceType.converter_loss_power_0,
-                value=p_loss0,
+            self._assign_vsc_event_param_if_present(
+                vsc,
+                ParamPowerFlowRefferenceType.converter_loss_power_0,
+                p_loss0,
             )
-            self._assign_api_mapping_value_if_present(
-                mdl=vsc.emt_model,
-                key=ParamPowerFlowRefferenceType.converter_control_mode_1,
-                value=control_code_dict[vsc.control1],
+            self._assign_vsc_event_param_if_present(
+                vsc,
+                ParamPowerFlowRefferenceType.converter_control_mode_1,
+                control_code_dict[vsc.control1],
             )
-            self._assign_api_mapping_value_if_present(
-                mdl=vsc.emt_model,
-                key=ParamPowerFlowRefferenceType.converter_control_mode_2,
-                value=control_code_dict[vsc.control2],
+            self._assign_vsc_event_param_if_present(
+                vsc,
+                ParamPowerFlowRefferenceType.converter_control_mode_2,
+                control_code_dict[vsc.control2],
             )
-            self._assign_api_mapping_value_if_present(
-                mdl=vsc.emt_model,
-                key=ParamPowerFlowRefferenceType.converter_control_target_1,
-                value=vsc.control1_val,
+            self._assign_vsc_event_param_if_present(
+                vsc,
+                ParamPowerFlowRefferenceType.converter_control_target_1,
+                vsc.control1_val,
             )
-            self._assign_api_mapping_value_if_present(
-                mdl=vsc.emt_model,
-                key=ParamPowerFlowRefferenceType.converter_control_target_2,
-                value=vsc.control2_val,
+            self._assign_vsc_event_param_if_present(
+                vsc,
+                ParamPowerFlowRefferenceType.converter_control_target_2,
+                vsc.control2_val,
             )
             return
 
@@ -5768,13 +6104,22 @@ class EmtProblemDae(EmtProblemTemplate):
         if not isinstance(api_obj_mapping, dict):
             return
 
+        if br.device_type == DeviceType.SwitchDevice:
+            eps_value: float = 1.0e-12
+            r_value: float = float(br.R)
+            x_value: float = float(br.X)
+            z_magnitude: float = np.sqrt(r_value * r_value + x_value * x_value)
+            g_closed_value: float = 1.0 / max(abs(z_magnitude), eps_value)
+            self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.g, g_closed_value)
+            return
+
         if isinstance(br, DcLine):
             eps_value: float = 1.0e-12
             r_dc_value: float = float(br.R_corrected)
             g_dc_value: float = 1.0 / max(abs(r_dc_value), eps_value)
-            self._assign_api_mapping_value_if_present(br.emt_model, ParamPowerFlowRefferenceType.g, g_dc_value)
-            self._assign_api_mapping_value_if_present(br.emt_model, ParamPowerFlowRefferenceType.b, 0.0)
-            self._assign_api_mapping_value_if_present(br.emt_model, ParamPowerFlowRefferenceType.bsh, 0.0)
+            self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.g, g_dc_value)
+            self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.b, 0.0)
+            self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.bsh, 0.0)
             return
 
         # -----------------------------
@@ -5832,129 +6177,129 @@ class EmtProblemDae(EmtProblemTemplate):
                 p_t_matrix: np.ndarray = _xfmr_phase_permutation_matrix(int(br.vector_group_number))
                 c_t_eff_matrix: np.ndarray = p_t_matrix @ c_t_matrix
 
-                self._assign_api_mapping_value_if_present(
+                self._assign_api_obj_param_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.omega_base,
                     w0,
                 )
-                self._assign_api_mapping_value_if_present(
+                self._assign_api_obj_param_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_rated_power_mva,
                     sn_value,
                 )
-                self._assign_api_mapping_value_if_present(
+                self._assign_api_obj_param_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_open_circuit_current_pct,
                     i0_pct_value,
                 )
-                self._assign_api_mapping_value_if_present(
+                self._assign_api_obj_param_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_open_circuit_loss_kw,
                     pfe_kw_value,
                 )
-                self._assign_api_mapping_value_if_present(
+                self._assign_api_obj_param_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_short_circuit_voltage_pct,
                     vsc_pct_value,
                 )
-                self._assign_api_mapping_value_if_present(
+                self._assign_api_obj_param_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_short_circuit_loss_kw,
                     pcu_kw_value,
                 )
-                self._assign_api_mapping_value_if_present(
+                self._assign_api_obj_param_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_tap_ratio,
                     tap_module_value,
                 )
 
-                self._assign_api_mapping_value_if_present(
+                self._assign_api_obj_param_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_from_connection_aa,
                     float(c_f_matrix[0, 0]),
                 )
-                self._assign_api_mapping_value_if_present(
+                self._assign_api_obj_param_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_from_connection_ab,
                     float(c_f_matrix[0, 1]),
                 )
-                self._assign_api_mapping_value_if_present(
+                self._assign_api_obj_param_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_from_connection_ac,
                     float(c_f_matrix[0, 2]),
                 )
-                self._assign_api_mapping_value_if_present(
+                self._assign_api_obj_param_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_from_connection_ba,
                     float(c_f_matrix[1, 0]),
                 )
-                self._assign_api_mapping_value_if_present(
+                self._assign_api_obj_param_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_from_connection_bb,
                     float(c_f_matrix[1, 1]),
                 )
-                self._assign_api_mapping_value_if_present(
+                self._assign_api_obj_param_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_from_connection_bc,
                     float(c_f_matrix[1, 2]),
                 )
-                self._assign_api_mapping_value_if_present(
+                self._assign_api_obj_param_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_from_connection_ca,
                     float(c_f_matrix[2, 0]),
                 )
-                self._assign_api_mapping_value_if_present(
+                self._assign_api_obj_param_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_from_connection_cb,
                     float(c_f_matrix[2, 1]),
                 )
-                self._assign_api_mapping_value_if_present(
+                self._assign_api_obj_param_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_from_connection_cc,
                     float(c_f_matrix[2, 2]),
                 )
 
-                self._assign_api_mapping_value_if_present(
+                self._assign_api_obj_param_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_to_connection_aa,
                     float(c_t_eff_matrix[0, 0]),
                 )
-                self._assign_api_mapping_value_if_present(
+                self._assign_api_obj_param_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_to_connection_ab,
                     float(c_t_eff_matrix[0, 1]),
                 )
-                self._assign_api_mapping_value_if_present(
+                self._assign_api_obj_param_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_to_connection_ac,
                     float(c_t_eff_matrix[0, 2]),
                 )
-                self._assign_api_mapping_value_if_present(
+                self._assign_api_obj_param_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_to_connection_ba,
                     float(c_t_eff_matrix[1, 0]),
                 )
-                self._assign_api_mapping_value_if_present(
+                self._assign_api_obj_param_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_to_connection_bb,
                     float(c_t_eff_matrix[1, 1]),
                 )
-                self._assign_api_mapping_value_if_present(
+                self._assign_api_obj_param_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_to_connection_bc,
                     float(c_t_eff_matrix[1, 2]),
                 )
-                self._assign_api_mapping_value_if_present(
+                self._assign_api_obj_param_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_to_connection_ca,
                     float(c_t_eff_matrix[2, 0]),
                 )
-                self._assign_api_mapping_value_if_present(
+                self._assign_api_obj_param_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_to_connection_cb,
                     float(c_t_eff_matrix[2, 1]),
                 )
-                self._assign_api_mapping_value_if_present(
+                self._assign_api_obj_param_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_to_connection_cc,
                     float(c_t_eff_matrix[2, 2]),
@@ -6049,37 +6394,37 @@ class EmtProblemDae(EmtProblemTemplate):
                         f"Transformer '{br.name}' has a non-physical inductance matrix determinant {det_value}."
                     )
 
-                self._assign_api_mapping_value_if_present(
+                self._assign_api_obj_param_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_winding1_resistance_pu,
                     r1_value,
                 )
-                self._assign_api_mapping_value_if_present(
+                self._assign_api_obj_param_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_winding2_resistance_pu,
                     r2_value,
                 )
-                self._assign_api_mapping_value_if_present(
+                self._assign_api_obj_param_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_winding1_inductance_pu_s,
                     l1_value,
                 )
-                self._assign_api_mapping_value_if_present(
+                self._assign_api_obj_param_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_winding2_inductance_pu_s,
                     l2_value,
                 )
-                self._assign_api_mapping_value_if_present(
+                self._assign_api_obj_param_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_mutual_inductance_pu_s,
                     mutual_inductance,
                 )
-                self._assign_api_mapping_value_if_present(
+                self._assign_api_obj_param_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_magnetizing_conductance_pu,
                     g_core,
                 )
-                self._assign_api_mapping_value_if_present(
+                self._assign_api_obj_param_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_tap_ratio,
                     total_ratio,
@@ -6273,23 +6618,23 @@ class EmtProblemDae(EmtProblemTemplate):
         # -----------------------------
         for i_glob in range(4):
             for j_glob in range(4):
-                self._assign_api_mapping_value_if_present(br.emt_model, r_enums[i_glob][j_glob], 0.0)
-                self._assign_api_mapping_value_if_present(br.emt_model, linv_enums[i_glob][j_glob], 0.0)
-                self._assign_api_mapping_value_if_present(br.emt_model, c_enums[i_glob][j_glob], 0.0)
+                self._assign_api_obj_param_if_present(br.emt_model, r_enums[i_glob][j_glob], 0.0)
+                self._assign_api_obj_param_if_present(br.emt_model, linv_enums[i_glob][j_glob], 0.0)
+                self._assign_api_obj_param_if_present(br.emt_model, c_enums[i_glob][j_glob], 0.0)
 
         for i_red, i_glob in enumerate(idx_global):
             for j_red, j_glob in enumerate(idx_global):
-                self._assign_api_mapping_value_if_present(
+                self._assign_api_obj_param_if_present(
                     br.emt_model,
                     r_enums[i_glob][j_glob],
                     float(r_full[i_red, j_red]),
                 )
-                self._assign_api_mapping_value_if_present(
+                self._assign_api_obj_param_if_present(
                     br.emt_model,
                     linv_enums[i_glob][j_glob],
                     float(l_inv_full[i_red, j_red]),
                 )
-                self._assign_api_mapping_value_if_present(
+                self._assign_api_obj_param_if_present(
                     br.emt_model,
                     c_enums[i_glob][j_glob],
                     float(c_full[i_red, j_red]),
@@ -6328,10 +6673,10 @@ class EmtProblemDae(EmtProblemTemplate):
 
         if not load.bus.is_dc:
             for idx in range(3):
-                self._assign_api_mapping_value_if_present(load.emt_model, p_keys[idx], p_values[idx])
-                self._assign_api_mapping_value_if_present(load.emt_model, q_keys[idx], q_values[idx])
+                self._assign_api_obj_param_if_present(load.emt_model, p_keys[idx], p_values[idx])
+                self._assign_api_obj_param_if_present(load.emt_model, q_keys[idx], q_values[idx])
 
-            self._assign_api_mapping_value_if_present(load.emt_model, ParamPowerFlowRefferenceType.omega_base, w0)
+            self._assign_api_obj_param_if_present(load.emt_model, ParamPowerFlowRefferenceType.omega_base, w0)
         else:
             dc_p_value: float = load.P / sbase
             dc_g_value: float = load.G / sbase
@@ -6342,8 +6687,8 @@ class EmtProblemDae(EmtProblemTemplate):
             else:
                 pass
 
-            self._assign_api_mapping_value_if_present(load.emt_model, ParamPowerFlowRefferenceType.Pl0, dc_p_value)
-            self._assign_api_mapping_value_if_present(load.emt_model, ParamPowerFlowRefferenceType.g, dc_g_value)
+            self._assign_api_obj_param_if_present(load.emt_model, ParamPowerFlowRefferenceType.Pl0, dc_p_value)
+            self._assign_api_obj_param_if_present(load.emt_model, ParamPowerFlowRefferenceType.g, dc_g_value)
 
     def _assign_api_obj_mapping_generator(self, gen) -> None:
         """
@@ -6355,9 +6700,7 @@ class EmtProblemDae(EmtProblemTemplate):
         fbase: float = self.grid.fBase
         w0: float = 2.0 * np.pi * fbase
 
-        self._assign_api_mapping_value_if_present(gen.emt_model, ParamPowerFlowRefferenceType.omega_base, w0)
-        self._assign_api_mapping_value_if_present(gen.emt_model, ParamPowerFlowRefferenceType.R1, gen.R1)
-        self._assign_api_mapping_value_if_present(gen.emt_model, ParamPowerFlowRefferenceType.X1, gen.X1)
-        self._assign_api_mapping_value_if_present(gen.emt_model, ParamPowerFlowRefferenceType.X0, gen.X0)
-
-
+        self._assign_api_obj_param_if_present(gen.emt_model, ParamPowerFlowRefferenceType.omega_base, w0)
+        self._assign_api_obj_param_if_present(gen.emt_model, ParamPowerFlowRefferenceType.R1, gen.R1)
+        self._assign_api_obj_param_if_present(gen.emt_model, ParamPowerFlowRefferenceType.X1, gen.X1)
+        self._assign_api_obj_param_if_present(gen.emt_model, ParamPowerFlowRefferenceType.X0, gen.X0)

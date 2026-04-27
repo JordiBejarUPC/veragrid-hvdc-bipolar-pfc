@@ -678,11 +678,11 @@ def apply_common_converter_tuning(converter_model: Block, model_name: str, l_eq_
         (f"i_ki_{model_name}", 50.0),
         (f"vdc_kp_{model_name}", 2.0),
         (f"vdc_ki_{model_name}", 30.0),
-        (f"q_kp_{model_name}", 0.8),
-        (f"q_ki_{model_name}", 20.0),
+        (f"q_kp_{model_name}", 1.6),
+        (f"q_ki_{model_name}", 60.0),
         (f"i_max_{model_name}", 1.3),
         (f"m_max_{model_name}", 0.95),
-        (f"tau_meas_{model_name}", 0.01),
+        (f"tau_meas_{model_name}", 0.005),
         (f"aw_gain_{model_name}", 0.1),
         (f"vdc_floor_{model_name}", 0.05),
     ])
@@ -706,9 +706,9 @@ def build_comparison_emt_options() -> EmtOptions:
         solver_type=EmtSolverTypes.Symbolic,
         integration_method=DynamicIntegrationMethod.DaeTrapezoidal,
         initialization_method=EmtInitializationMethod.Explicit,
-        newton_max_iter=20,
         verbose=0,
     )
+    options.newton_max_iter = 20
     return options
 
 
@@ -1355,7 +1355,7 @@ def main() -> None:
     attach_common_bus_models(grid_sw)
     pf_results_sw = gce.power_flow(grid=grid_sw, options=build_power_flow_options())
     switched_model = get_switched_emt_converter(vf=grid_sw.var_factory, name="switched_converter_emt").block
-    apply_common_converter_tuning(converter_model=switched_model, model_name="switched_converter_emt", l_eq_value=1.0)
+    apply_common_converter_tuning(converter_model=switched_model, model_name="switched_converter_emt", l_eq_value=COMPARISON_L_EQ)
     attach_common_device_models(
         grid=grid_sw,
         generator=generator_sw,
@@ -1374,7 +1374,7 @@ def main() -> None:
     attach_common_bus_models(grid_ps)
     pf_results_ps = gce.power_flow(grid=grid_ps, options=build_power_flow_options())
     pseudo_model = get_full_pseudo_emt_converter(vf=grid_ps.var_factory, name="pseudo_converter_emt").block
-    apply_common_converter_tuning(converter_model=pseudo_model, model_name="pseudo_converter_emt", l_eq_value=1.0)
+    apply_common_converter_tuning(converter_model=pseudo_model, model_name="pseudo_converter_emt", l_eq_value=COMPARISON_L_EQ)
     attach_common_device_models(
         grid=grid_ps,
         generator=generator_ps,

@@ -373,6 +373,14 @@ class Block:
             result.mode_dict = copy.deepcopy(self.mode_dict, memo)
             result.procedural_logic = copy.deepcopy(self.procedural_logic, memo)
             result._diagram = copy.deepcopy(self._diagram, memo)
+
+            extra_key: str
+            extra_value: Any
+            for extra_key, extra_value in self.__dict__.items():
+                if extra_key in result.__dict__:
+                    pass
+                else:
+                    setattr(result, extra_key, copy.deepcopy(extra_value, memo))
             return result
 
     def compare(self, block2: Block) -> bool:

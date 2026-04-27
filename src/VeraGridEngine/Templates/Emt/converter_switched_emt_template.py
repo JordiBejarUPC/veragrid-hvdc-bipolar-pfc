@@ -362,7 +362,7 @@ def _build_pseudo_emt_converter_outer_loop_block(vf: VarFactory, name: str) -> B
 
     return Block(
         state_eqs=list([
-            vdc_ki * ((v_dc - Vdc_ref) + aw_gain * (i_d_ref - i_d_ref_u)),
+            vdc_ki * ((Vdc_ref - v_dc) + aw_gain * (i_d_ref - i_d_ref_u)),
             q_ki * ((Q_ref_pu - Q_f) + aw_gain * (i_q_ref - i_q_ref_u)),
             (P - P_f) / tau_meas,
             (Q - Q_f) / tau_meas,
@@ -374,7 +374,7 @@ def _build_pseudo_emt_converter_outer_loop_block(vf: VarFactory, name: str) -> B
             i_d_ff - c23 * P_ac_ff_pu / (v_mag + eps),
             i_q_ff - c23 * Q_ref_pu / (v_mag + eps),
             i_0_ref_u,
-            i_d_ref_u - (i_d_ff - vdc_kp * (Vdc_ref - v_dc) + xi_vdc),
+            i_d_ref_u - (i_d_ff + vdc_kp * (Vdc_ref - v_dc) + xi_vdc),
             i_d_ref - i_d_cap,
             i_q_ref_u - (i_q_ff + q_kp * (Q_ref_pu - Q_f) + xi_q),
             i_q_ref - sym.hard_sat(i_q_ref_u, -i_q_cap, i_q_cap),
@@ -382,7 +382,7 @@ def _build_pseudo_emt_converter_outer_loop_block(vf: VarFactory, name: str) -> B
         ]),
         algebraic_vars=list([v_mag, i_d_ff, i_q_ff, i_0_ref_u, i_d_ref_u, i_q_ref_u, i_0_ref, i_d_ref, i_q_ref]),
         init_eqs=dict([
-            (xi_vdc, i_d0 - (c23 * P_ac_ff_pu / (Vpk + eps)) + vdc_kp * (Vdc_ref - v_dc)),
+            (xi_vdc, i_d0 - (c23 * P_ac_ff_pu / (Vpk + eps)) - vdc_kp * (Vdc_ref - v_dc)),
             (xi_q, i_q0 - (c23 * Q_ref_pu / (Vpk + eps)) - q_kp * (Q_ref_pu - Q0)),
             (P_f, P),
             (Q_f, Q0),
@@ -901,15 +901,16 @@ def get_switched_emt_converter(vf: VarFactory, name: str = "switched_converter_e
         )
     )
 
-    # The data block should use the same low-frequency dq0 view as the control hierarchy while still
-    # reconstructing the switched DC current from raw phase currents and retained gate states.
+    # The data block should compute instantaneous power from the raw plant dq0 quantities. Filtering
+    # ``v_dq0`` and ``i_dq0`` before forming ``P`` and ``Q`` introduces an avoidable phase bias, while
+    # the outer-loop ``P_f`` / ``Q_f`` states already provide the intended low-frequency power filtering.
     data_block.connect(data_block.in_vars[0:14], list([
-        plant_v_d_meas_f,
-        plant_v_q_meas_f,
-        plant_v_0_meas_f,
-        plant_i_d_meas_f,
-        plant_i_q_meas_f,
-        plant_i_0_meas_f,
+        plant_v_d,
+        plant_v_q,
+        plant_v_0,
+        plant_i_d,
+        plant_i_q,
+        plant_i_0,
         plant_i_A,
         plant_i_B,
         plant_i_C,
@@ -1000,37 +1001,13 @@ def get_switched_emt_converter(vf: VarFactory, name: str = "switched_converter_e
     ])
 
     templ.block.external_mapping = dict([
-        (VarPowerFlowRefferenceType.v_N, None),
         (VarPowerFlowRefferenceType.v_A, v_A),
         (VarPowerFlowRefferenceType.v_B, v_B),
         (VarPowerFlowRefferenceType.v_C, v_C),
         (VarPowerFlowRefferenceType.Vdc, v_dc_bus),
-        (VarPowerFlowRefferenceType.i_N, None),
         (VarPowerFlowRefferenceType.i_A, i_A),
         (VarPowerFlowRefferenceType.i_B, i_B),
         (VarPowerFlowRefferenceType.i_C, i_C),
-        (VarPowerFlowRefferenceType.if_N, None),
-        (VarPowerFlowRefferenceType.if_A, None),
-        (VarPowerFlowRefferenceType.if_B, None),
-        (VarPowerFlowRefferenceType.if_C, None),
-        (VarPowerFlowRefferenceType.it_N, None),
-        (VarPowerFlowRefferenceType.it_A, None),
-        (VarPowerFlowRefferenceType.it_B, None),
-        (VarPowerFlowRefferenceType.it_C, None),
-        (VarPowerFlowRefferenceType.Sf_A, None),
-        (VarPowerFlowRefferenceType.Sf_B, None),
-        (VarPowerFlowRefferenceType.Sf_C, None),
-        (VarPowerFlowRefferenceType.St_A, None),
-        (VarPowerFlowRefferenceType.St_B, None),
-        (VarPowerFlowRefferenceType.St_C, None),
-        (VarPowerFlowRefferenceType.d_v_N_f, None),
-        (VarPowerFlowRefferenceType.d_v_A_f, None),
-        (VarPowerFlowRefferenceType.d_v_B_f, None),
-        (VarPowerFlowRefferenceType.d_v_C_f, None),
-        (VarPowerFlowRefferenceType.d_v_N_t, None),
-        (VarPowerFlowRefferenceType.d_v_A_t, None),
-        (VarPowerFlowRefferenceType.d_v_B_t, None),
-        (VarPowerFlowRefferenceType.d_v_C_t, None),
         (VarPowerFlowRefferenceType.Idc, data_idc),
         (VarPowerFlowRefferenceType.P, data_p),
         (VarPowerFlowRefferenceType.Q, data_q),

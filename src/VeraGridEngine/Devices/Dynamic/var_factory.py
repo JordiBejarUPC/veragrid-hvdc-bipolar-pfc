@@ -208,17 +208,22 @@ class VarFactory(EditableDevice):
         for data in data_list:
             assert data["type"] == "Var"
 
-            if data["ref"] is not None:
-                key_ref = VarPowerFlowRefferenceType(data["ref"])
+            # Older persisted symbolic models may not store the power-flow
+            # reference field, so keep loading those files by defaulting to None.
+            ref_data: Any = data.get("ref", None)
+            key_ref: VarPowerFlowRefferenceType | None
+
+            if ref_data is not None:
+                key_ref = VarPowerFlowRefferenceType(ref_data)
             else:
-                ke_ref = None
+                key_ref = None
 
             obj = Var(name=data["name"], uid=data["uid"], reference=key_ref)
 
             # at this point we can store the object
             obj_dict[obj.uid] = obj
 
-        self._var_dict =  obj_dict
+        self._var_dict = obj_dict
 
     def parse_diff_var_dict(self,
             data_list: List[Dict[str, Any]]):
@@ -248,10 +253,13 @@ class VarFactory(EditableDevice):
             else:
                 base_var = obj_dict[data["base_var"]]
 
+            # Older persisted symbolic models may not store the power-flow
+            # reference field on differential variables either.
+            reference: VarPowerFlowRefferenceType | None = data.get("ref", None)
             obj = Var(name=data["name"],
                       uid=data["uid"],
                       base_var=base_var,
-                      reference=data["ref"])
+                      reference=reference)
 
             # at this point we can store the object
             obj_dict[obj.uid] = obj

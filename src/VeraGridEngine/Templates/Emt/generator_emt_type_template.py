@@ -170,15 +170,15 @@ def get_simple_generator_emt_template(vf: VarFactory, name: str = "simple_emt_ty
     # --------------------------------------------------------------------------------------
 
     templ.block.external_mapping = {
-        VarPowerFlowRefferenceType.P_N: None,
-        VarPowerFlowRefferenceType.Q_N: None,
-        VarPowerFlowRefferenceType.P_A: None,
-        VarPowerFlowRefferenceType.Q_A: None,
-        VarPowerFlowRefferenceType.P_B: None,
-        VarPowerFlowRefferenceType.Q_B: None,
-        VarPowerFlowRefferenceType.P_C: None,
-        VarPowerFlowRefferenceType.Q_C: None,
-        VarPowerFlowRefferenceType.i_N: None,
+        # VarPowerFlowRefferenceType.P_N: None,
+        # VarPowerFlowRefferenceType.Q_N: None,
+        # VarPowerFlowRefferenceType.P_A: None,
+        # VarPowerFlowRefferenceType.Q_A: None,
+        # VarPowerFlowRefferenceType.P_B: None,
+        # VarPowerFlowRefferenceType.Q_B: None,
+        # VarPowerFlowRefferenceType.P_C: None,
+        # VarPowerFlowRefferenceType.Q_C: None,
+        # VarPowerFlowRefferenceType.i_N: None,
         VarPowerFlowRefferenceType.i_A: i_A,
         VarPowerFlowRefferenceType.i_B: i_B,
         VarPowerFlowRefferenceType.i_C: i_C,
@@ -186,10 +186,10 @@ def get_simple_generator_emt_template(vf: VarFactory, name: str = "simple_emt_ty
         VarPowerFlowRefferenceType.phi: phi,
         VarPowerFlowRefferenceType.Vpk: Vpk,
         VarPowerFlowRefferenceType.Ipk: Ipk,
-        VarPowerFlowRefferenceType.d_v_N: None,
-        VarPowerFlowRefferenceType.d_v_A: None,
-        VarPowerFlowRefferenceType.d_v_B: None,
-        VarPowerFlowRefferenceType.d_v_C: None,
+        # VarPowerFlowRefferenceType.d_v_N: None,
+        # VarPowerFlowRefferenceType.d_v_A: None,
+        # VarPowerFlowRefferenceType.d_v_B: None,
+        # VarPowerFlowRefferenceType.d_v_C: None,
     }
 
 
@@ -520,15 +520,15 @@ def get_generator_emt_type_template(vf: VarFactory, name: str = "emt_type_genera
     # External Mapping (Connecting to Grid/Power Flow)
     # ----------------------------------------------------------------------------------
     templ.block.external_mapping = {
-        VarPowerFlowRefferenceType.P_N: None,
-        VarPowerFlowRefferenceType.Q_N: None,
-        VarPowerFlowRefferenceType.P_A: None,
-        VarPowerFlowRefferenceType.Q_A: None,
-        VarPowerFlowRefferenceType.P_B: None,
-        VarPowerFlowRefferenceType.Q_B: None,
-        VarPowerFlowRefferenceType.P_C: None,
-        VarPowerFlowRefferenceType.Q_C: None,
-        VarPowerFlowRefferenceType.i_N: None,
+        # VarPowerFlowRefferenceType.P_N: None,
+        # VarPowerFlowRefferenceType.Q_N: None,
+        # VarPowerFlowRefferenceType.P_A: None,
+        # VarPowerFlowRefferenceType.Q_A: None,
+        # VarPowerFlowRefferenceType.P_B: None,
+        # VarPowerFlowRefferenceType.Q_B: None,
+        # VarPowerFlowRefferenceType.P_C: None,
+        # VarPowerFlowRefferenceType.Q_C: None,
+        # VarPowerFlowRefferenceType.i_N: None,
         VarPowerFlowRefferenceType.i_A: i_A,
         VarPowerFlowRefferenceType.i_B: i_B,
         VarPowerFlowRefferenceType.i_C: i_C,
@@ -536,10 +536,10 @@ def get_generator_emt_type_template(vf: VarFactory, name: str = "emt_type_genera
         VarPowerFlowRefferenceType.phi: phi,
         VarPowerFlowRefferenceType.Vpk: Vpk,
         VarPowerFlowRefferenceType.Ipk: Ipk,
-        VarPowerFlowRefferenceType.d_v_N: None,
-        VarPowerFlowRefferenceType.d_v_A: None,
-        VarPowerFlowRefferenceType.d_v_B: None,
-        VarPowerFlowRefferenceType.d_v_C: None,
+        # VarPowerFlowRefferenceType.d_v_N: None,
+        # VarPowerFlowRefferenceType.d_v_A: None,
+        # VarPowerFlowRefferenceType.d_v_B: None,
+        # VarPowerFlowRefferenceType.d_v_C: None,
     }
 
     # ----------------------------------------------------------------------------------
@@ -1162,15 +1162,15 @@ def get_generator_sauer_pai_type_emt_template(vf: VarFactory, name: str = "sauer
     # External mapping
     # ------------------------------------------------------------------
     templ.block.external_mapping = {
-        VarPowerFlowRefferenceType.P_N: None,
-        VarPowerFlowRefferenceType.Q_N: None,
-        VarPowerFlowRefferenceType.P_A: None,
-        VarPowerFlowRefferenceType.Q_A: None,
-        VarPowerFlowRefferenceType.P_B: None,
-        VarPowerFlowRefferenceType.Q_B: None,
-        VarPowerFlowRefferenceType.P_C: None,
-        VarPowerFlowRefferenceType.Q_C: None,
-        VarPowerFlowRefferenceType.i_N: None,
+        # VarPowerFlowRefferenceType.P_N: None,
+        # VarPowerFlowRefferenceType.Q_N: None,
+        # VarPowerFlowRefferenceType.P_A: None,
+        # VarPowerFlowRefferenceType.Q_A: None,
+        # VarPowerFlowRefferenceType.P_B: None,
+        # VarPowerFlowRefferenceType.Q_B: None,
+        # VarPowerFlowRefferenceType.P_C: None,
+        # VarPowerFlowRefferenceType.Q_C: None,
+        # VarPowerFlowRefferenceType.i_N: None,
         VarPowerFlowRefferenceType.i_A: i_A,
         VarPowerFlowRefferenceType.i_B: i_B,
         VarPowerFlowRefferenceType.i_C: i_C,
@@ -1178,10 +1178,10 @@ def get_generator_sauer_pai_type_emt_template(vf: VarFactory, name: str = "sauer
         VarPowerFlowRefferenceType.phi: phi,
         VarPowerFlowRefferenceType.Vpk: Vpk,
         VarPowerFlowRefferenceType.Ipk: Ipk,
-        VarPowerFlowRefferenceType.d_v_N: None,
-        VarPowerFlowRefferenceType.d_v_A: None,
-        VarPowerFlowRefferenceType.d_v_B: None,
-        VarPowerFlowRefferenceType.d_v_C: None,
+        # VarPowerFlowRefferenceType.d_v_N: None,
+        # VarPowerFlowRefferenceType.d_v_A: None,
+        # VarPowerFlowRefferenceType.d_v_B: None,
+        # VarPowerFlowRefferenceType.d_v_C: None,
     }
 
     return templ
@@ -1791,19 +1791,9 @@ def get_complete_generator_template_emt(vf: VarFactory, name="complete_generator
     templ.block.children.append(exciter_mdl)
     templ.block.unify_blocks()
     templ.block.external_mapping = {
-        VarPowerFlowRefferenceType.v_N: None,
         VarPowerFlowRefferenceType.v_A: gen_mdl.in_vars[0],
         VarPowerFlowRefferenceType.v_B: gen_mdl.in_vars[1],
         VarPowerFlowRefferenceType.v_C: gen_mdl.in_vars[2],
-        VarPowerFlowRefferenceType.P_N: None,
-        VarPowerFlowRefferenceType.Q_N: None,
-        VarPowerFlowRefferenceType.P_A: None,
-        VarPowerFlowRefferenceType.Q_A: None,
-        VarPowerFlowRefferenceType.P_B: None,
-        VarPowerFlowRefferenceType.Q_B: None,
-        VarPowerFlowRefferenceType.P_C: None,
-        VarPowerFlowRefferenceType.Q_C: None,
-        VarPowerFlowRefferenceType.i_N: None,
         VarPowerFlowRefferenceType.i_A: gen_mdl.out_vars[0],
         VarPowerFlowRefferenceType.i_B: gen_mdl.out_vars[1],
         VarPowerFlowRefferenceType.i_C: gen_mdl.out_vars[2],
@@ -1811,10 +1801,6 @@ def get_complete_generator_template_emt(vf: VarFactory, name="complete_generator
         VarPowerFlowRefferenceType.phi: gen_mdl.in_vars[6],
         VarPowerFlowRefferenceType.Vpk: gen_mdl.in_vars[7],
         VarPowerFlowRefferenceType.Ipk: gen_mdl.in_vars[8],
-        VarPowerFlowRefferenceType.d_v_N: None,
-        VarPowerFlowRefferenceType.d_v_A: None,
-        VarPowerFlowRefferenceType.d_v_B: None,
-        VarPowerFlowRefferenceType.d_v_C: None,
     }
 
 

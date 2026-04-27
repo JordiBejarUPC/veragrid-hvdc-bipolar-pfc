@@ -8,9 +8,10 @@ import numpy as np
 from typing import Dict, List, Optional, Any, Protocol
 
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.symbolic import Const, Expr, Var, piecewise
+from VeraGridEngine.Utils.Symbolic.symbolic import Const, Expr, Var, hard_sat, heaviside, piecewise
 from VeraGridEngine.basic_structures import Vec
 from VeraGridEngine.Simulations.driver_template import DummySignal
+from VeraGridEngine.enumerations import DynamicEventTransitionType
 
 
 def _get_diff_var_sort_key(diff_var: Var) -> int:
@@ -117,6 +118,50 @@ def is_problem_owned_boundary_updater(problem: "EmtProblemTemplate", boundary_up
         return False
 
     return boundary_updater is problem_boundary_updater
+
+
+def _freeze_runtime_expr_at_time(expr: Any, time_var: Var, sample_time: float) -> Any:
+    """
+    Freeze one runtime expression at an explicit time value.
+
+    :param expr: Runtime expression to freeze.
+    :param time_var: Global symbolic time variable.
+    :param sample_time: Time used to evaluate the expression boundary.
+    :return: Time-frozen symbolic expression.
+    """
+    if isinstance(expr, (Expr, Var, Const)):
+        return expr.subs(dict({time_var: Const(float(sample_time))})).simplify()
+    else:
+        return expr
+
+
+def _build_ramp_runtime_expr(
+    time_var: Var,
+    start_time: float,
+    end_time: float,
+    before_expr: Any,
+    final_value: float,
+) -> Any:
+    """
+    Build one linear ramp transition on top of an existing runtime expression.
+
+    :param time_var: Global symbolic time variable.
+    :param start_time: Ramp start time.
+    :param end_time: Ramp end time.
+    :param before_expr: Expression active before the ramp starts.
+    :param final_value: Final runtime value after the ramp ends.
+    :return: Combined symbolic expression.
+    """
+    start_expr: Any = _freeze_runtime_expr_at_time(before_expr, time_var, start_time)
+    duration_expr: Const = Const(float(end_time - start_time))
+    time_offset_expr: Any = time_var - Const(float(start_time))
+    progress_expr: Any = hard_sat(time_offset_expr / duration_expr, Const(0.0), Const(1.0))
+    ramp_expr: Any = start_expr + progress_expr * (Const(float(final_value)) - start_expr)
+    started_expr: Any = heaviside(time_var - Const(float(start_time)))
+    ended_expr: Any = heaviside(time_var - Const(float(end_time)))
+    return (Const(1.0) - started_expr) * before_expr + started_expr * (
+        (Const(1.0) - ended_expr) * ramp_expr + ended_expr * Const(float(final_value))
+    )
 
 
 class EmtProblemTemplate(ABC):
@@ -321,9 +366,10 @@ class EmtProblemTemplate(ABC):
         can be reassigned with a piecewise time function driven by the selected
         group of `grid.emt_events`.
         """
-        self._event_parameters_eqs = list(self._runtime_all_eqs_source)
+        active_runtime_eqs = list(self._runtime_all_eqs_source)
 
-        collect_events = {param: {"times": [], "values": []} for param in self._variable_parameters}
+        collect_events = {param.uid: list() for param in self._variable_parameters}
+        uid_to_parameter = {param.uid: param for param in self._variable_parameters}
         emt_events = getattr(self.grid, "emt_events", [])
         selected_events = [
             evt for evt in emt_events
@@ -332,22 +378,69 @@ class EmtProblemTemplate(ABC):
 
         for emt_evt in selected_events:
             parameter = emt_evt.parameter
-            if parameter in collect_events:
-                collect_events[parameter]["times"].append(float(emt_evt.time))
-                collect_events[parameter]["values"].append(float(emt_evt.value))
+            parameter_uid = parameter.uid if isinstance(parameter, Var) else None
 
-        for parameter, info in collect_events.items():
-            if len(info["times"]) == 0:
+            if parameter_uid in collect_events:
+                transition_type = getattr(emt_evt, "transition_type", DynamicEventTransitionType.Step)
+                end_time = getattr(emt_evt, "end_time", None)
+
+                if isinstance(transition_type, DynamicEventTransitionType):
+                    transition_text = transition_type.value
+                else:
+                    transition_text = str(transition_type)
+
+                collect_events[parameter_uid].append(
+                    dict({
+                        "time": float(emt_evt.time),
+                        "value": float(emt_evt.value),
+                        "end_time": None if end_time is None else float(end_time),
+                        "transition_type": transition_text,
+                    })
+                )
+
+        for parameter_uid, event_specs in collect_events.items():
+            if len(event_specs) == 0:
                 continue
+            parameter = uid_to_parameter[parameter_uid]
             param_index = self._variable_parameters.index(parameter)
-            default_value = self._event_parameters_eqs[param_index]
-            self._event_parameters_eqs[param_index] = piecewise(
-                time_var=self._glob_time,
-                t_events=np.asarray(info["times"], dtype=np.float64),
-                new_values=np.asarray(info["values"], dtype=np.float64),
-                default_value=default_value,
-            )
+            active_expr = active_runtime_eqs[param_index]
+            sorted_specs = sorted(event_specs, key=lambda item: float(item["time"]))
 
+            for event_spec in sorted_specs:
+                if str(event_spec["transition_type"]) == DynamicEventTransitionType.Ramp.value:
+                    start_time = float(event_spec["time"])
+                    end_time_raw = event_spec["end_time"]
+
+                    if end_time_raw is None:
+                        raise ValueError("Ramp EMT events require an end_time")
+                    else:
+                        pass
+
+                    end_time = float(end_time_raw)
+
+                    if end_time > start_time:
+                        pass
+                    else:
+                        raise ValueError("Ramp EMT events require end_time greater than time")
+
+                    active_expr = _build_ramp_runtime_expr(
+                        time_var=self._glob_time,
+                        start_time=start_time,
+                        end_time=end_time,
+                        before_expr=active_expr,
+                        final_value=float(event_spec["value"]),
+                    )
+                else:
+                    active_expr = piecewise(
+                        time_var=self._glob_time,
+                        t_events=np.asarray([float(event_spec["time"])], dtype=np.float64),
+                        new_values=np.asarray([float(event_spec["value"])], dtype=np.float64),
+                        default_value=active_expr,
+                    )
+
+            active_runtime_eqs[param_index] = active_expr
+
+        self._runtime_all_eqs_source = active_runtime_eqs
         self._rebuild_runtime_parameter_partition()
         self._build_runtime_param_vectors()
 
