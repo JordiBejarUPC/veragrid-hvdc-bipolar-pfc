@@ -54,7 +54,7 @@ from VeraGrid.Gui.general_dialogues import (CheckListDialogue, StartEndSelection
 
 ALL_EDITORS = Union[SchematicWidget, GridMapWidget, BaseDiagramWidget]
 ALL_EDITORS_NONE = Union[None, SchematicWidget, GridMapWidget]
-ALL_DIAGRAM_ENTRIES = Union[SchematicWidget, GridMapWidget, dev.SchematicDiagram, dev.MapDiagram]
+DIAGRAM_WIDGETS = Union[SchematicWidget, GridMapWidget]
 
 
 class VideoExportWorker(QtCore.QThread):
@@ -137,7 +137,7 @@ class DiagramsMain(CompiledArraysMain):
         CompiledArraysMain.__init__(self, parent)
 
         # list of diagrams
-        self.diagram_widgets_list: List[ALL_DIAGRAM_ENTRIES] = list()
+        self.diagram_widgets_list: List[DIAGRAM_WIDGETS] = list()
 
         # flag to avoid circular updating of the display settings when changing diagrams
         self._enable_setting_auto_upgrade = True
@@ -311,6 +311,7 @@ class DiagramsMain(CompiledArraysMain):
 
         # Set context menu policy to CustomContextMenu
         self.ui.diagramsListView.setContextMenuPolicy(QtGui.Qt.ContextMenuPolicy.CustomContextMenu)
+        self.ui.diagramsListView.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
 
     def get_current_objects_model_view(self) -> ObjectModelFilterProxy | None:
         """
@@ -2333,25 +2334,43 @@ class DiagramsMain(CompiledArraysMain):
 
     def remove_diagram(self):
         """
-        Remove diagram
+        Remove one or more selected diagrams
         """
-        diagram_widget = self.get_selected_diagram_widget()
-        if diagram_widget is not None:
-            ok = yes_no_question("Are you sure that you want to delete " + diagram_widget.name + "?",
-                                 "Remove diagram")
+        selected_rows = sorted({idx.row() for idx in self.ui.diagramsListView.selectedIndexes()})
+        if len(selected_rows) == 0:
+            return
 
-            if ok:
-                # delete the widget
-                self.diagram_widgets_list.remove(diagram_widget)
+        if len(selected_rows) == 1:
+            entry: SchematicWidget | GridMapWidget = self.diagram_widgets_list[selected_rows[0]]
 
-                # delete the diagram
-                self.circuit.remove_diagram(diagram_widget.diagram)
+            question = "Are you sure that you want to delete " + str(entry.name) + "?"
+        else:
+            question = f"Are you sure that you want to delete {len(selected_rows)} selected diagrams?"
 
-                # delete it from the layout list
-                self.remove_all_diagram_widgets()
+        ok = yes_no_question(question, "Remove diagram")
+        if not ok:
+            return
 
-                # update view
-                self.set_diagrams_list_view()
+        # Remember a candidate row to select after deletion.
+        next_row = selected_rows[0]
+
+        # Delete from highest row to lowest to avoid index shifts.
+        for row in sorted(selected_rows, reverse=True):
+            widget = self.diagram_widgets_list.pop(row)
+            if isinstance(widget, (SchematicWidget, GridMapWidget)):
+                self.circuit.remove_diagram(widget.diagram)
+
+        # Remove currently shown widget and rebuild list view selection.
+        self.remove_all_diagram_widgets()
+        self.set_diagrams_list_view()
+
+        if len(self.diagram_widgets_list) > 0:
+            target_row = min(next_row, len(self.diagram_widgets_list) - 1)
+            widget = self._ensure_diagram_widget_at_index(index=target_row)
+            if widget is not None:
+                self.set_diagram_widget(widget)
+        else:
+            pass
 
     def duplicate_diagram(self):
         """
