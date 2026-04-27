@@ -24,6 +24,8 @@ from PySide6.QtCore import QAbstractItemModel, QLineF
 from PySide6.QtCore import Qt, QPointF, QModelIndex, Signal, QAbstractTableModel
 
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
+from VeraGridEngine.Devices.Branches.transformer import Transformer2W
+from VeraGridEngine.Devices.Branches.transformer_type import TransformerType
 from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType, \
@@ -3998,9 +4000,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             ],
             DeviceType.LoadDevice: [
                 LibraryLeafSpec("Generic", BlockType.GENERIC),
-            ],
-            DeviceType.LoadDevice: [
-                LibraryLeafSpec("Generic", BlockType.GENERIC),
                 LibraryLeafSpec("Ground EMT", BlockType.GROUND_EMT),
                 LibraryLeafSpec("Grounding Link EMT", BlockType.GROUNDING_LINK_EMT),
                 LibraryLeafSpec("Nonlinear Resistor EMT", BlockType.NONLINEAR_RESISTOR_EMT),
@@ -4011,6 +4010,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 LibraryLeafSpec("Exponential load", BlockType.EXP_LOAD_EMT),
                 LibraryLeafSpec("ZIP load", BlockType.ZIP_LOAD_EMT),
                 LibraryLeafSpec("DC load", BlockType.DC_LOAD_EMT),
+            ],
+            DeviceType.Transformer2WDevice: [
+                LibraryLeafSpec("Generic", BlockType.GENERIC),
+                LibraryLeafSpec("Transformer", BlockType.TRAFO_EMT),
+                LibraryLeafSpec("XFMR Transformer", BlockType.XFMR_TRANSFORMER),
             ],
             DeviceType.TransformerTypeDevice: [
                 LibraryLeafSpec("Generic", BlockType.GENERIC),
@@ -4982,12 +4986,17 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param y_pos: Drop y position.
         :return: Created block item or None when the dialog is cancelled.
         """
-        dialog = self._build_transformer_topology_emt_dialog(block_type=block_type)
+        topology_config: Dict[str, Any] | None = self._resolve_transformer_topology_configuration()
 
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            topology_config = dialog.get_configuration()
+        if topology_config is None:
+            dialog = self._build_transformer_topology_emt_dialog(block_type=block_type)
+
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                topology_config = dialog.get_configuration()
+            else:
+                return None
         else:
-            return None
+            topology_config = dict(topology_config)
 
         count: int = self.block_counters.get(block_type, 0) + 1
         item_name: str = f"{block_type.name}_{count}"
@@ -5030,6 +5039,30 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         )
         self.mark_unapplied_changes()
         return block_item
+
+    def _resolve_transformer_topology_configuration(self) -> Dict[str, Any] | None:
+        """
+        Resolve one EMT transformer topology directly from the bound API object.
+
+        When the editor is attached to one real transformer device or one
+        transformer-type object, the winding connections already belong to that
+        object and should not be asked again through a modal dialog.
+
+        :return: Resolved topology configuration or ``None`` when unavailable.
+        """
+        if isinstance(self.api_object, Transformer2W):
+            return dict({
+                "conn_f": self.api_object.conn_f,
+                "conn_t": self.api_object.conn_t,
+            })
+        else:
+            if isinstance(self.api_object, TransformerType):
+                return dict({
+                    "conn_f": self.api_object.conn_hv,
+                    "conn_t": self.api_object.conn_lv,
+                })
+            else:
+                return None
 
     def _build_rlc_combo_emt_dialog(self,
                                     initial_config: Dict[str, Any] | None = None) -> RlcComboEmtDialog:
@@ -5121,11 +5154,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         if initial_config is not None:
             resolved_config = dict(initial_config)
         else:
-            if isinstance(self.api_object, BranchParent):
-                resolved_config = dict({
-                    "conn_f": self.api_object.conn_f,
-                    "conn_t": self.api_object.conn_t,
-                })
+            auto_config: Dict[str, Any] | None = self._resolve_transformer_topology_configuration()
+
+            if auto_config is not None:
+                resolved_config = auto_config
             else:
                 resolved_config = dict({
                     "conn_f": WindingType.GroundedStar,
@@ -7504,12 +7536,17 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
         block_type_name: str = str(modal_config.get("block_type", ""))
         block_type: BlockType = BlockType[block_type_name]
-        dialog = self._build_transformer_topology_emt_dialog(block_type=block_type, initial_config=modal_config)
+        topology_config: Dict[str, Any] | None = self._resolve_transformer_topology_configuration()
 
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            topology_config = dialog.get_configuration()
+        if topology_config is None:
+            dialog = self._build_transformer_topology_emt_dialog(block_type=block_type, initial_config=modal_config)
+
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                topology_config = dialog.get_configuration()
+            else:
+                return
         else:
-            return
+            topology_config = dict(topology_config)
 
         if item.subsys is None:
             return

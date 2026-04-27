@@ -869,42 +869,20 @@ def test_zip_load_emt_block_supports_delta_configuration(monkeypatch) -> None:
     editor.close()
 
 
-def test_transformer_emt_block_supports_topology_modal_and_modify_template(monkeypatch) -> None:
+def test_transformer_emt_block_inherits_topology_from_transformer_device_without_modal(monkeypatch) -> None:
     circuit = gce.MultiCircuit(Sbase=25.0, fbase=60.0)
     bus0 = gce.Bus(name="BusTf0", Vnom=13.8)
     bus1 = gce.Bus(name="BusTf1", Vnom=13.8)
     transformer = gce.Transformer2W(name="TrafoGui", bus_from=bus0, bus_to=bus1)
+    transformer.conn_f = WindingType.Delta
+    transformer.conn_t = WindingType.GroundedStar
     editor = _build_editor(DynamicSimulationMode.EMT, api_object=transformer, circuit=circuit)
 
-    class _CreateDialogStub:
-        def __init__(self, title: str, parent=None, initial_config=None) -> None:
-            _unused = (parent, initial_config)
-            assert title == "Configure EMT Transformer Topology"
+    class _DialogMustNotOpen:
+        def __init__(self, *args, **kwargs) -> None:
+            raise AssertionError("Transformer topology dialog should not open when the device already defines conn_f/conn_t")
 
-        def exec(self) -> int:
-            return int(QtWidgets.QDialog.DialogCode.Accepted)
-
-        def get_configuration(self) -> dict[str, object]:
-            return dict({
-                "conn_f": WindingType.Delta,
-                "conn_t": WindingType.GroundedStar,
-            })
-
-    class _ModifyDialogStub:
-        def __init__(self, title: str, parent=None, initial_config=None) -> None:
-            _unused = (parent, initial_config)
-            assert title == "Configure EMT Transformer Topology"
-
-        def exec(self) -> int:
-            return int(QtWidgets.QDialog.DialogCode.Accepted)
-
-        def get_configuration(self) -> dict[str, object]:
-            return dict({
-                "conn_f": WindingType.GroundedStar,
-                "conn_t": WindingType.GroundedStar,
-            })
-
-    monkeypatch.setattr(dynamic_block_editor_module, "TransformerTopologyEmtDialog", _CreateDialogStub)
+    monkeypatch.setattr(dynamic_block_editor_module, "TransformerTopologyEmtDialog", _DialogMustNotOpen)
     block_item = editor.create_library_payload_item(BlockType.TRAFO_EMT, 10.0, 20.0)
     assert block_item is not None
 
@@ -918,7 +896,8 @@ def test_transformer_emt_block_supports_topology_modal_and_modify_template(monke
     assert transformer.conn_f == WindingType.Delta
     assert transformer.conn_t == WindingType.GroundedStar
 
-    monkeypatch.setattr(dynamic_block_editor_module, "TransformerTopologyEmtDialog", _ModifyDialogStub)
+    transformer.conn_f = WindingType.GroundedStar
+    transformer.conn_t = WindingType.GroundedStar
     editor.modify_scene_item_template(block_item)
     updated_item = editor.get_scene_item_by_block_uid(block_item.subsys.uid)
     assert updated_item is not None
@@ -937,42 +916,20 @@ def test_transformer_emt_block_supports_topology_modal_and_modify_template(monke
     editor.close()
 
 
-def test_xfmr_emt_block_supports_topology_modal_and_modify_template(monkeypatch) -> None:
+def test_xfmr_emt_block_inherits_topology_from_transformer_device_without_modal(monkeypatch) -> None:
     circuit = gce.MultiCircuit(Sbase=25.0, fbase=60.0)
     bus0 = gce.Bus(name="BusXf0", Vnom=13.8)
     bus1 = gce.Bus(name="BusXf1", Vnom=13.8)
     transformer = gce.Transformer2W(name="XfmrGui", bus_from=bus0, bus_to=bus1)
+    transformer.conn_f = WindingType.Delta
+    transformer.conn_t = WindingType.GroundedStar
     editor = _build_editor(DynamicSimulationMode.EMT, api_object=transformer, circuit=circuit)
 
-    class _CreateDialogStub:
-        def __init__(self, title: str, parent=None, initial_config=None) -> None:
-            _unused = (parent, initial_config)
-            assert title == "Configure EMT XFMR Transformer Topology"
+    class _DialogMustNotOpen:
+        def __init__(self, *args, **kwargs) -> None:
+            raise AssertionError("XFMR topology dialog should not open when the device already defines conn_f/conn_t")
 
-        def exec(self) -> int:
-            return int(QtWidgets.QDialog.DialogCode.Accepted)
-
-        def get_configuration(self) -> dict[str, object]:
-            return dict({
-                "conn_f": WindingType.Delta,
-                "conn_t": WindingType.GroundedStar,
-            })
-
-    class _ModifyDialogStub:
-        def __init__(self, title: str, parent=None, initial_config=None) -> None:
-            _unused = (parent, initial_config)
-            assert title == "Configure EMT XFMR Transformer Topology"
-
-        def exec(self) -> int:
-            return int(QtWidgets.QDialog.DialogCode.Accepted)
-
-        def get_configuration(self) -> dict[str, object]:
-            return dict({
-                "conn_f": WindingType.GroundedStar,
-                "conn_t": WindingType.GroundedStar,
-            })
-
-    monkeypatch.setattr(dynamic_block_editor_module, "TransformerTopologyEmtDialog", _CreateDialogStub)
+    monkeypatch.setattr(dynamic_block_editor_module, "TransformerTopologyEmtDialog", _DialogMustNotOpen)
     block_item = editor.create_library_payload_item(BlockType.XFMR_TRANSFORMER, 10.0, 20.0)
     assert block_item is not None
 
@@ -984,7 +941,8 @@ def test_xfmr_emt_block_supports_topology_modal_and_modify_template(monkeypatch)
     assert _port_full_names(block_item)[:3] == ["vf_A_xfmr_emt_template", "vf_B_xfmr_emt_template", "vf_C_xfmr_emt_template"]
     assert _port_full_names(block_item)[3:] == ["vt_N_xfmr_emt_template", "vt_A_xfmr_emt_template", "vt_B_xfmr_emt_template", "vt_C_xfmr_emt_template"]
 
-    monkeypatch.setattr(dynamic_block_editor_module, "TransformerTopologyEmtDialog", _ModifyDialogStub)
+    transformer.conn_f = WindingType.GroundedStar
+    transformer.conn_t = WindingType.GroundedStar
     editor.modify_scene_item_template(block_item)
     updated_item = editor.get_scene_item_by_block_uid(block_item.subsys.uid)
     assert updated_item is not None
@@ -996,6 +954,67 @@ def test_xfmr_emt_block_supports_topology_modal_and_modify_template(monkeypatch)
     assert modal_config["conn_t"] == WindingType.GroundedStar
     assert _port_full_names(updated_item)[:4] == ["vf_N_xfmr_emt_template", "vf_A_xfmr_emt_template", "vf_B_xfmr_emt_template", "vf_C_xfmr_emt_template"]
     assert _port_full_names(updated_item)[4:] == ["vt_N_xfmr_emt_template", "vt_A_xfmr_emt_template", "vt_B_xfmr_emt_template", "vt_C_xfmr_emt_template"]
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
+def test_transformer_type_emt_editor_exposes_transformer_blocks_and_inherits_hv_lv_topology(monkeypatch) -> None:
+    circuit = gce.MultiCircuit(Sbase=25.0, fbase=60.0)
+    transformer_type = gce.TransformerType()
+    transformer_type.conn_hv = WindingType.Delta
+    transformer_type.conn_lv = WindingType.GroundedStar
+    editor = _build_editor(DynamicSimulationMode.EMT, api_object=transformer_type, circuit=circuit)
+
+    class _DialogMustNotOpen:
+        def __init__(self, *args, **kwargs) -> None:
+            raise AssertionError("Transformer topology dialog should not open when the transformer type already defines conn_hv/conn_lv")
+
+    monkeypatch.setattr(dynamic_block_editor_module, "TransformerTopologyEmtDialog", _DialogMustNotOpen)
+    leaf_labels = _collect_leaf_labels(editor.library_model)
+
+    assert "Transformer" in leaf_labels
+    assert "XFMR Transformer" in leaf_labels
+    assert "ZIP load" not in leaf_labels
+    block_item = editor.create_library_payload_item(BlockType.TRAFO_EMT, 10.0, 20.0)
+    assert block_item is not None
+
+    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    assert modal_kind == "transformer_topology_emt"
+    assert modal_config is not None
+    assert modal_config["conn_f"] == WindingType.Delta
+    assert modal_config["conn_t"] == WindingType.GroundedStar
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
+def test_transformer_emt_block_falls_back_to_manual_dialog_without_device_topology(monkeypatch) -> None:
+    editor = _build_editor(DynamicSimulationMode.EMT)
+
+    class _DialogStub:
+        def __init__(self, title: str, parent=None, initial_config=None) -> None:
+            _unused = (parent, initial_config)
+            assert title == "Configure EMT Transformer Topology"
+
+        def exec(self) -> int:
+            return int(QtWidgets.QDialog.DialogCode.Accepted)
+
+        def get_configuration(self) -> dict[str, object]:
+            return dict({
+                "conn_f": WindingType.Delta,
+                "conn_t": WindingType.GroundedStar,
+            })
+
+    monkeypatch.setattr(dynamic_block_editor_module, "TransformerTopologyEmtDialog", _DialogStub)
+    block_item = editor.create_library_payload_item(BlockType.TRAFO_EMT, 10.0, 20.0)
+
+    assert block_item is not None
+    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    assert modal_kind == "transformer_topology_emt"
+    assert modal_config is not None
+    assert modal_config["conn_f"] == WindingType.Delta
+    assert modal_config["conn_t"] == WindingType.GroundedStar
 
     editor.has_unapplied_changes = False
     editor.close()
