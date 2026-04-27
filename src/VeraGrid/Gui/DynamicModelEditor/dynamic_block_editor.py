@@ -4079,14 +4079,19 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             DeviceType.VscDevice: list(),
         }
 
+        try:
+            api_object_device_type = api_object.device_type
+        except AttributeError:
+            api_object_device_type = DeviceType.NoDevice
+
         self.tree_structure: Dict[str, Any] = dict()
         if mode == DynamicSimulationMode.RMS:
             self.tree_structure["Basic"] = self.build_basic_library_branch()
-            self.tree_structure["Devices"] = device_rms_related_blocks.get(api_object.device_type, dict())
+            self.tree_structure["Devices"] = device_rms_related_blocks.get(api_object_device_type, dict())
 
         elif mode == DynamicSimulationMode.EMT:
             self.tree_structure["Basic"] = self.build_basic_library_branch()
-            specific_emt_blocks: List[LibraryLeafSpec] = list(device_emt_related_blocks.get(api_object.device_type, list()))
+            specific_emt_blocks: List[LibraryLeafSpec] = list(device_emt_related_blocks.get(api_object_device_type, list()))
             self.tree_structure["Devices"] = list(common_emt_device_blocks + specific_emt_blocks)
 
         else:
