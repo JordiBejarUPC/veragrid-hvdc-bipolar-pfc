@@ -11,6 +11,7 @@ import VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor as dynamic_block_edi
 import VeraGridEngine.api as gce
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import get_modal_template_metadata
+from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import _transformer_modal_config_allows_modify
 from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import LookupArrayLinearDialog
 from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import LookupMatrixLinearDialog
 from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import _parse_clipboard_grid
@@ -891,6 +892,8 @@ def test_transformer_emt_block_inherits_topology_from_transformer_device_without
     assert modal_config is not None
     assert modal_config["conn_f"] == WindingType.Delta
     assert modal_config["conn_t"] == WindingType.GroundedStar
+    assert modal_config["allow_modify_template"] is False
+    assert _transformer_modal_config_allows_modify(modal_kind, modal_config) is False
     assert _port_full_names(block_item)[:3] == ["vf_A_transformer_emt_template", "vf_B_transformer_emt_template", "vf_C_transformer_emt_template"]
     assert _port_full_names(block_item)[3:] == ["vt_N_transformer_emt_template", "vt_A_transformer_emt_template", "vt_B_transformer_emt_template", "vt_C_transformer_emt_template"]
     assert transformer.conn_f == WindingType.Delta
@@ -907,6 +910,7 @@ def test_transformer_emt_block_inherits_topology_from_transformer_device_without
     assert modal_config is not None
     assert modal_config["conn_f"] == WindingType.GroundedStar
     assert modal_config["conn_t"] == WindingType.GroundedStar
+    assert modal_config["allow_modify_template"] is False
     assert _port_full_names(updated_item)[:4] == ["vf_N_transformer_emt_template", "vf_A_transformer_emt_template", "vf_B_transformer_emt_template", "vf_C_transformer_emt_template"]
     assert _port_full_names(updated_item)[4:] == ["vt_N_transformer_emt_template", "vt_A_transformer_emt_template", "vt_B_transformer_emt_template", "vt_C_transformer_emt_template"]
     assert transformer.conn_f == WindingType.GroundedStar
@@ -938,6 +942,8 @@ def test_xfmr_emt_block_inherits_topology_from_transformer_device_without_modal(
     assert modal_config is not None
     assert modal_config["conn_f"] == WindingType.Delta
     assert modal_config["conn_t"] == WindingType.GroundedStar
+    assert modal_config["allow_modify_template"] is False
+    assert _transformer_modal_config_allows_modify(modal_kind, modal_config) is False
     assert _port_full_names(block_item)[:3] == ["vf_A_xfmr_emt_template", "vf_B_xfmr_emt_template", "vf_C_xfmr_emt_template"]
     assert _port_full_names(block_item)[3:] == ["vt_N_xfmr_emt_template", "vt_A_xfmr_emt_template", "vt_B_xfmr_emt_template", "vt_C_xfmr_emt_template"]
 
@@ -952,6 +958,7 @@ def test_xfmr_emt_block_inherits_topology_from_transformer_device_without_modal(
     assert modal_config is not None
     assert modal_config["conn_f"] == WindingType.GroundedStar
     assert modal_config["conn_t"] == WindingType.GroundedStar
+    assert modal_config["allow_modify_template"] is False
     assert _port_full_names(updated_item)[:4] == ["vf_N_xfmr_emt_template", "vf_A_xfmr_emt_template", "vf_B_xfmr_emt_template", "vf_C_xfmr_emt_template"]
     assert _port_full_names(updated_item)[4:] == ["vt_N_xfmr_emt_template", "vt_A_xfmr_emt_template", "vt_B_xfmr_emt_template", "vt_C_xfmr_emt_template"]
 
@@ -975,7 +982,9 @@ def test_transformer_type_emt_editor_exposes_transformer_blocks_and_inherits_hv_
 
     assert "Transformer" in leaf_labels
     assert "XFMR Transformer" in leaf_labels
-    assert "ZIP load" not in leaf_labels
+    assert "ZIP load" in leaf_labels
+    assert "Switch EMT" in leaf_labels
+    assert "Emt pi line" not in leaf_labels
     block_item = editor.create_library_payload_item(BlockType.TRAFO_EMT, 10.0, 20.0)
     assert block_item is not None
 
@@ -984,6 +993,33 @@ def test_transformer_type_emt_editor_exposes_transformer_blocks_and_inherits_hv_
     assert modal_config is not None
     assert modal_config["conn_f"] == WindingType.Delta
     assert modal_config["conn_t"] == WindingType.GroundedStar
+    assert modal_config["allow_modify_template"] is False
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
+def test_transformer_type_emt_editor_inherits_zigzag_without_modal(monkeypatch) -> None:
+    circuit = gce.MultiCircuit(Sbase=25.0, fbase=60.0)
+    transformer_type = gce.TransformerType()
+    transformer_type.conn_hv = WindingType.ZigZag
+    transformer_type.conn_lv = WindingType.GroundedStar
+    editor = _build_editor(DynamicSimulationMode.EMT, api_object=transformer_type, circuit=circuit)
+
+    class _DialogMustNotOpen:
+        def __init__(self, *args, **kwargs) -> None:
+            raise AssertionError("Transformer topology dialog should not open when the transformer type already defines conn_hv/conn_lv")
+
+    monkeypatch.setattr(dynamic_block_editor_module, "TransformerTopologyEmtDialog", _DialogMustNotOpen)
+    block_item = editor.create_library_payload_item(BlockType.TRAFO_EMT, 10.0, 20.0)
+    assert block_item is not None
+
+    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    assert modal_kind == "transformer_topology_emt"
+    assert modal_config is not None
+    assert modal_config["conn_f"] == WindingType.ZigZag
+    assert modal_config["conn_t"] == WindingType.GroundedStar
+    assert _port_full_names(block_item)[:3] == ["vf_A_transformer_emt_template", "vf_B_transformer_emt_template", "vf_C_transformer_emt_template"]
 
     editor.has_unapplied_changes = False
     editor.close()
@@ -1015,6 +1051,8 @@ def test_transformer_emt_block_falls_back_to_manual_dialog_without_device_topolo
     assert modal_config is not None
     assert modal_config["conn_f"] == WindingType.Delta
     assert modal_config["conn_t"] == WindingType.GroundedStar
+    assert modal_config["allow_modify_template"] is True
+    assert _transformer_modal_config_allows_modify(modal_kind, modal_config) is True
 
     editor.has_unapplied_changes = False
     editor.close()
