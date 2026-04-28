@@ -769,9 +769,9 @@ class SubexpressionAnalyzer:
             res = f"C{node.value}"
         elif isinstance(node, Var):
             if node.base_var is not None:
-                res = f"D{node.base_var.name}"
+                res = f"D{node.base_var.uid}"
             else:
-                res = f"V{node.name}"
+                res = f"V{node.uid}"
         elif isinstance(node, BinOp):
             left = self._expr_to_canonical_string(node.left)
             right = self._expr_to_canonical_string(node.right)

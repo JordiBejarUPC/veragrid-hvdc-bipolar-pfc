@@ -193,6 +193,36 @@ def test_balanced_load_values_are_distributed_to_phase_keys() -> None:
     assert np.isclose(_const_value(block, ParamPowerFlowRefferenceType.Ql0_A), 1.0 / 30.0)
 
 
+def test_load_runtime_parameter_targets_accept_static_api_mapping() -> None:
+    """Load EMT setpoints may be runtime parameters and still need static seeds."""
+    grid: SimpleNamespace = _make_grid(sbase=100.0, fbase=60.0)
+    bus: Bus = Bus(name="bus", Vnom=20.0)
+    load: Load = Load(name="load", P=90.0, Q=30.0)
+    load.bus = bus
+
+    p_target: Var = _make_var("pla_evt")
+    q_target: Var = _make_var("qla_evt")
+    omega_target: Var = _make_var("omega_evt")
+    block: Block = Block(
+        api_obj_mapping=dict({
+            ParamPowerFlowRefferenceType.Pl0_A: p_target,
+            ParamPowerFlowRefferenceType.Ql0_A: q_target,
+            ParamPowerFlowRefferenceType.omega_base: omega_target,
+        }),
+        event_dict=dict({
+            p_target: Const(0.0),
+            q_target: Const(0.0),
+            omega_target: Const(0.0),
+        }),
+    )
+
+    assign_static_api_object_mapping_for_device(grid=grid, device=load, mdl=block, logger=None)
+
+    assert np.isclose(float(block.event_dict[p_target].value), 0.3)
+    assert np.isclose(float(block.event_dict[q_target].value), 0.1)
+    assert np.isclose(float(block.event_dict[omega_target].value), 2.0 * np.pi * 60.0)
+
+
 def test_existing_generator_mapping_values_remain_unchanged() -> None:
     """Historical generator EMT keys must keep their existing values."""
     grid: SimpleNamespace = _make_grid(fbase=60.0)
@@ -526,6 +556,31 @@ def test_existing_line_mapping_values_remain_unchanged() -> None:
     assert np.isclose(_const_value(block, ParamPowerFlowRefferenceType.Rcc), 0.1)
     assert np.isclose(_const_value(block, ParamPowerFlowRefferenceType.Linv_aa), expected_linv)
     assert np.isclose(_const_value(block, ParamPowerFlowRefferenceType.Caa), expected_c)
+
+
+def test_uncoupled_line_mapping_uses_direct_reactance_when_historical_slot_is_zero() -> None:
+    """Pure-reactive uncoupled lines must keep a non-zero EMT series inductance."""
+    grid: SimpleNamespace = _make_grid(fbase=50.0)
+    bus_from: Bus = Bus(name="from", Vnom=20.0)
+    bus_to: Bus = Bus(name="to", Vnom=20.0)
+    line: Line = Line(name="line_rx_only", bus_from=bus_from, bus_to=bus_to, r=0.0, x=0.2, b=0.0)
+    line.ys.phA = 1
+    line.ys.phB = 1
+    line.ys.phC = 1
+
+    block: Block = _make_block(
+        dict({
+            ParamPowerFlowRefferenceType.Linv_aa: _make_var("laa"),
+            ParamPowerFlowRefferenceType.Caa: _make_var("caa"),
+        })
+    )
+
+    assign_static_api_object_mapping_for_device(grid=grid, device=line, mdl=block, logger=None)
+
+    omega: float = 2.0 * np.pi * 50.0
+
+    assert np.isclose(_const_value(block, ParamPowerFlowRefferenceType.Linv_aa), omega / 0.2)
+    assert np.isclose(_const_value(block, ParamPowerFlowRefferenceType.Caa), 0.0)
 
 
 def test_shunt_phase_keys_fall_back_to_balanced_totals() -> None:

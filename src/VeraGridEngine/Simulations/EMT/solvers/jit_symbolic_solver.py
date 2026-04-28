@@ -1070,6 +1070,7 @@ class JitSymbolicSolver:
                     pass
 
                 substep_converged: bool = False
+                substep_numerical_failure: bool = False
                 for k in range(self.newton_max_iter):
                     total_newton_iterations += 1
                     ctx = NewtonSolveContext(
@@ -1083,16 +1084,26 @@ class JitSymbolicSolver:
                     # The residual buffer is reused across Newton iterations to
                     # remove one full-size allocation from the hot loop.
                     res = residual_buffer
-                    res_norm_inf = evaluate_batched_residual(
-                        kernel_list=kernel_list_eff,
-                        x_iter=x_iter,
-                        full_params=full_params,
-                        x_prev=x_prev,
-                        dx_prev=dx_prev,
-                        h_eff=h_eff,
-                        x_prev2=x_prev2,
-                        residual_out=res,
-                    )
+                    try:
+                        res_norm_inf = evaluate_batched_residual(
+                            kernel_list=kernel_list_eff,
+                            x_iter=x_iter,
+                            full_params=full_params,
+                            x_prev=x_prev,
+                            dx_prev=dx_prev,
+                            h_eff=h_eff,
+                            x_prev2=x_prev2,
+                            residual_out=res,
+                        )
+                    except (FloatingPointError, OverflowError, ZeroDivisionError, ValueError, RuntimeError):
+                        substep_numerical_failure = True
+                        break
+
+                    if np.isfinite(res_norm_inf) and np.all(np.isfinite(res)):
+                        pass
+                    else:
+                        substep_numerical_failure = True
+                        break
 
                     if i == 0 and self.verbose:
                         _print_residual_debug_table(
@@ -1146,21 +1157,35 @@ class JitSymbolicSolver:
                         pass
 
                     if use_dense_solver:
-                        if diagnostics_enabled:
-                            assert dense_solve is not None
-                            assert cached_lu_dense is not None
-                            delta = dense_solve(cached_lu_dense, -res, ctx)
-                        else:
-                            assert cached_lu_dense is not None
-                            delta = lu_solve(cached_lu_dense[0], -res)
+                        try:
+                            if diagnostics_enabled:
+                                assert dense_solve is not None
+                                assert cached_lu_dense is not None
+                                delta = dense_solve(cached_lu_dense, -res, ctx)
+                            else:
+                                assert cached_lu_dense is not None
+                                delta = lu_solve(cached_lu_dense[0], -res)
+                        except (FloatingPointError, OverflowError, ZeroDivisionError, ValueError, RuntimeError):
+                            substep_numerical_failure = True
+                            break
                     else:
-                        if diagnostics_enabled:
-                            assert sparse_solve is not None
-                            assert cached_lu_sparse is not None
-                            delta = sparse_solve(cached_lu_sparse, -res, ctx)
-                        else:
-                            assert cached_lu_sparse is not None
-                            delta = cached_lu_sparse[0].solve(-res)
+                        try:
+                            if diagnostics_enabled:
+                                assert sparse_solve is not None
+                                assert cached_lu_sparse is not None
+                                delta = sparse_solve(cached_lu_sparse, -res, ctx)
+                            else:
+                                assert cached_lu_sparse is not None
+                                delta = cached_lu_sparse[0].solve(-res)
+                        except (FloatingPointError, OverflowError, ZeroDivisionError, ValueError, RuntimeError):
+                            substep_numerical_failure = True
+                            break
+
+                    if np.all(np.isfinite(delta)):
+                        pass
+                    else:
+                        substep_numerical_failure = True
+                        break
 
                     if diag_cfg.enable_backtracking:
                         self._trial_residual_evaluator.set_context(
@@ -1184,6 +1209,12 @@ class JitSymbolicSolver:
                     else:
                         x_iter += delta
 
+                    if np.all(np.isfinite(x_iter)):
+                        pass
+                    else:
+                        substep_numerical_failure = True
+                        break
+
                     last_res_norm = res_norm_inf
 
                 if not substep_converged:
@@ -1197,28 +1228,39 @@ class JitSymbolicSolver:
                     if i == 0 and is_first_local_step:
                         well_initialized = False
 
-                if method == DynamicIntegrationMethod.DaeTrapezoidal:
-                    dx_prev[:n_states] = (
-                            (2.0 / h_eff) * (x_iter[:n_states] - x_prev[:n_states])
-                            - dx_prev[:n_states]
-                    )
-                elif method == DynamicIntegrationMethod.DaeBackEuler:
-                    dx_prev[:n_states] = (
-                            (x_iter[:n_states] - x_prev[:n_states]) / h_eff
-                    )
-                elif method == DynamicIntegrationMethod.DaeBDF2:
-                    x_prev2[:] = x_prev
-                    dx_prev[:n_states] = (
-                                                 1.5 * x_iter[:n_states]
-                                                 - 2.0 * x_prev[:n_states]
-                                                 + 0.5 * x_prev2[:n_states]
-                                         ) / h_eff
+                if substep_numerical_failure:
+                    # Preserve the last accepted solution when Newton breaks down
+                    # numerically so the EMT driver can report a failed substep
+                    # instead of crashing the whole simulation.
+                    x_iter[:] = x_prev
                 else:
-                    dx_prev[:n_states] = (
-                            (x_iter[:n_states] - x_prev[:n_states]) / h_eff
-                    )
+                    pass
 
-                if method != DynamicIntegrationMethod.DaeBDF2:
+                if substep_numerical_failure:
+                    pass
+                else:
+                    if method == DynamicIntegrationMethod.DaeTrapezoidal:
+                        dx_prev[:n_states] = (
+                                (2.0 / h_eff) * (x_iter[:n_states] - x_prev[:n_states])
+                                - dx_prev[:n_states]
+                        )
+                    elif method == DynamicIntegrationMethod.DaeBackEuler:
+                        dx_prev[:n_states] = (
+                                (x_iter[:n_states] - x_prev[:n_states]) / h_eff
+                        )
+                    elif method == DynamicIntegrationMethod.DaeBDF2:
+                        x_prev2[:] = x_prev
+                        dx_prev[:n_states] = (
+                                                     1.5 * x_iter[:n_states]
+                                                     - 2.0 * x_prev[:n_states]
+                                                     + 0.5 * x_prev2[:n_states]
+                                             ) / h_eff
+                    else:
+                        dx_prev[:n_states] = (
+                                (x_iter[:n_states] - x_prev[:n_states]) / h_eff
+                        )
+
+                if method != DynamicIntegrationMethod.DaeBDF2 and not substep_numerical_failure:
                     x_prev2[:] = x_prev
                 else:
                     pass

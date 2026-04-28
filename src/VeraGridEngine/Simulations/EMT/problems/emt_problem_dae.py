@@ -297,6 +297,21 @@ def _get_earliest_optional_time(first_time: Optional[float], second_time: Option
         return second_time
 
 
+def _build_unique_device_var_key(device: Any, var: Var) -> str:
+    """
+    Build one stable EMT result key for a device-bound variable.
+
+    Device names are preferred for readability. When multiple devices share the
+    same public name, the caller can fall back to ``idtag``.
+
+    :param device: Electrical device owning the variable.
+    :param var: Symbolic variable.
+    :return: Preferred global result key.
+    """
+    device_name: str = str(getattr(device, "name", ""))
+    return f"{var.name}{device_name}"
+
+
 def _continuous_event_spec_time_sort_key(event_spec: Dict[str, float | str | None]) -> float:
     """
     Return the sorting key used for one continuous-event specification.
@@ -424,6 +439,35 @@ def _get_external_mapping_var_if_present(
     else:
         mapped_var: Optional[Any] = external_mapping.get(key, None)
         return mapped_var
+
+
+def _get_array_entry_if_in_range(array_obj: Any, index: int) -> Optional[Any]:
+    """
+    Return one array entry only when the index is valid.
+
+    Power-flow result containers may exist while some per-phase arrays are empty,
+    for example after one failed or unsupported PF attempt in the GUI. EMT should
+    then skip the corresponding seed instead of raising ``IndexError`` during the
+    initialization pass.
+
+    :param array_obj: Candidate array-like object.
+    :param index: Requested zero-based index.
+    :return: Selected entry or ``None``.
+    """
+    if array_obj is None:
+        return None
+    else:
+        pass
+
+    try:
+        array_length: int = len(array_obj)
+    except TypeError:
+        return None
+
+    if 0 <= int(index) < array_length:
+        return array_obj[index]
+    else:
+        return None
 
 
 def _find_mode_var_by_name(block: Block, var_name: str) -> Optional[Var]:
@@ -916,6 +960,7 @@ class EmtProblemDae(EmtProblemTemplate):
         # initialize template with the complete block
         super().__init__(sys_block=sys_block, glob_time=glob_time, progress_signal=progress_signal,
                          progress_text=progress_text)
+        self._rebuild_results_var_name_lookup()
         template_init_s: float = _toc(t_phase_start)
         t_phase_start = _tic()
 
@@ -2399,6 +2444,73 @@ class EmtProblemDae(EmtProblemTemplate):
             self._vars_glob_name2uid[dv.name + elm.name] = dv.uid
             self._vars2device[dv.uid] = elm
 
+    def _rebuild_results_var_name_lookup(self) -> None:
+        """
+        Rebuild the EMT result-name lookup with unique device-qualified keys.
+
+        ``EmtProblemTemplate`` resets ``_vars_glob_name2uid`` using raw symbolic
+        names only. Saved EMT cases often reuse template-local names such as
+        ``i_ser_Pi_A`` or repeated load-template names, so the raw-name map drops
+        earlier variables. Rebuilding the lookup here preserves one name per UID.
+
+        :return: None.
+        """
+        unique_names: Dict[str, int] = dict()
+        mapped_uids: Set[int] = set()
+
+        device: ALL_DEV_TYPES
+        variables: List[Var]
+        for device, variables in self._vars_info.items():
+            device_idtag: str = str(getattr(device, "idtag", ""))
+
+            for var in variables:
+                candidate_name: str = _build_unique_device_var_key(device, var)
+
+                if candidate_name in unique_names and unique_names[candidate_name] != var.uid:
+                    candidate_name = f"{candidate_name}{device_idtag}"
+                else:
+                    pass
+
+                if candidate_name in unique_names and unique_names[candidate_name] != var.uid:
+                    candidate_name = f"{candidate_name}{var.uid}"
+                else:
+                    pass
+
+                unique_names[candidate_name] = var.uid
+                mapped_uids.add(var.uid)
+
+        for var in self.state_and_algebraic_vars():
+            if var.uid in mapped_uids:
+                continue
+            else:
+                pass
+
+            candidate_name = var.name
+            if candidate_name in unique_names and unique_names[candidate_name] != var.uid:
+                candidate_name = f"{candidate_name}{var.uid}"
+            else:
+                pass
+
+            unique_names[candidate_name] = var.uid
+            mapped_uids.add(var.uid)
+
+        for diff_var in self.get_diff_vars():
+            if diff_var.uid in mapped_uids:
+                continue
+            else:
+                pass
+
+            candidate_name = diff_var.name
+            if candidate_name in unique_names and unique_names[candidate_name] != diff_var.uid:
+                candidate_name = f"{candidate_name}{diff_var.uid}"
+            else:
+                pass
+
+            unique_names[candidate_name] = diff_var.uid
+            mapped_uids.add(diff_var.uid)
+
+        self._vars_glob_name2uid = unique_names
+
     # ---------------------------------------------------------------------
     # PF INIT
     # ---------------------------------------------------------------------
@@ -3106,11 +3218,14 @@ class EmtProblemDae(EmtProblemTemplate):
                 q_total += float(np.imag(phase_complex_power))
                 phase_index += 1
 
-            neutral_var = mdl.E(VarPowerFlowRefferenceType.i_N)
+            neutral_var = _get_external_mapping_var_if_present(
+                mdl=mdl,
+                key=VarPowerFlowRefferenceType.i_N,
+            )
             if neutral_var is not None:
-                ia_var = mdl.E(VarPowerFlowRefferenceType.i_A)
-                ib_var = mdl.E(VarPowerFlowRefferenceType.i_B)
-                ic_var = mdl.E(VarPowerFlowRefferenceType.i_C)
+                ia_var = _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowRefferenceType.i_A)
+                ib_var = _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowRefferenceType.i_B)
+                ic_var = _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowRefferenceType.i_C)
                 if ia_var is None and ib_var is None and ic_var is None:
                     pass
                 else:
@@ -4010,9 +4125,13 @@ class EmtProblemDae(EmtProblemTemplate):
                 sf_var: Optional[Any] = _get_external_mapping_var_if_present(mdl=mdl, key=sf_key)
                 if sf_var is not None and sf_array is not None:
                     pf_idx = vsc_index if is_vsc and vsc_index >= 0 else branch_index
-                    sf_ph = sf_array[pf_idx] / sbase
-                    self.set_if_exists(mdl=mdl, key=sf_key, value=float(np.real(sf_ph)))
-                    sf_sum += sf_ph
+                    sf_ph_value = _get_array_entry_if_in_range(sf_array, pf_idx)
+                    if sf_ph_value is None:
+                        pass
+                    else:
+                        sf_ph = sf_ph_value / sbase
+                        self.set_if_exists(mdl=mdl, key=sf_key, value=float(np.real(sf_ph)))
+                        sf_sum += sf_ph
                 elif is_vsc:
                     self.set_if_exists(mdl=mdl, key=sf_key, value=0.0)
                 else:
@@ -4024,9 +4143,13 @@ class EmtProblemDae(EmtProblemTemplate):
                 st_var: Optional[Any] = _get_external_mapping_var_if_present(mdl=mdl, key=st_key)
                 if st_var is not None and st_array is not None:
                     pf_idx = vsc_index if is_vsc and vsc_index >= 0 else branch_index
-                    st_ph = st_array[pf_idx] / sbase
-                    self.set_if_exists(mdl=mdl, key=st_key, value=float(np.real(st_ph)))
-                    st_sum += st_ph
+                    st_ph_value = _get_array_entry_if_in_range(st_array, pf_idx)
+                    if st_ph_value is None:
+                        pass
+                    else:
+                        st_ph = st_ph_value / sbase
+                        self.set_if_exists(mdl=mdl, key=st_key, value=float(np.real(st_ph)))
+                        st_sum += st_ph
                 else:
                     pass
 
@@ -4050,21 +4173,23 @@ class EmtProblemDae(EmtProblemTemplate):
                 if sf_array is None or voltage_from_array is None:
                     i_f = 0.0 + 0.0j
                 else:
-                    sf_ph = sf_array[pf_idx] / sbase
-                    vf_ph = voltage_from_array[f_bus_idx]
-                    if abs(vf_ph) <= 1e-12:
+                    sf_ph_value = _get_array_entry_if_in_range(sf_array, pf_idx)
+                    vf_ph = _get_array_entry_if_in_range(voltage_from_array, f_bus_idx)
+                    if sf_ph_value is None or vf_ph is None or abs(vf_ph) <= 1e-12:
                         i_f = 0.0 + 0.0j
                     else:
+                        sf_ph = sf_ph_value / sbase
                         i_f = np.conj(sf_ph / vf_ph)
 
                 if st_array is None or voltage_to_array is None:
                     i_t = 0.0 + 0.0j
                 else:
-                    st_ph = st_array[pf_idx] / sbase
-                    vt_ph = voltage_to_array[t_bus_idx]
-                    if abs(vt_ph) <= 1e-12:
+                    st_ph_value = _get_array_entry_if_in_range(st_array, pf_idx)
+                    vt_ph = _get_array_entry_if_in_range(voltage_to_array, t_bus_idx)
+                    if st_ph_value is None or vt_ph is None or abs(vt_ph) <= 1e-12:
                         i_t = 0.0 + 0.0j
                     else:
+                        st_ph = st_ph_value / sbase
                         i_t = np.conj(st_ph / vt_ph)
 
                 i_f0: float = np.sqrt(2.0) * np.imag(i_f)
@@ -4081,11 +4206,11 @@ class EmtProblemDae(EmtProblemTemplate):
             else:
                 pass
 
-        if mdl.E(VarPowerFlowRefferenceType.if_N) is not None:
+        neutral_if_var = _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowRefferenceType.if_N)
+        if neutral_if_var is not None:
             i_f_neutral = -(from_phase_currents.get("A", 0.0 + 0.0j) + from_phase_currents.get("B", 0.0 + 0.0j) + from_phase_currents.get("C", 0.0 + 0.0j))
             neutral_value = float(np.sqrt(2.0) * np.imag(i_f_neutral))
             self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.if_N, value=neutral_value)
-            neutral_if_var = mdl.E(VarPowerFlowRefferenceType.if_N)
             if neutral_if_var is not None:
                 self._temp_post_init_guess[neutral_if_var.uid] = neutral_value
             else:
@@ -4093,11 +4218,11 @@ class EmtProblemDae(EmtProblemTemplate):
         else:
             pass
 
-        if mdl.E(VarPowerFlowRefferenceType.it_N) is not None:
+        neutral_it_var = _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowRefferenceType.it_N)
+        if neutral_it_var is not None:
             i_t_neutral = -(to_phase_currents.get("A", 0.0 + 0.0j) + to_phase_currents.get("B", 0.0 + 0.0j) + to_phase_currents.get("C", 0.0 + 0.0j))
             neutral_value = float(np.sqrt(2.0) * np.imag(i_t_neutral))
             self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.it_N, value=neutral_value)
-            neutral_it_var = mdl.E(VarPowerFlowRefferenceType.it_N)
             if neutral_it_var is not None:
                 self._temp_post_init_guess[neutral_it_var.uid] = neutral_value
             else:
@@ -4116,7 +4241,11 @@ class EmtProblemDae(EmtProblemTemplate):
                 if voltage_from_array is None:
                     vf_ph = 0.0 + 0.0j
                 else:
-                    vf_ph = voltage_from_array[f_bus_idx]
+                    vf_ph = _get_array_entry_if_in_range(voltage_from_array, f_bus_idx)
+                    if vf_ph is None:
+                        vf_ph = 0.0 + 0.0j
+                    else:
+                        pass
                 d_vf: float = omega_base * np.sqrt(2.0) * np.real(vf_ph)
                 self.set_external_param(mdl, d_vf_key, d_vf)
             else:
@@ -4126,7 +4255,11 @@ class EmtProblemDae(EmtProblemTemplate):
                 if voltage_to_array is None:
                     vt_ph = 0.0 + 0.0j
                 else:
-                    vt_ph = voltage_to_array[t_bus_idx]
+                    vt_ph = _get_array_entry_if_in_range(voltage_to_array, t_bus_idx)
+                    if vt_ph is None:
+                        vt_ph = 0.0 + 0.0j
+                    else:
+                        pass
                 d_vt: float = omega_base * np.sqrt(2.0) * np.real(vt_ph)
                 self.set_external_param(mdl, d_vt_key, d_vt)
             else:
@@ -4378,11 +4511,11 @@ class EmtProblemDae(EmtProblemTemplate):
             else:
                 pass
 
-        if mdl.E(VarPowerFlowRefferenceType.if_N) is not None:
+        neutral_if_var = _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowRefferenceType.if_N)
+        if neutral_if_var is not None:
             i_f_neutral = -(from_phase_currents.get("A", 0.0 + 0.0j) + from_phase_currents.get("B", 0.0 + 0.0j) + from_phase_currents.get("C", 0.0 + 0.0j))
             neutral_value = float(np.sqrt(2.0) * np.imag(i_f_neutral))
             self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.if_N, value=neutral_value)
-            neutral_if_var = mdl.E(VarPowerFlowRefferenceType.if_N)
             if neutral_if_var is not None:
                 self._temp_post_init_guess[neutral_if_var.uid] = neutral_value
             else:
@@ -4390,11 +4523,11 @@ class EmtProblemDae(EmtProblemTemplate):
         else:
             pass
 
-        if mdl.E(VarPowerFlowRefferenceType.it_N) is not None:
+        neutral_it_var = _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowRefferenceType.it_N)
+        if neutral_it_var is not None:
             i_t_neutral = -(to_phase_currents.get("A", 0.0 + 0.0j) + to_phase_currents.get("B", 0.0 + 0.0j) + to_phase_currents.get("C", 0.0 + 0.0j))
             neutral_value = float(np.sqrt(2.0) * np.imag(i_t_neutral))
             self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.it_N, value=neutral_value)
-            neutral_it_var = mdl.E(VarPowerFlowRefferenceType.it_N)
             if neutral_it_var is not None:
                 self._temp_post_init_guess[neutral_it_var.uid] = neutral_value
             else:

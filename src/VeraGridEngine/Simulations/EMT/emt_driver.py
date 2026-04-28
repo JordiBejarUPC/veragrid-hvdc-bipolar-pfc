@@ -180,9 +180,19 @@ class EmtSimulationDriver(DriverTemplate):
             #uncomment when convergence and well initialized is reported
             t, y, dy, well_initialized, converged = solver.simulate(boundary_updater=boundary_updater)
 
-            print(f"Event group {emt_events_group} successfully simulated.")
-            self.report_text(
-                f"Event group {emt_events_group} successfully simulated.")
+            if converged and well_initialized:
+                print(f"Event group {emt_events_group} successfully simulated.")
+                self.report_text(
+                    f"Event group {emt_events_group} successfully simulated.")
+            else:
+                print(
+                    f"Event group {emt_events_group} finished with EMT Newton failures "
+                    f"(well_initialized={well_initialized}, converged={converged})."
+                )
+                self.report_text(
+                    f"Event group {emt_events_group} finished with EMT Newton failures "
+                    f"(well_initialized={well_initialized}, converged={converged})."
+                )
 
             print(f"results = {y}")
 

@@ -7,6 +7,7 @@ import numpy as np
 from typing import Callable, Dict
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
 from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicJacobian
+from VeraGridEngine.Utils.Symbolic.jit_compiler import SubexpressionAnalyzer
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic_io import duplicate_block
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
@@ -57,6 +58,14 @@ def test_uid_uniqueness():
     assert a.uid != b.uid
     expr = a + b
     assert len({a.uid, b.uid, expr.uid}) == 3  # all distinct
+
+
+def test_subexpression_analyzer_distinguishes_duplicate_names_by_uid() -> None:
+    a = sym.Var("x")
+    b = sym.Var("x")
+    analyzer = SubexpressionAnalyzer()
+
+    assert analyzer.hash_expr(a + sym.Const(1.0)) != analyzer.hash_expr(b + sym.Const(1.0))
 
 # -----------------------------------------------------------------------------
 # JSON round‑trip

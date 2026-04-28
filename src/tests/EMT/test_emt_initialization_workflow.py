@@ -26,6 +26,7 @@ from VeraGridEngine.enumerations import DynamicIntegrationMethod, EmtSolverTypes
 
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.initialization_emt import (
+    _collect_reduced_initialization_problem,
     run_emt_explicit_initialization,
     run_emt_native_initialization,
 )
@@ -427,6 +428,49 @@ def test_consistent_newton_initializes_missing_algebraic_and_dx0() -> None:
     assert abs(x0[idx_x] - 2.0) < 1e-9
     assert abs(x0[idx_y] - 2.0) < 1e-9
     assert abs(dx0[idx_dx] - 0.0) < 1e-9
+
+
+def test_reduced_initialization_problem_keeps_seeded_algebraic_equations() -> None:
+    """
+    The reduced EMT initialization system must always include algebraic equations.
+
+    Seeded PF guesses are only starting points; they must not suppress the
+    algebraic correction stage when consistency equations are still present.
+    """
+
+    class _ProblemStub:
+        __slots__ = ("init_guess", "sys_block", "_state_vars", "_state_eqs", "_algebraic_vars", "_algebraic_eqs")
+
+        def __init__(self) -> None:
+            state_var = Var("state_seeded")
+            algebraic_var = Var("alg_seeded")
+            self.init_guess = dict({state_var.uid: 3.0, algebraic_var.uid: 2.0})
+            self.sys_block = Block()
+            self.sys_block.init_eqs = dict()
+            self._state_vars = list([state_var])
+            self._state_eqs = list([Const(0.0)])
+            self._algebraic_vars = list([algebraic_var])
+            self._algebraic_eqs = list([algebraic_var - Const(1.0)])
+
+        def get_state_vars(self):
+            return self._state_vars
+
+        def get_state_eqs(self):
+            return self._state_eqs
+
+        def get_algebraic_vars(self):
+            return self._algebraic_vars
+
+        def get_algebraic_eqs(self):
+            return self._algebraic_eqs
+
+    payload = _collect_reduced_initialization_problem(_ProblemStub(), allow_state_equilibrium=True)
+
+    assert payload is not None
+    unknown_vars, residual_eqs, state_unknown_mask = payload
+    assert [var.name for var in unknown_vars] == ["alg_seeded"]
+    assert len(residual_eqs) == 1
+    assert state_unknown_mask.tolist() == [0.0]
 
 
 def test_consistent_newton_uses_state_equilibrium_for_unresolved_states() -> None:
