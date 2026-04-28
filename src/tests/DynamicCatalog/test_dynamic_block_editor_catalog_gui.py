@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import math
 import sys
+from pathlib import Path
 
+import numpy as np
 import pytest
 from PySide6 import QtCore, QtWidgets
 from PySide6.QtTest import QTest
@@ -11,9 +13,11 @@ import VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor as dynamic_block_edi
 import VeraGridEngine.api as gce
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import get_modal_template_metadata
+from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import _transformer_modal_config_allows_modify
 from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import LookupArrayLinearDialog
 from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import LookupMatrixLinearDialog
 from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import _parse_clipboard_grid
+from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_runtime import get_jmarti_block_fit_bundle
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Templates.BasicBlockCatalog import BasicBlockTemplateDescriptor
 from VeraGridEngine.Templates.BasicBlockCatalog import get_basic_block_catalog_descriptor_by_key
@@ -612,6 +616,282 @@ def test_emt_phase_wizard_block_supports_modify_template(monkeypatch) -> None:
     editor.close()
 
 
+def test_jmarti_line_emt_block_supports_modal_configuration_and_modify_template(monkeypatch) -> None:
+    circuit = gce.MultiCircuit(Sbase=25.0, fbase=60.0)
+    bus0 = gce.Bus(name="BusLine0", Vnom=13.8)
+    bus1 = gce.Bus(name="BusLine1", Vnom=13.8)
+    line = gce.Line(name="LineGui", bus_from=bus0, bus_to=bus1)
+    editor = _build_editor(DynamicSimulationMode.EMT, api_object=line, circuit=circuit)
+    leaf_labels = _collect_leaf_labels(editor.library_model)
+
+    assert "Emt JMarti line" in leaf_labels
+
+    def _build_jmarti_config(phase_n: bool, phase_a: bool, phase_b: bool, phase_c: bool) -> dict[str, object]:
+        return dict({
+            "phase_n": phase_n,
+            "phase_a": phase_a,
+            "phase_b": phase_b,
+            "phase_c": phase_c,
+            "data_source_mode": "auto_template",
+            "nominal_frequency_hz": 60.0,
+            "import_file_path": "",
+            "import_line_length_m": 0.0,
+            "sweep_low_hz": 10.0,
+            "sweep_high_hz": 10000.0,
+            "sweep_sample_count": 32,
+            "reference_frequency_hz": 0.0,
+            "use_frequency_exploration_window": False,
+            "exploration_low_hz": 0.0,
+            "exploration_high_hz": 0.0,
+            "use_delay_fit_window": False,
+            "delay_fit_low_hz": 0.0,
+            "delay_fit_high_hz": 0.0,
+            "decoupling_warning_tolerance": 1.0e-2,
+            "loewner_relative_tolerance": 1.0e-8,
+            "maximum_model_order": 40,
+            "forced_model_order": 0,
+            "minimum_frequency_samples": 4,
+            "vf_max_iterations": 8,
+            "vf_pole_shift_tolerance": 1.0e-6,
+            "vf_enforce_stable_poles": True,
+            "vf_stability_real_part_floor": 1.0e-8,
+            "vf_include_constant_term": True,
+            "vf_include_proportional_term": False,
+            "passivity_frequency_sample_count": 1024,
+            "passivity_minimum_real_yc_tolerance": 1.0e-8,
+            "passivity_maximum_hres_gain_tolerance": 1.0e-6,
+        })
+
+    class _CreateDialogStub:
+        def __init__(self, parent=None, initial_config=None) -> None:
+            _unused = (parent, initial_config)
+
+        def exec(self) -> int:
+            return int(QtWidgets.QDialog.DialogCode.Accepted)
+
+        def get_configuration(self) -> dict[str, object]:
+            return _build_jmarti_config(False, True, True, False)
+
+    class _ModifyDialogStub:
+        def __init__(self, parent=None, initial_config=None) -> None:
+            _unused = (parent, initial_config)
+
+        def exec(self) -> int:
+            return int(QtWidgets.QDialog.DialogCode.Accepted)
+
+        def get_configuration(self) -> dict[str, object]:
+            return _build_jmarti_config(False, True, True, True)
+
+    monkeypatch.setattr(dynamic_block_editor_module, "JMartiLineEmtDialog", _CreateDialogStub)
+    block_item = editor.create_library_payload_item(BlockType.EMT_JMARTI_LINE, 10.0, 20.0)
+    assert block_item is not None
+
+    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    assert modal_kind == "jmarti_line_emt"
+    assert modal_config is not None
+    assert modal_config["block_type"] == BlockType.EMT_JMARTI_LINE.name
+    assert modal_config["phase_b"] is True
+    assert modal_config["phase_c"] is False
+    assert modal_config["fit_ready"] is False
+    assert "Fit not computed" in str(modal_config["fit_status"])
+    assert "fit_diagnostics_text" in modal_config
+
+    monkeypatch.setattr(dynamic_block_editor_module, "JMartiLineEmtDialog", _ModifyDialogStub)
+    editor.modify_scene_item_template(block_item)
+
+    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    assert modal_kind == "jmarti_line_emt"
+    assert modal_config is not None
+    assert modal_config["block_type"] == BlockType.EMT_JMARTI_LINE.name
+    assert modal_config["phase_c"] is True
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
+def test_jmarti_line_emt_block_builds_sequence_fit_and_persists_diagnostics(monkeypatch) -> None:
+    circuit = gce.MultiCircuit(Sbase=25.0, fbase=50.0)
+    bus0 = gce.Bus(name="BusSeqGui0", Vnom=110.0)
+    bus1 = gce.Bus(name="BusSeqGui1", Vnom=110.0)
+    line = gce.Line(
+        name="LineSeqGui",
+        bus_from=bus0,
+        bus_to=bus1,
+        length=5.0,
+        template=gce.SequenceLineType(R=0.12, X=0.35, B=3.0, R0=0.28, X0=0.78, B0=1.8),
+    )
+    editor = _build_editor(DynamicSimulationMode.EMT, api_object=line, circuit=circuit)
+
+    class _DialogStub:
+        def __init__(self, parent=None, initial_config=None) -> None:
+            _unused = (parent, initial_config)
+
+        def exec(self) -> int:
+            return int(QtWidgets.QDialog.DialogCode.Accepted)
+
+        def get_configuration(self) -> dict[str, object]:
+            return dict({
+                "phase_n": False,
+                "phase_a": True,
+                "phase_b": True,
+                "phase_c": True,
+                "data_source_mode": "auto_template",
+                "nominal_frequency_hz": 50.0,
+                "import_file_path": "",
+                "import_line_length_m": 0.0,
+                "sweep_low_hz": 10.0,
+                "sweep_high_hz": 640.0,
+                "sweep_sample_count": 6,
+                "reference_frequency_hz": 0.0,
+                "use_frequency_exploration_window": False,
+                "exploration_low_hz": 0.0,
+                "exploration_high_hz": 0.0,
+                "use_delay_fit_window": False,
+                "delay_fit_low_hz": 0.0,
+                "delay_fit_high_hz": 0.0,
+                "decoupling_warning_tolerance": 1.0e-2,
+                "loewner_relative_tolerance": 1.0e-8,
+                "maximum_model_order": 40,
+                "forced_model_order": 1,
+                "minimum_frequency_samples": 4,
+                "vf_max_iterations": 6,
+                "vf_pole_shift_tolerance": 1.0e-6,
+                "vf_enforce_stable_poles": True,
+                "vf_stability_real_part_floor": 1.0e-8,
+                "vf_include_constant_term": True,
+                "vf_include_proportional_term": False,
+                "passivity_frequency_sample_count": 256,
+                "passivity_minimum_real_yc_tolerance": 1.0e-8,
+                "passivity_maximum_hres_gain_tolerance": 1.0e-6,
+            })
+
+    monkeypatch.setattr(dynamic_block_editor_module, "JMartiLineEmtDialog", _DialogStub)
+    block_item = editor.create_library_payload_item(BlockType.EMT_JMARTI_LINE, 10.0, 20.0)
+    assert block_item is not None
+    assert get_jmarti_block_fit_bundle(block_item.subsys) is not None
+
+    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    assert modal_kind == "jmarti_line_emt"
+    assert modal_config is not None
+    assert modal_config["fit_ready"] is True
+    assert "Fit computed" in str(modal_config["fit_status"])
+    assert "Automatic RLGC sweep from SequenceLineType" in str(modal_config["fit_diagnostics_text"])
+    assert "Mode 0:" in str(modal_config["fit_diagnostics_text"])
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
+def test_jmarti_line_emt_block_builds_fit_from_imported_npz(monkeypatch, tmp_path: Path) -> None:
+    circuit = gce.MultiCircuit(Sbase=25.0, fbase=60.0)
+    bus0 = gce.Bus(name="BusImportGui0", Vnom=13.8)
+    bus1 = gce.Bus(name="BusImportGui1", Vnom=13.8)
+    line = gce.Line(name="LineImportGui", bus_from=bus0, bus_to=bus1, length=1.8)
+    editor = _build_editor(DynamicSimulationMode.EMT, api_object=line, circuit=circuit)
+    frequency_hz: np.ndarray = np.asarray([10.0, 40.0, 160.0, 640.0], dtype=np.float64)
+    z_per_length: np.ndarray = np.zeros((4, 3, 3), dtype=np.complex128)
+    y_per_length: np.ndarray = np.zeros((4, 3, 3), dtype=np.complex128)
+    sample_index: int = 0
+    npz_path: Path = tmp_path / "jmarti_gui_import.npz"
+
+    while sample_index < 4:
+        z_per_length[sample_index, :, :] = np.diag(np.asarray([
+            0.12 + 1j * (0.20 + 0.02 * sample_index),
+            0.13 + 1j * (0.25 + 0.02 * sample_index),
+            0.15 + 1j * (0.30 + 0.02 * sample_index),
+        ], dtype=np.complex128))
+        y_per_length[sample_index, :, :] = np.diag(np.asarray([
+            1j * (3.0e-6 + 2.0e-7 * sample_index),
+            1j * (3.2e-6 + 2.0e-7 * sample_index),
+            1j * (3.4e-6 + 2.0e-7 * sample_index),
+        ], dtype=np.complex128))
+        sample_index += 1
+
+    np.savez(
+        npz_path,
+        frequency_hz=frequency_hz,
+        z_per_length=z_per_length,
+        y_per_length=y_per_length,
+        phase_labels=np.asarray(["A", "B", "C"]),
+        line_length_m=np.asarray([1800.0], dtype=np.float64),
+    )
+
+    class _DialogStub:
+        def __init__(self, parent=None, initial_config=None) -> None:
+            _unused = (parent, initial_config)
+
+        def exec(self) -> int:
+            return int(QtWidgets.QDialog.DialogCode.Accepted)
+
+        def get_configuration(self) -> dict[str, object]:
+            return dict({
+                "phase_n": False,
+                "phase_a": True,
+                "phase_b": False,
+                "phase_c": True,
+                "data_source_mode": "import_frequency_samples",
+                "nominal_frequency_hz": 60.0,
+                "import_file_path": str(npz_path),
+                "import_line_length_m": 0.0,
+                "sweep_low_hz": 10.0,
+                "sweep_high_hz": 640.0,
+                "sweep_sample_count": 6,
+                "reference_frequency_hz": 0.0,
+                "use_frequency_exploration_window": False,
+                "exploration_low_hz": 0.0,
+                "exploration_high_hz": 0.0,
+                "use_delay_fit_window": False,
+                "delay_fit_low_hz": 0.0,
+                "delay_fit_high_hz": 0.0,
+                "decoupling_warning_tolerance": 1.0e-2,
+                "loewner_relative_tolerance": 1.0e-8,
+                "maximum_model_order": 40,
+                "forced_model_order": 1,
+                "minimum_frequency_samples": 4,
+                "vf_max_iterations": 6,
+                "vf_pole_shift_tolerance": 1.0e-6,
+                "vf_enforce_stable_poles": True,
+                "vf_stability_real_part_floor": 1.0e-8,
+                "vf_include_constant_term": True,
+                "vf_include_proportional_term": False,
+                "passivity_frequency_sample_count": 256,
+                "passivity_minimum_real_yc_tolerance": 1.0e-8,
+                "passivity_maximum_hres_gain_tolerance": 1.0e-6,
+            })
+
+    monkeypatch.setattr(dynamic_block_editor_module, "JMartiLineEmtDialog", _DialogStub)
+    block_item = editor.create_library_payload_item(BlockType.EMT_JMARTI_LINE, 10.0, 20.0)
+    assert block_item is not None
+    assert get_jmarti_block_fit_bundle(block_item.subsys) is not None
+
+    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    assert modal_kind == "jmarti_line_emt"
+    assert modal_config is not None
+    assert modal_config["fit_ready"] is True
+    assert str(npz_path) in str(modal_config["fit_source_description"])
+    assert "Source: Imported NPZ samples" in str(modal_config["fit_diagnostics_text"])
+    assert "Phases: A, C" in str(modal_config["fit_diagnostics_text"])
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
+def test_line_emt_editor_exposes_jmarti_device_block() -> None:
+    circuit = gce.MultiCircuit(Sbase=25.0, fbase=60.0)
+    bus0 = gce.Bus(name="BusLineDevice0", Vnom=13.8)
+    bus1 = gce.Bus(name="BusLineDevice1", Vnom=13.8)
+    line = gce.Line(name="LineDeviceGui", bus_from=bus0, bus_to=bus1)
+    editor = _build_editor(DynamicSimulationMode.EMT, api_object=line, circuit=circuit)
+    leaf_labels = _collect_leaf_labels(editor.library_model)
+
+    assert "Emt pi line" in leaf_labels
+    assert "Emt Bergeron line" in leaf_labels
+    assert "Emt JMarti line" in leaf_labels
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
 def test_simple_r_emt_shunt_block_is_created_and_supports_modify_template(monkeypatch) -> None:
     circuit = gce.MultiCircuit(Sbase=25.0, fbase=60.0)
     bus = gce.Bus(name="BusSimpleR", Vnom=13.8)
@@ -891,6 +1171,8 @@ def test_transformer_emt_block_inherits_topology_from_transformer_device_without
     assert modal_config is not None
     assert modal_config["conn_f"] == WindingType.Delta
     assert modal_config["conn_t"] == WindingType.GroundedStar
+    assert modal_config["allow_modify_template"] is False
+    assert _transformer_modal_config_allows_modify(modal_kind, modal_config) is False
     assert _port_full_names(block_item)[:3] == ["vf_A_transformer_emt_template", "vf_B_transformer_emt_template", "vf_C_transformer_emt_template"]
     assert _port_full_names(block_item)[3:] == ["vt_N_transformer_emt_template", "vt_A_transformer_emt_template", "vt_B_transformer_emt_template", "vt_C_transformer_emt_template"]
     assert transformer.conn_f == WindingType.Delta
@@ -907,6 +1189,7 @@ def test_transformer_emt_block_inherits_topology_from_transformer_device_without
     assert modal_config is not None
     assert modal_config["conn_f"] == WindingType.GroundedStar
     assert modal_config["conn_t"] == WindingType.GroundedStar
+    assert modal_config["allow_modify_template"] is False
     assert _port_full_names(updated_item)[:4] == ["vf_N_transformer_emt_template", "vf_A_transformer_emt_template", "vf_B_transformer_emt_template", "vf_C_transformer_emt_template"]
     assert _port_full_names(updated_item)[4:] == ["vt_N_transformer_emt_template", "vt_A_transformer_emt_template", "vt_B_transformer_emt_template", "vt_C_transformer_emt_template"]
     assert transformer.conn_f == WindingType.GroundedStar
@@ -938,6 +1221,8 @@ def test_xfmr_emt_block_inherits_topology_from_transformer_device_without_modal(
     assert modal_config is not None
     assert modal_config["conn_f"] == WindingType.Delta
     assert modal_config["conn_t"] == WindingType.GroundedStar
+    assert modal_config["allow_modify_template"] is False
+    assert _transformer_modal_config_allows_modify(modal_kind, modal_config) is False
     assert _port_full_names(block_item)[:3] == ["vf_A_xfmr_emt_template", "vf_B_xfmr_emt_template", "vf_C_xfmr_emt_template"]
     assert _port_full_names(block_item)[3:] == ["vt_N_xfmr_emt_template", "vt_A_xfmr_emt_template", "vt_B_xfmr_emt_template", "vt_C_xfmr_emt_template"]
 
@@ -952,6 +1237,7 @@ def test_xfmr_emt_block_inherits_topology_from_transformer_device_without_modal(
     assert modal_config is not None
     assert modal_config["conn_f"] == WindingType.GroundedStar
     assert modal_config["conn_t"] == WindingType.GroundedStar
+    assert modal_config["allow_modify_template"] is False
     assert _port_full_names(updated_item)[:4] == ["vf_N_xfmr_emt_template", "vf_A_xfmr_emt_template", "vf_B_xfmr_emt_template", "vf_C_xfmr_emt_template"]
     assert _port_full_names(updated_item)[4:] == ["vt_N_xfmr_emt_template", "vt_A_xfmr_emt_template", "vt_B_xfmr_emt_template", "vt_C_xfmr_emt_template"]
 
@@ -975,7 +1261,9 @@ def test_transformer_type_emt_editor_exposes_transformer_blocks_and_inherits_hv_
 
     assert "Transformer" in leaf_labels
     assert "XFMR Transformer" in leaf_labels
-    assert "ZIP load" not in leaf_labels
+    assert "ZIP load" in leaf_labels
+    assert "Switch EMT" in leaf_labels
+    assert "Emt pi line" not in leaf_labels
     block_item = editor.create_library_payload_item(BlockType.TRAFO_EMT, 10.0, 20.0)
     assert block_item is not None
 
@@ -984,6 +1272,33 @@ def test_transformer_type_emt_editor_exposes_transformer_blocks_and_inherits_hv_
     assert modal_config is not None
     assert modal_config["conn_f"] == WindingType.Delta
     assert modal_config["conn_t"] == WindingType.GroundedStar
+    assert modal_config["allow_modify_template"] is False
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
+def test_transformer_type_emt_editor_inherits_zigzag_without_modal(monkeypatch) -> None:
+    circuit = gce.MultiCircuit(Sbase=25.0, fbase=60.0)
+    transformer_type = gce.TransformerType()
+    transformer_type.conn_hv = WindingType.ZigZag
+    transformer_type.conn_lv = WindingType.GroundedStar
+    editor = _build_editor(DynamicSimulationMode.EMT, api_object=transformer_type, circuit=circuit)
+
+    class _DialogMustNotOpen:
+        def __init__(self, *args, **kwargs) -> None:
+            raise AssertionError("Transformer topology dialog should not open when the transformer type already defines conn_hv/conn_lv")
+
+    monkeypatch.setattr(dynamic_block_editor_module, "TransformerTopologyEmtDialog", _DialogMustNotOpen)
+    block_item = editor.create_library_payload_item(BlockType.TRAFO_EMT, 10.0, 20.0)
+    assert block_item is not None
+
+    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    assert modal_kind == "transformer_topology_emt"
+    assert modal_config is not None
+    assert modal_config["conn_f"] == WindingType.ZigZag
+    assert modal_config["conn_t"] == WindingType.GroundedStar
+    assert _port_full_names(block_item)[:3] == ["vf_A_transformer_emt_template", "vf_B_transformer_emt_template", "vf_C_transformer_emt_template"]
 
     editor.has_unapplied_changes = False
     editor.close()
@@ -1015,6 +1330,8 @@ def test_transformer_emt_block_falls_back_to_manual_dialog_without_device_topolo
     assert modal_config is not None
     assert modal_config["conn_f"] == WindingType.Delta
     assert modal_config["conn_t"] == WindingType.GroundedStar
+    assert modal_config["allow_modify_template"] is True
+    assert _transformer_modal_config_allows_modify(modal_kind, modal_config) is True
 
     editor.has_unapplied_changes = False
     editor.close()

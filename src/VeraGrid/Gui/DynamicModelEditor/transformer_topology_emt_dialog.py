@@ -43,6 +43,7 @@ class TransformerTopologyEmtDialog(QtWidgets.QDialog):
             combo.addItem("Neutral Star (Yn)", WindingType.NeutralStar)
             combo.addItem("Floating Star (Y)", WindingType.FloatingStar)
             combo.addItem("Delta", WindingType.Delta)
+            combo.addItem("ZigZag (Z)", WindingType.ZigZag)
 
         form_layout.addRow("From winding", self.from_combo)
         form_layout.addRow("To winding", self.to_combo)

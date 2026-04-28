@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Dict
+from typing import Dict, List, Tuple
 from VeraGridEngine.enumerations import (
     DeviceType,
     WindingType,
@@ -14,7 +14,9 @@ from VeraGridEngine.enumerations import (
 )
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
-from VeraGridEngine.Utils.Symbolic.block import Var, Expr
+from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_grounding_link_emt_template
+from VeraGridEngine.Templates.Emt.transformer_emt_template import _attach_transformer_editor_diagram
+from VeraGridEngine.Utils.Symbolic.block import Block, Var, Expr
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
 
 
@@ -390,6 +392,10 @@ def get_xfmr_emt_template(
     it_act: list[Var] = [vf.add_var(name=f"it_{ph}_{name}") for ph in ("A", "B", "C")]
     if_n_act: Var | None = vf.add_var(name=f"if_N_{name}") if from_has_neutral_port else None
     it_n_act: Var | None = vf.add_var(name=f"it_N_{name}") if to_has_neutral_port else None
+    from_ground_current: Var | None = None
+    to_ground_current: Var | None = None
+    from_grounding_link_block: Block | None = None
+    to_grounding_link_block: Block | None = None
     i_return_path: Var = vf.add_var(name=f"i_return_path_{name}")
     i_return_total: Var = vf.add_var(name=f"i_return_total_{name}")
 
@@ -407,6 +413,40 @@ def get_xfmr_emt_template(
         pass
 
     input_vars.extend(v_t)
+
+    if conn_f == WindingType.GroundedStar and v_f_n is not None:
+        from_grounding_link_template: EmtModelTemplate = get_grounding_link_emt_template(
+            vf=vf,
+            include_r=False,
+            include_l=False,
+            include_c=False,
+            solid_connection=True,
+            nested=True,
+            name=name + "_from_grounding_link",
+        )
+        from_grounding_link_template.block.connect(from_grounding_link_template.block.in_vars, [v_f_n])
+        from_ground_current = from_grounding_link_template.block.out_vars[0]
+        from_grounding_link_block = from_grounding_link_template.block
+        templ.block.add(from_grounding_link_block)
+    else:
+        pass
+
+    if conn_t == WindingType.GroundedStar and v_t_n is not None:
+        to_grounding_link_template: EmtModelTemplate = get_grounding_link_emt_template(
+            vf=vf,
+            include_r=False,
+            include_l=False,
+            include_c=False,
+            solid_connection=True,
+            nested=True,
+            name=name + "_to_grounding_link",
+        )
+        to_grounding_link_template.block.connect(to_grounding_link_template.block.in_vars, [v_t_n])
+        to_ground_current = to_grounding_link_template.block.out_vars[0]
+        to_grounding_link_block = to_grounding_link_template.block
+        templ.block.add(to_grounding_link_block)
+    else:
+        pass
 
     algebraic_vars: list[Var] = (
         i_leg_core
@@ -623,12 +663,26 @@ def get_xfmr_emt_template(
         )
 
     if if_n_act is not None:
-        alg_eqs.append(if_n_act + if_act[0] + if_act[1] + if_act[2])
+        neutral_from_kcl: Expr = if_n_act + if_act[0] + if_act[1] + if_act[2]
+
+        if from_ground_current is not None:
+            neutral_from_kcl = neutral_from_kcl + from_ground_current
+        else:
+            pass
+
+        alg_eqs.append(neutral_from_kcl)
     else:
         pass
 
     if it_n_act is not None:
-        alg_eqs.append(it_n_act + it_act[0] + it_act[1] + it_act[2])
+        neutral_to_kcl: Expr = it_n_act + it_act[0] + it_act[1] + it_act[2]
+
+        if to_ground_current is not None:
+            neutral_to_kcl = neutral_to_kcl + to_ground_current
+        else:
+            pass
+
+        alg_eqs.append(neutral_to_kcl)
     else:
         pass
 
@@ -814,5 +868,23 @@ def get_xfmr_emt_template(
         diff_init_eqs[dq_t[k]] = i_cap_t[k]
 
     templ.block.diff_init_eqs = diff_init_eqs
+
+    grounding_pairs: List[Tuple[Var, Block]] = list()
+    if v_f_n is not None and from_grounding_link_block is not None:
+        grounding_pairs.append((v_f_n, from_grounding_link_block))
+    else:
+        pass
+
+    if v_t_n is not None and to_grounding_link_block is not None:
+        grounding_pairs.append((v_t_n, to_grounding_link_block))
+    else:
+        pass
+
+    _attach_transformer_editor_diagram(
+        root_block=templ.block,
+        input_vars=input_vars,
+        output_vars=output_vars,
+        grounding_pairs=grounding_pairs,
+    )
 
     return templ

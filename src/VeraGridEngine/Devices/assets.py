@@ -8909,19 +8909,19 @@ class Assets:
             _build_lazy_emt_template(
                 builder=tem.get_bridge_2level_3ph_emt_template,
                 name="bridge_2level_3ph_emt",
-                tpe=DeviceType.DynamicModelHostDevice,
+                tpe=DeviceType.VscDevice,
                 kwargs=dict(vf=self._var_factory, name="bridge_2level_3ph_emt"),
             ),
             _build_lazy_emt_template(
                 builder=tem.get_bridge_filter_2level_3ph_emt_template,
                 name="bridge_filter_2level_3ph_emt",
-                tpe=DeviceType.DynamicModelHostDevice,
+                tpe=DeviceType.VscDevice,
                 kwargs=dict(vf=self._var_factory, name="bridge_filter_2level_3ph_emt"),
             ),
             _build_lazy_emt_template(
                 builder=tem.get_bridge_filter_control_2level_3ph_emt_template,
                 name="bridge_filter_control_2level_3ph_emt",
-                tpe=DeviceType.DynamicModelHostDevice,
+                tpe=DeviceType.VscDevice,
                 kwargs=dict(vf=self._var_factory, name="bridge_filter_control_2level_3ph_emt"),
             ),
             _build_lazy_emt_template(
@@ -8996,5 +8996,11 @@ class Assets:
                 name="Bergeron",
                 tpe=DeviceType.LineDevice,
                 kwargs=dict(vf=self._var_factory, phN=False, phA=True, phB=True, phC=True, name="Bergeron"),
+            ),
+            _build_lazy_emt_template(
+                builder=tem.get_jmarti_line_emt_template,
+                name="J_Marti",
+                tpe=DeviceType.LineDevice,
+                kwargs=dict(vf=self._var_factory, phN=False, phA=True, phB=True, phC=True, name="J_Marti"),
             ),
         ]
