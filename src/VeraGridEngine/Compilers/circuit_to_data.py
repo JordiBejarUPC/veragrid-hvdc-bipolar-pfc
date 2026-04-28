@@ -293,7 +293,8 @@ def get_bus_data(bus_data: BusData,
                  circuit: MultiCircuit,
                  areas_dict: Dict[Area, int],
                  t_idx: int | None,
-                 use_stored_guess=False, ) -> None:
+                 use_stored_guess=False,
+                 consider_grounded_buses: bool = False) -> None:
     """
 
     :param bus_data: BusData
@@ -301,6 +302,7 @@ def get_bus_data(bus_data: BusData,
     :param areas_dict:
     :param t_idx:
     :param use_stored_guess:
+    :param consider_grounded_buses:
     :return:
     """
 
@@ -319,7 +321,7 @@ def get_bus_data(bus_data: BusData,
         bus_data.is_grounded[i] = bus.is_grounded
 
         # Grounded buses go to zero
-        if bus.is_grounded:
+        if bus.is_grounded and consider_grounded_buses and bus.is_dc:
             bus_data.Vbus[i] = 1e-20 * np.exp(1j * 1e-20)  # effectively zero
 
         bus_data.angle_min[i] = bus.angle_min
@@ -2248,6 +2250,7 @@ def compile_numerical_circuit_at(circuit: MultiCircuit,
                                  control_remote_voltage: bool = True,
                                  fill_gep: bool = False,
                                  fill_three_phase: bool = False,
+                                 consider_grounded_buses: bool = False,
                                  logger=Logger()) -> NumericalCircuit:
     """
     Compile a NumericalCircuit from a MultiCircuit
@@ -2264,6 +2267,7 @@ def compile_numerical_circuit_at(circuit: MultiCircuit,
     :param control_remote_voltage: control remote voltage?
     :param fill_gep: fill generation expansion planning parameters?
     :param fill_three_phase:
+    :param consider_grounded_buses: Consider the is_grounded bus state
     :param logger: Logger instance
     :return: NumericalCircuit instance
     """
@@ -2307,6 +2311,7 @@ def compile_numerical_circuit_at(circuit: MultiCircuit,
         t_idx=t_idx,
         areas_dict=areas_dict,
         use_stored_guess=use_stored_guess,
+        consider_grounded_buses=consider_grounded_buses
     )
 
     gen_dict = get_generator_data(
