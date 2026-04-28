@@ -95,7 +95,6 @@ def get_battery_avm_emt_template(vf: VarFactory, name: str) -> Block:
     soc_min = vf.add_var(name=f"soc_min_bat_{name}")
     soc_max = vf.add_var(name=f"soc_max_bat_{name}")
     soc0 = vf.add_var(name=f"soc0_bat_{name}")
-
     c0 = vf.add_const(0.0)
     c1 = vf.add_const(1.0)
     c_half = vf.add_const(0.5)
@@ -105,6 +104,13 @@ def get_battery_avm_emt_template(vf: VarFactory, name: str) -> Block:
     p_abs: Expr = sym.sqrt(p_bat * p_bat + eps)
     p_dis_expr: Expr = c_half * (p_bat + p_abs)
     p_ch_expr: Expr = c_half * (-p_bat + p_abs)
+    v_oc0: Expr = v_min + (v_max - v_min) * soc0
+    i_bat0: Expr = c0
+    v_dc_bus0: Expr = v_oc0
+    p_bat0: Expr = c0
+    p_abs0: Expr = sym.sqrt(p_bat0 * p_bat0 + eps)
+    p_dis0: Expr = c_half * (p_bat0 + p_abs0)
+    p_ch0: Expr = c_half * (-p_bat0 + p_abs0)
 
     return Block(
         state_eqs=[
@@ -117,12 +123,12 @@ def get_battery_avm_emt_template(vf: VarFactory, name: str) -> Block:
         algebraic_eqs=[
             # Smooth SoC-dependent open-circuit voltage.
             v_oc - (v_min + (v_max - v_min) * soc_limited),
-            # The VSC DC terminal current is the battery current in this
-            # one-stage Level-1 model.
             i_bat - i_dc,
             # Resistive Thevenin terminal relation feeding the VSC DC bus.
             v_dc_bus - (v_oc - r_bat * i_bat),
-            # Battery terminal power, positive when discharging.
+            # Battery terminal power. The internal sign follows the imported
+            # converter DC-current convention, so discharge appears with the
+            # opposite sign and is flipped in the example diagnostics/plots.
             p_bat - v_dc_bus * i_bat,
             # Smooth discharge and charge power components.
             p_dis - p_dis_expr,
@@ -142,17 +148,134 @@ def get_battery_avm_emt_template(vf: VarFactory, name: str) -> Block:
         },
         init_eqs={
             soc: soc0,
-            v_oc: v_min + (v_max - v_min) * soc0,
-            i_bat: c0,
-            v_dc_bus: c1,
-            p_bat: c0,
-            p_dis: c0,
-            p_ch: c0,
+            v_oc: v_oc0,
+            i_bat: i_bat0,
+            v_dc_bus: v_dc_bus0,
+            p_bat: p_bat0,
+            p_dis: p_dis0,
+            p_ch: p_ch0,
         },
         diff_init_eqs={d_soc: c0},
         in_vars=[i_dc],
         out_vars=[v_dc_bus, soc, v_oc, i_bat, p_bat, p_dis, p_ch],
         name=f"{name}_battery",
+    )
+
+
+def _build_bess_outer_power_loop_block(vf: VarFactory, name: str) -> Block:
+    """
+    Build one BESS-specific outer loop that directly tracks active/reactive power.
+
+    Unlike the generic pseudo-converter outer loop, the Level-1 BESS does not
+    need to regulate an externally imposed DC-link voltage. The battery is the
+    DC source, so the outer loop is simpler and more robust when it regulates
+    the requested AC active and reactive powers directly.
+
+    :param vf: EMT symbolic variable factory.
+    :param name: Symbolic model name.
+    :return: Outer-loop block.
+    """
+    v_d = vf.add_var(name=f"v_d_outer_in_{name}")
+    v_q = vf.add_var(name=f"v_q_outer_in_{name}")
+    v_0 = vf.add_var(name=f"v_0_outer_in_{name}")
+    i_d = vf.add_var(name=f"i_d_outer_in_{name}")
+    i_q = vf.add_var(name=f"i_q_outer_in_{name}")
+    i_0 = vf.add_var(name=f"i_0_outer_in_{name}")
+    P = vf.add_var(name=f"P_outer_in_{name}")
+    Q = vf.add_var(name=f"Q_outer_in_{name}")
+    sbase = vf.add_var(name=f"sbase_outer_in_{name}")
+    P_ref = vf.add_var(name=f"P_ref_outer_in_{name}")
+    Q_ref = vf.add_var(name=f"Q_ref_outer_in_{name}")
+    Vpk = vf.add_var(name=f"Vpk_outer_in_{name}")
+    P_loss0 = vf.add_var(name=f"P_loss0_outer_in_{name}")
+    p_kp = vf.add_var(name=f"vdc_kp_outer_in_{name}")
+    p_ki = vf.add_var(name=f"vdc_ki_outer_in_{name}")
+    q_kp = vf.add_var(name=f"q_kp_outer_in_{name}")
+    q_ki = vf.add_var(name=f"q_ki_outer_in_{name}")
+    i_max = vf.add_var(name=f"i_max_outer_in_{name}")
+    tau_meas = vf.add_var(name=f"tau_meas_outer_in_{name}")
+    aw_gain = vf.add_var(name=f"aw_gain_outer_in_{name}")
+
+    xi_vdc = vf.add_var(name=f"xi_vdc_{name}")
+    xi_q = vf.add_var(name=f"xi_q_{name}")
+    P_f = vf.add_var(name=f"P_f_{name}")
+    Q_f = vf.add_var(name=f"Q_f_{name}")
+
+    d_xi_vdc = vf.add_diff_var(name=f"d_xi_vdc_{name}", base_var=xi_vdc)
+    d_xi_q = vf.add_diff_var(name=f"d_xi_q_{name}", base_var=xi_q)
+    d_P_f = vf.add_diff_var(name=f"d_P_f_{name}", base_var=P_f)
+    d_Q_f = vf.add_diff_var(name=f"d_Q_f_{name}", base_var=Q_f)
+
+    v_mag = vf.add_var(name=f"v_mag_{name}")
+    i_d_ff = vf.add_var(name=f"i_d_ff_{name}")
+    i_q_ff = vf.add_var(name=f"i_q_ff_{name}")
+    i_0_ref_u = vf.add_var(name=f"i_0_ref_u_{name}")
+    i_d_ref_u = vf.add_var(name=f"i_d_ref_u_{name}")
+    i_q_ref_u = vf.add_var(name=f"i_q_ref_u_{name}")
+    i_0_ref = vf.add_var(name=f"i_0_ref_{name}")
+    i_d_ref = vf.add_var(name=f"i_d_ref_{name}")
+    i_q_ref = vf.add_var(name=f"i_q_ref_{name}")
+
+    eps = vf.add_const(1e-10)
+    c0 = vf.add_const(0.0)
+    c23 = vf.add_const(2.0 / 3.0)
+    c3 = vf.add_const(3.0)
+    c32 = vf.add_const(1.5)
+
+    P_ref_pu = P_ref / sbase
+    Q_ref_pu = Q_ref / sbase
+    P_ac_ff_pu = P_ref_pu + P_loss0 / sbase
+    i_d0 = c23 * P_ac_ff_pu / (Vpk + eps)
+    i_q0 = c23 * Q_ref_pu / (Vpk + eps)
+    Q0 = c32 * Vpk * i_q0
+    i_d_cap = sym.hard_sat(i_d_ref_u, -i_max, i_max)
+    i_q_cap = sym.sqrt(sym.max(i_max * i_max - i_d_ref * i_d_ref, eps))
+    i_0_cap = sym.sqrt(sym.max((i_max * i_max - i_d_ref * i_d_ref - i_q_ref * i_q_ref) / c3, eps / c3))
+
+    return Block(
+        state_eqs=[
+            p_ki * ((P_ref_pu - P_f) + aw_gain * (i_d_ref - i_d_ref_u)),
+            q_ki * ((Q_ref_pu - Q_f) + aw_gain * (i_q_ref - i_q_ref_u)),
+            (P - P_f) / tau_meas,
+            (Q - Q_f) / tau_meas,
+        ],
+        state_vars=[xi_vdc, xi_q, P_f, Q_f],
+        diff_vars=[d_xi_vdc, d_xi_q, d_P_f, d_Q_f],
+        algebraic_eqs=[
+            v_mag - sym.sqrt(v_d * v_d + v_q * v_q + eps),
+            i_d_ff - c23 * P_ac_ff_pu / (v_mag + eps),
+            i_q_ff - c23 * Q_ref_pu / (v_mag + eps),
+            i_0_ref_u,
+            i_d_ref_u - (i_d_ff + p_kp * (P_ref_pu - P_f) + xi_vdc),
+            i_d_ref - i_d_cap,
+            i_q_ref_u - (i_q_ff + q_kp * (Q_ref_pu - Q_f) + xi_q),
+            i_q_ref - sym.hard_sat(i_q_ref_u, -i_q_cap, i_q_cap),
+            i_0_ref - sym.hard_sat(i_0_ref_u, -i_0_cap, i_0_cap),
+        ],
+        algebraic_vars=[v_mag, i_d_ff, i_q_ff, i_0_ref_u, i_d_ref_u, i_q_ref_u, i_0_ref, i_d_ref, i_q_ref],
+        init_eqs={
+            xi_vdc: i_d0 - (c23 * P_ac_ff_pu / (Vpk + eps)) - p_kp * (P_ref_pu - P),
+            xi_q: i_q0 - (c23 * Q_ref_pu / (Vpk + eps)) - q_kp * (Q_ref_pu - Q0),
+            P_f: P,
+            Q_f: Q0,
+            v_mag: Vpk,
+            i_d_ff: c23 * P_ac_ff_pu / (Vpk + eps),
+            i_q_ff: c23 * Q_ref_pu / (Vpk + eps),
+            i_0_ref_u: c0,
+            i_d_ref_u: i_d0,
+            i_q_ref_u: i_q0,
+            i_0_ref: c0,
+            i_d_ref: i_d0,
+            i_q_ref: i_q0,
+        },
+        diff_init_eqs={d_xi_vdc: c0, d_xi_q: c0, d_P_f: c0, d_Q_f: c0},
+        in_vars=[
+            v_d, v_q, v_0, i_d, i_q, i_0, P, Q,
+            sbase, P_ref, Q_ref, Vpk, P_loss0,
+            p_kp, p_ki, q_kp, q_ki, i_max, tau_meas, aw_gain,
+        ],
+        out_vars=[P_f, Q_f, i_0_ref, i_d_ref, i_q_ref],
+        name=f"{name}_outer_loop_bess",
     )
 
 
@@ -275,7 +398,7 @@ def get_bess_avm_grid_following_emt_template(
         [vsc_block.out_vars[0], vsc_block.out_vars[2], vsc_block.out_vars[3]],
     )
     outer_loop_block.connect(
-        outer_loop_block.in_vars[9:22],
+        outer_loop_block.in_vars[9:25],
         [
             vsc_block.out_vars[4],
             vsc_block.out_vars[5],
@@ -290,6 +413,9 @@ def get_bess_avm_grid_following_emt_template(
             vsc_block.out_vars[24],
             vsc_block.out_vars[29],
             vsc_block.out_vars[30],
+            vsc_block.out_vars[33],
+            vsc_block.out_vars[34],
+            vsc_block.out_vars[35],
         ],
     )
     inner_loop_block.connect(
