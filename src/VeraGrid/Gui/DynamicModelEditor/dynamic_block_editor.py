@@ -233,26 +233,6 @@ def _library_leaf_label_sort_key(leaf: "LibraryLeafSpec") -> str:
     return leaf.label.lower()
 
 
-# def open_dyn_params_editor(var_factory: VarFactory, api_object: Any,
-#                            preferred_mode: DynamicSimulationMode | None = None):
-#     """
-#     Opens the dynamic parameters editor dialog.
-#
-#     :param var_factory: Variable factory for creating new variables.
-#     :param api_object: Device/API object containing rms_model or emt_model.
-#     :param preferred_mode: Simulation mode (RMS or EMT).
-#     :return: None
-#     """
-#     if preferred_mode == DynamicSimulationMode.RMS:
-#         blk = api_object.rms_model
-#         print("")
-#     else:
-#         blk = api_object.emt_model
-#
-#     dialog = ParametersEditorDialog(var_factory=var_factory, block=blk)
-#     dialog.exec()
-
-
 def build_variables_rows(block: Block | None, rows: List[BlockParameterRow]):
     if block is not None:
         build_block_variables_rows(block, rows)
@@ -1537,7 +1517,7 @@ class AddBlockVariableDialog(QDialog):
         ("Output", "out"),
         ("Event Parameter", "event_parameter"),
         ("Mode Parameter", "mode_parameter"),
-        ("Parameter", "parameter"),
+        ("Static Parameter", "parameter"),
     ]
 
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None):
@@ -1625,7 +1605,7 @@ class AddParameterDialog(QDialog):
     CATEGORY_OPTIONS: List[tuple[str, str]] = [
         ("Event Parameter", "event_parameter"),
         ("Mode Parameter", "mode_parameter"),
-        ("Parameter", "parameter"),
+        ("Static Parameter", "parameter"),
     ]
 
     def __init__(self, api_object: Any, parent: Optional[QtWidgets.QWidget] = None):
@@ -1952,7 +1932,7 @@ class BlockParameterKind(Enum):
     ALGEBRAIC_EQUATION = "Algebraic Equation"
     EVENT_PARAMETER = "Event Parameter"
     MODE_PARAMETER = "Mode Parameter"
-    FIXED_PARAMETER = "Parameter"
+    FIXED_PARAMETER = "Static Parameter"
     MODE_PARAM = "Mode Parameter"
 
 
@@ -2131,7 +2111,7 @@ class EditParameterDialog(QDialog):
     CATEGORY_OPTIONS: List[tuple[str, BlockParameterKind]] = [
         ("Event Parameter", BlockParameterKind.EVENT_PARAMETER),
         ("Mode Parameter", BlockParameterKind.MODE_PARAMETER),
-        ("Parameter", BlockParameterKind.FIXED_PARAMETER),
+        ("Static Parameter", BlockParameterKind.FIXED_PARAMETER),
     ]
 
     _KIND_TO_STRING: dict = {
