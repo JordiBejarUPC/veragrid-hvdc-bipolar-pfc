@@ -9,6 +9,7 @@ import math
 import uuid
 import re
 import copy
+from dataclasses import dataclass
 from enum import Enum
 from typing import List, Dict, Optional, Any, Set
 from PySide6 import QtWidgets, QtGui, QtCore
@@ -71,7 +72,8 @@ from VeraGridEngine.Utils.Symbolic.symbolic import (symbolic_to_string, string_t
 from VeraGridEngine.Utils.Symbolic.symbolic_io import duplicate_block
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
 from VeraGridEngine.enumerations import BlockType
-from dataclasses import dataclass
+
+from VeraGridEngine.Utils.Symbolic.static_parameter_mapping import devices_static_params_mapping
 
 # from VeraGridEngine.Templates.Rms.common import create_block_of_type, create_generic_block, create_emt_wizard_block
 
@@ -349,10 +351,10 @@ def build_block_parameters_rows(table_model: Any, blk: Block, rows: List[BlockPa
             name=var.name,
             kind=BlockParameterKind.FIXED_PARAMETER,
             key_var=var,
-            value=const.value,
+            value="",
             editable_name=True,
-            editable_value=True,
-            value_type=table_model.get_python_value_type(const.value),
+            editable_value=False,
+            value_type=str,
             source_dict_name="parameters"
         ))
 
@@ -1025,7 +1027,7 @@ def block_namespace_contains_name(block: Block, name: str, exclude_var: Var | No
 def add_variable_to_block(block: Block,
                           var: Var,
                           var_type: str,
-                          parameter_value: float = 0.0) -> None:
+                          parameter_value: float | None = 0.0) -> None:
     if var_type == "state":
         block.state_vars.append(var)
     elif var_type == "algebraic":
@@ -1615,6 +1617,127 @@ class AddBlockVariableDialog(QDialog):
             self.ok_button.setEnabled(True)
 
 
+class AddParameterDialog(QDialog):
+    """
+    Dialog used to create a new parameter (event, mode, or regular) in the selected block.
+    """
+
+    CATEGORY_OPTIONS: List[tuple[str, str]] = [
+        ("Event Parameter", "event_parameter"),
+        ("Mode Parameter", "mode_parameter"),
+        ("Parameter", "parameter"),
+    ]
+
+    def __init__(self, api_object: Any, parent: Optional[QtWidgets.QWidget] = None):
+        super().__init__(parent)
+        self.setWindowTitle("Add Parameter")
+        self.resize(360, 200)
+        self.api_object = api_object
+
+        layout: QVBoxLayout = QVBoxLayout(self)
+        form_layout: QFormLayout = QFormLayout()
+        layout.addLayout(form_layout)
+
+        self.name_edit: QLineEdit = QLineEdit(self)
+        self.category_combo: QtWidgets.QComboBox = QtWidgets.QComboBox(self)
+        self.parameter_value_label: QLabel = QLabel("Initial value", self)
+        self.parameter_value_spin: QDoubleSpinBox = QDoubleSpinBox(self)
+        self.parameter_value_spin.setDecimals(8)
+        self.parameter_value_spin.setMinimum(-1e200)
+        self.parameter_value_spin.setMaximum(1e200)
+        self.parameter_value_spin.setValue(0.0)
+        self.static_variable_label: QLabel = QLabel("Static Variable", self)
+        self.static_variable_combo: QtWidgets.QComboBox = QtWidgets.QComboBox(self)
+
+        if self.api_object is not None:
+            device_type = self.api_object.device_type
+            static_params = devices_static_params_mapping.get(device_type, [])
+            for param in static_params:
+                self.static_variable_combo.addItem(param.value, param)
+
+        label: str
+        value: str
+        for label, value in self.CATEGORY_OPTIONS:
+            self.category_combo.addItem(label, value)
+
+        form_layout.addRow("Name", self.name_edit)
+        form_layout.addRow("Category", self.category_combo)
+        form_layout.addRow(self.parameter_value_label, self.parameter_value_spin)
+        form_layout.addRow(self.static_variable_label, self.static_variable_combo)
+
+        self.validation_label: QLabel = QLabel("", self)
+        layout.addWidget(self.validation_label)
+
+        self.button_box: QDialogButtonBox = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel,
+            self
+        )
+        self.ok_button: QtWidgets.QPushButton = self.button_box.button(QDialogButtonBox.StandardButton.Ok)
+        self.button_box.accepted.connect(self.accept)
+        self.button_box.rejected.connect(self.reject)
+        layout.addWidget(self.button_box)
+
+        self.name_edit.textChanged.connect(self.update_validation_state)
+        self.category_combo.currentIndexChanged.connect(self.update_validation_state)
+        self.update_validation_state()
+
+    def get_name(self) -> str:
+        return self.name_edit.text().strip()
+
+    def get_category(self) -> str:
+        return str(self.category_combo.currentData())
+
+    def get_parameter_value(self) -> float:
+        return float(self.parameter_value_spin.value())
+
+    def get_static_variable(self) -> ParamPowerFlowRefferenceType | None:
+        return self.static_variable_combo.currentData()
+
+    def update_validation_state(self) -> None:
+        """
+        Validate the new symbol data before allowing acceptance.
+
+        :return:
+        """
+        category: str = self.get_category()
+        name: str = self.get_name()
+        is_event_or_mode: bool = category in {"event_parameter", "mode_parameter"}
+        is_parameter: bool = category == "parameter"
+
+        if is_event_or_mode:
+            self.parameter_value_label.setEnabled(True)
+            self.parameter_value_spin.setEnabled(True)
+            self.static_variable_label.setEnabled(False)
+            self.static_variable_combo.setEnabled(False)
+        elif is_parameter:
+            self.parameter_value_label.setEnabled(False)
+            self.parameter_value_spin.setEnabled(False)
+            self.static_variable_label.setEnabled(True)
+            self.static_variable_combo.setEnabled(True)
+        else:
+            self.parameter_value_label.setEnabled(False)
+            self.parameter_value_spin.setEnabled(False)
+            self.static_variable_label.setEnabled(False)
+            self.static_variable_combo.setEnabled(False)
+
+        if len(name) == 0:
+            self.validation_label.setText("Enter a symbol name.")
+            self.validation_label.setStyleSheet("color: #b42318;")
+            self.ok_button.setEnabled(False)
+        elif not is_valid_symbol_name(name):
+            self.validation_label.setText("Use a valid identifier: letters, digits, and underscore.")
+            self.validation_label.setStyleSheet("color: #b42318;")
+            self.ok_button.setEnabled(False)
+        elif is_parameter and self.get_static_variable() is None:
+            self.validation_label.setText("Select a static variable.")
+            self.validation_label.setStyleSheet("color: #b42318;")
+            self.ok_button.setEnabled(False)
+        else:
+            self.validation_label.setText("New symbol is valid.")
+            self.validation_label.setStyleSheet("color: #027a48;")
+            self.ok_button.setEnabled(True)
+
+
 class AddEquationDialog(QDialog):
     """
     Dialog used to create a new equation (state or algebraic) in the selected block.
@@ -2000,6 +2123,114 @@ class BlockParameterValueDelegate(QtWidgets.QStyledItemDelegate):
             pass
 
 
+class EditParameterDialog(QDialog):
+    """
+    Dialog used to edit an existing parameter's type (event, mode, or regular).
+    """
+
+    CATEGORY_OPTIONS: List[tuple[str, BlockParameterKind]] = [
+        ("Event Parameter", BlockParameterKind.EVENT_PARAMETER),
+        ("Mode Parameter", BlockParameterKind.MODE_PARAMETER),
+        ("Parameter", BlockParameterKind.FIXED_PARAMETER),
+    ]
+
+    _KIND_TO_STRING: dict = {
+        BlockParameterKind.EVENT_PARAMETER: "event_parameter",
+        BlockParameterKind.MODE_PARAMETER: "mode_parameter",
+        BlockParameterKind.FIXED_PARAMETER: "parameter",
+    }
+
+    def __init__(self, api_object: Any, current_kind: BlockParameterKind, parent: Optional[QtWidgets.QWidget] = None):
+        super().__init__(parent)
+        self.setWindowTitle("Edit Parameter Type")
+        self.resize(360, 200)
+        self.api_object = api_object
+
+        layout: QVBoxLayout = QVBoxLayout(self)
+        form_layout: QFormLayout = QFormLayout()
+        layout.addLayout(form_layout)
+
+        self.category_combo: QtWidgets.QComboBox = QtWidgets.QComboBox(self)
+        self.parameter_value_label: QLabel = QLabel("Initial value", self)
+        self.parameter_value_spin: QDoubleSpinBox = QDoubleSpinBox(self)
+        self.parameter_value_spin.setDecimals(8)
+        self.parameter_value_spin.setMinimum(-1e200)
+        self.parameter_value_spin.setMaximum(1e200)
+        self.parameter_value_spin.setValue(0.0)
+        self.static_variable_label: QLabel = QLabel("Static Variable", self)
+        self.static_variable_combo: QtWidgets.QComboBox = QtWidgets.QComboBox(self)
+
+        if self.api_object is not None:
+            device_type = self.api_object.device_type
+            static_params = devices_static_params_mapping.get(device_type, [])
+            for param in static_params:
+                self.static_variable_combo.addItem(param.value, param)
+
+        label: str
+        value: BlockParameterKind
+        for label, value in self.CATEGORY_OPTIONS:
+            self.category_combo.addItem(label, value)
+
+        self._current_kind = current_kind
+        for i in range(self.category_combo.count()):
+            if self.category_combo.itemData(i) == current_kind:
+                self.category_combo.setCurrentIndex(i)
+                break
+
+        form_layout.addRow("Category", self.category_combo)
+        form_layout.addRow(self.parameter_value_label, self.parameter_value_spin)
+        form_layout.addRow(self.static_variable_label, self.static_variable_combo)
+
+        self.validation_label: QLabel = QLabel("", self)
+        layout.addWidget(self.validation_label)
+
+        self.button_box: QDialogButtonBox = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel,
+            self
+        )
+        self.ok_button: QtWidgets.QPushButton = self.button_box.button(QDialogButtonBox.StandardButton.Ok)
+        self.button_box.accepted.connect(self.accept)
+        self.button_box.rejected.connect(self.reject)
+        layout.addWidget(self.button_box)
+
+        self.category_combo.currentIndexChanged.connect(self.update_visibility)
+        self.update_visibility()
+
+    def get_category(self) -> str:
+        kind: BlockParameterKind = self.category_combo.currentData()
+        return self._KIND_TO_STRING.get(kind, "")
+
+    def get_category_kind(self) -> BlockParameterKind:
+        return self.category_combo.currentData()
+
+    def get_parameter_value(self) -> float:
+        return float(self.parameter_value_spin.value())
+
+    def get_static_variable(self) -> ParamPowerFlowRefferenceType | None:
+        return self.static_variable_combo.currentData()
+
+    def update_visibility(self) -> None:
+        kind: BlockParameterKind = self.get_category_kind()
+        is_event_or_mode: bool = kind in {BlockParameterKind.EVENT_PARAMETER, BlockParameterKind.MODE_PARAMETER}
+        is_parameter: bool = kind == BlockParameterKind.FIXED_PARAMETER
+
+        if is_event_or_mode:
+            self.parameter_value_label.setEnabled(True)
+            self.parameter_value_spin.setEnabled(True)
+            self.static_variable_label.setEnabled(False)
+            self.static_variable_combo.setEnabled(False)
+        elif is_parameter:
+            self.parameter_value_label.setEnabled(False)
+            self.parameter_value_spin.setEnabled(False)
+            self.static_variable_label.setEnabled(True)
+            self.static_variable_combo.setEnabled(True)
+        else:
+            self.parameter_value_label.setEnabled(False)
+            self.parameter_value_spin.setEnabled(False)
+            self.static_variable_label.setEnabled(False)
+            self.static_variable_combo.setEnabled(False)
+
+
 class VariablesTableModel(QtCore.QAbstractTableModel):
     """
     Table model for block variables (state and algebraic only).
@@ -2151,8 +2382,9 @@ class ParametersTableModel(QtCore.QAbstractTableModel):
 
     block_updated = Signal(object)
 
-    def __init__(self, var_factory: VarFactory, block=Block(), parent: Optional[QtCore.QObject] = None):
+    def __init__(self, api_object: Any, var_factory: VarFactory, block=Block(), parent: Optional[QtCore.QObject] = None):
         super().__init__(parent)
+        self.api_object = api_object
         self.var_factory = var_factory
         self.block = None
         self.rows = []
@@ -2190,6 +2422,8 @@ class ParametersTableModel(QtCore.QAbstractTableModel):
         elif role == PARAMETER_VALUE_TYPE_ROLE and index.column() == 2:
             return self.get_python_value_type(row.value)
         elif role == QtCore.Qt.ItemDataRole.BackgroundRole:
+            if index.column() == 2 and not row.editable_value:
+                return QColor("#d3d3d3")
             return QColor("#f7fafc")
         elif role == QtCore.Qt.ItemDataRole.ForegroundRole:
             return QColor("#333333")
@@ -2225,7 +2459,7 @@ class ParametersTableModel(QtCore.QAbstractTableModel):
     def flags(self, index):
         if not index.isValid():
             return QtCore.Qt.ItemFlag.NoItemFlags
-        flags = QtCore.Qt.ItemFlag.ItemIsEnabled | QtCore.Qt.ItemFlag.ItemIsSelectable
+        flags = QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEnabled
         if index.column() == 1:
             flags |= QtCore.Qt.ItemFlag.ItemIsEditable
         elif index.column() == 2 and self.rows[index.row()].editable_value:
@@ -3964,6 +4198,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.variablesTableView.customContextMenuRequested.connect(self.show_variables_table_context_menu)
 
         self.parameters_table_model = ParametersTableModel(
+            api_object=self.api_object,
             var_factory=self.var_factory,
             parent=self.ui.parametersTableView
         )
@@ -6452,13 +6687,70 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param index:
         :return:
         """
-        if index.model() == self.parameters_table_model and index.column() == 2:
+        if index.model() == self.parameters_table_model and index.column() == 0:
+            self.open_edit_parameter_type_dialog(index.row())
+        elif index.model() == self.parameters_table_model and index.column() == 2:
             self.open_expression_editor_for_parameters(index.row())
         elif index.model() == self.equations_table_model:
             row_data: BlockParameterRow | None = self.equations_table_model.get_row(index.row())
             if row_data is not None:
                 if row_data.opens_expression_editor and index.column() == 1:
                     self.open_expression_row_editor(index.row())
+
+    def open_edit_parameter_type_dialog(self, row_index: int) -> None:
+        """
+        Open the dialog to edit a parameter's type (event, mode, or regular).
+
+        :param row_index:
+        :return:
+        """
+        row_data: BlockParameterRow | None = self.parameters_table_model.get_row(row_index)
+        if row_data is None or self.parameters_table_model.block is None:
+            return
+
+        block = self.parameters_table_model.block
+
+        api_object = self.parameters_table_model.api_object
+        dialog: EditParameterDialog = EditParameterDialog(api_object, row_data.kind, self)
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            try:
+                new_kind: BlockParameterKind = dialog.get_category_kind()
+                old_kind: BlockParameterKind = row_data.kind
+
+                if new_kind == old_kind:
+                    return
+
+                var_name = row_data.name
+
+                if new_kind == BlockParameterKind.FIXED_PARAMETER:
+                    static_var_ref = dialog.get_static_variable()
+                    new_var = self.var_factory.add_var(name=var_name, reference=static_var_ref)
+                    const_value = 0.0
+                else:
+                    new_var = self.var_factory.add_var(name=var_name)
+                    const_value = dialog.get_parameter_value()
+
+                old_var = row_data.key_var
+
+                if old_kind == BlockParameterKind.EVENT_PARAMETER:
+                    block.event_dict.pop(old_var, None)
+                elif old_kind == BlockParameterKind.MODE_PARAMETER:
+                    block.mode_dict.pop(old_var, None)
+                elif old_kind == BlockParameterKind.FIXED_PARAMETER:
+                    block.parameters.pop(old_var, None)
+
+                if new_kind == BlockParameterKind.EVENT_PARAMETER:
+                    block.event_dict[new_var] = Const(const_value, name=var_name)
+                elif new_kind == BlockParameterKind.MODE_PARAMETER:
+                    block.mode_dict[new_var] = Const(const_value, name=var_name)
+                elif new_kind == BlockParameterKind.FIXED_PARAMETER:
+                    block.parameters[new_var] = Const(const_value, name=var_name)
+
+                self.parameters_table_model.set_block(block)
+                self.parameters_table_model.block_updated.emit(block.uid)
+            except Exception as exc:
+                QtWidgets.QMessageBox.warning(self, "Edit Parameter Type Error", str(exc))
 
     def open_expression_editor_for_parameters(self, row_index: int) -> None:
         """
@@ -6616,16 +6908,16 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         has_selected_rows: bool = bool(table_view.selectionModel().selectedRows())
 
         menu: QMenu = QMenu(table_view)
-        add_variable_action: QAction = menu.addAction("Add Variable")
+        add_parameter_action: QAction = menu.addAction("Add Parameter")
         remove_selected_action: QAction = menu.addAction("Remove Selected")
 
-        add_variable_action.setEnabled(selected_block is not None)
+        add_parameter_action.setEnabled(selected_block is not None)
         remove_selected_action.setEnabled(selected_block is not None and has_selected_rows)
 
         selected_action: QAction | None = menu.exec(table_view.viewport().mapToGlobal(position))
 
-        if selected_action == add_variable_action:
-            self.open_add_variable_dialog()
+        if selected_action == add_parameter_action:
+            self.open_add_parameter_dialog()
         elif selected_action == remove_selected_action:
             self.remove_selected_parameters()
         else:
@@ -6697,6 +6989,52 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 self.variables_table_model.block_updated.emit(block.uid)
             except Exception as exc:
                 QtWidgets.QMessageBox.warning(self, "Add Variable Error", str(exc))
+        else:
+            pass
+
+    def open_add_parameter_dialog(self) -> None:
+        """
+        Open the dialog used to add a new parameter (event, mode, or regular) to the selected block.
+
+        :return:
+        """
+        api_object = self.parameters_table_model.api_object
+        dialog: AddParameterDialog = AddParameterDialog(api_object, self)
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            try:
+                block = self.get_selected_scene_block()
+                if block is None:
+                    raise ValueError("No block is selected in the editor.")
+
+                name = dialog.get_name()
+                category = dialog.get_category()
+
+
+                if not is_valid_symbol_name(name):
+                    raise ValueError("The symbol name must be a valid identifier.")
+                elif block_namespace_contains_name(block, name):
+                    raise ValueError(f"The symbol '{name}' already exists in this block.")
+
+                if category == "parameter":
+                    static_var_ref = dialog.get_static_variable()
+                    new_var = self.var_factory.add_var(name=name, reference=static_var_ref)
+                    parameter_value = None
+                else:
+                    new_var = self.var_factory.add_var(name=name)
+                    parameter_value = dialog.get_parameter_value()
+                add_variable_to_block(
+                    block=block,
+                    var=new_var,
+                    var_type=category,
+                    parameter_value=parameter_value
+                )
+
+                self.parameters_table_model.set_block(block)
+                self.equations_table_model.set_block(block)
+                self.parameters_table_model.block_updated.emit(block.uid)
+            except Exception as exc:
+                QtWidgets.QMessageBox.warning(self, "Add Parameter Error", str(exc))
         else:
             pass
 
