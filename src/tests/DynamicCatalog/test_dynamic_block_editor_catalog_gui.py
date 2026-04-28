@@ -709,6 +709,270 @@ def test_jmarti_line_emt_block_supports_modal_configuration_and_modify_template(
     editor.close()
 
 
+def test_emt_source_blocks_are_exposed_and_created_from_source_modal(monkeypatch) -> None:
+    editor = _build_editor(DynamicSimulationMode.EMT)
+    leaf_labels = _collect_leaf_labels(editor.library_model)
+
+    assert "Voltage source EMT" in leaf_labels
+    assert "Current source EMT" in leaf_labels
+    assert "Controlled voltage source EMT" in leaf_labels
+    assert "Controlled current source EMT" in leaf_labels
+
+    class _CreateDialogStub:
+        def __init__(self, block_type, parent=None, initial_config=None) -> None:
+            _unused = (block_type, parent, initial_config)
+
+        def exec(self) -> int:
+            return int(QtWidgets.QDialog.DialogCode.Accepted)
+
+        def get_configuration(self) -> dict[str, object]:
+            return dict({
+                "phase_n": True,
+                "phase_a": True,
+                "phase_b": False,
+                "phase_c": True,
+                "source_frequency_hz": 60.0,
+                "source_phase_amplitudes": dict({"N": 0.0, "A": 1.1, "B": 0.0, "C": 0.9}),
+                "source_phase_angle_deg": dict({"N": 0.0, "A": 5.0, "B": 0.0, "C": -115.0}),
+                "source_phase_offsets": dict({"N": 0.0, "A": 0.1, "B": 0.0, "C": -0.2}),
+                "source_conductance_value": 50.0,
+            })
+
+    monkeypatch.setattr(dynamic_block_editor_module, "SourceEmtDialog", _CreateDialogStub)
+
+    for block_type in (
+        BlockType.VOLTAGE_SOURCE_EMT,
+        BlockType.CURRENT_SOURCE_EMT,
+        BlockType.CONTROLLED_VOLTAGE_SOURCE_EMT,
+        BlockType.CONTROLLED_CURRENT_SOURCE_EMT,
+    ):
+        block_item = editor.create_library_payload_item(block_type, 10.0, 20.0)
+        assert block_item is not None
+        modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+        assert modal_kind == "source_emt"
+        assert modal_config is not None
+        assert modal_config["block_type"] == block_type.name
+        assert modal_config["phase_n"] is True
+        assert modal_config["phase_b"] is False
+        assert float(modal_config["source_frequency_hz"]) == 60.0
+        assert float(modal_config["source_conductance_value"]) == 50.0
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
+def test_emt_dc_source_blocks_are_exposed_and_created_from_dc_source_modal(monkeypatch) -> None:
+    editor = _build_editor(DynamicSimulationMode.EMT)
+    leaf_labels = _collect_leaf_labels(editor.library_model)
+
+    assert "DC voltage source EMT" in leaf_labels
+    assert "DC current source EMT" in leaf_labels
+    assert "Controlled DC voltage source EMT" in leaf_labels
+    assert "Controlled DC current source EMT" in leaf_labels
+
+    class _CreateDialogStub:
+        def __init__(self, block_type, parent=None, initial_config=None) -> None:
+            _unused = (block_type, parent, initial_config)
+
+        def exec(self) -> int:
+            return int(QtWidgets.QDialog.DialogCode.Accepted)
+
+        def get_configuration(self) -> dict[str, object]:
+            return dict({
+                "source_value": 1.25,
+                "source_conductance_value": 80.0,
+            })
+
+    monkeypatch.setattr(dynamic_block_editor_module, "DcSourceEmtDialog", _CreateDialogStub)
+
+    for block_type in (
+        BlockType.DC_VOLTAGE_SOURCE_EMT,
+        BlockType.DC_CURRENT_SOURCE_EMT,
+        BlockType.CONTROLLED_DC_VOLTAGE_SOURCE_EMT,
+        BlockType.CONTROLLED_DC_CURRENT_SOURCE_EMT,
+    ):
+        block_item = editor.create_library_payload_item(block_type, 10.0, 20.0)
+        assert block_item is not None
+        modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+        assert modal_kind == "dc_source_emt"
+        assert modal_config is not None
+        assert modal_config["block_type"] == block_type.name
+        assert float(modal_config["source_value"]) == 1.25
+        assert float(modal_config["source_conductance_value"]) == 80.0
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
+def test_emt_balanced_source_blocks_are_exposed_and_created_from_balanced_source_modal(monkeypatch) -> None:
+    editor = _build_editor(DynamicSimulationMode.EMT)
+    leaf_labels = _collect_leaf_labels(editor.library_model)
+
+    assert "Balanced 3-phase voltage source EMT" in leaf_labels
+    assert "Balanced 3-phase current source EMT" in leaf_labels
+    assert "Controlled balanced 3-phase voltage source EMT" in leaf_labels
+    assert "Controlled balanced 3-phase current source EMT" in leaf_labels
+
+    class _CreateDialogStub:
+        def __init__(self, block_type, parent=None, initial_config=None) -> None:
+            _unused = (block_type, parent, initial_config)
+
+        def exec(self) -> int:
+            return int(QtWidgets.QDialog.DialogCode.Accepted)
+
+        def get_configuration(self) -> dict[str, object]:
+            return dict({
+                "source_amplitude": 1.15,
+                "source_frequency_hz": 60.0,
+                "source_phase_a_deg": 10.0,
+                "source_offset": 0.05,
+                "source_conductance_value": 90.0,
+            })
+
+    monkeypatch.setattr(dynamic_block_editor_module, "BalancedSourceEmtDialog", _CreateDialogStub)
+
+    for block_type in (
+        BlockType.BALANCED_3PH_VOLTAGE_SOURCE_EMT,
+        BlockType.BALANCED_3PH_CURRENT_SOURCE_EMT,
+        BlockType.CONTROLLED_BALANCED_3PH_VOLTAGE_SOURCE_EMT,
+        BlockType.CONTROLLED_BALANCED_3PH_CURRENT_SOURCE_EMT,
+    ):
+        block_item = editor.create_library_payload_item(block_type, 10.0, 20.0)
+        assert block_item is not None
+        modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+        assert modal_kind == "balanced_source_emt"
+        assert modal_config is not None
+        assert modal_config["block_type"] == block_type.name
+        assert float(modal_config["source_amplitude"]) == 1.15
+        assert float(modal_config["source_frequency_hz"]) == 60.0
+        assert float(modal_config["source_phase_a_deg"]) == 10.0
+        assert float(modal_config["source_offset"]) == 0.05
+        assert float(modal_config["source_conductance_value"]) == 90.0
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
+def test_emt_arbitrary_source_blocks_are_exposed_and_created_from_arbitrary_source_modal(monkeypatch) -> None:
+    editor = _build_editor(DynamicSimulationMode.EMT)
+    leaf_labels = _collect_leaf_labels(editor.library_model)
+
+    assert "Arbitrary waveform voltage source EMT" in leaf_labels
+    assert "Arbitrary waveform current source EMT" in leaf_labels
+
+    class _CreateDialogStub:
+        def __init__(self, block_type, parent=None, initial_config=None) -> None:
+            _unused = (block_type, parent, initial_config)
+
+        def exec(self) -> int:
+            return int(QtWidgets.QDialog.DialogCode.Accepted)
+
+        def get_configuration(self) -> dict[str, object]:
+            return dict({
+                "phase_n": False,
+                "phase_a": True,
+                "phase_b": False,
+                "phase_c": True,
+                "time_points": [0.0, 0.01, 0.03],
+                "value_points": [0.0, 1.0, -0.5],
+                "source_conductance_value": 70.0,
+            })
+
+    monkeypatch.setattr(dynamic_block_editor_module, "ArbitrarySourceEmtDialog", _CreateDialogStub)
+
+    for block_type in (
+        BlockType.ARBITRARY_WAVEFORM_VOLTAGE_SOURCE_EMT,
+        BlockType.ARBITRARY_WAVEFORM_CURRENT_SOURCE_EMT,
+    ):
+        block_item = editor.create_library_payload_item(block_type, 10.0, 20.0)
+        assert block_item is not None
+        modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+        assert modal_kind == "arbitrary_source_emt"
+        assert modal_config is not None
+        assert modal_config["block_type"] == block_type.name
+        assert modal_config["phase_a"] is True
+        assert modal_config["phase_c"] is True
+        assert modal_config["time_points"] == [0.0, 0.01, 0.03]
+        assert modal_config["value_points"] == [0.0, 1.0, -0.5]
+        assert float(modal_config["source_conductance_value"]) == 70.0
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
+def test_emt_transient_source_blocks_are_exposed_and_created_from_transient_source_modal(monkeypatch) -> None:
+    editor = _build_editor(DynamicSimulationMode.EMT)
+    leaf_labels = _collect_leaf_labels(editor.library_model)
+
+    assert "Step voltage source EMT" in leaf_labels
+    assert "Step current source EMT" in leaf_labels
+    assert "Ramp voltage source EMT" in leaf_labels
+    assert "Ramp current source EMT" in leaf_labels
+    assert "Double exponential current source EMT" in leaf_labels
+    assert "Heidler current source EMT" in leaf_labels
+    assert "CIGRE surge current source EMT" in leaf_labels
+
+    class _CreateDialogStub:
+        def __init__(self, block_type, parent=None, initial_config=None) -> None:
+            _unused = (block_type, parent, initial_config)
+
+        def exec(self) -> int:
+            return int(QtWidgets.QDialog.DialogCode.Accepted)
+
+        def get_configuration(self) -> dict[str, object]:
+            return dict({
+                "phase_n": False,
+                "phase_a": True,
+                "phase_b": False,
+                "phase_c": True,
+                "initial_value": 0.0,
+                "final_value": 1.0,
+                "step_time_s": 0.02,
+                "start_time_s": 0.01,
+                "end_time_s": 0.03,
+                "source_conductance_value": 60.0,
+                "amplitude_value": 2.0,
+                "alpha_value": 120.0,
+                "beta_value": 4200.0,
+                "delay_s": 0.0,
+                "peak_value": 1.5,
+                "front_time_s": 1.0e-4,
+                "tail_time_s": 5.0e-4,
+                "order_value": 5.0,
+                "a_value": 1200.0,
+                "b_value": 15000.0,
+                "n_value": 2.0,
+                "tn_s": 1.0e-4,
+                "i1_value": 1.0,
+                "t1_s": 5.0e-4,
+                "i2_value": 0.5,
+                "t2_s": 2.0e-4,
+            })
+
+    monkeypatch.setattr(dynamic_block_editor_module, "TransientSourceEmtDialog", _CreateDialogStub)
+
+    for block_type in (
+        BlockType.STEP_VOLTAGE_SOURCE_EMT,
+        BlockType.STEP_CURRENT_SOURCE_EMT,
+        BlockType.RAMP_VOLTAGE_SOURCE_EMT,
+        BlockType.RAMP_CURRENT_SOURCE_EMT,
+        BlockType.DOUBLE_EXPONENTIAL_CURRENT_SOURCE_EMT,
+        BlockType.HEIDLER_CURRENT_SOURCE_EMT,
+        BlockType.CIGRE_SURGE_CURRENT_SOURCE_EMT,
+    ):
+        block_item = editor.create_library_payload_item(block_type, 10.0, 20.0)
+        assert block_item is not None
+        modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+        assert modal_kind == "transient_source_emt"
+        assert modal_config is not None
+        assert modal_config["block_type"] == block_type.name
+        assert modal_config["phase_a"] is True
+        assert modal_config["phase_c"] is True
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
 def test_jmarti_line_emt_block_builds_sequence_fit_and_persists_diagnostics(monkeypatch) -> None:
     circuit = gce.MultiCircuit(Sbase=25.0, fbase=50.0)
     bus0 = gce.Bus(name="BusSeqGui0", Vnom=110.0)

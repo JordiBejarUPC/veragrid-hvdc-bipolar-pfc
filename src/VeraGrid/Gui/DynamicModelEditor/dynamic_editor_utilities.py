@@ -38,6 +38,14 @@ from VeraGridEngine.Templates.Emt.load_RLC_emt_template import (get_shunt_r_emt_
                                                                  get_shunt_c_emt_template,
                                                                  get_shunt_l_emt_template,
                                                                  get_ground_emt_template)
+from VeraGridEngine.Templates.Emt.source_emt_template import get_controlled_current_source_emt_template
+from VeraGridEngine.Templates.Emt.source_emt_template import get_controlled_voltage_source_emt_template
+from VeraGridEngine.Templates.Emt.source_emt_template import get_current_source_emt_template
+from VeraGridEngine.Templates.Emt.source_emt_template import get_voltage_source_emt_template
+from VeraGridEngine.Templates.Emt.dc_source_emt_template import get_controlled_dc_current_source_emt_template
+from VeraGridEngine.Templates.Emt.dc_source_emt_template import get_controlled_dc_voltage_source_emt_template
+from VeraGridEngine.Templates.Emt.dc_source_emt_template import get_dc_current_source_emt_template
+from VeraGridEngine.Templates.Emt.dc_source_emt_template import get_dc_voltage_source_emt_template
 from VeraGridEngine.Templates.Emt.load_exponential_emt_template import get_exponential_load_emt
 from VeraGridEngine.Templates.Emt.load_zip_emt_template import get_load_ZIP_emt_template
 from VeraGridEngine.Templates.Emt.dc_load_emt_template import get_dc_load_emt_template
@@ -246,6 +254,66 @@ def create_emt_wizard_block(phase_n: bool, phase_a: bool, phase_b: bool, phase_c
                                            phB=phase_b,
                                            phC=phase_c,
                                            name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.VOLTAGE_SOURCE_EMT:
+        blk = get_voltage_source_emt_template(vf=var_factory,
+                                              phN=phase_n,
+                                              phA=phase_a,
+                                              phB=phase_b,
+                                              phC=phase_c,
+                                              name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.CURRENT_SOURCE_EMT:
+        blk = get_current_source_emt_template(vf=var_factory,
+                                              phN=phase_n,
+                                              phA=phase_a,
+                                              phB=phase_b,
+                                              phC=phase_c,
+                                              name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.CONTROLLED_VOLTAGE_SOURCE_EMT:
+        blk = get_controlled_voltage_source_emt_template(vf=var_factory,
+                                                         phN=phase_n,
+                                                         phA=phase_a,
+                                                         phB=phase_b,
+                                                         phC=phase_c,
+                                                         name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.CONTROLLED_CURRENT_SOURCE_EMT:
+        blk = get_controlled_current_source_emt_template(vf=var_factory,
+                                                         phN=phase_n,
+                                                         phA=phase_a,
+                                                         phB=phase_b,
+                                                         phC=phase_c,
+                                                         name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.DC_VOLTAGE_SOURCE_EMT:
+        blk = get_dc_voltage_source_emt_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.DC_CURRENT_SOURCE_EMT:
+        blk = get_dc_current_source_emt_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.CONTROLLED_DC_VOLTAGE_SOURCE_EMT:
+        blk = get_controlled_dc_voltage_source_emt_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.CONTROLLED_DC_CURRENT_SOURCE_EMT:
+        blk = get_controlled_dc_current_source_emt_template(vf=var_factory, name=item_name).block
         blk.name = item_name
         return blk
 

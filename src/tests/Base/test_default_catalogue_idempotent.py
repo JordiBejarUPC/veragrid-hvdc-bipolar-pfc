@@ -78,6 +78,95 @@ class _IoStub:
         self.messages.append(message)
 
 
+class _RefreshingIoStub(_IoStub):
+    """
+    Minimal GUI-like stub that records catalogue-driven refresh calls.
+    """
+
+    __slots__ = ("setup_tree_calls", "view_objects_calls", "update_from_to_calls", "update_date_calls")
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.setup_tree_calls: int = 0
+        self.view_objects_calls: int = 0
+        self.update_from_to_calls: int = 0
+        self.update_date_calls: int = 0
+
+    def setup_objects_tree(self) -> None:
+        self.setup_tree_calls += 1
+
+    def view_objects_data(self) -> None:
+        self.view_objects_calls += 1
+
+    def update_from_to_list_views(self) -> None:
+        self.update_from_to_calls += 1
+
+    def update_date_dependent_combos(self) -> None:
+        self.update_date_calls += 1
+
+
+class _GuiLikeIoStub(_RefreshingIoStub):
+    """
+    GUI-like stub exposing a minimal ``ui`` attribute for catalogue refresh.
+    """
+
+    __slots__ = ("ui",)
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.circuit = MultiCircuit()
+        self.ui = object()
+
+
+class _CatalogueLoggerStub:
+    """
+    Minimal logger stub returned by ``load_catalogue``.
+    """
+
+    __slots__ = ("_has_logs",)
+
+    def __init__(self, has_logs: bool = False) -> None:
+        self._has_logs: bool = has_logs
+
+    def has_logs(self) -> bool:
+        return self._has_logs
+
+
+class _CustomCatalogueCircuitStub(_CircuitStub):
+    """
+    Circuit stub that records custom-catalogue additions.
+    """
+
+    __slots__ = ("catalogues_added",)
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.catalogues_added: list[object] = list()
+
+    def add_catalogue(self, data: object) -> None:
+        self.catalogues_added.append(data)
+        self.rms_models.append(object())
+        self.emt_models.append(object())
+
+
+class _CustomCatalogueIoStub(_RefreshingIoStub):
+    """
+    GUI-like stub exposing the attributes used by ``load_custom_catalogue``.
+    """
+
+    __slots__ = ("ui", "project_directory", "logged_messages")
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.circuit = _CustomCatalogueCircuitStub()
+        self.ui = object()
+        self.project_directory = ""
+        self.logged_messages: list[tuple[str, object]] = list()
+
+    def show_logs(self, name: str, logger: object) -> None:
+        self.logged_messages.append((name, logger))
+
+
 def test_add_default_catalogue_is_idempotent(monkeypatch) -> None:
     """
     Ensure repeated default-catalogue loads do not duplicate cached entries.
@@ -140,7 +229,61 @@ def test_get_dictionary_of_lists_does_not_force_lazy_dynamic_catalogue_load() ->
     assert stub.circuit.get_rms_models_number() == 0
     assert stub.circuit.get_emt_models_number() == 0
 
-    _ = stub.circuit.get_dictionary_of_lists(DeviceType.LoadDevice)
 
-    assert stub.circuit.get_rms_models_number() == 0
-    assert stub.circuit.get_emt_models_number() == 0
+def test_add_default_catalogue_refreshes_template_dependent_gui_views(monkeypatch) -> None:
+    """
+    Ensure the catalogue action rebuilds the visible property views immediately.
+
+    :param monkeypatch: Pytest monkeypatch fixture.
+    :return: None.
+    """
+    stub = _GuiLikeIoStub()
+
+    monkeypatch.setattr(io_module, "get_transformer_catalogue", lambda: list())
+    monkeypatch.setattr(io_module, "get_cables_catalogue", lambda: list())
+    monkeypatch.setattr(io_module, "get_wires_catalogue", lambda: list())
+    monkeypatch.setattr(io_module, "get_sequence_lines_catalogue", lambda: list())
+
+    IoMain.add_default_catalogue(stub)
+
+    assert stub.setup_tree_calls == 1
+    assert stub.view_objects_calls == 1
+    assert stub.update_from_to_calls == 1
+    assert stub.update_date_calls == 1
+    assert stub.circuit.get_rms_models_number() > 0
+    assert stub.circuit.get_emt_models_number() > 0
+
+    _template_elm, dictionary_of_lists = stub.circuit.get_dictionary_of_lists(DeviceType.LineDevice)
+
+    assert len(dictionary_of_lists[DeviceType.RmsModelTemplateDevice]) > 0
+    assert len(dictionary_of_lists[DeviceType.EmtModelTemplateDevice]) > 0
+
+
+def test_load_custom_catalogue_refreshes_template_dependent_gui_views(monkeypatch) -> None:
+    """
+    Ensure the custom-catalogue action rebuilds the visible property views immediately.
+
+    :param monkeypatch: Pytest monkeypatch fixture.
+    :return: None.
+    """
+    stub = _CustomCatalogueIoStub()
+    loaded_catalogue = object()
+    logger = _CatalogueLoggerStub(has_logs=False)
+
+    monkeypatch.setattr(io_module.QtWidgets.QFileDialog,
+                        "getOpenFileName",
+                        lambda *args, **kwargs: ("custom_catalogue.xlsx", "Catalogue file (*.xlsx)"))
+    monkeypatch.setattr(io_module.os.path, "exists", lambda path: path == "custom_catalogue.xlsx")
+    monkeypatch.setattr(io_module, "load_catalogue", lambda fname: (loaded_catalogue, logger))
+
+    IoMain.load_custom_catalogue(stub)
+
+    assert stub.circuit.catalogues_added == list([loaded_catalogue])
+    assert stub.setup_tree_calls == 1
+    assert stub.view_objects_calls == 1
+    assert stub.update_from_to_calls == 1
+    assert stub.update_date_calls == 1
+    assert stub.messages == list(["Catalogue loaded!"])
+    assert stub.logged_messages == list()
+    assert stub.circuit.get_rms_models_number() > 0
+    assert stub.circuit.get_emt_models_number() > 0

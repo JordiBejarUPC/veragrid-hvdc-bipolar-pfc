@@ -27,7 +27,7 @@ values it consumes by exposing only the desired enum keys in ``api_obj_mapping``
 
 from __future__ import annotations
 
-from typing import Any, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 import numpy as np
 
@@ -46,6 +46,292 @@ from VeraGridEngine.enumerations import (
     ShuntControlMode,
     WindingType,
 )
+
+devices_static_params_mapping: Dict[DeviceType, List[ParamPowerFlowRefferenceType]] = {
+    DeviceType.LoadDevice: [
+        ParamPowerFlowRefferenceType.device_active,
+        ParamPowerFlowRefferenceType.injection_connection_type,
+        ParamPowerFlowRefferenceType.load_p_pu,
+        ParamPowerFlowRefferenceType.load_q_pu,
+        ParamPowerFlowRefferenceType.load_pa_pu,
+        ParamPowerFlowRefferenceType.load_pb_pu,
+        ParamPowerFlowRefferenceType.load_pc_pu,
+        ParamPowerFlowRefferenceType.load_qa_pu,
+        ParamPowerFlowRefferenceType.load_qb_pu,
+        ParamPowerFlowRefferenceType.load_qc_pu,
+        ParamPowerFlowRefferenceType.load_g_pu,
+        ParamPowerFlowRefferenceType.load_b_pu,
+        ParamPowerFlowRefferenceType.load_ga_pu,
+        ParamPowerFlowRefferenceType.load_gb_pu,
+        ParamPowerFlowRefferenceType.load_gc_pu,
+        ParamPowerFlowRefferenceType.load_ba_pu,
+        ParamPowerFlowRefferenceType.load_bb_pu,
+        ParamPowerFlowRefferenceType.load_bc_pu,
+        ParamPowerFlowRefferenceType.load_ir_pu,
+        ParamPowerFlowRefferenceType.load_ii_pu,
+        ParamPowerFlowRefferenceType.load_ira_pu,
+        ParamPowerFlowRefferenceType.load_irb_pu,
+        ParamPowerFlowRefferenceType.load_irc_pu,
+        ParamPowerFlowRefferenceType.load_iia_pu,
+        ParamPowerFlowRefferenceType.load_iib_pu,
+        ParamPowerFlowRefferenceType.load_iic_pu,
+        ParamPowerFlowRefferenceType.load_contract_power_pu,
+        ParamPowerFlowRefferenceType.Pl0,
+        ParamPowerFlowRefferenceType.g,
+        ParamPowerFlowRefferenceType.Pl0_A,
+        ParamPowerFlowRefferenceType.Pl0_B,
+        ParamPowerFlowRefferenceType.Pl0_C,
+        ParamPowerFlowRefferenceType.Ql0_A,
+        ParamPowerFlowRefferenceType.Ql0_B,
+        ParamPowerFlowRefferenceType.Ql0_C,
+        ParamPowerFlowRefferenceType.omega_base,
+    ],
+    DeviceType.StaticGeneratorDevice: [
+        ParamPowerFlowRefferenceType.device_active,
+        ParamPowerFlowRefferenceType.injection_connection_type,
+        ParamPowerFlowRefferenceType.load_p_pu,
+        ParamPowerFlowRefferenceType.load_q_pu,
+        ParamPowerFlowRefferenceType.load_pa_pu,
+        ParamPowerFlowRefferenceType.load_pb_pu,
+        ParamPowerFlowRefferenceType.load_pc_pu,
+        ParamPowerFlowRefferenceType.load_qa_pu,
+        ParamPowerFlowRefferenceType.load_qb_pu,
+        ParamPowerFlowRefferenceType.load_qc_pu,
+        ParamPowerFlowRefferenceType.Pl0_A,
+        ParamPowerFlowRefferenceType.Pl0_B,
+        ParamPowerFlowRefferenceType.Pl0_C,
+        ParamPowerFlowRefferenceType.Ql0_A,
+        ParamPowerFlowRefferenceType.Ql0_B,
+        ParamPowerFlowRefferenceType.Ql0_C,
+        ParamPowerFlowRefferenceType.omega_base,
+        ParamPowerFlowRefferenceType.static_generator_snom_mva,
+    ],
+    DeviceType.ExternalGridDevice: [
+        ParamPowerFlowRefferenceType.device_active,
+        ParamPowerFlowRefferenceType.injection_connection_type,
+        ParamPowerFlowRefferenceType.load_p_pu,
+        ParamPowerFlowRefferenceType.load_pa_pu,
+        ParamPowerFlowRefferenceType.load_pb_pu,
+        ParamPowerFlowRefferenceType.load_pc_pu,
+        ParamPowerFlowRefferenceType.load_qa_pu,
+        ParamPowerFlowRefferenceType.load_qb_pu,
+        ParamPowerFlowRefferenceType.load_qc_pu,
+        ParamPowerFlowRefferenceType.omega_base,
+        ParamPowerFlowRefferenceType.load_q_pu,
+        ParamPowerFlowRefferenceType.external_grid_vm_pu,
+        ParamPowerFlowRefferenceType.external_grid_va_rad,
+        ParamPowerFlowRefferenceType.external_grid_mode_code,
+    ],
+    DeviceType.ShuntDevice: [
+        ParamPowerFlowRefferenceType.device_active,
+        ParamPowerFlowRefferenceType.injection_connection_type,
+        ParamPowerFlowRefferenceType.shunt_g_pu,
+        ParamPowerFlowRefferenceType.shunt_b_pu,
+        ParamPowerFlowRefferenceType.shunt_g0_pu,
+        ParamPowerFlowRefferenceType.shunt_b0_pu,
+        ParamPowerFlowRefferenceType.shunt_ga_pu,
+        ParamPowerFlowRefferenceType.shunt_gb_pu,
+        ParamPowerFlowRefferenceType.shunt_gc_pu,
+        ParamPowerFlowRefferenceType.shunt_ba_pu,
+        ParamPowerFlowRefferenceType.shunt_bb_pu,
+        ParamPowerFlowRefferenceType.shunt_bc_pu,
+    ],
+    DeviceType.ControllableShuntDevice: [
+        ParamPowerFlowRefferenceType.device_active,
+        ParamPowerFlowRefferenceType.injection_connection_type,
+        ParamPowerFlowRefferenceType.shunt_g_pu,
+        ParamPowerFlowRefferenceType.shunt_b_pu,
+        ParamPowerFlowRefferenceType.shunt_g0_pu,
+        ParamPowerFlowRefferenceType.shunt_b0_pu,
+        ParamPowerFlowRefferenceType.shunt_ga_pu,
+        ParamPowerFlowRefferenceType.shunt_gb_pu,
+        ParamPowerFlowRefferenceType.shunt_gc_pu,
+        ParamPowerFlowRefferenceType.shunt_ba_pu,
+        ParamPowerFlowRefferenceType.shunt_bb_pu,
+        ParamPowerFlowRefferenceType.shunt_bc_pu,
+        ParamPowerFlowRefferenceType.controllable_shunt_step,
+        ParamPowerFlowRefferenceType.controllable_shunt_vset_pu,
+        ParamPowerFlowRefferenceType.controllable_shunt_vmin_pu,
+        ParamPowerFlowRefferenceType.controllable_shunt_vmax_pu,
+        ParamPowerFlowRefferenceType.controllable_shunt_gmin_pu,
+        ParamPowerFlowRefferenceType.controllable_shunt_gmax_pu,
+        ParamPowerFlowRefferenceType.controllable_shunt_bmin_pu,
+        ParamPowerFlowRefferenceType.controllable_shunt_bmax_pu,
+        ParamPowerFlowRefferenceType.controllable_shunt_control_mode_code,
+    ],
+    DeviceType.CurrentInjectionDevice: [
+        ParamPowerFlowRefferenceType.device_active,
+        ParamPowerFlowRefferenceType.injection_connection_type,
+        ParamPowerFlowRefferenceType.current_injection_ir_pu,
+        ParamPowerFlowRefferenceType.current_injection_ii_pu,
+        ParamPowerFlowRefferenceType.current_injection_ira_pu,
+        ParamPowerFlowRefferenceType.current_injection_irb_pu,
+        ParamPowerFlowRefferenceType.current_injection_irc_pu,
+        ParamPowerFlowRefferenceType.current_injection_iia_pu,
+        ParamPowerFlowRefferenceType.current_injection_iib_pu,
+        ParamPowerFlowRefferenceType.current_injection_iic_pu,
+    ],
+    DeviceType.GeneratorDevice: [
+        ParamPowerFlowRefferenceType.device_active,
+        ParamPowerFlowRefferenceType.injection_connection_type,
+        ParamPowerFlowRefferenceType.omega_base,
+        ParamPowerFlowRefferenceType.fn,
+        ParamPowerFlowRefferenceType.ws,
+        ParamPowerFlowRefferenceType.R1,
+        ParamPowerFlowRefferenceType.X1,
+        ParamPowerFlowRefferenceType.X0,
+        ParamPowerFlowRefferenceType.generator_p_pu,
+        ParamPowerFlowRefferenceType.generator_q_pu,
+        ParamPowerFlowRefferenceType.generator_pmin_pu,
+        ParamPowerFlowRefferenceType.generator_pmax_pu,
+        ParamPowerFlowRefferenceType.generator_qmin_pu,
+        ParamPowerFlowRefferenceType.generator_qmax_pu,
+        ParamPowerFlowRefferenceType.generator_power_factor,
+        ParamPowerFlowRefferenceType.generator_vset_pu,
+        ParamPowerFlowRefferenceType.generator_snom_mva,
+        ParamPowerFlowRefferenceType.generator_r0_pu,
+        ParamPowerFlowRefferenceType.generator_r2_pu,
+        ParamPowerFlowRefferenceType.generator_x2_pu,
+        ParamPowerFlowRefferenceType.generator_is_controlled,
+        ParamPowerFlowRefferenceType.generator_enabled_dispatch,
+        ParamPowerFlowRefferenceType.generator_must_run,
+        ParamPowerFlowRefferenceType.generator_use_reactive_power_curve,
+        ParamPowerFlowRefferenceType.generator_device_sbase_mva,
+        ParamPowerFlowRefferenceType.freq,
+    ],
+    DeviceType.BatteryDevice: [
+        ParamPowerFlowRefferenceType.device_active,
+        ParamPowerFlowRefferenceType.injection_connection_type,
+        ParamPowerFlowRefferenceType.omega_base,
+        ParamPowerFlowRefferenceType.fn,
+        ParamPowerFlowRefferenceType.ws,
+        ParamPowerFlowRefferenceType.R1,
+        ParamPowerFlowRefferenceType.X1,
+        ParamPowerFlowRefferenceType.X0,
+        ParamPowerFlowRefferenceType.generator_p_pu,
+        ParamPowerFlowRefferenceType.generator_q_pu,
+        ParamPowerFlowRefferenceType.generator_pmin_pu,
+        ParamPowerFlowRefferenceType.generator_pmax_pu,
+        ParamPowerFlowRefferenceType.generator_qmin_pu,
+        ParamPowerFlowRefferenceType.generator_qmax_pu,
+        ParamPowerFlowRefferenceType.generator_power_factor,
+        ParamPowerFlowRefferenceType.generator_vset_pu,
+        ParamPowerFlowRefferenceType.generator_snom_mva,
+        ParamPowerFlowRefferenceType.generator_r0_pu,
+        ParamPowerFlowRefferenceType.generator_r2_pu,
+        ParamPowerFlowRefferenceType.generator_x2_pu,
+        ParamPowerFlowRefferenceType.generator_is_controlled,
+        ParamPowerFlowRefferenceType.generator_enabled_dispatch,
+        ParamPowerFlowRefferenceType.generator_must_run,
+        ParamPowerFlowRefferenceType.generator_use_reactive_power_curve,
+        ParamPowerFlowRefferenceType.generator_device_sbase_mva,
+        ParamPowerFlowRefferenceType.freq,
+        ParamPowerFlowRefferenceType.battery_enom_mwh,
+        ParamPowerFlowRefferenceType.battery_soc_0_pu,
+        ParamPowerFlowRefferenceType.battery_max_soc_pu,
+        ParamPowerFlowRefferenceType.battery_min_soc_pu,
+        ParamPowerFlowRefferenceType.battery_charge_efficiency_pu,
+        ParamPowerFlowRefferenceType.battery_discharge_efficiency_pu,
+        ParamPowerFlowRefferenceType.battery_charge_per_cycle_pu,
+        ParamPowerFlowRefferenceType.battery_discharge_per_cycle_pu,
+    ],
+    DeviceType.VscDevice: [
+        ParamPowerFlowRefferenceType.device_active,
+        ParamPowerFlowRefferenceType.branch_rate_mva,
+        ParamPowerFlowRefferenceType.branch_temp_base_deg_c,
+        ParamPowerFlowRefferenceType.branch_temp_oper_deg_c,
+        ParamPowerFlowRefferenceType.branch_alpha_per_deg_c,
+        ParamPowerFlowRefferenceType.Sbase,
+        ParamPowerFlowRefferenceType.omega_base,
+        ParamPowerFlowRefferenceType.converter_control_mode_1,
+        ParamPowerFlowRefferenceType.converter_control_mode_2,
+        ParamPowerFlowRefferenceType.converter_control_target_1,
+        ParamPowerFlowRefferenceType.converter_control_target_2,
+        ParamPowerFlowRefferenceType.alpha1,
+        ParamPowerFlowRefferenceType.alpha2,
+        ParamPowerFlowRefferenceType.alpha3,
+        ParamPowerFlowRefferenceType.vsc_kdp_pu,
+        ParamPowerFlowRefferenceType.vsc_min_ac_voltage_pu,
+    ],
+    DeviceType.DCLineDevice: [
+        ParamPowerFlowRefferenceType.device_active,
+        ParamPowerFlowRefferenceType.branch_rate_mva,
+        ParamPowerFlowRefferenceType.branch_temp_base_deg_c,
+        ParamPowerFlowRefferenceType.branch_temp_oper_deg_c,
+        ParamPowerFlowRefferenceType.branch_alpha_per_deg_c,
+        ParamPowerFlowRefferenceType.g,
+        ParamPowerFlowRefferenceType.b,
+        ParamPowerFlowRefferenceType.bsh,
+        ParamPowerFlowRefferenceType.dc_line_r_pu,
+        ParamPowerFlowRefferenceType.dc_line_length_km,
+    ],
+    DeviceType.Transformer2WDevice: [
+        ParamPowerFlowRefferenceType.device_active,
+        ParamPowerFlowRefferenceType.branch_rate_mva,
+        ParamPowerFlowRefferenceType.branch_temp_base_deg_c,
+        ParamPowerFlowRefferenceType.branch_temp_oper_deg_c,
+        ParamPowerFlowRefferenceType.branch_alpha_per_deg_c,
+        ParamPowerFlowRefferenceType.omega_base,
+        ParamPowerFlowRefferenceType.transformer_rated_power_mva,
+        ParamPowerFlowRefferenceType.transformer_winding1_rated_voltage_ll_kv,
+        ParamPowerFlowRefferenceType.transformer_winding2_rated_voltage_ll_kv,
+        ParamPowerFlowRefferenceType.transformer_connection_clock,
+        ParamPowerFlowRefferenceType.transformer_open_circuit_current_pct,
+        ParamPowerFlowRefferenceType.transformer_open_circuit_loss_kw,
+        ParamPowerFlowRefferenceType.transformer_short_circuit_voltage_pct,
+        ParamPowerFlowRefferenceType.transformer_short_circuit_resistance_pct,
+        ParamPowerFlowRefferenceType.transformer_short_circuit_loss_kw,
+        ParamPowerFlowRefferenceType.transformer_tap_module,
+        ParamPowerFlowRefferenceType.transformer_nominal_voltage_ratio,
+        ParamPowerFlowRefferenceType.transformer_total_voltage_ratio,
+        ParamPowerFlowRefferenceType.transformer_tap_ratio,
+        ParamPowerFlowRefferenceType.transformer_winding1_resistance_pu,
+        ParamPowerFlowRefferenceType.transformer_winding2_resistance_pu,
+        ParamPowerFlowRefferenceType.transformer_winding1_inductance_pu_s,
+        ParamPowerFlowRefferenceType.transformer_winding2_inductance_pu_s,
+        ParamPowerFlowRefferenceType.transformer_mutual_inductance_pu_s,
+        ParamPowerFlowRefferenceType.transformer_magnetizing_conductance_pu,
+    ],
+    DeviceType.WindingDevice: [
+        ParamPowerFlowRefferenceType.device_active,
+        ParamPowerFlowRefferenceType.branch_rate_mva,
+        ParamPowerFlowRefferenceType.branch_temp_base_deg_c,
+        ParamPowerFlowRefferenceType.branch_temp_oper_deg_c,
+        ParamPowerFlowRefferenceType.branch_alpha_per_deg_c,
+        ParamPowerFlowRefferenceType.omega_base,
+        ParamPowerFlowRefferenceType.transformer_rated_power_mva,
+        ParamPowerFlowRefferenceType.transformer_winding1_rated_voltage_ll_kv,
+        ParamPowerFlowRefferenceType.transformer_winding2_rated_voltage_ll_kv,
+        ParamPowerFlowRefferenceType.transformer_connection_clock,
+        ParamPowerFlowRefferenceType.transformer_open_circuit_current_pct,
+        ParamPowerFlowRefferenceType.transformer_open_circuit_loss_kw,
+        ParamPowerFlowRefferenceType.transformer_short_circuit_voltage_pct,
+        ParamPowerFlowRefferenceType.transformer_short_circuit_resistance_pct,
+        ParamPowerFlowRefferenceType.transformer_short_circuit_loss_kw,
+        ParamPowerFlowRefferenceType.transformer_tap_module,
+        ParamPowerFlowRefferenceType.transformer_nominal_voltage_ratio,
+        ParamPowerFlowRefferenceType.transformer_total_voltage_ratio,
+        ParamPowerFlowRefferenceType.transformer_tap_ratio,
+        ParamPowerFlowRefferenceType.transformer_winding1_resistance_pu,
+        ParamPowerFlowRefferenceType.transformer_winding2_resistance_pu,
+        ParamPowerFlowRefferenceType.transformer_winding1_inductance_pu_s,
+        ParamPowerFlowRefferenceType.transformer_winding2_inductance_pu_s,
+        ParamPowerFlowRefferenceType.transformer_mutual_inductance_pu_s,
+        ParamPowerFlowRefferenceType.transformer_magnetizing_conductance_pu,
+    ],
+    DeviceType.LineDevice: [
+        ParamPowerFlowRefferenceType.device_active,
+        ParamPowerFlowRefferenceType.branch_rate_mva,
+        ParamPowerFlowRefferenceType.branch_temp_base_deg_c,
+        ParamPowerFlowRefferenceType.branch_temp_oper_deg_c,
+        ParamPowerFlowRefferenceType.branch_alpha_per_deg_c,
+        ParamPowerFlowRefferenceType.line_length_km,
+    ],
+    DeviceType.HVDCLineDevice: [],
+    DeviceType.SeriesReactanceDevice: [],
+    DeviceType.SwitchDevice: [],
+    DeviceType.UpfcDevice: [],
+}
 
 
 def to_static_mapping_const(value: Any) -> Const:
@@ -583,97 +869,6 @@ def controllable_shunt_mode_code(mode: ShuntControlMode) -> float:
     return code
 
 
-def assign_common_injection_static_api_mapping(
-        grid: MultiCircuit,
-        device: Any,
-        mdl: Block,
-        logger: Logger | None,
-) -> None:
-    """
-    Assign static parameters inherited from ``InjectionParent``.
-
-    ``injection_use_kw`` is a static boolean flag and
-    ``injection_connection_type`` is a stable numeric encoding of the static
-    connection enum.
-
-    :param grid: Static network model.
-    :param device: Injection-like static device.
-    :param mdl: EMT block receiving constants.
-    :param logger: Optional logger.
-    :return: None.
-    """
-    device_name: str = str(device.name)
-
-    # if the device is active or not
-    assign_api_mapping_value_if_present(
-        mdl=mdl,
-        key=ParamPowerFlowRefferenceType.device_active,
-        value=boolean_to_float(bool(device.active)),
-        logger=logger,
-        device_name=device_name,
-    )
-
-    # connection type
-    assign_api_mapping_value_if_present(
-        mdl=mdl,
-        key=ParamPowerFlowRefferenceType.injection_connection_type,
-        value=shunt_connection_code(device.conn),
-        logger=logger,
-        device_name=device_name,
-    )
-
-
-def assign_common_branch_static_api_mapping(
-        device: Any,
-        mdl: Block,
-        logger: Logger | None,
-) -> None:
-    """
-    Assign static parameters inherited from ``BranchParent``.
-
-    :param device: Branch-like static device.
-    :param mdl: EMT block receiving constants.
-    :param logger: Optional logger.
-    :return: None.
-    """
-    device_name: str = str(device.name)
-
-    assign_api_mapping_value_if_present(
-        mdl=mdl,
-        key=ParamPowerFlowRefferenceType.device_active,
-        value=boolean_to_float(bool(device.active)),
-        logger=logger,
-        device_name=device_name,
-    )
-    assign_api_mapping_value_if_present(
-        mdl=mdl,
-        key=ParamPowerFlowRefferenceType.branch_rate_mva,
-        value=float(device.rate),
-        logger=logger,
-        device_name=device_name,
-    )
-    assign_api_mapping_value_if_present(
-        mdl=mdl,
-        key=ParamPowerFlowRefferenceType.branch_temp_base_deg_c,
-        value=float(device.temp_base),
-        logger=logger,
-        device_name=device_name,
-    )
-    assign_api_mapping_value_if_present(
-        mdl=mdl,
-        key=ParamPowerFlowRefferenceType.branch_temp_oper_deg_c,
-        value=float(device.temp_oper),
-        logger=logger,
-        device_name=device_name,
-    )
-    assign_api_mapping_value_if_present(
-        mdl=mdl,
-        key=ParamPowerFlowRefferenceType.branch_alpha_per_deg_c,
-        value=float(device.alpha),
-        logger=logger,
-        device_name=device_name,
-    )
-
 
 def assign_static_api_object_mapping_for_device(
         grid: MultiCircuit,
@@ -865,6 +1060,702 @@ def assign_static_api_object_mapping_for_device(
                     pass
     else:
         pass
+
+
+
+def converter_control_code(control_tpe: ConverterControlType | None) -> float:
+    """
+    Convert a static VSC control enum to the EMT template numerical code.
+
+    :param control_tpe: Converter control enum or ``None``.
+    :return: Numerical control code used by existing EMT templates.
+    """
+    code: float
+
+    if control_tpe is None:
+        code = 0.0
+    elif control_tpe == ConverterControlType.Vm_dc:
+        code = 1.0
+    elif control_tpe == ConverterControlType.Vm_ac:
+        code = 2.0
+    elif control_tpe == ConverterControlType.Va_ac:
+        code = 3.0
+    elif control_tpe == ConverterControlType.Qac:
+        code = 4.0
+    elif control_tpe == ConverterControlType.Pdc:
+        code = 5.0
+    elif control_tpe == ConverterControlType.Pac:
+        code = 6.0
+    elif control_tpe == ConverterControlType.Pdc_angle_droop:
+        code = 7.0
+    elif control_tpe == ConverterControlType.Imax:
+        code = 8.0
+    else:
+        code = 0.0
+
+    return code
+
+
+
+def xfmr_connection_matrix(winding_tpe: WindingType) -> np.ndarray:
+    """
+    Return the 3x3 transformer winding connection matrix.
+
+    :param winding_tpe: Transformer winding connection type.
+    :return: 3x3 winding connection matrix.
+    """
+    matrix: np.ndarray
+
+    if winding_tpe in (
+            WindingType.GroundedStar,
+            WindingType.NeutralStar,
+            WindingType.FloatingStar,
+    ):
+        matrix = np.eye(3, dtype=float)
+    else:
+        if winding_tpe == WindingType.Delta:
+            matrix = np.array(
+                [
+                    [1.0, 0.0, -1.0],
+                    [-1.0, 1.0, 0.0],
+                    [0.0, -1.0, 1.0],
+                ],
+                dtype=float,
+            ) / np.sqrt(3.0)
+        else:
+            matrix = np.eye(3, dtype=float)
+
+    return matrix
+
+
+def xfmr_phase_permutation_matrix(clock: int) -> np.ndarray:
+    """
+    Return the transformer phase permutation matrix from vector-group clock.
+
+    :param clock: Transformer vector-group clock number.
+    :return: 3x3 phase permutation matrix.
+    """
+    matrix: np.ndarray
+    shift: int = (int(clock) // 4) % 3
+
+    if shift == 0:
+        matrix = np.eye(3, dtype=float)
+    else:
+        if shift == 1:
+            matrix = np.array(
+                [
+                    [0.0, 1.0, 0.0],
+                    [0.0, 0.0, 1.0],
+                    [1.0, 0.0, 0.0],
+                ],
+                dtype=float,
+            )
+        else:
+            matrix = np.array(
+                [
+                    [0.0, 0.0, 1.0],
+                    [1.0, 0.0, 0.0],
+                    [0.0, 1.0, 0.0],
+                ],
+                dtype=float,
+            )
+
+    return matrix
+
+
+
+
+def get_transformer_from_connection_keys() -> List[List[ParamPowerFlowRefferenceType]]:
+    """
+    Return 3x3 from-side transformer connection mapping keys.
+
+    :return: Matrix of from-side API-object keys.
+    """
+    keys: List[List[ParamPowerFlowRefferenceType]] = list([
+        list([
+            ParamPowerFlowRefferenceType.transformer_from_connection_aa,
+            ParamPowerFlowRefferenceType.transformer_from_connection_ab,
+            ParamPowerFlowRefferenceType.transformer_from_connection_ac,
+        ]),
+        list([
+            ParamPowerFlowRefferenceType.transformer_from_connection_ba,
+            ParamPowerFlowRefferenceType.transformer_from_connection_bb,
+            ParamPowerFlowRefferenceType.transformer_from_connection_bc,
+        ]),
+        list([
+            ParamPowerFlowRefferenceType.transformer_from_connection_ca,
+            ParamPowerFlowRefferenceType.transformer_from_connection_cb,
+            ParamPowerFlowRefferenceType.transformer_from_connection_cc,
+        ]),
+    ])
+
+    return keys
+
+
+def get_transformer_to_connection_keys() -> List[List[ParamPowerFlowRefferenceType]]:
+    """
+    Return 3x3 to-side transformer connection mapping keys.
+
+    :return: Matrix of to-side API-object keys.
+    """
+    keys: List[List[ParamPowerFlowRefferenceType]] = list([
+        list([
+            ParamPowerFlowRefferenceType.transformer_to_connection_aa,
+            ParamPowerFlowRefferenceType.transformer_to_connection_ab,
+            ParamPowerFlowRefferenceType.transformer_to_connection_ac,
+        ]),
+        list([
+            ParamPowerFlowRefferenceType.transformer_to_connection_ba,
+            ParamPowerFlowRefferenceType.transformer_to_connection_bb,
+            ParamPowerFlowRefferenceType.transformer_to_connection_bc,
+        ]),
+        list([
+            ParamPowerFlowRefferenceType.transformer_to_connection_ca,
+            ParamPowerFlowRefferenceType.transformer_to_connection_cb,
+            ParamPowerFlowRefferenceType.transformer_to_connection_cc,
+        ]),
+    ])
+
+    return keys
+
+
+def assign_3x3_static_matrix(
+        mdl: Block,
+        matrix: np.ndarray,
+        keys: List[List[ParamPowerFlowRefferenceType]],
+        logger: Logger | None,
+        device_name: str,
+) -> None:
+    """
+    Assign a 3x3 static matrix through a 3x3 API-object key matrix.
+
+    :param mdl: EMT block.
+    :param matrix: Numerical 3x3 matrix.
+    :param keys: API-object key matrix.
+    :param logger: Optional logger.
+    :param device_name: Device name used in diagnostics.
+    :return: None.
+    """
+    row_index: int = 0
+
+    while row_index < 3:
+        col_index: int = 0
+
+        while col_index < 3:
+            assign_api_mapping_value_if_present(
+                mdl=mdl,
+                key=keys[row_index][col_index],
+                value=float(matrix[row_index, col_index]),
+                logger=logger,
+                device_name=device_name,
+            )
+            col_index += 1
+
+        row_index += 1
+
+
+def get_transformer_equivalent_circuit_derived_keys() -> List[ParamPowerFlowRefferenceType]:
+    """
+    Return transformer equivalent-circuit derived-value keys.
+
+    :return: Derived equivalent-circuit API-object keys.
+    """
+    keys: List[ParamPowerFlowRefferenceType] = list([
+        ParamPowerFlowRefferenceType.transformer_winding1_resistance_pu,
+        ParamPowerFlowRefferenceType.transformer_winding2_resistance_pu,
+        ParamPowerFlowRefferenceType.transformer_winding1_inductance_pu_s,
+        ParamPowerFlowRefferenceType.transformer_winding2_inductance_pu_s,
+        ParamPowerFlowRefferenceType.transformer_mutual_inductance_pu_s,
+        ParamPowerFlowRefferenceType.transformer_magnetizing_conductance_pu,
+    ])
+
+    return keys
+
+
+def transformer_equivalent_circuit_values_are_requested(mdl: Block) -> bool:
+    """
+    Return whether any transformer equivalent-circuit derived value is requested.
+
+    This helper is only a computation guard. It is not a template-family or
+    model-family detector.
+
+    :param mdl: EMT block.
+    :return: ``True`` if any derived transformer key is exposed.
+    """
+    return api_mapping_has_any_key(mdl=mdl, keys=get_transformer_equivalent_circuit_derived_keys())
+
+
+def compute_transformer_equivalent_circuit_values(
+        omega_base: float,
+        transformer_r_pu: float,
+        transformer_x_pu: float,
+        transformer_g_pu: float,
+        transformer_b_pu: float,
+        total_voltage_ratio: float,
+        total_voltage_ratio_square: float,
+        eps_value: float,
+) -> Tuple[float, float, float, float, float, float]:
+    """
+    Compute derived transformer equivalent-circuit values from static data.
+
+    :param omega_base: Angular base frequency in rad/s.
+    :param transformer_r_pu: Total series resistance in p.u.
+    :param transformer_x_pu: Total series reactance in p.u.
+    :param transformer_g_pu: Magnetizing conductance in p.u.
+    :param transformer_b_pu: Magnetizing susceptance in p.u.
+    :param total_voltage_ratio: Total nominal-times-tap voltage ratio.
+    :param total_voltage_ratio_square: Square of the total voltage ratio.
+    :param eps_value: Numerical guard constant.
+    :return: Tuple ``(r1, r2, l1, l2, mutual_inductance, g_core)``.
+    """
+    r1_value: float = 0.5 * transformer_r_pu
+    r2_value: float = 0.5 * transformer_r_pu / (total_voltage_ratio_square + eps_value)
+    leakage_l_primary: float = 0.5 * transformer_x_pu / (omega_base + eps_value)
+    leakage_l_secondary: float = leakage_l_primary / (total_voltage_ratio_square + eps_value)
+    x_magnetizing: float
+
+    if abs(transformer_b_pu) > eps_value:
+        x_magnetizing = 1.0 / abs(transformer_b_pu)
+    else:
+        x_magnetizing = max(1000.0, 100.0 * max(abs(transformer_x_pu), 1.0))
+
+    magnetizing_l_primary: float = x_magnetizing / (omega_base + eps_value)
+    magnetizing_l_secondary: float = magnetizing_l_primary / (total_voltage_ratio_square + eps_value)
+    mutual_inductance: float = magnetizing_l_primary / (total_voltage_ratio + eps_value)
+    l1_value: float = leakage_l_primary + magnetizing_l_primary
+    l2_value: float = leakage_l_secondary + magnetizing_l_secondary
+    g_core: float = transformer_g_pu
+
+    return r1_value, r2_value, l1_value, l2_value, mutual_inductance, g_core
+
+
+def get_line_r_keys() -> List[List[ParamPowerFlowRefferenceType]]:
+    """
+    Return the fixed 4x4 NABC resistance mapping keys.
+
+    :return: Matrix of resistance API-object keys.
+    """
+    keys: List[List[ParamPowerFlowRefferenceType]] = list([
+        list([
+            ParamPowerFlowRefferenceType.Rnn,
+            ParamPowerFlowRefferenceType.Rna,
+            ParamPowerFlowRefferenceType.Rnb,
+            ParamPowerFlowRefferenceType.Rnc,
+        ]),
+        list([
+            ParamPowerFlowRefferenceType.Ran,
+            ParamPowerFlowRefferenceType.Raa,
+            ParamPowerFlowRefferenceType.Rab,
+            ParamPowerFlowRefferenceType.Rac,
+        ]),
+        list([
+            ParamPowerFlowRefferenceType.Rbn,
+            ParamPowerFlowRefferenceType.Rba,
+            ParamPowerFlowRefferenceType.Rbb,
+            ParamPowerFlowRefferenceType.Rbc,
+        ]),
+        list([
+            ParamPowerFlowRefferenceType.Rcn,
+            ParamPowerFlowRefferenceType.Rca,
+            ParamPowerFlowRefferenceType.Rcb,
+            ParamPowerFlowRefferenceType.Rcc,
+        ]),
+    ])
+
+    return keys
+
+
+def get_line_linv_keys() -> List[List[ParamPowerFlowRefferenceType]]:
+    """
+    Return the fixed 4x4 NABC inverse-inductance mapping keys.
+
+    :return: Matrix of inverse-inductance API-object keys.
+    """
+    keys: List[List[ParamPowerFlowRefferenceType]] = list([
+        list([
+            ParamPowerFlowRefferenceType.Linv_nn,
+            ParamPowerFlowRefferenceType.Linv_na,
+            ParamPowerFlowRefferenceType.Linv_nb,
+            ParamPowerFlowRefferenceType.Linv_nc,
+        ]),
+        list([
+            ParamPowerFlowRefferenceType.Linv_an,
+            ParamPowerFlowRefferenceType.Linv_aa,
+            ParamPowerFlowRefferenceType.Linv_ab,
+            ParamPowerFlowRefferenceType.Linv_ac,
+        ]),
+        list([
+            ParamPowerFlowRefferenceType.Linv_bn,
+            ParamPowerFlowRefferenceType.Linv_ba,
+            ParamPowerFlowRefferenceType.Linv_bb,
+            ParamPowerFlowRefferenceType.Linv_bc,
+        ]),
+        list([
+            ParamPowerFlowRefferenceType.Linv_cn,
+            ParamPowerFlowRefferenceType.Linv_ca,
+            ParamPowerFlowRefferenceType.Linv_cb,
+            ParamPowerFlowRefferenceType.Linv_cc,
+        ]),
+    ])
+
+    return keys
+
+
+def get_line_c_keys() -> List[List[ParamPowerFlowRefferenceType]]:
+    """
+    Return the fixed 4x4 NABC capacitance mapping keys.
+
+    :return: Matrix of capacitance API-object keys.
+    """
+    keys: List[List[ParamPowerFlowRefferenceType]] = list([
+        list([
+            ParamPowerFlowRefferenceType.Cnn,
+            ParamPowerFlowRefferenceType.Cna,
+            ParamPowerFlowRefferenceType.Cnb,
+            ParamPowerFlowRefferenceType.Cnc,
+        ]),
+        list([
+            ParamPowerFlowRefferenceType.Can,
+            ParamPowerFlowRefferenceType.Caa,
+            ParamPowerFlowRefferenceType.Cab,
+            ParamPowerFlowRefferenceType.Cac,
+        ]),
+        list([
+            ParamPowerFlowRefferenceType.Cbn,
+            ParamPowerFlowRefferenceType.Cba,
+            ParamPowerFlowRefferenceType.Cbb,
+            ParamPowerFlowRefferenceType.Cbc,
+        ]),
+        list([
+            ParamPowerFlowRefferenceType.Ccn,
+            ParamPowerFlowRefferenceType.Cca,
+            ParamPowerFlowRefferenceType.Ccb,
+            ParamPowerFlowRefferenceType.Ccc,
+        ]),
+    ])
+
+    return keys
+
+
+def flatten_matrix_keys(
+        matrix_keys: List[List[ParamPowerFlowRefferenceType]],
+) -> List[ParamPowerFlowRefferenceType]:
+    """
+    Flatten a matrix of API-object enum keys.
+
+    :param matrix_keys: Matrix of API-object keys.
+    :return: Flat list of keys.
+    """
+    flat_keys: List[ParamPowerFlowRefferenceType] = list()
+    row_index: int = 0
+
+    while row_index < len(matrix_keys):
+        col_index: int = 0
+
+        while col_index < len(matrix_keys[row_index]):
+            flat_keys.append(matrix_keys[row_index][col_index])
+            col_index += 1
+
+        row_index += 1
+
+    return flat_keys
+
+
+def get_all_line_matrix_keys() -> List[ParamPowerFlowRefferenceType]:
+    """
+    Return every line R, Linv and C API-object key.
+
+    :return: Flat list of all line matrix mapping keys.
+    """
+    all_keys: List[ParamPowerFlowRefferenceType] = list()
+    key_matrices: List[List[List[ParamPowerFlowRefferenceType]]] = list([
+        get_line_r_keys(),
+        get_line_linv_keys(),
+        get_line_c_keys(),
+    ])
+    matrix_index: int = 0
+
+    while matrix_index < len(key_matrices):
+        flat_keys: List[ParamPowerFlowRefferenceType] = flatten_matrix_keys(key_matrices[matrix_index])
+        key_index: int = 0
+
+        while key_index < len(flat_keys):
+            all_keys.append(flat_keys[key_index])
+            key_index += 1
+
+        matrix_index += 1
+
+    return all_keys
+
+
+def get_line_active_global_indices(line: Any) -> List[int]:
+    """
+    Return active NABC phase indices for a line-like device.
+
+    :param line: Line-like branch device.
+    :return: Active indices in fixed NABC order.
+    """
+    phase_mask: List[bool] = list([
+        bool(line.ys.phN),
+        bool(line.ys.phA),
+        bool(line.ys.phB),
+        bool(line.ys.phC),
+    ])
+    active_indices: List[int] = list()
+    phase_index: int = 0
+
+    while phase_index < len(phase_mask):
+        if phase_mask[phase_index]:
+            active_indices.append(phase_index)
+        else:
+            pass
+
+        phase_index += 1
+
+    return active_indices
+
+
+def build_uncoupled_line_static_matrices(
+        line: Any,
+        omega_base: float,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Build uncoupled fallback line matrices.
+
+    This preserves the historical fallback used when no tower/template matrix is
+    available. The historical code uses ``X = line.B`` and ``B = line.X`` in
+    this fallback; that convention is preserved here to avoid a hidden numerical
+    behavior change in the mapping refactor.
+
+    :param line: Line-like branch device.
+    :param omega_base: Base angular frequency.
+    :return: Tuple ``(R, L, C)`` in EMT per-unit form.
+    """
+    r_value: float = float(line.R)
+
+    # Historical fallback naming intentionally preserved. Review this separately
+    # with numerical regression tests before changing it.
+    x_value: float = float(line.B)
+    b_value: float = float(line.X)
+
+    r_full: np.ndarray = np.zeros((3, 3), dtype=np.float64)
+    x_full: np.ndarray = np.zeros((3, 3), dtype=np.float64)
+    bsh_full: np.ndarray = np.zeros((3, 3), dtype=np.float64)
+    phase_index: int = 0
+
+    while phase_index < 3:
+        r_full[phase_index, phase_index] = r_value
+        x_full[phase_index, phase_index] = x_value
+        bsh_full[phase_index, phase_index] = b_value
+        phase_index += 1
+
+    l_full: np.ndarray = x_full / (omega_base + 1.0e-20)
+    c_full: np.ndarray = (bsh_full / (omega_base + 1.0e-20)) / 2.0
+
+    return r_full, l_full, c_full
+
+
+def build_line_static_matrices(
+        grid: MultiCircuit,
+        line: Any,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Build line R, L and C matrices in EMT per-unit form.
+
+    :param grid: Static network model.
+    :param line: Line-like branch device.
+    :return: Tuple ``(R, L, C)`` in reduced active-phase coordinates.
+    """
+    frequency_base: float = float(grid.fBase)
+    omega_base: float = 2.0 * np.pi * frequency_base
+    voltage_base: float = float(line.bus_from.Vnom) * 1.0e3
+    sbase_va: float = float(grid.Sbase) * 1.0e6
+    zbase: float = (voltage_base * voltage_base) / sbase_va
+    ybase: float = 1.0 / zbase
+    line_template: Any = line.template
+
+    if line_template is None:
+        r_full: np.ndarray
+        l_full: np.ndarray
+        c_full: np.ndarray
+        r_full, l_full, c_full = build_uncoupled_line_static_matrices(
+            line=line,
+            omega_base=omega_base,
+        )
+    else:
+        # Tower/template matrices are physical line matrices. They are first
+        # length-scaled and then converted to the system EMT per-unit base.
+        z_phys: np.ndarray = line_template.z_nabc * float(line.length)
+        y_phys: np.ndarray = line_template.y_nabc * float(line.length)
+
+        z_pu: np.ndarray = z_phys / zbase
+        y_pu: np.ndarray = y_phys / ybase
+
+        r_full = np.real(z_pu)
+        x_full: np.ndarray = np.imag(z_pu)
+        l_full = x_full / (omega_base + 1.0e-20)
+
+        bsh_full: np.ndarray = np.imag(y_pu)
+        c_full = (bsh_full / (omega_base + 1.0e-20)) / 2.0
+
+    return r_full, l_full, c_full
+
+
+def validate_line_static_matrices(
+        line: Any,
+        r_full: np.ndarray,
+        l_full: np.ndarray,
+        c_full: np.ndarray,
+        n_active: int,
+        logger: Logger | None,
+) -> bool:
+    """
+    Validate reduced line matrix dimensions before assignment.
+
+    :param line: Line-like branch device.
+    :param r_full: Reduced resistance matrix.
+    :param l_full: Reduced inductance matrix.
+    :param c_full: Reduced capacitance matrix.
+    :param n_active: Number of active physical phases.
+    :param logger: Optional logger.
+    :return: ``True`` if all matrices match the active-phase shape.
+    """
+    valid: bool = True
+    expected_shape: Tuple[int, int] = (n_active, n_active)
+    device_name: str = str(line.name)
+
+    if r_full.shape != expected_shape:
+        add_static_mapping_warning(
+            logger=logger,
+            device_name=device_name,
+            message="Line static mapping skipped because R matrix shape is inconsistent.",
+            value=str(r_full.shape),
+            expected_value=str(expected_shape),
+            device_property="line_static_matrix_shape",
+        )
+        valid = False
+    else:
+        pass
+
+    if l_full.shape != expected_shape:
+        add_static_mapping_warning(
+            logger=logger,
+            device_name=device_name,
+            message="Line static mapping skipped because L matrix shape is inconsistent.",
+            value=str(l_full.shape),
+            expected_value=str(expected_shape),
+            device_property="line_static_matrix_shape",
+        )
+        valid = False
+    else:
+        pass
+
+    if c_full.shape != expected_shape:
+        add_static_mapping_warning(
+            logger=logger,
+            device_name=device_name,
+            message="Line static mapping skipped because C matrix shape is inconsistent.",
+            value=str(c_full.shape),
+            expected_value=str(expected_shape),
+            device_property="line_static_matrix_shape",
+        )
+        valid = False
+    else:
+        pass
+
+    return valid
+
+
+def assign_common_injection_static_api_mapping(
+        grid: MultiCircuit,
+        device: Any,
+        mdl: Block,
+        logger: Logger | None,
+) -> None:
+    """
+    Assign static parameters inherited from ``InjectionParent``.
+
+    ``injection_use_kw`` is a static boolean flag and
+    ``injection_connection_type`` is a stable numeric encoding of the static
+    connection enum.
+
+    :param grid: Static network model.
+    :param device: Injection-like static device.
+    :param mdl: EMT block receiving constants.
+    :param logger: Optional logger.
+    :return: None.
+    """
+    device_name: str = str(device.name)
+
+    # if the device is active or not
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowRefferenceType.device_active,
+        value=boolean_to_float(bool(device.active)),
+        logger=logger,
+        device_name=device_name,
+    )
+
+    # connection type
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowRefferenceType.injection_connection_type,
+        value=shunt_connection_code(device.conn),
+        logger=logger,
+        device_name=device_name,
+    )
+
+
+def assign_common_branch_static_api_mapping(
+        device: Any,
+        mdl: Block,
+        logger: Logger | None,
+) -> None:
+    """
+    Assign static parameters inherited from ``BranchParent``.
+
+    :param device: Branch-like static device.
+    :param mdl: EMT block receiving constants.
+    :param logger: Optional logger.
+    :return: None.
+    """
+    device_name: str = str(device.name)
+
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowRefferenceType.device_active,
+        value=boolean_to_float(bool(device.active)),
+        logger=logger,
+        device_name=device_name,
+    )
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowRefferenceType.branch_rate_mva,
+        value=float(device.rate),
+        logger=logger,
+        device_name=device_name,
+    )
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowRefferenceType.branch_temp_base_deg_c,
+        value=float(device.temp_base),
+        logger=logger,
+        device_name=device_name,
+    )
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowRefferenceType.branch_temp_oper_deg_c,
+        value=float(device.temp_oper),
+        logger=logger,
+        device_name=device_name,
+    )
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowRefferenceType.branch_alpha_per_deg_c,
+        value=float(device.alpha),
+        logger=logger,
+        device_name=device_name,
+    )
 
 
 def assign_load_static_api_mapping(
@@ -1942,39 +2833,6 @@ def assign_battery_static_api_mapping(
     )
 
 
-def converter_control_code(control_tpe: ConverterControlType | None) -> float:
-    """
-    Convert a static VSC control enum to the EMT template numerical code.
-
-    :param control_tpe: Converter control enum or ``None``.
-    :return: Numerical control code used by existing EMT templates.
-    """
-    code: float
-
-    if control_tpe is None:
-        code = 0.0
-    elif control_tpe == ConverterControlType.Vm_dc:
-        code = 1.0
-    elif control_tpe == ConverterControlType.Vm_ac:
-        code = 2.0
-    elif control_tpe == ConverterControlType.Va_ac:
-        code = 3.0
-    elif control_tpe == ConverterControlType.Qac:
-        code = 4.0
-    elif control_tpe == ConverterControlType.Pdc:
-        code = 5.0
-    elif control_tpe == ConverterControlType.Pac:
-        code = 6.0
-    elif control_tpe == ConverterControlType.Pdc_angle_droop:
-        code = 7.0
-    elif control_tpe == ConverterControlType.Imax:
-        code = 8.0
-    else:
-        code = 0.0
-
-    return code
-
-
 def assign_vsc_static_api_mapping(
         grid: MultiCircuit,
         vsc: Any,
@@ -2135,72 +2993,6 @@ def assign_dc_line_static_api_mapping(
         logger=logger,
         device_name=device_name,
     )
-
-
-def xfmr_connection_matrix(winding_tpe: WindingType) -> np.ndarray:
-    """
-    Return the 3x3 transformer winding connection matrix.
-
-    :param winding_tpe: Transformer winding connection type.
-    :return: 3x3 winding connection matrix.
-    """
-    matrix: np.ndarray
-
-    if winding_tpe in (
-            WindingType.GroundedStar,
-            WindingType.NeutralStar,
-            WindingType.FloatingStar,
-    ):
-        matrix = np.eye(3, dtype=float)
-    else:
-        if winding_tpe == WindingType.Delta:
-            matrix = np.array(
-                [
-                    [1.0, 0.0, -1.0],
-                    [-1.0, 1.0, 0.0],
-                    [0.0, -1.0, 1.0],
-                ],
-                dtype=float,
-            ) / np.sqrt(3.0)
-        else:
-            matrix = np.eye(3, dtype=float)
-
-    return matrix
-
-
-def xfmr_phase_permutation_matrix(clock: int) -> np.ndarray:
-    """
-    Return the transformer phase permutation matrix from vector-group clock.
-
-    :param clock: Transformer vector-group clock number.
-    :return: 3x3 phase permutation matrix.
-    """
-    matrix: np.ndarray
-    shift: int = (int(clock) // 4) % 3
-
-    if shift == 0:
-        matrix = np.eye(3, dtype=float)
-    else:
-        if shift == 1:
-            matrix = np.array(
-                [
-                    [0.0, 1.0, 0.0],
-                    [0.0, 0.0, 1.0],
-                    [1.0, 0.0, 0.0],
-                ],
-                dtype=float,
-            )
-        else:
-            matrix = np.array(
-                [
-                    [0.0, 0.0, 1.0],
-                    [1.0, 0.0, 0.0],
-                    [0.0, 1.0, 0.0],
-                ],
-                dtype=float,
-            )
-
-    return matrix
 
 
 def assign_transformer2w_static_api_mapping(
@@ -2485,507 +3277,6 @@ def assign_transformer2w_static_api_mapping(
         logger=logger,
         device_name=device_name,
     )
-
-
-def get_transformer_from_connection_keys() -> List[List[ParamPowerFlowRefferenceType]]:
-    """
-    Return 3x3 from-side transformer connection mapping keys.
-
-    :return: Matrix of from-side API-object keys.
-    """
-    keys: List[List[ParamPowerFlowRefferenceType]] = list([
-        list([
-            ParamPowerFlowRefferenceType.transformer_from_connection_aa,
-            ParamPowerFlowRefferenceType.transformer_from_connection_ab,
-            ParamPowerFlowRefferenceType.transformer_from_connection_ac,
-        ]),
-        list([
-            ParamPowerFlowRefferenceType.transformer_from_connection_ba,
-            ParamPowerFlowRefferenceType.transformer_from_connection_bb,
-            ParamPowerFlowRefferenceType.transformer_from_connection_bc,
-        ]),
-        list([
-            ParamPowerFlowRefferenceType.transformer_from_connection_ca,
-            ParamPowerFlowRefferenceType.transformer_from_connection_cb,
-            ParamPowerFlowRefferenceType.transformer_from_connection_cc,
-        ]),
-    ])
-
-    return keys
-
-
-def get_transformer_to_connection_keys() -> List[List[ParamPowerFlowRefferenceType]]:
-    """
-    Return 3x3 to-side transformer connection mapping keys.
-
-    :return: Matrix of to-side API-object keys.
-    """
-    keys: List[List[ParamPowerFlowRefferenceType]] = list([
-        list([
-            ParamPowerFlowRefferenceType.transformer_to_connection_aa,
-            ParamPowerFlowRefferenceType.transformer_to_connection_ab,
-            ParamPowerFlowRefferenceType.transformer_to_connection_ac,
-        ]),
-        list([
-            ParamPowerFlowRefferenceType.transformer_to_connection_ba,
-            ParamPowerFlowRefferenceType.transformer_to_connection_bb,
-            ParamPowerFlowRefferenceType.transformer_to_connection_bc,
-        ]),
-        list([
-            ParamPowerFlowRefferenceType.transformer_to_connection_ca,
-            ParamPowerFlowRefferenceType.transformer_to_connection_cb,
-            ParamPowerFlowRefferenceType.transformer_to_connection_cc,
-        ]),
-    ])
-
-    return keys
-
-
-def assign_3x3_static_matrix(
-        mdl: Block,
-        matrix: np.ndarray,
-        keys: List[List[ParamPowerFlowRefferenceType]],
-        logger: Logger | None,
-        device_name: str,
-) -> None:
-    """
-    Assign a 3x3 static matrix through a 3x3 API-object key matrix.
-
-    :param mdl: EMT block.
-    :param matrix: Numerical 3x3 matrix.
-    :param keys: API-object key matrix.
-    :param logger: Optional logger.
-    :param device_name: Device name used in diagnostics.
-    :return: None.
-    """
-    row_index: int = 0
-
-    while row_index < 3:
-        col_index: int = 0
-
-        while col_index < 3:
-            assign_api_mapping_value_if_present(
-                mdl=mdl,
-                key=keys[row_index][col_index],
-                value=float(matrix[row_index, col_index]),
-                logger=logger,
-                device_name=device_name,
-            )
-            col_index += 1
-
-        row_index += 1
-
-
-def get_transformer_equivalent_circuit_derived_keys() -> List[ParamPowerFlowRefferenceType]:
-    """
-    Return transformer equivalent-circuit derived-value keys.
-
-    :return: Derived equivalent-circuit API-object keys.
-    """
-    keys: List[ParamPowerFlowRefferenceType] = list([
-        ParamPowerFlowRefferenceType.transformer_winding1_resistance_pu,
-        ParamPowerFlowRefferenceType.transformer_winding2_resistance_pu,
-        ParamPowerFlowRefferenceType.transformer_winding1_inductance_pu_s,
-        ParamPowerFlowRefferenceType.transformer_winding2_inductance_pu_s,
-        ParamPowerFlowRefferenceType.transformer_mutual_inductance_pu_s,
-        ParamPowerFlowRefferenceType.transformer_magnetizing_conductance_pu,
-    ])
-
-    return keys
-
-
-def transformer_equivalent_circuit_values_are_requested(mdl: Block) -> bool:
-    """
-    Return whether any transformer equivalent-circuit derived value is requested.
-
-    This helper is only a computation guard. It is not a template-family or
-    model-family detector.
-
-    :param mdl: EMT block.
-    :return: ``True`` if any derived transformer key is exposed.
-    """
-    return api_mapping_has_any_key(mdl=mdl, keys=get_transformer_equivalent_circuit_derived_keys())
-
-
-def compute_transformer_equivalent_circuit_values(
-        omega_base: float,
-        transformer_r_pu: float,
-        transformer_x_pu: float,
-        transformer_g_pu: float,
-        transformer_b_pu: float,
-        total_voltage_ratio: float,
-        total_voltage_ratio_square: float,
-        eps_value: float,
-) -> Tuple[float, float, float, float, float, float]:
-    """
-    Compute derived transformer equivalent-circuit values from static data.
-
-    :param omega_base: Angular base frequency in rad/s.
-    :param transformer_r_pu: Total series resistance in p.u.
-    :param transformer_x_pu: Total series reactance in p.u.
-    :param transformer_g_pu: Magnetizing conductance in p.u.
-    :param transformer_b_pu: Magnetizing susceptance in p.u.
-    :param total_voltage_ratio: Total nominal-times-tap voltage ratio.
-    :param total_voltage_ratio_square: Square of the total voltage ratio.
-    :param eps_value: Numerical guard constant.
-    :return: Tuple ``(r1, r2, l1, l2, mutual_inductance, g_core)``.
-    """
-    r1_value: float = 0.5 * transformer_r_pu
-    r2_value: float = 0.5 * transformer_r_pu / (total_voltage_ratio_square + eps_value)
-    leakage_l_primary: float = 0.5 * transformer_x_pu / (omega_base + eps_value)
-    leakage_l_secondary: float = leakage_l_primary / (total_voltage_ratio_square + eps_value)
-    x_magnetizing: float
-
-    if abs(transformer_b_pu) > eps_value:
-        x_magnetizing = 1.0 / abs(transformer_b_pu)
-    else:
-        x_magnetizing = max(1000.0, 100.0 * max(abs(transformer_x_pu), 1.0))
-
-    magnetizing_l_primary: float = x_magnetizing / (omega_base + eps_value)
-    magnetizing_l_secondary: float = magnetizing_l_primary / (total_voltage_ratio_square + eps_value)
-    mutual_inductance: float = magnetizing_l_primary / (total_voltage_ratio + eps_value)
-    l1_value: float = leakage_l_primary + magnetizing_l_primary
-    l2_value: float = leakage_l_secondary + magnetizing_l_secondary
-    g_core: float = transformer_g_pu
-
-    return r1_value, r2_value, l1_value, l2_value, mutual_inductance, g_core
-
-
-def get_line_r_keys() -> List[List[ParamPowerFlowRefferenceType]]:
-    """
-    Return the fixed 4x4 NABC resistance mapping keys.
-
-    :return: Matrix of resistance API-object keys.
-    """
-    keys: List[List[ParamPowerFlowRefferenceType]] = list([
-        list([
-            ParamPowerFlowRefferenceType.Rnn,
-            ParamPowerFlowRefferenceType.Rna,
-            ParamPowerFlowRefferenceType.Rnb,
-            ParamPowerFlowRefferenceType.Rnc,
-        ]),
-        list([
-            ParamPowerFlowRefferenceType.Ran,
-            ParamPowerFlowRefferenceType.Raa,
-            ParamPowerFlowRefferenceType.Rab,
-            ParamPowerFlowRefferenceType.Rac,
-        ]),
-        list([
-            ParamPowerFlowRefferenceType.Rbn,
-            ParamPowerFlowRefferenceType.Rba,
-            ParamPowerFlowRefferenceType.Rbb,
-            ParamPowerFlowRefferenceType.Rbc,
-        ]),
-        list([
-            ParamPowerFlowRefferenceType.Rcn,
-            ParamPowerFlowRefferenceType.Rca,
-            ParamPowerFlowRefferenceType.Rcb,
-            ParamPowerFlowRefferenceType.Rcc,
-        ]),
-    ])
-
-    return keys
-
-
-def get_line_linv_keys() -> List[List[ParamPowerFlowRefferenceType]]:
-    """
-    Return the fixed 4x4 NABC inverse-inductance mapping keys.
-
-    :return: Matrix of inverse-inductance API-object keys.
-    """
-    keys: List[List[ParamPowerFlowRefferenceType]] = list([
-        list([
-            ParamPowerFlowRefferenceType.Linv_nn,
-            ParamPowerFlowRefferenceType.Linv_na,
-            ParamPowerFlowRefferenceType.Linv_nb,
-            ParamPowerFlowRefferenceType.Linv_nc,
-        ]),
-        list([
-            ParamPowerFlowRefferenceType.Linv_an,
-            ParamPowerFlowRefferenceType.Linv_aa,
-            ParamPowerFlowRefferenceType.Linv_ab,
-            ParamPowerFlowRefferenceType.Linv_ac,
-        ]),
-        list([
-            ParamPowerFlowRefferenceType.Linv_bn,
-            ParamPowerFlowRefferenceType.Linv_ba,
-            ParamPowerFlowRefferenceType.Linv_bb,
-            ParamPowerFlowRefferenceType.Linv_bc,
-        ]),
-        list([
-            ParamPowerFlowRefferenceType.Linv_cn,
-            ParamPowerFlowRefferenceType.Linv_ca,
-            ParamPowerFlowRefferenceType.Linv_cb,
-            ParamPowerFlowRefferenceType.Linv_cc,
-        ]),
-    ])
-
-    return keys
-
-
-def get_line_c_keys() -> List[List[ParamPowerFlowRefferenceType]]:
-    """
-    Return the fixed 4x4 NABC capacitance mapping keys.
-
-    :return: Matrix of capacitance API-object keys.
-    """
-    keys: List[List[ParamPowerFlowRefferenceType]] = list([
-        list([
-            ParamPowerFlowRefferenceType.Cnn,
-            ParamPowerFlowRefferenceType.Cna,
-            ParamPowerFlowRefferenceType.Cnb,
-            ParamPowerFlowRefferenceType.Cnc,
-        ]),
-        list([
-            ParamPowerFlowRefferenceType.Can,
-            ParamPowerFlowRefferenceType.Caa,
-            ParamPowerFlowRefferenceType.Cab,
-            ParamPowerFlowRefferenceType.Cac,
-        ]),
-        list([
-            ParamPowerFlowRefferenceType.Cbn,
-            ParamPowerFlowRefferenceType.Cba,
-            ParamPowerFlowRefferenceType.Cbb,
-            ParamPowerFlowRefferenceType.Cbc,
-        ]),
-        list([
-            ParamPowerFlowRefferenceType.Ccn,
-            ParamPowerFlowRefferenceType.Cca,
-            ParamPowerFlowRefferenceType.Ccb,
-            ParamPowerFlowRefferenceType.Ccc,
-        ]),
-    ])
-
-    return keys
-
-
-def flatten_matrix_keys(
-        matrix_keys: List[List[ParamPowerFlowRefferenceType]],
-) -> List[ParamPowerFlowRefferenceType]:
-    """
-    Flatten a matrix of API-object enum keys.
-
-    :param matrix_keys: Matrix of API-object keys.
-    :return: Flat list of keys.
-    """
-    flat_keys: List[ParamPowerFlowRefferenceType] = list()
-    row_index: int = 0
-
-    while row_index < len(matrix_keys):
-        col_index: int = 0
-
-        while col_index < len(matrix_keys[row_index]):
-            flat_keys.append(matrix_keys[row_index][col_index])
-            col_index += 1
-
-        row_index += 1
-
-    return flat_keys
-
-
-def get_all_line_matrix_keys() -> List[ParamPowerFlowRefferenceType]:
-    """
-    Return every line R, Linv and C API-object key.
-
-    :return: Flat list of all line matrix mapping keys.
-    """
-    all_keys: List[ParamPowerFlowRefferenceType] = list()
-    key_matrices: List[List[List[ParamPowerFlowRefferenceType]]] = list([
-        get_line_r_keys(),
-        get_line_linv_keys(),
-        get_line_c_keys(),
-    ])
-    matrix_index: int = 0
-
-    while matrix_index < len(key_matrices):
-        flat_keys: List[ParamPowerFlowRefferenceType] = flatten_matrix_keys(key_matrices[matrix_index])
-        key_index: int = 0
-
-        while key_index < len(flat_keys):
-            all_keys.append(flat_keys[key_index])
-            key_index += 1
-
-        matrix_index += 1
-
-    return all_keys
-
-
-def get_line_active_global_indices(line: Any) -> List[int]:
-    """
-    Return active NABC phase indices for a line-like device.
-
-    :param line: Line-like branch device.
-    :return: Active indices in fixed NABC order.
-    """
-    phase_mask: List[bool] = list([
-        bool(line.ys.phN),
-        bool(line.ys.phA),
-        bool(line.ys.phB),
-        bool(line.ys.phC),
-    ])
-    active_indices: List[int] = list()
-    phase_index: int = 0
-
-    while phase_index < len(phase_mask):
-        if phase_mask[phase_index]:
-            active_indices.append(phase_index)
-        else:
-            pass
-
-        phase_index += 1
-
-    return active_indices
-
-
-def build_uncoupled_line_static_matrices(
-        line: Any,
-        omega_base: float,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """
-    Build uncoupled fallback line matrices.
-
-    This preserves the historical fallback used when no tower/template matrix is
-    available. The historical code uses ``X = line.B`` and ``B = line.X`` in
-    this fallback; that convention is preserved here to avoid a hidden numerical
-    behavior change in the mapping refactor.
-
-    :param line: Line-like branch device.
-    :param omega_base: Base angular frequency.
-    :return: Tuple ``(R, L, C)`` in EMT per-unit form.
-    """
-    r_value: float = float(line.R)
-
-    # Historical fallback naming intentionally preserved. Review this separately
-    # with numerical regression tests before changing it.
-    x_value: float = float(line.B)
-    b_value: float = float(line.X)
-
-    r_full: np.ndarray = np.zeros((3, 3), dtype=np.float64)
-    x_full: np.ndarray = np.zeros((3, 3), dtype=np.float64)
-    bsh_full: np.ndarray = np.zeros((3, 3), dtype=np.float64)
-    phase_index: int = 0
-
-    while phase_index < 3:
-        r_full[phase_index, phase_index] = r_value
-        x_full[phase_index, phase_index] = x_value
-        bsh_full[phase_index, phase_index] = b_value
-        phase_index += 1
-
-    l_full: np.ndarray = x_full / (omega_base + 1.0e-20)
-    c_full: np.ndarray = (bsh_full / (omega_base + 1.0e-20)) / 2.0
-
-    return r_full, l_full, c_full
-
-
-def build_line_static_matrices(
-        grid: MultiCircuit,
-        line: Any,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """
-    Build line R, L and C matrices in EMT per-unit form.
-
-    :param grid: Static network model.
-    :param line: Line-like branch device.
-    :return: Tuple ``(R, L, C)`` in reduced active-phase coordinates.
-    """
-    frequency_base: float = float(grid.fBase)
-    omega_base: float = 2.0 * np.pi * frequency_base
-    voltage_base: float = float(line.bus_from.Vnom) * 1.0e3
-    sbase_va: float = float(grid.Sbase) * 1.0e6
-    zbase: float = (voltage_base * voltage_base) / sbase_va
-    ybase: float = 1.0 / zbase
-    line_template: Any = line.template
-
-    if line_template is None:
-        r_full: np.ndarray
-        l_full: np.ndarray
-        c_full: np.ndarray
-        r_full, l_full, c_full = build_uncoupled_line_static_matrices(
-            line=line,
-            omega_base=omega_base,
-        )
-    else:
-        # Tower/template matrices are physical line matrices. They are first
-        # length-scaled and then converted to the system EMT per-unit base.
-        z_phys: np.ndarray = line_template.z_nabc * float(line.length)
-        y_phys: np.ndarray = line_template.y_nabc * float(line.length)
-
-        z_pu: np.ndarray = z_phys / zbase
-        y_pu: np.ndarray = y_phys / ybase
-
-        r_full = np.real(z_pu)
-        x_full: np.ndarray = np.imag(z_pu)
-        l_full = x_full / (omega_base + 1.0e-20)
-
-        bsh_full: np.ndarray = np.imag(y_pu)
-        c_full = (bsh_full / (omega_base + 1.0e-20)) / 2.0
-
-    return r_full, l_full, c_full
-
-
-def validate_line_static_matrices(
-        line: Any,
-        r_full: np.ndarray,
-        l_full: np.ndarray,
-        c_full: np.ndarray,
-        n_active: int,
-        logger: Logger | None,
-) -> bool:
-    """
-    Validate reduced line matrix dimensions before assignment.
-
-    :param line: Line-like branch device.
-    :param r_full: Reduced resistance matrix.
-    :param l_full: Reduced inductance matrix.
-    :param c_full: Reduced capacitance matrix.
-    :param n_active: Number of active physical phases.
-    :param logger: Optional logger.
-    :return: ``True`` if all matrices match the active-phase shape.
-    """
-    valid: bool = True
-    expected_shape: Tuple[int, int] = (n_active, n_active)
-    device_name: str = str(line.name)
-
-    if r_full.shape != expected_shape:
-        add_static_mapping_warning(
-            logger=logger,
-            device_name=device_name,
-            message="Line static mapping skipped because R matrix shape is inconsistent.",
-            value=str(r_full.shape),
-            expected_value=str(expected_shape),
-            device_property="line_static_matrix_shape",
-        )
-        valid = False
-    else:
-        pass
-
-    if l_full.shape != expected_shape:
-        add_static_mapping_warning(
-            logger=logger,
-            device_name=device_name,
-            message="Line static mapping skipped because L matrix shape is inconsistent.",
-            value=str(l_full.shape),
-            expected_value=str(expected_shape),
-            device_property="line_static_matrix_shape",
-        )
-        valid = False
-    else:
-        pass
-
-    if c_full.shape != expected_shape:
-        add_static_mapping_warning(
-            logger=logger,
-            device_name=device_name,
-            message="Line static mapping skipped because C matrix shape is inconsistent.",
-            value=str(c_full.shape),
-            expected_value=str(expected_shape),
-            device_property="line_static_matrix_shape",
-        )
-        valid = False
-    else:
-        pass
-
-    return valid
 
 
 def assign_line_static_api_mapping(

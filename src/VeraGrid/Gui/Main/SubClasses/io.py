@@ -34,7 +34,57 @@ from VeraGridEngine.IO.veragrid.remote import RemoteInstruction
 from VeraGridEngine.IO.veragrid.catalogue import save_catalogue, load_catalogue
 from VeraGridEngine.Utils.ThirdParty.gslv.gslv_activation import install_gslv_license
 from VeraGrid.templates import (get_cables_catalogue, get_transformer_catalogue, get_wires_catalogue,
-                                get_sequence_lines_catalogue)
+                                 get_sequence_lines_catalogue)
+
+
+def _refresh_catalogue_dependent_views(io_main: object) -> None:
+    """
+    Refresh GUI views whose combo delegates depend on the loaded catalogue.
+
+    The object-properties table builds foreign-key combo delegates from the
+    circuit catalogue snapshot available when the `ObjectsModel` is created.
+    After adding one default or custom catalogue, the currently visible table
+    must therefore be rebuilt explicitly so template combo boxes such as
+    `rms_template` and `emt_template` expose the new entries immediately.
+
+    :param io_main: GUI object hosting the catalogue action.
+    :return: None.
+    """
+    ui_object = getattr(io_main, "ui", None)
+    circuit_object = getattr(io_main, "circuit", None)
+
+    # The object-properties table uses already materialized template lists for its
+    # combo delegates. In the real GUI we therefore materialize the lazy dynamic
+    # catalogues before rebuilding the current table view so `rms_template` and
+    # `emt_template` show their options immediately after Add Catalogue.
+    if ui_object is not None and circuit_object is not None:
+        try:
+            _ = circuit_object.rms_models
+            _ = circuit_object.emt_models
+        except AttributeError:
+            pass
+    else:
+        pass
+
+    try:
+        io_main.setup_objects_tree()
+    except AttributeError:
+        pass
+
+    try:
+        io_main.view_objects_data()
+    except AttributeError:
+        pass
+
+    try:
+        io_main.update_from_to_list_views()
+    except AttributeError:
+        pass
+
+    try:
+        io_main.update_date_dependent_combos()
+    except AttributeError:
+        pass
 
 
 class IoMain(ScenariosMain):
@@ -1028,6 +1078,8 @@ class IoMain(ScenariosMain):
         else:
             pass
 
+        _refresh_catalogue_dependent_views(self)
+
         self.show_info_toast("Catalogue added!")
 
     def load_custom_catalogue(self):
@@ -1055,6 +1107,7 @@ class IoMain(ScenariosMain):
                     self.show_logs(name='Open catalogue logger', logger=logger)
 
                 self.circuit.add_catalogue(data)
+                _refresh_catalogue_dependent_views(self)
                 self.show_info_toast("Catalogue loaded!")
             return None
         else:
