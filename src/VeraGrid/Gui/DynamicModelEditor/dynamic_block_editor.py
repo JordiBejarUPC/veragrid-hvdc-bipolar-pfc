@@ -5342,17 +5342,229 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
         block_model = None
         item_name = ""
+        count: int = self.block_counters.get(block_type, 0) + 1
         # if blocktype is generic we need to know initial input and output ports from the user
-        if BlockType == BlockType.GENERIC:
+        if block_type == BlockType.GENERIC:
             dialog = GenericBlockDialog(self)
             if dialog.exec() == QDialog.DialogCode.Accepted:
                 item_name, inputs, outputs = dialog.get_values()
                 block_model = create_generic_block(self.var_factory, inputs, outputs, item_name)
-                self.main_block.add(block_model)
-        elif
+
+        elif block_type == BlockType.GROUNDING_LINK_EMT:
+            dialog = self._build_grounding_link_emt_dialog()
+
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                grounding_config = dialog.get_configuration()
+            else:
+                return None
+
+            try:
+                template_kwargs = self._build_grounding_link_emt_template_kwargs(grounding_config)
+            except ValueError as exc:
+                QtWidgets.QMessageBox.warning(self, "Grounding Link", str(exc))
+                return None
+
+            item_name: str = f"grounding_link_emt_{count}"
+            block_model = get_grounding_link_emt_template(vf=self.var_factory, name=item_name, **template_kwargs).block
+            set_modal_template_metadata(block_model, kind="grounding_link_emt", config=dict(grounding_config))
+
+        elif block_type == BlockType.SWITCH_EMT:
+            dialog = SwitchEmtDialog(self)
+
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                switch_config = dialog.get_switch_configuration()
+            else:
+                return None
+
+            item_name: str = f"switch_emt_{count}"
+
+            block_model = get_switch_emt_template(vf=self.var_factory, name=item_name, **switch_config).block
+            set_modal_template_metadata(
+                block_model,
+                kind="switch_emt",
+                config=dict(switch_config),
+            )
+
+        elif block_type == BlockType.RLC_COMBO_EMT:
+            dialog = self._build_rlc_combo_emt_dialog()
+
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                rlc_config = dialog.get_configuration()
+            else:
+                return None
+
+            try:
+                template_kwargs = self._build_rlc_combo_emt_template_kwargs(rlc_config)
+            except ValueError as exc:
+                QtWidgets.QMessageBox.warning(self, "RLC Combo", str(exc))
+                return None
+
+            item_name: str = f"rlc_combo_emt_{count}"
+
+            block_model = get_shunt_rlc_combo_emt_template(vf=self.var_factory, name=item_name, **template_kwargs).block
+            set_modal_template_metadata(block_model, kind="rlc_combo_emt", config=dict(rlc_config))
+            self._annotate_internal_grounding_link_blocks(block_model)
+            self._sync_rlc_combo_load_base_values(template_kwargs)
+
+            if isinstance(self.api_object, InjectionParent):
+                try:
+                    self.api_object.conn = rlc_config["connection_type"]
+                except Exception:
+                    pass
+            else:
+                pass
+
+        elif block_type in {BlockType.R_LOAD_EMT, BlockType.L_LOAD_EMT,BlockType.C_LOAD_EMT}:
+            dialog = self._build_shunt_component_emt_dialog(block_type=block_type)
+
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                shunt_config = dialog.get_configuration()
+            else:
+                return None
+
+            try:
+                template_kwargs = self._build_shunt_component_emt_template_kwargs(block_type=block_type,
+                                                                                  modal_config=shunt_config)
+            except ValueError as exc:
+                QtWidgets.QMessageBox.warning(self, "EMT Shunt", str(exc))
+                return None
+
+            item_name: str = f"{block_type.name}_{count}"
+
+            block_model = get_shunt_rlc_combo_emt_template(vf=self.var_factory, name=item_name, **template_kwargs).block
+            set_modal_template_metadata(block_model, kind="shunt_component_emt",
+                                        config=dict(shunt_config, block_type=block_type.name))
+            self._annotate_internal_grounding_link_blocks(block_model)
+            self._sync_rlc_combo_load_base_values(template_kwargs)
+
+            if isinstance(self.api_object, InjectionParent):
+                try:
+                    self.api_object.conn = shunt_config["connection_type"]
+                except Exception:
+                    pass
+            else:
+                pass
+
+        elif _is_load_topology_block_type(BlockType):
+            dialog = self._build_load_topology_emt_dialog(block_type=block_type)
+
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                load_config = dialog.get_configuration()
+            else:
+                return None
+
+            item_name: str = f"{block_type.name}_{count}"
+
+            block_model = self._build_load_topology_emt_block_model(
+                block_type=block_type,
+                item_name=item_name,
+                modal_config=load_config,
+            )
+            set_modal_template_metadata(block_model, kind="load_topology_emt",
+                                        config=dict(load_config, block_type=block_type.name))
+            self._annotate_internal_grounding_link_blocks(block_model)
+
+            if isinstance(self.api_object, InjectionParent):
+                try:
+                    self.api_object.conn = load_config["connection_type"]
+                except Exception:
+                    pass
+            else:
+                pass
+
+        elif block_type == BlockType.GROUNDING_LINK_EMT:
+            dialog = self._build_grounding_link_emt_dialog()
+
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                grounding_config = dialog.get_configuration()
+            else:
+                return None
+
+            try:
+                template_kwargs = self._build_grounding_link_emt_template_kwargs(grounding_config)
+            except ValueError as exc:
+                QtWidgets.QMessageBox.warning(self, "Grounding Link", str(exc))
+                return None
+
+            item_name: str = f"grounding_link_emt_{count}"
+
+            block_model = get_grounding_link_emt_template(vf=self.var_factory, name=item_name, **template_kwargs).block
+            set_modal_template_metadata(block_model, kind="grounding_link_emt", config=dict(grounding_config))
+
+        elif block_type == BlockType.NONLINEAR_RESISTOR_EMT:
+            dialog = LookupArrayLinearDialog(
+                block_label="Nonlinear resistor EMT V-I curve",
+                initial_points=list([(0.0, 0.0), (1.0, 0.1), (1.5, 1.0), (2.0, 10.0)]),
+                parent=self,
+                x_label="V",
+                y_label="I",
+                preview_enabled=True,
+                preview_title="Nonlinear resistor EMT V-I curve",
+            )
+
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                voltage_points, current_points = dialog.get_points()
+            else:
+                return None
+
+            item_name: str = f"nonlinear_resistor_emt_{count}"
+
+            block_model = get_nonlinear_resistor_emt_template(
+                vf=self.var_factory,
+                voltage_points=voltage_points,
+                current_points=current_points,
+                name=item_name,
+            ).block
+            set_modal_template_metadata(
+                block_model,
+                kind="nonlinear_resistor_emt",
+                config=dict({
+                    "voltage_points": voltage_points,
+                    "current_points": current_points,
+                }),
+            )
+
+        elif block_type == BlockType.NONLINEAR_RESISTOR_EMT:
+            topology_config: Dict[str, Any] | None = self._resolve_transformer_topology_configuration()
+
+            if topology_config is None:
+                dialog = self._build_transformer_topology_emt_dialog(block_type=block_type)
+
+                if dialog.exec() == QDialog.DialogCode.Accepted:
+                    topology_config = dialog.get_configuration()
+                    topology_config["allow_modify_template"] = True
+                else:
+                    return None
+            else:
+                topology_config = dict(topology_config)
+
+            item_name: str = f"{block_type.name}_{count}"
+
+            block_model = self._build_transformer_topology_emt_block_model(
+                block_type=block_type,
+                item_name=item_name,
+                modal_config=topology_config,
+            )
+
+            if block_model is None:
+                return None
+            else:
+                pass
+
+            set_modal_template_metadata(block_model, kind="transformer_topology_emt",
+                                        config=dict(topology_config, block_type=block_type.name))
+
+            if isinstance(self.api_object, BranchParent):
+                try:
+                    self.api_object.conn_f = topology_config["conn_f"]
+                    self.api_object.conn_t = topology_config["conn_t"]
+                except Exception:
+                    pass
+            else:
+                pass
+
         else:
 
-            count: int = self.block_counters.get(block_type, 0) + 1
             item_name: str = f"{block_type.name}_{count}"
             block_model: Block = create_block_of_type(
                 var_factory=self.var_factory,
@@ -5361,10 +5573,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 api_object=self.api_object,
             )
             self.block_counters[block_type] = count
-            self.main_block.add(block_model)
 
         # no we have the name and the block
         if block_model is not None:
+            self.main_block.add(block_model)
             item = BlockItemMix(
                 var_factory=self.var_factory,
                 subsys=block_model,
@@ -6746,14 +6958,14 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     def create_library_payload_item(self,
                                     payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate,
                                     x_pos: float,
-                                    y_pos: float) -> BlockItem | None:
+                                    y_pos: float) -> BlockItem | BlockItemMix | None:
         """
         Materialize one library payload on the diagram scene.
         """
 
-        if isinstance(payload, BlockType) and payload == BlockType.GENERIC:
-            return self.create_generic_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
-        elif isinstance(payload, BlockType) and payload in {
+        # if isinstance(payload, BlockType) and payload == BlockType.GENERIC:
+        #     return self.create_generic_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
+        if isinstance(payload, BlockType) and payload in {
             BlockType.EMT_PI_LINE,
             BlockType.EMT_BERGERON_LINE,
             BlockType.EMT_JMARTI_LINE,
@@ -6763,15 +6975,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             BlockType.RLC_COMBO_EMT,
         }:
             if payload == BlockType.SWITCH_EMT:
-                return self.create_switch_emt_block_item(x_pos=x_pos, y_pos=y_pos)
+                return self.create_block_item_mix(block_type=payload, x_pos=x_pos, y_pos=y_pos)
             elif payload == BlockType.GROUNDING_LINK_EMT:
-                return self.create_grounding_link_emt_block_item(x_pos=x_pos, y_pos=y_pos)
+                return self.create_block_item_mix(block_type=payload, x_pos=x_pos, y_pos=y_pos)
             elif payload == BlockType.NONLINEAR_RESISTOR_EMT:
-                return self.create_nonlinear_resistor_emt_block_item(x_pos=x_pos, y_pos=y_pos)
+                return self.create_block_item_mix(block_type=payload, x_pos=x_pos, y_pos=y_pos)
             elif payload == BlockType.RLC_COMBO_EMT:
-                return self.create_rlc_combo_emt_block_item(x_pos=x_pos, y_pos=y_pos)
+                return self.create_block_item_mix(block_type=payload, x_pos=x_pos, y_pos=y_pos)
             elif payload == BlockType.EMT_JMARTI_LINE:
-                return self.create_jmarti_line_emt_block_item(x_pos=x_pos, y_pos=y_pos)
+                return self.create_block_item_mix(block_type=payload, x_pos=x_pos, y_pos=y_pos)
             else:
                 return self.create_emt_wizard_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
         elif isinstance(payload, BlockType) and _is_load_topology_block_type(payload):
@@ -6787,7 +6999,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             BlockType.XFMR_TRANSFORMER,
         }:
             return self.create_transformer_topology_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
-        elif isinstance(payload, BlockType):
+        if isinstance(payload, BlockType):
             return self.create_block_item_mix(block_type=payload, x_pos=x_pos, y_pos=y_pos)
         elif isinstance(payload, BasicBlockTemplateDescriptor):
             if payload.template_key in LOOKUP_ARRAY_LINEAR_DESCRIPTOR_KEYS:
@@ -7489,6 +7701,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             if isinstance(selected_item, BlockItem):
                 return selected_item.subsys
             elif isinstance(selected_item, GenericBlockItem):
+                return selected_item.subsys
+            elif isinstance(selected_item, BlockItemMix):
                 return selected_item.subsys
             else:
                 return None
@@ -9090,7 +9304,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             int(event.position().x()),
             int(event.position().y())
         )
-        block_item: BlockItem | None
+        block_item: BlockItem | None | BlockItemMix
 
         if payload is not None:
 
