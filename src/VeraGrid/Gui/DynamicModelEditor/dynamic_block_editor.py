@@ -3189,6 +3189,7 @@ class BlockItem(QGraphicsRectItem):
         self.resize_handle: ResizeHandle | None = None
         self.resizing_from_handle: bool = False
         self.subsys: Block | None = None
+        self.editor_window: DynamicBlockEditorGUI | None = None
         self.name_item: QGraphicsTextItem | None = None
         self.inputs: List[PortItem] = list()
         self.outputs: List[PortItem] = list()
@@ -3223,6 +3224,22 @@ class BlockItem(QGraphicsRectItem):
 
         """
         print("clicking")
+        if self.subsys is None:
+            return
+        else:
+            pass
+
+        if self.editor_window is None:
+            self.editor_window = DynamicBlockEditorGUI(
+                var_factory=self.var_factory,
+                block=self.subsys,
+                api_object=self.api_object,
+                mode=self.mode,
+                modal=False,
+            )
+        else:
+            pass
+
         self.editor_window.show()
 
 
