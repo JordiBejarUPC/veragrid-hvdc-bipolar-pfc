@@ -679,7 +679,7 @@ class  PseudoTransient:
                               dx: Vec,
                               dtau: float,
                               top_n: int = 10) -> None:
-        rhs = self._rhs_pseudo_transient(x, xn, dx, dtau)
+        rhs = self._rhs_pseudo_transient(x, xn, 0*dx, dtau)
         if rhs.size == 0:
             print("[PseudoTransient] Final RHS offenders: none (empty RHS)")
             return
@@ -785,6 +785,7 @@ class  PseudoTransient:
                 Jf = self._jacobian_pseudo_transient(x_new, dx, dtau)
                 residual = np.linalg.norm(rhs)
                 delta = self._solve_linear_system(Jf, rhs, x=x_new, context=f"pseudo step={step_idx + 1} try={tries}")
+
                 solved = np.all(np.isfinite(delta))
 
                 if not solved:  # or not np.all(np.isfinite(delta)):

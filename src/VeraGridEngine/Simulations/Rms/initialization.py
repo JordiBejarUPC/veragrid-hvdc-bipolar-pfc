@@ -694,6 +694,33 @@ def init_pseudo_transient(mdl: Block,
     mdl_work = deepcopy(mdl)
     mdl_work.unify_blocks()
 
+    # Initialization-only stabilization: relax hard limiter bounds to avoid
+    # branch-locking/flat Jacobian regions during pseudo-transient startup.
+    wide_limits = {
+        "Pmax": 1e3,
+        "Pmin": -1e3,
+        "Uo": 1e3,
+        "Uc": -1e3,
+        "VaMaxPu": 1e3,
+        "VaMinPu": -1e3,
+        "EfeMaxPu": 1e3,
+        "EfeMinPu": -1e3,
+        "V_oelmax": 1e3,
+        "V_oelmin": -1e3,
+        "V_invmax": 1e3,
+        "V_invmin": -1e3,
+    }
+
+    for blk in mdl_work.get_all_blocks():
+        for var, value in list(blk.event_dict.items()):
+            if not isinstance(var, Var):
+                continue
+            if var.name not in wide_limits:
+                continue
+            if not isinstance(value, Const):
+                continue
+            blk.event_dict[var] = Const(float(wide_limits[var.name]))
+
     # Build global snapshot vector from current init guess.
     x_global = np.zeros(len(uid2idx_vars), dtype=float)
     for uid, val in init_guess.items():
@@ -703,13 +730,14 @@ def init_pseudo_transient(mdl: Block,
                 x_global[gidx] = float(val)
 
     # Freeze PF anchors in this local model: P, Q, Vm, Va, Vdc.
-    for pf_ref in (
+    pf_var_references = [
         VarPowerFlowRefferenceType.P,
         VarPowerFlowRefferenceType.Q,
         VarPowerFlowRefferenceType.Vm,
         VarPowerFlowRefferenceType.Va,
         VarPowerFlowRefferenceType.Vdc,
-    ):
+    ]
+    for pf_ref in pf_var_references:
         if pf_ref not in mdl_work.external_mapping:
             continue
         pf_var = mdl_work.external_mapping[pf_ref]
@@ -719,18 +747,17 @@ def init_pseudo_transient(mdl: Block,
             continue
 
         pf_val = x_global[uid2idx_vars[pf_var.uid]]
-        mdl_work.update_model(pf_var, Const(float(pf_val)))
 
         for blk in mdl_work.get_all_blocks():
             remove_alg_idx = [i for i, v in enumerate(blk.algebraic_vars)
                               if isinstance(v, Var) and v.uid == pf_var.uid]
             for i in reversed(remove_alg_idx):
-                if i < len(blk.algebraic_eqs):
-                    del blk.algebraic_eqs[i]
                 del blk.algebraic_vars[i]
 
             blk.state_vars = [v for v in blk.state_vars if isinstance(v, Var) and v.uid != pf_var.uid]
             blk.diff_vars = [v for v in blk.diff_vars if isinstance(v, Var) and v.uid != pf_var.uid]
+
+        mdl_work.update_model(pf_var, Const(pf_val))
 
     # Promote unresolved event parameters (Const(None)) to algebraic unknowns when init eq exists.
     for blk in mdl_work.get_all_blocks():
@@ -741,8 +768,6 @@ def init_pseudo_transient(mdl: Block,
         for var in unresolved:
             if not any(v.uid == var.uid for v in blk.algebraic_vars):
                 blk.algebraic_vars.append(var)
-            if var in blk.init_eqs:
-                blk.algebraic_eqs.append(var - blk.init_eqs[var])
             del blk.event_dict[var]
     
     # Create problem for this device
@@ -769,8 +794,8 @@ def init_pseudo_transient(mdl: Block,
     solver = PseudoTransient(
         problem=problem,
         h=1.0,
-        dtau0=1e-3,
-        dtau_max=1e4,
+        dtau0=1e-4,
+        dtau_max=15e-4,
         dtau_min=1e-5,
         tol=tol,
         max_iter=1000,
