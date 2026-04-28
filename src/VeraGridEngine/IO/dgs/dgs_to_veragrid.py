@@ -2679,9 +2679,7 @@ def convert_dgs_svs_to_vsc(elmsvs: ElmSvs,
             control1_val = 0.0  # Active power injection of the SVS [MW]
 
             control2 = ConverterControlType.Q_droop
-            Qdroop = rate / kpd * 100
-            Q = Qdroop * (np.abs(1.0) - u_setpoint)  # Reactive power injection of the SVS [MVAr]
-            control2_val = Q  # Reactive power injection of the SVS [MVAr]
+            control2_val = 0.0  # Reactive power injection of the SVS [MVAr]
 
             ysvs = 0.0  # Fixed admittance based on 1 MVA / Ub^2
 
