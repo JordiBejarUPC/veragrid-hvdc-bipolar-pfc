@@ -236,6 +236,109 @@ class  PseudoTransient:
 
         return list()
 
+    def _problem_diff_vars(self):
+        diff_vars = getattr(self.problem, "_diff_vars", None)
+        if diff_vars is not None:
+            return list(diff_vars)
+
+        getter = getattr(self.problem, "get_diff_vars", None)
+        if callable(getter):
+            return list(getter())
+
+        return list()
+
+    def _predictor_stable_algebraic_indices(self) -> list[int]:
+        """
+        Keep algebraic equations that do not explicitly depend on diff vars.
+        Mirrors old `_algebraic_eqs_stable` idea.
+        """
+        algebraic_eqs = self._get_problem_algebraic_eqs()
+        diff_vars = self._problem_diff_vars()
+        diff_uids = {v.uid for v in diff_vars if isinstance(v, Var)}
+        if len(algebraic_eqs) == 0:
+            return list()
+        if len(diff_uids) == 0:
+            return list(range(len(algebraic_eqs)))
+
+        stable = list()
+        for i, eq in enumerate(algebraic_eqs):
+            try:
+                vars_in_eq = get_expression_vars(eq)
+            except Exception:
+                continue
+            uses_diff = any((isinstance(v, Var) and v.uid in diff_uids) for v in vars_in_eq)
+            if not uses_diff:
+                stable.append(i)
+
+        return stable
+
+    def _predictor_project_initial_guess(self, x0: Vec) -> Vec:
+        n_states = int(self.problem.get_states_number())
+        n_alg = int(self.problem.get_algebraic_var_number())
+        if n_alg == 0:
+            return x0
+
+        x_proj = np.array(x0, dtype=float, copy=True)
+        dx_proj = np.zeros(self.problem.get_diff_var_number(), dtype=float)
+        proj_tol = max(self.tol * 10.0, 1e-8)
+
+        stable_idx = self._predictor_stable_algebraic_indices()
+        if len(stable_idx) == 0:
+            stable_idx = list(range(n_alg))
+        self._dbg(f"predictor setup: n_alg={n_alg}, n_stable={len(stable_idx)}")
+
+        for k in range(8):
+            r_alg_full = self.problem.rhs_algebraic(x_proj, dx_proj)
+            if r_alg_full.size == 0:
+                break
+            if not np.all(np.isfinite(r_alg_full)):
+                self._dbg(f"predictor abort: non-finite algebraic rhs at iter={k + 1}")
+                break
+
+            r_alg = r_alg_full[stable_idx]
+            rinf = float(np.linalg.norm(r_alg, np.inf)) if r_alg.size > 0 else 0.0
+            if rinf <= proj_tol:
+                self._dbg(f"predictor converged at iter={k + 1}, residual_inf={rinf:.3e}")
+                break
+
+            J22_full = self.problem.get_j22(x_proj, dx_proj, max(abs(self.dtau0), 1e-6)).tocsc()
+            Jp = J22_full[stable_idx, :]
+
+            # Predictor Jacobian is generally rectangular on reduced stable set.
+            delta_alg, *_ = spla.lsqr(Jp, -r_alg, atol=1e-10, btol=1e-10, iter_lim=max(200, 2 * n_alg))
+            delta_alg = np.asarray(delta_alg, dtype=float)
+            if delta_alg.size != n_alg or not np.all(np.isfinite(delta_alg)):
+                self._report_singularity_diagnostics(Jp.tocsc(), r_alg, x=x_proj, context=f"predictor iter={k + 1}")
+                self._dbg(
+                    f"predictor abort: invalid correction at iter={k + 1}, "
+                    f"delta_size={delta_alg.size}, n_alg={n_alg}"
+                )
+                break
+
+            best_x = x_proj
+            best_rinf = rinf
+            for alpha in (1.0, 0.5, 0.25, 0.1):
+                xt = np.array(x_proj, copy=True)
+                xt[n_states:n_states + n_alg] += alpha * delta_alg
+                rt_full = self.problem.rhs_algebraic(xt, dx_proj)
+                if not np.all(np.isfinite(rt_full)):
+                    continue
+                rt = rt_full[stable_idx]
+                rt_inf = float(np.linalg.norm(rt, np.inf)) if rt.size > 0 else 0.0
+                if rt_inf < best_rinf:
+                    best_rinf = rt_inf
+                    best_x = xt
+                if rt_inf <= rinf * (1.0 - 1e-4 * alpha):
+                    break
+
+            x_proj = best_x
+            self._dbg(
+                f"predictor iter={k + 1}: residual_inf={rinf:.3e}->{best_rinf:.3e}, "
+                f"|delta_alg|_2={np.linalg.norm(delta_alg):.3e}"
+            )
+
+        return x_proj
+
     def _var_index_name(self, idx: int) -> str:
         vars_all = self._problem_state_vars() + self._problem_algebraic_vars()
         if 0 <= idx < len(vars_all):
@@ -717,6 +820,8 @@ class  PseudoTransient:
 
         if x0.size != n_vars:
             raise ValueError(f"Invalid x0 size for pseudo-transient: got {x0.size}, expected {n_vars}")
+
+        x0 = self._predictor_project_initial_guess(x0)
 
         self._dbg(
             f"start: n_vars={n_vars}, n_states={self.problem.get_states_number()}, "

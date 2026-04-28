@@ -18,7 +18,7 @@ from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
-from VeraGridEngine.Templates.templates_common_functions import set_rms_model
+from VeraGridEngine.Templates.templates_common_functions import set_rms_model, to_implicit
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 
 
@@ -62,9 +62,11 @@ def build_grid() -> gce.MultiCircuit:
     if load.rms_model.empty():
         set_rms_model(device=load, model=get_load_rms_template(grid.var_factory, name=load.name).block, var_factory=grid.var_factory)
     if gen.rms_model.empty():
+        gen_model = get_complete_generator_template_rms(grid.var_factory, name=gen.name).block
+        gen_model = to_implicit(gen_model, grid.var_factory)
         set_rms_model(
             device=gen,
-            model=get_complete_generator_template_rms(grid.var_factory, name=gen.name).block,
+            model=gen_model,
             var_factory=grid.var_factory,
         )
 

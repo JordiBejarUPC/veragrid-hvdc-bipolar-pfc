@@ -12,7 +12,7 @@ from typing import Tuple, Optional, List, Callable, Dict
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.basic_structures import Vec
-from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr, CmpOp, Comparison, heaviside, hard_sat, expression2numba, get_expression_vars)
+from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr, BinOp, CmpOp, Comparison, heaviside, hard_sat, expression2numba, get_expression_vars)
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import DeviceType, ParamPowerFlowRefferenceType
 
@@ -372,6 +372,99 @@ def to_implicit(block: Block, vfactory: VarFactory) -> Block:
     for b in block.children:
         to_implicit(b, vfactory)
     
+    return block
+
+
+def _extract_rhs_from_implicit_eq(eq: Expr, diff_var: Var) -> Expr | None:
+    """
+    Try to recover rhs from an implicit algebraic equation of the form:
+        diff_var - rhs = 0
+    Returns rhs when recognized, otherwise None.
+    """
+    if isinstance(eq, BinOp):
+        if eq.op == "-":
+            if isinstance(eq.left, Var) and eq.left.uid == diff_var.uid:
+                return eq.right
+            if isinstance(eq.right, Var) and eq.right.uid == diff_var.uid:
+                return eq.left
+        elif eq.op == "+":
+            if isinstance(eq.left, Var) and eq.left.uid == diff_var.uid:
+                return (-eq.right).simplify()
+            if isinstance(eq.right, Var) and eq.right.uid == diff_var.uid:
+                return (-eq.left).simplify()
+
+    return None
+
+
+def to_explicit(block: Block) -> Block:
+    """
+    Convert an implicit DAE-like block back to explicit state equations.
+
+    For each diff var `dt_x` in `block.diff_vars`, look for an algebraic equation
+    equivalent to `dt_x - f(...) = 0`. When found:
+    - create/ensure state equation `dx/dt = f(...)` for base var `x`
+    - remove that implicit algebraic equation
+    - substitute `dt_x` by `f(...)` in remaining algebraic equations
+    - remove all recovered diff vars from `block.diff_vars`
+
+    Recurses through child blocks.
+    """
+    # First convert children so parent substitutions see explicit children.
+    for child in block.children:
+        to_explicit(child)
+
+    if len(block.diff_vars) == 0:
+        return block
+
+    recovered_state_vars: list[Var] = list(block.state_vars)
+    recovered_state_eqs: list[Expr] = list(block.state_eqs)
+
+    remove_eq_idx: set[int] = set()
+    subs_map: dict[Var, Expr] = dict()
+    recovered_diff_uids: set[int] = set()
+
+    for diff_var in list(block.diff_vars):
+        if not isinstance(diff_var, Var):
+            continue
+
+        base_var = diff_var.base_var
+        if not isinstance(base_var, Var):
+            continue
+
+        rhs_found: Expr | None = None
+        rhs_eq_idx: int | None = None
+        for i, eq in enumerate(block.algebraic_eqs):
+            rhs = _extract_rhs_from_implicit_eq(eq, diff_var)
+            if rhs is not None:
+                rhs_found = rhs.simplify()
+                rhs_eq_idx = i
+                break
+
+        if rhs_found is None or rhs_eq_idx is None:
+            continue
+
+        if not any(isinstance(v, Var) and v.uid == base_var.uid for v in recovered_state_vars):
+            recovered_state_vars.append(base_var)
+            recovered_state_eqs.append(rhs_found)
+
+        subs_map[diff_var] = rhs_found
+        remove_eq_idx.add(rhs_eq_idx)
+        recovered_diff_uids.add(diff_var.uid)
+
+    if len(subs_map) > 0:
+        new_algebraic_eqs: list[Expr] = []
+        for i, eq in enumerate(block.algebraic_eqs):
+            if i in remove_eq_idx:
+                continue
+            new_algebraic_eqs.append(eq.subs(subs_map).simplify())
+        block.algebraic_eqs = new_algebraic_eqs
+
+        block.state_vars = recovered_state_vars
+        block.state_eqs = recovered_state_eqs
+
+        block.diff_vars = [v for v in block.diff_vars if not (isinstance(v, Var) and v.uid in recovered_diff_uids)]
+        block.algebraic_vars = [v for v in block.algebraic_vars if not (isinstance(v, Var) and v.uid in recovered_diff_uids)]
+
     return block
 
 
