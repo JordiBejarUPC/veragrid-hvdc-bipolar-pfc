@@ -327,11 +327,12 @@ def build_block_parameters_rows(table_model: Any, blk: Block, rows: List[BlockPa
             ))
 
     for var, const in blk.parameters.items():
+        ref = var.ref
         rows.append(BlockParameterRow(
             name=var.name,
             kind=BlockParameterKind.FIXED_PARAMETER,
             key_var=var,
-            value="",
+            value=ref.value if ref is not None else "",
             editable_name=True,
             editable_value=False,
             value_type=str,
@@ -2390,19 +2391,30 @@ class ParametersTableModel(QtCore.QAbstractTableModel):
         if not index.isValid() or self.block is None:
             return None
         row = self.rows[index.row()]
-        if role == QtCore.Qt.ItemDataRole.DisplayRole or role == QtCore.Qt.ItemDataRole.EditRole:
+        if role == QtCore.Qt.ItemDataRole.DisplayRole:
             if index.column() == 0:
                 return row.kind.value
             elif index.column() == 1:
                 return row.name
             elif index.column() == 2:
+                if row.kind == BlockParameterKind.FIXED_PARAMETER:
+                    return row.value
+                return row.display_value
+        elif role == QtCore.Qt.ItemDataRole.EditRole:
+            if index.column() == 0:
+                return row.kind.value
+            elif index.column() == 1:
+                return row.name
+            elif index.column() == 2:
+                if row.kind == BlockParameterKind.FIXED_PARAMETER:
+                    return None
                 return row.display_value
         elif role == PARAMETER_EDITABLE_ROLE and index.column() == 2:
             return row.editable_value
         elif role == PARAMETER_VALUE_TYPE_ROLE and index.column() == 2:
             return self.get_python_value_type(row.value)
         elif role == QtCore.Qt.ItemDataRole.BackgroundRole:
-            if index.column() == 2 and not row.editable_value:
+            if index.column() == 2 and not row.editable_value and row.kind != BlockParameterKind.FIXED_PARAMETER:
                 return QColor("#d3d3d3")
             return QColor("#f7fafc")
         elif role == QtCore.Qt.ItemDataRole.ForegroundRole:
@@ -2439,10 +2451,14 @@ class ParametersTableModel(QtCore.QAbstractTableModel):
     def flags(self, index):
         if not index.isValid():
             return QtCore.Qt.ItemFlag.NoItemFlags
+        row_idx = index.row()
+        if row_idx < 0 or row_idx >= len(self.rows):
+            return QtCore.Qt.ItemFlag.NoItemFlags
+        row = self.rows[row_idx]
         flags = QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEnabled
         if index.column() == 1:
             flags |= QtCore.Qt.ItemFlag.ItemIsEditable
-        elif index.column() == 2 and self.rows[index.row()].editable_value:
+        elif index.column() == 2 and row.editable_value and row.kind != BlockParameterKind.FIXED_PARAMETER:
             flags |= QtCore.Qt.ItemFlag.ItemIsEditable
         return flags
 
@@ -6670,7 +6686,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         if index.model() == self.parameters_table_model and index.column() == 0:
             self.open_edit_parameter_type_dialog(index.row())
         elif index.model() == self.parameters_table_model and index.column() == 2:
-            self.open_expression_editor_for_parameters(index.row())
+            row_data: BlockParameterRow | None = self.parameters_table_model.get_row(index.row())
+            if row_data is not None and row_data.kind != BlockParameterKind.FIXED_PARAMETER:
+                self.open_expression_editor_for_parameters(index.row())
         elif index.model() == self.equations_table_model:
             row_data: BlockParameterRow | None = self.equations_table_model.get_row(index.row())
             if row_data is not None:
