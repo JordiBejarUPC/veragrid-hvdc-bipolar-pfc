@@ -5961,6 +5961,74 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             block_model.name = item_name
             return block_model
 
+    def _append_emt_branch_side_connection_specs(
+            self,
+            specs: List[ConnectionVarSpec],
+            bus: Any,
+            side: str,
+    ) -> None:
+        """
+        Append EMT connection specs for one branch side according to the bus domain.
+
+        :param specs: List to extend.
+        :param bus: Side bus.
+        :param side: ``from`` or ``to``.
+        :return: None.
+        """
+        safe_bus_name: str = self._get_safe_bus_name(bus)
+
+        if side == "from":
+            ac_voltage_refs: List[tuple[VarPowerFlowRefferenceType, str]] = list([
+                (VarPowerFlowRefferenceType.vf_N, f"vf_N_{safe_bus_name}"),
+                (VarPowerFlowRefferenceType.vf_A, f"vf_A_{safe_bus_name}"),
+                (VarPowerFlowRefferenceType.vf_B, f"vf_B_{safe_bus_name}"),
+                (VarPowerFlowRefferenceType.vf_C, f"vf_C_{safe_bus_name}"),
+            ])
+            ac_current_refs: List[tuple[VarPowerFlowRefferenceType, str]] = list([
+                (VarPowerFlowRefferenceType.if_N,
+                 f"net_conn_{VarPowerFlowRefferenceType.if_N.value}_{safe_bus_name}_{self.api_object.name}"),
+                (VarPowerFlowRefferenceType.if_A,
+                 f"net_conn_{VarPowerFlowRefferenceType.if_A.value}_{safe_bus_name}_{self.api_object.name}"),
+                (VarPowerFlowRefferenceType.if_B,
+                 f"net_conn_{VarPowerFlowRefferenceType.if_B.value}_{safe_bus_name}_{self.api_object.name}"),
+                (VarPowerFlowRefferenceType.if_C,
+                 f"net_conn_{VarPowerFlowRefferenceType.if_C.value}_{safe_bus_name}_{self.api_object.name}"),
+            ])
+            dc_voltage_ref: VarPowerFlowRefferenceType = VarPowerFlowRefferenceType.Vf_dc
+            dc_current_ref: VarPowerFlowRefferenceType = VarPowerFlowRefferenceType.If_dc
+        elif side == "to":
+            ac_voltage_refs = list([
+                (VarPowerFlowRefferenceType.vt_N, f"vt_N_{safe_bus_name}"),
+                (VarPowerFlowRefferenceType.vt_A, f"vt_A_{safe_bus_name}"),
+                (VarPowerFlowRefferenceType.vt_B, f"vt_B_{safe_bus_name}"),
+                (VarPowerFlowRefferenceType.vt_C, f"vt_C_{safe_bus_name}"),
+            ])
+            ac_current_refs = list([
+                (VarPowerFlowRefferenceType.it_N,
+                 f"net_conn_{VarPowerFlowRefferenceType.it_N.value}_{safe_bus_name}_{self.api_object.name}"),
+                (VarPowerFlowRefferenceType.it_A,
+                 f"net_conn_{VarPowerFlowRefferenceType.it_A.value}_{safe_bus_name}_{self.api_object.name}"),
+                (VarPowerFlowRefferenceType.it_B,
+                 f"net_conn_{VarPowerFlowRefferenceType.it_B.value}_{safe_bus_name}_{self.api_object.name}"),
+                (VarPowerFlowRefferenceType.it_C,
+                 f"net_conn_{VarPowerFlowRefferenceType.it_C.value}_{safe_bus_name}_{self.api_object.name}"),
+            ])
+            dc_voltage_ref = VarPowerFlowRefferenceType.Vt_dc
+            dc_current_ref = VarPowerFlowRefferenceType.It_dc
+        else:
+            raise ValueError(f"Unsupported branch EMT side {side}")
+
+        if bus.is_dc:
+            specs.append(ConnectionVarSpec("input", dc_voltage_ref, f"{dc_voltage_ref.value}_{safe_bus_name}"))
+            specs.append(ConnectionVarSpec("output", dc_current_ref,
+                                           f"net_conn_{dc_current_ref.value}_{safe_bus_name}_{self.api_object.name}"))
+        else:
+            for reference, visible_name in ac_voltage_refs:
+                specs.append(ConnectionVarSpec("input", reference, visible_name))
+
+            for reference, visible_name in ac_current_refs:
+                specs.append(ConnectionVarSpec("output", reference, visible_name))
+
     def _sync_rlc_combo_load_base_values(self, template_kwargs: Dict[str, Any]) -> None:
         """
         Sync one real load API object with the equivalent RLC snapshot powers.
@@ -6816,70 +6884,85 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         return specs
 
+    # def _build_emt_injection_connection_specs(self) -> List[ConnectionVarSpec]:
+    #     """
+    #     Build the default maximum EMT connection-variable specs for an injection device.
+    #
+    #     :return:
+    #     """
+    #     safe_bus_name: str = self._get_safe_bus_name(self.api_object.bus)
+    #     specs: List[ConnectionVarSpec] = list()
+    #
+    #     # The editor must expose the full editable EMT contract up front. Static
+    #     # bus-domain and phase compatibility are validated later during EMT build.
+    #     specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.v_N, f"v_N_{safe_bus_name}"))
+    #     specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.v_A, f"v_A_{safe_bus_name}"))
+    #     specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.v_B, f"v_B_{safe_bus_name}"))
+    #     specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.v_C, f"v_C_{safe_bus_name}"))
+    #     specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.Vdc, f"Vdc_{safe_bus_name}"))
+    #
+    #     specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.i_N, f"net_conn_{VarPowerFlowRefferenceType.i_N.value}_{self.api_object.name}"))
+    #     specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.i_A, f"net_conn_{VarPowerFlowRefferenceType.i_A.value}_{self.api_object.name}"))
+    #     specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.i_B, f"net_conn_{VarPowerFlowRefferenceType.i_B.value}_{self.api_object.name}"))
+    #     specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.i_C, f"net_conn_{VarPowerFlowRefferenceType.i_C.value}_{self.api_object.name}"))
+    #     specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.Idc, f"net_conn_{VarPowerFlowRefferenceType.Idc.value}_{self.api_object.name}"))
+    #
+    #     return specs
+
     def _build_emt_injection_connection_specs(self) -> List[ConnectionVarSpec]:
         """
-        Build the default maximum EMT connection-variable specs for an injection device.
+        Build the EMT connection-variable specs for an injection device.
 
-        :return:
+        AC buses expose N/A/B/C voltage and current ports. DC buses expose only
+        Vdc/Idc ports.
+
+        :return: Connection variable specifications.
         """
         safe_bus_name: str = self._get_safe_bus_name(self.api_object.bus)
         specs: List[ConnectionVarSpec] = list()
 
-        # The editor must expose the full editable EMT contract up front. Static
-        # bus-domain and phase compatibility are validated later during EMT build.
-        specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.v_N, f"v_N_{safe_bus_name}"))
-        specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.v_A, f"v_A_{safe_bus_name}"))
-        specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.v_B, f"v_B_{safe_bus_name}"))
-        specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.v_C, f"v_C_{safe_bus_name}"))
-        specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.Vdc, f"Vdc_{safe_bus_name}"))
+        if self.api_object.bus.is_dc:
+            specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.Vdc, f"Vdc_{safe_bus_name}"))
+            specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.Idc,
+                                           f"net_conn_{VarPowerFlowRefferenceType.Idc.value}_{self.api_object.name}"))
+        else:
+            specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.v_N, f"v_N_{safe_bus_name}"))
+            specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.v_A, f"v_A_{safe_bus_name}"))
+            specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.v_B, f"v_B_{safe_bus_name}"))
+            specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.v_C, f"v_C_{safe_bus_name}"))
 
-        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.i_N, f"net_conn_{VarPowerFlowRefferenceType.i_N.value}_{self.api_object.name}"))
-        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.i_A, f"net_conn_{VarPowerFlowRefferenceType.i_A.value}_{self.api_object.name}"))
-        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.i_B, f"net_conn_{VarPowerFlowRefferenceType.i_B.value}_{self.api_object.name}"))
-        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.i_C, f"net_conn_{VarPowerFlowRefferenceType.i_C.value}_{self.api_object.name}"))
-        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.Idc, f"net_conn_{VarPowerFlowRefferenceType.Idc.value}_{self.api_object.name}"))
+            specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.i_N,
+                                           f"net_conn_{VarPowerFlowRefferenceType.i_N.value}_{self.api_object.name}"))
+            specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.i_A,
+                                           f"net_conn_{VarPowerFlowRefferenceType.i_A.value}_{self.api_object.name}"))
+            specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.i_B,
+                                           f"net_conn_{VarPowerFlowRefferenceType.i_B.value}_{self.api_object.name}"))
+            specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.i_C,
+                                           f"net_conn_{VarPowerFlowRefferenceType.i_C.value}_{self.api_object.name}"))
 
         return specs
 
     def _build_emt_branch_connection_specs(self) -> List[ConnectionVarSpec]:
         """
-        Build the default maximum EMT connection-variable specs for a branch device.
+        Build EMT connection-variable specs for a branch device.
 
-        Inputs expose the full AC N/A/B/C plus DC contract for both terminal
-        buses. Outputs expose the matching current contract using side-specific
-        branch references so the saved editor interface cannot collide between
-        the two terminals.
+        Each terminal follows the same rule as injections: AC buses expose N/A/B/C,
+        while DC buses expose only Vdc/Idc.
 
-        :return:
+        :return: Connection variable specifications.
         """
         specs: List[ConnectionVarSpec] = list()
 
-        safe_bus_from = self._get_safe_bus_name(self.api_object.bus_from)
-        safe_bus_to = self._get_safe_bus_name(self.api_object.bus_to)
-
-        specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.vf_N, f"vf_N_{safe_bus_from}"))
-        specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.vf_A, f"vf_A_{safe_bus_from}"))
-        specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.vf_B, f"vf_B_{safe_bus_from}"))
-        specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.vf_C, f"vf_C_{safe_bus_from}"))
-        specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.Vf_dc, f"Vf_dc_{safe_bus_from}"))
-
-        specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.vt_N, f"vt_N_{safe_bus_to}"))
-        specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.vt_A, f"vt_A_{safe_bus_to}"))
-        specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.vt_B, f"vt_B_{safe_bus_to}"))
-        specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.vt_C, f"vt_C_{safe_bus_to}"))
-        specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.Vt_dc, f"Vt_dc_{safe_bus_to}"))
-
-        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.if_N, f"net_conn_{VarPowerFlowRefferenceType.if_N.value}_{safe_bus_from}_{self.api_object.name}"))
-        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.if_A, f"net_conn_{VarPowerFlowRefferenceType.if_A.value}_{safe_bus_from}_{self.api_object.name}"))
-        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.if_B, f"net_conn_{VarPowerFlowRefferenceType.if_B.value}_{safe_bus_from}_{self.api_object.name}"))
-        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.if_C, f"net_conn_{VarPowerFlowRefferenceType.if_C.value}_{safe_bus_from}_{self.api_object.name}"))
-        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.If_dc, f"net_conn_{VarPowerFlowRefferenceType.If_dc.value}_{safe_bus_from}_{self.api_object.name}"))
-
-        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.it_N, f"net_conn_{VarPowerFlowRefferenceType.it_N.value}_{safe_bus_to}_{self.api_object.name}"))
-        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.it_A, f"net_conn_{VarPowerFlowRefferenceType.it_A.value}_{safe_bus_to}_{self.api_object.name}"))
-        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.it_B, f"net_conn_{VarPowerFlowRefferenceType.it_B.value}_{safe_bus_to}_{self.api_object.name}"))
-        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.it_C, f"net_conn_{VarPowerFlowRefferenceType.it_C.value}_{safe_bus_to}_{self.api_object.name}"))
-        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.It_dc, f"net_conn_{VarPowerFlowRefferenceType.It_dc.value}_{safe_bus_to}_{self.api_object.name}"))
+        self._append_emt_branch_side_connection_specs(
+            specs=specs,
+            bus=self.api_object.bus_from,
+            side="from",
+        )
+        self._append_emt_branch_side_connection_specs(
+            specs=specs,
+            bus=self.api_object.bus_to,
+            side="to",
+        )
 
         return specs
 
