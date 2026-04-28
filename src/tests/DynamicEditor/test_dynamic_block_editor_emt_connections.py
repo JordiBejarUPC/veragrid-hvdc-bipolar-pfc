@@ -141,7 +141,7 @@ def _find_connection_block_item(editor: DynamicBlockEditorGUI, block_name: str) 
     raise AssertionError(f"Connection block '{block_name}' not found")
 
 
-def test_emt_branch_connection_specs_expose_maximum_default_interface_for_ac_branch() -> None:
+def test_emt_branch_connection_specs_expose_bus_domain_interface_for_ac_branch() -> None:
     bus_from = _make_ac_bus("Bus From")
     bus_to = _make_ac_bus("Bus To")
     template = _make_template([
@@ -172,50 +172,42 @@ def test_emt_branch_connection_specs_expose_maximum_default_interface_for_ac_bra
         VarPowerFlowRefferenceType.vf_A,
         VarPowerFlowRefferenceType.vf_B,
         VarPowerFlowRefferenceType.vf_C,
-        VarPowerFlowRefferenceType.Vf_dc,
-        VarPowerFlowRefferenceType.vt_N,
-        VarPowerFlowRefferenceType.vt_A,
-        VarPowerFlowRefferenceType.vt_B,
-        VarPowerFlowRefferenceType.vt_C,
-        VarPowerFlowRefferenceType.Vt_dc,
         VarPowerFlowRefferenceType.if_N,
         VarPowerFlowRefferenceType.if_A,
         VarPowerFlowRefferenceType.if_B,
         VarPowerFlowRefferenceType.if_C,
-        VarPowerFlowRefferenceType.If_dc,
+        VarPowerFlowRefferenceType.vt_N,
+        VarPowerFlowRefferenceType.vt_A,
+        VarPowerFlowRefferenceType.vt_B,
+        VarPowerFlowRefferenceType.vt_C,
         VarPowerFlowRefferenceType.it_N,
         VarPowerFlowRefferenceType.it_A,
         VarPowerFlowRefferenceType.it_B,
         VarPowerFlowRefferenceType.it_C,
-        VarPowerFlowRefferenceType.It_dc,
     ]
     assert [spec.visible_name for spec in specs] == [
         "vf_N_Bus_From",
         "vf_A_Bus_From",
         "vf_B_Bus_From",
         "vf_C_Bus_From",
-        "Vf_dc_Bus_From",
-        "vt_N_Bus_To",
-        "vt_A_Bus_To",
-        "vt_B_Bus_To",
-        "vt_C_Bus_To",
-        "Vt_dc_Bus_To",
         "net_conn_if_N_Bus_From_Line 1",
         "net_conn_if_A_Bus_From_Line 1",
         "net_conn_if_B_Bus_From_Line 1",
         "net_conn_if_C_Bus_From_Line 1",
-        "net_conn_If_dc_Bus_From_Line 1",
+        "vt_N_Bus_To",
+        "vt_A_Bus_To",
+        "vt_B_Bus_To",
+        "vt_C_Bus_To",
         "net_conn_it_N_Bus_To_Line 1",
         "net_conn_it_A_Bus_To_Line 1",
         "net_conn_it_B_Bus_To_Line 1",
         "net_conn_it_C_Bus_To_Line 1",
-        "net_conn_It_dc_Bus_To_Line 1",
     ]
 
     editor.close()
 
 
-def test_emt_branch_connection_specs_expose_maximum_default_interface_for_ac_dc_branch() -> None:
+def test_emt_branch_connection_specs_expose_bus_domain_interface_for_ac_dc_branch() -> None:
     bus_from = _make_ac_bus("AC Bus")
     bus_to = _make_dc_bus("DC Bus")
     template = _make_template([
@@ -238,21 +230,11 @@ def test_emt_branch_connection_specs_expose_maximum_default_interface_for_ac_dc_
         VarPowerFlowRefferenceType.vf_A,
         VarPowerFlowRefferenceType.vf_B,
         VarPowerFlowRefferenceType.vf_C,
-        VarPowerFlowRefferenceType.Vf_dc,
-        VarPowerFlowRefferenceType.vt_N,
-        VarPowerFlowRefferenceType.vt_A,
-        VarPowerFlowRefferenceType.vt_B,
-        VarPowerFlowRefferenceType.vt_C,
-        VarPowerFlowRefferenceType.Vt_dc,
         VarPowerFlowRefferenceType.if_N,
         VarPowerFlowRefferenceType.if_A,
         VarPowerFlowRefferenceType.if_B,
         VarPowerFlowRefferenceType.if_C,
-        VarPowerFlowRefferenceType.If_dc,
-        VarPowerFlowRefferenceType.it_N,
-        VarPowerFlowRefferenceType.it_A,
-        VarPowerFlowRefferenceType.it_B,
-        VarPowerFlowRefferenceType.it_C,
+        VarPowerFlowRefferenceType.Vt_dc,
         VarPowerFlowRefferenceType.It_dc,
     ]
     assert [spec.visible_name for spec in specs] == [
@@ -260,28 +242,18 @@ def test_emt_branch_connection_specs_expose_maximum_default_interface_for_ac_dc_
         "vf_A_AC_Bus",
         "vf_B_AC_Bus",
         "vf_C_AC_Bus",
-        "Vf_dc_AC_Bus",
-        "vt_N_DC_Bus",
-        "vt_A_DC_Bus",
-        "vt_B_DC_Bus",
-        "vt_C_DC_Bus",
-        "Vt_dc_DC_Bus",
         "net_conn_if_N_AC_Bus_VSC 1",
         "net_conn_if_A_AC_Bus_VSC 1",
         "net_conn_if_B_AC_Bus_VSC 1",
         "net_conn_if_C_AC_Bus_VSC 1",
-        "net_conn_If_dc_AC_Bus_VSC 1",
-        "net_conn_it_N_DC_Bus_VSC 1",
-        "net_conn_it_A_DC_Bus_VSC 1",
-        "net_conn_it_B_DC_Bus_VSC 1",
-        "net_conn_it_C_DC_Bus_VSC 1",
+        "Vt_dc_DC_Bus",
         "net_conn_It_dc_DC_Bus_VSC 1",
     ]
 
     editor.close()
 
 
-def test_emt_injection_connection_specs_expose_maximum_default_interface_for_ac_injection() -> None:
+def test_emt_injection_connection_specs_expose_bus_domain_interface_for_ac_injection() -> None:
     bus = _make_ac_bus("Gen Bus")
     template = _make_template([
         VarPowerFlowRefferenceType.v_A,
@@ -301,30 +273,26 @@ def test_emt_injection_connection_specs_expose_maximum_default_interface_for_ac_
         VarPowerFlowRefferenceType.v_A,
         VarPowerFlowRefferenceType.v_B,
         VarPowerFlowRefferenceType.v_C,
-        VarPowerFlowRefferenceType.Vdc,
         VarPowerFlowRefferenceType.i_N,
         VarPowerFlowRefferenceType.i_A,
         VarPowerFlowRefferenceType.i_B,
         VarPowerFlowRefferenceType.i_C,
-        VarPowerFlowRefferenceType.Idc,
     ]
     assert [spec.visible_name for spec in specs] == [
         "v_N_Gen_Bus",
         "v_A_Gen_Bus",
         "v_B_Gen_Bus",
         "v_C_Gen_Bus",
-        "Vdc_Gen_Bus",
         "net_conn_i_N_Gen 1",
         "net_conn_i_A_Gen 1",
         "net_conn_i_B_Gen 1",
         "net_conn_i_C_Gen 1",
-        "net_conn_Idc_Gen 1",
     ]
 
     editor.close()
 
 
-def test_emt_injection_connection_specs_expose_maximum_default_interface_for_dc_injection() -> None:
+def test_emt_injection_connection_specs_expose_bus_domain_interface_for_dc_injection() -> None:
     bus = _make_dc_bus("DC Load Bus")
     template = _make_template([
         VarPowerFlowRefferenceType.Vdc,
@@ -336,27 +304,11 @@ def test_emt_injection_connection_specs_expose_maximum_default_interface_for_dc_
     specs = editor._build_emt_injection_connection_specs()
 
     assert [spec.reference for spec in specs] == [
-        VarPowerFlowRefferenceType.v_N,
-        VarPowerFlowRefferenceType.v_A,
-        VarPowerFlowRefferenceType.v_B,
-        VarPowerFlowRefferenceType.v_C,
         VarPowerFlowRefferenceType.Vdc,
-        VarPowerFlowRefferenceType.i_N,
-        VarPowerFlowRefferenceType.i_A,
-        VarPowerFlowRefferenceType.i_B,
-        VarPowerFlowRefferenceType.i_C,
         VarPowerFlowRefferenceType.Idc,
     ]
     assert [spec.visible_name for spec in specs] == [
-        "v_N_DC_Load_Bus",
-        "v_A_DC_Load_Bus",
-        "v_B_DC_Load_Bus",
-        "v_C_DC_Load_Bus",
         "Vdc_DC_Load_Bus",
-        "net_conn_i_N_DC Load 1",
-        "net_conn_i_A_DC Load 1",
-        "net_conn_i_B_DC Load 1",
-        "net_conn_i_C_DC Load 1",
         "net_conn_Idc_DC Load 1",
     ]
 
