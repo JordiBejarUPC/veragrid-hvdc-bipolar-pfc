@@ -331,6 +331,33 @@ def _is_history_runtime_line_block_name(block_name: Any) -> Tuple[bool, bool]:
     return is_bergeron, is_jmarti
 
 
+def _has_internal_grounding_link(block: Block) -> bool:
+    """
+    Return whether one EMT block hierarchy contains one internal grounding link.
+
+    :param block: Candidate EMT block.
+    :return: Boolean state.
+    """
+    diagram_node: Any
+    nested_block: Block
+
+    for diagram_node in block.diagram.node_data.values():
+        if diagram_node.tpe in {"GROUNDING_LINK_EMT", "GROUND_EMT"}:
+            return True
+        else:
+            pass
+
+    for nested_block in block.children:
+        if nested_block.name.endswith("_grounding_link"):
+            return True
+        elif _has_internal_grounding_link(nested_block):
+            return True
+        else:
+            pass
+
+    return False
+
+
 def _get_grid_runtime_events(grid: MultiCircuit) -> List[Any]:
     """
     Return the list of scheduled runtime events available in the grid.
@@ -1337,25 +1364,6 @@ class EmtProblemDae(EmtProblemTemplate):
             VarPowerFlowRefferenceType.v_B,
             VarPowerFlowRefferenceType.v_C,
         }
-
-        def _has_internal_grounding_link(mdl: Block) -> bool:
-            diagram_node = None
-            for diagram_node in mdl.diagram.node_data.values():
-                if diagram_node.tpe in {"GROUNDING_LINK_EMT", "GROUND_EMT"}:
-                    return True
-                else:
-                    pass
-
-            nested_block: Block
-            for nested_block in mdl.children:
-                if nested_block.name.endswith("_grounding_link"):
-                    return True
-                elif _has_internal_grounding_link(nested_block):
-                    return True
-                else:
-                    pass
-
-            return False
 
         for br in self.grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
             try:

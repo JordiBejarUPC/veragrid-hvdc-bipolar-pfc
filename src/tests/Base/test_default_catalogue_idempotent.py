@@ -78,6 +78,46 @@ class _IoStub:
         self.messages.append(message)
 
 
+class _RefreshingIoStub(_IoStub):
+    """
+    Minimal GUI-like stub that records catalogue-driven refresh calls.
+    """
+
+    __slots__ = ("setup_tree_calls", "view_objects_calls", "update_from_to_calls", "update_date_calls")
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.setup_tree_calls: int = 0
+        self.view_objects_calls: int = 0
+        self.update_from_to_calls: int = 0
+        self.update_date_calls: int = 0
+
+    def setup_objects_tree(self) -> None:
+        self.setup_tree_calls += 1
+
+    def view_objects_data(self) -> None:
+        self.view_objects_calls += 1
+
+    def update_from_to_list_views(self) -> None:
+        self.update_from_to_calls += 1
+
+    def update_date_dependent_combos(self) -> None:
+        self.update_date_calls += 1
+
+
+class _GuiLikeIoStub(_RefreshingIoStub):
+    """
+    GUI-like stub exposing a minimal ``ui`` attribute for catalogue refresh.
+    """
+
+    __slots__ = ("ui",)
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.circuit = MultiCircuit()
+        self.ui = object()
+
+
 def test_add_default_catalogue_is_idempotent(monkeypatch) -> None:
     """
     Ensure repeated default-catalogue loads do not duplicate cached entries.
@@ -140,7 +180,31 @@ def test_get_dictionary_of_lists_does_not_force_lazy_dynamic_catalogue_load() ->
     assert stub.circuit.get_rms_models_number() == 0
     assert stub.circuit.get_emt_models_number() == 0
 
-    _ = stub.circuit.get_dictionary_of_lists(DeviceType.LoadDevice)
 
-    assert stub.circuit.get_rms_models_number() == 0
-    assert stub.circuit.get_emt_models_number() == 0
+def test_add_default_catalogue_refreshes_template_dependent_gui_views(monkeypatch) -> None:
+    """
+    Ensure the catalogue action rebuilds the visible property views immediately.
+
+    :param monkeypatch: Pytest monkeypatch fixture.
+    :return: None.
+    """
+    stub = _GuiLikeIoStub()
+
+    monkeypatch.setattr(io_module, "get_transformer_catalogue", lambda: list())
+    monkeypatch.setattr(io_module, "get_cables_catalogue", lambda: list())
+    monkeypatch.setattr(io_module, "get_wires_catalogue", lambda: list())
+    monkeypatch.setattr(io_module, "get_sequence_lines_catalogue", lambda: list())
+
+    IoMain.add_default_catalogue(stub)
+
+    assert stub.setup_tree_calls == 1
+    assert stub.view_objects_calls == 1
+    assert stub.update_from_to_calls == 1
+    assert stub.update_date_calls == 1
+    assert stub.circuit.get_rms_models_number() > 0
+    assert stub.circuit.get_emt_models_number() > 0
+
+    _template_elm, dictionary_of_lists = stub.circuit.get_dictionary_of_lists(DeviceType.LineDevice)
+
+    assert len(dictionary_of_lists[DeviceType.RmsModelTemplateDevice]) > 0
+    assert len(dictionary_of_lists[DeviceType.EmtModelTemplateDevice]) > 0
