@@ -54,6 +54,10 @@ from VeraGridEngine.Templates.Emt.dc_source_emt_template import get_controlled_d
 from VeraGridEngine.Templates.Emt.dc_source_emt_template import get_controlled_dc_voltage_source_emt_template
 from VeraGridEngine.Templates.Emt.dc_source_emt_template import get_dc_current_source_emt_template
 from VeraGridEngine.Templates.Emt.dc_source_emt_template import get_dc_voltage_source_emt_template
+from VeraGridEngine.Templates.Emt.balanced_source_emt_template import get_balanced_3ph_current_source_emt_template
+from VeraGridEngine.Templates.Emt.balanced_source_emt_template import get_balanced_3ph_voltage_source_emt_template
+from VeraGridEngine.Templates.Emt.balanced_source_emt_template import get_controlled_balanced_3ph_current_source_emt_template
+from VeraGridEngine.Templates.Emt.balanced_source_emt_template import get_controlled_balanced_3ph_voltage_source_emt_template
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_grounding_link_emt_template
 from VeraGridEngine.Templates.Emt.nonlinear_resistor_emt_template import get_nonlinear_resistor_emt_template
 from VeraGridEngine.Templates.Emt.source_emt_template import get_controlled_current_source_emt_template
@@ -75,6 +79,7 @@ from VeraGrid.Gui.DynamicModelEditor.jmarti_line_emt_dialog import JMartiLineEmt
 from VeraGrid.Gui.DynamicModelEditor.load_topology_emt_dialog import LoadTopologyEmtDialog
 from VeraGrid.Gui.DynamicModelEditor.rlc_combo_emt_dialog import RlcComboEmtDialog
 from VeraGrid.Gui.DynamicModelEditor.shunt_component_emt_dialog import ShuntComponentEmtDialog
+from VeraGrid.Gui.DynamicModelEditor.balanced_source_emt_dialog import BalancedSourceEmtDialog
 from VeraGrid.Gui.DynamicModelEditor.dc_source_emt_dialog import DcSourceEmtDialog
 from VeraGrid.Gui.DynamicModelEditor.source_emt_dialog import SourceEmtDialog
 from VeraGrid.Gui.DynamicModelEditor.transformer_topology_emt_dialog import TransformerTopologyEmtDialog
@@ -254,6 +259,21 @@ def _is_dc_source_emt_block_type(block_type: BlockType) -> bool:
         BlockType.DC_CURRENT_SOURCE_EMT,
         BlockType.CONTROLLED_DC_VOLTAGE_SOURCE_EMT,
         BlockType.CONTROLLED_DC_CURRENT_SOURCE_EMT,
+    }
+
+
+def _is_balanced_source_emt_block_type(block_type: BlockType) -> bool:
+    """
+    Return whether one block type uses the balanced EMT source modal.
+
+    :param block_type: Candidate block type.
+    :return: Boolean state.
+    """
+    return block_type in {
+        BlockType.BALANCED_3PH_VOLTAGE_SOURCE_EMT,
+        BlockType.BALANCED_3PH_CURRENT_SOURCE_EMT,
+        BlockType.CONTROLLED_BALANCED_3PH_VOLTAGE_SOURCE_EMT,
+        BlockType.CONTROLLED_BALANCED_3PH_CURRENT_SOURCE_EMT,
     }
 
 
@@ -4070,6 +4090,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             LibraryLeafSpec("DC current source EMT", BlockType.DC_CURRENT_SOURCE_EMT),
             LibraryLeafSpec("Controlled DC voltage source EMT", BlockType.CONTROLLED_DC_VOLTAGE_SOURCE_EMT),
             LibraryLeafSpec("Controlled DC current source EMT", BlockType.CONTROLLED_DC_CURRENT_SOURCE_EMT),
+            LibraryLeafSpec("Balanced 3-phase voltage source EMT", BlockType.BALANCED_3PH_VOLTAGE_SOURCE_EMT),
+            LibraryLeafSpec("Balanced 3-phase current source EMT", BlockType.BALANCED_3PH_CURRENT_SOURCE_EMT),
+            LibraryLeafSpec("Controlled balanced 3-phase voltage source EMT", BlockType.CONTROLLED_BALANCED_3PH_VOLTAGE_SOURCE_EMT),
+            LibraryLeafSpec("Controlled balanced 3-phase current source EMT", BlockType.CONTROLLED_BALANCED_3PH_CURRENT_SOURCE_EMT),
             LibraryLeafSpec("Switch EMT", BlockType.SWITCH_EMT),
             LibraryLeafSpec("Ground EMT", BlockType.GROUND_EMT),
             LibraryLeafSpec("Grounding Link EMT", BlockType.GROUNDING_LINK_EMT),
@@ -4934,6 +4958,153 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
         block_item.build_item()
         block_item.setToolTip(self._build_dc_source_emt_modal_tooltip(source_config))
+        self.main_block.add(block_model)
+        self.scene.addItem(block_item)
+        block_item.setPos(QtCore.QPointF(x_pos, y_pos))
+        self.diagram.add_node(
+            name=item_name,
+            x=x_pos,
+            y=y_pos,
+            tpe=block_type.name,
+            device_uid=block_model.uid,
+        )
+        self.mark_unapplied_changes()
+        return block_item
+
+    @staticmethod
+    def _build_default_balanced_source_emt_modal_config(block_type: BlockType) -> Dict[str, Any]:
+        """
+        Build one default persisted configuration for one balanced EMT source modal.
+
+        :param block_type: Balanced source block type.
+        :return: Default balanced source configuration.
+        """
+        return dict({
+            "block_type": block_type.name,
+            "source_amplitude": 1.0,
+            "source_frequency_hz": 50.0,
+            "source_phase_a_deg": 0.0,
+            "source_offset": 0.0,
+            "source_conductance_value": 100.0,
+        })
+
+    @staticmethod
+    def _build_balanced_source_emt_modal_tooltip(modal_config: Dict[str, Any]) -> str:
+        """
+        Build one compact tooltip for one balanced EMT source block.
+
+        :param modal_config: Persisted balanced source modal configuration.
+        :return: Tooltip text.
+        """
+        tooltip_lines: List[str] = [str(modal_config.get("block_type", "Balanced EMT source"))]
+        tooltip_lines.append(f"A={float(modal_config.get('source_amplitude', 0.0)):.4g}")
+        tooltip_lines.append(f"f={float(modal_config.get('source_frequency_hz', 0.0)):.4g} Hz")
+        tooltip_lines.append(f"phiA={float(modal_config.get('source_phase_a_deg', 0.0)):.4g} deg")
+        tooltip_lines.append(f"offset={float(modal_config.get('source_offset', 0.0)):.4g}")
+
+        if str(modal_config.get("block_type", "")) in {
+            BlockType.BALANCED_3PH_VOLTAGE_SOURCE_EMT.name,
+            BlockType.CONTROLLED_BALANCED_3PH_VOLTAGE_SOURCE_EMT.name,
+        }:
+            tooltip_lines.append(f"g={float(modal_config.get('source_conductance_value', 0.0)):.4g}")
+
+        if str(modal_config.get("block_type", "")) in {
+            BlockType.CONTROLLED_BALANCED_3PH_VOLTAGE_SOURCE_EMT.name,
+            BlockType.CONTROLLED_BALANCED_3PH_CURRENT_SOURCE_EMT.name,
+        }:
+            tooltip_lines.append("Amplitude controlled by command input")
+
+        return "\n".join(tooltip_lines)
+
+    def _build_balanced_source_emt_block_model(self,
+                                               block_type: BlockType,
+                                               item_name: str,
+                                               modal_config: Dict[str, Any]) -> Block | None:
+        """
+        Build one balanced EMT source block model from one modal configuration.
+
+        :param block_type: Balanced source block type.
+        :param item_name: Symbolic block name.
+        :param modal_config: Balanced source modal configuration.
+        :return: Built symbolic block or ``None``.
+        """
+        source_amplitude: float = float(modal_config.get("source_amplitude", 1.0))
+        source_frequency_hz: float = float(modal_config.get("source_frequency_hz", 50.0))
+        source_phase_a_deg: float = float(modal_config.get("source_phase_a_deg", 0.0))
+        source_offset: float = float(modal_config.get("source_offset", 0.0))
+        source_conductance_value: float = float(modal_config.get("source_conductance_value", 100.0))
+
+        if block_type == BlockType.BALANCED_3PH_VOLTAGE_SOURCE_EMT:
+            return get_balanced_3ph_voltage_source_emt_template(
+                vf=self.var_factory,
+                amplitude_value=source_amplitude,
+                frequency_hz=source_frequency_hz,
+                phase_a_deg=source_phase_a_deg,
+                offset_value=source_offset,
+                source_conductance_value=source_conductance_value,
+                name=item_name,
+            ).block
+        elif block_type == BlockType.BALANCED_3PH_CURRENT_SOURCE_EMT:
+            return get_balanced_3ph_current_source_emt_template(
+                vf=self.var_factory,
+                amplitude_value=source_amplitude,
+                frequency_hz=source_frequency_hz,
+                phase_a_deg=source_phase_a_deg,
+                offset_value=source_offset,
+                name=item_name,
+            ).block
+        elif block_type == BlockType.CONTROLLED_BALANCED_3PH_VOLTAGE_SOURCE_EMT:
+            return get_controlled_balanced_3ph_voltage_source_emt_template(
+                vf=self.var_factory,
+                frequency_hz=source_frequency_hz,
+                phase_a_deg=source_phase_a_deg,
+                offset_value=source_offset,
+                source_conductance_value=source_conductance_value,
+                name=item_name,
+            ).block
+        elif block_type == BlockType.CONTROLLED_BALANCED_3PH_CURRENT_SOURCE_EMT:
+            return get_controlled_balanced_3ph_current_source_emt_template(
+                vf=self.var_factory,
+                frequency_hz=source_frequency_hz,
+                phase_a_deg=source_phase_a_deg,
+                offset_value=source_offset,
+                name=item_name,
+            ).block
+        else:
+            return None
+
+    def create_balanced_source_emt_block_item(self, block_type: BlockType, x_pos: float, y_pos: float) -> BlockItem | None:
+        """
+        Create one balanced EMT source block configured through its modal.
+
+        :param block_type: Balanced source block type.
+        :param x_pos: Drop x position.
+        :param y_pos: Drop y position.
+        :return: Created block item or ``None`` when the dialog is cancelled.
+        """
+        dialog = BalancedSourceEmtDialog(block_type=block_type, parent=self, initial_config=self._build_default_balanced_source_emt_modal_config(block_type))
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            source_config: Dict[str, Any] = dict(self._build_default_balanced_source_emt_modal_config(block_type), **dialog.get_configuration())
+        else:
+            return None
+
+        count: int = self.block_counters.get(block_type, 0) + 1
+        item_name: str = f"{block_type.name}_{count}"
+        block_item: BlockItem = BlockItem(var_factory=self.var_factory, name=item_name)
+        block_model: Block | None = self._build_balanced_source_emt_block_model(block_type=block_type, item_name=item_name, modal_config=source_config)
+
+        if block_model is None:
+            return None
+        else:
+            pass
+
+        set_modal_template_metadata(block_model, kind="balanced_source_emt", config=dict(source_config, block_type=block_type.name))
+        self.block_counters[block_type] = count
+        block_item.set_subsystem(block_model)
+        block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
+        block_item.build_item()
+        block_item.setToolTip(self._build_balanced_source_emt_modal_tooltip(source_config))
         self.main_block.add(block_model)
         self.scene.addItem(block_item)
         block_item.setPos(QtCore.QPointF(x_pos, y_pos))
@@ -6649,6 +6820,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             BlockType.DC_CURRENT_SOURCE_EMT,
             BlockType.CONTROLLED_DC_VOLTAGE_SOURCE_EMT,
             BlockType.CONTROLLED_DC_CURRENT_SOURCE_EMT,
+            BlockType.BALANCED_3PH_VOLTAGE_SOURCE_EMT,
+            BlockType.BALANCED_3PH_CURRENT_SOURCE_EMT,
+            BlockType.CONTROLLED_BALANCED_3PH_VOLTAGE_SOURCE_EMT,
+            BlockType.CONTROLLED_BALANCED_3PH_CURRENT_SOURCE_EMT,
             BlockType.SWITCH_EMT,
             BlockType.GROUNDING_LINK_EMT,
             BlockType.NONLINEAR_RESISTOR_EMT,
@@ -6668,6 +6843,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 return self.create_source_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
             elif _is_dc_source_emt_block_type(payload):
                 return self.create_dc_source_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
+            elif _is_balanced_source_emt_block_type(payload):
+                return self.create_balanced_source_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
             else:
                 return self.create_emt_wizard_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
         elif isinstance(payload, BlockType) and _is_load_topology_block_type(payload):
@@ -7979,6 +8156,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self._modify_source_emt_block(item, modal_config)
         elif modal_kind == "dc_source_emt":
             self._modify_dc_source_emt_block(item, modal_config)
+        elif modal_kind == "balanced_source_emt":
+            self._modify_balanced_source_emt_block(item, modal_config)
         elif modal_kind == "emt_phase_wizard":
             self._modify_emt_phase_wizard_block(item, modal_config)
         elif modal_kind == "lookup_matrix_linear":
@@ -8330,6 +8509,36 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             pass
 
         self._replace_scene_block_from_template(item, new_block, "dc_source_emt", updated_config)
+
+    def _modify_balanced_source_emt_block(self, item: BlockItem, modal_config: Dict[str, Any]) -> None:
+        """
+        Reconfigure one modal-created balanced EMT source block.
+
+        :param item: Target block item.
+        :param modal_config: Stored modal configuration.
+        :return: None.
+        """
+        block_type: BlockType = BlockType[str(modal_config["block_type"])]
+        dialog = BalancedSourceEmtDialog(block_type=block_type, parent=self, initial_config=modal_config)
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            updated_config: Dict[str, Any] = dict(self._build_default_balanced_source_emt_modal_config(block_type), **dialog.get_configuration(), block_type=block_type.name)
+        else:
+            return
+
+        if item.subsys is None:
+            return
+        else:
+            pass
+
+        new_block: Block | None = self._build_balanced_source_emt_block_model(block_type=block_type, item_name=item.subsys.name, modal_config=updated_config)
+
+        if new_block is None:
+            return
+        else:
+            pass
+
+        self._replace_scene_block_from_template(item, new_block, "balanced_source_emt", updated_config)
 
     def _modify_switch_emt_block(self, item: BlockItem, modal_config: Dict[str, Any]) -> None:
         """
@@ -8793,6 +9002,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         block_item.setToolTip(self._build_source_emt_modal_tooltip(modal_config))
                     elif modal_kind == "dc_source_emt" and modal_config is not None:
                         block_item.setToolTip(self._build_dc_source_emt_modal_tooltip(modal_config))
+                    elif modal_kind == "balanced_source_emt" and modal_config is not None:
+                        block_item.setToolTip(self._build_balanced_source_emt_modal_tooltip(modal_config))
                     else:
                         pass
 
