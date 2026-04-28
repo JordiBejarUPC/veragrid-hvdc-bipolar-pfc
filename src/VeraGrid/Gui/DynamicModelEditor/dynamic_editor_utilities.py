@@ -47,7 +47,7 @@ from VeraGridEngine.Templates.Emt.dc_load_emt_template import get_dc_load_emt_te
 def create_block_of_type(var_factory: VarFactory,
                          block_type: BlockType,
                          item_name: str = "",
-                         api_object=None) -> Block | None:
+                         api_object=None) -> Block:
     """
     Create a Block appropriate for block_type.
     """
@@ -193,7 +193,7 @@ def create_block_of_type(var_factory: VarFactory,
         return blk
 
     else:
-        return None
+        raise ValueError(f"Unknown block type: {block_type}")
 
 
 def create_emt_wizard_block(phase_n: bool, phase_a: bool, phase_b: bool, phase_c: bool, var_factory: VarFactory, block_type: BlockType, item_name: str):
