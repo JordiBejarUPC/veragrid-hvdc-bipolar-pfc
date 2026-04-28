@@ -28,7 +28,7 @@ from VeraGridEngine.Simulations.Rms.problems.rms_problem_tensygrid import RmsPro
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_ts import BackEulerImplicitTensygrid
 
 from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod
-from VeraGridEngine.Devices.Aggregation import RmsEvent
+from VeraGridEngine.Devices.Events.rms_event import RmsEvent
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 import VeraGridEngine.api as gce
 

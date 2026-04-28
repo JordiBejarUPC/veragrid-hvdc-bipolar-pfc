@@ -180,6 +180,32 @@ class ShuntControlMode(Enum):
             return s
 
 
+class GeneratorType(Enum):
+    """
+    Machine type of the generator element.
+    """
+    Synchronous = "Synchronous"
+    Asynchronous = "Asynchronous"
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return GeneratorType[s]
+        except KeyError:
+            return s
+
+
 class InvestmentEvaluationMethod(Enum):
     """
     Investment evaluation methods
@@ -797,7 +823,11 @@ class ConverterControlType(Enum):
     Pdc = 'P_dc'
     Pac = 'P_ac'
     Pdc_angle_droop = 'P_dc_angle_droop'  # PMODE3
+    Q_droop = "Q_droop"
+    P_droop = "P_droop"
     Imax = 'Imax'
+    Fault1 = 'Fault1'
+    Fault2 = 'Fault2'
 
     def __str__(self) -> str:
         return str(self.value)
@@ -954,6 +984,40 @@ class TimeFrame(Enum):
     Time frame
     """
     Continuous = 'Continuous'
+
+
+class ConverterFaultControlType(Enum):
+    """
+    Converter fault control types
+    """
+    Standard = 'Standard'
+    WECC_WT_Type_4B = 'WECC_WT_Type_4B'
+
+    def __str__(self):
+        return str(self.value)
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return ConverterFaultControlType[s]
+        except KeyError:
+            return s
+
+    @classmethod
+    def list(cls):
+        """
+
+        :return:
+        """
+        return list(map(lambda c: c.value, cls))
 
 
 class FaultType(Enum):
@@ -1909,7 +1973,7 @@ class ResultTypes(Enum):
     BusReactivePowerB = 'QB: Reactive power B'
     BusReactivePowerC = 'QC: Reactive power C'
 
-    BusActivePowerIncrement = "Î”P: Active power increment"
+    BusActivePowerIncrement = "ΔP: Active power increment"
 
     BranchActivePowerFrom = 'Pf: Active power "from"'
     BranchActivePowerFromA = 'PfA: Active power "from" A'
@@ -1952,7 +2016,7 @@ class ResultTypes(Enum):
     BranchReactiveCurrentToC = 'Iit: Reactive current "to" C'
 
     BranchTapModule = 'm: Tap module'
-    BranchTapAngle = 'ðœ: Tap angle'
+    BranchTapAngle = '𝜏: Tap angle'
     BranchBeq = 'Beq: Equivalent susceptance'
 
     BranchLoading = 'Branch Loading'
@@ -1960,15 +2024,15 @@ class ResultTypes(Enum):
     BranchLoadingB = 'Branch Loading B'
     BranchLoadingC = 'Branch Loading C'
 
-    BranchVoltage = 'Î”V: Voltage modules drop'
-    BranchVoltageA = 'Î”V: Voltage modules drop A'
-    BranchVoltageB = 'Î”V: Voltage modules drop B'
-    BranchVoltageC = 'Î”V: Voltage modules drop C'
+    BranchVoltage = 'ΔV: Voltage modules drop'
+    BranchVoltageA = 'ΔV: Voltage modules drop A'
+    BranchVoltageB = 'ΔV: Voltage modules drop B'
+    BranchVoltageC = 'ΔV: Voltage modules drop C'
 
-    BranchAngles = 'Î”Î¸: Voltage angles drop'
-    BranchAnglesA = 'Î”Î¸: Voltage angles drop A'
-    BranchAnglesB = 'Î”Î¸: Voltage angles drop B'
-    BranchAnglesC = 'Î”Î¸: Voltage angles drop C'
+    BranchAngles = 'Δθ: Voltage angles drop'
+    BranchAnglesA = 'Δθ: Voltage angles drop A'
+    BranchAnglesB = 'Δθ: Voltage angles drop B'
+    BranchAnglesC = 'Δθ: Voltage angles drop C'
 
     BranchLosses = 'Branch losses'
 
@@ -2035,11 +2099,11 @@ class ResultTypes(Enum):
     BusVoltageModuleB = 'VB: Voltage module B'
     BusVoltageModuleC = 'VC: Voltage module C'
 
-    BusVoltageAngle = 'Î¸: Voltage angle'
+    BusVoltageAngle = 'θ: Voltage angle'
 
-    BusVoltageAngleA = 'Î¸A: Voltage angle A'
-    BusVoltageAngleB = 'Î¸B: Voltage angle B'
-    BusVoltageAngleC = 'Î¸C: Voltage angle C'
+    BusVoltageAngleA = 'θA: Voltage angle A'
+    BusVoltageAngleB = 'θB: Voltage angle B'
+    BusVoltageAngleC = 'θC: Voltage angle C'
 
     BusPower = 'Bus power'
     BusShadowPrices = 'Nodal shadow prices'
@@ -2437,6 +2501,7 @@ class SimulationTypes(Enum):
     InputsAnalysis_run = 'Inputs Analysis'
     OptimalNetTransferCapacityTimeSeries_run = 'Optimal net transfer capacity time series'
     InvestmentsEvaluation_run = 'Investments evaluation'
+    CatalogueOptimization_run = 'Catalogue optimization'
     TopologyProcessor_run = 'Topology Processor'
     NodalCapacityTimeSeries_run = 'Nodal capacity time series'
     Reliability_run = "Reliability"
@@ -2908,6 +2973,7 @@ class EraSvdSolverType(Enum):
 
 class RmsInitializationMethod(Enum):
     Explicit = "Explicit"
+    ReducedExplicit = "ReducedExplicit"
     PseudoTransient = "PseudoTransient"
     CustomValues = "CustomValues"
 
@@ -3047,6 +3113,7 @@ class VarPowerFlowRefferenceType(Enum):
     Qf = "Qf"  # Branch reactive power from in p.u.
     Pt = "Pt"  # Branch active power to in p.u.
     Qt = "Qt"  # Branch reactive power to in p.u.
+    Im = "Im"  # Converter current magnitude in p.u.
 
     # HVDC
     Pf_hvdc = "Pf_hvdc"
@@ -3192,6 +3259,9 @@ class ParamPowerFlowRefferenceType(Enum):
     bsh = "bsh"  # Branch shunt susceptance in per unit
     vtap_f = "vtap_f"  # Virtual tap at from-side
     vtap_t = "vtap_t"  # Virtual tap at to-side
+    r = "r"  # Branch resistance in per unit
+    x = "x"  # Branch reactance in per unit
+    l = "l"  # Branch inductance in per unit
     Pl0 = "Pl0"  # Load active power
     Ql0 = "Ql0"  # Load reactive power
     
@@ -3383,6 +3453,10 @@ class ParamPowerFlowRefferenceType(Enum):
     
     omega_base = "omega_base" # in rad/s
     Sbase = "Sbase" # in MVA
+
+    generator_share_enable = "generator_share_enable"
+    generator_share_p_ref = "generator_share_p_ref"
+    generator_share_q_ref = "generator_share_q_ref"
 
 
     def __str__(self):
@@ -3614,6 +3688,8 @@ class BlockType(Enum):
     DC_LOAD_EMT = "DC_LOAD_EMT"
     EMT_THEVENIN = "EMT_THEVENIN_EMT"
     EMTLOAD = "EMT_LOAD"
+    TRAFO_EMT = "TRAFO_EMT"
+    XFMR_TRANSFORMER = "XFMR_TRANSFORMER"
 
 
     def __str__(self):

@@ -11,6 +11,7 @@ from matplotlib import pyplot as plt
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
+from VeraGridEngine.Simulations.Rms.rms_results import RmsResults
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
@@ -205,6 +206,16 @@ grid.add_rms_event(event)
 # assert equal
 
 
+# gce.save_file(grid=grid, filename="saved_grid_1.veragrid")
+# grid_opened = gce.open_file("saved_grid_1.veragrid")
+#
+# equal, logger = grid.compare_circuits(grid_opened, detailed_profile_comparison=True)
+# if not equal:
+#     logger.print()
+# # asset for failing
+# assert equal
+
+
 rms_events_group_names = np.array(0)
 
 # choose variables to save values
@@ -252,7 +263,7 @@ print(res.get_branch_df())
 params_mapping = dict()
 
 options = RmsOptions(time_step=0.001,
-                     simulation_time=5,
+                     simulation_time=1,
                      tolerance=1e-6,
                      integration_method=DynamicIntegrationMethod.DaeBackEuler,
                      initialization_method=RmsInitializationMethod.Explicit,

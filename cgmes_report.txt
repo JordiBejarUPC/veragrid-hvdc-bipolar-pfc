@@ -1,0 +1,199 @@
+CIM/CGMES IN VERAGRID — OVERVIEW
+==================================
+Generated: 2026-04-15
+
+MODULE LOCATION
+---------------
+src/VeraGridEngine/IO/cim/cgmes/
+
+
+SUPPORTED VERSIONS & PROFILES
+------------------------------
+Version     | Profiles
+------------|-----------------------------------------------------------
+v2.4.15     | EQ, OP, SC, TP, SSH, SV, GL, EQ_BD, TP_BD
+v3.0.0      | EQ, OP, SC, TP, SSH, SV, GL
+
+DY (Dynamics) and DL profiles are defined in enums but appear largely unimplemented.
+
+
+CORE FILES
+----------
+File                        | Purpose
+----------------------------|----------------------------------------------------------
+cgmes_data_parser.py        | Parses RDF/XML from ZIP files (lxml + ElementTree fallback)
+cgmes_circuit.py            | In-memory CGMES model, reference resolution (Strict/Auto/Recover modes)
+cgmes_data_validator.py     | RDF/graph validation via rdflib
+cgmes_to_veragrid.py        | Importer -- CGMES -> VeraGrid MultiCircuit (1244 lines)
+veragrid_to_cgmes.py        | Exporter -- VeraGrid -> CGMES objects (2855 lines)
+cgmes_export.py             | RDF/XML serializer -- produces the final ZIP output
+cgmes_create_instances.py   | Factory functions for building CGMES objects from VeraGrid elements
+cgmes_utils.py              | Voltage lookup, per-unit conversion, limits, regulating controls
+cgmes_enums.py              | All CGMES enumerations (37 KB, 30+ types)
+rdfs_infos.py               | ~1 MB JSON schema -- property/profile/unit mappings for all classes
+rdfs_serializations.py      | Turtle RDF schema (used by validator)
+
+
+ASSET CLASS LIBRARIES
+---------------------
+- cgmes_v2_4_15/devices/  --  153 auto-generated Python device classes
+- cgmes_v3_0_0/devices/   --  180 auto-generated Python device classes
+- Both versions are supported simultaneously via union types in cgmes_typing.py
+
+
+DIRECTORY STRUCTURE
+-------------------
+cgmes/
+├── __init__.py
+├── base.py
+├── cgmes_circuit.py
+├── cgmes_data_parser.py
+├── cgmes_data_validator.py
+├── cgmes_create_instances.py
+├── cgmes_export.py
+├── cgmes_to_veragrid.py
+├── veragrid_to_cgmes.py
+├── cgmes_enums.py
+├── cgmes_property.py
+├── cgmes_typing.py
+├── cgmes_utils.py
+├── cgmes_writer.py
+├── rdfs_infos.py
+├── rdfs_serializations.py
+├── cgmes_assets/
+│   ├── __init__.py
+│   ├── cgmes_2_4_15_assets.py
+│   └── cgmes_3_0_0_assets.py
+├── cgmes_v2_4_15/
+│   ├── __init__.py
+│   └── devices/  (153 files)
+└── cgmes_v3_0_0/
+    ├── __init__.py
+    └── devices/  (180 files)
+
+
+WHAT IS AND ISN'T IMPLEMENTED
+------------------------------
+
+Well-covered:
+  - AC lines, 2- and 3-winding transformers, ratio/phase tap changers
+  - Synchronous/asynchronous machines, energy consumers
+  - Linear and nonlinear shunt compensators, SVCs
+  - HVDC (VSConverter, ACDCConverter, DCLineSegment)
+  - State variables (SV profile: voltage, power flow, tap step)
+  - Geographical location (GL profile)
+  - Boundary sets (EQ_BD, TP_BD)
+
+Known TODOs / Gaps (from code comments):
+
+Location                          | Issue
+----------------------------------|-------------------------------------------------------------
+veragrid_to_cgmes.py:1387         | EquipmentContainer/VoltageLevel not assigned for generators
+veragrid_to_cgmes.py:1406         | ratedPowerFactor not set
+veragrid_to_cgmes.py:1415         | qPercent not assigned
+veragrid_to_cgmes.py:1430         | Negative pMin not fully handled
+veragrid_to_cgmes.py:1594         | Tap changer half/full range uncertainty
+veragrid_to_cgmes.py:1697         | xMax from impedance correction table missing
+veragrid_to_cgmes.py:1746         | Effective angle (EA) source unclear
+veragrid_to_cgmes.py:1798         | 3-winding transformer rates incomplete
+veragrid_to_cgmes.py:2855         | BusbarSection not modeled
+veragrid_to_cgmes.py:2899         | Breaker position from results not used
+cgmes_to_veragrid.py:1104         | ZIP load exponent conversion incomplete
+cgmes_to_veragrid.py:1251         | Control bus for shunt compensators not assigned
+cgmes_create_instances.py:491     | Control node Vnom not assigned
+cgmes_create_instances.py:541     | Only some regulating control types handled
+cgmes_create_instances.py:1025    | DC converter unit substation not assigned
+cgmes_utils.py:583                | Voltage level resolution via EquipmentContainer incomplete
+
+
+TESTS
+-----
+14 test files under src/tests/FileFormats/CGMES/, covering:
+  - Roundtrip CGMES<->CGMES, PSS/E<->CGMES
+  - CAS v3.0 conformance cases
+  - Device-specific conversion (lines, transformers, generators)
+  - Power flow validation
+
+Test data includes:
+  - CGMES 2.4.15 MicroGrid/FullGrid CAS cases
+    (src/tests/data/grids/CGMES_2_4_15/TestConfigurations_packageCASv2.0/)
+  - CGMES 3.0.3 conformity test configurations
+    (src/tests/data/grids/CGMES_ConformityAssessmentScheme_TestConfigurations_v3-0-3/)
+
+Test files:
+  test_cgmes_roundtrip_cgmes_to_cgmes.py      -- CGMES import/export roundtrip
+  test_cgmes_roundtrip_raw_to_cgmes.py        -- PSS/E -> CGMES conversion
+  test_cgmes_roundtrip_cgmes_to_raw.py        -- CGMES -> PSS/E conversion
+  test_cgmes_import_power_flow.py             -- Power flow from CGMES
+  test_cgmes_cas_v3_load.py                   -- CAS v3.0 loading tests
+  test_cgmes_cas_v3_power_flow.py             -- CAS v3.0 power flow tests
+  test_cgmes_roundtrip_ieee14_reference_case.py -- IEEE 14-bus reference
+  test_cgmes_to_veragrid_ac_lines.py          -- AC line conversion tests
+  test_cgmes_to_veragrid_transformers.py      -- Transformer conversion tests
+  test_cgmes_to_veragrid_generators.py        -- Generator conversion tests
+  test_cgmes_utils_*.py                       -- Utility function tests
+
+
+GUI
+---
+src/VeraGrid/Gui/CGMESDialogue/
+  Qt dialog for selecting CGMES version, profiles, boundary set, and output mode.
+  Files:
+    cgmes_export.py       -- Dialog logic
+    cgmes_export_gui.py   -- Auto-generated UI code
+    cgmes_export_gui.ui   -- Qt Designer source
+
+
+DATABASE & LOOKUP UTILITIES
+----------------------------
+src/VeraGridEngine/IO/cim/db/
+  cgmes_lookup_db.py  -- CGMES-specific lookups
+  psse_lookup_db.py   -- PSS/E format mappings to CGMES
+  base_db.py          -- Base database structure
+  db_handler.py       -- Database access interface
+  file_system.py      -- File system interaction
+
+
+CODE GENERATION TOOLS
+----------------------
+trunk/code_generation/cgmes_py_generator/
+  cgmes_class.py        -- CGMES class generator
+  cgmes_rdfs_graph.py   -- RDF schema graph parser
+  RDFS/
+    cgmes_v2_4_15/cgmes_2_4_15_assoc_info.json
+    cgmes_v3_0_0/cgmes_3_0_0_assoc_info.json
+
+
+CODE STATISTICS
+---------------
+Total CGMES Python files:      352
+Auto-generated device classes: 333 (153 v2.4.15 + 180 v3.0.0)
+Core CGMES modules:            16 files
+Largest files:
+  veragrid_to_cgmes.py    2,855 lines  (export logic)
+  cgmes_to_veragrid.py    1,244 lines  (import logic)
+  rdfs_infos.py           ~35,000 lines (schema data, ~1 MB)
+  cgmes_circuit.py        ~53,926 bytes
+  cgmes_utils.py          ~52,914 bytes
+
+
+IMPORT/EXPORT WORKFLOW
+-----------------------
+
+Import (CGMES -> VeraGrid):
+  1. User opens CGMES ZIP file
+  2. CgmesDataParser extracts and parses RDF/XML
+  3. CgmesCircuit builds object model with reference resolution
+  4. cgmes_to_veragrid converter creates MultiCircuit with:
+       - Buses (from TopologicalNode)
+       - Lines / Transformers
+       - Generators / Loads
+       - Controls and limits
+       - State variables (voltage, power flow)
+
+Export (VeraGrid -> CGMES):
+  1. User selects export options (version, profiles, boundary set)
+  2. veragrid_to_cgmes converter creates CGMES objects
+  3. CgmesCircuit aggregates the converted objects
+  4. CimExporter serializes to RDF/XML
+  5. Files packaged in ZIP with proper structure

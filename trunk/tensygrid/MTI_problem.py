@@ -8,8 +8,9 @@ from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr)
 from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicDerivative
 from VeraGridEngine.Utils.Symbolic.jit_compiler import RMSCompiler
 import VeraGridEngine.api as vge
+from VeraGridEngine.Simulations.Rms.problems.rms_problem_template import RmsProblemTemplate
 
-class MTI_Problem(vge.RmsProblemTemplate):
+class MTI_Problem(RmsProblemTemplate):
     """
     Mathematical DAE/ODE problem builder for TenSyGrid.
 
