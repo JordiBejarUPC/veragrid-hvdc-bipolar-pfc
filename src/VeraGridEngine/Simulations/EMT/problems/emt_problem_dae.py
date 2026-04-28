@@ -37,6 +37,7 @@ from VeraGridEngine.enumerations import (
 from VeraGridEngine.basic_structures import Logger, CxVec
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Templates.Emt.bergeron_line_emt_template import BergeronHistoryRuntime
+from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_runtime import JMartiHistoryRuntime
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
@@ -336,6 +337,18 @@ def _get_block_name(mdl: Block) -> str:
         return "unknown"
     else:
         return str(mdl.name)
+
+
+def _is_history_runtime_line_block_name(block_name: Any) -> Tuple[bool, bool]:
+    """
+    Return whether one EMT line block uses a retained-history runtime companion.
+
+    :param block_name: EMT block name.
+    :return: Tuple ``(is_bergeron, is_jmarti)``.
+    """
+    is_bergeron: bool = block_name == EmtLineTypes.Bergeron or block_name == EmtLineTypes.Bergeron.value
+    is_jmarti: bool = block_name == EmtLineTypes.J_Marti or block_name == EmtLineTypes.J_Marti.value
+    return is_bergeron, is_jmarti
 
 
 def _get_grid_runtime_events(grid: MultiCircuit) -> List[Any]:
@@ -863,7 +876,7 @@ class EmtProblemDae(EmtProblemTemplate):
         sys_block = Block(children=[], in_vars=[])
         glob_time = Var(self.TIME_NAME)
 
-        self.history_models: List[BergeronHistoryRuntime] = list()
+        self.history_models: List[BergeronHistoryRuntime | JMartiHistoryRuntime] = list()
         self._block_boundary_updater: Any | None = None
         self.step_counter: int = 0
         self._fmu_cs_adapters: List[Any] = list()
@@ -2154,9 +2167,9 @@ class EmtProblemDae(EmtProblemTemplate):
                 except AttributeError:
                     pass
                 else:
-                    is_bergeron = br_emt_model.name == EmtLineTypes.Bergeron or br_emt_model.name == EmtLineTypes.Bergeron.value
+                    is_bergeron, is_jmarti = _is_history_runtime_line_block_name(br_emt_model.name)
 
-                    if is_bergeron:
+                    if is_bergeron or is_jmarti:
                         try:
                             br_ys = br.ys
                         except AttributeError:
@@ -2500,11 +2513,9 @@ class EmtProblemDae(EmtProblemTemplate):
             _normalize_pi_line_phase_layout(branch=br, grid=grid)
             mdl: Block = self._process_device_model(br, sys_block)
 
-            is_bergeron: bool = False
-            if br.emt_model.name == EmtLineTypes.Bergeron or br.emt_model.name == EmtLineTypes.Bergeron.value:
-                is_bergeron = True
-            else:
-                pass
+            is_bergeron: bool
+            is_jmarti: bool
+            is_bergeron, is_jmarti = _is_history_runtime_line_block_name(br.emt_model.name)
             is_vsc: bool = br.device_type == DeviceType.VscDevice
             vsc_index: int = vsc_idx_dict.get(br.idtag, -1)
 
@@ -2517,7 +2528,7 @@ class EmtProblemDae(EmtProblemTemplate):
                 logger=self.logger,
             )
 
-            if is_bergeron:
+            if is_bergeron or is_jmarti:
                 v_f_vars: List[Any] = _get_bus_v_list(
                     grid=grid,
                     bus_block=br.bus_from.emt_model,
@@ -2529,32 +2540,25 @@ class EmtProblemDae(EmtProblemTemplate):
                     ph_v_keys=ph_v_keys
                 )
 
-                rt: BergeronHistoryRuntime = BergeronHistoryRuntime(
-                    line=br,
-                    line_block=mdl,
-                    h=h,
-                    sbase=sbase,
-                    fbase=fbase
-                )
+                if is_bergeron:
+                    rt: BergeronHistoryRuntime | JMartiHistoryRuntime = BergeronHistoryRuntime(
+                        line=br,
+                        line_block=mdl,
+                        h=h,
+                        sbase=sbase,
+                        fbase=fbase
+                    )
+                else:
+                    rt = JMartiHistoryRuntime(
+                        line=br,
+                        line_block=mdl,
+                        h=h,
+                    )
                 rt.bind_terminals(v_f_vars, v_t_vars)
 
                 if self.power_flow_results_3ph is not None:
-                    self._try_set_bergeron_pf_init(
-                        mdl=mdl,
-                        rt=rt,
-                        branch_index=branch_idx,
-                        f_bus_idx=f,
-                        t_bus_idx=t,
-                        sbase=grid.Sbase,
-                    )
-                else:
-                    if self.power_flow_results is not None:
-                        if self.options.verbose:
-                            print("Initializing bergeron line variables assuming a balanced power flow")
-                        else:
-                            pass
-
-                        self._try_set_bergeron_pf_init_balanced(
+                    if is_bergeron:
+                        self._try_set_bergeron_pf_init(
                             mdl=mdl,
                             rt=rt,
                             branch_index=branch_idx,
@@ -2562,6 +2566,43 @@ class EmtProblemDae(EmtProblemTemplate):
                             t_bus_idx=t,
                             sbase=grid.Sbase,
                         )
+                    else:
+                        self._try_set_jmarti_pf_init(
+                            mdl=mdl,
+                            rt=rt,
+                            branch_index=branch_idx,
+                            f_bus_idx=f,
+                            t_bus_idx=t,
+                            sbase=grid.Sbase,
+                        )
+                else:
+                    if self.power_flow_results is not None:
+                        if self.options.verbose:
+                            if is_bergeron:
+                                print("Initializing bergeron line variables assuming a balanced power flow")
+                            else:
+                                print("Initializing JMARTI line variables assuming a balanced power flow")
+                        else:
+                            pass
+
+                        if is_bergeron:
+                            self._try_set_bergeron_pf_init_balanced(
+                                mdl=mdl,
+                                rt=rt,
+                                branch_index=branch_idx,
+                                f_bus_idx=f,
+                                t_bus_idx=t,
+                                sbase=grid.Sbase,
+                            )
+                        else:
+                            self._try_set_jmarti_pf_init_balanced(
+                                mdl=mdl,
+                                rt=rt,
+                                branch_index=branch_idx,
+                                f_bus_idx=f,
+                                t_bus_idx=t,
+                                sbase=grid.Sbase,
+                            )
                     else:
                         if self.options.verbose:
                             print("No Power Flow results given.")
@@ -4820,8 +4861,6 @@ class EmtProblemDae(EmtProblemTemplate):
 
                 i_f0: float = np.sqrt(2.0) * np.imag(i_f)
                 i_t0: float = np.sqrt(2.0) * np.imag(i_t)
-                print(f"if_key = {if_key} init from power flow with i_f0 = {i_f0}")
-                print(f"it_key = {it_key} init from power flow with i_t0 = {i_t0}")
 
                 if ph in {"A", "B", "C"}:
                     from_phase_currents[ph] = complex(i_f)
@@ -5720,6 +5759,194 @@ class EmtProblemDae(EmtProblemTemplate):
             i_f0_red=i_f0_red,
             i_t0_red=i_t0_red,
         )
+
+    def _try_set_jmarti_pf_init(
+            self,
+            mdl: Block,
+            rt: JMartiHistoryRuntime,
+            branch_index: int,
+            f_bus_idx: int,
+            t_bus_idx: int,
+            sbase: float
+    ) -> None:
+        """
+        Initialize JMARTI history terms from three-phase power-flow results.
+
+        :param mdl: JMARTI symbolic block.
+        :param rt: JMARTI runtime companion.
+        :param branch_index: Branch index in the power-flow results.
+        :param f_bus_idx: From-side bus index.
+        :param t_bus_idx: To-side bus index.
+        :param sbase: System base power in MVA.
+        :return: None.
+        """
+        voltage_dict: Dict[str, Optional[np.ndarray]] = {
+            "N": self.power_flow_results_3ph.voltage_N,
+            "A": self.power_flow_results_3ph.voltage_A,
+            "B": self.power_flow_results_3ph.voltage_B,
+            "C": self.power_flow_results_3ph.voltage_C,
+        }
+        sf_array_dict: Dict[str, Optional[np.ndarray]] = {
+            "N": None,
+            "A": self.power_flow_results_3ph.Sf_A,
+            "B": self.power_flow_results_3ph.Sf_B,
+            "C": self.power_flow_results_3ph.Sf_C,
+        }
+        st_array_dict: Dict[str, Optional[np.ndarray]] = {
+            "N": None,
+            "A": self.power_flow_results_3ph.St_A,
+            "B": self.power_flow_results_3ph.St_B,
+            "C": self.power_flow_results_3ph.St_C,
+        }
+        v_f0_phasor_red: np.ndarray = np.zeros(rt.m, dtype=np.complex128)
+        v_t0_phasor_red: np.ndarray = np.zeros(rt.m, dtype=np.complex128)
+        i_f0_phasor_red: np.ndarray = np.zeros(rt.m, dtype=np.complex128)
+        i_t0_phasor_red: np.ndarray = np.zeros(rt.m, dtype=np.complex128)
+        phase_index: int = 0
+        ph: str
+        voltage_array: Optional[np.ndarray]
+        sf_array: Optional[np.ndarray]
+        st_array: Optional[np.ndarray]
+        vf_ph: complex
+        vt_ph: complex
+        i_f: complex
+        i_t: complex
+
+        while phase_index < rt.m:
+            ph = rt.active_ph[phase_index]
+            voltage_array = voltage_dict[ph]
+
+            if voltage_array is None:
+                vf_ph = 0.0 + 0.0j
+                vt_ph = 0.0 + 0.0j
+            else:
+                vf_ph = complex(voltage_array[f_bus_idx])
+                vt_ph = complex(voltage_array[t_bus_idx])
+
+            v_f0_phasor_red[phase_index] = vf_ph
+            v_t0_phasor_red[phase_index] = vt_ph
+            sf_array = sf_array_dict[ph]
+            st_array = st_array_dict[ph]
+
+            if sf_array is None or abs(vf_ph) <= 1.0e-12:
+                i_f = 0.0 + 0.0j
+            else:
+                i_f = np.conj(complex(sf_array[branch_index]) / sbase / vf_ph)
+
+            if st_array is None or abs(vt_ph) <= 1.0e-12:
+                i_t = 0.0 + 0.0j
+            else:
+                i_t = np.conj(complex(st_array[branch_index]) / sbase / vt_ph)
+
+            i_f0_phasor_red[phase_index] = i_f
+            i_t0_phasor_red[phase_index] = i_t
+            phase_index += 1
+
+        ih_f_phase, ih_t_phase = rt.initialize_from_fundamental_phasors(
+            v_f0_phasor_red=v_f0_phasor_red,
+            v_t0_phasor_red=v_t0_phasor_red,
+            i_f0_phasor_red=i_f0_phasor_red,
+            i_t0_phasor_red=i_t0_phasor_red,
+            system_frequency_hz=float(self.grid.fBase),
+        )
+
+        phase_index = 0
+        while phase_index < rt.m:
+            mdl.event_dict[rt.Ih_f[phase_index]] = self.grid.var_factory.add_const(float(np.real(ih_f_phase[phase_index])))
+            mdl.event_dict[rt.Ih_t[phase_index]] = self.grid.var_factory.add_const(float(np.real(ih_t_phase[phase_index])))
+            phase_index += 1
+
+    def _try_set_jmarti_pf_init_balanced(
+            self,
+            mdl: Block,
+            rt: JMartiHistoryRuntime,
+            branch_index: int,
+            f_bus_idx: int,
+            t_bus_idx: int,
+            sbase: float
+    ) -> None:
+        """
+        Initialize JMARTI history terms from balanced power-flow results.
+
+        :param mdl: JMARTI symbolic block.
+        :param rt: JMARTI runtime companion.
+        :param branch_index: Branch index in the power-flow results.
+        :param f_bus_idx: From-side bus index.
+        :param t_bus_idx: To-side bus index.
+        :param sbase: System base power in MVA.
+        :return: None.
+        """
+        pf_results = self.power_flow_results
+        alpha: float = 2.0 * np.pi / 3.0
+        v_f_bus: complex = complex(pf_results.voltage[f_bus_idx])
+        v_t_bus: complex = complex(pf_results.voltage[t_bus_idx])
+        s_f_3ph: complex = complex(pf_results.Sf[branch_index]) / sbase
+        s_t_3ph: complex = complex(pf_results.St[branch_index]) / sbase
+        s_f_phase: complex = s_f_3ph / 3.0
+        s_t_phase: complex = s_t_3ph / 3.0
+        v_f0_phasor_red: np.ndarray = np.zeros(rt.m, dtype=np.complex128)
+        v_t0_phasor_red: np.ndarray = np.zeros(rt.m, dtype=np.complex128)
+        i_f0_phasor_red: np.ndarray = np.zeros(rt.m, dtype=np.complex128)
+        i_t0_phasor_red: np.ndarray = np.zeros(rt.m, dtype=np.complex128)
+        phase_index: int = 0
+        ph: str
+        vf_ph: complex
+        vt_ph: complex
+        i_f: complex
+        i_t: complex
+
+        while phase_index < rt.m:
+            ph = rt.active_ph[phase_index]
+
+            if ph == "N":
+                vf_ph = 0.0 + 0.0j
+                vt_ph = 0.0 + 0.0j
+                i_f = 0.0 + 0.0j
+                i_t = 0.0 + 0.0j
+            else:
+                if ph == "A":
+                    vf_ph = v_f_bus
+                    vt_ph = v_t_bus
+                else:
+                    if ph == "B":
+                        vf_ph = v_f_bus * np.exp(-1j * alpha)
+                        vt_ph = v_t_bus * np.exp(-1j * alpha)
+                    else:
+                        if ph == "C":
+                            vf_ph = v_f_bus * np.exp(+1j * alpha)
+                            vt_ph = v_t_bus * np.exp(+1j * alpha)
+                        else:
+                            raise ValueError(f"Unsupported phase label in JMARTI runtime: {ph}")
+
+                if abs(vf_ph) <= 1.0e-12:
+                    i_f = 0.0 + 0.0j
+                else:
+                    i_f = np.conj(s_f_phase / vf_ph)
+
+                if abs(vt_ph) <= 1.0e-12:
+                    i_t = 0.0 + 0.0j
+                else:
+                    i_t = np.conj(s_t_phase / vt_ph)
+
+            v_f0_phasor_red[phase_index] = vf_ph
+            v_t0_phasor_red[phase_index] = vt_ph
+            i_f0_phasor_red[phase_index] = i_f
+            i_t0_phasor_red[phase_index] = i_t
+            phase_index += 1
+
+        ih_f_phase, ih_t_phase = rt.initialize_from_fundamental_phasors(
+            v_f0_phasor_red=v_f0_phasor_red,
+            v_t0_phasor_red=v_t0_phasor_red,
+            i_f0_phasor_red=i_f0_phasor_red,
+            i_t0_phasor_red=i_t0_phasor_red,
+            system_frequency_hz=float(self.grid.fBase),
+        )
+
+        phase_index = 0
+        while phase_index < rt.m:
+            mdl.event_dict[rt.Ih_f[phase_index]] = self.grid.var_factory.add_const(float(np.real(ih_f_phase[phase_index])))
+            mdl.event_dict[rt.Ih_t[phase_index]] = self.grid.var_factory.add_const(float(np.real(ih_t_phase[phase_index])))
+            phase_index += 1
 
 
     # ---------------------------------------------------------------------

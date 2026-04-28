@@ -1018,16 +1018,6 @@ class IoMain(ScenariosMain):
         else:
             pass
 
-        if not self.circuit.rms_models:
-            self.circuit.add_rms_model_catalogue()
-        else:
-            pass
-
-        if not self.circuit.emt_models:
-            self.circuit.add_emt_model_catalogue()
-        else:
-            pass
-
         if self.circuit.get_rms_models_number() == 0:
             self.circuit.enable_default_rms_model_catalogue_lazy_loading()
         else:
