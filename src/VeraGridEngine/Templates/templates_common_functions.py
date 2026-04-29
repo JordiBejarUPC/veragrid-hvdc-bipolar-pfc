@@ -825,7 +825,7 @@ def connect_models(mdl1: Block, mdl2: Block):
     for outp, inpt in pairs:
         mdl2.connect([inpt], [outp])
 
-    # connect inputs mdl2 with outputs mdl1
+    # connect inputs mdl1 with outputs mdl2
     pairs = [
         (outp, inpt)
         for outp in mdl2.out_vars

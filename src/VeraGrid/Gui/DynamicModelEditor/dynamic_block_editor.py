@@ -2789,281 +2789,281 @@ class InspectModel(QWidget):
             self.refresh_lists(submodel, clear=False)
 
 
+# class GenericBlockItem(QGraphicsRectItem):
+#     """
+#            Class to represent generic block to construct devices in the editor
+#            :param name:
+#            """
+#
+#     def __init__(self,
+#                  var_factory: VarFactory,
+#                  subsys: Block,
+#                  api_object,
+#                  mode: DynamicSimulationMode,
+#                  position_changed_callback=None):
+#         """
+#
+#         :param var_factory:
+#         :param subsys:
+#         :param api_object:
+#         :param position_changed_callback:
+#         """
+#         super().__init__(0, 0, 100, 60)
+#
+#         # ------------------------
+#         # API
+#         # ------------------------
+#         self.var_factory = var_factory
+#         self.subsys = subsys
+#         self.mode = mode
+#         self.api_object = api_object
+#         self.position_changed_callback = position_changed_callback
+#
+#         self.resize_handle: ResizeHandle | None = None
+#         self.resizing_from_handle = False
+#         self._suppress_resize: bool = False
+#
+#         self.name_item = QGraphicsTextItem(self.subsys.name, self)
+#         self.inputs: List[PortItem] = list()
+#         self.outputs: List[PortItem] = list()
+#         self.input_labels: List[QGraphicsTextItem] = list()
+#         self.output_labels: List[QGraphicsTextItem] = list()
+#
+#         self.editor_window = DynamicBlockEditorGUI(
+#             var_factory=self.var_factory,
+#             block=self.subsys,
+#             api_object=self.api_object,
+#             mode=self.mode
+#         )
+#
+#         self.setBrush(QBrush(DEFAULT_BLOCK_FILL))
+#         self.setPen(QPen(Qt.GlobalColor.transparent, 0))
+#         self.setFlags(
+#             QGraphicsItem.GraphicsItemFlag.ItemIsMovable |
+#             QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
+#             QGraphicsItem.GraphicsItemFlag.ItemSendsScenePositionChanges
+#         )
+#         self.setAcceptHoverEvents(True)
+#
+#         self.name_item.setDefaultTextColor(BLOCK_TITLE)
+#         name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 9)
+#         name_font.setBold(True)
+#         self.name_item.setFont(name_font)
+#         self.name_item.setPos(6, 4)
+#
+#         n_inputs = len(self.subsys.in_vars)
+#         n_outputs = len(self.subsys.out_vars)
+#
+#         self.inputs = [PortItem(self, True, i, n_inputs) for i in range(n_inputs)]
+#         self.outputs = [PortItem(self, False, i, n_outputs) for i in range(n_outputs)]
+#         self.input_labels = [self.create_port_label_item() for _ in range(n_inputs)]
+#         self.output_labels = [self.create_port_label_item() for _ in range(n_outputs)]
+#
+#         self.refresh_port_metadata()
+#
+#         self.resize_handle = ResizeHandle(self)
+#
+#         self.resize_to_content()
+#
+#     def mouseDoubleClickEvent(self, event):
+#         """
+#         opens the editor
+#         Parameters
+#         ----------
+#         event :
+#
+#         Returns
+#         -------
+#
+#         """
+#         self.editor_window.show()
+#
+#     def resize_block(self, width, height):
+#         # Update geometry safely
+#         self.prepareGeometryChange()
+#         min_width: float
+#         min_height: float
+#         min_width, min_height = self.get_minimum_block_size()
+#         QGraphicsRectItem.setRect(self, 0, 0, max(width, min_width), max(height, min_height))
+#         self.update_ports()
+#         self.update_handle_position()
+#
+#     def update_handle_position(self):
+#         rect = self.rect()
+#         self.resizing_from_handle = False
+#         self.resize_handle.setPos(rect.width(), rect.height())
+#         self.resizing_from_handle = True
+#
+#     def paint(self,
+#               painter: QPainter,
+#               option: QtWidgets.QStyleOptionGraphicsItem,
+#               widget: Optional[QWidget] = None) -> None:
+#         """
+#         Paint the generic block with a rounded card style and a subtle shadow.
+#
+#         :param painter:
+#         :param option:
+#         :param widget:
+#         :return:
+#         """
+#         rect: QtCore.QRectF = self.rect()
+#         outer_rect: QtCore.QRectF = rect.adjusted(2, 2, -2, -2)
+#         shadow_rect: QtCore.QRectF = outer_rect.translated(2.5, 3.0)
+#         body_rect: QtCore.QRectF = outer_rect
+#         border_color: QColor = BLOCK_BORDER_SELECTED if self.isSelected() else BLOCK_BORDER
+#         fill_color: QColor = self.brush().color()
+#         body_path: QPainterPath = QPainterPath()
+#         shadow_path: QPainterPath = QPainterPath()
+#
+#         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+#
+#         shadow_path.addRoundedRect(shadow_rect, 12.0, 12.0)
+#         painter.setPen(Qt.PenStyle.NoPen)
+#         painter.setBrush(QBrush(BLOCK_SHADOW))
+#         painter.drawPath(shadow_path)
+#
+#         body_path.addRoundedRect(body_rect, 12.0, 12.0)
+#         painter.setBrush(QBrush(fill_color))
+#         painter.drawPath(body_path)
+#
+#         painter.setPen(QPen(border_color, 1.6))
+#         painter.setBrush(Qt.BrushStyle.NoBrush)
+#         painter.drawRoundedRect(body_rect, 12.0, 12.0)
+#
+#     def _set_rect_internal(self, w, h):
+#         QGraphicsRectItem.setRect(self, 0, 0, w, h)
+#         self.update_ports()
+#         self.update_handle_position()
+#
+#     def set_rectangle(self, x, y, w, h):
+#         if not self._suppress_resize:
+#             self._set_rect_internal(w, h)
+#
+#     def get_minimum_block_size(self) -> tuple[float, float]:
+#         """
+#         Compute the minimum generic block size required by its ports and name.
+#
+#         :return:
+#         """
+#         port_rows: int = max(len(self.inputs), len(self.outputs), 1)
+#         min_height: float = 50 + port_rows * 18
+#
+#         name_width = len(self.subsys.name) * 7
+#         max_label_length = 0
+#         for var in self.subsys.in_vars:
+#             max_label_length = max(max_label_length, len(var.name))
+#         for var in self.subsys.out_vars:
+#             max_label_length = max(max_label_length, len(var.name))
+#
+#         port_width = max_label_length * 7
+#         min_width = max(100, name_width + 14, port_width + 30)
+#
+#         return min_width, min_height
+#
+#     def resize_to_content(self) -> None:
+#         """
+#         Resize the block to the minimum size required by its ports.
+#
+#         :return:
+#         """
+#         self.prepareGeometryChange()
+#         min_width: float
+#         min_height: float
+#         min_width, min_height = self.get_minimum_block_size()
+#         QGraphicsRectItem.setRect(self, 0, 0, min_width, min_height)
+#         self.update_ports()
+#         self.update_handle_position()
+#
+#     def create_port_label_item(self) -> QGraphicsTextItem:
+#         """
+#         Create a compact label item used beside a port.
+#
+#         :return:
+#         """
+#         label_item: QGraphicsTextItem = QGraphicsTextItem("", self)
+#         label_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 9)
+#         label_item.setFont(label_font)
+#         label_item.setDefaultTextColor(PORT_LABEL_COLOR)
+#         label_item.setZValue(4)
+#         return label_item
+#
+#     def refresh_port_metadata(self) -> None:
+#         """
+#         Refresh tooltips and visible labels for all ports.
+#
+#         :return:
+#         """
+#         i: int
+#         port: PortItem
+#         label_item: QGraphicsTextItem
+#         variable_name: str
+#
+#         if self.subsys is not None:
+#             for i, port in enumerate(self.inputs):
+#                 if port.base_var is None:
+#                     port.base_var = self.subsys.in_vars[i]
+#                 else:
+#                     pass
+#
+#                 variable_name = self.subsys.in_vars[i].name
+#                 port.setToolTip(f"Input {i}: {variable_name}")
+#                 label_item = self.input_labels[i]
+#                 label_item.setPlainText(truncate_port_label(variable_name))
+#
+#             for i, port in enumerate(self.outputs):
+#                 if port.base_var is None:
+#                     port.base_var = self.subsys.out_vars[i]
+#                 else:
+#                     pass
+#
+#                 variable_name = self.subsys.out_vars[i].name
+#                 port.setToolTip(f"Output {i}: {variable_name}")
+#                 label_item = self.output_labels[i]
+#                 label_item.setPlainText(truncate_port_label(variable_name))
+#         else:
+#             pass
+#
+#     def update_ports(self):
+#         for i, port in enumerate(self.inputs):
+#             spacing = self.rect().height() / (len(self.inputs) + 1)
+#             port.setPos(0, spacing * (i + 1))
+#         for i, port in enumerate(self.outputs):
+#             spacing = self.rect().height() / (len(self.outputs) + 1)
+#             port.setPos(self.rect().width(), spacing * (i + 1))
+#
+#         for i, label_item in enumerate(self.input_labels):
+#             port = self.inputs[i]
+#             label_item.setPos(14.0, port.pos().y() - 8.0)
+#
+#         for i, label_item in enumerate(self.output_labels):
+#             port = self.outputs[i]
+#             label_width: float = label_item.boundingRect().width()
+#             label_item.setPos(self.rect().width() - label_width - 14.0, port.pos().y() - 8.0)
+#
+#         self.update_handle_position()
+#         # Also update connections
+#         for port in self.inputs + self.outputs:
+#             if port.connections:
+#                 for conn in port.connections:
+#                     conn.update_path()
+#
+#     def hoverEnterEvent(self, event):
+#         QApplication.setOverrideCursor(Qt.CursorShape.OpenHandCursor)
+#
+#     def hoverLeaveEvent(self, event):
+#         QApplication.restoreOverrideCursor()
+#
+#     def itemChange(self, change, value):
+#         if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:
+#             for port in self.inputs + self.outputs:
+#                 if port.connections:
+#                     for conn in port.connections:
+#                         conn.update_path()
+#             if self.position_changed_callback is not None:
+#                 self.position_changed_callback(value.x(), value.y())
+#         return super().itemChange(change, value)
+
 class GenericBlockItem(QGraphicsRectItem):
-    """
-           Class to represent generic block to construct devices in the editor
-           :param name:
-           """
-
-    def __init__(self,
-                 var_factory: VarFactory,
-                 subsys: Block,
-                 api_object,
-                 mode: DynamicSimulationMode,
-                 position_changed_callback=None):
-        """
-
-        :param var_factory:
-        :param subsys:
-        :param api_object:
-        :param position_changed_callback:
-        """
-        super().__init__(0, 0, 100, 60)
-
-        # ------------------------
-        # API
-        # ------------------------
-        self.var_factory = var_factory
-        self.subsys = subsys
-        self.mode = mode
-        self.api_object = api_object
-        self.position_changed_callback = position_changed_callback
-
-        self.resize_handle: ResizeHandle | None = None
-        self.resizing_from_handle = False
-        self._suppress_resize: bool = False
-
-        self.name_item = QGraphicsTextItem(self.subsys.name, self)
-        self.inputs: List[PortItem] = list()
-        self.outputs: List[PortItem] = list()
-        self.input_labels: List[QGraphicsTextItem] = list()
-        self.output_labels: List[QGraphicsTextItem] = list()
-
-        self.editor_window = DynamicBlockEditorGUI(
-            var_factory=self.var_factory,
-            block=self.subsys,
-            api_object=self.api_object,
-            mode=self.mode
-        )
-
-        self.setBrush(QBrush(DEFAULT_BLOCK_FILL))
-        self.setPen(QPen(Qt.GlobalColor.transparent, 0))
-        self.setFlags(
-            QGraphicsItem.GraphicsItemFlag.ItemIsMovable |
-            QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
-            QGraphicsItem.GraphicsItemFlag.ItemSendsScenePositionChanges
-        )
-        self.setAcceptHoverEvents(True)
-
-        self.name_item.setDefaultTextColor(BLOCK_TITLE)
-        name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 9)
-        name_font.setBold(True)
-        self.name_item.setFont(name_font)
-        self.name_item.setPos(6, 4)
-
-        n_inputs = len(self.subsys.in_vars)
-        n_outputs = len(self.subsys.out_vars)
-
-        self.inputs = [PortItem(self, True, i, n_inputs) for i in range(n_inputs)]
-        self.outputs = [PortItem(self, False, i, n_outputs) for i in range(n_outputs)]
-        self.input_labels = [self.create_port_label_item() for _ in range(n_inputs)]
-        self.output_labels = [self.create_port_label_item() for _ in range(n_outputs)]
-
-        self.refresh_port_metadata()
-
-        self.resize_handle = ResizeHandle(self)
-
-        self.resize_to_content()
-
-    def mouseDoubleClickEvent(self, event):
-        """
-        opens the editor
-        Parameters
-        ----------
-        event :
-
-        Returns
-        -------
-
-        """
-        self.editor_window.show()
-
-    def resize_block(self, width, height):
-        # Update geometry safely
-        self.prepareGeometryChange()
-        min_width: float
-        min_height: float
-        min_width, min_height = self.get_minimum_block_size()
-        QGraphicsRectItem.setRect(self, 0, 0, max(width, min_width), max(height, min_height))
-        self.update_ports()
-        self.update_handle_position()
-
-    def update_handle_position(self):
-        rect = self.rect()
-        self.resizing_from_handle = False
-        self.resize_handle.setPos(rect.width(), rect.height())
-        self.resizing_from_handle = True
-
-    def paint(self,
-              painter: QPainter,
-              option: QtWidgets.QStyleOptionGraphicsItem,
-              widget: Optional[QWidget] = None) -> None:
-        """
-        Paint the generic block with a rounded card style and a subtle shadow.
-
-        :param painter:
-        :param option:
-        :param widget:
-        :return:
-        """
-        rect: QtCore.QRectF = self.rect()
-        outer_rect: QtCore.QRectF = rect.adjusted(2, 2, -2, -2)
-        shadow_rect: QtCore.QRectF = outer_rect.translated(2.5, 3.0)
-        body_rect: QtCore.QRectF = outer_rect
-        border_color: QColor = BLOCK_BORDER_SELECTED if self.isSelected() else BLOCK_BORDER
-        fill_color: QColor = self.brush().color()
-        body_path: QPainterPath = QPainterPath()
-        shadow_path: QPainterPath = QPainterPath()
-
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-
-        shadow_path.addRoundedRect(shadow_rect, 12.0, 12.0)
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QBrush(BLOCK_SHADOW))
-        painter.drawPath(shadow_path)
-
-        body_path.addRoundedRect(body_rect, 12.0, 12.0)
-        painter.setBrush(QBrush(fill_color))
-        painter.drawPath(body_path)
-
-        painter.setPen(QPen(border_color, 1.6))
-        painter.setBrush(Qt.BrushStyle.NoBrush)
-        painter.drawRoundedRect(body_rect, 12.0, 12.0)
-
-    def _set_rect_internal(self, w, h):
-        QGraphicsRectItem.setRect(self, 0, 0, w, h)
-        self.update_ports()
-        self.update_handle_position()
-
-    def set_rectangle(self, x, y, w, h):
-        if not self._suppress_resize:
-            self._set_rect_internal(w, h)
-
-    def get_minimum_block_size(self) -> tuple[float, float]:
-        """
-        Compute the minimum generic block size required by its ports and name.
-
-        :return:
-        """
-        port_rows: int = max(len(self.inputs), len(self.outputs), 1)
-        min_height: float = 50 + port_rows * 18
-
-        name_width = len(self.subsys.name) * 7
-        max_label_length = 0
-        for var in self.subsys.in_vars:
-            max_label_length = max(max_label_length, len(var.name))
-        for var in self.subsys.out_vars:
-            max_label_length = max(max_label_length, len(var.name))
-
-        port_width = max_label_length * 7
-        min_width = max(100, name_width + 14, port_width + 30)
-
-        return min_width, min_height
-
-    def resize_to_content(self) -> None:
-        """
-        Resize the block to the minimum size required by its ports.
-
-        :return:
-        """
-        self.prepareGeometryChange()
-        min_width: float
-        min_height: float
-        min_width, min_height = self.get_minimum_block_size()
-        QGraphicsRectItem.setRect(self, 0, 0, min_width, min_height)
-        self.update_ports()
-        self.update_handle_position()
-
-    def create_port_label_item(self) -> QGraphicsTextItem:
-        """
-        Create a compact label item used beside a port.
-
-        :return:
-        """
-        label_item: QGraphicsTextItem = QGraphicsTextItem("", self)
-        label_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 9)
-        label_item.setFont(label_font)
-        label_item.setDefaultTextColor(PORT_LABEL_COLOR)
-        label_item.setZValue(4)
-        return label_item
-
-    def refresh_port_metadata(self) -> None:
-        """
-        Refresh tooltips and visible labels for all ports.
-
-        :return:
-        """
-        i: int
-        port: PortItem
-        label_item: QGraphicsTextItem
-        variable_name: str
-
-        if self.subsys is not None:
-            for i, port in enumerate(self.inputs):
-                if port.base_var is None:
-                    port.base_var = self.subsys.in_vars[i]
-                else:
-                    pass
-
-                variable_name = self.subsys.in_vars[i].name
-                port.setToolTip(f"Input {i}: {variable_name}")
-                label_item = self.input_labels[i]
-                label_item.setPlainText(truncate_port_label(variable_name))
-
-            for i, port in enumerate(self.outputs):
-                if port.base_var is None:
-                    port.base_var = self.subsys.out_vars[i]
-                else:
-                    pass
-
-                variable_name = self.subsys.out_vars[i].name
-                port.setToolTip(f"Output {i}: {variable_name}")
-                label_item = self.output_labels[i]
-                label_item.setPlainText(truncate_port_label(variable_name))
-        else:
-            pass
-
-    def update_ports(self):
-        for i, port in enumerate(self.inputs):
-            spacing = self.rect().height() / (len(self.inputs) + 1)
-            port.setPos(0, spacing * (i + 1))
-        for i, port in enumerate(self.outputs):
-            spacing = self.rect().height() / (len(self.outputs) + 1)
-            port.setPos(self.rect().width(), spacing * (i + 1))
-
-        for i, label_item in enumerate(self.input_labels):
-            port = self.inputs[i]
-            label_item.setPos(14.0, port.pos().y() - 8.0)
-
-        for i, label_item in enumerate(self.output_labels):
-            port = self.outputs[i]
-            label_width: float = label_item.boundingRect().width()
-            label_item.setPos(self.rect().width() - label_width - 14.0, port.pos().y() - 8.0)
-
-        self.update_handle_position()
-        # Also update connections
-        for port in self.inputs + self.outputs:
-            if port.connections:
-                for conn in port.connections:
-                    conn.update_path()
-
-    def hoverEnterEvent(self, event):
-        QApplication.setOverrideCursor(Qt.CursorShape.OpenHandCursor)
-
-    def hoverLeaveEvent(self, event):
-        QApplication.restoreOverrideCursor()
-
-    def itemChange(self, change, value):
-        if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:
-            for port in self.inputs + self.outputs:
-                if port.connections:
-                    for conn in port.connections:
-                        conn.update_path()
-            if self.position_changed_callback is not None:
-                self.position_changed_callback(value.x(), value.y())
-        return super().itemChange(change, value)
-
-class BlockItemMix(QGraphicsRectItem):
     """
            Class to represent a block in the scene
            :param name:
@@ -5331,7 +5331,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.mark_unapplied_changes()
         return block_item
 
-    def create_block_item_mix(self, block_type: BlockType, x_pos: float, y_pos: float) -> BlockItemMix | None:
+    def create_block_item_mix(self, block_type: BlockType, x_pos: float, y_pos: float) -> GenericBlockItem | None:
         """
         Create and place a block item in the canvas scene.
 
@@ -5664,7 +5664,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         # no we have the name and the block
         if block_model is not None:
             self.main_block.add(block_model)
-            item = BlockItemMix(
+            item = GenericBlockItem(
                 var_factory=self.var_factory,
                 subsys=block_model,
                 api_object=self.api_object,
@@ -5828,7 +5828,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     def create_template_block_item(self,
                                    template: RmsModelTemplate | EmtModelTemplate | FmuTemplate,
                                    x_pos: float,
-                                   y_pos: float) -> BlockItem | BlockItemMix | None:
+                                   y_pos: float) -> BlockItem | GenericBlockItem | None:
         """
         Create and place a copied template block in the canvas scene.
 
@@ -5840,7 +5840,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         item_name: str = template.name
         block_model: Block = duplicate_block(template.block, var_factory=self.var_factory)
         self.main_block.add(block_model)
-        item: BlockItemMix = BlockItemMix(
+        item: GenericBlockItem = GenericBlockItem(
                 var_factory=self.var_factory,
                 subsys=block_model,
                 api_object=self.api_object,
@@ -7048,7 +7048,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     def create_library_payload_item(self,
                                     payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate,
                                     x_pos: float,
-                                    y_pos: float) -> BlockItem | BlockItemMix | None:
+                                    y_pos: float) -> BlockItem | GenericBlockItem | None:
         """
         Materialize one library payload on the diagram scene.
         """
@@ -7228,7 +7228,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         if isinstance(item, ConnectionItem):
             self.remove_connection_item(item)
             self.mark_unapplied_changes()
-        elif isinstance(item, (BlockItem, GenericBlockItem, BlockItemMix)):
+        elif isinstance(item, (BlockItem, GenericBlockItem, GenericBlockItem)):
             self.remove_block_item(item)
             self.mark_unapplied_changes()
         else:
@@ -7774,7 +7774,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 return selected_item.subsys
             elif isinstance(selected_item, GenericBlockItem):
                 return selected_item.subsys
-            elif isinstance(selected_item, BlockItemMix):
+            elif isinstance(selected_item, GenericBlockItem):
                 return selected_item.subsys
             else:
                 return None
@@ -9174,7 +9174,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         :return:
         """
-        uid_to_blockitem: Dict[int, BlockItem | GenericBlockItem | BlockItemMix] = dict()
+        uid_to_blockitem: Dict[int, BlockItem | GenericBlockItem | GenericBlockItem] = dict()
         uid: int
         node: Any
         con: Any
@@ -9220,7 +9220,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         pass
 
                 else:
-                    generic_item = BlockItemMix(
+                    generic_item = GenericBlockItem(
                         var_factory=self.var_factory,
                         subsys=block_model,
                         api_object=self.api_object,
@@ -9376,7 +9376,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             int(event.position().x()),
             int(event.position().y())
         )
-        block_item: BlockItem | None | BlockItemMix
+        block_item: BlockItem | None | GenericBlockItem
 
         if payload is not None:
 

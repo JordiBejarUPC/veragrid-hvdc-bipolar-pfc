@@ -25,6 +25,7 @@ def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec rms template") -> R
      generator with quadratic saturation
     """
     pi = math.pi
+
     templ = RmsModelTemplate(name=name)
     templ.tpe = DeviceType.GeneratorDevice
 
