@@ -6,7 +6,7 @@
 import os
 import pathlib
 from typing import Union, List, Callable
-from PySide6 import QtWidgets
+from PySide6 import QtWidgets, QtGui
 
 import VeraGrid.Gui.gui_functions as gf
 import VeraGrid.Session.export_results_driver as exprtdrv
@@ -67,10 +67,12 @@ class IoMain(ScenariosMain):
     Inputs-Outputs Main
     """
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         """
+        Build the GUI I/O controller and connect file-related actions.
 
-        @param parent:
+        :param parent: Optional Qt parent widget.
+        :return: None.
         """
 
         # create the main window
@@ -154,32 +156,40 @@ class IoMain(ScenariosMain):
         self.update_from_to_list_views()
         self.update_date_dependent_combos()
 
-    def dragEnterEvent(self, event):
+    def dragEnterEvent(self, event: QtGui.QDragEnterEvent) -> None:
         """
+        Accept drag events only when they contain file URLs.
 
-        :param event:
-        :return:
+        :param event: Incoming Qt drag-enter event.
+        :return: None.
         """
         if event.mimeData().hasUrls:
             event.accept()
         else:
             event.ignore()
 
-    def dragMoveEvent(self, event):
+    def dragMoveEvent(self, event: QtGui.QDragMoveEvent) -> None:
         """
+        Keep accepting drag-move events while the payload is a file list.
 
-        :param event:
-        :return:
+        :param event: Incoming Qt drag-move event.
+        :return: None.
         """
         if event.mimeData().hasUrls:
             event.accept()
         else:
             event.ignore()
 
-    def dropEvent(self, event):
+    def dropEvent(self, event: QtGui.QDropEvent) -> None:
         """
-        Drop file on the GUI, the default behaviour is to load the file
-        :param event: event containing all the information
+        Process files dropped on the main window.
+
+        The handler filters unsupported extensions first, then decides whether
+        the dropped payload should replace the current circuit, merge into it,
+        or be treated as a plugin/license side action.
+
+        :param event: Qt drop event containing the dragged file URLs.
+        :return: None.
         """
         if event.mimeData().hasUrls:
             events = event.mimeData().urls()
@@ -237,9 +247,13 @@ class IoMain(ScenariosMain):
                     # Just open the file
                     self.open_file_now(filenames=file_names)
 
-    def new_project_now(self, create_default_diagrams=True):
+    def new_project_now(self, create_default_diagrams: bool = True) -> None:
         """
-        New project right now without asking questions
+        Reset the current GUI state and create one empty project immediately.
+
+        :param create_default_diagrams: Whether to create the default schematic
+            and map diagrams for the new empty circuit.
+        :return: None.
         """
         # clear the circuit model
         self.circuit = MultiCircuit()
@@ -277,10 +291,11 @@ class IoMain(ScenariosMain):
 
         self.collect_memory()
 
-    def new_project(self):
+    def new_project(self) -> None:
         """
-        Create new grid
-        :return:
+        Prompt the user before replacing the current project with an empty one.
+
+        :return: None.
         """
         if self.circuit.valid_for_simulation() > 0:
             quit_msg = "Are you sure that you want to quit the current grid and create a new one?"
@@ -291,10 +306,11 @@ class IoMain(ScenariosMain):
             if reply == QtWidgets.QMessageBox.StandardButton.Yes.value:
                 self.new_project_now(create_default_diagrams=True)
 
-    def open_file(self):
+    def open_file(self) -> None:
         """
-        Open VeraGrid file
-        @return:
+        Prompt for one grid file and start the threaded open workflow.
+
+        :return: None.
         """
         if ('file_save' not in self.stuff_running_now) and ('file_open' not in self.stuff_running_now):
             if self.circuit.valid_for_simulation() > 0:
@@ -315,14 +331,18 @@ class IoMain(ScenariosMain):
         else:
             warning_msg('There is a file being processed now.')
 
-    def open_file_threaded(self, post_function=None,
+    def open_file_threaded(self,
+                           post_function: Callable[[], None] | None = None,
                            allow_diff_file_format: bool = False,
-                           title: str = 'Open file'):
+                           title: str = 'Open file') -> None:
         """
-        Open file from a Qt thread to remain responsive
-        :param post_function: Any function to run after
+        Ask the user for one file selection and open it in a worker thread.
+
+        :param post_function: Optional callback executed when the open thread
+            finishes successfully.
         :param allow_diff_file_format: Allow loading VeraGrid diff files?
-        :param title: Title of the open window
+        :param title: Caption shown by the file selection dialogue.
+        :return: None.
         """
 
         files_types = "*.gridcal *.veragrid "
@@ -347,11 +367,15 @@ class IoMain(ScenariosMain):
                       post_function: Union[None, Callable[[], None]] = None,
                       bool_prompt_to_ask_if_unclear: bool = True) -> None:
         """
-        Open a file without questions
-        :param filenames: list of file names (maybe more than one because of CIM TP and EQ files)
-        :param post_function: function callback
-        :param bool_prompt_to_ask_if_unclear: if the extension is ambiguous like xml, zip or json, ask what to do
-        :return: Nothing
+        Start loading one or more files without prompting for confirmation first.
+
+        :param filenames: File path or list of file paths. Multiple entries are
+            allowed for multi-file formats such as CIM TP/EQ packages.
+        :param post_function: Optional callback executed once the open thread
+            finishes.
+        :param bool_prompt_to_ask_if_unclear: When ``True``, ambiguous file
+            extensions such as ``.xml`` or ``.zip`` open one selector dialogue.
+        :return: None.
         """
         if len(filenames) > 0:
 
@@ -418,7 +442,13 @@ class IoMain(ScenariosMain):
 
     def post_open_file(self) -> None:
         """
-        Actions to perform after a file has been loaded
+        Finalize the GUI state after a file-open worker completes.
+
+        The method installs the loaded circuit or multiverse, rebuilds diagrams,
+        refreshes date-dependent widgets, applies any persisted GUI config and
+        shows import logs when they are present.
+
+        :return: None.
         """
 
         self.stuff_running_now.remove(SimulationTypes.FileOpen)
@@ -529,10 +559,12 @@ class IoMain(ScenariosMain):
         self.get_circuit_snapshot_datetime()
         self.change_theme_mode()
 
-    def install_plugin_now(self, file_name: str):
+    def install_plugin_now(self, file_name: str) -> None:
         """
-        Install plugin
-        :param file_name: name of the plugin
+        Install one VeraGrid plugin package immediately.
+
+        :param file_name: Plugin archive path.
+        :return: None.
         """
         if file_name.endswith('.vgplugin'):
             info = get_plugin_info(file_name)
@@ -565,10 +597,12 @@ class IoMain(ScenariosMain):
         else:
             error_msg("Does not seem to be a plugin :/", "Plugin install")
 
-    def select_csv_file(self, caption='Open CSV file'):
+    def select_csv_file(self, caption: str = 'Open CSV file') -> str | None:
         """
-        Select a CSV file
-        :return: csv file path
+        Prompt for one CSV file path.
+
+        :param caption: Dialogue caption.
+        :return: Selected CSV file path or ``None``.
         """
         files_types = "CSV (*.csv)"
 
@@ -582,17 +616,20 @@ class IoMain(ScenariosMain):
         else:
             return None
 
-    def import_circuit(self):
+    def import_circuit(self) -> None:
         """
-        Prompt to add another circuit
+        Prompt for another circuit file and route the result to the merge flow.
+
+        :return: None.
         """
         self.open_file_threaded(post_function=self.post_import_circuit,
                                 allow_diff_file_format=True)
 
-    def post_import_circuit(self):
+    def post_import_circuit(self) -> None:
         """
-        Stuff to do after opening another circuit
-        :return: Nothing
+        Merge or append one newly opened circuit into the current project.
+
+        :return: None.
         """
         self.stuff_running_now.remove(SimulationTypes.FileOpen)
 
@@ -665,24 +702,30 @@ class IoMain(ScenariosMain):
                 else:
                     return
 
-    def export_circuit_differential(self):
+    def export_circuit_differential(self) -> None:
         """
-        Prompt to export a diff of this circuit and a base one
+        Open the circuit-differential export dialogue.
+
+        :return: None.
         """
         dlg = GridDiffDialogue(grid=self.circuit)
         dlg.exec()
 
-    def save_file_as(self):
+    def save_file_as(self) -> None:
         """
-        Save this file as...
+        Force one new target path and then delegate to the normal save flow.
+
+        :return: None.
         """
         # by deleting the file_name, the save_file function will ask for it
         self.file_name = ''
         self.save_file()
 
-    def save_file(self):
+    def save_file(self) -> None:
         """
-        Save the circuit case to a file
+        Save the current project to disk using the active file target.
+
+        :return: None.
         """
 
         if self.server_driver.is_running():
@@ -732,8 +775,9 @@ class IoMain(ScenariosMain):
 
     def get_file_save_options(self) -> filedrv.FileSavingOptions:
         """
-        Compose the file saving options
-        :return: FileSavingOptions
+        Build the file-save options from the current GUI state.
+
+        :return: File-save options snapshot.
         """
 
         # get save data
@@ -752,14 +796,17 @@ class IoMain(ScenariosMain):
     def save_file_now(self, filename: str,
                       type_selected: str = "",
                       grid: Union[MultiCircuit, None] = None,
-                      options: filedrv.FileSavingOptions | None = None):
+                      options: filedrv.FileSavingOptions | None = None) -> None:
         """
-        Save the file right now, without questions
-        :param filename: filename to save to
-        :param type_selected: File type description as it appears
-                              in the file saving dialogue i.e. VeraGrid zip (*.veragrid)
-        :param grid: MultiCircuit or None, if None, self.circuit is taken
-        :param options: FileSavingOptions to override the default ones
+        Launch the threaded save workflow without showing another prompt.
+
+        :param filename: Output file path.
+        :param type_selected: Human-readable file-type label selected in the
+            save dialogue, for example ``VeraGrid zip (*.veragrid)``.
+        :param grid: Optional circuit override. When ``None``, ``self.circuit``
+            is saved.
+        :param options: Optional file-save options override.
+        :return: None.
         """
 
         if ((SimulationTypes.FileSave not in self.stuff_running_now) and
@@ -801,9 +848,11 @@ class IoMain(ScenariosMain):
         else:
             warning_msg('There is a file being processed..')
 
-    def post_file_save(self):
+    def post_file_save(self) -> None:
         """
-        Actions after the threaded file save
+        Finalize the GUI state after one threaded save completes.
+
+        :return: None.
         """
         if self.save_file_thread_object.logger is not None:
             if len(self.save_file_thread_object.logger) > 0:
@@ -823,9 +872,11 @@ class IoMain(ScenariosMain):
         # call the garbage collector to free memory
         self.collect_memory()
 
-    def grid_generator(self):
+    def grid_generator(self) -> None:
         """
-        Open the grid generator window
+        Open the random-grid generator dialogue and optionally replace the project.
+
+        :return: None.
         """
         self.grid_generator_dialogue = GridGeneratorGUI(parent=self)
         self.grid_generator_dialogue.resize(int(1.61 * 600.0), 550)  # golden ratio
@@ -870,18 +921,21 @@ class IoMain(ScenariosMain):
             # clear the results
             self.clear_results()
 
-    def import_bus_coordinates(self):
+    def import_bus_coordinates(self) -> None:
         """
+        Open the coordinate-import dialogue and refresh the XY projection.
 
-        :return:
+        :return: None.
         """
         self.coordinates_window = CoordinatesInputGUI(self, self.circuit.get_buses())
         self.coordinates_window.exec()
         self.set_xy_from_lat_lon()
 
-    def export_object_profiles(self):
+    def export_object_profiles(self) -> None:
         """
-        Export object profiles
+        Export all object profiles to one Excel workbook.
+
+        :return: None.
         """
         if self.circuit.time_profile is not None:
 
@@ -903,10 +957,11 @@ class IoMain(ScenariosMain):
         else:
             warning_msg('There are no profiles!', 'Export object profiles')
 
-    def export_all(self):
+    def export_all(self) -> None:
         """
-        Export all the results
-        :return:
+        Export every available simulation result to one ZIP archive.
+
+        :return: None.
         """
 
         available_results = self.get_available_drivers()
@@ -933,9 +988,11 @@ class IoMain(ScenariosMain):
         else:
             warning_msg('There are no result available :/')
 
-    def post_export_all(self):
+    def post_export_all(self) -> None:
         """
-        Actions post export all
+        Finalize the GUI state after the export-all worker completes.
+
+        :return: None.
         """
         self.stuff_running_now.remove(SimulationTypes.ExportAll)
 
@@ -947,9 +1004,11 @@ class IoMain(ScenariosMain):
         if len(self.stuff_running_now) == 0:
             self.UNLOCK()
 
-    def export_simulation_data(self):
+    def export_simulation_data(self) -> None:
         """
-        Export the calculation objects to file
+        Export the compiled calculation data currently shown in the GUI.
+
+        :return: None.
         """
 
         # declare the allowed file types
@@ -974,9 +1033,11 @@ class IoMain(ScenariosMain):
 
             self.show_info_toast("Done!")
 
-    def load_results_driver(self):
+    def load_results_driver(self) -> None:
         """
-        Load a driver from disk
+        Load one previously saved simulation driver from disk into the session.
+
+        :return: None.
         """
         idx = self.ui.diskSessionsTreeView.selectedIndexes()
         if len(idx) > 0:
@@ -1004,9 +1065,11 @@ class IoMain(ScenariosMain):
             else:
                 info_msg('Select a driver inside a session', 'Driver load from disk')
 
-    def import_contingencies(self):
+    def import_contingencies(self) -> None:
         """
-        Open file to import contingencies file
+        Import contingencies from one JSON file.
+
+        :return: None.
         """
 
         files_types = "Formats (*.json)"
@@ -1026,10 +1089,11 @@ class IoMain(ScenariosMain):
                 dlg = LogsDialogue('Contingencies import', logger)
                 dlg.exec()
 
-    def export_contingencies(self):
+    def export_contingencies(self) -> None:
         """
-        Export contingencies
-        :return:
+        Export current contingencies to one JSON file.
+
+        :return: None.
         """
         if len(self.circuit.contingencies) > 0:
 
@@ -1048,7 +1112,9 @@ class IoMain(ScenariosMain):
 
     def add_default_catalogue(self) -> None:
         """
-        Add default catalogue to circuit
+        Add the built-in catalogue entries to the active circuit.
+
+        :return: None.
         """
 
         if len(self.circuit.transformer_types) == 0:
@@ -1089,13 +1155,11 @@ class IoMain(ScenariosMain):
 
         self.show_info_toast("Catalogue added!")
 
-    def load_custom_catalogue(self):
+    def load_custom_catalogue(self) -> None:
         """
-        Load a catalogue file and add it to the current one
-        """
-        # this will be filled with: open dialogue tab only, then connect select_csv_file from there
-        """
-        Open select component window for uploading catalogue data
+        Load one custom catalogue workbook and merge it into the circuit.
+
+        :return: None.
         """
 
         files_types = "Catalogue file (*.xlsx)"
@@ -1120,9 +1184,11 @@ class IoMain(ScenariosMain):
         else:
             return None
 
-    def save_custom_catalogue(self):
+    def save_custom_catalogue(self) -> None:
         """
-        Save the current catalogue
+        Export the current catalogue state to one Excel workbook.
+
+        :return: None.
         """
 
         # declare the allowed file types
@@ -1140,12 +1206,13 @@ class IoMain(ScenariosMain):
             save_catalogue(fname=filename, grid=self.circuit)
             self.show_info_toast("Catalogue saved!")
 
-    def set_circuit(self, grid: MultiCircuit, create_diagram: bool = True):
+    def set_circuit(self, grid: MultiCircuit, create_diagram: bool = True) -> None:
         """
+        Replace the active circuit and refresh dependent GUI state.
 
-        :param grid:
-        :param create_diagram:
-        :return:
+        :param grid: New active circuit.
+        :param create_diagram: Whether to create the default bus-branch diagram.
+        :return: None.
         """
         self.remove_all_diagrams()
 
@@ -1162,18 +1229,20 @@ class IoMain(ScenariosMain):
         self.get_circuit_snapshot_datetime()
         self.change_theme_mode()
 
-    def export_psse(self):
+    def export_psse(self) -> None:
         """
+        Open the PSS/E export dialogue.
 
-        :return:
+        :return: None.
         """
         self.psse_export_dialogue = PsseExportDialogue(app=self)
         self.psse_export_dialogue.show()
 
-    def export_power_factory(self):
+    def export_power_factory(self) -> None:
         """
+        Export the current circuit to one PowerFactory DGS file.
 
-        :return:
+        :return: None.
         """
         # if the global file_name is empty, ask where to save
         fname = os.path.join(self.project_directory, self.ui.grid_name_line_edit.text())
@@ -1202,10 +1271,11 @@ class IoMain(ScenariosMain):
                 )
             )
 
-    def export_cim(self):
+    def export_cim(self) -> None:
         """
+        Export the current circuit to one CIM XML file.
 
-        :return:
+        :return: None.
         """
         # if the global file_name is empty, ask where to save
         fname = os.path.join(self.project_directory, self.ui.grid_name_line_edit.text())
@@ -1234,18 +1304,20 @@ class IoMain(ScenariosMain):
                 )
             )
 
-    def export_cgmes(self):
+    def export_cgmes(self) -> None:
         """
+        Open the CGMES export dialogue.
 
-        :return:
+        :return: None.
         """
         self.cgmes_dialogue = CgmesExportDialogue(app=self)
         self.cgmes_dialogue.show()
 
-    def export_power_grid_models(self):
+    def export_power_grid_models(self) -> None:
         """
+        Export the current circuit to one Power Grid Models file when available.
 
-        :return:
+        :return: None.
         """
 
         if PGM_AVAILABLE:
@@ -1278,10 +1350,11 @@ class IoMain(ScenariosMain):
         else:
             self.show_warning_toast("Power Grid Models not installed :/")
 
-    def export_json(self):
+    def export_json(self) -> None:
         """
+        Export the current circuit to one VeraGrid JSON file.
 
-        :return:
+        :return: None.
         """
         # if the global file_name is empty, ask where to save
         fname = os.path.join(self.project_directory, self.ui.grid_name_line_edit.text())
@@ -1310,10 +1383,11 @@ class IoMain(ScenariosMain):
                 )
             )
 
-    def export_h5(self):
+    def export_h5(self) -> None:
         """
+        Export the current circuit to one VeraGrid HDF5 file.
 
-        :return:
+        :return: None.
         """
         # if the global file_name is empty, ask where to save
         fname = os.path.join(self.project_directory, self.ui.grid_name_line_edit.text())
@@ -1342,10 +1416,11 @@ class IoMain(ScenariosMain):
                 )
             )
 
-    def export_excel(self):
+    def export_excel(self) -> None:
         """
+        Export the current circuit to one VeraGrid Excel workbook.
 
-        :return:
+        :return: None.
         """
         # if the global file_name is empty, ask where to save
         fname = os.path.join(self.project_directory, self.ui.grid_name_line_edit.text())
@@ -1374,10 +1449,11 @@ class IoMain(ScenariosMain):
                 )
             )
 
-    def export_sqlite(self):
+    def export_sqlite(self) -> None:
         """
+        Export the current circuit to one VeraGrid SQLite database.
 
-        :return:
+        :return: None.
         """
         # if the global file_name is empty, ask where to save
         fname = os.path.join(self.project_directory, self.ui.grid_name_line_edit.text())

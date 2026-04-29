@@ -1,9 +1,40 @@
 from __future__ import annotations
 
+import pytest
+
 from VeraGrid.Gui.Main.SubClasses import io as io_module
 from VeraGrid.Gui.Main.SubClasses.io import IoMain
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.enumerations import DeviceType
+
+
+def _get_transformer_catalogue_stub() -> list[str]:
+    return list(["t1", "t2"])
+
+
+def _get_cables_catalogue_stub() -> list[str]:
+    return list(["c1"])
+
+
+def _get_wires_catalogue_stub() -> list[str]:
+    return list(["w1", "w2", "w3"])
+
+
+def _get_sequence_lines_catalogue_stub() -> list[str]:
+    return list(["s1"])
+
+
+def _get_empty_catalogue_stub() -> list[object]:
+    return list()
+
+
+def _custom_catalogue_dialog_stub(*args, **kwargs) -> tuple[str, str]:
+    _unused = (args, kwargs)
+    return "custom_catalogue.xlsx", "Catalogue file (*.xlsx)"
+
+
+def _custom_catalogue_exists_stub(path: str) -> bool:
+    return path == "custom_catalogue.xlsx"
 
 
 class _CircuitStub:
@@ -154,6 +185,22 @@ class _CatalogueLoggerStub:
         return self._has_logs
 
 
+class _LoadCatalogueStub:
+    """
+    Callable ``load_catalogue`` stub with explicit payload storage.
+    """
+
+    __slots__ = ("loaded_catalogue", "logger")
+
+    def __init__(self, loaded_catalogue: object, logger: _CatalogueLoggerStub) -> None:
+        self.loaded_catalogue: object = loaded_catalogue
+        self.logger: _CatalogueLoggerStub = logger
+
+    def __call__(self, fname: str) -> tuple[object, _CatalogueLoggerStub]:
+        _unused = fname
+        return self.loaded_catalogue, self.logger
+
+
 class _CustomCatalogueCircuitStub(_CircuitStub):
     """
     Circuit stub that records custom-catalogue additions.
@@ -189,7 +236,7 @@ class _CustomCatalogueIoStub(_RefreshingIoStub):
         self.logged_messages.append((name, logger))
 
 
-def test_add_default_catalogue_is_idempotent(monkeypatch) -> None:
+def test_add_default_catalogue_is_idempotent(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     Ensure repeated default-catalogue loads do not duplicate cached entries.
 
@@ -198,10 +245,10 @@ def test_add_default_catalogue_is_idempotent(monkeypatch) -> None:
     """
     stub = _IoStub()
 
-    monkeypatch.setattr(io_module, "get_transformer_catalogue", lambda: list(["t1", "t2"]))
-    monkeypatch.setattr(io_module, "get_cables_catalogue", lambda: list(["c1"]))
-    monkeypatch.setattr(io_module, "get_wires_catalogue", lambda: list(["w1", "w2", "w3"]))
-    monkeypatch.setattr(io_module, "get_sequence_lines_catalogue", lambda: list(["s1"]))
+    monkeypatch.setattr(io_module, "get_transformer_catalogue", _get_transformer_catalogue_stub)
+    monkeypatch.setattr(io_module, "get_cables_catalogue", _get_cables_catalogue_stub)
+    monkeypatch.setattr(io_module, "get_wires_catalogue", _get_wires_catalogue_stub)
+    monkeypatch.setattr(io_module, "get_sequence_lines_catalogue", _get_sequence_lines_catalogue_stub)
 
     IoMain.add_default_catalogue(stub)
     first_counts: dict[str, int] = dict(
@@ -261,7 +308,7 @@ def test_get_dictionary_of_lists_does_not_force_lazy_dynamic_catalogue_load() ->
     assert stub.circuit.get_emt_models_number() == 0
 
 
-def test_add_default_catalogue_refreshes_template_dependent_gui_views(monkeypatch) -> None:
+def test_add_default_catalogue_refreshes_template_dependent_gui_views(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     Ensure the catalogue action rebuilds the visible property views immediately.
 
@@ -270,10 +317,10 @@ def test_add_default_catalogue_refreshes_template_dependent_gui_views(monkeypatc
     """
     stub = _GuiLikeIoStub()
 
-    monkeypatch.setattr(io_module, "get_transformer_catalogue", lambda: list())
-    monkeypatch.setattr(io_module, "get_cables_catalogue", lambda: list())
-    monkeypatch.setattr(io_module, "get_wires_catalogue", lambda: list())
-    monkeypatch.setattr(io_module, "get_sequence_lines_catalogue", lambda: list())
+    monkeypatch.setattr(io_module, "get_transformer_catalogue", _get_empty_catalogue_stub)
+    monkeypatch.setattr(io_module, "get_cables_catalogue", _get_empty_catalogue_stub)
+    monkeypatch.setattr(io_module, "get_wires_catalogue", _get_empty_catalogue_stub)
+    monkeypatch.setattr(io_module, "get_sequence_lines_catalogue", _get_empty_catalogue_stub)
 
     IoMain.add_default_catalogue(stub)
 
@@ -290,7 +337,7 @@ def test_add_default_catalogue_refreshes_template_dependent_gui_views(monkeypatc
     assert len(dictionary_of_lists[DeviceType.EmtModelTemplateDevice]) > 0
 
 
-def test_load_custom_catalogue_refreshes_template_dependent_gui_views(monkeypatch) -> None:
+def test_load_custom_catalogue_refreshes_template_dependent_gui_views(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     Ensure the custom-catalogue action rebuilds the visible property views immediately.
 
@@ -300,12 +347,13 @@ def test_load_custom_catalogue_refreshes_template_dependent_gui_views(monkeypatc
     stub = _CustomCatalogueIoStub()
     loaded_catalogue = object()
     logger = _CatalogueLoggerStub(has_logs=False)
+    load_catalogue_stub = _LoadCatalogueStub(loaded_catalogue=loaded_catalogue, logger=logger)
 
     monkeypatch.setattr(io_module.QtWidgets.QFileDialog,
                         "getOpenFileName",
-                        lambda *args, **kwargs: ("custom_catalogue.xlsx", "Catalogue file (*.xlsx)"))
-    monkeypatch.setattr(io_module.os.path, "exists", lambda path: path == "custom_catalogue.xlsx")
-    monkeypatch.setattr(io_module, "load_catalogue", lambda fname: (loaded_catalogue, logger))
+                        _custom_catalogue_dialog_stub)
+    monkeypatch.setattr(io_module.os.path, "exists", _custom_catalogue_exists_stub)
+    monkeypatch.setattr(io_module, "load_catalogue", load_catalogue_stub)
 
     IoMain.load_custom_catalogue(stub)
 

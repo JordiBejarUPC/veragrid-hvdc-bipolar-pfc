@@ -719,30 +719,66 @@ def _compile_master_jacobian_kernel(ad_kernel: Callable[..., Any], n_colors: int
     :return: Jacobian dispatcher.
     :rtype: Callable[..., Any]
     """
-    def master_jacobian(
-            states: Vec,
-            seed_matrix: Mat,
-            params: Vec,
-            history: Vec,
-            d_history: Vec,
-            h: float,
-            history2: Vec,
-            data: Vec,
-            color_ptr: np.ndarray,
-            col_ptr: np.ndarray,
-            row_idx: np.ndarray,
-            data_idx: np.ndarray,
-            work_jvp: Mat,
-    ) -> None:
+    return StructuralVectorizedMasterJacobianDispatcher(ad_kernel=ad_kernel, n_colors=n_colors)
+
+
+class StructuralVectorizedMasterJacobianDispatcher:
+    """
+    Callable dispatcher that evaluates one generic AD kernel across all colors.
+    """
+
+    __slots__ = ("_ad_kernel", "_n_colors")
+
+    def __init__(self, ad_kernel: Callable[..., Any], n_colors: int) -> None:
+        """
+        Store the generic AD kernel and the number of graph colors.
+
+        :param ad_kernel: Generic AD kernel reused across graph colors.
+        :param n_colors: Number of graph colors.
+        :return: None.
+        """
+        self._ad_kernel: Callable[..., Any] = ad_kernel
+        self._n_colors: int = n_colors
+
+    def __call__(self,
+                 states: Vec,
+                 seed_matrix: Mat,
+                 params: Vec,
+                 history: Vec,
+                 d_history: Vec,
+                 h: float,
+                 history2: Vec,
+                 data: Vec,
+                 color_ptr: np.ndarray,
+                 col_ptr: np.ndarray,
+                 row_idx: np.ndarray,
+                 data_idx: np.ndarray,
+                 work_jvp: Mat) -> None:
+        """
+        Evaluate all color JVPs and scatter them into CSC storage.
+
+        :param states: Current Newton iterate.
+        :param seed_matrix: Coloring seed matrix.
+        :param params: Full parameter vector.
+        :param history: Previous accepted state.
+        :param d_history: Previous derivative vector.
+        :param h: Effective time step.
+        :param history2: Secondary history vector.
+        :param data: CSC numeric data buffer.
+        :param color_ptr: Color-to-column pointer array.
+        :param col_ptr: Column-to-scatter pointer array.
+        :param row_idx: Row indices used by the scatter map.
+        :param data_idx: CSC data positions used by the scatter map.
+        :param work_jvp: Reusable JVP work buffer.
+        :return: None.
+        """
         color_index: int = 0
 
-        while color_index < n_colors:
+        while color_index < self._n_colors:
             local_jvp: Vec = work_jvp[color_index]
-            ad_kernel(states, seed_matrix[color_index], params, history, d_history, h, local_jvp, history2)
+            self._ad_kernel(states, seed_matrix[color_index], params, history, d_history, h, local_jvp, history2)
             _scatter_color_jvp_to_csc_data(local_jvp, data, color_ptr, col_ptr, row_idx, data_idx, color_index)
             color_index += 1
-
-    return master_jacobian
 
 
 class Predictor:
@@ -852,9 +888,15 @@ class SparseADJacobian:
         '_compiler', '_ad_kernel', '_master_dispatcher', '_seed_matrix', '_jvp_work_buffer', '_data_buffer'
     ]
     def __init__(
-            self, equations: List[Any], variables: List[Any], parameters: List[Any],
-            method: DynamicIntegrationMethod, use_cse: bool = True, dtype=np.float64, verbose: bool = False,
-    ):
+            self,
+            equations: List[Expr],
+            variables: List[Var],
+            parameters: List[Var],
+            method: DynamicIntegrationMethod,
+            use_cse: bool = True,
+            dtype: Any = np.float64,
+            verbose: bool = False,
+    ) -> None:
         self.verbose = verbose
         self.equations = equations
         self.variables = variables
@@ -1026,7 +1068,13 @@ class SparseADJacobian:
                 pass
         return colors, int(max_color + 1)
 
-    def __call__(self, states, params, history, d_history, h, history2=None) -> csc_matrix:
+    def __call__(self,
+                 states: Vec,
+                 params: Vec,
+                 history: Vec,
+                 d_history: Vec,
+                 h: float,
+                 history2: Vec | None = None) -> csc_matrix:
         if history2 is None:
             history2 = history
 
@@ -1174,7 +1222,7 @@ class StructuralVectorizedSolver:
         if auto_vectorization:
             self.auto_detect_vectorization(method)
 
-    def auto_detect_vectorization(self, method: DynamicIntegrationMethod = None):
+    def auto_detect_vectorization(self, method: DynamicIntegrationMethod | None = None) -> None:
         """
         Infers the algebraic structure of the DAE system (clustering) and compiles
         the vectorized matrix kernels.

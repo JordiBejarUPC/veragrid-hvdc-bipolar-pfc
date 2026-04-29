@@ -51,6 +51,7 @@ from VeraGridEngine.Templates.Emt.dc_source_emt_template import get_dc_voltage_s
 from VeraGridEngine.Templates.Emt.load_exponential_emt_template import get_exponential_load_emt
 from VeraGridEngine.Templates.Emt.load_zip_emt_template import get_load_ZIP_emt_template
 from VeraGridEngine.Templates.Emt.dc_load_emt_template import get_dc_load_emt_template
+from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 
 
 
@@ -70,7 +71,7 @@ def _get_transformer_connection_types(api_object: Transformer2W | Winding | None
 def create_block_of_type(var_factory: VarFactory,
                          block_type: BlockType,
                          item_name: str = "",
-                         api_object=None) -> Block | None:
+                         api_object: ALL_DEV_TYPES | None = None) -> Block | None:
     """
     Create a Block appropriate for block_type.
     """
@@ -215,9 +216,13 @@ def create_block_of_type(var_factory: VarFactory,
 
     else:
         return None
-
-
-def create_emt_wizard_block(phase_n: bool, phase_a: bool, phase_b: bool, phase_c: bool, var_factory: VarFactory, block_type: BlockType, item_name: str):
+def create_emt_wizard_block(phase_n: bool,
+                            phase_a: bool,
+                            phase_b: bool,
+                            phase_c: bool,
+                            var_factory: VarFactory,
+                            block_type: BlockType,
+                            item_name: str) -> Block | None:
     """
 
     :param phase_n:
@@ -234,8 +239,7 @@ def create_emt_wizard_block(phase_n: bool, phase_a: bool, phase_b: bool, phase_c
     :type block_type:
     :param item_name:
     :type item_name:
-    :return:
-    :rtype:
+    :return: Requested EMT wizard block or ``None``.
     """
     # PI LINE (line)
     if block_type == BlockType.EMT_PI_LINE:
@@ -382,7 +386,7 @@ def create_generic_block(var_factory: VarFactory,
                          inputs: int,
                          outputs: int,
                          name: str = "generic"
-                         ):
+                         ) -> Block:
     """
 
     :param var_factory:

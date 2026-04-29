@@ -176,23 +176,32 @@ def compute_ybus(nc: NumericalCircuit) -> Tuple[csc_matrix, csc_matrix, csc_matr
         start = ptr[bus_idx]
         end = ptr[bus_idx + 1]
 
-        if start == end:
-            continue
-
         grounded_here = False
-        # iterate only over branches actually connected to this bus
-        for p in range(start, end):
-            k = bus_branches[p]
 
-            if F[k] == bus_idx and nc.passive_branch_data.conn_f[k].value == 'Yg':
-                grounded_here = True
-                break
-            if T[k] == bus_idx and nc.passive_branch_data.conn_t[k].value == 'Yg':
-                grounded_here = True
-                break
+        # Only buses with at least one incident branch need the explicit grounding scan.
+        # Isolated buses keep the default neutral-active state and fall through untouched.
+        if start == end:
+            grounded_here = False
+        else:
+            # Iterate only over branches actually connected to this bus and stop as
+            # soon as one grounded-star terminal is found.
+            for p in range(start, end):
+                k = bus_branches[p]
+
+                if F[k] == bus_idx and nc.passive_branch_data.conn_f[k].value == 'Yg':
+                    grounded_here = True
+                    break
+                else:
+                    if T[k] == bus_idx and nc.passive_branch_data.conn_t[k].value == 'Yg':
+                        grounded_here = True
+                        break
+                    else:
+                        pass
 
         if grounded_here:
             bus_has_neutral[4 * bus_idx + 0] = False  # desactiva el nodo de neutro del bus
+        else:
+            pass
 
     # aplica la prioridad: si algún trafo aterra el neutro del bus, el neutro se elimina del solver
     binary_bus_mask[0::4] = binary_bus_mask[0::4] & bus_has_neutral[0::4]
@@ -230,7 +239,7 @@ def compute_generators(bus_idx: IntVec,
                        V: CxVec,
                        P: CxVec,
                        Q: CxVec,
-                       is_controlled) -> CxVec:
+                       is_controlled: BoolVec) -> CxVec:
 
     n = len(V)
     nelm = len(bus_idx)
@@ -707,7 +716,7 @@ def compute_power_loads(bus_idx: IntVec,
     return I, Y_power_linear, Un_floating
 
 
-def calc_autodiff_jacobian(func: Callable[[Vec], Vec], x: Vec, h=1e-6) -> CSC:
+def calc_autodiff_jacobian(func: Callable[[Vec], Vec], x: Vec, h: float = 1e-6) -> CSC:
     """
     Compute the Jacobian matrix of `func` at `x` using finite differences.
     df/dx = (f(x+h) - f(x)) / h
@@ -738,7 +747,7 @@ def calc_autodiff_jacobian(func: Callable[[Vec], Vec], x: Vec, h=1e-6) -> CSC:
 
 
 @nb.njit(cache=True)
-def expand3ph(x: np.ndarray):
+def expand3ph(x: np.ndarray) -> np.ndarray:
     """
     Expands a numpy array to 3-pase copying the same values
     :param x:
@@ -792,7 +801,7 @@ def expand_indices_3ph(x: np.ndarray) -> np.ndarray:
 
 
 @nb.njit(cache=True)
-def expand_slice_indices_3ph(x: np.ndarray, bus_lookup: IntVec):
+def expand_slice_indices_3ph(x: np.ndarray, bus_lookup: IntVec) -> np.ndarray:
     """
     Expands and slices a numpy array to 3-phase copying the same values
     :param x:
@@ -888,7 +897,7 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
                  Qmax: Vec,
                  nc: NumericalCircuit,
                  options: PowerFlowOptions,
-                 logger: Logger):
+                 logger: Logger) -> None:
         """
         PfBasicFormulation3Ph
         :param V0: Array of nodal initial solution (3N)
@@ -929,7 +938,7 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
         self.idx_dP = self.idx_dVa
         self.idx_dQ = np.r_[self.pq, self.pqv]
 
-    def x2var(self, x: Vec):
+    def x2var(self, x: Vec) -> None:
         """
         Convert X to decision variables
         :param x: solution vector
@@ -951,7 +960,7 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
             self.Vm[self.idx_dVm]
         ]
 
-    def update_bus_types(self, pq: IntVec, pv: IntVec, pqv: IntVec, p: IntVec):
+    def update_bus_types(self, pq: IntVec, pv: IntVec, pqv: IntVec, p: IntVec) -> None:
         """
 
         :param pq:

@@ -452,16 +452,16 @@ def test_reduced_initialization_problem_keeps_seeded_algebraic_equations() -> No
             self._algebraic_vars = list([algebraic_var])
             self._algebraic_eqs = list([algebraic_var - Const(1.0)])
 
-        def get_state_vars(self):
+        def get_state_vars(self) -> list[Var]:
             return self._state_vars
 
-        def get_state_eqs(self):
+        def get_state_eqs(self) -> list[Const]:
             return self._state_eqs
 
-        def get_algebraic_vars(self):
+        def get_algebraic_vars(self) -> list[Var]:
             return self._algebraic_vars
 
-        def get_algebraic_eqs(self):
+        def get_algebraic_eqs(self) -> list[Expr]:
             return self._algebraic_eqs
 
     payload = _collect_reduced_initialization_problem(_ProblemStub(), allow_state_equilibrium=True)

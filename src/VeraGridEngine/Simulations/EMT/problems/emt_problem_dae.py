@@ -21,6 +21,9 @@ from typing import Dict, List, Any, Set, Optional, Tuple
 from itertools import chain
 
 from VeraGridEngine.Devices import MultiCircuit
+from VeraGridEngine.Devices.Injections.generator import Generator
+from VeraGridEngine.Devices.Injections.load import Load
+from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Simulations.driver_template import DummySignal
 from VeraGridEngine.Devices.Events.emt_events_group import EmtEventsGroup
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
@@ -177,7 +180,7 @@ class EmtTopologyError(Exception):
     This includes orphaned in_vars/out_vars and floating bus phases.
     """
 
-    def __init__(self, message: str):
+    def __init__(self, message: str) -> None:
         """
         :param message: Descriptive error message indicating the topology issue.
         """
@@ -882,7 +885,7 @@ class EmtProblemDae(EmtProblemTemplate):
                  pf_results_3ph: PowerFlowResults3Ph | None = None,
                  pf_results: PowerFlowResults | None = None,
                  progress_signal: DummySignal | None = None,
-                 progress_text: DummySignal | None = None, )-> None:
+                 progress_text: DummySignal | None = None) -> None:
         """
         Initializes the EMT Problem by parsing the grid and passing the
         resulting mathematical block to the BaseProblem constructor.
@@ -3308,7 +3311,7 @@ class EmtProblemDae(EmtProblemTemplate):
 
 
 
-    def _try_set_bus_pf_init(self, bus,
+    def _try_set_bus_pf_init(self, bus: Bus,
                              mdl: Block,
                              bus_index: int) -> None:
         """
@@ -3375,7 +3378,7 @@ class EmtProblemDae(EmtProblemTemplate):
             else:
                 pass
 
-    def _try_set_bus_pf_init_balanced(self, bus,
+    def _try_set_bus_pf_init_balanced(self, bus: Bus,
                                       mdl: Block,
                                       bus_index: int) -> None:
         """
@@ -6341,7 +6344,7 @@ class EmtProblemDae(EmtProblemTemplate):
         The Thevenin generator template accepts total active and reactive power
         references. These are derived from the already computed per-device EMT
         seed so the dynamic controller starts from the same sharing target used
-        during the PF-to-EMT initialisation.
+        during the PF-to-EMT initialization.
 
         :param inj: Generator device.
         :param phase_power: Complex power seed in NABC order.
@@ -7004,7 +7007,7 @@ class EmtProblemDae(EmtProblemTemplate):
                     float(c_full[i_red, j_red]),
                 )
 
-    def _assign_api_obj_mapping_load(self, load) -> None:
+    def _assign_api_obj_mapping_load(self, load: Load) -> None:
         """
         Assign PF-derived static load parameters into the EMT model API mapping.
         :param load: Load device.
@@ -7054,7 +7057,7 @@ class EmtProblemDae(EmtProblemTemplate):
             self._assign_api_obj_param_if_present(load.emt_model, ParamPowerFlowRefferenceType.Pl0, dc_p_value)
             self._assign_api_obj_param_if_present(load.emt_model, ParamPowerFlowRefferenceType.g, dc_g_value)
 
-    def _assign_api_obj_mapping_generator(self, gen) -> None:
+    def _assign_api_obj_mapping_generator(self, gen: Generator) -> None:
         """
         Assign PF-derived static generator parameters into the EMT model API mapping.
 

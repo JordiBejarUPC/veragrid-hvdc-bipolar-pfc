@@ -46,7 +46,7 @@ class EmtSimulationDriver(DriverTemplate):
                  options: EmtOptions,
                  pf_results_3ph: PowerFlowResults3Ph | None = None,
                  pf_results: PowerFlowResults | None = None,
-                 engine: EngineType = EngineType.VeraGrid):
+                 engine: EngineType = EngineType.VeraGrid) -> None:
         """
         DynamicDriver class constructor
         :param grid: MultiCircuit instance
@@ -71,7 +71,7 @@ class EmtSimulationDriver(DriverTemplate):
 
         self.line_states = {}
 
-    def run(self):
+    def run(self) -> None:
         """
         Main function to initialize and run the system simulation.
 
@@ -82,7 +82,7 @@ class EmtSimulationDriver(DriverTemplate):
         # Run the dynamic simulation
         self.run_time_simulation()
 
-    def run_time_simulation(self):
+    def run_time_simulation(self) -> None:
         """
         Performs the EMTP loop using the chosen method.
         :return:

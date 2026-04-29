@@ -11,7 +11,8 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Expr, Var, hard_sat, heaviside, piecewise
 from VeraGridEngine.basic_structures import Vec
 from VeraGridEngine.Simulations.driver_template import DummySignal
-from VeraGridEngine.enumerations import DynamicEventTransitionType
+from VeraGridEngine.Devices.Events.emt_events_group import EmtEventsGroup
+from VeraGridEngine.enumerations import DynamicEventTransitionType, VarPowerFlowRefferenceType
 
 
 def _get_diff_var_sort_key(diff_var: Var) -> int:
@@ -369,7 +370,7 @@ class EmtProblemTemplate(ABC):
         """
         self._build_runtime_param_vectors()
 
-    def set_events_group(self, emt_events_group) -> None:
+    def set_events_group(self, emt_events_group: EmtEventsGroup | None) -> None:
         """Apply a selected EMT events group to the runtime parameter equations.
 
         The method is generic with respect to the specific EMT templates used in the
@@ -907,13 +908,13 @@ class EmtProblemTemplate(ABC):
         return self._uid2idx_diff[dv.uid]
 
     @property
-    def vars_glob_name2uid(self):
+    def vars_glob_name2uid(self) -> Dict[str, int]:
         """
         :return:
         """
         return self._vars_glob_name2uid
 
-    def set_init_guess(self, mdl: Block, reference_powerflow: Any, val: float) -> None:
+    def set_init_guess(self, mdl: Block, reference_powerflow: VarPowerFlowRefferenceType, val: float) -> None:
         """
         Set the initialization guess associated with a model external mapping.
 
@@ -1030,7 +1031,7 @@ class EmtProblemTemplate(ABC):
         return self._event_params_values
 
     @property
-    def event_parameters_eqs(self):
+    def event_parameters_eqs(self) -> List[Any]:
         return self._event_parameters_eqs
 
 

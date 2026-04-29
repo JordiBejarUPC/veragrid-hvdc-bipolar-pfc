@@ -1422,30 +1422,66 @@ def _compile_master_jacobian_kernel(
     """
     _unused = cache_token
 
-    def master_jacobian(
-            states: Vec,
-            seed_matrix: Float64Matrix,
-            params: Vec,
-            history: Vec,
-            d_history: Vec,
-            h: float,
-            history2: Vec,
-            data: Vec,
-            color_ptr: Int32Vector,
-            col_ptr: Int32Vector,
-            row_idx: Int32Vector,
-            data_idx: Int32Vector,
-            work_jvp: Float64Matrix,
-    ) -> None:
+    return StructuralCompiledMasterJacobianDispatcher(ad_kernel=ad_kernel, n_colors=n_colors)
+
+
+class StructuralCompiledMasterJacobianDispatcher:
+    """
+    Callable dispatcher that evaluates structural AD colors into CSC storage.
+    """
+
+    __slots__ = ("_ad_kernel", "_n_colors")
+
+    def __init__(self, ad_kernel: Callable[..., Any], n_colors: int) -> None:
+        """
+        Store the generic AD kernel and the number of graph colors.
+
+        :param ad_kernel: Generic AD kernel reused across colors.
+        :param n_colors: Number of graph colors.
+        :return: None.
+        """
+        self._ad_kernel: Callable[..., Any] = ad_kernel
+        self._n_colors: int = n_colors
+
+    def __call__(self,
+                 states: Vec,
+                 seed_matrix: Float64Matrix,
+                 params: Vec,
+                 history: Vec,
+                 d_history: Vec,
+                 h: float,
+                 history2: Vec,
+                 data: Vec,
+                 color_ptr: Int32Vector,
+                 col_ptr: Int32Vector,
+                 row_idx: Int32Vector,
+                 data_idx: Int32Vector,
+                 work_jvp: Float64Matrix) -> None:
+        """
+        Evaluate one full structural AD sweep and scatter it into CSC storage.
+
+        :param states: Current Newton iterate.
+        :param seed_matrix: Coloring seed matrix.
+        :param params: Full parameter vector.
+        :param history: Previous accepted state.
+        :param d_history: Previous derivative vector.
+        :param h: Effective time step.
+        :param history2: Secondary history vector.
+        :param data: CSC numeric data buffer.
+        :param color_ptr: Color-to-column pointer array.
+        :param col_ptr: Column-to-scatter pointer array.
+        :param row_idx: Row indices used by the scatter map.
+        :param data_idx: CSC data positions used by the scatter map.
+        :param work_jvp: Reusable JVP work buffer.
+        :return: None.
+        """
         color_index: int = 0
 
-        while color_index < n_colors:
+        while color_index < self._n_colors:
             local_jvp: Float64Vector = work_jvp[color_index]
-            ad_kernel(states, seed_matrix[color_index], params, history, d_history, h, local_jvp, history2)
+            self._ad_kernel(states, seed_matrix[color_index], params, history, d_history, h, local_jvp, history2)
             _scatter_color_jvp_to_csc_data(local_jvp, data, color_ptr, col_ptr, row_idx, data_idx, color_index)
             color_index += 1
-
-    return master_jacobian
 
 
 class StructuralCompiledResidualAssembler:

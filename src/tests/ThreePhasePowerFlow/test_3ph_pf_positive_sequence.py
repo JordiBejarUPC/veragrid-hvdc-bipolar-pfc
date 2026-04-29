@@ -6,7 +6,7 @@ from VeraGridEngine.IO.file_open import FileOpen
 from VeraGridEngine.Simulations.PowerFlow.power_flow_worker import PowerFlowOptions
 
 
-def test_3bus_ps_3ph():
+def test_3bus_ps_3ph() -> None:
     '''
     This test executes a positive-sequence and a three-phase power flow simulations into a 3-bus simple system
     and compares the results between both solvers.
@@ -134,7 +134,7 @@ def test_3bus_ps_3ph_with_q_control_enabled() -> None:
     assert np.all(np.isfinite(np.abs(res_3ph.voltage_C)))
 
 
-def test_ieee_grids_3ph():
+def test_ieee_grids_3ph() -> None:
     """
     Checks the .RAW files of IEEE grids against the PSS/e results
     This test checks 2 things:
