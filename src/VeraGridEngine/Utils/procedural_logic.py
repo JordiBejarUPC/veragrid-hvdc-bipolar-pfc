@@ -2155,14 +2155,17 @@ class ValveStateLogic(ProceduralLogicBase):
             pass
 
         if antiparallel_enabled:
-            return self._compute_diode_mode(
-                old_mode=old_mode,
-                valve_voltage=valve_voltage,
-                valve_current=valve_current,
-                antiparallel_enabled=True,
-                voltage_eps=voltage_eps,
-                current_eps=current_eps,
-            ) if valve_voltage < -voltage_eps or old_mode < -0.5 else 0.0
+            if valve_voltage < -voltage_eps:
+                return -1.0
+            else:
+                pass
+
+            if old_mode < -0.5 and valve_current < current_eps:
+                return -1.0
+            else:
+                pass
+
+            return 0.0
         else:
             return 0.0
 
@@ -2202,14 +2205,17 @@ class ValveStateLogic(ProceduralLogicBase):
             pass
 
         if antiparallel_enabled:
-            return self._compute_diode_mode(
-                old_mode=old_mode,
-                valve_voltage=valve_voltage,
-                valve_current=valve_current,
-                antiparallel_enabled=True,
-                voltage_eps=voltage_eps,
-                current_eps=current_eps,
-            ) if valve_voltage < -voltage_eps or old_mode < -0.5 else 0.0
+            if valve_voltage < -voltage_eps:
+                return -1.0
+            else:
+                pass
+
+            if old_mode < -0.5 and valve_current < current_eps:
+                return -1.0
+            else:
+                pass
+
+            return 0.0
         else:
             return 0.0
 

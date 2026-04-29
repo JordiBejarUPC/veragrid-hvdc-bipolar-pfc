@@ -171,6 +171,31 @@ class VarFactory(EditableDevice):
         """
         return self._diff_var_dict
 
+    def get_unique_template_name(self, name: str) -> str:
+        """Return one template name that does not collide with existing symbols.
+
+        Some EMT builders reserve their symbolic namespace at the template level
+        before any variables are created. When the requested name is still free,
+        this helper returns it unchanged. Otherwise it appends an integer suffix.
+
+        :param name: Requested template name.
+        :return: Collision-free template name.
+        """
+        existing_names = set(v.name for v in self._var_dict.values())
+        existing_names.update(v.name for v in self._diff_var_dict.values())
+
+        if name not in existing_names:
+            return name
+        else:
+            index: int = 1
+            candidate: str = f"{name}_{index}"
+
+            while candidate in existing_names:
+                index += 1
+                candidate = f"{name}_{index}"
+
+            return candidate
+
     def parse_const_dict(self, data_list: List[Dict[str, Any]]):
         """
 
@@ -208,17 +233,22 @@ class VarFactory(EditableDevice):
         for data in data_list:
             assert data["type"] == "Var"
 
-            if data["ref"] is not None:
-                key_ref = VarPowerFlowRefferenceType(data["ref"])
+            # Older persisted symbolic models may not store the power-flow
+            # reference field, so keep loading those files by defaulting to None.
+            ref_data: Any = data.get("ref", None)
+            key_ref: VarPowerFlowRefferenceType | None
+
+            if ref_data is not None:
+                key_ref = VarPowerFlowRefferenceType(ref_data)
             else:
-                ke_ref = None
+                key_ref = None
 
             obj = Var(name=data["name"], uid=data["uid"], reference=key_ref)
 
             # at this point we can store the object
             obj_dict[obj.uid] = obj
 
-        self._var_dict =  obj_dict
+        self._var_dict = obj_dict
 
     def parse_diff_var_dict(self,
             data_list: List[Dict[str, Any]]):
@@ -248,10 +278,13 @@ class VarFactory(EditableDevice):
             else:
                 base_var = obj_dict[data["base_var"]]
 
+            # Older persisted symbolic models may not store the power-flow
+            # reference field on differential variables either.
+            reference: VarPowerFlowRefferenceType | None = data.get("ref", None)
             obj = Var(name=data["name"],
                       uid=data["uid"],
                       base_var=base_var,
-                      reference=data["ref"])
+                      reference=reference)
 
             # at this point we can store the object
             obj_dict[obj.uid] = obj

@@ -518,7 +518,8 @@ class PowerWorldParser:
         """
 
         # make a guess of the file encoding
-        detection = chardet.detect(open(self.file_name, "rb").read())
+        with open(self.file_name, "rb") as raw_file:
+            detection = chardet.detect(raw_file.read())
 
         # open the text file into a variable
         txt = ''

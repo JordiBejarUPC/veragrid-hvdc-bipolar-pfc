@@ -55,7 +55,8 @@ def import_contingencies_from_json(file_name:str):
     if os.path.exists(file_name):
 
         # read json file
-        data = json.load(open(file_name))
+        with open(file_name, "r") as contingency_file:
+            data = json.load(contingency_file)
 
         if data['type'] == 'Contingency Exchange Json File':
             version = float(data['version'])

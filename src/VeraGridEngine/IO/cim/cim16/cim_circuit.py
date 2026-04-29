@@ -328,7 +328,8 @@ class CIMCircuit:
         """
 
         # make a guess of the file encoding
-        detection = chardet.detect(open(file_name, "rb").read())
+        with open(file_name, "rb") as raw_file:
+            detection = chardet.detect(raw_file.read())
 
         # Read text file line by line
         with open(file_name, 'r', encoding=detection['encoding']) as file_pointer:

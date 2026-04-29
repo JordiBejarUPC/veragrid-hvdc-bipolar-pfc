@@ -4,8 +4,10 @@
 # SPDX-License-Identifier: MPL-2.0
 from typing import Sequence
 
-from VeraGridEngine import get_transformer_emt_template, get_xfmr_emt_template
-from VeraGridEngine.enumerations import BlockType
+from VeraGridEngine import get_transformer_emt_template, get_xfmr_emt_template, get_induction_motor_emt_template
+from VeraGridEngine.Devices.Branches.transformer import Transformer2W
+from VeraGridEngine.Devices.Branches.winding import Winding
+from VeraGridEngine.enumerations import BlockType, WindingType
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Templates.predefined_blocks import (
@@ -33,18 +35,43 @@ from VeraGridEngine.Templates.Emt.generator_emt_type_template import (get_simple
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
 from VeraGridEngine.Templates.Emt.bergeron_line_emt_template import get_bergeron_line_emt_template
+from VeraGridEngine.Templates.Emt.jmarti_line_emt_template import get_jmarti_line_emt_template
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import (get_shunt_r_emt_template,
-                                                                get_shunt_c_emt_template,
-                                                                get_shunt_l_emt_template)
+                                                                 get_shunt_c_emt_template,
+                                                                 get_shunt_l_emt_template,
+                                                                 get_ground_emt_template)
+from VeraGridEngine.Templates.Emt.source_emt_template import get_controlled_current_source_emt_template
+from VeraGridEngine.Templates.Emt.source_emt_template import get_controlled_voltage_source_emt_template
+from VeraGridEngine.Templates.Emt.source_emt_template import get_current_source_emt_template
+from VeraGridEngine.Templates.Emt.source_emt_template import get_voltage_source_emt_template
+from VeraGridEngine.Templates.Emt.dc_source_emt_template import get_controlled_dc_current_source_emt_template
+from VeraGridEngine.Templates.Emt.dc_source_emt_template import get_controlled_dc_voltage_source_emt_template
+from VeraGridEngine.Templates.Emt.dc_source_emt_template import get_dc_current_source_emt_template
+from VeraGridEngine.Templates.Emt.dc_source_emt_template import get_dc_voltage_source_emt_template
 from VeraGridEngine.Templates.Emt.load_exponential_emt_template import get_exponential_load_emt
 from VeraGridEngine.Templates.Emt.load_zip_emt_template import get_load_ZIP_emt_template
 from VeraGridEngine.Templates.Emt.dc_load_emt_template import get_dc_load_emt_template
+from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 
+
+
+def _get_transformer_connection_types(api_object: Transformer2W | Winding | None) -> tuple[WindingType | None, WindingType | None]:
+    """
+    Return the explicit from/to winding connections for transformer-like objects.
+
+    :param api_object: Transformer-like API object.
+    :return: Pair ``(conn_f, conn_t)`` or ``(None, None)`` when unavailable.
+    """
+    if api_object is None:
+        return None, None
+    else:
+        return api_object.conn_f, api_object.conn_t
 
 
 def create_block_of_type(var_factory: VarFactory,
                          block_type: BlockType,
-                         item_name: str = "") -> Block | None:
+                         item_name: str = "",
+                         api_object: ALL_DEV_TYPES | None = None) -> Block | None:
     """
     Create a Block appropriate for block_type.
     """
@@ -170,21 +197,39 @@ def create_block_of_type(var_factory: VarFactory,
         blk.name = item_name
         return blk
 
+    elif block_type == BlockType.INDUCTION_MOTOR_EMT:
+        blk = get_induction_motor_emt_template(vf=var_factory, level=2, name=item_name).block
+        blk.name = item_name
+        return blk
+
     elif block_type == BlockType.TRAFO_EMT:
-        blk = get_transformer_emt_template(var_factory).block
+        conn_f, conn_t = _get_transformer_connection_types(api_object)
+        blk = get_transformer_emt_template(var_factory, conn_f=conn_f, conn_t=conn_t).block
         blk.name = item_name
         return blk
 
     elif block_type == BlockType.XFMR_TRANSFORMER:
-        blk = get_xfmr_emt_template(var_factory).block
+        conn_f, conn_t = _get_transformer_connection_types(api_object)
+        blk = get_xfmr_emt_template(var_factory, conn_f=conn_f, conn_t=conn_t).block
         blk.name = item_name
         return blk
 
+    elif block_type == BlockType.GROUND_EMT:
+        blk = get_ground_emt_template(var_factory, item_name).block
+        blk.name = item_name
+        return blk
+
+
+
     else:
         return None
-
-
-def create_emt_wizard_block(phase_n: bool, phase_a: bool, phase_b: bool, phase_c: bool, var_factory: VarFactory, block_type: BlockType, item_name: str):
+def create_emt_wizard_block(phase_n: bool,
+                            phase_a: bool,
+                            phase_b: bool,
+                            phase_c: bool,
+                            var_factory: VarFactory,
+                            block_type: BlockType,
+                            item_name: str) -> Block | None:
     """
 
     :param phase_n:
@@ -201,8 +246,7 @@ def create_emt_wizard_block(phase_n: bool, phase_a: bool, phase_b: bool, phase_c
     :type block_type:
     :param item_name:
     :type item_name:
-    :return:
-    :rtype:
+    :return: Requested EMT wizard block or ``None``.
     """
     # PI LINE (line)
     if block_type == BlockType.EMT_PI_LINE:
@@ -218,11 +262,82 @@ def create_emt_wizard_block(phase_n: bool, phase_a: bool, phase_b: bool, phase_c
     # BERGERON LINE (line)
     elif block_type == BlockType.EMT_BERGERON_LINE:
         blk = get_bergeron_line_emt_template(vf=var_factory,
-                                       phN=phase_n,
-                                       phA=phase_a,
-                                       phB=phase_b,
-                                       phC=phase_c,
-                                       name=item_name).block
+                                        phN=phase_n,
+                                        phA=phase_a,
+                                        phB=phase_b,
+                                        phC=phase_c,
+                                        name=item_name).block
+        blk.name = item_name
+        return blk
+
+    # JMARTI LINE (line)
+    elif block_type == BlockType.EMT_JMARTI_LINE:
+        blk = get_jmarti_line_emt_template(vf=var_factory,
+                                           phN=phase_n,
+                                           phA=phase_a,
+                                           phB=phase_b,
+                                           phC=phase_c,
+                                           name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.VOLTAGE_SOURCE_EMT:
+        blk = get_voltage_source_emt_template(vf=var_factory,
+                                              phN=phase_n,
+                                              phA=phase_a,
+                                              phB=phase_b,
+                                              phC=phase_c,
+                                              name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.CURRENT_SOURCE_EMT:
+        blk = get_current_source_emt_template(vf=var_factory,
+                                              phN=phase_n,
+                                              phA=phase_a,
+                                              phB=phase_b,
+                                              phC=phase_c,
+                                              name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.CONTROLLED_VOLTAGE_SOURCE_EMT:
+        blk = get_controlled_voltage_source_emt_template(vf=var_factory,
+                                                         phN=phase_n,
+                                                         phA=phase_a,
+                                                         phB=phase_b,
+                                                         phC=phase_c,
+                                                         name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.CONTROLLED_CURRENT_SOURCE_EMT:
+        blk = get_controlled_current_source_emt_template(vf=var_factory,
+                                                         phN=phase_n,
+                                                         phA=phase_a,
+                                                         phB=phase_b,
+                                                         phC=phase_c,
+                                                         name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.DC_VOLTAGE_SOURCE_EMT:
+        blk = get_dc_voltage_source_emt_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.DC_CURRENT_SOURCE_EMT:
+        blk = get_dc_current_source_emt_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.CONTROLLED_DC_VOLTAGE_SOURCE_EMT:
+        blk = get_controlled_dc_voltage_source_emt_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.CONTROLLED_DC_CURRENT_SOURCE_EMT:
+        blk = get_controlled_dc_current_source_emt_template(vf=var_factory, name=item_name).block
         blk.name = item_name
         return blk
 
@@ -278,7 +393,7 @@ def create_generic_block(var_factory: VarFactory,
                          inputs: int,
                          outputs: int,
                          name: str = "generic"
-                         ):
+                         ) -> Block:
     """
 
     :param var_factory:

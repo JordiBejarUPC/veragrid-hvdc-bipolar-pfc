@@ -1504,12 +1504,9 @@ def _collect_reduced_initialization_problem(
 
     while alg_idx < len(algebraic_vars):
         algebraic_var: Var = algebraic_vars[alg_idx]
-        if algebraic_var.uid in problem.init_guess:
-            algebraic_var = algebraic_var
-        else:
-            unknown_vars.append(algebraic_var)
-            residual_eqs.append(algebraic_eqs[alg_idx])
-            state_unknown_flags.append(0.0)
+        unknown_vars.append(algebraic_var)
+        residual_eqs.append(algebraic_eqs[alg_idx])
+        state_unknown_flags.append(0.0)
         alg_idx += 1
 
     for state_var in problem.get_state_vars():

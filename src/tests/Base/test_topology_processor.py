@@ -916,7 +916,8 @@ def test_lynn_Ybus3() -> None:
     m = nc.passive_branch_data.nelm
     for _ in range(m):
         print("-" * 200)
-        cidx = np.unique(np.random.random_integers(0, m - 1, np.random.random_integers(1, m - 1, 1)))
+        sample_size: int = int(np.random.randint(1, m))
+        cidx = np.unique(np.random.randint(0, m, size=sample_size))
 
         nc.passive_branch_data.active[cidx] = 0
 

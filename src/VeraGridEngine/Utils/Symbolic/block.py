@@ -373,6 +373,14 @@ class Block:
             result.mode_dict = copy.deepcopy(self.mode_dict, memo)
             result.procedural_logic = copy.deepcopy(self.procedural_logic, memo)
             result._diagram = copy.deepcopy(self._diagram, memo)
+
+            extra_key: str
+            extra_value: Any
+            for extra_key, extra_value in self.__dict__.items():
+                if extra_key in result.__dict__:
+                    pass
+                else:
+                    setattr(result, extra_key, copy.deepcopy(extra_value, memo))
             return result
 
     def compare(self, block2: Block) -> bool:
@@ -636,7 +644,7 @@ class Block:
             variables.extend(blk.diff_vars)
         return variables
 
-    def update_variables(self, old, new):
+    def update_variables(self, old: Var | Expr, new: Var | Expr) -> None:
         """
         this function changes the variable old for the variable new in the block variables
         :param old:
@@ -655,7 +663,7 @@ class Block:
 
 
 
-    def update_equations(self, old, new):
+    def update_equations(self, old: Var | Expr, new: Var | Expr) -> None:
         """
         this function changes the variable old for the variable new in the block equations
         :param old:
@@ -717,10 +725,12 @@ class Block:
 
         if self.procedural_logic:
             from VeraGridEngine.Utils.procedural_logic import clone_procedural_logic_entries
-            self.procedural_logic = clone_procedural_logic_entries(self.procedural_logic, {old: new, old.name: new})
+            self.procedural_logic = clone_procedural_logic_entries(self.procedural_logic,
+                                                                   var_mapping={old: new, old.name: new})
 
-    def update_model(self, old, new):
-        """<
+    def update_model(self, old: Var | Expr, new: Var | Expr) -> None:
+        """
+        Replace variables
         :param old:
         :param new:
         :return:
@@ -741,6 +751,12 @@ class Block:
 
 
 def find_name_in_block(name: str, block: Block) -> Var | None:
+    """
+
+    :param name:
+    :param block:
+    :return:
+    """
     for lst in [block.in_vars, block.out_vars, block.algebraic_vars, block.state_vars, block.diff_vars]:
         for var in lst:
             if name == var.name:
