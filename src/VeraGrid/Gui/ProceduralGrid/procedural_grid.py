@@ -23,6 +23,7 @@ from VeraGrid.Gui.general_dialogues import LogsDialogue, CheckListDialogue
 
 if TYPE_CHECKING:
     from VeraGrid.Gui.Main.SubClasses.simulations import SimulationsMain
+    from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 
 
 class ProceduralGridWindow(QtWidgets.QDialog):
@@ -145,8 +146,9 @@ class ProceduralGridWindow(QtWidgets.QDialog):
         offenders, valid_voltages = self._check_substation_voltages(target_objects + candidate_objects)
         if offenders:
             dlg = VoltageWarningDialog(offenders=offenders, valid_voltages=valid_voltages, parent=self)
+            dlg.setModal(True)
             dlg.exec()
-            return
+            return None
         else:
             pass
 
@@ -171,12 +173,11 @@ class ProceduralGridWindow(QtWidgets.QDialog):
 
         # 5. Show the preview dialog; only proceed if the user confirms
         preview_dlg = ProceduralGridPreviewDialog(engine=engine, method=method, parent=self)
-        if preview_dlg.exec() != QtWidgets.QDialog.Accepted:
-            return
+        if preview_dlg.exec() == QtWidgets.QDialog.Accepted:
+            self._apply_to_app(engine=engine, expanded_grid=expanded_grid, method=method, logger=logger)
+            return None
         else:
-            pass
-
-        self._apply_to_app(engine=engine, expanded_grid=expanded_grid, method=method, logger=logger)
+            return None
 
     def _apply_to_app(self,
                       engine: ProceduralGridComputationEngine,
@@ -186,7 +187,7 @@ class ProceduralGridWindow(QtWidgets.QDialog):
         """
         Apply the confirmed expansion result to the running application: create
         substations for new buses, update all open map widgets, build the schematic
-        diagram, display the logger and prompt for investment group assignment.
+        diagram, display the logger, and prompt for investment group assignment.
 
         :param engine: The engine whose results are being applied.
         :param expanded_grid: The expanded MultiCircuit returned by the engine.
@@ -256,7 +257,7 @@ class ProceduralGridWindow(QtWidgets.QDialog):
             pass
 
         # Ask whether to assign generated objects to an investment group
-        new_devices: List[dev.ALL_DEV_TYPES] = (engine.get_new_buses()
+        new_devices: List[ALL_DEV_TYPES] = (engine.get_new_buses()
                                                  + engine.get_new_lines()
                                                  + engine.get_new_transformers())
         group_name: str = "Investment " + str(len(self.app.circuit.investments_groups))
@@ -278,7 +279,7 @@ class ProceduralGridWindow(QtWidgets.QDialog):
             self.app.circuit.add_investments_group(group)
 
             for i in inv_dlg.selected_indices:
-                d: dev.ALL_DEV_TYPES = new_devices[i]
+                d: ALL_DEV_TYPES = new_devices[i]
                 self.app.circuit.add_investment(dev.Investment(device=d,
                                                                code=d.code,
                                                                name=d.type_name + ": " + d.name,
