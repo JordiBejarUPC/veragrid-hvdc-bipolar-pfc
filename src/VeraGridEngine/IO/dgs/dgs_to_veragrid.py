@@ -2506,6 +2506,10 @@ def _extract_shunt_gb(elmshnt: ElmShnt, f: float, logger: Logger) -> Tuple[float
             value=shtype
         )
 
+    if elmshnt.ncapa == 0:
+        g_mw = 0.0
+        b_mvar = 0.0
+
     return g_mw, b_mvar
 
 
