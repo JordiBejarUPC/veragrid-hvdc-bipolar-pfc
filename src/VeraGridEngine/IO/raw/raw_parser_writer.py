@@ -138,7 +138,8 @@ def read_and_split(file_name: str, text_func=None, progress_func=None) -> (List[
         progress_func(0)
 
     # make a guess of the file encoding
-    detection = chardet.detect(open(file_name, "rb").read())
+    with open(file_name, "rb") as raw_file:
+        detection = chardet.detect(raw_file.read())
 
     # open the text file into a variable
 

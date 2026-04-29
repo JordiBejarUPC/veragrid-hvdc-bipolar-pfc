@@ -25,7 +25,8 @@ def parse_rawx(file_name: str, logger: Logger = Logger()) -> PsseCircuit:
     """
 
     # read json file into dictionary
-    data = json.load(open(file_name))
+    with open(file_name, "r") as rawx_file:
+        data = json.load(rawx_file)
 
     # get structures
     psse_grid = PsseCircuit()

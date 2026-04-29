@@ -620,7 +620,7 @@ class ConnectivityMatrices:
         :param bus_active:
         :return:
         """
-        return (diags(bus_active) * (self.C.T @ self.C)).tocsc()
+        return (diags(bus_active, dtype=float) * (self.C.T @ self.C)).tocsc()
 
 
 def compute_connectivity(branch_active: IntVec,
@@ -633,7 +633,7 @@ def compute_connectivity(branch_active: IntVec,
     :param Ct_: Connectivity branch-bus "to"
     :return: Final Ct and Cf in CSC format
     """
-    br_states_diag = sp.diags(branch_active)
+    br_states_diag = sp.diags(branch_active, dtype=float)
     Cf = br_states_diag * Cf_
     Ct = br_states_diag * Ct_
 
@@ -668,19 +668,19 @@ def compute_connectivity_flexible(branch_active: IntVec | None = None,
 
     if branch_active is not None:
         if len(branch_active):
-            br_states_diag = sp.diags(branch_active.astype(int))
+            br_states_diag = sp.diags(branch_active.astype(int), dtype=float)
             cf_stack.append(br_states_diag @ Cf_)
             ct_stack.append(br_states_diag @ Ct_)
 
     if hvdc_active is not None:
         if len(hvdc_active):
-            hvdc_states_diag = sp.diags(hvdc_active.astype(int))
+            hvdc_states_diag = sp.diags(hvdc_active.astype(int), dtype=float)
             cf_stack.append(hvdc_states_diag @ Cf_hvdc)
             ct_stack.append(hvdc_states_diag @ Ct_hvdc)
 
     if vsc_active is not None:
         if len(vsc_active):
-            vsc_states_diag = sp.diags(vsc_active.astype(int))
+            vsc_states_diag = sp.diags(vsc_active.astype(int), dtype=float)
             cf_stack.append(vsc_states_diag @ Cf_vsc)
             ct_stack.append(vsc_states_diag @ Ct_vsc)
 

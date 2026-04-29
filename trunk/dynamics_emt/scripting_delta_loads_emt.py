@@ -158,18 +158,36 @@ def _collect_delta_reference(problem: EmtProblemDae, load: gce.Load, pf_res_3ph)
     seed_i_a = float(x0[problem.get_var_idx(load_model.external_mapping[VarPowerFlowRefferenceType.i_A])])
     seed_i_b = float(x0[problem.get_var_idx(load_model.external_mapping[VarPowerFlowRefferenceType.i_B])])
     seed_i_c = float(x0[problem.get_var_idx(load_model.external_mapping[VarPowerFlowRefferenceType.i_C])])
+    seed_v_ab = float((seed_v_a - seed_v_b) / np.sqrt(3.0))
+    seed_v_bc = float((seed_v_b - seed_v_c) / np.sqrt(3.0))
+    seed_v_ca = float((seed_v_c - seed_v_a) / np.sqrt(3.0))
+    bus_v_ab = _to_instantaneous_series(v_ab_ph, time_values, omega)
+    bus_v_bc = _to_instantaneous_series(v_bc_ph, time_values, omega)
+    bus_v_ca = _to_instantaneous_series(v_ca_ph, time_values, omega)
+    load_i_a = _to_instantaneous_series(i_a_ph, time_values, omega)
+    load_i_b = _to_instantaneous_series(i_b_ph, time_values, omega)
+    load_i_c = _to_instantaneous_series(i_c_ph, time_values, omega)
+
+    # The demo reference is anchored at the EMT initialization point so the
+    # exported steady-state trace and the highlighted x0 sample start together.
+    bus_v_ab[0] = seed_v_ab
+    bus_v_bc[0] = seed_v_bc
+    bus_v_ca[0] = seed_v_ca
+    load_i_a[0] = seed_i_a
+    load_i_b[0] = seed_i_b
+    load_i_c[0] = seed_i_c
 
     return dict({
         "time": time_values,
-        "bus_v_ab": _to_instantaneous_series(v_ab_ph, time_values, omega),
-        "bus_v_bc": _to_instantaneous_series(v_bc_ph, time_values, omega),
-        "bus_v_ca": _to_instantaneous_series(v_ca_ph, time_values, omega),
-        "load_i_a": _to_instantaneous_series(i_a_ph, time_values, omega),
-        "load_i_b": _to_instantaneous_series(i_b_ph, time_values, omega),
-        "load_i_c": _to_instantaneous_series(i_c_ph, time_values, omega),
-        "seed_v_ab": (seed_v_a - seed_v_b) / np.sqrt(3.0),
-        "seed_v_bc": (seed_v_b - seed_v_c) / np.sqrt(3.0),
-        "seed_v_ca": (seed_v_c - seed_v_a) / np.sqrt(3.0),
+        "bus_v_ab": bus_v_ab,
+        "bus_v_bc": bus_v_bc,
+        "bus_v_ca": bus_v_ca,
+        "load_i_a": load_i_a,
+        "load_i_b": load_i_b,
+        "load_i_c": load_i_c,
+        "seed_v_ab": seed_v_ab,
+        "seed_v_bc": seed_v_bc,
+        "seed_v_ca": seed_v_ca,
         "seed_i_a": seed_i_a,
         "seed_i_b": seed_i_b,
         "seed_i_c": seed_i_c,

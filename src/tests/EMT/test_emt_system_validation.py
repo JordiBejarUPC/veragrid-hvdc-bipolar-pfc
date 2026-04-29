@@ -12,6 +12,9 @@ _validate_connections) correctly detect topology issues in 5 different scenarios
 import pytest
 import os
 import numpy as np
+import warnings
+
+from scipy.sparse.linalg import MatrixRankWarning
 
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae, EmtTopologyError
@@ -74,7 +77,42 @@ def run_power_flow(grid: gce.MultiCircuit) -> tuple:
         control_taps_phase=False,
         orthogonalize_controls=False,
     )
-    pf_results = gce.power_flow(grid=grid, options=pf_options)
+    with warnings.catch_warnings():
+        # The retry battery intentionally explores several numerical methods.
+        # Some rejected candidates emit transient numeric warnings before the
+        # driver falls back to a converged solution, which is the behavior this
+        # validation helper cares about.
+        warnings.filterwarnings(
+            "ignore",
+            message="overflow encountered in scalar multiply",
+            category=RuntimeWarning,
+        )
+        warnings.filterwarnings(
+            "ignore",
+            message="invalid value encountered in multiply",
+            category=RuntimeWarning,
+        )
+        warnings.filterwarnings(
+            "ignore",
+            message="invalid value encountered in scalar divide",
+            category=RuntimeWarning,
+        )
+        warnings.filterwarnings(
+            "ignore",
+            message="Matrix is exactly singular",
+            category=MatrixRankWarning,
+        )
+        warnings.filterwarnings(
+            "ignore",
+            message="Unable to factorize HELM coefficients matrix :/",
+            category=UserWarning,
+        )
+        warnings.filterwarnings(
+            "ignore",
+            message="invalid value encountered in divide",
+            category=RuntimeWarning,
+        )
+        pf_results = gce.power_flow(grid=grid, options=pf_options)
 
     pf_options_3ph = PowerFlowOptions(
         solver_type=SolverType.NR,

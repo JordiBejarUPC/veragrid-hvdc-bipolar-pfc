@@ -6,6 +6,9 @@ from VeraGridEngine.IO.file_open import FileOpen
 from VeraGridEngine.Simulations.PowerFlow.power_flow_worker import PowerFlowOptions
 
 
+TEST_DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
+
+
 def test_3bus_ps_3ph() -> None:
     '''
     This test executes a positive-sequence and a three-phase power flow simulations into a 3-bus simple system
@@ -155,7 +158,7 @@ def test_ieee_grids_3ph() -> None:
     for f1, f2 in files:
         print(f1, end=' ')
 
-        fname = os.path.join('data', 'grids', 'RAW', f1)
+        fname = os.path.join(TEST_DATA_DIR, 'grids', 'RAW', f1)
         main_circuit = FileOpen(fname).open()
 
         # vge.save_file(grid=main_circuit, filename='positive_sequence_3ph_pf.veragrid')
@@ -171,7 +174,7 @@ def test_ieee_grids_3ph() -> None:
         v_3ph_c = np.abs(res_3ph.voltage_C)
 
         # load the associated results file
-        df_v = pd.read_excel(os.path.join('data', 'results', f2), sheet_name='Vabs', index_col=0)
+        df_v = pd.read_excel(os.path.join(TEST_DATA_DIR, 'results', f2), sheet_name='Vabs', index_col=0)
         v_psse = df_v.values[:, 0]
 
         # comparison

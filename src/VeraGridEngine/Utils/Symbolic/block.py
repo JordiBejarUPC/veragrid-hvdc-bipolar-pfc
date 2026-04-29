@@ -644,7 +644,7 @@ class Block:
             variables.extend(blk.diff_vars)
         return variables
 
-    def update_variables(self, old, new):
+    def update_variables(self, old: Var | Expr, new: Var | Expr) -> None:
         """
         this function changes the variable old for the variable new in the block variables
         :param old:
@@ -663,7 +663,7 @@ class Block:
 
 
 
-    def update_equations(self, old, new):
+    def update_equations(self, old: Var | Expr, new: Var | Expr) -> None:
         """
         this function changes the variable old for the variable new in the block equations
         :param old:
@@ -728,7 +728,7 @@ class Block:
             self.procedural_logic = clone_procedural_logic_entries(self.procedural_logic,
                                                                    var_mapping={old: new, old.name: new})
 
-    def update_model(self, old: List[Var | Expr], new: List[Var | Expr]):
+    def update_model(self, old: Var | Expr, new: Var | Expr) -> None:
         """
         Replace variables
         :param old:

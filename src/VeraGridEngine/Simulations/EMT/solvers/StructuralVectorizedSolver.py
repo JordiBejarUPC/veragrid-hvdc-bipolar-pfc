@@ -193,8 +193,52 @@ def _sparse_factor_manager_matrix(manager: StructuralCompiledSparseFactorization
     return manager.get_active_matrix()
 
 
+class LegacyResidualEvaluatorAdapter:
+    """
+    Adapt one legacy 8-argument residual callable to the fixed 7-argument solver interface.
+    """
+
+    __slots__ = ["_residual_callable", "_vec_flat_args"]
+
+    def __init__(self, residual_callable: Callable[..., Any], vec_flat_args: Vec) -> None:
+        """
+        Build one legacy residual adapter.
+
+        :param residual_callable: Legacy residual callable.
+        :param vec_flat_args: Legacy flat vectorized arguments.
+        :return: None.
+        """
+        self._residual_callable = residual_callable
+        self._vec_flat_args = vec_flat_args
+
+    def __call__(
+            self,
+            states: Vec,
+            params: Vec,
+            history: Vec,
+            d_history: Vec,
+            h: float,
+            history2: Vec,
+            out: Vec,
+    ) -> None:
+        """
+        Evaluate the wrapped legacy residual callable.
+
+        :param states: Current Newton iterate.
+        :param params: Full parameter vector.
+        :param history: Previous accepted state.
+        :param d_history: Previous derivative vector.
+        :param h: Effective local time step.
+        :param history2: Secondary state history.
+        :param out: Residual output buffer.
+        :return: None.
+        """
+        self._residual_callable(states, params, history, d_history, h, self._vec_flat_args, out, history2)
+
+
 def build_residual_evaluator(
         residual_dispatcher: FusedResidualDispatcher | DirectResidualDispatcher,
+        vec_flat_args: Optional[Vec] = None,
 ) -> Callable[[Vec, Vec, Vec, Vec, float, Vec, Vec], None]:
     """
     Build one fixed-signature residual evaluator for the current dispatcher.
@@ -205,11 +249,28 @@ def build_residual_evaluator(
 
     :param residual_dispatcher: Residual dispatcher.
     :type residual_dispatcher: FusedResidualDispatcher | DirectResidualDispatcher
+    :param vec_flat_args: Optional flat vectorized argument buffer used by legacy residual callables.
+    :type vec_flat_args: Optional[Vec]
     :return: Residual evaluator with signature ``(states, params, history,
         d_history, h, history2, out)``.
     :rtype: Callable[[Vec, Vec, Vec, Vec, float, Vec, Vec], None]
     """
-    return residual_dispatcher.evaluate
+    if isinstance(residual_dispatcher, (FusedResidualDispatcher, DirectResidualDispatcher)):
+        return residual_dispatcher.evaluate
+    else:
+        pass
+
+    if callable(residual_dispatcher):
+        legacy_vec_flat_args: Vec
+
+        if vec_flat_args is None:
+            legacy_vec_flat_args = np.zeros(0, dtype=np.float64)
+        else:
+            legacy_vec_flat_args = vec_flat_args
+
+        return LegacyResidualEvaluatorAdapter(residual_dispatcher, legacy_vec_flat_args)
+    else:
+        raise TypeError("Unsupported residual dispatcher type")
 
 
 # ==============================================================================
@@ -1516,7 +1577,7 @@ class StructuralVectorizedSolver:
 
         dense_solve: Callable[..., Vec] | None = None
         sparse_solve: Callable[..., Vec] | None = None
-        residual_evaluator = build_residual_evaluator(self.fused_residual)
+        residual_evaluator = build_residual_evaluator(self.fused_residual, self.vec_flat_args)
 
         if diagnostics_enabled:
             dense_solve = with_newton_diagnostics(

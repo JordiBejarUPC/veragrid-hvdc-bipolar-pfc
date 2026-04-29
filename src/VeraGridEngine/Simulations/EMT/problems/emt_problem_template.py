@@ -58,6 +58,25 @@ class EmtBoundaryUpdateProtocol(Protocol):
         ...
 
 
+def _implements_forced_event_time_api(boundary_updater: Any) -> bool:
+    """
+    Return whether one boundary updater type implements ``get_next_forced_event_time``.
+
+    :param boundary_updater: Boundary updater instance.
+    :return: ``True`` when the API is implemented.
+    """
+    updater_type: type = type(boundary_updater)
+    base_type: type
+
+    for base_type in updater_type.__mro__:
+        if "get_next_forced_event_time" in base_type.__dict__:
+            return True
+        else:
+            pass
+
+    return False
+
+
 def _emt_event_spec_time_sort_key(event_spec: Dict[str, float | str | None]) -> float:
     """
     Return the sorting key of one EMT runtime-event specification.
@@ -101,6 +120,11 @@ def get_solver_forced_event_time(
         return None
     else:
         pass
+
+    if _implements_forced_event_time_api(boundary_updater):
+        pass
+    else:
+        return None
 
     next_time: float | None = boundary_updater.get_next_forced_event_time(float(t_prev), float(t_target))
 

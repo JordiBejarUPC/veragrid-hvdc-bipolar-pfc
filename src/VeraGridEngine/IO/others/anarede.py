@@ -1032,7 +1032,8 @@ def _split_sections(file_name: str):
     and the line indices as the value.
     """
     # make a guess of the file encoding
-    detection = chardet.detect(open(file_name, "rb").read())
+    with open(file_name, "rb") as raw_file:
+        detection = chardet.detect(raw_file.read())
 
     # read and split by blocks
     with open(file_name, 'r', encoding=detection['encoding']) as io:
