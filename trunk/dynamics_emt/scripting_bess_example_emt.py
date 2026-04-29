@@ -352,8 +352,8 @@ def attach_emt_models(objects: BessRunObjects, case: BessCase) -> BessEmtBlocks:
     bess_mdl.set_parameter_in_model(var_name=f"i_ki_bess_avm_{case.name}", new_value=20.0)
     bess_mdl.set_parameter_in_model(var_name=f"vdc_kp_bess_avm_{case.name}", new_value=2.0)
     bess_mdl.set_parameter_in_model(var_name=f"vdc_ki_bess_avm_{case.name}", new_value=40.0)
-    bess_mdl.set_parameter_in_model(var_name=f"q_kp_bess_avm_{case.name}", new_value=0.6)
-    bess_mdl.set_parameter_in_model(var_name=f"q_ki_bess_avm_{case.name}", new_value=20.0)
+    bess_mdl.set_parameter_in_model(var_name=f"q_kp_bess_avm_{case.name}", new_value=0.05)
+    bess_mdl.set_parameter_in_model(var_name=f"q_ki_bess_avm_{case.name}", new_value=2.0)
     bess_mdl.set_parameter_in_model(var_name=f"i_max_bess_avm_{case.name}", new_value=1.3)
     bess_mdl.set_parameter_in_model(var_name=f"m_max_bess_avm_{case.name}", new_value=0.95)
     bess_mdl.set_parameter_in_model(var_name=f"P_loss_i1_bess_avm_{case.name}", new_value=0.01)
@@ -395,7 +395,7 @@ def build_problem(
     """
     options: EmtOptions = EmtOptions(
         time_step=2.0e-5,
-        simulation_time=0.5,
+        simulation_time=0.3,
         tolerance=1e-6,
         solver_type=EmtSolverTypes.StructuralCompiled,
         initialization_method=EmtInitializationMethod.Explicit,
@@ -529,7 +529,7 @@ def build_plot_data(
     data["v_oc"] = get_signal(problem, blocks.bess_mdl, f"v_oc_bat_bess_avm_{case.name}", y_values)
     data["v_dc_bus"] = get_signal(problem, blocks.bess_mdl, f"v_dc_bus_bat_bess_avm_{case.name}", y_values)
     data["i_bat"] = get_signal(problem, blocks.bess_mdl, f"i_bat_bess_avm_{case.name}", y_values)
-    data["p_bat"] = get_signal(problem, blocks.bess_mdl, f"p_bat_bess_avm_{case.name}", y_values)
+    data["p_bat_internal"] = get_signal(problem, blocks.bess_mdl, f"p_bat_bess_avm_{case.name}", y_values)
 
     data["theta_pll"] = get_optional_signal(problem, blocks.bess_mdl, f"theta_pll_bess_avm_{case.name}", y_values)
     data["omega_pll"] = get_optional_signal(problem, blocks.bess_mdl, f"omega_pll_bess_avm_{case.name}", y_values)
@@ -540,7 +540,12 @@ def build_plot_data(
     if data["p"] is None:
         data["p_grid"] = None
     else:
-        data["p_grid"] = -data["p"]
+        data["p_grid"] = data["p"]
+
+    if data["p_bat_internal"] is None:
+        data["p_bat"] = None
+    else:
+        data["p_bat"] = -data["p_bat_internal"]
 
     return data
 
@@ -566,7 +571,7 @@ def print_case_metrics(case: BessCase, time_values: np.ndarray, data: Dict[str, 
     print("\n" + "=" * 80)
     print(f"BESS EMT metrics | case = {case.name}")
     print("=" * 80)
-    print("  note                    : `P AC` is converter sign, `P grid` is export-positive, `P_bat` is battery-discharge-positive")
+    print("  note                    : `P AC` and `P grid` are export-positive, `P_bat` is battery-discharge-positive")
 
     if p_values is not None:
         print(f"  mean P AC second half   : {float(np.mean(p_values[mask])): .6f} pu")
@@ -582,6 +587,116 @@ def print_case_metrics(case: BessCase, time_values: np.ndarray, data: Dict[str, 
         print(f"  min/max SoC             : {float(np.min(soc_values)): .6f} / {float(np.max(soc_values)): .6f}")
     if vdc_values is not None:
         print(f"  min/max internal Vdc    : {float(np.min(vdc_values)): .6f} / {float(np.max(vdc_values)): .6f}")
+
+
+def compute_fundamental_phase_shift_deg(
+    time_values: np.ndarray,
+    voltage_values: np.ndarray,
+    current_values: np.ndarray,
+    frequency_hz: float,
+) -> float:
+    """
+    Estimate the fundamental current-minus-voltage phase shift.
+
+    :param time_values: Simulation time vector.
+    :param voltage_values: Phase-voltage trajectory.
+    :param current_values: Phase-current trajectory.
+    :param frequency_hz: Fundamental frequency.
+    :return: Phase shift in degrees.
+    """
+    omega: float = 2.0 * np.pi * float(frequency_hz)
+    sine_basis: np.ndarray = np.sin(omega * time_values)
+    cosine_basis: np.ndarray = np.cos(omega * time_values)
+    basis_matrix: np.ndarray = np.column_stack((sine_basis, cosine_basis))
+    voltage_coeffs: np.ndarray = np.linalg.lstsq(basis_matrix, voltage_values, rcond=None)[0]
+    current_coeffs: np.ndarray = np.linalg.lstsq(basis_matrix, current_values, rcond=None)[0]
+    voltage_angle_rad: float = float(np.arctan2(voltage_coeffs[1], voltage_coeffs[0]))
+    current_angle_rad: float = float(np.arctan2(current_coeffs[1], current_coeffs[0]))
+    angle_shift_deg: float = float((current_angle_rad - voltage_angle_rad) * 180.0 / np.pi)
+
+    while angle_shift_deg > 180.0:
+        angle_shift_deg -= 360.0
+
+    while angle_shift_deg < -180.0:
+        angle_shift_deg += 360.0
+
+    return angle_shift_deg
+
+
+def compute_waveform_distortion_metric(
+    time_values: np.ndarray,
+    signal_values: np.ndarray,
+    frequency_hz: float,
+) -> float:
+    """
+    Compute a simple sinusoidal-fit distortion metric.
+
+    :param time_values: Simulation time vector.
+    :param signal_values: Phase-current trajectory.
+    :param frequency_hz: Fundamental frequency.
+    :return: RMS residual over fitted-sinusoid RMS.
+    """
+    omega: float = 2.0 * np.pi * float(frequency_hz)
+    sine_basis: np.ndarray = np.sin(omega * time_values)
+    cosine_basis: np.ndarray = np.cos(omega * time_values)
+    basis_matrix: np.ndarray = np.column_stack((sine_basis, cosine_basis))
+    coefficients: np.ndarray = np.linalg.lstsq(basis_matrix, signal_values, rcond=None)[0]
+    fitted_signal: np.ndarray = basis_matrix @ coefficients
+    numerator: float = float(np.sqrt(np.mean((signal_values - fitted_signal) ** 2)))
+    denominator: float = float(np.sqrt(np.mean(fitted_signal ** 2)))
+    return numerator / max(denominator, 1.0e-10)
+
+
+def validate_case(case: BessCase, time_values: np.ndarray, data: Dict[str, np.ndarray | None]) -> bool:
+    """
+    Validate one BESS charge/discharge case.
+
+    :param case: Simulation case.
+    :param time_values: Simulation time vector.
+    :param data: Signal dictionary.
+    :return: True if the case passes the checks.
+    """
+    mask: np.ndarray = time_values >= 0.5 * time_values[-1]
+    p_values: np.ndarray = data["p"]
+    q_values: np.ndarray = data["q"]
+    i_a_values: np.ndarray = data["i_a"]
+    i_b_values: np.ndarray = data["i_b"]
+    i_c_values: np.ndarray = data["i_c"]
+    vdc_values: np.ndarray = data["v_dc_internal"]
+    p_target_pu: float = case.active_power_mw / 100.0
+    q_target_pu: float = case.reactive_power_mvar / 100.0
+    mean_p: float = float(np.mean(p_values[mask]))
+    mean_q: float = float(np.mean(q_values[mask]))
+    mean_i_a: float = float(np.mean(i_a_values[mask]))
+    mean_i_b: float = float(np.mean(i_b_values[mask]))
+    mean_i_c: float = float(np.mean(i_c_values[mask]))
+    max_neutral_sum: float = float(np.max(np.abs(i_a_values[mask] + i_b_values[mask] + i_c_values[mask])))
+    phase_shift_deg: float = compute_fundamental_phase_shift_deg(
+        time_values=time_values[mask],
+        voltage_values=data["v_ac_a"][mask],
+        current_values=i_a_values[mask],
+        frequency_hz=50.0,
+    )
+    distortion_metric: float = compute_waveform_distortion_metric(
+        time_values=time_values[mask],
+        signal_values=i_a_values[mask],
+        frequency_hz=50.0,
+    )
+
+    print(f"  mean iA/iB/iC          : {mean_i_a: .6e} / {mean_i_b: .6e} / {mean_i_c: .6e}")
+    print(f"  max |iA+iB+iC|         : {max_neutral_sum: .6e}")
+    print(f"  phase shift A current  : {phase_shift_deg: .6f} deg")
+    print(f"  distortion metric iA   : {distortion_metric: .6e}")
+
+    pass_p: bool = abs(mean_p - p_target_pu) <= 0.01
+    pass_q: bool = abs(mean_q - q_target_pu) <= 0.01
+    pass_balance: bool = max(abs(mean_i_a), abs(mean_i_b), abs(mean_i_c)) <= 2.0e-3 and max_neutral_sum <= 2.0e-3
+    pass_vdc: bool = float(np.min(vdc_values[mask])) >= 0.90 and float(np.max(vdc_values[mask])) <= 1.10
+    pass_distortion: bool = distortion_metric <= 0.10
+
+    case_passed: bool = pass_p and pass_q and pass_balance and pass_vdc and pass_distortion
+    print(f"  validation             : {'PASS' if case_passed else 'FAIL'}")
+    return case_passed
 
 
 def plot_one_case(case: BessCase, time_values: np.ndarray, data: Dict[str, np.ndarray | None]) -> None:
@@ -694,6 +809,7 @@ def run_case(case: BessCase) -> Tuple[np.ndarray, Dict[str, np.ndarray | None]]:
         case=case,
     )
     print_case_metrics(case=case, time_values=time_values, data=data)
+    validate_case(case=case, time_values=time_values, data=data)
 
     return time_values, data
 

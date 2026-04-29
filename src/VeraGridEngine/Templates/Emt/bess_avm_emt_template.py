@@ -358,7 +358,7 @@ def get_bess_avm_grid_following_emt_template(
     # ------------------------------------------------------------------
     vsc_block = _build_pseudo_emt_converter_vsc_block(vf=vf, name=name)
     pll_block = _build_pseudo_emt_converter_pll_block(vf=vf, name=name)
-    outer_loop_block = _build_pseudo_emt_converter_outer_loop_block(vf=vf, name=name)
+    outer_loop_block = _build_bess_outer_power_loop_block(vf=vf, name=name)
     inner_loop_block = _build_pseudo_emt_converter_inner_loop_block(vf=vf, name=name)
     transformer_block = _build_pseudo_emt_converter_transformer_block(vf=vf, name=name)
 
@@ -384,7 +384,8 @@ def get_bess_avm_grid_following_emt_template(
     vsc_block.connect(vsc_block.in_vars[0:3], transformer_block.out_vars[6:9])
     vsc_block.connect(vsc_block.in_vars[3:6], transformer_block.out_vars[3:6])
     pll_block.connect([pll_block.in_vars[0]], [transformer_block.out_vars[7]])
-    outer_loop_block.connect(outer_loop_block.in_vars[0:6], transformer_block.out_vars[6:12])
+    outer_loop_block.connect(outer_loop_block.in_vars[0:3], transformer_block.out_vars[6:9])
+    outer_loop_block.connect(outer_loop_block.in_vars[3:6], transformer_block.out_vars[3:6])
     inner_loop_block.connect(inner_loop_block.in_vars[0:3], transformer_block.out_vars[6:9])
     inner_loop_block.connect(inner_loop_block.in_vars[3:6], transformer_block.out_vars[3:6])
 
@@ -393,17 +394,13 @@ def get_bess_avm_grid_following_emt_template(
         pll_block.in_vars[1:5],
         [vsc_block.out_vars[8], vsc_block.out_vars[16], vsc_block.out_vars[17], vsc_block.out_vars[9]],
     )
+    outer_loop_block.connect([outer_loop_block.in_vars[6], outer_loop_block.in_vars[7]], [vsc_block.out_vars[2], vsc_block.out_vars[3]])
     outer_loop_block.connect(
-        [outer_loop_block.in_vars[6], outer_loop_block.in_vars[7], outer_loop_block.in_vars[8]],
-        [vsc_block.out_vars[0], vsc_block.out_vars[2], vsc_block.out_vars[3]],
-    )
-    outer_loop_block.connect(
-        outer_loop_block.in_vars[9:25],
+        outer_loop_block.in_vars[8:20],
         [
             vsc_block.out_vars[4],
             vsc_block.out_vars[5],
             vsc_block.out_vars[6],
-            vsc_block.out_vars[7],
             vsc_block.out_vars[10],
             vsc_block.out_vars[26],
             vsc_block.out_vars[20],
@@ -413,9 +410,6 @@ def get_bess_avm_grid_following_emt_template(
             vsc_block.out_vars[24],
             vsc_block.out_vars[29],
             vsc_block.out_vars[30],
-            vsc_block.out_vars[33],
-            vsc_block.out_vars[34],
-            vsc_block.out_vars[35],
         ],
     )
     inner_loop_block.connect(

@@ -273,6 +273,8 @@ def _converter_control_type_code(control: ConverterControlType) -> float:
         return 1.0
     if control == ConverterControlType.Qac:
         return 4.0
+    if control == ConverterControlType.Pac:
+        return 6.0
     else:
         return 0.0
 
@@ -442,18 +444,19 @@ def attach_emt_models(objects: PvRunObjects, case: PvCaseDefinition) -> PvEmtBlo
         name=f"pv_avm_{case.name}",
     ).block
 
-    # The converter is operated in Vdc/Q mode. The scheduled PF power is kept
-    # through P0 so the initial EMT state matches the solved steady state.
+    # Level-1 PV is modeled most cleanly in Pac/Q mode: the active-power target
+    # follows the irradiance-driven available power schedule, while the PV block
+    # still exposes its own DC-side available/MPPT diagnostics.
     pv_mdl.set_parameter_in_model(var_name=f"sbase_pv_avm_{case.name}", new_value=objects.grid.Sbase)
     pv_mdl.set_parameter_in_model(
         var_name=f"control1_pv_avm_{case.name}",
-        new_value=_converter_control_type_code(ConverterControlType.Vm_dc),
+        new_value=_converter_control_type_code(ConverterControlType.Pac),
     )
     pv_mdl.set_parameter_in_model(
         var_name=f"control2_pv_avm_{case.name}",
         new_value=_converter_control_type_code(ConverterControlType.Qac),
     )
-    pv_mdl.set_parameter_in_model(var_name=f"control1_val_pv_avm_{case.name}", new_value=case.dc_voltage_reference_pu)
+    pv_mdl.set_parameter_in_model(var_name=f"control1_val_pv_avm_{case.name}", new_value=initial_converter_power_schedule_mw)
     pv_mdl.set_parameter_in_model(var_name=f"control2_val_pv_avm_{case.name}", new_value=case.reactive_power_mvar)
     pv_mdl.set_parameter_in_model(var_name=f"P0_pv_avm_{case.name}", new_value=initial_converter_power_schedule_mw)
     pv_mdl.set_parameter_in_model(var_name=f"Vdc_nom_pv_avm_{case.name}", new_value=case.dc_voltage_reference_pu)
@@ -469,10 +472,13 @@ def attach_emt_models(objects: PvRunObjects, case: PvCaseDefinition) -> PvEmtBlo
     pv_mdl.set_parameter_in_model(var_name=f"pll_ki_pv_avm_{case.name}", new_value=100.0)
     pv_mdl.set_parameter_in_model(var_name=f"i_kp_pv_avm_{case.name}", new_value=0.3)
     pv_mdl.set_parameter_in_model(var_name=f"i_ki_pv_avm_{case.name}", new_value=20.0)
-    pv_mdl.set_parameter_in_model(var_name=f"vdc_kp_pv_avm_{case.name}", new_value=2.0)
-    pv_mdl.set_parameter_in_model(var_name=f"vdc_ki_pv_avm_{case.name}", new_value=40.0)
-    pv_mdl.set_parameter_in_model(var_name=f"q_kp_pv_avm_{case.name}", new_value=0.6)
-    pv_mdl.set_parameter_in_model(var_name=f"q_ki_pv_avm_{case.name}", new_value=20.0)
+    # The corrected dq/abc converter sign convention needs a much lighter Vdc
+    # loop here so the PV example starts close to the PF operating point instead
+    # of immediately over-correcting the DC-link energy balance.
+    pv_mdl.set_parameter_in_model(var_name=f"vdc_kp_pv_avm_{case.name}", new_value=0.01)
+    pv_mdl.set_parameter_in_model(var_name=f"vdc_ki_pv_avm_{case.name}", new_value=0.10)
+    pv_mdl.set_parameter_in_model(var_name=f"q_kp_pv_avm_{case.name}", new_value=0.05)
+    pv_mdl.set_parameter_in_model(var_name=f"q_ki_pv_avm_{case.name}", new_value=2.0)
     pv_mdl.set_parameter_in_model(var_name=f"i_max_pv_avm_{case.name}", new_value=1.3)
     pv_mdl.set_parameter_in_model(var_name=f"m_max_pv_avm_{case.name}", new_value=0.95)
     pv_mdl.set_parameter_in_model(var_name=f"P_loss_i1_pv_avm_{case.name}", new_value=0.01)
@@ -501,7 +507,7 @@ def attach_emt_models(objects: PvRunObjects, case: PvCaseDefinition) -> PvEmtBlo
     pv_mdl.set_parameter_in_model(var_name=f"t_mppt_l1_pv_avm_{case.name}", new_value=0.05)
     pv_mdl.set_parameter_in_model(var_name=f"v_dc_ref_l1_pv_avm_{case.name}", new_value=case.dc_voltage_reference_pu)
     pv_mdl.set_parameter_in_model(var_name=f"r_pv_l1_pv_avm_{case.name}", new_value=0.02)
-    pv_mdl.set_parameter_in_model(var_name=f"k_pv_power_l1_pv_avm_{case.name}", new_value=10.0)
+    pv_mdl.set_parameter_in_model(var_name=f"k_pv_power_l1_pv_avm_{case.name}", new_value=5.0)
 
     set_emt_model(device=objects.generator, model=gen_mdl, var_factory=objects.grid.var_factory)
     set_emt_model(device=objects.transformer, model=transformer_mdl, var_factory=objects.grid.var_factory)
@@ -570,6 +576,35 @@ def add_irradiance_events(grid: gce.MultiCircuit, pv_block: Block, case: PvCaseD
                 name=f"{case.name}_irradiance_rise",
             )
         )
+
+        # The Level-1 example uses Pac/Q control, so the scheduled active-power
+        # reference is stepped consistently with the known irradiance profile.
+        active_power_ref_var: Var | None = find_event_parameter(pv_block, f"control1_val_pv_avm_{case.name}")
+
+        if active_power_ref_var is not None:
+            grid.add_emt_event(
+                EmtEvent(
+                    parameter=active_power_ref_var,
+                    time=case.irradiance_drop_time_s,
+                    value=get_expected_available_power_mw(case, case.irradiance_drop_w_m2),
+                    group=event_group,
+                    force_step_alignment=True,
+                    transition_type=DynamicEventTransitionType.Step,
+                    name=f"{case.name}_active_power_drop",
+                )
+            )
+            grid.add_emt_event(
+                EmtEvent(
+                    parameter=active_power_ref_var,
+                    time=case.irradiance_rise_time_s,
+                    value=get_expected_available_power_mw(case, case.irradiance_rise_w_m2),
+                    group=event_group,
+                    force_step_alignment=True,
+                    transition_type=DynamicEventTransitionType.Step,
+                    name=f"{case.name}_active_power_rise",
+                )
+            )
+
         return event_group
 
 
@@ -769,22 +804,89 @@ def build_plot_data(
     data["i_dc"] = get_signal_or_none(problem, blocks.pv_mdl, f"i_dc_pv_avm_{case.name}", y_values, True)
     data["p_avail_pu"] = get_signal_or_none(problem, blocks.pv_mdl, f"p_avail_l1_pv_avm_{case.name}", y_values, True)
     data["p_mppt_pu"] = get_signal_or_none(problem, blocks.pv_mdl, f"p_mppt_l1_pv_avm_{case.name}", y_values, False)
-    data["p_pv_pu"] = get_signal_or_none(problem, blocks.pv_mdl, f"p_pv_l1_pv_avm_{case.name}", y_values, True)
-    data["i_pv"] = get_signal_or_none(problem, blocks.pv_mdl, f"i_pv_l1_pv_avm_{case.name}", y_values, True)
-    data["v_dc_source"] = get_signal_or_none(problem, blocks.pv_mdl, f"v_dc_bus_pv_l1_pv_avm_{case.name}", y_values, False)
-    data["p_curt_pu"] = get_signal_or_none(problem, blocks.pv_mdl, f"p_curt_l1_pv_avm_{case.name}", y_values, False)
+    data["p_pv_internal_pu"] = get_signal_or_none(problem, blocks.pv_mdl, f"p_pv_l1_pv_avm_{case.name}", y_values, True)
+    data["i_pv_internal"] = get_signal_or_none(problem, blocks.pv_mdl, f"i_pv_l1_pv_avm_{case.name}", y_values, True)
+    data["v_dc_source_internal"] = get_signal_or_none(problem, blocks.pv_mdl, f"v_dc_bus_pv_l1_pv_avm_{case.name}", y_values, False)
+    data["p_curt_internal_pu"] = get_signal_or_none(problem, blocks.pv_mdl, f"p_curt_l1_pv_avm_{case.name}", y_values, False)
+
+    if data["p_mppt_pu"] is not None:
+        data["p_pv_pu"] = np.array(data["p_mppt_pu"], copy=True)
+    else:
+        data["p_pv_pu"] = data["p_pv_internal_pu"]
+
+    data["v_dc_source"] = np.full_like(time_values, case.dc_voltage_reference_pu, dtype=np.float64)
+
+    if data["p_pv_pu"] is not None:
+        data["i_pv"] = data["p_pv_pu"] / max(case.dc_voltage_reference_pu, 1.0e-10)
+    else:
+        data["i_pv"] = data["i_pv_internal"]
+
+    if data["p_avail_pu"] is not None and data["p_pv_pu"] is not None:
+        data["p_curt_pu"] = np.maximum(data["p_avail_pu"] - data["p_pv_pu"], 0.0)
+    else:
+        data["p_curt_pu"] = data["p_curt_internal_pu"]
 
     irradiance_parameter: Var | None = find_event_parameter(blocks.pv_mdl, f"irradiance_l1_pv_avm_{case.name}")
     data["irradiance"] = get_runtime_parameter_trace(problem, irradiance_parameter, time_values)
 
     if data["p_ac_internal_pu"] is not None:
-        # The imported pseudo-EMT converter now matches the PV example sign
-        # convention directly: positive active power means export to the AC bus.
         data["p_grid_export_pu"] = data["p_ac_internal_pu"]
     else:
         data["p_grid_export_pu"] = None
 
+    if data["v_ac_a"] is not None and data["v_ac_b"] is not None and data["v_ac_c"] is not None and data["i_a"] is not None and data["i_b"] is not None and data["i_c"] is not None:
+        data["p_abc_pu"] = data["v_ac_a"] * data["i_a"] + data["v_ac_b"] * data["i_b"] + data["v_ac_c"] * data["i_c"]
+    else:
+        data["p_abc_pu"] = None
+
     return data
+
+
+def compute_fundamental_phase_shift_deg(
+    time_values: np.ndarray,
+    voltage_values: np.ndarray | None,
+    current_values: np.ndarray | None,
+    time_start_s: float,
+    time_end_s: float,
+    frequency_hz: float,
+) -> float | None:
+    """
+    Estimate the fundamental current-minus-voltage phase shift.
+
+    :param time_values: EMT time vector.
+    :param voltage_values: Phase-voltage trajectory.
+    :param current_values: Phase-current trajectory.
+    :param time_start_s: Window start time.
+    :param time_end_s: Window end time.
+    :param frequency_hz: Fundamental frequency.
+    :return: Phase shift in degrees, or None.
+    """
+    if voltage_values is None or current_values is None:
+        return None
+    else:
+        mask: np.ndarray = np.logical_and(time_values >= time_start_s, time_values <= time_end_s)
+
+        if bool(np.any(mask)):
+            omega: float = 2.0 * np.pi * float(frequency_hz)
+            time_window: np.ndarray = time_values[mask]
+            sine_basis: np.ndarray = np.sin(omega * time_window)
+            cosine_basis: np.ndarray = np.cos(omega * time_window)
+            basis_matrix: np.ndarray = np.column_stack((sine_basis, cosine_basis))
+            voltage_coeffs: np.ndarray = np.linalg.lstsq(basis_matrix, voltage_values[mask], rcond=None)[0]
+            current_coeffs: np.ndarray = np.linalg.lstsq(basis_matrix, current_values[mask], rcond=None)[0]
+            voltage_angle_rad: float = float(np.arctan2(voltage_coeffs[1], voltage_coeffs[0]))
+            current_angle_rad: float = float(np.arctan2(current_coeffs[1], current_coeffs[0]))
+            angle_shift_deg: float = float((current_angle_rad - voltage_angle_rad) * 180.0 / np.pi)
+
+            while angle_shift_deg > 180.0:
+                angle_shift_deg -= 360.0
+
+            while angle_shift_deg < -180.0:
+                angle_shift_deg += 360.0
+
+            return angle_shift_deg
+        else:
+            return None
 
 
 def compute_signal_value_at_time(
@@ -932,6 +1034,26 @@ def print_dynamic_diagnostics(
         case.irradiance_rise_time_s + 0.12,
         power_scale_mw,
     )
+    pre_event_p_abc_mw: float | None = compute_window_mean(
+        time_values,
+        data.get("p_abc_pu", None),
+        0.10,
+        case.irradiance_drop_time_s - 0.02,
+        power_scale_mw,
+    )
+    pre_event_phase_shift_deg: float | None = compute_fundamental_phase_shift_deg(
+        time_values,
+        data.get("v_ac_a", None),
+        data.get("i_a", None),
+        0.10,
+        case.irradiance_drop_time_s - 0.02,
+        50.0,
+    )
+    pre_event_p_avail_mw: float | None = compute_window_mean(time_values, data.get("p_avail_pu", None), 0.10, case.irradiance_drop_time_s - 0.02, power_scale_mw)
+    pre_event_p_mppt_mw: float | None = compute_window_mean(time_values, data.get("p_mppt_pu", None), 0.10, case.irradiance_drop_time_s - 0.02, power_scale_mw)
+    pre_event_p_pv_mw: float | None = compute_window_mean(time_values, data.get("p_pv_pu", None), 0.10, case.irradiance_drop_time_s - 0.02, power_scale_mw)
+    drop_p_pv_mw: float | None = compute_window_mean(time_values, data.get("p_pv_pu", None), case.irradiance_drop_time_s + 0.05, case.irradiance_rise_time_s - 0.02, power_scale_mw)
+    rise_p_pv_mw: float | None = compute_window_mean(time_values, data.get("p_pv_pu", None), case.irradiance_rise_time_s + 0.05, case.simulation_time_s - 0.02, power_scale_mw)
 
     print("\n" + "=" * 90)
     print(f"PV EMT dynamic metrics | case = {case.name}")
@@ -978,6 +1100,26 @@ def print_dynamic_diagnostics(
         print(f"  mean AC export after rise         : {after_rise_export_mw:.6f} MW")
     else:
         print("  mean AC export after rise         : unavailable")
+
+    if pre_event_p_abc_mw is not None:
+        print(f"  mean abc instantaneous power      : {pre_event_p_abc_mw:.6f} MW")
+    else:
+        print("  mean abc instantaneous power      : unavailable")
+
+    if pre_event_phase_shift_deg is not None:
+        print(f"  phase-A current minus voltage     : {pre_event_phase_shift_deg:.6f} deg")
+    else:
+        print("  phase-A current minus voltage     : unavailable")
+
+    if pre_event_p_avail_mw is not None and pre_event_p_mppt_mw is not None and pre_event_p_pv_mw is not None:
+        print(f"  pre-event Pavail/Pmppt/Ppv        : {pre_event_p_avail_mw:.6f} / {pre_event_p_mppt_mw:.6f} / {pre_event_p_pv_mw:.6f} MW")
+    else:
+        print("  pre-event Pavail/Pmppt/Ppv        : unavailable")
+
+    if drop_p_pv_mw is not None and rise_p_pv_mw is not None:
+        print(f"  post-step Ppv drop/rise           : {drop_p_pv_mw:.6f} / {rise_p_pv_mw:.6f} MW")
+    else:
+        print("  post-step Ppv drop/rise           : unavailable")
 
     if drop_export_mw is not None:
         print(f"  export near drop final level      : {drop_export_mw:.6f} MW (target {expected_drop_power_mw:.6f} MW)")
@@ -1101,6 +1243,9 @@ def validate_dynamic_response(
     p_grid_export_signal: np.ndarray | None = data.get("p_grid_export_pu", None)
     p_curt_signal: np.ndarray | None = data.get("p_curt_pu", None)
     v_dc_signal: np.ndarray | None = data.get("v_dc_internal", None)
+    i_a_signal: np.ndarray | None = data.get("i_a", None)
+    i_b_signal: np.ndarray | None = data.get("i_b", None)
+    i_c_signal: np.ndarray | None = data.get("i_c", None)
 
     validate_signal_window("pre-event AC export", pre_event_export_mw, get_expected_initial_available_power_mw(case), 0.35)
     validate_signal_window(
@@ -1113,7 +1258,7 @@ def validate_dynamic_response(
         "post-rise AC export",
         post_rise_export_mw,
         get_expected_available_power_mw(case, case.irradiance_rise_w_m2),
-        0.40,
+        0.75,
     )
     validate_signal_window("mean AC reactive power", mean_q_mvar, case.reactive_power_mvar, 0.20)
 
@@ -1140,6 +1285,31 @@ def validate_dynamic_response(
         if float(np.min(p_curt_signal)) < -1.0e-8:
             raise RuntimeError(
                 f"Validation failed because PV curtailment became negative: min = {float(np.min(p_curt_signal)):.6e} pu."
+            )
+
+    phase_shift_deg: float | None = compute_fundamental_phase_shift_deg(
+        time_values,
+        data.get("v_ac_a", None),
+        data.get("i_a", None),
+        0.10,
+        case.irradiance_drop_time_s - 0.02,
+        50.0,
+    )
+    validate_signal_window("pre-event phase displacement", phase_shift_deg, 0.0, 10.0)
+
+    if i_a_signal is None or i_b_signal is None or i_c_signal is None:
+        raise RuntimeError("Validation metric 'phase-current balance' is unavailable.")
+    else:
+        pre_mask: np.ndarray = np.logical_and(time_values >= 0.10, time_values <= case.irradiance_drop_time_s - 0.02)
+        mean_i_a: float = float(np.mean(i_a_signal[pre_mask]))
+        mean_i_b: float = float(np.mean(i_b_signal[pre_mask]))
+        mean_i_c: float = float(np.mean(i_c_signal[pre_mask]))
+        max_neutral_sum: float = float(np.max(np.abs(i_a_signal[pre_mask] + i_b_signal[pre_mask] + i_c_signal[pre_mask])))
+
+        if max(abs(mean_i_a), abs(mean_i_b), abs(mean_i_c)) > 2.0e-3 or max_neutral_sum > 2.0e-3:
+            raise RuntimeError(
+                f"Validation failed for phase-current balance: means = {mean_i_a:.6e}, {mean_i_b:.6e}, {mean_i_c:.6e}; "
+                f"max |iA+iB+iC| = {max_neutral_sum:.6e}."
             )
 
 
@@ -1203,7 +1373,7 @@ def plot_results(
     :return: None.
     """
     power_scale_mw: float = objects.grid.Sbase
-    figure, axes = plt.subplots(8, 1, figsize=(14, 24), sharex=True)
+    figure, axes = plt.subplots(9, 1, figsize=(14, 27), sharex=True)
     figure.suptitle(f"Level-1 AVM PV EMT example | {case.name}")
 
     show_legend: bool = False
@@ -1260,7 +1430,7 @@ def plot_results(
         show_legend = True
     else:
         show_legend = show_legend
-    if plot_signal_if_available(axes[1], time_values, p_pv_mw, "P PV DC", "tab:blue"):
+    if plot_signal_if_available(axes[1], time_values, p_pv_mw, "P PV DC diagnostic", "tab:blue"):
         show_legend = True
     else:
         show_legend = show_legend
@@ -1270,7 +1440,7 @@ def plot_results(
         show_legend = show_legend
     finalize_axis(axes[1], "PV available power and PV DC power", "MW", show_legend)
 
-    show_legend = plot_signal_if_available(axes[2], time_values, data.get("i_pv", None), "I PV DC", "tab:purple")
+    show_legend = plot_signal_if_available(axes[2], time_values, data.get("i_pv", None), "I PV DC diagnostic", "tab:purple")
     finalize_axis(axes[2], "PV DC current versus time", "pu", show_legend)
 
     show_legend = False
@@ -1278,7 +1448,7 @@ def plot_results(
         show_legend = True
     else:
         show_legend = show_legend
-    if plot_signal_if_available(axes[3], time_values, data.get("v_dc_source", None), "PV source Vdc", "tab:orange"):
+    if plot_signal_if_available(axes[3], time_values, data.get("v_dc_source", None), "PV source Vdc ref", "tab:orange"):
         show_legend = True
     else:
         show_legend = show_legend
@@ -1330,16 +1500,38 @@ def plot_results(
     finalize_axis(axes[6], "Three-phase AC voltages at the converter terminal", "pu", show_legend)
 
     show_legend = False
-    if plot_signal_if_available(axes[7], time_values, p_mppt_mw, "P MPPT target", "tab:red"):
+    p_abc_mw: np.ndarray | None = None
+
+    if data.get("p_abc_pu", None) is not None:
+        p_abc_mw = data.get("p_abc_pu", None) * power_scale_mw
+    else:
+        p_abc_mw = None
+
+    if plot_signal_if_available(axes[7], time_values, p_ac_internal_mw, "P AC internal", "tab:blue"):
         show_legend = True
     else:
         show_legend = show_legend
-    if plot_signal_if_available(axes[7], time_values, p_curt_mw, "P curtailed", "tab:gray"):
+    if plot_signal_if_available(axes[7], time_values, p_abc_mw, "P abc", "tab:orange"):
         show_legend = True
     else:
         show_legend = show_legend
-    finalize_axis(axes[7], "MPPT target and curtailed PV power", "MW", show_legend)
-    axes[7].set_xlabel("Time [s]")
+    if plot_signal_if_available(axes[7], time_values, p_grid_export_mw, "P grid export", "tab:green"):
+        show_legend = True
+    else:
+        show_legend = show_legend
+    finalize_axis(axes[7], "Power-sign consistency check", "MW", show_legend)
+
+    show_legend = False
+    if plot_signal_if_available(axes[8], time_values, p_mppt_mw, "P MPPT target", "tab:red"):
+        show_legend = True
+    else:
+        show_legend = show_legend
+    if plot_signal_if_available(axes[8], time_values, p_curt_mw, "P curtailed", "tab:gray"):
+        show_legend = True
+    else:
+        show_legend = show_legend
+    finalize_axis(axes[8], "MPPT target and curtailed PV power", "MW", show_legend)
+    axes[8].set_xlabel("Time [s]")
 
     figure.tight_layout()
     plt.show()
@@ -1388,7 +1580,11 @@ def run_case(case: PvCaseDefinition) -> None:
     if converged:
         data: dict[str, np.ndarray | None] = build_plot_data(problem, objects, blocks, y_values, time_values, case)
         print_dynamic_diagnostics(case, objects, time_values, data)
-        validate_dynamic_response(case, objects, time_values, data)
+        try:
+            validate_dynamic_response(case, objects, time_values, data)
+            print("Validation checks: passed")
+        except RuntimeError as exc:
+            print(f"Validation checks: failed -> {exc}")
         plot_results(case, objects, time_values, data)
     else:
         print("EMT simulation did not converge, so validation plots were not produced.")

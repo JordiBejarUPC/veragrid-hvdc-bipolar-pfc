@@ -85,7 +85,8 @@ def _connect_imported_converter_blocks(
     vsc_block.connect(vsc_block.in_vars[0:3], transformer_block.out_vars[6:9])
     vsc_block.connect(vsc_block.in_vars[3:6], transformer_block.out_vars[3:6])
     pll_block.connect([pll_block.in_vars[0]], [transformer_block.out_vars[7]])
-    outer_loop_block.connect(outer_loop_block.in_vars[0:6], transformer_block.out_vars[6:12])
+    outer_loop_block.connect(outer_loop_block.in_vars[0:3], transformer_block.out_vars[6:9])
+    outer_loop_block.connect(outer_loop_block.in_vars[3:6], transformer_block.out_vars[3:6])
     inner_loop_block.connect(inner_loop_block.in_vars[0:3], transformer_block.out_vars[6:9])
     inner_loop_block.connect(inner_loop_block.in_vars[3:6], transformer_block.out_vars[3:6])
 
@@ -249,8 +250,9 @@ def _build_level1_pv_availability_block(vf: VarFactory, name: str) -> Block:
     r_pv_eff: Expr = sym.max(r_pv, eps)
     p_pv_init: Expr = sym.hard_sat(mppt_limited_power, c0, (v_dc_ref * v_dc_ref) / (vf.add_const(4.0) * r_pv_eff))
     p_init_disc: Expr = sym.max(v_dc_ref * v_dc_ref - vf.add_const(4.0) * r_pv_eff * p_pv_init, eps)
-    i_pv_init: Expr = (v_dc_ref - sym.sqrt(p_init_disc)) / (vf.add_const(2.0) * r_pv_eff)
-    v_dc_bus_init: Expr = v_dc_ref - r_pv_eff * i_pv_init
+    i_pv_init_mag: Expr = (v_dc_ref - sym.sqrt(p_init_disc)) / (vf.add_const(2.0) * r_pv_eff)
+    i_pv_init: Expr = -i_pv_init_mag
+    v_dc_bus_init: Expr = v_dc_ref + r_pv_eff * i_pv_init
 
     return Block(
         state_eqs=[
@@ -263,20 +265,24 @@ def _build_level1_pv_availability_block(vf: VarFactory, name: str) -> Block:
         diff_vars=[d_p_mppt],
         algebraic_eqs=[
             p_avail - p_avail_expr,
-            i_pv - i_dc,
-            # The internal PV current follows the imported VSC DC-current
-            # convention. The example script converts this into an explicit
-            # export-positive diagnostic for plotting and validation.
-            p_pv - v_dc_bus * i_pv,
+            # PV-side DC sign convention:
+            # * positive ``p_pv`` means PV power delivered to the converter,
+            # * positive ``i_pv`` would mean source current delivered to the
+            #   converter, but the imported pseudo-EMT converter reports the
+            #   same terminal current with the opposite sign during export.
+            # Therefore exported PV operation uses ``i_pv < 0`` and ``i_dc > 0``
+            # or equivalently ``i_pv + i_dc = 0`` at the shared internal port.
+            i_pv + i_dc,
+            p_pv + v_dc_bus * i_pv,
             # The Level-1 source is a Thevenin-like PV equivalent around one
             # MPPT operating voltage. A power droop term drives the delivered
             # DC power toward the irradiance-limited MPPT target without adding
             # a second internal DC storage state.
             v_oc - v_dc_ref,
-            v_dc_bus - (v_oc - r_pv * i_pv - k_pv_power * (p_pv - mppt_limited_power)),
+            v_dc_bus - (v_oc + r_pv * i_pv - k_pv_power * (p_pv - mppt_limited_power)),
             # Curtailment is the available PV power that is not delivered to the
             # converter. Keep it non-negative even under small numerical errors.
-            p_curt - sym.max(p_avail - p_pv, c0),
+            p_curt - sym.max(p_avail - mppt_limited_power, c0),
         ],
         algebraic_vars=[v_dc_bus, p_avail, p_pv, i_pv, v_oc, p_curt],
         event_dict={

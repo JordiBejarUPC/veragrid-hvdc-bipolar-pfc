@@ -427,7 +427,8 @@ def _build_pseudo_emt_converter_vsc_block(
     P0 = c32 * Vpk * i_d0
     Q0 = c32 * Vpk * i_q0
     P_loss0_expr = P_loss0_pu + P_loss_i1_pu * i_mag0 + P_loss_i2_pu * i_mag0 * i_mag0
-    i_dc_conv0 = -(P0 - P_loss0_expr) / (Vdc_ref + eps)
+    # DC-side power balance uses the AC transferred power plus converter losses.
+    i_dc_conv0 = -(P0 + P_loss0_expr) / (Vdc_ref + eps)
     i_dc0 = (i_dc_conv0 + v_dc_bus / R_dc) / (c1 + R_dc_term / R_dc)
     v_dc0 = v_dc_bus - R_dc_term * i_dc0
 
@@ -452,7 +453,7 @@ def _build_pseudo_emt_converter_vsc_block(
             # Current-dependent converter loss model.
             P_loss - (P_loss0_pu + P_loss_i1_pu * i_mag + P_loss_i2_pu * i_mag * i_mag),
             # AC-to-DC bridge current implied by power transfer and losses.
-            i_dc_conv + (P - P_loss) / v_dc_eff,
+            i_dc_conv + (P + P_loss) / v_dc_eff,
             # Resistive coupling between the DC bus and the internal capacitor node.
             i_dc - (v_dc_bus - v_dc) / R_dc_term,
             # Expose mode-selection flags so outer loops can gate themselves.
@@ -757,8 +758,15 @@ def _build_pseudo_emt_converter_inner_loop_block(vf: VarFactory, name: str) -> B
 
     i_d0 = c23 * ((P_ref / sbase) + (P_loss0 / sbase)) / (Vpk + eps)
     i_q0 = c23 * (Q_ref / sbase) / (Vpk + eps)
-    v_cmd_d0 = Vpk - R_eq * i_d0 + L_eq * i_q0
-    v_cmd_q0 = -R_eq * i_q0 - L_eq * i_d0
+    # dq convention used by the pseudo-EMT converter:
+    # * the PLL aligns the d-axis with the positive-sequence bus voltage,
+    # * positive i_d means active current injected into the AC bus,
+    # * positive i_q means reactive current injected into the AC bus.
+    # Positive current is AC-bus injection, so the converter-side voltage must
+    # exceed the bus voltage by the equivalent branch drop during export and be
+    # lower during absorption.
+    v_cmd_d0 = Vpk + R_eq * i_d0 + L_eq * i_q0
+    v_cmd_q0 = R_eq * i_q0 - L_eq * i_d0
     v_d_cap = sym.hard_sat(v_cmd_d_u, -v_lim, v_lim)
     v_q_cap = sym.sqrt(sym.max(v_lim * v_lim - v_cmd_d * v_cmd_d, eps))
     v_0_cap = sym.sqrt(sym.max((v_lim * v_lim - v_cmd_d * v_cmd_d - v_cmd_q * v_cmd_q) / vf.add_const(3.0), eps / vf.add_const(3.0)))
@@ -782,9 +790,9 @@ def _build_pseudo_emt_converter_inner_loop_block(vf: VarFactory, name: str) -> B
             # Unsaturated 0-axis PI output.
             v_pi_0_u - (i_kp * (i_0_ref - i_0) + xi_i0),
             # Unsaturated d-axis converter voltage command with decoupling.
-            v_cmd_d_u - (v_d - R_eq * i_d + omega_ratio * L_eq * i_q - v_pi_d_u),
+            v_cmd_d_u - (v_d + R_eq * i_d + omega_ratio * L_eq * i_q + v_pi_d_u),
             # Unsaturated q-axis converter voltage command with decoupling.
-            v_cmd_q_u - (v_q - R_eq * i_q - omega_ratio * L_eq * i_d - v_pi_q_u),
+            v_cmd_q_u - (v_q + R_eq * i_q - omega_ratio * L_eq * i_d + v_pi_q_u),
             # Unsaturated 0-axis converter voltage command.
             v_cmd_0_u - (v_0 - R_eq * i_0 - v_pi_0_u),
             # Modulation-limit gain based on the nominal operating-point command.
@@ -870,15 +878,19 @@ def _build_pseudo_emt_converter_transformer_block(vf: VarFactory, name: str) -> 
 
     i_d0 = c23 * ((P_ref + P_loss0) / sbase) / (Vpk + eps)
     i_q0 = c23 * (Q_ref / sbase) / (Vpk + eps)
+    i_0_decay = vf.add_const(1.0)
 
     return Block(
         state_eqs=[
-            # d-axis AC-side current dynamics through the equivalent interface branch.
-            (omega_base * (v_d - v_cmd_d - R_eq * i_d + omega_ratio * L_eq * i_q)) / L_eq,
-            # q-axis AC-side current dynamics through the equivalent interface branch.
-            (omega_base * (v_q - v_cmd_q - R_eq * i_q - omega_ratio * L_eq * i_d)) / L_eq,
-            # 0-axis AC-side current dynamics through the equivalent interface branch.
-            (omega_base * (v_0 - v_cmd_0 - R_eq * i_0)) / L_eq,
+            # The AC-side current sign is bus-injection-positive. Therefore the
+            # interface dynamics are driven by the converter voltage minus the
+            # bus voltage across the equivalent branch.
+            (omega_base * (v_cmd_d - v_d - R_eq * i_d - omega_ratio * L_eq * i_q)) / L_eq,
+            (omega_base * (v_cmd_q - v_q - R_eq * i_q + omega_ratio * L_eq * i_d)) / L_eq,
+            # Balanced three-wire operation has no neutral return path, so the
+            # pseudo-EMT converter must not build up a zero-sequence current.
+            # Keep the 0-axis state explicitly damped to zero.
+            -(omega_base * i_0_decay * i_0) / L_eq,
         ],
         state_vars=[i_d, i_q, i_0],
         diff_vars=[d_i_d, d_i_q, d_i_0],
@@ -890,11 +902,11 @@ def _build_pseudo_emt_converter_transformer_block(vf: VarFactory, name: str) -> 
             # abc-to-0 transformation for zero-sequence voltage.
             v_0 - c13 * (v_A + v_B + v_C),
             # dq0-to-abc reconstruction of phase-A current injection.
-            i_A - (i_d * sym.sin(theta_pll) - i_q * sym.cos(theta_pll) + i_0),
+            i_A - (i_d * sym.sin(theta_pll) - i_q * sym.cos(theta_pll)),
             # dq0-to-abc reconstruction of phase-B current injection.
-            i_B - (i_d * sym.sin(theta_b) - i_q * sym.cos(theta_b) + i_0),
+            i_B - (i_d * sym.sin(theta_b) - i_q * sym.cos(theta_b)),
             # dq0-to-abc reconstruction of phase-C current injection.
-            i_C - (i_d * sym.sin(theta_c) - i_q * sym.cos(theta_c) + i_0),
+            i_C - (i_d * sym.sin(theta_c) - i_q * sym.cos(theta_c)),
         ],
         algebraic_vars=[i_A, i_B, i_C, v_d, v_q, v_0],
         init_eqs={i_d: i_d0, i_q: i_q0, i_0: c0, v_d: Vpk, v_q: c0, v_0: c0},
@@ -940,7 +952,8 @@ def get_full_pseudo_emt_converter(
     vsc_block.connect(vsc_block.in_vars[0:3], transformer_block.out_vars[6:9])
     vsc_block.connect(vsc_block.in_vars[3:6], transformer_block.out_vars[3:6])
     pll_block.connect([pll_block.in_vars[0]], [transformer_block.out_vars[7]])
-    outer_loop_block.connect(outer_loop_block.in_vars[0:6], transformer_block.out_vars[6:12])
+    outer_loop_block.connect(outer_loop_block.in_vars[0:3], transformer_block.out_vars[6:9])
+    outer_loop_block.connect(outer_loop_block.in_vars[3:6], transformer_block.out_vars[3:6])
     inner_loop_block.connect(inner_loop_block.in_vars[0:3], transformer_block.out_vars[6:9])
     inner_loop_block.connect(inner_loop_block.in_vars[3:6], transformer_block.out_vars[3:6])
 

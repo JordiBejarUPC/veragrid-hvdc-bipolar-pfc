@@ -790,12 +790,12 @@ def get_induction_motor_double_cage_emt_template(
     v_airgap_model: Expr = v_pos - z_s * i_pos_model
     # The internal rotor-current states use the same sign convention as the
     # Level-2 model, which is opposite to the equivalent-circuit branch current.
-    i_r1_phase: Expr = -v_airgap_model / (z_r1 + sym.Const(complex(1e-9, 0.0)))
-    i_r2_phase: Expr = -v_airgap_model / (z_r2 + sym.Const(complex(1e-9, 0.0)))
+    i_r1_phase: Expr = -v_airgap / (z_r1 + sym.Const(complex(1e-9, 0.0)))
+    i_r2_phase: Expr = -v_airgap / (z_r2 + sym.Const(complex(1e-9, 0.0)))
     i_a_model, i_b_model, i_c_model = _phase_values_from_positive_sequence(i_pos_model)
     i_r1_a_peak, i_r1_b_peak, i_r1_c_peak = _phase_values_from_positive_sequence(i_r1_phase)
     i_r2_a_peak, i_r2_b_peak, i_r2_c_peak = _phase_values_from_positive_sequence(i_r2_phase)
-    i_s_alpha_peak, i_s_beta_peak = _abc_to_alpha_beta(i_a_model, i_b_model, i_c_model)
+    i_s_alpha_peak, i_s_beta_peak = _abc_to_alpha_beta(i_a_peak, i_b_peak, i_c_peak)
     i_r1_alpha_peak, i_r1_beta_peak = _abc_to_alpha_beta(i_r1_a_peak, i_r1_b_peak, i_r1_c_peak)
     i_r2_alpha_peak, i_r2_beta_peak = _abc_to_alpha_beta(i_r2_a_peak, i_r2_b_peak, i_r2_c_peak)
     v_alpha_peak, v_beta_peak = _abc_to_alpha_beta(v_a_peak, v_b_peak, v_c_peak)
@@ -823,9 +823,9 @@ def get_induction_motor_double_cage_emt_template(
         v_a_peak=v_a_peak,
         v_b_peak=v_b_peak,
         v_c_peak=v_c_peak,
-        i_a_peak=i_a_model,
-        i_b_peak=i_b_model,
-        i_c_peak=i_c_model,
+        i_a_peak=i_a_peak,
+        i_b_peak=i_b_peak,
+        i_c_peak=i_c_peak,
     )
 
     block.init_eqs = dict({
@@ -837,9 +837,9 @@ def get_induction_motor_double_cage_emt_template(
         i_r1_beta: sym.imag(i_r1_beta_peak),
         i_r2_alpha: sym.imag(i_r2_alpha_peak),
         i_r2_beta: sym.imag(i_r2_beta_peak),
-        i_a: -sym.imag(i_a_model),
-        i_b: -sym.imag(i_b_model),
-        i_c: -sym.imag(i_c_model),
+        i_a: -sym.imag(i_a_peak),
+        i_b: -sym.imag(i_b_peak),
+        i_c: -sym.imag(i_c_peak),
         psi_s_alpha: sym.imag(psi_s_alpha_peak),
         psi_s_beta: sym.imag(psi_s_beta_peak),
         psi_r1_alpha: sym.imag(psi_r1_alpha_peak),
