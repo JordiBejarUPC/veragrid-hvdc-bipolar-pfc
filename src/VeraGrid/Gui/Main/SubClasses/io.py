@@ -35,6 +35,7 @@ from VeraGridEngine.IO.veragrid.catalogue import save_catalogue, load_catalogue
 from VeraGridEngine.Utils.ThirdParty.gslv.gslv_activation import install_gslv_license
 from VeraGrid.templates import (get_cables_catalogue, get_transformer_catalogue, get_wires_catalogue,
                                  get_sequence_lines_catalogue)
+from VeraGrid.Gui.CatalogueElementsDialogue.catalogue_elements_dialogue import CatalogueElementsSelectionDialogue
 
 
 def _refresh_catalogue_dependent_views(io_main: "IoMain") -> None:
@@ -1112,10 +1113,16 @@ class IoMain(ScenariosMain):
 
     def add_default_catalogue(self) -> None:
         """
-        Add the built-in catalogue entries to the active circuit.
+        Add catalogue elements to the circuit (interactive selection).
 
         :return: None.
         """
+        if isinstance(self, QtWidgets.QWidget):
+            dlg = CatalogueElementsSelectionDialogue(parent=self, circuit=self.circuit)
+            dlg.exec()
+            return None
+        else:
+            pass
 
         if len(self.circuit.transformer_types) == 0:
             for tpe in get_transformer_catalogue():
