@@ -222,7 +222,7 @@ def trig_transform(vf: VarFactory, u:Expr, type = 'usual'):
             diff_vars=[d_u_sin, d_u_cos, dx],
             reformulated_vars=[u_sin, u_cos],
             init_eqs={
-                x:u,
+                #x:u,
                 u_cos: sym.cos(x),
                 u_sin: sym.sin(x),
             }
@@ -288,14 +288,25 @@ def trig_transform(vf: VarFactory, u:Expr, type = 'usual'):
         block = Block(
             algebraic_vars= [u_cos, u_sin, int_xcosx, int_xsinx],
             algebraic_eqs=[
-                int_xsinx - (u_sin - (x)*u_cos), 
-                int_xcosx - ((x)*u_sin + u_cos),
+                #int_xsinx - (u_sin - (x)*u_cos), 
+                #int_xcosx - ((x)*u_sin + u_cos),
+                (int_xsinx + x*int_xcosx)/(1+x**2) - u_sin,
+                (int_xcosx - x*int_xsinx)/(1+x**2) - u_cos,
             ],
             differential_eqs = [
                 dt_int_xsinx - dx*(u_sin*(x)),
                 dt_int_xcosx - dx*(u_cos*(x)),
             ],
             diff_vars=[ dx, dt_int_xcosx, dt_int_xsinx],
+            init_eqs={
+                #x:u,
+                u_cos: sym.cos(x),
+                u_sin: sym.sin(x),
+                int_xsinx: sym.sin(x) - x*sym.cos(x),
+                int_xcosx: x*sym.sin(x) + sym.cos(x),
+                dt_int_xsinx: dx*sym.sin(x)*x,
+                dt_int_xcosx: dx*sym.cos(x)*x,
+            }
         )
     else:
         u_cos = vf.add_var('u_cos')
@@ -315,6 +326,14 @@ def trig_transform(vf: VarFactory, u:Expr, type = 'usual'):
                 dt_int_sin2 - (dx)*u_sin**2,
                 dt_int_sin2cos2 - (dx)*u_sin**2*u_cos**2
             ],
+            init_eqs={
+                u_cos: sym.cos(x),
+                u_sin: sym.sin(x),
+                int_sin2: 0.5*(x - u_sin*u_cos),
+                int_sin2cos2: 1/32*(4*x - 4*u_cos**3*u_sin + 4*u_sin**3*u_cos),
+                dt_int_sin2: dx*u_sin**2,
+                dt_int_sin2cos2: dx*u_sin**2*u_cos**2,
+            },
             diff_vars=[dx, dt_int_sin2, dt_int_sin2cos2],
         )
 

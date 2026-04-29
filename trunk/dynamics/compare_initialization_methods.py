@@ -100,6 +100,55 @@ def values_by_name(problem: RmsProblemDae, x0: np.ndarray) -> Dict[str, List[flo
     return result
 
 
+def indexed_values_by_name(problem: RmsProblemDae, x0: np.ndarray) -> Dict[tuple[str, int], tuple[str, float]]:
+    result: Dict[tuple[str, int], tuple[str, float]] = {}
+    n_states = len(problem._state_vars)
+    all_vars = list(problem._state_vars) + list(problem._algebraic_vars)
+    seen: Dict[str, int] = {}
+    for i, var in enumerate(all_vars):
+        kind = "state" if i < n_states else "alg"
+        occ = seen.get(var.name, 0)
+        seen[var.name] = occ + 1
+        result[(var.name, occ)] = (kind, float(x0[i]))
+    return result
+
+
+def top_value_diff_lines(
+    explicit_problem: RmsProblemDae,
+    explicit_x: np.ndarray,
+    pseudo_problem: RmsProblemDae,
+    pseudo_x: np.ndarray,
+    top_k: int,
+) -> tuple[List[str], int, int]:
+    exp = indexed_values_by_name(explicit_problem, explicit_x)
+    ps = indexed_values_by_name(pseudo_problem, pseudo_x)
+
+    common_keys = list(set(exp.keys()) & set(ps.keys()))
+    only_exp = len(set(exp.keys()) - set(ps.keys()))
+    only_ps = len(set(ps.keys()) - set(exp.keys()))
+
+    ranked: List[tuple[float, tuple[str, int]]] = []
+    for key in common_keys:
+        _, ex_val = exp[key]
+        _, ps_val = ps[key]
+        ranked.append((abs(ex_val - ps_val), key))
+
+    ranked.sort(reverse=True, key=lambda t: t[0])
+
+    lines: List[str] = []
+    for _, key in ranked[:top_k]:
+        ex_kind, ex_val = exp[key]
+        ps_kind, ps_val = ps[key]
+        ex_name, occ = key
+        kind = ex_kind if ex_kind == ps_kind else f"{ex_kind}/{ps_kind}"
+        d = abs(ex_val - ps_val)
+        lines.append(
+            f"{kind} {ex_name}[{occ}]: explicit={ex_val:.6e}, pseudo={ps_val:.6e}, diff={d:.6e}"
+        )
+
+    return lines, only_exp, only_ps
+
+
 def event_values_by_name(problem: RmsProblemDae, names: List[str]) -> Dict[str, List[float]]:
     result: Dict[str, List[float]] = {name: [] for name in names}
     for i, var in enumerate(problem._variable_parameters):
@@ -222,6 +271,13 @@ def main() -> int:
         exp_vals = values_by_name(explicit, x_exp)
         ps_vals = values_by_name(pseudo, x_ps)
 
+        print("\nTop variable value differences")
+        diff_lines, only_exp, only_ps = top_value_diff_lines(explicit, x_exp, pseudo, x_ps, args.top)
+        for line in diff_lines:
+            print(f"- {line}")
+        if only_exp or only_ps:
+            print(f"- unmatched vars: explicit_only={only_exp}, pseudo_only={only_ps}")
+
         print("\nSelected variable values")
         print_selected_diffs(selected, exp_vals, ps_vals)
 
@@ -235,6 +291,14 @@ def main() -> int:
         selected = ["Pm_ref", "UsRefPu", "Tm", "Vf", "Efe"]
         exp_vals = values_by_name(explicit, x_exp)
         ps_vals = values_by_name(pseudo_diag, x_ps_diag)
+
+        print("\nTop variable value differences (explicit vs pseudo diagnostic)")
+        diff_lines, only_exp, only_ps = top_value_diff_lines(explicit, x_exp, pseudo_diag, x_ps_diag, args.top)
+        for line in diff_lines:
+            print(f"- {line}")
+        if only_exp or only_ps:
+            print(f"- unmatched vars: explicit_only={only_exp}, pseudo_only={only_ps}")
+
         print("\nSelected variable values (explicit vs pseudo diagnostic)")
         print_selected_diffs(selected, exp_vals, ps_vals)
 

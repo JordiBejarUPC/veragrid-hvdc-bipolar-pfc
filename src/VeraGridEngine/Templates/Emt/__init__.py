@@ -25,6 +25,10 @@ from VeraGridEngine.Templates.Emt.bridge_filter_control_2level_3ph_emt_template 
 from VeraGridEngine.Templates.Emt.dc_load_emt_template import get_dc_load_emt_template
 from VeraGridEngine.Templates.Emt.dc_line_emt_template import get_dc_line_emt_template
 from VeraGridEngine.Templates.Emt.valve_emt_template import get_valve_emt_template
+from VeraGridEngine.Templates.Emt.simple_generator_emt_trig_template import (
+    get_simple_generator_emt_template_trig_transform,
+    get_complete_generator_template_emt_trig_transform,
+)
 
 # the following are functions that generate templates depending on the specific object
 
@@ -32,4 +36,3 @@ from VeraGridEngine.Templates.Emt.bergeron_line_emt_template import get_bergeron
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
 # from VeraGridEngine.Templates.Emt.transformer_emt_template import get_transformer_emt_template
 # from VeraGridEngine.Templates.Emt.xfmr_emt_template import get_xfmr_emt_template
-

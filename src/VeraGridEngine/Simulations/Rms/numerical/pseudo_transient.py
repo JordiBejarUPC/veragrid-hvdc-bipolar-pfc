@@ -30,6 +30,7 @@ class  PseudoTransient:
                  tol: float = 1e-6,
                  max_iter: int = 1000,
                  verbose: bool = True,
+                 fixed_var_uids: list[int] | None = None,
                  debug_check_x_new: bool = False,
                  debug_x_new_abs_max: float = 1e6):
         """
@@ -45,11 +46,35 @@ class  PseudoTransient:
         self.max_iter_0 = max_iter
         self.tol = tol
         self.verbose = verbose
+        self.fixed_var_uids = set(fixed_var_uids or [])
+        uid2idx = getattr(self.problem, "uid2idx_vars", {})
+        self._fixed_var_indices = sorted([uid2idx[uid] for uid in self.fixed_var_uids if uid in uid2idx])
         self.debug_check_x_new = debug_check_x_new
         self.debug_x_new_abs_max = float(debug_x_new_abs_max)
         self.t: Vec = np.empty(self.steps + 1)
         self.y: Mat = np.empty((self.steps + 1, self.problem.get_all_vars_number()))
         self._singular_report_count = 0
+
+    def _apply_fixed_mask(self, x: Vec, x_ref: Vec) -> Vec:
+        if len(self._fixed_var_indices) == 0:
+            return x
+        for idx in self._fixed_var_indices:
+            if 0 <= idx < x.size and 0 <= idx < x_ref.size:
+                x[idx] = x_ref[idx]
+        return x
+
+    def _check_fixed_drift(self, x: Vec, x_ref: Vec, where: str) -> None:
+        if len(self._fixed_var_indices) == 0:
+            return
+        bad = []
+        for idx in self._fixed_var_indices:
+            if 0 <= idx < x.size and 0 <= idx < x_ref.size:
+                d = float(abs(x[idx] - x_ref[idx]))
+                if d > 1e-14:
+                    bad.append((idx, d, float(x[idx]), float(x_ref[idx])))
+        if bad:
+            preview = [f"{self._var_index_name(i)}: x={vx:+.6e}, ref={vr:+.6e}, drift={d:.3e}" for i, d, vx, vr in bad[:6]]
+            raise ValueError(f"Fixed variable drift detected at {where}: {preview}")
 
     def _dbg(self, msg: str) -> None:
         if self.verbose:
@@ -337,7 +362,68 @@ class  PseudoTransient:
                 f"|delta_alg|_2={np.linalg.norm(delta_alg):.3e}"
             )
 
-        return x_proj
+        return self._apply_fixed_mask(x_proj, x0)
+
+    def _project_feasible_x(self, x: Vec, dx: Vec, x_ref: Vec | None = None, max_iter: int = 4) -> Vec:
+        n_states = int(self.problem.get_states_number())
+        n_alg = int(self.problem.get_algebraic_var_number())
+        if n_alg == 0:
+            return np.array(x, dtype=float, copy=True)
+
+        x_proj = np.array(x, dtype=float, copy=True)
+        if x_ref is None:
+            x_ref = x_proj
+
+        stable_idx = self._predictor_stable_algebraic_indices()
+        if len(stable_idx) == 0:
+            stable_idx = list(range(n_alg))
+
+        proj_tol = max(self.tol * 5.0, 1e-8)
+        dt_jac = max(abs(self.dtau0), 1e-6)
+        # Feasibility projection is based on algebraic/stability equations,
+        # so derivative terms are neutralized.
+        dx_feasible = np.zeros_like(dx)
+
+        for _ in range(max_iter):
+            rhs_alg_full = self.problem.rhs_algebraic(x_proj, dx_feasible)
+            if rhs_alg_full.size == 0 or not np.all(np.isfinite(rhs_alg_full)):
+                break
+
+            rhs_alg = rhs_alg_full[stable_idx]
+            residual_inf = float(np.linalg.norm(rhs_alg, np.inf)) if rhs_alg.size > 0 else 0.0
+            if residual_inf <= proj_tol:
+                break
+
+            J22_full = self.problem.get_j22(x_proj, dx_feasible, dt_jac).tocsc()
+            J_proj = J22_full[stable_idx, :]
+
+            delta_alg, *_ = spla.lsqr(J_proj, -rhs_alg, atol=1e-10, btol=1e-10, iter_lim=max(200, 2 * n_alg))
+            delta_alg = np.asarray(delta_alg, dtype=float)
+            if delta_alg.size != n_alg or not np.all(np.isfinite(delta_alg)):
+                break
+
+            best_x = x_proj
+            best_residual = residual_inf
+            for alpha in (1.0, 0.5, 0.25, 0.1):
+                xt = np.array(x_proj, copy=True)
+                xt[n_states:n_states + n_alg] += alpha * delta_alg
+                xt = self._apply_fixed_mask(xt, x_ref)
+
+                rt_full = self.problem.rhs_algebraic(xt, dx_feasible)
+                if not np.all(np.isfinite(rt_full)):
+                    continue
+
+                rt = rt_full[stable_idx]
+                rt_inf = float(np.linalg.norm(rt, np.inf)) if rt.size > 0 else 0.0
+                if rt_inf < best_residual:
+                    best_residual = rt_inf
+                    best_x = xt
+                if rt_inf <= residual_inf * (1.0 - 1e-4 * alpha):
+                    break
+
+            x_proj = best_x
+
+        return self._apply_fixed_mask(x_proj, x_ref)
 
     def _var_index_name(self, idx: int) -> str:
         vars_all = self._problem_state_vars() + self._problem_algebraic_vars()
@@ -390,9 +476,7 @@ class  PseudoTransient:
             )
 
     def _report_singularity_diagnostics(self, J: sp.csc_matrix, rhs: Vec, x: Vec, context: str) -> None:
-        # Avoid flooding output when multiple retries hit the same issue.
-        if self._singular_report_count >= 4:
-            return
+        # Print diagnostics at every failing step/try during debugging.
         self._singular_report_count += 1
 
         try:
@@ -615,6 +699,8 @@ class  PseudoTransient:
 
             damp = reg if reg > 0.0 else 0.0
             delta, *_ = spla.lsqr(J_eff, -rhs, damp=damp, atol=1e-10, btol=1e-10, iter_lim=max(200, 2 * n))
+
+
             if np.all(np.isfinite(delta)):
                 if reg > 0.0:
                     self._dbg(f"{context}: lsqr solved with regularization={reg:.1e}")
@@ -679,6 +765,7 @@ class  PseudoTransient:
         :return [f_state_update, f_algeb]
         """
         f_algeb = self.problem.rhs_algebraic(x, dx)
+        h = 1e9
         if self.problem.get_states_number() > 0:
             f_state = self.problem.rhs_state(x, dx)
             f_state_update = (x[:self.problem.get_states_number()] - xn[:self.problem.get_states_number()]) / h - f_state
@@ -781,7 +868,7 @@ class  PseudoTransient:
                               xn: Vec,
                               dx: Vec,
                               dtau: float,
-                              top_n: int = 10) -> None:
+                              top_n: int = 20) -> None:
         rhs = self._rhs_pseudo_transient(x, xn, 0*dx, dtau)
         if rhs.size == 0:
             print("[PseudoTransient] Final RHS offenders: none (empty RHS)")
@@ -822,6 +909,14 @@ class  PseudoTransient:
             raise ValueError(f"Invalid x0 size for pseudo-transient: got {x0.size}, expected {n_vars}")
 
         x0 = self._predictor_project_initial_guess(x0)
+        x0 = self._apply_fixed_mask(x0, x0)
+
+        if len(self._fixed_var_indices) > 0:
+            fixed_preview = [
+                f"{self._var_index_name(i)}={x0[i]:+.6e}" for i in self._fixed_var_indices[:8]
+                if 0 <= i < x0.size
+            ]
+            self._dbg(f"fixed mask active: n_fixed={len(self._fixed_var_indices)}, x0={fixed_preview}")
 
         self._dbg(
             f"start: n_vars={n_vars}, n_states={self.problem.get_states_number()}, "
@@ -837,6 +932,7 @@ class  PseudoTransient:
         step_idx = 0
         x_new = x0.copy()
         xn = x0.copy()
+        x_fixed_ref = x0.copy()
         tries = 0
         
         # Update variable parameters at t=0
@@ -860,10 +956,18 @@ class  PseudoTransient:
             while step_idx < self.max_iter_0:
                 tries += 1
                 solved = False
+                run_newton_raphson = (tries % 10 == 0) or (residual > 10 * self.tol and tries > 1)
                 if step_idx == 0:
                     xlast = xn
                     xn = x_new.copy()
                     dx = np.zeros(self.problem.get_diff_var_number())
+                elif run_newton_raphson:
+                    dx = self.problem.get_dx(xn, xlast, dx0, dtau)
+                    try:
+                        xlast = y[-2].copy()
+                    except:
+                        xlast = xn 
+                    xn = y[-1].copy()
                 else:
                     dx = self.problem.get_dx(xn, xlast, dx0, 1e-3) # or 1e-3 and fixed?
                     try:
@@ -871,6 +975,9 @@ class  PseudoTransient:
                     except:
                         xlast = xn 
                     xn = y[-1].copy()
+
+                x_new = self._project_feasible_x(x_new, dx, x_ref=x_fixed_ref, max_iter=3)
+                self._check_fixed_drift(x_new, x_fixed_ref, where=f"step={step_idx + 1} try={tries} feasible")
 
                 self._debug_check_x_new(x_new=x_new, step_idx=step_idx, tries=tries, dtau=dtau)
                 rhs  = self._rhs_pseudo_transient(x_new, xn, 0 * dx, dtau)
@@ -887,10 +994,20 @@ class  PseudoTransient:
                         f"bad_idx={bad_idx.tolist()}, bad_vals={bad_vals.tolist()}, "
                         f"bad_eqs={bad_eqs}, bad_eq_vars={bad_eq_vars})"
                     )
-                Jf = self._jacobian_pseudo_transient(x_new, dx, dtau)
+                Jf = self._jacobian_pseudo_transient(x_new, 0*dx, dtau)
                 residual = np.linalg.norm(rhs)
                 delta = self._solve_linear_system(Jf, rhs, x=x_new, context=f"pseudo step={step_idx + 1} try={tries}")
+                n_states = int(self.problem.get_states_number())
+                g = rhs[n_states:]
+                Jg = Jf[n_states:, :]
 
+                alg_lin_res = Jg @ delta + g
+
+                print(
+                    "[PseudoTransient diagnostics] algebraic linear solve check: "
+                    f"|g|_inf={np.linalg.norm(g, np.inf):.6e}, "
+                    f"|Jg*delta+g|_inf={np.linalg.norm(alg_lin_res, np.inf):.6e}"
+                )
                 solved = np.all(np.isfinite(delta))
 
                 if not solved:  # or not np.all(np.isfinite(delta)):
@@ -911,6 +1028,7 @@ class  PseudoTransient:
                 best_rhs = None
                 for scale in trial_scales:
                     x_trial = x_new + scale * delta
+                    x_trial = self._apply_fixed_mask(x_trial, x_fixed_ref)
                     rhs_trial = self._rhs_pseudo_transient(x_trial, xn, 0 * dx, dtau)
                     if not np.all(np.isfinite(rhs_trial)):
                         continue
@@ -928,7 +1046,8 @@ class  PseudoTransient:
                         f"Line-search failed at try {tries} and step {step_idx}: no finite trial residual"
                     )
 
-                x_new = best_x
+                x_new = self._apply_fixed_mask(best_x, x_fixed_ref)
+                self._check_fixed_drift(x_new, x_fixed_ref, where=f"step={step_idx + 1} try={tries} accepted")
                 rhs = best_rhs
                 residual = best_residual
                 if best_scale < 1.0:
@@ -954,7 +1073,8 @@ class  PseudoTransient:
                         y[-1] = alpha * x_new + (1 - alpha) * y[-1]
                     else:
                         y[-1] = x_new
-                    x_new = y[-1]
+                    x_new = self._apply_fixed_mask(y[-1], x_fixed_ref)
+                    self._check_fixed_drift(x_new, x_fixed_ref, where=f"step={step_idx} rollout")
                     xn = x_new.copy()
                     
                     dx = self.problem.get_dx(xn, xlast, dx, dtau)

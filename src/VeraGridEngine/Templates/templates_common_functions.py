@@ -396,7 +396,7 @@ def _extract_rhs_from_implicit_eq(eq: Expr, diff_var: Var) -> Expr | None:
     return None
 
 
-def to_explicit(block: Block) -> Block:
+def to_explicit(block: Block, vfactory: VarFactory) -> Block:
     """
     Convert an implicit DAE-like block back to explicit state equations.
 
@@ -409,61 +409,25 @@ def to_explicit(block: Block) -> Block:
 
     Recurses through child blocks.
     """
-    # First convert children so parent substitutions see explicit children.
+    block.unify_blocks()
+
+    for i, diff_var in enumerate(block.diff_vars):
+        new_diff_var = vfactory.add_var(f"dt_{diff_var.base_var.name}")
+
+        if diff_var.base_var not in block.state_vars:
+            block.state_vars.append(diff_var.base_var)
+            block.state_eqs.append(diff_var)
+            block.algebraic_vars.remove(diff_var.base_var)
+        else:
+            state_eq = block.state_eqs[block.state_vars.index(diff_var.base_var)]
+            block.algebraic_eqs.append(new_diff_var - state_eq)
+
+        block.algebraic_vars.append(new_diff_var)
+        block.update_equations(diff_var, new_diff_var)
+    block.diff_vars = list()
+        
     for child in block.children:
-        to_explicit(child)
-
-    if len(block.diff_vars) == 0:
-        return block
-
-    recovered_state_vars: list[Var] = list(block.state_vars)
-    recovered_state_eqs: list[Expr] = list(block.state_eqs)
-
-    remove_eq_idx: set[int] = set()
-    subs_map: dict[Var, Expr] = dict()
-    recovered_diff_uids: set[int] = set()
-
-    for diff_var in list(block.diff_vars):
-        if not isinstance(diff_var, Var):
-            continue
-
-        base_var = diff_var.base_var
-        if not isinstance(base_var, Var):
-            continue
-
-        rhs_found: Expr | None = None
-        rhs_eq_idx: int | None = None
-        for i, eq in enumerate(block.algebraic_eqs):
-            rhs = _extract_rhs_from_implicit_eq(eq, diff_var)
-            if rhs is not None:
-                rhs_found = rhs.simplify()
-                rhs_eq_idx = i
-                break
-
-        if rhs_found is None or rhs_eq_idx is None:
-            continue
-
-        if not any(isinstance(v, Var) and v.uid == base_var.uid for v in recovered_state_vars):
-            recovered_state_vars.append(base_var)
-            recovered_state_eqs.append(rhs_found)
-
-        subs_map[diff_var] = rhs_found
-        remove_eq_idx.add(rhs_eq_idx)
-        recovered_diff_uids.add(diff_var.uid)
-
-    if len(subs_map) > 0:
-        new_algebraic_eqs: list[Expr] = []
-        for i, eq in enumerate(block.algebraic_eqs):
-            if i in remove_eq_idx:
-                continue
-            new_algebraic_eqs.append(eq.subs(subs_map).simplify())
-        block.algebraic_eqs = new_algebraic_eqs
-
-        block.state_vars = recovered_state_vars
-        block.state_eqs = recovered_state_eqs
-
-        block.diff_vars = [v for v in block.diff_vars if not (isinstance(v, Var) and v.uid in recovered_diff_uids)]
-        block.algebraic_vars = [v for v in block.algebraic_vars if not (isinstance(v, Var) and v.uid in recovered_diff_uids)]
+        to_explicit(child, vfactory)
 
     return block
 

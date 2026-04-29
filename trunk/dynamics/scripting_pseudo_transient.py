@@ -18,15 +18,15 @@ from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
-from VeraGridEngine.Templates.templates_common_functions import set_rms_model, to_implicit
+from VeraGridEngine.Templates.templates_common_functions import set_rms_model, to_implicit, to_explicit
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 
 
 def build_grid() -> gce.MultiCircuit:
     grid = gce.MultiCircuit(Sbase=100.0, fbase=50.0)
 
-    bus0 = gce.Bus(name="Bus0", Vnom=10.0, is_slack=True)
-    bus1 = gce.Bus(name="Bus1", Vnom=10.0)
+    bus0 = gce.Bus(name="Bus0", Vnom=90.0, is_slack=True)
+    bus1 = gce.Bus(name="Bus1", Vnom=90.0)
     initialize_bus_rms(bus0, vf=grid.var_factory)
     initialize_bus_rms(bus1, vf=grid.var_factory)
     grid.add_bus(bus0)
@@ -43,12 +43,12 @@ def build_grid() -> gce.MultiCircuit:
     )
     grid.add_line(line)
 
-    load = gce.Load(name="Load1", P=9.999999, Q=0.999999)
+    load = gce.Load(name="Load1", P=100, Q=1)
     grid.add_load(bus=bus1, api_obj=load)
 
     gen = gce.Generator(
         name="Gen0",
-        P=10.0,
+        P=100.0,
         vset=1.0,
         Snom=900.0,
         r1=0.3,
@@ -63,7 +63,7 @@ def build_grid() -> gce.MultiCircuit:
         set_rms_model(device=load, model=get_load_rms_template(grid.var_factory, name=load.name).block, var_factory=grid.var_factory)
     if gen.rms_model.empty():
         gen_model = get_complete_generator_template_rms(grid.var_factory, name=gen.name).block
-        gen_model = to_implicit(gen_model, grid.var_factory)
+        gen_model = to_explicit(gen_model, grid.var_factory)
         set_rms_model(
             device=gen,
             model=gen_model,
@@ -99,7 +99,7 @@ def run_validation() -> None:
         initialization_method=gce.RmsInitializationMethod.PseudoTransient,
         max_iter=1000,
         tolerance=1e-8,
-        verbose=1,
+        verbose=True,
     )
 
     problem = RmsProblemDae(
