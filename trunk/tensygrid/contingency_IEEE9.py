@@ -57,7 +57,7 @@ plt.style.use(['science', 'ieee', 'no-latex'])
 """
 grid_folder = project_base / "Grids_and_profiles" / "grids"
 GRID = "IEEE 9 Bus.gridcal"
-USE_CACHED_BUILDER = True
+USE_CACHED_BUILDER = False
 BUILDER_CACHE_FILE = f'../trunk/tensygrid/precomputed_builds/{GRID}.pkl'
 
 REPORT_TIME = False
