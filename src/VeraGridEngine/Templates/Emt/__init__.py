@@ -53,6 +53,10 @@ from VeraGridEngine.Templates.Emt.nonlinear_resistor_emt_template import get_non
 from VeraGridEngine.Templates.Emt.valve_emt_template import get_valve_emt_template
 from VeraGridEngine.Templates.Emt.transformer_emt_template import get_transformer_emt_template
 from VeraGridEngine.Templates.Emt.xfmr_emt_template import get_xfmr_emt_template
+from VeraGridEngine.Templates.Emt.induction_motor_emt_template import get_induction_motor_emt_template
+from VeraGridEngine.Templates.Emt.induction_motor_emt_template import get_induction_motor_double_cage_emt_template
+from VeraGridEngine.Templates.Emt.induction_motor_emt_template import get_induction_motor_rms_equivalent_emt_template
+from VeraGridEngine.Templates.Emt.induction_motor_emt_template import get_induction_motor_single_cage_emt_template
 
 # the following are functions that generate templates depending on the specific object
 

@@ -171,6 +171,31 @@ class VarFactory(EditableDevice):
         """
         return self._diff_var_dict
 
+    def get_unique_template_name(self, name: str) -> str:
+        """Return one template name that does not collide with existing symbols.
+
+        Some EMT builders reserve their symbolic namespace at the template level
+        before any variables are created. When the requested name is still free,
+        this helper returns it unchanged. Otherwise it appends an integer suffix.
+
+        :param name: Requested template name.
+        :return: Collision-free template name.
+        """
+        existing_names = set(v.name for v in self._var_dict.values())
+        existing_names.update(v.name for v in self._diff_var_dict.values())
+
+        if name not in existing_names:
+            return name
+        else:
+            index: int = 1
+            candidate: str = f"{name}_{index}"
+
+            while candidate in existing_names:
+                index += 1
+                candidate = f"{name}_{index}"
+
+            return candidate
+
     def parse_const_dict(self, data_list: List[Dict[str, Any]]):
         """
 
@@ -290,77 +315,3 @@ class VarFactory(EditableDevice):
             return None
         else:
             raise ValueError(f"Var with uid:{var_uid} not added in VarFactory as var or diff_var.")
-
-
-
-
-
-    def get_existing_symbol_names(self) -> set[str]:
-        """Return all symbolic names already stored in the factory.
-
-        The returned set contains the names of regular variables,
-        differential variables, and named constants already registered in this
-        factory.
-
-        :return: Set with every registered symbolic name.
-        """
-        names: set[str] = set()
-
-        names.update(v.name for v in self._var_dict.values())
-        names.update(v.name for v in self._diff_var_dict.values())
-        names.update(c.name for c in self._const_dict.values() if c.name)
-
-        return names
-
-    @staticmethod
-    def symbol_uses_template_name(symbol_name: str, template_name: str) -> bool:
-        """Check whether one symbol name uses one template instance name.
-
-        The helper supports both suffix-based and middle-segment naming
-        patterns used by the EMT templates, such as ``Raa_Pi`` and
-        ``i_ser_Pi_A``.
-
-        :param symbol_name: Full symbolic variable or constant name.
-        :param template_name: Candidate template instance name.
-        :return: True when the symbol appears to use the template name.
-        """
-        if not template_name:
-            return False
-
-        return (
-            symbol_name == template_name
-            or symbol_name.startswith(f"{template_name}_")
-            or symbol_name.endswith(f"_{template_name}")
-            or f"_{template_name}_" in symbol_name
-        )
-
-    def is_template_name_used(self, name: str) -> bool:
-        """Check whether one template instance name is already in use.
-
-        :param name: Candidate template instance name.
-        :return: True when any registered symbol appears to use ``name``.
-        """
-        return any(
-            self.symbol_uses_template_name(symbol_name=symbol_name,
-                                           template_name=name)
-            for symbol_name in self.get_existing_symbol_names()
-        )
-
-    def get_unique_template_name(self, name: str) -> str:
-        """Return one template name that is not already used.
-
-        The first instance keeps the requested name. Collisions, including
-        user-provided explicit names, are resolved deterministically by
-        appending an increasing integer suffix.
-
-        :param name: Requested template instance name.
-        :return: Unique template instance name.
-        """
-        if not self.is_template_name_used(name):
-            return name
-
-        i = 1
-        while self.is_template_name_used(f"{name}{i}"):
-            i += 1
-
-        return f"{name}{i}"
