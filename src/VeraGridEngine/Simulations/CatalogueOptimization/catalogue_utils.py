@@ -369,6 +369,13 @@ def build_catalogue_pool(grid: MultiCircuit,
                                device=branch.name,
                                device_class=type(branch).__name__)
 
+    # Diagnostic dump of the per-slot pool sizes. Helps the user see, for every surviving branch,
+    # how many templates the optimizer has to choose from (i.e. the cardinality of each decision slot).
+    print(f"[CatalogueOptimization] Surviving branches: "
+          f"{len(kept_branches)} of {len(selected_branches)} selected")
+    for kept_branch, kept_pool in zip(kept_branches, kept_pools):
+        print(f"  {kept_branch.name:30s} -> {len(kept_pool)} compatible templates")
+
     return kept_branches, kept_pools
 
 
