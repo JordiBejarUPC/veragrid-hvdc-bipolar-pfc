@@ -1023,3 +1023,18 @@ def test_segmenting_by_hvdc():
     islands_1 = nc.split_into_islands(consider_hvdc_as_island_links=False)
 
     assert len(islands_1) == 2
+
+
+def test_switch_reduction():
+    fname = os.path.join('data', 'grids', 'DGS', 'Reduced_SPEN_v9_south_west_v3.dgs')
+
+    grid = open_file(fname)
+
+    nc = compile_numerical_circuit_at(grid)
+
+    islands = nc.split_into_islands(consider_hvdc_as_island_links=True)
+
+    assert nc.nbr == 7
+
+    # after the reduction the switch is eliminate from the island data
+    assert islands[0].nbr == 6

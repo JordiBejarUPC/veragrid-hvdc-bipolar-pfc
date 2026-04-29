@@ -1042,7 +1042,7 @@ class NumericalCircuit:
             logger = Logger()
 
         # detect the topology reductions
-        self.process_reducible_branches()
+        n_red = self.process_reducible_branches()
 
         # find the matching islands
         adj = self.compute_adjacency_matrix(consider_hvdc_as_island_links=consider_hvdc_as_island_links)
