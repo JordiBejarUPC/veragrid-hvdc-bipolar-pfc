@@ -5331,7 +5331,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.mark_unapplied_changes()
         return block_item
 
-    def create_block_item_mix(self, block_type: BlockType, x_pos: float, y_pos: float) -> BlockItemMix:
+    def create_block_item_mix(self, block_type: BlockType, x_pos: float, y_pos: float) -> BlockItemMix | None:
         """
         Create and place a block item in the canvas scene.
 
@@ -5349,6 +5349,93 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             if dialog.exec() == QDialog.DialogCode.Accepted:
                 item_name, inputs, outputs = dialog.get_values()
                 block_model = create_generic_block(self.var_factory, inputs, outputs, item_name)
+
+        elif block_type in {BlockType.TRAFO_EMT, BlockType.XFMR_TRANSFORMER}:
+            topology_config: Dict[str, Any] | None = self._resolve_transformer_topology_configuration()
+
+            if topology_config is None:
+                dialog = self._build_transformer_topology_emt_dialog(block_type=block_type)
+
+                if dialog.exec() == QDialog.DialogCode.Accepted:
+                    topology_config = dialog.get_configuration()
+                    topology_config["allow_modify_template"] = True
+                else:
+                    return None
+            else:
+                topology_config = dict(topology_config)
+
+            item_name: str = f"{block_type.name}_{count}"
+            block_model = self._build_transformer_topology_emt_block_model(
+                block_type=block_type,
+                item_name=item_name,
+                modal_config=topology_config,
+            )
+            if block_model is None:
+                return None
+
+            set_modal_template_metadata(block_model, kind="transformer_topology_emt",
+                                        config=dict(topology_config, block_type=block_type.name))
+
+            if isinstance(self.api_object, BranchParent):
+                try:
+                    self.api_object.conn_f = topology_config["conn_f"]
+                    self.api_object.conn_t = topology_config["conn_t"]
+                except Exception:
+                    pass
+            else:
+                pass
+
+
+        elif block_type in {BlockType.EXP_LOAD_EMT, BlockType.ZIP_LOAD_EMT}:
+            dialog = self._build_load_topology_emt_dialog(block_type=block_type)
+
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                load_config = dialog.get_configuration()
+            else:
+                return None
+
+            item_name: str = f"{block_type.name}_{count}"
+            block_model = self._build_load_topology_emt_block_model(
+                block_type=block_type,
+                item_name=item_name,
+                modal_config=load_config,
+            )
+
+            set_modal_template_metadata(block_model, kind="load_topology_emt",
+                                        config=dict(load_config, block_type=block_type.name))
+            self._annotate_internal_grounding_link_blocks(block_model)
+
+            if isinstance(self.api_object, InjectionParent):
+                try:
+                    self.api_object.conn = load_config["connection_type"]
+                except Exception:
+                    pass
+            else:
+                pass
+
+        elif block_type == BlockType.EMT_PI_LINE or block_type == BlockType.EMT_BERGERON_LINE:
+            dialog = EmtTemplateWizardDialog(self)
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                phase_n, phase_a, phase_b, phase_c = dialog.get_values()
+            else:
+                return None
+
+            item_name: str = f"{block_type.name}_{count}"
+            block_model = create_emt_wizard_block(phase_n, phase_a, phase_b, phase_c, self.var_factory,
+                                                  block_type=block_type, item_name=item_name)
+
+            set_modal_template_metadata(
+                block_model,
+                kind="emt_phase_wizard",
+                config=dict({
+                    "block_type": block_type.name,
+                    "phase_n": phase_n,
+                    "phase_a": phase_a,
+                    "phase_b": phase_b,
+                    "phase_c": phase_c,
+                }),
+            )
+
 
         elif block_type == BlockType.GROUNDING_LINK_EMT:
             dialog = self._build_grounding_link_emt_dialog()
@@ -5741,7 +5828,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     def create_template_block_item(self,
                                    template: RmsModelTemplate | EmtModelTemplate | FmuTemplate,
                                    x_pos: float,
-                                   y_pos: float) -> BlockItem | None:
+                                   y_pos: float) -> BlockItem | BlockItemMix | None:
         """
         Create and place a copied template block in the canvas scene.
 
@@ -5752,19 +5839,22 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
         item_name: str = template.name
         block_model: Block = duplicate_block(template.block, var_factory=self.var_factory)
-        block_item: BlockItem = BlockItem(var_factory=self.var_factory, name=item_name)
+        self.main_block.add(block_model)
+        item: BlockItemMix = BlockItemMix(
+                var_factory=self.var_factory,
+                subsys=block_model,
+                api_object=self.api_object,
+                mode=self.mode,
+                position_changed_callback=self._build_position_changed_callback(block_model.uid)
+            )
 
         if item_name:
             block_model.name = item_name
         else:
             item_name = block_model.name
+        item.setPos(QtCore.QPointF(x_pos, y_pos))
+        self.scene.addItem(item)
 
-        block_item.set_subsystem(block_model)
-        block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
-        block_item.build_item()
-        self.main_block.add(block_model)
-        self.scene.addItem(block_item)
-        block_item.setPos(QtCore.QPointF(x_pos, y_pos))
         self.diagram.add_node(
             name=item_name,
             x=x_pos,
@@ -5775,7 +5865,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         self.mark_unapplied_changes()
 
-        return block_item
+        return item
 
     def create_lookup_array_linear_descriptor_item(self,
                                                    descriptor: BasicBlockTemplateDescriptor,
@@ -6962,9 +7052,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
         Materialize one library payload on the diagram scene.
         """
-
-        # if isinstance(payload, BlockType) and payload == BlockType.GENERIC:
-        #     return self.create_generic_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
         if isinstance(payload, BlockType) and payload in {
             BlockType.EMT_PI_LINE,
             BlockType.EMT_BERGERON_LINE,
@@ -6973,33 +7060,18 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             BlockType.GROUNDING_LINK_EMT,
             BlockType.NONLINEAR_RESISTOR_EMT,
             BlockType.RLC_COMBO_EMT,
-        }:
-            if payload == BlockType.SWITCH_EMT:
-                return self.create_block_item_mix(block_type=payload, x_pos=x_pos, y_pos=y_pos)
-            elif payload == BlockType.GROUNDING_LINK_EMT:
-                return self.create_block_item_mix(block_type=payload, x_pos=x_pos, y_pos=y_pos)
-            elif payload == BlockType.NONLINEAR_RESISTOR_EMT:
-                return self.create_block_item_mix(block_type=payload, x_pos=x_pos, y_pos=y_pos)
-            elif payload == BlockType.RLC_COMBO_EMT:
-                return self.create_block_item_mix(block_type=payload, x_pos=x_pos, y_pos=y_pos)
-            elif payload == BlockType.EMT_JMARTI_LINE:
-                return self.create_block_item_mix(block_type=payload, x_pos=x_pos, y_pos=y_pos)
-            else:
-                return self.create_emt_wizard_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
-        elif isinstance(payload, BlockType) and _is_load_topology_block_type(payload):
-            return self.create_load_topology_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
-        elif isinstance(payload, BlockType) and payload in {
+            BlockType.EXP_LOAD_EMT,
+            BlockType.ZIP_LOAD_EMT,
             BlockType.R_LOAD_EMT,
             BlockType.L_LOAD_EMT,
             BlockType.C_LOAD_EMT,
-        }:
-            return self.create_shunt_component_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
-        elif isinstance(payload, BlockType) and payload in {
             BlockType.TRAFO_EMT,
             BlockType.XFMR_TRANSFORMER,
         }:
-            return self.create_transformer_topology_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
-        if isinstance(payload, BlockType):
+
+            return self.create_block_item_mix(block_type=payload, x_pos=x_pos, y_pos=y_pos)
+
+        elif isinstance(payload, BlockType):
             return self.create_block_item_mix(block_type=payload, x_pos=x_pos, y_pos=y_pos)
         elif isinstance(payload, BasicBlockTemplateDescriptor):
             if payload.template_key in LOOKUP_ARRAY_LINEAR_DESCRIPTOR_KEYS:
@@ -7156,7 +7228,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         if isinstance(item, ConnectionItem):
             self.remove_connection_item(item)
             self.mark_unapplied_changes()
-        elif isinstance(item, (BlockItem, GenericBlockItem)):
+        elif isinstance(item, (BlockItem, GenericBlockItem, BlockItemMix)):
             self.remove_block_item(item)
             self.mark_unapplied_changes()
         else:
