@@ -34,10 +34,11 @@ def get_pi_line_emt_template(vf: VarFactory,
     :return: EMT pi-line model template.
     :raises ValueError: If the line has no active phases.
     """
+
     templ = EmtModelTemplate()
     templ.tpe = DeviceType.LineDevice
-    templ.name = name
 
+    templ.name = name
     templ.block.name = EmtLineTypes.PI.value
 
     c0 = vf.add_const(0.0)

@@ -9003,4 +9003,16 @@ class Assets:
                 tpe=DeviceType.LineDevice,
                 kwargs=dict(vf=self._var_factory, phN=False, phA=True, phB=True, phC=True, name="J_Marti"),
             ),
+            _build_lazy_emt_template(
+                builder=tem.get_induction_motor_single_cage_emt_template,
+                name="Induction motor single cage",
+                tpe=DeviceType.LoadDevice,
+                kwargs=dict(vf=self._var_factory, name="Induction_motor_single_cage"),
+            ),
+            _build_lazy_emt_template(
+                builder=tem.get_induction_motor_double_cage_emt_template,
+                name="Induction motor double cage",
+                tpe=DeviceType.LoadDevice,
+                kwargs=dict(vf=self._var_factory, name="Induction_motor_double_cage"),
+            ),
         ]

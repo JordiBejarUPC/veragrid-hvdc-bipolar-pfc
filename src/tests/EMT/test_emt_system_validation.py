@@ -17,7 +17,7 @@ import warnings
 from scipy.sparse.linalg import MatrixRankWarning
 
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
-from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae, EmtTopologyError
+from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtInterfaceValidationError, EmtProblemDae, EmtTopologyError
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver, PowerFlowOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlowDriver3Ph
 from VeraGridEngine.enumerations import DynamicIntegrationMethod, EmtSolverTypes, ShuntConnectionType, EmtInitializationMethod, EmtLineTypes, ConverterControlType, SolverType, VarPowerFlowRefferenceType
@@ -35,6 +35,7 @@ from VeraGridEngine.Templates.templates_common_functions import set_emt_model
 from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbolicSolver
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
+from VeraGridEngine.basic_structures import Logger
 import VeraGridEngine.api as gce
 
 
@@ -141,6 +142,33 @@ def run_power_flow(grid: gce.MultiCircuit) -> tuple:
     pf_res_3ph = power_flow_3ph.results
 
     return pf_results, pf_res_3ph
+
+
+def _build_interface_validation_problem(grid: gce.MultiCircuit) -> EmtProblemDae:
+    """Build one minimal problem instance used only for EMT interface validation."""
+    problem: EmtProblemDae = EmtProblemDae.__new__(EmtProblemDae)
+    problem.grid = grid
+    problem.logger = Logger()
+    return problem
+
+
+def _make_ref_var(reference: VarPowerFlowRefferenceType, name_suffix: str) -> Var:
+    """Create one symbolic variable for a test EMT external reference."""
+    return Var(name=f"{reference.value}_{name_suffix}", reference=reference)
+
+
+def _make_external_mapping_block(refs: list[VarPowerFlowRefferenceType], name_suffix: str) -> Block:
+    """Create one minimal EMT block exposing the requested external references."""
+    external_mapping: dict[VarPowerFlowRefferenceType, Var] = dict()
+    out_vars: list[Var] = list()
+    reference: VarPowerFlowRefferenceType
+
+    for reference in refs:
+        var = _make_ref_var(reference, name_suffix)
+        external_mapping[reference] = var
+        out_vars.append(var)
+
+    return Block(external_mapping=external_mapping, out_vars=out_vars)
 
 
 # =============================================================================
@@ -580,3 +608,151 @@ def test_floating_phases_raises_emt_topology_error():
     # Should raise EmtTopologyError about floating phases
     with pytest.raises(EmtTopologyError, match="Floating bus phases detected"):
         EmtProblemDae(grid=grid, options=get_default_emt_options(), pf_results=pf_results, pf_results_3ph=pf_res_3ph)
+
+
+def test_interface_validation_accepts_compatible_ac_abc_injection() -> None:
+    grid = gce.MultiCircuit(Sbase=100.0, fbase=50.0)
+    bus = gce.Bus(name="BusABC", Vnom=20.0)
+    load = gce.Load(name="LoadABC", P=10.0, Q=1.0)
+    grid.add_bus(bus)
+    grid.add_load(bus, load)
+
+    bus.emt_model = _make_external_mapping_block([
+        VarPowerFlowRefferenceType.v_A,
+        VarPowerFlowRefferenceType.v_B,
+        VarPowerFlowRefferenceType.v_C,
+    ], "bus_abc")
+    load.emt_model = _make_external_mapping_block([
+        VarPowerFlowRefferenceType.v_A,
+        VarPowerFlowRefferenceType.v_B,
+        VarPowerFlowRefferenceType.v_C,
+        VarPowerFlowRefferenceType.i_A,
+        VarPowerFlowRefferenceType.i_B,
+        VarPowerFlowRefferenceType.i_C,
+    ], "load_abc")
+
+    problem = _build_interface_validation_problem(grid)
+    problem._validate_dynamic_emt_interfaces()
+
+
+def test_interface_validation_accepts_compatible_ac_abcn_injection() -> None:
+    grid = gce.MultiCircuit(Sbase=100.0, fbase=50.0)
+    bus = gce.Bus(name="BusABCN", Vnom=20.0)
+    load = gce.Load(name="LoadABCN", P=10.0, Q=1.0)
+    grid.add_bus(bus)
+    grid.add_load(bus, load)
+
+    bus.emt_model = _make_external_mapping_block([
+        VarPowerFlowRefferenceType.v_N,
+        VarPowerFlowRefferenceType.v_A,
+        VarPowerFlowRefferenceType.v_B,
+        VarPowerFlowRefferenceType.v_C,
+    ], "bus_abcn")
+    load.emt_model = _make_external_mapping_block([
+        VarPowerFlowRefferenceType.v_N,
+        VarPowerFlowRefferenceType.v_A,
+        VarPowerFlowRefferenceType.v_B,
+        VarPowerFlowRefferenceType.v_C,
+        VarPowerFlowRefferenceType.i_N,
+        VarPowerFlowRefferenceType.i_A,
+        VarPowerFlowRefferenceType.i_B,
+        VarPowerFlowRefferenceType.i_C,
+    ], "load_abcn")
+
+    problem = _build_interface_validation_problem(grid)
+    problem._validate_dynamic_emt_interfaces()
+
+
+def test_interface_validation_rejects_neutral_without_bus_support() -> None:
+    grid = gce.MultiCircuit(Sbase=100.0, fbase=50.0)
+    bus = gce.Bus(name="BusNoNeutral", Vnom=20.0)
+    load = gce.Load(name="LoadNeutral", P=10.0, Q=1.0)
+    grid.add_bus(bus)
+    grid.add_load(bus, load)
+
+    bus.emt_model = _make_external_mapping_block([
+        VarPowerFlowRefferenceType.v_A,
+        VarPowerFlowRefferenceType.v_B,
+        VarPowerFlowRefferenceType.v_C,
+    ], "bus_noneutral")
+    load.emt_model = _make_external_mapping_block([
+        VarPowerFlowRefferenceType.v_N,
+        VarPowerFlowRefferenceType.v_A,
+        VarPowerFlowRefferenceType.v_B,
+        VarPowerFlowRefferenceType.v_C,
+        VarPowerFlowRefferenceType.i_N,
+        VarPowerFlowRefferenceType.i_A,
+        VarPowerFlowRefferenceType.i_B,
+        VarPowerFlowRefferenceType.i_C,
+    ], "load_noneutral")
+
+    problem = _build_interface_validation_problem(grid)
+
+    with pytest.raises(EmtInterfaceValidationError, match="BusNoNeutral"):
+        problem._validate_dynamic_emt_interfaces()
+
+
+def test_interface_validation_rejects_dc_refs_on_ac_bus() -> None:
+    grid = gce.MultiCircuit(Sbase=100.0, fbase=50.0)
+    bus = gce.Bus(name="AcBus", Vnom=20.0)
+    load = gce.Load(name="DcStyledLoad", P=10.0, Q=1.0)
+    grid.add_bus(bus)
+    grid.add_load(bus, load)
+
+    bus.emt_model = _make_external_mapping_block([
+        VarPowerFlowRefferenceType.v_A,
+        VarPowerFlowRefferenceType.v_B,
+        VarPowerFlowRefferenceType.v_C,
+    ], "ac_bus")
+    load.emt_model = _make_external_mapping_block([
+        VarPowerFlowRefferenceType.Vdc,
+        VarPowerFlowRefferenceType.Idc,
+    ], "dc_load_on_ac")
+
+    problem = _build_interface_validation_problem(grid)
+
+    with pytest.raises(EmtInterfaceValidationError, match="DC"):
+        problem._validate_dynamic_emt_interfaces()
+
+
+def test_interface_validation_rejects_ac_refs_on_dc_bus() -> None:
+    grid = gce.MultiCircuit(Sbase=100.0, fbase=50.0)
+    bus = gce.Bus(name="DcBus", Vnom=320.0, is_dc=True)
+    load = gce.Load(name="AcStyledLoad", P=10.0, Q=1.0)
+    grid.add_bus(bus)
+    grid.add_load(bus, load)
+
+    bus.emt_model = _make_external_mapping_block([
+        VarPowerFlowRefferenceType.Vdc,
+    ], "dc_bus")
+    load.emt_model = _make_external_mapping_block([
+        VarPowerFlowRefferenceType.v_A,
+        VarPowerFlowRefferenceType.i_A,
+    ], "ac_load_on_dc")
+
+    problem = _build_interface_validation_problem(grid)
+
+    with pytest.raises(EmtInterfaceValidationError, match="AC phase"):
+        problem._validate_dynamic_emt_interfaces()
+
+
+def test_interface_validation_rejects_shared_dc_branch_collision() -> None:
+    grid = gce.MultiCircuit(Sbase=100.0, fbase=50.0)
+    bus_from = gce.Bus(name="DcFrom", Vnom=320.0, is_dc=True)
+    bus_to = gce.Bus(name="DcTo", Vnom=320.0, is_dc=True)
+    dc_line = gce.DcLine(name="SharedDcBranch", bus_from=bus_from, bus_to=bus_to, r=0.01, rate=100.0)
+    grid.add_bus(bus_from)
+    grid.add_bus(bus_to)
+    grid.add_dc_line(dc_line)
+
+    bus_from.emt_model = _make_external_mapping_block([VarPowerFlowRefferenceType.Vdc], "dc_from")
+    bus_to.emt_model = _make_external_mapping_block([VarPowerFlowRefferenceType.Vdc], "dc_to")
+    dc_line.emt_model = _make_external_mapping_block([
+        VarPowerFlowRefferenceType.Vdc,
+        VarPowerFlowRefferenceType.Idc,
+    ], "shared_dc_branch")
+
+    problem = _build_interface_validation_problem(grid)
+
+    with pytest.raises(EmtInterfaceValidationError, match="Use If_dc and It_dc instead"):
+        problem._validate_dynamic_emt_interfaces()

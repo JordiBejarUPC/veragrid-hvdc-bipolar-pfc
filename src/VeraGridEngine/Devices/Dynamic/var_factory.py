@@ -171,6 +171,31 @@ class VarFactory(EditableDevice):
         """
         return self._diff_var_dict
 
+    def get_unique_template_name(self, name: str) -> str:
+        """Return one template name that does not collide with existing symbols.
+
+        Some EMT builders reserve their symbolic namespace at the template level
+        before any variables are created. When the requested name is still free,
+        this helper returns it unchanged. Otherwise it appends an integer suffix.
+
+        :param name: Requested template name.
+        :return: Collision-free template name.
+        """
+        existing_names = set(v.name for v in self._var_dict.values())
+        existing_names.update(v.name for v in self._diff_var_dict.values())
+
+        if name not in existing_names:
+            return name
+        else:
+            index: int = 1
+            candidate: str = f"{name}_{index}"
+
+            while candidate in existing_names:
+                index += 1
+                candidate = f"{name}_{index}"
+
+            return candidate
+
     def parse_const_dict(self, data_list: List[Dict[str, Any]]):
         """
 

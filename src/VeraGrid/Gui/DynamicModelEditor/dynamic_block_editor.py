@@ -75,6 +75,7 @@ from VeraGridEngine.Templates.Emt.source_emt_template import get_controlled_volt
 from VeraGridEngine.Templates.Emt.source_emt_template import get_current_source_emt_template
 from VeraGridEngine.Templates.Emt.source_emt_template import get_voltage_source_emt_template
 from VeraGridEngine.Templates.Emt.switch_emt_template import get_switch_emt_template
+from VeraGridEngine.Templates.Emt.induction_motor_emt_template import get_induction_motor_emt_template
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_rlc_combo_emt_template
 from VeraGridEngine.Templates.Emt.load_zip_emt_template import get_load_ZIP_emt_template
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
@@ -86,6 +87,11 @@ from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import LookupArrayLinea
 from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import LookupMatrixLinearDialog
 from VeraGrid.Gui.DynamicModelEditor.grounding_link_emt_dialog import GroundingLinkEmtDialog
 from VeraGrid.Gui.DynamicModelEditor.jmarti_line_emt_dialog import JMartiLineEmtDialog
+from VeraGrid.Gui.DynamicModelEditor.induction_motor_emt_dialog import InductionMotorEmtDialog
+from VeraGrid.Gui.DynamicModelEditor.induction_motor_emt_dialog import InductionMotorEmtLevel
+from VeraGrid.Gui.DynamicModelEditor.induction_motor_emt_dialog import coerce_induction_motor_emt_level
+from VeraGrid.Gui.DynamicModelEditor.induction_motor_emt_dialog import get_induction_motor_emt_level_label
+from VeraGrid.Gui.DynamicModelEditor.induction_motor_emt_dialog import get_induction_motor_emt_template_level
 from VeraGrid.Gui.DynamicModelEditor.load_topology_emt_dialog import LoadTopologyEmtDialog
 from VeraGrid.Gui.DynamicModelEditor.rlc_combo_emt_dialog import RlcComboEmtDialog
 from VeraGrid.Gui.DynamicModelEditor.shunt_component_emt_dialog import ShuntComponentEmtDialog
@@ -4336,7 +4342,21 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 LibraryLeafSpec("Emt Bergeron line", BlockType.EMT_BERGERON_LINE),
                 LibraryLeafSpec("Emt JMarti line", BlockType.EMT_JMARTI_LINE),
             ],
-            DeviceType.LoadDevice: list(),
+            DeviceType.LoadDevice: [
+                LibraryLeafSpec("Generic", BlockType.GENERIC),
+                LibraryLeafSpec("Ground EMT", BlockType.GROUND_EMT),
+                LibraryLeafSpec("Grounding Link EMT", BlockType.GROUNDING_LINK_EMT),
+                LibraryLeafSpec("Nonlinear Resistor EMT", BlockType.NONLINEAR_RESISTOR_EMT),
+                LibraryLeafSpec("RLC Combo", BlockType.RLC_COMBO_EMT),
+                LibraryLeafSpec("R load", BlockType.R_LOAD_EMT),
+                LibraryLeafSpec("L load", BlockType.L_LOAD_EMT),
+                LibraryLeafSpec("C load", BlockType.C_LOAD_EMT),
+                LibraryLeafSpec("Exponential load", BlockType.EXP_LOAD_EMT),
+                LibraryLeafSpec("ZIP load", BlockType.ZIP_LOAD_EMT),
+                LibraryLeafSpec("DC load", BlockType.DC_LOAD_EMT),
+                LibraryLeafSpec("Induction motor", BlockType.INDUCTION_MOTOR_EMT)
+            ],
+            # TODO: for transformers it should appear in all types of trafos
             DeviceType.Transformer2WDevice: [
                 LibraryLeafSpec("Transformer", BlockType.TRAFO_EMT),
                 LibraryLeafSpec("XFMR Transformer", BlockType.XFMR_TRANSFORMER),
@@ -6424,6 +6444,57 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.mark_unapplied_changes()
         return block_item
 
+    def create_induction_motor_emt_block_item(self, x_pos: float, y_pos: float) -> BlockItem | None:
+        """
+        Create one induction-motor EMT block configured through its modal.
+
+        :param x_pos: Drop x position.
+        :param y_pos: Drop y position.
+        :return: Created block item or None when the dialog is cancelled.
+        """
+        # The modal runs before block creation so the selected template level becomes
+        # part of the initial symbolic build and persisted metadata from the start.
+        default_config: Dict[str, Any] = self._build_default_induction_motor_emt_modal_config()
+        dialog: InductionMotorEmtDialog = self._build_induction_motor_emt_dialog(initial_config=default_config)
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            induction_motor_config: Dict[str, Any] = dialog.get_configuration()
+        else:
+            return None
+
+        count: int = self.block_counters.get(BlockType.INDUCTION_MOTOR_EMT, 0) + 1
+        item_name: str = f"induction_motor_emt_{count}"
+        block_item: BlockItem = BlockItem(var_factory=self.var_factory, name=item_name)
+        block_model: Block = self._build_induction_motor_emt_block_model(
+            item_name=item_name,
+            modal_config=induction_motor_config,
+        )
+
+        # Persist the modal selection so modify-template and rebuild flows can
+        # recreate the same symbolic template later.
+        set_modal_template_metadata(block_model, kind="induction_motor_emt", config=dict(induction_motor_config))
+
+        self.block_counters[BlockType.INDUCTION_MOTOR_EMT] = count
+        block_item.set_subsystem(block_model)
+        block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
+        block_item.build_item()
+        block_item.setToolTip(self._build_induction_motor_emt_modal_tooltip(induction_motor_config))
+
+        # The scene item, main block, and persisted diagram must all be updated
+        # together so later rebuilds and apply/save operations stay consistent.
+        self.main_block.add(block_model)
+        self.scene.addItem(block_item)
+        block_item.setPos(QtCore.QPointF(x_pos, y_pos))
+        self.diagram.add_node(
+            name=item_name,
+            x=x_pos,
+            y=y_pos,
+            tpe=BlockType.INDUCTION_MOTOR_EMT.name,
+            device_uid=block_model.uid,
+        )
+        self.mark_unapplied_changes()
+        return block_item
+
     def create_shunt_component_emt_block_item(self,
                                               block_type: BlockType,
                                               x_pos: float,
@@ -6753,6 +6824,64 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             base_power_mva=base_power_mva,
             base_frequency_hz=base_frequency_hz,
         )
+
+    @staticmethod
+    def _build_default_induction_motor_emt_modal_config(level: InductionMotorEmtLevel = InductionMotorEmtLevel.SINGLE_CAGE) -> Dict[str, Any]:
+        """
+        Build the default persisted configuration for one induction-motor EMT modal.
+
+        :param level: Default template level.
+        :return: Default induction-motor modal configuration.
+        """
+        return dict({"level": level.name})
+
+    def _build_induction_motor_emt_dialog(self,
+                                          initial_config: Dict[str, Any] | None = None) -> InductionMotorEmtDialog:
+        """
+        Build the modal dialog used by the induction-motor EMT workflow.
+
+        :param initial_config: Optional persisted modal configuration.
+        :return: Configured dialog instance.
+        """
+        dialog_config: Dict[str, Any]
+        if initial_config is None:
+            dialog_config = self._build_default_induction_motor_emt_modal_config()
+        else:
+            dialog_config = dict(initial_config)
+
+        return InductionMotorEmtDialog(
+            self,
+            initial_config=dialog_config,
+        )
+
+    @staticmethod
+    def _build_induction_motor_emt_modal_tooltip(modal_config: Dict[str, Any]) -> str:
+        """
+        Build one compact tooltip for one induction-motor EMT block.
+
+        :param modal_config: Persisted induction-motor modal configuration.
+        :return: Tooltip text.
+        """
+        level: InductionMotorEmtLevel = coerce_induction_motor_emt_level(
+            modal_config.get("level", InductionMotorEmtLevel.SINGLE_CAGE.name)
+        )
+        return "Induction motor EMT\n" + get_induction_motor_emt_level_label(level)
+
+    def _build_induction_motor_emt_block_model(self,
+                                               item_name: str,
+                                               modal_config: Dict[str, Any]) -> Block:
+        """
+        Build one induction-motor EMT block model from one modal configuration.
+
+        :param item_name: Symbolic block name.
+        :param modal_config: Induction-motor modal configuration.
+        :return: Built symbolic block.
+        """
+        level: InductionMotorEmtLevel = coerce_induction_motor_emt_level(
+            modal_config.get("level", InductionMotorEmtLevel.SINGLE_CAGE.name)
+        )
+        template_level: int = get_induction_motor_emt_template_level(level)
+        return get_induction_motor_emt_template(vf=self.var_factory, level=template_level, name=item_name).block
 
     def _build_grounding_link_emt_dialog(self,
                                          initial_config: Dict[str, Any] | None = None) -> GroundingLinkEmtDialog:
@@ -7189,6 +7318,74 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             block_model.name = item_name
             return block_model
 
+    def _append_emt_branch_side_connection_specs(
+            self,
+            specs: List[ConnectionVarSpec],
+            bus: Any,
+            side: str,
+    ) -> None:
+        """
+        Append EMT connection specs for one branch side according to the bus domain.
+
+        :param specs: List to extend.
+        :param bus: Side bus.
+        :param side: ``from`` or ``to``.
+        :return: None.
+        """
+        safe_bus_name: str = self._get_safe_bus_name(bus)
+
+        if side == "from":
+            ac_voltage_refs: List[tuple[VarPowerFlowRefferenceType, str]] = list([
+                (VarPowerFlowRefferenceType.vf_N, f"vf_N_{safe_bus_name}"),
+                (VarPowerFlowRefferenceType.vf_A, f"vf_A_{safe_bus_name}"),
+                (VarPowerFlowRefferenceType.vf_B, f"vf_B_{safe_bus_name}"),
+                (VarPowerFlowRefferenceType.vf_C, f"vf_C_{safe_bus_name}"),
+            ])
+            ac_current_refs: List[tuple[VarPowerFlowRefferenceType, str]] = list([
+                (VarPowerFlowRefferenceType.if_N,
+                 f"net_conn_{VarPowerFlowRefferenceType.if_N.value}_{safe_bus_name}_{self.api_object.name}"),
+                (VarPowerFlowRefferenceType.if_A,
+                 f"net_conn_{VarPowerFlowRefferenceType.if_A.value}_{safe_bus_name}_{self.api_object.name}"),
+                (VarPowerFlowRefferenceType.if_B,
+                 f"net_conn_{VarPowerFlowRefferenceType.if_B.value}_{safe_bus_name}_{self.api_object.name}"),
+                (VarPowerFlowRefferenceType.if_C,
+                 f"net_conn_{VarPowerFlowRefferenceType.if_C.value}_{safe_bus_name}_{self.api_object.name}"),
+            ])
+            dc_voltage_ref: VarPowerFlowRefferenceType = VarPowerFlowRefferenceType.Vf_dc
+            dc_current_ref: VarPowerFlowRefferenceType = VarPowerFlowRefferenceType.If_dc
+        elif side == "to":
+            ac_voltage_refs = list([
+                (VarPowerFlowRefferenceType.vt_N, f"vt_N_{safe_bus_name}"),
+                (VarPowerFlowRefferenceType.vt_A, f"vt_A_{safe_bus_name}"),
+                (VarPowerFlowRefferenceType.vt_B, f"vt_B_{safe_bus_name}"),
+                (VarPowerFlowRefferenceType.vt_C, f"vt_C_{safe_bus_name}"),
+            ])
+            ac_current_refs = list([
+                (VarPowerFlowRefferenceType.it_N,
+                 f"net_conn_{VarPowerFlowRefferenceType.it_N.value}_{safe_bus_name}_{self.api_object.name}"),
+                (VarPowerFlowRefferenceType.it_A,
+                 f"net_conn_{VarPowerFlowRefferenceType.it_A.value}_{safe_bus_name}_{self.api_object.name}"),
+                (VarPowerFlowRefferenceType.it_B,
+                 f"net_conn_{VarPowerFlowRefferenceType.it_B.value}_{safe_bus_name}_{self.api_object.name}"),
+                (VarPowerFlowRefferenceType.it_C,
+                 f"net_conn_{VarPowerFlowRefferenceType.it_C.value}_{safe_bus_name}_{self.api_object.name}"),
+            ])
+            dc_voltage_ref = VarPowerFlowRefferenceType.Vt_dc
+            dc_current_ref = VarPowerFlowRefferenceType.It_dc
+        else:
+            raise ValueError(f"Unsupported branch EMT side {side}")
+
+        if bus.is_dc:
+            specs.append(ConnectionVarSpec("input", dc_voltage_ref, f"{dc_voltage_ref.value}_{safe_bus_name}"))
+            specs.append(ConnectionVarSpec("output", dc_current_ref,
+                                           f"net_conn_{dc_current_ref.value}_{safe_bus_name}_{self.api_object.name}"))
+        else:
+            for reference, visible_name in ac_voltage_refs:
+                specs.append(ConnectionVarSpec("input", reference, visible_name))
+
+            for reference, visible_name in ac_current_refs:
+                specs.append(ConnectionVarSpec("output", reference, visible_name))
+
     def _sync_rlc_combo_load_base_values(self, template_kwargs: Dict[str, Any]) -> None:
         """
         Sync one real load API object with the equivalent RLC snapshot powers.
@@ -7501,6 +7698,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             BlockType.GROUNDING_LINK_EMT,
             BlockType.NONLINEAR_RESISTOR_EMT,
             BlockType.RLC_COMBO_EMT,
+            BlockType.INDUCTION_MOTOR_EMT,
         }:
             if payload == BlockType.SWITCH_EMT:
                 return self.create_switch_emt_block_item(x_pos=x_pos, y_pos=y_pos)
@@ -7512,6 +7710,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 return self.create_rlc_combo_emt_block_item(x_pos=x_pos, y_pos=y_pos)
             elif payload == BlockType.EMT_JMARTI_LINE:
                 return self.create_jmarti_line_emt_block_item(x_pos=x_pos, y_pos=y_pos)
+            elif payload == BlockType.INDUCTION_MOTOR_EMT:
+                return self.create_induction_motor_emt_block_item(x_pos=x_pos, y_pos=y_pos)
             elif _is_source_emt_block_type(payload):
                 return self.create_source_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
             elif _is_dc_source_emt_block_type(payload):
@@ -7667,6 +7867,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         # remove blocks and diagrams from main_block
         if item.subsys is not None:
+            self._remove_connection_interface_for_block(item)
+
             for child_block in list(self.main_block.children):
                 if child_block.uid == item.subsys.uid:
                     self.main_block.children.remove(child_block)
@@ -7683,6 +7885,80 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         # remove connections
         for conn in connections_to_remove:
             self.remove_connection_item(conn)
+
+    def _remove_connection_interface_for_block(self, item: BlockItem | GenericBlockItem) -> None:
+        """
+        Remove the saved top-level connection variable for one editor port block.
+
+        The connection blocks drawn on the canvas are only wrappers around the
+        actual root-block interface variables stored in ``main_block``. When the
+        user deletes one of those wrappers, the saved interface variable and its
+        external-mapping entry must be deleted as well so later EMT assembly sees
+        the edited interface exactly as shown in the editor.
+
+        :param item: Scene item being removed.
+        :return: None.
+        """
+        node_data: Any | None = None
+        connection_var: Var | None = None
+
+        if item.subsys is None:
+            return
+        else:
+            pass
+
+        node_data = self.diagram.node_data.get(item.subsys.uid, None)
+
+        if node_data is None:
+            return
+        else:
+            pass
+
+        if node_data.tpe == BlockType.INPUT_CONN.name:
+            if len(item.subsys.out_vars) > 0:
+                connection_var = item.subsys.out_vars[0]
+                self._remove_root_connection_var(connection_var=connection_var, direction="input")
+            else:
+                pass
+        elif node_data.tpe == BlockType.OUTPUT_CONN.name:
+            if len(item.subsys.in_vars) > 0:
+                connection_var = item.subsys.in_vars[0]
+                self._remove_root_connection_var(connection_var=connection_var, direction="output")
+            else:
+                pass
+        else:
+            pass
+
+    def _remove_root_connection_var(self, connection_var: Var, direction: str) -> None:
+        """
+        Remove one saved root-block interface variable and its mapping entries.
+
+        :param connection_var: Root-block network-connection variable to remove.
+        :param direction: ``input`` for ``main_block.in_vars`` or ``output`` for
+            ``main_block.out_vars``.
+        :return: None.
+        """
+        mapping_keys_to_remove: List[VarPowerFlowRefferenceType] = list()
+        mapping_key: VarPowerFlowRefferenceType
+        mapped_var: Var | None
+
+        if direction == "input":
+            self.main_block.in_vars = [var for var in self.main_block.in_vars if var.uid != connection_var.uid]
+        elif direction == "output":
+            self.main_block.out_vars = [var for var in self.main_block.out_vars if var.uid != connection_var.uid]
+        else:
+            raise ValueError(f"Unsupported root connection direction {direction}")
+
+        # Remove all external references that still point to the deleted port so
+        # the persisted block interface matches the visible editor interface.
+        for mapping_key, mapped_var in self.main_block.external_mapping.items():
+            if mapped_var is not None and mapped_var.uid == connection_var.uid:
+                mapping_keys_to_remove.append(mapping_key)
+            else:
+                pass
+
+        for mapping_key in mapping_keys_to_remove:
+            del self.main_block.external_mapping[mapping_key]
 
     def remove_item(self, item: BlockItem | GenericBlockItem | ConnectionItem) -> None:
         """
@@ -7999,84 +8275,85 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         return specs
 
+    # def _build_emt_injection_connection_specs(self) -> List[ConnectionVarSpec]:
+    #     """
+    #     Build the default maximum EMT connection-variable specs for an injection device.
+    #
+    #     :return:
+    #     """
+    #     safe_bus_name: str = self._get_safe_bus_name(self.api_object.bus)
+    #     specs: List[ConnectionVarSpec] = list()
+    #
+    #     # The editor must expose the full editable EMT contract up front. Static
+    #     # bus-domain and phase compatibility are validated later during EMT build.
+    #     specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.v_N, f"v_N_{safe_bus_name}"))
+    #     specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.v_A, f"v_A_{safe_bus_name}"))
+    #     specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.v_B, f"v_B_{safe_bus_name}"))
+    #     specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.v_C, f"v_C_{safe_bus_name}"))
+    #     specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.Vdc, f"Vdc_{safe_bus_name}"))
+    #
+    #     specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.i_N, f"net_conn_{VarPowerFlowRefferenceType.i_N.value}_{self.api_object.name}"))
+    #     specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.i_A, f"net_conn_{VarPowerFlowRefferenceType.i_A.value}_{self.api_object.name}"))
+    #     specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.i_B, f"net_conn_{VarPowerFlowRefferenceType.i_B.value}_{self.api_object.name}"))
+    #     specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.i_C, f"net_conn_{VarPowerFlowRefferenceType.i_C.value}_{self.api_object.name}"))
+    #     specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.Idc, f"net_conn_{VarPowerFlowRefferenceType.Idc.value}_{self.api_object.name}"))
+    #
+    #     return specs
+
     def _build_emt_injection_connection_specs(self) -> List[ConnectionVarSpec]:
         """
-        Build all EMT connection-variable specs for an injection device.
+        Build the EMT connection-variable specs for an injection device.
 
-        :return:
+        AC buses expose N/A/B/C voltage and current ports. DC buses expose only
+        Vdc/Idc ports.
+
+        :return: Connection variable specifications.
         """
-        voltage_pairs = self.get_injection_emt_voltage_pairs(self.api_object.bus)
+        safe_bus_name: str = self._get_safe_bus_name(self.api_object.bus)
         specs: List[ConnectionVarSpec] = list()
 
-        reference: VarPowerFlowRefferenceType
-        variable: Any
-        for reference, variable in voltage_pairs:
-            specs.append(ConnectionVarSpec("input", reference, str(variable.name)))
+        if self.api_object.bus.is_dc:
+            specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.Vdc, f"Vdc_{safe_bus_name}"))
+            specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.Idc,
+                                           f"net_conn_{VarPowerFlowRefferenceType.Idc.value}_{self.api_object.name}"))
+        else:
+            specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.v_N, f"v_N_{safe_bus_name}"))
+            specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.v_A, f"v_A_{safe_bus_name}"))
+            specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.v_B, f"v_B_{safe_bus_name}"))
+            specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.v_C, f"v_C_{safe_bus_name}"))
 
-        current_refs = self.build_emt_injection_current_refs(self.api_object.bus)
-        for reference in current_refs:
-            specs.append(ConnectionVarSpec("output", reference, f"net_conn_{reference.value}_{self.api_object.name}"))
+            specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.i_N,
+                                           f"net_conn_{VarPowerFlowRefferenceType.i_N.value}_{self.api_object.name}"))
+            specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.i_A,
+                                           f"net_conn_{VarPowerFlowRefferenceType.i_A.value}_{self.api_object.name}"))
+            specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.i_B,
+                                           f"net_conn_{VarPowerFlowRefferenceType.i_B.value}_{self.api_object.name}"))
+            specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.i_C,
+                                           f"net_conn_{VarPowerFlowRefferenceType.i_C.value}_{self.api_object.name}"))
 
         return specs
 
     def _build_emt_branch_connection_specs(self) -> List[ConnectionVarSpec]:
         """
-        Build all EMT connection-variable specs for a branch device.
+        Build EMT connection-variable specs for a branch device.
 
-        Inputs expose the voltages of both terminal buses.
-        Outputs expose the currents of both terminal buses using the same visible-name
-        pattern as injection devices plus the bus-name suffix.
+        Each terminal follows the same rule as injections: AC buses expose N/A/B/C,
+        while DC buses expose only Vdc/Idc.
 
-        :return:
+        :return: Connection variable specifications.
         """
         specs: List[ConnectionVarSpec] = list()
 
-        voltage_pairs_from = self.get_branch_emt_voltage_pairs(self.api_object.bus_from, "from")
-        voltage_pairs_to = self.get_branch_emt_voltage_pairs(self.api_object.bus_to, "to")
-
-        reference: VarPowerFlowRefferenceType
-        variable: Any
-        for reference, variable in voltage_pairs_from:
-            specs.append(ConnectionVarSpec("input", reference, str(variable.name)))
-
-        for reference, variable in voltage_pairs_to:
-            specs.append(ConnectionVarSpec("input", reference, str(variable.name)))
-
-        safe_bus_from = self._get_safe_bus_name(self.api_object.bus_from)
-        safe_bus_to = self._get_safe_bus_name(self.api_object.bus_to)
-
-        current_name_map_from: Dict[VarPowerFlowRefferenceType, str] = {
-            VarPowerFlowRefferenceType.if_N: f"net_conn_i_N_{safe_bus_from}_{self.api_object.name}",
-            VarPowerFlowRefferenceType.if_A: f"net_conn_i_A_{safe_bus_from}_{self.api_object.name}",
-            VarPowerFlowRefferenceType.if_B: f"net_conn_i_B_{safe_bus_from}_{self.api_object.name}",
-            VarPowerFlowRefferenceType.if_C: f"net_conn_i_C_{safe_bus_from}_{self.api_object.name}",
-            VarPowerFlowRefferenceType.Idc: f"net_conn_i_DC_{safe_bus_from}_{self.api_object.name}",
-        }
-
-        current_name_map_to: Dict[VarPowerFlowRefferenceType, str] = {
-            VarPowerFlowRefferenceType.it_N: f"net_conn_i_N_{safe_bus_to}_{self.api_object.name}",
-            VarPowerFlowRefferenceType.it_A: f"net_conn_i_A_{safe_bus_to}_{self.api_object.name}",
-            VarPowerFlowRefferenceType.it_B: f"net_conn_i_B_{safe_bus_to}_{self.api_object.name}",
-            VarPowerFlowRefferenceType.it_C: f"net_conn_i_C_{safe_bus_to}_{self.api_object.name}",
-            VarPowerFlowRefferenceType.Idc: f"net_conn_i_DC_{safe_bus_from}_{self.api_object.name}",
-        }
-
-        current_refs_from = self._build_emt_branch_current_refs(bus=self.api_object.bus_from,
-                                                           side="from",
-                                                                voltage_pairs = voltage_pairs_from)
-        current_refs_to = self._build_emt_branch_current_refs(bus=self.api_object.bus_to,
-                                                         side="to",
-                                                              voltage_pairs = voltage_pairs_to)
-
-        for reference in current_refs_from:
-            visible_name = current_name_map_from.get(reference, None)
-            if visible_name is not None:
-                specs.append(ConnectionVarSpec("output", reference, visible_name))
-
-        for reference in current_refs_to:
-            visible_name = current_name_map_to.get(reference, None)
-            if visible_name is not None:
-                specs.append(ConnectionVarSpec("output", reference, visible_name))
+        self._append_emt_branch_side_connection_specs(
+            specs=specs,
+            bus=self.api_object.bus_from,
+            side="from",
+        )
+        self._append_emt_branch_side_connection_specs(
+            specs=specs,
+            bus=self.api_object.bus_to,
+            side="to",
+        )
 
         return specs
 
@@ -8962,6 +9239,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self._modify_shunt_component_emt_block(item, modal_config)
         elif modal_kind == "rlc_combo_emt":
             self._modify_rlc_combo_emt_block(item, modal_config)
+        elif modal_kind == "induction_motor_emt":
+            self._modify_induction_motor_emt_block(item, modal_config)
         elif modal_kind == "switch_emt":
             self._modify_switch_emt_block(item, modal_config)
         else:
@@ -9448,6 +9727,34 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self._sync_rlc_combo_load_base_values(template_kwargs)
         self._replace_scene_block_from_template(item, new_block, "rlc_combo_emt", dict(rlc_config))
 
+    def _modify_induction_motor_emt_block(self, item: BlockItem, modal_config: Dict[str, Any]) -> None:
+        """
+        Reconfigure one modal-created induction-motor EMT block.
+
+        :param item: Target block item.
+        :param modal_config: Stored modal configuration.
+        :return: None.
+        """
+        # Reopen the same modal with the stored configuration so template edits use
+        # the exact persisted state instead of inferring anything from the block.
+        dialog: InductionMotorEmtDialog = self._build_induction_motor_emt_dialog(initial_config=modal_config)
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            induction_motor_config: Dict[str, Any] = dialog.get_configuration()
+        else:
+            return
+
+        if item.subsys is None:
+            return
+        else:
+            pass
+
+        new_block: Block = self._build_induction_motor_emt_block_model(
+            item_name=item.subsys.name,
+            modal_config=induction_motor_config,
+        )
+        self._replace_scene_block_from_template(item, new_block, "induction_motor_emt", dict(induction_motor_config))
+
     def _modify_grounding_link_emt_block(self, item: BlockItem, modal_config: Dict[str, Any]) -> None:
         """
         Reconfigure one modal-created EMT grounding-link block.
@@ -9854,6 +10161,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         block_item.setToolTip(self._build_arbitrary_source_emt_modal_tooltip(modal_config))
                     elif modal_kind == "transient_source_emt" and modal_config is not None:
                         block_item.setToolTip(self._build_transient_source_emt_modal_tooltip(modal_config))
+                    elif modal_kind == "induction_motor_emt" and modal_config is not None:
+                        block_item.setToolTip(self._build_induction_motor_emt_modal_tooltip(modal_config))
                     else:
                         pass
 

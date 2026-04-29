@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 from typing import Sequence
 
-from VeraGridEngine import get_transformer_emt_template, get_xfmr_emt_template
+from VeraGridEngine import get_transformer_emt_template, get_xfmr_emt_template, get_induction_motor_emt_template
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGridEngine.Devices.Branches.winding import Winding
 from VeraGridEngine.enumerations import BlockType, WindingType
@@ -197,6 +197,11 @@ def create_block_of_type(var_factory: VarFactory,
         blk.name = item_name
         return blk
 
+    elif block_type == BlockType.INDUCTION_MOTOR_EMT:
+        blk = get_induction_motor_emt_template(vf=var_factory, level=2, name=item_name).block
+        blk.name = item_name
+        return blk
+
     elif block_type == BlockType.TRAFO_EMT:
         conn_f, conn_t = _get_transformer_connection_types(api_object)
         blk = get_transformer_emt_template(var_factory, conn_f=conn_f, conn_t=conn_t).block
@@ -213,6 +218,8 @@ def create_block_of_type(var_factory: VarFactory,
         blk = get_ground_emt_template(var_factory, item_name).block
         blk.name = item_name
         return blk
+
+
 
     else:
         return None

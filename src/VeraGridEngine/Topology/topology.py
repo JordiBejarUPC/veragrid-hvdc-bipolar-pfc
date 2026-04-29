@@ -195,8 +195,18 @@ def get_island_monopole_indices(bus_map: IntVec, elm_active: BoolVec, elm_bus: I
 
 
 @nb.njit(cache=True)
-def get_island_branch_indices(bus_map: IntVec, elm_active: BoolVec, F: IntVec, T: IntVec) -> IntVec:
+def get_island_branch_indices(bus_map: IntVec,
+                              elm_active: BoolVec,
+                              F: IntVec,
+                              T: IntVec) -> IntVec:
     """
+    Get the branches that should belong into an island
+
+    The conditions are:
+    - is active (conducting electricity)
+    - The from bus index > -1
+    - The to bus index > -1
+    - The from bus index != to bus index (is not connected in a loop, which happens after topology reduction)
 
     :param bus_map:
     :param elm_active:
@@ -209,9 +219,10 @@ def get_island_branch_indices(bus_map: IntVec, elm_active: BoolVec, F: IntVec, T
 
     ii = 0
     for k in range(n_elm):
-        if elm_active[k] and bus_map[F[k]] > -1 and bus_map[T[k]] > -1:
-            indices[ii] = k
-            ii += 1
+        if elm_active[k] and F[k] != T[k]:
+            if bus_map[F[k]] > -1 and bus_map[T[k]] > -1:
+                indices[ii] = k
+                ii += 1
 
     return indices[:ii]
 
