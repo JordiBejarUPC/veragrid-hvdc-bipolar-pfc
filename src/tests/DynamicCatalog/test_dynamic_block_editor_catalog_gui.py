@@ -17,6 +17,7 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import _transformer_mo
 from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import LookupArrayLinearDialog
 from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import LookupMatrixLinearDialog
 from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import _parse_clipboard_grid
+from VeraGrid.Gui.DynamicModelEditor.induction_motor_emt_dialog import InductionMotorEmtLevel
 from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_runtime import get_jmarti_block_fit_bundle
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Templates.BasicBlockCatalog import BasicBlockTemplateDescriptor
@@ -230,6 +231,32 @@ def _find_prefixed_event_constant(block: Block, prefix: str) -> float:
             pass
 
     raise AssertionError(f"Missing event constant with prefix '{prefix}'")
+
+
+def _state_var_names(block: Block) -> list[str]:
+    """
+    Return the symbolic state-variable names of one block.
+    """
+
+    return list(var.name for var in block.state_vars)
+
+
+def _find_scene_block_item(editor: DynamicBlockEditorGUI, block_uid: int):
+    """
+    Find one visible scene block item by symbolic block uid.
+    """
+
+    scene_item: object
+    for scene_item in editor.scene.items():
+        if isinstance(scene_item, dynamic_block_editor_module.BlockItem):
+            if scene_item.subsys is not None and scene_item.subsys.uid == block_uid:
+                return scene_item
+            else:
+                pass
+        else:
+            pass
+
+    raise AssertionError(f"Missing scene block item for uid '{block_uid}'")
 
 
 def test_emt_editor_exposes_basic_block_catalog_under_basic() -> None:
@@ -1734,6 +1761,77 @@ def test_ground_emt_block_is_available_from_library() -> None:
     assert block_item is not None
     assert len(block_item.inputs) == 1
     assert len(block_item.outputs) == 1
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
+def test_induction_motor_emt_block_is_created_and_supports_modify_template(monkeypatch) -> None:
+    editor = _build_editor(DynamicSimulationMode.EMT)
+    create_initial_configurations: list[dict[str, object]] = list()
+    modify_initial_configurations: list[dict[str, object]] = list()
+
+    class _CreateDialogStub:
+        def __init__(self, parent=None, initial_config=None) -> None:
+            _unused = parent
+            assert initial_config is not None
+            create_initial_configurations.append(dict(initial_config))
+
+        def exec(self) -> int:
+            return int(QtWidgets.QDialog.DialogCode.Accepted)
+
+        def get_configuration(self) -> dict[str, object]:
+            return dict({"level": InductionMotorEmtLevel.SINGLE_CAGE.name})
+
+    class _ModifyDialogStub:
+        def __init__(self, parent=None, initial_config=None) -> None:
+            _unused = parent
+            assert initial_config is not None
+            modify_initial_configurations.append(dict(initial_config))
+
+        def exec(self) -> int:
+            return int(QtWidgets.QDialog.DialogCode.Accepted)
+
+        def get_configuration(self) -> dict[str, object]:
+            return dict({"level": InductionMotorEmtLevel.DOUBLE_CAGE.name})
+
+    monkeypatch.setattr(dynamic_block_editor_module, "InductionMotorEmtDialog", _CreateDialogStub)
+    block_item = editor.create_library_payload_item(BlockType.INDUCTION_MOTOR_EMT, 10.0, 20.0)
+    assert block_item is not None
+    assert create_initial_configurations == list([
+        dict({"level": InductionMotorEmtLevel.SINGLE_CAGE.name}),
+    ])
+
+    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    assert modal_kind == "induction_motor_emt"
+    assert modal_config is not None
+    assert modal_config["level"] == InductionMotorEmtLevel.SINGLE_CAGE.name
+    assert block_item.toolTip() == "Induction motor EMT\nLevel 2: single cage"
+
+    created_state_var_names: list[str] = _state_var_names(block_item.subsys)
+    assert not any(name.startswith("psi_r2_alpha_") for name in created_state_var_names)
+
+    monkeypatch.setattr(dynamic_block_editor_module, "InductionMotorEmtDialog", _ModifyDialogStub)
+    original_block_name: str = block_item.subsys.name
+    original_block_uid: int = block_item.subsys.uid
+    editor.modify_scene_item_template(block_item)
+
+    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    assert modal_kind == "induction_motor_emt"
+    assert modal_config is not None
+    assert modal_config["level"] == InductionMotorEmtLevel.DOUBLE_CAGE.name
+    assert modify_initial_configurations == list([
+        dict({"level": InductionMotorEmtLevel.SINGLE_CAGE.name}),
+    ])
+    assert block_item.subsys.name == original_block_name
+    assert block_item.subsys.uid == original_block_uid
+
+    modified_state_var_names: list[str] = _state_var_names(block_item.subsys)
+    assert any(name.startswith("psi_r2_alpha_") for name in modified_state_var_names)
+
+    editor.rebuild_scene_from_diagram()
+    rebuilt_item = _find_scene_block_item(editor, original_block_uid)
+    assert rebuilt_item.toolTip() == "Induction motor EMT\nLevel 3: double cage"
 
     editor.has_unapplied_changes = False
     editor.close()

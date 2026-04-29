@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Optional, Tuple
 
@@ -116,6 +117,146 @@ class MechanicalTorqueStepUpdater:
         :return: Torque-step time in seconds.
         """
         return self._step_time_s
+
+
+@dataclass(frozen=True)
+class InductionMotorDemoConfig:
+    """Configuration for one induction-motor EMT demo case."""
+
+    level: int
+    label: str
+    model_name: str
+    output_folder_name: str
+
+
+@dataclass
+class InductionMotorDiagnostics:
+    """Key cycle-averaged diagnostics collected from one demo run."""
+
+    p_cycle_initial: float
+    p_cycle_pre_event: float
+    q_cycle_initial: float
+    q_cycle_pre_event: float
+    te_cycle_pre_event: float
+    tm_cycle_pre_event: float
+    omega_cycle_pre_event: float
+    slip_cycle_pre_event: float
+
+
+@dataclass
+class InductionMotorDemoResult:
+    """Outcome summary for one induction-motor EMT demo case."""
+
+    config: InductionMotorDemoConfig
+    plot_path: Path
+    converged: bool
+    diagnostics: Optional[InductionMotorDiagnostics]
+    failure_reason: Optional[str]
+
+
+def _build_demo_configs() -> list[InductionMotorDemoConfig]:
+    """Return the ordered induction-motor EMT demo cases."""
+    return [
+        InductionMotorDemoConfig(
+            level=2,
+            label="single-cage EMT model",
+            model_name="induction_motor_level_2",
+            output_folder_name="level_2_single_cage",
+        ),
+        InductionMotorDemoConfig(
+            level=3,
+            label="double-cage EMT model",
+            model_name="induction_motor_level_3",
+            output_folder_name="level_3_double_cage",
+        ),
+    ]
+
+
+def _motor_var_name(base_name: str, motor_name: str) -> str:
+    """Return one motor-scoped symbolic variable name."""
+    return f"{base_name}_{motor_name}"
+
+
+def _get_output_directory(config: InductionMotorDemoConfig) -> Path:
+    """Return the per-level plot output directory."""
+    return Path(__file__).resolve().parent / "plot_results" / "induction_motor_emt" / config.output_folder_name
+
+
+def _set_common_motor_parameters(motor_block: Block, motor_name: str, motor_parameters: Dict[str, float]) -> None:
+    """Apply the parameters shared by all motor template levels."""
+    shared_parameter_name: str
+
+    for shared_parameter_name in ["r_s", "x_ls", "x_m", "H", "D", "slip_init", "slip_min", "slip_max", "speed_eps"]:
+        motor_block.set_parameter_in_model(
+            var_name=_motor_var_name(shared_parameter_name, motor_name),
+            new_value=motor_parameters[shared_parameter_name],
+        )
+
+
+def _set_level_specific_motor_parameters(
+    motor_block: Block,
+    motor_level: int,
+    motor_name: str,
+    motor_parameters: Dict[str, float],
+) -> None:
+    """Apply the rotor parameters required by the selected model level."""
+    if motor_level == 3:
+        motor_block.set_parameter_in_model(var_name=_motor_var_name("r_r1", motor_name), new_value=motor_parameters["r_r1"])
+        motor_block.set_parameter_in_model(var_name=_motor_var_name("x_lr1", motor_name), new_value=motor_parameters["x_lr1"])
+        motor_block.set_parameter_in_model(var_name=_motor_var_name("r_r2", motor_name), new_value=motor_parameters["r_r2"])
+        motor_block.set_parameter_in_model(var_name=_motor_var_name("x_lr2", motor_name), new_value=motor_parameters["x_lr2"])
+    else:
+        motor_block.set_parameter_in_model(var_name=_motor_var_name("r_r", motor_name), new_value=motor_parameters["r_r"])
+        motor_block.set_parameter_in_model(var_name=_motor_var_name("x_lr", motor_name), new_value=motor_parameters["x_lr"])
+
+
+def _build_equivalent_point_for_double_cage(
+    voltage_phasors: Tuple[complex, complex, complex],
+    p_targets_pu: Tuple[float, float, float],
+    q_targets_pu: Tuple[float, float, float],
+    motor_parameters: Dict[str, float],
+) -> Dict[str, float | complex | Tuple[complex, complex, complex]]:
+    """Compute an approximate steady-state point for the Level-3 double-cage model."""
+    v_a: complex = voltage_phasors[0]
+    v_b: complex = voltage_phasors[1]
+    v_c: complex = voltage_phasors[2]
+    s_a_target: complex = complex(p_targets_pu[0], q_targets_pu[0])
+    s_b_target: complex = complex(p_targets_pu[1], q_targets_pu[1])
+    s_c_target: complex = complex(p_targets_pu[2], q_targets_pu[2])
+    i_a_target: complex = np.conj(s_a_target / (v_a + 1e-12))
+    i_b_target: complex = np.conj(s_b_target / (v_b + 1e-12))
+    i_c_target: complex = np.conj(s_c_target / (v_c + 1e-12))
+    v_pos: complex = (v_a + np.exp(1j * 2.0 * np.pi / 3.0) * v_b + np.exp(-1j * 2.0 * np.pi / 3.0) * v_c) / 3.0
+    i_pos_target: complex = (i_a_target + np.exp(1j * 2.0 * np.pi / 3.0) * i_b_target + np.exp(-1j * 2.0 * np.pi / 3.0) * i_c_target) / 3.0
+    z_s: complex = complex(motor_parameters["r_s"], motor_parameters["x_ls"])
+    z_m: complex = complex(0.0, motor_parameters["x_m"])
+    v_airgap_target: complex = v_pos - z_s * i_pos_target
+    y_m: complex = 1.0 / (z_m + 1e-12)
+    y_rot_total: complex = i_pos_target / (v_airgap_target + 1e-12) - y_m
+    z_rot_total: complex = 1.0 / (y_rot_total + 1e-12)
+    slip_estimate: float = float(np.clip(
+        motor_parameters["r_r1"] / max(np.real(z_rot_total), motor_parameters["r_r1"] / motor_parameters["slip_max"]),
+        motor_parameters["slip_min"],
+        motor_parameters["slip_max"],
+    ))
+    z_r1: complex = complex(motor_parameters["r_r1"] / max(slip_estimate, 1e-9), motor_parameters["x_lr1"])
+    z_r2: complex = complex(motor_parameters["r_r2"] / max(slip_estimate, 1e-9), motor_parameters["x_lr2"])
+    z_r: complex = (z_r1 * z_r2) / (z_r1 + z_r2 + 1e-12)
+    z_parallel: complex = (z_m * z_r) / (z_m + z_r + 1e-12)
+    z_in: complex = z_s + z_parallel
+    i_pos_model: complex = v_pos / (z_in + 1e-12)
+    i_a_model: complex = i_pos_model
+    i_b_model: complex = np.exp(-1j * 2.0 * np.pi / 3.0) * i_pos_model
+    i_c_model: complex = np.exp(1j * 2.0 * np.pi / 3.0) * i_pos_model
+    s_total_model: complex = v_a * np.conj(i_a_model) + v_b * np.conj(i_b_model) + v_c * np.conj(i_c_model)
+    return dict({
+        "slip": slip_estimate,
+        "omega": 1.0 - slip_estimate,
+        "p_total": float(np.real(s_total_model)),
+        "q_total": float(np.imag(s_total_model)),
+        "currents": (i_a_model, i_b_model, i_c_model),
+        "phase_lag_rad": float(np.angle(v_a) - np.angle(i_a_model)),
+    })
 
 
 def _abc_to_alpha_beta_samples(abc_matrix: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
@@ -280,7 +421,10 @@ def _build_emt_options() -> EmtOptions:
     )
 
 
-def _build_demo_grid() -> Tuple[MultiCircuit, Bus, Bus, Line, Generator, Load, Block, Dict[str, float]]:
+def _build_demo_grid(
+    motor_level: int,
+    motor_name: str,
+) -> Tuple[MultiCircuit, Bus, Bus, Line, Generator, Load, Block, Dict[str, float]]:
     """Build one simple EMT-ready network with a source, a line and one motor.
 
     The load object supplies the power-flow operating point, while the EMT model
@@ -328,6 +472,10 @@ def _build_demo_grid() -> Tuple[MultiCircuit, Bus, Bus, Line, Generator, Load, B
         "x_m": 25.0,
         "r_r": 0.02,
         "x_lr": 0.04,
+        "r_r1": 0.025,
+        "x_lr1": 0.10,
+        "r_r2": 0.08,
+        "x_lr2": 0.35,
         "H": 0.45,
         "D": 0.01,
         "slip_init": 0.02,
@@ -349,23 +497,19 @@ def _build_demo_grid() -> Tuple[MultiCircuit, Bus, Bus, Line, Generator, Load, B
         name="gen_motor_demo",
     ).block
     line_block: Block = get_pi_line_emt_template(vf=grid.var_factory, phN=False, phA=True, phB=True, phC=True, name="Pi_Motor_Demo").block
-    motor_block: Block = get_induction_motor_emt_template(vf=grid.var_factory, level=2, name="induction_motor_demo").block
+    motor_block: Block = get_induction_motor_emt_template(vf=grid.var_factory, level=motor_level, name=motor_name).block
 
     set_emt_model(device=generator, model=generator_block, var_factory=grid.var_factory)
     set_emt_model(device=line, model=line_block, var_factory=grid.var_factory)
     set_emt_model(device=load, model=motor_block, var_factory=grid.var_factory)
 
-    motor_block.set_parameter_in_model(var_name="r_s_induction_motor_demo", new_value=motor_parameters["r_s"])
-    motor_block.set_parameter_in_model(var_name="x_ls_induction_motor_demo", new_value=motor_parameters["x_ls"])
-    motor_block.set_parameter_in_model(var_name="x_m_induction_motor_demo", new_value=motor_parameters["x_m"])
-    motor_block.set_parameter_in_model(var_name="r_r_induction_motor_demo", new_value=motor_parameters["r_r"])
-    motor_block.set_parameter_in_model(var_name="x_lr_induction_motor_demo", new_value=motor_parameters["x_lr"])
-    motor_block.set_parameter_in_model(var_name="H_induction_motor_demo", new_value=motor_parameters["H"])
-    motor_block.set_parameter_in_model(var_name="D_induction_motor_demo", new_value=motor_parameters["D"])
-    motor_block.set_parameter_in_model(var_name="slip_init_induction_motor_demo", new_value=motor_parameters["slip_init"])
-    motor_block.set_parameter_in_model(var_name="slip_min_induction_motor_demo", new_value=motor_parameters["slip_min"])
-    motor_block.set_parameter_in_model(var_name="slip_max_induction_motor_demo", new_value=motor_parameters["slip_max"])
-    motor_block.set_parameter_in_model(var_name="speed_eps_induction_motor_demo", new_value=motor_parameters["speed_eps"])
+    _set_common_motor_parameters(motor_block=motor_block, motor_name=motor_name, motor_parameters=motor_parameters)
+    _set_level_specific_motor_parameters(
+        motor_block=motor_block,
+        motor_level=motor_level,
+        motor_name=motor_name,
+        motor_parameters=motor_parameters,
+    )
 
     return grid, bus_slack, bus_motor, line, generator, load, motor_block, motor_parameters
 
@@ -494,7 +638,7 @@ def _run_power_flow(grid: MultiCircuit) -> object:
         return res
 
 
-def _build_problem(grid: MultiCircuit, pf_results_3ph: PowerFlowResults3Ph) -> EmtProblemDae:
+def _build_problem(grid: MultiCircuit, pf_results_3ph: object) -> EmtProblemDae:
     """Build the EMT problem.
 
     :param grid: Demo grid.
@@ -502,6 +646,29 @@ def _build_problem(grid: MultiCircuit, pf_results_3ph: PowerFlowResults3Ph) -> E
     :return: EMT problem.
     """
     return EmtProblemDae(grid=grid, options=_build_emt_options(), pf_results=None, pf_results_3ph=pf_results_3ph)
+
+
+def _compute_equivalent_point(
+    config: InductionMotorDemoConfig,
+    voltage_phasors: Tuple[complex, complex, complex],
+    load: Load,
+    grid: MultiCircuit,
+    motor_parameters: Dict[str, float],
+) -> Dict[str, float | complex | Tuple[complex, complex, complex]]:
+    """Compute the analytical reference point used by the diagnostics."""
+    if config.level == 3:
+        return _build_equivalent_point_for_double_cage(
+            voltage_phasors=voltage_phasors,
+            p_targets_pu=(load.Pa / grid.Sbase, load.Pb / grid.Sbase, load.Pc / grid.Sbase),
+            q_targets_pu=(load.Qa / grid.Sbase, load.Qb / grid.Sbase, load.Qc / grid.Sbase),
+            motor_parameters=motor_parameters,
+        )
+    return _compute_equivalent_circuit_initialization(
+        voltage_phasors=voltage_phasors,
+        p_targets_pu=(load.Pa / grid.Sbase, load.Pb / grid.Sbase, load.Pc / grid.Sbase),
+        q_targets_pu=(load.Qa / grid.Sbase, load.Qb / grid.Sbase, load.Qc / grid.Sbase),
+        motor_parameters=motor_parameters,
+    )
 
 
 def _run_simulation(problem: EmtProblemDae, boundary_updater: object | None) -> Tuple[np.ndarray, np.ndarray, bool, bool]:
@@ -534,7 +701,11 @@ def _run_simulation(problem: EmtProblemDae, boundary_updater: object | None) -> 
     return time_values, y_values, well_initialized, converged
 
 
-def _build_mechanical_torque_step_updater(problem: EmtProblemDae, motor_block: Block) -> MechanicalTorqueStepUpdater:
+def _build_mechanical_torque_step_updater(
+    problem: EmtProblemDae,
+    motor_block: Block,
+    motor_name: str,
+) -> MechanicalTorqueStepUpdater:
     """Build one runtime torque-step updater for the demo motor.
 
     :param problem: EMT problem.
@@ -542,7 +713,7 @@ def _build_mechanical_torque_step_updater(problem: EmtProblemDae, motor_block: B
     :return: Configured boundary updater.
     :raises ValueError: If the motor torque parameter cannot be located.
     """
-    torque_parameter: Optional[Var] = _find_event_var_by_name(motor_block, "t_load_nom_induction_motor_demo")
+    torque_parameter: Optional[Var] = _find_event_var_by_name(motor_block, _motor_var_name("t_load_nom", motor_name))
 
     if torque_parameter is None:
         raise ValueError("The motor nominal load torque parameter was not found in the EMT block.")
@@ -558,7 +729,35 @@ def _build_mechanical_torque_step_updater(problem: EmtProblemDae, motor_block: B
         )
 
 
+def _collect_diagnostics(
+    grid: MultiCircuit,
+    time_values: np.ndarray,
+    active_power: np.ndarray,
+    reactive_power: np.ndarray,
+    speed: np.ndarray,
+    slip: np.ndarray,
+    torque_e: np.ndarray,
+    torque_m: np.ndarray,
+    step_time_s: float,
+) -> InductionMotorDiagnostics:
+    """Collect the key cycle-averaged diagnostics used for the final summary."""
+    cycle_duration_s: float = 1.0 / grid.fBase
+    initial_cycle_start_s: float = 0.0
+    pre_event_cycle_start_s: float = max(step_time_s - cycle_duration_s - 0.005, 0.0)
+    return InductionMotorDiagnostics(
+        p_cycle_initial=_cycle_mean(time_values=time_values, sample_values=active_power, frequency_hz=grid.fBase, start_time_s=initial_cycle_start_s),
+        p_cycle_pre_event=_cycle_mean(time_values=time_values, sample_values=active_power, frequency_hz=grid.fBase, start_time_s=pre_event_cycle_start_s),
+        q_cycle_initial=_cycle_mean(time_values=time_values, sample_values=reactive_power, frequency_hz=grid.fBase, start_time_s=initial_cycle_start_s),
+        q_cycle_pre_event=_cycle_mean(time_values=time_values, sample_values=reactive_power, frequency_hz=grid.fBase, start_time_s=pre_event_cycle_start_s),
+        te_cycle_pre_event=_cycle_mean(time_values=time_values, sample_values=torque_e, frequency_hz=grid.fBase, start_time_s=pre_event_cycle_start_s),
+        tm_cycle_pre_event=_cycle_mean(time_values=time_values, sample_values=torque_m, frequency_hz=grid.fBase, start_time_s=pre_event_cycle_start_s),
+        omega_cycle_pre_event=_cycle_mean(time_values=time_values, sample_values=speed, frequency_hz=grid.fBase, start_time_s=pre_event_cycle_start_s),
+        slip_cycle_pre_event=_cycle_mean(time_values=time_values, sample_values=slip, frequency_hz=grid.fBase, start_time_s=pre_event_cycle_start_s),
+    )
+
+
 def _print_debug_values(
+    config: InductionMotorDemoConfig,
     load: Load,
     grid: MultiCircuit,
     bus_voltages: np.ndarray,
@@ -573,7 +772,7 @@ def _print_debug_values(
     equivalent_point: Dict[str, float | complex | Tuple[complex, complex, complex]],
     motor_parameters: Dict[str, float],
     step_time_s: float,
-) -> None:
+) -> InductionMotorDiagnostics:
     """Print initialization and final-value debug checks for the demo motor.
 
     :param load: Power-flow load object.
@@ -592,6 +791,17 @@ def _print_debug_values(
     :param step_time_s: Torque-step time.
     :return: None.
     """
+    diagnostics: InductionMotorDiagnostics = _collect_diagnostics(
+        grid=grid,
+        time_values=time_values,
+        active_power=active_power,
+        reactive_power=reactive_power,
+        speed=speed,
+        slip=slip,
+        torque_e=torque_e,
+        torque_m=torque_m,
+        step_time_s=step_time_s,
+    )
     p0_target: float = float((load.Pa + load.Pb + load.Pc) / grid.Sbase)
     q0_target: float = float((load.Qa + load.Qb + load.Qc) / grid.Sbase)
     cycle_duration_s: float = 1.0 / grid.fBase
@@ -622,18 +832,18 @@ def _print_debug_values(
     p_abc_cycle: float = float(np.mean(np.sum(bus_voltages[initial_cycle_mask, :] * motor_currents[initial_cycle_mask, :], axis=1)))
     p_alpha_beta_cycle: float = float(np.mean(1.5 * (voltage_alpha * current_alpha + voltage_beta * current_beta)))
     q_alpha_beta_cycle: float = float(np.mean(1.5 * (voltage_beta * current_alpha - voltage_alpha * current_beta)))
-    p_cycle_initial: float = _cycle_mean(time_values=time_values, sample_values=active_power, frequency_hz=grid.fBase, start_time_s=initial_cycle_start_s)
-    q_cycle_initial: float = _cycle_mean(time_values=time_values, sample_values=reactive_power, frequency_hz=grid.fBase, start_time_s=initial_cycle_start_s)
+    p_cycle_initial: float = diagnostics.p_cycle_initial
+    q_cycle_initial: float = diagnostics.q_cycle_initial
     te_cycle_initial: float = _cycle_mean(time_values=time_values, sample_values=torque_e, frequency_hz=grid.fBase, start_time_s=initial_cycle_start_s)
     tm_cycle_initial: float = _cycle_mean(time_values=time_values, sample_values=torque_m, frequency_hz=grid.fBase, start_time_s=initial_cycle_start_s)
     omega_cycle_initial: float = _cycle_mean(time_values=time_values, sample_values=speed, frequency_hz=grid.fBase, start_time_s=initial_cycle_start_s)
     slip_cycle_initial: float = _cycle_mean(time_values=time_values, sample_values=slip, frequency_hz=grid.fBase, start_time_s=initial_cycle_start_s)
-    p_cycle_pre_event: float = _cycle_mean(time_values=time_values, sample_values=active_power, frequency_hz=grid.fBase, start_time_s=pre_event_cycle_start_s)
-    q_cycle_pre_event: float = _cycle_mean(time_values=time_values, sample_values=reactive_power, frequency_hz=grid.fBase, start_time_s=pre_event_cycle_start_s)
-    te_cycle_pre_event: float = _cycle_mean(time_values=time_values, sample_values=torque_e, frequency_hz=grid.fBase, start_time_s=pre_event_cycle_start_s)
-    tm_cycle_pre_event: float = _cycle_mean(time_values=time_values, sample_values=torque_m, frequency_hz=grid.fBase, start_time_s=pre_event_cycle_start_s)
-    omega_cycle_pre_event: float = _cycle_mean(time_values=time_values, sample_values=speed, frequency_hz=grid.fBase, start_time_s=pre_event_cycle_start_s)
-    slip_cycle_pre_event: float = _cycle_mean(time_values=time_values, sample_values=slip, frequency_hz=grid.fBase, start_time_s=pre_event_cycle_start_s)
+    p_cycle_pre_event: float = diagnostics.p_cycle_pre_event
+    q_cycle_pre_event: float = diagnostics.q_cycle_pre_event
+    te_cycle_pre_event: float = diagnostics.te_cycle_pre_event
+    tm_cycle_pre_event: float = diagnostics.tm_cycle_pre_event
+    omega_cycle_pre_event: float = diagnostics.omega_cycle_pre_event
+    slip_cycle_pre_event: float = diagnostics.slip_cycle_pre_event
     p_cycle_final: float = _cycle_mean(time_values=time_values, sample_values=active_power, frequency_hz=grid.fBase, start_time_s=final_cycle_start_s)
     q_cycle_final: float = _cycle_mean(time_values=time_values, sample_values=reactive_power, frequency_hz=grid.fBase, start_time_s=final_cycle_start_s)
     te_cycle_final: float = _cycle_mean(time_values=time_values, sample_values=torque_e, frequency_hz=grid.fBase, start_time_s=final_cycle_start_s)
@@ -641,6 +851,7 @@ def _print_debug_values(
     omega_cycle_final: float = _cycle_mean(time_values=time_values, sample_values=speed, frequency_hz=grid.fBase, start_time_s=final_cycle_start_s)
     slip_cycle_final: float = _cycle_mean(time_values=time_values, sample_values=slip, frequency_hz=grid.fBase, start_time_s=final_cycle_start_s)
 
+    print(f"--- Diagnostics: level {config.level} ({config.label}) ---")
     print(f"P0_target [pu]: {p0_target:.6f}")
     print(f"Q0_target [pu]: {q0_target:.6f}")
     print(f"P_eq_init [pu]: {float(equivalent_point['p_total']):.6f}")
@@ -693,9 +904,11 @@ def _print_debug_values(
         f"Torque balance pre-event [pu]: "
         f"{te_cycle_pre_event - (tm_cycle_pre_event + motor_parameters['D'] * (omega_cycle_pre_event - 1.0)):.6f}"
     )
+    return diagnostics
 
 
 def _plot_results(
+    config: InductionMotorDemoConfig,
     output_directory: Path,
     time_values: np.ndarray,
     bus_voltages: np.ndarray,
@@ -730,12 +943,13 @@ def _plot_results(
     reactive_power_average: np.ndarray = _cycle_average_trace(time_values=time_values, sample_values=reactive_power, frequency_hz=frequency_hz)
 
     fig, axes = plt.subplots(5, 1, figsize=(11.0, 16.0), sharex=True)
+    fig.suptitle(f"Induction Motor EMT Level {config.level}: {config.label}")
 
     axes[0].plot(time_values, bus_voltages[:, 0], label="vA")
     axes[0].plot(time_values, bus_voltages[:, 1], label="vB")
     axes[0].plot(time_values, bus_voltages[:, 2], label="vC")
     axes[0].set_ylabel("Voltage [pu]")
-    axes[0].set_title("Motor Bus Voltages abc")
+    axes[0].set_title(f"Level {config.level} Motor Bus Voltages abc")
     axes[0].grid(True)
     axes[0].legend(loc="upper right")
 
@@ -743,7 +957,7 @@ def _plot_results(
     axes[1].plot(time_values, motor_currents[:, 1], label="iB")
     axes[1].plot(time_values, motor_currents[:, 2], label="iC")
     axes[1].set_ylabel("Current [pu]")
-    axes[1].set_title("Motor Absorbed Currents abc")
+    axes[1].set_title(f"Level {config.level} Motor Absorbed Currents abc")
     axes[1].grid(True)
     axes[1].legend(loc="upper right")
 
@@ -752,14 +966,14 @@ def _plot_results(
     axes[2].plot(time_values, active_power_average, linestyle="--", linewidth=1.0, label="P avg")
     axes[2].plot(time_values, reactive_power_average, linestyle="--", linewidth=1.0, label="Q avg")
     axes[2].set_ylabel("Power [pu]")
-    axes[2].set_title("Motor Active and Reactive Power")
+    axes[2].set_title(f"Level {config.level} Motor Active and Reactive Power")
     axes[2].grid(True)
     axes[2].legend(loc="upper right")
 
     axes[3].plot(time_values, speed, label="speed")
     axes[3].plot(time_values, slip, label="slip")
     axes[3].set_ylabel("pu")
-    axes[3].set_title("Rotor Speed and Slip")
+    axes[3].set_title(f"Level {config.level} Rotor Speed and Slip")
     axes[3].grid(True)
     axes[3].legend(loc="upper right")
 
@@ -767,7 +981,7 @@ def _plot_results(
     axes[4].plot(time_values, torque_m, label="Tm")
     axes[4].set_xlabel("Time [s]")
     axes[4].set_ylabel("Torque [pu]")
-    axes[4].set_title("Electrical and Mechanical Torque")
+    axes[4].set_title(f"Level {config.level} Electrical and Mechanical Torque")
     axes[4].grid(True)
     axes[4].legend(loc="upper right")
 
@@ -775,13 +989,18 @@ def _plot_results(
     for axis_item in axes:
         axis_item.axvline(step_time_s, color="k", linestyle="--", linewidth=1.0)
 
-    fig.tight_layout()
-    plt.show()
+    fig.tight_layout(rect=(0.0, 0.0, 1.0, 0.98))
     fig.savefig(output_directory / "induction_motor_emt_summary.png", dpi=150)
     plt.close(fig)
 
 
-def _print_physical_checks(motor_currents: np.ndarray, active_power: np.ndarray, reactive_power: np.ndarray, speed: np.ndarray) -> None:
+def _print_physical_checks(
+    config: InductionMotorDemoConfig,
+    motor_currents: np.ndarray,
+    active_power: np.ndarray,
+    reactive_power: np.ndarray,
+    speed: np.ndarray,
+) -> None:
     """Print compact physical-sense checks for the demo response.
 
     :param motor_currents: Three-phase motor currents.
@@ -799,6 +1018,7 @@ def _print_physical_checks(motor_currents: np.ndarray, active_power: np.ndarray,
     inductive_q: bool = bool(np.mean(reactive_power[-final_window:]) > 0.0)
     positive_p: bool = bool(np.mean(active_power[-final_window:]) > 0.0)
 
+    print(f"--- Physical checks: level {config.level} ({config.label}) ---")
     print(f"Peak current magnitude: {peak_current:.3f} pu")
     print(f"Final current magnitude: {final_current_mean:.3f} pu")
     print(f"Final speed: {speed[-1]:.3f} pu")
@@ -808,38 +1028,39 @@ def _print_physical_checks(motor_currents: np.ndarray, active_power: np.ndarray,
     print(f"Inductive reactive-power absorption: {inductive_q}")
 
 
-def run_induction_motor_emt_demo() -> Path:
-    """Run the induction-motor EMT demo and write the requested plots.
-
-    :return: Output plot path.
-    :raises RuntimeError: If EMT initialization or simulation fails.
-    """
-    grid, _bus_slack, bus_motor, _line, _generator, load, motor_block, motor_parameters = _build_demo_grid()
+def _run_induction_motor_emt_demo_case(config: InductionMotorDemoConfig) -> InductionMotorDemoResult:
+    """Run one configured induction-motor EMT demo case and collect diagnostics."""
+    grid, _bus_slack, bus_motor, _line, _generator, load, motor_block, motor_parameters = _build_demo_grid(
+        motor_level=config.level,
+        motor_name=config.model_name,
+    )
     pf_results_3ph: object = _run_power_flow(grid)
     bus_index: int = grid.buses.index(bus_motor)
-    equivalent_point: Dict[str, float | complex | Tuple[complex, complex, complex]] = _compute_equivalent_circuit_initialization(
-        voltage_phasors=(
-            complex(pf_results_3ph.voltage_A[bus_index]),
-            complex(pf_results_3ph.voltage_B[bus_index]),
-            complex(pf_results_3ph.voltage_C[bus_index]),
-        ),
-        p_targets_pu=(load.Pa / grid.Sbase, load.Pb / grid.Sbase, load.Pc / grid.Sbase),
-        q_targets_pu=(load.Qa / grid.Sbase, load.Qb / grid.Sbase, load.Qc / grid.Sbase),
+    voltage_phasors: Tuple[complex, complex, complex] = (
+        complex(pf_results_3ph.voltage_A[bus_index]),
+        complex(pf_results_3ph.voltage_B[bus_index]),
+        complex(pf_results_3ph.voltage_C[bus_index]),
+    )
+    equivalent_point: Dict[str, float | complex | Tuple[complex, complex, complex]] = _compute_equivalent_point(
+        config=config,
+        voltage_phasors=voltage_phasors,
+        load=load,
+        grid=grid,
         motor_parameters=motor_parameters,
     )
     problem: EmtProblemDae = _build_problem(grid=grid, pf_results_3ph=pf_results_3ph)
-    torque_step_updater: MechanicalTorqueStepUpdater = _build_mechanical_torque_step_updater(problem=problem, motor_block=motor_block)
+    torque_step_updater: MechanicalTorqueStepUpdater = _build_mechanical_torque_step_updater(
+        problem=problem,
+        motor_block=motor_block,
+        motor_name=config.model_name,
+    )
     time_values, y_values, well_initialized, converged = _run_simulation(problem=problem, boundary_updater=torque_step_updater)
 
     if not well_initialized:
-        raise RuntimeError("The induction-motor EMT demo did not initialize successfully.")
-    else:
-        pass
+        raise RuntimeError(f"The induction-motor EMT demo for level {config.level} did not initialize successfully.")
 
     if not converged:
-        raise RuntimeError("The induction-motor EMT demo did not converge during simulation.")
-    else:
-        pass
+        raise RuntimeError(f"The induction-motor EMT demo for level {config.level} did not converge during simulation.")
 
     bus_voltages: np.ndarray = np.column_stack((
         _get_series(problem, bus_motor.emt_model, "v_A_Bus_Motor_emt_template", y_values),
@@ -847,19 +1068,20 @@ def run_induction_motor_emt_demo() -> Path:
         _get_series(problem, bus_motor.emt_model, "v_C_Bus_Motor_emt_template", y_values),
     ))
     motor_currents: np.ndarray = np.column_stack((
-        -_get_series(problem, motor_block, "i_A_induction_motor_demo", y_values),
-        -_get_series(problem, motor_block, "i_B_induction_motor_demo", y_values),
-        -_get_series(problem, motor_block, "i_C_induction_motor_demo", y_values),
+        -_get_series(problem, motor_block, _motor_var_name("i_A", config.model_name), y_values),
+        -_get_series(problem, motor_block, _motor_var_name("i_B", config.model_name), y_values),
+        -_get_series(problem, motor_block, _motor_var_name("i_C", config.model_name), y_values),
     ))
-    active_power: np.ndarray = _get_series(problem, motor_block, "P_motor_induction_motor_demo", y_values)
-    reactive_power: np.ndarray = _get_series(problem, motor_block, "Q_motor_induction_motor_demo", y_values)
-    speed: np.ndarray = _get_series(problem, motor_block, "omega_r_induction_motor_demo", y_values)
-    slip: np.ndarray = _get_series(problem, motor_block, "slip_induction_motor_demo", y_values)
-    torque_e: np.ndarray = _get_series(problem, motor_block, "T_e_induction_motor_demo", y_values)
-    torque_m: np.ndarray = _get_series(problem, motor_block, "T_m_induction_motor_demo", y_values)
+    active_power: np.ndarray = _get_series(problem, motor_block, _motor_var_name("P_motor", config.model_name), y_values)
+    reactive_power: np.ndarray = _get_series(problem, motor_block, _motor_var_name("Q_motor", config.model_name), y_values)
+    speed: np.ndarray = _get_series(problem, motor_block, _motor_var_name("omega_r", config.model_name), y_values)
+    slip: np.ndarray = _get_series(problem, motor_block, _motor_var_name("slip", config.model_name), y_values)
+    torque_e: np.ndarray = _get_series(problem, motor_block, _motor_var_name("T_e", config.model_name), y_values)
+    torque_m: np.ndarray = _get_series(problem, motor_block, _motor_var_name("T_m", config.model_name), y_values)
 
-    output_directory: Path = Path(__file__).resolve().parent / "plot_results" / "induction_motor_emt"
+    output_directory: Path = _get_output_directory(config)
     _plot_results(
+        config=config,
         output_directory=output_directory,
         time_values=time_values,
         bus_voltages=bus_voltages,
@@ -873,7 +1095,8 @@ def run_induction_motor_emt_demo() -> Path:
         step_time_s=torque_step_updater.step_time_s,
         frequency_hz=grid.fBase,
     )
-    _print_debug_values(
+    diagnostics: InductionMotorDiagnostics = _print_debug_values(
+        config=config,
         load=load,
         grid=grid,
         bus_voltages=bus_voltages,
@@ -889,10 +1112,110 @@ def run_induction_motor_emt_demo() -> Path:
         motor_parameters=motor_parameters,
         step_time_s=torque_step_updater.step_time_s,
     )
-    _print_physical_checks(motor_currents, active_power, reactive_power, speed)
-    return output_directory / "induction_motor_emt_summary.png"
+    _print_physical_checks(config=config, motor_currents=motor_currents, active_power=active_power, reactive_power=reactive_power, speed=speed)
+    return InductionMotorDemoResult(
+        config=config,
+        plot_path=output_directory / "induction_motor_emt_summary.png",
+        converged=True,
+        diagnostics=diagnostics,
+        failure_reason=None,
+    )
+
+
+def _format_summary_float(value: Optional[float]) -> str:
+    """Format one optional summary metric for compact tabular printing."""
+    if value is None:
+        return "n/a"
+    return f"{value:.6f}"
+
+
+def _build_failure_result(config: InductionMotorDemoConfig, reason: str) -> InductionMotorDemoResult:
+    """Build a failed case result without stopping the remaining runs."""
+    return InductionMotorDemoResult(
+        config=config,
+        plot_path=_get_output_directory(config) / "induction_motor_emt_summary.png",
+        converged=False,
+        diagnostics=None,
+        failure_reason=reason,
+    )
+
+
+def _print_final_summary(results: list[InductionMotorDemoResult]) -> None:
+    """Print the compact multi-case induction-motor EMT summary table."""
+    print("\n=== Induction Motor EMT Summary ===")
+    header_columns: list[str] = [
+        "level",
+        "label",
+        "plot path",
+        "converged / failed",
+        "P_cycle_initial",
+        "P_cycle_pre_event",
+        "Q_cycle_initial",
+        "Q_cycle_pre_event",
+        "Te_cycle_pre_event",
+        "Tm_cycle_pre_event",
+        "omega_cycle_pre_event",
+        "slip_cycle_pre_event",
+    ]
+    print(" | ".join(header_columns))
+    print("-" * 240)
+
+    result: InductionMotorDemoResult
+    for result in results:
+        diagnostics: Optional[InductionMotorDiagnostics] = result.diagnostics
+        status_text: str = "converged" if result.converged else "failed"
+        print(" | ".join([
+            str(result.config.level),
+            result.config.label,
+            str(result.plot_path),
+            status_text,
+            _format_summary_float(None if diagnostics is None else diagnostics.p_cycle_initial),
+            _format_summary_float(None if diagnostics is None else diagnostics.p_cycle_pre_event),
+            _format_summary_float(None if diagnostics is None else diagnostics.q_cycle_initial),
+            _format_summary_float(None if diagnostics is None else diagnostics.q_cycle_pre_event),
+            _format_summary_float(None if diagnostics is None else diagnostics.te_cycle_pre_event),
+            _format_summary_float(None if diagnostics is None else diagnostics.tm_cycle_pre_event),
+            _format_summary_float(None if diagnostics is None else diagnostics.omega_cycle_pre_event),
+            _format_summary_float(None if diagnostics is None else diagnostics.slip_cycle_pre_event),
+        ]))
+        if result.failure_reason is not None:
+            print(f"Failure reason (level {result.config.level}): {result.failure_reason}")
+
+
+def run_induction_motor_emt_demo(config: InductionMotorDemoConfig) -> Path:
+    """Run one induction-motor EMT demo case.
+
+    :param config: Per-level demo configuration.
+    :return: Output plot path.
+    :raises RuntimeError: If EMT initialization or simulation fails.
+    """
+    return _run_induction_motor_emt_demo_case(config).plot_path
+
+
+def run_all_induction_motor_emt_demos() -> list[Path]:
+    """Run all induction-motor EMT demo levels independently.
+
+    :return: Plot paths for the cases that completed successfully.
+    """
+    plot_paths: list[Path] = []
+    results: list[InductionMotorDemoResult] = []
+    config: InductionMotorDemoConfig
+
+    for config in _build_demo_configs():
+        print(f"\n=== Running induction motor EMT level {config.level}: {config.label} ===")
+        try:
+            case_result: InductionMotorDemoResult = _run_induction_motor_emt_demo_case(config)
+            plot_paths.append(case_result.plot_path)
+            results.append(case_result)
+            print(f"Saved induction-motor EMT plot to: {case_result.plot_path}")
+        except Exception as exc:
+            failure_result: InductionMotorDemoResult = _build_failure_result(config=config, reason=str(exc))
+            results.append(failure_result)
+            print(f"Level {config.level} failed: {exc}")
+
+    _print_final_summary(results)
+    return plot_paths
 
 
 if __name__ == "__main__":
-    plot_path: Path = run_induction_motor_emt_demo()
-    print(f"Saved induction-motor EMT plot to: {plot_path}")
+    run_all_induction_motor_emt_demos()

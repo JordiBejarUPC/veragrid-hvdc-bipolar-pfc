@@ -75,6 +75,7 @@ from VeraGridEngine.Templates.Emt.source_emt_template import get_controlled_volt
 from VeraGridEngine.Templates.Emt.source_emt_template import get_current_source_emt_template
 from VeraGridEngine.Templates.Emt.source_emt_template import get_voltage_source_emt_template
 from VeraGridEngine.Templates.Emt.switch_emt_template import get_switch_emt_template
+from VeraGridEngine.Templates.Emt.induction_motor_emt_template import get_induction_motor_emt_template
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_rlc_combo_emt_template
 from VeraGridEngine.Templates.Emt.load_zip_emt_template import get_load_ZIP_emt_template
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
@@ -86,6 +87,11 @@ from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import LookupArrayLinea
 from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import LookupMatrixLinearDialog
 from VeraGrid.Gui.DynamicModelEditor.grounding_link_emt_dialog import GroundingLinkEmtDialog
 from VeraGrid.Gui.DynamicModelEditor.jmarti_line_emt_dialog import JMartiLineEmtDialog
+from VeraGrid.Gui.DynamicModelEditor.induction_motor_emt_dialog import InductionMotorEmtDialog
+from VeraGrid.Gui.DynamicModelEditor.induction_motor_emt_dialog import InductionMotorEmtLevel
+from VeraGrid.Gui.DynamicModelEditor.induction_motor_emt_dialog import coerce_induction_motor_emt_level
+from VeraGrid.Gui.DynamicModelEditor.induction_motor_emt_dialog import get_induction_motor_emt_level_label
+from VeraGrid.Gui.DynamicModelEditor.induction_motor_emt_dialog import get_induction_motor_emt_template_level
 from VeraGrid.Gui.DynamicModelEditor.load_topology_emt_dialog import LoadTopologyEmtDialog
 from VeraGrid.Gui.DynamicModelEditor.rlc_combo_emt_dialog import RlcComboEmtDialog
 from VeraGrid.Gui.DynamicModelEditor.shunt_component_emt_dialog import ShuntComponentEmtDialog
@@ -4348,6 +4354,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 LibraryLeafSpec("Exponential load", BlockType.EXP_LOAD_EMT),
                 LibraryLeafSpec("ZIP load", BlockType.ZIP_LOAD_EMT),
                 LibraryLeafSpec("DC load", BlockType.DC_LOAD_EMT),
+                LibraryLeafSpec("Induction motor", BlockType.INDUCTION_MOTOR_EMT)
             ],
             # TODO: for transformers it should appear in all types of trafos
             DeviceType.Transformer2WDevice: [
@@ -6437,6 +6444,57 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.mark_unapplied_changes()
         return block_item
 
+    def create_induction_motor_emt_block_item(self, x_pos: float, y_pos: float) -> BlockItem | None:
+        """
+        Create one induction-motor EMT block configured through its modal.
+
+        :param x_pos: Drop x position.
+        :param y_pos: Drop y position.
+        :return: Created block item or None when the dialog is cancelled.
+        """
+        # The modal runs before block creation so the selected template level becomes
+        # part of the initial symbolic build and persisted metadata from the start.
+        default_config: Dict[str, Any] = self._build_default_induction_motor_emt_modal_config()
+        dialog: InductionMotorEmtDialog = self._build_induction_motor_emt_dialog(initial_config=default_config)
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            induction_motor_config: Dict[str, Any] = dialog.get_configuration()
+        else:
+            return None
+
+        count: int = self.block_counters.get(BlockType.INDUCTION_MOTOR_EMT, 0) + 1
+        item_name: str = f"induction_motor_emt_{count}"
+        block_item: BlockItem = BlockItem(var_factory=self.var_factory, name=item_name)
+        block_model: Block = self._build_induction_motor_emt_block_model(
+            item_name=item_name,
+            modal_config=induction_motor_config,
+        )
+
+        # Persist the modal selection so modify-template and rebuild flows can
+        # recreate the same symbolic template later.
+        set_modal_template_metadata(block_model, kind="induction_motor_emt", config=dict(induction_motor_config))
+
+        self.block_counters[BlockType.INDUCTION_MOTOR_EMT] = count
+        block_item.set_subsystem(block_model)
+        block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
+        block_item.build_item()
+        block_item.setToolTip(self._build_induction_motor_emt_modal_tooltip(induction_motor_config))
+
+        # The scene item, main block, and persisted diagram must all be updated
+        # together so later rebuilds and apply/save operations stay consistent.
+        self.main_block.add(block_model)
+        self.scene.addItem(block_item)
+        block_item.setPos(QtCore.QPointF(x_pos, y_pos))
+        self.diagram.add_node(
+            name=item_name,
+            x=x_pos,
+            y=y_pos,
+            tpe=BlockType.INDUCTION_MOTOR_EMT.name,
+            device_uid=block_model.uid,
+        )
+        self.mark_unapplied_changes()
+        return block_item
+
     def create_shunt_component_emt_block_item(self,
                                               block_type: BlockType,
                                               x_pos: float,
@@ -6766,6 +6824,64 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             base_power_mva=base_power_mva,
             base_frequency_hz=base_frequency_hz,
         )
+
+    @staticmethod
+    def _build_default_induction_motor_emt_modal_config(level: InductionMotorEmtLevel = InductionMotorEmtLevel.SINGLE_CAGE) -> Dict[str, Any]:
+        """
+        Build the default persisted configuration for one induction-motor EMT modal.
+
+        :param level: Default template level.
+        :return: Default induction-motor modal configuration.
+        """
+        return dict({"level": level.name})
+
+    def _build_induction_motor_emt_dialog(self,
+                                          initial_config: Dict[str, Any] | None = None) -> InductionMotorEmtDialog:
+        """
+        Build the modal dialog used by the induction-motor EMT workflow.
+
+        :param initial_config: Optional persisted modal configuration.
+        :return: Configured dialog instance.
+        """
+        dialog_config: Dict[str, Any]
+        if initial_config is None:
+            dialog_config = self._build_default_induction_motor_emt_modal_config()
+        else:
+            dialog_config = dict(initial_config)
+
+        return InductionMotorEmtDialog(
+            self,
+            initial_config=dialog_config,
+        )
+
+    @staticmethod
+    def _build_induction_motor_emt_modal_tooltip(modal_config: Dict[str, Any]) -> str:
+        """
+        Build one compact tooltip for one induction-motor EMT block.
+
+        :param modal_config: Persisted induction-motor modal configuration.
+        :return: Tooltip text.
+        """
+        level: InductionMotorEmtLevel = coerce_induction_motor_emt_level(
+            modal_config.get("level", InductionMotorEmtLevel.SINGLE_CAGE.name)
+        )
+        return "Induction motor EMT\n" + get_induction_motor_emt_level_label(level)
+
+    def _build_induction_motor_emt_block_model(self,
+                                               item_name: str,
+                                               modal_config: Dict[str, Any]) -> Block:
+        """
+        Build one induction-motor EMT block model from one modal configuration.
+
+        :param item_name: Symbolic block name.
+        :param modal_config: Induction-motor modal configuration.
+        :return: Built symbolic block.
+        """
+        level: InductionMotorEmtLevel = coerce_induction_motor_emt_level(
+            modal_config.get("level", InductionMotorEmtLevel.SINGLE_CAGE.name)
+        )
+        template_level: int = get_induction_motor_emt_template_level(level)
+        return get_induction_motor_emt_template(vf=self.var_factory, level=template_level, name=item_name).block
 
     def _build_grounding_link_emt_dialog(self,
                                          initial_config: Dict[str, Any] | None = None) -> GroundingLinkEmtDialog:
@@ -7582,6 +7698,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             BlockType.GROUNDING_LINK_EMT,
             BlockType.NONLINEAR_RESISTOR_EMT,
             BlockType.RLC_COMBO_EMT,
+            BlockType.INDUCTION_MOTOR_EMT,
         }:
             if payload == BlockType.SWITCH_EMT:
                 return self.create_switch_emt_block_item(x_pos=x_pos, y_pos=y_pos)
@@ -7593,6 +7710,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 return self.create_rlc_combo_emt_block_item(x_pos=x_pos, y_pos=y_pos)
             elif payload == BlockType.EMT_JMARTI_LINE:
                 return self.create_jmarti_line_emt_block_item(x_pos=x_pos, y_pos=y_pos)
+            elif payload == BlockType.INDUCTION_MOTOR_EMT:
+                return self.create_induction_motor_emt_block_item(x_pos=x_pos, y_pos=y_pos)
             elif _is_source_emt_block_type(payload):
                 return self.create_source_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
             elif _is_dc_source_emt_block_type(payload):
@@ -9120,6 +9239,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self._modify_shunt_component_emt_block(item, modal_config)
         elif modal_kind == "rlc_combo_emt":
             self._modify_rlc_combo_emt_block(item, modal_config)
+        elif modal_kind == "induction_motor_emt":
+            self._modify_induction_motor_emt_block(item, modal_config)
         elif modal_kind == "switch_emt":
             self._modify_switch_emt_block(item, modal_config)
         else:
@@ -9606,6 +9727,34 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self._sync_rlc_combo_load_base_values(template_kwargs)
         self._replace_scene_block_from_template(item, new_block, "rlc_combo_emt", dict(rlc_config))
 
+    def _modify_induction_motor_emt_block(self, item: BlockItem, modal_config: Dict[str, Any]) -> None:
+        """
+        Reconfigure one modal-created induction-motor EMT block.
+
+        :param item: Target block item.
+        :param modal_config: Stored modal configuration.
+        :return: None.
+        """
+        # Reopen the same modal with the stored configuration so template edits use
+        # the exact persisted state instead of inferring anything from the block.
+        dialog: InductionMotorEmtDialog = self._build_induction_motor_emt_dialog(initial_config=modal_config)
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            induction_motor_config: Dict[str, Any] = dialog.get_configuration()
+        else:
+            return
+
+        if item.subsys is None:
+            return
+        else:
+            pass
+
+        new_block: Block = self._build_induction_motor_emt_block_model(
+            item_name=item.subsys.name,
+            modal_config=induction_motor_config,
+        )
+        self._replace_scene_block_from_template(item, new_block, "induction_motor_emt", dict(induction_motor_config))
+
     def _modify_grounding_link_emt_block(self, item: BlockItem, modal_config: Dict[str, Any]) -> None:
         """
         Reconfigure one modal-created EMT grounding-link block.
@@ -10012,6 +10161,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         block_item.setToolTip(self._build_arbitrary_source_emt_modal_tooltip(modal_config))
                     elif modal_kind == "transient_source_emt" and modal_config is not None:
                         block_item.setToolTip(self._build_transient_source_emt_modal_tooltip(modal_config))
+                    elif modal_kind == "induction_motor_emt" and modal_config is not None:
+                        block_item.setToolTip(self._build_induction_motor_emt_modal_tooltip(modal_config))
                     else:
                         pass
 

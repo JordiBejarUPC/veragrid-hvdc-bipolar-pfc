@@ -674,10 +674,10 @@ def get_induction_motor_double_cage_emt_template(
     block.state_eqs = [
         v_alpha - params["r_s"] * i_s_alpha,
         v_beta - params["r_s"] * i_s_beta,
-        -r_r1 * i_r1_alpha + omega_r_e * psi_r1_beta,
-        -r_r1 * i_r1_beta - omega_r_e * psi_r1_alpha,
-        -r_r2 * i_r2_alpha + omega_r_e * psi_r2_beta,
-        -r_r2 * i_r2_beta - omega_r_e * psi_r2_alpha,
+        -r_r1 * i_r1_alpha - omega_r_e * psi_r1_beta,
+        -r_r1 * i_r1_beta + omega_r_e * psi_r1_alpha,
+        -r_r2 * i_r2_alpha - omega_r_e * psi_r2_beta,
+        -r_r2 * i_r2_beta + omega_r_e * psi_r2_alpha,
         (torque_e - torque_m - params["d"] * (omega_r - c_one)) / (c_two * params["h"] + c_eps),
     ]
     block.algebraic_vars = [
@@ -756,9 +756,9 @@ def get_induction_motor_double_cage_emt_template(
         params=params,
     )
 
-    # The double-cage initializer prioritizes robustness over a perfect P/Q match.
-    # It first estimates slip from one aggregated equivalent branch and then
-    # distributes the air-gap current between both cages using that slip estimate.
+    # The double-cage initializer follows the Level-2 approach: estimate slip from
+    # the target point, then build one internally consistent equivalent circuit and
+    # seed the EMT states from the resulting model currents and fluxes.
     v_a_peak: Expr = _phase_peak_phasor(v_a, d_v_a, params["omega_base"], c_eps)
     v_b_peak: Expr = _phase_peak_phasor(v_b, d_v_b, params["omega_base"], c_eps)
     v_c_peak: Expr = _phase_peak_phasor(v_c, d_v_c, params["omega_base"], c_eps)
@@ -782,17 +782,51 @@ def get_induction_motor_double_cage_emt_template(
     )
     z_r1: Expr = r_r1 / slip_est + sym.Const(complex(0.0, 1.0)) * x_lr1
     z_r2: Expr = r_r2 / slip_est + sym.Const(complex(0.0, 1.0)) * x_lr2
-    i_r1_phase: Expr = v_airgap / (z_r1 + sym.Const(complex(1e-9, 0.0)))
-    i_r2_phase: Expr = v_airgap / (z_r2 + sym.Const(complex(1e-9, 0.0)))
-    i_r1_alpha_peak, i_r1_beta_peak = _abc_to_alpha_beta(i_r1_phase, sym.Const(_A_NEG) * i_r1_phase, sym.Const(_A_POS) * i_r1_phase)
-    i_r2_alpha_peak, i_r2_beta_peak = _abc_to_alpha_beta(i_r2_phase, sym.Const(_A_NEG) * i_r2_phase, sym.Const(_A_POS) * i_r2_phase)
-    i_s_alpha_peak, i_s_beta_peak = _abc_to_alpha_beta(i_a_peak, i_b_peak, i_c_peak)
-    psi_s_alpha_peak: Expr = l_ls * i_s_alpha_peak + l_m * (i_s_alpha_peak + i_r1_alpha_peak + i_r2_alpha_peak)
-    psi_s_beta_peak: Expr = l_ls * i_s_beta_peak + l_m * (i_s_beta_peak + i_r1_beta_peak + i_r2_beta_peak)
-    psi_r1_alpha_peak: Expr = l_lr1 * i_r1_alpha_peak + l_m * (i_s_alpha_peak + i_r1_alpha_peak + i_r2_alpha_peak)
-    psi_r1_beta_peak: Expr = l_lr1 * i_r1_beta_peak + l_m * (i_s_beta_peak + i_r1_beta_peak + i_r2_beta_peak)
-    psi_r2_alpha_peak: Expr = l_lr2 * i_r2_alpha_peak + l_m * (i_s_alpha_peak + i_r1_alpha_peak + i_r2_alpha_peak)
-    psi_r2_beta_peak: Expr = l_lr2 * i_r2_beta_peak + l_m * (i_s_beta_peak + i_r1_beta_peak + i_r2_beta_peak)
+    z_r_total: Expr = _parallel_impedance(left_impedance=z_r1, right_impedance=z_r2, eps=c_eps)
+    z_m: Expr = sym.Const(complex(0.0, 1.0)) * params["x_m"]
+    z_par: Expr = _parallel_impedance(left_impedance=z_m, right_impedance=z_r_total, eps=c_eps)
+    z_in: Expr = z_s + z_par
+    i_pos_model: Expr = v_pos / (z_in + sym.Const(complex(1e-9, 0.0)))
+    v_airgap_model: Expr = v_pos - z_s * i_pos_model
+    # The internal rotor-current states use the same sign convention as the
+    # Level-2 model, which is opposite to the equivalent-circuit branch current.
+    i_r1_phase: Expr = -v_airgap_model / (z_r1 + sym.Const(complex(1e-9, 0.0)))
+    i_r2_phase: Expr = -v_airgap_model / (z_r2 + sym.Const(complex(1e-9, 0.0)))
+    i_a_model, i_b_model, i_c_model = _phase_values_from_positive_sequence(i_pos_model)
+    i_r1_a_peak, i_r1_b_peak, i_r1_c_peak = _phase_values_from_positive_sequence(i_r1_phase)
+    i_r2_a_peak, i_r2_b_peak, i_r2_c_peak = _phase_values_from_positive_sequence(i_r2_phase)
+    i_s_alpha_peak, i_s_beta_peak = _abc_to_alpha_beta(i_a_model, i_b_model, i_c_model)
+    i_r1_alpha_peak, i_r1_beta_peak = _abc_to_alpha_beta(i_r1_a_peak, i_r1_b_peak, i_r1_c_peak)
+    i_r2_alpha_peak, i_r2_beta_peak = _abc_to_alpha_beta(i_r2_a_peak, i_r2_b_peak, i_r2_c_peak)
+    v_alpha_peak, v_beta_peak = _abc_to_alpha_beta(v_a_peak, v_b_peak, v_c_peak)
+    psi_s_alpha_peak = _stator_flux_peak_from_voltage_current(
+        v_axis_peak=v_alpha_peak,
+        i_axis_peak=i_s_alpha_peak,
+        r_s=params["r_s"],
+        omega_base=params["omega_base"],
+        eps=c_eps,
+    )
+    psi_s_beta_peak = _stator_flux_peak_from_voltage_current(
+        v_axis_peak=v_beta_peak,
+        i_axis_peak=i_s_beta_peak,
+        r_s=params["r_s"],
+        omega_base=params["omega_base"],
+        eps=c_eps,
+    )
+    psi_m_alpha_peak: Expr = psi_s_alpha_peak - l_ls * i_s_alpha_peak
+    psi_m_beta_peak: Expr = psi_s_beta_peak - l_ls * i_s_beta_peak
+    psi_r1_alpha_peak: Expr = l_lr1 * i_r1_alpha_peak + psi_m_alpha_peak
+    psi_r1_beta_peak: Expr = l_lr1 * i_r1_beta_peak + psi_m_beta_peak
+    psi_r2_alpha_peak: Expr = l_lr2 * i_r2_alpha_peak + psi_m_alpha_peak
+    psi_r2_beta_peak: Expr = l_lr2 * i_r2_beta_peak + psi_m_beta_peak
+    s_motor_init: Expr = _complex_power_from_peak_phasors(
+        v_a_peak=v_a_peak,
+        v_b_peak=v_b_peak,
+        v_c_peak=v_c_peak,
+        i_a_peak=i_a_model,
+        i_b_peak=i_b_model,
+        i_c_peak=i_c_model,
+    )
 
     block.init_eqs = dict({
         v_alpha: v_alpha_expr,
@@ -803,9 +837,9 @@ def get_induction_motor_double_cage_emt_template(
         i_r1_beta: sym.imag(i_r1_beta_peak),
         i_r2_alpha: sym.imag(i_r2_alpha_peak),
         i_r2_beta: sym.imag(i_r2_beta_peak),
-        i_a: -sym.imag(i_a_peak),
-        i_b: -sym.imag(i_b_peak),
-        i_c: -sym.imag(i_c_peak),
+        i_a: -sym.imag(i_a_model),
+        i_b: -sym.imag(i_b_model),
+        i_c: -sym.imag(i_c_model),
         psi_s_alpha: sym.imag(psi_s_alpha_peak),
         psi_s_beta: sym.imag(psi_s_beta_peak),
         psi_r1_alpha: sym.imag(psi_r1_alpha_peak),
@@ -814,8 +848,8 @@ def get_induction_motor_double_cage_emt_template(
         psi_r2_beta: sym.imag(psi_r2_beta_peak),
         omega_r: c_one - slip_est,
         slip: c_one - omega_r,
-        p_motor: params["p0_a"] + params["p0_b"] + params["p0_c"],
-        q_motor: params["q0_a"] + params["q0_b"] + params["q0_c"],
+        p_motor: sym.real(s_motor_init),
+        q_motor: sym.imag(s_motor_init),
         torque_e: c_three_halves * params["omega_base"] * (psi_s_alpha * i_s_beta - psi_s_beta * i_s_alpha),
         params["t_load_nom"]: (torque_e - params["d"] * (omega_r - c_one)) / sym.max(omega_r * sym.abs(omega_r), c_speed_eps * c_speed_eps),
         torque_m: params["t_load_nom"] * torque_speed_term,
@@ -823,199 +857,10 @@ def get_induction_motor_double_cage_emt_template(
     block.diff_init_eqs = dict({
         d_psi_s_alpha: v_alpha - params["r_s"] * i_s_alpha,
         d_psi_s_beta: v_beta - params["r_s"] * i_s_beta,
-        d_psi_r1_alpha: -r_r1 * i_r1_alpha + omega_r_e * psi_r1_beta,
-        d_psi_r1_beta: -r_r1 * i_r1_beta - omega_r_e * psi_r1_alpha,
-        d_psi_r2_alpha: -r_r2 * i_r2_alpha + omega_r_e * psi_r2_beta,
-        d_psi_r2_beta: -r_r2 * i_r2_beta - omega_r_e * psi_r2_alpha,
-        d_omega_r: (torque_e - torque_m - params["d"] * (omega_r - c_one)) / (c_two * params["h"] + c_eps),
-    })
-    return templ
-
-
-def get_induction_motor_rms_equivalent_emt_template(
-    vf: VarFactory,
-    name: str = "induction_motor_rms_equivalent_emt_template",
-) -> EmtModelTemplate:
-    """Build the Level-1 RMS-equivalent ``dq`` induction-motor EMT template.
-
-    This level is intentionally simplified and exists only as a conceptual bridge
-    from the existing RMS motor model to the EMT framework. It uses a synchronous
-    ``dq`` formulation driven from ABC EMT voltages, but it is not the preferred
-    EMT representation because it filters out part of the electromagnetic detail
-    that the stationary-frame single-cage model captures naturally.
-
-    :param vf: EMT variable factory.
-    :param name: Symbolic template name.
-    :return: Configured EMT template.
-    """
-    # Reuse the recommended electrical parameter set, but keep a distinct builder
-    # and symbolic namespace so the simplified dq model stays clearly separated.
-    templ: EmtModelTemplate = EmtModelTemplate()
-    block: Block = templ.block
-    params: Dict[str, Var] = _build_common_events(vf=vf, block=block, name=name)
-    r_r: Var = vf.add_var(name=f"r_r_{name}")
-    x_lr: Var = vf.add_var(name=f"x_lr_{name}")
-    block.event_dict[r_r] = vf.add_const(0.02)
-    block.event_dict[x_lr] = vf.add_const(0.12)
-
-    v_a: Var = vf.add_var(name=f"v_A_{name}", reference=VarPowerFlowRefferenceType.v_A)
-    v_b: Var = vf.add_var(name=f"v_B_{name}", reference=VarPowerFlowRefferenceType.v_B)
-    v_c: Var = vf.add_var(name=f"v_C_{name}", reference=VarPowerFlowRefferenceType.v_C)
-    d_v_a: Var = vf.add_var(name=f"d_v_A_{name}")
-    d_v_b: Var = vf.add_var(name=f"d_v_B_{name}")
-    d_v_c: Var = vf.add_var(name=f"d_v_C_{name}")
-    block.event_dict[d_v_a] = vf.add_const(None)
-    block.event_dict[d_v_b] = vf.add_const(None)
-    block.event_dict[d_v_c] = vf.add_const(None)
-
-    theta_syn: Var = vf.add_var(name=f"theta_syn_{name}")
-    psi_sd: Var = vf.add_var(name=f"psi_sd_{name}")
-    psi_sq: Var = vf.add_var(name=f"psi_sq_{name}")
-    psi_rd: Var = vf.add_var(name=f"psi_rd_{name}")
-    psi_rq: Var = vf.add_var(name=f"psi_rq_{name}")
-    omega_r: Var = vf.add_var(name=f"omega_r_{name}")
-
-    d_theta_syn: Var = vf.add_diff_var(name=f"d_theta_syn_{name}", base_var=theta_syn)
-    d_psi_sd: Var = vf.add_diff_var(name=f"d_psi_sd_{name}", base_var=psi_sd)
-    d_psi_sq: Var = vf.add_diff_var(name=f"d_psi_sq_{name}", base_var=psi_sq)
-    d_psi_rd: Var = vf.add_diff_var(name=f"d_psi_rd_{name}", base_var=psi_rd)
-    d_psi_rq: Var = vf.add_diff_var(name=f"d_psi_rq_{name}", base_var=psi_rq)
-    d_omega_r: Var = vf.add_diff_var(name=f"d_omega_r_{name}", base_var=omega_r)
-
-    i_sd: Var = vf.add_var(name=f"i_sd_{name}")
-    i_sq: Var = vf.add_var(name=f"i_sq_{name}")
-    i_rd: Var = vf.add_var(name=f"i_rd_{name}")
-    i_rq: Var = vf.add_var(name=f"i_rq_{name}")
-    v_d: Var = vf.add_var(name=f"v_d_{name}")
-    v_q: Var = vf.add_var(name=f"v_q_{name}")
-    i_a: Var = vf.add_var(name=f"i_A_{name}", reference=VarPowerFlowRefferenceType.i_A)
-    i_b: Var = vf.add_var(name=f"i_B_{name}", reference=VarPowerFlowRefferenceType.i_B)
-    i_c: Var = vf.add_var(name=f"i_C_{name}", reference=VarPowerFlowRefferenceType.i_C)
-    p_motor: Var = vf.add_var(name=f"P_motor_{name}")
-    q_motor: Var = vf.add_var(name=f"Q_motor_{name}")
-    torque_e: Var = vf.add_var(name=f"T_e_{name}")
-    torque_m: Var = vf.add_var(name=f"T_m_{name}")
-    slip: Var = vf.add_var(name=f"slip_{name}")
-
-    c_eps: Expr = vf.add_const(1e-9)
-    c_one: Expr = vf.add_const(1.0)
-    c_two: Expr = vf.add_const(2.0)
-    c_three_halves: Expr = vf.add_const(1.5)
-    c_speed_eps: Expr = params["speed_eps"]
-    l_s: Expr = (params["x_ls"] + params["x_m"]) / (params["omega_base"] + c_eps)
-    l_r: Expr = (x_lr + params["x_m"]) / (params["omega_base"] + c_eps)
-    l_m: Expr = params["x_m"] / (params["omega_base"] + c_eps)
-    det_lr: Expr = l_s * l_r - l_m * l_m + c_eps
-    omega_slip: Expr = params["omega_base"] * (c_one - omega_r)
-    sin_t: Expr = sym.sin(theta_syn)
-    cos_t: Expr = sym.cos(theta_syn)
-
-    v_alpha_expr, v_beta_expr = _abc_to_alpha_beta(v_a, v_b, v_c)
-    i_alpha_expr: Expr = cos_t * i_sd - sin_t * i_sq
-    i_beta_expr: Expr = sin_t * i_sd + cos_t * i_sq
-    i_a_motor_expr, i_b_motor_expr, i_c_motor_expr = _alpha_beta_to_abc(i_alpha_expr, i_beta_expr)
-    v_d_expr: Expr = cos_t * v_alpha_expr + sin_t * v_beta_expr
-    v_q_expr: Expr = -sin_t * v_alpha_expr + cos_t * v_beta_expr
-    torque_speed_term: Expr = omega_r * sym.max(sym.abs(omega_r), c_speed_eps)
-
-    block.state_vars = [theta_syn, psi_sd, psi_sq, psi_rd, psi_rq, omega_r]
-    block.diff_vars = [d_theta_syn, d_psi_sd, d_psi_sq, d_psi_rd, d_psi_rq, d_omega_r]
-    block.state_eqs = [
-        params["omega_base"],
-        v_d + params["omega_base"] * psi_sq - params["r_s"] * i_sd,
-        v_q - params["omega_base"] * psi_sd - params["r_s"] * i_sq,
-        -r_r * i_rd + omega_slip * psi_rq,
-        -r_r * i_rq - omega_slip * psi_rd,
-        (torque_e - torque_m - params["d"] * (omega_r - c_one)) / (c_two * params["h"] + c_eps),
-    ]
-    block.algebraic_vars = [i_sd, i_sq, i_rd, i_rq, v_d, v_q, i_a, i_b, i_c, p_motor, q_motor, torque_e, torque_m, slip]
-    block.algebraic_eqs = [
-        i_sd - (l_r * psi_sd - l_m * psi_rd) / det_lr,
-        i_sq - (l_r * psi_sq - l_m * psi_rq) / det_lr,
-        i_rd - (-l_m * psi_sd + l_s * psi_rd) / det_lr,
-        i_rq - (-l_m * psi_sq + l_s * psi_rq) / det_lr,
-        v_d - v_d_expr,
-        v_q - v_q_expr,
-        i_a + i_a_motor_expr,
-        i_b + i_b_motor_expr,
-        i_c + i_c_motor_expr,
-        p_motor - c_three_halves * (v_d * i_sd + v_q * i_sq),
-        q_motor - c_three_halves * (v_q * i_sd - v_d * i_sq),
-        torque_e - c_three_halves * params["omega_base"] * (psi_sd * i_sq - psi_sq * i_sd),
-        torque_m - params["t_load_nom"] * torque_speed_term,
-        slip - (c_one - omega_r),
-    ]
-
-    _set_common_block_metadata(
-        templ=templ,
-        name=name,
-        v_a=v_a,
-        v_b=v_b,
-        v_c=v_c,
-        i_a=i_a,
-        i_b=i_b,
-        i_c=i_c,
-        d_v_a=d_v_a,
-        d_v_b=d_v_b,
-        d_v_c=d_v_c,
-        params=params,
-    )
-
-    v_a_peak: Expr = _phase_peak_phasor(v_a, d_v_a, params["omega_base"], c_eps)
-    i_a_peak: Expr = c_two * sym.conj(
-        (params["p0_a"] + sym.Const(complex(0.0, 1.0)) * params["q0_a"]) / (v_a_peak + sym.Const(complex(1e-9, 0.0)))
-    )
-    z_s: Expr = params["r_s"] + sym.Const(complex(0.0, 1.0)) * params["x_ls"]
-    z_m: Expr = sym.Const(complex(0.0, 1.0)) * params["x_m"]
-    v_airgap: Expr = v_a_peak - z_s * i_a_peak
-    i_rotor_peak: Expr = i_a_peak - v_airgap / (z_m + sym.Const(complex(1e-9, 0.0)))
-    z_rotor_est: Expr = v_airgap / (i_rotor_peak + sym.Const(complex(1e-9, 0.0)))
-    slip_est: Expr = sym.hard_sat(
-        r_r / sym.max(sym.real(z_rotor_est), r_r / params["slip_max"]),
-        params["slip_min"],
-        params["slip_max"],
-    )
-    theta_init: Expr = sym.angle(v_a_peak)
-    i_alpha_peak: Expr = sym.Const(2.0 / 3.0) * (i_a_peak - sym.Const(0.5) * sym.Const(_A_NEG) * i_a_peak - sym.Const(0.5) * sym.Const(_A_POS) * i_a_peak)
-    i_beta_peak: Expr = sym.Const(1.0 / _SQRT3) * (sym.Const(_A_NEG) * i_a_peak - sym.Const(_A_POS) * i_a_peak)
-    i_d_peak: Expr = sym.cos(theta_init) * i_alpha_peak + sym.sin(theta_init) * i_beta_peak
-    i_q_peak: Expr = -sym.sin(theta_init) * i_alpha_peak + sym.cos(theta_init) * i_beta_peak
-    i_rd_peak: Expr = i_d_peak - v_airgap / (z_m + sym.Const(complex(1e-9, 0.0)))
-    i_rq_peak: Expr = i_q_peak
-    psi_sd_peak: Expr = l_s * i_d_peak + l_m * i_rd_peak
-    psi_sq_peak: Expr = l_s * i_q_peak + l_m * i_rq_peak
-    psi_rd_peak: Expr = l_m * i_d_peak + l_r * i_rd_peak
-    psi_rq_peak: Expr = l_m * i_q_peak + l_r * i_rq_peak
-
-    block.init_eqs = dict({
-        theta_syn: theta_init,
-        v_d: v_d_expr,
-        v_q: v_q_expr,
-        i_sd: sym.imag(i_d_peak),
-        i_sq: sym.imag(i_q_peak),
-        i_rd: sym.imag(i_rd_peak),
-        i_rq: sym.imag(i_rq_peak),
-        i_a: -sym.imag(i_a_peak),
-        i_b: -sym.imag(sym.Const(_A_NEG) * i_a_peak),
-        i_c: -sym.imag(sym.Const(_A_POS) * i_a_peak),
-        psi_sd: sym.imag(psi_sd_peak),
-        psi_sq: sym.imag(psi_sq_peak),
-        psi_rd: sym.imag(psi_rd_peak),
-        psi_rq: sym.imag(psi_rq_peak),
-        omega_r: c_one - slip_est,
-        slip: c_one - omega_r,
-        p_motor: params["p0_a"] + params["p0_b"] + params["p0_c"],
-        q_motor: params["q0_a"] + params["q0_b"] + params["q0_c"],
-        torque_e: c_three_halves * params["omega_base"] * (psi_sd * i_sq - psi_sq * i_sd),
-        params["t_load_nom"]: (torque_e - params["d"] * (omega_r - c_one)) / sym.max(omega_r * sym.abs(omega_r), c_speed_eps * c_speed_eps),
-        torque_m: params["t_load_nom"] * torque_speed_term,
-    })
-    block.diff_init_eqs = dict({
-        d_theta_syn: params["omega_base"],
-        d_psi_sd: v_d + params["omega_base"] * psi_sq - params["r_s"] * i_sd,
-        d_psi_sq: v_q - params["omega_base"] * psi_sd - params["r_s"] * i_sq,
-        d_psi_rd: -r_r * i_rd + omega_slip * psi_rq,
-        d_psi_rq: -r_r * i_rq - omega_slip * psi_rd,
+        d_psi_r1_alpha: -r_r1 * i_r1_alpha - omega_r_e * psi_r1_beta,
+        d_psi_r1_beta: -r_r1 * i_r1_beta + omega_r_e * psi_r1_alpha,
+        d_psi_r2_alpha: -r_r2 * i_r2_alpha - omega_r_e * psi_r2_beta,
+        d_psi_r2_beta: -r_r2 * i_r2_beta + omega_r_e * psi_r2_alpha,
         d_omega_r: (torque_e - torque_m - params["d"] * (omega_r - c_one)) / (c_two * params["h"] + c_eps),
     })
     return templ
@@ -1030,7 +875,6 @@ def get_induction_motor_emt_template(
 
     Level selection:
 
-    * ``1``: RMS-equivalent ``dq`` EMT bridge model.
     * ``2``: Recommended EMT single-cage model.
     * ``3``: EMT double-cage model.
 
@@ -1040,8 +884,6 @@ def get_induction_motor_emt_template(
     :return: Configured EMT template.
     :raises ValueError: If the requested level is not supported.
     """
-    if level == 1:
-        return get_induction_motor_rms_equivalent_emt_template(vf=vf, name=name)
     if level == 2:
         return get_induction_motor_single_cage_emt_template(vf=vf, name=name)
     if level == 3:

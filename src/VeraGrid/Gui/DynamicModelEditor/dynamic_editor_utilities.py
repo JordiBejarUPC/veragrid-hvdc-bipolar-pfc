@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 from typing import Sequence
 
-from VeraGridEngine import get_transformer_emt_template, get_xfmr_emt_template
+from VeraGridEngine import get_transformer_emt_template, get_xfmr_emt_template, get_induction_motor_emt_template
 from VeraGridEngine.enumerations import BlockType
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Utils.Symbolic.block import Block
@@ -181,16 +181,21 @@ def create_block_of_type(var_factory: VarFactory,
         blk.name = item_name
         return blk
 
+    elif block_type == BlockType.INDUCTION_MOTOR_EMT:
+        blk = get_induction_motor_emt_template(vf=var_factory, level=2, name=item_name).block
+        blk.name = item_name
+        return blk
+
     elif block_type == BlockType.TRAFO_EMT:
-        conn_f = getattr(api_object, "conn_f", None)
-        conn_t = getattr(api_object, "conn_t", None)
+        conn_f = api_object.conn_f
+        conn_t = api_object.conn_t
         blk = get_transformer_emt_template(var_factory, conn_f=conn_f, conn_t=conn_t).block
         blk.name = item_name
         return blk
 
     elif block_type == BlockType.XFMR_TRANSFORMER:
-        conn_f = getattr(api_object, "conn_f", None)
-        conn_t = getattr(api_object, "conn_t", None)
+        conn_f = api_object.conn_f
+        conn_t = api_object.conn_t
         blk = get_xfmr_emt_template(var_factory, conn_f=conn_f, conn_t=conn_t).block
         blk.name = item_name
         return blk
@@ -199,6 +204,8 @@ def create_block_of_type(var_factory: VarFactory,
         blk = get_ground_emt_template(var_factory, item_name).block
         blk.name = item_name
         return blk
+
+
 
     else:
         return None
