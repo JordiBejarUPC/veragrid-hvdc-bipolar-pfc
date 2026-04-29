@@ -93,6 +93,111 @@ class GeneratedKernelCacheEntry:
         return self._signature_tpe
 
 
+def _get_cse_sort_key(entry: Tuple[str, str]) -> int:
+    """
+    Return the numeric ordering key of one generated CSE temporary.
+
+    :param entry: Pair ``(expression_hash, temporary_name)``.
+    :return: Integer suffix used by the generated temporary name.
+    """
+    return int(entry[1][2:])
+
+
+def _get_triplet_sort_key(triplet: Tuple[int, int, Expr]) -> Tuple[int, int]:
+    """
+    Return the deterministic column-row ordering of one sparse Jacobian triplet.
+
+    :param triplet: Sparse Jacobian triplet ``(col, row, expr)``.
+    :return: Sorting key ``(col, row)``.
+    """
+    return triplet[0], triplet[1]
+
+
+def _collect_related_wrt_uids(var: Var,
+                              wrt_map: Dict[int, Tuple[int, Var]],
+                              output_uids: Set[int],
+                              seen_uids: Set[int]) -> None:
+    """
+    Collect all differentiated UIDs related to one symbolic variable chain.
+
+    :param var: Symbolic variable from one expression.
+    :param wrt_map: Differentiation variables keyed by UID.
+    :param output_uids: Output UID set updated in place.
+    :param seen_uids: Visited UID set used to avoid recursion loops.
+    :return: None.
+    """
+    if var.uid in seen_uids:
+        return
+    else:
+        pass
+
+    seen_uids.add(var.uid)
+
+    if var.uid in wrt_map:
+        output_uids.add(var.uid)
+    else:
+        pass
+
+    if var.base_var is not None:
+        _collect_related_wrt_uids(var.base_var, wrt_map, output_uids, seen_uids)
+    else:
+        pass
+
+    if var.diff_var is not None:
+        _collect_related_wrt_uids(var.diff_var, wrt_map, output_uids, seen_uids)
+    else:
+        pass
+
+
+def _collect_candidate_wrt_uids(eq: Expr, wrt_map: Dict[int, Tuple[int, Var]]) -> Set[int]:
+    """
+    Return the differentiated variable UIDs that appear in one equation.
+
+    :param eq: Symbolic equation.
+    :param wrt_map: Differentiation variables keyed by UID.
+    :return: Candidate UIDs present in the equation dependency graph.
+    """
+    candidates: Set[int] = set()
+    seen_uids: Set[int] = set()
+    variable_in_equation: Var
+
+    for variable_in_equation in get_expression_vars(eq):
+        _collect_related_wrt_uids(variable_in_equation, wrt_map, candidates, seen_uids)
+
+    return candidates
+
+
+class EmptySparseJacobianEvaluator:
+    """
+    Reusable callable returning one prebuilt empty CSC Jacobian matrix.
+    """
+
+    __slots__ = ("_matrix",)
+
+    def __init__(self, matrix: sp.csc_matrix) -> None:
+        """
+        Store the empty sparse Jacobian matrix.
+
+        :param matrix: Prebuilt empty CSC matrix.
+        :return: None.
+        """
+        self._matrix: sp.csc_matrix = matrix
+
+    def __call__(self, vrs: Vec, diff: Vec, vprms: Vec, cprms: Vec, h: float) -> sp.csc_matrix:
+        """
+        Return the prebuilt empty sparse Jacobian matrix.
+
+        :param vrs: Runtime variables.
+        :param diff: Differential variables.
+        :param vprms: Variable parameters.
+        :param cprms: Constant parameters.
+        :param h: Integration step.
+        :return: Empty CSC Jacobian matrix.
+        """
+        _unused_args: Tuple[Vec, Vec, Vec, Vec, float] = (vrs, diff, vprms, cprms, h)
+        return self._matrix
+
+
 def _build_equation_compiler_residual_cache_key(equations: List[Expr],
                                                 var_map: Dict[int, int],
                                                 param_map: Dict[int, int],
@@ -1320,7 +1425,7 @@ class EquationCompiler:
             self.visitor._str_cache = dict()
 
             if cse_map:
-                sorted_cse = sorted(cse_map.items(), key=lambda x: int(x[1][2:]))
+                sorted_cse = sorted(cse_map.items(), key=_get_cse_sort_key)
                 for expr_hash, var_name in sorted_cse:
                     expr_obj = analyzer.expr_objects[expr_hash]
                     self.visitor.in_cse_def = True
@@ -1391,7 +1496,7 @@ class EquationCompiler:
             adv._str_cache = dict()
 
             if cse_map:
-                sorted_cse = sorted(cse_map.items(), key=lambda x: int(x[1][2:]))
+                sorted_cse = sorted(cse_map.items(), key=_get_cse_sort_key)
                 for expr_hash, var_name in sorted_cse:
                     expr_obj = analyzer.expr_objects[expr_hash]
                     adv.in_cse_def = True
@@ -2073,42 +2178,20 @@ class RMSCompiler(EquationCompiler):
         wrt_map = {v.uid: (i, v) for i, v in enumerate(wrt_vars)}
         triplets: List[Tuple[int, int, Expr]] = list()
 
-        def _collect_related_uids(var: Var, out: Set[int], seen: Set[int]) -> None:
-            if var.uid in seen:
-                return
-            seen.add(var.uid)
-
-            if var.uid in wrt_map:
-                out.add(var.uid)
-
-            if var.base_var is not None:
-                _collect_related_uids(var.base_var, out, seen)
-
-            if var.diff_var is not None:
-                _collect_related_uids(var.diff_var, out, seen)
-
-        def _candidate_uids(eq: Expr) -> Set[int]:
-            candidates: Set[int] = set()
-            seen: Set[int] = set()
-            for v_in_eq in get_expression_vars(eq):
-                _collect_related_uids(v_in_eq, candidates, seen)
-            return candidates
-
         # Only differentiate variables that appear in the equation AST.
         for row, eq in enumerate(eqs):
-            for uid in _candidate_uids(eq):
+            for uid in _collect_candidate_wrt_uids(eq, wrt_map):
                 col, var = wrt_map[uid]
                 d_expr = eq.diff(var, dt=self.dt_var)
                 if not (isinstance(d_expr, Const) and d_expr.value == 0):
                     triplets.append((col, row, d_expr))
 
-        triplets.sort(key=lambda t: (t[0], t[1]))
+        triplets.sort(key=_get_triplet_sort_key)
 
         # Handle edge case: Empty Jacobian matrix (no dependencies found)
         if not triplets:
             J_empty = sp.csc_matrix((len(eqs), len(wrt_vars)))
-            # noinspection PyShadowingBuiltins
-            return lambda vrs, diff, vprms, cprms, h: J_empty
+            return EmptySparseJacobianEvaluator(J_empty)
         # Extract sorted coordinates and corresponding symbolic derivatives
         cols_sorted = [t[0] for t in triplets]
         rows_sorted = [t[1] for t in triplets]

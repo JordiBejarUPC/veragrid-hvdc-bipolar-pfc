@@ -77,6 +77,15 @@ class _IoStub:
     def show_info_toast(self, message: str) -> None:
         self.messages.append(message)
 
+    def should_materialize_dynamic_catalogues_for_refresh(self) -> bool:
+        return False
+
+    def materialize_dynamic_catalogues_for_refresh(self) -> None:
+        _unused = self.circuit
+
+    def refresh_catalogue_dependent_views(self) -> None:
+        _unused = self.messages
+
 
 class _RefreshingIoStub(_IoStub):
     """
@@ -104,6 +113,12 @@ class _RefreshingIoStub(_IoStub):
     def update_date_dependent_combos(self) -> None:
         self.update_date_calls += 1
 
+    def refresh_catalogue_dependent_views(self) -> None:
+        self.setup_objects_tree()
+        self.view_objects_data()
+        self.update_from_to_list_views()
+        self.update_date_dependent_combos()
+
 
 class _GuiLikeIoStub(_RefreshingIoStub):
     """
@@ -116,6 +131,13 @@ class _GuiLikeIoStub(_RefreshingIoStub):
         super().__init__()
         self.circuit = MultiCircuit()
         self.ui = object()
+
+    def should_materialize_dynamic_catalogues_for_refresh(self) -> bool:
+        return True
+
+    def materialize_dynamic_catalogues_for_refresh(self) -> None:
+        _unused_rms_models = self.circuit.rms_models
+        _unused_emt_models = self.circuit.emt_models
 
 
 class _CatalogueLoggerStub:
@@ -222,6 +244,15 @@ def test_get_dictionary_of_lists_does_not_force_lazy_dynamic_catalogue_load() ->
 
         def show_info_toast(self, message: str) -> None:
             _unused = message
+
+        def should_materialize_dynamic_catalogues_for_refresh(self) -> bool:
+            return False
+
+        def materialize_dynamic_catalogues_for_refresh(self) -> None:
+            _unused = self.circuit
+
+        def refresh_catalogue_dependent_views(self) -> None:
+            _unused = self.circuit
 
     stub = _RealCircuitIoStub()
     IoMain.add_default_catalogue(stub)

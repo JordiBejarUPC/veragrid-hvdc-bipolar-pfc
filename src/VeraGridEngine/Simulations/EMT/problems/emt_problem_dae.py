@@ -297,7 +297,7 @@ def _get_earliest_optional_time(first_time: Optional[float], second_time: Option
         return second_time
 
 
-def _build_unique_device_var_key(device: Any, var: Var) -> str:
+def _build_unique_device_var_key(device: ALL_DEV_TYPES, var: Var) -> str:
     """
     Build one stable EMT result key for a device-bound variable.
 
@@ -308,7 +308,7 @@ def _build_unique_device_var_key(device: Any, var: Var) -> str:
     :param var: Symbolic variable.
     :return: Preferred global result key.
     """
-    device_name: str = str(getattr(device, "name", ""))
+    device_name: str = str(device.name)
     return f"{var.name}{device_name}"
 
 
@@ -2461,7 +2461,7 @@ class EmtProblemDae(EmtProblemTemplate):
         device: ALL_DEV_TYPES
         variables: List[Var]
         for device, variables in self._vars_info.items():
-            device_idtag: str = str(getattr(device, "idtag", ""))
+            device_idtag: str = str(device.idtag)
 
             for var in variables:
                 candidate_name: str = _build_unique_device_var_key(device, var)
@@ -2481,33 +2481,29 @@ class EmtProblemDae(EmtProblemTemplate):
 
         for var in self.state_and_algebraic_vars():
             if var.uid in mapped_uids:
-                continue
-            else:
                 pass
-
-            candidate_name = var.name
-            if candidate_name in unique_names and unique_names[candidate_name] != var.uid:
-                candidate_name = f"{candidate_name}{var.uid}"
             else:
-                pass
+                candidate_name = var.name
+                if candidate_name in unique_names and unique_names[candidate_name] != var.uid:
+                    candidate_name = f"{candidate_name}{var.uid}"
+                else:
+                    pass
 
-            unique_names[candidate_name] = var.uid
-            mapped_uids.add(var.uid)
+                unique_names[candidate_name] = var.uid
+                mapped_uids.add(var.uid)
 
         for diff_var in self.get_diff_vars():
             if diff_var.uid in mapped_uids:
-                continue
-            else:
                 pass
-
-            candidate_name = diff_var.name
-            if candidate_name in unique_names and unique_names[candidate_name] != diff_var.uid:
-                candidate_name = f"{candidate_name}{diff_var.uid}"
             else:
-                pass
+                candidate_name = diff_var.name
+                if candidate_name in unique_names and unique_names[candidate_name] != diff_var.uid:
+                    candidate_name = f"{candidate_name}{diff_var.uid}"
+                else:
+                    pass
 
-            unique_names[candidate_name] = diff_var.uid
-            mapped_uids.add(diff_var.uid)
+                unique_names[candidate_name] = diff_var.uid
+                mapped_uids.add(diff_var.uid)
 
         self._vars_glob_name2uid = unique_names
 

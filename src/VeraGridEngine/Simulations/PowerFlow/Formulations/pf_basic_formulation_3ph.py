@@ -17,9 +17,10 @@ from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.discrete_controls imp
                                                                                      compute_slack_distribution)
 from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_formulation_template import PfFormulationTemplate
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions import (compute_current,
-                                                                                    compute_fx,
-                                                                                    polar_to_rect,
-                                                                                    fortescue_012_to_abc)
+                                                                                     compute_power,
+                                                                                     compute_fx,
+                                                                                     polar_to_rect,
+                                                                                     fortescue_012_to_abc)
 from VeraGridEngine.Topology.simulation_indices import compile_types
 from VeraGridEngine.basic_structures import Vec, IntVec, CxVec, CxMat, BoolVec, Logger
 from VeraGridEngine.Utils.Sparse.csc2 import (CSC, scipy_to_mat)
@@ -906,6 +907,7 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
         PfFormulationTemplate.__init__(self, V0=V0new.astype(complex), options=options)
         self.logger = logger
         self.nc = nc
+        self.S0: CxVec = S0[self.mask].copy()
 
         self.Qmin = expand3ph(Qmin)[self.mask] * 100e6
         self.Qmax = expand3ph(Qmax)[self.mask] * 100e6
@@ -1138,6 +1140,7 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
 
         Ibus = (Igen + Ipower + Icurrent) / (self.nc.Sbase / 3) / (self.V / np.abs(self.V))
         Icalc = compute_current(self.Ybus, self.V) / (self.V / np.abs(self.V))
+        self.Scalc = compute_power(self.Ybus, self.V)
 
         dI = (Icalc - Ibus)  # compute the mismatch
         self._f = np.r_[
@@ -1181,7 +1184,7 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
             if self.options.distributed_slack:
                 ok, delta = compute_slack_distribution(Scalc=self.Scalc,
                                                        vd=self.vd,
-                                                       bus_installed_power=self.nc.bus_data.installed_power)
+                                                       bus_installed_power=expand3ph(self.nc.bus_data.installed_power)[self.mask])
                 if ok:
                     any_change = True
                     # Update the objective power to reflect the slack distribution

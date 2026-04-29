@@ -37,7 +37,7 @@ from VeraGrid.templates import (get_cables_catalogue, get_transformer_catalogue,
                                  get_sequence_lines_catalogue)
 
 
-def _refresh_catalogue_dependent_views(io_main: object) -> None:
+def _refresh_catalogue_dependent_views(io_main: "IoMain") -> None:
     """
     Refresh GUI views whose combo delegates depend on the loaded catalogue.
 
@@ -50,41 +50,16 @@ def _refresh_catalogue_dependent_views(io_main: object) -> None:
     :param io_main: GUI object hosting the catalogue action.
     :return: None.
     """
-    ui_object = getattr(io_main, "ui", None)
-    circuit_object = getattr(io_main, "circuit", None)
-
     # The object-properties table uses already materialized template lists for its
     # combo delegates. In the real GUI we therefore materialize the lazy dynamic
     # catalogues before rebuilding the current table view so `rms_template` and
     # `emt_template` show their options immediately after Add Catalogue.
-    if ui_object is not None and circuit_object is not None:
-        try:
-            _ = circuit_object.rms_models
-            _ = circuit_object.emt_models
-        except AttributeError:
-            pass
+    if io_main.should_materialize_dynamic_catalogues_for_refresh():
+        io_main.materialize_dynamic_catalogues_for_refresh()
     else:
         pass
 
-    try:
-        io_main.setup_objects_tree()
-    except AttributeError:
-        pass
-
-    try:
-        io_main.view_objects_data()
-    except AttributeError:
-        pass
-
-    try:
-        io_main.update_from_to_list_views()
-    except AttributeError:
-        pass
-
-    try:
-        io_main.update_date_dependent_combos()
-    except AttributeError:
-        pass
+    io_main.refresh_catalogue_dependent_views()
 
 
 class IoMain(ScenariosMain):
@@ -146,6 +121,38 @@ class IoMain(ScenariosMain):
         # Buttons
         self.ui.exportSimulationDataButton.clicked.connect(self.export_simulation_data)
         self.ui.loadResultFromDiskButton.clicked.connect(self.load_results_driver)
+
+    def should_materialize_dynamic_catalogues_for_refresh(self) -> bool:
+        """
+        Return whether catalogue refresh should force lazy dynamic catalogues.
+
+        The real GUI keeps one visible property table whose combo delegates are
+        rebuilt from the materialized circuit catalogues, so GUI refreshes must
+        realize those catalogues first.
+
+        :return: ``True`` in the interactive GUI.
+        """
+        return True
+
+    def materialize_dynamic_catalogues_for_refresh(self) -> None:
+        """
+        Materialize lazy dynamic catalogues before rebuilding GUI delegates.
+
+        :return: None.
+        """
+        _unused_rms_models = self.circuit.rms_models
+        _unused_emt_models = self.circuit.emt_models
+
+    def refresh_catalogue_dependent_views(self) -> None:
+        """
+        Rebuild GUI views that depend on the loaded catalogue.
+
+        :return: None.
+        """
+        self.setup_objects_tree()
+        self.view_objects_data()
+        self.update_from_to_list_views()
+        self.update_date_dependent_combos()
 
     def dragEnterEvent(self, event):
         """

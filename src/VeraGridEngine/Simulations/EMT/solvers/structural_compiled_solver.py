@@ -267,6 +267,70 @@ def _build_fill_full_parameter_signature() -> Any:
     return types.void(float64_vector_tpe, float64_vector_tpe, float64_vector_tpe)
 
 
+def _dense_lu_bundle_solve(bundle: DenseSolveBundle, rhs: Vec) -> Vec:
+    """
+    Solve one dense LU linear system.
+
+    :param bundle: Dense LU bundle ``(factorization, matrix)``.
+    :param rhs: Right-hand side vector.
+    :return: Solution vector.
+    """
+    return lu_solve(bundle[0], rhs)
+
+
+def _dense_lu_bundle_fallback(bundle: DenseSolveBundle, rhs: Vec) -> Vec:
+    """
+    Solve one dense fallback least-squares system.
+
+    :param bundle: Dense LU bundle ``(factorization, matrix)``.
+    :param rhs: Right-hand side vector.
+    :return: Fallback solution vector.
+    """
+    return dense_lstsq_fallback(bundle[1], rhs)
+
+
+def _dense_lu_bundle_matrix(bundle: DenseSolveBundle) -> np.ndarray:
+    """
+    Return the dense matrix stored in one LU bundle.
+
+    :param bundle: Dense LU bundle ``(factorization, matrix)``.
+    :return: Dense Jacobian matrix.
+    """
+    return bundle[1]
+
+
+def _sparse_factor_manager_solve(factor_manager: "StructuralCompiledSparseFactorizationManager", rhs: Vec) -> Vec:
+    """
+    Solve one sparse linear system through the compiled sparse factor manager.
+
+    :param factor_manager: Sparse factorization manager.
+    :param rhs: Right-hand side vector.
+    :return: Solution vector.
+    """
+    return factor_manager.solve(rhs)
+
+
+def _sparse_factor_manager_fallback(factor_manager: "StructuralCompiledSparseFactorizationManager", rhs: Vec) -> Vec:
+    """
+    Solve one sparse fallback least-squares system.
+
+    :param factor_manager: Sparse factorization manager.
+    :param rhs: Right-hand side vector.
+    :return: Fallback solution vector.
+    """
+    return factor_manager.solve_fallback(rhs)
+
+
+def _sparse_factor_manager_matrix(factor_manager: "StructuralCompiledSparseFactorizationManager") -> csc_matrix:
+    """
+    Return the active sparse Jacobian matrix held by the factor manager.
+
+    :param factor_manager: Sparse factorization manager.
+    :return: Active sparse Jacobian matrix.
+    """
+    return factor_manager.get_active_matrix()
+
+
 def _build_permute_csc_signature() -> Any:
     """
     Return the eager signature of the CSC permutation helper.
@@ -358,7 +422,7 @@ def _canonicalize_symbolic_node(
             if runtime_uid in parameter_slots:
                 pass
             else:
-                parameter_name: str = getattr(node, 'name', f'uid_{runtime_uid}')
+                parameter_name: str = node.name
                 parameter_slots[runtime_uid] = f"__PARAM_{parameter_name}_{runtime_uid}__"
 
             return parameter_slots[runtime_uid]
@@ -2672,20 +2736,20 @@ class StructuralCompiledSolver:
 
         if diagnostics_enabled:
             dense_solve = with_newton_diagnostics(
-                lambda bundle, rhs: lu_solve(bundle[0], rhs),
-                fallback_solve=lambda bundle, rhs: dense_lstsq_fallback(bundle[1], rhs),
+                _dense_lu_bundle_solve,
+                fallback_solve=_dense_lu_bundle_fallback,
                 collector=trace_collector,
                 config=diag_cfg,
                 solver_name="dense_lu",
-                matrix_getter=lambda bundle: bundle[1],
+                matrix_getter=_dense_lu_bundle_matrix,
             )
             sparse_solve = with_newton_diagnostics(
-                lambda factor_manager, rhs: factor_manager.solve(rhs),
-                fallback_solve=lambda factor_manager, rhs: factor_manager.solve_fallback(rhs),
+                _sparse_factor_manager_solve,
+                fallback_solve=_sparse_factor_manager_fallback,
                 collector=trace_collector,
                 config=diag_cfg,
                 solver_name="superlu",
-                matrix_getter=lambda factor_manager: factor_manager.get_active_matrix(),
+                matrix_getter=_sparse_factor_manager_matrix,
             )
         else:
             pass

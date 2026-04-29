@@ -129,53 +129,87 @@ def evaluate_vectorized_residual(
     return float(np.max(np.abs(residual_out)))
 
 
+def _dense_lu_bundle_solve(bundle: DenseSolveBundle, rhs: Vec) -> Vec:
+    """
+    Solve one dense LU system.
+
+    :param bundle: Dense LU bundle ``(factorization, matrix)``.
+    :param rhs: Right-hand side vector.
+    :return: Solution vector.
+    """
+    return lu_solve(bundle[0], rhs)
+
+
+def _dense_lu_bundle_fallback(bundle: DenseSolveBundle, rhs: Vec) -> Vec:
+    """
+    Solve one dense fallback least-squares system.
+
+    :param bundle: Dense LU bundle ``(factorization, matrix)``.
+    :param rhs: Right-hand side vector.
+    :return: Fallback solution vector.
+    """
+    return dense_lstsq_fallback(bundle[1], rhs)
+
+
+def _dense_lu_bundle_matrix(bundle: DenseSolveBundle) -> np.ndarray:
+    """
+    Return the dense Jacobian matrix stored in one LU bundle.
+
+    :param bundle: Dense LU bundle ``(factorization, matrix)``.
+    :return: Dense Jacobian matrix.
+    """
+    return bundle[1]
+
+
+def _sparse_factor_manager_solve(manager: StructuralCompiledSparseFactorizationManager, rhs: Vec) -> Vec:
+    """
+    Solve one sparse linear system through the factor manager.
+
+    :param manager: Sparse factorization manager.
+    :param rhs: Right-hand side vector.
+    :return: Solution vector.
+    """
+    return manager.solve(rhs)
+
+
+def _sparse_factor_manager_fallback(manager: StructuralCompiledSparseFactorizationManager, rhs: Vec) -> Vec:
+    """
+    Solve one sparse fallback least-squares system.
+
+    :param manager: Sparse factorization manager.
+    :param rhs: Right-hand side vector.
+    :return: Fallback solution vector.
+    """
+    return sparse_lsqr_fallback(manager.get_active_matrix(), rhs)
+
+
+def _sparse_factor_manager_matrix(manager: StructuralCompiledSparseFactorizationManager) -> csc_matrix:
+    """
+    Return the active sparse Jacobian matrix held by one factor manager.
+
+    :param manager: Sparse factorization manager.
+    :return: Active sparse Jacobian matrix.
+    """
+    return manager.get_active_matrix()
+
+
 def build_residual_evaluator(
-        residual_dispatcher: Callable[..., Any],
-        vec_flat_args: Any | None,
+        residual_dispatcher: FusedResidualDispatcher | DirectResidualDispatcher,
 ) -> Callable[[Vec, Vec, Vec, Vec, float, Vec, Vec], None]:
     """
     Build one fixed-signature residual evaluator for the current dispatcher.
 
-    This resolves the dispatcher signature once per simulation so the Newton hot
-    path does not pay per-call tuple unpacking or compatibility branching.
+    The fused and direct dispatchers expose the same ``evaluate()`` API, so the
+    Newton hot path can call one fixed-signature method without any dynamic
+    attribute probing or signature branching.
 
-    :param residual_dispatcher: Residual dispatcher or test double.
-    :type residual_dispatcher: Callable[..., Any]
-    :param vec_flat_args: Flat runtime args used by some test doubles.
-    :type vec_flat_args: Any | None
+    :param residual_dispatcher: Residual dispatcher.
+    :type residual_dispatcher: FusedResidualDispatcher | DirectResidualDispatcher
     :return: Residual evaluator with signature ``(states, params, history,
         d_history, h, history2, out)``.
     :rtype: Callable[[Vec, Vec, Vec, Vec, float, Vec, Vec], None]
     """
-    direct_evaluator = getattr(residual_dispatcher, "evaluate", None)
-
-    if callable(direct_evaluator):
-        return direct_evaluator
-
-    if vec_flat_args is None:
-        def residual_evaluator(
-                states: Vec,
-                params: Vec,
-                history: Vec,
-                d_history: Vec,
-                h: float,
-                history2: Vec,
-                out: Vec,
-        ) -> None:
-            residual_dispatcher(states, params, history, d_history, h, history2, out)
-    else:
-        def residual_evaluator(
-                states: Vec,
-                params: Vec,
-                history: Vec,
-                d_history: Vec,
-                h: float,
-                history2: Vec,
-                out: Vec,
-        ) -> None:
-            residual_dispatcher(states, params, history, d_history, h, vec_flat_args, out, history2)
-
-    return residual_evaluator
+    return residual_dispatcher.evaluate
 
 
 # ==============================================================================
@@ -236,7 +270,7 @@ def _canonicalize_node(
 
         elif target_uid in param_uids:
             if target_uid not in param_slots:
-                param_name: str = getattr(node, 'name', f'uid_{target_uid}')
+                param_name: str = node.name
                 param_slots[target_uid] = f"__PARAM_{param_name}_{target_uid}__"
 
             return param_slots[target_uid]
@@ -244,7 +278,7 @@ def _canonicalize_node(
         else:
             raise RuntimeError(
                 f"Canonicalization found Var not classified as runtime or parameter: "
-                f"name={getattr(node, 'name', '<?>')}, target_uid={target_uid}"
+                f"name={node.name}, target_uid={target_uid}"
             )
 
     elif isinstance(node, Const):
@@ -1210,7 +1244,7 @@ class StructuralVectorizedSolver:
                 if idx is None:
                     raise RuntimeError(
                         f"Runtime variable missing in uid2idx_vars. "
-                        f"eq={i}, var={getattr(v, 'name', '<?>')}, target_uid={target_uid}"
+                        f"eq={i}, var={v.name}, target_uid={target_uid}"
                     )
 
                 var_indices.append(idx)
@@ -1434,24 +1468,24 @@ class StructuralVectorizedSolver:
 
         dense_solve: Callable[..., Vec] | None = None
         sparse_solve: Callable[..., Vec] | None = None
-        residual_evaluator = build_residual_evaluator(self.fused_residual, self.vec_flat_args)
+        residual_evaluator = build_residual_evaluator(self.fused_residual)
 
         if diagnostics_enabled:
             dense_solve = with_newton_diagnostics(
-                lambda bundle, rhs: lu_solve(bundle[0], rhs),
-                fallback_solve=lambda bundle, rhs: dense_lstsq_fallback(bundle[1], rhs),
+                _dense_lu_bundle_solve,
+                fallback_solve=_dense_lu_bundle_fallback,
                 collector=trace_collector,
                 config=diag_cfg,
                 solver_name="dense_lu",
-                matrix_getter=lambda bundle: bundle[1],
+                matrix_getter=_dense_lu_bundle_matrix,
             )
             sparse_solve = with_newton_diagnostics(
-                lambda manager, rhs: manager.solve(rhs),
-                fallback_solve=lambda manager, rhs: sparse_lsqr_fallback(manager.get_active_matrix(), rhs),
+                _sparse_factor_manager_solve,
+                fallback_solve=_sparse_factor_manager_fallback,
                 collector=trace_collector,
                 config=diag_cfg,
                 solver_name="emt_sparse_backend",
-                matrix_getter=lambda manager: manager.get_active_matrix(),
+                matrix_getter=_sparse_factor_manager_matrix,
             )
         else:
             pass

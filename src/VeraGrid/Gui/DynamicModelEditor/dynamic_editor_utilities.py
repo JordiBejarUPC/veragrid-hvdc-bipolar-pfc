@@ -5,7 +5,9 @@
 from typing import Sequence
 
 from VeraGridEngine import get_transformer_emt_template, get_xfmr_emt_template
-from VeraGridEngine.enumerations import BlockType
+from VeraGridEngine.Devices.Branches.transformer import Transformer2W
+from VeraGridEngine.Devices.Branches.winding import Winding
+from VeraGridEngine.enumerations import BlockType, WindingType
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Templates.predefined_blocks import (
@@ -50,6 +52,19 @@ from VeraGridEngine.Templates.Emt.load_exponential_emt_template import get_expon
 from VeraGridEngine.Templates.Emt.load_zip_emt_template import get_load_ZIP_emt_template
 from VeraGridEngine.Templates.Emt.dc_load_emt_template import get_dc_load_emt_template
 
+
+
+def _get_transformer_connection_types(api_object: Transformer2W | Winding | None) -> tuple[WindingType | None, WindingType | None]:
+    """
+    Return the explicit from/to winding connections for transformer-like objects.
+
+    :param api_object: Transformer-like API object.
+    :return: Pair ``(conn_f, conn_t)`` or ``(None, None)`` when unavailable.
+    """
+    if api_object is None:
+        return None, None
+    else:
+        return api_object.conn_f, api_object.conn_t
 
 
 def create_block_of_type(var_factory: VarFactory,
@@ -182,15 +197,13 @@ def create_block_of_type(var_factory: VarFactory,
         return blk
 
     elif block_type == BlockType.TRAFO_EMT:
-        conn_f = getattr(api_object, "conn_f", None)
-        conn_t = getattr(api_object, "conn_t", None)
+        conn_f, conn_t = _get_transformer_connection_types(api_object)
         blk = get_transformer_emt_template(var_factory, conn_f=conn_f, conn_t=conn_t).block
         blk.name = item_name
         return blk
 
     elif block_type == BlockType.XFMR_TRANSFORMER:
-        conn_f = getattr(api_object, "conn_f", None)
-        conn_t = getattr(api_object, "conn_t", None)
+        conn_f, conn_t = _get_transformer_connection_types(api_object)
         blk = get_xfmr_emt_template(var_factory, conn_f=conn_f, conn_t=conn_t).block
         blk.name = item_name
         return blk
