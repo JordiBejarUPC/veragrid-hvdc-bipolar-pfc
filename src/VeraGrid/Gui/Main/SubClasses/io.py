@@ -33,8 +33,7 @@ from VeraGridEngine.IO.veragrid.contingency_parser import import_contingencies_f
 from VeraGridEngine.IO.veragrid.remote import RemoteInstruction
 from VeraGridEngine.IO.veragrid.catalogue import save_catalogue, load_catalogue
 from VeraGridEngine.Utils.ThirdParty.gslv.gslv_activation import install_gslv_license
-from VeraGrid.templates import (get_cables_catalogue, get_transformer_catalogue, get_wires_catalogue,
-                                get_sequence_lines_catalogue)
+from VeraGrid.Gui.CatalogueElementsDialogue.catalogue_elements_dialogue import CatalogueElementsSelectionDialogue
 
 
 class IoMain(ScenariosMain):
@@ -991,34 +990,10 @@ class IoMain(ScenariosMain):
 
     def add_default_catalogue(self) -> None:
         """
-        Add default catalogue to circuit
+        Add catalogue elements to the circuit (interactive selection).
         """
-
-        for tpe in get_transformer_catalogue():
-            self.circuit.add_transformer_type(tpe)
-
-        for tpe in get_cables_catalogue():
-            self.circuit.add_underground_line(tpe)
-
-        for tpe in get_wires_catalogue():
-            self.circuit.add_wire(tpe)
-
-        for tpe in get_sequence_lines_catalogue():
-            self.circuit.add_sequence_line(tpe)
-
-        if not self.circuit.rms_models:
-            self.circuit.add_rms_model_catalogue()
-        else:
-            self.circuit.rms_models = list()
-            self.circuit.add_rms_model_catalogue()
-
-        if not self.circuit.emt_models:
-            self.circuit.add_emt_model_catalogue()
-        else:
-            self.circuit.emt_models = list()
-            self.circuit.add_emt_model_catalogue()
-
-        self.show_info_toast("Catalogue added!")
+        dlg = CatalogueElementsSelectionDialogue(parent=self, circuit=self.circuit)
+        dlg.exec()
 
     def load_custom_catalogue(self):
         """
