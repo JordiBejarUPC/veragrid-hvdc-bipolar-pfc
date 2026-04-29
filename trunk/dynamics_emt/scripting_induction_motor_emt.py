@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Dict, Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -109,6 +109,132 @@ class MechanicalTorqueStepUpdater:
         else:
             return None
 
+    @property
+    def step_time_s(self) -> float:
+        """Return the configured event time.
+
+        :return: Torque-step time in seconds.
+        """
+        return self._step_time_s
+
+
+def _abc_to_alpha_beta_samples(abc_matrix: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    """Transform one sampled ABC waveform to alpha-beta coordinates.
+
+    :param abc_matrix: Sample matrix with shape ``(n_samples, 3)``.
+    :return: Alpha and beta sample vectors.
+    """
+    alpha_vector: np.ndarray = (2.0 / 3.0) * (abc_matrix[:, 0] - 0.5 * abc_matrix[:, 1] - 0.5 * abc_matrix[:, 2])
+    beta_vector: np.ndarray = (1.0 / np.sqrt(3.0)) * (abc_matrix[:, 1] - abc_matrix[:, 2])
+    return alpha_vector, beta_vector
+
+
+def _estimate_peak_phasor(time_values: np.ndarray, sample_values: np.ndarray, frequency_hz: float) -> complex:
+    """Estimate one sinusoidal peak phasor from sampled data.
+
+    :param time_values: Time vector.
+    :param sample_values: Sampled waveform over one cycle.
+    :param frequency_hz: Fundamental frequency.
+    :return: Estimated peak phasor.
+    """
+    omega_base: float = 2.0 * np.pi * frequency_hz
+    dt: float = float(np.mean(np.diff(time_values)))
+    kernel: np.ndarray = np.exp(-1j * omega_base * time_values)
+    return complex((2.0j / max(sample_values.size, 1)) * np.sum(sample_values * kernel))
+
+
+def _extract_cycle_window(time_values: np.ndarray, frequency_hz: float, start_time_s: float) -> np.ndarray:
+    """Return the boolean mask for one electrical cycle.
+
+    :param time_values: Time vector.
+    :param frequency_hz: Fundamental frequency.
+    :param start_time_s: Window start time.
+    :return: Boolean mask selecting one cycle.
+    """
+    cycle_duration_s: float = 1.0 / frequency_hz
+    return np.logical_and(time_values >= start_time_s, time_values < start_time_s + cycle_duration_s)
+
+
+def _cycle_mean(time_values: np.ndarray, sample_values: np.ndarray, frequency_hz: float, start_time_s: float) -> float:
+    """Return the mean value over one electrical cycle.
+
+    :param time_values: Time vector.
+    :param sample_values: Sample vector.
+    :param frequency_hz: Fundamental frequency.
+    :param start_time_s: Cycle start time.
+    :return: Mean over the selected cycle.
+    """
+    cycle_mask: np.ndarray = _extract_cycle_window(time_values=time_values, frequency_hz=frequency_hz, start_time_s=start_time_s)
+    return float(np.mean(sample_values[cycle_mask]))
+
+
+def _cycle_average_trace(time_values: np.ndarray, sample_values: np.ndarray, frequency_hz: float) -> np.ndarray:
+    """Return one centered moving average over one electrical cycle.
+
+    :param time_values: Time vector.
+    :param sample_values: Sample vector.
+    :param frequency_hz: Fundamental frequency.
+    :return: One-cycle averaged trace.
+    """
+    dt: float = float(np.mean(np.diff(time_values)))
+    samples_per_cycle: int = max(int(round((1.0 / frequency_hz) / max(dt, 1e-12))), 1)
+    kernel: np.ndarray = np.ones(samples_per_cycle, dtype=np.float64) / float(samples_per_cycle)
+    return np.convolve(sample_values, kernel, mode="same")
+
+
+def _compute_equivalent_circuit_initialization(
+    voltage_phasors: Tuple[complex, complex, complex],
+    p_targets_pu: Tuple[float, float, float],
+    q_targets_pu: Tuple[float, float, float],
+    motor_parameters: Dict[str, float],
+) -> Dict[str, float | complex | Tuple[complex, complex, complex]]:
+    """Compute the single-cage positive-sequence steady-state used by the demo.
+
+    :param voltage_phasors: Terminal phase-voltage RMS phasors in per unit.
+    :param p_targets_pu: Per-phase active-power targets in per unit.
+    :param q_targets_pu: Per-phase reactive-power targets in per unit.
+    :param motor_parameters: Demo motor parameter dictionary.
+    :return: Dictionary with initialized current, power and slip values.
+    """
+    v_a: complex = voltage_phasors[0]
+    v_b: complex = voltage_phasors[1]
+    v_c: complex = voltage_phasors[2]
+    s_a_target: complex = complex(p_targets_pu[0], q_targets_pu[0])
+    s_b_target: complex = complex(p_targets_pu[1], q_targets_pu[1])
+    s_c_target: complex = complex(p_targets_pu[2], q_targets_pu[2])
+    i_a_target: complex = np.conj(s_a_target / (v_a + 1e-12))
+    i_b_target: complex = np.conj(s_b_target / (v_b + 1e-12))
+    i_c_target: complex = np.conj(s_c_target / (v_c + 1e-12))
+    v_pos: complex = (v_a + np.exp(1j * 2.0 * np.pi / 3.0) * v_b + np.exp(-1j * 2.0 * np.pi / 3.0) * v_c) / 3.0
+    i_pos_target: complex = (i_a_target + np.exp(1j * 2.0 * np.pi / 3.0) * i_b_target + np.exp(-1j * 2.0 * np.pi / 3.0) * i_c_target) / 3.0
+    z_s: complex = complex(motor_parameters["r_s"], motor_parameters["x_ls"])
+    z_m: complex = complex(0.0, motor_parameters["x_m"])
+    v_airgap_target: complex = v_pos - z_s * i_pos_target
+    i_mag_target: complex = v_airgap_target / (z_m + 1e-12j)
+    i_rotor_target: complex = i_pos_target - i_mag_target
+    z_rotor_est: complex = v_airgap_target / (i_rotor_target + 1e-12)
+    slip_estimate: float = float(np.clip(
+        motor_parameters["r_r"] / max(np.real(z_rotor_est), motor_parameters["r_r"] / motor_parameters["slip_max"]),
+        motor_parameters["slip_min"],
+        motor_parameters["slip_max"],
+    ))
+    z_r: complex = complex(motor_parameters["r_r"] / slip_estimate, motor_parameters["x_lr"])
+    z_parallel: complex = (z_m * z_r) / (z_m + z_r + 1e-12)
+    z_in: complex = z_s + z_parallel
+    i_pos_model: complex = v_pos / (z_in + 1e-12)
+    i_a_model: complex = i_pos_model
+    i_b_model: complex = np.exp(-1j * 2.0 * np.pi / 3.0) * i_pos_model
+    i_c_model: complex = np.exp(1j * 2.0 * np.pi / 3.0) * i_pos_model
+    s_total_model: complex = v_a * np.conj(i_a_model) + v_b * np.conj(i_b_model) + v_c * np.conj(i_c_model)
+    return dict({
+        "slip": slip_estimate,
+        "omega": 1.0 - slip_estimate,
+        "p_total": float(np.real(s_total_model)),
+        "q_total": float(np.imag(s_total_model)),
+        "currents": (i_a_model, i_b_model, i_c_model),
+        "phase_lag_rad": float(np.angle(v_a) - np.angle(i_a_model)),
+    })
+
 
 def _build_pf_options() -> PowerFlowOptions:
     """Build one compact three-phase power-flow option set.
@@ -146,7 +272,7 @@ def _build_emt_options() -> EmtOptions:
     """
     return EmtOptions(
         time_step=2.0e-5,
-        simulation_time=0.35,
+        simulation_time=0.60,
         tolerance=1e-6,
         integration_method=DynamicIntegrationMethod.DaeTrapezoidal,
         initialization_method=EmtInitializationMethod.Explicit,
@@ -154,13 +280,13 @@ def _build_emt_options() -> EmtOptions:
     )
 
 
-def _build_demo_grid() -> Tuple[MultiCircuit, Bus, Bus, Line, Generator, Load, Block]:
+def _build_demo_grid() -> Tuple[MultiCircuit, Bus, Bus, Line, Generator, Load, Block, Dict[str, float]]:
     """Build one simple EMT-ready network with a source, a line and one motor.
 
     The load object supplies the power-flow operating point, while the EMT model
     attached to it is the new induction-motor template.
 
-    :return: Tuple with the grid, buses, line, generator, load and motor block.
+    :return: Tuple with the grid, buses, line, generator, load, motor block and motor parameters.
     """
     grid: MultiCircuit = MultiCircuit(Sbase=2.0, fbase=50.0)
     vnom_kv: float = 10.0
@@ -196,6 +322,20 @@ def _build_demo_grid() -> Tuple[MultiCircuit, Bus, Bus, Line, Generator, Load, B
     load.conn = ShuntConnectionType.GroundedStar
     grid.add_load(bus=bus_motor, api_obj=load)
 
+    motor_parameters: Dict[str, float] = dict({
+        "r_s": 0.03,
+        "x_ls": 0.04,
+        "x_m": 25.0,
+        "r_r": 0.02,
+        "x_lr": 0.04,
+        "H": 0.45,
+        "D": 0.01,
+        "slip_init": 0.02,
+        "slip_min": 1e-3,
+        "slip_max": 1.0,
+        "speed_eps": 1e-3,
+    })
+
     get_bus_emt_template(grid, bus_slack)
     get_bus_emt_template(grid, bus_motor)
 
@@ -215,22 +355,19 @@ def _build_demo_grid() -> Tuple[MultiCircuit, Bus, Bus, Line, Generator, Load, B
     set_emt_model(device=line, model=line_block, var_factory=grid.var_factory)
     set_emt_model(device=load, model=motor_block, var_factory=grid.var_factory)
 
-    motor_block.set_parameter_in_model(var_name="r_s_induction_motor_demo", new_value=0.025)
-    motor_block.set_parameter_in_model(var_name="x_ls_induction_motor_demo", new_value=0.12)
-    motor_block.set_parameter_in_model(var_name="x_m_induction_motor_demo", new_value=3.0)
-    motor_block.set_parameter_in_model(var_name="r_r_induction_motor_demo", new_value=0.02)
-    motor_block.set_parameter_in_model(var_name="x_lr_induction_motor_demo", new_value=0.12)
-    motor_block.set_parameter_in_model(var_name="H_induction_motor_demo", new_value=0.45)
-    motor_block.set_parameter_in_model(var_name="D_induction_motor_demo", new_value=0.01)
-    # motor_block.set_parameter_in_model(var_name="pq_tau_induction_motor_demo", new_value=0.01)
-    motor_block.set_parameter_in_model(var_name="P0_A_induction_motor_demo", new_value=load.Pa / grid.Sbase)
-    motor_block.set_parameter_in_model(var_name="P0_B_induction_motor_demo", new_value=load.Pb / grid.Sbase)
-    motor_block.set_parameter_in_model(var_name="P0_C_induction_motor_demo", new_value=load.Pc / grid.Sbase)
-    motor_block.set_parameter_in_model(var_name="Q0_A_induction_motor_demo", new_value=load.Qa / grid.Sbase)
-    motor_block.set_parameter_in_model(var_name="Q0_B_induction_motor_demo", new_value=load.Qb / grid.Sbase)
-    motor_block.set_parameter_in_model(var_name="Q0_C_induction_motor_demo", new_value=load.Qc / grid.Sbase)
+    motor_block.set_parameter_in_model(var_name="r_s_induction_motor_demo", new_value=motor_parameters["r_s"])
+    motor_block.set_parameter_in_model(var_name="x_ls_induction_motor_demo", new_value=motor_parameters["x_ls"])
+    motor_block.set_parameter_in_model(var_name="x_m_induction_motor_demo", new_value=motor_parameters["x_m"])
+    motor_block.set_parameter_in_model(var_name="r_r_induction_motor_demo", new_value=motor_parameters["r_r"])
+    motor_block.set_parameter_in_model(var_name="x_lr_induction_motor_demo", new_value=motor_parameters["x_lr"])
+    motor_block.set_parameter_in_model(var_name="H_induction_motor_demo", new_value=motor_parameters["H"])
+    motor_block.set_parameter_in_model(var_name="D_induction_motor_demo", new_value=motor_parameters["D"])
+    motor_block.set_parameter_in_model(var_name="slip_init_induction_motor_demo", new_value=motor_parameters["slip_init"])
+    motor_block.set_parameter_in_model(var_name="slip_min_induction_motor_demo", new_value=motor_parameters["slip_min"])
+    motor_block.set_parameter_in_model(var_name="slip_max_induction_motor_demo", new_value=motor_parameters["slip_max"])
+    motor_block.set_parameter_in_model(var_name="speed_eps_induction_motor_demo", new_value=motor_parameters["speed_eps"])
 
-    return grid, bus_slack, bus_motor, line, generator, load, motor_block
+    return grid, bus_slack, bus_motor, line, generator, load, motor_block, motor_parameters
 
 
 def _get_series(problem: EmtProblemDae, block: Block, variable_name: str, y_values: np.ndarray) -> np.ndarray:
@@ -357,7 +494,7 @@ def _run_power_flow(grid: MultiCircuit) -> object:
         return res
 
 
-def _build_problem(grid: MultiCircuit, pf_results_3ph: object) -> EmtProblemDae:
+def _build_problem(grid: MultiCircuit, pf_results_3ph: PowerFlowResults3Ph) -> EmtProblemDae:
     """Build the EMT problem.
 
     :param grid: Demo grid.
@@ -415,7 +552,7 @@ def _build_mechanical_torque_step_updater(problem: EmtProblemDae, motor_block: B
         final_value: float = 1.2 * initial_value
         return MechanicalTorqueStepUpdater(
             parameter_index=parameter_index,
-            step_time_s=0.12,
+            step_time_s=0.35,
             initial_value=initial_value,
             final_value=final_value,
         )
@@ -424,6 +561,8 @@ def _build_mechanical_torque_step_updater(problem: EmtProblemDae, motor_block: B
 def _print_debug_values(
     load: Load,
     grid: MultiCircuit,
+    bus_voltages: np.ndarray,
+    time_values: np.ndarray,
     motor_currents: np.ndarray,
     active_power: np.ndarray,
     reactive_power: np.ndarray,
@@ -431,11 +570,16 @@ def _print_debug_values(
     slip: np.ndarray,
     torque_e: np.ndarray,
     torque_m: np.ndarray,
+    equivalent_point: Dict[str, float | complex | Tuple[complex, complex, complex]],
+    motor_parameters: Dict[str, float],
+    step_time_s: float,
 ) -> None:
     """Print initialization and final-value debug checks for the demo motor.
 
     :param load: Power-flow load object.
     :param grid: Demo grid.
+    :param bus_voltages: Three-phase terminal voltages.
+    :param time_values: Simulation time vector.
     :param motor_currents: Three-phase absorbed motor currents.
     :param active_power: Motor active-power series in pu.
     :param reactive_power: Motor reactive-power series in pu.
@@ -443,28 +587,112 @@ def _print_debug_values(
     :param slip: Rotor slip series.
     :param torque_e: Electromagnetic torque series.
     :param torque_m: Mechanical torque series.
+    :param equivalent_point: Analytical motor steady-state operating point.
+    :param motor_parameters: Demo motor parameter dictionary.
+    :param step_time_s: Torque-step time.
     :return: None.
     """
     p0_target: float = float((load.Pa + load.Pb + load.Pc) / grid.Sbase)
     q0_target: float = float((load.Qa + load.Qb + load.Qc) / grid.Sbase)
-    final_window: int = max(int(0.05 * active_power.size), 10)
-    p_final: float = float(np.mean(active_power[-final_window:]))
-    q_final: float = float(np.mean(reactive_power[-final_window:]))
+    cycle_duration_s: float = 1.0 / grid.fBase
+    initial_cycle_start_s: float = 0.0
+    pre_event_cycle_start_s: float = max(step_time_s - cycle_duration_s - 0.005, 0.0)
+    final_cycle_start_s: float = max(time_values[-1] - cycle_duration_s, 0.0)
+    pre_event_mask: np.ndarray = _extract_cycle_window(
+        time_values=time_values,
+        frequency_hz=grid.fBase,
+        start_time_s=pre_event_cycle_start_s,
+    )
+    post_event_mask: np.ndarray = time_values >= max(step_time_s + 0.02, step_time_s)
+    initial_cycle_mask: np.ndarray = _extract_cycle_window(time_values=time_values, frequency_hz=grid.fBase, start_time_s=initial_cycle_start_s)
+    p_pre_event: float = float(np.mean(active_power[pre_event_mask]))
+    q_pre_event: float = float(np.mean(reactive_power[pre_event_mask]))
+    p_post_event: float = float(np.mean(active_power[post_event_mask]))
+    q_post_event: float = float(np.mean(reactive_power[post_event_mask]))
+    te_pre_event: float = float(np.mean(torque_e[pre_event_mask]))
+    tm_pre_event: float = float(np.mean(torque_m[pre_event_mask]))
+    omega_pre_event: float = float(np.mean(speed[pre_event_mask]))
+    slip_pre_event: float = float(np.mean(slip[pre_event_mask]))
+    i_rms_initial: np.ndarray = np.sqrt(np.mean(motor_currents[initial_cycle_mask, :] ** 2.0, axis=0))
+    voltage_a_peak: complex = _estimate_peak_phasor(time_values[initial_cycle_mask], bus_voltages[initial_cycle_mask, 0], grid.fBase)
+    current_a_peak: complex = _estimate_peak_phasor(time_values[initial_cycle_mask], motor_currents[initial_cycle_mask, 0], grid.fBase)
+    phase_lag_initial_deg: float = float(np.degrees(np.angle(voltage_a_peak) - np.angle(current_a_peak)))
+    voltage_alpha, voltage_beta = _abc_to_alpha_beta_samples(bus_voltages[initial_cycle_mask, :])
+    current_alpha, current_beta = _abc_to_alpha_beta_samples(motor_currents[initial_cycle_mask, :])
+    p_abc_cycle: float = float(np.mean(np.sum(bus_voltages[initial_cycle_mask, :] * motor_currents[initial_cycle_mask, :], axis=1)))
+    p_alpha_beta_cycle: float = float(np.mean(1.5 * (voltage_alpha * current_alpha + voltage_beta * current_beta)))
+    q_alpha_beta_cycle: float = float(np.mean(1.5 * (voltage_beta * current_alpha - voltage_alpha * current_beta)))
+    p_cycle_initial: float = _cycle_mean(time_values=time_values, sample_values=active_power, frequency_hz=grid.fBase, start_time_s=initial_cycle_start_s)
+    q_cycle_initial: float = _cycle_mean(time_values=time_values, sample_values=reactive_power, frequency_hz=grid.fBase, start_time_s=initial_cycle_start_s)
+    te_cycle_initial: float = _cycle_mean(time_values=time_values, sample_values=torque_e, frequency_hz=grid.fBase, start_time_s=initial_cycle_start_s)
+    tm_cycle_initial: float = _cycle_mean(time_values=time_values, sample_values=torque_m, frequency_hz=grid.fBase, start_time_s=initial_cycle_start_s)
+    omega_cycle_initial: float = _cycle_mean(time_values=time_values, sample_values=speed, frequency_hz=grid.fBase, start_time_s=initial_cycle_start_s)
+    slip_cycle_initial: float = _cycle_mean(time_values=time_values, sample_values=slip, frequency_hz=grid.fBase, start_time_s=initial_cycle_start_s)
+    p_cycle_pre_event: float = _cycle_mean(time_values=time_values, sample_values=active_power, frequency_hz=grid.fBase, start_time_s=pre_event_cycle_start_s)
+    q_cycle_pre_event: float = _cycle_mean(time_values=time_values, sample_values=reactive_power, frequency_hz=grid.fBase, start_time_s=pre_event_cycle_start_s)
+    te_cycle_pre_event: float = _cycle_mean(time_values=time_values, sample_values=torque_e, frequency_hz=grid.fBase, start_time_s=pre_event_cycle_start_s)
+    tm_cycle_pre_event: float = _cycle_mean(time_values=time_values, sample_values=torque_m, frequency_hz=grid.fBase, start_time_s=pre_event_cycle_start_s)
+    omega_cycle_pre_event: float = _cycle_mean(time_values=time_values, sample_values=speed, frequency_hz=grid.fBase, start_time_s=pre_event_cycle_start_s)
+    slip_cycle_pre_event: float = _cycle_mean(time_values=time_values, sample_values=slip, frequency_hz=grid.fBase, start_time_s=pre_event_cycle_start_s)
+    p_cycle_final: float = _cycle_mean(time_values=time_values, sample_values=active_power, frequency_hz=grid.fBase, start_time_s=final_cycle_start_s)
+    q_cycle_final: float = _cycle_mean(time_values=time_values, sample_values=reactive_power, frequency_hz=grid.fBase, start_time_s=final_cycle_start_s)
+    te_cycle_final: float = _cycle_mean(time_values=time_values, sample_values=torque_e, frequency_hz=grid.fBase, start_time_s=final_cycle_start_s)
+    tm_cycle_final: float = _cycle_mean(time_values=time_values, sample_values=torque_m, frequency_hz=grid.fBase, start_time_s=final_cycle_start_s)
+    omega_cycle_final: float = _cycle_mean(time_values=time_values, sample_values=speed, frequency_hz=grid.fBase, start_time_s=final_cycle_start_s)
+    slip_cycle_final: float = _cycle_mean(time_values=time_values, sample_values=slip, frequency_hz=grid.fBase, start_time_s=final_cycle_start_s)
 
     print(f"P0_target [pu]: {p0_target:.6f}")
     print(f"Q0_target [pu]: {q0_target:.6f}")
+    print(f"P_eq_init [pu]: {float(equivalent_point['p_total']):.6f}")
+    print(f"Q_eq_init [pu]: {float(equivalent_point['q_total']):.6f}")
     print(f"P_initial [pu]: {active_power[0]:.6f}")
     print(f"Q_initial [pu]: {reactive_power[0]:.6f}")
-    print(f"P_final [pu]: {p_final:.6f}")
-    print(f"Q_final [pu]: {q_final:.6f}")
+    print(f"P_cycle_initial [pu]: {p_cycle_initial:.6f}")
+    print(f"Q_cycle_initial [pu]: {q_cycle_initial:.6f}")
+    print(f"P_pre_event [pu]: {p_pre_event:.6f}")
+    print(f"Q_pre_event [pu]: {q_pre_event:.6f}")
+    print(f"P_cycle_pre_event [pu]: {p_cycle_pre_event:.6f}")
+    print(f"Q_cycle_pre_event [pu]: {q_cycle_pre_event:.6f}")
+    print(f"P_post_event [pu]: {p_post_event:.6f}")
+    print(f"Q_post_event [pu]: {q_post_event:.6f}")
+    print(f"P_cycle_final [pu]: {p_cycle_final:.6f}")
+    print(f"Q_cycle_final [pu]: {q_cycle_final:.6f}")
     print(
         "iabc_initial [pu]: "
         f"[{motor_currents[0, 0]:.6f}, {motor_currents[0, 1]:.6f}, {motor_currents[0, 2]:.6f}]"
     )
+    print(
+        "iabc_rms_initial [pu]: "
+        f"[{i_rms_initial[0]:.6f}, {i_rms_initial[1]:.6f}, {i_rms_initial[2]:.6f}]"
+    )
+    print(f"Current phase lag initial [deg]: {phase_lag_initial_deg:.6f}")
+    print(f"Cycle P_abc initial [pu]: {p_abc_cycle:.6f}")
+    print(f"Cycle P_alpha_beta initial [pu]: {p_alpha_beta_cycle:.6f}")
+    print(f"Cycle Q_alpha_beta initial [pu]: {q_alpha_beta_cycle:.6f}")
     print(f"Te_initial [pu]: {torque_e[0]:.6f}")
     print(f"Tm_initial [pu]: {torque_m[0]:.6f}")
+    print(f"Te_cycle_initial [pu]: {te_cycle_initial:.6f}")
+    print(f"Tm_cycle_initial [pu]: {tm_cycle_initial:.6f}")
+    print(f"Te_pre_event [pu]: {te_pre_event:.6f}")
+    print(f"Tm_pre_event [pu]: {tm_pre_event:.6f}")
+    print(f"Te_cycle_pre_event [pu]: {te_cycle_pre_event:.6f}")
+    print(f"Tm_cycle_pre_event [pu]: {tm_cycle_pre_event:.6f}")
+    print(f"Te_cycle_final [pu]: {te_cycle_final:.6f}")
+    print(f"Tm_cycle_final [pu]: {tm_cycle_final:.6f}")
     print(f"omega_initial [pu]: {speed[0]:.6f}")
     print(f"slip_initial [pu]: {slip[0]:.6f}")
+    print(f"omega_cycle_initial [pu]: {omega_cycle_initial:.6f}")
+    print(f"slip_cycle_initial [pu]: {slip_cycle_initial:.6f}")
+    print(f"omega_pre_event [pu]: {omega_pre_event:.6f}")
+    print(f"slip_pre_event [pu]: {slip_pre_event:.6f}")
+    print(f"omega_cycle_pre_event [pu]: {omega_cycle_pre_event:.6f}")
+    print(f"slip_cycle_pre_event [pu]: {slip_cycle_pre_event:.6f}")
+    print(f"omega_cycle_final [pu]: {omega_cycle_final:.6f}")
+    print(f"slip_cycle_final [pu]: {slip_cycle_final:.6f}")
+    print(
+        f"Torque balance pre-event [pu]: "
+        f"{te_cycle_pre_event - (tm_cycle_pre_event + motor_parameters['D'] * (omega_cycle_pre_event - 1.0)):.6f}"
+    )
 
 
 def _plot_results(
@@ -478,6 +706,8 @@ def _plot_results(
     slip: np.ndarray,
     torque_e: np.ndarray,
     torque_m: np.ndarray,
+    step_time_s: float,
+    frequency_hz: float,
 ) -> None:
     """Write the requested demo plots.
 
@@ -491,9 +721,13 @@ def _plot_results(
     :param slip: Rotor slip series.
     :param torque_e: Electromagnetic torque series.
     :param torque_m: Mechanical torque series.
+    :param step_time_s: Torque-step time.
+    :param frequency_hz: Fundamental frequency.
     :return: None.
     """
     output_directory.mkdir(parents=True, exist_ok=True)
+    active_power_average: np.ndarray = _cycle_average_trace(time_values=time_values, sample_values=active_power, frequency_hz=frequency_hz)
+    reactive_power_average: np.ndarray = _cycle_average_trace(time_values=time_values, sample_values=reactive_power, frequency_hz=frequency_hz)
 
     fig, axes = plt.subplots(5, 1, figsize=(11.0, 16.0), sharex=True)
 
@@ -509,12 +743,14 @@ def _plot_results(
     axes[1].plot(time_values, motor_currents[:, 1], label="iB")
     axes[1].plot(time_values, motor_currents[:, 2], label="iC")
     axes[1].set_ylabel("Current [pu]")
-    axes[1].set_title("Motor Currents abc")
+    axes[1].set_title("Motor Absorbed Currents abc")
     axes[1].grid(True)
     axes[1].legend(loc="upper right")
 
     axes[2].plot(time_values, active_power, label="P")
     axes[2].plot(time_values, reactive_power, label="Q")
+    axes[2].plot(time_values, active_power_average, linestyle="--", linewidth=1.0, label="P avg")
+    axes[2].plot(time_values, reactive_power_average, linestyle="--", linewidth=1.0, label="Q avg")
     axes[2].set_ylabel("Power [pu]")
     axes[2].set_title("Motor Active and Reactive Power")
     axes[2].grid(True)
@@ -534,6 +770,10 @@ def _plot_results(
     axes[4].set_title("Electrical and Mechanical Torque")
     axes[4].grid(True)
     axes[4].legend(loc="upper right")
+
+    axis_item: plt.Axes
+    for axis_item in axes:
+        axis_item.axvline(step_time_s, color="k", linestyle="--", linewidth=1.0)
 
     fig.tight_layout()
     plt.show()
@@ -574,8 +814,19 @@ def run_induction_motor_emt_demo() -> Path:
     :return: Output plot path.
     :raises RuntimeError: If EMT initialization or simulation fails.
     """
-    grid, _bus_slack, bus_motor, _line, _generator, load, motor_block = _build_demo_grid()
+    grid, _bus_slack, bus_motor, _line, _generator, load, motor_block, motor_parameters = _build_demo_grid()
     pf_results_3ph: object = _run_power_flow(grid)
+    bus_index: int = grid.buses.index(bus_motor)
+    equivalent_point: Dict[str, float | complex | Tuple[complex, complex, complex]] = _compute_equivalent_circuit_initialization(
+        voltage_phasors=(
+            complex(pf_results_3ph.voltage_A[bus_index]),
+            complex(pf_results_3ph.voltage_B[bus_index]),
+            complex(pf_results_3ph.voltage_C[bus_index]),
+        ),
+        p_targets_pu=(load.Pa / grid.Sbase, load.Pb / grid.Sbase, load.Pc / grid.Sbase),
+        q_targets_pu=(load.Qa / grid.Sbase, load.Qb / grid.Sbase, load.Qc / grid.Sbase),
+        motor_parameters=motor_parameters,
+    )
     problem: EmtProblemDae = _build_problem(grid=grid, pf_results_3ph=pf_results_3ph)
     torque_step_updater: MechanicalTorqueStepUpdater = _build_mechanical_torque_step_updater(problem=problem, motor_block=motor_block)
     time_values, y_values, well_initialized, converged = _run_simulation(problem=problem, boundary_updater=torque_step_updater)
@@ -619,10 +870,14 @@ def run_induction_motor_emt_demo() -> Path:
         slip=slip,
         torque_e=torque_e,
         torque_m=torque_m,
+        step_time_s=torque_step_updater.step_time_s,
+        frequency_hz=grid.fBase,
     )
     _print_debug_values(
         load=load,
         grid=grid,
+        bus_voltages=bus_voltages,
+        time_values=time_values,
         motor_currents=motor_currents,
         active_power=active_power,
         reactive_power=reactive_power,
@@ -630,6 +885,9 @@ def run_induction_motor_emt_demo() -> Path:
         slip=slip,
         torque_e=torque_e,
         torque_m=torque_m,
+        equivalent_point=equivalent_point,
+        motor_parameters=motor_parameters,
+        step_time_s=torque_step_updater.step_time_s,
     )
     _print_physical_checks(motor_currents, active_power, reactive_power, speed)
     return output_directory / "induction_motor_emt_summary.png"
