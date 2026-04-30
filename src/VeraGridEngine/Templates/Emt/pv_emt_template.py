@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+from enum import IntEnum
+
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
@@ -18,6 +20,21 @@ from VeraGridEngine.Templates.Emt.converter_emt_template import (
     _build_pseudo_emt_converter_inner_loop_block,
     _build_pseudo_emt_converter_transformer_block,
 )
+
+
+class PvEmtModelLevel(IntEnum):
+    """
+    Enumerate the supported PV EMT template detail levels.
+
+    ``LEVEL_1`` is the simplified PV availability plus MPPT-lag model, while
+    ``LEVEL_2`` adds the averaged PV plus DC-DC boost dynamics.
+
+    :ivar LEVEL_1: Simplified PV availability plus MPPT-lag model.
+    :ivar LEVEL_2: Averaged PV plus DC-DC boost model.
+    """
+
+    LEVEL_1 = 1
+    LEVEL_2 = 2
 
 
 # =============================================================================
@@ -218,6 +235,7 @@ def _build_level1_pv_availability_block(vf: VarFactory, name: str) -> Block:
     :return: Level-1 PV availability block.
     """
     i_dc = vf.add_var(name=f"i_dc_pv_l1_in_{name}")
+    v_dc_ctrl = vf.add_var(name=f"v_dc_ctrl_pv_l1_in_{name}")
 
     p_mppt = vf.add_var(name=f"p_mppt_l1_{name}")
     d_p_mppt = vf.add_diff_var(name=f"d_p_mppt_l1_{name}", base_var=p_mppt)
@@ -239,6 +257,7 @@ def _build_level1_pv_availability_block(vf: VarFactory, name: str) -> Block:
     v_dc_ref = vf.add_var(name=f"v_dc_ref_l1_{name}")
     r_pv = vf.add_var(name=f"r_pv_l1_{name}")
     k_pv_power = vf.add_var(name=f"k_pv_power_l1_{name}")
+    k_vdc_ctrl = vf.add_var(name=f"k_vdc_ctrl_l1_{name}")
 
     c0 = vf.add_const(0.0)
     eps = vf.add_const(1e-10)
@@ -253,6 +272,7 @@ def _build_level1_pv_availability_block(vf: VarFactory, name: str) -> Block:
     i_pv_init_mag: Expr = (v_dc_ref - sym.sqrt(p_init_disc)) / (vf.add_const(2.0) * r_pv_eff)
     i_pv_init: Expr = -i_pv_init_mag
     v_dc_bus_init: Expr = v_dc_ref + r_pv_eff * i_pv_init
+    v_oc_ctrl_expr: Expr = v_dc_ref - k_vdc_ctrl * (v_dc_ctrl - v_dc_ref)
 
     return Block(
         state_eqs=[
@@ -278,7 +298,10 @@ def _build_level1_pv_availability_block(vf: VarFactory, name: str) -> Block:
             # MPPT operating voltage. A power droop term drives the delivered
             # DC power toward the irradiance-limited MPPT target without adding
             # a second internal DC storage state.
-            v_oc - v_dc_ref,
+            # Local PV-side Vdc feedback trims the source open-circuit voltage so
+            # the PV block can regulate the converter DC-link without modifying
+            # the shared converter outer-loop implementation.
+            v_oc - v_oc_ctrl_expr,
             v_dc_bus - (v_oc + r_pv * i_pv - k_pv_power * (p_pv - mppt_limited_power)),
             # Curtailment is the available PV power that is not delivered to the
             # converter. Keep it non-negative even under small numerical errors.
@@ -296,6 +319,7 @@ def _build_level1_pv_availability_block(vf: VarFactory, name: str) -> Block:
             v_dc_ref: vf.add_const(1.0),
             r_pv: vf.add_const(0.02),
             k_pv_power: vf.add_const(10.0),
+            k_vdc_ctrl: vf.add_const(1.0),
         },
         init_eqs={
             p_avail: p_avail_expr,
@@ -307,7 +331,7 @@ def _build_level1_pv_availability_block(vf: VarFactory, name: str) -> Block:
             p_curt: p_avail_expr - p_pv_init,
         },
         diff_init_eqs={d_p_mppt: c0},
-        in_vars=[i_dc],
+        in_vars=[i_dc, v_dc_ctrl],
         out_vars=[v_dc_bus, p_avail, p_mppt, p_pv, i_pv, p_curt],
         name=f"{name}_pv_level1",
     )
@@ -360,7 +384,7 @@ def get_pv_avm_grid_following_emt_template(
     :return: Fully assembled Level-1 PV EMT template.
     """
     templ = EmtModelTemplate()
-    templ.tpe = DeviceType.VscDevice
+    templ.tpe = DeviceType.GeneratorDevice
     templ.name = name
     templ.block.name = name
 
@@ -368,7 +392,12 @@ def get_pv_avm_grid_following_emt_template(
     v_B: Var = vf.add_var(name=f"v_B_{name}", reference=VarPowerFlowRefferenceType.v_B)
     v_C: Var = vf.add_var(name=f"v_C_{name}", reference=VarPowerFlowRefferenceType.v_C)
 
-    vsc_block, pll_block, outer_loop_block, inner_loop_block, transformer_block = _build_converter_blocks(vf=vf, name=name)
+    vsc_block: Block = _build_pseudo_emt_converter_vsc_block(vf=vf, name=name)
+    pll_block: Block = _build_pseudo_emt_converter_pll_block(vf=vf, name=name)
+    outer_loop_block: Block = _build_pseudo_emt_converter_outer_loop_block(vf=vf, name=name)
+    inner_loop_block: Block = _build_pseudo_emt_converter_inner_loop_block(vf=vf, name=name)
+    transformer_block: Block = _build_pseudo_emt_converter_transformer_block(vf=vf, name=name)
+
     pv_block: Block = _build_level1_pv_availability_block(vf=vf, name=name)
 
     _connect_imported_converter_blocks(
@@ -382,7 +411,7 @@ def get_pv_avm_grid_following_emt_template(
         inner_loop_block=inner_loop_block,
         transformer_block=transformer_block,
     )
-    pv_block.connect([pv_block.in_vars[0]], [vsc_block.out_vars[1]])
+    pv_block.connect(pv_block.in_vars[0:2], [vsc_block.out_vars[1], vsc_block.out_vars[0]])
 
     templ.block.children.extend([pv_block, vsc_block, pll_block, inner_loop_block, outer_loop_block, transformer_block])
     templ.block.unify_blocks()
@@ -440,6 +469,7 @@ def _build_level2_pv_boost_block(vf: VarFactory, name: str) -> Block:
     :return: Level-2 PV averaged boost block.
     """
     i_dc = vf.add_var(name=f"i_dc_pv_l2_in_{name}")
+    v_dc_ctrl = vf.add_var(name=f"v_dc_ctrl_pv_l2_in_{name}")
 
     xi_mppt = vf.add_var(name=f"xi_mppt_l2_{name}")
     duty = vf.add_var(name=f"duty_l2_{name}")
@@ -477,6 +507,7 @@ def _build_level2_pv_boost_block(vf: VarFactory, name: str) -> Block:
     eta_boost = vf.add_var(name=f"eta_boost_l2_{name}")
     k_src = vf.add_var(name=f"k_src_l2_{name}")
     k_boost_power = vf.add_var(name=f"k_boost_power_l2_{name}")
+    k_vdc_ctrl = vf.add_var(name=f"k_vdc_ctrl_l2_{name}")
 
     c0 = vf.add_const(0.0)
     c1 = vf.add_const(1.0)
@@ -494,7 +525,8 @@ def _build_level2_pv_boost_block(vf: VarFactory, name: str) -> Block:
     p_src_expr: Expr = sym.hard_sat(p_src_raw, c0, p_avail)
     p_to_vsc_expr: Expr = eta_boost * p_src
     r_dc_eff: Expr = sym.max(r_dc, eps)
-    p_to_vsc_init_disc: Expr = sym.max(v_dc_ref * v_dc_ref - vf.add_const(4.0) * r_dc_eff * p_to_vsc_expr, eps)
+    v_dc_src_ctrl_expr: Expr = v_dc_ref - k_vdc_ctrl * (v_dc_ctrl - v_dc_ref)
+    p_to_vsc_init_disc: Expr = sym.max(v_dc_ref * v_dc_ref + vf.add_const(4.0) * r_dc_eff * p_to_vsc_expr, eps)
     i_pv_init: Expr = (v_dc_ref - sym.sqrt(p_to_vsc_init_disc)) / (vf.add_const(2.0) * r_dc_eff)
     v_dc_bus_init: Expr = v_dc_ref - r_dc_eff * i_pv_init
 
@@ -514,18 +546,21 @@ def _build_level2_pv_boost_block(vf: VarFactory, name: str) -> Block:
             v_pv - v_pv_expr,
             duty_ref - duty_ref_expr,
             p_src - p_src_expr,
-            # The boost output current equals the DC current drawn by the VSC at
-            # the shared source terminal because no extra DC-link state is added
-            # on the PV side in this averaged representation.
-            i_pv - i_dc,
-            # The actual boost output power is the source-side DC power seen by
-            # the converter interface.
-            p_to_vsc - v_dc_bus * i_pv,
+            # PV-side DC sign convention matches Level 1 and the imported VSC
+            # terminal current convention during export: positive PV power
+            # delivery to the converter is represented with ``i_pv < 0`` while
+            # the imported VSC reports the shared terminal current with the
+            # opposite sign. Therefore the common internal port satisfies
+            # ``i_pv + i_dc = 0`` during export.
+            i_pv + i_dc,
+            # Keep ``p_to_vsc`` positive when PV power is delivered from the
+            # source side into the converter interface.
+            p_to_vsc + v_dc_bus * i_pv,
             # The boost output is represented as a controlled Thevenin-like DC
             # source around v_dc_ref. A power droop term drives the delivered
             # power toward the MPPT/boost target while the imported VSC block
             # keeps the explicit converter DC-link state.
-            v_dc_bus - (v_dc_ref - r_dc * i_pv - k_boost_power * (p_to_vsc - p_to_vsc_expr)),
+            v_dc_bus - (v_dc_src_ctrl_expr - r_dc * i_pv - k_boost_power * (p_to_vsc - p_to_vsc_expr)),
             p_curt - (p_avail - p_src),
         ],
         algebraic_vars=[v_dc_bus, v_mp, i_mp, p_avail, v_pv, p_src, p_to_vsc, i_pv, duty_ref, p_curt],
@@ -541,7 +576,7 @@ def _build_level2_pv_boost_block(vf: VarFactory, name: str) -> Block:
             temp_coeff_i: vf.add_const(0.0005),
             v_dc_ref: vf.add_const(1.0),
             r_dc: vf.add_const(0.02),
-            d0: vf.add_const(0.20),
+            d0: vf.add_const(0.0000001),#0.20),
             d_min: vf.add_const(0.0),
             d_max: vf.add_const(0.95),
             kp_mppt: vf.add_const(0.5),
@@ -550,6 +585,7 @@ def _build_level2_pv_boost_block(vf: VarFactory, name: str) -> Block:
             eta_boost: vf.add_const(0.98),
             k_src: vf.add_const(1.0),
             k_boost_power: vf.add_const(10.0),
+            k_vdc_ctrl: vf.add_const(1.0),
         },
         init_eqs={
             xi_mppt: c0,
@@ -557,7 +593,7 @@ def _build_level2_pv_boost_block(vf: VarFactory, name: str) -> Block:
             v_mp: v_mp_expr,
             i_mp: i_mp_expr,
             p_avail: p_avail_expr,
-            v_pv: (c1 - d0) * v_dc_ref,
+            v_pv:  v_dc_ref, #(c1 - d0) * v_dc_ref,
             duty_ref: d0,
             p_src: p_avail_expr,
             p_to_vsc: p_to_vsc_expr,
@@ -566,7 +602,7 @@ def _build_level2_pv_boost_block(vf: VarFactory, name: str) -> Block:
             p_curt: c0,
         },
         diff_init_eqs={d_xi_mppt: c0, d_duty: c0},
-        in_vars=[i_dc],
+        in_vars=[i_dc, v_dc_ctrl],
         out_vars=[v_dc_bus, p_avail, p_src, p_to_vsc, v_pv, duty, v_mp, i_mp, p_curt],
         name=f"{name}_pv_level2_boost",
     )
@@ -611,7 +647,7 @@ def get_pv_avm_boost_grid_following_emt_template(
     :return: Fully assembled Level-2 PV EMT template.
     """
     templ = EmtModelTemplate()
-    templ.tpe = DeviceType.VscDevice
+    templ.tpe = DeviceType.GeneratorDevice
     templ.name = name
     templ.block.name = name
 
@@ -633,7 +669,7 @@ def get_pv_avm_boost_grid_following_emt_template(
         inner_loop_block=inner_loop_block,
         transformer_block=transformer_block,
     )
-    pv_boost_block.connect([pv_boost_block.in_vars[0]], [vsc_block.out_vars[1]])
+    pv_boost_block.connect(pv_boost_block.in_vars[0:2], [vsc_block.out_vars[1], vsc_block.out_vars[0]])
 
     templ.block.children.extend([
         pv_boost_block,
@@ -669,3 +705,30 @@ def get_pv_avm_boost_grid_following_emt_template(
     templ.block.api_obj_mapping = dict(vsc_block.api_obj_mapping)
 
     return templ
+
+
+def get_pv_grid_following_emt_template(
+    vf: VarFactory,
+    level: PvEmtModelLevel | int,
+    name: str,
+) -> EmtModelTemplate:
+    """
+    Build one PV EMT template from the requested model-detail level.
+
+    This helper keeps the Level-1 and Level-2 public constructors unchanged
+    while giving scripts one typed selection point for level-aware examples.
+
+    :param vf: EMT symbolic variable factory.
+    :param level: Requested PV model-detail level.
+    :param name: Symbolic model name.
+    :return: Fully assembled PV EMT template for the requested level.
+    :raises ValueError: If the requested level is not supported.
+    """
+    pv_level: PvEmtModelLevel = PvEmtModelLevel(level)
+
+    if pv_level == PvEmtModelLevel.LEVEL_1:
+        return get_pv_avm_grid_following_emt_template(vf=vf, name=name)
+    if pv_level == PvEmtModelLevel.LEVEL_2:
+        return get_pv_avm_boost_grid_following_emt_template(vf=vf, name=name)
+
+    raise ValueError(f"Unsupported PV EMT model level: {level}")

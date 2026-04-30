@@ -31,6 +31,7 @@ from typing import Any, Dict, List, Tuple
 
 import numpy as np
 
+from VeraGridEngine.Devices.Branches.overhead_line_type import OverheadLineType
 from VeraGridEngine.Devices import MultiCircuit
 from VeraGridEngine.Devices.Branches.dc_line import DcLine
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
@@ -1593,7 +1594,7 @@ def build_line_static_matrices(
     ybase: float = 1.0 / zbase
     line_template: Any = line.template
 
-    if line_template is None:
+    if type(line_template)== OverheadLineType:
         r_full: np.ndarray
         l_full: np.ndarray
         c_full: np.ndarray
@@ -1601,7 +1602,6 @@ def build_line_static_matrices(
             line=line,
             omega_base=omega_base,
         )
-    else:
         # Tower/template matrices are physical line matrices. They are first
         # length-scaled and then converted to the system EMT per-unit base.
         z_phys: np.ndarray = line_template.z_nabc * float(line.length)
@@ -1616,6 +1616,14 @@ def build_line_static_matrices(
 
         bsh_full: np.ndarray = np.imag(y_pu)
         c_full = (bsh_full / (omega_base + 1.0e-20)) / 2.0
+    else:
+        r_full: np.ndarray
+        l_full: np.ndarray
+        c_full: np.ndarray
+        r_full, l_full, c_full = build_uncoupled_line_static_matrices(
+            line=line,
+            omega_base=omega_base,
+        )
 
     return r_full, l_full, c_full
 

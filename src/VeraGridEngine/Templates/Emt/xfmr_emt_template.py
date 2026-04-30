@@ -163,7 +163,7 @@ def get_xfmr_emt_template(
     :return: EMT transformer template.
     """
     templ = EmtModelTemplate()
-    templ.tpe = DeviceType.TransformerTypeDevice
+    templ.tpe = DeviceType.Transformer2WDevice
     templ.name = name
     templ.block.name = name
 

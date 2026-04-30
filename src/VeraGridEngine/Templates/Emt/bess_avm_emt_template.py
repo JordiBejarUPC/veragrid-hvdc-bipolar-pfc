@@ -8,7 +8,7 @@ from __future__ import annotations
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
-from VeraGridEngine.Utils.Symbolic.block import Block, Var, Expr
+from VeraGridEngine.Utils.Symbolic.block import Block, Expr
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
 
 from VeraGridEngine.Templates.Emt.converter_emt_template import (
@@ -20,7 +20,7 @@ from VeraGridEngine.Templates.Emt.converter_emt_template import (
 )
 
 
-def get_battery_avm_emt_template(vf: VarFactory, name: str) -> Block:
+def get_battery_avm_emt_template(vf: VarFactory, name: str) -> EmtModelTemplate:
     """
     Build the aggregated battery block used by the Level-1 BESS template.
 
@@ -60,8 +60,12 @@ def get_battery_avm_emt_template(vf: VarFactory, name: str) -> Block:
 
     :param vf: EMT symbolic variable factory.
     :param name: Symbolic model name.
-    :return: Battery-side EMT block.
+    :return: Battery-side EMT template.
     """
+    templ = EmtModelTemplate()
+    templ.tpe = DeviceType.BatteryDevice  # TODO: not sure if VSC or PV/BESS if exists
+    templ.name = name
+    templ.block.name = name
     # ------------------------------------------------------------------
     # Inputs from the imported VSC block.
     # ------------------------------------------------------------------
@@ -112,7 +116,7 @@ def get_battery_avm_emt_template(vf: VarFactory, name: str) -> Block:
     p_dis0: Expr = c_half * (p_bat0 + p_abs0)
     p_ch0: Expr = c_half * (-p_bat0 + p_abs0)
 
-    return Block(
+    templ.block = Block(
         state_eqs=[
             # Positive battery power discharges the battery; negative power
             # charges it. Efficiencies are applied on the energy side.
@@ -160,6 +164,8 @@ def get_battery_avm_emt_template(vf: VarFactory, name: str) -> Block:
         out_vars=[v_dc_bus, soc, v_oc, i_bat, p_bat, p_dis, p_ch],
         name=f"{name}_battery",
     )
+
+    return templ
 
 
 def _build_bess_outer_power_loop_block(vf: VarFactory, name: str) -> Block:
@@ -340,7 +346,7 @@ def get_bess_avm_grid_following_emt_template(
     :return: Fully assembled EMT BESS template.
     """
     templ = EmtModelTemplate()
-    templ.tpe = DeviceType.VscDevice # TODO: not sure if VSC or PV/BESS if exists
+    templ.tpe = DeviceType.BatteryDevice # TODO: not sure if VSC or PV/BESS if exists
     templ.name = name
     templ.block.name = name
 
@@ -365,7 +371,7 @@ def get_bess_avm_grid_following_emt_template(
     # ------------------------------------------------------------------
     # New BESS-specific block.
     # ------------------------------------------------------------------
-    battery_block = get_battery_avm_emt_template(vf=vf, name=name)
+    battery_block = get_battery_avm_emt_template(vf=vf, name=name).block
 
     # ------------------------------------------------------------------
     # Wiring copied from the existing full pseudo-EMT converter assembly, with
@@ -464,9 +470,9 @@ def get_bess_avm_grid_following_emt_template(
         transformer_block.out_vars[0],
         transformer_block.out_vars[1],
         transformer_block.out_vars[2],
-        vsc_block.out_vars[1],
-        battery_block.out_vars[1],
-        battery_block.out_vars[4],
+        # vsc_block.out_vars[1],
+        # battery_block.out_vars[1],
+        # battery_block.out_vars[4],
     ]
 
     # ------------------------------------------------------------------

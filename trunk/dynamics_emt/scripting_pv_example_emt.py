@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from enum import Enum
 import sys
 from pathlib import Path
 from typing import Any
@@ -28,7 +29,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlow
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
-from VeraGridEngine.Templates.Emt.pv_emt_template import get_pv_avm_grid_following_emt_template
+from VeraGridEngine.Templates.Emt.pv_emt_template import PvEmtModelLevel, get_pv_grid_following_emt_template
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
 from VeraGridEngine.Templates.Emt.transformer_emt_template import get_transformer_emt_template
 from VeraGridEngine.Templates.templates_common_functions import set_emt_model
@@ -123,6 +124,11 @@ class PvRunObjects:
     """
     Keep the static network objects used by the PV EMT case.
 
+    :param run_name: Unique run identifier used in symbolic names.
+    :param display_name: Human-readable run label.
+    :param pv_level: Selected PV model level.
+    :param scenario: Selected scripted scenario.
+    :param pv_model_name: Symbolic name of the attached PV EMT model.
     :param grid: VeraGrid circuit.
     :param bus_grid: Slack/source bus.
     :param bus_pv: PV point of common coupling.
@@ -131,10 +137,27 @@ class PvRunObjects:
     :param pv_equivalent: Static PQ carrier used for PF and EMT attachment.
     """
 
-    __slots__ = ["grid", "bus_grid", "bus_pv", "generator", "transformer", "pv_equivalent"]
+    __slots__ = [
+        "run_name",
+        "display_name",
+        "pv_level",
+        "scenario",
+        "pv_model_name",
+        "grid",
+        "bus_grid",
+        "bus_pv",
+        "generator",
+        "transformer",
+        "pv_equivalent",
+    ]
 
     def __init__(
         self,
+        run_name: str,
+        display_name: str,
+        pv_level: PvEmtModelLevel,
+        scenario: PvScenario,
+        pv_model_name: str,
         grid: gce.MultiCircuit,
         bus_grid: gce.Bus,
         bus_pv: gce.Bus,
@@ -142,12 +165,34 @@ class PvRunObjects:
         transformer: gce.Transformer2W,
         pv_equivalent: gce.Load,
     ) -> None:
+        self.run_name: str = run_name
+        self.display_name: str = display_name
+        self.pv_level: PvEmtModelLevel = pv_level
+        self.scenario: PvScenario = scenario
+        self.pv_model_name: str = pv_model_name
         self.grid: gce.MultiCircuit = grid
         self.bus_grid: gce.Bus = bus_grid
         self.bus_pv: gce.Bus = bus_pv
         self.generator: gce.Generator = generator
         self.transformer: gce.Transformer2W = transformer
         self.pv_equivalent: gce.Load = pv_equivalent
+
+
+class PvScenario(Enum):
+    """
+    Enumerate the scripted example selectors used by the EMT examples.
+
+    The current PV irradiance-step example only executes the ``both`` flow, but
+    the enum keeps the shared example selector vocabulary explicit and typed.
+
+    :ivar CHARGE: Charge-only selector.
+    :ivar DISCHARGE: Discharge-only selector.
+    :ivar BOTH: Combined selector.
+    """
+
+    CHARGE = "charge"
+    DISCHARGE = "discharge"
+    BOTH = "both"
 
 
 class PvEmtBlocks:
@@ -167,6 +212,109 @@ class PvEmtBlocks:
         self.pv_mdl: Block = pv_mdl
 
 
+def get_pv_level_label(pv_level: PvEmtModelLevel) -> str:
+    """
+    Return the human-readable PV model-level label.
+
+    :param pv_level: Selected PV model level.
+    :return: Display label.
+    """
+    if pv_level == PvEmtModelLevel.LEVEL_1:
+        return "PV Level 1"
+    if pv_level == PvEmtModelLevel.LEVEL_2:
+        return "PV Level 2"
+
+    raise ValueError(f"Unsupported PV model level: {pv_level}")
+
+
+def build_run_name(case: PvCaseDefinition, pv_level: PvEmtModelLevel, scenario: PvScenario) -> str:
+    """
+    Build the unique run identifier used in device and symbolic names.
+
+    :param case: PV case definition.
+    :param pv_level: Selected PV model level.
+    :param scenario: Selected scripted scenario.
+    :return: Unique run identifier.
+    """
+    return f"{case.name}_{scenario.value}_pv_level_{pv_level.value}"
+
+
+def build_display_name(case: PvCaseDefinition, pv_level: PvEmtModelLevel, scenario: PvScenario) -> str:
+    """
+    Build the human-readable label used in plots and logs.
+
+    :param case: PV case definition.
+    :param pv_level: Selected PV model level.
+    :param scenario: Selected scripted scenario.
+    :return: Human-readable run label.
+    """
+    return f"{case.name} | scenario {scenario.value} | {get_pv_level_label(pv_level)}"
+
+
+def build_pv_model_name(case: PvCaseDefinition, pv_level: PvEmtModelLevel, scenario: PvScenario) -> str:
+    """
+    Build the symbolic name passed to the PV EMT template.
+
+    :param case: PV case definition.
+    :param pv_level: Selected PV model level.
+    :param scenario: Selected scripted scenario.
+    :return: PV EMT symbolic model name.
+    """
+    return f"pv_emt_{build_run_name(case, pv_level, scenario)}"
+
+
+def get_level2_v_mp_ref_pu() -> float:
+    """
+    Return the Level-2 PV MPP voltage reference used by this example.
+
+    :return: Level-2 MPP voltage reference in pu.
+    """
+    return 0.80
+
+
+def get_level2_i_mp_ref_pu(case: PvCaseDefinition, sbase_mva: float) -> float:
+    """
+    Scale the Level-2 MPP current reference to the requested PV rating.
+
+    The Level-2 template computes available PV power from ``v_mp`` and ``i_mp``.
+    This helper keeps the Level-2 irradiance response numerically aligned with
+    the example rated power without collapsing the Level-2 model into Level-1
+    behaviour.
+
+    :param case: PV case definition.
+    :param sbase_mva: System base power.
+    :return: Level-2 MPP current reference in pu.
+    """
+    rated_power_pu: float = case.rated_power_mw / sbase_mva
+    return rated_power_pu / max(get_level2_v_mp_ref_pu(), 1.0e-10)
+
+
+def get_level1_vdc_control_reference_pu(case: PvCaseDefinition) -> float:
+    """
+    Return the Level-1 Vdc-control reference used by this example.
+
+    The Level-1 PV source initializes slightly below the nominal DC reference
+    because the exported operating point includes the source internal droop.
+
+    :param case: PV case definition.
+    :return: Level-1 converter Vdc reference in pu.
+    """
+    return case.dc_voltage_reference_pu
+
+
+def get_level2_vdc_control_reference_pu(case: PvCaseDefinition) -> float:
+    """
+    Return the Level-2 Vdc-control reference used by this example.
+
+    The Level-2 averaged boost stage initializes slightly above the nominal DC
+    reference at the converter terminal because of the boost-side droop model.
+
+    :param case: PV case definition.
+    :return: Level-2 converter Vdc reference in pu.
+    """
+    return case.dc_voltage_reference_pu
+
+
 def build_case_definition() -> PvCaseDefinition:
     """
     Create the single PV validation case used by this script.
@@ -183,11 +331,11 @@ def build_case_definition() -> PvCaseDefinition:
         temperature_reference_c=25.0,
         temperature_power_coefficient=0.0,
         dc_voltage_reference_pu=1.0,
-        irradiance_drop_time_s=0.30,
+        irradiance_drop_time_s=0.70,
         irradiance_drop_w_m2=600.0,
-        irradiance_rise_time_s=0.55,
+        irradiance_rise_time_s=1.0,
         irradiance_rise_w_m2=900.0,
-        simulation_time_s=0.80,
+        simulation_time_s=1.5,
         time_step_s=2.0e-5,
     )
     return case
@@ -252,14 +400,19 @@ def get_initial_converter_power_schedule_mw(case: PvCaseDefinition) -> float:
     return initial_converter_power_schedule_mw
 
 
-def get_mppt_model_description() -> str:
+def get_mppt_model_description(pv_level: PvEmtModelLevel) -> str:
     """
-    Describe the MPPT representation used by the current validation script.
+    Describe the MPPT representation used by the selected PV model level.
 
+    :param pv_level: Selected PV model level.
     :return: Human-readable MPPT description.
     """
-    mppt_model_description: str = "Level-1 MPPT: first-order lag on PV available power inside the PV availability block"
-    return mppt_model_description
+    if pv_level == PvEmtModelLevel.LEVEL_1:
+        return "PV Level 1 MPPT: first-order lag on PV available power inside the PV availability block"
+    if pv_level == PvEmtModelLevel.LEVEL_2:
+        return "PV Level 2 MPPT: averaged boost-converter duty-cycle control tracking the PV MPP voltage"
+
+    raise ValueError(f"Unsupported PV model level: {pv_level}")
 
 
 def _converter_control_type_code(control: ConverterControlType) -> float:
@@ -279,27 +432,32 @@ def _converter_control_type_code(control: ConverterControlType) -> float:
         return 0.0
 
 
-def build_grid(case: PvCaseDefinition) -> PvRunObjects:
+def build_grid(case: PvCaseDefinition, pv_level: PvEmtModelLevel, scenario: PvScenario) -> PvRunObjects:
     """
     Build an AC-only PF carrier network for the internal-DC PV EMT model.
 
     :param case: PV case definition.
+    :param pv_level: Selected PV model level.
+    :param scenario: Selected scripted scenario.
     :return: Static network objects used by the EMT run.
     """
     initial_pv_power_mw: float = get_expected_initial_available_power_mw(case)
+    run_name: str = build_run_name(case, pv_level, scenario)
+    display_name: str = build_display_name(case, pv_level, scenario)
+    pv_model_name: str = build_pv_model_name(case, pv_level, scenario)
     grid: gce.MultiCircuit = gce.MultiCircuit(
-        name=f"Grid - AC Thevenin + Level-1 AVM PV EMT - {case.name}",
+        name=f"Grid - AC Thevenin + PV EMT - {display_name}",
         Sbase=100.0,
         fbase=50.0,
     )
 
-    bus_grid: gce.Bus = gce.Bus(name=f"Bus_GRID_{case.name}", Vnom=230.0, is_slack=True)
-    bus_pv: gce.Bus = gce.Bus(name=f"Bus_PV_{case.name}", Vnom=230.0)
+    bus_grid: gce.Bus = gce.Bus(name=f"Bus_GRID_{run_name}", Vnom=230.0, is_slack=True)
+    bus_pv: gce.Bus = gce.Bus(name=f"Bus_PV_{run_name}", Vnom=230.0)
     grid.add_bus(bus_grid)
     grid.add_bus(bus_pv)
 
     generator: gce.Generator = gce.Generator(
-        name=f"Gen_Thev_{case.name}",
+        name=f"Gen_Thev_{run_name}",
         vset=1.0,
         Snom=grid.Sbase,
         freq=50.0,
@@ -311,7 +469,7 @@ def build_grid(case: PvCaseDefinition) -> PvRunObjects:
     transformer: gce.Transformer2W = gce.Transformer2W(
         bus_from=bus_grid,
         bus_to=bus_pv,
-        name=f"Transformer_GRID_PV_{case.name}",
+        name=f"Transformer_GRID_PV_{run_name}",
         rate=grid.Sbase,
         r=1.0e-5,
         x=1.0e-5,
@@ -322,13 +480,18 @@ def build_grid(case: PvCaseDefinition) -> PvRunObjects:
 
     # A negative PQ load represents generation in the balanced power flow.
     pv_equivalent: gce.Load = gce.Load(
-        name=f"PV_PF_equivalent_{case.name}",
+        name=f"PV_PF_equivalent_{run_name}",
         P=-initial_pv_power_mw,
         Q=-case.reactive_power_mvar,
     )
     grid.add_load(bus_pv, pv_equivalent)
 
     objects: PvRunObjects = PvRunObjects(
+        run_name=run_name,
+        display_name=display_name,
+        pv_level=pv_level,
+        scenario=scenario,
+        pv_model_name=pv_model_name,
         grid=grid,
         bus_grid=bus_grid,
         bus_pv=bus_pv,
@@ -415,6 +578,120 @@ def run_power_flow_3ph(grid: gce.MultiCircuit) -> PowerFlowResults3Ph:
     return results
 
 
+def apply_common_converter_parameters(
+    pv_mdl: Block,
+    pv_model_name: str,
+    grid_sbase_mva: float,
+    case: PvCaseDefinition,
+    initial_converter_power_schedule_mw: float,
+) -> None:
+    """
+    Apply the imported converter settings shared by both PV levels.
+
+    :param pv_mdl: Full PV EMT block.
+    :param pv_model_name: Symbolic PV model name.
+    :param grid_sbase_mva: System base power.
+    :param case: PV case definition.
+    :param initial_converter_power_schedule_mw: Initial Pac schedule.
+    :return: None.
+    """
+    pv_mdl.set_parameter_in_model(var_name=f"sbase_{pv_model_name}", new_value=grid_sbase_mva)
+    pv_mdl.set_parameter_in_model(
+        var_name=f"control1_{pv_model_name}",
+        new_value=_converter_control_type_code(ConverterControlType.Pac),
+    )
+    pv_mdl.set_parameter_in_model(
+        var_name=f"control2_{pv_model_name}",
+        new_value=_converter_control_type_code(ConverterControlType.Qac),
+    )
+    pv_mdl.set_parameter_in_model(var_name=f"control1_val_{pv_model_name}", new_value=initial_converter_power_schedule_mw)
+    pv_mdl.set_parameter_in_model(var_name=f"control2_val_{pv_model_name}", new_value=case.reactive_power_mvar)
+    pv_mdl.set_parameter_in_model(var_name=f"P0_{pv_model_name}", new_value=initial_converter_power_schedule_mw)
+    pv_mdl.set_parameter_in_model(var_name=f"Vdc_nom_{pv_model_name}", new_value=case.dc_voltage_reference_pu)
+
+    # These parameters are kept close to the BESS validation settings so the
+    # imported pseudo-EMT converter remains in a familiar and well-conditioned range.
+    pv_mdl.set_parameter_in_model(var_name=f"R_eq_{pv_model_name}", new_value=0.05)
+    pv_mdl.set_parameter_in_model(var_name=f"L_eq_{pv_model_name}", new_value=0.20)
+    pv_mdl.set_parameter_in_model(var_name=f"C_dc_{pv_model_name}", new_value=0.20)
+    pv_mdl.set_parameter_in_model(var_name=f"R_dc_{pv_model_name}", new_value=1e6)
+    pv_mdl.set_parameter_in_model(var_name=f"R_dc_term_{pv_model_name}", new_value=0.0001)
+    pv_mdl.set_parameter_in_model(var_name=f"pll_kp_{pv_model_name}", new_value=10.0)
+    pv_mdl.set_parameter_in_model(var_name=f"pll_ki_{pv_model_name}", new_value=100.0)
+    pv_mdl.set_parameter_in_model(var_name=f"i_kp_{pv_model_name}", new_value=0.3)
+    pv_mdl.set_parameter_in_model(var_name=f"i_ki_{pv_model_name}", new_value=20.0)
+    # The corrected dq/abc converter sign convention needs a much lighter Vdc
+    # loop here so the PV example starts close to the PF operating point instead
+    # of immediately over-correcting the DC-link energy balance.
+    pv_mdl.set_parameter_in_model(var_name=f"vdc_kp_{pv_model_name}", new_value=0.01)
+    pv_mdl.set_parameter_in_model(var_name=f"vdc_ki_{pv_model_name}", new_value=0.10)
+    pv_mdl.set_parameter_in_model(var_name=f"q_kp_{pv_model_name}", new_value=0.02)
+    pv_mdl.set_parameter_in_model(var_name=f"q_ki_{pv_model_name}", new_value=0.5)
+    pv_mdl.set_parameter_in_model(var_name=f"i_max_{pv_model_name}", new_value=1.3)
+    pv_mdl.set_parameter_in_model(var_name=f"m_max_{pv_model_name}", new_value=0.95)
+    pv_mdl.set_parameter_in_model(var_name=f"P_loss_i1_{pv_model_name}", new_value=0.01)
+    pv_mdl.set_parameter_in_model(var_name=f"P_loss_i2_{pv_model_name}", new_value=0.01)
+    pv_mdl.set_parameter_in_model(var_name=f"tau_meas_{pv_model_name}", new_value=0.02)
+    pv_mdl.set_parameter_in_model(var_name=f"aw_gain_{pv_model_name}", new_value=0.2)
+    pv_mdl.set_parameter_in_model(var_name=f"vdc_floor_{pv_model_name}", new_value=0.05)
+
+
+def apply_level1_pv_parameters(pv_mdl: Block, pv_model_name: str, case: PvCaseDefinition, rated_power_pu: float) -> None:
+    """
+    Apply the Level-1 PV-source parameters.
+
+    :param pv_mdl: Full PV EMT block.
+    :param pv_model_name: Symbolic PV model name.
+    :param case: PV case definition.
+    :param rated_power_pu: PV rating on the system base.
+    :return: None.
+    """
+    pv_mdl.set_parameter_in_model(var_name=f"p_rated_l1_{pv_model_name}", new_value=rated_power_pu)
+    pv_mdl.set_parameter_in_model(var_name=f"irradiance_l1_{pv_model_name}", new_value=case.initial_irradiance_w_m2)
+    pv_mdl.set_parameter_in_model(var_name=f"irradiance_ref_l1_{pv_model_name}", new_value=case.irradiance_reference_w_m2)
+    pv_mdl.set_parameter_in_model(var_name=f"t_cell_l1_{pv_model_name}", new_value=case.cell_temperature_c)
+    pv_mdl.set_parameter_in_model(var_name=f"t_ref_l1_{pv_model_name}", new_value=case.temperature_reference_c)
+    pv_mdl.set_parameter_in_model(var_name=f"temp_coeff_p_l1_{pv_model_name}", new_value=case.temperature_power_coefficient)
+    pv_mdl.set_parameter_in_model(var_name=f"t_mppt_l1_{pv_model_name}", new_value=0.05)
+    pv_mdl.set_parameter_in_model(var_name=f"v_dc_ref_l1_{pv_model_name}", new_value=case.dc_voltage_reference_pu)
+    pv_mdl.set_parameter_in_model(var_name=f"r_pv_l1_{pv_model_name}", new_value=0.02)
+    pv_mdl.set_parameter_in_model(var_name=f"k_pv_power_l1_{pv_model_name}", new_value=2.0)
+    pv_mdl.set_parameter_in_model(var_name=f"k_vdc_ctrl_l1_{pv_model_name}", new_value=5.0)
+
+
+def apply_level2_pv_parameters(
+    pv_mdl: Block,
+    pv_model_name: str,
+    case: PvCaseDefinition,
+    rated_power_pu: float,
+    grid_sbase_mva: float,
+) -> None:
+    """
+    Apply the Level-2 PV plus averaged boost parameters.
+
+    :param pv_mdl: Full PV EMT block.
+    :param pv_model_name: Symbolic PV model name.
+    :param case: PV case definition.
+    :param rated_power_pu: PV rating on the system base.
+    :param grid_sbase_mva: System base power.
+    :return: None.
+    """
+    pv_mdl.set_parameter_in_model(var_name=f"p_rated_l2_{pv_model_name}", new_value=rated_power_pu)
+    pv_mdl.set_parameter_in_model(var_name=f"irradiance_l2_{pv_model_name}", new_value=case.initial_irradiance_w_m2)
+    pv_mdl.set_parameter_in_model(var_name=f"irradiance_ref_l2_{pv_model_name}", new_value=case.irradiance_reference_w_m2)
+    pv_mdl.set_parameter_in_model(var_name=f"t_cell_l2_{pv_model_name}", new_value=case.cell_temperature_c)
+    pv_mdl.set_parameter_in_model(var_name=f"t_ref_l2_{pv_model_name}", new_value=case.temperature_reference_c)
+    pv_mdl.set_parameter_in_model(var_name=f"v_mp_ref_l2_{pv_model_name}", new_value=get_level2_v_mp_ref_pu())
+    pv_mdl.set_parameter_in_model(
+        var_name=f"i_mp_ref_l2_{pv_model_name}",
+        new_value=get_level2_i_mp_ref_pu(case=case, sbase_mva=grid_sbase_mva),
+    )
+    pv_mdl.set_parameter_in_model(var_name=f"v_dc_ref_l2_{pv_model_name}", new_value=case.dc_voltage_reference_pu)
+    pv_mdl.set_parameter_in_model(var_name=f"k_src_l2_{pv_model_name}", new_value=0.5)
+    pv_mdl.set_parameter_in_model(var_name=f"k_boost_power_l2_{pv_model_name}", new_value=0.5)
+    pv_mdl.set_parameter_in_model(var_name=f"k_vdc_ctrl_l2_{pv_model_name}", new_value=2.0)
+
+
 def attach_emt_models(objects: PvRunObjects, case: PvCaseDefinition) -> PvEmtBlocks:
     """
     Attach bus, transformer, Thevenin source and PV EMT models.
@@ -423,7 +700,6 @@ def attach_emt_models(objects: PvRunObjects, case: PvCaseDefinition) -> PvEmtBlo
     :param case: PV case definition.
     :return: Attached EMT blocks.
     """
-    initial_available_power_mw: float = get_expected_initial_available_power_mw(case)
     initial_converter_power_schedule_mw: float = get_initial_converter_power_schedule_mw(case)
     rated_power_pu: float = case.rated_power_mw / objects.grid.Sbase
 
@@ -433,81 +709,46 @@ def attach_emt_models(objects: PvRunObjects, case: PvCaseDefinition) -> PvEmtBlo
 
     gen_mdl: Block = get_generator_thevenin_rl_emt_template(
         vf=objects.grid.var_factory,
-        name=f"gen_thev_{case.name}",
+        name=f"gen_thev_{objects.run_name}",
     ).block
     transformer_mdl: Block = get_transformer_emt_template(
         vf=objects.grid.var_factory,
-        name=f"transformer_grid_pv_{case.name}",
+        name=f"transformer_grid_pv_{objects.run_name}",
     ).block
-    pv_mdl: Block = get_pv_avm_grid_following_emt_template(
+    pv_mdl: Block = get_pv_grid_following_emt_template(
         vf=objects.grid.var_factory,
-        name=f"pv_avm_{case.name}",
+        level=objects.pv_level,
+        name=objects.pv_model_name,
     ).block
 
-    # Level-1 PV is modeled most cleanly in Pac/Q mode: the active-power target
-    # follows the irradiance-driven available power schedule, while the PV block
-    # still exposes its own DC-side available/MPPT diagnostics.
-    pv_mdl.set_parameter_in_model(var_name=f"sbase_pv_avm_{case.name}", new_value=objects.grid.Sbase)
-    pv_mdl.set_parameter_in_model(
-        var_name=f"control1_pv_avm_{case.name}",
-        new_value=_converter_control_type_code(ConverterControlType.Pac),
+    # Both PV levels are driven in Pac/Q mode. The converter follows the known
+    # export schedule while the PV-side source model performs the local DC-link
+    # regulation through its own internal Vdc feedback.
+    apply_common_converter_parameters(
+        pv_mdl=pv_mdl,
+        pv_model_name=objects.pv_model_name,
+        grid_sbase_mva=objects.grid.Sbase,
+        case=case,
+        initial_converter_power_schedule_mw=initial_converter_power_schedule_mw,
     )
-    pv_mdl.set_parameter_in_model(
-        var_name=f"control2_pv_avm_{case.name}",
-        new_value=_converter_control_type_code(ConverterControlType.Qac),
-    )
-    pv_mdl.set_parameter_in_model(var_name=f"control1_val_pv_avm_{case.name}", new_value=initial_converter_power_schedule_mw)
-    pv_mdl.set_parameter_in_model(var_name=f"control2_val_pv_avm_{case.name}", new_value=case.reactive_power_mvar)
-    pv_mdl.set_parameter_in_model(var_name=f"P0_pv_avm_{case.name}", new_value=initial_converter_power_schedule_mw)
-    pv_mdl.set_parameter_in_model(var_name=f"Vdc_nom_pv_avm_{case.name}", new_value=case.dc_voltage_reference_pu)
 
-    # These parameters are kept close to the BESS validation settings so the
-    # imported pseudo-EMT converter remains in a familiar and well-conditioned range.
-    pv_mdl.set_parameter_in_model(var_name=f"R_eq_pv_avm_{case.name}", new_value=0.05)
-    pv_mdl.set_parameter_in_model(var_name=f"L_eq_pv_avm_{case.name}", new_value=0.20)
-    pv_mdl.set_parameter_in_model(var_name=f"C_dc_pv_avm_{case.name}", new_value=0.20)
-    pv_mdl.set_parameter_in_model(var_name=f"R_dc_pv_avm_{case.name}", new_value=1e6)
-    pv_mdl.set_parameter_in_model(var_name=f"R_dc_term_pv_avm_{case.name}", new_value=0.0001)
-    pv_mdl.set_parameter_in_model(var_name=f"pll_kp_pv_avm_{case.name}", new_value=10.0)
-    pv_mdl.set_parameter_in_model(var_name=f"pll_ki_pv_avm_{case.name}", new_value=100.0)
-    pv_mdl.set_parameter_in_model(var_name=f"i_kp_pv_avm_{case.name}", new_value=0.3)
-    pv_mdl.set_parameter_in_model(var_name=f"i_ki_pv_avm_{case.name}", new_value=20.0)
-    # The corrected dq/abc converter sign convention needs a much lighter Vdc
-    # loop here so the PV example starts close to the PF operating point instead
-    # of immediately over-correcting the DC-link energy balance.
-    pv_mdl.set_parameter_in_model(var_name=f"vdc_kp_pv_avm_{case.name}", new_value=0.01)
-    pv_mdl.set_parameter_in_model(var_name=f"vdc_ki_pv_avm_{case.name}", new_value=0.10)
-    pv_mdl.set_parameter_in_model(var_name=f"q_kp_pv_avm_{case.name}", new_value=0.05)
-    pv_mdl.set_parameter_in_model(var_name=f"q_ki_pv_avm_{case.name}", new_value=2.0)
-    pv_mdl.set_parameter_in_model(var_name=f"i_max_pv_avm_{case.name}", new_value=1.3)
-    pv_mdl.set_parameter_in_model(var_name=f"m_max_pv_avm_{case.name}", new_value=0.95)
-    pv_mdl.set_parameter_in_model(var_name=f"P_loss_i1_pv_avm_{case.name}", new_value=0.01)
-    pv_mdl.set_parameter_in_model(var_name=f"P_loss_i2_pv_avm_{case.name}", new_value=0.01)
-    pv_mdl.set_parameter_in_model(var_name=f"tau_meas_pv_avm_{case.name}", new_value=0.01)
-    pv_mdl.set_parameter_in_model(var_name=f"aw_gain_pv_avm_{case.name}", new_value=0.1)
-    pv_mdl.set_parameter_in_model(var_name=f"vdc_floor_pv_avm_{case.name}", new_value=0.05)
-
-    # The PV source itself is the irradiance-limited DC source. Temperature is
-    # explicitly fixed here so the availability law is clear during validation.
-    pv_mdl.set_parameter_in_model(var_name=f"p_rated_l1_pv_avm_{case.name}", new_value=rated_power_pu)
-    pv_mdl.set_parameter_in_model(
-        var_name=f"irradiance_l1_pv_avm_{case.name}",
-        new_value=case.initial_irradiance_w_m2,
-    )
-    pv_mdl.set_parameter_in_model(
-        var_name=f"irradiance_ref_l1_pv_avm_{case.name}",
-        new_value=case.irradiance_reference_w_m2,
-    )
-    pv_mdl.set_parameter_in_model(var_name=f"t_cell_l1_pv_avm_{case.name}", new_value=case.cell_temperature_c)
-    pv_mdl.set_parameter_in_model(var_name=f"t_ref_l1_pv_avm_{case.name}", new_value=case.temperature_reference_c)
-    pv_mdl.set_parameter_in_model(
-        var_name=f"temp_coeff_p_l1_pv_avm_{case.name}",
-        new_value=case.temperature_power_coefficient,
-    )
-    pv_mdl.set_parameter_in_model(var_name=f"t_mppt_l1_pv_avm_{case.name}", new_value=0.05)
-    pv_mdl.set_parameter_in_model(var_name=f"v_dc_ref_l1_pv_avm_{case.name}", new_value=case.dc_voltage_reference_pu)
-    pv_mdl.set_parameter_in_model(var_name=f"r_pv_l1_pv_avm_{case.name}", new_value=0.02)
-    pv_mdl.set_parameter_in_model(var_name=f"k_pv_power_l1_pv_avm_{case.name}", new_value=5.0)
+    if objects.pv_level == PvEmtModelLevel.LEVEL_1:
+        apply_level1_pv_parameters(
+            pv_mdl=pv_mdl,
+            pv_model_name=objects.pv_model_name,
+            case=case,
+            rated_power_pu=rated_power_pu,
+        )
+    elif objects.pv_level == PvEmtModelLevel.LEVEL_2:
+        apply_level2_pv_parameters(
+            pv_mdl=pv_mdl,
+            pv_model_name=objects.pv_model_name,
+            case=case,
+            rated_power_pu=rated_power_pu,
+            grid_sbase_mva=objects.grid.Sbase,
+        )
+    else:
+        raise ValueError(f"Unsupported PV model level: {objects.pv_level}")
 
     set_emt_model(device=objects.generator, model=gen_mdl, var_factory=objects.grid.var_factory)
     set_emt_model(device=objects.transformer, model=transformer_mdl, var_factory=objects.grid.var_factory)
@@ -535,16 +776,40 @@ def find_event_parameter(block: Block, variable_name: str) -> Var | None:
     return None
 
 
-def add_irradiance_events(grid: gce.MultiCircuit, pv_block: Block, case: PvCaseDefinition) -> EmtEventsGroup | None:
+def get_irradiance_parameter_name(pv_level: PvEmtModelLevel, pv_model_name: str) -> str:
+    """
+    Return the runtime irradiance parameter name for one PV level.
+
+    :param pv_level: Selected PV model level.
+    :param pv_model_name: Symbolic PV model name.
+    :return: Full irradiance parameter name.
+    """
+    if pv_level == PvEmtModelLevel.LEVEL_1:
+        return f"irradiance_l1_{pv_model_name}"
+    if pv_level == PvEmtModelLevel.LEVEL_2:
+        return f"irradiance_l2_{pv_model_name}"
+
+    raise ValueError(f"Unsupported PV model level: {pv_level}")
+
+
+def add_irradiance_events(
+    grid: gce.MultiCircuit,
+    pv_block: Block,
+    case: PvCaseDefinition,
+    pv_level: PvEmtModelLevel,
+    pv_model_name: str,
+) -> EmtEventsGroup | None:
     """
     Add irradiance step events to the actual PV runtime parameter.
 
     :param grid: VeraGrid circuit.
     :param pv_block: Full PV EMT block.
     :param case: PV case definition.
+    :param pv_level: Selected PV model level.
+    :param pv_model_name: Symbolic PV model name.
     :return: Created EMT events group, or None if the parameter was not found.
     """
-    irradiance_var_name: str = f"irradiance_l1_pv_avm_{case.name}"
+    irradiance_var_name: str = get_irradiance_parameter_name(pv_level=pv_level, pv_model_name=pv_model_name)
     irradiance_var: Var | None = find_event_parameter(pv_block, irradiance_var_name)
 
     if irradiance_var is None:
@@ -577,9 +842,10 @@ def add_irradiance_events(grid: gce.MultiCircuit, pv_block: Block, case: PvCaseD
             )
         )
 
-        # The Level-1 example uses Pac/Q control, so the scheduled active-power
-        # reference is stepped consistently with the known irradiance profile.
-        active_power_ref_var: Var | None = find_event_parameter(pv_block, f"control1_val_pv_avm_{case.name}")
+        # The Pac/Q example keeps the converter export schedule aligned with the
+        # scripted irradiance profile, while the PV-side block regulates the DC
+        # voltage internally using its own local feedback.
+        active_power_ref_var: Var | None = find_event_parameter(pv_block, f"control1_val_{pv_model_name}")
 
         if active_power_ref_var is not None:
             grid.add_emt_event(
@@ -752,6 +1018,62 @@ def get_runtime_parameter_trace(problem: EmtProblemDae, parameter: Var | None, t
             return None
 
 
+def populate_level1_plot_data(
+    problem: EmtProblemDae,
+    pv_block: Block,
+    pv_model_name: str,
+    y_values: np.ndarray,
+    data: dict[str, np.ndarray | None],
+) -> None:
+    """
+    Populate the Level-1 diagnostic signals used by the plots and checks.
+
+    :param problem: EMT problem.
+    :param pv_block: Full PV EMT block.
+    :param pv_model_name: Symbolic PV model name.
+    :param y_values: EMT solution matrix.
+    :param data: Output signal dictionary.
+    :return: None.
+    """
+    data["p_avail_pu"] = get_signal_or_none(problem, pv_block, f"p_avail_l1_{pv_model_name}", y_values, True)
+    data["p_mppt_pu"] = get_signal_or_none(problem, pv_block, f"p_mppt_l1_{pv_model_name}", y_values, False)
+    data["p_pv_internal_pu"] = get_signal_or_none(problem, pv_block, f"p_pv_l1_{pv_model_name}", y_values, True)
+    data["i_pv_internal"] = get_signal_or_none(problem, pv_block, f"i_pv_l1_{pv_model_name}", y_values, True)
+    data["v_dc_source_internal"] = get_signal_or_none(problem, pv_block, f"v_dc_bus_pv_l1_{pv_model_name}", y_values, False)
+    data["p_curt_internal_pu"] = get_signal_or_none(problem, pv_block, f"p_curt_l1_{pv_model_name}", y_values, False)
+    data["p_to_vsc_pu"] = None
+    data["v_pv_internal"] = None
+    data["duty"] = None
+
+
+def populate_level2_plot_data(
+    problem: EmtProblemDae,
+    pv_block: Block,
+    pv_model_name: str,
+    y_values: np.ndarray,
+    data: dict[str, np.ndarray | None],
+) -> None:
+    """
+    Populate the Level-2 diagnostic signals used by the plots and checks.
+
+    :param problem: EMT problem.
+    :param pv_block: Full PV EMT block.
+    :param pv_model_name: Symbolic PV model name.
+    :param y_values: EMT solution matrix.
+    :param data: Output signal dictionary.
+    :return: None.
+    """
+    data["p_avail_pu"] = get_signal_or_none(problem, pv_block, f"p_avail_l2_{pv_model_name}", y_values, True)
+    data["p_mppt_pu"] = None
+    data["p_pv_internal_pu"] = get_signal_or_none(problem, pv_block, f"p_src_l2_{pv_model_name}", y_values, True)
+    data["i_pv_internal"] = get_signal_or_none(problem, pv_block, f"i_pv_l2_{pv_model_name}", y_values, True)
+    data["v_dc_source_internal"] = get_signal_or_none(problem, pv_block, f"v_dc_bus_pv_l2_{pv_model_name}", y_values, False)
+    data["p_curt_internal_pu"] = get_signal_or_none(problem, pv_block, f"p_curt_l2_{pv_model_name}", y_values, False)
+    data["p_to_vsc_pu"] = get_signal_or_none(problem, pv_block, f"p_to_vsc_l2_{pv_model_name}", y_values, False)
+    data["v_pv_internal"] = get_signal_or_none(problem, pv_block, f"v_pv_l2_{pv_model_name}", y_values, False)
+    data["duty"] = get_signal_or_none(problem, pv_block, f"duty_l2_{pv_model_name}", y_values, False)
+
+
 def build_plot_data(
     problem: EmtProblemDae,
     objects: PvRunObjects,
@@ -772,51 +1094,56 @@ def build_plot_data(
     :return: Named signal dictionary.
     """
     data: dict[str, np.ndarray | None] = dict()
+    pv_model_name: str = objects.pv_model_name
 
     data["v_ac_a"] = get_signal_or_none(
         problem,
         objects.bus_pv.emt_model,
-        f"v_A_Bus_PV_{case.name}_emt_template",
+        f"v_A_{objects.bus_pv.name}_emt_template",
         y_values,
         True,
     )
     data["v_ac_b"] = get_signal_or_none(
         problem,
         objects.bus_pv.emt_model,
-        f"v_B_Bus_PV_{case.name}_emt_template",
+        f"v_B_{objects.bus_pv.name}_emt_template",
         y_values,
         True,
     )
     data["v_ac_c"] = get_signal_or_none(
         problem,
         objects.bus_pv.emt_model,
-        f"v_C_Bus_PV_{case.name}_emt_template",
+        f"v_C_{objects.bus_pv.name}_emt_template",
         y_values,
         True,
     )
 
-    data["i_a"] = get_signal_or_none(problem, blocks.pv_mdl, f"i_A_pv_avm_{case.name}", y_values, True)
-    data["i_b"] = get_signal_or_none(problem, blocks.pv_mdl, f"i_B_pv_avm_{case.name}", y_values, True)
-    data["i_c"] = get_signal_or_none(problem, blocks.pv_mdl, f"i_C_pv_avm_{case.name}", y_values, True)
-    data["p_ac_internal_pu"] = get_signal_or_none(problem, blocks.pv_mdl, f"P_pv_avm_{case.name}", y_values, True)
-    data["q_ac_pu"] = get_signal_or_none(problem, blocks.pv_mdl, f"Q_pv_avm_{case.name}", y_values, True)
-    data["v_dc_internal"] = get_signal_or_none(problem, blocks.pv_mdl, f"v_dc_pv_avm_{case.name}", y_values, True)
-    data["i_dc"] = get_signal_or_none(problem, blocks.pv_mdl, f"i_dc_pv_avm_{case.name}", y_values, True)
-    data["p_avail_pu"] = get_signal_or_none(problem, blocks.pv_mdl, f"p_avail_l1_pv_avm_{case.name}", y_values, True)
-    data["p_mppt_pu"] = get_signal_or_none(problem, blocks.pv_mdl, f"p_mppt_l1_pv_avm_{case.name}", y_values, False)
-    data["p_pv_internal_pu"] = get_signal_or_none(problem, blocks.pv_mdl, f"p_pv_l1_pv_avm_{case.name}", y_values, True)
-    data["i_pv_internal"] = get_signal_or_none(problem, blocks.pv_mdl, f"i_pv_l1_pv_avm_{case.name}", y_values, True)
-    data["v_dc_source_internal"] = get_signal_or_none(problem, blocks.pv_mdl, f"v_dc_bus_pv_l1_pv_avm_{case.name}", y_values, False)
-    data["p_curt_internal_pu"] = get_signal_or_none(problem, blocks.pv_mdl, f"p_curt_l1_pv_avm_{case.name}", y_values, False)
+    data["i_a"] = get_signal_or_none(problem, blocks.pv_mdl, f"i_A_{pv_model_name}", y_values, True)
+    data["i_b"] = get_signal_or_none(problem, blocks.pv_mdl, f"i_B_{pv_model_name}", y_values, True)
+    data["i_c"] = get_signal_or_none(problem, blocks.pv_mdl, f"i_C_{pv_model_name}", y_values, True)
+    data["p_ac_internal_pu"] = get_signal_or_none(problem, blocks.pv_mdl, f"P_{pv_model_name}", y_values, True)
+    data["q_ac_pu"] = get_signal_or_none(problem, blocks.pv_mdl, f"Q_{pv_model_name}", y_values, True)
+    data["v_dc_internal"] = get_signal_or_none(problem, blocks.pv_mdl, f"v_dc_{pv_model_name}", y_values, True)
+    data["i_dc"] = get_signal_or_none(problem, blocks.pv_mdl, f"i_dc_{pv_model_name}", y_values, True)
+
+    if objects.pv_level == PvEmtModelLevel.LEVEL_1:
+        populate_level1_plot_data(problem, blocks.pv_mdl, pv_model_name, y_values, data)
+    elif objects.pv_level == PvEmtModelLevel.LEVEL_2:
+        populate_level2_plot_data(problem, blocks.pv_mdl, pv_model_name, y_values, data)
+    else:
+        raise ValueError(f"Unsupported PV model level: {objects.pv_level}")
 
     if data["p_mppt_pu"] is not None:
         data["p_pv_pu"] = np.array(data["p_mppt_pu"], copy=True)
     else:
         data["p_pv_pu"] = data["p_pv_internal_pu"]
 
-    data["v_dc_source"] = np.full_like(time_values, case.dc_voltage_reference_pu, dtype=np.float64)
+    if objects.pv_level == PvEmtModelLevel.LEVEL_1:
+        data["v_dc_source"] = np.full_like(time_values, case.dc_voltage_reference_pu, dtype=np.float64)
+    else:
+        data["v_dc_source"] = data["v_pv_internal"]
 
-    if data["p_pv_pu"] is not None:
+    if objects.pv_level == PvEmtModelLevel.LEVEL_1 and data["p_pv_pu"] is not None:
         data["i_pv"] = data["p_pv_pu"] / max(case.dc_voltage_reference_pu, 1.0e-10)
     else:
         data["i_pv"] = data["i_pv_internal"]
@@ -826,7 +1153,10 @@ def build_plot_data(
     else:
         data["p_curt_pu"] = data["p_curt_internal_pu"]
 
-    irradiance_parameter: Var | None = find_event_parameter(blocks.pv_mdl, f"irradiance_l1_pv_avm_{case.name}")
+    irradiance_parameter: Var | None = find_event_parameter(
+        blocks.pv_mdl,
+        get_irradiance_parameter_name(pv_level=objects.pv_level, pv_model_name=pv_model_name),
+    )
     data["irradiance"] = get_runtime_parameter_trace(problem, irradiance_parameter, time_values)
 
     if data["p_ac_internal_pu"] is not None:
@@ -961,11 +1291,11 @@ def print_power_flow_diagnostics(
     expected_initial_available_power_mw: float = get_expected_initial_available_power_mw(case)
 
     print("\n" + "=" * 90)
-    print(f"Balanced power flow results | case = {case.name}")
+    print(f"Balanced power flow results | {objects.display_name}")
     print("=" * 90)
     print(f"  converged                         : {pf_results.converged}")
     print(f"  3ph converged                     : {pf_results_3ph.converged}")
-    print(f"  MPPT model                        : {get_mppt_model_description()}")
+    print(f"  MPPT model                        : {get_mppt_model_description(objects.pv_level)}")
     print(f"  initial PV power from power flow  : {initial_pv_power_mw:.6f} MW")
     print(f"  initial irradiance                : {case.initial_irradiance_w_m2:.3f} W/m^2")
     print(f"  expected initial PV available P   : {expected_initial_available_power_mw:.6f} MW")
@@ -1056,7 +1386,7 @@ def print_dynamic_diagnostics(
     rise_p_pv_mw: float | None = compute_window_mean(time_values, data.get("p_pv_pu", None), case.irradiance_rise_time_s + 0.05, case.simulation_time_s - 0.02, power_scale_mw)
 
     print("\n" + "=" * 90)
-    print(f"PV EMT dynamic metrics | case = {case.name}")
+    print(f"PV EMT dynamic metrics | {objects.display_name}")
     print("=" * 90)
     print(f"  expected initial available power  : {get_expected_initial_available_power_mw(case):.6f} MW")
     print(f"  PF initial active injection       : {-float(objects.pv_equivalent.P):.6f} MW")
@@ -1374,7 +1704,7 @@ def plot_results(
     """
     power_scale_mw: float = objects.grid.Sbase
     figure, axes = plt.subplots(9, 1, figsize=(14, 27), sharex=True)
-    figure.suptitle(f"Level-1 AVM PV EMT example | {case.name}")
+    figure.suptitle(f"PV EMT example | {objects.display_name}")
 
     show_legend: bool = False
     show_legend = plot_signal_if_available(axes[0], time_values, data.get("irradiance", None), "Irradiance", "tab:orange")
@@ -1390,6 +1720,7 @@ def plot_results(
     p_grid_export_mw: np.ndarray | None = None
     q_ac_mvar: np.ndarray | None = None
     p_curt_mw: np.ndarray | None = None
+    p_to_vsc_mw: np.ndarray | None = None
 
     if data.get("p_avail_pu", None) is not None:
         p_avail_mw = data.get("p_avail_pu", None) * power_scale_mw
@@ -1426,6 +1757,11 @@ def plot_results(
     else:
         p_curt_mw = None
 
+    if data.get("p_to_vsc_pu", None) is not None:
+        p_to_vsc_mw = data.get("p_to_vsc_pu", None) * power_scale_mw
+    else:
+        p_to_vsc_mw = None
+
     if plot_signal_if_available(axes[1], time_values, p_avail_mw, "P available", "tab:green"):
         show_legend = True
     else:
@@ -1438,7 +1774,15 @@ def plot_results(
         show_legend = True
     else:
         show_legend = show_legend
-    finalize_axis(axes[1], "PV available power and PV DC power", "MW", show_legend)
+
+    if objects.pv_level == PvEmtModelLevel.LEVEL_2:
+        if plot_signal_if_available(axes[1], time_values, p_to_vsc_mw, "P to VSC", "tab:red"):
+            show_legend = True
+        else:
+            show_legend = show_legend
+        finalize_axis(axes[1], "PV available, source and boost-output power", "MW", show_legend)
+    else:
+        finalize_axis(axes[1], "PV available power and PV DC power", "MW", show_legend)
 
     show_legend = plot_signal_if_available(axes[2], time_values, data.get("i_pv", None), "I PV DC diagnostic", "tab:purple")
     finalize_axis(axes[2], "PV DC current versus time", "pu", show_legend)
@@ -1448,11 +1792,22 @@ def plot_results(
         show_legend = True
     else:
         show_legend = show_legend
-    if plot_signal_if_available(axes[3], time_values, data.get("v_dc_source", None), "PV source Vdc ref", "tab:orange"):
+    source_voltage_label: str = "PV source Vdc ref"
+
+    if objects.pv_level == PvEmtModelLevel.LEVEL_2:
+        source_voltage_label = "PV-side voltage"
+    else:
+        source_voltage_label = source_voltage_label
+
+    if plot_signal_if_available(axes[3], time_values, data.get("v_dc_source", None), source_voltage_label, "tab:orange"):
         show_legend = True
     else:
         show_legend = show_legend
-    finalize_axis(axes[3], "DC-link voltage versus time", "pu", show_legend)
+
+    if objects.pv_level == PvEmtModelLevel.LEVEL_2:
+        finalize_axis(axes[3], "DC-link and PV-side voltage versus time", "pu", show_legend)
+    else:
+        finalize_axis(axes[3], "DC-link voltage versus time", "pu", show_legend)
 
     show_legend = False
     if plot_signal_if_available(axes[4], time_values, p_ac_internal_mw, "P AC internal", "tab:blue"):
@@ -1522,29 +1877,41 @@ def plot_results(
     finalize_axis(axes[7], "Power-sign consistency check", "MW", show_legend)
 
     show_legend = False
-    if plot_signal_if_available(axes[8], time_values, p_mppt_mw, "P MPPT target", "tab:red"):
-        show_legend = True
+    if objects.pv_level == PvEmtModelLevel.LEVEL_1:
+        if plot_signal_if_available(axes[8], time_values, p_mppt_mw, "P MPPT target", "tab:red"):
+            show_legend = True
+        else:
+            show_legend = show_legend
     else:
-        show_legend = show_legend
+        if plot_signal_if_available(axes[8], time_values, data.get("duty", None), "Boost duty cycle", "tab:red"):
+            show_legend = True
+        else:
+            show_legend = show_legend
     if plot_signal_if_available(axes[8], time_values, p_curt_mw, "P curtailed", "tab:gray"):
         show_legend = True
     else:
         show_legend = show_legend
-    finalize_axis(axes[8], "MPPT target and curtailed PV power", "MW", show_legend)
+
+    if objects.pv_level == PvEmtModelLevel.LEVEL_2:
+        finalize_axis(axes[8], "Boost duty cycle and curtailed PV power", "MW / pu", show_legend)
+    else:
+        finalize_axis(axes[8], "MPPT target and curtailed PV power", "MW", show_legend)
     axes[8].set_xlabel("Time [s]")
 
     figure.tight_layout()
     plt.show()
 
 
-def run_case(case: PvCaseDefinition) -> None:
+def run_pv_emt_case(case: PvCaseDefinition, pv_level: PvEmtModelLevel, scenario: PvScenario) -> None:
     """
-    Build, initialize, simulate and plot the PV EMT validation case.
+    Build, initialize, simulate and plot one PV EMT validation run.
 
     :param case: PV case definition.
+    :param pv_level: Selected PV model level.
+    :param scenario: Selected scripted scenario.
     :return: None.
     """
-    objects: PvRunObjects = build_grid(case)
+    objects: PvRunObjects = build_grid(case=case, pv_level=pv_level, scenario=scenario)
     pf_results: PowerFlowResults = run_power_flow(objects.grid)
     pf_results_3ph: PowerFlowResults3Ph = run_power_flow_3ph(objects.grid)
     print_power_flow_diagnostics(case, objects, pf_results, pf_results_3ph)
@@ -1552,17 +1919,23 @@ def run_case(case: PvCaseDefinition) -> None:
     if pf_results.converged:
         pass
     else:
-        print(f"Power flow did not converge for PV case '{case.name}'.")
+        print(f"Power flow did not converge for PV case '{objects.display_name}'.")
         return
 
     if pf_results_3ph.converged:
         pass
     else:
-        print(f"3-phase power flow did not converge for PV case '{case.name}'.")
+        print(f"3-phase power flow did not converge for PV case '{objects.display_name}'.")
         return
 
     blocks: PvEmtBlocks = attach_emt_models(objects, case)
-    event_group: EmtEventsGroup | None = add_irradiance_events(objects.grid, blocks.pv_mdl, case)
+    event_group: EmtEventsGroup | None = add_irradiance_events(
+        grid=objects.grid,
+        pv_block=blocks.pv_mdl,
+        case=case,
+        pv_level=objects.pv_level,
+        pv_model_name=objects.pv_model_name,
+    )
     problem: EmtProblemDae = build_problem(objects.grid, pf_results, pf_results_3ph, case, event_group)
     validate_initialization(problem)
 
@@ -1582,12 +1955,36 @@ def run_case(case: PvCaseDefinition) -> None:
         print_dynamic_diagnostics(case, objects, time_values, data)
         try:
             validate_dynamic_response(case, objects, time_values, data)
-            print("Validation checks: passed")
+            print(f"Validation checks: passed | {objects.display_name}")
         except RuntimeError as exc:
-            print(f"Validation checks: failed -> {exc}")
+            print(f"Validation checks: failed | {objects.display_name} -> {exc}")
         plot_results(case, objects, time_values, data)
     else:
-        print("EMT simulation did not converge, so validation plots were not produced.")
+        print(f"EMT simulation did not converge, so validation plots were not produced for {objects.display_name}.")
+
+
+def run_selected_pv_examples(case: PvCaseDefinition, scenario: PvScenario) -> None:
+    """
+    Run the selected PV EMT example flow.
+
+    The current PV irradiance-step script only defines the ``both`` example. In
+    that flow, the same scenario is executed twice: once with PV Level 1 and
+    once with PV Level 2.
+
+    :param case: PV case definition.
+    :param scenario: Selected scripted scenario.
+    :return: None.
+    :raises ValueError: If an unsupported scenario is requested.
+    """
+    if scenario == PvScenario.BOTH:
+        run_pv_emt_case(case=case, pv_level=PvEmtModelLevel.LEVEL_1, scenario=scenario)
+        run_pv_emt_case(case=case, pv_level=PvEmtModelLevel.LEVEL_2, scenario=scenario)
+        return
+
+    raise ValueError(
+        "The current PV EMT irradiance-step script does not define standalone charge or discharge scenarios. "
+        f"Requested scenario: {scenario.value}."
+    )
 
 
 def main() -> None:
@@ -1597,7 +1994,7 @@ def main() -> None:
     :return: None.
     """
     case: PvCaseDefinition = build_case_definition()
-    run_case(case)
+    run_selected_pv_examples(case=case, scenario=PvScenario.BOTH)
 
 
 if __name__ == "__main__":
