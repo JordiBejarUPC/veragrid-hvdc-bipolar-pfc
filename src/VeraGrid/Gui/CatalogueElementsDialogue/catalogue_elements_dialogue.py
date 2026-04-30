@@ -336,38 +336,38 @@ class CatalogueElementsSelectionDialogue(QtWidgets.QDialog):
             unique_key='emt:get_simple_generator_emt_template',
             function_ptr=tem.get_simple_generator_emt_template)
         )
-        actions.append(CatalogueAction(
-            kind=CatalogueActionKind.AddEmtTemplate,
-            args=(self._circuit.var_factory,),
-            name='Sauer Pai generator',
-            voltage_text='', power_text='',
-            unique_key='emt:get_generator_sauer_pai_type_emt_template',
-            function_ptr=tem.get_generator_sauer_pai_type_emt_template)
-        )
-        actions.append(CatalogueAction(
-            kind=CatalogueActionKind.AddEmtTemplate,
-            args=(self._circuit.var_factory,),
-            name='Governor',
-            voltage_text='', power_text='',
-            unique_key='emt:get_governor_emt',
-            function_ptr=tem.get_governor_emt)
-        )
-        actions.append(CatalogueAction(
-            kind=CatalogueActionKind.AddEmtTemplate,
-            args=(self._circuit.var_factory,),
-            name='Stabilizer',
-            voltage_text='', power_text='',
-            unique_key='emt:get_stabilizer_emt',
-            function_ptr=tem.get_stabilizer_emt)
-        )
-        actions.append(CatalogueAction(
-            kind=CatalogueActionKind.AddEmtTemplate,
-            args=(self._circuit.var_factory,),
-            name='Exciter',
-            voltage_text='', power_text='',
-            unique_key='emt:get_exciter_emt',
-            function_ptr=tem.get_exciter_emt)
-        )
+        # actions.append(CatalogueAction(
+        #     kind=CatalogueActionKind.AddEmtTemplate,
+        #     args=(self._circuit.var_factory,),
+        #     name='Sauer Pai generator',
+        #     voltage_text='', power_text='',
+        #     unique_key='emt:get_generator_sauer_pai_type_emt_template',
+        #     function_ptr=tem.get_generator_sauer_pai_type_emt_template)
+        # )
+        # actions.append(CatalogueAction(
+        #     kind=CatalogueActionKind.AddEmtTemplate,
+        #     args=(self._circuit.var_factory,),
+        #     name='Governor',
+        #     voltage_text='', power_text='',
+        #     unique_key='emt:get_governor_emt',
+        #     function_ptr=tem.get_governor_emt)
+        # )
+        # actions.append(CatalogueAction(
+        #     kind=CatalogueActionKind.AddEmtTemplate,
+        #     args=(self._circuit.var_factory,),
+        #     name='Stabilizer',
+        #     voltage_text='', power_text='',
+        #     unique_key='emt:get_stabilizer_emt',
+        #     function_ptr=tem.get_stabilizer_emt)
+        # )
+        # actions.append(CatalogueAction(
+        #     kind=CatalogueActionKind.AddEmtTemplate,
+        #     args=(self._circuit.var_factory,),
+        #     name='Exciter',
+        #     voltage_text='', power_text='',
+        #     unique_key='emt:get_exciter_emt',
+        #     function_ptr=tem.get_exciter_emt)
+        # )
         actions.append(CatalogueAction(
             kind=CatalogueActionKind.AddEmtTemplate,
             args=(self._circuit.var_factory,),
@@ -448,14 +448,14 @@ class CatalogueElementsSelectionDialogue(QtWidgets.QDialog):
             unique_key='emt:get_dc_line_emt_template',
             function_ptr=tem.get_dc_line_emt_template)
         )
-        actions.append(CatalogueAction(
-            kind=CatalogueActionKind.AddEmtTemplate,
-            args=(self._circuit.var_factory,),
-            name='Valve',
-            voltage_text='', power_text='',
-            unique_key='emt:get_valve_emt_template',
-            function_ptr=tem.get_valve_emt_template)
-        )
+        # actions.append(CatalogueAction(
+        #     kind=CatalogueActionKind.AddEmtTemplate,
+        #     args=(self._circuit.var_factory,),
+        #     name='Valve',
+        #     voltage_text='', power_text='',
+        #     unique_key='emt:get_valve_emt_template',
+        #     function_ptr=tem.get_valve_emt_template)
+        # )
         actions.append(CatalogueAction(
             kind=CatalogueActionKind.AddEmtTemplate,
             args=(self._circuit.var_factory,),
@@ -527,6 +527,47 @@ class CatalogueElementsSelectionDialogue(QtWidgets.QDialog):
             voltage_text='', power_text='',
             unique_key='emt:get_bergeron_line_emt_template:abc',
             function_ptr=tem.get_bergeron_line_emt_template)
+        )
+
+        actions.append(CatalogueAction(
+            kind=CatalogueActionKind.AddEmtTemplate,
+            args=(self._circuit.var_factory,),
+            name='Single cage induction motor',
+            voltage_text='', power_text='',
+            unique_key='emt:get_induction_motor_single_cage_emt_template:abc',
+            function_ptr=tem.get_induction_motor_single_cage_emt_template)
+        )
+        actions.append(CatalogueAction(
+            kind=CatalogueActionKind.AddEmtTemplate,
+            args=(self._circuit.var_factory,),
+            name='Double cage induction motor',
+            voltage_text='', power_text='',
+            unique_key='emt:get_induction_motor_double_cage_emt_template:abc',
+            function_ptr=tem.get_induction_motor_double_cage_emt_template)
+        )
+        actions.append(CatalogueAction(
+            kind=CatalogueActionKind.AddEmtTemplate,
+            args=(self._circuit.var_factory,),
+            name='BESS',
+            voltage_text='', power_text='',
+            unique_key='emt:get_bess_avm_grid_following_emt_template:abc',
+            function_ptr=tem.get_bess_avm_grid_following_emt_template)
+        )
+        actions.append(CatalogueAction(
+            kind=CatalogueActionKind.AddEmtTemplate,
+            args=(self._circuit.var_factory,),
+            name='PV plant grid following',
+            voltage_text='', power_text='',
+            unique_key='emt:get_pv_avm_grid_following_emt_template:abc',
+            function_ptr=tem.get_pv_avm_grid_following_emt_template)
+        )
+        actions.append(CatalogueAction(
+            kind=CatalogueActionKind.AddEmtTemplate,
+            args=(self._circuit.var_factory,),
+            name='PV plant boost grid following',
+            voltage_text='', power_text='',
+            unique_key='emt:get_pv_avm_boost_grid_following_emt_template:abc',
+            function_ptr=tem.get_pv_avm_boost_grid_following_emt_template)
         )
         return actions
 

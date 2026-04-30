@@ -4334,6 +4334,12 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 LibraryLeafSpec("Governor", BlockType.GOV_EMT),
                 LibraryLeafSpec("Stabilizer", BlockType.STAB_EMT),
                 LibraryLeafSpec("Exciter", BlockType.EXCITER_EMT),
+                LibraryLeafSpec("PV power plant", BlockType.PV_POWER_PLANT_EMT),
+                LibraryLeafSpec("PV ", BlockType.PV_EMT),
+            ],
+            DeviceType.BatteryDevice: [
+                LibraryLeafSpec("BESS ", BlockType.BESS_EMT),
+                LibraryLeafSpec("Battery ", BlockType.BATTERY_EMT),
             ],
             DeviceType.LineDevice: [
                 LibraryLeafSpec("Emt pi line", BlockType.EMT_PI_LINE),
@@ -6486,6 +6492,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         )
         self.mark_unapplied_changes()
         return block_item
+
+    # TODO: create PV power plant block item
 
     def create_shunt_component_emt_block_item(self,
                                               block_type: BlockType,
