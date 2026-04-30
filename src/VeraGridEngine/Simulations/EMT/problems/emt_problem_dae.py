@@ -1265,7 +1265,7 @@ class EmtProblemDae(EmtProblemTemplate):
         self.init_guess.update(self._temp_init_guess)
         self.diff_init_guess.update(self._temp_diff_init_guess)
         if self.progress_signal is not None:
-            self.progress_signal.emit(10)
+            self.progress_signal.emit(5)
 
         # 2) explicit init guesses initialization
         self._run_explicit_initialization()
@@ -1280,7 +1280,7 @@ class EmtProblemDae(EmtProblemTemplate):
         t_phase_start = _tic()
 
         if self.progress_signal is not None:
-            self.progress_signal.emit(20)
+            self.progress_signal.emit(10)
 
         # EMT event groups are activated only after the initialization stage.
         # Some runtime parameters start as Const(None) placeholders and are

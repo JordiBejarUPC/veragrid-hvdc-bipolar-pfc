@@ -151,11 +151,12 @@ class EmtSimulationDriver(DriverTemplate):
             backtracking_max_iter=self.options.newton_backtracking_max_iter,
         )
 
+
         for group_idx, emt_events_group in enumerate(emt_events_groups):
 
             self.report_text("Simulating EMT event group " + emt_events_group.name)
 
-            self.progress_signal.emit(5)
+            self.progress_signal.emit(11)
 
             self.report_text("Simulating EMT event group " + emt_events_group.name)
             problem.set_events_group(emt_events_group=emt_events_group)
