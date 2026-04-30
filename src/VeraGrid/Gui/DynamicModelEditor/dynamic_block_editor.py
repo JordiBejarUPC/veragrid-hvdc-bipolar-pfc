@@ -4305,8 +4305,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             LibraryLeafSpec("R load", BlockType.R_LOAD_EMT),
             LibraryLeafSpec("L load", BlockType.L_LOAD_EMT),
             LibraryLeafSpec("C load", BlockType.C_LOAD_EMT),
-            LibraryLeafSpec("Exponential load", BlockType.EXP_LOAD_EMT),
-            LibraryLeafSpec("ZIP load", BlockType.ZIP_LOAD_EMT),
             LibraryLeafSpec("DC load", BlockType.DC_LOAD_EMT),
         ])
 
@@ -4342,22 +4340,16 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 LibraryLeafSpec("Emt Bergeron line", BlockType.EMT_BERGERON_LINE),
                 LibraryLeafSpec("Emt JMarti line", BlockType.EMT_JMARTI_LINE),
             ],
-            DeviceType.LoadDevice: [
-                LibraryLeafSpec("Generic", BlockType.GENERIC),
-                LibraryLeafSpec("Ground EMT", BlockType.GROUND_EMT),
-                LibraryLeafSpec("Grounding Link EMT", BlockType.GROUNDING_LINK_EMT),
-                LibraryLeafSpec("Nonlinear Resistor EMT", BlockType.NONLINEAR_RESISTOR_EMT),
-                LibraryLeafSpec("RLC Combo", BlockType.RLC_COMBO_EMT),
-                LibraryLeafSpec("R load", BlockType.R_LOAD_EMT),
-                LibraryLeafSpec("L load", BlockType.L_LOAD_EMT),
-                LibraryLeafSpec("C load", BlockType.C_LOAD_EMT),
+            DeviceType.LoadDevice: [ # the other types of loads already appear in common emt device blocks
                 LibraryLeafSpec("Exponential load", BlockType.EXP_LOAD_EMT),
                 LibraryLeafSpec("ZIP load", BlockType.ZIP_LOAD_EMT),
-                LibraryLeafSpec("DC load", BlockType.DC_LOAD_EMT),
                 LibraryLeafSpec("Induction motor", BlockType.INDUCTION_MOTOR_EMT)
             ],
-            # TODO: for transformers it should appear in all types of trafos
             DeviceType.Transformer2WDevice: [
+                LibraryLeafSpec("Transformer", BlockType.TRAFO_EMT),
+                LibraryLeafSpec("XFMR Transformer", BlockType.XFMR_TRANSFORMER),
+            ],
+            DeviceType.Transformer3WDevice: [
                 LibraryLeafSpec("Transformer", BlockType.TRAFO_EMT),
                 LibraryLeafSpec("XFMR Transformer", BlockType.XFMR_TRANSFORMER),
             ],
