@@ -6196,6 +6196,15 @@ class Assets:
         """
         return [elm for elm in self.rms_models if elm.tpe == tpe]
 
+    def get_loaded_rms_models_by_device_type(self, tpe: DeviceType) -> List[dev.RmsModelTemplate]:
+        """
+        Return already materialized RMS templates without triggering lazy loading.
+
+        :param tpe: Supported device type.
+        :return: Matching loaded RMS templates.
+        """
+        return [elm for elm in self._rms_models if elm.tpe == tpe]
+
     # ------------------------------------------------------------------------------------------------------------------
     # EmtModel
     # ------------------------------------------------------------------------------------------------------------------
@@ -6258,6 +6267,15 @@ class Assets:
         :return:
         """
         return [elm for elm in self.emt_models if _matches_dynamic_template_device_type(tpe, elm.tpe)]
+
+    def get_loaded_emt_models_by_device_type(self, tpe: DeviceType) -> List[dev.EmtModelTemplate]:
+        """
+        Return already materialized EMT templates without triggering lazy loading.
+
+        :param tpe: Supported device type.
+        :return: Matching loaded EMT templates.
+        """
+        return [elm for elm in self._emt_models if _matches_dynamic_template_device_type(tpe, elm.tpe)]
 
     @property
     def fmu_templates(self) -> List[dev.FmuTemplate]:
@@ -6374,9 +6392,10 @@ class Assets:
 
         return [elm for elm in self.fmu_templates if elm.tpe == tpe and elm.domain == domain]
 
-    def get_dynamic_templates_by_device_type_and_domain(self,
-                                                        tpe: DeviceType,
-                                                        domain: FmuTemplateDomain) -> List[dev.RmsModelTemplate | dev.EmtModelTemplate | dev.FmuTemplate]:
+    def get_dynamic_templates_by_device_type_and_domain(
+            self,
+            tpe: DeviceType,
+            domain: FmuTemplateDomain) -> List[dev.RmsModelTemplate | dev.EmtModelTemplate | dev.FmuTemplate]:
         """
         Get all reusable templates for one device type and one simulation domain.
 
@@ -6401,8 +6420,10 @@ class Assets:
         native_templates.extend(self.get_fmu_templates_by_device_type_and_domain(tpe, domain))
         return native_templates
 
-    def get_dynamic_templates_by_domain(self,
-                                        domain: FmuTemplateDomain) -> List[dev.RmsModelTemplate | dev.EmtModelTemplate | dev.FmuTemplate]:
+    def get_dynamic_templates_by_domain(
+            self,
+            domain: FmuTemplateDomain
+    ) -> List[dev.RmsModelTemplate | dev.EmtModelTemplate | dev.FmuTemplate]:
         """
         Get all reusable templates registered for one simulation domain.
 
@@ -8526,8 +8547,10 @@ class Assets:
         elif elm_type == DeviceType.TransformerTypeDevice:
             elm = dev.TransformerType()
             dictionary_of_lists = {
-                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(DeviceType.Transformer2WDevice),
-                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(DeviceType.Transformer2WDevice),
+                DeviceType.RmsModelTemplateDevice: self.get_loaded_rms_models_by_device_type(
+                    DeviceType.Transformer2WDevice),
+                DeviceType.EmtModelTemplateDevice: self.get_loaded_emt_models_by_device_type(
+                    DeviceType.Transformer2WDevice),
             }
 
         elif elm_type == DeviceType.FluidNodeDevice:
@@ -8670,13 +8693,16 @@ class Assets:
         else:
             raise Exception(f'elm_type not understood: {elm_type.value}')
 
-        if (DeviceType.RmsModelTemplateDevice in dictionary_of_lists) or (DeviceType.EmtModelTemplateDevice in dictionary_of_lists):
+        if (DeviceType.RmsModelTemplateDevice in dictionary_of_lists) or (
+                DeviceType.EmtModelTemplateDevice in dictionary_of_lists):
             dictionary_of_lists[DeviceType.FmuTemplateDevice] = self.get_fmu_templates_by_device_type(elm_type)
-            dictionary_of_lists[("rms_fmu_template", DeviceType.FmuTemplateDevice)] = self.get_fmu_templates_by_device_type_and_domain(
+            dictionary_of_lists[
+                ("rms_fmu_template", DeviceType.FmuTemplateDevice)] = self.get_fmu_templates_by_device_type_and_domain(
                 elm_type,
                 FmuTemplateDomain.RMS,
             )
-            dictionary_of_lists[("emt_fmu_template", DeviceType.FmuTemplateDevice)] = self.get_fmu_templates_by_device_type_and_domain(
+            dictionary_of_lists[
+                ("emt_fmu_template", DeviceType.FmuTemplateDevice)] = self.get_fmu_templates_by_device_type_and_domain(
                 elm_type,
                 FmuTemplateDomain.EMT,
             )
@@ -8731,6 +8757,7 @@ class Assets:
         Here the list of all rms templates must be returned in a list
         :return:
         """
+        # TODO: eliminate
         self.rms_models += [
             tem.get_genqec_rms(vfactory=self._var_factory),
             tem.get_governor_rms(vfactory=self._var_factory),
@@ -8769,7 +8796,6 @@ class Assets:
             tem.get_transformer_emt_template(vf=self._var_factory),
             tem.get_xfmr_emt_template(vf=self._var_factory),
 
-
             # the following are functions that generate templates depending on phases or things
             tem.get_shunt_c_emt_template(vf=self._var_factory, phA=True, phB=True, phC=True),
             tem.get_shunt_l_emt_template(vf=self._var_factory, phA=True, phB=True, phC=True),
@@ -8778,6 +8804,5 @@ class Assets:
             tem.get_load_ZIP_emt_template(vf=self._var_factory, phA=True, phB=True, phC=True),
             tem.get_pi_line_emt_template(vf=self._var_factory, phN=False, phA=True, phB=True, phC=True),
             tem.get_bergeron_line_emt_template(vf=self._var_factory, phN=False, phA=True, phB=True, phC=True),
-
 
         ]
