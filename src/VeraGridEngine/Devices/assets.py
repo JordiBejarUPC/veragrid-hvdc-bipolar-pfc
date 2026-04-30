@@ -7,7 +7,7 @@ from __future__ import annotations
 import warnings
 import numpy as np
 import pandas as pd
-from typing import List, Dict, Tuple, Union, Any, Set, Generator, Sequence, Callable
+from typing import List, Dict, Tuple, Union, Any, Set, Generator, Sequence
 import datetime as dateslib
 
 from VeraGridEngine.basic_structures import IntVec, StrVec, Vec, Mat, ObjVec, BoolVec
@@ -15,7 +15,6 @@ import VeraGridEngine.Devices as dev
 import VeraGridEngine.Templates as tem
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES, BRANCH_TYPES, INJECTION_DEVICE_TYPES, FLUID_TYPES
 from VeraGridEngine.Devices.Parents.editable_device import GCPROP_TYPES
-from VeraGridEngine.Devices.Dynamic.emt_template import EmtLazyTemplateBuilder
 from VeraGridEngine.enumerations import DeviceType, ActionType, FmuTemplateDomain
 from VeraGridEngine.basic_structures import Logger, ListSet
 from VeraGridEngine.data_logger import DataLogger
@@ -6393,10 +6392,10 @@ class Assets:
 
         return [elm for elm in self.fmu_templates if elm.tpe == tpe and elm.domain == domain]
 
-    def get_dynamic_templates_by_device_type_and_domain(self,
-                                                        tpe: DeviceType,
-                                                        domain: FmuTemplateDomain) -> List[
-        dev.RmsModelTemplate | dev.EmtModelTemplate | dev.FmuTemplate]:
+    def get_dynamic_templates_by_device_type_and_domain(
+            self,
+            tpe: DeviceType,
+            domain: FmuTemplateDomain) -> List[dev.RmsModelTemplate | dev.EmtModelTemplate | dev.FmuTemplate]:
         """
         Get all reusable templates for one device type and one simulation domain.
 
@@ -6421,9 +6420,10 @@ class Assets:
         native_templates.extend(self.get_fmu_templates_by_device_type_and_domain(tpe, domain))
         return native_templates
 
-    def get_dynamic_templates_by_domain(self,
-                                        domain: FmuTemplateDomain) -> List[
-        dev.RmsModelTemplate | dev.EmtModelTemplate | dev.FmuTemplate]:
+    def get_dynamic_templates_by_domain(
+            self,
+            domain: FmuTemplateDomain
+    ) -> List[dev.RmsModelTemplate | dev.EmtModelTemplate | dev.FmuTemplate]:
         """
         Get all reusable templates registered for one simulation domain.
 
@@ -8244,8 +8244,8 @@ class Assets:
                 DeviceType.CountryDevice: self.countries,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
                 DeviceType.Owner: self.owners,
-                DeviceType.RmsModelTemplateDevice: self.get_loaded_rms_models_by_device_type(elm_type),
-                DeviceType.EmtModelTemplateDevice: self.get_loaded_emt_models_by_device_type(elm_type),
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
             }
 
         elif elm_type == DeviceType.LoadDevice:
@@ -8256,8 +8256,8 @@ class Assets:
                 DeviceType.ModellingAuthority: self.modelling_authorities,
                 DeviceType.FacilityDevice: self.facilities,
                 DeviceType.BusDevice: self.buses,
-                DeviceType.RmsModelTemplateDevice: self.get_loaded_rms_models_by_device_type(elm_type),
-                DeviceType.EmtModelTemplateDevice: self.get_loaded_emt_models_by_device_type(elm_type),
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
             }
 
         elif elm_type == DeviceType.StaticGeneratorDevice:
@@ -8268,8 +8268,8 @@ class Assets:
                 DeviceType.ModellingAuthority: self.modelling_authorities,
                 DeviceType.FacilityDevice: self.facilities,
                 DeviceType.BusDevice: self.buses,
-                DeviceType.RmsModelTemplateDevice: self.get_loaded_rms_models_by_device_type(elm_type),
-                DeviceType.EmtModelTemplateDevice: self.get_loaded_emt_models_by_device_type(elm_type),
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
             }
 
         elif elm_type == DeviceType.ControllableShuntDevice:
@@ -8280,8 +8280,8 @@ class Assets:
                 DeviceType.ModellingAuthority: self.modelling_authorities,
                 DeviceType.FacilityDevice: self.facilities,
                 DeviceType.BusDevice: self.buses,
-                DeviceType.RmsModelTemplateDevice: self.get_loaded_rms_models_by_device_type(elm_type),
-                DeviceType.EmtModelTemplateDevice: self.get_loaded_emt_models_by_device_type(elm_type),
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
             }
 
         elif elm_type == DeviceType.CurrentInjectionDevice:
@@ -8292,8 +8292,8 @@ class Assets:
                 DeviceType.ModellingAuthority: self.modelling_authorities,
                 DeviceType.FacilityDevice: self.facilities,
                 DeviceType.BusDevice: self.buses,
-                DeviceType.RmsModelTemplateDevice: self.get_loaded_rms_models_by_device_type(elm_type),
-                DeviceType.EmtModelTemplateDevice: self.get_loaded_emt_models_by_device_type(elm_type),
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
             }
 
         elif elm_type == DeviceType.GeneratorDevice:
@@ -8306,8 +8306,8 @@ class Assets:
                 DeviceType.ModellingAuthority: self.modelling_authorities,
                 DeviceType.FacilityDevice: self.facilities,
                 DeviceType.BusDevice: self.buses,
-                DeviceType.RmsModelTemplateDevice: self.get_loaded_rms_models_by_device_type(elm_type),
-                DeviceType.EmtModelTemplateDevice: self.get_loaded_emt_models_by_device_type(elm_type),
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
             }
 
         elif elm_type == DeviceType.BatteryDevice:
@@ -8318,8 +8318,8 @@ class Assets:
                 DeviceType.ModellingAuthority: self.modelling_authorities,
                 DeviceType.FacilityDevice: self.facilities,
                 DeviceType.BusDevice: self.buses,
-                DeviceType.RmsModelTemplateDevice: self.get_loaded_rms_models_by_device_type(elm_type),
-                DeviceType.EmtModelTemplateDevice: self.get_loaded_emt_models_by_device_type(elm_type),
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
             }
 
         elif elm_type == DeviceType.ShuntDevice:
@@ -8330,8 +8330,8 @@ class Assets:
                 DeviceType.ModellingAuthority: self.modelling_authorities,
                 DeviceType.FacilityDevice: self.facilities,
                 DeviceType.BusDevice: self.buses,
-                DeviceType.RmsModelTemplateDevice: self.get_loaded_rms_models_by_device_type(elm_type),
-                DeviceType.EmtModelTemplateDevice: self.get_loaded_emt_models_by_device_type(elm_type),
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
             }
 
         elif elm_type == DeviceType.ExternalGridDevice:
@@ -8342,8 +8342,8 @@ class Assets:
                 DeviceType.ModellingAuthority: self.modelling_authorities,
                 DeviceType.FacilityDevice: self.facilities,
                 DeviceType.BusDevice: self.buses,
-                DeviceType.RmsModelTemplateDevice: self.get_loaded_rms_models_by_device_type(elm_type),
-                DeviceType.EmtModelTemplateDevice: self.get_loaded_emt_models_by_device_type(elm_type),
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
             }
 
         elif elm_type == DeviceType.LineDevice:
@@ -8353,8 +8353,8 @@ class Assets:
                 DeviceType.BranchGroupDevice: self.branch_groups,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
                 DeviceType.BusDevice: self.buses,
-                DeviceType.RmsModelTemplateDevice: self.get_loaded_rms_models_by_device_type(elm_type),
-                DeviceType.EmtModelTemplateDevice: self.get_loaded_emt_models_by_device_type(elm_type),
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
             }
 
         elif elm_type == DeviceType.SwitchDevice:
@@ -8364,8 +8364,8 @@ class Assets:
                 DeviceType.BranchGroupDevice: self.branch_groups,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
                 DeviceType.BusDevice: self.buses,
-                DeviceType.RmsModelTemplateDevice: self.get_loaded_rms_models_by_device_type(elm_type),
-                DeviceType.EmtModelTemplateDevice: self.get_loaded_emt_models_by_device_type(elm_type),
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
             }
 
         elif elm_type == DeviceType.Transformer2WDevice:
@@ -8375,8 +8375,8 @@ class Assets:
                 DeviceType.BranchGroupDevice: self.branch_groups,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
                 DeviceType.BusDevice: self.buses,
-                DeviceType.RmsModelTemplateDevice: self.get_loaded_rms_models_by_device_type(elm_type),
-                DeviceType.EmtModelTemplateDevice: self.get_loaded_emt_models_by_device_type(elm_type),
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
             }
 
         elif elm_type == DeviceType.WindingDevice:
@@ -8386,8 +8386,8 @@ class Assets:
                 DeviceType.BranchGroupDevice: self.branch_groups,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
                 DeviceType.BusDevice: self.buses,
-                DeviceType.RmsModelTemplateDevice: self.get_loaded_rms_models_by_device_type(elm_type),
-                DeviceType.EmtModelTemplateDevice: self.get_loaded_emt_models_by_device_type(elm_type),
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
             }
 
         elif elm_type == DeviceType.Transformer3WDevice:
@@ -8396,8 +8396,8 @@ class Assets:
                 DeviceType.Owner: self.owners,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
                 DeviceType.BusDevice: self.buses,
-                # DeviceType.RmsModelTemplateDevice: self.get_loaded_rms_models_by_device_type(elm_type),
-                # DeviceType.EmtModelTemplateDevice: self.get_loaded_emt_models_by_device_type(elm_type),
+                # DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
+                # DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
             }
 
         elif elm_type == DeviceType.TransformerNwDevice:
@@ -8415,8 +8415,8 @@ class Assets:
                 DeviceType.BranchGroupDevice: self.branch_groups,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
                 DeviceType.BusDevice: self.buses,
-                DeviceType.RmsModelTemplateDevice: self.get_loaded_rms_models_by_device_type(elm_type),
-                DeviceType.EmtModelTemplateDevice: self.get_loaded_emt_models_by_device_type(elm_type),
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
             }
 
         elif elm_type == DeviceType.VscDevice:
@@ -8426,8 +8426,8 @@ class Assets:
                 DeviceType.BranchGroupDevice: self.branch_groups,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
                 DeviceType.BusDevice: self.buses,
-                DeviceType.RmsModelTemplateDevice: self.get_loaded_rms_models_by_device_type(elm_type),
-                DeviceType.EmtModelTemplateDevice: self.get_loaded_emt_models_by_device_type(elm_type),
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
             }
 
         elif elm_type == DeviceType.UpfcDevice:
@@ -8437,8 +8437,8 @@ class Assets:
                 DeviceType.BranchGroupDevice: self.branch_groups,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
                 DeviceType.BusDevice: self.buses,
-                DeviceType.RmsModelTemplateDevice: self.get_loaded_rms_models_by_device_type(elm_type),
-                DeviceType.EmtModelTemplateDevice: self.get_loaded_emt_models_by_device_type(elm_type),
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
             }
 
         elif elm_type == DeviceType.SeriesReactanceDevice:
@@ -8448,8 +8448,8 @@ class Assets:
                 DeviceType.BranchGroupDevice: self.branch_groups,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
                 DeviceType.BusDevice: self.buses,
-                DeviceType.RmsModelTemplateDevice: self.get_loaded_rms_models_by_device_type(elm_type),
-                DeviceType.EmtModelTemplateDevice: self.get_loaded_emt_models_by_device_type(elm_type),
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
             }
 
         elif elm_type == DeviceType.DCLineDevice:
@@ -8459,8 +8459,8 @@ class Assets:
                 DeviceType.BranchGroupDevice: self.branch_groups,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
                 DeviceType.BusDevice: self.buses,
-                DeviceType.RmsModelTemplateDevice: self.get_loaded_rms_models_by_device_type(elm_type),
-                DeviceType.EmtModelTemplateDevice: self.get_loaded_emt_models_by_device_type(elm_type),
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
             }
 
         elif elm_type == DeviceType.SubstationDevice:
@@ -8558,22 +8558,22 @@ class Assets:
         elif elm_type == DeviceType.OverheadLineTypeDevice:
             elm = dev.OverheadLineType()
             dictionary_of_lists = {
-                DeviceType.RmsModelTemplateDevice: self.get_loaded_rms_models_by_device_type(DeviceType.LineDevice),
-                DeviceType.EmtModelTemplateDevice: self.get_loaded_emt_models_by_device_type(DeviceType.LineDevice),
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(DeviceType.LineDevice),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(DeviceType.LineDevice),
             }
 
         elif elm_type == DeviceType.SequenceLineDevice:
             elm = dev.SequenceLineType()
             dictionary_of_lists = {
-                DeviceType.RmsModelTemplateDevice: self.get_loaded_rms_models_by_device_type(DeviceType.LineDevice),
-                DeviceType.EmtModelTemplateDevice: self.get_loaded_emt_models_by_device_type(DeviceType.LineDevice),
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(DeviceType.LineDevice),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(DeviceType.LineDevice),
             }
 
         elif elm_type == DeviceType.UnderGroundLineDevice:
             elm = dev.UndergroundLineType()
             dictionary_of_lists = {
-                DeviceType.RmsModelTemplateDevice: self.get_loaded_rms_models_by_device_type(DeviceType.LineDevice),
-                DeviceType.EmtModelTemplateDevice: self.get_loaded_emt_models_by_device_type(DeviceType.LineDevice),
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(DeviceType.LineDevice),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(DeviceType.LineDevice),
             }
 
         elif elm_type == DeviceType.TransformerTypeDevice:

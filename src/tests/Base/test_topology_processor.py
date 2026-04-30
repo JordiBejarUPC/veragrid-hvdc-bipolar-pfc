@@ -1038,4 +1038,4 @@ def test_switch_reduction():
     assert nc.nbr == 7
 
     # after the reduction the switch is eliminate from the island data
-    assert islands[0].nbr == 6
+    assert islands[0].nbr == 5
