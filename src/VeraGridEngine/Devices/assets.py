@@ -7332,12 +7332,18 @@ class Assets:
             self._shunts = devices
 
         elif device_type == DeviceType.ExternalGridDevice:
+            for d in devices:
+                d.set_var_factory(self._var_factory)
             self._external_grids = devices
 
         elif device_type == DeviceType.CurrentInjectionDevice:
+            for d in devices:
+                d.set_var_factory(self._var_factory)
             self._current_injections = devices
 
         elif device_type == DeviceType.ControllableShuntDevice:
+            for d in devices:
+                d.set_var_factory(self._var_factory)
             self._controllable_shunts = devices
 
         elif device_type == DeviceType.LineDevice:
@@ -7346,35 +7352,53 @@ class Assets:
                 self.add_line(d, logger=logger)
 
         elif device_type == DeviceType.Transformer2WDevice:
+            for d in devices:
+                d.set_var_factory(self._var_factory)
             self._transformers2w = devices
 
         elif device_type == DeviceType.Transformer3WDevice:
+            for d in devices:
+                d.set_var_factory(self._var_factory)
             self._transformers3w = devices
 
         elif device_type == DeviceType.TransformerNwDevice:
+            for d in devices:
+                d.set_var_factory(self._var_factory)
             self._transformers_nw = devices
 
         elif device_type == DeviceType.WindingDevice:
+            for d in devices:
+                d.set_var_factory(self._var_factory)
             self._windings = devices
 
         elif device_type == DeviceType.SeriesReactanceDevice:
+            for d in devices:
+                d.set_var_factory(self._var_factory)
             self._series_reactances = devices
 
         elif device_type == DeviceType.HVDCLineDevice:
+            for d in devices:
+                d.set_var_factory(self._var_factory)
             self._hvdc_lines = devices
 
         elif device_type == DeviceType.UpfcDevice:
+            for d in devices:
+                d.set_var_factory(self._var_factory)
             self._upfc_devices = devices
 
         elif device_type == DeviceType.VscDevice:
             # for elm in devices:  # TODO SANPEN: Why not?
             #     elm.correct_buses_connection()
+            for d in devices:
+                d.set_var_factory(self._var_factory)
             self._vsc_devices = devices
 
         elif device_type == DeviceType.BranchGroupDevice:
             self._branch_groups = devices
 
         elif device_type == DeviceType.BusDevice:
+            for d in devices:
+                d.set_var_factory(self._var_factory)
             self._buses = ListSet(devices)
 
         elif device_type == DeviceType.OverheadLineTypeDevice:
@@ -7388,18 +7412,26 @@ class Assets:
             self._transformer_types = devices
 
         elif device_type == DeviceType.UnderGroundLineDevice:
+            for d in devices:
+                d.set_var_factory(self._var_factory)
             self._underground_cable_types = devices
 
         elif device_type == DeviceType.SequenceLineDevice:
+            for d in devices:
+                d.set_var_factory(self._var_factory)
             self._sequence_line_types = devices
 
         elif device_type == DeviceType.WireDevice:
             self._wire_types = devices
 
         elif device_type == DeviceType.DCLineDevice:
+            for d in devices:
+                d.set_var_factory(self._var_factory)
             self._dc_lines = devices
 
         elif device_type == DeviceType.SwitchDevice:
+            for d in devices:
+                d.set_var_factory(self._var_factory)
             self._switch_devices = devices
 
         elif device_type == DeviceType.SubstationDevice:
