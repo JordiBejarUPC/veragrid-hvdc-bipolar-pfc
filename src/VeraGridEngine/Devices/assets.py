@@ -66,22 +66,6 @@ def _matches_dynamic_template_device_type(requested_tpe: DeviceType, template_tp
     return False
 
 
-def _build_lazy_emt_template(builder: Callable[..., dev.EmtModelTemplate], name: str, tpe: DeviceType, kwargs: Dict[str, Any]) -> dev.EmtModelTemplate:
-    """
-    Build one visible EMT template placeholder whose block is materialized lazily.
-
-    :param builder: EMT template builder.
-    :param name: Visible template name.
-    :param tpe: Supported device type.
-    :param kwargs: Explicit builder keyword arguments.
-    :return: Lazy EMT template placeholder.
-    """
-    template: dev.EmtModelTemplate = dev.EmtModelTemplate(name=name)
-    template.tpe = tpe
-    template.set_lazy_builder(EmtLazyTemplateBuilder(builder=builder, kwargs=kwargs))
-    return template
-
-
 class Assets:
     """
     Class to store the assets
@@ -158,8 +142,6 @@ class Assets:
         '_diagrams',
         '_rms_models',
         '_emt_models',
-        '_lazy_default_rms_models_enabled',
-        '_lazy_default_emt_models_enabled',
         '_fmu_templates',
         'template_objects_dict',
         'profile_magnitudes',
@@ -364,8 +346,6 @@ class Assets:
 
         # list of EMT models
         self._emt_models: List[dev.EmtModelTemplate] = list()
-        self._lazy_default_rms_models_enabled: bool = False
-        self._lazy_default_emt_models_enabled: bool = False
 
         # list of reusable FMU templates
         self._fmu_templates: List[dev.FmuTemplate] = list()
@@ -6167,12 +6147,10 @@ class Assets:
         list of rms models
         :return:
         """
-        self._ensure_default_rms_model_catalogue_loaded()
         return self._rms_models
 
     @rms_models.setter
     def rms_models(self, value: List[dev.RmsModelTemplate]):
-        self._lazy_default_rms_models_enabled = False
         self._rms_models = value
 
     def get_rms_models_number(self) -> int:
@@ -6186,7 +6164,6 @@ class Assets:
         Add rms model to the collection
         :param obj: DynamicModel instance
         """
-        self._ensure_default_rms_model_catalogue_loaded()
         if obj is not None:
             if isinstance(obj, dev.RmsModelTemplate):
                 self._rms_models.append(obj)
@@ -6229,29 +6206,6 @@ class Assets:
         """
         return [elm for elm in self._rms_models if elm.tpe == tpe]
 
-    def enable_default_rms_model_catalogue_lazy_loading(self) -> None:
-        """
-        Mark the default RMS model catalogue for lazy materialization.
-
-        :return: None.
-        """
-        if len(self._rms_models) == 0:
-            self._lazy_default_rms_models_enabled = True
-        else:
-            pass
-
-    def _ensure_default_rms_model_catalogue_loaded(self) -> None:
-        """
-        Materialize the default RMS model catalogue on first access.
-
-        :return: None.
-        """
-        if self._lazy_default_rms_models_enabled:
-            self._lazy_default_rms_models_enabled = False
-            self.add_rms_model_catalogue()
-        else:
-            pass
-
     # ------------------------------------------------------------------------------------------------------------------
     # EmtModel
     # ------------------------------------------------------------------------------------------------------------------
@@ -6262,12 +6216,10 @@ class Assets:
         list of emt models
         :return:
         """
-        self._ensure_default_emt_model_catalogue_loaded()
         return self._emt_models
 
     @emt_models.setter
     def emt_models(self, value: List[dev.EmtModelTemplate]):
-        self._lazy_default_emt_models_enabled = False
         self._emt_models = value
 
     def get_emt_models_number(self) -> int:
@@ -6281,7 +6233,6 @@ class Assets:
         Add emt model to the collection
         :param obj: DynamicModel instance
         """
-        self._ensure_default_emt_model_catalogue_loaded()
         if obj is not None:
             if isinstance(obj, dev.EmtModelTemplate):
                 self._emt_models.append(obj)
@@ -6326,29 +6277,6 @@ class Assets:
         :return: Matching loaded EMT templates.
         """
         return [elm for elm in self._emt_models if _matches_dynamic_template_device_type(tpe, elm.tpe)]
-
-    def enable_default_emt_model_catalogue_lazy_loading(self) -> None:
-        """
-        Mark the default EMT model catalogue for lazy materialization.
-
-        :return: None.
-        """
-        if len(self._emt_models) == 0:
-            self._lazy_default_emt_models_enabled = True
-        else:
-            pass
-
-    def _ensure_default_emt_model_catalogue_loaded(self) -> None:
-        """
-        Materialize the default EMT model catalogue on first access.
-
-        :return: None.
-        """
-        if self._lazy_default_emt_models_enabled:
-            self._lazy_default_emt_models_enabled = False
-            self.add_emt_model_catalogue()
-        else:
-            pass
 
     @property
     def fmu_templates(self) -> List[dev.FmuTemplate]:
@@ -8619,8 +8547,10 @@ class Assets:
         elif elm_type == DeviceType.TransformerTypeDevice:
             elm = dev.TransformerType()
             dictionary_of_lists = {
-                DeviceType.RmsModelTemplateDevice: self.get_loaded_rms_models_by_device_type(DeviceType.Transformer2WDevice),
-                DeviceType.EmtModelTemplateDevice: self.get_loaded_emt_models_by_device_type(DeviceType.Transformer2WDevice),
+                DeviceType.RmsModelTemplateDevice: self.get_loaded_rms_models_by_device_type(
+                    DeviceType.Transformer2WDevice),
+                DeviceType.EmtModelTemplateDevice: self.get_loaded_emt_models_by_device_type(
+                    DeviceType.Transformer2WDevice),
             }
 
         elif elm_type == DeviceType.FluidNodeDevice:
@@ -8827,6 +8757,7 @@ class Assets:
         Here the list of all rms templates must be returned in a list
         :return:
         """
+        # TODO: eliminate
         self.rms_models += [
             tem.get_genqec_rms(vfactory=self._var_factory),
             tem.get_governor_rms(vfactory=self._var_factory),
@@ -8845,174 +8776,33 @@ class Assets:
         """
         self.emt_models += [
 
-            _build_lazy_emt_template(
-                builder=tem.get_simple_generator_emt_template,
-                name="simple_emt_type_generator_template",
-                tpe=DeviceType.GeneratorDevice,
-                kwargs=dict(vf=self._var_factory, name="simple_emt_type_generator_template"),
-            ),
-            _build_lazy_emt_template(
-                builder=tem.get_generator_sauer_pai_type_emt_template,
-                name="sauer_pai_generator_emt_template",
-                tpe=DeviceType.GeneratorDevice,
-                kwargs=dict(vf=self._var_factory, name="sauer_pai_generator_emt_template"),
-            ),
-            _build_lazy_emt_template(
-                builder=tem.get_governor_emt,
-                name="Governor",
-                tpe=DeviceType.GeneratorDevice,
-                kwargs=dict(vf=self._var_factory, name="Governor"),
-            ),
-            _build_lazy_emt_template(
-                builder=tem.get_stabilizer_emt,
-                name="stabilizer",
-                tpe=DeviceType.GeneratorDevice,
-                kwargs=dict(vf=self._var_factory, name="stabilizer"),
-            ),
-            _build_lazy_emt_template(
-                builder=tem.get_exciter_emt,
-                name="exciter",
-                tpe=DeviceType.GeneratorDevice,
-                kwargs=dict(vf=self._var_factory, name="exciter"),
-            ),
-            _build_lazy_emt_template(
-                builder=tem.get_complete_generator_template_emt,
-                name="complete_generator_emt_template",
-                tpe=DeviceType.GeneratorDevice,
-                kwargs=dict(vf=self._var_factory, name="complete_generator_emt_template"),
-            ),
+            tem.get_simple_generator_emt_template(vf=self._var_factory),
+            tem.get_generator_sauer_pai_type_emt_template(vf=self._var_factory),
+            tem.get_governor_emt(vf=self._var_factory),
+            tem.get_stabilizer_emt(vf=self._var_factory),
+            tem.get_exciter_emt(vf=self._var_factory),
+            tem.get_complete_generator_template_emt(vf=self._var_factory),
 
-            _build_lazy_emt_template(
-                builder=tem.get_generator_thevenin_rl_emt_template,
-                name="emt_thevenin_eq_generator_template",
-                tpe=DeviceType.GeneratorDevice,
-                kwargs=dict(vf=self._var_factory, name="emt_thevenin_eq_generator_template"),
-            ),
-            _build_lazy_emt_template(
-                builder=tem.get_emt_ideal_converter,
-                name="ideal_converter_emt",
-                tpe=DeviceType.VscDevice,
-                kwargs=dict(vf=self._var_factory, name="ideal_converter_emt"),
-            ),
-            _build_lazy_emt_template(
-                builder=tem.get_full_pseudo_emt_converter,
-                name="pseudo_converter_emt",
-                tpe=DeviceType.VscDevice,
-                kwargs=dict(vf=self._var_factory, name="pseudo_converter_emt"),
-            ),
-            _build_lazy_emt_template(
-                builder=tem.get_switched_emt_converter,
-                name="switched_converter_emt",
-                tpe=DeviceType.VscDevice,
-                kwargs=dict(vf=self._var_factory, name="switched_converter_emt"),
-            ),
-            _build_lazy_emt_template(
-                builder=tem.get_bridge_2level_3ph_emt_template,
-                name="bridge_2level_3ph_emt",
-                tpe=DeviceType.VscDevice,
-                kwargs=dict(vf=self._var_factory, name="bridge_2level_3ph_emt"),
-            ),
-            _build_lazy_emt_template(
-                builder=tem.get_bridge_filter_2level_3ph_emt_template,
-                name="bridge_filter_2level_3ph_emt",
-                tpe=DeviceType.VscDevice,
-                kwargs=dict(vf=self._var_factory, name="bridge_filter_2level_3ph_emt"),
-            ),
-            _build_lazy_emt_template(
-                builder=tem.get_bridge_filter_control_2level_3ph_emt_template,
-                name="bridge_filter_control_2level_3ph_emt",
-                tpe=DeviceType.VscDevice,
-                kwargs=dict(vf=self._var_factory, name="bridge_filter_control_2level_3ph_emt"),
-            ),
-            _build_lazy_emt_template(
-                builder=tem.get_dc_load_emt_template,
-                name="dc_load_emt_template",
-                tpe=DeviceType.LoadDevice,
-                kwargs=dict(vf=self._var_factory, name="dc_load_emt_template"),
-            ),
-            _build_lazy_emt_template(
-                builder=tem.get_dc_line_emt_template,
-                name="dc_line_emt_template",
-                tpe=DeviceType.DCLineDevice,
-                kwargs=dict(vf=self._var_factory, name="dc_line_emt_template"),
-            ),
-            _build_lazy_emt_template(
-                builder=tem.get_valve_emt_template,
-                name="valve_emt_template",
-                tpe=DeviceType.DynamicModelHostDevice,
-                kwargs=dict(vf=self._var_factory, name="valve_emt_template"),
-            ),
-            _build_lazy_emt_template(
-                builder=tem.get_transformer_emt_template,
-                name="transformer_emt_template",
-                tpe=DeviceType.TransformerTypeDevice,
-                kwargs=dict(vf=self._var_factory, name="transformer_emt_template"),
-            ),
-            _build_lazy_emt_template(
-                builder=tem.get_xfmr_emt_template,
-                name="xfmr_emt_template",
-                tpe=DeviceType.TransformerTypeDevice,
-                kwargs=dict(vf=self._var_factory, name="xfmr_emt_template"),
-            ),
+            tem.get_generator_thevenin_rl_emt_template(vf=self._var_factory),
+            tem.get_emt_ideal_converter(vf=self._var_factory),
+            tem.get_full_pseudo_emt_converter(vf=self._var_factory),
+            tem.get_switched_emt_converter(vf=self._var_factory),
+            tem.get_bridge_2level_3ph_emt_template(vf=self._var_factory),
+            tem.get_bridge_filter_2level_3ph_emt_template(vf=self._var_factory),
+            tem.get_bridge_filter_control_2level_3ph_emt_template(vf=self._var_factory),
+            tem.get_dc_load_emt_template(vf=self._var_factory),
+            tem.get_dc_line_emt_template(vf=self._var_factory),
+            tem.get_valve_emt_template(vf=self._var_factory),
+            tem.get_transformer_emt_template(vf=self._var_factory),
+            tem.get_xfmr_emt_template(vf=self._var_factory),
 
-            _build_lazy_emt_template(
-                builder=tem.get_shunt_c_emt_template,
-                name="Shunt_C_3ph",
-                tpe=DeviceType.LoadDevice,
-                kwargs=dict(vf=self._var_factory, phA=True, phB=True, phC=True, name="Shunt_C_3ph"),
-            ),
-            _build_lazy_emt_template(
-                builder=tem.get_shunt_l_emt_template,
-                name="Shunt_L_3ph",
-                tpe=DeviceType.LoadDevice,
-                kwargs=dict(vf=self._var_factory, phA=True, phB=True, phC=True, name="Shunt_L_3ph"),
-            ),
-            _build_lazy_emt_template(
-                builder=tem.get_shunt_r_emt_template,
-                name="Shunt_R_3ph",
-                tpe=DeviceType.LoadDevice,
-                kwargs=dict(vf=self._var_factory, phA=True, phB=True, phC=True, name="Shunt_R_3ph"),
-            ),
-            _build_lazy_emt_template(
-                builder=tem.get_exponential_load_emt,
-                name="EXP_Load_EMT_3ph",
-                tpe=DeviceType.LoadDevice,
-                kwargs=dict(vf=self._var_factory, phA=True, phB=True, phC=True, name="EXP_Load_EMT_3ph"),
-            ),
-            _build_lazy_emt_template(
-                builder=tem.get_load_ZIP_emt_template,
-                name="ZIP_Load_EMT_3ph",
-                tpe=DeviceType.LoadDevice,
-                kwargs=dict(vf=self._var_factory, phA=True, phB=True, phC=True, name="ZIP_Load_EMT_3ph"),
-            ),
-            _build_lazy_emt_template(
-                builder=tem.get_pi_line_emt_template,
-                name="Pi",
-                tpe=DeviceType.LineDevice,
-                kwargs=dict(vf=self._var_factory, phN=False, phA=True, phB=True, phC=True, name="Pi"),
-            ),
-            _build_lazy_emt_template(
-                builder=tem.get_bergeron_line_emt_template,
-                name="Bergeron",
-                tpe=DeviceType.LineDevice,
-                kwargs=dict(vf=self._var_factory, phN=False, phA=True, phB=True, phC=True, name="Bergeron"),
-            ),
-            _build_lazy_emt_template(
-                builder=tem.get_jmarti_line_emt_template,
-                name="J_Marti",
-                tpe=DeviceType.LineDevice,
-                kwargs=dict(vf=self._var_factory, phN=False, phA=True, phB=True, phC=True, name="J_Marti"),
-            ),
-            _build_lazy_emt_template(
-                builder=tem.get_induction_motor_single_cage_emt_template,
-                name="Induction motor single cage",
-                tpe=DeviceType.LoadDevice,
-                kwargs=dict(vf=self._var_factory, name="Induction_motor_single_cage"),
-            ),
-            _build_lazy_emt_template(
-                builder=tem.get_induction_motor_double_cage_emt_template,
-                name="Induction motor double cage",
-                tpe=DeviceType.LoadDevice,
-                kwargs=dict(vf=self._var_factory, name="Induction_motor_double_cage"),
-            ),
+            # the following are functions that generate templates depending on phases or things
+            tem.get_shunt_c_emt_template(vf=self._var_factory, phA=True, phB=True, phC=True),
+            tem.get_shunt_l_emt_template(vf=self._var_factory, phA=True, phB=True, phC=True),
+            tem.get_shunt_r_emt_template(vf=self._var_factory, phA=True, phB=True, phC=True),
+            tem.get_exponential_load_emt(vf=self._var_factory, phA=True, phB=True, phC=True),
+            tem.get_load_ZIP_emt_template(vf=self._var_factory, phA=True, phB=True, phC=True),
+            tem.get_pi_line_emt_template(vf=self._var_factory, phN=False, phA=True, phB=True, phC=True),
+            tem.get_bergeron_line_emt_template(vf=self._var_factory, phN=False, phA=True, phB=True, phC=True),
+
         ]
