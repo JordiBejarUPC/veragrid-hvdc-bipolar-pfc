@@ -29,6 +29,7 @@ from VeraGrid.Gui.messages import yes_no_question, warning_msg, info_msg
 from VeraGrid.Gui.Main.SubClasses.Model.diagrams import DiagramsMain
 from VeraGrid.Gui.DeviceEditors.LineEditor.line_device_editor import LineDeviceEditorDialog
 from VeraGrid.Gui.DeviceEditors.LoadDesigner.load_device_editor import LoadDeviceEditorDialog
+from VeraGrid.Gui.DeviceEditors.GeneratorEditor.generator_editor import GeneratorEditorDialog
 from VeraGrid.Gui.DeviceEditors.TowerBuilder.LineBuilderDialogue import TowerBuilderGUI
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_manager import open_dynamic_editor
 from VeraGrid.Gui.FmuTemplateEditor.fmu_template_editor import FmuTemplateEditorDialog
@@ -997,6 +998,16 @@ class DataBaseTableMain(DiagramsMain):
 
                     elif elm_type == DeviceType.LoadDevice.value:
                         dlg = LoadDeviceEditorDialog(api_object=elm, circuit=self.circuit)
+                        if dlg.exec():
+                            pass
+
+                    elif elm_type == DeviceType.GeneratorDevice.value:
+                        dlg = GeneratorEditorDialog(api_object=elm, circuit=self.circuit)
+                        if dlg.exec():
+                            pass
+
+                    elif elm_type == DeviceType.BatteryDevice.value:
+                        dlg = GeneratorEditorDialog(api_object=elm, circuit=self.circuit)
                         if dlg.exec():
                             pass
 

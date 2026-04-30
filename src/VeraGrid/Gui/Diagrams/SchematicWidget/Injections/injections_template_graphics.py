@@ -10,7 +10,8 @@ from PySide6.QtGui import QPen, QCursor, QPainterPath, QColor, QBrush, QPainterP
 from PySide6.QtWidgets import (QGraphicsItem, QGraphicsItemGroup, QMenu,
                                QGraphicsSceneContextMenuEvent, QGraphicsPathItem,
                                QGraphicsEllipseItem, QGraphicsRectItem, QGraphicsSceneMouseEvent)
-from VeraGrid.Gui.messages import yes_no_question, error_msg, warning_msg
+from VeraGrid.Gui.messages import yes_no_question, error_msg
+from VeraGrid.Gui.DeviceEditors.TemplateDeviceEditor.template_device_editor import TemplateDeviceEditor
 from VeraGrid.Gui.gui_functions import add_menu_entry
 from VeraGrid.Gui.Diagrams.generic_graphics import (GenericDiagramWidget, ACTIVE, DEACTIVATED, OTHER, Square, Circle,
                                                     Polygon, Condenser)
@@ -1090,6 +1091,17 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
 
         # plot the profiles
         self.api_object.plot_profiles(time=ts)
+
+    def open_device_editor(self) -> bool:
+        """
+        Open the default injection editor.
+
+        :return: ``True`` when the editor was opened.
+        """
+        circuit = self._editor.circuit
+        dialog = TemplateDeviceEditor(api_object=self.api_object, circuit=circuit)
+        dialog.exec()
+        return True
 
     def mousePressEvent(self, QGraphicsSceneMouseEvent):
         """

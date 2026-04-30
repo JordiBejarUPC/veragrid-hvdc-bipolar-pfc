@@ -8,6 +8,9 @@ from typing import TYPE_CHECKING
 from VeraGrid.Gui.Diagrams.generic_graphics import Square
 from VeraGridEngine.Devices.Injections.controllable_shunt import ControllableShunt
 from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.injections_template_graphics import InjectionTemplateGraphicItem
+from VeraGrid.Gui.DeviceEditors.ControllableShuntEditor.controllable_shunt_device_editor import (
+    ControllableShuntDeviceEditorDialog,
+)
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
@@ -37,6 +40,18 @@ class ControllableShuntGraphicItem(InjectionTemplateGraphicItem):
     @property
     def api_object(self) -> ControllableShunt:
         return self._api_object
+
+    def open_device_editor(self) -> bool:
+        """
+        Open the controllable shunt editor.
+
+        :return: ``True`` when the editor was opened.
+        """
+        dlg = ControllableShuntDeviceEditorDialog(api_object=self.api_object, circuit=self.editor.circuit)
+        if dlg.exec():
+            return True
+        else:
+            return True
 
     def contextMenuEvent(self, event):
         """

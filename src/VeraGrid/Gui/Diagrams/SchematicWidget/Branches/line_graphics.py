@@ -11,6 +11,7 @@ from PySide6.QtGui import QPen, QBrush
 from PySide6.QtWidgets import QMenu, QGraphicsRectItem, QGraphicsSceneContextMenuEvent
 from VeraGrid.Gui.gui_functions import add_menu_entry
 from VeraGrid.Gui.Diagrams.SchematicWidget.terminal_item import BarTerminalItem, RoundTerminalItem
+from VeraGrid.Gui.DeviceEditors.LineEditor.line_device_editor import LineDeviceEditorDialog
 from VeraGrid.Gui.messages import yes_no_question, warning_msg
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template import LineGraphicTemplateItem
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_manager import open_dynamic_editor
@@ -54,6 +55,18 @@ class LineGraphicItem(LineGraphicTemplateItem):
     @property
     def api_object(self) -> Line:
         return self._api_object
+
+    def open_device_editor(self) -> bool:
+        """
+        Open the line editor.
+
+        :return: ``True`` when the editor was opened.
+        """
+        dlg = LineDeviceEditorDialog(api_object=self.api_object, circuit=self.editor.circuit)
+        if dlg.exec():
+            return True
+        else:
+            return True
 
     def make_switch_symbol(self):
         """

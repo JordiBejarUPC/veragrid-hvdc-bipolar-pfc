@@ -52,6 +52,18 @@ class MapGeneratorGraphicItem(MapInjectionTemplateGraphicItem):
     def api_object(self) -> Generator:
         return self._api_object
 
+    def open_device_editor(self) -> bool:
+        """
+        Open the generator editor.
+
+        :return: ``True`` when the editor was opened.
+        """
+        dlg = GeneratorEditorDialog(api_object=self.api_object, circuit=self.editor.circuit)
+        if dlg.exec():
+            return True
+        else:
+            return True
+
     def contextMenuEvent(self, event: QGraphicsSceneContextMenuEvent):
         """
         Display context menu
@@ -202,11 +214,7 @@ class MapGeneratorGraphicItem(MapInjectionTemplateGraphicItem):
 
         :return: None.
         """
-        dlg = GeneratorEditorDialog(api_object=self.api_object, circuit=self.editor.circuit)
-        if dlg.exec():
-            pass
-        else:
-            pass
+        self.open_device_editor()
 
     def solar_pv_wizard(self):
         """

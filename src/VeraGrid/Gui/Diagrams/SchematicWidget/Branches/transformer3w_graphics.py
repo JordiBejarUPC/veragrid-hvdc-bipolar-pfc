@@ -10,6 +10,7 @@ from PySide6.QtGui import QPen, QCursor, QColor
 from PySide6.QtWidgets import QGraphicsItem, QGraphicsEllipseItem, QGraphicsRectItem, QMenu, QGraphicsSceneMouseEvent
 
 from VeraGrid.Gui.Diagrams.generic_graphics import ACTIVE, DEACTIVATED, GenericDiagramWidget
+from VeraGrid.Gui.DeviceEditors.Transformer3wEditor.transformer3w_device_editor import Transformer3WDeviceEditorDialog
 from VeraGrid.Gui.Diagrams.SchematicWidget.terminal_item import RoundTerminalItem
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.winding_graphics import WindingGraphicItem
 from VeraGridEngine.Devices.Branches.transformer3w import Transformer3W
@@ -139,6 +140,18 @@ class Transformer3WGraphicItem(GenericDiagramWidget, QGraphicsRectItem):
     @property
     def editor(self) -> SchematicWidget:
         return self._editor
+
+    def open_device_editor(self) -> bool:
+        """
+        Open the transformer 3W editor.
+
+        :return: ``True`` when the editor was opened.
+        """
+        dlg = Transformer3WDeviceEditorDialog(api_object=self.api_object, circuit=self.editor.circuit)
+        if dlg.exec():
+            return True
+        else:
+            return True
 
     def get_associated_widgets(self) -> List[WindingGraphicItem]:
         """

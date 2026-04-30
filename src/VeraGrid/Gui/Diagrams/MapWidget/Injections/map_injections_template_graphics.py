@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (QGraphicsEllipseItem, QMenu,
                                QGraphicsSceneContextMenuEvent,
                                QGraphicsSceneMouseEvent)
 from VeraGrid.Gui.gui_functions import add_menu_entry
+from VeraGrid.Gui.DeviceEditors.TemplateDeviceEditor.template_device_editor import TemplateDeviceEditor
 from VeraGrid.Gui.Diagrams.MapWidget.Substation.node_template import NodeTemplate
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.types import INJECTION_DEVICE_TYPES
@@ -207,6 +208,17 @@ class MapInjectionTemplateGraphicItem(NodeTemplate, QGraphicsEllipseItem):
 
         # plot the profiles
         self.api_object.plot_profiles(time=ts)
+
+    def open_device_editor(self) -> bool:
+        """
+        Open the default map-injection editor.
+
+        :return: ``True`` when the editor was opened.
+        """
+        circuit = self._editor.circuit
+        dialog = TemplateDeviceEditor(api_object=self.api_object, circuit=circuit)
+        dialog.exec()
+        return True
 
 
     def mouseDoubleClickEvent(self, event, /):
