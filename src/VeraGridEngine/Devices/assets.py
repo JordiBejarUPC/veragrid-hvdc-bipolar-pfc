@@ -6235,6 +6235,7 @@ class Assets:
 
         :return: None.
         """
+        # TODO: eliminate
         if len(self._rms_models) == 0:
             self._lazy_default_rms_models_enabled = True
         else:
@@ -6246,6 +6247,7 @@ class Assets:
 
         :return: None.
         """
+        # TODO: eliminate
         if self._lazy_default_rms_models_enabled:
             self._lazy_default_rms_models_enabled = False
             self.add_rms_model_catalogue()
@@ -8827,6 +8829,7 @@ class Assets:
         Here the list of all rms templates must be returned in a list
         :return:
         """
+        # TODO: eliminate
         self.rms_models += [
             tem.get_genqec_rms(vfactory=self._var_factory),
             tem.get_governor_rms(vfactory=self._var_factory),
@@ -8843,6 +8846,7 @@ class Assets:
         Create default catalogue of EMT values
         :return:
         """
+        # TODO: eliminate
         self.emt_models += [
 
             _build_lazy_emt_template(

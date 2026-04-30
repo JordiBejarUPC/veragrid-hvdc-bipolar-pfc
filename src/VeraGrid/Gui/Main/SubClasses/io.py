@@ -100,27 +100,6 @@ class IoMain(ScenariosMain):
         self.ui.exportSimulationDataButton.clicked.connect(self.export_simulation_data)
         self.ui.loadResultFromDiskButton.clicked.connect(self.load_results_driver)
 
-    def should_materialize_dynamic_catalogues_for_refresh(self) -> bool:
-        """
-        Return whether catalogue refresh should force lazy dynamic catalogues.
-
-        The real GUI keeps one visible property table whose combo delegates are
-        rebuilt from the materialized circuit catalogues, so GUI refreshes must
-        realize those catalogues first.
-
-        :return: ``True`` in the interactive GUI.
-        """
-        return True
-
-    def materialize_dynamic_catalogues_for_refresh(self) -> None:
-        """
-        Materialize lazy dynamic catalogues before rebuilding GUI delegates.
-
-        :return: None.
-        """
-        _unused_rms_models = self.circuit.rms_models
-        _unused_emt_models = self.circuit.emt_models
-
     def refresh_catalogue_dependent_views(self) -> None:
         """
         Rebuild GUI views that depend on the loaded catalogue.
@@ -1096,40 +1075,6 @@ class IoMain(ScenariosMain):
             dlg = CatalogueElementsSelectionDialogue(parent=self, circuit=self.circuit)
             dlg.exec()
             return None
-
-        # if len(self.circuit.transformer_types) == 0:
-        #     for tpe in get_transformer_catalogue():
-        #         self.circuit.add_transformer_type(tpe)
-        # else:
-        #     pass
-        #
-        # if len(self.circuit.underground_cable_types) == 0:
-        #     for tpe in get_cables_catalogue():
-        #         self.circuit.add_underground_line(tpe)
-        # else:
-        #     pass
-        #
-        # if len(self.circuit.wire_types) == 0:
-        #     for tpe in get_wires_catalogue():
-        #         self.circuit.add_wire(tpe)
-        # else:
-        #     pass
-        #
-        # if len(self.circuit.sequence_line_types) == 0:
-        #     for tpe in get_sequence_lines_catalogue():
-        #         self.circuit.add_sequence_line(tpe)
-        # else:
-        #     pass
-        #
-        # if self.circuit.get_rms_models_number() == 0:
-        #     self.circuit.enable_default_rms_model_catalogue_lazy_loading()
-        # else:
-        #     pass
-        #
-        # if self.circuit.get_emt_models_number() == 0:
-        #     self.circuit.enable_default_emt_model_catalogue_lazy_loading()
-        # else:
-        #     pass
 
         self.refresh_catalogue_dependent_views()
         self.show_info_toast("Catalogue added!")

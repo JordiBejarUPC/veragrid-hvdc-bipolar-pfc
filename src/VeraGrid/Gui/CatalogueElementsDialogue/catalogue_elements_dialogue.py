@@ -261,56 +261,64 @@ class CatalogueElementsSelectionDialogue(QtWidgets.QDialog):
                                        voltage_text='',
                                        power_text='',
                                        unique_key='rms:get_genqec_rms',
-                                       function_ptr=tem.get_genqec_rms))
+                                       function_ptr=tem.get_genqec_rms)
+                       )
         actions.append(CatalogueAction(kind=CatalogueActionKind.AddRmsTemplate,
                                        args=(self._circuit.var_factory,),
                                        name='Governor',
                                        voltage_text='',
                                        power_text='',
                                        unique_key='rms:get_governor_rms',
-                                       function_ptr=tem.get_governor_rms))
+                                       function_ptr=tem.get_governor_rms)
+                       )
         actions.append(CatalogueAction(kind=CatalogueActionKind.AddRmsTemplate,
                                        args=(self._circuit.var_factory,),
                                        name='Stabilizer',
                                        voltage_text='',
                                        power_text='',
                                        unique_key='rms:get_stabilizer_rms',
-                                       function_ptr=tem.get_stabilizer_rms))
+                                       function_ptr=tem.get_stabilizer_rms)
+                       )
         actions.append(CatalogueAction(kind=CatalogueActionKind.AddRmsTemplate,
                                        args=(self._circuit.var_factory,),
                                        name='Exciter',
                                        voltage_text='',
                                        power_text='',
                                        unique_key='rms:get_exciter_rms',
-                                       function_ptr=tem.get_exciter_rms))
+                                       function_ptr=tem.get_exciter_rms)
+                       )
         actions.append(CatalogueAction(kind=CatalogueActionKind.AddRmsTemplate,
                                        args=(self._circuit.var_factory,),
                                        name='Complete generator',
                                        voltage_text='',
                                        power_text='',
                                        unique_key='rms:get_complete_generator_template_rms',
-                                       function_ptr=tem.get_complete_generator_template_rms))
+                                       function_ptr=tem.get_complete_generator_template_rms)
+                       )
         actions.append(CatalogueAction(kind=CatalogueActionKind.AddRmsTemplate,
                                        args=(self._circuit.var_factory,),
                                        name='GENROU/GENROW',
                                        voltage_text='',
                                        power_text='',
                                        unique_key='rms:get_genrow_rms_template',
-                                       function_ptr=tem.get_genrow_rms_template))
+                                       function_ptr=tem.get_genrow_rms_template)
+                       )
         actions.append(CatalogueAction(kind=CatalogueActionKind.AddRmsTemplate,
                                        args=(self._circuit.var_factory,),
                                        name='Line',
                                        voltage_text='',
                                        power_text='',
                                        unique_key='rms:get_line_rms_template',
-                                       function_ptr=tem.get_line_rms_template))
+                                       function_ptr=tem.get_line_rms_template)
+                       )
         actions.append(CatalogueAction(kind=CatalogueActionKind.AddRmsTemplate,
                                        args=(self._circuit.var_factory,),
                                        name='Load',
                                        voltage_text='',
                                        power_text='',
                                        unique_key='rms:get_load_rms_template',
-                                       function_ptr=tem.get_load_rms_template))
+                                       function_ptr=tem.get_load_rms_template)
+                       )
         return actions
 
     def build_emt_actions(self) -> List[CatalogueAction]:
