@@ -8,7 +8,7 @@ import copy
 import json
 import math
 import ast
-import uuid
+from itertools import count
 import builtins
 import numpy as np
 from enum import Enum
@@ -22,12 +22,14 @@ NUMBER = Union[int, float, complex]
 
 
 # -----------------------------------------------------------------------------
-# UUID helper
+# UID helper
 # -----------------------------------------------------------------------------
 
+_UID_COUNTER = count(1)
+
 def _new_uid() -> int:
-    """Generate a fresh UUID‑v4 string."""
-    return uuid.uuid4().int
+    """Generate one fresh monotonic symbolic identifier."""
+    return next(_UID_COUNTER)
 
 
 # -----------------------------------------------------------------------------
