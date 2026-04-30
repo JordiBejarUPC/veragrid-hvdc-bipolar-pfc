@@ -45,44 +45,6 @@ from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.enumerations import CGMESVersions, CgmesTopologyMode, FileType
 
 
-REPO_ROOT_PATH: pathlib.Path = pathlib.Path(__file__).resolve().parents[3]
-TESTS_ROOT_PATH: pathlib.Path = REPO_ROOT_PATH / "src" / "tests"
-
-
-def _resolve_existing_path(file_name: str) -> str:
-    """
-    Resolve one file path against known repository roots.
-
-    :param file_name: Candidate file path.
-    :return: Existing path string.
-    :raises FileNotFoundError: If the path cannot be resolved.
-    """
-    candidate_path: pathlib.Path = pathlib.Path(file_name)
-    resolved_candidate: pathlib.Path = candidate_path.expanduser()
-    test_relative_candidate: pathlib.Path = TESTS_ROOT_PATH / candidate_path
-    repo_relative_candidate: pathlib.Path = REPO_ROOT_PATH / candidate_path
-
-    if resolved_candidate.exists():
-        return str(resolved_candidate)
-    else:
-        pass
-
-    if candidate_path.is_absolute():
-        raise FileNotFoundError(file_name)
-    else:
-        pass
-
-    if test_relative_candidate.exists():
-        return str(test_relative_candidate)
-    else:
-        pass
-
-    if repo_relative_candidate.exists():
-        return str(repo_relative_candidate)
-    else:
-        raise FileNotFoundError(file_name)
-
-
 class FileOpenOptions:
     """
     This class is to store the extra stuff that needs to be passed to open more complex files
@@ -379,20 +341,12 @@ class FileOpen:
 
         # Determine if the file exists
         if isinstance(self.file_name, str):
-            try:
-                self.file_name = _resolve_existing_path(self.file_name)
-            except FileNotFoundError:
+            if not os.path.exists(self.file_name):
                 raise Exception("File not found :( \n{}".format(self.file_name))
         elif isinstance(self.file_name, list):
-            resolved_names: List[str] = list()
-            fname: str
             for fname in self.file_name:
-                try:
-                    resolved_names.append(_resolve_existing_path(fname))
-                except FileNotFoundError:
+                if not os.path.exists(fname):
                     raise Exception("File not found :( \n{}".format(fname))
-
-            self.file_name = resolved_names
         else:
             raise Exception("file_name type not supported :( \n{}".format(self.file_name))
 

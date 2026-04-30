@@ -221,8 +221,7 @@ def read_dpx_data(file_name):
     current_block = None
 
     # make a guess of the file encoding
-    with open(file_name, "rb") as raw_file:
-        detection = chardet.detect(raw_file.read())
+    detection = chardet.detect(open(file_name, "rb").read())
 
     # parse the data into the structures
     with open(file_name, 'r', encoding=detection['encoding']) as f:

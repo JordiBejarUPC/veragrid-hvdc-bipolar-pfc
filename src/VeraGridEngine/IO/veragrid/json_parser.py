@@ -1216,8 +1216,7 @@ def parse_json(file_name) -> MultiCircuit:
     :param file_name: 
     :return: VeraGrid MultiCircuit
     """
-    with open(file_name, "r") as json_file:
-        data = json.load(json_file)
+    data = json.load(open(file_name))
 
     return parse_json_data(data)
 

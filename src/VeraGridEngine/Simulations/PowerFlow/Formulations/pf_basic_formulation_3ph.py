@@ -17,10 +17,9 @@ from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.discrete_controls imp
                                                                                      compute_slack_distribution)
 from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_formulation_template import PfFormulationTemplate
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions import (compute_current,
-                                                                                     compute_power,
-                                                                                     compute_fx,
-                                                                                     polar_to_rect,
-                                                                                     fortescue_012_to_abc)
+                                                                                    compute_fx,
+                                                                                    polar_to_rect,
+                                                                                    fortescue_012_to_abc)
 from VeraGridEngine.Topology.simulation_indices import compile_types
 from VeraGridEngine.basic_structures import Vec, IntVec, CxVec, CxMat, BoolVec, Logger
 from VeraGridEngine.Utils.Sparse.csc2 import (CSC, scipy_to_mat)
@@ -176,27 +175,20 @@ def compute_ybus(nc: NumericalCircuit) -> Tuple[csc_matrix, csc_matrix, csc_matr
         start = ptr[bus_idx]
         end = ptr[bus_idx + 1]
 
-        grounded_here = False
-
-        # Only buses with at least one incident branch need the explicit grounding scan.
-        # Isolated buses keep the default neutral-active state and fall through untouched.
         if start == end:
-            grounded_here = False
-        else:
-            # Iterate only over branches actually connected to this bus and stop as
-            # soon as one grounded-star terminal is found.
-            for p in range(start, end):
-                k = bus_branches[p]
+            continue
 
-                if F[k] == bus_idx and nc.passive_branch_data.conn_f[k].value == 'Yg':
-                    grounded_here = True
-                    break
-                else:
-                    if T[k] == bus_idx and nc.passive_branch_data.conn_t[k].value == 'Yg':
-                        grounded_here = True
-                        break
-                    else:
-                        pass
+        grounded_here = False
+        # iterate only over branches actually connected to this bus
+        for p in range(start, end):
+            k = bus_branches[p]
+
+            if F[k] == bus_idx and nc.passive_branch_data.conn_f[k].value == 'Yg':
+                grounded_here = True
+                break
+            if T[k] == bus_idx and nc.passive_branch_data.conn_t[k].value == 'Yg':
+                grounded_here = True
+                break
 
         if grounded_here:
             bus_has_neutral[4 * bus_idx + 0] = False  # desactiva el nodo de neutro del bus

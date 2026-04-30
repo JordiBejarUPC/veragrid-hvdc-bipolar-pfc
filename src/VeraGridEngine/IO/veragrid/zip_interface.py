@@ -25,30 +25,6 @@ from VeraGridEngine.IO.veragrid.pack_unpack import gather_model_as_data_frames, 
 import VeraGridEngine.Devices as dev
 
 
-PARQUET_ENGINE: str = "pyarrow"
-
-
-def _read_parquet_from_pointer(file_pointer: Any) -> pd.DataFrame:
-    """
-    Read one parquet payload from a file-like object using the stable backend.
-
-    :param file_pointer: Binary file-like object.
-    :return: Loaded DataFrame.
-    """
-    return pd.read_parquet(file_pointer, engine=PARQUET_ENGINE)
-
-
-def _write_parquet_to_buffer(df: pd.DataFrame, buffer: BytesIO) -> None:
-    """
-    Write one DataFrame into an in-memory parquet buffer using the stable backend.
-
-    :param df: DataFrame to serialize.
-    :param buffer: Destination bytes buffer.
-    :return: None.
-    """
-    df.to_parquet(buffer, engine=PARQUET_ENGINE)
-
-
 def load_json_from_file_pointer(file_pointer) -> dict:
     """
     Load JSON from a file pointer using orjson if available, falling back to json.
@@ -102,9 +78,9 @@ def save_results_in_zip(f_zip_ptr: zipfile.ZipFile,
                     try:
                         if np.iscomplexobj(arr):
                             filename += "__complex__"
-                            _write_parquet_to_buffer(pd.DataFrame(data=np.c_[arr.real, arr.imag]), buffer)
+                            pd.DataFrame(data=np.c_[arr.real, arr.imag]).to_parquet(buffer)
                         else:
-                            _write_parquet_to_buffer(pd.DataFrame(data=arr), buffer)
+                            pd.DataFrame(data=arr).to_parquet(buffer)
 
                         # save the buffer to the zip file
                         f_zip_ptr.writestr(filename + ".parquet", buffer.getvalue())
@@ -120,7 +96,7 @@ def save_results_in_zip(f_zip_ptr: zipfile.ZipFile,
             filename = 'sessions/' + session_data.name + '/' + session_data.tpe.value + '/logger.parquet'
             with BytesIO() as buffer:
                 # save the DataFrame to the buffer, protocol4 is to be compatible with python 3.6
-                _write_parquet_to_buffer(session_data.logger.to_df(), buffer)
+                session_data.logger.to_df().to_parquet(buffer)
                 # save the buffer to the zip file
                 f_zip_ptr.writestr(filename, buffer.getvalue())
 
@@ -271,7 +247,7 @@ def save_veragrid_data_to_zip(filename_zip: str,
                 try:  # try parquet file
                     with BytesIO() as buffer:
                         # save the DataFrame to the buffer, protocol4 is to be compatible with python 3.6
-                        _write_parquet_to_buffer(df, buffer)
+                        df.to_parquet(buffer)
                         # save the buffer to the zip file
                         f_zip_ptr.writestr(filename, buffer.getvalue())
 
@@ -387,7 +363,7 @@ def read_data_frame_from_zip(file_pointer,
 
         elif extension == '.parquet':
             try:
-                return _read_parquet_from_pointer(file_pointer)
+                return pd.read_parquet(file_pointer)
             except ValueError as e:
                 logger.add_error(str(e), device=file_pointer.name)
                 return None
@@ -527,7 +503,7 @@ def get_frames_from_zip(file_name_zip: str,
 
                     elif extension == '.parquet':
                         try:
-                            data['multiverse'][model_idtag][name] = _read_parquet_from_pointer(file_pointer)
+                            data['multiverse'][model_idtag][name] = pd.read_parquet(file_pointer)
                         except ValueError as e:
                             logger.add_error(str(e), device=file_pointer.name)
                         except AttributeError as e:
@@ -616,7 +592,7 @@ def get_frames_from_zip(file_name_zip: str,
 
                 elif extension == '.parquet':
                     try:
-                        data[name] = _read_parquet_from_pointer(file_pointer)
+                        data[name] = pd.read_parquet(file_pointer)
                     except ValueError as e:
                         logger.add_error(str(e), device=file_pointer.name)
                     except AttributeError as e:
