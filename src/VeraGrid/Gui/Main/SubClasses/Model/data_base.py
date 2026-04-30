@@ -1553,8 +1553,7 @@ class DataBaseTableMain(DiagramsMain):
 
     def search_ts_point(self):
         """
-
-        :return:
+        Search time step point
         """
 
         txt = self.ui.goToTsPointComboBox.currentText()
@@ -1562,21 +1561,37 @@ class DataBaseTableMain(DiagramsMain):
 
         if mode == TimeSeriesSearchPoint.LowestLoad:
 
-            total = 0
+            total = np.zeros(self.circuit.get_time_number())
             for elm in self.circuit.loads:
                 total += elm.P_prof.toarray()
 
-            idx = np.argmin(total)
-            self.ui.db_step_slider.setValue(idx)
+            if len(total) > 0:
+                try:
+                    idx = np.argmin(total)
+                except ValueError:
+                    self.show_error_toast(f"{mode.value} could not be found")
+                    return
+
+                self.ui.db_step_slider.setValue(idx)
+            else:
+                self.show_warning_toast("No time steps to navigate to")
 
         elif mode == TimeSeriesSearchPoint.HighestLoad:
 
-            total = 0
+            total = np.zeros(self.circuit.get_time_number())
             for elm in self.circuit.loads:
                 total += elm.P_prof.toarray()
 
-            idx = np.argmax(total)
-            self.ui.db_step_slider.setValue(idx)
+            if len(total) > 0:
+                try:
+                    idx = np.argmax(total)
+                except ValueError:
+                    self.show_error_toast(f"{mode.value} could not be found")
+                    return
+
+                self.ui.db_step_slider.setValue(idx)
+            else:
+                self.show_warning_toast("No time steps to navigate to")
 
         else:
             return
