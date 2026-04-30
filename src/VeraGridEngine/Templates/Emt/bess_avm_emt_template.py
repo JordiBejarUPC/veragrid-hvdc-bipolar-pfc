@@ -340,7 +340,7 @@ def get_bess_avm_grid_following_emt_template(
     :return: Fully assembled EMT BESS template.
     """
     templ = EmtModelTemplate()
-    templ.tpe = DeviceType.VscDevice
+    templ.tpe = DeviceType.VscDevice # TODO: not sure if VSC or PV/BESS if exists
     templ.name = name
     templ.block.name = name
 

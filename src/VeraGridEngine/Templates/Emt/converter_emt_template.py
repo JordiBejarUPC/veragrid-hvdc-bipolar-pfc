@@ -129,9 +129,6 @@ def get_emt_ideal_converter(
 
    :param vf: Variable factory for creating symbolic variables
    :param name: Name for the converter model
-   :param sbase: System base power used to convert external power references to pu
-   :param fbase: System base frequency for the synchronized current references
-
     :return: EmtModelTemplate with the converter block
     """
     templ = EmtModelTemplate()
