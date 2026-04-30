@@ -10,7 +10,7 @@ import numpy as np
 
 from PySide6.QtWidgets import QGraphicsSceneContextMenuEvent
 from VeraGridEngine.Devices.Injections.generator import Generator
-from VeraGrid.Gui.DeviceEditors.GeneratorEditor.generator_editor import GeneratorQCurveEditor
+from VeraGrid.Gui.DeviceEditors.GeneratorEditor.generator_editor import GeneratorEditorDialog, GeneratorQCurveEditor
 from VeraGrid.Gui.messages import yes_no_question
 from VeraGrid.Gui.Diagrams.MapWidget.Injections.map_injections_template_graphics import MapInjectionTemplateGraphicItem
 from VeraGrid.Gui.DeviceEditors.SolarPowerWizard.solar_power_wizzard import SolarPvWizard
@@ -80,6 +80,11 @@ class MapGeneratorGraphicItem(MapInjectionTemplateGraphicItem):
                        icon_path=":/Icons/icons/dyn_emt_edit.png")
 
         add_menu_entry(menu=menu,
+                       text="Generator edit",
+                       function_ptr=self.edit_generator,
+                       icon_path=":/Icons/icons/edit.png")
+
+        add_menu_entry(menu=menu,
                        text="Qcurve edit",
                        function_ptr=self.edit_q_curve,
                        icon_path=":/Icons/icons/edit.png")
@@ -104,6 +109,16 @@ class MapGeneratorGraphicItem(MapInjectionTemplateGraphicItem):
                        function_ptr=self.to_battery)
 
         menu.exec(event.screenPos())
+
+    def mouseDoubleClickEvent(self, event):
+        """
+        Open the generator editor on double click.
+
+        :param event: Mouse event.
+        :return: None.
+        """
+        super().mouseDoubleClickEvent(event)
+        self.edit_generator()
 
     def edit_rms(self):
         """
@@ -186,6 +201,18 @@ class MapGeneratorGraphicItem(MapInjectionTemplateGraphicItem):
         self.api_object.Qmax = dlg.Qmax
         self.api_object.Pmin = dlg.Pmin
         self.api_object.Pmax = dlg.Pmax
+
+    def edit_generator(self):
+        """
+        Open the full generator editor dialogue.
+
+        :return: None.
+        """
+        dlg = GeneratorEditorDialog(api_object=self.api_object, circuit=self.editor.circuit)
+        if dlg.exec():
+            pass
+        else:
+            pass
 
     def solar_pv_wizard(self):
         """
