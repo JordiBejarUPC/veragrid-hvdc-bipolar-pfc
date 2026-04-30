@@ -51,8 +51,8 @@ class BusRmsTemplate(RmsModelTemplate):
             }
 
         else:
-            self.Vm = vf.add_var("Vm", VarPowerFlowRefferenceType.Vm)
-            self.Va = vf.add_var("Va", VarPowerFlowRefferenceType.Va)
+            self.Vm = vf.add_var("Vm", power_flow_reference=VarPowerFlowRefferenceType.Vm)
+            self.Va = vf.add_var("Va", power_flow_reference=VarPowerFlowRefferenceType.Va)
 
 
             self._block = Block(

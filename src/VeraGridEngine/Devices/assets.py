@@ -7419,12 +7419,15 @@ class Assets:
 
         elif device_type == DeviceType.Transformer2WDevice:
             self._transformers2w = devices
+            d.set_var_factory(self._var_factory)
 
         elif device_type == DeviceType.Transformer3WDevice:
             self._transformers3w = devices
+            d.set_var_factory(self._var_factory)
 
         elif device_type == DeviceType.TransformerNwDevice:
             self._transformers_nw = devices
+            d.set_var_factory(self._var_factory)
 
         elif device_type == DeviceType.WindingDevice:
             self._windings = devices

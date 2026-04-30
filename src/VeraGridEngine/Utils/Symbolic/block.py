@@ -573,6 +573,7 @@ class Block:
         Union[None, VeraGridEngine.Utils.Symbolic.block.Block]
         """
         mdl_placeholder = Block()
+        list_blocks = self.get_all_blocks()
         for b in self.get_all_blocks():
             mdl_placeholder.algebraic_vars.extend(b.algebraic_vars)
             mdl_placeholder.algebraic_eqs.extend(b.algebraic_eqs)

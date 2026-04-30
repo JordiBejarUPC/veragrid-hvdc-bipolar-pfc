@@ -9,38 +9,12 @@ import uuid
 
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, SharedVarReferenceType
 
 
 def _new_uid() -> int:
     """Generate a fresh UUID‑v4 string."""
     return uuid.uuid4().int
-
-class SharedVarReferenceType:
-    __slots__ = ("name", "uid")
-    # this class is related to var factory, and a dictionary contains all the "shared vars" that have a certain reference.
-    def __init__(self, name: str, uid: int| None = None):
-
-        self.uid: int = _new_uid() if uid is None else uid
-        self.name = name
-
-    def __str__(self):
-        return self.name
-
-    def __repr__(self):
-        return str(self)
-
-    def __eq__(self, other):
-        if not isinstance(other, SharedVarReferenceType):
-            return NotImplemented
-        return self.uid == other.uid
-
-    def __hash__(self):
-        return hash(self.uid)
-
-
-
-
 
 
 class VarFactory(EditableDevice):
@@ -105,7 +79,8 @@ class VarFactory(EditableDevice):
 
     def add_var(self,
                 name: str,
-                reference: VarPowerFlowRefferenceType | str | None = None,
+                reference: str | None = None,
+                power_flow_reference: VarPowerFlowRefferenceType | None = None,
                 network_conn: bool = False,
                 uid: int | None = None,
                 diff_var: Var | None = None,
@@ -114,6 +89,7 @@ class VarFactory(EditableDevice):
         Adds a ver to the class
         :param name:
         :param reference:
+        :param power_flow_reference:
         :param network_conn:
         :param uid:
         :param diff_var:
@@ -126,13 +102,14 @@ class VarFactory(EditableDevice):
                 self.create_reference(reference)
                 self._vars_references_dict[self._references_dict[reference].uid] = list()
 
-            v = Var(name=name, reference=self._references_dict[reference], network_conn=network_conn, uid=uid,
+            v = Var(name=name, reference=self._references_dict[reference], power_flow_reference=power_flow_reference, network_conn=network_conn, uid=uid,
                     diff_var=None, base_var=None)
             self.save_var_in_vars_references_dict(v, reference)
             self._var_dict[v.uid] = v
             return v
         else:
-            v = Var(name=name, reference=reference, network_conn=network_conn, uid=uid, diff_var=None, base_var=None)
+            v = Var(name=name, reference=reference, power_flow_reference=power_flow_reference, network_conn=network_conn, uid=uid,
+                    diff_var=None, base_var=None)
             self._var_dict[v.uid] = v
             return v
 
@@ -267,7 +244,7 @@ class VarFactory(EditableDevice):
 
             # Older persisted symbolic models may not store the power-flow
             # reference field, so keep loading those files by defaulting to None.
-            ref_data: Any = data.get("ref", None)
+            ref_data: Any = data.get("power_flow_reference", None)
             key_ref: VarPowerFlowRefferenceType | None
 
             if ref_data is not None:
@@ -275,7 +252,7 @@ class VarFactory(EditableDevice):
             else:
                 key_ref = None
 
-            obj = Var(name=data["name"], uid=data["uid"], reference=key_ref)
+            obj = Var(name=data["name"], uid=data["uid"], power_flow_reference=key_ref)
 
             # at this point we can store the object
             obj_dict[obj.uid] = obj

@@ -17,6 +17,7 @@ import numba as nb
 from typing import Any, Dict, Mapping, Union, List, Sequence, Tuple, Set, Optional
 
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
+# from VeraGridEngine.Devices.Dynamic.var_factory import SharedVarReferenceType
 
 NUMBER = Union[int, float, complex]
 
@@ -57,6 +58,29 @@ def _to_expr(val: Any) -> "Expr":
 # ----------------------------------------------------------------------------
 # Function helpers
 # ----------------------------------------------------------------------------
+
+
+class SharedVarReferenceType:
+    __slots__ = ("name", "uid")
+    # this class is related to var factory, and a dictionary contains all the "shared vars" that have a certain reference.
+    def __init__(self, name: str, uid: int| None = None):
+
+        self.uid: int = _new_uid() if uid is None else uid
+        self.name = name
+
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return str(self)
+
+    def __eq__(self, other):
+        if not isinstance(other, SharedVarReferenceType):
+            return NotImplemented
+        return self.uid == other.uid
+
+    def __hash__(self):
+        return hash(self.uid)
 
 
 class CmpOp(Enum):
@@ -382,10 +406,11 @@ class Var(Expr):
     Any variable
     """
 
-    __slots__ = ("name", "_ref", "_network_conn", "uid", "diff_var", "base_var", "_origin_var")
+    __slots__ = ("name", "_ref", "_power_flow_reference", "_network_conn", "uid", "diff_var", "base_var", "_origin_var")
 
     def __init__(self, name: str,
-                 reference: VarPowerFlowRefferenceType | SharedVarReferenceType | None = None,
+                 reference:  SharedVarReferenceType | None = None,
+                 power_flow_reference: VarPowerFlowRefferenceType | None = None,
                  network_conn: bool = False,
                  uid: int | None = None,
                  diff_var: Var | None = None,
@@ -395,13 +420,15 @@ class Var(Expr):
 
         :param name:
         :param reference:
+        :param power_flow_reference
         :param network_conn:
         :param uid:
         :param diff_var:
         """
         super().__init__(uid=uid)
         self.name: str = name
-        self._ref: VarPowerFlowRefferenceType | None = reference
+        self._ref: SharedVarReferenceType | None = reference
+        self._power_flow_reference: VarPowerFlowRefferenceType | None = power_flow_reference
         self._network_conn: bool = network_conn
         self.diff_var = diff_var
         self.base_var: Var | None = base_var  # assign reference to base var
@@ -426,6 +453,7 @@ class Var(Expr):
             result.uid = self.uid
             result.name = self.name
             result._ref = self._ref
+            result._power_flow_reference = self._power_flow_reference
             result._network_conn = self._network_conn
             result.diff_var = copy.deepcopy(self.diff_var, memo)
             result.base_var = copy.deepcopy(self.base_var, memo)
@@ -525,8 +553,12 @@ class Var(Expr):
         return self._origin_var
 
     @property
-    def ref(self) -> VarPowerFlowRefferenceType | None:
+    def ref(self) -> SharedVarReferenceType | None:
         return self._ref
+
+    @property
+    def power_flow_reference(self) -> VarPowerFlowRefferenceType | None:
+        return self._power_flow_reference
 
     def _diff1(self, var: Var | str, dt: Var | None = None) -> Expr:
         """
@@ -2360,5 +2392,6 @@ __all__ = [
     '_expr_to_dict',
     'abs',
     '_to_expr',
-    'get_namespace'
+    'get_namespace',
+    'SharedVarReferenceType'
 ]

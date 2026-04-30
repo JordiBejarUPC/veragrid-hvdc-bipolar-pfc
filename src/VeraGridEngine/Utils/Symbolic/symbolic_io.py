@@ -42,13 +42,14 @@ def symbolic_objects_to_dict(obj_dict: Dict[int, Var | Const | Var]) -> List[Dic
         elif isinstance(expr, Var):
 
             if expr.base_var is not None:
-                if type(expr.ref) == str:
+                if type(expr.power_flow_reference) == str:
                     lst.append({
                         "type": "DiffVar",
                         "name": expr.name,
                         "uid": expr.uid,
                         "base_var": expr.base_var.uid,
-                        "ref": expr.ref if expr.ref is not None else None,
+                        "ref": expr.ref.uid if expr.ref is not None else None,
+                        "power_flow_reference": expr.power_flow_reference if expr.power_flow_reference is not None else None,
                     })
                 else:
                     lst.append({
@@ -56,7 +57,8 @@ def symbolic_objects_to_dict(obj_dict: Dict[int, Var | Const | Var]) -> List[Dic
                         "name": expr.name,
                         "uid": expr.uid,
                         "base_var": expr.base_var.uid,
-                        "ref": expr.ref.value if expr.ref is not None else None,
+                        "ref": expr.ref.uid if expr.ref is not None else None,
+                        "power_flow_reference": expr.power_flow_reference.value if expr.power_flow_reference is not None else None,
                     })
 
 
@@ -68,13 +70,15 @@ def symbolic_objects_to_dict(obj_dict: Dict[int, Var | Const | Var]) -> List[Dic
                                 "name": expr.name,
                                 "uid": expr.uid,
                                 "base_var": None,
-                                "ref": expr.ref if expr.ref is not None else None})
+                                "ref": expr.ref.uid if expr.ref is not None else None,
+                                "power_flow_reference": expr.power_flow_reference if expr.power_flow_reference is not None else None})
                 else:
                     lst.append({"type": "Var",
                                 "name": expr.name,
                                 "uid": expr.uid,
                                 "base_var": None,
-                                "ref": expr.ref.value if expr.ref is not None else None})
+                                "ref": expr.ref.uid if expr.ref is not None else None,
+                                "power_flow_reference": expr.power_flow_reference.value if expr.power_flow_reference is not None else None})
 
 
 

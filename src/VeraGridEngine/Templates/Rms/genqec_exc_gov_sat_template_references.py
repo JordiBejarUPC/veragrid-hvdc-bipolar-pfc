@@ -35,10 +35,11 @@ def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec rms template") -> R
     # Tm: mechanical torque (from governor)
     # Vf: excitation voltage (from exciter)
 
-    inputs = [vfactory.add_var("Vm_" + name, VarPowerFlowRefferenceType.Vm),
-              vfactory.add_var("Va_" + name, VarPowerFlowRefferenceType.Va),
-              vfactory.add_var("Tm_" + name, 'tm_reference'),
-              vfactory.add_var("Vf_" + name, 'vf_reference')]
+
+    inputs = [vfactory.add_var("Vm_" + name, power_flow_reference=VarPowerFlowRefferenceType.Vm, network_conn= True),
+              vfactory.add_var("Va_" + name, power_flow_reference=VarPowerFlowRefferenceType.Va, network_conn= True),
+              vfactory.add_var("Tm_" + name, reference = 'tm_reference'),
+              vfactory.add_var("Vf_" + name, reference = 'vf_reference')]
 
     # ______________________________________________________________________________________
     #                                    variables
@@ -46,7 +47,7 @@ def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec rms template") -> R
 
     # State variables
     delta = vfactory.add_var("delta" + name)  # rotor angle
-    omega = vfactory.add_var("omega" + name, 'omega_ref')  # rotor electrical speed
+    omega = vfactory.add_var("omega" + name, 'omega_reference')  # rotor electrical speed
     Eq1 = vfactory.add_var("Eq1" + name)  # internal emf behind Xd'
     Ed1 = vfactory.add_var("Ed1" + name)
     Eq_prime = vfactory.add_var("Eq_prime" + name)  # transient voltage q-axis
@@ -620,7 +621,7 @@ def get_exciter_rms(vfactory: VarFactory, name: str = "exciter") -> RmsModelTemp
     # Va: measured stator voltage (from generator) (pu)
     # Vpss: output from power system stabilizer (pu)
 
-    inputs = [vfactory.add_var("IRPu_", 'irpu_reference'), vfactory.add_var("Vm_", VarPowerFlowRefferenceType.Vm), vfactory.add_var("Vpss_", 'v_pss_reference')]
+    inputs = [vfactory.add_var("IRPu_", 'irpu_reference'), vfactory.add_var("Vm_", power_flow_reference=VarPowerFlowRefferenceType.Vm), vfactory.add_var("Vpss_", 'v_pss_reference')]
 
     algebraic_vars = []
 
@@ -1068,6 +1069,7 @@ def get_complete_generator_template_rms(vfactory: VarFactory, name="complete gen
     stabilizer_mdl = get_stabilizer_rms(vfactory=vfactory).block
 
     # connect models
+    exciter_mdl.connect([exciter_mdl.in_vars[1]], [genqec_mdl.in_vars[0]])
     connect_models(genqec_mdl, exciter_mdl)
 
     connect_models(exciter_mdl, stabilizer_mdl)
