@@ -12,6 +12,7 @@ import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from VeraGrid.Gui.associations_model import AssociationsModel
+from VeraGrid.Gui.DeviceEditors.TemplateDeviceEditor.template_device_editor_gui import Ui_TemplateDeviceEditorDialog
 from VeraGrid.Gui.gui_functions import ComboDelegate, FloatDelegate, IntDelegate, TextDelegate
 from VeraGrid.Gui.Widgets.matplotlibwidget import MatplotlibWidget
 from VeraGrid.Gui.messages import warning_msg
@@ -299,41 +300,50 @@ class TemplateDeviceEditor(QtWidgets.QDialog):
         self.api_object: EditableDevice = api_object
         self.circuit: MultiCircuit | None = circuit
 
-        # Root dialog layout.
+        # Load UI from Qt Designer definition.
+        self.ui = Ui_TemplateDeviceEditorDialog()
+        self.ui.setupUi(self)
         self.setWindowTitle("Device editor")
-        self.resize(1180, 780)
-        self.main_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self)
 
-        # Shared tab widget where specialized editors append device-specific tabs.
-        self.tab_widget: QtWidgets.QTabWidget = QtWidgets.QTabWidget(self)
-        self.main_layout.addWidget(self.tab_widget)
+        # Keep explicit references to the relevant widgets used by the controller.
+        self.tab_widget: QtWidgets.QTabWidget = self.ui.tab_widget
 
-        # Main property tab (snapshot or one time step, selected via slider).
-        self.properties_tab: QtWidgets.QWidget = QtWidgets.QWidget(self.tab_widget)
-        self.properties_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self.properties_tab)
-        self.time_controls_frame: QtWidgets.QFrame = QtWidgets.QFrame(self.properties_tab)
-        self.time_controls_layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout(self.time_controls_frame)
-        self.time_step_title_label: QtWidgets.QLabel = QtWidgets.QLabel("Time step", self.time_controls_frame)
-        self.time_step_slider: QtWidgets.QSlider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal, self.time_controls_frame)
-        self.time_step_label: QtWidgets.QLabel = QtWidgets.QLabel("Snapshot", self.time_controls_frame)
-        self.time_step_label.setMinimumWidth(260)
-        self.time_controls_layout.addWidget(self.time_step_title_label)
-        self.time_controls_layout.addWidget(self.time_step_slider)
-        self.time_controls_layout.addWidget(self.time_step_label)
-        self.properties_table_view: QtWidgets.QTableView = QtWidgets.QTableView(self.properties_tab)
+        self.properties_tab: QtWidgets.QWidget = self.ui.properties_tab
+        self.properties_layout: QtWidgets.QVBoxLayout = self.ui.properties_layout
+        self.time_controls_frame: QtWidgets.QFrame = self.ui.time_controls_frame
+        self.time_controls_layout: QtWidgets.QHBoxLayout = self.ui.time_controls_layout
+        self.time_step_title_label: QtWidgets.QLabel = self.ui.time_step_title_label
+        self.time_step_slider: QtWidgets.QSlider = self.ui.time_step_slider
+        self.time_step_label: QtWidgets.QLabel = self.ui.time_step_label
+        self.properties_table_view: QtWidgets.QTableView = self.ui.properties_table_view
+
+        self.profiles_tab: QtWidgets.QWidget = self.ui.profiles_tab
+        self.profiles_layout: QtWidgets.QVBoxLayout = self.ui.profiles_layout
+        self.profiles_tools_frame: QtWidgets.QFrame = self.ui.profiles_tools_frame
+        self.profiles_tools_layout: QtWidgets.QHBoxLayout = self.ui.profiles_tools_layout
+        self.profiles_copy_button: QtWidgets.QPushButton = self.ui.profiles_copy_button
+        self.profiles_paste_button: QtWidgets.QPushButton = self.ui.profiles_paste_button
+        self.profiles_plot_selected_button: QtWidgets.QPushButton = self.ui.profiles_plot_selected_button
+        self.profiles_table_view: QtWidgets.QTableView = self.ui.profiles_table_view
+
+        self.associations_tab: QtWidgets.QWidget = self.ui.associations_tab
+        self.associations_layout: QtWidgets.QVBoxLayout = self.ui.associations_layout
+        self.associations_controls_frame: QtWidgets.QFrame = self.ui.associations_controls_frame
+        self.associations_controls_layout: QtWidgets.QHBoxLayout = self.ui.associations_controls_layout
+        self.associations_property_label: QtWidgets.QLabel = self.ui.associations_property_label
+        self.associations_combo_box: QtWidgets.QComboBox = self.ui.associations_combo_box
+        self.associations_units_title_label: QtWidgets.QLabel = self.ui.associations_units_title_label
+        self.associations_units_value_label: QtWidgets.QLabel = self.ui.associations_units_value_label
+        self.associations_table_view: QtWidgets.QTableView = self.ui.associations_table_view
+        self.button_box: QtWidgets.QDialogButtonBox = self.ui.button_box
+
+        # UI post-configuration.
         self.properties_table_view.setAlternatingRowColors(True)
-        self.properties_layout.addWidget(self.time_controls_frame)
-        self.properties_layout.addWidget(self.properties_table_view)
-        self.tab_widget.addTab(self.properties_tab, "Properties")
-
-        # Base profile tab with all profile magnitudes as typed columns.
-        self.profiles_tab: QtWidgets.QWidget = QtWidgets.QWidget(self.tab_widget)
-        self.profiles_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self.profiles_tab)
-        self.profiles_tools_frame: QtWidgets.QFrame = QtWidgets.QFrame(self.profiles_tab)
-        self.profiles_tools_layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout(self.profiles_tools_frame)
-        self.profiles_copy_button: QtWidgets.QPushButton = QtWidgets.QPushButton(self.profiles_tools_frame)
-        self.profiles_paste_button: QtWidgets.QPushButton = QtWidgets.QPushButton(self.profiles_tools_frame)
-        self.profiles_plot_selected_button: QtWidgets.QPushButton = QtWidgets.QPushButton(self.profiles_tools_frame)
+        self.profiles_table_view.setAlternatingRowColors(True)
+        self.profiles_table_view.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectItems)
+        self.profiles_table_view.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
+        self.associations_table_view.setAlternatingRowColors(True)
+        self.associations_table_view.setHorizontalHeader(HeaderViewWithWordWrap(self.associations_table_view))
 
         self.profiles_copy_button.setIcon(QtGui.QIcon(":/Icons/icons/copy.png"))
         self.profiles_paste_button.setIcon(QtGui.QIcon(":/Icons/icons/paste.png"))
@@ -344,49 +354,6 @@ class TemplateDeviceEditor(QtWidgets.QDialog):
         self.profiles_copy_button.setText("")
         self.profiles_paste_button.setText("")
         self.profiles_plot_selected_button.setText("")
-
-        self.profiles_tools_layout.addWidget(self.profiles_copy_button)
-        self.profiles_tools_layout.addWidget(self.profiles_paste_button)
-        self.profiles_tools_layout.addSpacing(8)
-        self.profiles_tools_layout.addWidget(self.profiles_plot_selected_button)
-        self.profiles_tools_layout.addStretch()
-
-        self.profiles_table_view: QtWidgets.QTableView = QtWidgets.QTableView(self.profiles_tab)
-        self.profiles_table_view.setAlternatingRowColors(True)
-        self.profiles_table_view.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectItems)
-        self.profiles_table_view.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
-        self.profiles_layout.addWidget(self.profiles_tools_frame)
-        self.profiles_layout.addWidget(self.profiles_table_view)
-        self.tab_widget.addTab(self.profiles_tab, "Profiles")
-
-        # Base associations tab for editable device associations.
-        self.associations_tab: QtWidgets.QWidget = QtWidgets.QWidget(self.tab_widget)
-        self.associations_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self.associations_tab)
-        self.associations_controls_frame: QtWidgets.QFrame = QtWidgets.QFrame(self.associations_tab)
-        self.associations_controls_layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout(self.associations_controls_frame)
-        self.associations_property_label: QtWidgets.QLabel = QtWidgets.QLabel("Association", self.associations_controls_frame)
-        self.associations_combo_box: QtWidgets.QComboBox = QtWidgets.QComboBox(self.associations_controls_frame)
-        self.associations_combo_box.setMinimumWidth(220)
-        self.associations_units_title_label: QtWidgets.QLabel = QtWidgets.QLabel("Units", self.associations_controls_frame)
-        self.associations_units_value_label: QtWidgets.QLabel = QtWidgets.QLabel("", self.associations_controls_frame)
-        self.associations_units_value_label.setMinimumWidth(120)
-        self.associations_controls_layout.addWidget(self.associations_property_label)
-        self.associations_controls_layout.addWidget(self.associations_combo_box)
-        self.associations_controls_layout.addSpacing(8)
-        self.associations_controls_layout.addWidget(self.associations_units_title_label)
-        self.associations_controls_layout.addWidget(self.associations_units_value_label)
-        self.associations_controls_layout.addStretch()
-
-        self.associations_table_view: QtWidgets.QTableView = QtWidgets.QTableView(self.associations_tab)
-        self.associations_table_view.setAlternatingRowColors(True)
-        self.associations_table_view.setHorizontalHeader(HeaderViewWithWordWrap(self.associations_table_view))
-        self.associations_layout.addWidget(self.associations_controls_frame)
-        self.associations_layout.addWidget(self.associations_table_view)
-        self.tab_widget.addTab(self.associations_tab, "Associations")
-
-        # Close button row.
-        self.button_box: QtWidgets.QDialogButtonBox = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.StandardButton.Close, self)
-        self.main_layout.addWidget(self.button_box)
 
         # Build and bind the snapshot/time-step table model.
         self.properties_model: ObjectsModel = self._build_properties_model()

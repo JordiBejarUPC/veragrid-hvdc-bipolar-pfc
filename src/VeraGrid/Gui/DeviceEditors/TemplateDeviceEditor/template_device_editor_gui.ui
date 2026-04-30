@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>TemplateDeviceEditorDialog</class>
+ <widget class="QDialog" name="TemplateDeviceEditorDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1180</width>
+    <height>780</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Device editor</string>
+  </property>
+  <layout class="QVBoxLayout" name="main_layout">
+   <item>
+    <widget class="QTabWidget" name="tab_widget">
+     <widget class="QWidget" name="properties_tab">
+      <attribute name="title">
+       <string>Properties</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="properties_layout">
+       <item>
+        <widget class="QFrame" name="time_controls_frame">
+         <property name="frameShape">
+          <enum>QFrame::StyledPanel</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Raised</enum>
+         </property>
+         <layout class="QHBoxLayout" name="time_controls_layout">
+          <item>
+           <widget class="QLabel" name="time_step_title_label">
+            <property name="text">
+             <string>Time step</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QSlider" name="time_step_slider">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="time_step_label">
+            <property name="minimumSize">
+             <size>
+              <width>260</width>
+              <height>0</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>Snapshot</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QTableView" name="properties_table_view"/>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="profiles_tab">
+      <attribute name="title">
+       <string>Profiles</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="profiles_layout">
+       <item>
+        <widget class="QFrame" name="profiles_tools_frame">
+         <property name="frameShape">
+          <enum>QFrame::StyledPanel</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Raised</enum>
+         </property>
+         <layout class="QHBoxLayout" name="profiles_tools_layout">
+          <item>
+           <widget class="QPushButton" name="profiles_copy_button">
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="profiles_paste_button">
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="profiles_plot_selected_button">
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="profiles_spacer">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QTableView" name="profiles_table_view"/>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="associations_tab">
+      <attribute name="title">
+       <string>Associations</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="associations_layout">
+       <item>
+        <widget class="QFrame" name="associations_controls_frame">
+         <property name="frameShape">
+          <enum>QFrame::StyledPanel</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Raised</enum>
+         </property>
+         <layout class="QHBoxLayout" name="associations_controls_layout">
+          <item>
+           <widget class="QLabel" name="associations_property_label">
+            <property name="text">
+             <string>Association</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="associations_combo_box">
+            <property name="minimumSize">
+             <size>
+              <width>220</width>
+              <height>0</height>
+             </size>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="associations_units_title_label">
+            <property name="text">
+             <string>Units</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="associations_units_value_label">
+            <property name="minimumSize">
+             <size>
+              <width>120</width>
+              <height>0</height>
+             </size>
+            </property>
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="associations_spacer">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QTableView" name="associations_table_view"/>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+   </item>
+   <item>
+    <widget class="QDialogButtonBox" name="button_box">
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Close</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

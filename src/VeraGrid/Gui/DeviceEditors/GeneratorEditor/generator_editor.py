@@ -5,10 +5,9 @@
 from __future__ import annotations
 
 import sys
-from typing import Callable
+from typing import Callable, Sequence
 
 import numpy as np
-import pandas as pd
 from PySide6 import QtCore, QtWidgets
 
 from VeraGrid.Gui.DeviceEditors.GeneratorEditor.generator_editor_gui import Ui_GeneratorQCurveEditorDialog
@@ -17,7 +16,6 @@ from VeraGrid.Gui.DeviceEditors.TemplateDeviceEditor.template_device_editor impo
 from VeraGrid.Gui.DeviceEditors.WindPowerWizard.wind_power_wizzard import WindFarmWizard
 from VeraGrid.Gui.Widgets.matplotlibwidget import MatplotlibWidget
 from VeraGrid.Gui.messages import info_msg, warning_msg
-from VeraGrid.Gui.pandas_model import PandasModel
 from VeraGrid.Gui.profile_wizard_utils import fill_substation_weather_profiles
 from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGridEngine.Devices.Injections.generator_q_curve import GeneratorQCurve
@@ -306,14 +304,16 @@ class GeneratorQCurveEditorTableModel(QtCore.QAbstractTableModel):
         return self._data
 
 
-class GeneratorQCurveEditor(QtWidgets.QDialog):
+class GeneratorQCurveEditorWidget(QtWidgets.QWidget):
     """
-    Standalone reactive power capability curve editor.
+    Reactive power capability curve editor widget backed by a Qt Designer `.ui`.
     """
+
+    curve_changed = QtCore.Signal()
 
     def __init__(self, q_curve: GeneratorQCurve, Qmin: float, Qmax: float, Pmin: float, Pmax: float, Snom: float) -> None:
         """
-        Build the curve editor.
+        Build the curve editor widget.
 
         :param q_curve: Generator reactive capability object.
         :param Qmin: Initial minimum reactive power.
@@ -322,10 +322,10 @@ class GeneratorQCurveEditor(QtWidgets.QDialog):
         :param Pmax: Initial maximum active power.
         :param Snom: Initial apparent power nominal value.
         """
-        QtWidgets.QDialog.__init__(self)
+        QtWidgets.QWidget.__init__(self)
         self.ui = Ui_GeneratorQCurveEditorDialog()
         self.ui.setupUi(self)
-        self.setWindowTitle("Reactive power curve editor")
+        self.setWindowTitle("")
 
         self.q_curve: GeneratorQCurve = q_curve
         self.Qmin: float = Qmin
@@ -338,7 +338,7 @@ class GeneratorQCurveEditor(QtWidgets.QDialog):
         self.table_model: GeneratorQCurveEditorTableModel = GeneratorQCurveEditorTableModel(
             data=self.q_curve.get_data(),
             headers=self.headers,
-            callback=self.plot,
+            callback=self._on_table_model_changed,
             parent=self,
         )
 
@@ -355,6 +355,7 @@ class GeneratorQCurveEditor(QtWidgets.QDialog):
         Add one empty row.
         """
         self.table_model.add_row(np.zeros(3))
+        self._on_table_model_changed()
 
     def remove_selected_row(self) -> None:
         """
@@ -366,6 +367,7 @@ class GeneratorQCurveEditor(QtWidgets.QDialog):
             self.table_model.del_row(selected_row)
         else:
             self.table_model.del_last_row()
+        self._on_table_model_changed()
 
     def collect_data(self) -> None:
         """
@@ -398,11 +400,195 @@ class GeneratorQCurveEditor(QtWidgets.QDialog):
         Plot capability envelope and q-curve limits.
         """
         self.collect_data()
-        draw_styled_qcurve_plot(
-            plotter=self.ui.plotter,
-            q_curve=self.q_curve,
-            chart_title="Reactive capability curve",
+        draw_styled_qcurve_plot(plotter=self.ui.plotter, q_curve=self.q_curve, chart_title="Reactive capability curve")
+
+    def _on_table_model_changed(self) -> None:
+        """
+        React to table edits by redrawing and notifying listeners.
+        """
+        self.plot()
+        self.curve_changed.emit()
+
+
+class GeneratorQCurveEditor(QtWidgets.QDialog):
+    """
+    Standalone reactive power capability curve editor.
+    """
+
+    def __init__(self, q_curve: GeneratorQCurve, Qmin: float, Qmax: float, Pmin: float, Pmax: float, Snom: float) -> None:
+        """
+        Build the curve editor.
+
+        :param q_curve: Generator reactive capability object.
+        :param Qmin: Initial minimum reactive power.
+        :param Qmax: Initial maximum reactive power.
+        :param Pmin: Initial minimum active power.
+        :param Pmax: Initial maximum active power.
+        :param Snom: Initial apparent power nominal value.
+        """
+        QtWidgets.QDialog.__init__(self)
+        self.q_curve_widget: GeneratorQCurveEditorWidget = GeneratorQCurveEditorWidget(
+            q_curve=q_curve,
+            Qmin=Qmin,
+            Qmax=Qmax,
+            Pmin=Pmin,
+            Pmax=Pmax,
+            Snom=Snom,
         )
+        self.q_curve_widget.curve_changed.connect(self._sync_from_widget)
+        self.setWindowTitle("Reactive power curve editor")
+
+        self.q_curve: GeneratorQCurve = q_curve
+        self.Qmin: float = Qmin
+        self.Qmax: float = Qmax
+        self.Pmin: float = Pmin
+        self.Pmax: float = Pmax
+        self.Snom: float = Snom
+
+        self.main_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self)
+        self.main_layout.addWidget(self.q_curve_widget)
+        self.resize(980, 620)
+
+    def _sync_from_widget(self) -> None:
+        """
+        Synchronize the scalar fields from the embedded q-curve widget.
+        """
+        self.q_curve_widget.collect_data()
+        self.q_curve = self.q_curve_widget.q_curve
+        self.Snom = float(self.q_curve_widget.Snom)
+        self.Qmax = float(self.q_curve_widget.Qmax)
+        self.Qmin = float(self.q_curve_widget.Qmin)
+        self.Pmax = float(self.q_curve_widget.Pmax)
+        self.Pmin = float(self.q_curve_widget.Pmin)
+
+    def closeEvent(self, event: QtCore.QEvent) -> None:
+        """
+        Save edited data when closing.
+
+        :param event: Qt close event.
+        """
+        _ = event
+        self._sync_from_widget()
+
+
+class EmbeddedSolarPvEditorWidget(SolarPvWizard):
+    """
+    Solar editor embedded as a child widget inside the generator editor tab.
+    """
+
+    generation_finished = QtCore.Signal(bool)
+
+    def __init__(self,
+                 time_array: Sequence[object],
+                 peak_power: float,
+                 latitude: float,
+                 longitude: float,
+                 gen_name: str,
+                 bus_name: str,
+                 parent: QtWidgets.QWidget | None = None) -> None:
+        """
+        Build embedded solar editor widget.
+
+        :param time_array: Time profile sequence.
+        :param peak_power: Generator peak power.
+        :param latitude: Bus latitude.
+        :param longitude: Bus longitude.
+        :param gen_name: Generator name.
+        :param bus_name: Bus name.
+        :param parent: Qt parent widget.
+        """
+        SolarPvWizard.__init__(
+            self,
+            time_array=time_array,
+            peak_power=peak_power,
+            latitude=latitude,
+            longitude=longitude,
+            gen_name=gen_name,
+            bus_name=bus_name,
+            title="Solar profile editor",
+        )
+        if parent is not None:
+            self.setParent(parent)
+        else:
+            pass
+
+        self.setWindowFlags(QtCore.Qt.WindowType.Widget)
+        self.ui.acceptButton.hide()
+        self.setWindowTitle("")
+
+    def generate_click(self) -> None:
+        """
+        Generate the solar profile and notify parent listeners.
+        """
+        SolarPvWizard.generate_click(self)
+        self.generation_finished.emit(bool(self.ok))
+
+    def accept_click(self) -> None:
+        """
+        Notify parent listeners without closing embedded widget.
+        """
+        self.is_accepted = bool(self.ok)
+        self.generation_finished.emit(self.is_accepted)
+
+
+class EmbeddedWindFarmEditorWidget(WindFarmWizard):
+    """
+    Wind farm editor embedded as a child widget inside the generator editor tab.
+    """
+
+    generation_finished = QtCore.Signal(bool)
+
+    def __init__(self,
+                 time_array: Sequence[object],
+                 peak_power: float,
+                 latitude: float,
+                 longitude: float,
+                 gen_name: str,
+                 bus_name: str,
+                 parent: QtWidgets.QWidget | None = None) -> None:
+        """
+        Build embedded wind farm editor widget.
+
+        :param time_array: Time profile sequence.
+        :param peak_power: Generator peak power.
+        :param latitude: Bus latitude.
+        :param longitude: Bus longitude.
+        :param gen_name: Generator name.
+        :param bus_name: Bus name.
+        :param parent: Qt parent widget.
+        """
+        WindFarmWizard.__init__(
+            self,
+            time_array=time_array,
+            peak_power=peak_power,
+            latitude=latitude,
+            longitude=longitude,
+            gen_name=gen_name,
+            bus_name=bus_name,
+            title="Wind profile editor",
+        )
+        if parent is not None:
+            self.setParent(parent)
+        else:
+            pass
+
+        self.setWindowFlags(QtCore.Qt.WindowType.Widget)
+        self.ui.acceptButton.hide()
+        self.setWindowTitle("")
+
+    def generate_click(self) -> None:
+        """
+        Generate the wind profile and notify parent listeners.
+        """
+        WindFarmWizard.generate_click(self)
+        self.generation_finished.emit(bool(self.ok))
+
+    def accept_click(self) -> None:
+        """
+        Notify parent listeners without closing embedded widget.
+        """
+        self.is_accepted = bool(self.ok)
+        self.generation_finished.emit(self.is_accepted)
 
 
 class GeneratorEditor(TemplateDeviceEditor):
@@ -421,14 +607,8 @@ class GeneratorEditor(TemplateDeviceEditor):
         self.api_object: Generator = api_object
         self.setWindowTitle("Generator editor")
 
-        # Wind/Solar generated data caches to allow preview before apply.
-        self._solar_profile_values: np.ndarray | None = None
-        self._solar_temperature: np.ndarray | None = None
-        self._solar_wind_speed: np.ndarray | None = None
-        self._solar_irradiation: np.ndarray | None = None
-        self._wind_profile_values: np.ndarray | None = None
-        self._wind_temperature: np.ndarray | None = None
-        self._wind_speed: np.ndarray | None = None
+        self.solar_editor_widget: EmbeddedSolarPvEditorWidget | None = None
+        self.wind_editor_widget: EmbeddedWindFarmEditorWidget | None = None
 
         self._build_qcurve_tab()
         self._build_solar_tab()
@@ -436,135 +616,110 @@ class GeneratorEditor(TemplateDeviceEditor):
 
     def _build_qcurve_tab(self) -> None:
         """
-        Build and configure the capability curve tab.
+        Build and configure the capability curve tab widget.
         """
         self.qcurve_tab: QtWidgets.QWidget = QtWidgets.QWidget(self.tab_widget)
         self.qcurve_tab_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self.qcurve_tab)
-        self.qcurve_splitter: QtWidgets.QSplitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal, self.qcurve_tab)
-
-        self.qcurve_table_frame: QtWidgets.QFrame = QtWidgets.QFrame(self.qcurve_splitter)
-        self.qcurve_table_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self.qcurve_table_frame)
-        self.qcurve_table_view: QtWidgets.QTableView = QtWidgets.QTableView(self.qcurve_table_frame)
-        self.qcurve_table_layout.addWidget(self.qcurve_table_view)
-
-        self.qcurve_button_layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout()
-        self.qcurve_add_row_button: QtWidgets.QPushButton = QtWidgets.QPushButton("Add row", self.qcurve_table_frame)
-        self.qcurve_del_row_button: QtWidgets.QPushButton = QtWidgets.QPushButton("Delete row", self.qcurve_table_frame)
-        self.qcurve_button_layout.addWidget(self.qcurve_add_row_button)
-        self.qcurve_button_layout.addWidget(self.qcurve_del_row_button)
-        self.qcurve_button_layout.addStretch()
-        self.qcurve_table_layout.addLayout(self.qcurve_button_layout)
-
-        self.qcurve_plot_frame: QtWidgets.QFrame = QtWidgets.QFrame(self.qcurve_splitter)
-        self.qcurve_plot_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self.qcurve_plot_frame)
-        self.qcurve_plotter: MatplotlibWidget = MatplotlibWidget(self.qcurve_plot_frame)
-        self.qcurve_plot_layout.addWidget(self.qcurve_plotter)
-
-        self.qcurve_tab_layout.addWidget(self.qcurve_splitter)
-        self.tab_widget.addTab(self.qcurve_tab, "QCurveEditor")
-
-        qcurve_headers: list[str] = ["P [MW]", "Qmin [MVAr]", "Qmax [MVAr]"]
-        qcurve_data: Mat = self.api_object.q_curve.get_data().copy()
-        if qcurve_data.shape[0] > 0:
-            safe_qcurve_data: Mat = qcurve_data
-        else:
-            safe_qcurve_data = build_safe_single_point_curve(qmin=self.api_object.Qmin, qmax=self.api_object.Qmax)
-
-        self.qcurve_model: GeneratorQCurveEditorTableModel = GeneratorQCurveEditorTableModel(
-            data=safe_qcurve_data,
-            headers=qcurve_headers,
-            callback=self._on_qcurve_data_changed,
-            parent=self,
+        self.qcurve_editor_widget: GeneratorQCurveEditorWidget = GeneratorQCurveEditorWidget(
+            q_curve=self.api_object.q_curve,
+            Qmin=self.api_object.Qmin,
+            Qmax=self.api_object.Qmax,
+            Pmin=self.api_object.Pmin,
+            Pmax=self.api_object.Pmax,
+            Snom=self.api_object.Snom,
         )
-
-        self.qcurve_table_view.setSelectionBehavior(QtWidgets.QTableView.SelectionBehavior.SelectRows)
-        self.qcurve_table_view.setSelectionMode(QtWidgets.QTableView.SelectionMode.SingleSelection)
-        self.qcurve_table_view.setModel(self.qcurve_model)
-
-        self.qcurve_add_row_button.clicked.connect(self._add_qcurve_row)
-        self.qcurve_del_row_button.clicked.connect(self._remove_qcurve_row)
-
-        self._plot_qcurve()
+        self.qcurve_tab_layout.addWidget(self.qcurve_editor_widget)
+        self.tab_widget.addTab(self.qcurve_tab, "QCurveEditor")
+        self.qcurve_editor_widget.curve_changed.connect(self._on_qcurve_data_changed)
 
     def _build_solar_tab(self) -> None:
         """
-        Build and configure the solar profile editor tab.
+        Build and configure the embedded solar profile editor tab.
         """
         self.solar_tab: QtWidgets.QWidget = QtWidgets.QWidget(self.tab_widget)
         self.solar_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self.solar_tab)
-        self.solar_hint_label: QtWidgets.QLabel = QtWidgets.QLabel(
-            "Run the SolarPv wizard and apply the generated profile to this generator.",
-            self.solar_tab,
-        )
-        self.solar_layout.addWidget(self.solar_hint_label)
-
         self.solar_button_layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout()
-        self.solar_run_button: QtWidgets.QPushButton = QtWidgets.QPushButton("Run SolarPv Wizard", self.solar_tab)
         self.solar_apply_button: QtWidgets.QPushButton = QtWidgets.QPushButton("Apply to Generator", self.solar_tab)
         self.solar_apply_button.setEnabled(False)
-        self.solar_button_layout.addWidget(self.solar_run_button)
         self.solar_button_layout.addWidget(self.solar_apply_button)
         self.solar_button_layout.addStretch()
         self.solar_layout.addLayout(self.solar_button_layout)
 
-        self.solar_preview_table_view: QtWidgets.QTableView = QtWidgets.QTableView(self.solar_tab)
-        self.solar_preview_table_view.setAlternatingRowColors(True)
-        self.solar_layout.addWidget(self.solar_preview_table_view)
-        self.tab_widget.addTab(self.solar_tab, "SolarEditor")
+        bus: Bus | None = self._get_generator_bus()
+        if self.circuit is not None and self.circuit.has_time_series and bus is not None:
+            self.solar_editor_widget: EmbeddedSolarPvEditorWidget = EmbeddedSolarPvEditorWidget(
+                time_array=self.circuit.time_profile,
+                peak_power=self.api_object.Pmax,
+                latitude=bus.latitude,
+                longitude=bus.longitude,
+                gen_name=self.api_object.name,
+                bus_name=bus.name,
+                parent=self.solar_tab,
+            )
+            self.solar_editor_widget.generation_finished.connect(self._on_embedded_solar_generation_finished)
+            self.solar_layout.addWidget(self.solar_editor_widget)
+            self.solar_apply_button.clicked.connect(self._apply_solar_profile)
+        else:
+            self.solar_editor_widget = None
+            self.solar_apply_button.setEnabled(False)
+            missing_msg: QtWidgets.QLabel = QtWidgets.QLabel(
+                "Solar editor requires an assigned bus and circuit time profiles.",
+                self.solar_tab,
+            )
+            self.solar_layout.addWidget(missing_msg)
 
-        self.solar_run_button.clicked.connect(self._run_solar_editor)
-        self.solar_apply_button.clicked.connect(self._apply_solar_profile)
+        self.tab_widget.addTab(self.solar_tab, "SolarEditor")
 
     def _build_wind_tab(self) -> None:
         """
-        Build and configure the wind profile editor tab.
+        Build and configure the embedded wind profile editor tab.
         """
         self.wind_tab: QtWidgets.QWidget = QtWidgets.QWidget(self.tab_widget)
         self.wind_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self.wind_tab)
-        self.wind_hint_label: QtWidgets.QLabel = QtWidgets.QLabel(
-            "Run the WindFarm wizard and apply the generated profile to this generator.",
-            self.wind_tab,
-        )
-        self.wind_layout.addWidget(self.wind_hint_label)
-
         self.wind_button_layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout()
-        self.wind_run_button: QtWidgets.QPushButton = QtWidgets.QPushButton("Run WindFarm Wizard", self.wind_tab)
         self.wind_apply_button: QtWidgets.QPushButton = QtWidgets.QPushButton("Apply to Generator", self.wind_tab)
         self.wind_apply_button.setEnabled(False)
-        self.wind_button_layout.addWidget(self.wind_run_button)
         self.wind_button_layout.addWidget(self.wind_apply_button)
         self.wind_button_layout.addStretch()
         self.wind_layout.addLayout(self.wind_button_layout)
 
-        self.wind_preview_table_view: QtWidgets.QTableView = QtWidgets.QTableView(self.wind_tab)
-        self.wind_preview_table_view.setAlternatingRowColors(True)
-        self.wind_layout.addWidget(self.wind_preview_table_view)
-        self.tab_widget.addTab(self.wind_tab, "WindFarmEditor")
+        bus: Bus | None = self._get_generator_bus()
+        if self.circuit is not None and self.circuit.has_time_series and bus is not None:
+            self.wind_editor_widget: EmbeddedWindFarmEditorWidget = EmbeddedWindFarmEditorWidget(
+                time_array=self.circuit.time_profile,
+                peak_power=self.api_object.Pmax,
+                latitude=bus.latitude,
+                longitude=bus.longitude,
+                gen_name=self.api_object.name,
+                bus_name=bus.name,
+                parent=self.wind_tab,
+            )
+            self.wind_editor_widget.generation_finished.connect(self._on_embedded_wind_generation_finished)
+            self.wind_layout.addWidget(self.wind_editor_widget)
+            self.wind_apply_button.clicked.connect(self._apply_wind_profile)
+        else:
+            self.wind_editor_widget = None
+            self.wind_apply_button.setEnabled(False)
+            missing_msg: QtWidgets.QLabel = QtWidgets.QLabel(
+                "Wind editor requires an assigned bus and circuit time profiles.",
+                self.wind_tab,
+            )
+            self.wind_layout.addWidget(missing_msg)
 
-        self.wind_run_button.clicked.connect(self._run_wind_editor)
-        self.wind_apply_button.clicked.connect(self._apply_wind_profile)
+        self.tab_widget.addTab(self.wind_tab, "WindFarmEditor")
 
     def _plot_qcurve(self) -> None:
         """
         Plot capability envelope and edited q-curve.
         """
-        draw_styled_qcurve_plot(
-            plotter=self.qcurve_plotter,
-            q_curve=self.api_object.q_curve,
-            chart_title="Generator capability curve",
-        )
+        self.qcurve_editor_widget.plot()
 
     def _sync_qcurve_to_generator(self) -> None:
         """
-        Synchronize q-curve table data into the generator object.
+        Synchronize q-curve widget data into the generator object.
         """
-        qcurve_data: Mat = self.qcurve_model.get_data()
-        if qcurve_data.shape[0] > 0:
-            safe_qcurve_data: Mat = qcurve_data
-        else:
-            safe_qcurve_data = build_safe_single_point_curve(qmin=self.api_object.Qmin, qmax=self.api_object.Qmax)
-
-        self.api_object.q_curve.set(safe_qcurve_data)
+        self.qcurve_editor_widget.collect_data()
+        self.api_object.q_curve = self.qcurve_editor_widget.q_curve
         self.api_object.Snom = float(self.api_object.q_curve.get_Snom())
         self.api_object.Qmax = float(self.api_object.q_curve.get_Qmax())
         self.api_object.Qmin = float(self.api_object.q_curve.get_Qmin())
@@ -582,25 +737,6 @@ class GeneratorEditor(TemplateDeviceEditor):
         self._sync_qcurve_to_generator()
         self._plot_qcurve()
 
-    def _add_qcurve_row(self) -> None:
-        """
-        Add one empty q-curve row.
-        """
-        self.qcurve_model.add_row(np.zeros(3))
-        self._on_qcurve_data_changed()
-
-    def _remove_qcurve_row(self) -> None:
-        """
-        Delete selected q-curve row, or the last one when no selection exists.
-        """
-        selected_indexes: list[QtCore.QModelIndex] = self.qcurve_table_view.selectionModel().selectedRows()
-        if len(selected_indexes) > 0:
-            selected_row: int = selected_indexes[0].row()
-            self.qcurve_model.del_row(selected_row)
-        else:
-            self.qcurve_model.del_last_row()
-        self._on_qcurve_data_changed()
-
     def _get_generator_bus(self) -> Bus | None:
         """
         Get generator bus if available.
@@ -610,103 +746,53 @@ class GeneratorEditor(TemplateDeviceEditor):
         bus: Bus | None = self.api_object.bus
         return bus
 
-    def _check_time_profile_available(self) -> bool:
+    def _on_embedded_solar_generation_finished(self, ok: bool) -> None:
         """
-        Validate that a time profile exists to run profile generators.
+        Enable or disable solar profile application according to generation status.
 
-        :return: True when the circuit has time profile.
+        :param ok: Generation status.
         """
-        if self.circuit is not None and self.circuit.has_time_series:
-            return True
-        else:
-            warning_msg("You need to have time profiles for this function", "Generator editor")
-            return False
+        self.solar_apply_button.setEnabled(ok)
 
-    def _run_solar_editor(self) -> None:
+    def _on_embedded_wind_generation_finished(self, ok: bool) -> None:
         """
-        Run the SolarPv wizard and store generated profile preview.
-        """
-        if self._check_time_profile_available():
-            bus: Bus | None = self._get_generator_bus()
-            if bus is not None:
-                dialog: SolarPvWizard = SolarPvWizard(
-                    time_array=self.circuit.time_profile,  # type: ignore[arg-type]
-                    peak_power=self.api_object.Pmax,
-                    latitude=bus.latitude,
-                    longitude=bus.longitude,
-                    gen_name=self.api_object.name,
-                    bus_name=bus.name,
-                )
-                if dialog.exec():
-                    if dialog.is_accepted:
-                        self._solar_profile_values = np.asarray(dialog.P, dtype=float)
-                        self._solar_temperature = None if dialog.temperature is None else np.asarray(dialog.temperature, dtype=float)
-                        self._solar_wind_speed = None if dialog.wind_speed is None else np.asarray(dialog.wind_speed, dtype=float)
-                        self._solar_irradiation = None if dialog.irradiation is None else np.asarray(dialog.irradiation, dtype=float)
-                        preview_df: pd.DataFrame = pd.DataFrame(data=dict(P=self._solar_profile_values),
-                                                                index=self.circuit.time_profile)
-                        self.solar_preview_table_view.setModel(PandasModel(preview_df))
-                        self.solar_apply_button.setEnabled(True)
-                    else:
-                        pass
-                else:
-                    pass
-            else:
-                warning_msg("Generator has no bus assigned", "Generator editor")
-        else:
-            pass
+        Enable or disable wind profile application according to generation status.
 
-    def _run_wind_editor(self) -> None:
+        :param ok: Generation status.
         """
-        Run the WindFarm wizard and store generated profile preview.
-        """
-        if self._check_time_profile_available():
-            bus: Bus | None = self._get_generator_bus()
-            if bus is not None:
-                dialog: WindFarmWizard = WindFarmWizard(
-                    time_array=self.circuit.time_profile,  # type: ignore[arg-type]
-                    peak_power=self.api_object.Pmax,
-                    latitude=bus.latitude,
-                    longitude=bus.longitude,
-                    gen_name=self.api_object.name,
-                    bus_name=bus.name,
-                )
-                if dialog.exec():
-                    if dialog.is_accepted:
-                        self._wind_profile_values = np.asarray(dialog.P, dtype=float)
-                        self._wind_temperature = None if dialog.temperature is None else np.asarray(dialog.temperature, dtype=float)
-                        self._wind_speed = None if dialog.wind_speed is None else np.asarray(dialog.wind_speed, dtype=float)
-                        preview_df: pd.DataFrame = pd.DataFrame(data=dict(P=self._wind_profile_values),
-                                                                index=self.circuit.time_profile)
-                        self.wind_preview_table_view.setModel(PandasModel(preview_df))
-                        self.wind_apply_button.setEnabled(True)
-                    else:
-                        pass
-                else:
-                    pass
-            else:
-                warning_msg("Generator has no bus assigned", "Generator editor")
-        else:
-            pass
+        self.wind_apply_button.setEnabled(ok)
 
     def _apply_solar_profile(self) -> None:
         """
         Apply previously generated solar profile values to generator profiles.
         """
-        if self._solar_profile_values is None:
-            warning_msg("Run the solar editor first", "Generator editor")
+        if self.solar_editor_widget is None:
+            warning_msg("Solar editor is not available", "Generator editor")
+        elif not bool(self.solar_editor_widget.ok):
+            warning_msg("Generate a solar profile first", "Generator editor")
         else:
+            solar_profile_values: np.ndarray = np.asarray(self.solar_editor_widget.P, dtype=float)
+            solar_temperature: np.ndarray | None = (
+                None if self.solar_editor_widget.temperature is None else np.asarray(self.solar_editor_widget.temperature, dtype=float)
+            )
+            solar_wind_speed: np.ndarray | None = (
+                None if self.solar_editor_widget.wind_speed is None else np.asarray(self.solar_editor_widget.wind_speed, dtype=float)
+            )
+            solar_irradiation: np.ndarray | None = (
+                None if self.solar_editor_widget.irradiation is None else np.asarray(self.solar_editor_widget.irradiation, dtype=float)
+            )
+
             expected_size: int = self.api_object.P_prof.size()
-            if len(self._solar_profile_values) == expected_size:
-                self.api_object.P_prof.set(self._solar_profile_values)
+            if len(solar_profile_values) == expected_size:
+                self.api_object.P_prof.set(solar_profile_values)
 
                 bus: Bus | None = self._get_generator_bus()
                 if bus is not None:
                     fill_substation_weather_profiles(
                         bus=bus,
-                        temperature=self._solar_temperature,
-                        wind_speed=self._solar_wind_speed,
-                        irradiation=self._solar_irradiation,
+                        temperature=solar_temperature,
+                        wind_speed=solar_wind_speed,
+                        irradiation=solar_irradiation,
                         expected_size=expected_size,
                     )
                 else:
@@ -721,19 +807,29 @@ class GeneratorEditor(TemplateDeviceEditor):
         """
         Apply previously generated wind profile values to generator profiles.
         """
-        if self._wind_profile_values is None:
-            warning_msg("Run the wind editor first", "Generator editor")
+        if self.wind_editor_widget is None:
+            warning_msg("Wind editor is not available", "Generator editor")
+        elif not bool(self.wind_editor_widget.ok):
+            warning_msg("Generate a wind profile first", "Generator editor")
         else:
+            wind_profile_values: np.ndarray = np.asarray(self.wind_editor_widget.P, dtype=float)
+            wind_temperature: np.ndarray | None = (
+                None if self.wind_editor_widget.temperature is None else np.asarray(self.wind_editor_widget.temperature, dtype=float)
+            )
+            wind_speed: np.ndarray | None = (
+                None if self.wind_editor_widget.wind_speed is None else np.asarray(self.wind_editor_widget.wind_speed, dtype=float)
+            )
+
             expected_size: int = self.api_object.P_prof.size()
-            if len(self._wind_profile_values) == expected_size:
-                self.api_object.P_prof.set(self._wind_profile_values)
+            if len(wind_profile_values) == expected_size:
+                self.api_object.P_prof.set(wind_profile_values)
 
                 bus: Bus | None = self._get_generator_bus()
                 if bus is not None:
                     fill_substation_weather_profiles(
                         bus=bus,
-                        temperature=self._wind_temperature,
-                        wind_speed=self._wind_speed,
+                        temperature=wind_temperature,
+                        wind_speed=wind_speed,
                         irradiation=None,
                         expected_size=expected_size,
                     )
