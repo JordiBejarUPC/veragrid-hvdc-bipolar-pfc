@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
+import sys
 import re
 from enum import EnumMeta
 from typing import Any, Sequence
@@ -959,3 +960,35 @@ class TemplateDeviceEditor(QtWidgets.QDialog):
 
         self.properties_model.set_time_index(time_index=self._get_current_time_index())
         self._update_time_label(slider_index=int(self.time_step_slider.value()))
+
+
+if __name__ == "__main__":
+    from VeraGridEngine.Devices.Injections.generator import Generator
+    from VeraGridEngine.Devices.Substation.bus import Bus
+
+    qt_app: QtWidgets.QApplication = QtWidgets.QApplication(sys.argv)
+
+    # Build one minimal circuit context to inspect base tabs (properties/profiles/associations).
+    circuit_demo: MultiCircuit = MultiCircuit(name="Template device editor demo", Sbase=100.0, fbase=50.0)
+    circuit_demo.create_profiles(steps=24, step_length=1, step_unit="h")
+
+    bus_demo: Bus = Bus(name="Bus demo", Vnom=132.0)
+    circuit_demo.add_bus(obj=bus_demo)
+
+    generator_demo: Generator = Generator(
+        name="Generator demo",
+        P=55.0,
+        Q=5.0,
+        Qmin=-50.0,
+        Qmax=60.0,
+        Pmin=15.0,
+        Pmax=90.0,
+        Snom=100.0,
+        is_controlled=True,
+        power_factor=0.95,
+    )
+    circuit_demo.add_generator(bus=bus_demo, api_obj=generator_demo)
+
+    dialog_demo: TemplateDeviceEditor = TemplateDeviceEditor(api_object=generator_demo, circuit=circuit_demo)
+    dialog_demo.show()
+    sys.exit(qt_app.exec())

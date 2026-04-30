@@ -27,7 +27,8 @@ from VeraGridEngine.Topology.detect_substations import detect_substations, detec
 from VeraGrid.Gui.Analysis.object_plot_analysis import object_histogram_analysis
 from VeraGrid.Gui.messages import yes_no_question, warning_msg, info_msg
 from VeraGrid.Gui.Main.SubClasses.Model.diagrams import DiagramsMain
-from VeraGrid.Gui.DeviceEditors.LineEditor.line_editor import LineEditor
+from VeraGrid.Gui.DeviceEditors.LineEditor.line_device_editor import LineDeviceEditorDialog
+from VeraGrid.Gui.DeviceEditors.LoadDesigner.load_device_editor import LoadDeviceEditorDialog
 from VeraGrid.Gui.DeviceEditors.TowerBuilder.LineBuilderDialogue import TowerBuilderGUI
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_manager import open_dynamic_editor
 from VeraGrid.Gui.FmuTemplateEditor.fmu_template_editor import FmuTemplateEditorDialog
@@ -37,9 +38,11 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidg
 from VeraGrid.Gui.GridReduce.grid_reduce import GridReduceDialogue
 from VeraGrid.Gui.SubstationDesigner.substation_designer import SubstationDesigner
 from VeraGrid.Gui.general_dialogues import LogsDialogue, CustomQuestionDialogue, CheckListDialogue
-from VeraGrid.Gui.DeviceEditors.TransformerEditor.transformer_editor import TransformerEditor
-from VeraGrid.Gui.DeviceEditors.Transformer3wEditor.transformer3w_editor import Transformer3WEditor
-from VeraGrid.Gui.DeviceEditors.ControllableShuntEditor.controllable_shunt_editor import ControllableShuntEditor
+from VeraGrid.Gui.DeviceEditors.TransformerEditor.transformer_device_editor import TransformerDeviceEditorDialog
+from VeraGrid.Gui.DeviceEditors.Transformer3wEditor.transformer3w_device_editor import Transformer3WDeviceEditorDialog
+from VeraGrid.Gui.DeviceEditors.ControllableShuntEditor.controllable_shunt_device_editor import (
+    ControllableShuntDeviceEditorDialog,
+)
 from VeraGrid.Gui.Icons.icon_associations import device_type_icons
 
 
@@ -979,22 +982,26 @@ class DataBaseTableMain(DiagramsMain):
                         self.tower_builder_window.exec()
 
                     elif elm_type == DeviceType.LineDevice.value:
-                        dlg = LineEditor(line=elm, grid=self.circuit)
+                        dlg = LineDeviceEditorDialog(api_object=elm, circuit=self.circuit)
                         dlg.exec()
 
                     elif elm_type == DeviceType.Transformer2WDevice.value:
-                        dlg = TransformerEditor(branch=elm, grid=self.circuit, modify_on_accept=True)
+                        dlg = TransformerDeviceEditorDialog(api_object=elm, circuit=self.circuit)
                         if dlg.exec():
                             pass
 
                     elif elm_type == DeviceType.ControllableShuntDevice.value:
-                        dlg = ControllableShuntEditor(api_object=elm)
+                        dlg = ControllableShuntDeviceEditorDialog(api_object=elm, circuit=self.circuit)
+                        if dlg.exec():
+                            pass
+
+                    elif elm_type == DeviceType.LoadDevice.value:
+                        dlg = LoadDeviceEditorDialog(api_object=elm, circuit=self.circuit)
                         if dlg.exec():
                             pass
 
                     elif elm_type == DeviceType.Transformer3WDevice.value:
-                        Sbase = self.circuit.Sbase
-                        dlg = Transformer3WEditor(elm, Sbase, modify_on_accept=True)
+                        dlg = Transformer3WDeviceEditorDialog(api_object=elm, circuit=self.circuit)
                         if dlg.exec():
                             pass
 

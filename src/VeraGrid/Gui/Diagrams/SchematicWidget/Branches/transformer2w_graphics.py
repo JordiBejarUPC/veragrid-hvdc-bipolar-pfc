@@ -79,7 +79,7 @@ class TransformerGraphicItem(LineGraphicTemplateItem):
                            icon_path=":/Icons/icons/delete3.png")
 
             add_menu_entry(menu=menu,
-                           text="Transformer editor",
+                           text="Editor",
                            function_ptr=self.edit,
                            icon_path=":/Icons/icons/edit.png")
 
@@ -195,18 +195,14 @@ class TransformerGraphicItem(LineGraphicTemplateItem):
         Open the appropriate editor dialogue
         :return:
         """
-        dlg = TransformerEditor(self.api_object, grid=self.editor.circuit, modify_on_accept=True)
-        if dlg.exec():
-            pass
+        self.open_device_editor()
 
     def edit_tap_changer(self):
         """
 
         :return:
         """
-        dlg = TransformerEditor(self.api_object, grid=self.editor.circuit, modify_on_accept=True)
-        if dlg.exec():
-            pass
+        self.open_device_editor()
 
     def show_transformer_editor(self):
         """

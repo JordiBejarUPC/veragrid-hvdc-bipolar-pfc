@@ -19,7 +19,6 @@ from VeraGridEngine.enumerations import DeviceType
 from VeraGrid.Gui.Diagrams.generic_graphics import ACTIVE, DEACTIVATED
 from VeraGrid.Gui.Diagrams.generic_graphics import GenericDiagramWidget
 from VeraGrid.Gui.gui_functions import add_menu_entry
-from VeraGrid.Gui.DeviceEditors.LineEditor.line_editor import LineEditor
 from VeraGrid.Gui.messages import error_msg
 from VeraGrid.Gui.messages import yes_no_question
 
@@ -605,11 +604,9 @@ class MapLineContainer(GenericDiagramWidget, QGraphicsItemGroup):
 
     def call_editor(self) -> None:
         """
-        Open the branch editor dialogue.
+        Open the specific branch editor dialogue.
         """
-        _ = self.api_object.get_max_bus_nominal_voltage()
-        dlg = LineEditor(line=self.api_object, grid=self.editor.circuit)
-        dlg.exec()
+        self.open_device_editor()
 
     def plot_profiles(self) -> None:
         """

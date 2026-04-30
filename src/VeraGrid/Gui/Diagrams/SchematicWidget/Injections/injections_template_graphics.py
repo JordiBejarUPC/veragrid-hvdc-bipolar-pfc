@@ -1102,6 +1102,16 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
 
         QGraphicsItemGroup.mousePressEvent(self, QGraphicsSceneMouseEvent)
 
+    def mouseDoubleClickEvent(self, event: QGraphicsSceneMouseEvent) -> None:
+        """
+        Open the device editor on double click.
+
+        :param event: Mouse event.
+        :return: ``None``.
+        """
+        QGraphicsItemGroup.mouseDoubleClickEvent(self, event)
+        self.open_device_editor()
+
     def change_bus(self):
         """
         Change the generator bus
@@ -1238,6 +1248,11 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
                        text="Change bus",
                        function_ptr=self.change_bus,
                        icon_path=":/Icons/icons/move_bus.png")
+
+        add_menu_entry(menu=menu,
+                       text="Editor",
+                       function_ptr=self.open_device_editor,
+                       icon_path=":/Icons/icons/edit.png")
 
         add_menu_entry(menu=menu,
                        text="Move behind converter",

@@ -12,8 +12,8 @@ from VeraGrid.Gui.Diagrams.generic_graphics import Circle
 from VeraGrid.Gui.messages import yes_no_question
 from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.injections_template_graphics import InjectionTemplateGraphicItem
 from VeraGrid.Gui.DeviceEditors.GeneratorEditor.generator_editor import GeneratorEditorDialog, GeneratorQCurveEditor
-from VeraGrid.Gui.DeviceEditors.SolarPowerWizard.solar_power_wizzard import SolarPvWizard
-from VeraGrid.Gui.DeviceEditors.WindPowerWizard.wind_power_wizzard import WindFarmWizard
+from VeraGrid.Gui.DeviceEditors.GeneratorEditor.SolarPowerWizard.solar_power_wizzard import SolarPvWizard
+from VeraGrid.Gui.DeviceEditors.GeneratorEditor.WindPowerWizard.wind_power_wizzard import WindFarmWizard
 from VeraGrid.Gui.profile_wizard_utils import fill_substation_weather_profiles
 from VeraGrid.Gui.gui_functions import add_menu_entry
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_manager import open_dynamic_editor
@@ -71,11 +71,6 @@ class GeneratorGraphicItem(InjectionTemplateGraphicItem):
                        function_ptr=self.set_regulation_bus)
 
         add_menu_entry(menu=menu,
-                       text="Generator edit",
-                       function_ptr=self.edit_generator,
-                       icon_path=":/Icons/icons/edit.png")
-
-        add_menu_entry(menu=menu,
                        text="Qcurve edit",
                        function_ptr=self.edit_q_curve,
                        icon_path=":/Icons/icons/edit.png")
@@ -109,7 +104,6 @@ class GeneratorGraphicItem(InjectionTemplateGraphicItem):
         :return: None.
         """
         super().mouseDoubleClickEvent(event)
-        self.edit_generator()
 
     def edit_dynamic_rms(self):
         """

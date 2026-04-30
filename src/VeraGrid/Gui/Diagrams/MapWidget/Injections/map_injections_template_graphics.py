@@ -217,6 +217,7 @@ class MapInjectionTemplateGraphicItem(NodeTemplate, QGraphicsEllipseItem):
         """
         super().mouseDoubleClickEvent(event)
         self.set_api_object_color()
+        self.open_device_editor()
 
     def get_base_context_menu(self) -> QMenu:
         """
@@ -229,6 +230,11 @@ class MapInjectionTemplateGraphicItem(NodeTemplate, QGraphicsEllipseItem):
                        text="Plot profiles",
                        function_ptr=self.plot,
                        icon_path=":/Icons/icons/plot.png")
+
+        add_menu_entry(menu=menu,
+                       text="Editor",
+                       function_ptr=self.open_device_editor,
+                       icon_path=":/Icons/icons/edit.png")
 
         add_menu_entry(menu=menu,
                        text="Consolidate coordinates",
@@ -288,4 +294,3 @@ class MapInjectionTemplateGraphicItem(NodeTemplate, QGraphicsEllipseItem):
         self.api_object.latitude = lat
         self.api_object.longitude = long
         self.editor.gui.show_info_toast("Coordinates consolidated!")
-

@@ -11,7 +11,6 @@ from PySide6.QtGui import QPen, QBrush
 from PySide6.QtWidgets import QMenu, QGraphicsRectItem, QGraphicsSceneContextMenuEvent
 from VeraGrid.Gui.gui_functions import add_menu_entry
 from VeraGrid.Gui.Diagrams.SchematicWidget.terminal_item import BarTerminalItem, RoundTerminalItem
-from VeraGrid.Gui.DeviceEditors.LineEditor.line_editor import LineEditor
 from VeraGrid.Gui.messages import yes_no_question, warning_msg
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template import LineGraphicTemplateItem
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_manager import open_dynamic_editor
@@ -89,8 +88,7 @@ class LineGraphicItem(LineGraphicTemplateItem):
         """
         if self.api_object is not None:
             if self.api_object.device_type in [DeviceType.Transformer2WDevice, DeviceType.LineDevice]:
-                # trigger the editor
-                self.edit()
+                self.open_device_editor()
             elif self.api_object.device_type is DeviceType.SwitchDevice:
                 # change state
                 self.enable_disable_toggle()
@@ -118,7 +116,7 @@ class LineGraphicItem(LineGraphicTemplateItem):
                            checked_value=self.draw_labels)
 
             add_menu_entry(menu=menu,
-                           text="Line editor",
+                           text="Editor",
                            function_ptr=self.edit,
                            icon_path=":/Icons/icons/edit.png")
 
@@ -228,9 +226,7 @@ class LineGraphicItem(LineGraphicTemplateItem):
         Open the appropriate editor dialogue
         :return:
         """
-        dlg = LineEditor(line=self.api_object, grid=self.editor.circuit)
-        if dlg.exec():
-            pass
+        self.open_device_editor()
 
     def edit_dynamic_rms(self):
         """

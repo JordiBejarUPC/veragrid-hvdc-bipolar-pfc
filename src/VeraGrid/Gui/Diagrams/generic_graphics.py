@@ -10,6 +10,8 @@ from PySide6.QtWidgets import (QGraphicsLineItem, QGraphicsItem, QGraphicsPolygo
                                QGraphicsRectItem, QGraphicsEllipseItem, QGraphicsTextItem)
 from PySide6.QtGui import QColor, QPen, QPolygon, QPolygonF
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
+from VeraGridEngine.enumerations import DeviceType
+from VeraGrid.Gui.messages import warning_msg
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
@@ -212,6 +214,68 @@ class GenericDiagramWidget:
         """
 
         return list()
+
+    def open_device_editor(self) -> bool:
+        """
+        Open the specific device editor for this graphic element.
+
+        Known custom editors are routed by ``DeviceType``:
+        ``Generator``, ``Line``, ``Load``, ``Transformer2W``, ``Transformer3W`` and ``ControllableShunt``.
+        All other devices fall back to ``TemplateDeviceEditor``.
+
+        :return: ``True`` when an editor was opened.
+        """
+        if self.api_object is None:
+            warning_msg("This element has no device bound to an editor", "Device editor")
+            return False
+        else:
+            pass
+
+        if self._editor is None:
+            warning_msg("No diagram editor context is available", "Device editor")
+            return False
+        else:
+            pass
+
+        try:
+            circuit = self._editor.circuit
+        except AttributeError:
+            circuit = None
+
+        try:
+            device_tpe = self.api_object.device_type
+        except AttributeError:
+            warning_msg("This element type does not expose a device type", "Device editor")
+            return False
+
+        if device_tpe == DeviceType.GeneratorDevice:
+            from VeraGrid.Gui.DeviceEditors.GeneratorEditor.generator_editor import GeneratorEditorDialog
+            dialog = GeneratorEditorDialog(api_object=self.api_object, circuit=circuit)
+        elif device_tpe == DeviceType.LineDevice:
+            from VeraGrid.Gui.DeviceEditors.LineEditor.line_device_editor import LineDeviceEditorDialog
+            dialog = LineDeviceEditorDialog(api_object=self.api_object, circuit=circuit)
+        elif device_tpe == DeviceType.LoadDevice:
+            from VeraGrid.Gui.DeviceEditors.LoadDesigner.load_device_editor import LoadDeviceEditorDialog
+            dialog = LoadDeviceEditorDialog(api_object=self.api_object, circuit=circuit)
+        elif device_tpe == DeviceType.Transformer2WDevice:
+            from VeraGrid.Gui.DeviceEditors.TransformerEditor.transformer_device_editor import TransformerDeviceEditorDialog
+            dialog = TransformerDeviceEditorDialog(api_object=self.api_object, circuit=circuit)
+        elif device_tpe == DeviceType.Transformer3WDevice:
+            from VeraGrid.Gui.DeviceEditors.Transformer3wEditor.transformer3w_device_editor import (
+                Transformer3WDeviceEditorDialog,
+            )
+            dialog = Transformer3WDeviceEditorDialog(api_object=self.api_object, circuit=circuit)
+        elif device_tpe == DeviceType.ControllableShuntDevice:
+            from VeraGrid.Gui.DeviceEditors.ControllableShuntEditor.controllable_shunt_device_editor import (
+                ControllableShuntDeviceEditorDialog,
+            )
+            dialog = ControllableShuntDeviceEditorDialog(api_object=self.api_object, circuit=circuit)
+        else:
+            from VeraGrid.Gui.DeviceEditors.TemplateDeviceEditor.template_device_editor import TemplateDeviceEditor
+            dialog = TemplateDeviceEditor(api_object=self.api_object, circuit=circuit)
+
+        dialog.exec()
+        return True
 
 
 class Polygon(QGraphicsPolygonItem):
