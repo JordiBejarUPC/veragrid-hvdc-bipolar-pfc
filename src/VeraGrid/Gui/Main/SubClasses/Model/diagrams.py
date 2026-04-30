@@ -2873,25 +2873,27 @@ class DiagramsMain(CompiledArraysMain):
 
 
                 else:
-                    rms_events_dialog = DynamicEventDialogue(circuit=self.circuit,
-                                                             parameters_list=[var for var in
-                                                                          target_device.rms_model.event_dict.keys()],
-                                                             target_device_name=target_device.type_name + ": " + target_device.name,
-                                                             mode=mode)
+                    pass
+                # after creating a new events group or not, open eitherway the Events dialogue
+                rms_events_dialog = DynamicEventDialogue(circuit=self.circuit,
+                                                         parameters_list=[var for var in
+                                                                      target_device.rms_model.event_dict.keys()],
+                                                         target_device_name=target_device.type_name + ": " + target_device.name,
+                                                         mode=mode)
 
-                    if rms_events_dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                if rms_events_dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
 
-                        events_data = rms_events_dialog.get_data()
-                        events_list = []
-                        for i, event in enumerate(events_data["parameters"]):
-                            events_list.append(dev.RmsEvent(device=target_device,
-                                                            parameter=events_data["parameters"][i],
-                                                            time=float(events_data["target_times"][i]),
-                                                            value=float(events_data["values"][i]),
-                                                            group=events_data["groups"][i]))
+                    events_data = rms_events_dialog.get_data()
+                    events_list = []
+                    for i, event in enumerate(events_data["parameters"]):
+                        events_list.append(dev.RmsEvent(device=target_device,
+                                                        parameter=events_data["parameters"][i],
+                                                        time=float(events_data["target_times"][i]),
+                                                        value=float(events_data["values"][i]),
+                                                        group=events_data["groups"][i]))
 
-                        for event in events_list:
-                            self.circuit.add_rms_event(event)
+                    for event in events_list:
+                        self.circuit.add_rms_event(event)
 
             else:
                 self.show_warning_toast(f"Select one and only one device to add event to")
@@ -2931,37 +2933,40 @@ class DiagramsMain(CompiledArraysMain):
 
 
                 else:
-                    emt_event_parameters, mode_parameter_uids = collect_block_runtime_event_parameters(target_device.emt_model)
-                    emt_events_dialog = DynamicEventDialogue(circuit=self.circuit,
-                                                             parameters_list=emt_event_parameters,
-                                                             target_device_name=target_device.type_name + ": " + target_device.name,
-                                                             mode=mode,
-                                                             mode_parameter_uids=mode_parameter_uids)
+                    pass
 
-                    if emt_events_dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                # after creating a new events group or not, open eitherway the Events dialogue
+                emt_event_parameters, mode_parameter_uids = collect_block_runtime_event_parameters(target_device.emt_model)
+                emt_events_dialog = DynamicEventDialogue(circuit=self.circuit,
+                                                         parameters_list=emt_event_parameters,
+                                                         target_device_name=target_device.type_name + ": " + target_device.name,
+                                                         mode=mode,
+                                                         mode_parameter_uids=mode_parameter_uids)
 
-                        events_data = emt_events_dialog.get_data()
-                        events_list = list()
-                        for i, event in enumerate(events_data["parameters"]):
-                            transition_type = events_data["transition_types"][i]
-                            end_time = events_data["end_times"][i]
+                if emt_events_dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
 
-                            if transition_type == DynamicEventTransitionType.Ramp and end_time is None:
-                                end_time = float(events_data["target_times"][i])
-                            else:
-                                pass
+                    events_data = emt_events_dialog.get_data()
+                    events_list = list()
+                    for i, event in enumerate(events_data["parameters"]):
+                        transition_type = events_data["transition_types"][i]
+                        end_time = events_data["end_times"][i]
 
-                            events_list.append(dev.EmtEvent(device=target_device,
-                                                            parameter=events_data["parameters"][i],
-                                                            time=float(events_data["target_times"][i]),
-                                                            end_time=None if end_time is None else float(end_time),
-                                                            value=float(events_data["values"][i]),
-                                                            group=events_data["groups"][i],
-                                                            force_step_alignment=bool(events_data["force_step_alignment"][i]),
-                                                            transition_type=transition_type))
+                        if transition_type == DynamicEventTransitionType.Ramp and end_time is None:
+                            end_time = float(events_data["target_times"][i])
+                        else:
+                            pass
 
-                        for event in events_list:
-                            self.circuit.add_emt_event(event)
+                        events_list.append(dev.EmtEvent(device=target_device,
+                                                        parameter=events_data["parameters"][i],
+                                                        time=float(events_data["target_times"][i]),
+                                                        end_time=None if end_time is None else float(end_time),
+                                                        value=float(events_data["values"][i]),
+                                                        group=events_data["groups"][i],
+                                                        force_step_alignment=bool(events_data["force_step_alignment"][i]),
+                                                        transition_type=transition_type))
+
+                    for event in events_list:
+                        self.circuit.add_emt_event(event)
 
             else:
                 self.show_warning_toast(f"Select one and only one device to add event to")
