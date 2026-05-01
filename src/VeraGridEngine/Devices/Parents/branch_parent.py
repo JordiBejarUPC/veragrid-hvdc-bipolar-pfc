@@ -10,7 +10,7 @@ from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Devices.Substation.substation import Substation
 from VeraGridEngine.Devices.Substation.voltage_level import VoltageLevel
 from VeraGridEngine.Devices.Substation.bus import Bus
-from VeraGridEngine.enumerations import BuildStatus, DeviceType
+from VeraGridEngine.enumerations import BuildStatus, DeviceType, PrpCat
 from VeraGridEngine.Devices.Parents.dynamic_parent import DynamicDevice
 from VeraGridEngine.Devices.Aggregation.branch_group import BranchGroup
 from VeraGridEngine.Devices.Profiles import ProfileBool, ProfileFloat
@@ -62,24 +62,24 @@ class BranchParent(DynamicDevice):
                definition='Name of the bus at the "from" side', editable=False),
         GCProp('bus_to', units="", tpe=DeviceType.BusDevice,
                definition='Name of the bus at the "to" side', editable=False),
-        GCProp('active', units="", tpe=bool, definition='Is active?', profile_name="active_prof"),
+        GCProp('active', units="", tpe=bool, definition='Is active?', profile_name="active_prof", cat=[PrpCat.PF]),
         GCProp('reducible', units="", tpe=bool,
                definition='Is the branch to be reduced by the topology preprocessor?'),
-        GCProp('rate', units="MVA", tpe=float, definition='Thermal rating power', profile_name="rate_prof"),
+        GCProp('rate', units="MVA", tpe=float, definition='Thermal rating power', profile_name="rate_prof", cat=[PrpCat.PF]),
         GCProp('contingency_factor', units="p.u.", tpe=float,
-               definition='Rating multiplier for contingencies', profile_name="contingency_factor_prof"),
+               definition='Rating multiplier for contingencies', profile_name="contingency_factor_prof", cat=[PrpCat.REL]),
         GCProp('protection_rating_factor', units="p.u.", tpe=float,
                definition='Rating multiplier that indicates the maximum flow before the protections tripping',
-               profile_name="protection_rating_factor_prof"),
+               profile_name="protection_rating_factor_prof", cat=[PrpCat.REL]),
         GCProp('monitor_loading', units="", tpe=bool,
-               definition="Monitor this device loading for OPF, NTC or contingency studies."),
-        GCProp('mttf', units="h", tpe=float, definition="Mean time to failure"),
-        GCProp('mttr', units="h", tpe=float, definition="Mean time to repair"),
+               definition="Monitor this device loading for OPF, NTC or contingency studies.", cat=[PrpCat.REL]),
+        GCProp('mttf', units="h", tpe=float, definition="Mean time to failure", cat=[PrpCat.REL]),
+        GCProp('mttr', units="h", tpe=float, definition="Mean time to repair", cat=[PrpCat.REL]),
         GCProp('Cost', units="e/MWh", tpe=float,
                definition="Cost of overloads. Used in OPF", profile_name="Cost_prof",
-               old_names=("overload_cost",)),
-        GCProp('capex', units="e/MW", tpe=float, definition="Cost of investment. Used in expansion planning."),
-        GCProp('opex', units="e/MWh", tpe=float, definition="Cost of operation. Used in expansion planning."),
+               old_names=("overload_cost",), cat=[PrpCat.OPF]),
+        GCProp('capex', units="e/MW", tpe=float, definition="Cost of investment. Used in expansion planning.", cat=[PrpCat.INV]),
+        GCProp('opex', units="e/MWh", tpe=float, definition="Cost of operation. Used in expansion planning.", cat=[PrpCat.INV]),
         GCProp('group', units="", tpe=DeviceType.BranchGroupDevice,
                definition="Group where this branch belongs"),
         GCProp(key='color', units='', tpe=str, definition='Color to paint the element in the map diagram',
@@ -88,13 +88,13 @@ class BranchParent(DynamicDevice):
                display=False),
         GCProp(key='bus_to_pos', units='', tpe=int, definition='Aid to locate devices on a busbar',
                display=False),
-        GCProp(key='temp_base', units='ºC', tpe=float, definition='Base temperature at which R was measured.'),
+        GCProp(key='temp_base', units='ºC', tpe=float, definition='Base temperature at which R was measured.', cat=[PrpCat.PF]),
         GCProp(key='temp_oper', units='ºC', tpe=float, definition='Operation temperature to modify R.',
-               profile_name='temp_oper_prof'),
+               profile_name='temp_oper_prof', cat=[PrpCat.PF]),
         GCProp(key='alpha', units='1/ºC', tpe=float,
                definition='Thermal coefficient to modify R,around a reference temperature using a linear '
                           'approximation.For example:Copper @ 20ºC: 0.004041,Copper @ 75ºC: 0.00323,'
-                          'Annealed copper @ 20ºC: 0.00393,Aluminum @ 20ºC: 0.004308,Aluminum @ 75ºC: 0.00330'),
+                          'Annealed copper @ 20ºC: 0.00393,Aluminum @ 20ºC: 0.004308,Aluminum @ 75ºC: 0.00330', cat=[PrpCat.PF]),
     )
 
     def __init__(self,

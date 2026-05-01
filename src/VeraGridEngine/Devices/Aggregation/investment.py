@@ -8,7 +8,7 @@ from typing import Union, Tuple
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, GCProp
 from VeraGridEngine.Devices.Parents.pointer_device_parent import PointerDeviceParent
 from VeraGridEngine.Devices.Aggregation.investments_group import InvestmentsGroup
-from VeraGridEngine.enumerations import DeviceType
+from VeraGridEngine.enumerations import DeviceType, PrpCat
 
 
 class Investment(PointerDeviceParent):
@@ -24,10 +24,10 @@ class Investment(PointerDeviceParent):
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
         GCProp(key='CAPEX', units='M€', tpe=float,
                       definition='Capital expenditures. This is the investment value, '
-                                 'it overrides the CAPEX value of the device if it exits.'),
+                                 'it overrides the CAPEX value of the device if it exits.', cat=[PrpCat.INV]),
         GCProp(key='status', units='', tpe=bool,
-                      definition='If true the investment activates when applied, otherwise is deactivated.'),
-        GCProp(key='group', units='', tpe=DeviceType.InvestmentsGroupDevice, definition='Investment group'),
+                      definition='If true the investment activates when applied, otherwise is deactivated.', cat=[PrpCat.INV]),
+        GCProp(key='group', units='', tpe=DeviceType.InvestmentsGroupDevice, definition='Investment group', cat=[PrpCat.INV]),
     )
 
     def __init__(self,

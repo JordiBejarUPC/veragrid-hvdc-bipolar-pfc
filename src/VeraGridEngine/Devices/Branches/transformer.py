@@ -9,7 +9,7 @@ from typing import Tuple
 from VeraGridEngine.basic_structures import Logger, Mat, IntVec
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.enumerations import (WindingsConnection, BuildStatus, TapPhaseControl,
-                                         TapModuleControl, TapChangerTypes, WindingType)
+                                         TapModuleControl, TapChangerTypes, WindingType, PrpCat)
 from VeraGridEngine.Devices.Parents.controllable_branch_parent import ControllableBranchParent
 from VeraGridEngine.Devices.Branches.transformer_type import TransformerType, reverse_transformer_short_circuit_study
 from VeraGridEngine.Devices.Parents.editable_device import DeviceType, GCProp
@@ -34,9 +34,9 @@ class Transformer2W(ControllableBranchParent):
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
-        GCProp(key='HV', units='kV', tpe=float, definition='High voltage rating'),
-        GCProp(key='LV', units='kV', tpe=float, definition='Low voltage rating'),
-        GCProp(key='Sn', units='MVA', tpe=float, definition='Nominal power'),
+        GCProp(key='HV', units='kV', tpe=float, definition='High voltage rating', cat=[PrpCat.PF]),
+        GCProp(key='LV', units='kV', tpe=float, definition='Low voltage rating', cat=[PrpCat.PF]),
+        GCProp(key='Sn', units='MVA', tpe=float, definition='Nominal power', cat=[PrpCat.PF]),
         GCProp(key='Pcu', units='kW', tpe=float, definition='Copper losses (optional)'),
         GCProp(key='Pfe', units='kW', tpe=float, definition='Iron losses (optional)'),
         GCProp(key='I0', units='%', tpe=float, definition='No-load current (optional)'),
@@ -44,14 +44,14 @@ class Transformer2W(ControllableBranchParent):
         GCProp(key='conn', units='', tpe=WindingsConnection,
                definition='Windings connection (from, to):G: grounded starS: ungrounded starD: delta'),
         GCProp(key='conn_f', units='', tpe=WindingType,
-               definition='Winding 3 phase connection at the from side'),
+               definition='Winding 3 phase connection at the from side', cat=[PrpCat.PF]),
         GCProp(key='conn_t', units='', tpe=WindingType,
-               definition='Winding 3 phase connection at the to side'),
+               definition='Winding 3 phase connection at the to side', cat=[PrpCat.PF]),
         GCProp(key='vector_group_number', units='', tpe=int,
                definition='Vector group number. It indicates the structural phase:'
-                          'phase = vector_group_number · 30º'),
-        # GCProp(key='phases', units='', tpe=IntVec, definition='Which phases are present at the transformer'),
-        GCProp(key='template', units='', tpe=DeviceType.TransformerTypeDevice, definition='', editable=False),
+                          'phase = vector_group_number · 30º', cat=[PrpCat.PF]),
+        # GCProp(key='phases', units='', tpe=IntVec, definition='Which phases are present at the transformer', cat=[PrpCat.PF]),
+        GCProp(key='template', units='', tpe=DeviceType.TransformerTypeDevice, definition='', editable=False, cat=[PrpCat.PF]),
     )
 
     def __init__(self,

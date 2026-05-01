@@ -16,7 +16,7 @@ from VeraGridEngine.Devices.Aggregation.region import Region
 from VeraGridEngine.Devices.Aggregation.municipality import Municipality
 from VeraGridEngine.Devices.Profiles import ProfileFloat
 from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
-from VeraGridEngine.enumerations import BuildStatus, DeviceType
+from VeraGridEngine.enumerations import BuildStatus, DeviceType, PrpCat
 
 
 class Substation(PhysicalDevice):
@@ -42,33 +42,33 @@ class Substation(PhysicalDevice):
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
-        GCProp(key='longitude', units='deg', tpe=float, definition='longitude.', profile_name=''),
-        GCProp(key='latitude', units='deg', tpe=float, definition='latitude.', profile_name=''),
+        GCProp(key='longitude', units='deg', tpe=float, definition='longitude.', profile_name='', cat=[PrpCat.TP]),
+        GCProp(key='latitude', units='deg', tpe=float, definition='latitude.', profile_name='', cat=[PrpCat.TP]),
         GCProp(key='color', units='', tpe=str, definition='Color to paint the element in the map diagram',
-                      is_color=True),
+                      is_color=True, cat=[PrpCat.TP]),
         GCProp(key="area", units="", tpe=DeviceType.AreaDevice,
-                      definition="Substation area, altenativelly this can be obtained from the zone"),
+                      definition="Substation area, alternatively this can be obtained from the zone", cat=[PrpCat.TP]),
         GCProp(key="zone", units="", tpe=DeviceType.ZoneDevice,
-                      definition="Substation area"),
+                      definition="Substation area", cat=[PrpCat.TP]),
         GCProp(key="country", units="", tpe=DeviceType.CountryDevice,
-                      definition="Substation country, altenativelly this can be obtained from the community"),
+                      definition="Substation country, alternatively this can be obtained from the community", cat=[PrpCat.TP]),
         GCProp(key="community", units="", tpe=DeviceType.CommunityDevice,
-                      definition="Substation community, altenativelly this can be obtained from the region"),
+                      definition="Substation community, alternatively this can be obtained from the region", cat=[PrpCat.TP]),
         GCProp(key="region", units="", tpe=DeviceType.RegionDevice,
-                      definition="Substation region, altenativelly this can be obtained from the municipality"),
+                      definition="Substation region, alternatively this can be obtained from the municipality", cat=[PrpCat.TP]),
         GCProp(key="municipality", units="", tpe=DeviceType.MunicipalityDevice,
-                      definition="Substation municipality"),
+                      definition="Substation municipality", cat=[PrpCat.TP]),
         GCProp(key="address", units="", tpe=str,
-                      definition="Substation address"),
+                      definition="Substation address", cat=[PrpCat.TP]),
         GCProp(key="irradiation", units="W/m^2", tpe=float,
                       definition="Substation solar irradiation",
-                      profile_name="irradiation_prof"),
+                      profile_name="irradiation_prof", cat=[PrpCat.TP]),
         GCProp(key="temperature", units="ºC", tpe=float,
                       definition="Substation temperature",
-                      profile_name="temperature_prof"),
+                      profile_name="temperature_prof", cat=[PrpCat.TP]),
         GCProp(key="wind_speed", units="m/s", tpe=float,
                       definition="Substation wind speed at 80m above the ground",
-                      profile_name="wind_speed_prof"),
+                      profile_name="wind_speed_prof", cat=[PrpCat.TP]),
         GCProp(key="terrain_roughness", units="", tpe=float,
                       definition="This value is ised for wind speed extrapolation.\n"
                                  "Typical values:\n"

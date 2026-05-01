@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 from typing import Tuple, Union
 from numpy import sqrt
-from VeraGridEngine.enumerations import TapChangerTypes, WindingType
+from VeraGridEngine.enumerations import TapChangerTypes, WindingType, PrpCat
 from VeraGridEngine.Devices.Parents.editable_device import DeviceType, GCProp
 from VeraGridEngine.Devices.Parents.dynamic_parent import DynamicDevice
 from VeraGridEngine.Devices.Branches.tap_changer import TapChanger
@@ -30,31 +30,31 @@ class TransformerType(DynamicDevice):
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
-        GCProp(key='HV', units='kV', tpe=float, definition='Nominal voltage al the high voltage side'),
-        GCProp(key='LV', units='kV', tpe=float, definition='Nominal voltage al the low voltage side'),
-        GCProp(key='Sn', units='MVA', tpe=float, definition='Nominal power', old_names=['rating']),
-        GCProp(key='Pcu', units='kW', tpe=float, definition='Copper losses'),
-        GCProp(key='Pfe', units='kW', tpe=float, definition='Iron losses'),
-        GCProp(key='I0', units='%', tpe=float, definition='No-load current'),
-        GCProp(key='Vsc', units='%', tpe=float, definition='Short-circuit voltage'),
-        GCProp(key='capex', units='currency', tpe=float, definition='Capital expenditure'),
-        GCProp(key='opex', units='currency/MWh', tpe=float, definition='Operational expenditure'),
-        GCProp(key='tc_type', units='', tpe=TapChangerTypes, definition='Regulation type'),
-        GCProp(key='total_positions', units='', tpe=int, definition='Number of tap positions'),
-        GCProp(key='dV', units='p.u.', tpe=float, definition='Voltage increment per step'),
-        GCProp(key='neutral_position', units='', tpe=int, definition='neutral position counting from zero'),
-        GCProp(key='asymmetry_angle', units='deg', tpe=float, definition='Asymmetry_angle'),
+        GCProp(key='HV', units='kV', tpe=float, definition='Nominal voltage al the high voltage side', cat=[PrpCat.PF]),
+        GCProp(key='LV', units='kV', tpe=float, definition='Nominal voltage al the low voltage side', cat=[PrpCat.PF]),
+        GCProp(key='Sn', units='MVA', tpe=float, definition='Nominal power', old_names=['rating'], cat=[PrpCat.PF]),
+        GCProp(key='Pcu', units='kW', tpe=float, definition='Copper losses', cat=[PrpCat.PF]),
+        GCProp(key='Pfe', units='kW', tpe=float, definition='Iron losses', cat=[PrpCat.PF]),
+        GCProp(key='I0', units='%', tpe=float, definition='No-load current', cat=[PrpCat.PF]),
+        GCProp(key='Vsc', units='%', tpe=float, definition='Short-circuit voltage', cat=[PrpCat.PF]),
+        GCProp(key='capex', units='currency', tpe=float, definition='Capital expenditure', cat=[PrpCat.PF]),
+        GCProp(key='opex', units='currency/MWh', tpe=float, definition='Operational expenditure', cat=[PrpCat.PF]),
+        GCProp(key='tc_type', units='', tpe=TapChangerTypes, definition='Regulation type', cat=[PrpCat.PF]),
+        GCProp(key='total_positions', units='', tpe=int, definition='Number of tap positions', cat=[PrpCat.PF]),
+        GCProp(key='dV', units='p.u.', tpe=float, definition='Voltage increment per step', cat=[PrpCat.PF]),
+        GCProp(key='neutral_position', units='', tpe=int, definition='neutral position counting from zero', cat=[PrpCat.PF]),
+        GCProp(key='asymmetry_angle', units='deg', tpe=float, definition='Asymmetry_angle', cat=[PrpCat.PF]),
         GCProp(key='conn_hv', units='', tpe=WindingType,
-               definition='Winding 3 phase connection at the from side'),
+               definition='Winding 3 phase connection at the from side', cat=[PrpCat.PF]),
         GCProp(key='conn_lv', units='', tpe=WindingType,
-               definition='Winding 3 phase connection at the to side'),
+               definition='Winding 3 phase connection at the to side', cat=[PrpCat.PF]),
         GCProp(key='vector_group_number', units='', tpe=int,
                definition='Vector group number. It indicates the structural phase:'
-                          'phase = vector_group_number · 30º'),
-        GCProp(key='tap_module_min', units='p.u.', tpe=float, definition='Min tap module', editable=False),
-        GCProp(key='tap_module_max', units='p.u.', tpe=float, definition='Max tap module', editable=False),
-        GCProp(key='tap_phase_min', units='rad', tpe=float, definition='Min tap phase', editable=False),
-        GCProp(key='tap_phase_max', units='rad', tpe=float, definition='Max tap phase', editable=False),
+                          'phase = vector_group_number · 30º', cat=[PrpCat.PF]),
+        GCProp(key='tap_module_min', units='p.u.', tpe=float, definition='Min tap module', editable=False, cat=[PrpCat.PF]),
+        GCProp(key='tap_module_max', units='p.u.', tpe=float, definition='Max tap module', editable=False, cat=[PrpCat.PF]),
+        GCProp(key='tap_phase_min', units='rad', tpe=float, definition='Min tap phase', editable=False, cat=[PrpCat.PF]),
+        GCProp(key='tap_phase_max', units='rad', tpe=float, definition='Max tap phase', editable=False, cat=[PrpCat.PF]),
     )
 
     def __init__(self,
