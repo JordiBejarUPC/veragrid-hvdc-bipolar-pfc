@@ -28,8 +28,10 @@ from VeraGrid.Gui.Analysis.object_plot_analysis import object_histogram_analysis
 from VeraGrid.Gui.messages import yes_no_question, warning_msg, info_msg
 from VeraGrid.Gui.Main.SubClasses.Model.diagrams import DiagramsMain
 from VeraGrid.Gui.DeviceEditors.LineEditor.line_device_editor import LineDeviceEditorDialog
+from VeraGrid.Gui.DeviceEditors.DcLineEditor.dc_line_device_editor import DcLineDeviceEditorDialog
 from VeraGrid.Gui.DeviceEditors.LoadDesigner.load_device_editor import LoadDeviceEditorDialog
 from VeraGrid.Gui.DeviceEditors.GeneratorEditor.generator_editor import GeneratorEditorDialog
+from VeraGrid.Gui.DeviceEditors.VscEditor.vsc_device_editor import VscDeviceEditorDialog
 from VeraGrid.Gui.DeviceEditors.TowerBuilder.LineBuilderDialogue import TowerBuilderGUI
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_manager import open_dynamic_editor
 from VeraGrid.Gui.FmuTemplateEditor.fmu_template_editor import FmuTemplateEditorDialog
@@ -985,6 +987,16 @@ class DataBaseTableMain(DiagramsMain):
                     elif elm_type == DeviceType.LineDevice.value:
                         dlg = LineDeviceEditorDialog(api_object=elm, circuit=self.circuit)
                         dlg.exec()
+
+                    elif elm_type == DeviceType.DCLineDevice.value:
+                        dlg = DcLineDeviceEditorDialog(api_object=elm, circuit=self.circuit)
+                        if dlg.exec():
+                            pass
+
+                    elif elm_type == DeviceType.VscDevice.value:
+                        dlg = VscDeviceEditorDialog(api_object=elm, circuit=self.circuit)
+                        if dlg.exec():
+                            pass
 
                     elif elm_type == DeviceType.Transformer2WDevice.value:
                         dlg = TransformerDeviceEditorDialog(api_object=elm, circuit=self.circuit)

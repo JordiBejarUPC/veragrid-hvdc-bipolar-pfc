@@ -7,6 +7,7 @@ from VeraGrid.Gui.DeviceEditors.ControllableShuntEditor.controllable_shunt_devic
     ControllableShuntDeviceEditorDialog,
 )
 from VeraGrid.Gui.DeviceEditors.DcLineEditor.dc_line_editor import DcLineEditor
+from VeraGrid.Gui.DeviceEditors.DcLineEditor.dc_line_device_editor import DcLineDeviceEditor, DcLineDeviceEditorDialog
 from VeraGrid.Gui.DeviceEditors.GeneratorEditor.generator_editor import GeneratorEditor, GeneratorEditorDialog, GeneratorQCurveEditor
 from VeraGrid.Gui.DeviceEditors.LineEditor.line_editor import LineEditor
 from VeraGrid.Gui.DeviceEditors.LineEditor.line_device_editor import LineDeviceEditor, LineDeviceEditorDialog
@@ -22,6 +23,7 @@ from VeraGrid.Gui.DeviceEditors.TransformerEditor.transformer_device_editor impo
     TransformerDeviceEditor,
     TransformerDeviceEditorDialog,
 )
+from VeraGrid.Gui.DeviceEditors.VscEditor.vsc_device_editor import VscDeviceEditor, VscDeviceEditorDialog
 
 __all__ = [
     "ControllableShuntEditor",
@@ -29,6 +31,8 @@ __all__ = [
     "ControllableShuntDeviceEditor",
     "ControllableShuntDeviceEditorDialog",
     "DcLineEditor",
+    "DcLineDeviceEditor",
+    "DcLineDeviceEditorDialog",
     "GeneratorEditor",
     "GeneratorEditorDialog",
     "GeneratorQCurveEditor",
@@ -44,4 +48,6 @@ __all__ = [
     "TransformerEditor",
     "TransformerDeviceEditor",
     "TransformerDeviceEditorDialog",
+    "VscDeviceEditor",
+    "VscDeviceEditorDialog",
 ]
