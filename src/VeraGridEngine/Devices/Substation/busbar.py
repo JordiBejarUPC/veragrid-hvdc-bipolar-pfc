@@ -17,8 +17,12 @@ class BusBar(PhysicalDevice):
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
-        GCProp(key="voltage_level", tpe=DeviceType.BusDevice,
-                      definition="Voltage level of this BusBar", cat=[PrpCat.TP]),
+        GCProp(
+            prop_name="voltage_level",
+            tpe=DeviceType.BusDevice,
+            definition="Voltage level of this BusBar",
+            cat=[PrpCat.TP],
+        ),
     )
 
     def __init__(self,

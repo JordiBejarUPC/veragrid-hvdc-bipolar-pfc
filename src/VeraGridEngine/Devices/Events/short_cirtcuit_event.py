@@ -25,15 +25,50 @@ class ShortCircuitEvent(PointerDeviceParent):
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
-        GCProp(key='fault_type', units='', tpe=FaultType, definition='Type of short circuit', cat=[PrpCat.REL]),
-        GCProp(key='method', units='', tpe=MethodShortCircuit, definition='Method of short circuit', cat=[PrpCat.REL]),
-        GCProp(key='phases', units='', tpe=PhasesShortCircuit, definition='Phases involved', cat=[PrpCat.REL]),
-        GCProp(key='active', units='', tpe=bool,
-               definition='If true the short-circuit activates when calculated, otherwise is deactivated.', cat=[PrpCat.REL]),
-        GCProp(key='r_fault', units='p.u.', tpe=float,
-               definition='Resistance of the fault.This is used for short circuit studies.', profile_name='', cat=[PrpCat.REL]),
-        GCProp(key='x_fault', units='p.u.', tpe=float,
-               definition='Reactance of the fault.This is used for short circuit studies.', profile_name='', cat=[PrpCat.REL]),
+        GCProp(
+            prop_name='fault_type',
+            units='',
+            tpe=FaultType,
+            definition='Type of short circuit',
+            cat=[PrpCat.REL],
+        ),
+        GCProp(
+            prop_name='method',
+            units='',
+            tpe=MethodShortCircuit,
+            definition='Method of short circuit',
+            cat=[PrpCat.REL],
+        ),
+        GCProp(
+            prop_name='phases',
+            units='',
+            tpe=PhasesShortCircuit,
+            definition='Phases involved',
+            cat=[PrpCat.REL],
+        ),
+        GCProp(
+            prop_name='active',
+            units='',
+            tpe=bool,
+            definition='If true the short-circuit activates when calculated, otherwise is deactivated.',
+            cat=[PrpCat.REL],
+        ),
+        GCProp(
+            prop_name='r_fault',
+            units='p.u.',
+            tpe=float,
+            definition='Resistance of the fault.This is used for short circuit studies.',
+            profile_name='',
+            cat=[PrpCat.REL],
+        ),
+        GCProp(
+            prop_name='x_fault',
+            units='p.u.',
+            tpe=float,
+            definition='Reactance of the fault.This is used for short circuit studies.',
+            profile_name='',
+            cat=[PrpCat.REL],
+        ),
     )
 
     def __init__(self,

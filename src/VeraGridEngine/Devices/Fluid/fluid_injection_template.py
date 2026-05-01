@@ -28,16 +28,52 @@ class FluidInjectionTemplate(PhysicalDevice):
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
-        GCProp(key='active', units='', tpe=bool, definition='Is the load active?', profile_name='active_prof', cat=[PrpCat.OPF]),
-        GCProp(key='efficiency', units="MWh/m3", tpe=float,
-                      definition="Power plant energy production per fluid unit", cat=[PrpCat.OPF]),
-        GCProp(key='max_flow_rate', units="m3/s", tpe=float, definition="maximum fluid flow", cat=[PrpCat.OPF]),
-        GCProp(key='plant', units="", tpe=DeviceType.FluidNodeDevice, definition="Connection reservoir/node",
-                      editable=False, cat=[PrpCat.OPF]),
-        GCProp(key='generator', units="", tpe=DeviceType.GeneratorDevice, definition="Electrical machine",
-                      editable=False, cat=[PrpCat.OPF]),
-        GCProp(key='facility', units='', tpe=DeviceType.FacilityDevice,
-                      definition='Facility where this is located', editable=True, cat=[PrpCat.OPF]),
+        GCProp(
+            prop_name='active',
+            units='',
+            tpe=bool,
+            definition='Is the load active?',
+            profile_name='active_prof',
+            cat=[PrpCat.OPF],
+        ),
+        GCProp(
+            prop_name='efficiency',
+            units="MWh/m3",
+            tpe=float,
+            definition="Power plant energy production per fluid unit",
+            cat=[PrpCat.OPF],
+        ),
+        GCProp(
+            prop_name='max_flow_rate',
+            units="m3/s",
+            tpe=float,
+            definition="maximum fluid flow",
+            cat=[PrpCat.OPF],
+        ),
+        GCProp(
+            prop_name='plant',
+            units="",
+            tpe=DeviceType.FluidNodeDevice,
+            definition="Connection reservoir/node",
+            editable=False,
+            cat=[PrpCat.OPF],
+        ),
+        GCProp(
+            prop_name='generator',
+            units="",
+            tpe=DeviceType.GeneratorDevice,
+            definition="Electrical machine",
+            editable=False,
+            cat=[PrpCat.OPF],
+        ),
+        GCProp(
+            prop_name='facility',
+            units='',
+            tpe=DeviceType.FacilityDevice,
+            definition='Facility where this is located',
+            editable=True,
+            cat=[PrpCat.OPF],
+        ),
     )
 
     def __init__(self,

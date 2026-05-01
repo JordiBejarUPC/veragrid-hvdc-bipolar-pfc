@@ -14,8 +14,21 @@ class BranchGroup(EditableDevice):
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
-        GCProp(key='group_type', units='', tpe=BranchGroupTypes, definition=f'Type of branch group', cat=[PrpCat.TP]),
-        GCProp(key='color', units='', tpe=str, definition='Color to paint', is_color=True, cat=[PrpCat.TP]),
+        GCProp(
+            prop_name='group_type',
+            units='',
+            tpe=BranchGroupTypes,
+            definition=f'Type of branch group',
+            cat=[PrpCat.TP],
+        ),
+        GCProp(
+            prop_name='color',
+            units='',
+            tpe=str,
+            definition='Color to paint',
+            is_color=True,
+            cat=[PrpCat.TP],
+        ),
     )
 
     def __init__(self,

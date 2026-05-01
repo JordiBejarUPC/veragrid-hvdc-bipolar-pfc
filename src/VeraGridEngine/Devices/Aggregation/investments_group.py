@@ -19,10 +19,26 @@ class InvestmentsGroup(EditableDevice):
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
-        GCProp(key='category', units='', tpe=str, definition='Some tag to category the investment group', cat=[PrpCat.INV]),
-        GCProp(key='discount_rate', units='%', tpe=float, definition='Investment group discount rate', cat=[PrpCat.INV]),
-        GCProp(key='CAPEX', units='€', tpe=float,
-                      definition="Capital Expenditure of the group (added to the individual investments' capex)"),
+        GCProp(
+            prop_name='category',
+            units='',
+            tpe=str,
+            definition='Some tag to category the investment group',
+            cat=[PrpCat.INV],
+        ),
+        GCProp(
+            prop_name='discount_rate',
+            units='%',
+            tpe=float,
+            definition='Investment group discount rate',
+            cat=[PrpCat.INV],
+        ),
+        GCProp(
+            prop_name='CAPEX',
+            units='€',
+            tpe=float,
+            definition="Capital Expenditure of the group (added to the individual investments' capex)",
+        ),
     )
 
     def __init__(self,

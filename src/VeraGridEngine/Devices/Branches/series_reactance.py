@@ -27,24 +27,56 @@ class SeriesReactance(BranchParent):
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
-        GCProp(key='R', units='p.u.', tpe=float, definition='Total positive sequence resistance.', cat=[PrpCat.PF]),
-        GCProp(key='X', units='p.u.', tpe=float, definition='Total positive sequence reactance.', cat=[PrpCat.PF]),
-        GCProp(key='R0', units='p.u.', tpe=float, definition='Total zero sequence resistance.', cat=[PrpCat.PF]),
-        GCProp(key='X0', units='p.u.', tpe=float, definition='Total zero sequence reactance.', cat=[PrpCat.PF]),
-        GCProp(key='R2', units='p.u.', tpe=float, definition='Total negative sequence resistance.', cat=[PrpCat.PF]),
-        GCProp(key='X2', units='p.u.', tpe=float, definition='Total negative sequence reactance.', cat=[PrpCat.PF]),
-        GCProp(key='tolerance', units='%', tpe=float,
-                      definition='Tolerance expected for the impedance values % is expected '
-                                 'for transformers0% for lines.', cat=[PrpCat.PF]),
-        GCProp(key='r_fault', units='p.u.', tpe=float,
-                      definition='Resistance of the mid-line fault.Used in short circuit studies.', cat=[PrpCat.PF]),
-        GCProp(key='x_fault', units='p.u.', tpe=float,
-                      definition='Reactance of the mid-line fault.Used in short circuit studies.', cat=[PrpCat.PF]),
-        GCProp(key='fault_pos', units='p.u.', tpe=float,
-                      definition='Per-unit positioning of the fault:'
-                                 '0 would be at the "from" side,'
-                                 '1 would be at the "to" side,'
-                                 'therefore 0.5 is at the middle.', cat=[PrpCat.PF]),
+        GCProp(
+            prop_name='R',
+            units='p.u.',
+            tpe=float,
+            definition='Total positive sequence resistance.',
+            cat=[PrpCat.PF],
+        ),
+        GCProp(
+            prop_name='X',
+            units='p.u.',
+            tpe=float,
+            definition='Total positive sequence reactance.',
+            cat=[PrpCat.PF],
+        ),
+        GCProp(
+            prop_name='R0',
+            units='p.u.',
+            tpe=float,
+            definition='Total zero sequence resistance.',
+            cat=[PrpCat.SC, PrpCat.PF3],
+        ),
+        GCProp(
+            prop_name='X0',
+            units='p.u.',
+            tpe=float,
+            definition='Total zero sequence reactance.',
+            cat=[PrpCat.SC, PrpCat.PF3],
+        ),
+        GCProp(
+            prop_name='R2',
+            units='p.u.',
+            tpe=float,
+            definition='Total negative sequence resistance.',
+            cat=[PrpCat.SC, PrpCat.PF3],
+        ),
+        GCProp(
+            prop_name='X2',
+            units='p.u.',
+            tpe=float,
+            definition='Total negative sequence reactance.',
+            cat=[PrpCat.SC, PrpCat.PF3],
+        ),
+        GCProp(
+            prop_name='tolerance',
+            units='%',
+            tpe=float,
+            definition='Tolerance expected for the impedance values % is expected '
+                                 'for transformers0% for lines.',
+            cat=[PrpCat.PF],
+        ),
     )
 
     def __init__(self,

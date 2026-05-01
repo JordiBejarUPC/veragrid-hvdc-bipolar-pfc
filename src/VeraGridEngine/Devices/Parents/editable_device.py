@@ -480,15 +480,51 @@ class EditableDevice(metaclass=EditableDeviceMeta):
         '__auto_update_enabled',
     )
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
-        GCProp(key='idtag', units='', tpe=str, definition='Unique ID', editable=False),
-        GCProp(key='name', units='', tpe=str, definition='Name of the device.'),
-        GCProp(key='code', units='', tpe=str, definition='Secondary ID'),
-        GCProp(key='rdfid', units='', tpe=str, definition='RDF ID for further compatibility'),
-        GCProp(key='action', units='', tpe=ActionType,
-               definition='Object action to perform.\nOnly used for model merging.',
-               display=False),
-        GCProp(key='comment', units='', tpe=str, definition='User comment'),
-        GCProp(key='diff_changes', units='', tpe=SubObjectType.MergeInformation, display=False, editable=False)
+        GCProp(
+            prop_name='idtag',
+            units='',
+            tpe=str,
+            definition='Unique ID',
+            editable=False,
+        ),
+        GCProp(
+            prop_name='name',
+            units='',
+            tpe=str,
+            definition='Name of the device.',
+        ),
+        GCProp(
+            prop_name='code',
+            units='',
+            tpe=str,
+            definition='Secondary ID',
+        ),
+        GCProp(
+            prop_name='rdfid',
+            units='',
+            tpe=str,
+            definition='RDF ID for further compatibility',
+        ),
+        GCProp(
+            prop_name='action',
+            units='',
+            tpe=ActionType,
+            definition='Object action to perform.\nOnly used for model merging.',
+            display=False,
+        ),
+        GCProp(
+            prop_name='comment',
+            units='',
+            tpe=str,
+            definition='User comment',
+        ),
+        GCProp(
+            prop_name='diff_changes',
+            units='',
+            tpe=SubObjectType.MergeInformation,
+            display=False,
+            editable=False,
+        )
     )
     CLASS_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = tuple()
     CLASS_PROPERTY_LIST: Tuple[GCProp, ...] = tuple()

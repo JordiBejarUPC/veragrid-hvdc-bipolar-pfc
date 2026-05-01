@@ -17,8 +17,20 @@ class RemedialActionGroup(EditableDevice):
     __slots__ = ('category', '_conn_group')
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
-        GCProp(key='category', units='', tpe=str, definition='Some tag to category the contingency group', cat=[PrpCat.REL]),
-        GCProp(key='conn_group', units='', tpe=DeviceType.ContingencyGroupDevice, definition='Contingency group', cat=[PrpCat.REL]),
+        GCProp(
+            prop_name='category',
+            units='',
+            tpe=str,
+            definition='Some tag to category the contingency group',
+            cat=[PrpCat.REL],
+        ),
+        GCProp(
+            prop_name='conn_group',
+            units='',
+            tpe=DeviceType.ContingencyGroupDevice,
+            definition='Contingency group',
+            cat=[PrpCat.REL],
+        ),
     )
 
     def __init__(self,

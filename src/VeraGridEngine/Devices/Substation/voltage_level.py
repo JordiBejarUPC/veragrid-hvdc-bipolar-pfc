@@ -17,9 +17,19 @@ class VoltageLevel(PhysicalDevice):
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
-        GCProp(key='Vnom', units='kV', tpe=float, definition='Nominal voltage', cat=[PrpCat.TP]),
-        GCProp(key="substation", tpe=DeviceType.SubstationDevice,
-               definition="Substation of this Voltage level (optional)"),
+        GCProp(
+            prop_name='Vnom',
+            units='kV',
+            tpe=float,
+            definition='Nominal voltage',
+            cat=[PrpCat.TP],
+        ),
+        GCProp(
+            prop_name="substation",
+            tpe=DeviceType.SubstationDevice,
+            definition="Substation of this Voltage level (optional)",
+            cat=[PrpCat.TP],
+        ),
     )
 
     def __init__(self, name='VoltageLevel',

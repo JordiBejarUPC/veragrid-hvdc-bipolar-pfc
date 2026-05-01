@@ -42,14 +42,58 @@ class TransformerNW(PhysicalDevice):
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
-        GCProp(key="bus0", units="", tpe=DeviceType.BusDevice, definition="Middle point connection bus.",
-               editable=False, cat=[PrpCat.PF]),
-        GCProp("active", units="", tpe=bool, definition="Is active?", profile_name="active_prof", cat=[PrpCat.PF]),
-        GCProp(key="winding_count", units="", tpe=int, definition="Number of windings.", editable=False, cat=[PrpCat.PF]),
-        GCProp(key="Pfe", units="kW", tpe=float, definition="Iron loss", cat=[PrpCat.PF]),
-        GCProp(key="I0", units="%", tpe=float, definition="No-load current", cat=[PrpCat.PF]),
-        GCProp(key="x", units="px", tpe=float, definition="x position", cat=[PrpCat.PF]),
-        GCProp(key="y", units="px", tpe=float, definition="y position", cat=[PrpCat.PF]),
+        GCProp(
+            prop_name="bus0",
+            units="",
+            tpe=DeviceType.BusDevice,
+            definition="Middle point connection bus.",
+            editable=False,
+            cat=[PrpCat.TP],
+        ),
+        GCProp(
+            prop_name="active",
+            units="",
+            tpe=bool,
+            definition="Is active?",
+            profile_name="active_prof",
+            cat=[PrpCat.PF],
+        ),
+        GCProp(
+            prop_name="winding_count",
+            units="",
+            tpe=int,
+            definition="Number of windings.",
+            editable=False,
+            cat=[PrpCat.TP],
+        ),
+        GCProp(
+            prop_name="Pfe",
+            units="kW",
+            tpe=float,
+            definition="Iron loss",
+            cat=[PrpCat.PF],
+        ),
+        GCProp(
+            prop_name="I0",
+            units="%",
+            tpe=float,
+            definition="No-load current",
+            cat=[PrpCat.PF],
+        ),
+        GCProp(
+            prop_name="x",
+            units="px",
+            tpe=float,
+            definition="x position",
+            cat=[PrpCat.TP],
+        ),
+        GCProp(
+            prop_name="y",
+            units="px",
+            tpe=float,
+            definition="y position",
+            cat=[PrpCat.TP],
+        ),
     )
 
     def __init__(self,

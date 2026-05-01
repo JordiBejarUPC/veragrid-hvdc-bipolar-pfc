@@ -24,9 +24,27 @@ class DynamicPlotEntry(EditableDevice):
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
-        GCProp(key='variable', units='', tpe=SubObjectType.VarType, definition='parameter that the event changes', cat=[PrpCat.RMS]),
-        GCProp(key='plot', units='', tpe=DeviceType.DynamicPlotGroupDevice, definition='Plot group', cat=[PrpCat.RMS]),
-        GCProp(key='group', units='', tpe=DeviceType.RmsEventsGroupDevice, definition='RmsEvent group', cat=[PrpCat.RMS]),
+        GCProp(
+            prop_name='variable',
+            units='',
+            tpe=SubObjectType.VarType,
+            definition='parameter that the event changes',
+            cat=[PrpCat.RMS],
+        ),
+        GCProp(
+            prop_name='plot',
+            units='',
+            tpe=DeviceType.DynamicPlotGroupDevice,
+            definition='Plot group',
+            cat=[PrpCat.RMS],
+        ),
+        GCProp(
+            prop_name='group',
+            units='',
+            tpe=DeviceType.RmsEventsGroupDevice,
+            definition='RmsEvent group',
+            cat=[PrpCat.RMS],
+        ),
     )
 
     def __init__(self,

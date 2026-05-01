@@ -14,8 +14,13 @@ class Municipality(GenericAreaGroup):
     __slots__ = ('region',)
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
-        GCProp(key="region", units="", tpe=DeviceType.RegionDevice,
-                      definition="Substation region, alternatively this can be obtained from the municipality", cat=[PrpCat.TP]),
+        GCProp(
+            prop_name="region",
+            units="",
+            tpe=DeviceType.RegionDevice,
+            definition="Substation region, alternatively this can be obtained from the municipality",
+            cat=[PrpCat.TP],
+        ),
     )
 
     def __init__(self, name='Municipality', idtag: Union[str, None] = None, code='', latitude=0.0, longitude=0.0,

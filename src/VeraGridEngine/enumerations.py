@@ -1324,6 +1324,8 @@ class PrpCat(Enum):
     """
     All = 'All'
     PF = 'Power flow'
+    PF3 = 'Power flow (unbalanced)'
+    SC = "Short Circuit"
     OPF = 'Optimal Power flow'
     CON = "Contingencies"
     TP = 'Topology'

@@ -25,12 +25,35 @@ class ExternalGrid(LoadParent):
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
-        GCProp(key='mode', units='', tpe=ExternalGridMode,
-                      definition='Operation mode of the external grid (voltage or load)', cat=[PrpCat.PF]),
-        GCProp(key='substituted_device_id', units='', tpe=str,
-                      definition='idtag of the device that was substituted by this external grid equivalent'),
-        GCProp(key='Vm', units='p.u.', tpe=float, definition='Active power', profile_name='Vm_prof', cat=[PrpCat.PF]),
-        GCProp(key='Va', units='radians', tpe=float, definition='Reactive power', profile_name='Va_prof', cat=[PrpCat.PF]),
+        GCProp(
+            prop_name='mode',
+            units='',
+            tpe=ExternalGridMode,
+            definition='Operation mode of the external grid (voltage or load)',
+            cat=[PrpCat.PF],
+        ),
+        GCProp(
+            prop_name='substituted_device_id',
+            units='',
+            tpe=str,
+            definition='idtag of the device that was substituted by this external grid equivalent',
+        ),
+        GCProp(
+            prop_name='Vm',
+            units='p.u.',
+            tpe=float,
+            definition='Active power',
+            profile_name='Vm_prof',
+            cat=[PrpCat.PF],
+        ),
+        GCProp(
+            prop_name='Va',
+            units='radians',
+            tpe=float,
+            definition='Reactive power',
+            profile_name='Va_prof',
+            cat=[PrpCat.PF],
+        ),
     )
 
     def __init__(self, name='External grid', idtag=None, code='', active=True, substituted_device_id: str = '',

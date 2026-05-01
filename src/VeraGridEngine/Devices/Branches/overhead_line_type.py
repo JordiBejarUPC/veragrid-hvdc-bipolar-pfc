@@ -865,13 +865,50 @@ class OverheadLineType(DynamicDevice):
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
-        GCProp(key='earth_resistivity', units='Ohm/m3', tpe=float, definition='Earth resistivity', cat=[PrpCat.PF]),
-        GCProp(key='frequency', units='Hz', tpe=float, definition='Frequency', cat=[PrpCat.PF]),
-        GCProp(key='Vnom', units='kV', tpe=float, definition='Voltage rating of the line', cat=[PrpCat.PF]),
-        GCProp(key='wires_in_tower', units='', tpe=SubObjectType.ListOfWires,
-                      definition='List of wires', editable=False, display=False, cat=[PrpCat.PF]),
-        GCProp(key='capex', units='currency/km', tpe=float, definition='Capital expenditure per km', cat=[PrpCat.PF]),
-        GCProp(key='opex', units='currency/MWh', tpe=float, definition='Operational expenditure', cat=[PrpCat.PF]),
+        GCProp(
+            prop_name='earth_resistivity',
+            units='Ohm/m3',
+            tpe=float,
+            definition='Earth resistivity',
+            cat=[PrpCat.TP],
+        ),
+        GCProp(
+            prop_name='frequency',
+            units='Hz',
+            tpe=float,
+            definition='Frequency',
+            cat=[PrpCat.TP],
+        ),
+        GCProp(
+            prop_name='Vnom',
+            units='kV',
+            tpe=float,
+            definition='Voltage rating of the line',
+            cat=[PrpCat.TP],
+        ),
+        GCProp(
+            prop_name='wires_in_tower',
+            units='',
+            tpe=SubObjectType.ListOfWires,
+            definition='List of wires',
+            editable=False,
+            display=False,
+            cat=[PrpCat.TP],
+        ),
+        GCProp(
+            prop_name='capex',
+            units='currency/km',
+            tpe=float,
+            definition='Capital expenditure per km',
+            cat=[PrpCat.INV],
+        ),
+        GCProp(
+            prop_name='opex',
+            units='currency/MWh',
+            tpe=float,
+            definition='Operational expenditure',
+            cat=[PrpCat.INV],
+        ),
     )
 
     def __init__(self, name='Tower', idtag: str | None = None,

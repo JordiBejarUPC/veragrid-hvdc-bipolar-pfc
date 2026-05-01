@@ -14,8 +14,13 @@ class Region(GenericAreaGroup):
     __slots__ = ('community',)
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
-        GCProp(key="community", units="", tpe=DeviceType.CommunityDevice,
-                      definition="Substation community, altenativelly this can be obtained from the region", cat=[PrpCat.TP]),
+        GCProp(
+            prop_name="community",
+            units="",
+            tpe=DeviceType.CommunityDevice,
+            definition="Substation community, altenativelly this can be obtained from the region",
+            cat=[PrpCat.TP],
+        ),
     )
 
     def __init__(self, name='Region', idtag: Union[str, None] = None, code='', latitude=0.0, longitude=0.0,

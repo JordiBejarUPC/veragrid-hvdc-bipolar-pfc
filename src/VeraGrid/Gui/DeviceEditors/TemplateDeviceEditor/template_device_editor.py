@@ -313,6 +313,8 @@ class TemplateDeviceEditor(QtWidgets.QDialog):
                 PrpCat.All,
                 PrpCat.TP,
                 PrpCat.PF,
+                PrpCat.PF3,
+                PrpCat.SC,
                 PrpCat.OPF,
                 PrpCat.CON,
                 PrpCat.REL,

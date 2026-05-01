@@ -13,7 +13,13 @@ class Zone(GenericAreaGroup):
     __slots__ = ('area',)
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
-        GCProp(key="area", units="", tpe=DeviceType.AreaDevice, definition="Area of this zone.", cat=[PrpCat.TP]),
+        GCProp(
+            prop_name="area",
+            units="",
+            tpe=DeviceType.AreaDevice,
+            definition="Area of this zone.",
+            cat=[PrpCat.TP],
+        ),
     )
 
     def __init__(self, name='Zone',

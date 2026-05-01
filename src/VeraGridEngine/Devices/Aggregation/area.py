@@ -15,10 +15,30 @@ class GenericAreaGroup(EditableDevice):
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
-        GCProp(key='longitude', units='deg', tpe=float, definition='longitude.', profile_name='', cat=[PrpCat.TP]),
-        GCProp(key='latitude', units='deg', tpe=float, definition='latitude.', profile_name='', cat=[PrpCat.TP]),
-        GCProp(key='color', units='', tpe=str, definition='Color to paint the element in the map diagram',
-                      is_color=True, cat=[PrpCat.TP]),
+        GCProp(
+            prop_name='longitude',
+            units='deg',
+            tpe=float,
+            definition='longitude.',
+            profile_name='',
+            cat=[PrpCat.TP],
+        ),
+        GCProp(
+            prop_name='latitude',
+            units='deg',
+            tpe=float,
+            definition='latitude.',
+            profile_name='',
+            cat=[PrpCat.TP],
+        ),
+        GCProp(
+            prop_name='color',
+            units='',
+            tpe=str,
+            definition='Color to paint the element in the map diagram',
+            is_color=True,
+            cat=[PrpCat.TP],
+        ),
     )
 
     def __init__(self, name='', code='', idtag: Union[str, None] = None,

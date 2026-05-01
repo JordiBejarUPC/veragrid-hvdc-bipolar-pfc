@@ -26,19 +26,55 @@ class EmtEvent(PointerDeviceParent):
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
-        GCProp(key='parameter', units='', tpe=SubObjectType.VarType,
-                      definition='parameter that the event changes', cat=[PrpCat.EMT]),
-        GCProp(key='time', units='', tpe=float,
-                       definition='Time when the event occurs', cat=[PrpCat.EMT]),
-        GCProp(key='end_time', units='', tpe=float,
-                       definition='End time used by ramp events', cat=[PrpCat.EMT]),
-        GCProp(key='value', units='', tpe=float,
-                       definition='New value for the parameter', cat=[PrpCat.EMT]),
-        GCProp(key='group', units='', tpe=DeviceType.EmtEventsGroupDevice, definition='RmsEvent group', cat=[PrpCat.EMT]),
-        GCProp(key='force_step_alignment', units='', tpe=bool,
-               definition='Force step alignment', cat=[PrpCat.EMT]),
-        GCProp(key='transition_type', units='', tpe=DynamicEventTransitionType,
-               definition='Transition profile for the event', cat=[PrpCat.EMT]),
+        GCProp(
+            prop_name='parameter',
+            units='',
+            tpe=SubObjectType.VarType,
+            definition='parameter that the event changes',
+            cat=[PrpCat.EMT],
+        ),
+        GCProp(
+            prop_name='time',
+            units='',
+            tpe=float,
+            definition='Time when the event occurs',
+            cat=[PrpCat.EMT],
+        ),
+        GCProp(
+            prop_name='end_time',
+            units='',
+            tpe=float,
+            definition='End time used by ramp events',
+            cat=[PrpCat.EMT],
+        ),
+        GCProp(
+            prop_name='value',
+            units='',
+            tpe=float,
+            definition='New value for the parameter',
+            cat=[PrpCat.EMT],
+        ),
+        GCProp(
+            prop_name='group',
+            units='',
+            tpe=DeviceType.EmtEventsGroupDevice,
+            definition='RmsEvent group',
+            cat=[PrpCat.EMT],
+        ),
+        GCProp(
+            prop_name='force_step_alignment',
+            units='',
+            tpe=bool,
+            definition='Force step alignment',
+            cat=[PrpCat.EMT],
+        ),
+        GCProp(
+            prop_name='transition_type',
+            units='',
+            tpe=DynamicEventTransitionType,
+            definition='Transition profile for the event',
+            cat=[PrpCat.EMT],
+        ),
     )
 
     def __init__(self,

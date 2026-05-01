@@ -26,16 +26,48 @@ class Switch(BranchParent):
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
-        GCProp(key='R', units='pu', tpe=float, definition='Positive-sequence resistance', cat=[PrpCat.PF]),
-        GCProp(key='X', units='pu', tpe=float, definition='Positive-sequence reactance', cat=[PrpCat.PF]),
-        GCProp(key='retained', units="", tpe=bool,
-                      definition='Switch is retained', cat=[PrpCat.PF]),
-        GCProp(key='normal_open', units="", tpe=bool,
-                      definition='Normal position of the switch', cat=[PrpCat.PF]),
-        GCProp(key='rated_current', units="kA", tpe=float,
-                      definition='Rated current of the switch device.', cat=[PrpCat.PF]),
-        GCProp(key='graphic_type', units='', tpe=SwitchGraphicType,
-                      definition='Graphic to use in the schematic.', cat=[PrpCat.PF]),
+        GCProp(
+            prop_name='R',
+            units='pu',
+            tpe=float,
+            definition='Positive-sequence resistance',
+            cat=[PrpCat.PF],
+        ),
+        GCProp(
+            prop_name='X',
+            units='pu',
+            tpe=float,
+            definition='Positive-sequence reactance',
+            cat=[PrpCat.PF],
+        ),
+        GCProp(
+            prop_name='retained',
+            units="",
+            tpe=bool,
+            definition='Switch is retained',
+            cat=[PrpCat.TP],
+        ),
+        GCProp(
+            prop_name='normal_open',
+            units="",
+            tpe=bool,
+            definition='Normal position of the switch',
+            cat=[PrpCat.TP],
+        ),
+        GCProp(
+            prop_name='rated_current',
+            units="kA",
+            tpe=float,
+            definition='Rated current of the switch device.',
+            cat=[PrpCat.PF],
+        ),
+        GCProp(
+            prop_name='graphic_type',
+            units='',
+            tpe=SwitchGraphicType,
+            definition='Graphic to use in the schematic.',
+            cat=[PrpCat.All],
+        ),
     )
 
     def __init__(self,

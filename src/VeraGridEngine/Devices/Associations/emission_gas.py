@@ -19,9 +19,21 @@ class EmissionGas(EditableDevice):
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
-        GCProp(key='cost', units='e/t', tpe=float, definition='Cost of emissions (e / ton)',
-                      profile_name='cost_prof'),
-        GCProp(key='color', units='', tpe=str, definition='Color to paint', is_color=True, cat=[PrpCat.OPF]),
+        GCProp(
+            prop_name='cost',
+            units='e/t',
+            tpe=float,
+            definition='Cost of emissions (e / ton)',
+            profile_name='cost_prof',
+        ),
+        GCProp(
+            prop_name='color',
+            units='',
+            tpe=str,
+            definition='Color to paint',
+            is_color=True,
+            cat=[PrpCat.OPF],
+        ),
     )
 
     def __init__(self,

@@ -17,11 +17,27 @@ class RemedialAction(PointerDeviceParent):
     __slots__ = ('_prop', '_value', '_group')
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
-        GCProp(key='prop', units='', tpe=ContingencyOperationTypes,
-                      definition=f'Object property to change', cat=[PrpCat.REL]),
-        GCProp(key='value', units='', tpe=float, definition='Property value', cat=[PrpCat.REL]),
-        GCProp(key='group', units='', tpe=DeviceType.RemedialActionGroupDevice,
-                      definition='Remedial action group', cat=[PrpCat.REL]),
+        GCProp(
+            prop_name='prop',
+            units='',
+            tpe=ContingencyOperationTypes,
+            definition=f'Object property to change',
+            cat=[PrpCat.REL],
+        ),
+        GCProp(
+            prop_name='value',
+            units='',
+            tpe=float,
+            definition='Property value',
+            cat=[PrpCat.REL],
+        ),
+        GCProp(
+            prop_name='group',
+            units='',
+            tpe=DeviceType.RemedialActionGroupDevice,
+            definition='Remedial action group',
+            cat=[PrpCat.REL],
+        ),
     )
 
     def __init__(self,
