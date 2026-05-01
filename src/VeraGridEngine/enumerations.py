@@ -1325,6 +1325,7 @@ class PrpCat(Enum):
     All = 'All'
     PF = 'Power flow'
     OPF = 'Optimal Power flow'
+    CON = "Contingencies"
     TP = 'Topology'
     REL = 'Reliability'
     NTC = 'Net Transfer Capacity'

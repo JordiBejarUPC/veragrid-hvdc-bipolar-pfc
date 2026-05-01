@@ -8,7 +8,7 @@ from typing import Union, Tuple
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
-from VeraGridEngine.enumerations import DeviceType, BuildStatus
+from VeraGridEngine.enumerations import DeviceType, BuildStatus, PrpCat
 from VeraGridEngine.Devices.Parents.load_parent import InjectionParent
 from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
 from VeraGridEngine.Devices.Profiles import ProfileFloat
@@ -40,28 +40,28 @@ class CurrentInjection(InjectionParent):
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
         GCProp(key='Ir', units='MW', tpe=float,
                       definition='Active power of the current component at V=1.0 p.u.',
-                      profile_name='Ir_prof'),
+                      profile_name='Ir_prof', cat=[PrpCat.PF]),
         GCProp(key='Ir1', units='MW', tpe=float,
                       definition='Active power of the current component at V=1.0 p.u.',
-                      profile_name='Ir1_prof'),
+                      profile_name='Ir1_prof', cat=[PrpCat.PF]),
         GCProp(key='Ir2', units='MW', tpe=float,
                       definition='Active power of the current component at V=1.0 p.u.',
-                      profile_name='Ir2_prof'),
+                      profile_name='Ir2_prof', cat=[PrpCat.PF]),
         GCProp(key='Ir3', units='MW', tpe=float,
                       definition='Active power of the current component at V=1.0 p.u.',
-                      profile_name='Ir3_prof'),
+                      profile_name='Ir3_prof', cat=[PrpCat.PF]),
         GCProp(key='Ii', units='MVAr', tpe=float,
                       definition='Reactive power of the current component at V=1.0 p.u.',
-                      profile_name='Ii_prof'),
+                      profile_name='Ii_prof', cat=[PrpCat.PF]),
         GCProp(key='Ii1', units='MVAr', tpe=float,
                       definition='Reactive power of the current component at V=1.0 p.u.',
-                      profile_name='Ii1_prof'),
+                      profile_name='Ii1_prof', cat=[PrpCat.PF]),
         GCProp(key='Ii2', units='MVAr', tpe=float,
                       definition='Reactive power of the current component at V=1.0 p.u.',
-                      profile_name='Ii2_prof'),
+                      profile_name='Ii2_prof', cat=[PrpCat.PF]),
         GCProp(key='Ii3', units='MVAr', tpe=float,
                       definition='Reactive power of the current component at V=1.0 p.u.',
-                      profile_name='Ii3_prof'),
+                      profile_name='Ii3_prof', cat=[PrpCat.PF]),
     )
 
     def __init__(self, name='CurrentInjection', idtag=None, code='', Ir=0.0, Ii=0.0, Cost=1200.0,

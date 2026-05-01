@@ -7,7 +7,7 @@ from __future__ import annotations
 from typing import Union, Tuple
 import numpy as np
 
-from VeraGridEngine.enumerations import DeviceType, BuildStatus, SubObjectType, ShuntControlMode
+from VeraGridEngine.enumerations import DeviceType, BuildStatus, SubObjectType, ShuntControlMode, PrpCat
 from VeraGridEngine.Devices.Parents.shunt_parent import ShuntParent
 from VeraGridEngine.Devices.Profiles import ProfileFloat, ProfileInt
 from VeraGridEngine.Devices.Substation.bus import Bus
@@ -41,32 +41,34 @@ class ControllableShunt(ShuntParent):
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
-        GCProp(key='control_mode', units='', tpe=ShuntControlMode, definition='Shunt control mode'),
-        GCProp(key='control_bus', units='', tpe=DeviceType.BusDevice, definition='Alternative control bus'),
+        GCProp(key='control_mode', units='', tpe=ShuntControlMode, definition='Shunt control mode',
+               cat=[PrpCat.PF]),
+        GCProp(key='control_bus', units='', tpe=DeviceType.BusDevice, definition='Alternative control bus',
+               cat=[PrpCat.PF]),
         GCProp(key='g_steps', units='MW@v=1p.u.', tpe=SubObjectType.Array,
-               definition='Conductance steps', editable=False),
+               definition='Conductance steps', editable=False, cat=[PrpCat.PF]),
         GCProp(key='b_steps', units='MVAr@v=1p.u.', tpe=SubObjectType.Array,
-               definition='Susceptance steps', editable=False),
+               definition='Susceptance steps', editable=False, cat=[PrpCat.PF]),
         GCProp(key='Gmax', units='MW', tpe=float,
-               definition='Maximum conductance', editable=True),
+               definition='Maximum conductance', editable=True, cat=[PrpCat.PF]),
         GCProp(key='Gmin', units='MW', tpe=float,
-               definition='Minimum conductance', editable=True),
+               definition='Minimum conductance', editable=True, cat=[PrpCat.PF]),
         GCProp(key='Bmax', units='MVAr', tpe=float,
-               definition='Maximum susceptance', editable=True),
+               definition='Maximum susceptance', editable=True, cat=[PrpCat.PF]),
         GCProp(key='Bmin', units='MVAr', tpe=float,
-               definition='Minimum susceptance', editable=True),
+               definition='Minimum susceptance', editable=True, cat=[PrpCat.PF]),
         GCProp(key='active_steps', units='', tpe=SubObjectType.Array,
-               definition='steps active?', editable=False),
+               definition='steps active?', editable=False, cat=[PrpCat.PF]),
         GCProp(key='step', units='', tpe=int,
                definition='Device step position (0~N-1)',
-               profile_name='step_prof'),
+               profile_name='step_prof', cat=[PrpCat.PF]),
         GCProp(key='Vmin', units='p.u.', tpe=float,
-               definition='Lower range voltage value when regulating with Discrete mode'),
+               definition='Lower range voltage value when regulating with Discrete mode', cat=[PrpCat.PF]),
         GCProp(key='Vset', units='p.u.', tpe=float,
                definition='Set voltage. This is used for controlled shunts.',
-               profile_name='Vset_prof'),
+               profile_name='Vset_prof', cat=[PrpCat.PF]),
         GCProp(key='Vmax', units='p.u.', tpe=float,
-               definition='Upper range voltage value when regulating with Discrete mode.'),
+               definition='Upper range voltage value when regulating with Discrete mode.', cat=[PrpCat.PF]),
     )
 
     def __init__(self,
