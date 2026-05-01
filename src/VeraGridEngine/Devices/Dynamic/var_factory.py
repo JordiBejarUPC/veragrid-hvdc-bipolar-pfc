@@ -244,15 +244,35 @@ class VarFactory(EditableDevice):
 
             # Older persisted symbolic models may not store the power-flow
             # reference field, so keep loading those files by defaulting to None.
-            ref_data: Any = data.get("power_flow_reference", None)
-            key_ref: VarPowerFlowRefferenceType | None
 
-            if ref_data is not None:
-                key_ref = VarPowerFlowRefferenceType(ref_data)
+            ref_data_dict: Any = data["reference"]
+            ref_data_name = ref_data_dict["name"]
+            ref_data_uid = ref_data_dict["uid"]
+            key_ref: SharedVarReferenceType | None
+
+            if ref_data_name is not None and ref_data_uid is not None:
+
+                key_ref = SharedVarReferenceType(ref_data_name, ref_data_uid)
+                if key_ref is not None:
+                    self._references_dict[ref_data_name] = key_ref
             else:
                 key_ref = None
 
-            obj = Var(name=data["name"], uid=data["uid"], power_flow_reference=key_ref)
+            ref_power_flow_data: Any = data.get("power_flow_reference", None)
+            key_power_flow_ref: VarPowerFlowRefferenceType | None
+
+            if ref_power_flow_data is not None:
+                key_power_flow_ref = VarPowerFlowRefferenceType(ref_power_flow_data)
+            else:
+                key_power_flow_ref = None
+
+            obj = Var(name=data["name"], uid=data["uid"], reference=key_ref, power_flow_reference=key_power_flow_ref)
+            if ref_data_uid is not None:
+                if self._vars_references_dict:
+                    self._vars_references_dict[ref_data_uid].append(obj)
+                else:
+                    self._vars_references_dict[ref_data_uid] = list()
+                    self._vars_references_dict[ref_data_uid].append(obj)
 
             # at this point we can store the object
             obj_dict[obj.uid] = obj
@@ -289,11 +309,24 @@ class VarFactory(EditableDevice):
 
             # Older persisted symbolic models may not store the power-flow
             # reference field on differential variables either.
-            reference: VarPowerFlowRefferenceType | None = data.get("ref", None)
+
+            ref_data_dict: Any = data["reference"]
+            ref_data_name = ref_data_dict["name"]
+            ref_data_uid = ref_data_dict["uid"]
+            key_ref: SharedVarReferenceType | None
+
+            if ref_data_name is not None and ref_data_uid is not None:
+
+                key_ref = SharedVarReferenceType(ref_data_name, ref_data_uid)
+            else:
+                key_ref = None
+
+            reference_power_flow: VarPowerFlowRefferenceType | None = data.get("ref", None)
             obj = Var(name=data["name"],
                       uid=data["uid"],
                       base_var=base_var,
-                      reference=reference)
+                      reference = key_ref,
+                      power_flow_reference=reference_power_flow)
 
             # at this point we can store the object
             obj_dict[obj.uid] = obj

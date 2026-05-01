@@ -629,7 +629,7 @@ def get_exciter_rms(vfactory: VarFactory, name: str = "exciter") -> RmsModelTemp
     #                                    variables
     # ______________________________________________________________________________________
 
-    Vf = vfactory.add_var("Vf")
+    Vf = vfactory.add_var("Vf", reference='vf_reference')
     Efe = vfactory.add_var('Efe')
     UsRefPu = vfactory.add_var(name="UsRefPu")  # reference voltage (pu)
 

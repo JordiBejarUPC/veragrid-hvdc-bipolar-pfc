@@ -48,7 +48,7 @@ def symbolic_objects_to_dict(obj_dict: Dict[int, Var | Const | Var]) -> List[Dic
                         "name": expr.name,
                         "uid": expr.uid,
                         "base_var": expr.base_var.uid,
-                        "ref": expr.ref.uid if expr.ref is not None else None,
+                        "ref": {expr.ref.uid if expr.ref is not None else None,
                         "power_flow_reference": expr.power_flow_reference if expr.power_flow_reference is not None else None,
                     })
                 else:
