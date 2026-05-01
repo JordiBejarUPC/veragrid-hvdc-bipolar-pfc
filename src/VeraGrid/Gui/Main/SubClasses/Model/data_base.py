@@ -21,7 +21,7 @@ import VeraGrid.Gui.gui_functions as gf
 from VeraGrid.Gui.object_model import ObjectsModel
 from VeraGrid.Gui.object_proxy_model import ObjectModelFilterProxy
 from VeraGrid.Gui.profiles_model import ProfilesModel
-from VeraGridEngine.enumerations import DeviceType, DynamicSimulationMode, TimeSeriesSearchPoint
+from VeraGridEngine.enumerations import DeviceType, DynamicSimulationMode, TimeSeriesSearchPoint, PrpCat
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Topology.detect_substations import detect_substations, detect_facilities
 from VeraGrid.Gui.Analysis.object_plot_analysis import object_histogram_analysis
@@ -81,6 +81,22 @@ class DataBaseTableMain(DiagramsMain):
 
         self.ui.smart_search_lineEdit.setPlaceholderText("Type the object name or a smart filter expression ...")
 
+        self.prop_filter_dict, prop_filter_mdl = gf.enums_to_model(
+            [
+                PrpCat.All,
+                PrpCat.TP,
+                PrpCat.PF,
+                PrpCat.OPF,
+                PrpCat.CON,
+                PrpCat.REL,
+                PrpCat.NTC,
+                PrpCat.INV,
+                PrpCat.RMS,
+                PrpCat.EMT,
+            ]
+        )
+        self.ui.dbFilterComboBox.setModel(prop_filter_mdl)
+
         # Buttons
         self.ui.filter_pushButton.clicked.connect(self.objects_smart_search)
         self.ui.delete_selected_objects_pushButton.clicked.connect(self.delete_selected_db_table_objects)
@@ -117,6 +133,7 @@ class DataBaseTableMain(DiagramsMain):
 
         # combobox change
         self.ui.associationsComboBox.currentTextChanged.connect(self.on_associations_combo_box_change)
+        self.ui.dbFilterComboBox.currentTextChanged.connect(self.view_objects_data)
 
     def setup_objects_tree(self):
         """
@@ -150,12 +167,17 @@ class DataBaseTableMain(DiagramsMain):
         """
         template_elm, dictionary_of_lists = self.circuit.get_dictionary_of_lists(elm_type=elm_type)
 
-        mdl = ObjectsModel(objects=elements,
-                           property_list=list(template_elm.property_list),
-                           time_index=self.get_db_slider_index(),
-                           parent=self.ui.dataStructureTableView,
-                           editable=True,
-                           dictionary_of_lists=dictionary_of_lists)
+        filter_prop = self.prop_filter_dict[self.ui.dbFilterComboBox.currentText()]
+
+        mdl = ObjectsModel(
+            objects=elements,
+            property_list=list(template_elm.property_list),
+            time_index=self.get_db_slider_index(),
+            parent=self.ui.dataStructureTableView,
+            editable=True,
+            dictionary_of_lists=dictionary_of_lists,
+            properties_filter=filter_prop
+        )
 
         return mdl
 
