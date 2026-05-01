@@ -19,11 +19,13 @@ from VeraGrid.Gui.Widgets.matplotlibwidget import MatplotlibWidget
 from VeraGrid.Gui.messages import warning_msg
 from VeraGrid.Gui.object_model import ObjectsModel
 from VeraGrid.Gui.table_view_header_wrap import HeaderViewWithWordWrap
+import VeraGrid.Gui.gui_functions as gf
 from VeraGridEngine.Devices.Associations.association import Associations
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, GCProp
 from VeraGridEngine.Devices.Profiles import AnyProfile
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
-from VeraGridEngine.enumerations import DeviceType
+from VeraGridEngine.enumerations import DeviceType, PrpCat
+
 
 
 def parse_profile_cell_value(value: object, tpe: type) -> tuple[bool, object]:
@@ -306,6 +308,22 @@ class TemplateDeviceEditor(QtWidgets.QDialog):
         self.ui.setupUi(self)
         self.setWindowTitle("Device editor")
 
+        self.prop_filter_dict, prop_filter_mdl = gf.enums_to_model(
+            [
+                PrpCat.All,
+                PrpCat.TP,
+                PrpCat.PF,
+                PrpCat.OPF,
+                PrpCat.CON,
+                PrpCat.REL,
+                PrpCat.NTC,
+                PrpCat.INV,
+                PrpCat.RMS,
+                PrpCat.EMT,
+            ]
+        )
+        self.ui.filterComboBox.setModel(prop_filter_mdl)
+
         # Keep explicit references to the relevant widgets used by the controller.
         self.tab_widget: QtWidgets.QTabWidget = self.ui.tab_widget
 
@@ -336,7 +354,6 @@ class TemplateDeviceEditor(QtWidgets.QDialog):
         self.associations_units_title_label: QtWidgets.QLabel = self.ui.associations_units_title_label
         self.associations_units_value_label: QtWidgets.QLabel = self.ui.associations_units_value_label
         self.associations_table_view: QtWidgets.QTableView = self.ui.associations_table_view
-        self.button_box: QtWidgets.QDialogButtonBox = self.ui.button_box
 
         # UI post-configuration.
         self.properties_table_view.setAlternatingRowColors(True)
@@ -357,7 +374,7 @@ class TemplateDeviceEditor(QtWidgets.QDialog):
         self.profiles_plot_selected_button.setText("")
 
         # Build and bind the snapshot/time-step table model.
-        self.properties_model: ObjectsModel = self._build_properties_model()
+        self.properties_model: ObjectsModel = self.build_properties_model()
         self.properties_table_view.setModel(self.properties_model)
         self.properties_table_view.horizontalHeader().setStretchLastSection(True)
         self.properties_table_view.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Stretch)
@@ -391,11 +408,12 @@ class TemplateDeviceEditor(QtWidgets.QDialog):
         self.time_step_slider.setValue(-1)
 
         self.time_step_slider.valueChanged.connect(self.on_time_step_changed)
-        self.button_box.rejected.connect(self.close)
         self.profiles_copy_button.clicked.connect(self.copy_profiles_selection_to_clipboard)
         self.profiles_paste_button.clicked.connect(self.paste_profiles_from_clipboard)
         self.profiles_plot_selected_button.clicked.connect(self.plot_selected_profiles_grouped_by_units)
         self.associations_combo_box.currentTextChanged.connect(self.on_association_property_changed)
+
+        self.ui.filterComboBox.currentIndexChanged.connect(self.refresh_model)
 
         self.profiles_shortcuts: list[QtGui.QShortcut] = list()
         self._install_profiles_shortcuts()
@@ -415,7 +433,7 @@ class TemplateDeviceEditor(QtWidgets.QDialog):
         else:
             return dict()
 
-    def _build_properties_model(self) -> ObjectsModel:
+    def build_properties_model(self) -> ObjectsModel:
         """
         Build the snapshot/time-step properties model.
 
@@ -423,6 +441,7 @@ class TemplateDeviceEditor(QtWidgets.QDialog):
         """
         delegate_dictionary: dict[DeviceType, list[object]] = self._build_delegate_dictionary()
         property_list: list[GCProp] = list(self.api_object.property_list)
+        filter_prop = self.prop_filter_dict[self.ui.filterComboBox.currentText()]
         model: ObjectsModel = ObjectsModel(
             objects=[self.api_object],
             property_list=property_list,
@@ -431,22 +450,21 @@ class TemplateDeviceEditor(QtWidgets.QDialog):
             editable=True,
             transposed=True,
             dictionary_of_lists=delegate_dictionary,
+            properties_filter=filter_prop
         )
 
-        # Without circuit context there is no foreign-key lookup list, so lock these rows.
-        if self.circuit is None:
-            for prop in model.property_list:
-                if isinstance(prop.tpe, DeviceType):
-                    if prop.name in model.non_editable_attributes:
-                        pass
-                    else:
-                        model.non_editable_attributes.append(prop.name)
-                else:
-                    pass
-        else:
-            pass
-
         return model
+
+    def refresh_model(self):
+        """
+        Function to call when the filter changes
+        """
+        self.properties_model: ObjectsModel = self.build_properties_model()
+        self.properties_table_view.setModel(self.properties_model)
+        self.properties_table_view.horizontalHeader().setStretchLastSection(True)
+        self.properties_table_view.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Stretch)
+        self.properties_table_view.verticalHeader().setSectionResizeMode(
+            QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
 
     def _get_profile_properties(self) -> list[GCProp]:
         """

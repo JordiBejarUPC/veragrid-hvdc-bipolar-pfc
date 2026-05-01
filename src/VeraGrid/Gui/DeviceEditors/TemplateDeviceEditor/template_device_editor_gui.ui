@@ -6,17 +6,36 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1180</width>
-    <height>780</height>
+    <width>623</width>
+    <height>600</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Device editor</string>
   </property>
   <layout class="QVBoxLayout" name="main_layout">
+   <property name="leftMargin">
+    <number>6</number>
+   </property>
+   <property name="topMargin">
+    <number>6</number>
+   </property>
+   <property name="rightMargin">
+    <number>6</number>
+   </property>
+   <property name="bottomMargin">
+    <number>6</number>
+   </property>
    <item>
     <widget class="QTabWidget" name="tab_widget">
+     <property name="currentIndex">
+      <number>0</number>
+     </property>
      <widget class="QWidget" name="properties_tab">
+      <attribute name="icon">
+       <iconset resource="../../Icons/icons.qrc">
+        <normaloff>:/Icons/icons/data.png</normaloff>:/Icons/icons/data.png</iconset>
+      </attribute>
       <attribute name="title">
        <string>Properties</string>
       </attribute>
@@ -24,12 +43,54 @@
        <item>
         <widget class="QFrame" name="time_controls_frame">
          <property name="frameShape">
-          <enum>QFrame::StyledPanel</enum>
+          <enum>QFrame::Shape::NoFrame</enum>
          </property>
          <property name="frameShadow">
-          <enum>QFrame::Raised</enum>
+          <enum>QFrame::Shadow::Plain</enum>
          </property>
          <layout class="QHBoxLayout" name="time_controls_layout">
+          <item>
+           <spacer name="horizontalSpacer">
+            <property name="orientation">
+             <enum>Qt::Orientation::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
+           <widget class="QLabel" name="label">
+            <property name="text">
+             <string>Filter</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="filterComboBox"/>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QTableView" name="properties_table_view">
+         <property name="frameShape">
+          <enum>QFrame::Shape::NoFrame</enum>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QFrame" name="frame">
+         <property name="frameShape">
+          <enum>QFrame::Shape::NoFrame</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Shadow::Raised</enum>
+         </property>
+         <layout class="QHBoxLayout" name="horizontalLayout">
           <item>
            <widget class="QLabel" name="time_step_title_label">
             <property name="text">
@@ -40,7 +101,7 @@
           <item>
            <widget class="QSlider" name="time_step_slider">
             <property name="orientation">
-             <enum>Qt::Horizontal</enum>
+             <enum>Qt::Orientation::Horizontal</enum>
             </property>
            </widget>
           </item>
@@ -60,12 +121,13 @@
          </layout>
         </widget>
        </item>
-       <item>
-        <widget class="QTableView" name="properties_table_view"/>
-       </item>
       </layout>
      </widget>
      <widget class="QWidget" name="profiles_tab">
+      <attribute name="icon">
+       <iconset resource="../../Icons/icons.qrc">
+        <normaloff>:/Icons/icons/array.png</normaloff>:/Icons/icons/array.png</iconset>
+      </attribute>
       <attribute name="title">
        <string>Profiles</string>
       </attribute>
@@ -73,16 +135,20 @@
        <item>
         <widget class="QFrame" name="profiles_tools_frame">
          <property name="frameShape">
-          <enum>QFrame::StyledPanel</enum>
+          <enum>QFrame::Shape::NoFrame</enum>
          </property>
          <property name="frameShadow">
-          <enum>QFrame::Raised</enum>
+          <enum>QFrame::Shadow::Raised</enum>
          </property>
          <layout class="QHBoxLayout" name="profiles_tools_layout">
           <item>
            <widget class="QPushButton" name="profiles_copy_button">
             <property name="text">
              <string/>
+            </property>
+            <property name="icon">
+             <iconset resource="../../Icons/icons.qrc">
+              <normaloff>:/Icons/icons/copy.png</normaloff>:/Icons/icons/copy.png</iconset>
             </property>
            </widget>
           </item>
@@ -91,6 +157,10 @@
             <property name="text">
              <string/>
             </property>
+            <property name="icon">
+             <iconset resource="../../Icons/icons.qrc">
+              <normaloff>:/Icons/icons/paste.png</normaloff>:/Icons/icons/paste.png</iconset>
+            </property>
            </widget>
           </item>
           <item>
@@ -98,12 +168,16 @@
             <property name="text">
              <string/>
             </property>
+            <property name="icon">
+             <iconset resource="../../Icons/icons.qrc">
+              <normaloff>:/Icons/icons/plot.png</normaloff>:/Icons/icons/plot.png</iconset>
+            </property>
            </widget>
           </item>
           <item>
            <spacer name="profiles_spacer">
             <property name="orientation">
-             <enum>Qt::Horizontal</enum>
+             <enum>Qt::Orientation::Horizontal</enum>
             </property>
             <property name="sizeHint" stdset="0">
              <size>
@@ -117,11 +191,19 @@
         </widget>
        </item>
        <item>
-        <widget class="QTableView" name="profiles_table_view"/>
+        <widget class="QTableView" name="profiles_table_view">
+         <property name="frameShape">
+          <enum>QFrame::Shape::NoFrame</enum>
+         </property>
+        </widget>
        </item>
       </layout>
      </widget>
      <widget class="QWidget" name="associations_tab">
+      <attribute name="icon">
+       <iconset resource="../../Icons/icons.qrc">
+        <normaloff>:/Icons/icons/associations.png</normaloff>:/Icons/icons/associations.png</iconset>
+      </attribute>
       <attribute name="title">
        <string>Associations</string>
       </attribute>
@@ -129,10 +211,10 @@
        <item>
         <widget class="QFrame" name="associations_controls_frame">
          <property name="frameShape">
-          <enum>QFrame::StyledPanel</enum>
+          <enum>QFrame::Shape::NoFrame</enum>
          </property>
          <property name="frameShadow">
-          <enum>QFrame::Raised</enum>
+          <enum>QFrame::Shadow::Raised</enum>
          </property>
          <layout class="QHBoxLayout" name="associations_controls_layout">
           <item>
@@ -175,7 +257,7 @@
           <item>
            <spacer name="associations_spacer">
             <property name="orientation">
-             <enum>Qt::Horizontal</enum>
+             <enum>Qt::Orientation::Horizontal</enum>
             </property>
             <property name="sizeHint" stdset="0">
              <size>
@@ -189,21 +271,20 @@
         </widget>
        </item>
        <item>
-        <widget class="QTableView" name="associations_table_view"/>
+        <widget class="QTableView" name="associations_table_view">
+         <property name="frameShape">
+          <enum>QFrame::Shape::NoFrame</enum>
+         </property>
+        </widget>
        </item>
       </layout>
      </widget>
     </widget>
    </item>
-   <item>
-    <widget class="QDialogButtonBox" name="button_box">
-     <property name="standardButtons">
-      <set>QDialogButtonBox::Close</set>
-     </property>
-    </widget>
-   </item>
   </layout>
  </widget>
- <resources/>
+ <resources>
+  <include location="../../Icons/icons.qrc"/>
+ </resources>
  <connections/>
 </ui>
