@@ -51,9 +51,31 @@ from VeraGridEngine.Templates.BasicBlockCatalog.lookup_array_runtime_templates i
 from VeraGridEngine.Templates.BasicBlockCatalog.lookup_array_runtime_templates import build_lookup_array_spline_runtime_template
 from VeraGridEngine.Templates.BasicBlockCatalog.lookup_array_runtime_templates import build_lookup_matrix_spline_runtime_template
 from VeraGridEngine.Templates.Emt.load_exponential_emt_template import get_exponential_load_emt
+from VeraGridEngine.Templates.Emt.dc_source_emt_template import get_controlled_dc_current_source_emt_template
+from VeraGridEngine.Templates.Emt.dc_source_emt_template import get_controlled_dc_voltage_source_emt_template
+from VeraGridEngine.Templates.Emt.dc_source_emt_template import get_dc_current_source_emt_template
+from VeraGridEngine.Templates.Emt.dc_source_emt_template import get_dc_voltage_source_emt_template
+from VeraGridEngine.Templates.Emt.balanced_source_emt_template import get_balanced_3ph_current_source_emt_template
+from VeraGridEngine.Templates.Emt.balanced_source_emt_template import get_balanced_3ph_voltage_source_emt_template
+from VeraGridEngine.Templates.Emt.balanced_source_emt_template import get_controlled_balanced_3ph_current_source_emt_template
+from VeraGridEngine.Templates.Emt.balanced_source_emt_template import get_controlled_balanced_3ph_voltage_source_emt_template
+from VeraGridEngine.Templates.Emt.arbitrary_source_emt_template import get_arbitrary_waveform_current_source_emt_template
+from VeraGridEngine.Templates.Emt.arbitrary_source_emt_template import get_arbitrary_waveform_voltage_source_emt_template
+from VeraGridEngine.Templates.Emt.transient_source_emt_template import get_cigre_surge_current_source_emt_template
+from VeraGridEngine.Templates.Emt.transient_source_emt_template import get_double_exponential_current_source_emt_template
+from VeraGridEngine.Templates.Emt.transient_source_emt_template import get_heidler_current_source_emt_template
+from VeraGridEngine.Templates.Emt.transient_source_emt_template import get_ramp_current_source_emt_template
+from VeraGridEngine.Templates.Emt.transient_source_emt_template import get_ramp_voltage_source_emt_template
+from VeraGridEngine.Templates.Emt.transient_source_emt_template import get_step_current_source_emt_template
+from VeraGridEngine.Templates.Emt.transient_source_emt_template import get_step_voltage_source_emt_template
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_grounding_link_emt_template
 from VeraGridEngine.Templates.Emt.nonlinear_resistor_emt_template import get_nonlinear_resistor_emt_template
+from VeraGridEngine.Templates.Emt.source_emt_template import get_controlled_current_source_emt_template
+from VeraGridEngine.Templates.Emt.source_emt_template import get_controlled_voltage_source_emt_template
+from VeraGridEngine.Templates.Emt.source_emt_template import get_current_source_emt_template
+from VeraGridEngine.Templates.Emt.source_emt_template import get_voltage_source_emt_template
 from VeraGridEngine.Templates.Emt.switch_emt_template import get_switch_emt_template
+from VeraGridEngine.Templates.Emt.induction_motor_emt_template import get_induction_motor_emt_template
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_rlc_combo_emt_template
 from VeraGridEngine.Templates.Emt.load_zip_emt_template import get_load_ZIP_emt_template
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
@@ -65,9 +87,19 @@ from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import LookupArrayLinea
 from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import LookupMatrixLinearDialog
 from VeraGrid.Gui.DynamicModelEditor.grounding_link_emt_dialog import GroundingLinkEmtDialog
 from VeraGrid.Gui.DynamicModelEditor.jmarti_line_emt_dialog import JMartiLineEmtDialog
+from VeraGrid.Gui.DynamicModelEditor.induction_motor_emt_dialog import InductionMotorEmtDialog
+from VeraGrid.Gui.DynamicModelEditor.induction_motor_emt_dialog import InductionMotorEmtLevel
+from VeraGrid.Gui.DynamicModelEditor.induction_motor_emt_dialog import coerce_induction_motor_emt_level
+from VeraGrid.Gui.DynamicModelEditor.induction_motor_emt_dialog import get_induction_motor_emt_level_label
+from VeraGrid.Gui.DynamicModelEditor.induction_motor_emt_dialog import get_induction_motor_emt_template_level
 from VeraGrid.Gui.DynamicModelEditor.load_topology_emt_dialog import LoadTopologyEmtDialog
 from VeraGrid.Gui.DynamicModelEditor.rlc_combo_emt_dialog import RlcComboEmtDialog
 from VeraGrid.Gui.DynamicModelEditor.shunt_component_emt_dialog import ShuntComponentEmtDialog
+from VeraGrid.Gui.DynamicModelEditor.arbitrary_source_emt_dialog import ArbitrarySourceEmtDialog
+from VeraGrid.Gui.DynamicModelEditor.balanced_source_emt_dialog import BalancedSourceEmtDialog
+from VeraGrid.Gui.DynamicModelEditor.dc_source_emt_dialog import DcSourceEmtDialog
+from VeraGrid.Gui.DynamicModelEditor.transient_source_emt_dialog import TransientSourceEmtDialog
+from VeraGrid.Gui.DynamicModelEditor.source_emt_dialog import SourceEmtDialog
 from VeraGrid.Gui.DynamicModelEditor.transformer_topology_emt_dialog import TransformerTopologyEmtDialog
 from VeraGrid.Gui.DynamicModelEditor.switch_emt_dialog import SwitchEmtDialog
 from VeraGrid.Gui.Icons.icon_associations import device_type_icons
@@ -218,6 +250,82 @@ def _is_load_topology_block_type(block_type: BlockType) -> bool:
     :return: Boolean state.
     """
     return block_type in {BlockType.EXP_LOAD_EMT, BlockType.ZIP_LOAD_EMT}
+
+
+def _is_source_emt_block_type(block_type: BlockType) -> bool:
+    """
+    Return whether one block type uses the EMT source modal.
+
+    :param block_type: Candidate block type.
+    :return: Boolean state.
+    """
+    return block_type in {
+        BlockType.VOLTAGE_SOURCE_EMT,
+        BlockType.CURRENT_SOURCE_EMT,
+        BlockType.CONTROLLED_VOLTAGE_SOURCE_EMT,
+        BlockType.CONTROLLED_CURRENT_SOURCE_EMT,
+    }
+
+
+def _is_dc_source_emt_block_type(block_type: BlockType) -> bool:
+    """
+    Return whether one block type uses the EMT DC source modal.
+
+    :param block_type: Candidate block type.
+    :return: Boolean state.
+    """
+    return block_type in {
+        BlockType.DC_VOLTAGE_SOURCE_EMT,
+        BlockType.DC_CURRENT_SOURCE_EMT,
+        BlockType.CONTROLLED_DC_VOLTAGE_SOURCE_EMT,
+        BlockType.CONTROLLED_DC_CURRENT_SOURCE_EMT,
+    }
+
+
+def _is_balanced_source_emt_block_type(block_type: BlockType) -> bool:
+    """
+    Return whether one block type uses the balanced EMT source modal.
+
+    :param block_type: Candidate block type.
+    :return: Boolean state.
+    """
+    return block_type in {
+        BlockType.BALANCED_3PH_VOLTAGE_SOURCE_EMT,
+        BlockType.BALANCED_3PH_CURRENT_SOURCE_EMT,
+        BlockType.CONTROLLED_BALANCED_3PH_VOLTAGE_SOURCE_EMT,
+        BlockType.CONTROLLED_BALANCED_3PH_CURRENT_SOURCE_EMT,
+    }
+
+
+def _is_arbitrary_source_emt_block_type(block_type: BlockType) -> bool:
+    """
+    Return whether one block type uses the arbitrary-waveform EMT source modal.
+
+    :param block_type: Candidate block type.
+    :return: Boolean state.
+    """
+    return block_type in {
+        BlockType.ARBITRARY_WAVEFORM_VOLTAGE_SOURCE_EMT,
+        BlockType.ARBITRARY_WAVEFORM_CURRENT_SOURCE_EMT,
+    }
+
+
+def _is_transient_source_emt_block_type(block_type: BlockType) -> bool:
+    """
+    Return whether one block type uses the transient EMT source modal.
+
+    :param block_type: Candidate block type.
+    :return: Boolean state.
+    """
+    return block_type in {
+        BlockType.STEP_VOLTAGE_SOURCE_EMT,
+        BlockType.STEP_CURRENT_SOURCE_EMT,
+        BlockType.RAMP_VOLTAGE_SOURCE_EMT,
+        BlockType.RAMP_CURRENT_SOURCE_EMT,
+        BlockType.DOUBLE_EXPONENTIAL_CURRENT_SOURCE_EMT,
+        BlockType.HEIDLER_CURRENT_SOURCE_EMT,
+        BlockType.CIGRE_SURGE_CURRENT_SOURCE_EMT,
+    }
 
 
 def get_modal_template_metadata(block: Block | None) -> tuple[str | None, Dict[str, Any] | None]:
@@ -3372,6 +3480,7 @@ class BlockItem(QGraphicsRectItem):
         self.resize_handle: ResizeHandle | None = None
         self.resizing_from_handle: bool = False
         self.subsys: Block | None = None
+        self.editor_window: DynamicBlockEditorGUI | None = None
         self.name_item: QGraphicsTextItem | None = None
         self.inputs: List[PortItem] = list()
         self.outputs: List[PortItem] = list()
@@ -3406,6 +3515,22 @@ class BlockItem(QGraphicsRectItem):
 
         """
         print("clicking")
+        if self.subsys is None:
+            return
+        else:
+            pass
+
+        if self.editor_window is None:
+            self.editor_window = DynamicBlockEditorGUI(
+                var_factory=self.var_factory,
+                block=self.subsys,
+                api_object=self.api_object,
+                mode=self.mode,
+                modal=False,
+            )
+        else:
+            pass
+
         self.editor_window.show()
 
 
@@ -4436,6 +4561,27 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         common_emt_device_blocks: List[LibraryLeafSpec] = list([
             LibraryLeafSpec("Generic", BlockType.GENERIC),
+            LibraryLeafSpec("Voltage source EMT", BlockType.VOLTAGE_SOURCE_EMT),
+            LibraryLeafSpec("Current source EMT", BlockType.CURRENT_SOURCE_EMT),
+            LibraryLeafSpec("Controlled voltage source EMT", BlockType.CONTROLLED_VOLTAGE_SOURCE_EMT),
+            LibraryLeafSpec("Controlled current source EMT", BlockType.CONTROLLED_CURRENT_SOURCE_EMT),
+            LibraryLeafSpec("DC voltage source EMT", BlockType.DC_VOLTAGE_SOURCE_EMT),
+            LibraryLeafSpec("DC current source EMT", BlockType.DC_CURRENT_SOURCE_EMT),
+            LibraryLeafSpec("Controlled DC voltage source EMT", BlockType.CONTROLLED_DC_VOLTAGE_SOURCE_EMT),
+            LibraryLeafSpec("Controlled DC current source EMT", BlockType.CONTROLLED_DC_CURRENT_SOURCE_EMT),
+            LibraryLeafSpec("Balanced 3-phase voltage source EMT", BlockType.BALANCED_3PH_VOLTAGE_SOURCE_EMT),
+            LibraryLeafSpec("Balanced 3-phase current source EMT", BlockType.BALANCED_3PH_CURRENT_SOURCE_EMT),
+            LibraryLeafSpec("Controlled balanced 3-phase voltage source EMT", BlockType.CONTROLLED_BALANCED_3PH_VOLTAGE_SOURCE_EMT),
+            LibraryLeafSpec("Controlled balanced 3-phase current source EMT", BlockType.CONTROLLED_BALANCED_3PH_CURRENT_SOURCE_EMT),
+            LibraryLeafSpec("Arbitrary waveform voltage source EMT", BlockType.ARBITRARY_WAVEFORM_VOLTAGE_SOURCE_EMT),
+            LibraryLeafSpec("Arbitrary waveform current source EMT", BlockType.ARBITRARY_WAVEFORM_CURRENT_SOURCE_EMT),
+            LibraryLeafSpec("Step voltage source EMT", BlockType.STEP_VOLTAGE_SOURCE_EMT),
+            LibraryLeafSpec("Step current source EMT", BlockType.STEP_CURRENT_SOURCE_EMT),
+            LibraryLeafSpec("Ramp voltage source EMT", BlockType.RAMP_VOLTAGE_SOURCE_EMT),
+            LibraryLeafSpec("Ramp current source EMT", BlockType.RAMP_CURRENT_SOURCE_EMT),
+            LibraryLeafSpec("Double exponential current source EMT", BlockType.DOUBLE_EXPONENTIAL_CURRENT_SOURCE_EMT),
+            LibraryLeafSpec("Heidler current source EMT", BlockType.HEIDLER_CURRENT_SOURCE_EMT),
+            LibraryLeafSpec("CIGRE surge current source EMT", BlockType.CIGRE_SURGE_CURRENT_SOURCE_EMT),
             LibraryLeafSpec("Switch EMT", BlockType.SWITCH_EMT),
             LibraryLeafSpec("Ground EMT", BlockType.GROUND_EMT),
             LibraryLeafSpec("Grounding Link EMT", BlockType.GROUNDING_LINK_EMT),
@@ -4444,8 +4590,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             LibraryLeafSpec("R load", BlockType.R_LOAD_EMT),
             LibraryLeafSpec("L load", BlockType.L_LOAD_EMT),
             LibraryLeafSpec("C load", BlockType.C_LOAD_EMT),
-            LibraryLeafSpec("Exponential load", BlockType.EXP_LOAD_EMT),
-            LibraryLeafSpec("ZIP load", BlockType.ZIP_LOAD_EMT),
             LibraryLeafSpec("DC load", BlockType.DC_LOAD_EMT),
         ])
 
@@ -4475,14 +4619,28 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 LibraryLeafSpec("Governor", BlockType.GOV_EMT),
                 LibraryLeafSpec("Stabilizer", BlockType.STAB_EMT),
                 LibraryLeafSpec("Exciter", BlockType.EXCITER_EMT),
+                LibraryLeafSpec("PV power plant", BlockType.PV_POWER_PLANT_EMT),
+                LibraryLeafSpec("PV ", BlockType.PV_EMT),
+            ],
+            DeviceType.BatteryDevice: [
+                LibraryLeafSpec("BESS ", BlockType.BESS_EMT),
+                LibraryLeafSpec("Battery ", BlockType.BATTERY_EMT),
             ],
             DeviceType.LineDevice: [
                 LibraryLeafSpec("Emt pi line", BlockType.EMT_PI_LINE),
                 LibraryLeafSpec("Emt Bergeron line", BlockType.EMT_BERGERON_LINE),
                 LibraryLeafSpec("Emt JMarti line", BlockType.EMT_JMARTI_LINE),
             ],
-            DeviceType.LoadDevice: list(),
+            DeviceType.LoadDevice: [ # the other types of loads already appear in common emt device blocks
+                LibraryLeafSpec("Exponential load", BlockType.EXP_LOAD_EMT),
+                LibraryLeafSpec("ZIP load", BlockType.ZIP_LOAD_EMT),
+                LibraryLeafSpec("Induction motor", BlockType.INDUCTION_MOTOR_EMT)
+            ],
             DeviceType.Transformer2WDevice: [
+                LibraryLeafSpec("Transformer", BlockType.TRAFO_EMT),
+                LibraryLeafSpec("XFMR Transformer", BlockType.XFMR_TRANSFORMER),
+            ],
+            DeviceType.Transformer3WDevice: [
                 LibraryLeafSpec("Transformer", BlockType.TRAFO_EMT),
                 LibraryLeafSpec("XFMR Transformer", BlockType.XFMR_TRANSFORMER),
             ],
@@ -4963,6 +5121,930 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 return None
         else:
             return None
+
+    @staticmethod
+    def _build_default_source_emt_modal_config(block_type: BlockType,
+                                               phase_n: bool = False,
+                                               phase_a: bool = True,
+                                               phase_b: bool = True,
+                                               phase_c: bool = True) -> Dict[str, Any]:
+        """
+        Build one default persisted configuration for one EMT source modal.
+
+        :param block_type: Source block type.
+        :param phase_n: Whether neutral is active.
+        :param phase_a: Whether phase A is active.
+        :param phase_b: Whether phase B is active.
+        :param phase_c: Whether phase C is active.
+        :return: Default source configuration.
+        """
+        return dict({
+            "block_type": block_type.name,
+            "phase_n": bool(phase_n),
+            "phase_a": bool(phase_a),
+            "phase_b": bool(phase_b),
+            "phase_c": bool(phase_c),
+            "source_frequency_hz": 50.0,
+            "source_phase_amplitudes": dict({"N": 0.0, "A": 1.0, "B": 1.0, "C": 1.0}),
+            "source_phase_angle_deg": dict({"N": 0.0, "A": 0.0, "B": -120.0, "C": 120.0}),
+            "source_phase_offsets": dict({"N": 0.0, "A": 0.0, "B": 0.0, "C": 0.0}),
+            "source_conductance_value": 100.0,
+        })
+
+    @staticmethod
+    def _extract_source_emt_phase_tuple(modal_config: Dict[str, Any]) -> tuple[bool, bool, bool, bool]:
+        """
+        Return the ordered phase tuple stored in one EMT source modal configuration.
+
+        :param modal_config: Persisted source modal configuration.
+        :return: ``(phase_n, phase_a, phase_b, phase_c)``.
+        """
+        return (
+            bool(modal_config.get("phase_n", False)),
+            bool(modal_config.get("phase_a", True)),
+            bool(modal_config.get("phase_b", True)),
+            bool(modal_config.get("phase_c", True)),
+        )
+
+    @staticmethod
+    def _build_source_emt_modal_tooltip(modal_config: Dict[str, Any]) -> str:
+        """
+        Build one compact tooltip for one EMT source block.
+
+        :param modal_config: Persisted source modal configuration.
+        :return: Tooltip text.
+        """
+        active_labels: List[str] = list()
+        source_phase_amplitudes: Dict[str, Any] = dict(modal_config.get("source_phase_amplitudes", dict()))
+        source_phase_angle_deg: Dict[str, Any] = dict(modal_config.get("source_phase_angle_deg", dict()))
+        source_phase_offsets: Dict[str, Any] = dict(modal_config.get("source_phase_offsets", dict()))
+
+        if bool(modal_config.get("phase_n", False)):
+            active_labels.append("N")
+        if bool(modal_config.get("phase_a", False)):
+            active_labels.append("A")
+        if bool(modal_config.get("phase_b", False)):
+            active_labels.append("B")
+        if bool(modal_config.get("phase_c", False)):
+            active_labels.append("C")
+
+        tooltip_lines: List[str] = [str(modal_config.get("block_type", "EMT source"))]
+        tooltip_lines.append(f"Phases: {', '.join(active_labels)}")
+        tooltip_lines.append(f"f={float(modal_config.get('source_frequency_hz', 0.0)):.4g} Hz")
+
+        if str(modal_config.get("block_type", "")) in {
+            BlockType.VOLTAGE_SOURCE_EMT.name,
+            BlockType.CURRENT_SOURCE_EMT.name,
+        }:
+            tooltip_lines.append(
+                "Amplitudes: "
+                + ", ".join(
+                    f"{phase_label}={float(source_phase_amplitudes.get(phase_label, 0.0)):.4g}"
+                    for phase_label in active_labels
+                )
+            )
+        else:
+            tooltip_lines.append("Amplitude controlled by command inputs")
+
+        tooltip_lines.append(
+            "Phase [deg]: "
+            + ", ".join(
+                f"{phase_label}={float(source_phase_angle_deg.get(phase_label, 0.0)):.4g}"
+                for phase_label in active_labels
+            )
+        )
+        tooltip_lines.append(
+            "Offset: "
+            + ", ".join(
+                f"{phase_label}={float(source_phase_offsets.get(phase_label, 0.0)):.4g}"
+                for phase_label in active_labels
+            )
+        )
+
+        if str(modal_config.get("block_type", "")) in {
+            BlockType.VOLTAGE_SOURCE_EMT.name,
+            BlockType.CONTROLLED_VOLTAGE_SOURCE_EMT.name,
+        }:
+            tooltip_lines.append(f"g={float(modal_config.get('source_conductance_value', 0.0)):.4g}")
+
+        return "\n".join(tooltip_lines)
+
+    def _build_source_emt_block_model(self,
+                                      block_type: BlockType,
+                                      item_name: str,
+                                      modal_config: Dict[str, Any]) -> Block | None:
+        """
+        Build one EMT source block model from one modal configuration.
+
+        :param block_type: Source block type.
+        :param item_name: Symbolic block name.
+        :param modal_config: Source modal configuration.
+        :return: Built symbolic block or ``None``.
+        """
+        phase_n, phase_a, phase_b, phase_c = self._extract_source_emt_phase_tuple(modal_config)
+        source_phase_amplitudes: Dict[str, float] = dict(modal_config.get("source_phase_amplitudes", dict()))
+        source_phase_angle_deg: Dict[str, float] = dict(modal_config.get("source_phase_angle_deg", dict()))
+        source_phase_offsets: Dict[str, float] = dict(modal_config.get("source_phase_offsets", dict()))
+        source_frequency_hz: float = float(modal_config.get("source_frequency_hz", 50.0))
+        source_conductance_value: float = float(modal_config.get("source_conductance_value", 100.0))
+
+        if block_type == BlockType.VOLTAGE_SOURCE_EMT:
+            return get_voltage_source_emt_template(
+                vf=self.var_factory,
+                phN=phase_n,
+                phA=phase_a,
+                phB=phase_b,
+                phC=phase_c,
+                amplitude_values=source_phase_amplitudes,
+                frequency_hz=source_frequency_hz,
+                phase_angle_deg=source_phase_angle_deg,
+                offset_values=source_phase_offsets,
+                source_conductance_value=source_conductance_value,
+                name=item_name,
+            ).block
+        elif block_type == BlockType.CURRENT_SOURCE_EMT:
+            return get_current_source_emt_template(
+                vf=self.var_factory,
+                phN=phase_n,
+                phA=phase_a,
+                phB=phase_b,
+                phC=phase_c,
+                amplitude_values=source_phase_amplitudes,
+                frequency_hz=source_frequency_hz,
+                phase_angle_deg=source_phase_angle_deg,
+                offset_values=source_phase_offsets,
+                name=item_name,
+            ).block
+        elif block_type == BlockType.CONTROLLED_VOLTAGE_SOURCE_EMT:
+            return get_controlled_voltage_source_emt_template(
+                vf=self.var_factory,
+                phN=phase_n,
+                phA=phase_a,
+                phB=phase_b,
+                phC=phase_c,
+                frequency_hz=source_frequency_hz,
+                phase_angle_deg=source_phase_angle_deg,
+                offset_values=source_phase_offsets,
+                source_conductance_value=source_conductance_value,
+                name=item_name,
+            ).block
+        elif block_type == BlockType.CONTROLLED_CURRENT_SOURCE_EMT:
+            return get_controlled_current_source_emt_template(
+                vf=self.var_factory,
+                phN=phase_n,
+                phA=phase_a,
+                phB=phase_b,
+                phC=phase_c,
+                frequency_hz=source_frequency_hz,
+                phase_angle_deg=source_phase_angle_deg,
+                offset_values=source_phase_offsets,
+                name=item_name,
+            ).block
+        else:
+            return None
+
+    def create_source_emt_block_item(self, block_type: BlockType, x_pos: float, y_pos: float) -> BlockItem | None:
+        """
+        Create one EMT source block configured through the source modal.
+
+        :param block_type: Source block type.
+        :param x_pos: Drop x position.
+        :param y_pos: Drop y position.
+        :return: Created block item or ``None`` when the dialog is cancelled.
+        """
+        dialog = SourceEmtDialog(block_type=block_type, parent=self, initial_config=self._build_default_source_emt_modal_config(block_type))
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            source_config: Dict[str, Any] = dict(self._build_default_source_emt_modal_config(block_type), **dialog.get_configuration())
+        else:
+            return None
+
+        count: int = self.block_counters.get(block_type, 0) + 1
+        item_name: str = f"{block_type.name}_{count}"
+        block_item: BlockItem = BlockItem(var_factory=self.var_factory, name=item_name)
+        block_model: Block | None = self._build_source_emt_block_model(block_type=block_type, item_name=item_name, modal_config=source_config)
+
+        if block_model is None:
+            return None
+        else:
+            pass
+
+        set_modal_template_metadata(block_model, kind="source_emt", config=dict(source_config, block_type=block_type.name))
+        self.block_counters[block_type] = count
+        block_item.set_subsystem(block_model)
+        block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
+        block_item.build_item()
+        block_item.setToolTip(self._build_source_emt_modal_tooltip(source_config))
+        self.main_block.add(block_model)
+        self.scene.addItem(block_item)
+        block_item.setPos(QtCore.QPointF(x_pos, y_pos))
+        self.diagram.add_node(
+            name=item_name,
+            x=x_pos,
+            y=y_pos,
+            tpe=block_type.name,
+            device_uid=block_model.uid,
+        )
+        self.mark_unapplied_changes()
+        return block_item
+
+    @staticmethod
+    def _build_default_dc_source_emt_modal_config(block_type: BlockType) -> Dict[str, Any]:
+        """
+        Build one default persisted configuration for one EMT DC source modal.
+
+        :param block_type: DC source block type.
+        :return: Default DC source configuration.
+        """
+        default_value: float = 1.0 if block_type in {
+            BlockType.DC_VOLTAGE_SOURCE_EMT,
+            BlockType.CONTROLLED_DC_VOLTAGE_SOURCE_EMT,
+        } else 0.0
+        return dict({
+            "block_type": block_type.name,
+            "source_value": default_value,
+            "source_conductance_value": 100.0,
+        })
+
+    @staticmethod
+    def _build_dc_source_emt_modal_tooltip(modal_config: Dict[str, Any]) -> str:
+        """
+        Build one compact tooltip for one EMT DC source block.
+
+        :param modal_config: Persisted DC source modal configuration.
+        :return: Tooltip text.
+        """
+        tooltip_lines: List[str] = [str(modal_config.get("block_type", "EMT DC source"))]
+
+        if str(modal_config.get("block_type", "")) in {
+            BlockType.DC_VOLTAGE_SOURCE_EMT.name,
+            BlockType.CONTROLLED_DC_VOLTAGE_SOURCE_EMT.name,
+        }:
+            tooltip_lines.append(f"V={float(modal_config.get('source_value', 0.0)):.4g}")
+            tooltip_lines.append(f"g={float(modal_config.get('source_conductance_value', 0.0)):.4g}")
+        else:
+            tooltip_lines.append(f"I={float(modal_config.get('source_value', 0.0)):.4g}")
+
+        if str(modal_config.get("block_type", "")) in {
+            BlockType.CONTROLLED_DC_VOLTAGE_SOURCE_EMT.name,
+            BlockType.CONTROLLED_DC_CURRENT_SOURCE_EMT.name,
+        }:
+            tooltip_lines.append("Controlled by command input")
+
+        return "\n".join(tooltip_lines)
+
+    def _build_dc_source_emt_block_model(self,
+                                         block_type: BlockType,
+                                         item_name: str,
+                                         modal_config: Dict[str, Any]) -> Block | None:
+        """
+        Build one EMT DC source block model from one modal configuration.
+
+        :param block_type: DC source block type.
+        :param item_name: Symbolic block name.
+        :param modal_config: DC source modal configuration.
+        :return: Built symbolic block or ``None``.
+        """
+        source_value: float = float(modal_config.get("source_value", 0.0))
+        source_conductance_value: float = float(modal_config.get("source_conductance_value", 100.0))
+
+        if block_type == BlockType.DC_VOLTAGE_SOURCE_EMT:
+            return get_dc_voltage_source_emt_template(
+                vf=self.var_factory,
+                source_voltage_value=source_value,
+                source_conductance_value=source_conductance_value,
+                name=item_name,
+            ).block
+        elif block_type == BlockType.DC_CURRENT_SOURCE_EMT:
+            return get_dc_current_source_emt_template(
+                vf=self.var_factory,
+                source_current_value=source_value,
+                name=item_name,
+            ).block
+        elif block_type == BlockType.CONTROLLED_DC_VOLTAGE_SOURCE_EMT:
+            return get_controlled_dc_voltage_source_emt_template(
+                vf=self.var_factory,
+                source_conductance_value=source_conductance_value,
+                name=item_name,
+            ).block
+        elif block_type == BlockType.CONTROLLED_DC_CURRENT_SOURCE_EMT:
+            return get_controlled_dc_current_source_emt_template(
+                vf=self.var_factory,
+                name=item_name,
+            ).block
+        else:
+            return None
+
+    def create_dc_source_emt_block_item(self, block_type: BlockType, x_pos: float, y_pos: float) -> BlockItem | None:
+        """
+        Create one EMT DC source block configured through the DC source modal.
+
+        :param block_type: DC source block type.
+        :param x_pos: Drop x position.
+        :param y_pos: Drop y position.
+        :return: Created block item or ``None`` when the dialog is cancelled.
+        """
+        dialog = DcSourceEmtDialog(block_type=block_type, parent=self, initial_config=self._build_default_dc_source_emt_modal_config(block_type))
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            source_config: Dict[str, Any] = dict(self._build_default_dc_source_emt_modal_config(block_type), **dialog.get_configuration())
+        else:
+            return None
+
+        count: int = self.block_counters.get(block_type, 0) + 1
+        item_name: str = f"{block_type.name}_{count}"
+        block_item: BlockItem = BlockItem(var_factory=self.var_factory, name=item_name)
+        block_model: Block | None = self._build_dc_source_emt_block_model(block_type=block_type, item_name=item_name, modal_config=source_config)
+
+        if block_model is None:
+            return None
+        else:
+            pass
+
+        set_modal_template_metadata(block_model, kind="dc_source_emt", config=dict(source_config, block_type=block_type.name))
+        self.block_counters[block_type] = count
+        block_item.set_subsystem(block_model)
+        block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
+        block_item.build_item()
+        block_item.setToolTip(self._build_dc_source_emt_modal_tooltip(source_config))
+        self.main_block.add(block_model)
+        self.scene.addItem(block_item)
+        block_item.setPos(QtCore.QPointF(x_pos, y_pos))
+        self.diagram.add_node(
+            name=item_name,
+            x=x_pos,
+            y=y_pos,
+            tpe=block_type.name,
+            device_uid=block_model.uid,
+        )
+        self.mark_unapplied_changes()
+        return block_item
+
+    @staticmethod
+    def _build_default_balanced_source_emt_modal_config(block_type: BlockType) -> Dict[str, Any]:
+        """
+        Build one default persisted configuration for one balanced EMT source modal.
+
+        :param block_type: Balanced source block type.
+        :return: Default balanced source configuration.
+        """
+        return dict({
+            "block_type": block_type.name,
+            "source_amplitude": 1.0,
+            "source_frequency_hz": 50.0,
+            "source_phase_a_deg": 0.0,
+            "source_offset": 0.0,
+            "source_conductance_value": 100.0,
+        })
+
+    @staticmethod
+    def _build_balanced_source_emt_modal_tooltip(modal_config: Dict[str, Any]) -> str:
+        """
+        Build one compact tooltip for one balanced EMT source block.
+
+        :param modal_config: Persisted balanced source modal configuration.
+        :return: Tooltip text.
+        """
+        tooltip_lines: List[str] = [str(modal_config.get("block_type", "Balanced EMT source"))]
+        tooltip_lines.append(f"A={float(modal_config.get('source_amplitude', 0.0)):.4g}")
+        tooltip_lines.append(f"f={float(modal_config.get('source_frequency_hz', 0.0)):.4g} Hz")
+        tooltip_lines.append(f"phiA={float(modal_config.get('source_phase_a_deg', 0.0)):.4g} deg")
+        tooltip_lines.append(f"offset={float(modal_config.get('source_offset', 0.0)):.4g}")
+
+        if str(modal_config.get("block_type", "")) in {
+            BlockType.BALANCED_3PH_VOLTAGE_SOURCE_EMT.name,
+            BlockType.CONTROLLED_BALANCED_3PH_VOLTAGE_SOURCE_EMT.name,
+        }:
+            tooltip_lines.append(f"g={float(modal_config.get('source_conductance_value', 0.0)):.4g}")
+
+        if str(modal_config.get("block_type", "")) in {
+            BlockType.CONTROLLED_BALANCED_3PH_VOLTAGE_SOURCE_EMT.name,
+            BlockType.CONTROLLED_BALANCED_3PH_CURRENT_SOURCE_EMT.name,
+        }:
+            tooltip_lines.append("Amplitude controlled by command input")
+
+        return "\n".join(tooltip_lines)
+
+    def _build_balanced_source_emt_block_model(self,
+                                               block_type: BlockType,
+                                               item_name: str,
+                                               modal_config: Dict[str, Any]) -> Block | None:
+        """
+        Build one balanced EMT source block model from one modal configuration.
+
+        :param block_type: Balanced source block type.
+        :param item_name: Symbolic block name.
+        :param modal_config: Balanced source modal configuration.
+        :return: Built symbolic block or ``None``.
+        """
+        source_amplitude: float = float(modal_config.get("source_amplitude", 1.0))
+        source_frequency_hz: float = float(modal_config.get("source_frequency_hz", 50.0))
+        source_phase_a_deg: float = float(modal_config.get("source_phase_a_deg", 0.0))
+        source_offset: float = float(modal_config.get("source_offset", 0.0))
+        source_conductance_value: float = float(modal_config.get("source_conductance_value", 100.0))
+
+        if block_type == BlockType.BALANCED_3PH_VOLTAGE_SOURCE_EMT:
+            return get_balanced_3ph_voltage_source_emt_template(
+                vf=self.var_factory,
+                amplitude_value=source_amplitude,
+                frequency_hz=source_frequency_hz,
+                phase_a_deg=source_phase_a_deg,
+                offset_value=source_offset,
+                source_conductance_value=source_conductance_value,
+                name=item_name,
+            ).block
+        elif block_type == BlockType.BALANCED_3PH_CURRENT_SOURCE_EMT:
+            return get_balanced_3ph_current_source_emt_template(
+                vf=self.var_factory,
+                amplitude_value=source_amplitude,
+                frequency_hz=source_frequency_hz,
+                phase_a_deg=source_phase_a_deg,
+                offset_value=source_offset,
+                name=item_name,
+            ).block
+        elif block_type == BlockType.CONTROLLED_BALANCED_3PH_VOLTAGE_SOURCE_EMT:
+            return get_controlled_balanced_3ph_voltage_source_emt_template(
+                vf=self.var_factory,
+                frequency_hz=source_frequency_hz,
+                phase_a_deg=source_phase_a_deg,
+                offset_value=source_offset,
+                source_conductance_value=source_conductance_value,
+                name=item_name,
+            ).block
+        elif block_type == BlockType.CONTROLLED_BALANCED_3PH_CURRENT_SOURCE_EMT:
+            return get_controlled_balanced_3ph_current_source_emt_template(
+                vf=self.var_factory,
+                frequency_hz=source_frequency_hz,
+                phase_a_deg=source_phase_a_deg,
+                offset_value=source_offset,
+                name=item_name,
+            ).block
+        else:
+            return None
+
+    def create_balanced_source_emt_block_item(self, block_type: BlockType, x_pos: float, y_pos: float) -> BlockItem | None:
+        """
+        Create one balanced EMT source block configured through its modal.
+
+        :param block_type: Balanced source block type.
+        :param x_pos: Drop x position.
+        :param y_pos: Drop y position.
+        :return: Created block item or ``None`` when the dialog is cancelled.
+        """
+        dialog = BalancedSourceEmtDialog(block_type=block_type, parent=self, initial_config=self._build_default_balanced_source_emt_modal_config(block_type))
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            source_config: Dict[str, Any] = dict(self._build_default_balanced_source_emt_modal_config(block_type), **dialog.get_configuration())
+        else:
+            return None
+
+        count: int = self.block_counters.get(block_type, 0) + 1
+        item_name: str = f"{block_type.name}_{count}"
+        block_item: BlockItem = BlockItem(var_factory=self.var_factory, name=item_name)
+        block_model: Block | None = self._build_balanced_source_emt_block_model(block_type=block_type, item_name=item_name, modal_config=source_config)
+
+        if block_model is None:
+            return None
+        else:
+            pass
+
+        set_modal_template_metadata(block_model, kind="balanced_source_emt", config=dict(source_config, block_type=block_type.name))
+        self.block_counters[block_type] = count
+        block_item.set_subsystem(block_model)
+        block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
+        block_item.build_item()
+        block_item.setToolTip(self._build_balanced_source_emt_modal_tooltip(source_config))
+        self.main_block.add(block_model)
+        self.scene.addItem(block_item)
+        block_item.setPos(QtCore.QPointF(x_pos, y_pos))
+        self.diagram.add_node(
+            name=item_name,
+            x=x_pos,
+            y=y_pos,
+            tpe=block_type.name,
+            device_uid=block_model.uid,
+        )
+        self.mark_unapplied_changes()
+        return block_item
+
+    @staticmethod
+    def _build_default_arbitrary_source_emt_modal_config(block_type: BlockType) -> Dict[str, Any]:
+        """
+        Build one default persisted configuration for one arbitrary-waveform EMT source modal.
+
+        :param block_type: Arbitrary source block type.
+        :return: Default arbitrary source configuration.
+        """
+        return dict({
+            "block_type": block_type.name,
+            "phase_n": False,
+            "phase_a": True,
+            "phase_b": False,
+            "phase_c": False,
+            "time_points": [0.0, 0.02, 0.04],
+            "value_points": [0.0, 1.0, 0.0],
+            "source_conductance_value": 100.0,
+        })
+
+    @staticmethod
+    def _extract_arbitrary_source_emt_phase_tuple(modal_config: Dict[str, Any]) -> tuple[bool, bool, bool, bool]:
+        """
+        Return the ordered phase tuple stored in one arbitrary EMT source modal configuration.
+
+        :param modal_config: Persisted arbitrary source modal configuration.
+        :return: ``(phase_n, phase_a, phase_b, phase_c)``.
+        """
+        return (
+            bool(modal_config.get("phase_n", False)),
+            bool(modal_config.get("phase_a", True)),
+            bool(modal_config.get("phase_b", False)),
+            bool(modal_config.get("phase_c", False)),
+        )
+
+    @staticmethod
+    def _build_arbitrary_source_emt_modal_tooltip(modal_config: Dict[str, Any]) -> str:
+        """
+        Build one compact tooltip for one arbitrary-waveform EMT source block.
+
+        :param modal_config: Persisted arbitrary source modal configuration.
+        :return: Tooltip text.
+        """
+        active_labels: List[str] = list()
+
+        if bool(modal_config.get("phase_n", False)):
+            active_labels.append("N")
+        if bool(modal_config.get("phase_a", False)):
+            active_labels.append("A")
+        if bool(modal_config.get("phase_b", False)):
+            active_labels.append("B")
+        if bool(modal_config.get("phase_c", False)):
+            active_labels.append("C")
+
+        tooltip_lines: List[str] = [str(modal_config.get("block_type", "Arbitrary EMT source"))]
+        tooltip_lines.append(f"Phases: {', '.join(active_labels)}")
+        tooltip_lines.append(f"Waveform points: {len(list(modal_config.get('time_points', list())))}")
+
+        if str(modal_config.get("block_type", "")) == BlockType.ARBITRARY_WAVEFORM_VOLTAGE_SOURCE_EMT.name:
+            tooltip_lines.append(f"g={float(modal_config.get('source_conductance_value', 0.0)):.4g}")
+
+        return "\n".join(tooltip_lines)
+
+    def _build_arbitrary_source_emt_block_model(self,
+                                                block_type: BlockType,
+                                                item_name: str,
+                                                modal_config: Dict[str, Any]) -> Block | None:
+        """
+        Build one arbitrary-waveform EMT source block from one modal configuration.
+
+        :param block_type: Arbitrary source block type.
+        :param item_name: Symbolic block name.
+        :param modal_config: Arbitrary source modal configuration.
+        :return: Built symbolic block or ``None``.
+        """
+        phase_n, phase_a, phase_b, phase_c = self._extract_arbitrary_source_emt_phase_tuple(modal_config)
+        time_points: List[float] = list(float(value) for value in modal_config.get("time_points", list([0.0, 0.02, 0.04])))
+        value_points: List[float] = list(float(value) for value in modal_config.get("value_points", list([0.0, 1.0, 0.0])))
+        source_conductance_value: float = float(modal_config.get("source_conductance_value", 100.0))
+
+        if block_type == BlockType.ARBITRARY_WAVEFORM_VOLTAGE_SOURCE_EMT:
+            return get_arbitrary_waveform_voltage_source_emt_template(
+                vf=self.var_factory,
+                phN=phase_n,
+                phA=phase_a,
+                phB=phase_b,
+                phC=phase_c,
+                time_points=time_points,
+                value_points=value_points,
+                source_conductance_value=source_conductance_value,
+                name=item_name,
+            ).block
+        elif block_type == BlockType.ARBITRARY_WAVEFORM_CURRENT_SOURCE_EMT:
+            return get_arbitrary_waveform_current_source_emt_template(
+                vf=self.var_factory,
+                phN=phase_n,
+                phA=phase_a,
+                phB=phase_b,
+                phC=phase_c,
+                time_points=time_points,
+                value_points=value_points,
+                name=item_name,
+            ).block
+        else:
+            return None
+
+    def create_arbitrary_source_emt_block_item(self, block_type: BlockType, x_pos: float, y_pos: float) -> BlockItem | None:
+        """
+        Create one arbitrary-waveform EMT source block configured through its modal.
+
+        :param block_type: Arbitrary source block type.
+        :param x_pos: Drop x position.
+        :param y_pos: Drop y position.
+        :return: Created block item or ``None`` when the dialog is cancelled.
+        """
+        dialog = ArbitrarySourceEmtDialog(block_type=block_type, parent=self, initial_config=self._build_default_arbitrary_source_emt_modal_config(block_type))
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            source_config: Dict[str, Any] = dict(self._build_default_arbitrary_source_emt_modal_config(block_type), **dialog.get_configuration())
+        else:
+            return None
+
+        count: int = self.block_counters.get(block_type, 0) + 1
+        item_name: str = f"{block_type.name}_{count}"
+        block_item: BlockItem = BlockItem(var_factory=self.var_factory, name=item_name)
+        block_model: Block | None = self._build_arbitrary_source_emt_block_model(block_type=block_type, item_name=item_name, modal_config=source_config)
+
+        if block_model is None:
+            return None
+        else:
+            pass
+
+        set_modal_template_metadata(block_model, kind="arbitrary_source_emt", config=dict(source_config, block_type=block_type.name))
+        self.block_counters[block_type] = count
+        block_item.set_subsystem(block_model)
+        block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
+        block_item.build_item()
+        block_item.setToolTip(self._build_arbitrary_source_emt_modal_tooltip(source_config))
+        self.main_block.add(block_model)
+        self.scene.addItem(block_item)
+        block_item.setPos(QtCore.QPointF(x_pos, y_pos))
+        self.diagram.add_node(
+            name=item_name,
+            x=x_pos,
+            y=y_pos,
+            tpe=block_type.name,
+            device_uid=block_model.uid,
+        )
+        self.mark_unapplied_changes()
+        return block_item
+
+    @staticmethod
+    def _build_default_transient_source_emt_modal_config(block_type: BlockType) -> Dict[str, Any]:
+        """
+        Build one default persisted configuration for one transient EMT source modal.
+
+        :param block_type: Transient source block type.
+        :return: Default transient source configuration.
+        """
+        return dict({
+            "block_type": block_type.name,
+            "phase_n": False,
+            "phase_a": True,
+            "phase_b": False,
+            "phase_c": False,
+            "initial_value": 0.0,
+            "final_value": 1.0,
+            "step_time_s": 0.02,
+            "start_time_s": 0.01,
+            "end_time_s": 0.03,
+            "source_conductance_value": 100.0,
+            "amplitude_value": 1.0,
+            "alpha_value": 100.0,
+            "beta_value": 5000.0,
+            "delay_s": 0.0,
+            "peak_value": 1.0,
+            "front_time_s": 1.0e-4,
+            "tail_time_s": 5.0e-4,
+            "order_value": 4.0,
+            "a_value": 1000.0,
+            "b_value": 10000.0,
+            "n_value": 2.0,
+            "tn_s": 1.0e-4,
+            "i1_value": 1.0,
+            "t1_s": 5.0e-4,
+            "i2_value": 0.5,
+            "t2_s": 2.0e-4,
+        })
+
+    @staticmethod
+    def _extract_transient_source_emt_phase_tuple(modal_config: Dict[str, Any]) -> tuple[bool, bool, bool, bool]:
+        """
+        Return the ordered phase tuple stored in one transient EMT source modal configuration.
+
+        :param modal_config: Persisted transient source modal configuration.
+        :return: ``(phase_n, phase_a, phase_b, phase_c)``.
+        """
+        return (
+            bool(modal_config.get("phase_n", False)),
+            bool(modal_config.get("phase_a", True)),
+            bool(modal_config.get("phase_b", False)),
+            bool(modal_config.get("phase_c", False)),
+        )
+
+    @staticmethod
+    def _build_transient_source_emt_modal_tooltip(modal_config: Dict[str, Any]) -> str:
+        """
+        Build one compact tooltip for one transient EMT source block.
+
+        :param modal_config: Persisted transient source modal configuration.
+        :return: Tooltip text.
+        """
+        active_labels: List[str] = list()
+
+        if bool(modal_config.get("phase_n", False)):
+            active_labels.append("N")
+        if bool(modal_config.get("phase_a", False)):
+            active_labels.append("A")
+        if bool(modal_config.get("phase_b", False)):
+            active_labels.append("B")
+        if bool(modal_config.get("phase_c", False)):
+            active_labels.append("C")
+
+        tooltip_lines: List[str] = [str(modal_config.get("block_type", "Transient EMT source"))]
+        tooltip_lines.append(f"Phases: {', '.join(active_labels)}")
+
+        if str(modal_config.get("block_type", "")) in {
+            BlockType.STEP_VOLTAGE_SOURCE_EMT.name,
+            BlockType.STEP_CURRENT_SOURCE_EMT.name,
+        }:
+            tooltip_lines.append(
+                f"{float(modal_config.get('initial_value', 0.0)):.4g} -> {float(modal_config.get('final_value', 0.0)):.4g} at {float(modal_config.get('step_time_s', 0.0)):.4g}s"
+            )
+        elif str(modal_config.get("block_type", "")) in {
+            BlockType.RAMP_VOLTAGE_SOURCE_EMT.name,
+            BlockType.RAMP_CURRENT_SOURCE_EMT.name,
+        }:
+            tooltip_lines.append(
+                f"{float(modal_config.get('initial_value', 0.0)):.4g} -> {float(modal_config.get('final_value', 0.0)):.4g} from {float(modal_config.get('start_time_s', 0.0)):.4g}s to {float(modal_config.get('end_time_s', 0.0)):.4g}s"
+            )
+        elif str(modal_config.get("block_type", "")) == BlockType.DOUBLE_EXPONENTIAL_CURRENT_SOURCE_EMT.name:
+            tooltip_lines.append(
+                f"A={float(modal_config.get('amplitude_value', 0.0)):.4g}, alpha={float(modal_config.get('alpha_value', 0.0)):.4g}, beta={float(modal_config.get('beta_value', 0.0)):.4g}"
+            )
+        elif str(modal_config.get("block_type", "")) == BlockType.HEIDLER_CURRENT_SOURCE_EMT.name:
+            tooltip_lines.append(
+                f"peak={float(modal_config.get('peak_value', 0.0)):.4g}, tf={float(modal_config.get('front_time_s', 0.0)):.4g}s, tt={float(modal_config.get('tail_time_s', 0.0)):.4g}s"
+            )
+        else:
+            tooltip_lines.append(
+                f"tn={float(modal_config.get('tn_s', 0.0)):.4g}s, I1={float(modal_config.get('i1_value', 0.0)):.4g}, I2={float(modal_config.get('i2_value', 0.0)):.4g}"
+            )
+
+        if str(modal_config.get("block_type", "")) in {
+            BlockType.STEP_VOLTAGE_SOURCE_EMT.name,
+            BlockType.RAMP_VOLTAGE_SOURCE_EMT.name,
+        }:
+            tooltip_lines.append(f"g={float(modal_config.get('source_conductance_value', 0.0)):.4g}")
+
+        return "\n".join(tooltip_lines)
+
+    def _build_transient_source_emt_block_model(self,
+                                                block_type: BlockType,
+                                                item_name: str,
+                                                modal_config: Dict[str, Any]) -> Block | None:
+        """
+        Build one transient EMT source block from one modal configuration.
+
+        :param block_type: Transient source block type.
+        :param item_name: Symbolic block name.
+        :param modal_config: Transient source modal configuration.
+        :return: Built symbolic block or ``None``.
+        """
+        phase_n, phase_a, phase_b, phase_c = self._extract_transient_source_emt_phase_tuple(modal_config)
+
+        if block_type == BlockType.STEP_VOLTAGE_SOURCE_EMT:
+            return get_step_voltage_source_emt_template(
+                vf=self.var_factory,
+                phN=phase_n,
+                phA=phase_a,
+                phB=phase_b,
+                phC=phase_c,
+                initial_value=float(modal_config.get("initial_value", 0.0)),
+                final_value=float(modal_config.get("final_value", 1.0)),
+                step_time_s=float(modal_config.get("step_time_s", 0.02)),
+                source_conductance_value=float(modal_config.get("source_conductance_value", 100.0)),
+                name=item_name,
+            ).block
+        elif block_type == BlockType.STEP_CURRENT_SOURCE_EMT:
+            return get_step_current_source_emt_template(
+                vf=self.var_factory,
+                phN=phase_n,
+                phA=phase_a,
+                phB=phase_b,
+                phC=phase_c,
+                initial_value=float(modal_config.get("initial_value", 0.0)),
+                final_value=float(modal_config.get("final_value", 1.0)),
+                step_time_s=float(modal_config.get("step_time_s", 0.02)),
+                name=item_name,
+            ).block
+        elif block_type == BlockType.RAMP_VOLTAGE_SOURCE_EMT:
+            return get_ramp_voltage_source_emt_template(
+                vf=self.var_factory,
+                phN=phase_n,
+                phA=phase_a,
+                phB=phase_b,
+                phC=phase_c,
+                initial_value=float(modal_config.get("initial_value", 0.0)),
+                final_value=float(modal_config.get("final_value", 1.0)),
+                start_time_s=float(modal_config.get("start_time_s", 0.01)),
+                end_time_s=float(modal_config.get("end_time_s", 0.03)),
+                source_conductance_value=float(modal_config.get("source_conductance_value", 100.0)),
+                name=item_name,
+            ).block
+        elif block_type == BlockType.RAMP_CURRENT_SOURCE_EMT:
+            return get_ramp_current_source_emt_template(
+                vf=self.var_factory,
+                phN=phase_n,
+                phA=phase_a,
+                phB=phase_b,
+                phC=phase_c,
+                initial_value=float(modal_config.get("initial_value", 0.0)),
+                final_value=float(modal_config.get("final_value", 1.0)),
+                start_time_s=float(modal_config.get("start_time_s", 0.01)),
+                end_time_s=float(modal_config.get("end_time_s", 0.03)),
+                name=item_name,
+            ).block
+        elif block_type == BlockType.DOUBLE_EXPONENTIAL_CURRENT_SOURCE_EMT:
+            return get_double_exponential_current_source_emt_template(
+                vf=self.var_factory,
+                phN=phase_n,
+                phA=phase_a,
+                phB=phase_b,
+                phC=phase_c,
+                amplitude_value=float(modal_config.get("amplitude_value", 1.0)),
+                alpha_value=float(modal_config.get("alpha_value", 100.0)),
+                beta_value=float(modal_config.get("beta_value", 5000.0)),
+                delay_s=float(modal_config.get("delay_s", 0.0)),
+                name=item_name,
+            ).block
+        elif block_type == BlockType.HEIDLER_CURRENT_SOURCE_EMT:
+            return get_heidler_current_source_emt_template(
+                vf=self.var_factory,
+                phN=phase_n,
+                phA=phase_a,
+                phB=phase_b,
+                phC=phase_c,
+                peak_value=float(modal_config.get("peak_value", 1.0)),
+                front_time_s=float(modal_config.get("front_time_s", 1.0e-4)),
+                tail_time_s=float(modal_config.get("tail_time_s", 5.0e-4)),
+                order_value=float(modal_config.get("order_value", 4.0)),
+                delay_s=float(modal_config.get("delay_s", 0.0)),
+                name=item_name,
+            ).block
+        elif block_type == BlockType.CIGRE_SURGE_CURRENT_SOURCE_EMT:
+            return get_cigre_surge_current_source_emt_template(
+                vf=self.var_factory,
+                phN=phase_n,
+                phA=phase_a,
+                phB=phase_b,
+                phC=phase_c,
+                a_value=float(modal_config.get("a_value", 1000.0)),
+                b_value=float(modal_config.get("b_value", 10000.0)),
+                n_value=float(modal_config.get("n_value", 2.0)),
+                tn_s=float(modal_config.get("tn_s", 1.0e-4)),
+                i1_value=float(modal_config.get("i1_value", 1.0)),
+                t1_s=float(modal_config.get("t1_s", 5.0e-4)),
+                i2_value=float(modal_config.get("i2_value", 0.5)),
+                t2_s=float(modal_config.get("t2_s", 2.0e-4)),
+                delay_s=float(modal_config.get("delay_s", 0.0)),
+                name=item_name,
+            ).block
+        else:
+            return None
+
+    def create_transient_source_emt_block_item(self, block_type: BlockType, x_pos: float, y_pos: float) -> BlockItem | None:
+        """
+        Create one transient EMT source block configured through its modal.
+
+        :param block_type: Transient source block type.
+        :param x_pos: Drop x position.
+        :param y_pos: Drop y position.
+        :return: Created block item or ``None`` when the dialog is cancelled.
+        """
+        dialog = TransientSourceEmtDialog(block_type=block_type, parent=self, initial_config=self._build_default_transient_source_emt_modal_config(block_type))
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            source_config: Dict[str, Any] = dict(self._build_default_transient_source_emt_modal_config(block_type), **dialog.get_configuration())
+        else:
+            return None
+
+        count: int = self.block_counters.get(block_type, 0) + 1
+        item_name: str = f"{block_type.name}_{count}"
+        block_item: BlockItem = BlockItem(var_factory=self.var_factory, name=item_name)
+        block_model: Block | None = self._build_transient_source_emt_block_model(block_type=block_type, item_name=item_name, modal_config=source_config)
+
+        if block_model is None:
+            return None
+        else:
+            pass
+
+        set_modal_template_metadata(block_model, kind="transient_source_emt", config=dict(source_config, block_type=block_type.name))
+        self.block_counters[block_type] = count
+        block_item.set_subsystem(block_model)
+        block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
+        block_item.build_item()
+        block_item.setToolTip(self._build_transient_source_emt_modal_tooltip(source_config))
+        self.main_block.add(block_model)
+        self.scene.addItem(block_item)
+        block_item.setPos(QtCore.QPointF(x_pos, y_pos))
+        self.diagram.add_node(
+            name=item_name,
+            x=x_pos,
+            y=y_pos,
+            tpe=block_type.name,
+            device_uid=block_model.uid,
+        )
+        self.mark_unapplied_changes()
+        return block_item
 
     @staticmethod
     def _extract_jmarti_phase_tuple(modal_config: Dict[str, Any]) -> tuple[bool, bool, bool, bool]:
@@ -6007,6 +7089,59 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.mark_unapplied_changes()
         return block_item
 
+    def create_induction_motor_emt_block_item(self, x_pos: float, y_pos: float) -> BlockItem | None:
+        """
+        Create one induction-motor EMT block configured through its modal.
+
+        :param x_pos: Drop x position.
+        :param y_pos: Drop y position.
+        :return: Created block item or None when the dialog is cancelled.
+        """
+        # The modal runs before block creation so the selected template level becomes
+        # part of the initial symbolic build and persisted metadata from the start.
+        default_config: Dict[str, Any] = self._build_default_induction_motor_emt_modal_config()
+        dialog: InductionMotorEmtDialog = self._build_induction_motor_emt_dialog(initial_config=default_config)
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            induction_motor_config: Dict[str, Any] = dialog.get_configuration()
+        else:
+            return None
+
+        count: int = self.block_counters.get(BlockType.INDUCTION_MOTOR_EMT, 0) + 1
+        item_name: str = f"induction_motor_emt_{count}"
+        block_item: BlockItem = BlockItem(var_factory=self.var_factory, name=item_name)
+        block_model: Block = self._build_induction_motor_emt_block_model(
+            item_name=item_name,
+            modal_config=induction_motor_config,
+        )
+
+        # Persist the modal selection so modify-template and rebuild flows can
+        # recreate the same symbolic template later.
+        set_modal_template_metadata(block_model, kind="induction_motor_emt", config=dict(induction_motor_config))
+
+        self.block_counters[BlockType.INDUCTION_MOTOR_EMT] = count
+        block_item.set_subsystem(block_model)
+        block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
+        block_item.build_item()
+        block_item.setToolTip(self._build_induction_motor_emt_modal_tooltip(induction_motor_config))
+
+        # The scene item, main block, and persisted diagram must all be updated
+        # together so later rebuilds and apply/save operations stay consistent.
+        self.main_block.add(block_model)
+        self.scene.addItem(block_item)
+        block_item.setPos(QtCore.QPointF(x_pos, y_pos))
+        self.diagram.add_node(
+            name=item_name,
+            x=x_pos,
+            y=y_pos,
+            tpe=BlockType.INDUCTION_MOTOR_EMT.name,
+            device_uid=block_model.uid,
+        )
+        self.mark_unapplied_changes()
+        return block_item
+
+    # TODO: create PV power plant block item
+
     def create_shunt_component_emt_block_item(self,
                                               block_type: BlockType,
                                               x_pos: float,
@@ -6336,6 +7471,64 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             base_power_mva=base_power_mva,
             base_frequency_hz=base_frequency_hz,
         )
+
+    @staticmethod
+    def _build_default_induction_motor_emt_modal_config(level: InductionMotorEmtLevel = InductionMotorEmtLevel.SINGLE_CAGE) -> Dict[str, Any]:
+        """
+        Build the default persisted configuration for one induction-motor EMT modal.
+
+        :param level: Default template level.
+        :return: Default induction-motor modal configuration.
+        """
+        return dict({"level": level.name})
+
+    def _build_induction_motor_emt_dialog(self,
+                                          initial_config: Dict[str, Any] | None = None) -> InductionMotorEmtDialog:
+        """
+        Build the modal dialog used by the induction-motor EMT workflow.
+
+        :param initial_config: Optional persisted modal configuration.
+        :return: Configured dialog instance.
+        """
+        dialog_config: Dict[str, Any]
+        if initial_config is None:
+            dialog_config = self._build_default_induction_motor_emt_modal_config()
+        else:
+            dialog_config = dict(initial_config)
+
+        return InductionMotorEmtDialog(
+            self,
+            initial_config=dialog_config,
+        )
+
+    @staticmethod
+    def _build_induction_motor_emt_modal_tooltip(modal_config: Dict[str, Any]) -> str:
+        """
+        Build one compact tooltip for one induction-motor EMT block.
+
+        :param modal_config: Persisted induction-motor modal configuration.
+        :return: Tooltip text.
+        """
+        level: InductionMotorEmtLevel = coerce_induction_motor_emt_level(
+            modal_config.get("level", InductionMotorEmtLevel.SINGLE_CAGE.name)
+        )
+        return "Induction motor EMT\n" + get_induction_motor_emt_level_label(level)
+
+    def _build_induction_motor_emt_block_model(self,
+                                               item_name: str,
+                                               modal_config: Dict[str, Any]) -> Block:
+        """
+        Build one induction-motor EMT block model from one modal configuration.
+
+        :param item_name: Symbolic block name.
+        :param modal_config: Induction-motor modal configuration.
+        :return: Built symbolic block.
+        """
+        level: InductionMotorEmtLevel = coerce_induction_motor_emt_level(
+            modal_config.get("level", InductionMotorEmtLevel.SINGLE_CAGE.name)
+        )
+        template_level: int = get_induction_motor_emt_template_level(level)
+        return get_induction_motor_emt_template(vf=self.var_factory, level=template_level, name=item_name).block
 
     def _build_grounding_link_emt_dialog(self,
                                          initial_config: Dict[str, Any] | None = None) -> GroundingLinkEmtDialog:
@@ -6772,6 +7965,74 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             block_model.name = item_name
             return block_model
 
+    def _append_emt_branch_side_connection_specs(
+            self,
+            specs: List[ConnectionVarSpec],
+            bus: Any,
+            side: str,
+    ) -> None:
+        """
+        Append EMT connection specs for one branch side according to the bus domain.
+
+        :param specs: List to extend.
+        :param bus: Side bus.
+        :param side: ``from`` or ``to``.
+        :return: None.
+        """
+        safe_bus_name: str = self._get_safe_bus_name(bus)
+
+        if side == "from":
+            ac_voltage_refs: List[tuple[VarPowerFlowRefferenceType, str]] = list([
+                (VarPowerFlowRefferenceType.vf_N, f"vf_N_{safe_bus_name}"),
+                (VarPowerFlowRefferenceType.vf_A, f"vf_A_{safe_bus_name}"),
+                (VarPowerFlowRefferenceType.vf_B, f"vf_B_{safe_bus_name}"),
+                (VarPowerFlowRefferenceType.vf_C, f"vf_C_{safe_bus_name}"),
+            ])
+            ac_current_refs: List[tuple[VarPowerFlowRefferenceType, str]] = list([
+                (VarPowerFlowRefferenceType.if_N,
+                 f"net_conn_{VarPowerFlowRefferenceType.if_N.value}_{safe_bus_name}_{self.api_object.name}"),
+                (VarPowerFlowRefferenceType.if_A,
+                 f"net_conn_{VarPowerFlowRefferenceType.if_A.value}_{safe_bus_name}_{self.api_object.name}"),
+                (VarPowerFlowRefferenceType.if_B,
+                 f"net_conn_{VarPowerFlowRefferenceType.if_B.value}_{safe_bus_name}_{self.api_object.name}"),
+                (VarPowerFlowRefferenceType.if_C,
+                 f"net_conn_{VarPowerFlowRefferenceType.if_C.value}_{safe_bus_name}_{self.api_object.name}"),
+            ])
+            dc_voltage_ref: VarPowerFlowRefferenceType = VarPowerFlowRefferenceType.Vf_dc
+            dc_current_ref: VarPowerFlowRefferenceType = VarPowerFlowRefferenceType.If_dc
+        elif side == "to":
+            ac_voltage_refs = list([
+                (VarPowerFlowRefferenceType.vt_N, f"vt_N_{safe_bus_name}"),
+                (VarPowerFlowRefferenceType.vt_A, f"vt_A_{safe_bus_name}"),
+                (VarPowerFlowRefferenceType.vt_B, f"vt_B_{safe_bus_name}"),
+                (VarPowerFlowRefferenceType.vt_C, f"vt_C_{safe_bus_name}"),
+            ])
+            ac_current_refs = list([
+                (VarPowerFlowRefferenceType.it_N,
+                 f"net_conn_{VarPowerFlowRefferenceType.it_N.value}_{safe_bus_name}_{self.api_object.name}"),
+                (VarPowerFlowRefferenceType.it_A,
+                 f"net_conn_{VarPowerFlowRefferenceType.it_A.value}_{safe_bus_name}_{self.api_object.name}"),
+                (VarPowerFlowRefferenceType.it_B,
+                 f"net_conn_{VarPowerFlowRefferenceType.it_B.value}_{safe_bus_name}_{self.api_object.name}"),
+                (VarPowerFlowRefferenceType.it_C,
+                 f"net_conn_{VarPowerFlowRefferenceType.it_C.value}_{safe_bus_name}_{self.api_object.name}"),
+            ])
+            dc_voltage_ref = VarPowerFlowRefferenceType.Vt_dc
+            dc_current_ref = VarPowerFlowRefferenceType.It_dc
+        else:
+            raise ValueError(f"Unsupported branch EMT side {side}")
+
+        if bus.is_dc:
+            specs.append(ConnectionVarSpec("input", dc_voltage_ref, f"{dc_voltage_ref.value}_{safe_bus_name}"))
+            specs.append(ConnectionVarSpec("output", dc_current_ref,
+                                           f"net_conn_{dc_current_ref.value}_{safe_bus_name}_{self.api_object.name}"))
+        else:
+            for reference, visible_name in ac_voltage_refs:
+                specs.append(ConnectionVarSpec("input", reference, visible_name))
+
+            for reference, visible_name in ac_current_refs:
+                specs.append(ConnectionVarSpec("output", reference, visible_name))
+
     def _sync_rlc_combo_load_base_values(self, template_kwargs: Dict[str, Any]) -> None:
         """
         Sync one real load API object with the equivalent RLC snapshot powers.
@@ -7045,6 +8306,104 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         )
         return self.create_template_block_item(template=template, x_pos=x_pos, y_pos=y_pos)
 
+    # def create_library_payload_item(self,
+    #                                 payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate,
+    #                                 x_pos: float,
+    #                                 y_pos: float) -> BlockItem | None:
+    #     """
+    #     Materialize one library payload on the diagram scene.
+    #     """
+    #
+    #     if isinstance(payload, BlockType) and payload == BlockType.GENERIC:
+    #         return self.create_generic_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
+    #     elif isinstance(payload, BlockType) and payload in {
+    #         BlockType.EMT_PI_LINE,
+    #         BlockType.EMT_BERGERON_LINE,
+    #         BlockType.EMT_JMARTI_LINE,
+    #         BlockType.VOLTAGE_SOURCE_EMT,
+    #         BlockType.CURRENT_SOURCE_EMT,
+    #         BlockType.CONTROLLED_VOLTAGE_SOURCE_EMT,
+    #         BlockType.CONTROLLED_CURRENT_SOURCE_EMT,
+    #         BlockType.DC_VOLTAGE_SOURCE_EMT,
+    #         BlockType.DC_CURRENT_SOURCE_EMT,
+    #         BlockType.CONTROLLED_DC_VOLTAGE_SOURCE_EMT,
+    #         BlockType.CONTROLLED_DC_CURRENT_SOURCE_EMT,
+    #         BlockType.BALANCED_3PH_VOLTAGE_SOURCE_EMT,
+    #         BlockType.BALANCED_3PH_CURRENT_SOURCE_EMT,
+    #         BlockType.CONTROLLED_BALANCED_3PH_VOLTAGE_SOURCE_EMT,
+    #         BlockType.CONTROLLED_BALANCED_3PH_CURRENT_SOURCE_EMT,
+    #         BlockType.ARBITRARY_WAVEFORM_VOLTAGE_SOURCE_EMT,
+    #         BlockType.ARBITRARY_WAVEFORM_CURRENT_SOURCE_EMT,
+    #         BlockType.STEP_VOLTAGE_SOURCE_EMT,
+    #         BlockType.STEP_CURRENT_SOURCE_EMT,
+    #         BlockType.RAMP_VOLTAGE_SOURCE_EMT,
+    #         BlockType.RAMP_CURRENT_SOURCE_EMT,
+    #         BlockType.DOUBLE_EXPONENTIAL_CURRENT_SOURCE_EMT,
+    #         BlockType.HEIDLER_CURRENT_SOURCE_EMT,
+    #         BlockType.CIGRE_SURGE_CURRENT_SOURCE_EMT,
+    #         BlockType.SWITCH_EMT,
+    #         BlockType.GROUNDING_LINK_EMT,
+    #         BlockType.NONLINEAR_RESISTOR_EMT,
+    #         BlockType.RLC_COMBO_EMT,
+    #         BlockType.INDUCTION_MOTOR_EMT,
+    #     }:
+    #         if payload == BlockType.SWITCH_EMT:
+    #             return self.create_switch_emt_block_item(x_pos=x_pos, y_pos=y_pos)
+    #         elif payload == BlockType.GROUNDING_LINK_EMT:
+    #             return self.create_grounding_link_emt_block_item(x_pos=x_pos, y_pos=y_pos)
+    #         elif payload == BlockType.NONLINEAR_RESISTOR_EMT:
+    #             return self.create_nonlinear_resistor_emt_block_item(x_pos=x_pos, y_pos=y_pos)
+    #         elif payload == BlockType.RLC_COMBO_EMT:
+    #             return self.create_rlc_combo_emt_block_item(x_pos=x_pos, y_pos=y_pos)
+    #         elif payload == BlockType.EMT_JMARTI_LINE:
+    #             return self.create_jmarti_line_emt_block_item(x_pos=x_pos, y_pos=y_pos)
+    #         elif payload == BlockType.INDUCTION_MOTOR_EMT:
+    #             return self.create_induction_motor_emt_block_item(x_pos=x_pos, y_pos=y_pos)
+    #         elif _is_source_emt_block_type(payload):
+    #             return self.create_source_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
+    #         elif _is_dc_source_emt_block_type(payload):
+    #             return self.create_dc_source_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
+    #         elif _is_balanced_source_emt_block_type(payload):
+    #             return self.create_balanced_source_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
+    #         elif _is_arbitrary_source_emt_block_type(payload):
+    #             return self.create_arbitrary_source_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
+    #         elif _is_transient_source_emt_block_type(payload):
+    #             return self.create_transient_source_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
+    #         else:
+    #             return self.create_emt_wizard_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
+    #     elif isinstance(payload, BlockType) and _is_load_topology_block_type(payload):
+    #         return self.create_load_topology_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
+    #     elif isinstance(payload, BlockType) and payload in {
+    #         BlockType.R_LOAD_EMT,
+    #         BlockType.L_LOAD_EMT,
+    #         BlockType.C_LOAD_EMT,
+    #     }:
+    #         return self.create_shunt_component_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
+    #     elif isinstance(payload, BlockType) and payload in {
+    #         BlockType.TRAFO_EMT,
+    #         BlockType.XFMR_TRANSFORMER,
+    #     }:
+    #         return self.create_transformer_topology_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
+    #     elif isinstance(payload, BlockType):
+    #         return self.create_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
+    #     elif isinstance(payload, BasicBlockTemplateDescriptor):
+    #         if payload.template_key in LOOKUP_ARRAY_LINEAR_DESCRIPTOR_KEYS:
+    #             return self.create_lookup_array_linear_descriptor_item(payload, x_pos, y_pos)
+    #         elif payload.template_key in INVERSE_LOOKUP_ARRAY_LINEAR_DESCRIPTOR_KEYS:
+    #             return self.create_inverse_lookup_array_linear_descriptor_item(payload, x_pos, y_pos)
+    #         elif payload.template_key in LOOKUP_ARRAY_SPLINE_DESCRIPTOR_KEYS:
+    #             return self.create_lookup_array_spline_descriptor_item(payload, x_pos, y_pos)
+    #         elif payload.template_key in LOOKUP_MATRIX_LINEAR_DESCRIPTOR_KEYS:
+    #             return self.create_lookup_matrix_linear_descriptor_item(payload, x_pos, y_pos)
+    #         elif payload.template_key in LOOKUP_MATRIX_SPLINE_DESCRIPTOR_KEYS:
+    #             return self.create_lookup_matrix_spline_descriptor_item(payload, x_pos, y_pos)
+    #         else:
+    #             template: EmtModelTemplate = load_basic_block_catalog_template(payload, self.var_factory)
+    #             return self.create_template_block_item(template=template, x_pos=x_pos, y_pos=y_pos)
+    #     elif isinstance(payload, (RmsModelTemplate, EmtModelTemplate, FmuTemplate)):
+    #         return self.create_template_block_item(template=payload, x_pos=x_pos, y_pos=y_pos)
+    #     else:
+    #         return None
     def create_library_payload_item(self,
                                     payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate,
                                     x_pos: float,
@@ -7201,6 +8560,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         # remove blocks and diagrams from main_block
         if item.subsys is not None:
+            self._remove_connection_interface_for_block(item)
+
             for child_block in list(self.main_block.children):
                 if child_block.uid == item.subsys.uid:
                     self.main_block.children.remove(child_block)
@@ -7217,6 +8578,80 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         # remove connections
         for conn in connections_to_remove:
             self.remove_connection_item(conn)
+
+    def _remove_connection_interface_for_block(self, item: BlockItem | GenericBlockItem) -> None:
+        """
+        Remove the saved top-level connection variable for one editor port block.
+
+        The connection blocks drawn on the canvas are only wrappers around the
+        actual root-block interface variables stored in ``main_block``. When the
+        user deletes one of those wrappers, the saved interface variable and its
+        external-mapping entry must be deleted as well so later EMT assembly sees
+        the edited interface exactly as shown in the editor.
+
+        :param item: Scene item being removed.
+        :return: None.
+        """
+        node_data: Any | None = None
+        connection_var: Var | None = None
+
+        if item.subsys is None:
+            return
+        else:
+            pass
+
+        node_data = self.diagram.node_data.get(item.subsys.uid, None)
+
+        if node_data is None:
+            return
+        else:
+            pass
+
+        if node_data.tpe == BlockType.INPUT_CONN.name:
+            if len(item.subsys.out_vars) > 0:
+                connection_var = item.subsys.out_vars[0]
+                self._remove_root_connection_var(connection_var=connection_var, direction="input")
+            else:
+                pass
+        elif node_data.tpe == BlockType.OUTPUT_CONN.name:
+            if len(item.subsys.in_vars) > 0:
+                connection_var = item.subsys.in_vars[0]
+                self._remove_root_connection_var(connection_var=connection_var, direction="output")
+            else:
+                pass
+        else:
+            pass
+
+    def _remove_root_connection_var(self, connection_var: Var, direction: str) -> None:
+        """
+        Remove one saved root-block interface variable and its mapping entries.
+
+        :param connection_var: Root-block network-connection variable to remove.
+        :param direction: ``input`` for ``main_block.in_vars`` or ``output`` for
+            ``main_block.out_vars``.
+        :return: None.
+        """
+        mapping_keys_to_remove: List[VarPowerFlowRefferenceType] = list()
+        mapping_key: VarPowerFlowRefferenceType
+        mapped_var: Var | None
+
+        if direction == "input":
+            self.main_block.in_vars = [var for var in self.main_block.in_vars if var.uid != connection_var.uid]
+        elif direction == "output":
+            self.main_block.out_vars = [var for var in self.main_block.out_vars if var.uid != connection_var.uid]
+        else:
+            raise ValueError(f"Unsupported root connection direction {direction}")
+
+        # Remove all external references that still point to the deleted port so
+        # the persisted block interface matches the visible editor interface.
+        for mapping_key, mapped_var in self.main_block.external_mapping.items():
+            if mapped_var is not None and mapped_var.uid == connection_var.uid:
+                mapping_keys_to_remove.append(mapping_key)
+            else:
+                pass
+
+        for mapping_key in mapping_keys_to_remove:
+            del self.main_block.external_mapping[mapping_key]
 
     def remove_item(self, item: BlockItem | GenericBlockItem | ConnectionItem) -> None:
         """
@@ -7533,84 +8968,85 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         return specs
 
+    # def _build_emt_injection_connection_specs(self) -> List[ConnectionVarSpec]:
+    #     """
+    #     Build the default maximum EMT connection-variable specs for an injection device.
+    #
+    #     :return:
+    #     """
+    #     safe_bus_name: str = self._get_safe_bus_name(self.api_object.bus)
+    #     specs: List[ConnectionVarSpec] = list()
+    #
+    #     # The editor must expose the full editable EMT contract up front. Static
+    #     # bus-domain and phase compatibility are validated later during EMT build.
+    #     specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.v_N, f"v_N_{safe_bus_name}"))
+    #     specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.v_A, f"v_A_{safe_bus_name}"))
+    #     specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.v_B, f"v_B_{safe_bus_name}"))
+    #     specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.v_C, f"v_C_{safe_bus_name}"))
+    #     specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.Vdc, f"Vdc_{safe_bus_name}"))
+    #
+    #     specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.i_N, f"net_conn_{VarPowerFlowRefferenceType.i_N.value}_{self.api_object.name}"))
+    #     specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.i_A, f"net_conn_{VarPowerFlowRefferenceType.i_A.value}_{self.api_object.name}"))
+    #     specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.i_B, f"net_conn_{VarPowerFlowRefferenceType.i_B.value}_{self.api_object.name}"))
+    #     specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.i_C, f"net_conn_{VarPowerFlowRefferenceType.i_C.value}_{self.api_object.name}"))
+    #     specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.Idc, f"net_conn_{VarPowerFlowRefferenceType.Idc.value}_{self.api_object.name}"))
+    #
+    #     return specs
+
     def _build_emt_injection_connection_specs(self) -> List[ConnectionVarSpec]:
         """
-        Build all EMT connection-variable specs for an injection device.
+        Build the EMT connection-variable specs for an injection device.
 
-        :return:
+        AC buses expose N/A/B/C voltage and current ports. DC buses expose only
+        Vdc/Idc ports.
+
+        :return: Connection variable specifications.
         """
-        voltage_pairs = self.get_injection_emt_voltage_pairs(self.api_object.bus)
+        safe_bus_name: str = self._get_safe_bus_name(self.api_object.bus)
         specs: List[ConnectionVarSpec] = list()
 
-        reference: VarPowerFlowRefferenceType
-        variable: Any
-        for reference, variable in voltage_pairs:
-            specs.append(ConnectionVarSpec("input", reference, str(variable.name)))
+        if self.api_object.bus.is_dc:
+            specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.Vdc, f"Vdc_{safe_bus_name}"))
+            specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.Idc,
+                                           f"net_conn_{VarPowerFlowRefferenceType.Idc.value}_{self.api_object.name}"))
+        else:
+            specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.v_N, f"v_N_{safe_bus_name}"))
+            specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.v_A, f"v_A_{safe_bus_name}"))
+            specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.v_B, f"v_B_{safe_bus_name}"))
+            specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.v_C, f"v_C_{safe_bus_name}"))
 
-        current_refs = self.build_emt_injection_current_refs(self.api_object.bus)
-        for reference in current_refs:
-            specs.append(ConnectionVarSpec("output", reference, f"net_conn_{reference.value}_{self.api_object.name}"))
+            specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.i_N,
+                                           f"net_conn_{VarPowerFlowRefferenceType.i_N.value}_{self.api_object.name}"))
+            specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.i_A,
+                                           f"net_conn_{VarPowerFlowRefferenceType.i_A.value}_{self.api_object.name}"))
+            specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.i_B,
+                                           f"net_conn_{VarPowerFlowRefferenceType.i_B.value}_{self.api_object.name}"))
+            specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.i_C,
+                                           f"net_conn_{VarPowerFlowRefferenceType.i_C.value}_{self.api_object.name}"))
 
         return specs
 
     def _build_emt_branch_connection_specs(self) -> List[ConnectionVarSpec]:
         """
-        Build all EMT connection-variable specs for a branch device.
+        Build EMT connection-variable specs for a branch device.
 
-        Inputs expose the voltages of both terminal buses.
-        Outputs expose the currents of both terminal buses using the same visible-name
-        pattern as injection devices plus the bus-name suffix.
+        Each terminal follows the same rule as injections: AC buses expose N/A/B/C,
+        while DC buses expose only Vdc/Idc.
 
-        :return:
+        :return: Connection variable specifications.
         """
         specs: List[ConnectionVarSpec] = list()
 
-        voltage_pairs_from = self.get_branch_emt_voltage_pairs(self.api_object.bus_from, "from")
-        voltage_pairs_to = self.get_branch_emt_voltage_pairs(self.api_object.bus_to, "to")
-
-        reference: VarPowerFlowRefferenceType
-        variable: Any
-        for reference, variable in voltage_pairs_from:
-            specs.append(ConnectionVarSpec("input", reference, str(variable.name)))
-
-        for reference, variable in voltage_pairs_to:
-            specs.append(ConnectionVarSpec("input", reference, str(variable.name)))
-
-        safe_bus_from = self._get_safe_bus_name(self.api_object.bus_from)
-        safe_bus_to = self._get_safe_bus_name(self.api_object.bus_to)
-
-        current_name_map_from: Dict[VarPowerFlowRefferenceType, str] = {
-            VarPowerFlowRefferenceType.if_N: f"net_conn_i_N_{safe_bus_from}_{self.api_object.name}",
-            VarPowerFlowRefferenceType.if_A: f"net_conn_i_A_{safe_bus_from}_{self.api_object.name}",
-            VarPowerFlowRefferenceType.if_B: f"net_conn_i_B_{safe_bus_from}_{self.api_object.name}",
-            VarPowerFlowRefferenceType.if_C: f"net_conn_i_C_{safe_bus_from}_{self.api_object.name}",
-            VarPowerFlowRefferenceType.Idc: f"net_conn_i_DC_{safe_bus_from}_{self.api_object.name}",
-        }
-
-        current_name_map_to: Dict[VarPowerFlowRefferenceType, str] = {
-            VarPowerFlowRefferenceType.it_N: f"net_conn_i_N_{safe_bus_to}_{self.api_object.name}",
-            VarPowerFlowRefferenceType.it_A: f"net_conn_i_A_{safe_bus_to}_{self.api_object.name}",
-            VarPowerFlowRefferenceType.it_B: f"net_conn_i_B_{safe_bus_to}_{self.api_object.name}",
-            VarPowerFlowRefferenceType.it_C: f"net_conn_i_C_{safe_bus_to}_{self.api_object.name}",
-            VarPowerFlowRefferenceType.Idc: f"net_conn_i_DC_{safe_bus_from}_{self.api_object.name}",
-        }
-
-        current_refs_from = self._build_emt_branch_current_refs(bus=self.api_object.bus_from,
-                                                           side="from",
-                                                                voltage_pairs = voltage_pairs_from)
-        current_refs_to = self._build_emt_branch_current_refs(bus=self.api_object.bus_to,
-                                                         side="to",
-                                                              voltage_pairs = voltage_pairs_to)
-
-        for reference in current_refs_from:
-            visible_name = current_name_map_from.get(reference, None)
-            if visible_name is not None:
-                specs.append(ConnectionVarSpec("output", reference, visible_name))
-
-        for reference in current_refs_to:
-            visible_name = current_name_map_to.get(reference, None)
-            if visible_name is not None:
-                specs.append(ConnectionVarSpec("output", reference, visible_name))
+        self._append_emt_branch_side_connection_specs(
+            specs=specs,
+            bus=self.api_object.bus_from,
+            side="from",
+        )
+        self._append_emt_branch_side_connection_specs(
+            specs=specs,
+            bus=self.api_object.bus_to,
+            side="to",
+        )
 
         return specs
 
@@ -8470,6 +9906,16 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self._modify_lookup_array_like_block(item, modal_config, build_lookup_array_spline_runtime_template)
         elif modal_kind == "jmarti_line_emt":
             self._modify_jmarti_line_emt_block(item, modal_config)
+        elif modal_kind == "source_emt":
+            self._modify_source_emt_block(item, modal_config)
+        elif modal_kind == "dc_source_emt":
+            self._modify_dc_source_emt_block(item, modal_config)
+        elif modal_kind == "balanced_source_emt":
+            self._modify_balanced_source_emt_block(item, modal_config)
+        elif modal_kind == "arbitrary_source_emt":
+            self._modify_arbitrary_source_emt_block(item, modal_config)
+        elif modal_kind == "transient_source_emt":
+            self._modify_transient_source_emt_block(item, modal_config)
         elif modal_kind == "emt_phase_wizard":
             self._modify_emt_phase_wizard_block(item, modal_config)
         elif modal_kind == "lookup_matrix_linear":
@@ -8488,6 +9934,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self._modify_shunt_component_emt_block(item, modal_config)
         elif modal_kind == "rlc_combo_emt":
             self._modify_rlc_combo_emt_block(item, modal_config)
+        elif modal_kind == "induction_motor_emt":
+            self._modify_induction_motor_emt_block(item, modal_config)
         elif modal_kind == "switch_emt":
             self._modify_switch_emt_block(item, modal_config)
         else:
@@ -8762,6 +10210,156 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         set_jmarti_block_runtime_data(new_block, None)
         self._replace_scene_block_from_template(item, new_block, "jmarti_line_emt", updated_config)
 
+    def _modify_source_emt_block(self, item: BlockItem, modal_config: Dict[str, Any]) -> None:
+        """
+        Reconfigure one modal-created EMT source block.
+
+        :param item: Target block item.
+        :param modal_config: Stored modal configuration.
+        :return: None.
+        """
+        block_type: BlockType = BlockType[str(modal_config["block_type"])]
+        dialog = SourceEmtDialog(block_type=block_type, parent=self, initial_config=modal_config)
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            updated_config: Dict[str, Any] = dict(self._build_default_source_emt_modal_config(block_type), **dialog.get_configuration(), block_type=block_type.name)
+        else:
+            return
+
+        if item.subsys is None:
+            return
+        else:
+            pass
+
+        new_block: Block | None = self._build_source_emt_block_model(block_type=block_type, item_name=item.subsys.name, modal_config=updated_config)
+
+        if new_block is None:
+            return
+        else:
+            pass
+
+        self._replace_scene_block_from_template(item, new_block, "source_emt", updated_config)
+
+    def _modify_dc_source_emt_block(self, item: BlockItem, modal_config: Dict[str, Any]) -> None:
+        """
+        Reconfigure one modal-created EMT DC source block.
+
+        :param item: Target block item.
+        :param modal_config: Stored modal configuration.
+        :return: None.
+        """
+        block_type: BlockType = BlockType[str(modal_config["block_type"])]
+        dialog = DcSourceEmtDialog(block_type=block_type, parent=self, initial_config=modal_config)
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            updated_config: Dict[str, Any] = dict(self._build_default_dc_source_emt_modal_config(block_type), **dialog.get_configuration(), block_type=block_type.name)
+        else:
+            return
+
+        if item.subsys is None:
+            return
+        else:
+            pass
+
+        new_block: Block | None = self._build_dc_source_emt_block_model(block_type=block_type, item_name=item.subsys.name, modal_config=updated_config)
+
+        if new_block is None:
+            return
+        else:
+            pass
+
+        self._replace_scene_block_from_template(item, new_block, "dc_source_emt", updated_config)
+
+    def _modify_balanced_source_emt_block(self, item: BlockItem, modal_config: Dict[str, Any]) -> None:
+        """
+        Reconfigure one modal-created balanced EMT source block.
+
+        :param item: Target block item.
+        :param modal_config: Stored modal configuration.
+        :return: None.
+        """
+        block_type: BlockType = BlockType[str(modal_config["block_type"])]
+        dialog = BalancedSourceEmtDialog(block_type=block_type, parent=self, initial_config=modal_config)
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            updated_config: Dict[str, Any] = dict(self._build_default_balanced_source_emt_modal_config(block_type), **dialog.get_configuration(), block_type=block_type.name)
+        else:
+            return
+
+        if item.subsys is None:
+            return
+        else:
+            pass
+
+        new_block: Block | None = self._build_balanced_source_emt_block_model(block_type=block_type, item_name=item.subsys.name, modal_config=updated_config)
+
+        if new_block is None:
+            return
+        else:
+            pass
+
+        self._replace_scene_block_from_template(item, new_block, "balanced_source_emt", updated_config)
+
+    def _modify_arbitrary_source_emt_block(self, item: BlockItem, modal_config: Dict[str, Any]) -> None:
+        """
+        Reconfigure one modal-created arbitrary-waveform EMT source block.
+
+        :param item: Target block item.
+        :param modal_config: Stored modal configuration.
+        :return: None.
+        """
+        block_type: BlockType = BlockType[str(modal_config["block_type"])]
+        dialog = ArbitrarySourceEmtDialog(block_type=block_type, parent=self, initial_config=modal_config)
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            updated_config: Dict[str, Any] = dict(self._build_default_arbitrary_source_emt_modal_config(block_type), **dialog.get_configuration(), block_type=block_type.name)
+        else:
+            return
+
+        if item.subsys is None:
+            return
+        else:
+            pass
+
+        new_block: Block | None = self._build_arbitrary_source_emt_block_model(block_type=block_type, item_name=item.subsys.name, modal_config=updated_config)
+
+        if new_block is None:
+            return
+        else:
+            pass
+
+        self._replace_scene_block_from_template(item, new_block, "arbitrary_source_emt", updated_config)
+
+    def _modify_transient_source_emt_block(self, item: BlockItem, modal_config: Dict[str, Any]) -> None:
+        """
+        Reconfigure one modal-created transient EMT source block.
+
+        :param item: Target block item.
+        :param modal_config: Stored modal configuration.
+        :return: None.
+        """
+        block_type: BlockType = BlockType[str(modal_config["block_type"])]
+        dialog = TransientSourceEmtDialog(block_type=block_type, parent=self, initial_config=modal_config)
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            updated_config: Dict[str, Any] = dict(self._build_default_transient_source_emt_modal_config(block_type), **dialog.get_configuration(), block_type=block_type.name)
+        else:
+            return
+
+        if item.subsys is None:
+            return
+        else:
+            pass
+
+        new_block: Block | None = self._build_transient_source_emt_block_model(block_type=block_type, item_name=item.subsys.name, modal_config=updated_config)
+
+        if new_block is None:
+            return
+        else:
+            pass
+
+        self._replace_scene_block_from_template(item, new_block, "transient_source_emt", updated_config)
+
     def _modify_switch_emt_block(self, item: BlockItem, modal_config: Dict[str, Any]) -> None:
         """
         Reconfigure one modal-created EMT switch block.
@@ -8823,6 +10421,34 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self._annotate_internal_grounding_link_blocks(new_block)
         self._sync_rlc_combo_load_base_values(template_kwargs)
         self._replace_scene_block_from_template(item, new_block, "rlc_combo_emt", dict(rlc_config))
+
+    def _modify_induction_motor_emt_block(self, item: BlockItem, modal_config: Dict[str, Any]) -> None:
+        """
+        Reconfigure one modal-created induction-motor EMT block.
+
+        :param item: Target block item.
+        :param modal_config: Stored modal configuration.
+        :return: None.
+        """
+        # Reopen the same modal with the stored configuration so template edits use
+        # the exact persisted state instead of inferring anything from the block.
+        dialog: InductionMotorEmtDialog = self._build_induction_motor_emt_dialog(initial_config=modal_config)
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            induction_motor_config: Dict[str, Any] = dialog.get_configuration()
+        else:
+            return
+
+        if item.subsys is None:
+            return
+        else:
+            pass
+
+        new_block: Block = self._build_induction_motor_emt_block_model(
+            item_name=item.subsys.name,
+            modal_config=induction_motor_config,
+        )
+        self._replace_scene_block_from_template(item, new_block, "induction_motor_emt", dict(induction_motor_config))
 
     def _modify_grounding_link_emt_block(self, item: BlockItem, modal_config: Dict[str, Any]) -> None:
         """
@@ -9202,6 +10828,18 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     modal_kind, modal_config = get_modal_template_metadata(block_model)
                     if modal_kind == "jmarti_line_emt" and modal_config is not None:
                         block_item.setToolTip(self._build_jmarti_modal_tooltip(modal_config))
+                    elif modal_kind == "source_emt" and modal_config is not None:
+                        block_item.setToolTip(self._build_source_emt_modal_tooltip(modal_config))
+                    elif modal_kind == "dc_source_emt" and modal_config is not None:
+                        block_item.setToolTip(self._build_dc_source_emt_modal_tooltip(modal_config))
+                    elif modal_kind == "balanced_source_emt" and modal_config is not None:
+                        block_item.setToolTip(self._build_balanced_source_emt_modal_tooltip(modal_config))
+                    elif modal_kind == "arbitrary_source_emt" and modal_config is not None:
+                        block_item.setToolTip(self._build_arbitrary_source_emt_modal_tooltip(modal_config))
+                    elif modal_kind == "transient_source_emt" and modal_config is not None:
+                        block_item.setToolTip(self._build_transient_source_emt_modal_tooltip(modal_config))
+                    elif modal_kind == "induction_motor_emt" and modal_config is not None:
+                        block_item.setToolTip(self._build_induction_motor_emt_modal_tooltip(modal_config))
                     else:
                         pass
 

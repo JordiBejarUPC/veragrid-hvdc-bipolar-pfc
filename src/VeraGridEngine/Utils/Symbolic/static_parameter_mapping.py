@@ -31,6 +31,7 @@ from typing import Any, Dict, List, Tuple
 
 import numpy as np
 
+from VeraGridEngine.Devices.Branches.overhead_line_type import OverheadLineType
 from VeraGridEngine.Devices import MultiCircuit
 from VeraGridEngine.Devices.Branches.dc_line import DcLine
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
@@ -395,6 +396,7 @@ def assign_api_mapping_value_if_present(
         value: Any,
         logger: Logger | None,
         device_name: str,
+        allow_event_parameter_target: bool = False,
 ) -> bool:
     """
     Assign one static API-object value to ``mdl.parameters`` if exposed.
@@ -408,6 +410,10 @@ def assign_api_mapping_value_if_present(
     :param value: Static numerical value to assign.
     :param logger: Optional logger used to report invalid mapping contracts.
     :param device_name: Device name used in diagnostics.
+    :param allow_event_parameter_target: When ``True``, write the value into
+        ``mdl.event_dict`` if the exposed API-object target is one runtime
+        parameter. This is needed by EMT templates whose static device setpoints
+        also participate in scheduled-event workflows.
     :return: ``True`` if the value was assigned, ``False`` otherwise.
     """
     assigned: bool = False
@@ -425,18 +431,23 @@ def assign_api_mapping_value_if_present(
 
             if isinstance(event_dict, dict):
                 if target in event_dict:
-                    # A target present in event_dict means the model declared a
-                    # runtime parameter as a static API-object parameter. That is
-                    # a contract error, so this path refuses to assign it.
-                    add_static_mapping_warning(
-                        logger=logger,
-                        device_name=device_name,
-                        message="Static api_obj_mapping points to an event_dict parameter.",
-                        value=str(key),
-                        expected_value="api_obj_mapping target must be a constant parameter",
-                        device_property="api_obj_mapping",
-                    )
-                    assigned = False
+                    if allow_event_parameter_target:
+                        mdl.event_dict[target] = to_static_mapping_const(value)
+                        assigned = True
+                    else:
+                        # A target present in event_dict means the model declared a
+                        # runtime parameter as a static API-object parameter. That is
+                        # a contract error unless the caller explicitly opted into
+                        # seeding runtime parameters from static device data.
+                        add_static_mapping_warning(
+                            logger=logger,
+                            device_name=device_name,
+                            message="Static api_obj_mapping points to an event_dict parameter.",
+                            value=str(key),
+                            expected_value="api_obj_mapping target must be a constant parameter",
+                            device_property="api_obj_mapping",
+                        )
+                        assigned = False
                 else:
                     # The static mapping declares the symbolic parameter target.
                     # The target does not need to pre-exist in mdl.parameters.
@@ -1533,10 +1544,19 @@ def build_uncoupled_line_static_matrices(
     """
     r_value: float = float(line.R)
 
-    # Historical fallback naming intentionally preserved. Review this separately
-    # with numerical regression tests before changing it.
+    # Historical fallback naming intentionally preserved for the common case.
+    # Some saved grids still rely on ``line.B`` feeding the series-reactance slot.
+    # However, when that historical slot is zero while the direct line reactance is
+    # non-zero, the EMT pi-line becomes singular and loses all series dynamics.
+    # In that narrow case we prefer the physical direct interpretation.
     x_value: float = float(line.B)
     b_value: float = float(line.X)
+
+    if abs(x_value) <= 1.0e-15 and abs(float(line.X)) > 1.0e-15:
+        x_value = float(line.X)
+        b_value = float(line.B)
+    else:
+        pass
 
     r_full: np.ndarray = np.zeros((3, 3), dtype=np.float64)
     x_full: np.ndarray = np.zeros((3, 3), dtype=np.float64)
@@ -1574,7 +1594,7 @@ def build_line_static_matrices(
     ybase: float = 1.0 / zbase
     line_template: Any = line.template
 
-    if line_template is None:
+    if type(line_template)== OverheadLineType:
         r_full: np.ndarray
         l_full: np.ndarray
         c_full: np.ndarray
@@ -1582,7 +1602,6 @@ def build_line_static_matrices(
             line=line,
             omega_base=omega_base,
         )
-    else:
         # Tower/template matrices are physical line matrices. They are first
         # length-scaled and then converted to the system EMT per-unit base.
         z_phys: np.ndarray = line_template.z_nabc * float(line.length)
@@ -1597,6 +1616,14 @@ def build_line_static_matrices(
 
         bsh_full: np.ndarray = np.imag(y_pu)
         c_full = (bsh_full / (omega_base + 1.0e-20)) / 2.0
+    else:
+        r_full: np.ndarray
+        l_full: np.ndarray
+        c_full: np.ndarray
+        r_full, l_full, c_full = build_uncoupled_line_static_matrices(
+            line=line,
+            omega_base=omega_base,
+        )
 
     return r_full, l_full, c_full
 
@@ -2023,6 +2050,7 @@ def assign_load_static_api_mapping(
                 value=float(p_values[phase_index]),
                 logger=logger,
                 device_name=device_name,
+                allow_event_parameter_target=True,
             )
             assign_api_mapping_value_if_present(
                 mdl=mdl,
@@ -2030,6 +2058,7 @@ def assign_load_static_api_mapping(
                 value=float(q_values[phase_index]),
                 logger=logger,
                 device_name=device_name,
+                allow_event_parameter_target=True,
             )
             phase_index += 1
 
@@ -2039,6 +2068,7 @@ def assign_load_static_api_mapping(
             value=omega_base,
             logger=logger,
             device_name=device_name,
+            allow_event_parameter_target=True,
         )
 
 
@@ -2927,7 +2957,7 @@ def assign_vsc_static_api_mapping(
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowRefferenceType.vsc_kdp_pu,
-        value=float(vsc.kdp),
+        value=float(vsc.control1_droop),
         logger=logger,
         device_name=device_name,
     )

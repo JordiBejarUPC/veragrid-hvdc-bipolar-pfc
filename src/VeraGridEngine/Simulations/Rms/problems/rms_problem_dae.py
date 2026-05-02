@@ -57,8 +57,19 @@ def _is_time_aligned(t_curr: float, event_time: float) -> bool:
     """
     Return whether ``t_curr`` is aligned with ``event_time`` within numeric tolerance.
     """
-    time_tol = 10.0 * np.finfo(np.float64).eps * max(1.0, abs(event_time))
+    machine_eps: float = float(np.finfo(np.float64).eps)
+    time_tol: float = 10.0 * machine_eps * max(1.0, abs(event_time))
     return bool(abs(t_curr - event_time) <= time_tol)
+
+
+def _get_mode_event_sort_key(event: Tuple[float, float, bool]) -> float:
+    """
+    Return the sorting key of one mode event.
+
+    :param event: Mode event tuple ``(time, value, force_step_alignment)``.
+    :return: Event time.
+    """
+    return event[0]
 
 
 def _get_next_forced_mode_event_time(
@@ -574,26 +585,25 @@ class RmsProblemDae(RmsProblemTemplate):
                     if snom <= 0.0:
                         snom = 1.0
                     slack_gen_snom[bidx] += snom
-                    continue
-
-                Vbus_pf = self.power_flow_results.voltage[bidx]
-                if dev.idtag in gen_idx_map:
-                    gidx = gen_idx_map[dev.idtag]
-                    Sdev_pf = complex(float(dev.P), float(self.power_flow_results.gen_q[gidx])) / grid.Sbase
-                elif dev.idtag in batt_idx_map:
-                    bdid = batt_idx_map[dev.idtag]
-                    Sdev_pf = complex(float(dev.P), float(self.power_flow_results.battery_q[bdid])) / grid.Sbase
-                elif dev.idtag in shunt_idx_map:
-                    g_sh = float(dev.G) / grid.Sbase
-                    b_sh = float(dev.B) / grid.Sbase
-                    Sdev_pf = complex(g_sh * (abs(Vbus_pf) ** 2), -b_sh * (abs(Vbus_pf) ** 2))
-                elif dev.idtag in loads_idx_map:
-                    Sdev_pf = complex(-float(dev.P), -float(dev.Q)) / grid.Sbase
                 else:
-                    Sdev_pf = complex(0.0, 0.0)
+                    Vbus_pf = self.power_flow_results.voltage[bidx]
+                    if dev.idtag in gen_idx_map:
+                        gidx = gen_idx_map[dev.idtag]
+                        Sdev_pf = complex(float(dev.P), float(self.power_flow_results.gen_q[gidx])) / grid.Sbase
+                    elif dev.idtag in batt_idx_map:
+                        bdid = batt_idx_map[dev.idtag]
+                        Sdev_pf = complex(float(dev.P), float(self.power_flow_results.battery_q[bdid])) / grid.Sbase
+                    elif dev.idtag in shunt_idx_map:
+                        g_sh = float(dev.G) / grid.Sbase
+                        b_sh = float(dev.B) / grid.Sbase
+                        Sdev_pf = complex(g_sh * (abs(Vbus_pf) ** 2), -b_sh * (abs(Vbus_pf) ** 2))
+                    elif dev.idtag in loads_idx_map:
+                        Sdev_pf = complex(-float(dev.P), -float(dev.Q)) / grid.Sbase
+                    else:
+                        Sdev_pf = complex(0.0, 0.0)
 
-                fixed_inj_p[bidx] += Sdev_pf.real
-                fixed_inj_q[bidx] += Sdev_pf.imag
+                    fixed_inj_p[bidx] += Sdev_pf.real
+                    fixed_inj_q[bidx] += Sdev_pf.imag
 
         residual_p = branch_bus_p - fixed_inj_p
         residual_q = branch_bus_q - fixed_inj_q
@@ -771,10 +781,13 @@ class RmsProblemDae(RmsProblemTemplate):
         }
         for i, ep in enumerate(self._runtime_all_parameters_source):
             if ep.uid in self._discrete_event_parameter_uids:
-                continue
-            runtime_eq = self._runtime_all_eqs_source[i]
-            if isinstance(runtime_eq, Const) and runtime_eq.value is None and ep.uid in event_eq_by_uid:
-                self._runtime_all_eqs_source[i] = event_eq_by_uid[ep.uid]
+                pass
+            else:
+                runtime_eq = self._runtime_all_eqs_source[i]
+                if isinstance(runtime_eq, Const) and runtime_eq.value is None and ep.uid in event_eq_by_uid:
+                    self._runtime_all_eqs_source[i] = event_eq_by_uid[ep.uid]
+                else:
+                    pass
 
         for i, eq in enumerate(self._runtime_all_eqs_source):
             if eq is None or (isinstance(eq, Const) and eq.value is None):
@@ -895,49 +908,46 @@ class RmsProblemDae(RmsProblemTemplate):
 
         for rms_evt in selected_events:
             if not isinstance(rms_evt.parameter, Var):
-                continue
-
-            if not self._event_targets_registered_parameter(rms_evt, int(rms_evt.parameter.uid)):
-                continue
-
-            parameter_uid = int(rms_evt.parameter.uid)
-
-            if parameter_uid in self._discrete_event_parameter_uids:
-                event_list = scheduled_mode_events.setdefault(parameter_uid, list())
-                try:
-                    force_step_alignment = bool(rms_evt.force_step_alignment)
-                except AttributeError:
-                    force_step_alignment = False
-
-                event_list.append(
-                    (
-                        float(rms_evt.time),
-                        float(rms_evt.value),
-                        force_step_alignment,
-                    )
-                )
+                pass
             else:
-                if parameter_uid in collect_continuous_events:
-                    collect_continuous_events[parameter_uid]["times"].append(float(rms_evt.time))
-                    collect_continuous_events[parameter_uid]["values"].append(float(rms_evt.value))
-                else:
+                if not self._event_targets_registered_parameter(rms_evt, int(rms_evt.parameter.uid)):
                     pass
+                else:
+                    parameter_uid = int(rms_evt.parameter.uid)
+
+                    if parameter_uid in self._discrete_event_parameter_uids:
+                        event_list = scheduled_mode_events.setdefault(parameter_uid, list())
+                        force_step_alignment: bool = bool(rms_evt.force_step_alignment)
+
+                        event_list.append(
+                            (
+                                float(rms_evt.time),
+                                float(rms_evt.value),
+                                force_step_alignment,
+                            )
+                        )
+                    else:
+                        if parameter_uid in collect_continuous_events:
+                            collect_continuous_events[parameter_uid]["times"].append(float(rms_evt.time))
+                            collect_continuous_events[parameter_uid]["values"].append(float(rms_evt.value))
+                        else:
+                            pass
 
         for parameter_uid, info in collect_continuous_events.items():
             if len(info["times"]) == 0:
-                continue
+                pass
+            else:
+                sort_idx = np.argsort(np.asarray(info["times"], dtype=np.float64), kind="stable")
+                t_events = np.asarray(info["times"], dtype=np.float64)[sort_idx]
+                new_values = np.asarray(info["values"], dtype=np.float64)[sort_idx]
 
-            sort_idx = np.argsort(np.asarray(info["times"], dtype=np.float64), kind="stable")
-            t_events = np.asarray(info["times"], dtype=np.float64)[sort_idx]
-            new_values = np.asarray(info["values"], dtype=np.float64)[sort_idx]
-
-            runtime_idx = self._uid2idx_event_params[parameter_uid]
-            active_runtime_eqs[runtime_idx] = piecewise(
-                time_var=self._glob_time,
-                t_events=t_events,
-                new_values=new_values,
-                default_value=active_runtime_eqs[runtime_idx],
-            )
+                runtime_idx = self._uid2idx_event_params[parameter_uid]
+                active_runtime_eqs[runtime_idx] = piecewise(
+                    time_var=self._glob_time,
+                    t_events=t_events,
+                    new_values=new_values,
+                    default_value=active_runtime_eqs[runtime_idx],
+                )
 
         self._runtime_all_eqs_source = active_runtime_eqs
         self._scheduled_mode_events = scheduled_mode_events
@@ -1205,7 +1215,7 @@ class RmsProblemDae(RmsProblemTemplate):
         self._mode_event_cursor = dict()
 
         for uid, event_list in self._scheduled_mode_events.items():
-            event_list.sort(key=lambda evt: evt[0])
+            event_list.sort(key=_get_mode_event_sort_key)
             self._mode_event_cursor[uid] = 0
 
     def _apply_scheduled_mode_events(self, t_curr: float, full_params: Vec) -> None:
@@ -1306,20 +1316,21 @@ class RmsProblemDae(RmsProblemTemplate):
     def _update_dynamic_mode_defaults(self, t: float, x: Vec, params: Vec) -> None:
         for uid, expression in self._mode_runtime_expression_by_uid.items():
             if uid in self._scheduled_mode_events and len(self._scheduled_mode_events[uid]) > 0:
-                continue
-
-            if uid in self._mode_runtime_initialized_uids:
-                continue
-
-            if uid in self._uid2idx_event_params:
-                runtime_idx = self._uid2idx_event_params[uid]
+                pass
             else:
-                runtime_idx = None
-            if runtime_idx is None:
-                continue
+                if uid in self._mode_runtime_initialized_uids:
+                    pass
+                else:
+                    if uid in self._uid2idx_event_params:
+                        runtime_idx = self._uid2idx_event_params[uid]
+                    else:
+                        runtime_idx = None
 
-            params[runtime_idx] = self._evaluate_runtime_expression_with_state(expression, params, x, t)
-            self._mode_runtime_initialized_uids.add(uid)
+                    if runtime_idx is None:
+                        pass
+                    else:
+                        params[runtime_idx] = self._evaluate_runtime_expression_with_state(expression, params, x, t)
+                        self._mode_runtime_initialized_uids.add(uid)
 
     def _initialize_latched_mode_defaults(self, t: float, x: Vec) -> None:
         if self._variable_parameters_values is None:
@@ -1357,16 +1368,18 @@ class RmsProblemDae(RmsProblemTemplate):
         :param t: Simulation time.
         :return: Updated runtime parameter vector.
         """
-        try:
+        runtime_continuous_eqs: List[Expr | Const]
+        runtime_mode_slice: slice
+
+        if "_runtime_continuous_eqs" in self.__dict__:
             runtime_continuous_eqs = self._runtime_continuous_eqs
-        except AttributeError:
+        else:
             if self._event_params_fn is None:
                 return ev_param
-
-            updated = self._event_params_fn(ev_param, t)
-            updated = self._event_params_fn(updated, t)
-
-            return updated
+            else:
+                updated = self._event_params_fn(ev_param, t)
+                updated = self._event_params_fn(updated, t)
+                return updated
 
         n_continuous = len(runtime_continuous_eqs)
 
@@ -1374,9 +1387,9 @@ class RmsProblemDae(RmsProblemTemplate):
         if n_continuous == 0 or self._event_params_fn is None:
             return ev_param
 
-        try:
+        if "_runtime_mode_slice" in self.__dict__:
             runtime_mode_slice = self._runtime_mode_slice
-        except AttributeError:
+        else:
             runtime_mode_slice = slice(0, 0)
 
         mode_snapshot: Vec | None = None

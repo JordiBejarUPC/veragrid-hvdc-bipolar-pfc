@@ -147,7 +147,7 @@ def get_transformer_emt_template(
     """
 
     templ: EmtModelTemplate = EmtModelTemplate()
-    templ.tpe = DeviceType.TransformerTypeDevice
+    templ.tpe = DeviceType.Transformer2WDevice
     templ.name = name
     templ.block.name = name
 

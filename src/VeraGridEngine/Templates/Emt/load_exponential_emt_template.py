@@ -19,6 +19,7 @@ from VeraGridEngine.Templates.Emt.load_RLC_emt_template import (
     wrap_ground_referenced_load_emt_template,
 )
 from VeraGridEngine.Utils.Symbolic.block import Expr, Var
+from VeraGridEngine.Utils.Symbolic.symbolic import abs as symbolic_abs
 from VeraGridEngine.enumerations import DeviceType, ParamPowerFlowRefferenceType, ShuntConnectionType, VarPowerFlowRefferenceType
 
 
@@ -223,23 +224,29 @@ def get_exponential_load_emt(
         algebraic_vars.append(q_load_var)
         algebraic_vars.append(current_var)
 
+        # Newton iterations can briefly visit non-physical negative ``V^2`` values
+        # before returning to the feasible region. Keep the magnitude-related
+        # algebraics real-valued during those trial steps so the EMT solve degrades
+        # gracefully instead of producing NaNs that poison the whole substep.
+        safe_v2_expr: Expr = symbolic_abs(v2_var) + eps
+
         algebraic_eqs.append(v2_var - (u_var * u_var + q_var * q_var))
-        algebraic_eqs.append(vm_var - ((v2_var + eps) ** c05))
+        algebraic_eqs.append(vm_var - (safe_v2_expr ** c05))
         algebraic_eqs.append(ratio_var - (vm_var / v0))
         algebraic_eqs.append(p_var + (p0_var * (ratio_var ** alpha_p)))
         algebraic_eqs.append(q_load_var + (q0_var * (ratio_var ** alpha_q)))
-        algebraic_eqs.append(current_var - (c2 * (u_var * p_var + q_var * q_load_var) / (v2_var + eps)))
+        algebraic_eqs.append(current_var - (c2 * (u_var * p_var + q_var * q_load_var) / safe_v2_expr))
 
         # The explicit initializer consumes these seeds phase by phase using the
         # same formulas as before, now limited to the active subset.
         init_eqs[u_var] = voltage_var
         init_eqs[q_var] = -voltage_derivative_var / omega
         init_eqs[v2_var] = u_var * u_var + q_var * q_var
-        init_eqs[vm_var] = (v2_var + eps) ** c05
+        init_eqs[vm_var] = safe_v2_expr ** c05
         init_eqs[ratio_var] = vm_var / v0
         init_eqs[p_var] = -(p0_var * (ratio_var ** alpha_p))
         init_eqs[q_load_var] = -(q0_var * (ratio_var ** alpha_q))
-        init_eqs[current_var] = c2 * (u_var * p_var + q_var * q_load_var) / (v2_var + eps)
+        init_eqs[current_var] = c2 * (u_var * p_var + q_var * q_load_var) / safe_v2_expr
 
         diff_init_eqs[d_u_var] = voltage_derivative_var
         diff_init_eqs[d_q_var] = omega * u_var

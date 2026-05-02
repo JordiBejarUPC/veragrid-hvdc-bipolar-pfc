@@ -9,16 +9,16 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEdi
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import get_modal_template_metadata
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.enumerations import BlockType, DynamicSimulationMode
-
+from VeraGridEngine.enumerations import BlockType, DynamicSimulationMode, DeviceType
 
 class _ApiStub:
-    __slots__ = ("name", "rms_template", "emt_template")
+    __slots__ = ("name", "rms_template", "emt_template", "device_type")
 
     def __init__(self) -> None:
         self.name = "Stub"
         self.rms_template = None
         self.emt_template = None
+        self.device_type = DeviceType.NoDevice
 
 
 def _get_app() -> QtWidgets.QApplication:
