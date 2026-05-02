@@ -134,7 +134,8 @@ class VarFactory(EditableDevice):
 
     def add_diff_var(self,
                      name: str,
-                     reference: VarPowerFlowRefferenceType | None = None,
+                     reference: SharedVarReferenceType | None = None,
+                     power_flow_reference: VarPowerFlowRefferenceType | None = None,
                      network_conn: bool = False,
                      uid: int | None = None,
                      diff_var: Var | None = None,
@@ -143,15 +144,28 @@ class VarFactory(EditableDevice):
         Adds a Diff ver to the class
         :param name:
         :param reference:
+        :param power_flow_reference:
         :param network_conn:
         :param uid:
         :param diff_var:
         :param base_var:
         :return:
         """
-        v = Var(name=name, reference=reference, network_conn=network_conn, uid=uid, diff_var=diff_var, base_var=base_var)
-        self._diff_var_dict[v.uid] = v
-        return v
+        if isinstance(reference, str):
+            if reference not in self._references_dict:
+                self.create_reference(reference)
+                self._vars_references_dict[self._references_dict[reference].uid] = list()
+
+            v = Var(name=name, reference=self._references_dict[reference], power_flow_reference=power_flow_reference, network_conn=network_conn, uid=uid, diff_var=diff_var, base_var=base_var)
+            self.save_var_in_vars_references_dict(v, reference)
+            self._var_dict[v.uid] = v
+            self._diff_var_dict[v.uid] = v
+            return v
+        else:
+            v = Var(name=name, reference=reference, power_flow_reference=power_flow_reference,
+                    network_conn=network_conn, uid=uid, diff_var=diff_var, base_var=base_var)
+            self._diff_var_dict[v.uid] = v
+            return v
 
     def get_diff_var(self, uid: int) -> Var:
         """
@@ -244,19 +258,22 @@ class VarFactory(EditableDevice):
 
             # Older persisted symbolic models may not store the power-flow
             # reference field, so keep loading those files by defaulting to None.
+            key_ref = None
+            ref_data_dict: Any = data["ref"]
+            if ref_data_dict is not None:
+                ref_data_name = ref_data_dict["name"]
+                ref_data_uid = ref_data_dict["uid"]
+                key_ref: SharedVarReferenceType | None
 
-            ref_data_dict: Any = data["reference"]
-            ref_data_name = ref_data_dict["name"]
-            ref_data_uid = ref_data_dict["uid"]
-            key_ref: SharedVarReferenceType | None
-
-            if ref_data_name is not None and ref_data_uid is not None:
-
-                key_ref = SharedVarReferenceType(ref_data_name, ref_data_uid)
-                if key_ref is not None:
-                    self._references_dict[ref_data_name] = key_ref
-            else:
-                key_ref = None
+                if ref_data_name is not None and ref_data_uid is not None:
+                    if ref_data_name not in self._references_dict:
+                        key_ref = SharedVarReferenceType(ref_data_name, ref_data_uid)
+                        if key_ref is not None:
+                            self._references_dict[ref_data_name] = key_ref
+                    else:
+                        key_ref = self._references_dict[ref_data_name]
+                else:
+                    key_ref = None
 
             ref_power_flow_data: Any = data.get("power_flow_reference", None)
             key_power_flow_ref: VarPowerFlowRefferenceType | None
@@ -267,12 +284,14 @@ class VarFactory(EditableDevice):
                 key_power_flow_ref = None
 
             obj = Var(name=data["name"], uid=data["uid"], reference=key_ref, power_flow_reference=key_power_flow_ref)
-            if ref_data_uid is not None:
-                if self._vars_references_dict:
-                    self._vars_references_dict[ref_data_uid].append(obj)
-                else:
-                    self._vars_references_dict[ref_data_uid] = list()
-                    self._vars_references_dict[ref_data_uid].append(obj)
+            if ref_data_dict is not None:
+                ref_data_uid = ref_data_dict["uid"]
+                if ref_data_uid is not None:
+                    if ref_data_uid in self._vars_references_dict:
+                        self._vars_references_dict[ref_data_uid].append(obj)
+                    else:
+                        self._vars_references_dict[ref_data_uid] = list()
+                        self._vars_references_dict[ref_data_uid].append(obj)
 
             # at this point we can store the object
             obj_dict[obj.uid] = obj
@@ -309,17 +328,22 @@ class VarFactory(EditableDevice):
 
             # Older persisted symbolic models may not store the power-flow
             # reference field on differential variables either.
+            key_ref = None
+            ref_data_dict: Any = data["ref"]
+            if ref_data_dict is not None:
+                ref_data_name = ref_data_dict["name"]
+                ref_data_uid = ref_data_dict["uid"]
+                key_ref: SharedVarReferenceType | None
 
-            ref_data_dict: Any = data["reference"]
-            ref_data_name = ref_data_dict["name"]
-            ref_data_uid = ref_data_dict["uid"]
-            key_ref: SharedVarReferenceType | None
-
-            if ref_data_name is not None and ref_data_uid is not None:
-
-                key_ref = SharedVarReferenceType(ref_data_name, ref_data_uid)
-            else:
-                key_ref = None
+                if ref_data_name is not None and ref_data_uid is not None:
+                    if ref_data_name not in self._references_dict:
+                        key_ref = SharedVarReferenceType(ref_data_name, ref_data_uid)
+                        if key_ref is not None:
+                            self._references_dict[ref_data_name] = key_ref
+                    else:
+                        key_ref = self._references_dict[ref_data_name]
+                else:
+                    key_ref = None
 
             reference_power_flow: VarPowerFlowRefferenceType | None = data.get("ref", None)
             obj = Var(name=data["name"],
@@ -327,6 +351,15 @@ class VarFactory(EditableDevice):
                       base_var=base_var,
                       reference = key_ref,
                       power_flow_reference=reference_power_flow)
+
+            if ref_data_dict is not None:
+                ref_data_uid = ref_data_dict["uid"]
+                if ref_data_uid is not None:
+                    if ref_data_uid in self._vars_references_dict:
+                        self._vars_references_dict[ref_data_uid].append(obj)
+                    else:
+                        self._vars_references_dict[ref_data_uid] = list()
+                        self._vars_references_dict[ref_data_uid].append(obj)
 
             # at this point we can store the object
             obj_dict[obj.uid] = obj
