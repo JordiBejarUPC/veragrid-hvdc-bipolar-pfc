@@ -27,11 +27,11 @@ from VeraGridEngine.Templates.Rms.voltage_source_template import VoltageSourceBu
 from VeraGridEngine.Templates.Rms.vsc_gfl_dclinked import build_vsc_rms
 from VeraGridEngine.Templates.templates_common_functions import set_rms_model
 from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod, ConverterControlType, VarPowerFlowRefferenceType
-from VeraGridEngine.Devices.Aggregation import RmsEvent
+from VeraGridEngine.Devices.Events.rms_event import RmsEvent
 import VeraGridEngine.api as gce
 
-from trunk.nu_actis.nuactis_master_pwm_template import build_trafo_master_block
-from trunk.nu_actis.nuactis_slave_pwm_template import build_trafo_slave_block, connect_rms_vsc_to_buses
+from trunk.nu_actis.nuactis_master_pwm_template_modified import build_trafo_master_block
+from trunk.nu_actis.nuactis_slave_pwm_template_modified import build_trafo_slave_block, connect_rms_vsc_to_buses
 
 
 def dump_grid_topology(grid, label: str):
@@ -276,10 +276,69 @@ def print_control_blocks_outputs(trafo, problem, y_values, sample_idx: int = -1)
     else:
         print("  objective value (iq target) = <not available>")
 
+    if id_val is not None:
+        print(f"  measured id = {id_val:.6f}")
+    else:
+        print("  measured id = <not available>")
+
+    if iq_val is not None:
+        print(f"  measured iq = {iq_val:.6f}")
+    else:
+        print("  measured iq = <not available>")
+
     if id_target_val is not None and id_val is not None:
         print(f"  id tracking error = {id_target_val - id_val:+.6e}")
     if iq_target_val is not None and iq_val is not None:
         print(f"  iq tracking error = {iq_target_val - iq_val:+.6e}")
+
+
+def print_current_frame_sanity(trafo, problem, y_values, sample_idx: int = -1):
+    print(f"\n[DEBUG] dq frame sanity for {trafo.name}")
+
+    id_var = pick_solved_var(
+        trafo.rms_model,
+        problem,
+        preferred_exact=[f"id_{trafo.name}"],
+        preferred_contains=["id_"],
+        exclude_contains=["id_ref", "id_limit", "id_lim_cal"],
+    )
+    iq_var = pick_solved_var(
+        trafo.rms_model,
+        problem,
+        preferred_exact=[f"iq_{trafo.name}"],
+        preferred_contains=["iq_"],
+        exclude_contains=["iq_ref", "iq_limit", "iq_lim_cal"],
+    )
+    id_ctrl = get_var_value_at(id_var, problem, y_values, sample_idx)
+    iq_ctrl = get_var_value_at(iq_var, problem, y_values, sample_idx)
+
+    vmt = trafo.rms_model.external_mapping.get(VarPowerFlowRefferenceType.Vmt, None)
+    vat = trafo.rms_model.external_mapping.get(VarPowerFlowRefferenceType.Vat, None)
+    pt = trafo.rms_model.external_mapping.get(VarPowerFlowRefferenceType.Pt, None)
+    qt = trafo.rms_model.external_mapping.get(VarPowerFlowRefferenceType.Qt, None)
+
+    vm_t = get_var_value_at(vmt, problem, y_values, sample_idx)
+    va_t = get_var_value_at(vat, problem, y_values, sample_idx)
+    p_t = get_var_value_at(pt, problem, y_values, sample_idx)
+    q_t = get_var_value_at(qt, problem, y_values, sample_idx)
+
+    if None in (id_ctrl, iq_ctrl, vm_t, va_t, p_t, q_t) or abs(vm_t) < 1e-9:
+        print("  could not compute sanity check (missing solved vars)")
+        return
+
+    v_t = vm_t * np.exp(1j * va_t)
+    s_t = p_t + 1j * q_t
+    i_t = np.conj(s_t / v_t)
+
+    i_mag = float(np.abs(i_t))
+    i_ang = float(np.angle(i_t))
+    theta = float(va_t)
+    id_from_phasor = i_mag * np.sin(i_ang - theta)
+    iq_from_phasor = i_mag * np.cos(i_ang - theta)
+
+    print(f"  controller id/iq = {id_ctrl:+.6f}, {iq_ctrl:+.6f}")
+    print(f"  phasor    id/iq = {id_from_phasor:+.6f}, {iq_from_phasor:+.6f}  (from Pt/Qt at to-side)")
+    print(f"  mismatch  id/iq = {id_ctrl - id_from_phasor:+.6e}, {iq_ctrl - iq_from_phasor:+.6e}")
 
 
 grid = gce.MultiCircuit(Sbase=100, fbase=50.0)
@@ -378,28 +437,28 @@ dc_line = gce.DcLine(name="DC_line", bus_from=bus3, bus_to=bus4, rate=900.0, r=0
 grid.add_dc_line(dc_line)
 
 # Build RMS models
-genA_mdl = VoltageSourceBuild(grid.rms_var_factory, name=generatorA.name).block
-genB_mdl = VoltageSourceBuild(grid.rms_var_factory, name=generatorB.name).block
+genA_mdl = VoltageSourceBuild(grid.var_factory, name=generatorA.name).block
+genB_mdl = VoltageSourceBuild(grid.var_factory, name=generatorB.name).block
 
-lineA_mdl = get_line_rms_template(grid.rms_var_factory, name=lineA.name).block
-lineB_mdl = get_line_rms_template(grid.rms_var_factory, name=lineB.name).block
-dc_line_mdl = get_dc_line_rms_template(grid.rms_var_factory, name=dc_line.name).block
+lineA_mdl = get_line_rms_template(grid.var_factory, name=lineA.name).block
+lineB_mdl = get_line_rms_template(grid.var_factory, name=lineB.name).block
+dc_line_mdl = get_dc_line_rms_template(grid.var_factory, name=dc_line.name).block
 
-trafo_master_mdl = build_trafo_master_block(vfactory=grid.rms_var_factory, name=trafoA.name).block
+trafo_master_mdl = build_trafo_master_block(vfactory=grid.var_factory, name=trafoA.name).block
 trafo_slave_mdl = build_trafo_slave_block(
-    vfactory=grid.rms_var_factory,
+    vfactory=grid.var_factory,
     name=trafoB.name,
     q_control_type=vsc_slave.control1,
 ).block
 
-vsc_master_mdl = build_vsc_rms(vfactory=grid.rms_var_factory, name=vsc_master.name).block
-vsc_slave_mdl = build_vsc_rms(vfactory=grid.rms_var_factory, name=vsc_slave.name).block
+vsc_master_mdl = build_vsc_rms(vfactory=grid.var_factory, name=vsc_master.name).block
+vsc_slave_mdl = build_vsc_rms(vfactory=grid.var_factory, name=vsc_slave.name).block
 
 # Assign models
-set_rms_model(device=generatorA, model=genA_mdl, var_factory=grid.rms_var_factory)
-set_rms_model(device=generatorB, model=genB_mdl, var_factory=grid.rms_var_factory)
-set_rms_model(device=lineA, model=lineA_mdl, var_factory=grid.rms_var_factory)
-set_rms_model(device=lineB, model=lineB_mdl, var_factory=grid.rms_var_factory)
+set_rms_model(device=generatorA, model=genA_mdl, var_factory=grid.var_factory)
+set_rms_model(device=generatorB, model=genB_mdl, var_factory=grid.var_factory)
+set_rms_model(device=lineA, model=lineA_mdl, var_factory=grid.var_factory)
+set_rms_model(device=lineB, model=lineB_mdl, var_factory=grid.var_factory)
 
 dc_line.rms_model = dc_line_mdl
 trafoA.rms_model = trafo_master_mdl
@@ -432,11 +491,20 @@ connect_rms_vsc_to_buses(
 for vsc_dev, trafo_model in [(vsc_master, trafoA.rms_model), (vsc_slave, trafoB.rms_model)]:
     im_trafo = trafo_model.external_mapping[VarPowerFlowRefferenceType.Im]
     pf_trafo = trafo_model.external_mapping[VarPowerFlowRefferenceType.Pf]
+    vmf_trafo = trafo_model.external_mapping[VarPowerFlowRefferenceType.Vmf]
 
-    vsc_dev.rms_model.connect(
-        [vsc_dev.rms_model.in_vars[0], vsc_dev.rms_model.in_vars[1]],
-        [im_trafo, pf_trafo],
-    )
+    if len(vsc_dev.rms_model.in_vars) >= 2:
+        vsc_dev.rms_model.connect(
+            [vsc_dev.rms_model.in_vars[0], vsc_dev.rms_model.in_vars[1]],
+            [im_trafo, pf_trafo],
+        )
+    elif len(vsc_dev.rms_model.in_vars) == 1:
+        vsc_dev.rms_model.connect(
+            [vsc_dev.rms_model.in_vars[0]],
+            [vmf_trafo],
+        )
+    else:
+        raise RuntimeError(f"Unexpected VSC model input count: {len(vsc_dev.rms_model.in_vars)}")
 
 
 options = gce.PowerFlowOptions(
@@ -467,9 +535,23 @@ print(f"Converged? {res.converged}")
 print(res.get_bus_df())
 print(res.get_branch_df())
 print_nuactis_pf_consistency(grid, res)
+
+# Ensure voltage-source generator references are numerically initialized from PF.
+for gen_dev in [generatorA, generatorB]:
+    bus_idx = next(i for i, b in enumerate(grid.buses) if b is gen_dev.bus)
+    vm0 = float(np.abs(res.voltage[bus_idx]))
+    va0 = float(np.angle(res.voltage[bus_idx]))
+
+    vg0_var = next((v for v in gen_dev.rms_model.event_dict.keys() if v.name == "Vg0"), None)
+    ag0_var = next((v for v in gen_dev.rms_model.event_dict.keys() if v.name == "Ag0"), None)
+    if vg0_var is not None:
+        gen_dev.rms_model.event_dict[vg0_var] = grid.var_factory.add_const(vm0)
+    if ag0_var is not None:
+        gen_dev.rms_model.event_dict[ag0_var] = grid.var_factory.add_const(va0)
+
 rms_options = RmsOptions(
     time_step=0.001,
-    simulation_time=1.0,
+    simulation_time=2.0,
     tolerance=1e-6,
     integration_method=DynamicIntegrationMethod.DaeBackEuler,
     initialization_method=RmsInitializationMethod.Explicit,
@@ -485,7 +567,7 @@ if generator_a_vg0 is None:
     raise RuntimeError("Could not find Vg0 event variable for generatorA RMS model")
 
 event_time = 0.1
-event_value = 1.0001
+event_value = 1.00001
 
 grid.add_rms_event(
     RmsEvent(
@@ -529,6 +611,7 @@ print(f"Plotting {len(t_plot)} time samples (partial run: {not converged})")
 
 for trafo in [trafoA, trafoB]:
     print_control_blocks_outputs(trafo=trafo, problem=problem, y_values=y_plot, sample_idx=-1)
+    print_current_frame_sanity(trafo=trafo, problem=problem, y_values=y_plot, sample_idx=-1)
 
 bus1_vm = bus1.rms_model.external_mapping[VarPowerFlowRefferenceType.Vm]
 bus6_vm = bus6.rms_model.external_mapping[VarPowerFlowRefferenceType.Vm]
@@ -558,8 +641,12 @@ for trafo in [trafoA, trafoB]:
     id_ref_var = pick_solved_var(
         trafo.rms_model,
         problem,
-        preferred_contains=["id_ref_"],
-        exclude_contains=["id_ref_lmtd"],
+        preferred_contains=["id_ref_lmtd_", "id_ref_"],
+    )
+    iq_ref_var = pick_solved_var(
+        trafo.rms_model,
+        problem,
+        preferred_contains=["iq_ref_lmtd_", "iq_ref_"],
     )
     id_var = pick_solved_var(
         trafo.rms_model,
@@ -567,6 +654,13 @@ for trafo in [trafoA, trafoB]:
         preferred_exact=[f"id_{trafo.name}"],
         preferred_contains=["id_"],
         exclude_contains=["id_ref", "id_limit", "id_lim_cal"],
+    )
+    iq_var = pick_solved_var(
+        trafo.rms_model,
+        problem,
+        preferred_exact=[f"iq_{trafo.name}"],
+        preferred_contains=["iq_"],
+        exclude_contains=["iq_ref", "iq_limit", "iq_lim_cal"],
     )
 
     if id_ref_var is not None and id_ref_var.uid in problem.uid2idx_vars:
@@ -576,12 +670,26 @@ for trafo in [trafoA, trafoB]:
         candidate_names = sorted([n for n in block_var_names if "id_ref" in n])
         print(f"[WARN] Could not plot id_ref for {trafo.name}. Candidates in block: {candidate_names}")
 
+    if iq_ref_var is not None and iq_ref_var.uid in problem.uid2idx_vars:
+        plt.plot(t_plot, y_plot[:, problem.get_var_idx(iq_ref_var)], label=f"{trafo.name} iq_ref")
+    else:
+        block_var_names = collect_var_names_in_block(trafo.rms_model)
+        candidate_names = sorted([n for n in block_var_names if "iq_ref" in n])
+        print(f"[WARN] Could not plot iq_ref for {trafo.name}. Candidates in block: {candidate_names}")
+
     if id_var is not None and id_var.uid in problem.uid2idx_vars:
         plt.plot(t_plot, y_plot[:, problem.get_var_idx(id_var)], linestyle="--", label=f"{trafo.name} id")
     else:
         block_var_names = collect_var_names_in_block(trafo.rms_model)
         candidate_names = sorted([n for n in block_var_names if n.startswith("id_")])
         print(f"[WARN] Could not plot id for {trafo.name}. Candidates in block: {candidate_names}")
+
+    if iq_var is not None and iq_var.uid in problem.uid2idx_vars:
+        plt.plot(t_plot, y_plot[:, problem.get_var_idx(iq_var)], linestyle="--", label=f"{trafo.name} iq")
+    else:
+        block_var_names = collect_var_names_in_block(trafo.rms_model)
+        candidate_names = sorted([n for n in block_var_names if n.startswith("iq_")])
+        print(f"[WARN] Could not plot iq for {trafo.name}. Candidates in block: {candidate_names}")
 
 plt.axvline(event_time, color="black", linestyle="--", linewidth=1.0, label=f"Event @ {event_time:.3f} s")
 plt.xlabel("Time (s)")
@@ -590,4 +698,105 @@ plt.grid(True, alpha=0.3)
 plt.legend(ncol=2, fontsize=8)
 
 plt.tight_layout()
+
+# Diagnostic figure: ref paths, limiter activity, mode flags, and tracking errors
+diag_var_labels = [
+    ("id_ref", ["id_ref_"], []),
+    ("id_ref_lmtd", ["id_ref_lmtd_", "id_ref_"], []),
+    ("iq_ref", ["iq_ref_"], []),
+    ("iq_ref_lmtd", ["iq_ref_lmtd_", "iq_ref_"], []),
+    ("id", ["id_"], ["id_ref", "id_limit", "id_lim_cal"]),
+    ("iq", ["iq_"], ["iq_ref", "iq_limit", "iq_lim_cal"]),
+    ("id_limit", ["id_limit_"], []),
+    ("iq_limit", ["iq_limit_"], []),
+    ("sel2", ["proc_select_2"], []),
+    ("sel3", ["proc_select_3"], []),
+    ("sel4", ["proc_select_4"], []),
+    ("sel5", ["proc_select_5"], []),
+]
+
+diag = {}
+for trafo in [trafoA, trafoB]:
+    diag[trafo.name] = {}
+    for label, preferred_contains, exclude_contains in diag_var_labels:
+        diag[trafo.name][label] = pick_solved_var(
+            trafo.rms_model,
+            problem,
+            preferred_contains=preferred_contains,
+            exclude_contains=exclude_contains,
+        )
+
+plt.figure(figsize=(12, 10))
+
+plt.subplot(4, 1, 1)
+for trafo in [trafoA, trafoB]:
+    tref = diag[trafo.name]["id_ref"]
+    tlmtd = diag[trafo.name]["id_ref_lmtd"]
+    if tref is not None and tref.uid in problem.uid2idx_vars:
+        plt.plot(t_plot, y_plot[:, problem.get_var_idx(tref)], label=f"{trafo.name} id_ref")
+    if tlmtd is not None and tlmtd.uid in problem.uid2idx_vars:
+        plt.plot(t_plot, y_plot[:, problem.get_var_idx(tlmtd)], linestyle="--", label=f"{trafo.name} id_ref_lmtd")
+plt.axvline(event_time, color="black", linestyle="--", linewidth=1.0)
+plt.ylabel("d-axis refs")
+plt.grid(True, alpha=0.3)
+plt.legend(ncol=2, fontsize=8)
+
+plt.subplot(4, 1, 2)
+for trafo in [trafoA, trafoB]:
+    tref = diag[trafo.name]["iq_ref"]
+    tlmtd = diag[trafo.name]["iq_ref_lmtd"]
+    if tref is not None and tref.uid in problem.uid2idx_vars:
+        plt.plot(t_plot, y_plot[:, problem.get_var_idx(tref)], label=f"{trafo.name} iq_ref")
+    if tlmtd is not None and tlmtd.uid in problem.uid2idx_vars:
+        plt.plot(t_plot, y_plot[:, problem.get_var_idx(tlmtd)], linestyle="--", label=f"{trafo.name} iq_ref_lmtd")
+plt.axvline(event_time, color="black", linestyle="--", linewidth=1.0)
+plt.ylabel("q-axis refs")
+plt.grid(True, alpha=0.3)
+plt.legend(ncol=2, fontsize=8)
+
+plt.subplot(4, 1, 3)
+for trafo in [trafoA, trafoB]:
+    id_lim = diag[trafo.name]["id_limit"]
+    iq_lim = diag[trafo.name]["iq_limit"]
+    if id_lim is not None and id_lim.uid in problem.uid2idx_vars:
+        plt.plot(t_plot, y_plot[:, problem.get_var_idx(id_lim)], label=f"{trafo.name} id_limit")
+    if iq_lim is not None and iq_lim.uid in problem.uid2idx_vars:
+        plt.plot(t_plot, y_plot[:, problem.get_var_idx(iq_lim)], linestyle="--", label=f"{trafo.name} iq_limit")
+plt.axvline(event_time, color="black", linestyle="--", linewidth=1.0)
+plt.ylabel("Current limits")
+plt.grid(True, alpha=0.3)
+plt.legend(ncol=2, fontsize=8)
+
+plt.subplot(4, 1, 4)
+for trafo in [trafoA, trafoB]:
+    id_ref_lmtd = diag[trafo.name]["id_ref_lmtd"]
+    iq_ref_lmtd = diag[trafo.name]["iq_ref_lmtd"]
+    id_var = diag[trafo.name]["id"]
+    iq_var = diag[trafo.name]["iq"]
+
+    if id_ref_lmtd is not None and id_var is not None and id_ref_lmtd.uid in problem.uid2idx_vars and id_var.uid in problem.uid2idx_vars:
+        err_id = y_plot[:, problem.get_var_idx(id_ref_lmtd)] - y_plot[:, problem.get_var_idx(id_var)]
+        plt.plot(t_plot, err_id, label=f"{trafo.name} e_id")
+    if iq_ref_lmtd is not None and iq_var is not None and iq_ref_lmtd.uid in problem.uid2idx_vars and iq_var.uid in problem.uid2idx_vars:
+        err_iq = y_plot[:, problem.get_var_idx(iq_ref_lmtd)] - y_plot[:, problem.get_var_idx(iq_var)]
+        plt.plot(t_plot, err_iq, linestyle="--", label=f"{trafo.name} e_iq")
+
+    for sel_label in ["sel2", "sel3", "sel4", "sel5"]:
+        sel_var = diag[trafo.name][sel_label]
+        if sel_var is not None and sel_var.uid in problem.uid2idx_vars:
+            plt.plot(
+                t_plot,
+                y_plot[:, problem.get_var_idx(sel_var)],
+                alpha=0.35,
+                linewidth=0.9,
+                label=f"{trafo.name} {sel_label}",
+            )
+
+plt.axvline(event_time, color="black", linestyle="--", linewidth=1.0)
+plt.xlabel("Time (s)")
+plt.ylabel("Errors / selects")
+plt.grid(True, alpha=0.3)
+plt.legend(ncol=3, fontsize=7)
+plt.tight_layout()
+
 plt.show()

@@ -8739,7 +8739,8 @@ class Assets:
             tem.get_complete_generator_template_rms(vfactory=self._var_factory),
             tem.get_genrow_rms_template(vfactory=self._var_factory),
             tem.get_line_rms_template(vfactory=self._var_factory),
-            tem.get_load_rms_template(vfactory=self._var_factory)
+            tem.get_load_rms_template(vfactory=self._var_factory),
+            tem.get_pvd1_rms_template(vfactory=self._var_factory),
         ]
 
     def add_emt_model_catalogue(self):
@@ -8759,13 +8760,13 @@ class Assets:
             tem.get_generator_thevenin_rl_emt_template(vf=self._var_factory),
             tem.get_emt_ideal_converter(vf=self._var_factory),
             tem.get_full_pseudo_emt_converter(vf=self._var_factory),
-            tem.get_switched_emt_converter(vf=self._var_factory),
-            tem.get_bridge_2level_3ph_emt_template(vf=self._var_factory),
-            tem.get_bridge_filter_2level_3ph_emt_template(vf=self._var_factory),
-            tem.get_bridge_filter_control_2level_3ph_emt_template(vf=self._var_factory),
-            tem.get_dc_load_emt_template(vf=self._var_factory),
-            tem.get_dc_line_emt_template(vf=self._var_factory),
-            tem.get_valve_emt_template(vf=self._var_factory),
+            #tem.get_switched_emt_converter(vf=self._var_factory),
+            #tem.get_bridge_2level_3ph_emt_template(vf=self._var_factory),
+            #tem.get_bridge_filter_2level_3ph_emt_template(vf=self._var_factory),
+            #tem.get_bridge_filter_control_2level_3ph_emt_template(vf=self._var_factory),
+            #tem.get_dc_load_emt_template(vf=self._var_factory),
+            #tem.get_dc_line_emt_template(vf=self._var_factory),
+            #tem.get_valve_emt_template(vf=self._var_factory),
 
 
             # the following are functions that generate templates depending on phases or things

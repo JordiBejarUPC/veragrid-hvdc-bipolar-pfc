@@ -98,7 +98,7 @@ line0.apply_template(tower, grid.Sbase, grid.fBase)
 # load
 # P=1.0
 # Q= 0.999999
-R_ph =100 #ohm
+R_ph = 100 #ohm
 v_ph = vnom / (3**0.5)
 P_ph = (v_ph**2) / R_ph # kv*kv/ohm = MW
 
