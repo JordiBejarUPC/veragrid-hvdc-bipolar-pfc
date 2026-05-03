@@ -22,6 +22,7 @@ else:
     sys.exit(1)
 
 import time, pickle, os
+import multiprocessing as mp
 from typing import Tuple, Any, List
 import numpy as np
 from memory_profiler import profile,LineProfiler, show_results
@@ -54,7 +55,7 @@ from scipy.optimize import linear_sum_assignment
     "IEEE 118.xlsx"
 """
 grid_folder = project_base / "Grids_and_profiles" / "grids"
-GRID = "IEEE 118.xlsx"
+GRID = "IEEE 9 Bus.gridcal"
 USE_CACHED_BUILDER = False
 BUILDER_CACHE_FILE = f'trunk/tensygrid/precomputed_builds/{GRID}.pkl'
 
@@ -425,8 +426,7 @@ def solve_problem(problem: Any = None) -> Any:
 
     if not unstable_found:
         print("\n✅ The system is stable! There is no real part greater than 0.")
-
-    return eigenvalues
+    return res, pf_map
 
 def main():
     # --- START CHRONO ---
@@ -443,13 +443,15 @@ def main():
         print(f"\n[⏩] File '{BUILDER_CACHE_FILE}' found.")
         print("[⏩] Skipping Phasor Problem creation...")
         # Keep problem as None. solve_problem will load the .pkl internally.
-        calculated_evs = solve_problem()
+        res, _ = solve_problem(problem=problem)
+        calculated_evs = res[0]
     else:
         # 2. If there is no cache, run the normal heavy simulation
         problem = define_problem_with_path(grid_path)
         if problem:
             # Pass the newly created problem so it can be linearized and cached
-            calculated_evs = solve_problem(problem)
+            res, _ = solve_problem(problem=problem)
+            calculated_evs = res[0]
 
     # --- END CHRONO ---
     end_time = time.perf_counter()
@@ -578,6 +580,7 @@ def main():
 
 if __name__ == "__main__":
     try:
+        mp.freeze_support()
         if REPORT_TIME:
             lp = LineProfiler()
             lp.add_function(main)

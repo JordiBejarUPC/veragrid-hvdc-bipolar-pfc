@@ -46,7 +46,7 @@ class EmtSimulationDriver(DriverTemplate):
                  options: EmtOptions,
                  pf_results_3ph: PowerFlowResults3Ph | None = None,
                  pf_results: PowerFlowResults | None = None,
-                 engine: EngineType = EngineType.VeraGrid):
+                 engine: EngineType = EngineType.VeraGrid) -> None:
         """
         DynamicDriver class constructor
         :param grid: MultiCircuit instance
@@ -71,7 +71,7 @@ class EmtSimulationDriver(DriverTemplate):
 
         self.line_states = {}
 
-    def run(self):
+    def run(self) -> None:
         """
         Main function to initialize and run the system simulation.
 
@@ -82,7 +82,7 @@ class EmtSimulationDriver(DriverTemplate):
         # Run the dynamic simulation
         self.run_time_simulation()
 
-    def run_time_simulation(self):
+    def run_time_simulation(self) -> None:
         """
         Performs the EMTP loop using the chosen method.
         :return:
@@ -151,11 +151,12 @@ class EmtSimulationDriver(DriverTemplate):
             backtracking_max_iter=self.options.newton_backtracking_max_iter,
         )
 
+
         for group_idx, emt_events_group in enumerate(emt_events_groups):
 
             self.report_text("Simulating EMT event group " + emt_events_group.name)
 
-            self.progress_signal.emit(5)
+            self.progress_signal.emit(11)
 
             self.report_text("Simulating EMT event group " + emt_events_group.name)
             problem.set_events_group(emt_events_group=emt_events_group)
@@ -180,9 +181,19 @@ class EmtSimulationDriver(DriverTemplate):
             #uncomment when convergence and well initialized is reported
             t, y, dy, well_initialized, converged = solver.simulate(boundary_updater=boundary_updater)
 
-            print(f"Event group {emt_events_group} successfully simulated.")
-            self.report_text(
-                f"Event group {emt_events_group} successfully simulated.")
+            if converged and well_initialized:
+                print(f"Event group {emt_events_group} successfully simulated.")
+                self.report_text(
+                    f"Event group {emt_events_group} successfully simulated.")
+            else:
+                print(
+                    f"Event group {emt_events_group} finished with EMT Newton failures "
+                    f"(well_initialized={well_initialized}, converged={converged})."
+                )
+                self.report_text(
+                    f"Event group {emt_events_group} finished with EMT Newton failures "
+                    f"(well_initialized={well_initialized}, converged={converged})."
+                )
 
             print(f"results = {y}")
 

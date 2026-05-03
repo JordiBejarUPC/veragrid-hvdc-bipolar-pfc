@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import copy
 import uuid
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, _expr_to_dict, _dict_to_expr
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
@@ -373,6 +373,14 @@ class Block:
             result.mode_dict = copy.deepcopy(self.mode_dict, memo)
             result.procedural_logic = copy.deepcopy(self.procedural_logic, memo)
             result._diagram = copy.deepcopy(self._diagram, memo)
+
+            extra_key: str
+            extra_value: Any
+            for extra_key, extra_value in self.__dict__.items():
+                if extra_key in result.__dict__:
+                    pass
+                else:
+                    setattr(result, extra_key, copy.deepcopy(extra_value, memo))
             return result
 
     def compare(self, block2: Block) -> bool:
@@ -638,7 +646,7 @@ class Block:
             variables.extend(blk.diff_vars)
         return variables
 
-    def update_variables(self, old, new):
+    def update_variables(self, old: Var | Expr, new: Var | Expr) -> None:
         """
         this function changes the variable old for the variable new in the block variables
         :param old:
@@ -657,7 +665,7 @@ class Block:
 
 
 
-    def update_equations(self, old, new):
+    def update_equations(self, old: Var | Expr, new: Var | Expr) -> None:
         """
         this function changes the variable old for the variable new in the block equations
         :param old:
@@ -719,10 +727,12 @@ class Block:
 
         if self.procedural_logic:
             from VeraGridEngine.Utils.procedural_logic import clone_procedural_logic_entries
-            self.procedural_logic = clone_procedural_logic_entries(self.procedural_logic, {old: new, old.name: new})
+            self.procedural_logic = clone_procedural_logic_entries(self.procedural_logic,
+                                                                   var_mapping={old: new, old.name: new})
 
-    def update_model(self, old, new):
-        """<
+    def update_model(self, old: Var | Expr, new: Var | Expr) -> None:
+        """
+        Replace variables
         :param old:
         :param new:
         :return:
@@ -733,16 +743,170 @@ class Block:
             for child in self.children:
                 child.update_model(old, new)
 
+    def update_variables_bulk(self, var_mapping: Dict[Var, Var]) -> None:
+        """
+        Replace several variables in the block variable lists in one pass.
+
+        :param var_mapping: Old-to-new variable mapping.
+        :return: None.
+        """
+        uid_mapping: Dict[int, Var] = dict((old_var.uid, new_var) for old_var, new_var in var_mapping.items())
+        lst: List[Var]
+        i: int
+        var: Var
+
+        for lst in [self.state_vars, self.algebraic_vars, self.diff_vars]:
+            for i, var in enumerate(lst):
+                if var.uid in uid_mapping:
+                    lst[i] = uid_mapping[var.uid]
+                else:
+                    pass
+
+    def update_equations_bulk(self, var_mapping: Dict[Var, Var]) -> None:
+        """
+        Replace several variables in block equations and mappings in one pass.
+
+        :param var_mapping: Old-to-new variable mapping.
+        :return: None.
+        """
+        uid_mapping: Dict[int, Var] = dict((old_var.uid, new_var) for old_var, new_var in var_mapping.items())
+        init_eqs_new: Dict[Var, Expr] = dict()
+        diff_init_eqs_new: Dict[Var, Expr] = dict()
+        event_dict_new: Dict[Var, Expr] = dict()
+        mode_dict_new: Dict[Var, Expr] = dict()
+        external_mapping_new: Dict[VarPowerFlowRefferenceType, Var | None] = dict()
+        procedural_var_mapping: Dict[Expr | str, Expr] = dict()
+        i: int
+        eq: Expr
+        var: Var
+        expr: Expr
+        new_var: Var | None
+        var_pf_ref: VarPowerFlowRefferenceType
+        mdl_var: Var | None
+
+        for old_var, replacement_var in var_mapping.items():
+            procedural_var_mapping[old_var] = replacement_var
+            procedural_var_mapping[old_var.name] = replacement_var
+
+        for i, eq in enumerate(self.algebraic_eqs):
+            self.algebraic_eqs[i] = eq.subs(var_mapping)
+        for i, eq in enumerate(self.state_eqs):
+            self.state_eqs[i] = eq.subs(var_mapping)
+        for i, eq in enumerate(self.differential_eqs):
+            self.differential_eqs[i] = eq.subs(var_mapping)
+
+        for var, expr in self.init_eqs.items():
+            new_var = uid_mapping.get(var.uid, None)
+            init_eqs_new[var if new_var is None else new_var] = expr.subs(var_mapping)
+        self.init_eqs = init_eqs_new
+
+        for var, expr in self.diff_init_eqs.items():
+            new_var = uid_mapping.get(var.uid, None)
+            diff_init_eqs_new[var if new_var is None else new_var] = expr.subs(var_mapping)
+        self.diff_init_eqs = diff_init_eqs_new
+
+        for var, expr in self.event_dict.items():
+            new_var = uid_mapping.get(var.uid, None)
+            event_dict_new[var if new_var is None else new_var] = expr.subs(var_mapping)
+        self.event_dict = event_dict_new
+
+        for var, expr in self.mode_dict.items():
+            new_var = uid_mapping.get(var.uid, None)
+            mode_dict_new[var if new_var is None else new_var] = expr.subs(var_mapping)
+        self.mode_dict = mode_dict_new
+
+        for var_pf_ref, mdl_var in self.external_mapping.items():
+            if mdl_var is None:
+                external_mapping_new[var_pf_ref] = None
+            elif mdl_var.uid in uid_mapping:
+                external_mapping_new[var_pf_ref] = uid_mapping[mdl_var.uid]
+            else:
+                external_mapping_new[var_pf_ref] = mdl_var
+        self.external_mapping = external_mapping_new
+
+        if self.procedural_logic:
+            from VeraGridEngine.Utils.procedural_logic import clone_procedural_logic_entries
+            self.procedural_logic = clone_procedural_logic_entries(
+                self.procedural_logic,
+                var_mapping=procedural_var_mapping,
+            )
+        else:
+            pass
+
+    def update_model_bulk(self, var_mapping: Dict[Var, Var]) -> None:
+        """
+        Replace several variables across the block hierarchy in one pass.
+
+        :param var_mapping: Old-to-new variable mapping.
+        :return: None.
+        """
+        self.update_equations_bulk(var_mapping)
+        self.update_variables_bulk(var_mapping)
+        if self.children:
+            for child in self.children:
+                child.update_model_bulk(var_mapping)
+        else:
+            pass
+
+    def can_use_bulk_connect_update(self, pairs: List[Tuple[Var, Var]]) -> bool:
+        """
+        Return whether one connection batch can be substituted safely in one pass.
+
+        Bulk substitution is used only when the old and new variable sets are
+        both unique and disjoint. If the mappings overlap, the original
+        sequential behaviour is preserved because the substitution order can be
+        semantically relevant.
+
+        :param pairs: Connection pairs ``(old_var, new_var)``.
+        :return: ``True`` when the fast bulk path is safe.
+        """
+        old_uids: List[int] = list()
+        new_uids: List[int] = list()
+        var_to_subs: Var
+        incoming_var: Var
+
+        if len(pairs) <= 1:
+            return False
+        else:
+            pass
+
+        for var_to_subs, incoming_var in pairs:
+            old_uids.append(var_to_subs.uid)
+            new_uids.append(incoming_var.uid)
+
+        if len(set(old_uids)) != len(pairs) or len(set(new_uids)) != len(pairs):
+            return False
+        else:
+            pass
+
+        if len(set(old_uids).intersection(set(new_uids))) > 0:
+            return False
+        else:
+            return True
+
     def connect(self, vars_to_subs: List[Var], incoming_vars: List[Var]):
         """
         Function to connect two blocks by variables sharing
         """
+        pairs: List[Tuple[Var, Var]] = list(zip(vars_to_subs, incoming_vars))
+        can_use_bulk_update: bool = self.can_use_bulk_connect_update(pairs)
+        var_to_subs: Var
+        incoming_var: Var
 
-        for var_to_subs, incoming_var in zip(vars_to_subs, incoming_vars):
-            self.update_model(var_to_subs, incoming_var)
+        if can_use_bulk_update:
+            self.update_model_bulk(dict(pairs))
+        else:
+            for var_to_subs, incoming_var in pairs:
+                self.update_model(var_to_subs, incoming_var)
 
 
 def find_name_in_block(name: str, block: Block) -> Var | None:
+    """
+
+    :param name:
+    :param block:
+    :return:
+    """
     for lst in [block.in_vars, block.out_vars, block.algebraic_vars, block.state_vars, block.diff_vars]:
         for var in lst:
             if name == var.name:
@@ -754,3 +918,57 @@ def find_name_in_block(name: str, block: Block) -> Var | None:
             return result
 
     return None
+
+
+def build_name_to_var_lookup(block: Block) -> Dict[str, Var]:
+    """
+    Build one variable lookup table by symbolic name for a block hierarchy.
+
+    The first occurrence of each name is preserved, matching the effective
+    search order of ``find_name_in_block()`` while avoiding repeated recursive
+    scans when many variables must be resolved from the same block.
+
+    :param block: Root block to inspect.
+    :return: Name-to-variable lookup.
+    """
+    lookup: Dict[str, Var] = dict()
+    var_lists: List[List[Var]] = list([
+        block.in_vars,
+        block.out_vars,
+        block.algebraic_vars,
+        block.state_vars,
+        block.diff_vars,
+    ])
+    var_list: List[Var]
+    var_obj: Var
+    child_block: Block
+    child_lookup: Dict[str, Var]
+
+    for var_list in var_lists:
+        for var_obj in var_list:
+            if var_obj.name in lookup:
+                pass
+            else:
+                lookup[var_obj.name] = var_obj
+
+    for var_obj in block.event_dict.keys():
+        if var_obj.name in lookup:
+            pass
+        else:
+            lookup[var_obj.name] = var_obj
+
+    for var_obj in block.mode_dict.keys():
+        if var_obj.name in lookup:
+            pass
+        else:
+            lookup[var_obj.name] = var_obj
+
+    for child_block in block.children:
+        child_lookup = build_name_to_var_lookup(child_block)
+        for child_name, child_var in child_lookup.items():
+            if child_name in lookup:
+                pass
+            else:
+                lookup[child_name] = child_var
+
+    return lookup

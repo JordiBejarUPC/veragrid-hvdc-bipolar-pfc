@@ -245,6 +245,7 @@ ENABLE_NEWTON_TRACE = False
 DENSE_THRESHOLD = 0
 SOLVER_VERBOSE = True
 
+
 SOLVER_TYPE_MAP = {
     "SYMBOLIC": EmtSolverTypes.Symbolic,
     "AD": EmtSolverTypes.Automatic,
@@ -258,7 +259,7 @@ if CHOSEN_SOLVER not in SOLVER_TYPE_MAP:
     raise ValueError(f"Solver '{CHOSEN_SOLVER}' no reconocido. Usa SYMBOLIC, AD, VECTORIZED o COMPILED.")
 
 options = EmtOptions(time_step = 5e-6, # 5e-7,
-                     simulation_time =  0.02,  #5e-6*10, # s
+                     simulation_time =  01.2,   # s
                      tolerance = 1e-6,
                      solver_type = SOLVER_TYPE_MAP[CHOSEN_SOLVER],
                      integration_method = DynamicIntegrationMethod.DaeTrapezoidal,
@@ -448,6 +449,78 @@ build_solver_backend(CHOSEN_SOLVER, solver, problem)
 # ==============================================================================
 boundary_updater = cast(Any, problem)
 t, y, dy, _, _  = solver.simulate(boundary_updater=boundary_updater)
+
+
+def get_signal(name: str) -> np.ndarray:
+    var = find_name_in_block(name, gen_mdl)
+    if var is None:
+        raise RuntimeError(f"Signal '{name}' not found in generator model")
+    return y[:, problem.get_var_idx(var)]
+
+
+def get_first_signal(names: list[str]) -> np.ndarray:
+    for name in names:
+        var = find_name_in_block(name, gen_mdl)
+        if var is not None:
+            return y[:, problem.get_var_idx(var)]
+    raise RuntimeError(f"Signals not found in generator model: {names}")
+
+
+def validate_results() -> None:
+    if not np.isfinite(y).all():
+        raise RuntimeError("Simulation produced NaN/Inf values in y")
+
+    if not np.isfinite(dy).all():
+        raise RuntimeError("Simulation produced NaN/Inf values in dy")
+
+    omega = get_first_signal([
+        "omega_simple_emt_type_generator_template",
+        "omega_sauer_pai_generator_emt_template",
+    ])
+    v_pss = get_signal("V_pss")
+    tm = get_signal("Tm")
+    te = get_first_signal([
+        "Te_simple_emt_type_generator_template",
+        "Te_sauer_pai_generator_emt_template",
+    ])
+    vf_sig = get_signal("Vf")
+    vm_sig = get_signal("Vm_")
+    i_a = get_first_signal([
+        "i_A_simple_emt_type_generator_template",
+        "i_A_sauer_pai_generator_emt_template",
+    ])
+    i_b = get_first_signal([
+        "i_B_simple_emt_type_generator_template",
+        "i_B_sauer_pai_generator_emt_template",
+    ])
+    i_c = get_first_signal([
+        "i_C_simple_emt_type_generator_template",
+        "i_C_sauer_pai_generator_emt_template",
+    ])
+
+    omega_dev = float(np.max(np.abs(omega - 1.0)))
+    vpss_abs = float(np.max(np.abs(v_pss)))
+    torque_err = float(np.max(np.abs(tm - te)))
+
+    print("Validation summary")
+    print(f"  max |omega - 1| = {omega_dev:.6e}")
+    print(f"  max |Vpss| = {vpss_abs:.6e}")
+    print(f"  max |Tm - Te| = {torque_err:.6e}")
+    print(f"  Vf range = [{float(np.min(vf_sig)):.6e}, {float(np.max(vf_sig)):.6e}]")
+    print(f"  Vm range = [{float(np.min(vm_sig)):.6e}, {float(np.max(vm_sig)):.6e}]")
+    print(f"  Ia/Ib/Ic max abs = {float(np.max(np.abs(i_a))):.6e}, {float(np.max(np.abs(i_b))):.6e}, {float(np.max(np.abs(i_c))):.6e}")
+
+    if omega_dev > 5e-3:
+        raise RuntimeError(f"Omega deviated too much from 1 pu: {omega_dev}")
+
+    if vpss_abs > 5e-2:
+        raise RuntimeError(f"PSS output is not close to zero in the no-disturbance case: {vpss_abs}")
+
+    if torque_err > 5e-2:
+        raise RuntimeError(f"Mechanical torque is not consistent with electrical torque: {torque_err}")
+
+
+validate_results()
 
 print("StructuralCompiled backend build stats")
 for key, value in solver.get_backend_build_stats().items():
@@ -944,9 +1017,9 @@ def plot_simple_generator_emt_type():
     i_B_gen_plt = y[:, problem.get_var_idx(i_B_gen)]
     i_C_gen_plt = y[:, problem.get_var_idx(i_C_gen)]
 
-    i_A_load = find_name_in_block("i_A_Shunt_R_3ph", load_mdl)
-    i_B_load = find_name_in_block("i_B_Shunt_R_3ph", load_mdl)
-    i_C_load = find_name_in_block("i_C_Shunt_R_3ph", load_mdl)
+    i_A_load = find_name_in_block("i_A_R_shunt_3ph", load_mdl)
+    i_B_load = find_name_in_block("i_B_R_shunt_3ph", load_mdl)
+    i_C_load = find_name_in_block("i_C_R_shunt_3ph", load_mdl)
     i_A_load_plt = y[:, problem.get_var_idx(i_A_load)]
     i_B_load_plt = y[:, problem.get_var_idx(i_B_load)]
     i_C_load_plt = y[:, problem.get_var_idx(i_C_load)]
@@ -1091,16 +1164,16 @@ def plot_simple_generator_emt_type():
     print("Generating plots...")
     plt.show()
 
-    i_f_A_line = find_name_in_block("if_pi_line_emt_template_0", line0.emt_model)
-    i_f_B_line = find_name_in_block("if_pi_line_emt_template_1", line0.emt_model)
-    i_f_C_line = find_name_in_block("if_pi_line_emt_template_2", line0.emt_model)
+    i_f_A_line = find_name_in_block("if_Pi_A", line0.emt_model)
+    i_f_B_line = find_name_in_block("if_Pi_B", line0.emt_model)
+    i_f_C_line = find_name_in_block("if_Pi_C", line0.emt_model)
     i_f_A_line_plt = y[:, problem.get_var_idx(i_f_A_line)]
     i_f_B_line_plt = y[:, problem.get_var_idx(i_f_B_line)]
     i_f_C_line_plt = y[:, problem.get_var_idx(i_f_C_line)]
 
-    i_t_A_line = find_name_in_block("it_pi_line_emt_template_0", line0.emt_model)
-    i_t_B_line = find_name_in_block("it_pi_line_emt_template_1", line0.emt_model)
-    i_t_C_line = find_name_in_block("it_pi_line_emt_template_2", line0.emt_model)
+    i_t_A_line = find_name_in_block("it_Pi_A", line0.emt_model)
+    i_t_B_line = find_name_in_block("it_Pi_B", line0.emt_model)
+    i_t_C_line = find_name_in_block("it_Pi_C", line0.emt_model)
     i_t_A_line_plt = y[:, problem.get_var_idx(i_t_A_line)]
     i_t_B_line_plt = y[:, problem.get_var_idx(i_t_B_line)]
     i_t_C_line_plt = y[:, problem.get_var_idx(i_t_C_line)]
@@ -1159,23 +1232,23 @@ def plot_simple_generator_emt_type():
     print("Generating plots...")
     plt.show()
 
-    i_ser_A = find_name_in_block("i_ser_pi_line_emt_template_0", line0.emt_model)
-    i_ser_B = find_name_in_block("i_ser_pi_line_emt_template_1", line0.emt_model)
-    i_ser_C = find_name_in_block("i_ser_pi_line_emt_template_2", line0.emt_model)
+    i_ser_A = find_name_in_block("i_ser_Pi_A", line0.emt_model)
+    i_ser_B = find_name_in_block("i_ser_Pi_B", line0.emt_model)
+    i_ser_C = find_name_in_block("i_ser_Pi_C", line0.emt_model)
     i_ser_A_plt = y[:, problem.get_var_idx(i_ser_A)]
     i_ser_B_plt = y[:, problem.get_var_idx(i_ser_B)]
     i_ser_C_plt = y[:, problem.get_var_idx(i_ser_C)]
 
-    i_f_cap_A = find_name_in_block("i_cap_f_pi_line_emt_template_0", line0.emt_model)
-    i_f_cap_B = find_name_in_block("i_cap_f_pi_line_emt_template_1", line0.emt_model)
-    i_f_cap_C = find_name_in_block("i_cap_f_pi_line_emt_template_2", line0.emt_model)
+    i_f_cap_A = find_name_in_block("i_cap_f_Pi_A", line0.emt_model)
+    i_f_cap_B = find_name_in_block("i_cap_f_Pi_B", line0.emt_model)
+    i_f_cap_C = find_name_in_block("i_cap_f_Pi_C", line0.emt_model)
     i_f_cap_A_plt = y[:, problem.get_var_idx(i_f_cap_A)]
     i_f_cap_B_plt = y[:, problem.get_var_idx(i_f_cap_B)]
     i_f_cap_C_plt = y[:, problem.get_var_idx(i_f_cap_C)]
 
-    i_t_cap_A = find_name_in_block("i_cap_t_pi_line_emt_template_0", line0.emt_model)
-    i_t_cap_B = find_name_in_block("i_cap_t_pi_line_emt_template_1", line0.emt_model)
-    i_t_cap_C = find_name_in_block("i_cap_t_pi_line_emt_template_2", line0.emt_model)
+    i_t_cap_A = find_name_in_block("i_cap_t_Pi_A", line0.emt_model)
+    i_t_cap_B = find_name_in_block("i_cap_t_Pi_B", line0.emt_model)
+    i_t_cap_C = find_name_in_block("i_cap_t_Pi_C", line0.emt_model)
     i_t_cap_A_plt = y[:, problem.get_var_idx(i_t_cap_A)]
     i_t_cap_B_plt = y[:, problem.get_var_idx(i_t_cap_B)]
     i_t_cap_C_plt = y[:, problem.get_var_idx(i_t_cap_C)]
@@ -1271,706 +1344,272 @@ def plot_generator_classical_model():
     print("Generating plots...")
     plt.show()
 
-    theta = find_name_in_block("theta_abs_classical_generator_emt_template", gen_mdl)
-    delta = find_name_in_block("delta_rel_classical_generator_emt_template", gen_mdl)
-    omega_gen = find_name_in_block("omega_classical_generator_emt_template", gen_mdl)
-    theta_plt = y[:, problem.get_var_idx(theta)]
-    delta_plt = y[:, problem.get_var_idx(delta)]
-    omega_plt = y[:, problem.get_var_idx(omega_gen)]
-
-    plt.figure(figsize=(12, 8))
-
-    plt.subplot(2, 2, 1)
-    plt.plot(tme, theta_plt[:len(tme)], label='Theta generator [rad]', color='blue')
-    plt.title("Absolute rotor angle")
-    plt.xlabel("Time")
-    plt.ylabel("Theta generator")
-    plt.legend(loc='upper left')
-    plt.grid(True)
-    plt.legend()
-
-    plt.subplot(2, 2, 2)
-    plt.plot(tme, delta_plt[:len(tme)], label='delta generator [rad/s]', color='blue')
-    plt.title("Relative rotor angle")
-    plt.xlabel("Time")
-    plt.ylabel("Delta generator [rad/s]")
-    plt.legend(loc='upper left')
-    plt.grid(True)
-    plt.legend()
-
-    plt.subplot(2, 2, 3)
-    plt.plot(tme, omega_plt[:len(tme)], label='Speed generator [rad/s]', color='blue')
-    plt.title("Omega generator")
-    plt.xlabel("Time")
-    plt.ylabel("Omega generator [rad/s]")
-    plt.legend(loc='upper left')
-    plt.grid(True)
-    plt.legend()
-
-    plt.tight_layout()
-    print("Generating plots...")
-    plt.show()
-
-    i_A_gen = find_name_in_block("i_A_classical_generator_emt_template", gen_mdl)
-    i_B_gen = find_name_in_block("i_B_classical_generator_emt_template", gen_mdl)
-    i_C_gen = find_name_in_block("i_C_classical_generator_emt_template", gen_mdl)
-    i_A_gen_plt = y[:, problem.get_var_idx(i_A_gen)]
-    i_B_gen_plt = y[:, problem.get_var_idx(i_B_gen)]
-    i_C_gen_plt = y[:, problem.get_var_idx(i_C_gen)]
-
-    i_A_load = find_name_in_block("i_A_Shunt_R_3ph", load_mdl)
-    i_B_load = find_name_in_block("i_B_Shunt_R_3ph", load_mdl)
-    i_C_load = find_name_in_block("i_C_Shunt_R_3ph", load_mdl)
-    i_A_load_plt = y[:, problem.get_var_idx(i_A_load)]
-    i_B_load_plt = y[:, problem.get_var_idx(i_B_load)]
-    i_C_load_plt = y[:, problem.get_var_idx(i_C_load)]
-
-    plt.figure(figsize=(12, 8))
-
-    plt.subplot(2, 2, 1)
-    plt.plot(tme, i_A_gen_plt[:len(tme)], label='Current phase A from generator', color='blue')
-    plt.plot(tme, i_B_gen_plt[:len(tme)], label='Current phase B from generator', color='red')
-    plt.plot(tme, i_C_gen_plt[:len(tme)], label='Current phase C from generator', color='green')
-    plt.title("Current generator")
-    plt.xlabel("Time")
-    plt.ylabel("Current generator")
-    plt.legend(loc='upper left')
-    plt.grid(True)
-    plt.legend()
-
-    plt.subplot(2, 2, 2)
-    # SIGNS IN LOAD ARE FLIPPED. FOR SIGN CONVENTION CURRENTS LEAVE INJECTIONS SO IN THE CASE OF THE LOAD
-    # THAT MEANS THE CURRENTS ARE NEGATIVE
-    plt.plot(tme, -i_A_load_plt[:len(tme)], label='Current phase A from load', color='blue')
-    plt.plot(tme, -i_B_load_plt[:len(tme)], label='Current phase B from load', color='red')
-    plt.plot(tme, -i_C_load_plt[:len(tme)], label='Current phase C from load', color='green')
-    plt.title("Current load")
-    plt.xlabel("Time")
-    plt.ylabel("Current load")
-    plt.legend(loc='upper left')
-    plt.grid(True)
-    plt.legend()
-
-    plt.tight_layout()
-    print("Generating plots...")
-    plt.show()
-
-    Pm_gen = find_name_in_block("p_m_classical_generator_emt_template", gen_mdl)
-    Qe_gen = find_name_in_block("q_e_classical_generator_emt_template", gen_mdl)
-    Pe_gen = find_name_in_block("p_e_classical_generator_emt_template", gen_mdl)
-    # Tm_gen = find_name_in_block("T_m_emt_type_generator_template", gen_mdl)
-    # Te_gen = find_name_in_block("T_e_emt_type_generator_template", gen_mdl)
-    # et_gen = find_name_in_block("et_emt_type_generator_template", gen_mdl)
-    Pm_gen_plt = y[:, problem.get_var_idx(Pm_gen)]
-    Qe_gen_plt = y[:, problem.get_var_idx(Qe_gen)]
-    Pe_gen_plt = y[:, problem.get_var_idx(Pe_gen)]
-    # Tm_gen_plt = y[:, problem.get_var_idx(Tm_gen)]
-    # Te_gen_plt = y[:, problem.get_var_idx(Te_gen)]
-    # et_gen_plt = y[:, problem.get_var_idx(et_gen)]
-
-    plt.figure(figsize=(12, 8))
-
-    plt.subplot(1, 1, 1)
-    plt.plot(tme, Pm_gen_plt[:len(tme)], label='Mechanical power Pm from generator', color='blue')
-    plt.plot(tme, Pe_gen_plt[:len(tme)], label='Electrical power Pe from generator', color='red')
-    plt.plot(tme, Qe_gen_plt[:len(tme)], label='Electrical reactive power Qe from generator', color='purple')
-    plt.title("power generator")
-    plt.xlabel("Time")
-    plt.ylabel("power generator")
-    plt.legend(loc='upper left')
-    plt.grid(True)
-    plt.legend()
-
-    # plt.subplot(2, 2, 2)
-    # plt.plot(tme, Tm_gen_plt[:len(tme)], label='Mechanical torque Tm from generator', color='blue')
-    # plt.plot(tme, Te_gen_plt[:len(tme)], label='Electrical torque Te from generator', color='red')
-    # plt.title("torque generator")
-    # plt.xlabel("Time")
-    # plt.ylabel("torque generator")
-    # plt.legend(loc='upper left')
-    # plt.grid(True)
-    # plt.legend()
-
-    # plt.subplot(2, 2, 3)
-    # plt.plot(tme, et_gen_plt[:len(tme)], label='PI error at generator', color='blue')
-    # plt.title("et generator")
-    # plt.xlabel("Time")
-    # plt.ylabel("et generator")
-    # plt.legend(loc='upper left')
-    # plt.grid(True)
-    # plt.legend()
-
-    plt.tight_layout()
-    print("Generating plots...")
-    plt.show()
-
-    i_d_gen = find_name_in_block("i_d_classical_generator_emt_template", gen_mdl)
-    i_q_gen = find_name_in_block("i_q_classical_generator_emt_template", gen_mdl)
-    i_0_gen = find_name_in_block("i_0_classical_generator_emt_template", gen_mdl)
-    # i_f_gen = find_name_in_block("i_f_emt_type_generator_template", gen_mdl)
-    v_d_gen = find_name_in_block("v_d_classical_generator_emt_template", gen_mdl)
-    v_q_gen = find_name_in_block("v_q_classical_generator_emt_template", gen_mdl)
-    v_0_gen = find_name_in_block("v_0_classical_generator_emt_template", gen_mdl)
-    v_f_gen = find_name_in_block("v_f_emt_type_generator_template", gen_mdl)
-    i_d_gen_plt = y[:, problem.get_var_idx(i_d_gen)]
-    i_q_gen_plt = y[:, problem.get_var_idx(i_q_gen)]
-    i_0_gen_plt = y[:, problem.get_var_idx(i_0_gen)]
-    # i_f_gen_plt = y[:, problem.get_var_idx(i_f_gen)]
-    v_d_gen_plt = y[:, problem.get_var_idx(v_d_gen)]
-    v_q_gen_plt = y[:, problem.get_var_idx(v_q_gen)]
-    v_0_gen_plt = y[:, problem.get_var_idx(v_0_gen)]
-    # v_f_gen_plt = y[:, problem.get_var_idx(v_f_gen)]
-
-    plt.figure(figsize=(12, 8))
-
-    plt.subplot(2, 1, 1)
-    plt.plot(tme, i_d_gen_plt[:len(tme)], label='Current in the d axis generator', color='blue')
-    plt.plot(tme, i_q_gen_plt[:len(tme)], label='Current in the q axis generator', color='red')
-    plt.plot(tme, i_0_gen_plt[:len(tme)], label='Current in the 0 axis generator', color='green')
-    plt.title("currents in the dq0 axis in the generator")
-    plt.xlabel("Time")
-    plt.ylabel("dq0 currents generator")
-    plt.legend(loc='upper left')
-    plt.grid(True)
-    plt.legend()
-
-    # plt.subplot(2, 2, 2)
-    # plt.plot(tme, i_f_gen_plt[:len(tme)], label='Field current in the generator', color='purple')
-    # plt.title("Field current in the generator")
-    # plt.xlabel("Time")
-    # plt.ylabel("Field current")
-    # plt.legend(loc='upper left')
-    # plt.grid(True)
-    # plt.legend()
-
-    plt.subplot(2, 1, 2)
-    plt.plot(tme, v_d_gen_plt[:len(tme)], label='Voltage in the d axis generator', color='blue')
-    plt.plot(tme, v_q_gen_plt[:len(tme)], label='Voltage in the q axis generator', color='red')
-    plt.plot(tme, v_0_gen_plt[:len(tme)], label='Voltage in the 0 axis generator', color='green')
-    plt.title("Voltages in the dq0 axis in the generator")
-    plt.xlabel("Time")
-    plt.ylabel("dq0 Voltages generator")
-    plt.legend(loc='upper left')
-    plt.grid(True)
-    plt.legend()
-
-    # plt.subplot(2, 2, 4)
-    # plt.plot(tme, v_f_gen_plt[:len(tme)], label='Field voltage in the generator', color='purple')
-    # plt.title("Field voltage in the generator")
-    # plt.xlabel("Time")
-    # plt.ylabel("Field voltage")
-    # plt.legend(loc='upper left')
-    # plt.grid(True)
-    # plt.legend()
-
-    plt.tight_layout()
-    print("Generating plots...")
-    plt.show()
-
-    i_f_A_line = find_name_in_block("if_line0_0", line0.emt_model)
-    i_f_B_line = find_name_in_block("if_line0_1", line0.emt_model)
-    i_f_C_line = find_name_in_block("if_line0_2", line0.emt_model)
-    i_f_A_line_plt = y[:, problem.get_var_idx(i_f_A_line)]
-    i_f_B_line_plt = y[:, problem.get_var_idx(i_f_B_line)]
-    i_f_C_line_plt = y[:, problem.get_var_idx(i_f_C_line)]
-
-    i_t_A_line = find_name_in_block("it_line0_0", line0.emt_model)
-    i_t_B_line = find_name_in_block("it_line0_1", line0.emt_model)
-    i_t_C_line = find_name_in_block("it_line0_2", line0.emt_model)
-    i_t_A_line_plt = y[:, problem.get_var_idx(i_t_A_line)]
-    i_t_B_line_plt = y[:, problem.get_var_idx(i_t_B_line)]
-    i_t_C_line_plt = y[:, problem.get_var_idx(i_t_C_line)]
-
-    plt.figure(figsize=(12, 8))
-
-    plt.subplot(2, 2, 1)
-    plt.plot(tme, i_A_gen_plt[:len(tme)], label='Current phase A from generator', color='blue')
-    plt.plot(tme, i_B_gen_plt[:len(tme)], label='Current phase B from generator', color='red')
-    plt.plot(tme, i_C_gen_plt[:len(tme)], label='Current phase C from generator', color='green')
-    plt.title("Current generator")
-    plt.xlabel("Time")
-    plt.ylabel("Current generator")
-    plt.legend(loc='upper left')
-    plt.grid(True)
-    plt.legend()
-
-    plt.subplot(2, 2, 2)
-    # SIGNS IN LOAD ARE FLIPPED. FOR SIGN CONVENTION CURRENTS LEAVE INJECTIONS SO IN THE CASE OF THE LOAD
-    # THAT MEANS THE CURRENTS ARE NEGATIVE
-    plt.plot(tme, -i_A_load_plt[:len(tme)], label='Current phase A from load', color='blue')
-    plt.plot(tme, -i_B_load_plt[:len(tme)], label='Current phase B from load', color='red')
-    plt.plot(tme, -i_C_load_plt[:len(tme)], label='Current phase C from load', color='green')
-    plt.title("Current load")
-    plt.xlabel("Time")
-    plt.ylabel("Current load")
-    plt.legend(loc='upper left')
-    plt.grid(True)
-    plt.legend()
-
-    plt.subplot(2, 2, 3)
-    plt.plot(tme, i_f_A_line_plt[:len(tme)], label='Current FROM phase A from line', color='blue')
-    plt.plot(tme, i_f_B_line_plt[:len(tme)], label='Current FROM phase B from line', color='red')
-    plt.plot(tme, i_f_C_line_plt[:len(tme)], label='Current FROM phase C from line', color='green')
-    plt.title("Current from line")
-    plt.xlabel("Time")
-    plt.ylabel("Current from")
-    plt.legend(loc='upper left')
-    plt.grid(True)
-    plt.legend()
-
-    plt.subplot(2, 2, 4)
-    # SIGNS IN LOAD ARE FLIPPED. FOR SIGN CONVENTION CURRENTS LEAVE INJECTIONS SO IN THE CASE OF THE LOAD
-    # THAT MEANS THE CURRENTS ARE NEGATIVE
-    plt.plot(tme, -i_t_A_line_plt[:len(tme)], label='Current TO phase A from line', color='blue')
-    plt.plot(tme, -i_t_B_line_plt[:len(tme)], label='Current TO phase B from line', color='red')
-    plt.plot(tme, -i_t_C_line_plt[:len(tme)], label='Current TO phase C from line', color='green')
-    plt.title("Current to line")
-    plt.xlabel("Time")
-    plt.ylabel("Current to")
-    plt.legend(loc='upper left')
-    plt.grid(True)
-    plt.legend()
-
-    plt.tight_layout()
-    print("Generating plots...")
-    plt.show()
-
-    i_ser_A = find_name_in_block("i_ser_line0_0", line0.emt_model)
-    i_ser_B = find_name_in_block("i_ser_line0_1", line0.emt_model)
-    i_ser_C = find_name_in_block("i_ser_line0_2", line0.emt_model)
-    i_ser_A_plt = y[:, problem.get_var_idx(i_ser_A)]
-    i_ser_B_plt = y[:, problem.get_var_idx(i_ser_B)]
-    i_ser_C_plt = y[:, problem.get_var_idx(i_ser_C)]
-
-    i_f_cap_A = find_name_in_block("i_cap_f_line0_0", line0.emt_model)
-    i_f_cap_B = find_name_in_block("i_cap_f_line0_1", line0.emt_model)
-    i_f_cap_C = find_name_in_block("i_cap_f_line0_2", line0.emt_model)
-    i_f_cap_A_plt = y[:, problem.get_var_idx(i_f_cap_A)]
-    i_f_cap_B_plt = y[:, problem.get_var_idx(i_f_cap_B)]
-    i_f_cap_C_plt = y[:, problem.get_var_idx(i_f_cap_C)]
-
-    i_t_cap_A = find_name_in_block("i_cap_t_line0_0", line0.emt_model)
-    i_t_cap_B = find_name_in_block("i_cap_t_line0_1", line0.emt_model)
-    i_t_cap_C = find_name_in_block("i_cap_t_line0_2", line0.emt_model)
-    i_t_cap_A_plt = y[:, problem.get_var_idx(i_t_cap_A)]
-    i_t_cap_B_plt = y[:, problem.get_var_idx(i_t_cap_B)]
-    i_t_cap_C_plt = y[:, problem.get_var_idx(i_t_cap_C)]
-
-    plt.figure(figsize=(12, 8))
-
-    plt.subplot(2, 2, 1)
-    plt.plot(tme, i_ser_A_plt[:len(tme)], label='Phase A series current line', color='blue')
-    plt.plot(tme, i_ser_B_plt[:len(tme)], label='Phase B series current line', color='red')
-    plt.plot(tme, i_ser_C_plt[:len(tme)], label='Phase C series current line', color='green')
-    plt.title("Series current in line")
-    plt.xlabel("Time")
-    plt.ylabel("Current")
-    plt.legend(loc='upper left')
-    plt.grid(True)
-    plt.legend()
-
-    plt.subplot(2, 2, 3)
-    plt.plot(tme, i_f_cap_A_plt[:len(tme)], label='Shunt current at from line phase A', color='blue')
-    plt.plot(tme, i_f_cap_B_plt[:len(tme)], label='Shunt current at from line phase B', color='red')
-    plt.plot(tme, i_f_cap_C_plt[:len(tme)], label='Shunt current at from line phase C', color='green')
-    plt.title("From shunt currents in line")
-    plt.xlabel("Time")
-    plt.ylabel("Current")
-    plt.legend(loc='upper left')
-    plt.grid(True)
-    plt.legend()
-
-    plt.subplot(2, 2, 4)
-    plt.plot(tme, i_t_cap_A_plt[:len(tme)], label='Shunt current at to line phase A', color='blue')
-    plt.plot(tme, i_t_cap_B_plt[:len(tme)], label='Shunt current at to line phase B', color='red')
-    plt.plot(tme, i_t_cap_C_plt[:len(tme)], label='Shunt current at to line phase C', color='green')
-    plt.title("To shunt currents in line")
-    plt.xlabel("Time")
-    plt.ylabel("Current")
-    plt.legend(loc='upper left')
-    plt.grid(True)
-    plt.legend()
-
-    plt.tight_layout()
-    print("Generating plots...")
-    plt.show()
 
 def plot_generator_sauer_pai_model():
-    xlim = options.simulation_time
+    tme = t
 
-    t_end = options.simulation_time
-    h = options.time_step
-    steps: int = int(t_end / h)
-    tme: np.ndarray = np.linspace(0, t_end, steps)
+    def get(name: str, block=None) -> np.ndarray:
+        src_block = gen_mdl if block is None else block
+        var = find_name_in_block(name, src_block)
+        if var is None:
+            raise RuntimeError(f"Signal '{name}' not found for plotting")
+        return y[:, problem.get_var_idx(var)]
 
-    #
-    v_A_0 = find_name_in_block("v_A_Bus0_emt_template", bus0.emt_model)
-    v_B_0 = find_name_in_block("v_B_Bus0_emt_template", bus0.emt_model)
-    v_C_0 = find_name_in_block("v_C_Bus0_emt_template", bus0.emt_model)
-    v_A_0_plt = y[:, problem.get_var_idx(v_A_0)]
-    v_B_0_plt = y[:, problem.get_var_idx(v_B_0)]
-    v_C_0_plt = y[:, problem.get_var_idx(v_C_0)]
-
-    v_A_1 = find_name_in_block("v_A_Bus1_emt_template", bus1.emt_model)
-    v_B_1 = find_name_in_block("v_B_Bus1_emt_template", bus1.emt_model)
-    v_C_1 = find_name_in_block("v_C_Bus1_emt_template", bus1.emt_model)
-    v_A_1_plt = y[:, problem.get_var_idx(v_A_1)]
-    v_B_1_plt = y[:, problem.get_var_idx(v_B_1)]
-    v_C_1_plt = y[:, problem.get_var_idx(v_C_1)]
+    v_A_0 = get("v_A_Bus0_emt_template", bus0.emt_model)
+    v_B_0 = get("v_B_Bus0_emt_template", bus0.emt_model)
+    v_C_0 = get("v_C_Bus0_emt_template", bus0.emt_model)
+    v_A_1 = get("v_A_Bus1_emt_template", bus1.emt_model)
+    v_B_1 = get("v_B_Bus1_emt_template", bus1.emt_model)
+    v_C_1 = get("v_C_Bus1_emt_template", bus1.emt_model)
 
     plt.figure(figsize=(12, 8))
-
     plt.subplot(2, 1, 1)
-    plt.plot(tme, v_A_0_plt[:len(tme)], label='Voltage phase A bus 0', color='blue')
-    plt.plot(tme, v_B_0_plt[:len(tme)], label='Voltage phase B bus 0', color='red')
-    plt.plot(tme, v_C_0_plt[:len(tme)], label='Voltage phase C bus 0', color='green')
+    plt.plot(tme, v_A_0, label='Voltage phase A bus 0', color='blue')
+    plt.plot(tme, v_B_0, label='Voltage phase B bus 0', color='red')
+    plt.plot(tme, v_C_0, label='Voltage phase C bus 0', color='green')
     plt.title("Voltage bus 0")
     plt.xlabel("Time")
     plt.ylabel("Voltage [p.u.]")
-    plt.legend(loc='upper left')
     plt.grid(True)
     plt.legend()
 
     plt.subplot(2, 1, 2)
-    plt.plot(tme, v_A_1_plt[:len(tme)], label='Voltage phase A bus 1', color='blue')
-    plt.plot(tme, v_B_1_plt[:len(tme)], label='Voltage phase B bus 1', color='red')
-    plt.plot(tme, v_C_1_plt[:len(tme)], label='Voltage phase C bus 1', color='green')
+    plt.plot(tme, v_A_1, label='Voltage phase A bus 1', color='blue')
+    plt.plot(tme, v_B_1, label='Voltage phase B bus 1', color='red')
+    plt.plot(tme, v_C_1, label='Voltage phase C bus 1', color='green')
     plt.title("Voltage bus 1")
     plt.xlabel("Time")
     plt.ylabel("Voltage [p.u.]")
-    plt.legend(loc='upper left')
     plt.grid(True)
     plt.legend()
-
     plt.tight_layout()
-    print("Generating plots...")
     plt.show()
 
-    theta = find_name_in_block("theta_abs_sauer_pai_generator_emt_template", gen_mdl)
-    delta = find_name_in_block("delta_rel_sauer_pai_generator_emt_template", gen_mdl)
-    omega_gen = find_name_in_block("omega_sauer_pai_generator_emt_template", gen_mdl)
-    theta_plt = y[:, problem.get_var_idx(theta)]
-    delta_plt = y[:, problem.get_var_idx(delta)]
-    omega_plt = y[:, problem.get_var_idx(omega_gen)]
+    theta_abs = get("theta_abs_sauer_pai_generator_emt_template")
+    delta_rel = get("delta_rel_sauer_pai_generator_emt_template")
+    omega_gen = get("omega_sauer_pai_generator_emt_template")
+    e_qp = get("e_qp_sauer_pai_generator_emt_template")
+    e_dp = get("e_dp_sauer_pai_generator_emt_template")
+    psi_pp_d = get("psi_pp_d_sauer_pai_generator_emt_template")
+    psi_pp_q = get("psi_pp_q_sauer_pai_generator_emt_template")
 
-    plt.figure(figsize=(12, 8))
-
-    plt.subplot(2, 2, 1)
-    plt.plot(tme, theta_plt[:len(tme)], label='Theta generator [rad]', color='blue')
+    plt.figure(figsize=(12, 10))
+    plt.subplot(3, 2, 1)
+    plt.plot(tme, theta_abs, label='theta_abs', color='blue')
     plt.title("Absolute rotor angle")
-    plt.xlabel("Time")
-    plt.ylabel("Theta generator")
-    plt.legend(loc='upper left')
     plt.grid(True)
     plt.legend()
 
-    plt.subplot(2, 2, 2)
-    plt.plot(tme, delta_plt[:len(tme)], label='delta generator [rad/s]', color='blue')
+    plt.subplot(3, 2, 2)
+    plt.plot(tme, delta_rel, label='delta_rel', color='red')
     plt.title("Relative rotor angle")
-    plt.xlabel("Time")
-    plt.ylabel("Delta generator [rad/s]")
-    plt.legend(loc='upper left')
     plt.grid(True)
     plt.legend()
 
-    plt.subplot(2, 2, 3)
-    plt.plot(tme, omega_plt[:len(tme)], label='Speed generator [rad/s]', color='blue')
-    plt.title("Omega generator")
-    plt.xlabel("Time")
-    plt.ylabel("Omega generator [rad/s]")
-    plt.legend(loc='upper left')
+    plt.subplot(3, 2, 3)
+    plt.plot(tme, omega_gen, label='omega', color='green')
+    plt.title("Rotor speed")
     plt.grid(True)
     plt.legend()
 
+    plt.subplot(3, 2, 4)
+    plt.plot(tme, e_qp, label='e_qp', color='purple')
+    plt.plot(tme, e_dp, label='e_dp', color='orange')
+    plt.title("Transient EMFs")
+    plt.grid(True)
+    plt.legend()
+
+    plt.subplot(3, 2, 5)
+    plt.plot(tme, psi_pp_d, label='psi_pp_d', color='blue')
+    plt.plot(tme, psi_pp_q, label='psi_pp_q', color='red')
+    plt.title("Subtransient fluxes")
+    plt.grid(True)
+    plt.legend()
     plt.tight_layout()
-    print("Generating plots...")
     plt.show()
 
-    i_A_gen = find_name_in_block("i_A_sauer_pai_generator_emt_template", gen_mdl)
-    i_B_gen = find_name_in_block("i_B_sauer_pai_generator_emt_template", gen_mdl)
-    i_C_gen = find_name_in_block("i_C_sauer_pai_generator_emt_template", gen_mdl)
-    i_A_gen_plt = y[:, problem.get_var_idx(i_A_gen)]
-    i_B_gen_plt = y[:, problem.get_var_idx(i_B_gen)]
-    i_C_gen_plt = y[:, problem.get_var_idx(i_C_gen)]
+    i_A_gen = get("i_A_sauer_pai_generator_emt_template")
+    i_B_gen = get("i_B_sauer_pai_generator_emt_template")
+    i_C_gen = get("i_C_sauer_pai_generator_emt_template")
+    i_A_load = get("i_A_R_shunt_3ph", load_mdl)
+    i_B_load = get("i_B_R_shunt_3ph", load_mdl)
+    i_C_load = get("i_C_R_shunt_3ph", load_mdl)
+    if_A = get("if_Pi_A", line0.emt_model)
+    if_B = get("if_Pi_B", line0.emt_model)
+    if_C = get("if_Pi_C", line0.emt_model)
+    it_A = get("it_Pi_A", line0.emt_model)
+    it_B = get("it_Pi_B", line0.emt_model)
+    it_C = get("it_Pi_C", line0.emt_model)
 
-    i_A_load = find_name_in_block("i_A_Shunt_R_3ph", load_mdl)
-    i_B_load = find_name_in_block("i_B_Shunt_R_3ph", load_mdl)
-    i_C_load = find_name_in_block("i_C_Shunt_R_3ph", load_mdl)
-    i_A_load_plt = y[:, problem.get_var_idx(i_A_load)]
-    i_B_load_plt = y[:, problem.get_var_idx(i_B_load)]
-    i_C_load_plt = y[:, problem.get_var_idx(i_C_load)]
-
-    plt.figure(figsize=(12, 8))
-
+    plt.figure(figsize=(12, 10))
     plt.subplot(2, 2, 1)
-    plt.plot(tme, i_A_gen_plt[:len(tme)], label='Current phase A from generator', color='blue')
-    plt.plot(tme, i_B_gen_plt[:len(tme)], label='Current phase B from generator', color='red')
-    plt.plot(tme, i_C_gen_plt[:len(tme)], label='Current phase C from generator', color='green')
-    plt.title("Current generator")
-    plt.xlabel("Time")
-    plt.ylabel("Current generator")
-    plt.legend(loc='upper left')
+    plt.plot(tme, i_A_gen, label='Generator A', color='blue')
+    plt.plot(tme, i_B_gen, label='Generator B', color='red')
+    plt.plot(tme, i_C_gen, label='Generator C', color='green')
+    plt.title("Generator abc currents")
     plt.grid(True)
     plt.legend()
 
     plt.subplot(2, 2, 2)
-    # SIGNS IN LOAD ARE FLIPPED. FOR SIGN CONVENTION CURRENTS LEAVE INJECTIONS SO IN THE CASE OF THE LOAD
-    # THAT MEANS THE CURRENTS ARE NEGATIVE
-    plt.plot(tme, -i_A_load_plt[:len(tme)], label='Current phase A from load', color='blue')
-    plt.plot(tme, -i_B_load_plt[:len(tme)], label='Current phase B from load', color='red')
-    plt.plot(tme, -i_C_load_plt[:len(tme)], label='Current phase C from load', color='green')
-    plt.title("Current load")
-    plt.xlabel("Time")
-    plt.ylabel("Current load")
-    plt.legend(loc='upper left')
-    plt.grid(True)
-    plt.legend()
-
-    plt.tight_layout()
-    print("Generating plots...")
-    plt.show()
-
-    # Pm_gen = find_name_in_block("p_m_classical_generator_emt_template", gen_mdl)
-    Qe_gen = find_name_in_block("q_e_sauer_pai_generator_emt_template", gen_mdl)
-    Pe_gen = find_name_in_block("q_e_sauer_pai_generator_emt_template", gen_mdl)
-    Tm_gen = find_name_in_block("T_m_sauer_pai_generator_emt_template", gen_mdl)
-    Te_gen = find_name_in_block("T_e_sauer_pai_generator_emt_template", gen_mdl)
-    # et_gen = find_name_in_block("et_emt_type_generator_template", gen_mdl)
-    # Pm_gen_plt = y[:, problem.get_var_idx(Pm_gen)]
-    Qe_gen_plt = y[:, problem.get_var_idx(Qe_gen)]
-    Pe_gen_plt = y[:, problem.get_var_idx(Pe_gen)]
-    Tm_gen_plt = y[:, problem.get_var_idx(Tm_gen)]
-    Te_gen_plt = y[:, problem.get_var_idx(Te_gen)]
-    # et_gen_plt = y[:, problem.get_var_idx(et_gen)]
-
-    plt.figure(figsize=(12, 8))
-
-    plt.subplot(2, 1, 1)
-    # plt.plot(tme, Pm_gen_plt[:len(tme)], label='Mechanical power Pm from generator', color='blue')
-    plt.plot(tme, Pe_gen_plt[:len(tme)], label='Electrical power Pe from generator', color='red')
-    plt.plot(tme, Qe_gen_plt[:len(tme)], label='Electrical reactive power Qe from generator', color='purple')
-    plt.title("power generator")
-    plt.xlabel("Time")
-    plt.ylabel("power generator")
-    plt.legend(loc='upper left')
-    plt.grid(True)
-    plt.legend()
-
-    plt.subplot(2, 1, 2)
-    plt.plot(tme, Tm_gen_plt[:len(tme)], label='Mechanical torque Tm from generator', color='blue')
-    plt.plot(tme, Te_gen_plt[:len(tme)], label='Electrical torque Te from generator', color='red')
-    plt.title("torque generator")
-    plt.xlabel("Time")
-    plt.ylabel("torque generator")
-    plt.legend(loc='upper left')
-    plt.grid(True)
-    plt.legend()
-
-    # plt.subplot(2, 2, 3)
-    # plt.plot(tme, et_gen_plt[:len(tme)], label='PI error at generator', color='blue')
-    # plt.title("et generator")
-    # plt.xlabel("Time")
-    # plt.ylabel("et generator")
-    # plt.legend(loc='upper left')
-    # plt.grid(True)
-    # plt.legend()
-
-    plt.tight_layout()
-    print("Generating plots...")
-    plt.show()
-
-    i_d_gen = find_name_in_block("i_d_sauer_pai_generator_emt_template", gen_mdl)
-    i_q_gen = find_name_in_block("i_q_sauer_pai_generator_emt_template", gen_mdl)
-    i_0_gen = find_name_in_block("i_0_sauer_pai_generator_emt_template", gen_mdl)
-    # i_f_gen = find_name_in_block("i_f_emt_type_generator_template", gen_mdl)
-    v_d_gen = find_name_in_block("v_d_sauer_pai_generator_emt_template", gen_mdl)
-    v_q_gen = find_name_in_block("v_q_sauer_pai_generator_emt_template", gen_mdl)
-    v_0_gen = find_name_in_block("v_0_sauer_pai_generator_emt_template", gen_mdl)
-    v_f_gen = find_name_in_block("v_f_sauer_pai_generator_emt_template", gen_mdl)
-    i_d_gen_plt = y[:, problem.get_var_idx(i_d_gen)]
-    i_q_gen_plt = y[:, problem.get_var_idx(i_q_gen)]
-    i_0_gen_plt = y[:, problem.get_var_idx(i_0_gen)]
-    # i_f_gen_plt = y[:, problem.get_var_idx(i_f_gen)]
-    v_d_gen_plt = y[:, problem.get_var_idx(v_d_gen)]
-    v_q_gen_plt = y[:, problem.get_var_idx(v_q_gen)]
-    v_0_gen_plt = y[:, problem.get_var_idx(v_0_gen)]
-    v_f_gen_plt = y[:, problem.get_var_idx(v_f_gen)]
-
-    plt.figure(figsize=(12, 8))
-
-    plt.subplot(2, 2, 1)
-    plt.plot(tme, i_d_gen_plt[:len(tme)], label='Current in the d axis generator', color='blue')
-    plt.plot(tme, i_q_gen_plt[:len(tme)], label='Current in the q axis generator', color='red')
-    plt.plot(tme, i_0_gen_plt[:len(tme)], label='Current in the 0 axis generator', color='green')
-    plt.title("currents in the dq0 axis in the generator")
-    plt.xlabel("Time")
-    plt.ylabel("dq0 currents generator")
-    plt.legend(loc='upper left')
-    plt.grid(True)
-    plt.legend()
-
-    # plt.subplot(2, 2, 2)
-    # plt.plot(tme, i_f_gen_plt[:len(tme)], label='Field current in the generator', color='purple')
-    # plt.title("Field current in the generator")
-    # plt.xlabel("Time")
-    # plt.ylabel("Field current")
-    # plt.legend(loc='upper left')
-    # plt.grid(True)
-    # plt.legend()
-
-    plt.subplot(2, 2, 2)
-    plt.plot(tme, v_d_gen_plt[:len(tme)], label='Voltage in the d axis generator', color='blue')
-    plt.plot(tme, v_q_gen_plt[:len(tme)], label='Voltage in the q axis generator', color='red')
-    plt.plot(tme, v_0_gen_plt[:len(tme)], label='Voltage in the 0 axis generator', color='green')
-    plt.title("Voltages in the dq0 axis in the generator")
-    plt.xlabel("Time")
-    plt.ylabel("dq0 Voltages generator")
-    plt.legend(loc='upper left')
-    plt.grid(True)
-    plt.legend()
-
-    plt.subplot(2, 2, 4)
-    plt.plot(tme, v_f_gen_plt[:len(tme)], label='Field voltage in the generator', color='purple')
-    plt.title("Field voltage in the generator")
-    plt.xlabel("Time")
-    plt.ylabel("Field voltage")
-    plt.legend(loc='upper left')
-    plt.grid(True)
-    plt.legend()
-
-    plt.tight_layout()
-    print("Generating plots...")
-    plt.show()
-
-    i_f_A_line = find_name_in_block("if_line0_0", line0.emt_model)
-    i_f_B_line = find_name_in_block("if_line0_1", line0.emt_model)
-    i_f_C_line = find_name_in_block("if_line0_2", line0.emt_model)
-    i_f_A_line_plt = y[:, problem.get_var_idx(i_f_A_line)]
-    i_f_B_line_plt = y[:, problem.get_var_idx(i_f_B_line)]
-    i_f_C_line_plt = y[:, problem.get_var_idx(i_f_C_line)]
-
-    i_t_A_line = find_name_in_block("it_line0_0", line0.emt_model)
-    i_t_B_line = find_name_in_block("it_line0_1", line0.emt_model)
-    i_t_C_line = find_name_in_block("it_line0_2", line0.emt_model)
-    i_t_A_line_plt = y[:, problem.get_var_idx(i_t_A_line)]
-    i_t_B_line_plt = y[:, problem.get_var_idx(i_t_B_line)]
-    i_t_C_line_plt = y[:, problem.get_var_idx(i_t_C_line)]
-
-    plt.figure(figsize=(12, 8))
-
-    plt.subplot(2, 2, 1)
-    plt.plot(tme, i_A_gen_plt[:len(tme)], label='Current phase A from generator', color='blue')
-    plt.plot(tme, i_B_gen_plt[:len(tme)], label='Current phase B from generator', color='red')
-    plt.plot(tme, i_C_gen_plt[:len(tme)], label='Current phase C from generator', color='green')
-    plt.title("Current generator")
-    plt.xlabel("Time")
-    plt.ylabel("Current generator")
-    plt.legend(loc='upper left')
-    plt.grid(True)
-    plt.legend()
-
-    plt.subplot(2, 2, 2)
-    # SIGNS IN LOAD ARE FLIPPED. FOR SIGN CONVENTION CURRENTS LEAVE INJECTIONS SO IN THE CASE OF THE LOAD
-    # THAT MEANS THE CURRENTS ARE NEGATIVE
-    plt.plot(tme, -i_A_load_plt[:len(tme)], label='Current phase A from load', color='blue')
-    plt.plot(tme, -i_B_load_plt[:len(tme)], label='Current phase B from load', color='red')
-    plt.plot(tme, -i_C_load_plt[:len(tme)], label='Current phase C from load', color='green')
-    plt.title("Current load")
-    plt.xlabel("Time")
-    plt.ylabel("Current load")
-    plt.legend(loc='upper left')
+    plt.plot(tme, -i_A_load, label='Load A', color='blue')
+    plt.plot(tme, -i_B_load, label='Load B', color='red')
+    plt.plot(tme, -i_C_load, label='Load C', color='green')
+    plt.title("Load abc currents")
     plt.grid(True)
     plt.legend()
 
     plt.subplot(2, 2, 3)
-    plt.plot(tme, i_f_A_line_plt[:len(tme)], label='Current FROM phase A from line', color='blue')
-    plt.plot(tme, i_f_B_line_plt[:len(tme)], label='Current FROM phase B from line', color='red')
-    plt.plot(tme, i_f_C_line_plt[:len(tme)], label='Current FROM phase C from line', color='green')
-    plt.title("Current from line")
-    plt.xlabel("Time")
-    plt.ylabel("Current from")
-    plt.legend(loc='upper left')
+    plt.plot(tme, if_A, label='Line from A', color='blue')
+    plt.plot(tme, if_B, label='Line from B', color='red')
+    plt.plot(tme, if_C, label='Line from C', color='green')
+    plt.title("Line currents from side")
     plt.grid(True)
     plt.legend()
 
     plt.subplot(2, 2, 4)
-    # SIGNS IN LOAD ARE FLIPPED. FOR SIGN CONVENTION CURRENTS LEAVE INJECTIONS SO IN THE CASE OF THE LOAD
-    # THAT MEANS THE CURRENTS ARE NEGATIVE
-    plt.plot(tme, -i_t_A_line_plt[:len(tme)], label='Current TO phase A from line', color='blue')
-    plt.plot(tme, -i_t_B_line_plt[:len(tme)], label='Current TO phase B from line', color='red')
-    plt.plot(tme, -i_t_C_line_plt[:len(tme)], label='Current TO phase C from line', color='green')
-    plt.title("Current to line")
-    plt.xlabel("Time")
-    plt.ylabel("Current to")
-    plt.legend(loc='upper left')
+    plt.plot(tme, -it_A, label='Line to A', color='blue')
+    plt.plot(tme, -it_B, label='Line to B', color='red')
+    plt.plot(tme, -it_C, label='Line to C', color='green')
+    plt.title("Line currents to side")
+    plt.grid(True)
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+    i_d = get("i_d_sauer_pai_generator_emt_template")
+    i_q = get("i_q_sauer_pai_generator_emt_template")
+    i_0 = get("i_0_sauer_pai_generator_emt_template")
+    v_d = get("v_d_sauer_pai_generator_emt_template")
+    v_q = get("v_q_sauer_pai_generator_emt_template")
+    v_0 = get("v_0_sauer_pai_generator_emt_template")
+    psi_d = get("psi_d_sauer_pai_generator_emt_template")
+    psi_q = get("psi_q_sauer_pai_generator_emt_template")
+    psi_0 = get("psi_0_sauer_pai_generator_emt_template")
+    irpu = get("IRPu_sauer_pai_generator_emt_template")
+
+    plt.figure(figsize=(12, 10))
+    plt.subplot(2, 2, 1)
+    plt.plot(tme, i_d, label='i_d', color='blue')
+    plt.plot(tme, i_q, label='i_q', color='red')
+    plt.plot(tme, i_0, label='i_0', color='green')
+    plt.title("dq0 currents")
     plt.grid(True)
     plt.legend()
 
-    plt.tight_layout()
-    print("Generating plots...")
-    plt.show()
-
-    i_ser_A = find_name_in_block("i_ser_line0_0", line0.emt_model)
-    i_ser_B = find_name_in_block("i_ser_line0_1", line0.emt_model)
-    i_ser_C = find_name_in_block("i_ser_line0_2", line0.emt_model)
-    i_ser_A_plt = y[:, problem.get_var_idx(i_ser_A)]
-    i_ser_B_plt = y[:, problem.get_var_idx(i_ser_B)]
-    i_ser_C_plt = y[:, problem.get_var_idx(i_ser_C)]
-
-    i_f_cap_A = find_name_in_block("i_cap_f_line0_0", line0.emt_model)
-    i_f_cap_B = find_name_in_block("i_cap_f_line0_1", line0.emt_model)
-    i_f_cap_C = find_name_in_block("i_cap_f_line0_2", line0.emt_model)
-    i_f_cap_A_plt = y[:, problem.get_var_idx(i_f_cap_A)]
-    i_f_cap_B_plt = y[:, problem.get_var_idx(i_f_cap_B)]
-    i_f_cap_C_plt = y[:, problem.get_var_idx(i_f_cap_C)]
-
-    i_t_cap_A = find_name_in_block("i_cap_t_line0_0", line0.emt_model)
-    i_t_cap_B = find_name_in_block("i_cap_t_line0_1", line0.emt_model)
-    i_t_cap_C = find_name_in_block("i_cap_t_line0_2", line0.emt_model)
-    i_t_cap_A_plt = y[:, problem.get_var_idx(i_t_cap_A)]
-    i_t_cap_B_plt = y[:, problem.get_var_idx(i_t_cap_B)]
-    i_t_cap_C_plt = y[:, problem.get_var_idx(i_t_cap_C)]
-
-    plt.figure(figsize=(12, 8))
-
-    plt.subplot(2, 2, 1)
-    plt.plot(tme, i_ser_A_plt[:len(tme)], label='Phase A series current line', color='blue')
-    plt.plot(tme, i_ser_B_plt[:len(tme)], label='Phase B series current line', color='red')
-    plt.plot(tme, i_ser_C_plt[:len(tme)], label='Phase C series current line', color='green')
-    plt.title("Series current in line")
-    plt.xlabel("Time")
-    plt.ylabel("Current")
-    plt.legend(loc='upper left')
+    plt.subplot(2, 2, 2)
+    plt.plot(tme, v_d, label='v_d', color='blue')
+    plt.plot(tme, v_q, label='v_q', color='red')
+    plt.plot(tme, v_0, label='v_0', color='green')
+    plt.title("dq0 voltages")
     plt.grid(True)
     plt.legend()
 
     plt.subplot(2, 2, 3)
-    plt.plot(tme, i_f_cap_A_plt[:len(tme)], label='Shunt current at from line phase A', color='blue')
-    plt.plot(tme, i_f_cap_B_plt[:len(tme)], label='Shunt current at from line phase B', color='red')
-    plt.plot(tme, i_f_cap_C_plt[:len(tme)], label='Shunt current at from line phase C', color='green')
-    plt.title("From shunt currents in line")
-    plt.xlabel("Time")
-    plt.ylabel("Current")
-    plt.legend(loc='upper left')
+    plt.plot(tme, psi_d, label='psi_d', color='blue')
+    plt.plot(tme, psi_q, label='psi_q', color='red')
+    plt.plot(tme, psi_0, label='psi_0', color='green')
+    plt.title("dq0 fluxes")
     plt.grid(True)
     plt.legend()
 
     plt.subplot(2, 2, 4)
-    plt.plot(tme, i_t_cap_A_plt[:len(tme)], label='Shunt current at to line phase A', color='blue')
-    plt.plot(tme, i_t_cap_B_plt[:len(tme)], label='Shunt current at to line phase B', color='red')
-    plt.plot(tme, i_t_cap_C_plt[:len(tme)], label='Shunt current at to line phase C', color='green')
-    plt.title("To shunt currents in line")
-    plt.xlabel("Time")
-    plt.ylabel("Current")
-    plt.legend(loc='upper left')
+    plt.plot(tme, irpu, label='IRPu', color='purple')
+    plt.title("Field current signal")
+    plt.grid(True)
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+    Te = get("Te_sauer_pai_generator_emt_template")
+    p_e = get("p_e_sauer_pai_generator_emt_template")
+    q_e = get("q_e_sauer_pai_generator_emt_template")
+    Tm = get("Tm")
+    Vpss = get("V_pss")
+    Vm = get("Vm_")
+    Vf = get("Vf")
+    Efe = get("Efe")
+    y_exciter1 = get("y_exciter1")
+    y_exciter2 = get("y_exciter2")
+    y_exciter3 = get("y_exciter3")
+    y_exciter4 = get("y_exciter4")
+
+    plt.figure(figsize=(12, 10))
+    plt.subplot(2, 2, 1)
+    plt.plot(tme, p_e, label='P_e', color='blue')
+    plt.plot(tme, q_e, label='Q_e', color='red')
+    plt.title("Electrical powers")
     plt.grid(True)
     plt.legend()
 
+    plt.subplot(2, 2, 2)
+    plt.plot(tme, Tm, label='T_m', color='blue')
+    plt.plot(tme, Te, label='T_e', color='red')
+    plt.title("Mechanical and electrical torque")
+    plt.grid(True)
+    plt.legend()
+
+    plt.subplot(2, 2, 3)
+    plt.plot(tme, Vf, label='Vf', color='purple')
+    plt.plot(tme, Efe, label='Efe', color='orange')
+    plt.plot(tme, Vm, label='Vm', color='green')
+    plt.plot(tme, Vpss, label='Vpss', color='brown')
+    plt.title("Exciter and PSS outputs")
+    plt.grid(True)
+    plt.legend()
+
+    plt.subplot(2, 2, 4)
+    plt.plot(tme, y_exciter1, label='y_exciter1', color='blue')
+    plt.plot(tme, y_exciter2, label='y_exciter2', color='red')
+    plt.plot(tme, y_exciter3, label='y_exciter3', color='green')
+    plt.plot(tme, y_exciter4, label='y_exciter4', color='purple')
+    plt.title("AVR internal states")
+    plt.grid(True)
+    plt.legend()
     plt.tight_layout()
-    print("Generating plots...")
     plt.show()
 
+    i_ser_A = get("i_ser_Pi_A", line0.emt_model)
+    i_ser_B = get("i_ser_Pi_B", line0.emt_model)
+    i_ser_C = get("i_ser_Pi_C", line0.emt_model)
+    i_cap_f_A = get("i_cap_f_Pi_A", line0.emt_model)
+    i_cap_f_B = get("i_cap_f_Pi_B", line0.emt_model)
+    i_cap_f_C = get("i_cap_f_Pi_C", line0.emt_model)
+    i_cap_t_A = get("i_cap_t_Pi_A", line0.emt_model)
+    i_cap_t_B = get("i_cap_t_Pi_B", line0.emt_model)
+    i_cap_t_C = get("i_cap_t_Pi_C", line0.emt_model)
 
-# plot_generator_emt_type()
-plot_simple_generator_emt_type()
+    plt.figure(figsize=(12, 10))
+    plt.subplot(2, 2, 1)
+    plt.plot(tme, i_ser_A, label='Series A', color='blue')
+    plt.plot(tme, i_ser_B, label='Series B', color='red')
+    plt.plot(tme, i_ser_C, label='Series C', color='green')
+    plt.title("Line series currents")
+    plt.grid(True)
+    plt.legend()
+
+    plt.subplot(2, 2, 2)
+    plt.plot(tme, i_cap_f_A, label='Cap from A', color='blue')
+    plt.plot(tme, i_cap_f_B, label='Cap from B', color='red')
+    plt.plot(tme, i_cap_f_C, label='Cap from C', color='green')
+    plt.title("Line from-side shunt currents")
+    plt.grid(True)
+    plt.legend()
+
+    plt.subplot(2, 2, 3)
+    plt.plot(tme, i_cap_t_A, label='Cap to A', color='blue')
+    plt.plot(tme, i_cap_t_B, label='Cap to B', color='red')
+    plt.plot(tme, i_cap_t_C, label='Cap to C', color='green')
+    plt.title("Line to-side shunt currents")
+    plt.grid(True)
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+if ENABLE_PLOTS:
+    if find_name_in_block("theta_abs_sauer_pai_generator_emt_template", gen_mdl) is not None:
+        plot_generator_sauer_pai_model()
+    elif find_name_in_block("theta_simple_emt_type_generator_template", gen_mdl) is not None:
+        plot_simple_generator_emt_type()
+    else:
+        print("No compatible plot routine found for the active generator model; skipping plots.")
 # plot_generator_sauer_pai_model()
