@@ -1317,6 +1317,50 @@ class ActionType(Enum):
         return list(enum_item.value for enum_item in cls)
 
 
+
+class PrpCat(Enum):
+    """
+    ActionType
+    """
+    All = 'All'
+    PF = 'Power flow'
+    PF3 = 'Power flow (unbalanced)'
+    SC = "Short Circuit"
+    OPF = 'Optimal Power flow'
+    CON = "Contingencies"
+    TP = 'Topology'
+    REL = 'Reliability'
+    NTC = 'Net Transfer Capacity'
+    INV = "Investments"
+    RMS = 'RMS'
+    EMT = 'EMT'
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return ActionType[s]
+        except KeyError:
+            return s
+
+    @classmethod
+    def list(cls):
+        """
+
+        :return:
+        """
+        return list(enum_item.value for enum_item in cls)
+
 # class GpfControlType(Enum):
 #     """
 #     GENERALISED PF Control types
