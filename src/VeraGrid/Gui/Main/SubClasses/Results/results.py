@@ -270,7 +270,7 @@ class ResultsMain(SimulationsMain):
             if len(selected_indexes) > 0:
                 group_name: str = self.ui.eventsGroupComboBox.currentText()
                 mdl = self.dynamic_results_handler.get_data_from_plot_index(index=selected_indexes[0],
-                                                                            rms_group_name=group_name)
+                                                                            dyn_group_name=group_name)
 
                 self.ui.dynamicsTableView.setModel(mdl)
 
@@ -346,7 +346,7 @@ class ResultsMain(SimulationsMain):
             if len(selected_indexes) > 0:
                 group_name: str = self.ui.eventsGroupComboBox.currentText()
                 plotted: bool = self.dynamic_results_handler.plot_entry_from_index(index=selected_indexes[0],
-                                                                                   rms_group_name=group_name)
+                                                                                   dyn_group_name=group_name)
                 if plotted:
                     return None
                 else:
