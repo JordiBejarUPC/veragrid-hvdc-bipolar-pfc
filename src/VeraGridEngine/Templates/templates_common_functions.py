@@ -12,7 +12,7 @@ from typing import Tuple, Optional, List, Callable, Dict
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.basic_structures import Vec
-from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr, CmpOp, Comparison, heaviside, hard_sat, expression2numba, get_expression_vars)
+from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr, BinOp, CmpOp, Comparison, heaviside, hard_sat, expression2numba, get_expression_vars)
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import DeviceType, ParamPowerFlowRefferenceType
 
@@ -372,6 +372,63 @@ def to_implicit(block: Block, vfactory: VarFactory) -> Block:
     for b in block.children:
         to_implicit(b, vfactory)
     
+    return block
+
+
+def _extract_rhs_from_implicit_eq(eq: Expr, diff_var: Var) -> Expr | None:
+    """
+    Try to recover rhs from an implicit algebraic equation of the form:
+        diff_var - rhs = 0
+    Returns rhs when recognized, otherwise None.
+    """
+    if isinstance(eq, BinOp):
+        if eq.op == "-":
+            if isinstance(eq.left, Var) and eq.left.uid == diff_var.uid:
+                return eq.right
+            if isinstance(eq.right, Var) and eq.right.uid == diff_var.uid:
+                return eq.left
+        elif eq.op == "+":
+            if isinstance(eq.left, Var) and eq.left.uid == diff_var.uid:
+                return (-eq.right).simplify()
+            if isinstance(eq.right, Var) and eq.right.uid == diff_var.uid:
+                return (-eq.left).simplify()
+
+    return None
+
+
+def to_explicit(block: Block, vfactory: VarFactory) -> Block:
+    """
+    Convert an implicit DAE-like block back to explicit state equations.
+
+    For each diff var `dt_x` in `block.diff_vars`, look for an algebraic equation
+    equivalent to `dt_x - f(...) = 0`. When found:
+    - create/ensure state equation `dx/dt = f(...)` for base var `x`
+    - remove that implicit algebraic equation
+    - substitute `dt_x` by `f(...)` in remaining algebraic equations
+    - remove all recovered diff vars from `block.diff_vars`
+
+    Recurses through child blocks.
+    """
+    block.unify_blocks()
+
+    for i, diff_var in enumerate(block.diff_vars):
+        new_diff_var = vfactory.add_var(f"dt_{diff_var.base_var.name}")
+
+        if diff_var.base_var not in block.state_vars:
+            block.state_vars.append(diff_var.base_var)
+            block.state_eqs.append(diff_var)
+            block.algebraic_vars.remove(diff_var.base_var)
+        else:
+            state_eq = block.state_eqs[block.state_vars.index(diff_var.base_var)]
+            block.algebraic_eqs.append(new_diff_var - state_eq)
+
+        block.algebraic_vars.append(new_diff_var)
+        block.update_equations(diff_var, new_diff_var)
+    block.diff_vars = list()
+
+    for child in block.children:
+        to_explicit(child, vfactory)
+
     return block
 
 

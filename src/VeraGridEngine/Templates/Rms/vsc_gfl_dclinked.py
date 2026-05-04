@@ -67,9 +67,9 @@ def build_vsc_rms(vfactory: VarFactory, name:str = ''):
     vm_t = vfactory.add_var("Vm_t_" + name)
     inputs: List[Var] = [vm_t]
 
-    Pf  = vfactory.add_var("Pf_vsc")
-    Pt  = vfactory.add_var("Pt")
-    Qt_ref = vfactory.add_var("Qt_ref")
+    Pf  = vfactory.add_var("Pf_vsc", VarPowerFlowRefferenceType.Pf)
+    Pt  = vfactory.add_var("Pt", VarPowerFlowRefferenceType.Pt)
+    Qt_ref = vfactory.add_var("Qt_ref", VarPowerFlowRefferenceType.Qt)
 
     alpha1 = vfactory.add_var("alpha1")
     alpha2 = vfactory.add_var("alpha2")

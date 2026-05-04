@@ -8,6 +8,7 @@ import pandas as pd
 from typing import Union, List, Tuple
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Devices.Substation.bus import Bus
+from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import (BuildStatus, SubObjectType, DeviceType,
                                          ParamPowerFlowRefferenceType, EmtLineTypes, PrpCat)
 from VeraGridEngine.Devices.Branches.underground_line_type import UndergroundLineType
