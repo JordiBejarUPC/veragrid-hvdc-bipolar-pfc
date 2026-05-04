@@ -8,7 +8,8 @@ import numpy as np
 import pandas as pd
 import scipy.sparse as sp
 
-from VeraGridEngine.enumerations import ParamPowerFlowRefferenceType
+from VeraGridEngine import DeviceType
+from VeraGridEngine.enumerations import ParamPowerFlowRefferenceType, DeviceType
 from VeraGridEngine.Devices import MultiCircuit
 from VeraGridEngine.Simulations.driver_template import DummySignal
 from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr, piecewise, get_expression_vars)
@@ -43,7 +44,32 @@ from VeraGridEngine.IO.fmu.importer.experimental_me import (
     initialize_rms_fmu_me_devices,
     register_rms_fmu_me_device,
 )
+
+from VeraGridEngine.Utils.Symbolic.static_parameter_mapping_rms import (
+    assign_static_api_object_mapping_for_device,
+)
+
 from VeraGridEngine.Utils.procedural_logic import BlockProceduralLogicUpdater
+
+def assign_static_parameters(elm:Any, parameter_reference: ParamPowerFlowRefferenceType) -> Const:
+    if elm.device_type == DeviceType.LineDevice:
+        return assign_line_static_parameters(elm, parameter_reference)
+    else:
+        raise ValueError(f"Not possible to assign static values to {elm.device_type}")
+
+def assign_line_static_parameters(elm: Any, parameter_reference: ParamPowerFlowRefferenceType) -> Const:
+    if parameter_reference == ParamPowerFlowRefferenceType.g:
+        return Const(float(elm.R / (elm.R ** 2 + elm.X ** 2)))
+    if parameter_reference == ParamPowerFlowRefferenceType.b:
+        return Const(float(-elm.X / (elm.R ** 2 + elm.X ** 2)))
+    if parameter_reference == ParamPowerFlowRefferenceType.bsh:
+        return Const(elm.B)
+    if parameter_reference == ParamPowerFlowRefferenceType.r:
+        return Const(elm.R)
+    if parameter_reference == ParamPowerFlowRefferenceType.l:
+        return Const(elm.X)
+    else:
+        raise ValueError("parameter reference expression missing")
 
 
 def _tic():
@@ -182,6 +208,7 @@ class RmsProblemDae(RmsProblemTemplate):
         self._event_parameters_eqs: List[Expr | Const] = list()
         self._constant_parameters: List[Var] = list()
         self._parameters_values: List[Const] = list()
+        self._static_parameterm_values_mapping: Dict[Var, Const] = dict()
 
         self._runtime_all_parameters_source: List[Var] = list()
         self._runtime_all_eqs_source: List[Expr | Const] = list()
@@ -307,7 +334,14 @@ class RmsProblemDae(RmsProblemTemplate):
                                       device_class=elm.device_type.value,
                                       device=elm.name)
             else:
-                # get parameters from api object
+
+                # assign_static_api_object_mapping_for_device(grid=self.grid,
+                #                                             device=elm,
+                #                                             mdl=elm.rms_model,
+                #                                             problem_mapping=self._static_parameterm_values_mapping,
+                #                                             logger=None)
+                # # modify function to fill self._static_parameterm_values_mapping
+
                 if ParamPowerFlowRefferenceType.g in elm.rms_model.api_obj_mapping:
                     elm.rms_model.parameters[
                         elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.g]] = Const(
@@ -393,7 +427,6 @@ class RmsProblemDae(RmsProblemTemplate):
                     elm.rms_model.parameters[elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.transformer_tap_ratio]] = Const(tap_phase)
 
                     if self.options.initialization_method == RmsInitializationMethod.Explicit:
-                        params_array: np.ndarray = np.zeros(len(self._constant_parameters))
                         diff_sys_vars: Dict[int, Var] = {diff_var.uid: diff_var for diff_var in self._diff_vars}
                         rms_compiler_init = RMSCompiler(
                             variables=list(self.sys_vars.values()),
@@ -404,9 +437,6 @@ class RmsProblemDae(RmsProblemTemplate):
                             compiler_names_dict=self._compiler_names_dict,
                         )
                         compile_single_equation = build_rms_single_equation_compiler(rms_compiler_init)
-
-                        for param, const in elm.rms_model.parameters.items():
-                            params_array[self._uid2idx_params[param.uid]] = const.value
 
                         # New init_explicit_common path
                         self.init_guess, diff_init_guess_common = init_explicit_common(
@@ -423,7 +453,7 @@ class RmsProblemDae(RmsProblemTemplate):
                             uid2idx_diff=self._uid2idx_diff,
                             uid2idx_params=self._uid2idx_params,
                             uid2idx_event_params=self._uid2idx_event_params,
-                            params_array=params_array,
+                            params_array=self._parameters_values,
                             compile_single_equation=compile_single_equation,
                             verbose=bool(self.options.verbose > 0),
                         )
@@ -773,7 +803,6 @@ class RmsProblemDae(RmsProblemTemplate):
 
                     # else:
                     # for common init explicit to integrate
-                    params_array: np.ndarray = np.zeros(len(self._constant_parameters))
                     diff_sys_vars: Dict[int, Var] = {diff_var.uid: diff_var for diff_var in self._diff_vars}
                     rms_compiler_init = RMSCompiler(
                         variables=list(self.sys_vars.values()),
@@ -784,9 +813,6 @@ class RmsProblemDae(RmsProblemTemplate):
                         compiler_names_dict=self._compiler_names_dict,
                     )
                     compile_single_equation = build_rms_single_equation_compiler(rms_compiler_init)
-
-                    for param, const in elm.rms_model.parameters.items():
-                        params_array[self._uid2idx_params[param.uid]] = const.value
 
                     # New init_explicit_common path
                     self.init_guess, diff_init_guess_common = init_explicit_common(
@@ -803,7 +829,7 @@ class RmsProblemDae(RmsProblemTemplate):
                         uid2idx_diff=self._uid2idx_diff,
                         uid2idx_params=self._uid2idx_params,
                         uid2idx_event_params=self._uid2idx_event_params,
-                        params_array=params_array,
+                        params_array=self._parameters_values,
                         compile_single_equation=compile_single_equation,
                         verbose=bool(self.options.verbose > 0),
                     )
@@ -1575,6 +1601,7 @@ class RmsProblemDae(RmsProblemTemplate):
             self._n_vars += 1
 
         # j is for parameters
+
         for ep, const in mdl.parameters.items():
             if ep.uid in self._uid2idx_params:
                 raise ValueError(f"Parameter '{ep.name}' (uid={ep.uid}) is already registered in the system. "
@@ -1586,9 +1613,23 @@ class RmsProblemDae(RmsProblemTemplate):
             self._parameters_values.append(const)
             self._n_params += 1
 
+        # for ep, const in mdl.parameters.items():
+        #     if ep.uid in self._uid2idx_params:
+        #         raise ValueError(f"Parameter '{ep.name}' (uid={ep.uid}) is already registered in the system. "
+        #                          f"Previous device may have created a duplicate parameter.")
+        #
+        #     self._compiler_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}[{self._n_params}]"
+        #     self._alias_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}_{self._n_params}"
+        #     self._uid2idx_params[ep.uid] = self._n_params
+        #     self._constant_parameters.append(ep)
+        #     # search value in self._static_parameterm_values_mapping
+        #     self._parameters_values.append(self._static_parameterm_values_mapping[ep])
+        #     self._n_params += 1
+
         # m is for variable parameters
         self._register_runtime_event_parameters(dev=elm, mdl=mdl)
 
+        # Todo: function inside a function, refactor this!
         def _register_event_parameter(ep: Var, eq: Expr | Const, runtime_eq: Expr | Const | None = None) -> None:
             if ep.uid in self._uid2idx_event_params:
                 raise ValueError(f"Event parameter '{ep.name}' (uid={ep.uid}) is already registered in the system. "
