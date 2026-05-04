@@ -81,20 +81,20 @@ class DataBaseTableMain(DiagramsMain):
 
         self.ui.smart_search_lineEdit.setPlaceholderText("Type the object name or a smart filter expression ...")
 
-        self.prop_filter_dict, prop_filter_mdl = gf.enums_to_model(
+        self.prop_filter_dict, prop_filter_mdl = gf.enums_to_icons_model(
             [
-                PrpCat.All,
-                PrpCat.TP,
-                PrpCat.PF,
-                PrpCat.PF3,
-                PrpCat.SC,
-                PrpCat.OPF,
-                PrpCat.CON,
-                PrpCat.REL,
-                PrpCat.NTC,
-                PrpCat.INV,
-                PrpCat.RMS,
-                PrpCat.EMT,
+                (PrpCat.All,":/Icons/icons/edit.png"),
+                (PrpCat.TP,":/Icons/icons/automatic_layout.png"),
+                (PrpCat.PF,":/Icons/icons/pf.png"),
+                (PrpCat.PF3,":/Icons/icons/pf3.png"),
+                (PrpCat.SC,":/Icons/icons/short_circuit.png"),
+                (PrpCat.OPF,":/Icons/icons/dcopf.png"),
+                (PrpCat.CON,":/Icons/icons/otdf.png"),
+                (PrpCat.REL,":/Icons/icons/reliability.png"),
+                (PrpCat.NTC,":/Icons/icons/ntc_opf.png"),
+                (PrpCat.INV,":/Icons/icons/expansion_planning.png"),
+                (PrpCat.RMS,":/Icons/icons/dyn.png"),
+                (PrpCat.EMT,":/Icons/icons/dyn_emt.png"),
             ]
         )
         self.ui.dbFilterComboBox.setModel(prop_filter_mdl)
