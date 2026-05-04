@@ -2583,8 +2583,6 @@ class EmtProblemDae(EmtProblemTemplate):
         else:
             pass
 
-        mdl.unify_blocks()
-
         self._register_runtime_event_parameters(dev=dev, mdl=mdl)
         self._add_model_to_system_mappings(dev, mdl)
         queue_emt_fmu_cs_device(self, dev, mdl)
