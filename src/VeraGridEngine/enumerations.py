@@ -3327,14 +3327,17 @@ class ParamPowerFlowRefferenceType(Enum):
     g = "g"  # Branch resistance in per unit
     b = "b"  # Branch reactance in per unit
     bsh = "bsh"  # Branch shunt susceptance in per unit
+    gFe = "gFe"  # Branch magnetizing conductance in per unit
     vtap_f = "vtap_f"  # Virtual tap at from-side
     vtap_t = "vtap_t"  # Virtual tap at to-side
+    tap_module = 'tap_module' #Transformer tap module
+    tap_phase = 'tap_phase'  #Transformer tap phase
     r = "r"  # Branch resistance in per unit
     x = "x"  # Branch reactance in per unit
     l = "l"  # Branch inductance in per unit
     Pl0 = "Pl0"  # Load active power
     Ql0 = "Ql0"  # Load reactive power
-    
+
     # Phasor current parameters for current balance formulation
     Ir0 = "Ir0"  # Load real current injection
     Ii0 = "Ii0"  # Load imaginary current injection

@@ -21,7 +21,8 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResu
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.initialization_rms import run_rms_native_initialization
 from VeraGridEngine.Utils.Symbolic.explicit_initialization_symbolic import (init_explicit_common,
-    build_rms_single_equation_compiler)
+                                                                            build_rms_single_equation_compiler)
+from VeraGridEngine.Simulations.Rms.initialization import init_pseudo_transient
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_template import RmsProblemTemplate
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Devices.Substation.bus import Bus
@@ -73,9 +74,9 @@ def _get_mode_event_sort_key(event: Tuple[float, float, bool]) -> float:
 
 
 def _get_next_forced_mode_event_time(
-    scheduled_mode_events: Dict[int, List[Tuple[float, float, bool]]],
-    t_prev: float,
-    t_target: float,
+        scheduled_mode_events: Dict[int, List[Tuple[float, float, bool]]],
+        t_prev: float,
+        t_target: float,
 ) -> Optional[float]:
     """
     Return the earliest forced-alignment mode event time in ``(t_prev, t_target]``.
@@ -322,7 +323,7 @@ class RmsProblemDae(RmsProblemTemplate):
                     elm.rms_model.parameters[
                         elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.r]] = Const(elm.R)
                 if ParamPowerFlowRefferenceType.l in elm.rms_model.api_obj_mapping:
-                    elm.rms_model.parameters[ elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.l]] = Const(elm.X)
+                    elm.rms_model.parameters[elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.l]] = Const(elm.X)
 
                 Vmf, Vaf = get_bus_rms_algebraic_vars(elm.bus_from.rms_model)
                 Vmt, Vat = get_bus_rms_algebraic_vars(elm.bus_to.rms_model)
@@ -361,22 +362,35 @@ class RmsProblemDae(RmsProblemTemplate):
                     if Vmf.uid in self.uid2idx_vars:
                         vmf_idx = self.uid2idx_vars[Vmf.uid]
                         if vmf_idx in self.init_guess:
-                            vmf0 = self.init_guess[vmf_idx]
-                        else:
-                            vmf0 = 1.0
-                    else:
-                        vmf_idx = None
-                        vmf0 = 1.0
+                            vmf0: float = self.init_guess[vmf_idx]
 
-                    if abs(vmf0) > 1e-9:
-                        self.set_init_guess(
-                            elm.rms_model,
-                            VarPowerFlowRefferenceType.If_dc,
-                            self.Sf[branch_num].real / vmf0,
-                        )
+                            if abs(vmf0) > 1e-9:
+                                self.set_init_guess(
+                                    elm.rms_model,
+                                    VarPowerFlowRefferenceType.If_dc,
+                                    self.Sf[branch_num].real / vmf0,
+                                )
+                        else:
+                            pass
+                    else:
+                        pass
 
                 # Run explicit initialization for branches to solve algebraic equations
                 if isinstance(elm, Transformer2W):
+                    vtap_f, vtap_t = elm.get_virtual_taps()
+                    tap_module = elm.tap_module
+                    tap_phase = elm.tap_phase
+                    ys = 1.0 / complex(elm.R, elm.X)
+                    ysh = elm.G + 1j * elm.B
+
+                    elm.rms_model.parameters[elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.g]] = Const(ys.real)
+                    elm.rms_model.parameters[elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.b]] = Const(ys.imag)
+                    elm.rms_model.parameters[elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.bsh]] = Const(ysh.imag)
+                    elm.rms_model.parameters[elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.gFe]] = Const(ysh.real)
+                    elm.rms_model.parameters[elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.vtap_f]] = Const(vtap_f)
+                    elm.rms_model.parameters[elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.vtap_t]] = Const(vtap_t)
+                    elm.rms_model.parameters[elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.transformer_tap_module]] = Const(tap_module)
+                    elm.rms_model.parameters[elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.transformer_tap_ratio]] = Const(tap_phase)
 
                     if self.options.initialization_method == RmsInitializationMethod.Explicit:
                         params_array: np.ndarray = np.zeros(len(self._constant_parameters))
@@ -413,6 +427,29 @@ class RmsProblemDae(RmsProblemTemplate):
                             compile_single_equation=compile_single_equation,
                             verbose=bool(self.options.verbose > 0),
                         )
+                    elif self.options.initialization_method == RmsInitializationMethod.PseudoTransient:
+                        self.init_guess = init_pseudo_transient(
+                            mdl=elm.rms_model,
+                            sys_vars=self.sys_vars,
+                            variable_parameters=self._variable_parameters,
+                            event_parameters_eqs=self._event_parameters_eqs0,
+                            constant_parameters=self._constant_parameters,
+                            init_guess=self.init_guess,
+                            uid2idx_vars=self._uid2idx_vars,
+                            uid2idx_params=self._uid2idx_params,
+                            uid2idx_event_params=self._uid2idx_event_params,
+                            compiler_names_dict=self._compiler_names_dict,
+                            alias_names_dict=self._alias_names_dict,
+                            VARIABLE_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
+                            TIME_NAME=self.TIME_NAME,
+                            VARS_NAME=self.VARS_NAME,
+                            DIFF_NAME=self.DIFF_NAME,
+                            CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
+                            dtau0=1.0,
+                            max_iter=max(500, int(self.options.max_iter)),
+                            tol=1e-8,
+                            verbose=bool(self.options.verbose > 0),
+                        )
 
                 # add model to system block
                 self.sys_block.add(elm.rms_model)
@@ -442,11 +479,14 @@ class RmsProblemDae(RmsProblemTemplate):
 
                 # get parameters from api object
                 if ParamPowerFlowRefferenceType.alpha1 in elm.rms_model.api_obj_mapping:
-                    elm.rms_model.parameters[elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.alpha1]] = Const(elm.alpha1)
+                    elm.rms_model.parameters[
+                        elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.alpha1]] = Const(elm.alpha1)
                 if ParamPowerFlowRefferenceType.alpha2 in elm.rms_model.api_obj_mapping:
-                    elm.rms_model.parameters[elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.alpha2]] = Const(elm.alpha2)
+                    elm.rms_model.parameters[
+                        elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.alpha2]] = Const(elm.alpha2)
                 if ParamPowerFlowRefferenceType.alpha3 in elm.rms_model.api_obj_mapping:
-                    elm.rms_model.parameters[elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.alpha3]] = Const(elm.alpha3)
+                    elm.rms_model.parameters[
+                        elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.alpha3]] = Const(elm.alpha3)
 
                 St_vsc = self.power_flow_results.St_vsc / self.grid.Sbase
                 Sf_vsc = (self.power_flow_results.Pfn_vsc[i] + self.power_flow_results.Pfp_vsc[i]) / self.grid.Sbase
@@ -460,7 +500,7 @@ class RmsProblemDae(RmsProblemTemplate):
                 vm_t = np.abs(self.power_flow_results.voltage[t])
                 im_init = np.sqrt(pt_init * pt_init + qt_init * qt_init) / (vm_t + 1e-12)
 
-                if  i < len(self.power_flow_results.It_vsc):
+                if i < len(self.power_flow_results.It_vsc):
                     it_mag = np.abs(self.power_flow_results.It_vsc[i]) / self.grid.Sbase
                     if np.isfinite(it_mag) and it_mag > 0.0:
                         im_init = it_mag
@@ -560,6 +600,30 @@ class RmsProblemDae(RmsProblemTemplate):
                         verbose=bool(self.options.verbose > 0),
                     )
 
+                elif self.options.initialization_method == RmsInitializationMethod.PseudoTransient:
+                    self.init_guess = init_pseudo_transient(
+                        mdl=elm.rms_model,
+                        sys_vars=self.sys_vars,
+                        variable_parameters=self._variable_parameters,
+                        event_parameters_eqs=self._event_parameters_eqs0,
+                        constant_parameters=self._constant_parameters,
+                        init_guess=self.init_guess,
+                        uid2idx_vars=self._uid2idx_vars,
+                        uid2idx_params=self._uid2idx_params,
+                        uid2idx_event_params=self._uid2idx_event_params,
+                        compiler_names_dict=self._compiler_names_dict,
+                        alias_names_dict=self._alias_names_dict,
+                        VARIABLE_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
+                        TIME_NAME=self.TIME_NAME,
+                        VARS_NAME=self.VARS_NAME,
+                        DIFF_NAME=self.DIFF_NAME,
+                        CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
+                        dtau0=1e-4,
+                        max_iter=max(500, int(self.options.max_iter)),
+                        tol=1e-8,
+                        verbose=bool(self.options.verbose > 0),
+                    )
+
                 else:
                     raise ValueError("Not implemented initialization method")
                 # add model to system block
@@ -647,8 +711,11 @@ class RmsProblemDae(RmsProblemTemplate):
                                         np.real(self.power_flow_results.Sbus[bus_index] / grid.Sbase))
                 else:
                     Vbus = self.power_flow_results.voltage[bus_index]
+                    elm_active = bool(elm.get_active_at(None))
                     if elm.idtag in gen_idx_map:
-                        if elm.bus.is_slack and remaining_slack_gen[bus_index] > 0:
+                        if not elm_active:
+                            Sdev = complex(0, 0)
+                        elif elm.bus.is_slack and remaining_slack_gen[bus_index] > 0:
                             elm_snom = float(elm.Snom)
                             if elm_snom <= 0.0:
                                 elm_snom = 1.0
@@ -673,8 +740,11 @@ class RmsProblemDae(RmsProblemTemplate):
                             gidx = gen_idx_map[elm.idtag]
                             Sdev = complex(float(elm.P), float(self.power_flow_results.gen_q[gidx])) / grid.Sbase
                     elif elm.idtag in batt_idx_map:
-                        bidx = batt_idx_map[elm.idtag]
-                        Sdev = complex(float(elm.P), float(self.power_flow_results.battery_q[bidx])) / grid.Sbase
+                        if not elm_active:
+                            Sdev = complex(0, 0)
+                        else:
+                            bidx = batt_idx_map[elm.idtag]
+                            Sdev = complex(float(elm.P), float(self.power_flow_results.battery_q[bidx])) / grid.Sbase
                     elif elm.idtag in shunt_idx_map:
                         g_sh = float(elm.G) / grid.Sbase
                         b_sh = float(elm.B) / grid.Sbase
@@ -741,7 +811,27 @@ class RmsProblemDae(RmsProblemTemplate):
                     # run_rms_native_initialization(self, self.options)
 
                 elif self.options.initialization_method == RmsInitializationMethod.PseudoTransient:
-                    raise ValueError("Not implemented initialization method")
+                    self.init_guess = init_pseudo_transient(
+                        mdl=elm.rms_model,
+                        sys_vars=self.sys_vars,
+                        variable_parameters=self._variable_parameters,
+                        event_parameters_eqs=self._event_parameters_eqs0,
+                        constant_parameters=self._constant_parameters,
+                        init_guess=self.init_guess,
+                        uid2idx_vars=self._uid2idx_vars,
+                        uid2idx_params=self._uid2idx_params,
+                        uid2idx_event_params=self._uid2idx_event_params,
+                        compiler_names_dict=self._compiler_names_dict,
+                        alias_names_dict=self._alias_names_dict,
+                        VARIABLE_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
+                        TIME_NAME=self.TIME_NAME,
+                        VARS_NAME=self.VARS_NAME,
+                        DIFF_NAME=self.DIFF_NAME,
+                        CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
+                        max_iter=100,
+                        tol=1e-5,
+                        verbose=bool(self.options.verbose > 0),
+                    )
 
                 # not implemented yet
                 # elif self.options.initialization_method == RmsInitializationMethod.PseudoTransient:
@@ -961,7 +1051,6 @@ class RmsProblemDae(RmsProblemTemplate):
             self._variable_parameters_values = np.ones(self.get_variable_parameter_number(), dtype=np.float64)
         else:
             self._variable_parameters_values = np.zeros(0, dtype=np.float64)
-
 
         # --------------------------------------------------------------------------------------------------------------
         # Compile RHS and Jacobian using JIT Compiler adaptation
@@ -1344,7 +1433,8 @@ class RmsProblemDae(RmsProblemTemplate):
 
     def reset_boundary_update_state(self, t0: float = 0.0) -> None:
         if self.get_variable_parameter_number() > 0 and self._event_params_fn is not None:
-            self._variable_parameters_values = self._event_params_fn(np.ones(self.get_variable_parameter_number()), float(t0))
+            self._variable_parameters_values = self._event_params_fn(np.ones(self.get_variable_parameter_number()),
+                                                                     float(t0))
             self._variable_parameters_values = self.def_event_params_fn(self._variable_parameters_values, float(t0))
         else:
             self._variable_parameters_values = np.zeros(0, dtype=np.float64)
@@ -1382,7 +1472,6 @@ class RmsProblemDae(RmsProblemTemplate):
                 return updated
 
         n_continuous = len(runtime_continuous_eqs)
-
 
         if n_continuous == 0 or self._event_params_fn is None:
             return ev_param
@@ -1762,9 +1851,11 @@ class RmsProblemDae(RmsProblemTemplate):
         x = np.zeros(len(self._state_vars) + len(self._algebraic_vars))
 
         for uid, val in self.init_guess.items():
-            i = self._uid2idx_vars[uid]
-            x[i] = val
+            if uid in self._uid2idx_vars:
+                i = self._uid2idx_vars[uid]
+                x[i] = val
         return x
+
     def get_eventparams0(self) -> Vec:
         """
         Helper function to build the initial vector
@@ -1788,7 +1879,6 @@ class RmsProblemDae(RmsProblemTemplate):
         #     i = self._uid2idx_vars[uid]
         #     x[i] = val
         return x
-
 
     def initialize_fmu_cs_devices(self, x_snapshot: Vec, t: float = 0.0) -> None:
         """
@@ -1871,6 +1961,7 @@ class RmsProblemDae(RmsProblemTemplate):
             close_rms_fmu_me_devices(self)
         else:
             pass
+
     def get_dx(self, x: Vec, xn: Vec, dx: Vec, h: float) -> Vec:
 
         if self._derivative_fn is None:
@@ -1950,5 +2041,3 @@ class RmsProblemDae(RmsProblemTemplate):
 
     def get_diff_vars(self):
         return self._diff_vars
-
-

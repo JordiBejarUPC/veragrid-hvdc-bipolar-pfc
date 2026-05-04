@@ -51,8 +51,8 @@ class BusRmsTemplate(RmsModelTemplate):
             }
 
         else:
-            self.Vm = vf.add_var("Vm", VarPowerFlowRefferenceType.Vm)
-            self.Va = vf.add_var("Va", VarPowerFlowRefferenceType.Va)
+            self.Vm = vf.add_var("Vm", reference=VarPowerFlowRefferenceType.Vm)
+            self.Va = vf.add_var("Va", reference=VarPowerFlowRefferenceType.Va)
 
 
             self._block = Block(
@@ -94,7 +94,7 @@ def get_bus_rms_algebraic_vars(bus_rms_model: Block) -> Tuple[Var, Var] | Var:
     if VarPowerFlowRefferenceType.Vdc in mapping:
         vdc = mapping[VarPowerFlowRefferenceType.Vdc]
         if vdc is not None:
-            return vdc
+            return vdc, None
         else:
             raise ValueError("Invalid RMS bus model: expected either (Vdc) or (Vm, Va)")
 
@@ -107,4 +107,3 @@ def get_bus_rms_algebraic_vars(bus_rms_model: Block) -> Tuple[Var, Var] | Var:
 
         else:
             raise ValueError("Invalid RMS bus model: expected either (Vdc) or (Vm, Va)")
-

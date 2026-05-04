@@ -25,6 +25,7 @@ def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec rms template") -> R
      generator with quadratic saturation
     """
     pi = math.pi
+
     templ = RmsModelTemplate(name=name)
     templ.tpe = DeviceType.GeneratorDevice
 
@@ -34,8 +35,8 @@ def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec rms template") -> R
     # Tm: mechanical torque (from governor)
     # Vf: excitation voltage (from exciter)
 
-    inputs = [vfactory.add_var("Vm_" + name, VarPowerFlowRefferenceType.Vm),
-              vfactory.add_var("Va_" + name, VarPowerFlowRefferenceType.Va),
+    inputs = [vfactory.add_var("Vm_" + name, reference=VarPowerFlowRefferenceType.Vm),
+              vfactory.add_var("Va_" + name, reference=VarPowerFlowRefferenceType.Va),
               vfactory.add_var("Tm_" + name),
               vfactory.add_var("Vf_" + name)]
 
@@ -344,7 +345,7 @@ def get_governor_rms(vfactory: VarFactory, name: str = "Governor") -> RmsModelTe
 
     events_dict = {
         # control parameters
-        Pm_ref: inputs[1],
+        Pm_ref: vfactory.add_const(None),
         Kp: vfactory.add_const(-0.01),
         Ki: vfactory.add_const(-0.01),
         p0: vfactory.add_const(1.0),
@@ -443,6 +444,7 @@ def get_governor_rms(vfactory: VarFactory, name: str = "Governor") -> RmsModelTe
         name="governor",
 
         init_eqs={
+            Pm_ref: inputs[1],
             y1: vfactory.add_const(0.0),
             x1: inputs[0] - omega_ref,
             u_gov1: vfactory.add_const(0),
@@ -664,7 +666,7 @@ def get_exciter_rms(vfactory: VarFactory, name: str = "exciter") -> RmsModelTemp
 
     events_dict = {
         # Exciter (AVR) parameters
-        UsRefPu: Efe / parameters['Ka'].value + inputs[1],  # reference voltage (pu)
+        UsRefPu: vfactory.add_const(None),  # reference voltage (pu)
         AEz: vfactory.add_const(0.02),  # saturation gain
         BEz: vfactory.add_const(1.5),  # saturation exponential coefficient
         Se_threshold: vfactory.add_const(1.0),  # saturation threshold
@@ -801,7 +803,7 @@ def get_exciter_rms(vfactory: VarFactory, name: str = "exciter") -> RmsModelTemp
                 Ve - Se_threshold)),
             u_aux: aux_expr,
             Efe: inputs[0] * parameters["Kd"].value + u_aux,
-            # UsRefPu: Efe / parameters['Ka'].value + inputs[1],
+            UsRefPu: Efe / parameters['Ka'].value + inputs[1],
             y1: inputs[1],
             y2: vfactory.add_const(0.0),
             y3: -y1 + UsRefPu,

@@ -210,7 +210,9 @@ def create_block_of_type(var_factory: VarFactory,
 
 
     else:
-        return None
+        raise ValueError(f"Unknown block type: {block_type}")
+
+
 def create_emt_wizard_block(phase_n: bool,
                             phase_a: bool,
                             phase_b: bool,

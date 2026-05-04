@@ -12,7 +12,7 @@ from typing import Tuple, Optional, List, Callable, Dict
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.basic_structures import Vec
-from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr, CmpOp, Comparison, heaviside, hard_sat, expression2numba, get_expression_vars)
+from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr, BinOp, CmpOp, Comparison, heaviside, hard_sat, expression2numba, get_expression_vars)
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import DeviceType, ParamPowerFlowRefferenceType
 
@@ -375,6 +375,63 @@ def to_implicit(block: Block, vfactory: VarFactory) -> Block:
     return block
 
 
+def _extract_rhs_from_implicit_eq(eq: Expr, diff_var: Var) -> Expr | None:
+    """
+    Try to recover rhs from an implicit algebraic equation of the form:
+        diff_var - rhs = 0
+    Returns rhs when recognized, otherwise None.
+    """
+    if isinstance(eq, BinOp):
+        if eq.op == "-":
+            if isinstance(eq.left, Var) and eq.left.uid == diff_var.uid:
+                return eq.right
+            if isinstance(eq.right, Var) and eq.right.uid == diff_var.uid:
+                return eq.left
+        elif eq.op == "+":
+            if isinstance(eq.left, Var) and eq.left.uid == diff_var.uid:
+                return (-eq.right).simplify()
+            if isinstance(eq.right, Var) and eq.right.uid == diff_var.uid:
+                return (-eq.left).simplify()
+
+    return None
+
+
+def to_explicit(block: Block, vfactory: VarFactory) -> Block:
+    """
+    Convert an implicit DAE-like block back to explicit state equations.
+
+    For each diff var `dt_x` in `block.diff_vars`, look for an algebraic equation
+    equivalent to `dt_x - f(...) = 0`. When found:
+    - create/ensure state equation `dx/dt = f(...)` for base var `x`
+    - remove that implicit algebraic equation
+    - substitute `dt_x` by `f(...)` in remaining algebraic equations
+    - remove all recovered diff vars from `block.diff_vars`
+
+    Recurses through child blocks.
+    """
+    block.unify_blocks()
+
+    for i, diff_var in enumerate(block.diff_vars):
+        new_diff_var = vfactory.add_var(f"dt_{diff_var.base_var.name}")
+
+        if diff_var.base_var not in block.state_vars:
+            block.state_vars.append(diff_var.base_var)
+            block.state_eqs.append(diff_var)
+            block.algebraic_vars.remove(diff_var.base_var)
+        else:
+            state_eq = block.state_eqs[block.state_vars.index(diff_var.base_var)]
+            block.algebraic_eqs.append(new_diff_var - state_eq)
+
+        block.algebraic_vars.append(new_diff_var)
+        block.update_equations(diff_var, new_diff_var)
+    block.diff_vars = list()
+
+    for child in block.children:
+        to_explicit(child, vfactory)
+
+    return block
+
+
 def tf_to_diffblock_with_antiwindup(
         var_factory: VarFactory,
         num: List[Var | float],
@@ -726,6 +783,24 @@ def connect_line_rms_from(mdl1: Block, mdl2: Block):
     for outp, inpt in pairs:
         mdl2.connect([inpt], [outp])
 
+def connect_models_power_flow(mdl1: Block, mdl2: Block):
+    """
+    This function substitutes input variables for output variables to connect two rms models
+    :param mdl1:
+    :param mdl2:
+    :return:
+
+    """
+    # connect inputs mdl2 with outputs mdl1
+    pairs = [
+        (outp, inpt)
+        for outp in mdl1.out_vars
+        for inpt in mdl2.in_vars
+        if outp.ref == inpt.ref
+    ]
+    for pair in pairs:
+        mdl2.connect([pair[1]], [pair[0]])
+
 
 def connect_line_rms_to(mdl1: Block, mdl2: Block):
     """
@@ -819,22 +894,37 @@ def connect_models(mdl1: Block, mdl2: Block):
         (outp, inpt)
         for outp in mdl1.out_vars
         for inpt in mdl2.in_vars
-        if outp.ref == inpt.ref
+        if outp.ref == inpt.shared_ref and outp.shared_ref is not None and inpt.shared_ref is not None
     ]
 
     for outp, inpt in pairs:
         mdl2.connect([inpt], [outp])
 
-    # connect inputs mdl2 with outputs mdl1
+    # connect inputs mdl1 with outputs mdl2
     pairs = [
         (outp, inpt)
         for outp in mdl2.out_vars
         for inpt in mdl1.in_vars
-        if outp.ref == inpt.ref
+        if outp.shared_ref == inpt.shared_ref and outp.shared_ref is not None and inpt.shared_ref is not None
     ]
 
     for outp, inpt in pairs:
         mdl1.connect([inpt], [outp])
+
+    # # connect inputs mdl1 with inputs mdl2
+    # pairs = [
+    #     (inpt1, inpt2)
+    #     for inpt2 in mdl2.in_vars
+    #     for inpt1 in mdl1.in_vars
+    #     if inpt1.power_flow_reference is not None and inpt2.power_flow_reference is not None and inpt1.power_flow_reference == inpt2.power_flow_reference
+    #
+    # ]
+    # for pair in pairs:
+    #     if pair[0].network_conn:
+    #         mdl1.connect([pair[1]], [pair[0]])
+    #     else:
+    #         mdl1.connect([pair[0]], [pair[1]])
+
 
 
 
@@ -875,7 +965,7 @@ def set_rms_model(device: Any, model:Block, var_factory: VarFactory):
 
     else:
         if not device.bus.rms_model.empty():
-            connect_models(device.bus.rms_model, model)
+            connect_models_power_flow(device.bus.rms_model, model)
 
         else:
             raise ValueError(f"Connection Bus RMS model cannot be empty, initialize {device.bus.name} RMS model")

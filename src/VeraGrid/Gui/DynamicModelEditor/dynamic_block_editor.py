@@ -2897,9 +2897,283 @@ class InspectModel(QWidget):
             self.refresh_lists(submodel, clear=False)
 
 
+# class GenericBlockItem(QGraphicsRectItem):
+#     """
+#            Class to represent generic block to construct devices in the editor
+#            :param name:
+#            """
+#
+#     def __init__(self,
+#                  var_factory: VarFactory,
+#                  subsys: Block,
+#                  api_object,
+#                  mode: DynamicSimulationMode,
+#                  position_changed_callback=None):
+#         """
+#
+#         :param var_factory:
+#         :param subsys:
+#         :param api_object:
+#         :param position_changed_callback:
+#         """
+#         super().__init__(0, 0, 100, 60)
+#
+#         # ------------------------
+#         # API
+#         # ------------------------
+#         self.var_factory = var_factory
+#         self.subsys = subsys
+#         self.mode = mode
+#         self.api_object = api_object
+#         self.position_changed_callback = position_changed_callback
+#
+#         self.resize_handle: ResizeHandle | None = None
+#         self.resizing_from_handle = False
+#         self._suppress_resize: bool = False
+#
+#         self.name_item = QGraphicsTextItem(self.subsys.name, self)
+#         self.inputs: List[PortItem] = list()
+#         self.outputs: List[PortItem] = list()
+#         self.input_labels: List[QGraphicsTextItem] = list()
+#         self.output_labels: List[QGraphicsTextItem] = list()
+#
+#         self.editor_window = DynamicBlockEditorGUI(
+#             var_factory=self.var_factory,
+#             block=self.subsys,
+#             api_object=self.api_object,
+#             mode=self.mode
+#         )
+#
+#         self.setBrush(QBrush(DEFAULT_BLOCK_FILL))
+#         self.setPen(QPen(Qt.GlobalColor.transparent, 0))
+#         self.setFlags(
+#             QGraphicsItem.GraphicsItemFlag.ItemIsMovable |
+#             QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
+#             QGraphicsItem.GraphicsItemFlag.ItemSendsScenePositionChanges
+#         )
+#         self.setAcceptHoverEvents(True)
+#
+#         self.name_item.setDefaultTextColor(BLOCK_TITLE)
+#         name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 9)
+#         name_font.setBold(True)
+#         self.name_item.setFont(name_font)
+#         self.name_item.setPos(6, 4)
+#
+#         n_inputs = len(self.subsys.in_vars)
+#         n_outputs = len(self.subsys.out_vars)
+#
+#         self.inputs = [PortItem(self, True, i, n_inputs) for i in range(n_inputs)]
+#         self.outputs = [PortItem(self, False, i, n_outputs) for i in range(n_outputs)]
+#         self.input_labels = [self.create_port_label_item() for _ in range(n_inputs)]
+#         self.output_labels = [self.create_port_label_item() for _ in range(n_outputs)]
+#
+#         self.refresh_port_metadata()
+#
+#         self.resize_handle = ResizeHandle(self)
+#
+#         self.resize_to_content()
+#
+#     def mouseDoubleClickEvent(self, event):
+#         """
+#         opens the editor
+#         Parameters
+#         ----------
+#         event :
+#
+#         Returns
+#         -------
+#
+#         """
+#         self.editor_window.show()
+#
+#     def resize_block(self, width, height):
+#         # Update geometry safely
+#         self.prepareGeometryChange()
+#         min_width: float
+#         min_height: float
+#         min_width, min_height = self.get_minimum_block_size()
+#         QGraphicsRectItem.setRect(self, 0, 0, max(width, min_width), max(height, min_height))
+#         self.update_ports()
+#         self.update_handle_position()
+#
+#     def update_handle_position(self):
+#         rect = self.rect()
+#         self.resizing_from_handle = False
+#         self.resize_handle.setPos(rect.width(), rect.height())
+#         self.resizing_from_handle = True
+#
+#     def paint(self,
+#               painter: QPainter,
+#               option: QtWidgets.QStyleOptionGraphicsItem,
+#               widget: Optional[QWidget] = None) -> None:
+#         """
+#         Paint the generic block with a rounded card style and a subtle shadow.
+#
+#         :param painter:
+#         :param option:
+#         :param widget:
+#         :return:
+#         """
+#         rect: QtCore.QRectF = self.rect()
+#         outer_rect: QtCore.QRectF = rect.adjusted(2, 2, -2, -2)
+#         shadow_rect: QtCore.QRectF = outer_rect.translated(2.5, 3.0)
+#         body_rect: QtCore.QRectF = outer_rect
+#         border_color: QColor = BLOCK_BORDER_SELECTED if self.isSelected() else BLOCK_BORDER
+#         fill_color: QColor = self.brush().color()
+#         body_path: QPainterPath = QPainterPath()
+#         shadow_path: QPainterPath = QPainterPath()
+#
+#         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+#
+#         shadow_path.addRoundedRect(shadow_rect, 12.0, 12.0)
+#         painter.setPen(Qt.PenStyle.NoPen)
+#         painter.setBrush(QBrush(BLOCK_SHADOW))
+#         painter.drawPath(shadow_path)
+#
+#         body_path.addRoundedRect(body_rect, 12.0, 12.0)
+#         painter.setBrush(QBrush(fill_color))
+#         painter.drawPath(body_path)
+#
+#         painter.setPen(QPen(border_color, 1.6))
+#         painter.setBrush(Qt.BrushStyle.NoBrush)
+#         painter.drawRoundedRect(body_rect, 12.0, 12.0)
+#
+#     def _set_rect_internal(self, w, h):
+#         QGraphicsRectItem.setRect(self, 0, 0, w, h)
+#         self.update_ports()
+#         self.update_handle_position()
+#
+#     def set_rectangle(self, x, y, w, h):
+#         if not self._suppress_resize:
+#             self._set_rect_internal(w, h)
+#
+#     def get_minimum_block_size(self) -> tuple[float, float]:
+#         """
+#         Compute the minimum generic block size required by its ports and name.
+#
+#         :return:
+#         """
+#         port_rows: int = max(len(self.inputs), len(self.outputs), 1)
+#         min_height: float = 50 + port_rows * 18
+#
+#         name_width = len(self.subsys.name) * 7
+#         max_label_length = 0
+#         for var in self.subsys.in_vars:
+#             max_label_length = max(max_label_length, len(var.name))
+#         for var in self.subsys.out_vars:
+#             max_label_length = max(max_label_length, len(var.name))
+#
+#         port_width = max_label_length * 7
+#         min_width = max(100, name_width + 14, port_width + 30)
+#
+#         return min_width, min_height
+#
+#     def resize_to_content(self) -> None:
+#         """
+#         Resize the block to the minimum size required by its ports.
+#
+#         :return:
+#         """
+#         self.prepareGeometryChange()
+#         min_width: float
+#         min_height: float
+#         min_width, min_height = self.get_minimum_block_size()
+#         QGraphicsRectItem.setRect(self, 0, 0, min_width, min_height)
+#         self.update_ports()
+#         self.update_handle_position()
+#
+#     def create_port_label_item(self) -> QGraphicsTextItem:
+#         """
+#         Create a compact label item used beside a port.
+#
+#         :return:
+#         """
+#         label_item: QGraphicsTextItem = QGraphicsTextItem("", self)
+#         label_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 9)
+#         label_item.setFont(label_font)
+#         label_item.setDefaultTextColor(PORT_LABEL_COLOR)
+#         label_item.setZValue(4)
+#         return label_item
+#
+#     def refresh_port_metadata(self) -> None:
+#         """
+#         Refresh tooltips and visible labels for all ports.
+#
+#         :return:
+#         """
+#         i: int
+#         port: PortItem
+#         label_item: QGraphicsTextItem
+#         variable_name: str
+#
+#         if self.subsys is not None:
+#             for i, port in enumerate(self.inputs):
+#                 if port.base_var is None:
+#                     port.base_var = self.subsys.in_vars[i]
+#                 else:
+#                     pass
+#
+#                 variable_name = self.subsys.in_vars[i].name
+#                 port.setToolTip(f"Input {i}: {variable_name}")
+#                 label_item = self.input_labels[i]
+#                 label_item.setPlainText(truncate_port_label(variable_name))
+#
+#             for i, port in enumerate(self.outputs):
+#                 if port.base_var is None:
+#                     port.base_var = self.subsys.out_vars[i]
+#                 else:
+#                     pass
+#
+#                 variable_name = self.subsys.out_vars[i].name
+#                 port.setToolTip(f"Output {i}: {variable_name}")
+#                 label_item = self.output_labels[i]
+#                 label_item.setPlainText(truncate_port_label(variable_name))
+#         else:
+#             pass
+#
+#     def update_ports(self):
+#         for i, port in enumerate(self.inputs):
+#             spacing = self.rect().height() / (len(self.inputs) + 1)
+#             port.setPos(0, spacing * (i + 1))
+#         for i, port in enumerate(self.outputs):
+#             spacing = self.rect().height() / (len(self.outputs) + 1)
+#             port.setPos(self.rect().width(), spacing * (i + 1))
+#
+#         for i, label_item in enumerate(self.input_labels):
+#             port = self.inputs[i]
+#             label_item.setPos(14.0, port.pos().y() - 8.0)
+#
+#         for i, label_item in enumerate(self.output_labels):
+#             port = self.outputs[i]
+#             label_width: float = label_item.boundingRect().width()
+#             label_item.setPos(self.rect().width() - label_width - 14.0, port.pos().y() - 8.0)
+#
+#         self.update_handle_position()
+#         # Also update connections
+#         for port in self.inputs + self.outputs:
+#             if port.connections:
+#                 for conn in port.connections:
+#                     conn.update_path()
+#
+#     def hoverEnterEvent(self, event):
+#         QApplication.setOverrideCursor(Qt.CursorShape.OpenHandCursor)
+#
+#     def hoverLeaveEvent(self, event):
+#         QApplication.restoreOverrideCursor()
+#
+#     def itemChange(self, change, value):
+#         if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:
+#             for port in self.inputs + self.outputs:
+#                 if port.connections:
+#                     for conn in port.connections:
+#                         conn.update_path()
+#             if self.position_changed_callback is not None:
+#                 self.position_changed_callback(value.x(), value.y())
+#         return super().itemChange(change, value)
+
 class GenericBlockItem(QGraphicsRectItem):
     """
-           Class to represent generic block to construct devices in the editor
+           Class to represent a block in the scene
            :param name:
            """
 
@@ -2918,24 +3192,26 @@ class GenericBlockItem(QGraphicsRectItem):
         """
         super().__init__(0, 0, 100, 60)
 
-        # ------------------------
-        # API
-        # ------------------------
         self.var_factory = var_factory
         self.subsys = subsys
         self.mode = mode
         self.api_object = api_object
         self.position_changed_callback = position_changed_callback
 
-        self.resize_handle: ResizeHandle | None = None
-        self.resizing_from_handle = False
-        self._suppress_resize: bool = False
 
         self.name_item = QGraphicsTextItem(self.subsys.name, self)
+        self.name_item.setDefaultTextColor(BLOCK_TITLE)
+        name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 9)
+        name_font.setBold(True)
+        self.name_item.setFont(name_font)
+        self.name_item.setPos(6, 4)
+
         self.inputs: List[PortItem] = list()
         self.outputs: List[PortItem] = list()
         self.input_labels: List[QGraphicsTextItem] = list()
         self.output_labels: List[QGraphicsTextItem] = list()
+
+        self.name_item.setDefaultTextColor(BLOCK_TITLE)
 
         self.editor_window = DynamicBlockEditorGUI(
             var_factory=self.var_factory,
@@ -2944,6 +3220,9 @@ class GenericBlockItem(QGraphicsRectItem):
             mode=self.mode
         )
 
+        self.resize_handle: ResizeHandle | None = None
+        self.resizing_from_handle = False
+        self._suppress_resize: bool = False
         self.setBrush(QBrush(DEFAULT_BLOCK_FILL))
         self.setPen(QPen(Qt.GlobalColor.transparent, 0))
         self.setFlags(
@@ -2953,7 +3232,7 @@ class GenericBlockItem(QGraphicsRectItem):
         )
         self.setAcceptHoverEvents(True)
 
-        self.name_item.setDefaultTextColor(BLOCK_TITLE)
+
         name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 9)
         name_font.setBold(True)
         self.name_item.setFont(name_font)
@@ -3007,7 +3286,7 @@ class GenericBlockItem(QGraphicsRectItem):
               option: QtWidgets.QStyleOptionGraphicsItem,
               widget: Optional[QWidget] = None) -> None:
         """
-        Paint the generic block with a rounded card style and a subtle shadow.
+        Paint the block with a rounded card style and a subtle shadow.
 
         :param painter:
         :param option:
@@ -3049,22 +3328,26 @@ class GenericBlockItem(QGraphicsRectItem):
 
     def get_minimum_block_size(self) -> tuple[float, float]:
         """
-        Compute the minimum generic block size required by its ports and name.
+        Compute the minimum block size required by the port count.
 
         :return:
         """
         port_rows: int = max(len(self.inputs), len(self.outputs), 1)
-        min_height: float = 50 + port_rows * 18
+        min_height: float = max(
+            BLOCK_MIN_HEIGHT,
+            BLOCK_HEADER_HEIGHT + BLOCK_PORT_SECTION_PADDING + port_rows * BLOCK_PORT_ROW_HEIGHT
+        )
 
         name_width = len(self.subsys.name) * 7
         max_label_length = 0
-        for var in self.subsys.in_vars:
-            max_label_length = max(max_label_length, len(var.name))
-        for var in self.subsys.out_vars:
-            max_label_length = max(max_label_length, len(var.name))
+        if self.subsys:
+            for var in self.subsys.in_vars:
+                max_label_length = max(max_label_length, len(var.name))
+            for var in self.subsys.out_vars:
+                max_label_length = max(max_label_length, len(var.name))
 
         port_width = max_label_length * 7
-        min_width = max(100, name_width + 14, port_width + 30)
+        min_width = max(BLOCK_MIN_WIDTH, name_width + 14, port_width + 28)
 
         return min_width, min_height
 
@@ -3170,6 +3453,8 @@ class GenericBlockItem(QGraphicsRectItem):
             if self.position_changed_callback is not None:
                 self.position_changed_callback(value.x(), value.y())
         return super().itemChange(change, value)
+
+
 
 
 class BlockItem(QGraphicsRectItem):
@@ -6128,6 +6413,365 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.mark_unapplied_changes()
         return block_item
 
+    def create_block_item_mix(self, block_type: BlockType, x_pos: float, y_pos: float) -> GenericBlockItem | None:
+        """
+        Create and place a block item in the canvas scene.
+
+        :param block_type:
+        :param x_pos:
+        :param y_pos:
+        :return:
+        """
+        block_model = None
+        item_name = ""
+        count: int = self.block_counters.get(block_type, 0) + 1
+        # if blocktype is generic we need to know initial input and output ports from the user
+        if block_type == BlockType.GENERIC:
+            dialog = GenericBlockDialog(self)
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                item_name, inputs, outputs = dialog.get_values()
+                block_model = create_generic_block(self.var_factory, inputs, outputs, item_name)
+
+        elif block_type in {BlockType.TRAFO_EMT, BlockType.XFMR_TRANSFORMER}:
+            topology_config: Dict[str, Any] | None = self._resolve_transformer_topology_configuration()
+
+            if topology_config is None:
+                dialog = self._build_transformer_topology_emt_dialog(block_type=block_type)
+
+                if dialog.exec() == QDialog.DialogCode.Accepted:
+                    topology_config = dialog.get_configuration()
+                    topology_config["allow_modify_template"] = True
+                else:
+                    return None
+            else:
+                topology_config = dict(topology_config)
+
+            item_name: str = f"{block_type.name}_{count}"
+            block_model = self._build_transformer_topology_emt_block_model(
+                block_type=block_type,
+                item_name=item_name,
+                modal_config=topology_config,
+            )
+            if block_model is None:
+                return None
+
+            set_modal_template_metadata(block_model, kind="transformer_topology_emt",
+                                        config=dict(topology_config, block_type=block_type.name))
+
+            if isinstance(self.api_object, BranchParent):
+                try:
+                    self.api_object.conn_f = topology_config["conn_f"]
+                    self.api_object.conn_t = topology_config["conn_t"]
+                except Exception:
+                    pass
+            else:
+                pass
+
+
+        elif block_type in {BlockType.EXP_LOAD_EMT, BlockType.ZIP_LOAD_EMT}:
+            dialog = self._build_load_topology_emt_dialog(block_type=block_type)
+
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                load_config = dialog.get_configuration()
+            else:
+                return None
+
+            item_name: str = f"{block_type.name}_{count}"
+            block_model = self._build_load_topology_emt_block_model(
+                block_type=block_type,
+                item_name=item_name,
+                modal_config=load_config,
+            )
+
+            set_modal_template_metadata(block_model, kind="load_topology_emt",
+                                        config=dict(load_config, block_type=block_type.name))
+            self._annotate_internal_grounding_link_blocks(block_model)
+
+            if isinstance(self.api_object, InjectionParent):
+                try:
+                    self.api_object.conn = load_config["connection_type"]
+                except Exception:
+                    pass
+            else:
+                pass
+
+        elif block_type == BlockType.EMT_PI_LINE or block_type == BlockType.EMT_BERGERON_LINE:
+            dialog = EmtTemplateWizardDialog(self)
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                phase_n, phase_a, phase_b, phase_c = dialog.get_values()
+            else:
+                return None
+
+            item_name: str = f"{block_type.name}_{count}"
+            block_model = create_emt_wizard_block(phase_n, phase_a, phase_b, phase_c, self.var_factory,
+                                                  block_type=block_type, item_name=item_name)
+
+            set_modal_template_metadata(
+                block_model,
+                kind="emt_phase_wizard",
+                config=dict({
+                    "block_type": block_type.name,
+                    "phase_n": phase_n,
+                    "phase_a": phase_a,
+                    "phase_b": phase_b,
+                    "phase_c": phase_c,
+                }),
+            )
+
+
+        elif block_type == BlockType.GROUNDING_LINK_EMT:
+            dialog = self._build_grounding_link_emt_dialog()
+
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                grounding_config = dialog.get_configuration()
+            else:
+                return None
+
+            try:
+                template_kwargs = self._build_grounding_link_emt_template_kwargs(grounding_config)
+            except ValueError as exc:
+                QtWidgets.QMessageBox.warning(self, "Grounding Link", str(exc))
+                return None
+
+            item_name: str = f"grounding_link_emt_{count}"
+            block_model = get_grounding_link_emt_template(vf=self.var_factory, name=item_name, **template_kwargs).block
+            set_modal_template_metadata(block_model, kind="grounding_link_emt", config=dict(grounding_config))
+
+        elif block_type == BlockType.SWITCH_EMT:
+            dialog = SwitchEmtDialog(self)
+
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                switch_config = dialog.get_switch_configuration()
+            else:
+                return None
+
+            item_name: str = f"switch_emt_{count}"
+
+            block_model = get_switch_emt_template(vf=self.var_factory, name=item_name, **switch_config).block
+            set_modal_template_metadata(
+                block_model,
+                kind="switch_emt",
+                config=dict(switch_config),
+            )
+
+        elif block_type == BlockType.RLC_COMBO_EMT:
+            dialog = self._build_rlc_combo_emt_dialog()
+
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                rlc_config = dialog.get_configuration()
+            else:
+                return None
+
+            try:
+                template_kwargs = self._build_rlc_combo_emt_template_kwargs(rlc_config)
+            except ValueError as exc:
+                QtWidgets.QMessageBox.warning(self, "RLC Combo", str(exc))
+                return None
+
+            item_name: str = f"rlc_combo_emt_{count}"
+
+            block_model = get_shunt_rlc_combo_emt_template(vf=self.var_factory, name=item_name, **template_kwargs).block
+            set_modal_template_metadata(block_model, kind="rlc_combo_emt", config=dict(rlc_config))
+            self._annotate_internal_grounding_link_blocks(block_model)
+            self._sync_rlc_combo_load_base_values(template_kwargs)
+
+            if isinstance(self.api_object, InjectionParent):
+                try:
+                    self.api_object.conn = rlc_config["connection_type"]
+                except Exception:
+                    pass
+            else:
+                pass
+
+        elif block_type in {BlockType.R_LOAD_EMT, BlockType.L_LOAD_EMT,BlockType.C_LOAD_EMT}:
+            dialog = self._build_shunt_component_emt_dialog(block_type=block_type)
+
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                shunt_config = dialog.get_configuration()
+            else:
+                return None
+
+            try:
+                template_kwargs = self._build_shunt_component_emt_template_kwargs(block_type=block_type,
+                                                                                  modal_config=shunt_config)
+            except ValueError as exc:
+                QtWidgets.QMessageBox.warning(self, "EMT Shunt", str(exc))
+                return None
+
+            item_name: str = f"{block_type.name}_{count}"
+
+            block_model = get_shunt_rlc_combo_emt_template(vf=self.var_factory, name=item_name, **template_kwargs).block
+            set_modal_template_metadata(block_model, kind="shunt_component_emt",
+                                        config=dict(shunt_config, block_type=block_type.name))
+            self._annotate_internal_grounding_link_blocks(block_model)
+            self._sync_rlc_combo_load_base_values(template_kwargs)
+
+            if isinstance(self.api_object, InjectionParent):
+                try:
+                    self.api_object.conn = shunt_config["connection_type"]
+                except Exception:
+                    pass
+            else:
+                pass
+
+        elif _is_load_topology_block_type(BlockType):
+            dialog = self._build_load_topology_emt_dialog(block_type=block_type)
+
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                load_config = dialog.get_configuration()
+            else:
+                return None
+
+            item_name: str = f"{block_type.name}_{count}"
+
+            block_model = self._build_load_topology_emt_block_model(
+                block_type=block_type,
+                item_name=item_name,
+                modal_config=load_config,
+            )
+            set_modal_template_metadata(block_model, kind="load_topology_emt",
+                                        config=dict(load_config, block_type=block_type.name))
+            self._annotate_internal_grounding_link_blocks(block_model)
+
+            if isinstance(self.api_object, InjectionParent):
+                try:
+                    self.api_object.conn = load_config["connection_type"]
+                except Exception:
+                    pass
+            else:
+                pass
+
+        elif block_type == BlockType.GROUNDING_LINK_EMT:
+            dialog = self._build_grounding_link_emt_dialog()
+
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                grounding_config = dialog.get_configuration()
+            else:
+                return None
+
+            try:
+                template_kwargs = self._build_grounding_link_emt_template_kwargs(grounding_config)
+            except ValueError as exc:
+                QtWidgets.QMessageBox.warning(self, "Grounding Link", str(exc))
+                return None
+
+            item_name: str = f"grounding_link_emt_{count}"
+
+            block_model = get_grounding_link_emt_template(vf=self.var_factory, name=item_name, **template_kwargs).block
+            set_modal_template_metadata(block_model, kind="grounding_link_emt", config=dict(grounding_config))
+
+        elif block_type == BlockType.NONLINEAR_RESISTOR_EMT:
+            dialog = LookupArrayLinearDialog(
+                block_label="Nonlinear resistor EMT V-I curve",
+                initial_points=list([(0.0, 0.0), (1.0, 0.1), (1.5, 1.0), (2.0, 10.0)]),
+                parent=self,
+                x_label="V",
+                y_label="I",
+                preview_enabled=True,
+                preview_title="Nonlinear resistor EMT V-I curve",
+            )
+
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                voltage_points, current_points = dialog.get_points()
+            else:
+                return None
+
+            item_name: str = f"nonlinear_resistor_emt_{count}"
+
+            block_model = get_nonlinear_resistor_emt_template(
+                vf=self.var_factory,
+                voltage_points=voltage_points,
+                current_points=current_points,
+                name=item_name,
+            ).block
+            set_modal_template_metadata(
+                block_model,
+                kind="nonlinear_resistor_emt",
+                config=dict({
+                    "voltage_points": voltage_points,
+                    "current_points": current_points,
+                }),
+            )
+
+        elif block_type == BlockType.NONLINEAR_RESISTOR_EMT:
+            topology_config: Dict[str, Any] | None = self._resolve_transformer_topology_configuration()
+
+            if topology_config is None:
+                dialog = self._build_transformer_topology_emt_dialog(block_type=block_type)
+
+                if dialog.exec() == QDialog.DialogCode.Accepted:
+                    topology_config = dialog.get_configuration()
+                    topology_config["allow_modify_template"] = True
+                else:
+                    return None
+            else:
+                topology_config = dict(topology_config)
+
+            item_name: str = f"{block_type.name}_{count}"
+
+            block_model = self._build_transformer_topology_emt_block_model(
+                block_type=block_type,
+                item_name=item_name,
+                modal_config=topology_config,
+            )
+
+            if block_model is None:
+                return None
+            else:
+                pass
+
+            set_modal_template_metadata(block_model, kind="transformer_topology_emt",
+                                        config=dict(topology_config, block_type=block_type.name))
+
+            if isinstance(self.api_object, BranchParent):
+                try:
+                    self.api_object.conn_f = topology_config["conn_f"]
+                    self.api_object.conn_t = topology_config["conn_t"]
+                except Exception:
+                    pass
+            else:
+                pass
+
+        else:
+
+            item_name: str = f"{block_type.name}_{count}"
+            block_model: Block = create_block_of_type(
+                var_factory=self.var_factory,
+                block_type=block_type,
+                item_name=item_name,
+                api_object=self.api_object,
+            )
+            self.block_counters[block_type] = count
+
+        # no we have the name and the block
+        if block_model is not None:
+            self.main_block.add(block_model)
+            item = GenericBlockItem(
+                var_factory=self.var_factory,
+                subsys=block_model,
+                api_object=self.api_object,
+                mode=self.mode,
+                position_changed_callback=self._build_position_changed_callback(block_model.uid)
+            )
+
+            item.setPos(QtCore.QPointF(x_pos, y_pos))
+            self.scene.addItem(item)
+
+            self.diagram.add_node(
+                name=item_name,
+                x=x_pos,
+                y=y_pos,
+                tpe=block_type.name,
+                device_uid=block_model.uid
+            )
+
+            self.mark_unapplied_changes()
+            # Keep the diagram synchronized so later features can rebuild from the same data source.
+
+            return item
+        else:
+            return None
+
     def create_block_item(self, block_type: BlockType, x_pos: float, y_pos: float) -> BlockItem | None:
         """
         Create and place a block item in the canvas scene.
@@ -6266,7 +6910,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     def create_template_block_item(self,
                                    template: RmsModelTemplate | EmtModelTemplate | FmuTemplate,
                                    x_pos: float,
-                                   y_pos: float) -> BlockItem | None:
+                                   y_pos: float) -> BlockItem | GenericBlockItem | None:
         """
         Create and place a copied template block in the canvas scene.
 
@@ -6277,19 +6921,22 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
         item_name: str = template.name
         block_model: Block = duplicate_block(template.block, var_factory=self.var_factory)
-        block_item: BlockItem = BlockItem(var_factory=self.var_factory, name=item_name)
+        self.main_block.add(block_model)
+        item: GenericBlockItem = GenericBlockItem(
+                var_factory=self.var_factory,
+                subsys=block_model,
+                api_object=self.api_object,
+                mode=self.mode,
+                position_changed_callback=self._build_position_changed_callback(block_model.uid)
+            )
 
         if item_name:
             block_model.name = item_name
         else:
             item_name = block_model.name
+        item.setPos(QtCore.QPointF(x_pos, y_pos))
+        self.scene.addItem(item)
 
-        block_item.set_subsystem(block_model)
-        block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
-        block_item.build_item()
-        self.main_block.add(block_model)
-        self.scene.addItem(block_item)
-        block_item.setPos(QtCore.QPointF(x_pos, y_pos))
         self.diagram.add_node(
             name=item_name,
             x=x_pos,
@@ -6300,7 +6947,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         self.mark_unapplied_changes()
 
-        return block_item
+        return item
 
     def create_lookup_array_linear_descriptor_item(self,
                                                    descriptor: BasicBlockTemplateDescriptor,
@@ -7757,6 +8404,52 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             return self.create_template_block_item(template=payload, x_pos=x_pos, y_pos=y_pos)
         else:
             return None
+    # def create_library_payload_item(self,
+    #                                 payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate,
+    #                                 x_pos: float,
+    #                                 y_pos: float) -> BlockItem | GenericBlockItem | None:
+    #     """
+    #     Materialize one library payload on the diagram scene.
+    #     """
+    #     if isinstance(payload, BlockType) and payload in {
+    #         BlockType.EMT_PI_LINE,
+    #         BlockType.EMT_BERGERON_LINE,
+    #         BlockType.EMT_JMARTI_LINE,
+    #         BlockType.SWITCH_EMT,
+    #         BlockType.GROUNDING_LINK_EMT,
+    #         BlockType.NONLINEAR_RESISTOR_EMT,
+    #         BlockType.RLC_COMBO_EMT,
+    #         BlockType.EXP_LOAD_EMT,
+    #         BlockType.ZIP_LOAD_EMT,
+    #         BlockType.R_LOAD_EMT,
+    #         BlockType.L_LOAD_EMT,
+    #         BlockType.C_LOAD_EMT,
+    #         BlockType.TRAFO_EMT,
+    #         BlockType.XFMR_TRANSFORMER,
+    #     }:
+    #
+    #         return self.create_block_item_mix(block_type=payload, x_pos=x_pos, y_pos=y_pos)
+    #
+    #     elif isinstance(payload, BlockType):
+    #         return self.create_block_item_mix(block_type=payload, x_pos=x_pos, y_pos=y_pos)
+    #     elif isinstance(payload, BasicBlockTemplateDescriptor):
+    #         if payload.template_key in LOOKUP_ARRAY_LINEAR_DESCRIPTOR_KEYS:
+    #             return self.create_lookup_array_linear_descriptor_item(payload, x_pos, y_pos)
+    #         elif payload.template_key in INVERSE_LOOKUP_ARRAY_LINEAR_DESCRIPTOR_KEYS:
+    #             return self.create_inverse_lookup_array_linear_descriptor_item(payload, x_pos, y_pos)
+    #         elif payload.template_key in LOOKUP_ARRAY_SPLINE_DESCRIPTOR_KEYS:
+    #             return self.create_lookup_array_spline_descriptor_item(payload, x_pos, y_pos)
+    #         elif payload.template_key in LOOKUP_MATRIX_LINEAR_DESCRIPTOR_KEYS:
+    #             return self.create_lookup_matrix_linear_descriptor_item(payload, x_pos, y_pos)
+    #         elif payload.template_key in LOOKUP_MATRIX_SPLINE_DESCRIPTOR_KEYS:
+    #             return self.create_lookup_matrix_spline_descriptor_item(payload, x_pos, y_pos)
+    #         else:
+    #             template: EmtModelTemplate = load_basic_block_catalog_template(payload, self.var_factory)
+    #             return self.create_template_block_item(template=template, x_pos=x_pos, y_pos=y_pos)
+    #     elif isinstance(payload, (RmsModelTemplate, EmtModelTemplate, FmuTemplate)):
+    #         return self.create_template_block_item(template=payload, x_pos=x_pos, y_pos=y_pos)
+    #     else:
+    #         return None
 
     def remove_connection_item(self, item: ConnectionItem) -> None:
         """
@@ -7970,7 +8663,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         if isinstance(item, ConnectionItem):
             self.remove_connection_item(item)
             self.mark_unapplied_changes()
-        elif isinstance(item, (BlockItem, GenericBlockItem)):
+        elif isinstance(item, (BlockItem, GenericBlockItem, GenericBlockItem)):
             self.remove_block_item(item)
             self.mark_unapplied_changes()
         else:
@@ -8514,6 +9207,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             selected_item = selected_items[0]
 
             if isinstance(selected_item, BlockItem):
+                return selected_item.subsys
+            elif isinstance(selected_item, GenericBlockItem):
                 return selected_item.subsys
             elif isinstance(selected_item, GenericBlockItem):
                 return selected_item.subsys
@@ -10105,7 +10800,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         :return:
         """
-        uid_to_blockitem: Dict[int, BlockItem | GenericBlockItem] = dict()
+        uid_to_blockitem: Dict[int, BlockItem | GenericBlockItem | GenericBlockItem] = dict()
         uid: int
         node: Any
         con: Any
@@ -10124,25 +10819,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
             if block_model is not None:
 
-                if block_type == BlockType.GENERIC:
-
-                    generic_item = GenericBlockItem(
-                        var_factory=self.var_factory,
-                        block=block_model,
-                        api_object=self.api_object,
-                        mode=self.mode,
-                        position_changed_callback=self._build_position_changed_callback(block_model.uid)
-                    )
-                    self.scene.addItem(generic_item)
-                    generic_item.setPos(QPointF(node.x, node.y))
-                    brush = generic_item.brush()
-                    brush.setColor(QColor(node.color))
-                    generic_item.setBrush(brush)
-
-                    uid_to_blockitem[uid] = generic_item
-
-
-                else:
+                if block_type == BlockType.INPUT_CONN or block_type == BlockType.OUTPUT_CONN:
                     block_item: BlockItem = BlockItem(var_factory=self.var_factory, name=node.name)
                     block_item.set_subsystem(block_model)
                     block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
@@ -10180,6 +10857,21 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     else:
                         pass
 
+                else:
+                    generic_item = GenericBlockItem(
+                        var_factory=self.var_factory,
+                        subsys=block_model,
+                        api_object=self.api_object,
+                        mode=self.mode,
+                        position_changed_callback=self._build_position_changed_callback(block_model.uid)
+                    )
+                    self.scene.addItem(generic_item)
+                    generic_item.setPos(QPointF(node.x, node.y))
+                    brush = generic_item.brush()
+                    brush.setColor(QColor(node.color))
+                    generic_item.setBrush(brush)
+
+                    uid_to_blockitem[uid] = generic_item
         # Recreate connections
         for uid, con in self.diagram.con_data.items():
             src_item: BlockItem | None = uid_to_blockitem.get(con.from_uid, None)
@@ -10322,7 +11014,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             int(event.position().x()),
             int(event.position().y())
         )
-        block_item: BlockItem | None
+        block_item: BlockItem | None | GenericBlockItem
 
         if payload is not None:
 
