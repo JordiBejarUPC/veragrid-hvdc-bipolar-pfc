@@ -220,6 +220,7 @@ def get_monthly_psse_circuit_statistics(
             # ------------------------------------------------------------------
             for bus in circuit.buses:
                 bus_id: str = str(bus.I)
+                bus_name: str = str(bus.NAME).replace("'", "").strip()
 
                 rows.append(
                     {
@@ -228,6 +229,7 @@ def get_monthly_psse_circuit_statistics(
                         "month": month,
                         "element_type": "bus",
                         "element_id": bus_id,
+                        "element_name": bus_name,
                         "metric": "VM_pu",
                         "value": float(bus.VM),
                     }
@@ -240,6 +242,7 @@ def get_monthly_psse_circuit_statistics(
                         "month": month,
                         "element_type": "bus",
                         "element_id": bus_id,
+                        "element_name": bus_name,
                         "metric": "VA_deg",
                         "value": float(bus.VA),
                     }
@@ -260,6 +263,7 @@ def get_monthly_psse_circuit_statistics(
                     "month",
                     "element_type",
                     "element_id",
+                    "element_name",
                     "metric",
                 ],
                 dropna=False,
@@ -325,32 +329,131 @@ def get_monthly_psse_circuit_statistics(
     return result
 
 
+def get_branch_voltage_count_tables(
+    circuits: list[PsseCircuit],
+    file_paths: list[str | Path] | None = None,
+    voltage_round_digits: int = 0,
+) -> dict[str, pd.DataFrame]:
+    """
+    Build branch voltage-level count tables per RAW snapshot.
+
+    The voltage level of each branch is inferred from the nominal voltage of
+    its terminal buses. For each branch, the voltage is computed as:
+
+    ``max(BASKV_from_bus, BASKV_to_bus)``
+
+    This is suitable for counting lines by voltage level, for example 220 kV
+    and 400 kV branches.
+
+    The returned dictionary contains:
+
+    - ``branch_voltage_count``:
+        Number of all branches per file and voltage level.
+
+    - ``inactive_branch_voltage_count``:
+        Number of inactive branches per file and voltage level.
+
+    :param circuits: List of parsed ``PsseCircuit`` objects.
+    :param file_paths: Optional list of RAW file paths matching ``circuits``.
+        If provided, file names are used as row labels.
+    :param voltage_round_digits: Number of decimals used when grouping voltage
+        levels.
+    :return: Dictionary with two pivot tables.
+    """
+
+    rows: list[dict[str, Any]] = list()
+
+    for circuit_index, circuit in enumerate(circuits):
+        if file_paths is None:
+            file_label: str = f"snapshot_{circuit_index}"
+        else:
+            file_label = Path(file_paths[circuit_index]).name
+
+        if circuit.date_time is None:
+            timestamp: pd.Timestamp | None = None
+            month: str | None = None
+        else:
+            timestamp = pd.Timestamp(circuit.date_time)
+            month = timestamp.strftime("%Y-%m")
+
+        bus_voltage_by_id: dict[int, float] = dict()
+
+        for bus in circuit.buses:
+            bus_voltage_by_id[int(bus.I)] = float(bus.BASKV)
+
+        for branch in circuit.branches:
+            from_bus_voltage: float | None = bus_voltage_by_id.get(int(branch.I))
+            to_bus_voltage: float | None = bus_voltage_by_id.get(int(branch.J))
+
+            if from_bus_voltage is not None and to_bus_voltage is not None:
+                branch_voltage: float = max(from_bus_voltage, to_bus_voltage)
+                branch_voltage = round(branch_voltage, voltage_round_digits)
+
+                rows.append(
+                    {
+                        "file": file_label,
+                        "timestamp": timestamp,
+                        "month": month,
+                        "branch_id": f"{branch.I}_{branch.J}_{str(branch.CKT).strip()}",
+                        "voltage_kv": branch_voltage,
+                        "status": int(branch.ST),
+                        "is_inactive": int(branch.ST) == 0,
+                    }
+                )
+            else:
+                pass
+
+    branch_voltage_samples: pd.DataFrame = pd.DataFrame(rows)
+
+    if branch_voltage_samples.empty:
+        branch_voltage_count: pd.DataFrame = pd.DataFrame()
+        inactive_branch_voltage_count: pd.DataFrame = pd.DataFrame()
+    else:
+        branch_voltage_count = (
+            branch_voltage_samples
+            .pivot_table(
+                index="file",
+                columns="voltage_kv",
+                values="branch_id",
+                aggfunc="count",
+                fill_value=0,
+            )
+            .reset_index()
+        )
+
+        inactive_branch_voltage_count = (
+            branch_voltage_samples[
+                branch_voltage_samples["is_inactive"]
+            ]
+            .pivot_table(
+                index="file",
+                columns="voltage_kv",
+                values="branch_id",
+                aggfunc="count",
+                fill_value=0,
+            )
+            .reset_index()
+        )
+
+    result: dict[str, pd.DataFrame] = {
+        "branch_voltage_samples": branch_voltage_samples,
+        "branch_voltage_count": branch_voltage_count,
+        "inactive_branch_voltage_count": inactive_branch_voltage_count,
+    }
+
+    return result
+
 def save_monthly_psse_circuit_statistics_xlsx(
-        circuits: list[PsseCircuit],
-        file_path: str | Path,
-        include_raw_samples: bool = False,
+    circuits: list[PsseCircuit],
+    file_path: str | Path,
+    file_paths: list[str | Path] | None = None,
+    include_raw_samples: bool = False,
 ) -> None:
     """
     Save monthly PSS/E circuit statistics into an XLSX file.
 
-    Each device category is written into a different Excel sheet:
-
-    - ``loads``
-    - ``generators``
-    - ``branches``
-    - ``transformers``
-    - ``buses``
-    - ``branch_status``
-    - ``transformer_status``
-
-    The function assumes that ``get_monthly_psse_circuit_statistics`` is
-    already available.
-
-    :param circuits: List of parsed ``PsseCircuit`` objects.
-    :param file_path: Output XLSX file path.
-    :param include_raw_samples: Whether to also write the raw long-format
-        extracted samples.
-    :return: None.
+    Each device category is written into a different Excel sheet. The function
+    also adds branch voltage-level count tables per RAW file.
     """
 
     output_path: Path = Path(file_path)
@@ -360,60 +463,57 @@ def save_monthly_psse_circuit_statistics_xlsx(
         skip_circuits_without_datetime=True,
     )
 
+    branch_voltage_tables: dict[str, pd.DataFrame] = get_branch_voltage_count_tables(
+        circuits=circuits,
+        file_paths=file_paths,
+        voltage_round_digits=0,
+    )
+
     statistics: pd.DataFrame = stats["statistics"]
     status_statistics: pd.DataFrame = stats["status_statistics"]
     samples: pd.DataFrame = stats["samples"]
 
-    if statistics.empty:
-        empty_sheet: pd.DataFrame = pd.DataFrame(
-            {
-                "message": [
-                    "No statistics were generated. Check that circuits are not empty and have date_time assigned."
-                ]
-            }
-        )
+    branch_voltage_samples: pd.DataFrame = branch_voltage_tables["branch_voltage_samples"]
+    branch_voltage_count: pd.DataFrame = branch_voltage_tables["branch_voltage_count"]
+    inactive_branch_voltage_count: pd.DataFrame = branch_voltage_tables["inactive_branch_voltage_count"]
 
-        with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
+    with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
+        if statistics.empty:
+            empty_sheet: pd.DataFrame = pd.DataFrame(
+                {
+                    "message": [
+                        "No monthly statistics were generated. Check that circuits are not empty and have date_time assigned."
+                    ]
+                }
+            )
+
             empty_sheet.to_excel(
                 writer,
                 sheet_name="empty",
                 index=False,
             )
 
-    else:
-        load_statistics: pd.DataFrame = statistics[
-            statistics["element_type"] == "load"
-            ].copy()
-
-        generator_statistics: pd.DataFrame = statistics[
-            statistics["element_type"] == "generator"
-            ].copy()
-
-        branch_statistics: pd.DataFrame = statistics[
-            statistics["element_type"] == "branch"
-            ].copy()
-
-        transformer_statistics: pd.DataFrame = statistics[
-            statistics["element_type"] == "transformer"
-            ].copy()
-
-        bus_statistics: pd.DataFrame = statistics[
-            statistics["element_type"] == "bus"
-            ].copy()
-
-        if status_statistics.empty:
-            branch_status_statistics: pd.DataFrame = pd.DataFrame()
-            transformer_status_statistics: pd.DataFrame = pd.DataFrame()
         else:
-            branch_status_statistics = status_statistics[
-                status_statistics["element_type"] == "branch"
-                ].copy()
+            load_statistics: pd.DataFrame = statistics[
+                statistics["element_type"] == "load"
+            ].copy()
 
-            transformer_status_statistics = status_statistics[
-                status_statistics["element_type"] == "transformer"
-                ].copy()
+            generator_statistics: pd.DataFrame = statistics[
+                statistics["element_type"] == "generator"
+            ].copy()
 
-        with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
+            branch_statistics: pd.DataFrame = statistics[
+                statistics["element_type"] == "branch"
+            ].copy()
+
+            transformer_statistics: pd.DataFrame = statistics[
+                statistics["element_type"] == "transformer"
+            ].copy()
+
+            bus_statistics: pd.DataFrame = statistics[
+                statistics["element_type"] == "bus"
+            ].copy()
+
             load_statistics.to_excel(
                 writer,
                 sheet_name="loads",
@@ -444,17 +544,28 @@ def save_monthly_psse_circuit_statistics_xlsx(
                 index=False,
             )
 
-            branch_status_statistics.to_excel(
-                writer,
-                sheet_name="branch_status",
-                index=False,
-            )
+            if not status_statistics.empty:
+                branch_status_statistics: pd.DataFrame = status_statistics[
+                    status_statistics["element_type"] == "branch"
+                ].copy()
 
-            transformer_status_statistics.to_excel(
-                writer,
-                sheet_name="xfmr_status",
-                index=False,
-            )
+                transformer_status_statistics: pd.DataFrame = status_statistics[
+                    status_statistics["element_type"] == "transformer"
+                ].copy()
+
+                branch_status_statistics.to_excel(
+                    writer,
+                    sheet_name="branch_status",
+                    index=False,
+                )
+
+                transformer_status_statistics.to_excel(
+                    writer,
+                    sheet_name="xfmr_status",
+                    index=False,
+                )
+            else:
+                pass
 
             if include_raw_samples:
                 samples.to_excel(
@@ -464,6 +575,27 @@ def save_monthly_psse_circuit_statistics_xlsx(
                 )
             else:
                 pass
+
+        branch_voltage_count.to_excel(
+            writer,
+            sheet_name="branch_voltage_count",
+            index=False,
+        )
+
+        inactive_branch_voltage_count.to_excel(
+            writer,
+            sheet_name="inactive_branch_v",
+            index=False,
+        )
+
+        if include_raw_samples:
+            branch_voltage_samples.to_excel(
+                writer,
+                sheet_name="branch_voltage_samples",
+                index=False,
+            )
+        else:
+            pass
 
 
 def main(folder: str = "", stats_file="psse_monthly_statistics.xlsx"):
@@ -498,5 +630,5 @@ def main(folder: str = "", stats_file="psse_monthly_statistics.xlsx"):
 
 
 if __name__ == "__main__":
-    main("/home/santi/Escritorio/Redes/Baleares_raws/25/raw",
+    main("/home/santi/Escritorio/Redes/Canarias/Análisis automatizado de la red/Casos/19",
          stats_file="stats.xlsx")
