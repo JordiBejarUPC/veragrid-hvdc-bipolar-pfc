@@ -396,7 +396,6 @@ def assign_api_mapping_value_if_present(
         value: Any,
         logger: Logger | None,
         device_name: str,
-        allow_event_parameter_target: bool = False,
 ) -> bool:
     """
     Assign one static API-object value to ``mdl.parameters`` if exposed.
@@ -410,57 +409,43 @@ def assign_api_mapping_value_if_present(
     :param value: Static numerical value to assign.
     :param logger: Optional logger used to report invalid mapping contracts.
     :param device_name: Device name used in diagnostics.
-    :param allow_event_parameter_target: When ``True``, write the value into
-        ``mdl.event_dict`` if the exposed API-object target is one runtime
-        parameter. This is needed by EMT templates whose static device setpoints
-        also participate in scheduled-event workflows.
     :return: ``True`` if the value was assigned, ``False`` otherwise.
     """
     assigned: bool = False
     api_obj_mapping: Any = mdl.api_obj_mapping
 
-    if isinstance(api_obj_mapping, dict):
-        # The mapping is optional: a model receives only the static parameters it
-        # explicitly requests by exposing the enum key.
-        target: Any | None = api_obj_mapping.get(key, None)
 
-        if target is None:
+    # The mapping is optional: a model receives only the static parameters it
+    # explicitly requests by exposing the enum key.
+    target: Any | None = api_obj_mapping.get(key, None)
+
+    if target is None:
+        assigned = False
+    else:
+        event_dict: Any = mdl.event_dict
+
+        if target in event_dict:
+
+            # A target present in event_dict means the model declared a
+            # runtime parameter as a static API-object parameter. That is
+            # a contract error unless the caller explicitly opted into
+            # seeding runtime parameters from static device data.
+            add_static_mapping_warning(
+                logger=logger,
+                device_name=device_name,
+                message="Static api_obj_mapping points to an event_dict parameter.",
+                value=str(key),
+                expected_value="api_obj_mapping target must be a constant parameter",
+                device_property="api_obj_mapping",
+            )
             assigned = False
         else:
-            event_dict: Any = mdl.event_dict
+            # The static mapping declares the symbolic parameter target.
+            # The target does not need to pre-exist in mdl.parameters.
+            mdl.parameters[target] = to_static_mapping_const(value)
+            assigned = True
 
-            if isinstance(event_dict, dict):
-                if target in event_dict:
-                    if allow_event_parameter_target:
-                        mdl.event_dict[target] = to_static_mapping_const(value)
-                        assigned = True
-                    else:
-                        # A target present in event_dict means the model declared a
-                        # runtime parameter as a static API-object parameter. That is
-                        # a contract error unless the caller explicitly opted into
-                        # seeding runtime parameters from static device data.
-                        add_static_mapping_warning(
-                            logger=logger,
-                            device_name=device_name,
-                            message="Static api_obj_mapping points to an event_dict parameter.",
-                            value=str(key),
-                            expected_value="api_obj_mapping target must be a constant parameter",
-                            device_property="api_obj_mapping",
-                        )
-                        assigned = False
-                else:
-                    # The static mapping declares the symbolic parameter target.
-                    # The target does not need to pre-exist in mdl.parameters.
-                    mdl.parameters[target] = to_static_mapping_const(value)
-                    assigned = True
-            else:
-                # Blocks normally expose event_dict as a dictionary. If they do
-                # not, the static parameter assignment can still proceed because
-                # there is no runtime container to conflict with.
-                mdl.parameters[target] = to_static_mapping_const(value)
-                assigned = True
-    else:
-        assigned = False
+
 
     return assigned
 
@@ -2042,6 +2027,7 @@ def assign_load_static_api_mapping(
             ParamPowerFlowRefferenceType.Ql0_C,
         ])
 
+        # TODO: static mapping should not put anything in event_dict! allow_event_parameters_target should not exist (ALWAYS FALSE)
         phase_index: int = 0
         while phase_index < 3:
             assign_api_mapping_value_if_present(
@@ -2050,7 +2036,7 @@ def assign_load_static_api_mapping(
                 value=float(p_values[phase_index]),
                 logger=logger,
                 device_name=device_name,
-                allow_event_parameter_target=True,
+                # allow_event_parameter_target=True,
             )
             assign_api_mapping_value_if_present(
                 mdl=mdl,
@@ -2058,7 +2044,7 @@ def assign_load_static_api_mapping(
                 value=float(q_values[phase_index]),
                 logger=logger,
                 device_name=device_name,
-                allow_event_parameter_target=True,
+                # allow_event_parameter_target=True,
             )
             phase_index += 1
 
@@ -2068,7 +2054,7 @@ def assign_load_static_api_mapping(
             value=omega_base,
             logger=logger,
             device_name=device_name,
-            allow_event_parameter_target=True,
+            # allow_event_parameter_target=True,
         )
 
 
@@ -3334,6 +3320,7 @@ def assign_line_static_api_mapping(
     :param logger: Optional logger.
     :return: None.
     """
+    # todo: make sure it also works for rms
     device_name: str = str(line.name)
     assign_common_branch_static_api_mapping(
         device=line,
