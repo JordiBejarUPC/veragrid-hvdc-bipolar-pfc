@@ -397,6 +397,10 @@ class Block:
         x = self.compare(other)
         return x
 
+    # def set_const(self, ref: ParamPowerFlowRefferenceType, val: Const):
+    #
+    #     self.parameters[self.api_obj_mapping[ref]] = val
+
     def set_parameter_in_model(self, var_name: str, new_value: float):
         """
         updates parameter value given a name and a value

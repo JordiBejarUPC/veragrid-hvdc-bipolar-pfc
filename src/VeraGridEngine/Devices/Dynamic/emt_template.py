@@ -52,10 +52,22 @@ class EmtModelTemplate(PointerDeviceParent):
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
-        GCProp('block', units="", tpe=SubObjectType.DaeBlockType,
-               definition='DAE block', editable=False, display=False),
-        GCProp('tpe', units="", tpe=DeviceType,
-               definition='Device type', editable=True, display=True),
+        GCProp(
+            prop_name='block',
+            units="",
+            tpe=SubObjectType.DaeBlockType,
+            definition='DAE block',
+            editable=False,
+            display=False,
+        ),
+        GCProp(
+            prop_name='tpe',
+            units="",
+            tpe=DeviceType,
+            definition='Device type',
+            editable=True,
+            display=True,
+        ),
     )
 
     def __init__(self, idtag="", name: str = ""):

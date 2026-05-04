@@ -319,6 +319,30 @@ class CatalogueElementsSelectionDialogue(QtWidgets.QDialog):
                                        unique_key='rms:get_load_rms_template',
                                        function_ptr=tem.get_load_rms_template)
                        )
+        actions.append(CatalogueAction(kind=CatalogueActionKind.AddRmsTemplate,
+                                        args=(self._circuit.var_factory,),
+                                        name='Distributed PV',
+                                        voltage_text='',
+                                        power_text='',
+                                        unique_key='rms:get_distributed_pv_rms_template',
+                                        function_ptr=tem.get_pvd1_dc_mppt_rms_template)
+                        )
+        actions.append(CatalogueAction(kind=CatalogueActionKind.AddRmsTemplate,
+                                        args=(self._circuit.var_factory,),
+                                        name='Battery',
+                                        voltage_text='',
+                                        power_text='',
+                                        unique_key='rms:get_battery_rms_template',
+                                        function_ptr=tem.get_esd1_rms_template)
+                        )
+        actions.append(CatalogueAction(kind=CatalogueActionKind.AddRmsTemplate,
+                                        args=(self._circuit.var_factory,),
+                                        name='2W Transformer',
+                                        voltage_text='',
+                                        power_text='',
+                                        unique_key='rms:get_transformer2w_rms_template',
+                                        function_ptr=tem.get_transformer2w_rms)
+                        )
         return actions
 
     def build_emt_actions(self) -> List[CatalogueAction]:

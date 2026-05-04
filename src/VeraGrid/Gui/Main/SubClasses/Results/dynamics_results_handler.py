@@ -460,7 +460,7 @@ def build_dynamics_tree_model(tree_data: Dict[DeviceType, Dict[ALL_DEV_TYPES, Li
                               var_role: int,
                               mime_type: str) -> DynamicsDeviceTreeModel:
     """
-    Build the source tree-view model for RMS dynamics results.
+    Build the source tree-view model for RMS/EMT dynamics results.
 
     :param tree_data: Hierarchical RMS results tree grouped by device type and device.
     :param var_role: Qt item-data role used to store the ``Var`` instance in leaf nodes.
@@ -501,7 +501,7 @@ def build_dynamics_tree_model(tree_data: Dict[DeviceType, Dict[ALL_DEV_TYPES, Li
 
 class DynamicsResultsHandler:
     """
-    Prepare GUI structures from RMS dynamics results.
+    Prepare GUI structures from RMS/EMT dynamics results.
     """
 
     __slots__ = ("results", "tree_data", "tree_model", "proxy_model", "plots_model", "group_idx",
@@ -509,9 +509,9 @@ class DynamicsResultsHandler:
 
     def __init__(self, results: RmsResults|EmtResults):
         """
-        Build the handler from RMS results data.
+        Build the handler from RMS/EMT results data.
 
-        :param results: RMS results container coming from the simulation engine.
+        :param results: RMS/EMT results container coming from the simulation engine.
         """
         # The original results object is preserved because later GUI actions need arrays and metadata.
         self.results: RmsResults|EmtResults = results
@@ -521,7 +521,7 @@ class DynamicsResultsHandler:
         self.group_name_role: int = int(QtCore.Qt.ItemDataRole.UserRole) + 301
         self.drag_mime_type: str = "application/x-veragrid-dynamics-var"
 
-        # Group-name to RMS-group-index mapping is precomputed because plotting needs constant-time access.
+        # Group-name to RMS/EMT-group-index mapping is precomputed because plotting needs constant-time access.
         self.group_idx: Dict[str, int] = self._build_group_idx(results=self.results)
 
         # The hierarchical dictionary is the canonical source used to build the device tree.
@@ -829,19 +829,19 @@ class DynamicsResultsHandler:
         gr_idx: int = self.group_idx[group_name]
         self.results.plot_var(var=var, group_idx=gr_idx)
 
-    def plot_group(self, plot_group_name: str, rms_group_name: str) -> bool:
+    def plot_group(self, plot_group_name: str, dyn_group_name: str) -> bool:
         """
         Plot all variables stored in one plot group.
 
         :param plot_group_name: Plot-group name selected by the user.
-        :param rms_group_name: RMS events group name selected in the combobox.
+        :param dyn_group_name: RMS/EMT events group name selected in the combobox.
         :return: ``True`` when the plot group existed and was plotted.
         """
         plot_group: DynamicsPlotGroup | None = self.plot_groups.get_group(name=plot_group_name)
         if plot_group is not None:
             variables: List[Var] = plot_group.get_vars()
             if len(variables) > 0:
-                group_idx: int = self.group_idx[rms_group_name]
+                group_idx: int = self.group_idx[dyn_group_name]
                 figure = plt.figure(figsize=(12, 8))
                 axis = figure.add_subplot(111)
 
@@ -852,7 +852,7 @@ class DynamicsResultsHandler:
                     axis.plot(self.results.time_array, y_values, label=variable.name)
 
                 axis.legend()
-                axis.set_title(plot_group_name + " - " + rms_group_name)
+                axis.set_title(plot_group_name + " - " + dyn_group_name)
                 plt.show()
                 return True
             else:
@@ -860,32 +860,33 @@ class DynamicsResultsHandler:
         else:
             return False
 
-    def plot_entry_from_index(self, index: QtCore.QModelIndex, rms_group_name: str) -> bool:
+
+
+    def plot_entry_from_index(self, index: QtCore.QModelIndex, dyn_group_name: str) -> bool:
         """
         Plot the selected plots-tree entry.
 
         :param index: Selected plots-tree index.
-        :param rms_group_name: Selected RMS events group name.
+        :param dyn_group_name: Selected RMS/EMT events group name.
         :return: ``True`` when something was plotted.
         """
         selected_var: Var | None = self.get_plot_var_from_index(index=index)
         if selected_var is not None:
-            self.plot_var(var=selected_var, group_name=rms_group_name)
+            self.plot_var(var=selected_var, group_name=dyn_group_name)
             return True
         else:
             plot_group_name: str | None = self.get_plot_group_name_from_index(index=index)
             if plot_group_name is not None:
-                return self.plot_group(plot_group_name=plot_group_name, rms_group_name=rms_group_name)
+                return self.plot_group(plot_group_name=plot_group_name, dyn_group_name=dyn_group_name)
             else:
                 return False
 
 
-
-    def get_data_from_plot_index(self, index: QtCore.QModelIndex, rms_group_name: str) -> ResultsModel | None:
+    def get_data_from_plot_index(self, index: QtCore.QModelIndex, dyn_group_name: str) -> ResultsModel | None:
         """
 
         :param index:
-        :param rms_group_name:
+        :param dyn_group_name:
         :return:
         """
         plot_group_name: str | None = self.get_plot_group_name_from_index(index=index)
@@ -895,7 +896,7 @@ class DynamicsResultsHandler:
             plot_group: DynamicsPlotGroup | None = self.plot_groups.get_group(name=plot_group_name)
             variables: List[Var] = plot_group.get_vars()
             if len(variables) > 0:
-                group_idx: int = self.group_idx[rms_group_name]
+                group_idx: int = self.group_idx[dyn_group_name]
                 data = self.results.get_vars_data(var_list=variables, group_idx=group_idx)
 
                 var_names = np.array([v.name for v in variables])
