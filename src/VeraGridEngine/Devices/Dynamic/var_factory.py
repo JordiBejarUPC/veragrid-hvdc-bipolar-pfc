@@ -79,8 +79,8 @@ class VarFactory(EditableDevice):
 
     def add_var(self,
                 name: str,
-                reference: str | None = None,
-                power_flow_reference: VarPowerFlowRefferenceType | None = None,
+                shared_reference: str | None = None,
+                reference: VarPowerFlowRefferenceType | None = None,
                 network_conn: bool = False,
                 uid: int | None = None,
                 diff_var: Var | None = None,
@@ -88,8 +88,8 @@ class VarFactory(EditableDevice):
         """
         Adds a ver to the class
         :param name:
+        :param shared_reference:
         :param reference:
-        :param power_flow_reference:
         :param network_conn:
         :param uid:
         :param diff_var:
@@ -97,18 +97,18 @@ class VarFactory(EditableDevice):
         :return:
         """
 
-        if isinstance(reference, str):
-            if reference not in self._references_dict:
-                self.create_reference(reference)
-                self._vars_references_dict[self._references_dict[reference].uid] = list()
+        if isinstance(shared_reference, str):
+            if shared_reference not in self._references_dict:
+                self.create_reference(shared_reference)
+                self._vars_references_dict[self._references_dict[shared_reference].uid] = list()
 
-            v = Var(name=name, reference=self._references_dict[reference], power_flow_reference=power_flow_reference, network_conn=network_conn, uid=uid,
+            v = Var(name=name, shared_reference=self._references_dict[shared_reference], reference=reference, network_conn=network_conn, uid=uid,
                     diff_var=None, base_var=None)
-            self.save_var_in_vars_references_dict(v, reference)
+            self.save_var_in_vars_references_dict(v, shared_reference)
             self._var_dict[v.uid] = v
             return v
         else:
-            v = Var(name=name, reference=reference, power_flow_reference=power_flow_reference, network_conn=network_conn, uid=uid,
+            v = Var(name=name, shared_reference=shared_reference, reference=reference, network_conn=network_conn, uid=uid,
                     diff_var=None, base_var=None)
             self._var_dict[v.uid] = v
             return v
@@ -134,8 +134,8 @@ class VarFactory(EditableDevice):
 
     def add_diff_var(self,
                      name: str,
-                     reference: SharedVarReferenceType | None = None,
-                     power_flow_reference: VarPowerFlowRefferenceType | None = None,
+                     shared_reference: SharedVarReferenceType | None = None,
+                     reference: VarPowerFlowRefferenceType | None = None,
                      network_conn: bool = False,
                      uid: int | None = None,
                      diff_var: Var | None = None,
@@ -143,26 +143,26 @@ class VarFactory(EditableDevice):
         """
         Adds a Diff ver to the class
         :param name:
+        :param shared_reference:
         :param reference:
-        :param power_flow_reference:
         :param network_conn:
         :param uid:
         :param diff_var:
         :param base_var:
         :return:
         """
-        if isinstance(reference, str):
-            if reference not in self._references_dict:
-                self.create_reference(reference)
-                self._vars_references_dict[self._references_dict[reference].uid] = list()
+        if isinstance(shared_reference, str):
+            if shared_reference not in self._references_dict:
+                self.create_reference(shared_reference)
+                self._vars_references_dict[self._references_dict[shared_reference].uid] = list()
 
-            v = Var(name=name, reference=self._references_dict[reference], power_flow_reference=power_flow_reference, network_conn=network_conn, uid=uid, diff_var=diff_var, base_var=base_var)
-            self.save_var_in_vars_references_dict(v, reference)
+            v = Var(name=name, shared_reference=self._references_dict[shared_reference], reference=reference, network_conn=network_conn, uid=uid, diff_var=diff_var, base_var=base_var)
+            self.save_var_in_vars_references_dict(v, shared_reference)
             self._var_dict[v.uid] = v
             self._diff_var_dict[v.uid] = v
             return v
         else:
-            v = Var(name=name, reference=reference, power_flow_reference=power_flow_reference,
+            v = Var(name=name, shared_reference=shared_reference, reference=reference,
                     network_conn=network_conn, uid=uid, diff_var=diff_var, base_var=base_var)
             self._diff_var_dict[v.uid] = v
             return v
@@ -284,7 +284,7 @@ class VarFactory(EditableDevice):
             # Older persisted symbolic models may not store the power-flow
             # reference field, so keep loading those files by defaulting to None.
             key_ref = None
-            ref_data_dict: Any = data["ref"]
+            ref_data_dict: Any = data["shared_ref"]
             if ref_data_dict is not None:
                 ref_data_name = ref_data_dict["name"]
                 ref_data_uid = ref_data_dict["uid"]
@@ -300,7 +300,7 @@ class VarFactory(EditableDevice):
                 else:
                     key_ref = None
 
-            ref_power_flow_data: Any = data.get("power_flow_reference", None)
+            ref_power_flow_data: Any = data.get("ref", None)
             key_power_flow_ref: VarPowerFlowRefferenceType | None
 
             if ref_power_flow_data is not None:
@@ -308,7 +308,7 @@ class VarFactory(EditableDevice):
             else:
                 key_power_flow_ref = None
 
-            obj = Var(name=data["name"], uid=data["uid"], reference=key_ref, power_flow_reference=key_power_flow_ref)
+            obj = Var(name=data["name"], uid=data["uid"], shared_reference=key_ref, reference=key_power_flow_ref)
             if ref_data_dict is not None:
                 ref_data_uid = ref_data_dict["uid"]
                 if ref_data_uid is not None:
@@ -354,7 +354,7 @@ class VarFactory(EditableDevice):
             # Older persisted symbolic models may not store the power-flow
             # reference field on differential variables either.
             key_ref = None
-            ref_data_dict: Any = data["ref"]
+            ref_data_dict: Any = data["shared_ref"]
             if ref_data_dict is not None:
                 ref_data_name = ref_data_dict["name"]
                 ref_data_uid = ref_data_dict["uid"]
@@ -374,8 +374,8 @@ class VarFactory(EditableDevice):
             obj = Var(name=data["name"],
                       uid=data["uid"],
                       base_var=base_var,
-                      reference = key_ref,
-                      power_flow_reference=reference_power_flow)
+                      shared_reference = key_ref,
+                      reference=reference_power_flow)
 
             if ref_data_dict is not None:
                 ref_data_uid = ref_data_dict["uid"]

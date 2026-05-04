@@ -8306,132 +8306,86 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         )
         return self.create_template_block_item(template=template, x_pos=x_pos, y_pos=y_pos)
 
-    # def create_library_payload_item(self,
-    #                                 payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate,
-    #                                 x_pos: float,
-    #                                 y_pos: float) -> BlockItem | None:
-    #     """
-    #     Materialize one library payload on the diagram scene.
-    #     """
-    #
-    #     if isinstance(payload, BlockType) and payload == BlockType.GENERIC:
-    #         return self.create_generic_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
-    #     elif isinstance(payload, BlockType) and payload in {
-    #         BlockType.EMT_PI_LINE,
-    #         BlockType.EMT_BERGERON_LINE,
-    #         BlockType.EMT_JMARTI_LINE,
-    #         BlockType.VOLTAGE_SOURCE_EMT,
-    #         BlockType.CURRENT_SOURCE_EMT,
-    #         BlockType.CONTROLLED_VOLTAGE_SOURCE_EMT,
-    #         BlockType.CONTROLLED_CURRENT_SOURCE_EMT,
-    #         BlockType.DC_VOLTAGE_SOURCE_EMT,
-    #         BlockType.DC_CURRENT_SOURCE_EMT,
-    #         BlockType.CONTROLLED_DC_VOLTAGE_SOURCE_EMT,
-    #         BlockType.CONTROLLED_DC_CURRENT_SOURCE_EMT,
-    #         BlockType.BALANCED_3PH_VOLTAGE_SOURCE_EMT,
-    #         BlockType.BALANCED_3PH_CURRENT_SOURCE_EMT,
-    #         BlockType.CONTROLLED_BALANCED_3PH_VOLTAGE_SOURCE_EMT,
-    #         BlockType.CONTROLLED_BALANCED_3PH_CURRENT_SOURCE_EMT,
-    #         BlockType.ARBITRARY_WAVEFORM_VOLTAGE_SOURCE_EMT,
-    #         BlockType.ARBITRARY_WAVEFORM_CURRENT_SOURCE_EMT,
-    #         BlockType.STEP_VOLTAGE_SOURCE_EMT,
-    #         BlockType.STEP_CURRENT_SOURCE_EMT,
-    #         BlockType.RAMP_VOLTAGE_SOURCE_EMT,
-    #         BlockType.RAMP_CURRENT_SOURCE_EMT,
-    #         BlockType.DOUBLE_EXPONENTIAL_CURRENT_SOURCE_EMT,
-    #         BlockType.HEIDLER_CURRENT_SOURCE_EMT,
-    #         BlockType.CIGRE_SURGE_CURRENT_SOURCE_EMT,
-    #         BlockType.SWITCH_EMT,
-    #         BlockType.GROUNDING_LINK_EMT,
-    #         BlockType.NONLINEAR_RESISTOR_EMT,
-    #         BlockType.RLC_COMBO_EMT,
-    #         BlockType.INDUCTION_MOTOR_EMT,
-    #     }:
-    #         if payload == BlockType.SWITCH_EMT:
-    #             return self.create_switch_emt_block_item(x_pos=x_pos, y_pos=y_pos)
-    #         elif payload == BlockType.GROUNDING_LINK_EMT:
-    #             return self.create_grounding_link_emt_block_item(x_pos=x_pos, y_pos=y_pos)
-    #         elif payload == BlockType.NONLINEAR_RESISTOR_EMT:
-    #             return self.create_nonlinear_resistor_emt_block_item(x_pos=x_pos, y_pos=y_pos)
-    #         elif payload == BlockType.RLC_COMBO_EMT:
-    #             return self.create_rlc_combo_emt_block_item(x_pos=x_pos, y_pos=y_pos)
-    #         elif payload == BlockType.EMT_JMARTI_LINE:
-    #             return self.create_jmarti_line_emt_block_item(x_pos=x_pos, y_pos=y_pos)
-    #         elif payload == BlockType.INDUCTION_MOTOR_EMT:
-    #             return self.create_induction_motor_emt_block_item(x_pos=x_pos, y_pos=y_pos)
-    #         elif _is_source_emt_block_type(payload):
-    #             return self.create_source_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
-    #         elif _is_dc_source_emt_block_type(payload):
-    #             return self.create_dc_source_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
-    #         elif _is_balanced_source_emt_block_type(payload):
-    #             return self.create_balanced_source_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
-    #         elif _is_arbitrary_source_emt_block_type(payload):
-    #             return self.create_arbitrary_source_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
-    #         elif _is_transient_source_emt_block_type(payload):
-    #             return self.create_transient_source_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
-    #         else:
-    #             return self.create_emt_wizard_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
-    #     elif isinstance(payload, BlockType) and _is_load_topology_block_type(payload):
-    #         return self.create_load_topology_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
-    #     elif isinstance(payload, BlockType) and payload in {
-    #         BlockType.R_LOAD_EMT,
-    #         BlockType.L_LOAD_EMT,
-    #         BlockType.C_LOAD_EMT,
-    #     }:
-    #         return self.create_shunt_component_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
-    #     elif isinstance(payload, BlockType) and payload in {
-    #         BlockType.TRAFO_EMT,
-    #         BlockType.XFMR_TRANSFORMER,
-    #     }:
-    #         return self.create_transformer_topology_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
-    #     elif isinstance(payload, BlockType):
-    #         return self.create_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
-    #     elif isinstance(payload, BasicBlockTemplateDescriptor):
-    #         if payload.template_key in LOOKUP_ARRAY_LINEAR_DESCRIPTOR_KEYS:
-    #             return self.create_lookup_array_linear_descriptor_item(payload, x_pos, y_pos)
-    #         elif payload.template_key in INVERSE_LOOKUP_ARRAY_LINEAR_DESCRIPTOR_KEYS:
-    #             return self.create_inverse_lookup_array_linear_descriptor_item(payload, x_pos, y_pos)
-    #         elif payload.template_key in LOOKUP_ARRAY_SPLINE_DESCRIPTOR_KEYS:
-    #             return self.create_lookup_array_spline_descriptor_item(payload, x_pos, y_pos)
-    #         elif payload.template_key in LOOKUP_MATRIX_LINEAR_DESCRIPTOR_KEYS:
-    #             return self.create_lookup_matrix_linear_descriptor_item(payload, x_pos, y_pos)
-    #         elif payload.template_key in LOOKUP_MATRIX_SPLINE_DESCRIPTOR_KEYS:
-    #             return self.create_lookup_matrix_spline_descriptor_item(payload, x_pos, y_pos)
-    #         else:
-    #             template: EmtModelTemplate = load_basic_block_catalog_template(payload, self.var_factory)
-    #             return self.create_template_block_item(template=template, x_pos=x_pos, y_pos=y_pos)
-    #     elif isinstance(payload, (RmsModelTemplate, EmtModelTemplate, FmuTemplate)):
-    #         return self.create_template_block_item(template=payload, x_pos=x_pos, y_pos=y_pos)
-    #     else:
-    #         return None
     def create_library_payload_item(self,
                                     payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate,
                                     x_pos: float,
-                                    y_pos: float) -> BlockItem | GenericBlockItem | None:
+                                    y_pos: float) -> BlockItem | None:
         """
         Materialize one library payload on the diagram scene.
         """
-        if isinstance(payload, BlockType) and payload in {
+
+        if isinstance(payload, BlockType) and payload == BlockType.GENERIC:
+            return self.create_generic_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
+        elif isinstance(payload, BlockType) and payload in {
             BlockType.EMT_PI_LINE,
             BlockType.EMT_BERGERON_LINE,
             BlockType.EMT_JMARTI_LINE,
+            BlockType.VOLTAGE_SOURCE_EMT,
+            BlockType.CURRENT_SOURCE_EMT,
+            BlockType.CONTROLLED_VOLTAGE_SOURCE_EMT,
+            BlockType.CONTROLLED_CURRENT_SOURCE_EMT,
+            BlockType.DC_VOLTAGE_SOURCE_EMT,
+            BlockType.DC_CURRENT_SOURCE_EMT,
+            BlockType.CONTROLLED_DC_VOLTAGE_SOURCE_EMT,
+            BlockType.CONTROLLED_DC_CURRENT_SOURCE_EMT,
+            BlockType.BALANCED_3PH_VOLTAGE_SOURCE_EMT,
+            BlockType.BALANCED_3PH_CURRENT_SOURCE_EMT,
+            BlockType.CONTROLLED_BALANCED_3PH_VOLTAGE_SOURCE_EMT,
+            BlockType.CONTROLLED_BALANCED_3PH_CURRENT_SOURCE_EMT,
+            BlockType.ARBITRARY_WAVEFORM_VOLTAGE_SOURCE_EMT,
+            BlockType.ARBITRARY_WAVEFORM_CURRENT_SOURCE_EMT,
+            BlockType.STEP_VOLTAGE_SOURCE_EMT,
+            BlockType.STEP_CURRENT_SOURCE_EMT,
+            BlockType.RAMP_VOLTAGE_SOURCE_EMT,
+            BlockType.RAMP_CURRENT_SOURCE_EMT,
+            BlockType.DOUBLE_EXPONENTIAL_CURRENT_SOURCE_EMT,
+            BlockType.HEIDLER_CURRENT_SOURCE_EMT,
+            BlockType.CIGRE_SURGE_CURRENT_SOURCE_EMT,
             BlockType.SWITCH_EMT,
             BlockType.GROUNDING_LINK_EMT,
             BlockType.NONLINEAR_RESISTOR_EMT,
             BlockType.RLC_COMBO_EMT,
-            BlockType.EXP_LOAD_EMT,
-            BlockType.ZIP_LOAD_EMT,
+            BlockType.INDUCTION_MOTOR_EMT,
+        }:
+            if payload == BlockType.SWITCH_EMT:
+                return self.create_switch_emt_block_item(x_pos=x_pos, y_pos=y_pos)
+            elif payload == BlockType.GROUNDING_LINK_EMT:
+                return self.create_grounding_link_emt_block_item(x_pos=x_pos, y_pos=y_pos)
+            elif payload == BlockType.NONLINEAR_RESISTOR_EMT:
+                return self.create_nonlinear_resistor_emt_block_item(x_pos=x_pos, y_pos=y_pos)
+            elif payload == BlockType.RLC_COMBO_EMT:
+                return self.create_rlc_combo_emt_block_item(x_pos=x_pos, y_pos=y_pos)
+            elif payload == BlockType.EMT_JMARTI_LINE:
+                return self.create_jmarti_line_emt_block_item(x_pos=x_pos, y_pos=y_pos)
+            elif payload == BlockType.INDUCTION_MOTOR_EMT:
+                return self.create_induction_motor_emt_block_item(x_pos=x_pos, y_pos=y_pos)
+            elif _is_source_emt_block_type(payload):
+                return self.create_source_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
+            elif _is_dc_source_emt_block_type(payload):
+                return self.create_dc_source_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
+            elif _is_balanced_source_emt_block_type(payload):
+                return self.create_balanced_source_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
+            elif _is_arbitrary_source_emt_block_type(payload):
+                return self.create_arbitrary_source_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
+            elif _is_transient_source_emt_block_type(payload):
+                return self.create_transient_source_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
+            else:
+                return self.create_emt_wizard_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
+        elif isinstance(payload, BlockType) and _is_load_topology_block_type(payload):
+            return self.create_load_topology_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
+        elif isinstance(payload, BlockType) and payload in {
             BlockType.R_LOAD_EMT,
             BlockType.L_LOAD_EMT,
             BlockType.C_LOAD_EMT,
+        }:
+            return self.create_shunt_component_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
+        elif isinstance(payload, BlockType) and payload in {
             BlockType.TRAFO_EMT,
             BlockType.XFMR_TRANSFORMER,
         }:
-
-            return self.create_block_item_mix(block_type=payload, x_pos=x_pos, y_pos=y_pos)
-
+            return self.create_transformer_topology_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
         elif isinstance(payload, BlockType):
-            return self.create_block_item_mix(block_type=payload, x_pos=x_pos, y_pos=y_pos)
+            return self.create_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
         elif isinstance(payload, BasicBlockTemplateDescriptor):
             if payload.template_key in LOOKUP_ARRAY_LINEAR_DESCRIPTOR_KEYS:
                 return self.create_lookup_array_linear_descriptor_item(payload, x_pos, y_pos)
@@ -8450,6 +8404,52 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             return self.create_template_block_item(template=payload, x_pos=x_pos, y_pos=y_pos)
         else:
             return None
+    # def create_library_payload_item(self,
+    #                                 payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate,
+    #                                 x_pos: float,
+    #                                 y_pos: float) -> BlockItem | GenericBlockItem | None:
+    #     """
+    #     Materialize one library payload on the diagram scene.
+    #     """
+    #     if isinstance(payload, BlockType) and payload in {
+    #         BlockType.EMT_PI_LINE,
+    #         BlockType.EMT_BERGERON_LINE,
+    #         BlockType.EMT_JMARTI_LINE,
+    #         BlockType.SWITCH_EMT,
+    #         BlockType.GROUNDING_LINK_EMT,
+    #         BlockType.NONLINEAR_RESISTOR_EMT,
+    #         BlockType.RLC_COMBO_EMT,
+    #         BlockType.EXP_LOAD_EMT,
+    #         BlockType.ZIP_LOAD_EMT,
+    #         BlockType.R_LOAD_EMT,
+    #         BlockType.L_LOAD_EMT,
+    #         BlockType.C_LOAD_EMT,
+    #         BlockType.TRAFO_EMT,
+    #         BlockType.XFMR_TRANSFORMER,
+    #     }:
+    #
+    #         return self.create_block_item_mix(block_type=payload, x_pos=x_pos, y_pos=y_pos)
+    #
+    #     elif isinstance(payload, BlockType):
+    #         return self.create_block_item_mix(block_type=payload, x_pos=x_pos, y_pos=y_pos)
+    #     elif isinstance(payload, BasicBlockTemplateDescriptor):
+    #         if payload.template_key in LOOKUP_ARRAY_LINEAR_DESCRIPTOR_KEYS:
+    #             return self.create_lookup_array_linear_descriptor_item(payload, x_pos, y_pos)
+    #         elif payload.template_key in INVERSE_LOOKUP_ARRAY_LINEAR_DESCRIPTOR_KEYS:
+    #             return self.create_inverse_lookup_array_linear_descriptor_item(payload, x_pos, y_pos)
+    #         elif payload.template_key in LOOKUP_ARRAY_SPLINE_DESCRIPTOR_KEYS:
+    #             return self.create_lookup_array_spline_descriptor_item(payload, x_pos, y_pos)
+    #         elif payload.template_key in LOOKUP_MATRIX_LINEAR_DESCRIPTOR_KEYS:
+    #             return self.create_lookup_matrix_linear_descriptor_item(payload, x_pos, y_pos)
+    #         elif payload.template_key in LOOKUP_MATRIX_SPLINE_DESCRIPTOR_KEYS:
+    #             return self.create_lookup_matrix_spline_descriptor_item(payload, x_pos, y_pos)
+    #         else:
+    #             template: EmtModelTemplate = load_basic_block_catalog_template(payload, self.var_factory)
+    #             return self.create_template_block_item(template=template, x_pos=x_pos, y_pos=y_pos)
+    #     elif isinstance(payload, (RmsModelTemplate, EmtModelTemplate, FmuTemplate)):
+    #         return self.create_template_block_item(template=payload, x_pos=x_pos, y_pos=y_pos)
+    #     else:
+    #         return None
 
     def remove_connection_item(self, item: ConnectionItem) -> None:
         """

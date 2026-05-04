@@ -406,11 +406,11 @@ class Var(Expr):
     Any variable
     """
 
-    __slots__ = ("name", "_ref", "_power_flow_reference", "_network_conn", "uid", "diff_var", "base_var", "_origin_var")
+    __slots__ = ("name", "_shared_ref", "_ref", "_network_conn", "uid", "diff_var", "base_var", "_origin_var")
 
     def __init__(self, name: str,
-                 reference:  SharedVarReferenceType | None = None,
-                 power_flow_reference: VarPowerFlowRefferenceType | None = None,
+                 shared_reference:  SharedVarReferenceType | None = None,
+                 reference: VarPowerFlowRefferenceType | None = None,
                  network_conn: bool = False,
                  uid: int | None = None,
                  diff_var: Var | None = None,
@@ -419,16 +419,16 @@ class Var(Expr):
         """
 
         :param name:
-        :param reference:
-        :param power_flow_reference
+        :param shared_reference:
+        :param reference
         :param network_conn:
         :param uid:
         :param diff_var:
         """
         super().__init__(uid=uid)
         self.name: str = name
-        self._ref: SharedVarReferenceType | None = reference
-        self._power_flow_reference: VarPowerFlowRefferenceType | None = power_flow_reference
+        self._shared_ref: SharedVarReferenceType | None = shared_reference
+        self._ref: VarPowerFlowRefferenceType | None = reference
         self._network_conn: bool = network_conn
         self.diff_var = diff_var
         self.base_var: Var | None = base_var  # assign reference to base var
@@ -452,8 +452,8 @@ class Var(Expr):
 
             result.uid = self.uid
             result.name = self.name
+            result._shared_ref = self._shared_ref
             result._ref = self._ref
-            result._power_flow_reference = self._power_flow_reference
             result._network_conn = self._network_conn
             result.diff_var = copy.deepcopy(self.diff_var, memo)
             result.base_var = copy.deepcopy(self.base_var, memo)
@@ -553,12 +553,12 @@ class Var(Expr):
         return self._origin_var
 
     @property
-    def ref(self) -> SharedVarReferenceType | None:
-        return self._ref
+    def shared_ref(self) -> SharedVarReferenceType | None:
+        return self._shared_ref
 
     @property
-    def power_flow_reference(self) -> VarPowerFlowRefferenceType | None:
-        return self._power_flow_reference
+    def ref(self) -> VarPowerFlowRefferenceType | None:
+        return self._ref
 
     def _diff1(self, var: Var | str, dt: Var | None = None) -> Expr:
         """

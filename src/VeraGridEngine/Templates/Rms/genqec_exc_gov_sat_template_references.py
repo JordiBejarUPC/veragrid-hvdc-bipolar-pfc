@@ -36,10 +36,10 @@ def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec rms template") -> R
     # Vf: excitation voltage (from exciter)
 
 
-    inputs = [vfactory.add_var("Vm_" + name, power_flow_reference=VarPowerFlowRefferenceType.Vm, network_conn= True),
-              vfactory.add_var("Va_" + name, power_flow_reference=VarPowerFlowRefferenceType.Va, network_conn= True),
-              vfactory.add_var("Tm_" + name, reference = 'tm_reference'),
-              vfactory.add_var("Vf_" + name, reference = 'vf_reference')]
+    inputs = [vfactory.add_var("Vm_" + name, reference=VarPowerFlowRefferenceType.Vm, network_conn= True),
+              vfactory.add_var("Va_" + name, reference=VarPowerFlowRefferenceType.Va, network_conn= True),
+              vfactory.add_var("Tm_" + name, shared_reference = 'tm_reference'),
+              vfactory.add_var("Vf_" + name, shared_reference = 'vf_reference')]
 
     # ______________________________________________________________________________________
     #                                    variables
@@ -621,7 +621,7 @@ def get_exciter_rms(vfactory: VarFactory, name: str = "exciter") -> RmsModelTemp
     # Va: measured stator voltage (from generator) (pu)
     # Vpss: output from power system stabilizer (pu)
 
-    inputs = [vfactory.add_var("IRPu_", 'irpu_reference'), vfactory.add_var("Vm_", power_flow_reference=VarPowerFlowRefferenceType.Vm), vfactory.add_var("Vpss_", 'v_pss_reference')]
+    inputs = [vfactory.add_var("IRPu_", 'irpu_reference'), vfactory.add_var("Vm_", reference=VarPowerFlowRefferenceType.Vm), vfactory.add_var("Vpss_", 'v_pss_reference')]
 
     algebraic_vars = []
 
@@ -629,7 +629,7 @@ def get_exciter_rms(vfactory: VarFactory, name: str = "exciter") -> RmsModelTemp
     #                                    variables
     # ______________________________________________________________________________________
 
-    Vf = vfactory.add_var("Vf", reference='vf_reference')
+    Vf = vfactory.add_var("Vf", shared_reference='vf_reference')
     Efe = vfactory.add_var('Efe')
     UsRefPu = vfactory.add_var(name="UsRefPu")  # reference voltage (pu)
 

@@ -35,8 +35,8 @@ def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec rms template") -> R
     # Tm: mechanical torque (from governor)
     # Vf: excitation voltage (from exciter)
 
-    inputs = [vfactory.add_var("Vm_" + name, VarPowerFlowRefferenceType.Vm),
-              vfactory.add_var("Va_" + name, VarPowerFlowRefferenceType.Va),
+    inputs = [vfactory.add_var("Vm_" + name, reference=VarPowerFlowRefferenceType.Vm),
+              vfactory.add_var("Va_" + name, reference=VarPowerFlowRefferenceType.Va),
               vfactory.add_var("Tm_" + name),
               vfactory.add_var("Vf_" + name)]
 
@@ -46,7 +46,7 @@ def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec rms template") -> R
 
     # State variables
     delta = vfactory.add_var("delta" + name)  # rotor angle
-    omega = vfactory.add_var("omega" + name, reference= 'omega_reference')  # rotor electrical speed
+    omega = vfactory.add_var("omega" + name)  # rotor electrical speed
     Eq1 = vfactory.add_var("Eq1" + name)  # internal emf behind Xd'
     Ed1 = vfactory.add_var("Ed1" + name)
     Eq_prime = vfactory.add_var("Eq_prime" + name)  # transient voltage q-axis
@@ -310,7 +310,7 @@ def get_governor_rms(vfactory: VarFactory, name: str = "Governor") -> RmsModelTe
         "K8": vfactory.add_const(0.0),
     }
 
-    inputs = [vfactory.add_var("omega_", reference = 'omega_reference'), vfactory.add_var('Te_')]
+    inputs = [vfactory.add_var("omega_"), vfactory.add_var('Te_')]
 
     # ______________________________________________________________________________________
     #                                    variables
@@ -496,7 +496,7 @@ def get_stabilizer_rms(vfactory: VarFactory, name: str = "stabilizer") -> RmsMod
     # input variables
     # omega: omega from generator
 
-    inputs = [vfactory.add_var("omega_", reference = 'omega_reference')]
+    inputs = [vfactory.add_var("omega_")]
 
     # PSS parameters with typical values
 

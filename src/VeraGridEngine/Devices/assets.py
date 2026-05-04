@@ -7355,19 +7355,19 @@ class Assets:
             for d in devices:
                 d.set_var_factory(self._var_factory)
             self._transformers2w = devices
-            d.set_var_factory(self._var_factory)
+
 
         elif device_type == DeviceType.Transformer3WDevice:
             for d in devices:
                 d.set_var_factory(self._var_factory)
             self._transformers3w = devices
-            d.set_var_factory(self._var_factory)
+
 
         elif device_type == DeviceType.TransformerNwDevice:
             for d in devices:
                 d.set_var_factory(self._var_factory)
             self._transformers_nw = devices
-            d.set_var_factory(self._var_factory)
+
 
         elif device_type == DeviceType.WindingDevice:
             for d in devices:

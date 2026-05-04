@@ -891,6 +891,7 @@ class Block:
         """
         Function to connect two blocks by variables sharing
         """
+        # here we just change uid and name of the vars_to_subs
         pairs: List[Tuple[Var, Var]] = list(zip(vars_to_subs, incoming_vars))
         can_use_bulk_update: bool = self.can_use_bulk_connect_update(pairs)
         var_to_subs: Var
