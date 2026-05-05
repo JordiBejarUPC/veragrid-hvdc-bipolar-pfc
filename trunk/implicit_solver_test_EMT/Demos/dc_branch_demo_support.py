@@ -715,7 +715,12 @@ def build_dc_line_demo_problem() -> Tuple[GenericEmtProblem, DcLineDemoResult, i
     )
     root_block.unify_blocks()
 
-    problem: GenericEmtProblem = GenericEmtProblem(sys_block=root_block, glob_time=vf.add_var("t_dc_line_demo"))
+    static_parameter_values_mapping: Dict[Var, Const] = dict(root_block.parameters)
+    problem: GenericEmtProblem = GenericEmtProblem(
+        sys_block=root_block,
+        glob_time=vf.add_var("t_dc_line_demo"),
+        static_parameter_values_mapping=static_parameter_values_mapping,
+    )
     tracked_vars: Dict[str, Var] = dict([
         ("v_source", v_source),
         ("v_load", v_load),
@@ -844,7 +849,12 @@ def build_valve_demo_problem(valve_tpe: ValveEmtType) -> Tuple[GenericEmtProblem
     )
     root_block.unify_blocks()
 
-    problem: GenericEmtProblem = GenericEmtProblem(sys_block=root_block, glob_time=vf.add_var(f"t_{block_name}"))
+    static_parameter_values_mapping: Dict[Var, Const] = dict(root_block.parameters)
+    problem: GenericEmtProblem = GenericEmtProblem(
+        sys_block=root_block,
+        glob_time=vf.add_var(f"t_{block_name}"),
+        static_parameter_values_mapping=static_parameter_values_mapping,
+    )
     tracked_vars: Dict[str, Var] = dict([
         ("v_source", v_source),
         ("v_load", v_load),

@@ -968,7 +968,7 @@ class SparseADJacobian:
         self.n_rows = len(equations)
         self.n_cols = len(variables)
 
-        self.var_map: Dict[int, int] = dict({id(v): i for i, v in enumerate(variables)})
+        self.var_map: Dict[int, int] = dict({v.uid: i for i, v in enumerate(variables)})
 
         # Sparsity detection
         col_rows: List[List[int]] = list([list() for _ in range(self.n_cols)])
@@ -986,9 +986,9 @@ class SparseADJacobian:
 
                     match node:
                         case Var():
-                            uids.add(id(node))
+                            uids.add(node.uid)
                             if node.base_var is not None:
-                                uids.add(id(node.base_var))
+                                uids.add(node.base_var.uid)
                             else:
                                 pass
 

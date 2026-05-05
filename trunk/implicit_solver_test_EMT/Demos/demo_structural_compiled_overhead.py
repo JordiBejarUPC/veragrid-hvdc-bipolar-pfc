@@ -205,7 +205,12 @@ def measure_backend(
     steady_repeats: int = 2,
 ) -> Dict[str, Any]:
     block: Block = create_linear_chain(n_masses=n_masses)
-    problem: GenericEmtProblem = GenericEmtProblem(sys_block=block, glob_time=Var("t_glob"))
+    static_parameter_values_mapping: Dict[Var, Const] = dict(block.parameters)
+    problem: GenericEmtProblem = GenericEmtProblem(
+        sys_block=block,
+        glob_time=Var("t_glob"),
+        static_parameter_values_mapping=static_parameter_values_mapping,
+    )
     x0, dx0, params0 = build_initial_conditions(problem=problem, block=block, n_masses=n_masses)
 
     t_setup_start: float = time.perf_counter()
