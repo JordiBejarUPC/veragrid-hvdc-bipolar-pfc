@@ -3263,13 +3263,14 @@ def get_gcdev_community(cgmes_model: CgmesCircuit,
                     # longitude=0.0
                 )
 
-                c = find_object_by_idtag(
-                    object_list=gcdev_model.countries,
-                    target_idtag=cgmes_elm.Region.uuid
-                )
+                if cgmes_elm.Region is not None:
+                    c = find_object_by_idtag(
+                        object_list=gcdev_model.countries,
+                        target_idtag=cgmes_elm.Region.uuid
+                    )
 
-                if c is not None:
-                    gcdev_elm.country = c
+                    if c is not None:
+                        gcdev_elm.country = c
 
                 gcdev_model.add_community(gcdev_elm)
 
