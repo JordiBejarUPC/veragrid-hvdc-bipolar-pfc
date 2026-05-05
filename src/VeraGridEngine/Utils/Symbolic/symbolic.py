@@ -427,8 +427,8 @@ class Var(Expr):
         """
         super().__init__(uid=uid)
         self.name: str = name
-        self._shared_ref: SharedVarReferenceType | None = shared_reference
         self._ref: VarPowerFlowRefferenceType | None = reference
+        self._shared_ref: SharedVarReferenceType | None = shared_reference
         self._network_conn: bool = network_conn
         self.diff_var = diff_var
         self.base_var: Var | None = base_var  # assign reference to base var
@@ -449,6 +449,8 @@ class Var(Expr):
         else:
             result: Var = Var.__new__(Var)
             memo[id(self)] = result
+            if isinstance(self._shared_ref, bool):
+                print("")
 
             result.uid = self.uid
             result.name = self.name
@@ -458,6 +460,8 @@ class Var(Expr):
             result.diff_var = copy.deepcopy(self.diff_var, memo)
             result.base_var = copy.deepcopy(self.base_var, memo)
             result._origin_var = None
+            if isinstance(result._shared_ref, bool):
+                print("")
             return result
 
     def eval(self, **bindings: float) -> float:
