@@ -60,8 +60,7 @@ def check_parsers_can_load() -> tuple[object, object]:
 
     pp_net = pp_from_cim(file_list=paths, cgmes_version="2.4.15")
     vg_grid = vg.open_cgmes(filenames=paths,
-                            cgmes_version=vg.CGMESVersions.v2_4_15,
-                            cgmes_switch_terminal_pair_merge_by_connectivity=True)
+                            cgmes_version=vg.CGMESVersions.v2_4_15)
 
     if pp_net is None:
         raise RuntimeError("pandapower returned None while importing CGMES")
