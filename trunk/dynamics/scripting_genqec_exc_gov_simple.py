@@ -196,6 +196,8 @@ grid.add_rms_events_group(events_group)
 event = RmsEvent(device=load, parameter=Pl0, time=0.1, value=-0.098, group=events_group)
 grid.add_rms_event(event)
 
+gce.save_file(grid, "my_saved_grid.veragrid")
+
 # gce.save_file(grid=grid, filename="saved_grid_1.veragrid")
 # grid_opened = gce.open_file("saved_grid_1.veragrid")
 #

@@ -8,7 +8,8 @@ from __future__ import annotations
 import chardet
 import re
 import datetime
-from typing import List, AnyStr, Dict
+import unicodedata
+from typing import List, AnyStr, Dict, Tuple
 
 from VeraGridEngine.IO.raw.raw_writer_comment_map import comment_version_map
 from VeraGridEngine.basic_structures import Logger
@@ -47,6 +48,423 @@ SYSTEM_WIDE_SECTION_KEYS: set[str] = {
 KNOWN_CONTINUATION_HEADER_KEYS: set[str] = {
     "VSREG",
 }
+
+
+def get_psse_header_datetime(
+        text_or_lines: str | list[str],
+        max_lines: int = 3,
+        dayfirst: bool = True,
+        min_year: int = 1970,
+        max_year: int = 2100,
+) -> datetime.datetime | None:
+    """
+    Try to extract the most likely datetime from the first lines of a PSS/E file.
+
+    The function is intended for arbitrary PSS/E header comments where the date
+    may appear in different formats, for example:
+
+    - THU, JAN 26 2023   8:32
+    - 25/07/22 REE-CECOEL RATIOS DE VERANO
+    - REAL TIME DATA RETRIEVED ON 25/ 7/2022 21:50
+
+    The function returns the best candidate, or None if no valid date is found.
+
+    :param text_or_lines: Full text or list of header lines.
+    :param max_lines: Maximum number of initial lines to inspect.
+    :param dayfirst: Interpret ambiguous numeric dates as DD/MM/YYYY.
+    :param min_year: Minimum accepted year.
+    :param max_year: Maximum accepted year.
+    :return: Most likely datetime, or None.
+    """
+
+    month_names: dict[str, int] = {
+        "JAN": 1, "JANUARY": 1, "ENE": 1, "ENERO": 1,
+        "FEB": 2, "FEBRUARY": 2, "FEBRERO": 2,
+        "MAR": 3, "MARCH": 3, "MARZO": 3,
+        "APR": 4, "APRIL": 4, "ABR": 4, "ABRIL": 4,
+        "MAY": 5, "MAYO": 5,
+        "JUN": 6, "JUNE": 6, "JUNIO": 6,
+        "JUL": 7, "JULY": 7, "JULIO": 7,
+        "AUG": 8, "AUGUST": 8, "AGO": 8, "AGOSTO": 8,
+        "SEP": 9, "SEPT": 9, "SEPTEMBER": 9,
+        "SET": 9, "SETIEMBRE": 9, "SEPTIEMBRE": 9,
+        "OCT": 10, "OCTOBER": 10, "OCTUBRE": 10,
+        "NOV": 11, "NOVEMBER": 11, "NOVIEMBRE": 11,
+        "DEC": 12, "DECEMBER": 12, "DIC": 12, "DICIEMBRE": 12,
+    }
+
+    weekdays: list[str] = [
+        "MONDAY", "MON", "TUESDAY", "TUES", "TUE", "WEDNESDAY", "WED",
+        "THURSDAY", "THURS", "THU", "FRIDAY", "FRI", "SATURDAY", "SAT",
+        "SUNDAY", "SUN",
+        "LUNES", "LUN", "MARTES", "MAR", "MIERCOLES", "MIE",
+        "JUEVES", "JUE", "VIERNES", "VIE", "SABADO", "SAB",
+        "DOMINGO", "DOM",
+    ]
+
+    if isinstance(text_or_lines, str):
+        raw_lines: list[str] = text_or_lines.splitlines()
+    else:
+        raw_lines = text_or_lines
+
+    lines: list[str] = raw_lines[:max_lines]
+
+    month_regex: str = "|".join(
+        sorted(
+            [re.escape(month_name) for month_name in month_names.keys()],
+            key=len,
+            reverse=True,
+        )
+    )
+
+    weekday_regex: str = "|".join(
+        sorted(
+            [re.escape(weekday) for weekday in weekdays],
+            key=len,
+            reverse=True,
+        )
+    )
+
+    time_regex: str = (
+        r"(?:\s+"
+        r"(?P<h>\d{1,2})\s*:\s*(?P<mi>\d{2})"
+        r"(?:\s*:\s*(?P<s>\d{2}))?"
+        r")?"
+    )
+
+    regex_month_day_year: re.Pattern[str] = re.compile(
+        rf"\b(?:({weekday_regex})[,\s]+)?"
+        rf"(?P<mon>{month_regex})\.?,?\s+"
+        rf"(?P<d>\d{{1,2}})(?:ST|ND|RD|TH)?[,]?\s+"
+        rf"(?P<y>\d{{2,4}})\b{time_regex}",
+        re.IGNORECASE,
+    )
+
+    regex_day_month_year: re.Pattern[str] = re.compile(
+        rf"(?<!\d)(?P<d>\d{{1,2}})(?:ST|ND|RD|TH)?"
+        rf"\s*(?:[/.\-]|\s+DE\s+|\s+)+"
+        rf"(?P<mon>{month_regex})\.?"
+        rf"\s*(?:[/.\-]|\s+DE\s+|\s+)+"
+        rf"(?P<y>\d{{2,4}})\b{time_regex}",
+        re.IGNORECASE,
+    )
+
+    regex_year_month_day: re.Pattern[str] = re.compile(
+        rf"(?<!\d)(?P<y>\d{{4}})"
+        rf"\s*(?:[/.\-]|\s+)+"
+        rf"(?P<mon>{month_regex})\.?"
+        rf"\s*(?:[/.\-]|\s+)+"
+        rf"(?P<d>\d{{1,2}})(?:ST|ND|RD|TH)?\b{time_regex}",
+        re.IGNORECASE,
+    )
+
+    regex_numeric: re.Pattern[str] = re.compile(
+        r"(?<![\d.])"
+        r"(?P<a>\d{1,4})\s*(?P<sep>[./-])\s*"
+        r"(?P<b>\d{1,2})\s*(?P=sep)\s*"
+        r"(?P<c>\d{2,4})"
+        r"(?![\d.])"
+        r"(?:\s+"
+        r"(?P<h>\d{1,2})\s*:\s*(?P<mi>\d{2})"
+        r"(?:\s*:\s*(?P<s>\d{2}))?"
+        r")?"
+    )
+
+    regex_compact_year_month_day: re.Pattern[str] = re.compile(
+        r"(?<!\d)"
+        r"(?P<y>19\d{2}|20\d{2}|21\d{2})"
+        r"(?P<m>0[1-9]|1[0-2])"
+        r"(?P<d>0[1-9]|[12]\d|3[01])"
+        r"(?!\d)"
+    )
+
+    candidates: list[tuple[float, int, str, datetime.datetime]] = list()
+
+    for line_index, raw_line in enumerate(lines):
+        line_no: int = line_index + 1
+
+        normalized_line: str = "".join(
+            character
+            for character in unicodedata.normalize("NFD", raw_line.upper())
+            if unicodedata.category(character) != "Mn"
+        )
+
+        text_month_patterns: list[tuple[re.Pattern[str], str, float]] = [
+            (regex_month_day_year, "month_day_year", 0.90),
+            (regex_day_month_year, "day_month_year", 0.91),
+            (regex_year_month_day, "year_month_day", 0.91),
+        ]
+
+        for pattern, parser_name, base_score in text_month_patterns:
+            for match in pattern.finditer(normalized_line):
+                try:
+                    raw_year: int = int(match.group("y"))
+
+                    if raw_year < 100:
+                        if raw_year < 70:
+                            year: int = 2000 + raw_year
+                        else:
+                            year = 1900 + raw_year
+                    else:
+                        year = raw_year
+
+                    month_token: str = match.group("mon").upper()
+                    month: int = month_names[month_token]
+                    day: int = int(match.group("d"))
+
+                    if match.groupdict().get("h") is None:
+                        hour: int = 0
+                    else:
+                        hour = int(match.group("h"))
+
+                    if match.groupdict().get("mi") is None:
+                        minute: int = 0
+                    else:
+                        minute = int(match.group("mi"))
+
+                    if match.groupdict().get("s") is None:
+                        second: int = 0
+                    else:
+                        second = int(match.group("s"))
+
+                    candidate_datetime: datetime.datetime = datetime.datetime(
+                        year,
+                        month,
+                        day,
+                        hour,
+                        minute,
+                        second,
+                    )
+
+                    if min_year <= candidate_datetime.year <= max_year:
+                        score: float = base_score
+
+                        neighbourhood: str = normalized_line[
+                            max(0, match.start() - 35): min(len(normalized_line), match.end() + 35)
+                        ]
+
+                        if (
+                                "RETRIEVED" in neighbourhood
+                                or "REAL TIME" in neighbourhood
+                                or "DATA" in neighbourhood
+                                or "DATOS" in neighbourhood
+                                or "FECHA" in neighbourhood
+                                or "SNAPSHOT" in neighbourhood
+                                or "DATE" in neighbourhood
+                                or "TIME" in neighbourhood
+                        ):
+                            score += 0.10
+                        else:
+                            score += 0.0
+
+                        if "PSS" in neighbourhood:
+                            score -= 0.08
+                        else:
+                            score += 0.0
+
+                        if hour != 0 or minute != 0 or second != 0:
+                            score += 0.03
+                        else:
+                            score += 0.0
+
+                        candidates.append(
+                            (
+                                score,
+                                line_no,
+                                match.group(0).strip(),
+                                candidate_datetime,
+                            )
+                        )
+                    else:
+                        pass
+
+                except (ValueError, KeyError):
+                    pass
+
+        for match in regex_numeric.finditer(normalized_line):
+            try:
+                first_number: int = int(match.group("a"))
+                second_number: int = int(match.group("b"))
+                third_number: int = int(match.group("c"))
+
+                if match.groupdict().get("h") is None:
+                    hour = 0
+                else:
+                    hour = int(match.group("h"))
+
+                if match.groupdict().get("mi") is None:
+                    minute = 0
+                else:
+                    minute = int(match.group("mi"))
+
+                if match.groupdict().get("s") is None:
+                    second = 0
+                else:
+                    second = int(match.group("s"))
+
+                possible_dates: list[tuple[int, int, int]] = list()
+
+                if len(match.group("a")) == 4:
+                    possible_dates.append(
+                        (
+                            first_number,
+                            second_number,
+                            third_number,
+                        )
+                    )
+                else:
+                    if dayfirst:
+                        possible_dates.append(
+                            (
+                                third_number,
+                                second_number,
+                                first_number,
+                            )
+                        )
+                        possible_dates.append(
+                            (
+                                third_number,
+                                first_number,
+                                second_number,
+                            )
+                        )
+                    else:
+                        possible_dates.append(
+                            (
+                                third_number,
+                                first_number,
+                                second_number,
+                            )
+                        )
+                        possible_dates.append(
+                            (
+                                third_number,
+                                second_number,
+                                first_number,
+                            )
+                        )
+
+                for raw_year, month, day in possible_dates:
+                    try:
+                        if raw_year < 100:
+                            if raw_year < 70:
+                                year = 2000 + raw_year
+                            else:
+                                year = 1900 + raw_year
+                        else:
+                            year = raw_year
+
+                        candidate_datetime = datetime.datetime(
+                            year,
+                            month,
+                            day,
+                            hour,
+                            minute,
+                            second,
+                        )
+
+                        if min_year <= candidate_datetime.year <= max_year:
+                            if len(match.group("c")) == 4:
+                                score = 0.86
+                            else:
+                                score = 0.81
+
+                            neighbourhood = normalized_line[
+                                max(0, match.start() - 35): min(len(normalized_line), match.end() + 35)
+                            ]
+
+                            if (
+                                    "RETRIEVED" in neighbourhood
+                                    or "REAL TIME" in neighbourhood
+                                    or "DATA" in neighbourhood
+                                    or "DATOS" in neighbourhood
+                                    or "FECHA" in neighbourhood
+                                    or "SNAPSHOT" in neighbourhood
+                                    or "DATE" in neighbourhood
+                                    or "TIME" in neighbourhood
+                            ):
+                                score += 0.10
+                            else:
+                                score += 0.0
+
+                            if "PSS" in neighbourhood:
+                                score -= 0.08
+                            else:
+                                score += 0.0
+
+                            if hour != 0 or minute != 0 or second != 0:
+                                score += 0.03
+                            else:
+                                score += 0.0
+
+                            if first_number <= 12 and second_number <= 12 and third_number < 1000:
+                                score -= 0.18
+                            elif first_number <= 12 and second_number <= 12:
+                                score -= 0.08
+                            else:
+                                score += 0.0
+
+                            if third_number < 100:
+                                score -= 0.03
+                            else:
+                                score += 0.0
+
+                            candidates.append(
+                                (
+                                    score,
+                                    line_no,
+                                    match.group(0).strip(),
+                                    candidate_datetime,
+                                )
+                            )
+
+                            break
+                        else:
+                            pass
+
+                    except ValueError:
+                        pass
+
+            except ValueError:
+                pass
+
+        for match in regex_compact_year_month_day.finditer(normalized_line):
+            try:
+                year = int(match.group("y"))
+                month = int(match.group("m"))
+                day = int(match.group("d"))
+
+                candidate_datetime = datetime.datetime(year, month, day)
+
+                if min_year <= candidate_datetime.year <= max_year:
+                    candidates.append(
+                        (
+                            0.72,
+                            line_no,
+                            match.group(0).strip(),
+                            candidate_datetime,
+                        )
+                    )
+                else:
+                    pass
+
+            except ValueError:
+                pass
+
+    if len(candidates) == 0:
+        result: datetime.datetime | None = None
+    else:
+        candidates.sort(
+            key=lambda item: (
+                -item[0],
+                item[1],
+                item[2],
+            )
+        )
+
+        result = candidates[0][3]
+
+    return result
 
 
 def delete_comment(raw_line):
@@ -125,7 +543,9 @@ def interpret_line(raw_line: str, splitter=','):
     return parsed
 
 
-def read_and_split(file_name: str, text_func=None, progress_func=None) -> (List[AnyStr], Dict[AnyStr, AnyStr]):
+def read_and_split(file_name: str,
+                   text_func=None,
+                   progress_func=None) -> Tuple[Dict[str, List[List[str | float | int] | str]], List[str]]:
     """
     Read the text file and split it into sections
     :return: list of sections, dictionary of sections by type
@@ -147,11 +567,15 @@ def read_and_split(file_name: str, text_func=None, progress_func=None) -> (List[
 
     sections_dict: Dict[str, List[List[str | float | int] | str]] = dict()
     sections_dict["bus"] = list()
+    header = list()
     sep = ","
     with open(file_name, 'r', encoding=detection['encoding']) as my_file:
         i = 0
         block_category = "bus"
         for line_ in my_file:
+
+            if i <= 2:
+                header.append(line_.strip())
 
             if line_[0] != '@':
                 # delete garbage
@@ -206,7 +630,7 @@ def read_and_split(file_name: str, text_func=None, progress_func=None) -> (List[
                 hdr = line_.strip()
                 pass
 
-    return sections_dict
+    return sections_dict, header
 
 
 def is_3w(row, bus_set):
@@ -292,14 +716,13 @@ def read_raw(filename, text_func=None, progress_func=None, logger=Logger()) -> P
     if text_func is not None:
         text_func("Reading file...")
 
-    sections_dict = read_and_split(file_name=filename,
-                                   text_func=text_func,
-                                   progress_func=progress_func)
+    sections_dict, header = read_and_split(file_name=filename, text_func=text_func, progress_func=progress_func)
 
     # header -> new grid
     # grid = PSSeGrid(interpret_line(sections[0]))
     grid = PsseCircuit()
     grid.parse(sections_dict['info'][0], logger=logger)
+    grid.date_time = get_psse_header_datetime(text_or_lines=header)
 
     if grid.REV not in versions:
         msg = 'The PSSe version is not compatible. Compatible versions are:'

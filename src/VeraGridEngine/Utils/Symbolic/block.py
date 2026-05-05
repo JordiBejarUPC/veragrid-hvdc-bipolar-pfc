@@ -584,6 +584,7 @@ class Block:
             mdl_placeholder.state_vars.extend(b.state_vars)
             mdl_placeholder.state_eqs.extend(b.state_eqs)
             mdl_placeholder.diff_vars.extend(b.diff_vars)
+            mdl_placeholder.differential_eqs.extend(b.differential_eqs)
             mdl_placeholder.reformulated_vars.extend(b.reformulated_vars)
             mdl_placeholder.external_mapping.update(b.external_mapping)
             mdl_placeholder.api_obj_mapping.update(b.api_obj_mapping)
@@ -612,6 +613,7 @@ class Block:
         self.state_vars = mdl_placeholder.state_vars
         self.state_eqs = mdl_placeholder.state_eqs
         self.diff_vars = mdl_placeholder.diff_vars
+        self.differential_eqs = mdl_placeholder.differential_eqs
         self.event_dict = mdl_placeholder.event_dict
         self.mode_dict = mdl_placeholder.mode_dict
         self.parameters = mdl_placeholder.parameters

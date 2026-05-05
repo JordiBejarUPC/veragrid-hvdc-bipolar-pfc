@@ -417,14 +417,23 @@ class RmsProblemDae(RmsProblemTemplate):
                     ys = 1.0 / complex(elm.R, elm.X)
                     ysh = elm.G + 1j * elm.B
 
-                    elm.rms_model.parameters[elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.g]] = Const(ys.real)
-                    elm.rms_model.parameters[elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.b]] = Const(ys.imag)
-                    elm.rms_model.parameters[elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.bsh]] = Const(ysh.imag)
-                    elm.rms_model.parameters[elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.gFe]] = Const(ysh.real)
-                    elm.rms_model.parameters[elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.vtap_f]] = Const(vtap_f)
-                    elm.rms_model.parameters[elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.vtap_t]] = Const(vtap_t)
-                    elm.rms_model.parameters[elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.transformer_tap_module]] = Const(tap_module)
-                    elm.rms_model.parameters[elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.transformer_tap_ratio]] = Const(tap_phase)
+                    transformer_param_values: Dict[ParamPowerFlowRefferenceType, float] = {
+                        ParamPowerFlowRefferenceType.g: ys.real,
+                        ParamPowerFlowRefferenceType.b: ys.imag,
+                        ParamPowerFlowRefferenceType.bsh: ysh.imag,
+                        ParamPowerFlowRefferenceType.gFe: ysh.real,
+                        ParamPowerFlowRefferenceType.vtap_f: vtap_f,
+                        ParamPowerFlowRefferenceType.vtap_t: vtap_t,
+                        ParamPowerFlowRefferenceType.transformer_tap_module: tap_module,
+                        ParamPowerFlowRefferenceType.transformer_tap_ratio: tap_phase,
+                    }
+                    parameter_key: ParamPowerFlowRefferenceType
+                    parameter_value: float
+                    for parameter_key, parameter_value in transformer_param_values.items():
+                        if parameter_key in elm.rms_model.api_obj_mapping:
+                            elm.rms_model.parameters[elm.rms_model.api_obj_mapping[parameter_key]] = Const(parameter_value)
+                        else:
+                            pass
 
                     if self.options.initialization_method == RmsInitializationMethod.Explicit:
                         diff_sys_vars: Dict[int, Var] = {diff_var.uid: diff_var for diff_var in self._diff_vars}
