@@ -70,17 +70,25 @@ def save_multiverse(mv: MultiVerse, filename: str):
     )
 
 
-def open_cgmes(filenames: Union[str, List[str]], cgmes_version=CGMESVersions.v2_4_15) -> MultiCircuit | None:
+def open_cgmes(filenames: Union[str, List[str]],
+               cgmes_version=CGMESVersions.v2_4_15,
+               cgmes_switch_terminal_pair_merge_by_connectivity: bool = False) -> MultiCircuit | None:
     """
     Open CGMES files
     :param filenames: name of the file (.xml, .zip) or list of files (.xml, .zip)
     :param cgmes_version: CGMES version
+    :param cgmes_switch_terminal_pair_merge_by_connectivity:
+        If true, switch terminal association prefers ConnectivityNode and merges
+        repeated terminals resolving to the same bus pair.
     :return: MultiCircuit instance
     """
     return FileOpen(
         file_name=filenames,
         options=FileOpenOptions(
             cgmes_version=cgmes_version,
+            cgmes_switch_terminal_pair_merge_by_connectivity=(
+                cgmes_switch_terminal_pair_merge_by_connectivity
+            ),
             file_type=FileType.CGMES
         )
     ).open()

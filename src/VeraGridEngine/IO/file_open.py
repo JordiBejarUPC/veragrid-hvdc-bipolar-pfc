@@ -60,6 +60,7 @@ class FileOpenOptions:
                  cgmes_try_to_map_dc_to_hvdc_line: bool = True,
                  cgmes_topology_mode: CgmesTopologyMode = CgmesTopologyMode.Auto,
                  cgmes_create_busbar_section_for_every_connectivity_node: bool = False,
+                 cgmes_switch_terminal_pair_merge_by_connectivity: bool = False,
                  # PSSe
                  psse_adjust_taps_to_discrete_positions: bool = False,
                  psse_use_short_names: bool = True,
@@ -83,6 +84,9 @@ class FileOpenOptions:
                                     TopologicalNode: import bus-branch view.
         :param cgmes_create_busbar_section_for_every_connectivity_node: If true, create a BusBar for each
                                                                          ConnectivityNode similarly to powsybl.
+        :param cgmes_switch_terminal_pair_merge_by_connectivity: If true, switch terminal mapping will prefer
+                                                                 ConnectivityNode and collapse repeated terminals
+                                                                 that resolve to the same bus pair.
         :param psse_adjust_taps_to_discrete_positions: Modify the tap angle and module to the discrete positions
         """
 
@@ -98,6 +102,9 @@ class FileOpenOptions:
         self.cgmes_create_busbar_section_for_every_connectivity_node = (
             cgmes_create_busbar_section_for_every_connectivity_node
         )
+        self.cgmes_switch_terminal_pair_merge_by_connectivity = (
+            cgmes_switch_terminal_pair_merge_by_connectivity
+        )
         self.cgmes_recovery_mode: CgmesRecoveryMode = cgmes_recovery_mode
 
         # PSS/e options
@@ -112,6 +119,7 @@ def open_cgmes(files: List[str] | str,
                try_to_map_dc_to_hvdc_line: bool = False,
                cgmes_topology_mode: CgmesTopologyMode = CgmesTopologyMode.Auto,
                cgmes_create_busbar_section_for_every_connectivity_node: bool = False,
+               cgmes_switch_terminal_pair_merge_by_connectivity: bool = False,
                text_func: Union[None, Callable] = None,
                progress_func: Union[None, Callable] = None,
                cgmes_logger: DataLogger = DataLogger(),
@@ -124,6 +132,7 @@ def open_cgmes(files: List[str] | str,
     :param try_to_map_dc_to_hvdc_line:
     :param cgmes_topology_mode:
     :param cgmes_create_busbar_section_for_every_connectivity_node:
+    :param cgmes_switch_terminal_pair_merge_by_connectivity:
     :param text_func:
     :param progress_func:
     :param cgmes_logger:
@@ -163,6 +172,9 @@ def open_cgmes(files: List[str] | str,
         cgmes_topology_mode=cgmes_topology_mode,
         create_busbar_section_for_every_connectivity_node=(
             cgmes_create_busbar_section_for_every_connectivity_node
+        ),
+        switch_terminal_pair_merge_by_connectivity=(
+            cgmes_switch_terminal_pair_merge_by_connectivity
         ),
         logger=cgmes_logger
     )
@@ -626,6 +638,9 @@ class FileOpen:
                 cgmes_topology_mode=self.options.cgmes_topology_mode,
                 cgmes_create_busbar_section_for_every_connectivity_node=(
                     self.options.cgmes_create_busbar_section_for_every_connectivity_node
+                ),
+                cgmes_switch_terminal_pair_merge_by_connectivity=(
+                    self.options.cgmes_switch_terminal_pair_merge_by_connectivity
                 ),
                 cgmes_recovery_mode=self.options.cgmes_recovery_mode,
                 text_func=text_func,

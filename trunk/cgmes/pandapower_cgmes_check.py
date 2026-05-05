@@ -12,8 +12,8 @@ if not hasattr(np, "Inf"):
 from pandapower.converter.cim.cim2pp.from_cim import from_cim as pp_from_cim
 
 CGMES_FILES = [
-    # "19700101T0000Z_.zip",
-    "20250605T1315Z_RT_SmallGridTestConfiguration_.zip",
+    "19700101T0000Z_.zip",
+    # "20250605T1315Z_RT_SmallGridTestConfiguration_.zip",
 ]
 
 
@@ -59,7 +59,9 @@ def check_parsers_can_load() -> tuple[object, object]:
     paths = _zip_paths()
 
     pp_net = pp_from_cim(file_list=paths, cgmes_version="2.4.15")
-    vg_grid = vg.open_cgmes(filenames=paths, cgmes_version=vg.CGMESVersions.v2_4_15)
+    vg_grid = vg.open_cgmes(filenames=paths,
+                            cgmes_version=vg.CGMESVersions.v2_4_15,
+                            cgmes_switch_terminal_pair_merge_by_connectivity=True)
 
     if pp_net is None:
         raise RuntimeError("pandapower returned None while importing CGMES")

@@ -546,7 +546,8 @@ def find_associated_buses(cgmes_elm: CGMES_ASSETS,
                           TopologicalNode_tpe,
                           DCTopologicalNode_tpe,
                           logger: DataLogger,
-                          cgmes_version: CGMESVersions | None = None) -> List[gcdev.Bus]:
+                          cgmes_version: CGMESVersions | None = None,
+                          prefer_connectivity_node: bool = False) -> List[gcdev.Bus]:
     """
     This function finds the buses connected to a device
     :param cgmes_elm: some CGMES element
@@ -566,7 +567,7 @@ def find_associated_buses(cgmes_elm: CGMES_ASSETS,
     if cgmes_terminals is not None:
         buses = list()
         for cgmes_terminal in cgmes_terminals:
-            if cgmes_version == CGMESVersions.v3_0_0:
+            if prefer_connectivity_node or cgmes_version == CGMESVersions.v3_0_0:
                 bus = find_terminal_bus_connectivity_priority(
                     cgmes_terminal=cgmes_terminal,
                     bus_dict=bus_dict,
@@ -587,6 +588,22 @@ def find_associated_buses(cgmes_elm: CGMES_ASSETS,
                          device_class=cgmes_elm.tpe)
 
     return buses
+
+
+def deduplicate_buses_preserve_order(buses: List[gcdev.Bus]) -> List[gcdev.Bus]:
+    """
+    Deduplicate a bus list preserving order by bus idtag.
+
+    This is useful when CGMES profile merges produce repeated terminals that map
+    to the same electrical pair.
+    """
+    unique_buses: List[gcdev.Bus] = list()
+    seen: set[str] = set()
+    for bus in buses:
+        if bus.idtag not in seen:
+            unique_buses.append(bus)
+            seen.add(bus.idtag)
+    return unique_buses
 
 
 def get_gcdev_buses(cgmes_model: CgmesCircuit,
@@ -1404,7 +1421,8 @@ def get_gcdev_loads(cgmes_model: CgmesCircuit,
                                                TopologicalNode_tpe=TopologicalNode_tpe,
                                                DCTopologicalNode_tpe=DCTopologicalNode_tpe,
                                                logger=logger,
-                                               cgmes_version=cgmes_model.cgmes_version)
+                                               cgmes_version=cgmes_model.cgmes_version,
+                                               prefer_connectivity_node=True)
 
             if len(calc_nodes) == 1:
                 calc_node = calc_nodes[0]
@@ -2905,7 +2923,8 @@ def get_gcdev_switches(cgmes_model: CgmesCircuit,
                        gcdev_model: MultiCircuit,
                        bus_dict: Dict[str, gcdev.Bus],
                        device_to_terminal_dict: Dict[str, List[CGMES_TERMINAL]],
-                       logger: DataLogger) -> None:
+                       logger: DataLogger,
+                       prefer_connectivity_node_for_terminal_pairing: bool = False) -> None:
     """
     Convert the CGMES switching devices to gcdev
 
@@ -2971,11 +2990,24 @@ def get_gcdev_switches(cgmes_model: CgmesCircuit,
                                                TopologicalNode_tpe=TopologicalNode_tpe,
                                                DCTopologicalNode_tpe=DCTopologicalNode_tpe,
                                                logger=logger,
-                                               cgmes_version=cgmes_model.cgmes_version)
+                                               cgmes_version=cgmes_model.cgmes_version,
+                                               prefer_connectivity_node=(
+                                                   prefer_connectivity_node_for_terminal_pairing
+                                               ))
+            unique_calc_nodes = deduplicate_buses_preserve_order(calc_nodes)
 
-            if len(calc_nodes) == 2:
-                calc_node_f = calc_nodes[0]
-                calc_node_t = calc_nodes[1]
+            if len(unique_calc_nodes) == 2:
+                if len(calc_nodes) > 2:
+                    logger.add_warning(
+                        msg='Collapsed repeated switch terminals to one bus pair',
+                        device=cgmes_elm.rdfid,
+                        device_class=cgmes_elm.tpe,
+                        device_property="number of associated terminals",
+                        value=len(calc_nodes),
+                        expected_value=2
+                    )
+                calc_node_f = unique_calc_nodes[0]
+                calc_node_t = unique_calc_nodes[1]
 
                 operational_current_rate = rates_dict.get(cgmes_elm.uuid, None)  # A
                 if operational_current_rate and cgmes_elm.BaseVoltage is not None:
@@ -3018,7 +3050,7 @@ def get_gcdev_switches(cgmes_model: CgmesCircuit,
                                  device=cgmes_elm.rdfid,
                                  device_class=cgmes_elm.tpe,
                                  device_property="number of associated terminals",
-                                 value=len(calc_nodes),
+                                 value=f"raw={len(calc_nodes)}, unique={len(unique_calc_nodes)}",
                                  expected_value=2)
 
 
@@ -3368,7 +3400,8 @@ def cgmes_to_veragrid(cgmes_model: CgmesCircuit,
                       map_dc_to_hvdc_line: bool,
                       logger: DataLogger,
                       cgmes_topology_mode: CgmesTopologyMode = CgmesTopologyMode.Auto,
-                      create_busbar_section_for_every_connectivity_node: bool = False) -> MultiCircuit:
+                      create_busbar_section_for_every_connectivity_node: bool = False,
+                      switch_terminal_pair_merge_by_connectivity: bool = False) -> MultiCircuit:
     """
     Convert CGMES model to gcdev
 
@@ -3377,6 +3410,9 @@ def cgmes_to_veragrid(cgmes_model: CgmesCircuit,
                                 to the simplified HvdcLine objects in VeraGrid
     :param cgmes_topology_mode: Strategy to create buses from CGMES topology.
     :param create_busbar_section_for_every_connectivity_node: Optional node-breaker busbar expansion.
+    :param switch_terminal_pair_merge_by_connectivity:
+        If true, switch terminal association prefers ConnectivityNode and merges
+        repeated terminals resolving to the same bus pair.
     :param logger: Logger object
     :return: MultiCircuit
     """
@@ -3514,7 +3550,10 @@ def cgmes_to_veragrid(cgmes_model: CgmesCircuit,
                        gcdev_model=gc_model,
                        bus_dict=bus_dict,
                        device_to_terminal_dict=device_to_terminal_dict,
-                       logger=logger, )
+                       logger=logger,
+                       prefer_connectivity_node_for_terminal_pairing=(
+                           switch_terminal_pair_merge_by_connectivity
+                       ))
 
     cgmes_model.emit_progress(91)
     cgmes_model.emit_text("Converting CGMES to VeraGrid - HVDC")
