@@ -394,7 +394,7 @@ def run_dc_line_case(enable_plots: bool = False) -> None:
         max_records=4000,
     )
 
-    time_s, state_traj, _diff_traj = solver.simulate(boundary_updater=boundary_updater)
+    time_s, state_traj, _diff_traj, _, _ = solver.simulate(boundary_updater=boundary_updater)
 
     # The variables are taken directly from the EMT external mapping to avoid fragile name heuristics.
     v_source_var = bus_dc_source.emt_model.external_mapping[VarPowerFlowRefferenceType.Vdc]
