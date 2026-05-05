@@ -42,7 +42,7 @@ from VeraGridEngine.Templates.Emt.bergeron_line_emt_template import BergeronHist
 from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_runtime import JMartiHistoryRuntime
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
-from VeraGridEngine.Simulations.EMT.initialization_emt import EmtInitializationReport, run_emt_native_initialization
+from VeraGridEngine.Simulations.EMT.initialization_emt import EmtInitializationReport, run_emt_native_initialization, _compute_missing_dx0
 from VeraGridEngine.Utils.Symbolic.explicit_initialization_symbolic import init_explicit_common, build_symbolic_vector_single_equation_compiler
 from VeraGridEngine.Utils.Symbolic.compiled_functions import get_compiled_functions_cache_stats
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_algebraic_vars
@@ -1284,7 +1284,11 @@ class EmtProblemDae(EmtProblemTemplate):
         self._seed_all_switched_vsc_models()
         self._seed_all_switch_models()
         self.init_guess.update(self._temp_post_init_guess)
-        self.diff_init_guess.update(self._temp_post_diff_init_guess)
+        for diff_uid, diff_value in self._temp_post_diff_init_guess.items():
+            if diff_uid in self.diff_init_guess:
+                pass
+            else:
+                self.diff_init_guess[diff_uid] = float(diff_value)
         native_init_s: float = _toc(t_phase_start)
         t_phase_start = _tic()
 
@@ -1297,6 +1301,21 @@ class EmtProblemDae(EmtProblemTemplate):
         # piecewise expressions before that would preserve the undefined default
         # and break the initial runtime-parameter evaluation.
         self.set_events_group(None)
+        if self.initialization_report is None:
+            pass
+        else:
+            _compute_missing_dx0(
+                problem=self,
+                report=self.initialization_report,
+                x_full=self.get_x0(),
+                dx_full=self.get_dx0(),
+                runtime_params=self.event_params_values.copy(),
+                constant_params=np.asarray(
+                    [float(const.value) for const in self.get_parameters_values()],
+                    dtype=np.float64,
+                ),
+                include_existing=True,
+            )
         events_group_finalize_s: float = _toc(t_phase_start)
 
         t_done = _toc(t_build)
@@ -1459,15 +1478,10 @@ class EmtProblemDae(EmtProblemTemplate):
                 seen_blocks.add(mdl_id)
 
                 try:
-                    params_array: np.ndarray = np.zeros(len(self._constant_parameters))
-
-                    for param, const in mdl.parameters.items():
-                        param_idx: int | None = self.uid2idx_params.get(param.uid, None)
-
-                        if param_idx is None:
-                            params_array = params_array
-                        else:
-                            params_array[param_idx] = const.value
+                    params_array: np.ndarray = np.asarray(
+                        [float(const.value) for const in self.get_parameters_values()],
+                        dtype=np.float64,
+                    )
 
                     self.init_guess, self.diff_init_guess = init_explicit_common(
                         mdl=mdl,
@@ -2985,12 +2999,6 @@ class EmtProblemDae(EmtProblemTemplate):
             mdl: Block = self._process_device_model(inj, sys_block)
             b: int = bus_dict[inj.bus]
 
-            # if inj.device_type == DeviceType.LoadDevice:
-            #     self._assign_api_obj_mapping_load(inj)
-            # elif inj.device_type == DeviceType.GeneratorDevice:
-            #         self._assign_api_obj_mapping_generator(inj)
-            # else:
-            #     pass
             assign_static_api_object_mapping_for_device(
                 grid=grid,
                 device=inj,
