@@ -686,12 +686,32 @@ def get_gcdev_buses(cgmes_model: CgmesCircuit,
                                      device_class=cn_elm.tpe,
                                      device_property="nominalVoltage")
             elif nominal_voltage is None:
-                logger.add_error(msg='Nominal voltage is None. Maybe boundary was not attached for import :(',
-                                 device=cn_elm.rdfid,
-                                 device_class=cn_elm.tpe,
-                                 device_property="nominalVoltage")
-                # raise Exception("Nominal voltage is missing for Bus (Maybe boundary was not attached for import) !")
-                return calc_node_dict, True
+                recovered_voltage = None
+                if hasattr(cn_elm, "TopologicalNode"):
+                    cn_tp_uuid = normalize_cgmes_reference_uuid(cn_elm.TopologicalNode)
+                    if cn_tp_uuid is not None:
+                        recovered_voltage = tn_voltage_hints.get(cn_tp_uuid, None)
+
+                if recovered_voltage is None:
+                    recovered_voltage = float(default_nominal_voltage)
+                    logger.add_warning(
+                        msg='Nominal voltage is None. Falling back to default nominal voltage',
+                        device=cn_elm.rdfid,
+                        device_class=cn_elm.tpe,
+                        device_property="nominalVoltage",
+                        value=None,
+                        expected_value=recovered_voltage
+                    )
+                else:
+                    logger.add_warning(
+                        msg='Recovered ConnectivityNode nominal voltage from related TopologicalNode hints',
+                        device=cn_elm.rdfid,
+                        device_class=cn_elm.tpe,
+                        device_property="nominalVoltage",
+                        value=None,
+                        expected_value=recovered_voltage
+                    )
+                nominal_voltage = recovered_voltage
 
             if voltage is not None and nominal_voltage is not None:
                 if nominal_voltage != 0.0:
@@ -769,12 +789,27 @@ def get_gcdev_buses(cgmes_model: CgmesCircuit,
                                      device_class=tp_node.tpe,
                                      device_property="nominalVoltage")
             elif nominal_voltage is None:
-                logger.add_error(msg='Nominal voltage is None. Maybe boundary was not attached for import :(',
-                                 device=tp_node.rdfid,
-                                 device_class=tp_node.tpe,
-                                 device_property="nominalVoltage")
-                # raise Exception("Nominal voltage is missing for Bus (Maybe boundary was not attached for import) !")
-                return calc_node_dict, True
+                tp_hint_voltage = tn_voltage_hints.get(tp_node.uuid, None)
+                if tp_hint_voltage is not None:
+                    nominal_voltage = tp_hint_voltage
+                    logger.add_warning(
+                        msg='Recovered TopologicalNode nominal voltage from terminal associations after missing base reference',
+                        device=tp_node.rdfid,
+                        device_class=tp_node.tpe,
+                        device_property="nominalVoltage",
+                        value=None,
+                        expected_value=tp_hint_voltage
+                    )
+                else:
+                    nominal_voltage = float(default_nominal_voltage)
+                    logger.add_warning(
+                        msg='Nominal voltage is None. Falling back to default nominal voltage',
+                        device=tp_node.rdfid,
+                        device_class=tp_node.tpe,
+                        device_property="nominalVoltage",
+                        value=None,
+                        expected_value=nominal_voltage
+                    )
 
             if voltage is not None and nominal_voltage is not None:
                 if nominal_voltage != 0.0:
