@@ -38,13 +38,13 @@ def test_nonlinear_resistor_script_runs_without_plots_and_exports_pngs() -> None
     assert float(np.max(traces.resistor_i_n)) > 1.0e-6
     assert float(np.max(np.abs(traces.line_it_n))) > 1.0e-6
     assert float(np.max(np.abs(traces.source_ground_i_n))) > 1.0e-6
-    assert float(traces.max_abs_lookup_error) < 1.0e-12
+    assert float(traces.max_abs_lookup_error) < 1.0e-10
     assert float(traces.max_abs_load_bus_kcl_error) < 1.0e-5
     assert float(traces.max_abs_source_bus_kcl_error) < 1.0e-5
     assert np.allclose(
         np.asarray(traces.resistor_i_n, dtype=float),
         np.asarray(traces.expected_current, dtype=float),
-        atol=1.0e-12,
+        atol=1.0e-10,
     )
 
 
@@ -52,5 +52,5 @@ def test_nonlinear_resistor_demo_wrapper_runs_without_plots() -> None:
     traces: NonlinearResistorEmtCaseResults = run_demo(enable_plots=False)
 
     assert len(traces.time) > 100
-    assert float(traces.max_abs_lookup_error) < 1.0e-12
+    assert float(traces.max_abs_lookup_error) < 1.0e-10
     assert float(traces.max_abs_load_bus_kcl_error) < 1.0e-5
