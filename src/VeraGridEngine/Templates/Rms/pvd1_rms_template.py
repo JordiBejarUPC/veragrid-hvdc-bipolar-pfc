@@ -7,6 +7,7 @@ from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType
 from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.Utils.procedural_logic import flipflop, bool_and, bool_or
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
 import numpy as np
 
@@ -205,7 +206,7 @@ def get_pvd1_complete_rms_template(vfactory: VarFactory, name: str = "PVD1 compl
     templ.tpe = DeviceType.GeneratorDevice
 
     # Local import avoids a package import cycle at module load time.
-    from VeraGridEngine.Utils.procedural_logic import flipflop, bool_and, bool_or
+
 
     vm = vfactory.add_var(f"Vm_{name}", VarPowerFlowRefferenceType.Vm)
     va = vfactory.add_var(f"Va_{name}", VarPowerFlowRefferenceType.Va)

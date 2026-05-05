@@ -397,6 +397,10 @@ class Block:
         x = self.compare(other)
         return x
 
+    # def set_const(self, ref: ParamPowerFlowRefferenceType, val: Const):
+    #
+    #     self.parameters[self.api_obj_mapping[ref]] = val
+
     def set_parameter_in_model(self, var_name: str, new_value: float):
         """
         updates parameter value given a name and a value
@@ -573,6 +577,7 @@ class Block:
         Union[None, VeraGridEngine.Utils.Symbolic.block.Block]
         """
         mdl_placeholder = Block()
+        list_blocks = self.get_all_blocks()
         for b in self.get_all_blocks():
             mdl_placeholder.algebraic_vars.extend(b.algebraic_vars)
             mdl_placeholder.algebraic_eqs.extend(b.algebraic_eqs)
@@ -888,6 +893,7 @@ class Block:
         """
         Function to connect two blocks by variables sharing
         """
+        # here we just change uid and name of the vars_to_subs
         pairs: List[Tuple[Var, Var]] = list(zip(vars_to_subs, incoming_vars))
         can_use_bulk_update: bool = self.can_use_bulk_connect_update(pairs)
         var_to_subs: Var

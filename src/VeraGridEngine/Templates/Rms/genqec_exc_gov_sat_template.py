@@ -25,6 +25,7 @@ def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec rms template") -> R
      generator with quadratic saturation
     """
     pi = math.pi
+
     templ = RmsModelTemplate(name=name)
     templ.tpe = DeviceType.GeneratorDevice
 
@@ -34,8 +35,8 @@ def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec rms template") -> R
     # Tm: mechanical torque (from governor)
     # Vf: excitation voltage (from exciter)
 
-    inputs = [vfactory.add_var("Vm_" + name, VarPowerFlowRefferenceType.Vm),
-              vfactory.add_var("Va_" + name, VarPowerFlowRefferenceType.Va),
+    inputs = [vfactory.add_var("Vm_" + name, reference=VarPowerFlowRefferenceType.Vm),
+              vfactory.add_var("Va_" + name, reference=VarPowerFlowRefferenceType.Va),
               vfactory.add_var("Tm_" + name),
               vfactory.add_var("Vf_" + name)]
 

@@ -425,7 +425,7 @@ def to_explicit(block: Block, vfactory: VarFactory) -> Block:
         block.algebraic_vars.append(new_diff_var)
         block.update_equations(diff_var, new_diff_var)
     block.diff_vars = list()
-        
+
     for child in block.children:
         to_explicit(child, vfactory)
 
@@ -783,6 +783,24 @@ def connect_line_rms_from(mdl1: Block, mdl2: Block):
     for outp, inpt in pairs:
         mdl2.connect([inpt], [outp])
 
+def connect_models_power_flow(mdl1: Block, mdl2: Block):
+    """
+    This function substitutes input variables for output variables to connect two rms models
+    :param mdl1:
+    :param mdl2:
+    :return:
+
+    """
+    # connect inputs mdl2 with outputs mdl1
+    pairs = [
+        (outp, inpt)
+        for outp in mdl1.out_vars
+        for inpt in mdl2.in_vars
+        if outp.ref == inpt.ref
+    ]
+    for pair in pairs:
+        mdl2.connect([pair[1]], [pair[0]])
+
 
 def connect_line_rms_to(mdl1: Block, mdl2: Block):
     """
@@ -876,22 +894,37 @@ def connect_models(mdl1: Block, mdl2: Block):
         (outp, inpt)
         for outp in mdl1.out_vars
         for inpt in mdl2.in_vars
-        if outp.ref == inpt.ref
+        if outp.ref == inpt.shared_ref and outp.shared_ref is not None and inpt.shared_ref is not None
     ]
 
     for outp, inpt in pairs:
         mdl2.connect([inpt], [outp])
 
-    # connect inputs mdl2 with outputs mdl1
+    # connect inputs mdl1 with outputs mdl2
     pairs = [
         (outp, inpt)
         for outp in mdl2.out_vars
         for inpt in mdl1.in_vars
-        if outp.ref == inpt.ref
+        if outp.shared_ref == inpt.shared_ref and outp.shared_ref is not None and inpt.shared_ref is not None
     ]
 
     for outp, inpt in pairs:
         mdl1.connect([inpt], [outp])
+
+    # # connect inputs mdl1 with inputs mdl2
+    # pairs = [
+    #     (inpt1, inpt2)
+    #     for inpt2 in mdl2.in_vars
+    #     for inpt1 in mdl1.in_vars
+    #     if inpt1.power_flow_reference is not None and inpt2.power_flow_reference is not None and inpt1.power_flow_reference == inpt2.power_flow_reference
+    #
+    # ]
+    # for pair in pairs:
+    #     if pair[0].network_conn:
+    #         mdl1.connect([pair[1]], [pair[0]])
+    #     else:
+    #         mdl1.connect([pair[0]], [pair[1]])
+
 
 
 
@@ -932,7 +965,7 @@ def set_rms_model(device: Any, model:Block, var_factory: VarFactory):
 
     else:
         if not device.bus.rms_model.empty():
-            connect_models(device.bus.rms_model, model)
+            connect_models_power_flow(device.bus.rms_model, model)
 
         else:
             raise ValueError(f"Connection Bus RMS model cannot be empty, initialize {device.bus.name} RMS model")

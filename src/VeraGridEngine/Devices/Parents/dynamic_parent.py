@@ -11,7 +11,8 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.fmu_template import FmuTemplate
-from VeraGridEngine.enumerations import DeviceType, BuildStatus, SubObjectType, FmuTemplateDomain, FmuTemplateMode
+from VeraGridEngine.enumerations import (DeviceType, BuildStatus, SubObjectType, FmuTemplateDomain, FmuTemplateMode,
+                                         PrpCat)
 from VeraGridEngine.Utils.Symbolic.symbolic_io import duplicate_block
 
 
@@ -34,26 +35,86 @@ class DynamicDevice(PhysicalDevice):
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
-        GCProp(key='rms_model', units='', tpe=SubObjectType.DaeBlockType,
-               definition='RMS dynamic model', display=False),
-        GCProp(key='emt_model', units='', tpe=SubObjectType.DaeBlockType,
-               definition='EMT dynamic model', display=False),
-        GCProp(key='rms_template', units='', tpe=DeviceType.RmsModelTemplateDevice,
-               definition='Native RMS template used. Assigning it clears rms_fmu_template.', display=True),
-        GCProp(key='emt_template', units='', tpe=DeviceType.EmtModelTemplateDevice,
-               definition='Native EMT template used. Assigning it clears emt_fmu_template.', display=True),
-        GCProp(key='rms_fmu_template', units='', tpe=DeviceType.FmuTemplateDevice,
-               definition='RMS FMU template used only by RMS simulations. Assigning it clears rms_template.', display=True),
-        GCProp(key='emt_fmu_template', units='', tpe=DeviceType.FmuTemplateDevice,
-               definition='EMT FMU template used only by EMT simulations. Assigning it clears emt_template.', display=True),
-        GCProp(key='rms_fmu_import_config', units='', tpe=str,
-               definition='Serialized FMU Co-Simulation RMS configuration', display=False),
-        GCProp(key='emt_fmu_import_config', units='', tpe=str,
-               definition='Serialized FMU Co-Simulation EMT configuration', display=False),
-        GCProp(key='rms_fmu_me_import_config', units='', tpe=str,
-               definition='Serialized FMU Model Exchange RMS configuration', display=False),
-        GCProp(key='emt_fmu_me_import_config', units='', tpe=str,
-               definition='Serialized FMU Model Exchange EMT configuration', display=False),
+        GCProp(
+            prop_name='rms_model',
+            units='',
+            tpe=SubObjectType.DaeBlockType,
+            definition='RMS dynamic model',
+            display=False,
+            cat=[PrpCat.RMS],
+        ),
+        GCProp(
+            prop_name='emt_model',
+            units='',
+            tpe=SubObjectType.DaeBlockType,
+            definition='EMT dynamic model',
+            display=False,
+            cat=[PrpCat.EMT],
+        ),
+        GCProp(
+            prop_name='rms_template',
+            units='',
+            tpe=DeviceType.RmsModelTemplateDevice,
+            definition='Native RMS template used. Assigning it clears rms_fmu_template.',
+            display=True,
+            cat=[PrpCat.RMS],
+        ),
+        GCProp(
+            prop_name='emt_template',
+            units='',
+            tpe=DeviceType.EmtModelTemplateDevice,
+            definition='Native EMT template used. Assigning it clears emt_fmu_template.',
+            display=True,
+            cat=[PrpCat.EMT],
+        ),
+        GCProp(
+            prop_name='rms_fmu_template',
+            units='',
+            tpe=DeviceType.FmuTemplateDevice,
+            definition='RMS FMU template used only by RMS simulations. Assigning it clears rms_template.',
+            display=True,
+            cat=[PrpCat.RMS],
+        ),
+        GCProp(
+            prop_name='emt_fmu_template',
+            units='',
+            tpe=DeviceType.FmuTemplateDevice,
+            definition='EMT FMU template used only by EMT simulations. Assigning it clears emt_template.',
+            display=True,
+            cat=[PrpCat.EMT],
+        ),
+        GCProp(
+            prop_name='rms_fmu_import_config',
+            units='',
+            tpe=str,
+            definition='Serialized FMU Co-Simulation RMS configuration',
+            display=False,
+            cat=[PrpCat.RMS],
+        ),
+        GCProp(
+            prop_name='emt_fmu_import_config',
+            units='',
+            tpe=str,
+            definition='Serialized FMU Co-Simulation EMT configuration',
+            display=False,
+            cat=[PrpCat.EMT],
+        ),
+        GCProp(
+            prop_name='rms_fmu_me_import_config',
+            units='',
+            tpe=str,
+            definition='Serialized FMU Model Exchange RMS configuration',
+            display=False,
+            cat=[PrpCat.RMS],
+        ),
+        GCProp(
+            prop_name='emt_fmu_me_import_config',
+            units='',
+            tpe=str,
+            definition='Serialized FMU Model Exchange EMT configuration',
+            display=False,
+            cat=[PrpCat.EMT],
+        ),
     )
 
     def __init__(self,
@@ -409,10 +470,22 @@ class DynamicBusDevice(PhysicalDevice):
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
-        GCProp(key='rms_model', units='', tpe=SubObjectType.DaeBlockType,
-               definition='RMS dynamic model', display=False),
-        GCProp(key='emt_model', units='', tpe=SubObjectType.DaeBlockType,
-               definition='EMT dynamic model', display=False),
+        GCProp(
+            prop_name='rms_model',
+            units='',
+            tpe=SubObjectType.DaeBlockType,
+            definition='RMS dynamic model',
+            display=False,
+            cat=[PrpCat.RMS],
+        ),
+        GCProp(
+            prop_name='emt_model',
+            units='',
+            tpe=SubObjectType.DaeBlockType,
+            definition='EMT dynamic model',
+            display=False,
+            cat=[PrpCat.EMT],
+        ),
     )
 
     def __init__(self,
@@ -480,4 +553,3 @@ class DynamicBusDevice(PhysicalDevice):
             self._emt_model = val
         else:
             raise ValueError(f"EMT model cannot accept {val}")
-

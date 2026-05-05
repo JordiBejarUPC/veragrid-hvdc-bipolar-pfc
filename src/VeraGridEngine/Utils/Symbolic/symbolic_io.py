@@ -40,7 +40,7 @@ def symbolic_objects_to_dict(obj_dict: Dict[int, Var | Const | Var]) -> List[Dic
                             "uid": expr.uid})
 
         elif isinstance(expr, Var):
-
+            shared = expr.shared_ref
             if expr.base_var is not None:
                 if type(expr.ref) == str:
                     lst.append({
@@ -48,7 +48,9 @@ def symbolic_objects_to_dict(obj_dict: Dict[int, Var | Const | Var]) -> List[Dic
                         "name": expr.name,
                         "uid": expr.uid,
                         "base_var": expr.base_var.uid,
-                        "ref": expr.ref if expr.ref is not None else None,
+                        "shared_ref": {"name": shared.name if shared is not None else None,
+                                "uid": shared.uid if shared is not None else None},
+                        "ref": expr.ref.value if expr.ref is not None else None,
                     })
                 else:
                     lst.append({
@@ -56,6 +58,8 @@ def symbolic_objects_to_dict(obj_dict: Dict[int, Var | Const | Var]) -> List[Dic
                         "name": expr.name,
                         "uid": expr.uid,
                         "base_var": expr.base_var.uid,
+                        "shared_ref": {"name": shared.name if shared is not None else None,
+                                "uid": shared.uid if shared is not None else None},
                         "ref": expr.ref.value if expr.ref is not None else None,
                     })
 
@@ -68,13 +72,19 @@ def symbolic_objects_to_dict(obj_dict: Dict[int, Var | Const | Var]) -> List[Dic
                                 "name": expr.name,
                                 "uid": expr.uid,
                                 "base_var": None,
-                                "ref": expr.ref if expr.ref is not None else None})
+                                "shared_ref": {"name": shared.name if shared is not None else None,
+                                                "uid": shared.uid if shared is not None else None},
+                                "ref": expr.ref.value if expr.ref is not None else None,
+                                })
                 else:
                     lst.append({"type": "Var",
                                 "name": expr.name,
                                 "uid": expr.uid,
                                 "base_var": None,
-                                "ref": expr.ref.value if expr.ref is not None else None})
+                                "shared_ref": {"name": shared.name if shared is not None else None,
+                                                "uid": shared.uid if shared is not None else None},
+                                "ref": expr.ref.value if expr.ref is not None else None,
+                                })
 
 
 
