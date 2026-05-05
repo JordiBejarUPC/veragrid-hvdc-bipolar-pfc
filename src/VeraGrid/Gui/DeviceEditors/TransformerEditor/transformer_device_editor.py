@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import sys
 
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 
 from VeraGrid.Gui.DeviceEditors.TemplateDeviceEditor.template_device_editor import TemplateDeviceEditor
 from VeraGrid.Gui.DeviceEditors.TransformerEditor.transformer_editor import TransformerEditor
@@ -91,12 +91,10 @@ class TransformerDeviceEditor(TemplateDeviceEditor):
         self.transformer_design_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self.transformer_design_tab)
         self.transformer_design_button_layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout()
         self.transformer_design_apply_button: QtWidgets.QPushButton = QtWidgets.QPushButton(
-            "Apply transformer design",
+            "Accept",
             self.transformer_design_tab,
         )
-        self.transformer_design_button_layout.addWidget(self.transformer_design_apply_button)
-        self.transformer_design_button_layout.addStretch()
-        self.transformer_design_layout.addLayout(self.transformer_design_button_layout)
+        self.transformer_design_apply_button.setIcon(QtGui.QIcon(":/Icons/icons/accept.png"))
 
         if self.circuit is not None:
             self.transformer_design_widget = EmbeddedTransformerDesignEditorWidget(
@@ -116,7 +114,12 @@ class TransformerDeviceEditor(TemplateDeviceEditor):
             )
             self.transformer_design_layout.addWidget(missing_msg)
 
-        self.tab_widget.addTab(self.transformer_design_tab, "TransformerEditor")
+        self.transformer_design_button_layout.addStretch()
+        self.transformer_design_button_layout.addWidget(self.transformer_design_apply_button)
+        self.transformer_design_layout.addLayout(self.transformer_design_button_layout)
+
+        transformer_tab_index: int = self.tab_widget.addTab(self.transformer_design_tab, "Transformer editor")
+        self.tab_widget.setTabIcon(transformer_tab_index, QtGui.QIcon(":/Icons/icons/transformer3w.png"))
 
     def _apply_transformer_design(self) -> None:
         """
