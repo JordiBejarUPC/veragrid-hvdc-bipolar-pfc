@@ -15,7 +15,7 @@ import concurrent.futures
 import time
 import numpy as np
 import json
-
+import matplotlib.pyplot as plt
 from scipy.optimize import linear_sum_assignment
 from scipy.sparse.linalg import splu, LinearOperator, eigs
 
@@ -1393,7 +1393,7 @@ class PolynomialMatrixBuilder:
                 a_max = np.max(np.abs(a_data)) if len(a_data) > 0 else 0.0
                 e_max = np.max(np.abs(e_data)) if len(e_data) > 0 else 0.0
                 if a_max < 1e-10 and e_max < 1e-10:
-                    A_patched[i, i] = -1.0
+                    #A_patched[i, i] = -1.0
                     patched_rows += 1
 
             A_csc = current_a.tocsc()
@@ -1412,7 +1412,7 @@ class PolynomialMatrixBuilder:
                     f"\n[+] Sparse QZ Pre-conditioning: Neutralized {patched_rows} empty rows and {patched_cols} empty columns.")
 
             # --- EIGENVALUE DECOMPOSITION ROUTING ---
-            SPARSE_THRESHOLD = 2000
+            SPARSE_THRESHOLD = 5000
             used_sparse = False
 
             if n_dims >= SPARSE_THRESHOLD:
@@ -1683,6 +1683,167 @@ class PolynomialMatrixBuilder:
             mapping[mode_eval] = mode_pfs
 
         return mapping
+
+    def plot_evolution(self, t_f: float, timestep: float, v_dict: dict, evals: np.ndarray, evecs: np.ndarray,
+                       variables: list = None):
+        """
+        Plots the time evolution of specified variables based on the linear state-space modes.
+
+        :param t_f: Final simulation time.
+        :param timestep: Time step for the plot.
+        :param v_dict: Dictionary of the initial physical states (absolute or deviation).
+        :param evals: 1D array of eigenvalues.
+        :param evecs: 2D array of right eigenvectors (shape: n_states x n_modes).
+        :param variables: List of variable names (str) to plot.
+        """
+        if variables is None:
+            variables = []
+
+        time_steps = np.arange(0, t_f, timestep)
+
+        # 1. Reconstruct the state variable map
+        idx_vars = []
+        if hasattr(self, 'all_symbols'):
+            for idx_counter, s in enumerate(self.all_symbols):
+                s_name = s.name
+                is_deriv = s_name.startswith('dx') or s_name.startswith('xp') or s_name.startswith(
+                    'd_') or s_name.startswith('dt_')
+                is_input = s_name.startswith('u') and not s_name.startswith('u_')
+                if not is_deriv and not is_input:
+                    idx_vars.append(idx_counter)
+
+        var_name_to_ss_idx = {self.all_symbols[sym_idx].name: i for i, sym_idx in enumerate(idx_vars)}
+
+        # 2. Build the actual initial condition vector (x0)
+        x0 = np.zeros(evecs.shape[0])
+        for k, val in v_dict.items():
+            if k in var_name_to_ss_idx:
+                x0[var_name_to_ss_idx[k]] = float(val)
+
+        # 3. Project physical states to the modal domain: c = pinv(V) * x0
+        c = np.linalg.pinv(evecs) @ x0
+
+        plt.figure(figsize=(10, 6))
+
+        # 4. Iterate over the requested variables
+        for var in variables:
+            if var not in var_name_to_ss_idx:
+                print(f"[-] Warning: Variable '{var}' not found in the state space. Skipping.")
+                continue
+
+            var_idx = var_name_to_ss_idx[var]
+
+            # Evaluate the incremental response: Delta_x_i(t) = Sum_m (c_m * exp(lambda_m * t) * V_{i,m})
+            evolution = np.zeros(len(time_steps))
+            mode_coeffs = c * evecs[var_idx, :]
+
+            for i, t in enumerate(time_steps):
+                # We take the real part since complex conjugate pairs cancel each other out
+                evolution[i] = np.real(np.sum(mode_coeffs * np.exp(evals * t)))
+
+            plt.plot(time_steps, evolution, label=f"$\Delta$ {var}", linewidth=2)
+
+        plt.xlabel("Time (s)", fontsize=12)
+        plt.ylabel("Deviation from Operating Point ($\Delta x$)", fontsize=12)
+        plt.title("Linear Dynamic Evolution (Small Signal)", fontsize=14)
+        plt.axhline(0, color='black', linewidth=0.8, linestyle='--')
+        plt.grid(True, alpha=0.3)
+        plt.legend(fontsize=11)
+        plt.tight_layout()
+        plt.show()
+
+    def compute_bifurcation_stability(self, pf_map: dict, evals: np.ndarray, evecs: np.ndarray, margin: float = 0.1,
+                                      tolerance: float = 1e-3, t_margin: float = 5.0) -> dict:
+        """
+        Mathematically evaluates if perturbations in critical modes (near bifurcation)
+        decay within a tolerance limit after a time t_margin.
+
+        :param pf_map: Dictionary returned by `get_participation_mapping`.
+        :param evals: 1D array of eigenvalues.
+        :param evecs: 2D matrix of right eigenvectors.
+        :param margin: Real part threshold to consider a mode as "critical" (near the imaginary axis).
+        :param tolerance: Maximum allowed deviation at t = t_margin for the perturbation to be considered decayed.
+        :param t_margin: Time in the future (seconds) where the envelope is analytically evaluated.
+        :return: Dictionary containing the report of evaluated variables and their alarm status.
+        """
+        # 1. Map variable names to state-space indices
+        idx_vars = []
+        for idx_counter, s in enumerate(self.all_symbols):
+            s_name = s.name
+            # Detect derivatives or state variables based on common naming conventions
+            is_deriv = any(s_name.startswith(pre) for pre in ['dx', 'xp', 'd_', 'dt_'])
+            is_input = s_name.startswith('u') and not s_name.startswith('u_')
+
+            if not is_deriv and not is_input:
+                idx_vars.append(idx_counter)
+
+        var_name_to_ss_idx = {self.all_symbols[sym_idx].name: i for i, sym_idx in enumerate(idx_vars)}
+
+        # 2. Pre-calculate the Moore-Penrose pseudoinverse (costly, done once)
+        v_pinv = np.linalg.pinv(evecs)
+
+        if self.verbose:
+            print(f"\n[ Bifurcation & Stability Analysis | Margin: +/-{margin} | Time: {t_margin}s ]")
+
+        report = {}
+
+        # 3. Iterate over the participation map
+        for ev, participations in pf_map.items():
+            # Identify if the eigenvalue is critically close to the imaginary axis (Non-Hyperbolic point)
+            if -margin < np.real(ev) <= margin:
+
+                ev_str = f"{ev:.4f}"
+                report[ev_str] = []
+
+                if self.verbose:
+                    freq = np.abs(np.imag(ev)) / (2 * np.pi)
+                    damping = -np.real(ev) / np.abs(ev) * 100 if np.abs(ev) > 0 else 0.0
+                    print(f"\n--- Critical Eigenvalue Detected: {ev:.4f} ---")
+                    print(f"    (Frequency: {freq:.2f} Hz, Damping: {damping:.2f}%)")
+
+                for var_name, pf in participations:
+                    if not str(var_name).startswith("u_"):
+
+                        # Ensure the variable exists in the state-space mapping
+                        if var_name not in var_name_to_ss_idx:
+                            continue
+
+                        var_idx = var_name_to_ss_idx[var_name]
+
+                        # A. Construct initial physical perturbation (Delta x_i(0) = 0.05)
+                        x0 = np.zeros(evecs.shape[0])
+                        x0[var_idx] = 0.05
+
+                        # B. Project to modal domain: c = pinv(V) * x0
+                        c = v_pinv @ x0
+
+                        # C. Calculate EXACT deviation at t = t_margin
+                        # Contribution of all modes to the variable's state at time t
+                        mode_coeffs = c * evecs[var_idx, :]
+                        delta_at_t = np.real(np.sum(mode_coeffs * np.exp(evals * t_margin)))
+
+                        # D. Evaluate bifurcation/stability criterion
+                        passed = abs(delta_at_t) < tolerance
+
+                        # Programmatic Alert for stability loss
+                        if not passed:
+                            print(
+                                f"Programmatic alert: The system will lose stability due to bifurcation at {var_name}")
+
+                        report[ev_str].append({
+                            "variable": var_name,
+                            "delta_t": abs(delta_at_t),
+                            "passed": passed
+                        })
+
+                        if self.verbose:
+                            status = "[OK]" if passed else "[DANGER]"
+                            msg = "decays" if passed else "DOES NOT damp"
+                            symbol = "<" if passed else ">="
+                            print(f"  {status} Variable {var_name}: Perturbation {msg}. "
+                                  f"Delta(t={t_margin}) = {abs(delta_at_t):.6f} {symbol} {tolerance}")
+
+        return report
 
     '''def report(self, eigenvalues=None, is_stable=False, max_real=None, print_matrices=True, save_path=None):
         """
