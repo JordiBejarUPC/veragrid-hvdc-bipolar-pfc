@@ -34,7 +34,13 @@ class GenericEmtProblem(EmtProblemTemplate):
                  sys_block: Block,
                  glob_time: Var):
 
-        super().__init__(sys_block=sys_block, glob_time=glob_time)
+        static_parameter_values_mapping: Dict[Var, Const] = dict(sys_block.parameters)
+
+        super().__init__(
+            sys_block=sys_block,
+            glob_time=glob_time,
+            static_parameter_values_mapping=static_parameter_values_mapping,
+        )
 
         self._run_explicit_initialization()
 

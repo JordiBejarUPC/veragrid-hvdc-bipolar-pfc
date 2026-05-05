@@ -58,7 +58,13 @@ from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import (
     EmtBoundaryUpdateProtocol,
     EmtProblemTemplate,
 )
-from VeraGridEngine.Utils.Symbolic.static_parameter_mapping import (
+# from VeraGridEngine.Utils.Symbolic.static_parameter_mapping import (
+#     abc_to_nabc,
+#     assign_static_api_object_mapping_for_device,
+#     get_load_power_phase_values_pu_abc,
+#     get_shunt_phase_values_pu_abc,
+# )
+from VeraGridEngine.Utils.Symbolic.static_parameter_mapping_rms import (
     abc_to_nabc,
     assign_static_api_object_mapping_for_device,
     get_load_power_phase_values_pu_abc,
@@ -1164,6 +1170,8 @@ class EmtProblemDae(EmtProblemTemplate):
         self._discrete_event_parameter_uids: Set[int] = set()
         self._active_events_group: EmtEventsGroup | None = None
 
+        static_parameter_values_mapping: Dict[Var, Const] = dict()
+
         # for init_explicit
         self._models_with_init_eqs: List[Block] = []
         self._models_with_diff_init_eqs: List[Block] = []
@@ -1197,7 +1205,7 @@ class EmtProblemDae(EmtProblemTemplate):
         self._registered_working_emt_models: Set[int] = set()
 
         # build on local sys_block
-        self._build_structure_and_collect(sys_block, grid)
+        self._build_structure_and_collect(sys_block=sys_block, grid=grid, static_parameter_values_mapping=static_parameter_values_mapping )
         structure_collect_s: float = _toc(t_phase_start)
         t_phase_start = _tic()
 
@@ -1211,7 +1219,10 @@ class EmtProblemDae(EmtProblemTemplate):
         t_phase_start = _tic()
 
         # initialize template with the complete block
-        super().__init__(sys_block=sys_block, glob_time=glob_time, progress_signal=progress_signal,
+        super().__init__(sys_block=sys_block,
+                         static_parameter_values_mapping=static_parameter_values_mapping,
+                         glob_time=glob_time,
+                         progress_signal=progress_signal,
                          progress_text=progress_text)
         self._rebuild_results_var_name_lookup()
         template_init_s: float = _toc(t_phase_start)
@@ -1402,80 +1413,6 @@ class EmtProblemDae(EmtProblemTemplate):
             else:
                 self._models_with_diff_init_eqs_seen.add(mid)
                 self._models_with_diff_init_eqs.append(mdl)
-
-    # def _run_explicit_initialization_old(self)-> None:
-    #     """
-    #     Run explicit initialization for every block that defines initialization equations.
-    #
-    #     The routine may modify runtime parameter expressions, so runtime parameter
-    #     buffers are rebuilt afterwards.
-    #
-    #     :return: None
-    #     """
-    #
-    #     if len(self._models_with_init_eqs) == 0 and len(self._models_with_diff_init_eqs) == 0:
-    #         return
-    #
-    #     # sys_vars dict (uid -> Var), size = n_vars
-    #     sys_vars: Dict[int, Var] = {v.uid: v for v in (self._state_vars + self._algebraic_vars)}
-    #     sys_diff_vars: Dict[int, Var] = {dv.uid: dv for dv in self._diff_vars}
-    #
-    #     seen_blocks: set[int] = set()
-    #
-    #     for mdl in chain(self._models_with_init_eqs, self._models_with_diff_init_eqs):
-    #         mdl_id = id(mdl)
-    #
-    #         if mdl_id not in seen_blocks:
-    #             seen_blocks.add(mdl_id)
-    #
-    #             try:
-    #                 init_explicit_emt(
-    #                     mdl=mdl,
-    #                     sys_vars=sys_vars,
-    #                     sys_diff_vars=sys_diff_vars,
-    #                     variable_parameters=self._variable_parameters,
-    #                     event_parameters_eqs=self._event_parameters_eqs,
-    #                     constant_parameters=self._constant_parameters,
-    #                     init_guess=self.init_guess,
-    #                     diff_init_guess=self.diff_init_guess,
-    #                     uid2idx_vars=self.uid2idx_vars,
-    #                     uid2idx_diff=self.uid2idx_diff,
-    #                     uid2idx_params=self.uid2idx_params,
-    #                     uid2idx_event_params=self.uid2idx_event_params,
-    #                     compiler_names_dict=self._compiler_names_dict,
-    #                     alias_names_dict=self._alias_names_dict,
-    #                     VARIABLE_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
-    #                     # TIME_NAME=self.TIME_NAME,
-    #                     VARS_NAME=self.VARS_NAME,
-    #                     DIFF_NAME=self.DIFF_NAME,
-    #                     CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
-    #                     verbose=bool(self.options.verbose > 0),
-    #                 )
-    #             except Exception as e:
-    #                 block_name: str = _get_block_name(mdl)
-    #                 error_detail = f"{type(e).__name__}: {str(e)}"
-    #
-    #                 self.logger.add_warning(
-    #                     msg="EMT explicit initialization failed for block.",
-    #                     device=block_name,
-    #                     value=error_detail,
-    #                     expected_value="Successful explicit initialization",
-    #                     device_class="EMT",
-    #                     device_property="init_explicit"
-    #                 )
-    #
-    #                 if self.options.verbose > 0:
-    #                     self.logger.add_debug(
-    #                         f"[EMT][init_explicit] failed for block '{block_name}'. Error: {error_detail}"
-    #                     )
-    #
-    #                     print(
-    #                         f"EMT explicit initialization failed for block {block_name}. "
-    #                         f"Error detail: {error_detail}"
-    #                     )
-    #
-    #
-    #     self._build_runtime_param_vectors()
 
     def _run_explicit_initialization(self)-> None:
         """
@@ -2620,7 +2557,8 @@ class EmtProblemDae(EmtProblemTemplate):
     @staticmethod
     def _assign_api_mapping_value_if_present(mdl: Block,
                                              key: ParamPowerFlowRefferenceType,
-                                             value: Any
+                                             value: Any,
+                                             static_parameter_values_mapping: Dict[Var, Const],
     ) -> None:
         """
         Assign one static API-object parameter into ``mdl.parameters``.
@@ -2633,6 +2571,7 @@ class EmtProblemDae(EmtProblemTemplate):
         :param mdl: EMT model block.
         :param key: Static parameter reference key.
         :param value: Static value to assign.
+        :param static_parameter_values_mapping: Dictionary with static parameters and their values.
         :return: Assignment status.
         """
         api_obj_mapping: Any = mdl.api_obj_mapping
@@ -2644,7 +2583,7 @@ class EmtProblemDae(EmtProblemTemplate):
                 if target in mdl.event_dict:
                     pass
                 else:
-                    mdl.parameters[target] = value if isinstance(value, Const) else Const(float(value))
+                    static_parameter_values_mapping[target] = value if isinstance(value, Const) else Const(float(value))
             else:
                 pass
         else:
@@ -2658,6 +2597,7 @@ class EmtProblemDae(EmtProblemTemplate):
             self,
             sys_block: Block,
             grid: MultiCircuit,
+            static_parameter_values_mapping: Dict[Var, Const],
     ) -> None:
         """
         Build the EMT system structure and collect all algebraic KCL equations.
@@ -2674,6 +2614,7 @@ class EmtProblemDae(EmtProblemTemplate):
 
         :param sys_block: Block containing the full system DAE.
         :param grid: Network model to assemble.
+        :param static_parameter_values_mapping: Dictionary with static parameters and their values.
         :return: None.
         """
         bus_working_models: Dict[Any, Block] = dict()
@@ -2778,12 +2719,11 @@ class EmtProblemDae(EmtProblemTemplate):
             else:
                 pass
 
-            # self._assign_api_obj_mapping_branch(br=br, is_vsc=is_vsc, vsc_index=vsc_index)
-
             assign_static_api_object_mapping_for_device(
                 grid=grid,
                 device=br,
                 mdl=mdl,
+                problem_mapping=static_parameter_values_mapping,
                 logger=self.logger,
             )
 
@@ -3044,6 +2984,7 @@ class EmtProblemDae(EmtProblemTemplate):
                 grid=grid,
                 device=inj,
                 mdl=mdl,
+                problem_mapping=static_parameter_values_mapping,
                 logger=self.logger,
             )
 
@@ -3125,6 +3066,7 @@ class EmtProblemDae(EmtProblemTemplate):
                     mdl=mdl,
                     phase_power=phase_power_seed,
                     generator_count_same_bus=generator_count_local,
+                    static_parameter_values_mapping= static_parameter_values_mapping,
                 )
             else:
                 pass
@@ -3185,28 +3127,6 @@ class EmtProblemDae(EmtProblemTemplate):
             else:
                 pass
 
-    # def _register_runtime_event_parameters(self, dev: Any, mdl: Block) -> None:
-    #     """
-    #     Register runtime-updatable EMT parameters declared by the device block.
-    #
-    #     EMT runtime events are no longer baked into the symbolic model during the
-    #     parsing phase. Instead, the problem stores the event-capable parameters and
-    #     later activates the selected EMT event group through ``set_events_group()``.
-    #
-    #     :param dev: Device object from the grid.
-    #     :param mdl: Device symbolic block containing ``event_dict`` and ``mode_dict``.
-    #     :return: None
-    #     """
-    #     if not mdl.event_dict and not mdl.mode_dict:
-    #         return
-    #
-    #     for parameter in mdl.event_dict.keys():
-    #         self._event_parameter_device_idtags[parameter.uid] = dev.idtag
-    #         self._continuous_event_parameter_uids.add(parameter.uid)
-    #
-    #     for parameter in mdl.mode_dict.keys():
-    #         self._event_parameter_device_idtags[parameter.uid] = dev.idtag
-    #         self._discrete_event_parameter_uids.add(parameter.uid)
 
     def _get_emt_events_for_group(self, emt_events_group: EmtEventsGroup | None) -> List[Any]:
         """
@@ -6940,6 +6860,7 @@ class EmtProblemDae(EmtProblemTemplate):
             mdl: Block,
             phase_power: np.ndarray,
             generator_count_same_bus: int,
+            static_parameter_values_mapping: Dict[Var, Const],
     ) -> None:
         """
         Assign optional sharing references to one generator from its EMT seed.
@@ -6970,14 +6891,17 @@ class EmtProblemDae(EmtProblemTemplate):
             mdl=mdl,
             key=ParamPowerFlowRefferenceType.generator_share_enable,
             value=share_enable_value,
+            static_parameter_values_mapping=static_parameter_values_mapping,
         )
         self._assign_api_mapping_value_if_present(
             mdl=mdl,
             key=ParamPowerFlowRefferenceType.generator_share_p_ref,
             value=p_ref_value,
+            static_parameter_values_mapping=static_parameter_values_mapping,
         )
         self._assign_api_mapping_value_if_present(
             mdl=mdl,
             key=ParamPowerFlowRefferenceType.generator_share_q_ref,
             value=q_ref_value,
+            static_parameter_values_mapping=static_parameter_values_mapping,
         )

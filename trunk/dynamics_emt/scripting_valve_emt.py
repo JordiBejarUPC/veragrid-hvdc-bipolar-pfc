@@ -536,7 +536,12 @@ def _build_valve_problem(valve_tpe: ValveEmtType) -> Tuple[GenericEmtProblem, in
     )
     root_block.unify_blocks()
 
-    problem = GenericEmtProblem(sys_block=root_block, glob_time=vf.add_var(f't_{block_name}'))
+    static_parameter_values_mapping: Dict[Var, Const] = dict(root_block.parameters)
+    problem = GenericEmtProblem(
+        sys_block=root_block,
+        glob_time=vf.add_var(f't_{block_name}'),
+        static_parameter_values_mapping=static_parameter_values_mapping,
+    )
     gate_idx = -1
     mode_idx = -1
     for parameter in problem.get_variable_parameters():

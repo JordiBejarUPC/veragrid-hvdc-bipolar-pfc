@@ -205,7 +205,12 @@ def run_test(case_name: str, R_load: float) -> Tuple[np.ndarray, np.ndarray, np.
     sys_block.unify_blocks()
     glob_time = Var("t_glob")
 
-    problem = GenericEmtProblem(sys_block=sys_block, glob_time=glob_time)
+    static_parameter_values_mapping: Dict[Var, Const] = dict(sys_block.parameters)
+    problem = GenericEmtProblem(
+        sys_block=sys_block,
+        glob_time=glob_time,
+        static_parameter_values_mapping=static_parameter_values_mapping,
+    )
     line.setup_indices(problem, vprms_offset=0)
     line_updater = BergeronBoundaryUpdater(line)
 

@@ -1,10 +1,6 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
-# SPDX-License-Identifier: MPL-2.001--.0-
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
 """
@@ -335,27 +331,6 @@ devices_static_params_mapping: Dict[DeviceType, List[ParamPowerFlowRefferenceTyp
 }
 
 
-def to_static_mapping_const(value: Any) -> Const:
-    """
-    Convert a static numerical mapping value into a symbolic constant.
-
-    :param value: Numerical value or an already-created ``Const``.
-    :return: Constant symbolic expression used by EMT parameters.
-    """
-    out: Const
-
-    if isinstance(value, Const):
-        # Existing constants are preserved so callers can pre-build symbolic
-        # constants without being wrapped a second time.
-        out = value
-    else:
-        # Static API-object values are scalar real constants. The explicit float
-        # conversion keeps parameter values homogeneous in the EMT parameter map.
-        out = Const(float(value))
-
-    return out
-
-
 def add_static_mapping_warning(
         logger: Logger | None,
         device_name: str,
@@ -397,7 +372,6 @@ def assign_api_mapping_value_if_present(
         logger: Logger | None,
         device_name: str,
         problem_mapping: Dict[Var, Const] | None = None,
-        allow_event_parameter_target: bool = False,
 ) -> bool:
     """
     Assign one static API-object value to ``mdl.parameters`` if exposed.
@@ -412,57 +386,39 @@ def assign_api_mapping_value_if_present(
     :param logger: Optional logger used to report invalid mapping contracts.
     :param device_name: Device name used in diagnostics.
     :param problem_mapping: mapping to save parameters values in RMS problem
-    :param allow_event_parameter_target: When ``True``, write the value into
-        ``mdl.event_dict`` if the exposed API-object target is one runtime
-        parameter. This is needed by EMT templates whose static device setpoints
-        also participate in scheduled-event workflows.
     :return: ``True`` if the value was assigned, ``False`` otherwise.
     """
     assigned: bool = False
     api_obj_mapping: Any = mdl.api_obj_mapping
 
-    if isinstance(api_obj_mapping, dict):
-        # The mapping is optional: a model receives only the static parameters it
-        # explicitly requests by exposing the enum key.
-        target: Any | None = api_obj_mapping.get(key, None)
+    # The mapping is optional: a model receives only the static parameters it
+    # explicitly requests by exposing the enum key.
+    target: Any | None = api_obj_mapping.get(key, None)
 
-        if target is None:
+    if target is None:
+        assigned = False
+    else:
+        event_dict: Any = mdl.event_dict
+
+        if target in event_dict:
+            # A target present in event_dict means the model declared a
+            # runtime parameter as a static API-object parameter. That is
+            # a contract error unless the caller explicitly opted into
+            # seeding runtime parameters from static device data.
+            add_static_mapping_warning(
+                logger=logger,
+                device_name=device_name,
+                message="Static api_obj_mapping points to an event_dict parameter.",
+                value=str(key),
+                expected_value="api_obj_mapping target must be a constant parameter",
+                device_property="api_obj_mapping",
+            )
             assigned = False
         else:
-            event_dict: Any = mdl.event_dict
-
-            if isinstance(event_dict, dict):
-                if target in event_dict:
-                    if allow_event_parameter_target:
-                        mdl.event_dict[target] = to_static_mapping_const(value)
-                        assigned = True
-                    else:
-                        # A target present in event_dict means the model declared a
-                        # runtime parameter as a static API-object parameter. That is
-                        # a contract error unless the caller explicitly opted into
-                        # seeding runtime parameters from static device data.
-                        add_static_mapping_warning(
-                            logger=logger,
-                            device_name=device_name,
-                            message="Static api_obj_mapping points to an event_dict parameter.",
-                            value=str(key),
-                            expected_value="api_obj_mapping target must be a constant parameter",
-                            device_property="api_obj_mapping",
-                        )
-                        assigned = False
-                else:
-                    # The static mapping declares the symbolic parameter target.
-                    # The target does not need to pre-exist in mdl.parameters.
-                    problem_mapping[target] = to_static_mapping_const(value)
-                    assigned = True
-            else:
-                # Blocks normally expose event_dict as a dictionary. If they do
-                # not, the static parameter assignment can still proceed because
-                # there is no runtime container to conflict with.
-                problem_mapping[target] = to_static_mapping_const(value)
-                assigned = True
-    else:
-        assigned = False
+            # The static mapping declares the symbolic parameter target.
+            # The target does not need to pre-exist in mdl.parameters.
+            problem_mapping[target] = value if isinstance(value, Const) else Const(float(value))
+            assigned = True
 
     return assigned
 
@@ -901,6 +857,7 @@ def assign_static_api_object_mapping_for_device(
     :param grid: Static network model containing base values.
     :param device: Static grid device owning the EMT model.
     :param mdl: EMT block receiving static parameter constants.
+    :param problem_mapping: Dictionary that stores each parameter with their value.
     :param logger: Optional logger used for diagnostics.
     :return: None.
     """
@@ -1831,6 +1788,7 @@ def assign_load_static_api_mapping(
     :param grid: Static network model.
     :param load: Load device.
     :param mdl: Load EMT block.
+    :param problem_mapping: Dictionary that stores each parameter with their value.
     :param logger: Optional logger.
     :return: None.
     """
@@ -2112,7 +2070,6 @@ def assign_load_static_api_mapping(
                 value=float(p_values[phase_index]),
                 logger=logger,
                 device_name=device_name,
-                allow_event_parameter_target=True,
         problem_mapping=problem_mapping,
             )
             assign_api_mapping_value_if_present(
@@ -2121,7 +2078,6 @@ def assign_load_static_api_mapping(
                 value=float(q_values[phase_index]),
                 logger=logger,
                 device_name=device_name,
-                allow_event_parameter_target=True,
         problem_mapping=problem_mapping,
             )
             phase_index += 1
@@ -2132,7 +2088,6 @@ def assign_load_static_api_mapping(
             value=omega_base,
             logger=logger,
             device_name=device_name,
-            allow_event_parameter_target=True,
         problem_mapping=problem_mapping,
         )
 
@@ -3702,6 +3657,7 @@ def assign_hvdc_line_static_api_mapping(
 def assign_series_reactance_static_api_mapping(
         series_reactance: Any,
         mdl: Block,
+        problem_mapping: Dict[Var,Const],
         logger: Logger | None,
 ) -> None:
     """
@@ -3712,6 +3668,7 @@ def assign_series_reactance_static_api_mapping(
 
     :param series_reactance: Series-reactance device.
     :param mdl: EMT block.
+    :param problem_mapping: Dictionary with static parameters and their values
     :param logger: Optional logger.
     :return: None.
     """
@@ -3724,6 +3681,7 @@ def assign_series_reactance_static_api_mapping(
 def assign_switch_static_api_mapping(
         switch: Any,
         mdl: Block,
+        problem_mapping: Dict[Var,Const],
         logger: Logger | None,
 ) -> None:
     """
@@ -3734,6 +3692,7 @@ def assign_switch_static_api_mapping(
 
     :param switch: Switch device.
     :param mdl: EMT block.
+    :param problem_mapping: Dictionary with static parameters and their values
     :param logger: Optional logger.
     :return: None.
     """
@@ -3746,6 +3705,7 @@ def assign_switch_static_api_mapping(
 def assign_upfc_static_api_mapping(
         upfc: Any,
         mdl: Block,
+        problem_mapping: Dict[Var,Const],
         logger: Logger | None,
 ) -> None:
     """
@@ -3756,6 +3716,7 @@ def assign_upfc_static_api_mapping(
 
     :param upfc: UPFC device.
     :param mdl: EMT block.
+    :param problem_mapping: Dictionary with static parameters and their values
     :param logger: Optional logger.
     :return: None.
     """

@@ -213,7 +213,9 @@ class EmtProblemTemplate(ABC):
     DIFF_NAME = "diff"
     TIME_NAME = "glob_time"
 
-    def __init__(self, sys_block: Block,
+    def __init__(self,
+                 sys_block: Block,
+                 static_parameter_values_mapping: Dict[Var, Const],
                  glob_time: Var,
                  progress_signal: DummySignal | None = None,
                  progress_text: DummySignal | None = None,
@@ -236,8 +238,11 @@ class EmtProblemTemplate(ABC):
         self._algebraic_eqs: List[Any] = self.sys_block.algebraic_eqs
         self._diff_vars: List[Var] = self.sys_block.diff_vars
 
-        self._constant_parameters: List[Var] = list(self.sys_block.parameters.keys())
-        self._parameters_values: List[Const] = list(self.sys_block.parameters.values())
+        self._static_parameter_values: Dict[Var, Const] = static_parameter_values_mapping
+        # self._constant_parameters: List[Var] = list(self.sys_block.parameters.keys())
+        # self._parameters_values: List[Const] = list(self.sys_block.parameters.values())
+        self._constant_parameters: List[Var] = list(self._static_parameter_values.keys())
+        self._parameters_values: List[Const] = list(self._static_parameter_values.values())
 
         self._variable_parameters: List[Var] = list()
         self._event_parameters_eqs: List[Any] = list()

@@ -5,11 +5,12 @@
 
 import importlib.util
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict
 from unittest.mock import patch
 
 import numpy as np
 import pytest
+from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var
 
 
 def _load_demo_module() -> Any:
@@ -99,7 +100,12 @@ def test_setup_initial_condition_installs_the_exact_sinusoidal_displacement_prof
     vf = demo_module.VarFactory()
     block = demo_module.create_linear_chain(n_masses=n_nodes, vf=vf)
     block.unify_blocks()
-    problem = demo_module.GenericEmtProblem(sys_block=block, glob_time=demo_module.Var("t_glob"))
+    static_parameter_values_mapping: Dict[Var, Const] = dict()
+    problem = demo_module.GenericEmtProblem(
+        sys_block=block,
+        glob_time=demo_module.Var("t_glob"),
+        static_parameter_values_mapping=static_parameter_values_mapping,
+    )
 
     demo_module.setup_initial_condition(problem, block, n_nodes)
 
