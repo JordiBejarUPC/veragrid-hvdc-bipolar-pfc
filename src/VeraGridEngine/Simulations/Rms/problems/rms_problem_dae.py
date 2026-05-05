@@ -335,29 +335,29 @@ class RmsProblemDae(RmsProblemTemplate):
                                       device=elm.name)
             else:
 
-                assign_static_api_object_mapping_for_device(grid=self.grid,
-                                                            device=elm,
-                                                            mdl=elm.rms_model,
-                                                            problem_mapping=self._static_parameterm_values_mapping,
-                                                            logger=None)
+                # assign_static_api_object_mapping_for_device(grid=self.grid,
+                #                                             device=elm,
+                #                                             mdl=elm.rms_model,
+                #                                             problem_mapping=self._static_parameterm_values_mapping,
+                #                                             logger=None)
                 # # modify function to fill self._static_parameterm_values_mapping
 
-                # if ParamPowerFlowRefferenceType.g in elm.rms_model.api_obj_mapping:
-                #     elm.rms_model.parameters[
-                #         elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.g]] = Const(
-                #         float(elm.R / (elm.R ** 2 + elm.X ** 2)))
-                # if ParamPowerFlowRefferenceType.b in elm.rms_model.api_obj_mapping:
-                #     elm.rms_model.parameters[
-                #         elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.b]] = Const(
-                #         float(-elm.X / (elm.R ** 2 + elm.X ** 2)))
-                # if ParamPowerFlowRefferenceType.bsh in elm.rms_model.api_obj_mapping:
-                #     elm.rms_model.parameters[
-                #         elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.bsh]] = Const(elm.B)
-                # if ParamPowerFlowRefferenceType.r in elm.rms_model.api_obj_mapping:
-                #     elm.rms_model.parameters[
-                #         elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.r]] = Const(elm.R)
-                # if ParamPowerFlowRefferenceType.l in elm.rms_model.api_obj_mapping:
-                #     elm.rms_model.parameters[elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.l]] = Const(elm.X)
+                if ParamPowerFlowRefferenceType.g in elm.rms_model.api_obj_mapping:
+                    elm.rms_model.parameters[
+                        elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.g]] = Const(
+                        float(elm.R / (elm.R ** 2 + elm.X ** 2)))
+                if ParamPowerFlowRefferenceType.b in elm.rms_model.api_obj_mapping:
+                    elm.rms_model.parameters[
+                        elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.b]] = Const(
+                        float(-elm.X / (elm.R ** 2 + elm.X ** 2)))
+                if ParamPowerFlowRefferenceType.bsh in elm.rms_model.api_obj_mapping:
+                    elm.rms_model.parameters[
+                        elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.bsh]] = Const(elm.B)
+                if ParamPowerFlowRefferenceType.r in elm.rms_model.api_obj_mapping:
+                    elm.rms_model.parameters[
+                        elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.r]] = Const(elm.R)
+                if ParamPowerFlowRefferenceType.l in elm.rms_model.api_obj_mapping:
+                    elm.rms_model.parameters[elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.l]] = Const(elm.X)
 
                 Vmf, Vaf = get_bus_rms_algebraic_vars(elm.bus_from.rms_model)
                 Vmt, Vat = get_bus_rms_algebraic_vars(elm.bus_to.rms_model)
@@ -1618,29 +1618,29 @@ class RmsProblemDae(RmsProblemTemplate):
 
         # j is for parameters
 
-        # for ep, const in mdl.parameters.items():
-        #     if ep.uid in self._uid2idx_params:
-        #         raise ValueError(f"Parameter '{ep.name}' (uid={ep.uid}) is already registered in the system. "
-        #                          f"Previous device may have created a duplicate parameter.")
-        #     self._compiler_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}[{self._n_params}]"
-        #     self._alias_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}_{self._n_params}"
-        #     self._uid2idx_params[ep.uid] = self._n_params
-        #     self._constant_parameters.append(ep)
-        #     self._parameters_values.append(const)
-        #     self._n_params += 1
-
         for ep, const in mdl.parameters.items():
             if ep.uid in self._uid2idx_params:
                 raise ValueError(f"Parameter '{ep.name}' (uid={ep.uid}) is already registered in the system. "
                                  f"Previous device may have created a duplicate parameter.")
-
             self._compiler_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}[{self._n_params}]"
             self._alias_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}_{self._n_params}"
             self._uid2idx_params[ep.uid] = self._n_params
             self._constant_parameters.append(ep)
-            # search value in self._static_parameterm_values_mapping
-            self._parameters_values.append(self._static_parameterm_values_mapping[ep])
+            self._parameters_values.append(const)
             self._n_params += 1
+
+        # for ep, const in mdl.parameters.items():
+        #     if ep.uid in self._uid2idx_params:
+        #         raise ValueError(f"Parameter '{ep.name}' (uid={ep.uid}) is already registered in the system. "
+        #                          f"Previous device may have created a duplicate parameter.")
+        #
+        #     self._compiler_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}[{self._n_params}]"
+        #     self._alias_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}_{self._n_params}"
+        #     self._uid2idx_params[ep.uid] = self._n_params
+        #     self._constant_parameters.append(ep)
+        #     # search value in self._static_parameterm_values_mapping
+        #     self._parameters_values.append(self._static_parameterm_values_mapping[ep])
+        #     self._n_params += 1
 
         # m is for variable parameters
         self._register_runtime_event_parameters(dev=elm, mdl=mdl)

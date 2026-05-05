@@ -406,11 +406,11 @@ class Var(Expr):
     Any variable
     """
 
-    __slots__ = ("name", "_shared_ref", "_ref", "_network_conn", "uid", "diff_var", "base_var", "_origin_var")
+    __slots__ = ("name", "_ref", "_shared_ref", "_network_conn", "uid", "diff_var", "base_var", "_origin_var")
 
     def __init__(self, name: str,
-                 shared_reference:  SharedVarReferenceType | None = None,
                  reference: VarPowerFlowRefferenceType | None = None,
+                 shared_reference: SharedVarReferenceType | None = None,
                  network_conn: bool = False,
                  uid: int | None = None,
                  diff_var: Var | None = None,
