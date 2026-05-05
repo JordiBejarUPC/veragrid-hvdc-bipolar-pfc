@@ -79,11 +79,11 @@ class TrafoRmsTemplate(RmsModelTemplate):
         # print(f"vtap  p is {vtap_f}")
         # print(f"vtap  t is {vtap_t}")
         # print(f'ys is {ys} ysh is {ysh}')
-        Vmf = vf.add_var('Vmf', VarPowerFlowRefferenceType.Vm)
-        Vaf = vf.add_var('Vaf', VarPowerFlowRefferenceType.Va)
-        Vmt = vf.add_var('Vmt', VarPowerFlowRefferenceType.Vm)
-        Vat = vf.add_var('Vat', VarPowerFlowRefferenceType.Va)
-
+        Vmf = vf.add_var('Vmf', VarPowerFlowRefferenceType.Vmf)
+        Vaf = vf.add_var('Vaf', VarPowerFlowRefferenceType.Vaf)
+        Vmt = vf.add_var('Vmt', VarPowerFlowRefferenceType.Vmt)
+        Vat = vf.add_var('Vat', VarPowerFlowRefferenceType.Vat)
+        inputs = [Vmf, Vaf, Vmt, Vat]
         # Calculate phase displacement matching transformer_admittance logic
         # Use conn attribute (preserves user intent) instead of conn_f/conn_t (may be overwritten by template)
         # conn_f, conn_t = parse_windings_connection(trafo.conn)
@@ -123,6 +123,10 @@ class TrafoRmsTemplate(RmsModelTemplate):
             VarPowerFlowRefferenceType.Pt: Pt,
             VarPowerFlowRefferenceType.Qf: Qf,
             VarPowerFlowRefferenceType.Qt: Qt,
+            VarPowerFlowRefferenceType.Vaf: Vaf,
+            VarPowerFlowRefferenceType.Vmf: Vmf,
+            VarPowerFlowRefferenceType.Vmt: Vmt,
+            VarPowerFlowRefferenceType.Vat: Vat,
         }
         block.api_obj_mapping = {
             ParamPowerFlowRefferenceType.g: gt,
@@ -130,17 +134,19 @@ class TrafoRmsTemplate(RmsModelTemplate):
             ParamPowerFlowRefferenceType.gFe: gFe,
             ParamPowerFlowRefferenceType.bsh: bmu,
             ParamPowerFlowRefferenceType.transformer_tap_module: m,
-            ParamPowerFlowRefferenceType.transformer_tap_ratio: phi,
+            ParamPowerFlowRefferenceType.transformer_tap_phase: phi,
             ParamPowerFlowRefferenceType.vtap_f: vtap_f,
             ParamPowerFlowRefferenceType.vtap_t: vtap_t,
         }
 
-        block.parameters[gt] = vf.add_const(None)
-        block.parameters[bt] = vf.add_const(None)
-        block.parameters[gFe] = vf.add_const(None)
-        block.parameters[bmu] = vf.add_const(None)
-        block.parameters[m] = vf.add_const(None)
-        block.parameters[phi] = vf.add_const(None)
+        block.parameters[gt] = vf.add_const(0.0)
+        block.parameters[bt] = vf.add_const(0.0)
+        block.parameters[gFe] = vf.add_const(0.0)
+        block.parameters[bmu] = vf.add_const(0.0)
+        block.parameters[m] = vf.add_const(1.0)
+        block.parameters[phi] = vf.add_const(0.0)
+        block.parameters[vtap_f] = vf.add_const(1.0)
+        block.parameters[vtap_t] = vf.add_const(1.0)
         #
         # if trafo.tap_module_control_mode != TapModuleControl.fixed:
         #    del block.event_dict[m]
@@ -233,6 +239,8 @@ class TrafoRmsTemplate(RmsModelTemplate):
         #            block.children.append(PI_control_block)
         #    block.unify_blocks()
 
+        block.in_vars = inputs
+
         self._block = block
 
 
@@ -319,28 +327,28 @@ class TrafoPhasorRmsTemplate(RmsModelTemplate):
             ParamPowerFlowRefferenceType.bsh: bmu,
             ParamPowerFlowRefferenceType.gFe: gFe,
             ParamPowerFlowRefferenceType.transformer_tap_module: tap_module,
-            ParamPowerFlowRefferenceType.transformer_tap_ratio: tap_module,
+            ParamPowerFlowRefferenceType.transformer_tap_ratio: tap_phase,
             ParamPowerFlowRefferenceType.vtap_f: vtap_f,
             ParamPowerFlowRefferenceType.vtap_t: vtap_t,
         }
 
-        block.parameters[gt] = vf.add_const(None)
-        block.parameters[bt] = vf.add_const(None)
-        block.parameters[gFe] = vf.add_const(None)
-        block.parameters[bmu] = vf.add_const(None)
-        block.parameters[tap_module] = vf.add_const(None)
-        block.parameters[tap_phase] = vf.add_const(None)
-        block.parameters[vtap_f] = vf.add_const(None)
-        block.parameters[vtap_t] = vf.add_const(None)
+        block.parameters[gt] = vf.add_const(0.0)
+        block.parameters[bt] = vf.add_const(0.0)
+        block.parameters[gFe] = vf.add_const(0.0)
+        block.parameters[bmu] = vf.add_const(0.0)
+        block.parameters[tap_module] = vf.add_const(1.0)
+        block.parameters[tap_phase] = vf.add_const(0.0)
+        block.parameters[vtap_f] = vf.add_const(1.0)
+        block.parameters[vtap_t] = vf.add_const(1.0)
         block.parameters[phase_displacement] = vf.add_const(0)
 
         self._block = block
 
 
-def get_transformer2w_rms(vf: VarFactory, use_phasor_template: bool = True):
+def get_transformer2w_rms(vf: VarFactory, use_phasor_template: bool = False):
     if use_phasor_template:
-        return TrafoRmsTemplate(vf=vf)
-    return None
+        return TrafoPhasorRmsTemplate(vf=vf)
+    return TrafoRmsTemplate(vf=vf)
 
 
 def initialize_trafo_rms(trafo: Transformer2W, vf: VarFactory):

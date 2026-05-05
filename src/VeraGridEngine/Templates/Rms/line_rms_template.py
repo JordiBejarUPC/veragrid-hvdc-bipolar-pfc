@@ -81,8 +81,8 @@ def get_dc_line_rms_template(vfactory: VarFactory, name="DC_Line_rms_template") 
     templ.tpe = DeviceType.DCLineDevice
     templ.name = name
 
-    Vdcf = vfactory.add_var("Vdcf_" + name, VarPowerFlowRefferenceType.Vmf)
-    Vdct = vfactory.add_var("Vdct_" + name, VarPowerFlowRefferenceType.Vmt)
+    Vdcf = vfactory.add_var("Vdcf_" + name, reference=VarPowerFlowRefferenceType.Vmf)
+    Vdct = vfactory.add_var("Vdct_" + name, reference=VarPowerFlowRefferenceType.Vmt)
     inputs: List[Var] = [Vdcf, Vdct]
 
     If_dc = vfactory.add_var("If_dc")

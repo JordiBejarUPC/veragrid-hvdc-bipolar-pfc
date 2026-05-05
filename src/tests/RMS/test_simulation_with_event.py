@@ -87,7 +87,11 @@ def test_simulation_with_event():
     line_mdl = get_line_rms_template(grid.var_factory).block
 
     # load
-    load_mdl = get_load_rms_template(grid.var_factory).block
+    load_mdl = get_load_rms_template(
+        grid.var_factory,
+        pl0_init=-load.P / grid.Sbase,
+        ql0_init=-load.Q / grid.Sbase,
+    ).block
 
     # connection with buses
 
