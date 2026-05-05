@@ -3685,10 +3685,13 @@ def assign_switch_static_api_mapping(
         logger: Logger | None,
 ) -> None:
     """
-    Intentionally leave switch static mapping as a no-op.
+    Assign static switch parameters exposed by ``mdl.api_obj_mapping``.
 
-    Reachability exists in the EMT builder, but there is no established EMT
-    template/static-key contract for ``Switch`` yet.
+    The EMT switch template uses a closed-state conductance parameter in its
+    dynamic current equation. The static switch device exposes series
+    resistance and reactance in p.u., therefore the EMT template must receive
+    the real part of the corresponding series admittance so the reduced EMT
+    branch remains consistent with the static device data.
 
     :param switch: Switch device.
     :param mdl: EMT block.
@@ -3696,10 +3699,42 @@ def assign_switch_static_api_mapping(
     :param logger: Optional logger.
     :return: None.
     """
-    if logger is None:
-        pass
+    device_name: str = str(switch.name)
+    resistance_value: float = float(switch.R)
+    reactance_value: float = float(switch.X)
+    impedance_sq_value: float = resistance_value * resistance_value + reactance_value * reactance_value
+    eps_value: float = 1.0e-12
+    conductance_value: float
+
+    # The switch still inherits the common branch static fields such as active
+    # state and rating. Those values are assigned first so the EMT branch keeps
+    # the same metadata contract as the other branch-like templates.
+    assign_common_branch_static_api_mapping(
+        device=switch,
+        mdl=mdl,
+        problem_mapping=problem_mapping,
+        logger=logger,
+    )
+
+    # The reduced EMT switch stores only a conductance, so the static R/X data
+    # must be projected to the real part of the branch admittance. The epsilon
+    # guard avoids a singular division for near-ideal static switches.
+    if impedance_sq_value > eps_value:
+        conductance_value = resistance_value / impedance_sq_value
     else:
-        pass
+        conductance_value = 1.0 / eps_value
+
+    # The EMT template explicitly requests this quantity through the static
+    # ParamPowerFlowRefferenceType.g key, so the standard static API-object
+    # assignment path must populate the constant-parameter mapping.
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowRefferenceType.g,
+        value=conductance_value,
+        logger=logger,
+        device_name=device_name,
+        problem_mapping=problem_mapping,
+    )
 
 
 def assign_upfc_static_api_mapping(
