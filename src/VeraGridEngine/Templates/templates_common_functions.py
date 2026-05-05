@@ -15,6 +15,7 @@ from VeraGridEngine.basic_structures import Vec
 from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr, BinOp, CmpOp, Comparison, heaviside, hard_sat, expression2numba, get_expression_vars)
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import DeviceType, ParamPowerFlowRefferenceType
+from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms, get_bus_rms_algebraic_vars
 
 
 
@@ -929,6 +930,52 @@ def connect_models(mdl1: Block, mdl2: Block):
 
 
     #print("")
+def connect_bus_variables(device: Any, model:Block, var_factory: VarFactory):
+    """
+    connect the bus variables of the model with the api_object bus variables
+    :param device:
+    :type device:
+    :param model:
+    :type model:
+    :param var_factory:
+    :type var_factory:
+    :return:
+    :rtype:
+    """
+
+    if device.device_type in [DeviceType.BranchDevice, DeviceType.LineDevice, DeviceType.Transformer2WDevice, DeviceType.Transformer3WDevice]:
+        # Check if using phasor or polar coordinates by looking at bus model outputs
+        bus_model = device.bus_from.rms_model
+        if bus_model.empty():
+            initialize_bus_rms(device.bus_from, var_factory)
+
+        # Check if bus has Vr/Vi (phasor) or Vm/Va (polar) outputs
+        has_phasor = any(v.ref == VarPowerFlowRefferenceType.Vr for v in bus_model.out_vars)
+        if has_phasor:
+            connect_line_phasor_rms_from(device.bus_from.rms_model, model)
+        else:
+            connect_line_rms_from(device.bus_from.rms_model, model)
+
+
+        bus_model = device.bus_to.rms_model
+        if bus_model.empty():
+            initialize_bus_rms(device.bus_to, var_factory)
+        # Check if bus has Vr/Vi (phasor) or Vm/Va (polar) outputs
+        has_phasor = any(v.ref == VarPowerFlowRefferenceType.Vr for v in bus_model.out_vars)
+        if has_phasor:
+            connect_line_phasor_rms_to(device.bus_to.rms_model, model)
+        else:
+            connect_line_rms_to(device.bus_to.rms_model, model)
+
+
+    else:
+        if device.bus.rms_model.empty():
+            initialize_bus_rms(device.bus, var_factory)
+            connect_models_power_flow(device.bus.rms_model, model)
+
+        else:
+            raise ValueError(f"Connection Bus RMS model cannot be empty, initialize {device.bus.name} RMS model")
+
 
 
 def set_rms_model(device: Any, model:Block, var_factory: VarFactory):

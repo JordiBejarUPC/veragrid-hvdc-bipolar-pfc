@@ -8678,12 +8678,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         specs: List[ConnectionVarSpec]
 
         if self.mode == DynamicSimulationMode.RMS:
-            if isinstance(self.api_object, BranchParent):
-                specs = self._build_rms_branch_connection_specs()
-            elif isinstance(self.api_object, InjectionParent):
-                specs = self._build_rms_injection_connection_specs()
-            else:
-                specs = list()
+            self.add_connection_vars_rms()
 
         elif self.mode == DynamicSimulationMode.EMT:
             if isinstance(self.api_object, BranchParent):
@@ -8693,10 +8688,71 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             else:
                 specs = list()
 
+            self._materialize_connection_specs(specs)
+
         else:
             raise ValueError(f"Unsupported dynamic editor mode {self.mode}")
 
-        self._materialize_connection_specs(specs)
+
+
+    def add_connection_vars_rms(self):
+        """
+        Add a block with bus connection variables to connect the device
+        :return:
+        """
+
+        if isinstance(self.api_object, BranchParent):
+
+            # connect bus variables
+            if self.api_object.bus_from.rms_model.empty():
+                initialize_bus_rms(self.api_object.bus_from, self.var_factory)
+
+            Vmf, Vaf = get_bus_rms_algebraic_vars(self.api_object.bus_from.rms_model)
+
+            if self.api_object.bus_to.rms_model.empty():
+                initialize_bus_rms(self.api_object.bus_to, self.var_factory)
+
+            Vmt, Vat = get_bus_rms_algebraic_vars(self.api_object.bus_to.rms_model)
+
+            self.main_block.in_vars.append(Vmf)
+            self.main_block.in_vars.append(Vaf)
+            self.main_block.in_vars.append(Vmt)
+            self.main_block.in_vars.append(Vat)
+
+            self.main_block.external_mapping.update(
+                {VarPowerFlowRefferenceType.Vmf: Vmf})
+            self.main_block.external_mapping.update(
+                {VarPowerFlowRefferenceType.Vaf: Vaf})
+
+            self.main_block.external_mapping.update(
+                {VarPowerFlowRefferenceType.Vmt: Vmt})
+            self.main_block.external_mapping.update(
+                {VarPowerFlowRefferenceType.Vat: Vat})
+
+        elif isinstance(self.api_object, InjectionParent):
+
+            # connect bus variables
+            if self.api_object.bus.rms_model.empty():
+                initialize_bus_rms(self.api_object.bus, self.var_factory)
+
+            Vm, Va = get_bus_rms_algebraic_vars(self.api_object.bus.rms_model)
+            self.main_block.in_vars.append(Vm)
+            self.main_block.in_vars.append(Va)
+
+            self.main_block.external_mapping.update(
+                {VarPowerFlowRefferenceType.Vm: Vm})
+            self.main_block.external_mapping.update(
+                {VarPowerFlowRefferenceType.Va: Va})
+
+            # add connection variables
+            P = self.var_factory.add_var('net_conn_P', VarPowerFlowRefferenceType.P, True)
+            Q = self.var_factory.add_var('net_conn_Q', VarPowerFlowRefferenceType.Q, True)
+
+            self.main_block.out_vars.append(P)
+            self.main_block.out_vars.append(Q)
+
+            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.P: P})
+            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Q: Q})
 
     def add_connection_items(self):
         """
@@ -9130,6 +9186,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         return bus.name.replace(" ", "_")
 
     def add_api_obj_mapping(self):
+
+        # Todo: add static_parameters_maping logic to add this depending on the type of device
         """
         Adds API object mapping for the main block based on the device type.
 

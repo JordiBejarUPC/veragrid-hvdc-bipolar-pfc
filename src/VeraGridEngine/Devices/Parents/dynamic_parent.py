@@ -14,6 +14,7 @@ from VeraGridEngine.Devices.Dynamic.fmu_template import FmuTemplate
 from VeraGridEngine.enumerations import (DeviceType, BuildStatus, SubObjectType, FmuTemplateDomain, FmuTemplateMode,
                                          PrpCat)
 from VeraGridEngine.Utils.Symbolic.symbolic_io import duplicate_block
+from VeraGridEngine.Templates.templates_common_functions import connect_bus_variables
 
 
 class DynamicDevice(PhysicalDevice):
@@ -278,8 +279,9 @@ class DynamicDevice(PhysicalDevice):
 
             if self.auto_update_enabled:
                 val.block.unify_blocks()
-                # Todo: add promp to edit parameters from template after copy
-                self.rms_model = duplicate_block(val.block, self._var_factory)
+                rms_mdl = duplicate_block(val.block, self._var_factory)
+                connect_bus_variables(self, rms_model)
+                self.rms_model = rms_model
 
         elif val is None:
             self._rms_template = None
