@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import sys
 
-from PySide6 import QtWidgets
+from PySide6 import QtGui, QtWidgets
 
 from VeraGrid.Gui.DeviceEditors.ControllableShuntEditor.controllable_shunt_editor import (
     ControllableShuntStepsEditorWidget,
@@ -42,15 +42,25 @@ class ControllableShuntDeviceEditor(TemplateDeviceEditor):
         """
         self.steps_tab: QtWidgets.QWidget = QtWidgets.QWidget(self.tab_widget)
         self.steps_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self.steps_tab)
+        self.steps_button_layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout()
+        self.steps_apply_button: QtWidgets.QPushButton = QtWidgets.QPushButton("Accept", self.steps_tab)
+        self.steps_apply_button.setIcon(QtGui.QIcon(":/Icons/icons/accept.png"))
 
         self.steps_editor_widget = ControllableShuntStepsEditorWidget(
             api_object=self.api_object,
             parent=self.steps_tab,
         )
+        self.steps_editor_widget.ui.doneButton.hide()
         self.steps_editor_widget.steps_applied.connect(self._on_steps_applied)
         self.steps_layout.addWidget(self.steps_editor_widget)
+        self.steps_apply_button.clicked.connect(self.steps_editor_widget.apply_changes)
 
-        self.tab_widget.addTab(self.steps_tab, "StepsEditor")
+        self.steps_button_layout.addStretch()
+        self.steps_button_layout.addWidget(self.steps_apply_button)
+        self.steps_layout.addLayout(self.steps_button_layout)
+
+        steps_tab_index: int = self.tab_widget.addTab(self.steps_tab, "Steps editor")
+        self.tab_widget.setTabIcon(steps_tab_index, QtGui.QIcon(":/Icons/icons/controllable_shunt.png"))
 
     def _on_steps_applied(self, applied_ok: bool) -> None:
         """

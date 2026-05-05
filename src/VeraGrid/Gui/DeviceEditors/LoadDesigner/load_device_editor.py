@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import sys
 
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 
 from VeraGrid.Gui.DeviceEditors.LoadDesigner.load_designer import LoadDesigner
 from VeraGrid.Gui.DeviceEditors.TemplateDeviceEditor.template_device_editor import TemplateDeviceEditor
@@ -103,13 +103,11 @@ class LoadDeviceEditor(TemplateDeviceEditor):
         self.load_designer_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self.load_designer_tab)
         self.load_designer_button_layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout()
         self.load_designer_apply_button: QtWidgets.QPushButton = QtWidgets.QPushButton(
-            "Apply load profile",
+            "Accept",
             self.load_designer_tab,
         )
+        self.load_designer_apply_button.setIcon(QtGui.QIcon(":/Icons/icons/accept.png"))
         self.load_designer_apply_button.setEnabled(False)
-        self.load_designer_button_layout.addWidget(self.load_designer_apply_button)
-        self.load_designer_button_layout.addStretch()
-        self.load_designer_layout.addLayout(self.load_designer_button_layout)
 
         if self.circuit is not None and self.circuit.has_time_series:
             if self.api_object.bus is not None:
@@ -144,7 +142,12 @@ class LoadDeviceEditor(TemplateDeviceEditor):
             )
             self.load_designer_layout.addWidget(missing_msg)
 
-        self.tab_widget.addTab(self.load_designer_tab, "LoadDesigner")
+        self.load_designer_button_layout.addStretch()
+        self.load_designer_button_layout.addWidget(self.load_designer_apply_button)
+        self.load_designer_layout.addLayout(self.load_designer_button_layout)
+
+        load_tab_index: int = self.tab_widget.addTab(self.load_designer_tab, "Load designer")
+        self.tab_widget.setTabIcon(load_tab_index, QtGui.QIcon(":/Icons/icons/load_wizard.png"))
 
     def _on_load_generation_updated(self, is_generated: bool) -> None:
         """

@@ -64,7 +64,7 @@ class InjectionParent(DynamicDevice):
             tpe=bool,
             definition='Is the load active?',
             profile_name='active_prof',
-            cat=[PrpCat.PF],
+            cat=[PrpCat.PF, PrpCat.OPF, PrpCat.CON],
         ),
         GCProp(
             prop_name='color',
@@ -167,7 +167,7 @@ class InjectionParent(DynamicDevice):
             units='',
             tpe=ShuntConnectionType,
             definition='Connection type for 3-phase studies',
-            cat=[PrpCat.PF],
+            cat=[PrpCat.SC, PrpCat.PF3],
         ),
 
         GCProp(
