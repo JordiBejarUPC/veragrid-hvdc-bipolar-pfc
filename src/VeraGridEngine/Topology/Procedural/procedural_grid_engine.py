@@ -804,7 +804,6 @@ class ProceduralGridComputationEngine:
                 lon, lat = bus.try_to_find_coordinates()
                 bus.longitude = lon
                 bus.latitude = lat
-                bus.name = f"Candidate_{candidate_counter}"
                 bus.Vm_cost = bus.Vnom * bus.Vm_cost
                 self.candidate_buses.append(bus)
                 candidate_counter += 1
@@ -815,7 +814,6 @@ class ProceduralGridComputationEngine:
                 lon, lat = bus.try_to_find_coordinates()
                 bus.longitude = lon
                 bus.latitude = lat
-                bus.name = f"Target_{target_counter}"
                 bus.Vm_cost = bus.Vnom * bus.Vm_cost
                 self.target_buses.append(bus)
                 target_counter += 1
@@ -896,14 +894,6 @@ class ProceduralGridComputationEngine:
         # generate edges
         rows, cols = np.where(final_mst > 0)
         edges = list(zip(rows, cols))
-
-        self.debugger.plot_mst_graph(
-            coords_final_network=coords_final_network,
-            edges=edges,
-            n_candidate=len(self.candidate_buses),
-            n_target=len(self.target_buses),
-            final_steiner_pts=final_steiner_pts,
-        )
 
         # 2E. Assign voltages to Steiner Points
         distances = np.zeros(network.base_coords.shape[0])

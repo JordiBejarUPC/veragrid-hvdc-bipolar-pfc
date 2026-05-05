@@ -9,7 +9,7 @@ from collections import OrderedDict
 from typing import List, Tuple, Dict, Union
 
 # GUI imports
-from PySide6 import QtGui
+from PySide6 import QtGui, QtCore
 from matplotlib.colors import LinearSegmentedColormap
 
 import VeraGrid.Gui.gui_functions as gf
@@ -56,6 +56,16 @@ class SimulationsMain(TimeEventsMain):
         TimeEventsMain.__init__(self, parent)
 
         self._remote_jobs: Dict[str, RemoteJobDriver] = dict()
+
+        # Snapshot baseline of device.active flags for every investment-touched device,
+        # captured right after an Investments-evaluation run. Used by the Variations-panel
+        # click handler to revert the previous selection before applying a new combination
+        # (so the panel behaves stickily across clicks).
+        # WARNING: snapshot only. set_investments_status overwrites the device's active
+        # *profile* (per-timestep) on every apply, so any pre-existing time-series active
+        # profile on these devices is lost permanently after the first click and cannot be
+        # restored from this baseline.
+        self._investments_baseline: Dict[str, bool] = dict()
 
         # Power Flow Methods
         self.se_solvers_dict, se_solvers_mdl = gf.enums_to_model(
@@ -698,26 +708,41 @@ class SimulationsMain(TimeEventsMain):
     @staticmethod
     def get_investments_combination_tree_model(drv: sim.InvestmentsEvaluationDriver) -> QtGui.QStandardItemModel:
         """
-        Get the investments combination tree model
-        :param drv:
-        :return:
-        """
-        model = QtGui.QStandardItemModel()
-        model.setHorizontalHeaderLabels(["Combination"] + list(drv.results.f_names))
+        Build the model for the Variations panel after an Investments evaluation.
+        Only Pareto-front combinations are listed (using the deduplicated indices
+        produced by InvestmentsEvaluationResults.finalize); non-Pareto rows would
+        clutter the panel without adding information.
 
-        for i in range(drv.results.max_eval):
-            idx = np.where(drv.results.x[i, :] != 0)[0]
+        :param drv: InvestmentsEvaluationDriver instance with finalized results
+        :return: QStandardItemModel with one top-level row per Pareto combination
+        """
+        model: QtGui.QStandardItemModel = QtGui.QStandardItemModel()
+        model.setHorizontalHeaderLabels(["Pareto combination"] + list(drv.results.f_names))
+
+        # Iterate only over Pareto-front rows. sorting_indices points back into the
+        # full _x/_f arrays, so drv.results.x[i, :] is still the right way to look
+        # up the x vector. We tag each row with its original index via UserRole so
+        # the click handler can recover the x vector regardless of how Qt later
+        # sorts or filters the panel.
+        for i in drv.results.sorting_indices:
+            idx: np.ndarray = np.where(drv.results.x[i, :] != 0)[0]
             if len(idx):
-                row_items = [QtGui.QStandardItem(f"Combination {i}")] + [
+                label_item: QtGui.QStandardItem = QtGui.QStandardItem(f"Pareto combination {i}")
+                label_item.setData(int(i), QtCore.Qt.ItemDataRole.UserRole)
+                row_items: List[QtGui.QStandardItem] = [label_item] + [
                     QtGui.QStandardItem(f"{fi:.2f}") for fi in drv.results.f[i, :]
                 ]
                 model.appendRow(row_items)
 
-                # Add names as child nodes under this combination
-                names_parent_item = row_items[0]  # Use the first column (Combination) as parent
+                # Investment names go under the combination row as children. Clicks
+                # on a child still trigger combinations_tree_clicked, which walks
+                # back up to the top-level row to recover the combination index.
                 for k in idx:
-                    name_item = QtGui.QStandardItem(drv.results.x_names[k])
-                    names_parent_item.appendRow([name_item])
+                    name_item: QtGui.QStandardItem = QtGui.QStandardItem(drv.results.x_names[k])
+                    label_item.appendRow([name_item])
+            else:
+                # empty combination (no investments active) - skip it
+                pass
 
         return model
 
@@ -3123,20 +3148,48 @@ class SimulationsMain(TimeEventsMain):
             QtGui.QGuiApplication.processEvents()
 
             self.update_available_results()
-            self.colour_diagrams()
+
+            # Capture the snapshot baseline of device.active for every device touched
+            # by any investment in the live grid BEFORE we apply anything. The
+            # Variations-panel click handler uses this to revert the previously-clicked
+            # combination before applying a new one, so selections behave stickily.
+            # WARNING: snapshot only. set_investments_status will overwrite each
+            # device's active *profile* (per-timestep) when a combination is applied,
+            # and the original time-series profile is not stored here. Repeated
+            # clicks therefore leave the active profile filled with the last
+            # applied status; the original profile shape is lost.
+            self._investments_baseline = dict()
+            all_elements_dict, _ = self.circuit.get_all_elements_dict()
+            for inv in self.circuit.investments:
+                # device targeted by the investment must exist; if it was deleted
+                # between investment creation and now, just skip the snapshot
+                device = all_elements_dict.get(inv.device_idtag, None)
+                if device is not None:
+                    self._investments_baseline[inv.device_idtag] = bool(device.active)
+                else:
+                    # device missing from the grid - nothing to snapshot for it
+                    pass
 
             # create a schematic diagram for the best Pareto-optimal investment combination
             if driver is not None and len(results.sorting_indices) > 0:
                 best_x = results.x[results.sorting_indices[0], :]
                 inv_list = driver.problem.get_investments_for_combination(x=best_x)
 
-                # work on a copy so the base circuit is not modified
-                invested_grid = self.circuit.copy()
-                invested_grid.set_investments_status(investments_list=inv_list, status=True)
+                # Apply the best Pareto combination directly on self.circuit (no copy).
+                # Reason: the auto-generated diagram below must be bound to self.circuit
+                # so that subsequent clicks in the Variations panel — which mutate
+                # self.circuit — actually update the visible graphics. If we kept the
+                # old self.circuit.copy() pattern, every graphic's api_object would
+                # point to the copy, and clicking a Pareto combination later would
+                # silently change self.circuit while the diagram (still bound to the
+                # untouched copy) showed every branch as dashed forever.
+                self.circuit.set_investments_status(investments_list=inv_list,
+                                                    status=True,
+                                                    all_elements_dict=all_elements_dict)
 
                 diagram = make_diagram_from_buses(
-                    circuit=invested_grid,
-                    buses=invested_grid.buses,
+                    circuit=self.circuit,
+                    buses=self.circuit.buses,
                     name='Investments evaluation (best Pareto)'
                 )
 
@@ -3150,6 +3203,12 @@ class SimulationsMain(TimeEventsMain):
                 self.add_diagram_widget_and_diagram(diagram_widget=diagram_widget,
                                                     diagram=diagram)
                 self.set_diagrams_list_view()
+            else:
+                # no Pareto results - nothing to apply or auto-display
+                pass
+
+            # apply result-based colouring after the baseline + best-Pareto state is set
+            self.colour_diagrams()
         else:
             self.show_error_toast('Something went wrong, There are no investments evaluation results.')
 

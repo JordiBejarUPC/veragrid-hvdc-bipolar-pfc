@@ -3405,7 +3405,10 @@ class DiagramsMain(CompiledArraysMain):
 
     def combinations_tree_clicked(self):
         """
-        On combinations tree click
+        On combinations tree click. Dispatches by the active study type:
+        - ShortCircuit: re-colours the diagram for the clicked short-circuit case.
+        - InvestmentsEvaluation: applies the clicked Pareto combination to the
+          live MultiCircuit (sticky behaviour) and refreshes the diagram.
         """
         indices = self.ui.combinationsTreeView.selectedIndexes()
 
@@ -3437,9 +3440,119 @@ class DiagramsMain(CompiledArraysMain):
                                       max_bus_width=max_bus_width,
                                       sc_index=sel_idx)
 
+                elif current_study == sim.InvestmentsEvaluationDriver.tpe.value:
+                    # delegate to the dedicated handler so this dispatcher stays small
+                    self.apply_investments_combination(clicked_index=indices[0])
+
+                else:
+                    # the active study has no per-combination behaviour - nothing to do
+                    pass
+            else:
+                # no study selected or invalid row - nothing to dispatch
+                pass
+
         else:
             #  no indices selected
             pass
+
+    def apply_investments_combination(self, clicked_index: QtCore.QModelIndex) -> None:
+        """
+        Apply the Pareto combination tagged on the clicked tree item to the live
+        MultiCircuit and refresh the active diagram.
+
+        The clicked index may be either a top-level combination row or one of its
+        investment-name children; we walk up to the top-level item to recover the
+        combination index that was stamped via Qt.UserRole when the model was built.
+
+        Behaviour is sticky: every click first reverts every investment-touched
+        device to the snapshot baseline captured right after the evaluation, then
+        sets the selected combination's investments to active=True. This means a
+        second click on a different row replaces the previous selection cleanly.
+
+        WARNING: only the snapshot 'active' flag is restored on revert. The active
+        *profile* (time-series) was overwritten by set_investments_status when the
+        previous combination was applied, and that data is not recoverable from
+        the baseline. Tell users to save the project before exploring combinations
+        if their grid has a meaningful active profile.
+
+        :param clicked_index: QModelIndex of the row (or child row) the user clicked
+        """
+        # walk up to the top-level row, since the tree shows investment names as
+        # children of each combination row and clicks may land on a child item
+        top_index: QtCore.QModelIndex = clicked_index
+        while top_index.parent().isValid():
+            top_index = top_index.parent()
+
+        # the original combination index was stamped on column 0 at model-build
+        # time; read it from the column-0 sibling so we get the tagged item even
+        # if the user clicked a different column of the same row
+        column_zero_index: QtCore.QModelIndex = top_index.sibling(top_index.row(), 0)
+        user_data = column_zero_index.data(QtCore.Qt.ItemDataRole.UserRole)
+
+        if user_data is None:
+            # row was not tagged with a combination index (defensive guard)
+            return None
+        else:
+            i: int = int(user_data)
+
+        driver, results = self.session.investments_evaluation
+        if driver is None or results is None:
+            # results were cleared between panel build and click
+            self.show_warning_toast("Investments evaluation results are no longer available")
+            return None
+        else:
+            pass
+
+        # build the list of Investment objects activated by this combination
+        x_vec: np.ndarray = results.x[i, :]
+        inv_list = driver.problem.get_investments_for_combination(x=x_vec)
+
+        # Sticky revert: restore every device touched by any investment to the
+        # snapshot captured at evaluation time. Without this step, devices that
+        # were switched on by a previous click would stay on, compounding
+        # selections instead of replacing them.
+        all_elements_dict, _ = self.circuit.get_all_elements_dict()
+        for idtag, original_active in self._investments_baseline.items():
+            device = all_elements_dict.get(idtag, None)
+            if device is not None:
+                device.active = original_active
+                # also overwrite the active profile so the time-series view is
+                # consistent with the snapshot we just restored (the original
+                # profile shape is already gone from a previous click)
+                profile = device.get_profile('active')
+                if profile is not None:
+                    profile.fill(original_active)
+                else:
+                    # device has no active profile - snapshot-only restore is enough
+                    pass
+            else:
+                # device was deleted between baseline capture and now - skip it
+                pass
+
+        # apply the selected combination on top of the now-baseline state
+        self.circuit.set_investments_status(investments_list=inv_list,
+                                            status=True,
+                                            all_elements_dict=all_elements_dict)
+
+        # Refresh active/inactive pen styles on every open schematic so toggled
+        # branches go from dashed (inactive) to solid (active) and vice versa.
+        # This is separate from result-based colouring done by colour_diagrams() —
+        # the dashed/solid pen style is set by recolour_mode(), which reads
+        # api_object.active. colour_diagrams() only paints results-based colours
+        # and does not refresh active-state styling on its own.
+        for diagram_widget in self.diagram_widgets_list:
+            if isinstance(diagram_widget, SchematicWidget):
+                diagram_widget.recolour_mode()
+            else:
+                # map widgets and other diagram types do not encode active state
+                # via dashed/solid pen styling, so they have nothing to refresh
+                pass
+
+        # re-apply result-based colouring on top of the active-state styling
+        self.colour_diagrams()
+        self.show_info_toast(f"Applied Pareto combination {i}: "
+                             f"{len(inv_list)} investments active")
+        return None
 
     def reset_diagram_coordinates(self):
         """
