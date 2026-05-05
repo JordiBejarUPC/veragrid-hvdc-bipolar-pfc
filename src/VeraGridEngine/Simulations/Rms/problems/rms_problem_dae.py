@@ -417,6 +417,13 @@ class RmsProblemDae(RmsProblemTemplate):
                     ys = 1.0 / complex(elm.R, elm.X)
                     ysh = elm.G + 1j * elm.B
 
+                    # TODO: Uncoment when everything works
+                    # assign_static_api_object_mapping_for_device(grid=self.grid,
+                    #                                             device=elm,
+                    #                                             mdl=elm.rms_model,
+                    #                                             problem_mapping=self._static_parameterm_values_mapping,
+                    #                                             logger=None)
+
                     transformer_param_values: Dict[ParamPowerFlowRefferenceType, float] = {
                         ParamPowerFlowRefferenceType.g: ys.real,
                         ParamPowerFlowRefferenceType.b: ys.imag,

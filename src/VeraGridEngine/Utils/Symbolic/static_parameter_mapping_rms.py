@@ -3170,12 +3170,88 @@ def assign_transformer2w_static_api_mapping(
     :param logger: Optional logger.
     :return: None.
     """
+
+    vtap_f, vtap_t = transformer.get_virtual_taps()
+
     assign_common_branch_static_api_mapping(
         device=transformer,
         mdl=mdl,
         problem_mapping=problem_mapping,
         logger=logger,
     )
+
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowRefferenceType.g,
+        value=float(transformer.R / (transformer.R ** 2 + transformer.X ** 2)),
+        logger=logger,
+        device_name=transformer.name,
+        problem_mapping=problem_mapping,
+    )
+
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowRefferenceType.b,
+        value=float(float(-transformer.X / (transformer.R ** 2 + transformer.X ** 2))),
+        logger=logger,
+        device_name=transformer.name,
+        problem_mapping=problem_mapping,
+    )
+
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowRefferenceType.bsh,
+        value=float(transformer.B),
+        logger=logger,
+        device_name=transformer.name,
+        problem_mapping=problem_mapping,
+    )
+
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowRefferenceType.gFe,
+        value=float(transformer.G),
+        logger=logger,
+        device_name=transformer.name,
+        problem_mapping=problem_mapping,
+    )
+
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowRefferenceType.vtap_f,
+        value=float(vtap_f),
+        logger=logger,
+        device_name=transformer.name,
+        problem_mapping=problem_mapping,
+    )
+
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowRefferenceType.vtap_t,
+        value=float(vtap_t),
+        logger=logger,
+        device_name=transformer.name,
+        problem_mapping=problem_mapping,
+    )
+
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowRefferenceType.transformer_tap_module,
+        value=float(transformer.tap_module),
+        logger=logger,
+        device_name=transformer.name,
+        problem_mapping=problem_mapping,
+    )
+
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowRefferenceType.transformer_tap_ratio,
+        value=float(transformer.tap_phase),
+        logger=logger,
+        device_name=transformer.name,
+        problem_mapping=problem_mapping,
+    )
+
     device_name: str = str(transformer.name)
     eps_value: float = 1.0e-12
     omega_base: float = omega_base_from_grid(grid)
@@ -3489,6 +3565,52 @@ def assign_line_static_api_mapping(
         problem_mapping=problem_mapping,
         logger=logger,
     )
+
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowRefferenceType.g,
+        value=float(line.R / (line.R ** 2 + line.X ** 2)),
+        logger=logger,
+        device_name=device_name,
+        problem_mapping=problem_mapping,
+    )
+
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowRefferenceType.b,
+        value=float(float(-line.X / (line.R ** 2 + line.X ** 2))),
+        logger=logger,
+        device_name=device_name,
+        problem_mapping=problem_mapping,
+    )
+
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowRefferenceType.bsh,
+        value=float(line.B),
+        logger=logger,
+        device_name=device_name,
+        problem_mapping=problem_mapping,
+    )
+
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowRefferenceType.r,
+        value=float(line.R),
+        logger=logger,
+        device_name=device_name,
+        problem_mapping=problem_mapping,
+    )
+
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowRefferenceType.l,
+        value=float(line.X),
+        logger=logger,
+        device_name=device_name,
+        problem_mapping=problem_mapping,
+    )
+
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowRefferenceType.line_length_km,
@@ -3565,7 +3687,7 @@ def assign_line_static_api_mapping(
                             value=0.0,
                             logger=logger,
                             device_name=device_name,
-        problem_mapping=problem_mapping,
+                            problem_mapping=problem_mapping,
                         )
                         assign_api_mapping_value_if_present(
                             mdl=mdl,
@@ -3573,7 +3695,7 @@ def assign_line_static_api_mapping(
                             value=0.0,
                             logger=logger,
                             device_name=device_name,
-        problem_mapping=problem_mapping,
+                            problem_mapping=problem_mapping,
                         )
                         assign_api_mapping_value_if_present(
                             mdl=mdl,
@@ -3581,7 +3703,7 @@ def assign_line_static_api_mapping(
                             value=0.0,
                             logger=logger,
                             device_name=device_name,
-        problem_mapping=problem_mapping,
+                            problem_mapping=problem_mapping,
                         )
                         global_col += 1
 

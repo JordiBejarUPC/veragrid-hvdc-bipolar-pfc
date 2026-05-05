@@ -1006,8 +1006,10 @@ def get_gcdev_dc_connectivity_nodes(cgmes_model: CgmesCircuit,
     dc_cn_node_dict: Dict[str, gcdev.Bus] = dict()
     used_buses = set()
     for cgmes_elm in cgmes_model.cgmes_assets.DCNode_list:
-
-        bus = dc_bus_dict.get(cgmes_elm.DCTopologicalNode.uuid, None)
+        if cgmes_elm.DCTopologicalNode is not None:
+            bus = dc_bus_dict.get(cgmes_elm.DCTopologicalNode.uuid, None)
+        else:
+            bus = None
 
         if bus is None:
             logger.add_warning(msg='No DC Bus found for DC Node.',
@@ -2394,20 +2396,26 @@ def get_transformer_tap_changers(cgmes_model: CgmesCircuit,
             step_voltage_increment = get_tap_step_voltage_increment(tap_changer=tap_changer)
 
             if tap_changer.TransformerEnd is not None:
-                trafo_id = tap_changer.TransformerEnd.PowerTransformer.uuid
+                if tap_changer.TransformerEnd.PowerTransformer is not None:
+                    trafo_id = tap_changer.TransformerEnd.PowerTransformer.uuid
 
-                # Search in Transformer 2W
-                gcdev_trafo = find_object_by_idtag(
-                    object_list=gcdev_model.transformers2w,
-                    target_idtag=trafo_id
-                )
-
-                if gcdev_trafo is None:
-                    # Search in Transformer 3W
+                    # Search in Transformer 2W
                     gcdev_trafo = find_object_by_idtag(
-                        object_list=gcdev_model.transformers3w,
+                        object_list=gcdev_model.transformers2w,
                         target_idtag=trafo_id
                     )
+
+                    if gcdev_trafo is None:
+                        # Search in Transformer 3W
+                        gcdev_trafo = find_object_by_idtag(
+                            object_list=gcdev_model.transformers3w,
+                            target_idtag=trafo_id
+                        )
+                    else:
+                        pass
+                else:
+                    trafo_id = None
+                    gcdev_trafo = None
 
                 if isinstance(gcdev_trafo, gcdev.Transformer2W):
 
@@ -2994,20 +3002,34 @@ def get_gcdev_substations(cgmes_model: CgmesCircuit,
         for cgmes_elm in device_list:
 
             community, area, zone = None, None, None
+
             if cgmes_model.cgmes_map_areas_like_raw:
-                zone = find_object_by_idtag(
-                    object_list=gcdev_model.zones,
-                    target_idtag=cgmes_elm.Region.uuid
-                )
-                area = find_object_by_idtag(
-                    object_list=gcdev_model.areas,
-                    target_idtag=cgmes_elm.Region.Region.uuid
-                )
+                if cgmes_elm.Region is not None:
+                    zone = find_object_by_idtag(
+                        object_list=gcdev_model.zones,
+                        target_idtag=cgmes_elm.Region.uuid
+                    )
+                else:
+                    zone = None
+
+                if cgmes_elm.Region is not None:
+                    if cgmes_elm.Region.Region is not None:
+                        area = find_object_by_idtag(
+                            object_list=gcdev_model.areas,
+                            target_idtag=cgmes_elm.Region.Region.uuid
+                        )
+                    else:
+                        area = None
+                else:
+                    area = None
             else:
-                community = find_object_by_idtag(
-                    object_list=gcdev_model.communities,
-                    target_idtag=cgmes_elm.Region.uuid
-                )
+                if cgmes_elm.Region is not None:
+                    community = find_object_by_idtag(
+                        object_list=gcdev_model.communities,
+                        target_idtag=cgmes_elm.Region.uuid
+                    )
+                else:
+                    community = None
 
             if cgmes_elm.Location:
                 try:
@@ -3244,13 +3266,18 @@ def get_gcdev_community(cgmes_model: CgmesCircuit,
                     # longitude=0.0
                 )
 
-                a = find_object_by_idtag(
-                    object_list=gcdev_model.areas,
-                    target_idtag=cgmes_elm.Region.uuid
-                )
+                if cgmes_elm.Region is not None:
+                    a = find_object_by_idtag(
+                        object_list=gcdev_model.areas,
+                        target_idtag=cgmes_elm.Region.uuid
+                    )
+                else:
+                    a = None
 
                 if a is not None:
                     gcdev_elm.area = a
+                else:
+                    pass
 
                 gcdev_model.add_zone(gcdev_elm)
 
@@ -3263,13 +3290,14 @@ def get_gcdev_community(cgmes_model: CgmesCircuit,
                     # longitude=0.0
                 )
 
-                c = find_object_by_idtag(
-                    object_list=gcdev_model.countries,
-                    target_idtag=cgmes_elm.Region.uuid
-                )
+                if cgmes_elm.Region is not None:
+                    c = find_object_by_idtag(
+                        object_list=gcdev_model.countries,
+                        target_idtag=cgmes_elm.Region.uuid
+                    )
 
-                if c is not None:
-                    gcdev_elm.country = c
+                    if c is not None:
+                        gcdev_elm.country = c
 
                 gcdev_model.add_community(gcdev_elm)
 

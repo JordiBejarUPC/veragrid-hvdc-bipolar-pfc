@@ -5,12 +5,10 @@
 
 import numpy as np
 import pandas as pd
-from typing import Union, List, Tuple
+from typing import Union, Tuple
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Devices.Substation.bus import Bus
-from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.enumerations import (BuildStatus, SubObjectType, DeviceType,
-                                         ParamPowerFlowRefferenceType, EmtLineTypes, PrpCat)
+from VeraGridEngine.enumerations import (BuildStatus, SubObjectType, DeviceType, PrpCat)
 from VeraGridEngine.Devices.Branches.underground_line_type import UndergroundLineType
 from VeraGridEngine.Devices.Branches.overhead_line_type import OverheadLineType
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
@@ -19,7 +17,6 @@ from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGridEngine.Devices.Associations.association import Associations
 from VeraGridEngine.Devices.Branches.line_locations import LineLocations
 from VeraGridEngine.Devices.admittance_matrix import AdmittanceMatrix
-from VeraGridEngine.Utils.Symbolic.block import Const
 from VeraGridEngine.Devices.Parents.editable_device import GCProp
 
 
