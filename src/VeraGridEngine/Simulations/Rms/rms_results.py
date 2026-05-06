@@ -77,11 +77,6 @@ class RmsResults(ResultsTemplate):
         self.devices_vars_info: Dict[ALL_DEV_TYPES, List[Var]] = devices_vars_info
         self.uid2idx: Dict[int, int] = uid2idx
         self.vars_glob_name2uid = vars_glob_name2uid
-
-        for var in variables:
-            if not var.uid in self.uid2vars_glob_name:
-                print("")
-
         self.variable_array = np.array([self.uid2vars_glob_name[var.uid] for var in variables], dtype=str)
         self.values = np.zeros((self.nt, self.nv, self.ng), dtype=float)
 
