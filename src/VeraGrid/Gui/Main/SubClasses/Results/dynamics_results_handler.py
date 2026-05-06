@@ -2,7 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-from typing import Dict, List
+from typing import Dict, List, Set, Tuple
 import numpy as np
 from matplotlib import pyplot as plt
 from PySide6 import QtCore, QtGui
@@ -930,44 +930,272 @@ class DynamicsResultsHandler:
         else:
             raise Exception("Unsupported dynamics results type")
 
-    def _snapshot_plot_groups(self) -> List[tuple[str, List[int]]]:
-        """
-        Snapshot current plot groups using variable uid references.
+    # def _snapshot_plot_groups(self) -> List[tuple[str, List[int]]]:
+    #     """
+    #     Snapshot current plot groups using variable uid references.
+    #
+    #     :return: List of tuples (group_name, [var_uid_1, var_uid_2, ...]).
+    #     """
+    #     snapshot: List[tuple[str, List[int]]] = list()
+    #
+    #     group: DynamicsPlotGroup
+    #     for group in self.plot_groups.get_groups():
+    #         var_uids: List[int] = [var.uid for var in group.get_vars()]
+    #         snapshot.append((group.get_name(), var_uids))
+    #
+    #     return snapshot
 
-        :return: List of tuples (group_name, [var_uid_1, var_uid_2, ...]).
+    def _snapshot_plot_groups(self) -> List[tuple[str, List[tuple[str, str, str]]]]:
         """
-        snapshot: List[tuple[str, List[int]]] = list()
+        Snapshot current plot groups using stable device-variable references.
+
+        The ``Var.uid`` value can change when a new RMS/EMT simulation is executed.
+        Therefore, dynamic plot definitions must be stored using a stable semantic
+        reference. The stored signature uses ``(device.idtag, device.name,
+        variable.name)`` so repeated runs of the same study can reconnect to the
+        same device while still refusing to restore a variable if the device name
+        changes.
+
+        :return: List of tuples ``(group_name, [(device_idtag, device_name, variable_name), ...])``.
+        """
+        # Build a lookup from the current result tree before taking the snapshot.
+        # This connects each plotted Var uid to the device that owns that variable.
+        variable_signature_by_uid: Dict[int, tuple[str, str, str]] = self._build_uid_to_variable_signature_index()
+
+        # The snapshot stores plot group names and stable variable signatures.
+        # It deliberately avoids using Var.uid because uid is not stable across simulations.
+        snapshot: List[tuple[str, List[tuple[str, str, str]]]] = list()
 
         group: DynamicsPlotGroup
         for group in self.plot_groups.get_groups():
-            var_uids: List[int] = [var.uid for var in group.get_vars()]
-            snapshot.append((group.get_name(), var_uids))
+            # The variable list is kept ordered so that the restored plot preserves
+            # the same visual ordering selected by the user.
+            var_signatures: List[tuple[str, str, str]] = list()
+
+            variable: Var
+            for variable in group.get_vars():
+                var_signature: tuple[str, str, str] | None = variable_signature_by_uid.get(variable.uid, None)
+
+                if var_signature is not None:
+                    # Store only variables that can be linked to a device in the current tree.
+                    var_signatures.append(var_signature)
+                else:
+                    # A variable without a device-tree owner cannot be restored safely.
+                    # It is skipped instead of storing an unstable uid.
+                    pass
+
+            snapshot.append((group.get_name(), var_signatures))
 
         return snapshot
 
-    def _restore_plot_groups_from_snapshot(self, snapshot: List[tuple[str, List[int]]]) -> None:
-        """
-        Restore plot groups from a uid snapshot using the current results object.
+    # def _restore_plot_groups_from_snapshot(self, snapshot: List[tuple[str, List[int]]]) -> None:
+    #     """
+    #     Restore plot groups from a uid snapshot using the current results object.
+    #
+    #     :param snapshot: Plot-group snapshot created with _snapshot_plot_groups().
+    #     :return: Nothing.
+    #     """
+    #     restored_plot_groups = DynamicsPlotGroups()
+    #
+    #     group_name: str
+    #     var_uids: List[int]
+    #     for group_name, var_uids in snapshot:
+    #         created: bool = restored_plot_groups.create_group(name=group_name)
+    #         if created:
+    #             group: DynamicsPlotGroup | None = restored_plot_groups.get_group(name=group_name)
+    #             if group is not None:
+    #                 var_uid: int
+    #                 for var_uid in var_uids:
+    #                     variable: Var | None = self.results.get_var(uid=var_uid)
+    #                     if variable is not None:
+    #                         group.add_var(variable=variable)
+    #
+    #     self.plot_groups = restored_plot_groups
 
-        :param snapshot: Plot-group snapshot created with _snapshot_plot_groups().
+    def _restore_plot_groups_from_snapshot(self,
+                                           snapshot: List[tuple[str, List[tuple[str, str, str]]]]) -> None:
+        """
+        Restore plot groups from stable device-variable references.
+
+        A stored variable is restored only if the new results object contains the same
+        device idtag, the same device name, and the same variable name. If either the
+        device name or the variable name changes, that variable is omitted from the
+        restored dynamic plot. This allows repeated simulations to preserve compatible
+        plots while discarding only the obsolete plotted variables.
+
+        :param snapshot: Plot-group snapshot created with ``_snapshot_plot_groups()``.
         :return: Nothing.
         """
-        restored_plot_groups = DynamicsPlotGroups()
+        # Build a lookup from the new result tree after self.results has been replaced.
+        # This maps stable references back to the current Var objects with current uids.
+        variable_by_signature: Dict[tuple[str, str, str], Var] = self._build_variable_signature_to_var_index()
+
+        # A duplicate visible signature means the same ``device.name`` and ``var.name``
+        # appears more than once in the new results tree. Those entries are skipped on
+        # restore because the GUI's minimum semantic identity is ambiguous, and binding
+        # a plot to any one of the duplicates would risk reconnecting it to the wrong device.
+        ambiguous_visible_signatures: Set[tuple[str, str]] = self._build_ambiguous_visible_variable_signatures()
+
+        # Build a new plot-group collection so restoration is explicit and does not
+        # mutate the old collection while it is being translated to the new results.
+        restored_plot_groups: DynamicsPlotGroups = DynamicsPlotGroups()
 
         group_name: str
-        var_uids: List[int]
-        for group_name, var_uids in snapshot:
+        var_signatures: List[tuple[str, str, str]]
+        for group_name, var_signatures in snapshot:
+            # Preserve the group even if all its variables disappear. This keeps the
+            # user's plot structure visible and makes missing variables evident.
             created: bool = restored_plot_groups.create_group(name=group_name)
+
             if created:
                 group: DynamicsPlotGroup | None = restored_plot_groups.get_group(name=group_name)
+
                 if group is not None:
-                    var_uid: int
-                    for var_uid in var_uids:
-                        variable: Var | None = self.results.get_var(uid=var_uid)
+                    var_signature: tuple[str, str, str]
+                    for var_signature in var_signatures:
+                        visible_signature: tuple[str, str] = (var_signature[1], var_signature[2])
+
+                        variable: Var | None
+                        if visible_signature in ambiguous_visible_signatures:
+                            # Ambiguous visible signatures are not restored even if the
+                            # stored device idtag still matches one candidate. Skipping is
+                            # safer than silently rebinding the plot under duplicate names.
+                            variable = None
+                        else:
+                            # A missing full signature means the device idtag changed,
+                            # the device name changed, the variable name changed, or the
+                            # variable no longer exists in the new results object.
+                            variable = variable_by_signature.get(var_signature, None)
+
                         if variable is not None:
+                            # Add the current Var object from the new results object.
+                            # This updates the uid used later by plotting and tables.
                             group.add_var(variable=variable)
+                        else:
+                            # The requested behaviour is to remove incompatible variables
+                            # from the dynamic plot instead of rejecting the whole plot.
+                            pass
+                else:
+                    # This state should not occur after a successful create_group(),
+                    # but it is handled explicitly to keep all code paths evident.
+                    pass
+            else:
+                # Duplicate or empty group names cannot be restored safely.
+                # The original create_group() validation decides this case.
+                pass
 
         self.plot_groups = restored_plot_groups
+
+    def _build_uid_to_variable_signature_index(self) -> Dict[int, tuple[str, str, str]]:
+        """
+        Build a lookup table from current variable uid to stable device-variable signature.
+
+        The result tree already stores the relationship between devices and variables.
+        This method converts that tree into a lookup that can translate the existing
+        plot variables from ``Var.uid`` to ``(device.idtag, device.name, variable.name)``.
+
+        :return: Dictionary mapping ``Var.uid`` to ``(device_idtag, device_name, variable_name)``.
+        """
+        # The dictionary is used only as a lookup table. This is acceptable here
+        # because the algorithm needs direct access from uid to the stable signature.
+        signature_by_uid: Dict[int, tuple[str, str, str]] = dict()
+
+        device_tpe: DeviceType
+        devices_data: Dict[ALL_DEV_TYPES, List[Var]]
+        for device_tpe, devices_data in self.tree_data.items():
+            # The device type is not part of the requested matching rule.
+            # It is still iterated because the result tree is grouped by device type.
+            del device_tpe
+
+            device: ALL_DEV_TYPES
+            variables: List[Var]
+            for device, variables in devices_data.items():
+                # The results tree already exposes device idtag and device name.
+                # Storing both keeps the match stable across repeated simulations and
+                # also prevents restoring a plot if the device is later renamed.
+                device_idtag: str = str(device.idtag)
+                device_name: str = str(device.name)
+
+                variable: Var
+                for variable in variables:
+                    # The stable plot identity requires the same device idtag, the
+                    # same device name, and the same variable name in the new results.
+                    signature_by_uid[variable.uid] = (device_idtag, device_name, variable.name)
+
+        return signature_by_uid
+
+    def _build_variable_signature_to_var_index(self) -> Dict[tuple[str, str, str], Var]:
+        """
+        Build a lookup table from stable device-variable signature to current variable.
+
+        This method is used after a new results object has been installed in the handler.
+        It maps ``(device.idtag, device.name, variable.name)`` to the new ``Var`` object
+        so restored plots use the current simulation's variable uid.
+
+        :return: Dictionary mapping ``(device_idtag, device_name, variable_name)`` to ``Var``.
+        """
+        # The dictionary is used only as a lookup table. It avoids nested searches
+        # during plot restoration and keeps the restoration logic explicit.
+        variable_by_signature: Dict[tuple[str, str, str], Var] = dict()
+
+        device_tpe: DeviceType
+        devices_data: Dict[ALL_DEV_TYPES, List[Var]]
+        for device_tpe, devices_data in self.tree_data.items():
+            # The matching rule requested by the user does not include DeviceType.
+            # Therefore, the device type is intentionally ignored.
+            del device_tpe
+
+            device: ALL_DEV_TYPES
+            variables: List[Var]
+            for device, variables in devices_data.items():
+                # Direct access to idtag and name is used because dynamic-result
+                # devices inherit those fields from the engine's editable-device base.
+                device_idtag: str = str(device.idtag)
+                device_name: str = str(device.name)
+
+                variable: Var
+                for variable in variables:
+                    # The full signature lookup stays deterministic because the same
+                    # device idtag and variable name should resolve to one current Var.
+                    variable_by_signature[(device_idtag, device_name, variable.name)] = variable
+
+        return variable_by_signature
+
+    def _build_ambiguous_visible_variable_signatures(self) -> Set[tuple[str, str]]:
+        """
+        Detect duplicate visible ``(device.name, variable.name)`` signatures.
+
+        The GUI groups variables by device label and variable label, so duplicate
+        visible signatures are ambiguous for cross-run restoration. They are skipped
+        instead of being rebound to one arbitrary candidate.
+
+        :return: Set of ambiguous ``(device_name, variable_name)`` signatures.
+        """
+        unique_signatures: Set[tuple[str, str]] = set()
+        ambiguous_signatures: Set[tuple[str, str]] = set()
+
+        device_tpe: DeviceType
+        devices_data: Dict[ALL_DEV_TYPES, List[Var]]
+        for device_tpe, devices_data in self.tree_data.items():
+            # DeviceType is not part of the requested visible identity, so it is
+            # ignored while scanning for duplicate device-name and variable-name pairs.
+            del device_tpe
+
+            device: ALL_DEV_TYPES
+            variables: List[Var]
+            for device, variables in devices_data.items():
+                device_name: str = str(device.name)
+
+                variable: Var
+                for variable in variables:
+                    visible_signature: tuple[str, str] = (device_name, variable.name)
+
+                    if visible_signature in unique_signatures:
+                        ambiguous_signatures.add(visible_signature)
+                    else:
+                        unique_signatures.add(visible_signature)
+
+        return ambiguous_signatures
 
     def update_results(self, results: RmsResults | EmtResults) -> None:
         """
@@ -979,11 +1207,16 @@ class DynamicsResultsHandler:
         :param results: New RMS/EMT results for the same study type.
         :return: Nothing.
         """
-        plot_groups_snapshot: List[tuple[str, List[int]]] = self._snapshot_plot_groups()
+        plot_groups_snapshot: List[tuple[str, List[tuple[str, str, str]]]] = self._snapshot_plot_groups()
+
+        # The snapshot must be taken before swapping ``self.results`` so the plotted
+        # Vars are still resolved against the old device tree that created them.
 
         self.results = results
         self.group_idx = self._build_group_idx(results=self.results)
 
+        # The new tree must be rebuilt before restoration so stored signatures are
+        # matched against the fresh RMS/EMT results object rather than stale tree data.
         self.tree_data = self.results.get_devices_dict_tree()
         self.tree_model = build_dynamics_tree_model(
             tree_data=self.tree_data,
@@ -994,6 +1227,22 @@ class DynamicsResultsHandler:
 
         self._restore_plot_groups_from_snapshot(snapshot=plot_groups_snapshot)
         self.rebuild_plots_model()
+
+    def can_reuse_with_results(self, results: RmsResults | EmtResults) -> bool:
+        """
+        Check whether this handler can be reused with a new results object.
+
+        Dynamic plot reuse is only valid when both results objects belong to the same
+        dynamics family. RMS and EMT expose different group-name fields and value
+        arrays, so switching between them requires a new handler instance.
+
+        :param results: Candidate new results object.
+        :return: ``True`` when the handler can safely update in place.
+        """
+        if type(self.results) == type(results):
+            return True
+        else:
+            return False
 
     def _var_signature(self, var: Var) -> str:
         """
@@ -1012,29 +1261,3 @@ class DynamicsResultsHandler:
         :return: List of signatures preserving order.
         """
         return [self._var_signature(var=v) for v in variables]
-
-    def can_reuse_with_results(self, results: RmsResults | EmtResults) -> bool:
-        """
-        Check whether the current plot definitions can be reused with the new results.
-
-        Reuse is allowed only when vars, diff_vars and params match exactly.
-
-        :param results: New results object.
-        :return: True if plots can be safely reused, False otherwise.
-        """
-        if type(self.results) != type(results):
-            return False
-
-        current_vars_signature = self._vars_signature(self.results.variables)
-        new_vars_signature = self._vars_signature(results.variables)
-
-        if current_vars_signature != new_vars_signature:
-            return False
-
-        if type(results) == EmtResults: # verify also the derivatives
-            current_diff_vars_signature = self._vars_signature(self.results.diff_variables)
-            new_diff_vars_signature = self._vars_signature(results.diff_variables)
-            if current_diff_vars_signature != new_diff_vars_signature:
-                return False
-
-        return True
