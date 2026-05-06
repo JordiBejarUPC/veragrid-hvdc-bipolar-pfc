@@ -185,6 +185,7 @@ class RmsProblemDae(RmsProblemTemplate):
         self._constant_parameters: List[Var] = list()
         self._parameters_values: List[Const] = list()
         self._static_parameterm_values_mapping: Dict[Var, Const] = dict()
+        self._globalname_count: Dict[str, int] = dict()
 
         self._runtime_all_parameters_source: List[Var] = list()
         self._runtime_all_eqs_source: List[Expr | Const] = list()
@@ -319,21 +320,21 @@ class RmsProblemDae(RmsProblemTemplate):
                                                             logger=None)
                 # # modify function to fill self._static_parameterm_values_mapping
                 # rms models already connected to buses
-                # Vmf, Vaf = get_bus_rms_algebraic_vars(elm.bus_from.rms_model)
-                # Vmt, Vat = get_bus_rms_algebraic_vars(elm.bus_to.rms_model)
-                #
-                # if Vmf is not None and VarPowerFlowRefferenceType.Vmf in elm.rms_model.external_mapping:
-                #     elm.rms_model.update_model(
-                #         elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vmf], Vmf)
-                # if Vaf is not None and VarPowerFlowRefferenceType.Vaf in elm.rms_model.external_mapping:
-                #     elm.rms_model.update_model(
-                #         elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vaf], Vaf)
-                # if Vmt is not None and VarPowerFlowRefferenceType.Vmt in elm.rms_model.external_mapping:
-                #     elm.rms_model.update_model(
-                #         elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vmt], Vmt)
-                # if Vat is not None and VarPowerFlowRefferenceType.Vat in elm.rms_model.external_mapping:
-                #     elm.rms_model.update_model(
-                #         elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vat], Vat)
+                Vmf, Vaf = get_bus_rms_algebraic_vars(elm.bus_from.rms_model)
+                Vmt, Vat = get_bus_rms_algebraic_vars(elm.bus_to.rms_model)
+
+                if Vmf is not None and VarPowerFlowRefferenceType.Vmf in elm.rms_model.external_mapping:
+                    elm.rms_model.update_model(
+                        elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vmf], Vmf)
+                if Vaf is not None and VarPowerFlowRefferenceType.Vaf in elm.rms_model.external_mapping:
+                    elm.rms_model.update_model(
+                        elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vaf], Vaf)
+                if Vmt is not None and VarPowerFlowRefferenceType.Vmt in elm.rms_model.external_mapping:
+                    elm.rms_model.update_model(
+                        elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vmt], Vmt)
+                if Vat is not None and VarPowerFlowRefferenceType.Vat in elm.rms_model.external_mapping:
+                    elm.rms_model.update_model(
+                        elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vat], Vat)
 
                 self.add_variables_to_compilation_dicts(elm, elm.rms_model)
                 register_rms_fmu_cs_device(self, elm, elm.rms_model)
@@ -1557,20 +1558,35 @@ class RmsProblemDae(RmsProblemTemplate):
             self._compiler_names_dict[v.uid] = f"{self.VARS_NAME}[{self._n_vars}]"
             self._alias_names_dict[v.uid] = f"{self.VARS_NAME}_{self._n_vars}"
             self._uid2idx_vars[v.uid] = self._n_vars
-            self._vars_glob_name2uid[v.name + elm.name] = v.uid
+            var_glob_name =  v.name + elm.name
+            if var_glob_name not in self._globalname_count:
+                self._vars_glob_name2uid[var_glob_name] = v.uid
+                self._globalname_count[var_glob_name] = 1
+                print("")
+            else:
+                self._vars_glob_name2uid[v.name + elm.name + str(self._globalname_count[var_glob_name])] = v.uid
+                self._globalname_count[var_glob_name] += 1
             self.add_device_var(dev=elm, var=v)
             self.sys_vars[v.uid] = v
             self._state_vars.append(v)
             self._n_vars += 1
 
         for v in mdl.algebraic_vars:
+            if v.name == "Vmf":
+                print("")
             if v.uid in self._uid2idx_vars:
                 raise ValueError(f"Algebraic variable '{v.name}' (uid={v.uid}) is already registered in the system. "
                                  f"Previous device may have created a duplicate variable.")
             self._compiler_names_dict[v.uid] = f"{self.VARS_NAME}[{self._n_vars}]"
             self._alias_names_dict[v.uid] = f"{self.VARS_NAME}_{self._n_vars}"
             self._uid2idx_vars[v.uid] = self._n_vars
-            self._vars_glob_name2uid[v.name + elm.name] = v.uid
+            var_glob_name = v.name + elm.name + str(0)
+            if var_glob_name not in self._globalname_count:
+                self._vars_glob_name2uid[v.name + elm.name + str(0)] = v.uid
+                self._globalname_count[var_glob_name] = 1
+            else:
+                self._vars_glob_name2uid[v.name + elm.name + str(self._globalname_count[var_glob_name])] = v.uid
+                self._globalname_count[var_glob_name] += 1
             self.add_device_var(dev=elm, var=v)
             self.sys_vars[v.uid] = v
             self._algebraic_vars.append(v)
@@ -1650,7 +1666,13 @@ class RmsProblemDae(RmsProblemTemplate):
             self._compiler_names_dict[v.uid] = f"{self.DIFF_NAME}[{self._n_diff}]"
             self._alias_names_dict[v.uid] = f"{self.DIFF_NAME}_{self._n_diff}"
             self._uid2idx_diff[v.uid] = self._n_diff
-            self._vars_glob_name2uid[v.name + elm.name] = v.uid
+            var_glob_name = v.name + elm.name + str(0)
+            if var_glob_name not in self._globalname_count:
+                self._vars_glob_name2uid[v.name + elm.name + str(0)] = v.uid
+                self._globalname_count[var_glob_name] = 1
+            else:
+                self._vars_glob_name2uid[v.name + elm.name + str(self._globalname_count[var_glob_name])] = v.uid
+                self._globalname_count[var_glob_name] += 1
             self.add_device_var(dev=elm, var=v)
             self._diff_vars.append(v)
             self._n_diff += 1
