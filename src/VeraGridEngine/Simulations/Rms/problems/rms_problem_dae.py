@@ -321,21 +321,21 @@ class RmsProblemDae(RmsProblemTemplate):
                                                             logger=None)
                 # # modify function to fill self._static_parameterm_values_mapping
                 # rms models already connected to buses
-                # Vmf, Vaf = get_bus_rms_algebraic_vars(elm.bus_from.rms_model)
-                # Vmt, Vat = get_bus_rms_algebraic_vars(elm.bus_to.rms_model)
-                #
-                # if Vmf is not None and VarPowerFlowRefferenceType.Vmf in elm.rms_model.external_mapping:
-                #     elm.rms_model.update_model(
-                #         elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vmf], Vmf)
-                # if Vaf is not None and VarPowerFlowRefferenceType.Vaf in elm.rms_model.external_mapping:
-                #     elm.rms_model.update_model(
-                #         elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vaf], Vaf)
-                # if Vmt is not None and VarPowerFlowRefferenceType.Vmt in elm.rms_model.external_mapping:
-                #     elm.rms_model.update_model(
-                #         elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vmt], Vmt)
-                # if Vat is not None and VarPowerFlowRefferenceType.Vat in elm.rms_model.external_mapping:
-                #     elm.rms_model.update_model(
-                #         elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vat], Vat)
+                Vmf, Vaf = get_bus_rms_algebraic_vars(elm.bus_from.rms_model)
+                Vmt, Vat = get_bus_rms_algebraic_vars(elm.bus_to.rms_model)
+
+                if Vmf is not None and VarPowerFlowRefferenceType.Vmf in elm.rms_model.external_mapping:
+                    elm.rms_model.update_model(
+                        elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vmf], Vmf)
+                if Vaf is not None and VarPowerFlowRefferenceType.Vaf in elm.rms_model.external_mapping:
+                    elm.rms_model.update_model(
+                        elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vaf], Vaf)
+                if Vmt is not None and VarPowerFlowRefferenceType.Vmt in elm.rms_model.external_mapping:
+                    elm.rms_model.update_model(
+                        elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vmt], Vmt)
+                if Vat is not None and VarPowerFlowRefferenceType.Vat in elm.rms_model.external_mapping:
+                    elm.rms_model.update_model(
+                        elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vat], Vat)
 
                 self.add_variables_to_compilation_dicts(elm, elm.rms_model)
                 register_rms_fmu_cs_device(self, elm, elm.rms_model)

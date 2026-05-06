@@ -18,7 +18,8 @@ from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
-from VeraGridEngine.Templates.templates_common_functions import set_rms_model, to_implicit, to_explicit
+from VeraGridEngine.Templates.templates_common_functions import set_rms_model
+from VeraGridEngine.Utils.Symbolic.block_helpers import to_implicit, to_explicit
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 
 

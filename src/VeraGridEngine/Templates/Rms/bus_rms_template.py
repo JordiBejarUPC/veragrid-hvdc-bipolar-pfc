@@ -6,7 +6,6 @@ from __future__ import annotations
 
 from typing import Tuple, Optional
 
-from typing import TYPE_CHECKING
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
@@ -14,8 +13,7 @@ from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Utils.Symbolic.block import Block, VarPowerFlowRefferenceType
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 
-if TYPE_CHECKING:
-    from VeraGridEngine.Devices.Substation.bus import Bus
+from VeraGridEngine.Devices.Substation.bus import Bus
 
 
 class BusRmsTemplate(RmsModelTemplate):
@@ -66,7 +64,7 @@ class BusRmsTemplate(RmsModelTemplate):
             }
 
 
-def initialize_bus_rms(bus: Bus, vf: VarFactory):
+def initialize_bus_rms(bus: Any, vf: VarFactory):
     """
 
     :param bus:

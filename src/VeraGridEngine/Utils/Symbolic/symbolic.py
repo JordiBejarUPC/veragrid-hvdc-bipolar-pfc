@@ -17,7 +17,7 @@ import numba as nb
 from typing import Any, Dict, Mapping, Union, List, Sequence, Tuple, Set, Optional
 
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
-# from VeraGridEngine.Devices.Dynamic.var_factory import SharedVarReferenceType
+
 
 NUMBER = Union[int, float, complex]
 

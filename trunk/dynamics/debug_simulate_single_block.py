@@ -13,11 +13,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
-from VeraGridEngine.Templates.templates_common_functions import (
-    tf_to_block, 
-    tf_to_diffblock_with_output,
-    simulate_single_block
-)
+from VeraGridEngine.Templates.templates_common_functions import simulate_single_block
+from VeraGridEngine.Utils.Symbolic.block_helpers import tf_to_block, tf_to_diffblock_with_output
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 
 
