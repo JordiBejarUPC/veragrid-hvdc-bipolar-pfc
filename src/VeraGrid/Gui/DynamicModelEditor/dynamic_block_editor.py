@@ -4088,7 +4088,7 @@ class DiagramScene(QGraphicsScene):
                 self.context_item = item
 
                 if isinstance(item, (BlockItem, GenericBlockItem)):
-                    if isinstance(item, BlockItem) and item.subsys is not None:
+                    if item.subsys is not None:
                         modal_kind, modal_config = get_modal_template_metadata(item.subsys)
                     else:
                         modal_kind = None
@@ -10129,7 +10129,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param item: Scene item selected from the context menu.
         :return: None.
         """
-        if not isinstance(item, BlockItem) or item.subsys is None:
+        if not isinstance(item, (BlockItem, GenericBlockItem)) or item.subsys is None:
             return
         else:
             pass
@@ -10184,7 +10184,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
-    def _replace_scene_block_from_template(self, item: BlockItem, new_block: Block, modal_kind: str, modal_config: Dict[str, Any]) -> None:
+    def _replace_scene_block_from_template(self, item: BlockItem | GenericBlockItem, new_block: Block, modal_kind: str, modal_config: Dict[str, Any]) -> None:
         """
         Replace one scene block contents while preserving its identity and diagram node.
 
@@ -11123,6 +11123,23 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     )
                     self.scene.addItem(generic_item)
                     generic_item.setPos(QPointF(node.x, node.y))
+                    modal_kind, modal_config = get_modal_template_metadata(block_model)
+                    if modal_kind == "jmarti_line_emt" and modal_config is not None:
+                        generic_item.setToolTip(self._build_jmarti_modal_tooltip(modal_config))
+                    elif modal_kind == "source_emt" and modal_config is not None:
+                        generic_item.setToolTip(self._build_source_emt_modal_tooltip(modal_config))
+                    elif modal_kind == "dc_source_emt" and modal_config is not None:
+                        generic_item.setToolTip(self._build_dc_source_emt_modal_tooltip(modal_config))
+                    elif modal_kind == "balanced_source_emt" and modal_config is not None:
+                        generic_item.setToolTip(self._build_balanced_source_emt_modal_tooltip(modal_config))
+                    elif modal_kind == "arbitrary_source_emt" and modal_config is not None:
+                        generic_item.setToolTip(self._build_arbitrary_source_emt_modal_tooltip(modal_config))
+                    elif modal_kind == "transient_source_emt" and modal_config is not None:
+                        generic_item.setToolTip(self._build_transient_source_emt_modal_tooltip(modal_config))
+                    elif modal_kind == "induction_motor_emt" and modal_config is not None:
+                        generic_item.setToolTip(self._build_induction_motor_emt_modal_tooltip(modal_config))
+                    else:
+                        pass
                     brush = generic_item.brush()
                     brush.setColor(QColor(node.color))
                     generic_item.setBrush(brush)
