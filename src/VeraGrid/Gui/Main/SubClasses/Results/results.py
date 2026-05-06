@@ -393,7 +393,7 @@ class ResultsMain(SimulationsMain):
             handler.get_plots_model().rowsInserted.connect(self.expand_dynamic_plots_tree)
             return handler
 
-        elif handler.can_reuse_with_results(results=results):
+        elif type(handler.results) == type(results):
             # Reusing the handler preserves the user's dynamic plot groups across
             # repeated runs of the same study while replacing only the result-backed Vars.
             handler.update_results(results=results)

@@ -1228,22 +1228,6 @@ class DynamicsResultsHandler:
         self._restore_plot_groups_from_snapshot(snapshot=plot_groups_snapshot)
         self.rebuild_plots_model()
 
-    def can_reuse_with_results(self, results: RmsResults | EmtResults) -> bool:
-        """
-        Check whether this handler can be reused with a new results object.
-
-        Dynamic plot reuse is only valid when both results objects belong to the same
-        dynamics family. RMS and EMT expose different group-name fields and value
-        arrays, so switching between them requires a new handler instance.
-
-        :param results: Candidate new results object.
-        :return: ``True`` when the handler can safely update in place.
-        """
-        if type(self.results) == type(results):
-            return True
-        else:
-            return False
-
     def _var_signature(self, var: Var) -> str:
         """
         Build a stable comparison signature for one variable.

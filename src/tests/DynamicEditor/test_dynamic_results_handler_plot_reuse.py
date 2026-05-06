@@ -373,5 +373,5 @@ def test_dynamic_results_handler_type_reuse_protection() -> None:
     emt_handler: DynamicsResultsHandler = DynamicsResultsHandler(results=emt_results)
     rms_handler: DynamicsResultsHandler = DynamicsResultsHandler(results=rms_results)
 
-    assert emt_handler.can_reuse_with_results(results=rms_results) is False
-    assert rms_handler.can_reuse_with_results(results=new_rms_results) is True
+    assert not type(emt_handler.results) == type(rms_results)
+    assert type(rms_handler.results) == type(new_rms_results)
