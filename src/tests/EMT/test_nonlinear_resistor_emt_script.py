@@ -1,29 +1,10 @@
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-
 import numpy as np
 
-def _ensure_repo_root_on_path() -> None:
-    """
-    Ensure the repository root is importable during direct pytest execution.
-
-    :return: None.
-    """
-    repo_root: Path = Path(__file__).resolve().parents[3]
-
-    if str(repo_root) not in sys.path:
-        sys.path.insert(0, str(repo_root))
-    else:
-        pass
-
-
-_ensure_repo_root_on_path()
-
-from trunk.dynamics_emt.scripting_nonlinear_resistor_emt import NonlinearResistorEmtCaseResults
-from trunk.dynamics_emt.scripting_nonlinear_resistor_emt import run_nonlinear_resistor_case
-from trunk.implicit_solver_test_EMT.Demos.demo_nonlinear_resistor_emt import run_demo
+from tests.EMT._nonlinear_resistor_demo_support import NonlinearResistorEmtCaseResults
+from tests.EMT._nonlinear_resistor_demo_support import run_demo
+from tests.EMT._nonlinear_resistor_demo_support import run_nonlinear_resistor_case
 
 
 def test_nonlinear_resistor_script_runs_without_plots_and_exports_pngs() -> None:
