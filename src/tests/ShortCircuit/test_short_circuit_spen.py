@@ -20,6 +20,11 @@ def test_spen_west():
     AFTO0G = 1.0159
     WNDR0G = 1.0024
     NOKY0B = 1.0087
+    NOKY0A = 1.0087
+    SOKY0G = 1.0091
+    ENHI0G = 1.0086
+    DESA0G = 1.0089
+    BLKS0G = 1.0189
 
     assert np.allclose(np.abs(res_pf.voltage[11]), DUNH0G, atol=1e-4)
     assert np.allclose(np.abs(res_pf.voltage[47]), WHLL0G, atol=1e-4)
@@ -29,3 +34,8 @@ def test_spen_west():
     assert np.allclose(np.abs(res_pf.voltage[0]), AFTO0G, atol=1e-4)
     assert np.allclose(np.abs(res_pf.voltage[49]), WNDR0G, atol=1e-4)
     assert np.allclose(np.abs(res_pf.voltage[33]), NOKY0B, atol=1e-4)
+    assert np.allclose(np.abs(res_pf.voltage[32]), NOKY0A, atol=1e-4)
+    assert np.allclose(np.abs(res_pf.voltage[42]), SOKY0G, atol=1e-4)
+    assert np.allclose(np.abs(res_pf.voltage[17]), ENHI0G, atol=1e-4)
+    assert np.allclose(np.abs(res_pf.voltage[8]), DESA0G, atol=1e-4)
+    assert np.allclose(np.abs(res_pf.voltage[6]), BLKS0G, atol=1e-4)
