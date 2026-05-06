@@ -23,9 +23,8 @@ from VeraGridEngine.enumerations import (
     EmtInitializationMethod,
     EmtSolverTypes,
     ShuntConnectionType,
-    VarPowerFlowRefferenceType,
 )
-from VeraGridEngine.Templates.templates_common_functions import set_emt_model
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
 
 
 def build_full_params(problem: EmtProblemDae, t_curr: float) -> np.ndarray:

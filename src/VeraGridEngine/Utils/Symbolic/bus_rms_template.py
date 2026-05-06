@@ -64,7 +64,7 @@ class BusRmsTemplate(RmsModelTemplate):
             }
 
 
-def initialize_bus_rms(bus: Any, vf: VarFactory):
+def initialize_bus_rms(bus: Bus, vf: VarFactory):
     """
 
     :param bus:

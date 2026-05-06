@@ -8,19 +8,16 @@ import numpy as np
 import pandas as pd
 import scipy.sparse as sp
 
-from VeraGridEngine import DeviceType
-from VeraGridEngine.enumerations import ParamPowerFlowRefferenceType, DeviceType
+from VeraGridEngine.enumerations import ParamPowerFlowRefferenceType
 from VeraGridEngine.Devices import MultiCircuit
 from VeraGridEngine.Simulations.driver_template import DummySignal
 from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr, piecewise, get_expression_vars)
 from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicParamsVector, SymbolicDerivative
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, RmsInitializationMethod
 from VeraGridEngine.basic_structures import Vec, ObjVec, BoolVec, Logger
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
-from VeraGridEngine.Simulations.Rms.initialization_rms import run_rms_native_initialization
 from VeraGridEngine.Utils.Symbolic.explicit_initialization_symbolic import (init_explicit_common,
                                                                             build_rms_single_equation_compiler)
 from VeraGridEngine.Simulations.Rms.initialization import init_pseudo_transient
@@ -30,7 +27,7 @@ from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGridEngine.Utils.Symbolic.jit_compiler import RMSCompiler
-from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms, get_bus_rms_algebraic_vars
+from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms, get_bus_rms_algebraic_vars
 from VeraGridEngine.Utils.procedural_logic import build_boundary_updater_from_block
 from VeraGridEngine.IO.fmu.importer.experimental_cs import (
     advance_rms_fmu_cs_devices,
@@ -321,21 +318,21 @@ class RmsProblemDae(RmsProblemTemplate):
                                                             logger=None)
                 # # modify function to fill self._static_parameterm_values_mapping
                 # rms models already connected to buses
-                Vmf, Vaf = get_bus_rms_algebraic_vars(elm.bus_from.rms_model)
-                Vmt, Vat = get_bus_rms_algebraic_vars(elm.bus_to.rms_model)
-
-                if Vmf is not None and VarPowerFlowRefferenceType.Vmf in elm.rms_model.external_mapping:
-                    elm.rms_model.update_model(
-                        elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vmf], Vmf)
-                if Vaf is not None and VarPowerFlowRefferenceType.Vaf in elm.rms_model.external_mapping:
-                    elm.rms_model.update_model(
-                        elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vaf], Vaf)
-                if Vmt is not None and VarPowerFlowRefferenceType.Vmt in elm.rms_model.external_mapping:
-                    elm.rms_model.update_model(
-                        elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vmt], Vmt)
-                if Vat is not None and VarPowerFlowRefferenceType.Vat in elm.rms_model.external_mapping:
-                    elm.rms_model.update_model(
-                        elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vat], Vat)
+                # Vmf, Vaf = get_bus_rms_algebraic_vars(elm.bus_from.rms_model)
+                # Vmt, Vat = get_bus_rms_algebraic_vars(elm.bus_to.rms_model)
+                #
+                # if Vmf is not None and VarPowerFlowRefferenceType.Vmf in elm.rms_model.external_mapping:
+                #     elm.rms_model.update_model(
+                #         elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vmf], Vmf)
+                # if Vaf is not None and VarPowerFlowRefferenceType.Vaf in elm.rms_model.external_mapping:
+                #     elm.rms_model.update_model(
+                #         elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vaf], Vaf)
+                # if Vmt is not None and VarPowerFlowRefferenceType.Vmt in elm.rms_model.external_mapping:
+                #     elm.rms_model.update_model(
+                #         elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vmt], Vmt)
+                # if Vat is not None and VarPowerFlowRefferenceType.Vat in elm.rms_model.external_mapping:
+                #     elm.rms_model.update_model(
+                #         elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vat], Vat)
 
                 self.add_variables_to_compilation_dicts(elm, elm.rms_model)
                 register_rms_fmu_cs_device(self, elm, elm.rms_model)

@@ -12,7 +12,7 @@ from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import DeviceType
-from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
+from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 
 
 def connect_line_rms_from(mdl1: Block, mdl2: Block):
@@ -188,7 +188,7 @@ def connect_models(mdl1: Block, mdl2: Block):
 
 
     #print("")
-def connect_bus_variables(device: Any, model:Block, var_factory: VarFactory):
+def connect_bus_variables(device: Any, model:Block, var_factory: VarFactory | None):
     """
     connect the bus variables of the model with the api_object bus variables
     :param device:
@@ -205,7 +205,10 @@ def connect_bus_variables(device: Any, model:Block, var_factory: VarFactory):
         # Check if using phasor or polar coordinates by looking at bus model outputs
         bus_model = device.bus_from.rms_model
         if bus_model.empty():
-            initialize_bus_rms(device.bus_from, var_factory)
+            if var_factory is not None:
+                initialize_bus_rms(device.bus_from, var_factory)
+            else:
+                raise ValueError("var factory not associated to grid element")
 
         # Check if bus has Vr/Vi (phasor) or Vm/Va (polar) outputs
         has_phasor = any(v.ref == VarPowerFlowRefferenceType.Vr for v in bus_model.out_vars)
@@ -217,7 +220,10 @@ def connect_bus_variables(device: Any, model:Block, var_factory: VarFactory):
 
         bus_model = device.bus_to.rms_model
         if bus_model.empty():
-            initialize_bus_rms(device.bus_to, var_factory)
+            if var_factory is not None:
+                initialize_bus_rms(device.bus_to, var_factory)
+            else:
+                raise ValueError("var factory not associated to grid element")
         # Check if bus has Vr/Vi (phasor) or Vm/Va (polar) outputs
         has_phasor = any(v.ref == VarPowerFlowRefferenceType.Vr for v in bus_model.out_vars)
         if has_phasor:
@@ -228,7 +234,10 @@ def connect_bus_variables(device: Any, model:Block, var_factory: VarFactory):
 
     else:
         if device.bus.rms_model.empty():
-            initialize_bus_rms(device.bus, var_factory)
+            if var_factory is not None:
+                initialize_bus_rms(device.bus, var_factory)
+            else:
+                raise ValueError("var factory not associated to grid element")
             connect_models_power_flow(device.bus.rms_model, model)
 
         else:

@@ -13,13 +13,13 @@ if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
 
 import VeraGridEngine as vg
-from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
+from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Templates.Rms.esd1_rms_template import get_esd1_rms_template
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
-from VeraGridEngine.Templates.Rms.pvd1_rms_template_procedural import get_pvd1_rms_template, get_pvd1_dc_mppt_rms_template
+from VeraGridEngine.Templates.Rms.pvd1_rms_template_procedural import get_pvd1_dc_mppt_rms_template
 from VeraGridEngine.Templates.Rms.transformer_rms_template import initialize_trafo_rms
-from VeraGridEngine.Templates.templates_common_functions import set_rms_model
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_rms_model
 
 
 def interpolate_below(x: np.ndarray, threshold: float) -> np.ndarray:

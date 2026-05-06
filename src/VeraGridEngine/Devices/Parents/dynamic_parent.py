@@ -16,7 +16,7 @@ from VeraGridEngine.enumerations import (DeviceType, BuildStatus, SubObjectType,
 from VeraGridEngine.Utils.Symbolic.symbolic_io import duplicate_block
 
 
-# from VeraGridEngine.Templates.templates_common_functions import connect_bus_variables
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import connect_bus_variables
 
 
 

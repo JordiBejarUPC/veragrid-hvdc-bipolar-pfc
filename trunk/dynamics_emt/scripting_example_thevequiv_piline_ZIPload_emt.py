@@ -11,7 +11,6 @@ from time import perf_counter
 from typing import Any, cast, Dict, List, Optional, Tuple
 
 import os
-import matplotlib.pyplot as plt
 from trunk.dynamics_emt.support.emt_plot_exports import (
     extract_three_phase_matrix,
     get_plot_results_directory,
@@ -51,9 +50,8 @@ from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import St
 
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonTraceCollector
 from VeraGridEngine.enumerations import (BranchImpedanceMode, DynamicIntegrationMethod, EmtInitializationMethod,
-                                         EmtSolverTypes, ShuntConnectionType, SolverType,
-                                         VarPowerFlowRefferenceType)
-from VeraGridEngine.Templates.templates_common_functions import set_emt_model
+                                         EmtSolverTypes, ShuntConnectionType, SolverType)
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
 
 ###########################################################################################################################
 # Build VeraGrid object
