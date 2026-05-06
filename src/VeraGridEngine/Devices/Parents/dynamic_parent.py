@@ -280,8 +280,8 @@ class DynamicDevice(PhysicalDevice):
             if self.auto_update_enabled:
                 val.block.unify_blocks()
                 rms_mdl = duplicate_block(val.block, self._var_factory)
-                connect_bus_variables(self, rms_model)
-                self.rms_model = rms_model
+                connect_bus_variables(self, rms_mdl, self._var_factory)
+                self.rms_model = rms_mdl
 
         elif val is None:
             self._rms_template = None
