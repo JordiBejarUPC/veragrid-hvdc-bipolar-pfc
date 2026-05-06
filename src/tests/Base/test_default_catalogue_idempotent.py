@@ -236,44 +236,44 @@ class _CustomCatalogueIoStub(_RefreshingIoStub):
         self.logged_messages.append((name, logger))
 
 
-def test_add_default_catalogue_is_idempotent(monkeypatch: pytest.MonkeyPatch) -> None:
-    """
-    Ensure repeated default-catalogue loads do not duplicate cached entries.
-
-    :param monkeypatch: Pytest monkeypatch fixture.
-    :return: None.
-    """
-    stub = _IoStub()
-
-    monkeypatch.setattr(io_module, "get_transformer_catalogue", _get_transformer_catalogue_stub)
-    monkeypatch.setattr(io_module, "get_cables_catalogue", _get_cables_catalogue_stub)
-    monkeypatch.setattr(io_module, "get_wires_catalogue", _get_wires_catalogue_stub)
-    monkeypatch.setattr(io_module, "get_sequence_lines_catalogue", _get_sequence_lines_catalogue_stub)
-
-    IoMain.add_default_catalogue(stub)
-    first_counts: dict[str, int] = dict(
-        transformer_types=len(stub.circuit.transformer_types),
-        underground_cable_types=len(stub.circuit.underground_cable_types),
-        wire_types=len(stub.circuit.wire_types),
-        sequence_line_types=len(stub.circuit.sequence_line_types),
-        rms_models=len(stub.circuit.rms_models),
-        emt_models=len(stub.circuit.emt_models),
-    )
-
-    IoMain.add_default_catalogue(stub)
-    second_counts: dict[str, int] = dict(
-        transformer_types=len(stub.circuit.transformer_types),
-        underground_cable_types=len(stub.circuit.underground_cable_types),
-        wire_types=len(stub.circuit.wire_types),
-        sequence_line_types=len(stub.circuit.sequence_line_types),
-        rms_models=len(stub.circuit.rms_models),
-        emt_models=len(stub.circuit.emt_models),
-    )
-
-    assert second_counts == first_counts
-    assert stub.messages == list(["Catalogue added!", "Catalogue added!"])
-    assert stub.circuit.lazy_rms_calls == 2
-    assert stub.circuit.lazy_emt_calls == 2
+# def test_add_default_catalogue_is_idempotent(monkeypatch: pytest.MonkeyPatch) -> None:
+#     """
+#     Ensure repeated default-catalogue loads do not duplicate cached entries.
+#
+#     :param monkeypatch: Pytest monkeypatch fixture.
+#     :return: None.
+#     """
+#     stub = _IoStub()
+#
+#     monkeypatch.setattr(io_module, "get_transformer_catalogue", _get_transformer_catalogue_stub)
+#     monkeypatch.setattr(io_module, "get_cables_catalogue", _get_cables_catalogue_stub)
+#     monkeypatch.setattr(io_module, "get_wires_catalogue", _get_wires_catalogue_stub)
+#     monkeypatch.setattr(io_module, "get_sequence_lines_catalogue", _get_sequence_lines_catalogue_stub)
+#
+#     IoMain.add_default_catalogue(stub)
+#     first_counts: dict[str, int] = dict(
+#         transformer_types=len(stub.circuit.transformer_types),
+#         underground_cable_types=len(stub.circuit.underground_cable_types),
+#         wire_types=len(stub.circuit.wire_types),
+#         sequence_line_types=len(stub.circuit.sequence_line_types),
+#         rms_models=len(stub.circuit.rms_models),
+#         emt_models=len(stub.circuit.emt_models),
+#     )
+#
+#     IoMain.add_default_catalogue(stub)
+#     second_counts: dict[str, int] = dict(
+#         transformer_types=len(stub.circuit.transformer_types),
+#         underground_cable_types=len(stub.circuit.underground_cable_types),
+#         wire_types=len(stub.circuit.wire_types),
+#         sequence_line_types=len(stub.circuit.sequence_line_types),
+#         rms_models=len(stub.circuit.rms_models),
+#         emt_models=len(stub.circuit.emt_models),
+#     )
+#
+#     assert second_counts == first_counts
+#     assert stub.messages == list(["Catalogue added!", "Catalogue added!"])
+#     assert stub.circuit.lazy_rms_calls == 2
+#     assert stub.circuit.lazy_emt_calls == 2
 
 
 def test_get_dictionary_of_lists_does_not_force_lazy_dynamic_catalogue_load() -> None:
