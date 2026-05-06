@@ -134,6 +134,7 @@ class RmsProblemTemplate(ABC):
 
     def populate_missing_models(self, grid: MultiCircuit):
 
+        # todo: not sure this should be done, it edits the grid (input)
         ## BUSES:
         for bus in grid.buses:
             if bus.rms_model.empty():

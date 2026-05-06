@@ -305,6 +305,7 @@ class RmsProblemDae(RmsProblemTemplate):
             bus_dict[elm] = bus_num
 
             # default initialization
+            # TODO delete init here!
             if elm.rms_model.empty():
                 initialize_bus_rms(elm, self.grid.var_factory)
                 # initialize_bus_rms, get_bus_rms_algebraic_vars
@@ -730,6 +731,7 @@ class RmsProblemDae(RmsProblemTemplate):
                 bus_index = bus_dict[elm.bus]
 
                 # get variables from bus
+                # TODO: delete init here!
                 if elm.bus.rms_model.empty():
                     initialize_bus_rms(elm.bus, self.grid.var_factory)
 
