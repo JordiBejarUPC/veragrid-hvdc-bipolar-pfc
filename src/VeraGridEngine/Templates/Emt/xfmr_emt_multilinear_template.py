@@ -263,6 +263,9 @@ def get_xfmr_emt_template_multilinear(
         + it_act
         + i_leg_core_sq_aux
         + [i_return_path_sq_aux]
+        + [i_plus_smoothing_root, i_plus_smoothing_root_aux]
+        + i_leg_plus_smoothing_sq
+        + i_leg_plus_smoothing_sq_aux
     )
 
     # ------------------------------------------------------------------
@@ -339,18 +342,18 @@ def get_xfmr_emt_template_multilinear(
     outer_linear_coeff: Expr = xfmr_core_linear_l_pu * outer_leg_area_rel / (outer_leg_length_rel + c_eps)
     i_plus_smoothing_equation: Expr = i_plus_smoothing_root*i_plus_smoothing_root_aux - (i_return_path * i_return_path_sq_aux + c_smooth)
     
-    yoke_nl_denom: Expr = (
+    yoke_frolich_lam_denom: Expr = (
         xfmr_core_a_prime * yoke_length_rel
         + xfmr_core_b_prime * i_plus_smoothing_root
         + c_eps
     )
-    outer_nl_denom: Expr = (
+    outer_frolich_lam_denom: Expr = (
         xfmr_core_a_prime * outer_leg_length_rel
         + xfmr_core_b_prime * i_plus_smoothing_root
         + c_eps
     )
-    yoke_frolich_lam: Expr = yoke_area_rel * i_return_path / yoke_nl_denom
-    outer_frolich_lam: Expr = outer_leg_area_rel * i_return_path / outer_nl_denom
+    yoke_frolich_lam_nom: Expr = yoke_area_rel * i_return_path 
+    outer_frolich_lam_nom: Expr = outer_leg_area_rel * i_return_path 
 
     # ------------------------------------------------------------------
     # Projection of winding-frame currents to terminal-frame currents.
@@ -401,11 +404,12 @@ def get_xfmr_emt_template_multilinear(
     five_leg_eq_linear: Expr = (c1 / c2) * lam_return_total - (
         c2 * yoke_linear_coeff * i_return_path + outer_linear_coeff * i_return_path
     )
-    five_leg_eq_nonlinear: Expr = (c1 / c2) * lam_return_total - (
-        c2 * yoke_frolich_lam + outer_frolich_lam
+    five_leg_eq_nonlinear: Expr = yoke_frolich_lam_denom*outer_frolich_lam_denom*(
+        (c1 / c2) * lam_return_total) - (
+        c2 * yoke_frolich_lam_nom*outer_frolich_lam_denom + outer_frolich_lam_nom*yoke_frolich_lam_denom
     )
     three_leg_eq_linear: Expr = lam_return_total - c2 * yoke_linear_coeff * i_return_path
-    three_leg_eq_nonlinear: Expr = lam_return_total - c2 * yoke_frolich_lam
+    three_leg_eq_nonlinear: Expr = yoke_frolich_lam_denom*lam_return_total - c2 * yoke_frolich_lam_nom
 
     alg_eqs.append(
         five_leg_selector * (
@@ -586,6 +590,8 @@ def get_xfmr_emt_template_multilinear(
         + three_leg_selector * (lam_return_total / (c2 * yoke_linear_coeff + c_eps))
     )
     init_eqs[i_return_path_sq_aux] = i_return_path
+    init_eqs[i_plus_smoothing_root] = sym.sqrt(i_return_path * i_return_path_sq_aux + c_smooth)
+    init_eqs[i_plus_smoothing_root_aux] = i_plus_smoothing_root
     init_eqs[i_return_total] = (
         five_leg_selector * c2 * i_return_path
         + three_leg_selector * i_return_path
@@ -594,6 +600,8 @@ def get_xfmr_emt_template_multilinear(
     # Net magnetizing currents.
     for k in range(3):
         init_eqs[i_mag[k]] = i_leg_core[k] - i_return_total
+        init_eqs[i_leg_plus_smoothing_sq[k]] = sym.sqrt(i_leg_core[k] * i_leg_core_sq_aux[k] + c_smooth)
+        init_eqs[i_leg_plus_smoothing_sq_aux[k]] = i_leg_plus_smoothing_sq[k]
 
     # Core-loss currents referred to the from side.
     for k in range(3):

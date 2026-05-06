@@ -20,7 +20,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 import sys
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 
 def ensure_repo_import_paths() -> None:
@@ -833,6 +833,7 @@ def build_switched_vsc_case(
         q_kp: float = 1.6,
         q_ki: float = 60.0,
         tau_meas_s: float = 0.005,
+        converter_builder: Callable[[Any, str], Any] = get_switched_emt_converter,
 ) -> SwitchedConverterCaseContext:
     """
     Build the switched EMT VSC validation case.
@@ -895,7 +896,7 @@ def build_switched_vsc_case(
 
     # Every physical device receives its EMT model before the DAE is assembled.
     gen_mdl = get_generator_thevenin_rl_emt_template(vf=grid.var_factory).block
-    vsc_mdl = get_switched_emt_converter(vf=grid.var_factory, name=vsc.name).block
+    vsc_mdl = converter_builder(vf=grid.var_factory, name=vsc.name).block
     dc_load_mdl = get_dc_load_emt_template(vf=grid.var_factory, name="dc_load_emt_switched").block
 
     # Align the switched case with the pseudo-EMT reference tuning on the same physical topology.
@@ -1091,6 +1092,7 @@ def simulate_switched_converter_handover(
         q_kp: float = 1.6,
         q_ki: float = 60.0,
         tau_meas_s: float = 0.005,
+        converter_builder: Callable[[Any, str], Any] = get_switched_emt_converter,
 ) -> SwitchedConverterHandoverTrace:
     """
     Simulate the full hybrid switched-converter case and collect handover traces.
@@ -1116,6 +1118,7 @@ def simulate_switched_converter_handover(
         q_kp=q_kp,
         q_ki=q_ki,
         tau_meas_s=tau_meas_s,
+        converter_builder=converter_builder,
     )
     problem: EmtProblemDae = case_context.problem
     switching_enabled_idx: int = require_runtime_mode_index(
