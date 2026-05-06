@@ -53,6 +53,13 @@ class SpreadsheetTableView(QtWidgets.QTableView):
     """
     QTableView with an Excel-like fill handle on the current cell.
     Dragging the handle down copies the current cell value to the selected range.
+
+    VeraGrid integration note:
+    Replace an existing .ui QTableView (for example `dataStructureTableView`) by
+    promoting it in Qt Designer to this class:
+      - class: SpreadsheetTableView
+      - module: VeraGrid.Gui.spread_sheet_table
+    This keeps the same object name and layout position.
     """
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
@@ -66,6 +73,18 @@ class SpreadsheetTableView(QtWidgets.QTableView):
 
         self.setMouseTracking(True)
         self.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ContiguousSelection)
+
+        self._copy_shortcut = QtGui.QShortcut(QtGui.QKeySequence.StandardKey.Copy, self)
+        self._copy_shortcut.setContext(QtCore.Qt.ShortcutContext.WidgetWithChildrenShortcut)
+        self._copy_shortcut.activated.connect(self._copy_selection_to_clipboard)
+
+        self._undo_shortcut = QtGui.QShortcut(QtGui.QKeySequence.StandardKey.Undo, self)
+        self._undo_shortcut.setContext(QtCore.Qt.ShortcutContext.WidgetWithChildrenShortcut)
+        self._undo_shortcut.activated.connect(self._undo_stack.undo)
+
+        self._redo_shortcut = QtGui.QShortcut(QtGui.QKeySequence.StandardKey.Redo, self)
+        self._redo_shortcut.setContext(QtCore.Qt.ShortcutContext.WidgetWithChildrenShortcut)
+        self._redo_shortcut.activated.connect(self._undo_stack.redo)
 
     def _current_cell_rect(self) -> QtCore.QRect:
         idx = self.currentIndex()
@@ -218,16 +237,35 @@ class SpreadsheetTableView(QtWidgets.QTableView):
     def undo_stack(self) -> QtGui.QUndoStack:
         return self._undo_stack
 
-    def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
-        if event.matches(QtGui.QKeySequence.StandardKey.Undo):
-            self._undo_stack.undo()
-            event.accept()
+    def _copy_selection_to_clipboard(self) -> None:
+        model = self.model()
+        if model is None:
             return
-        if event.matches(QtGui.QKeySequence.StandardKey.Redo):
-            self._undo_stack.redo()
-            event.accept()
-            return
-        super().keyPressEvent(event)
+
+        selected = self.selectionModel().selectedIndexes() if self.selectionModel() else []
+        if not selected:
+            idx = self.currentIndex()
+            if not idx.isValid():
+                return
+            selected = [idx]
+
+        rows = sorted({idx.row() for idx in selected})
+        cols = sorted({idx.column() for idx in selected})
+        selected_pos = {(idx.row(), idx.column()) for idx in selected}
+
+        text_rows = []
+        for r in rows:
+            row_values = []
+            for c in cols:
+                idx = model.index(r, c)
+                if (r, c) in selected_pos:
+                    value = model.data(idx, QtCore.Qt.ItemDataRole.DisplayRole)
+                    row_values.append("" if value is None else str(value))
+                else:
+                    row_values.append("")
+            text_rows.append("\t".join(row_values))
+
+        QtWidgets.QApplication.clipboard().setText("\n".join(text_rows))
 
 
 def _build_demo_model(rows: int = 20, cols: int = 4) -> QtGui.QStandardItemModel:
