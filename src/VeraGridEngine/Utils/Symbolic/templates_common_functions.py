@@ -238,11 +238,7 @@ def connect_bus_variables(device: Any, model:Block, var_factory: VarFactory | No
                 initialize_bus_rms(device.bus, var_factory)
             else:
                 raise ValueError("var factory not associated to grid element")
-            connect_models_power_flow(device.bus.rms_model, model)
-
-        else:
-            raise ValueError(f"Connection Bus RMS model cannot be empty, initialize {device.bus.name} RMS model")
-
+        connect_models_power_flow(device.bus.rms_model, model)
 
 
 def set_rms_model(device: Any, model:Block, var_factory: VarFactory):
