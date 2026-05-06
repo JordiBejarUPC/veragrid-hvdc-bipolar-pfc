@@ -241,7 +241,7 @@ class ObjectsModel(WrappableTableModel):
         if self.editable and self.attributes[attr_idx] not in self.non_editable_attributes:
             return QtCore.Qt.ItemFlag.ItemIsEditable | QtCore.Qt.ItemFlag.ItemIsEnabled | QtCore.Qt.ItemFlag.ItemIsSelectable
         else:
-            return QtCore.Qt.ItemFlag.ItemIsEnabled
+            return QtCore.Qt.ItemFlag.ItemIsEnabled | QtCore.Qt.ItemFlag.ItemIsSelectable
 
     def rowCount(self, parent: QtCore.QModelIndex = None) -> int:
         """

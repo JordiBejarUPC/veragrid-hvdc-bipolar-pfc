@@ -9,6 +9,7 @@ import math
 import uuid
 import re
 import copy
+from dataclasses import dataclass
 from enum import Enum
 from typing import List, Dict, Optional, Any, Set
 from PySide6 import QtWidgets, QtGui, QtCore
@@ -34,7 +35,8 @@ from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType, \
     DynamicSimulationMode, ShuntConnectionType, WindingType
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms, get_bus_rms_algebraic_vars
-from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template, get_bus_emt_algebraic_vars
+from VeraGridEngine.Templates.Emt.bus_emt_template import BusEmtTemplate, get_bus_emt_template, get_bus_emt_algebraic_vars
+from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
@@ -4085,7 +4087,7 @@ class DiagramScene(QGraphicsScene):
                 self.context_item = item
 
                 if isinstance(item, (BlockItem, GenericBlockItem)):
-                    if isinstance(item, BlockItem) and item.subsys is not None:
+                    if item.subsys is not None:
                         modal_kind, modal_config = get_modal_template_metadata(item.subsys)
                     else:
                         modal_kind = None
@@ -4451,6 +4453,61 @@ class ConnectionVarSpec:
     reference: VarPowerFlowRefferenceType
     visible_name: str
 
+def build_emt_injection_bus_mask_from_refs(refs: set[VarPowerFlowRefferenceType]) -> list[bool]:
+    """
+    Build the AC bus phase mask implied by one injection editor interface.
+
+    A phase is active when either its voltage input or its current output still
+    exists in the saved root interface. This makes the user-edited interface
+    the source of truth for the final EMT bus shell.
+
+    :param refs: Power-flow references still exposed by the edited root block.
+    :return: Phase mask ordered as ``[N, A, B, C]``.
+    """
+    mask: list[bool] = list([False, False, False, False])
+
+    # Each phase can be kept either through its voltage input or through its
+    # current output. This avoids requiring the user to keep both variables
+    # just to declare that a phase exists.
+    mask[0] = VarPowerFlowRefferenceType.v_N in refs or VarPowerFlowRefferenceType.i_N in refs
+    mask[1] = VarPowerFlowRefferenceType.v_A in refs or VarPowerFlowRefferenceType.i_A in refs
+    mask[2] = VarPowerFlowRefferenceType.v_B in refs or VarPowerFlowRefferenceType.i_B in refs
+    mask[3] = VarPowerFlowRefferenceType.v_C in refs or VarPowerFlowRefferenceType.i_C in refs
+
+    return mask
+
+
+def build_emt_branch_bus_mask_from_refs(
+        refs: set[VarPowerFlowRefferenceType],
+        side: str,
+) -> list[bool]:
+    """
+    Build the AC bus phase mask implied by one branch-side editor interface.
+
+    :param refs: Power-flow references still exposed by the edited root block.
+    :param side: Branch side identifier. Expected values are ``from`` and ``to``.
+    :return: Phase mask ordered as ``[N, A, B, C]``.
+    """
+    mask: list[bool] = list([False, False, False, False])
+
+    # The branch interface has side-specific variables, so the mask must be
+    # derived independently for the from and to terminals.
+    if side == "from":
+        mask[0] = VarPowerFlowRefferenceType.vf_N in refs or VarPowerFlowRefferenceType.if_N in refs
+        mask[1] = VarPowerFlowRefferenceType.vf_A in refs or VarPowerFlowRefferenceType.if_A in refs
+        mask[2] = VarPowerFlowRefferenceType.vf_B in refs or VarPowerFlowRefferenceType.if_B in refs
+        mask[3] = VarPowerFlowRefferenceType.vf_C in refs or VarPowerFlowRefferenceType.if_C in refs
+    elif side == "to":
+        mask[0] = VarPowerFlowRefferenceType.vt_N in refs or VarPowerFlowRefferenceType.it_N in refs
+        mask[1] = VarPowerFlowRefferenceType.vt_A in refs or VarPowerFlowRefferenceType.it_A in refs
+        mask[2] = VarPowerFlowRefferenceType.vt_B in refs or VarPowerFlowRefferenceType.it_B in refs
+        mask[3] = VarPowerFlowRefferenceType.vt_C in refs or VarPowerFlowRefferenceType.it_C in refs
+    else:
+        # Unsupported sides are handled as an empty mask. The caller decides
+        # whether this is acceptable or whether the save operation must stop.
+        pass
+
+    return mask
 
 class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     """
@@ -7966,70 +8023,87 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     def _append_emt_branch_side_connection_specs(
             self,
             specs: List[ConnectionVarSpec],
-            bus: Any,
+            bus: Bus,
             side: str,
     ) -> None:
         """
-        Append EMT connection specs for one branch side according to the bus domain.
+        Append the default editable EMT connection specs for one branch side.
 
-        :param specs: List to extend.
-        :param bus: Side bus.
-        :param side: ``from`` or ``to``.
+        The editor opens AC branch terminals with the full N/A/B/C voltage and
+        current interface. The user can remove phases manually. When changes
+        are applied, the connected bus EMT shell is rebuilt from the remaining
+        visible ports.
+
+        DC terminals are different because they do not have phases. They only
+        expose one side-specific voltage input and one side-specific current
+        output.
+
+        :param specs: Connection specification list to extend.
+        :param bus: Bus connected to the selected branch side.
+        :param side: Branch side identifier. Expected values are ``from`` and ``to``.
         :return: None.
         """
         safe_bus_name: str = self._get_safe_bus_name(bus)
+        voltage_refs: List[VarPowerFlowRefferenceType] = list()
+        current_refs: List[VarPowerFlowRefferenceType] = list()
 
-        if side == "from":
-            ac_voltage_refs: List[tuple[VarPowerFlowRefferenceType, str]] = list([
-                (VarPowerFlowRefferenceType.vf_N, f"vf_N_{safe_bus_name}"),
-                (VarPowerFlowRefferenceType.vf_A, f"vf_A_{safe_bus_name}"),
-                (VarPowerFlowRefferenceType.vf_B, f"vf_B_{safe_bus_name}"),
-                (VarPowerFlowRefferenceType.vf_C, f"vf_C_{safe_bus_name}"),
-            ])
-            ac_current_refs: List[tuple[VarPowerFlowRefferenceType, str]] = list([
-                (VarPowerFlowRefferenceType.if_N,
-                 f"net_conn_{VarPowerFlowRefferenceType.if_N.value}_{safe_bus_name}_{self.api_object.name}"),
-                (VarPowerFlowRefferenceType.if_A,
-                 f"net_conn_{VarPowerFlowRefferenceType.if_A.value}_{safe_bus_name}_{self.api_object.name}"),
-                (VarPowerFlowRefferenceType.if_B,
-                 f"net_conn_{VarPowerFlowRefferenceType.if_B.value}_{safe_bus_name}_{self.api_object.name}"),
-                (VarPowerFlowRefferenceType.if_C,
-                 f"net_conn_{VarPowerFlowRefferenceType.if_C.value}_{safe_bus_name}_{self.api_object.name}"),
-            ])
-            dc_voltage_ref: VarPowerFlowRefferenceType = VarPowerFlowRefferenceType.Vf_dc
-            dc_current_ref: VarPowerFlowRefferenceType = VarPowerFlowRefferenceType.If_dc
-        elif side == "to":
-            ac_voltage_refs = list([
-                (VarPowerFlowRefferenceType.vt_N, f"vt_N_{safe_bus_name}"),
-                (VarPowerFlowRefferenceType.vt_A, f"vt_A_{safe_bus_name}"),
-                (VarPowerFlowRefferenceType.vt_B, f"vt_B_{safe_bus_name}"),
-                (VarPowerFlowRefferenceType.vt_C, f"vt_C_{safe_bus_name}"),
-            ])
-            ac_current_refs = list([
-                (VarPowerFlowRefferenceType.it_N,
-                 f"net_conn_{VarPowerFlowRefferenceType.it_N.value}_{safe_bus_name}_{self.api_object.name}"),
-                (VarPowerFlowRefferenceType.it_A,
-                 f"net_conn_{VarPowerFlowRefferenceType.it_A.value}_{safe_bus_name}_{self.api_object.name}"),
-                (VarPowerFlowRefferenceType.it_B,
-                 f"net_conn_{VarPowerFlowRefferenceType.it_B.value}_{safe_bus_name}_{self.api_object.name}"),
-                (VarPowerFlowRefferenceType.it_C,
-                 f"net_conn_{VarPowerFlowRefferenceType.it_C.value}_{safe_bus_name}_{self.api_object.name}"),
-            ])
-            dc_voltage_ref = VarPowerFlowRefferenceType.Vt_dc
-            dc_current_ref = VarPowerFlowRefferenceType.It_dc
-        else:
-            raise ValueError(f"Unsupported branch EMT side {side}")
-
+        # DC terminals must use side-specific references so that branch
+        # interfaces do not mix the from and to bus quantities.
         if bus.is_dc:
-            specs.append(ConnectionVarSpec("input", dc_voltage_ref, f"{dc_voltage_ref.value}_{safe_bus_name}"))
-            specs.append(ConnectionVarSpec("output", dc_current_ref,
-                                           f"net_conn_{dc_current_ref.value}_{safe_bus_name}_{self.api_object.name}"))
+            if side == "from":
+                voltage_refs.append(VarPowerFlowRefferenceType.Vf_dc)
+                current_refs.append(VarPowerFlowRefferenceType.If_dc)
+            elif side == "to":
+                voltage_refs.append(VarPowerFlowRefferenceType.Vt_dc)
+                current_refs.append(VarPowerFlowRefferenceType.It_dc)
+            else:
+                QtWidgets.QMessageBox.warning(
+                    self,
+                    "EMT branch interface",
+                    f"Unsupported EMT branch side '{side}'. No ports were created for this side.",
+                )
         else:
-            for reference, visible_name in ac_voltage_refs:
-                specs.append(ConnectionVarSpec("input", reference, visible_name))
+            # AC terminals intentionally open with the complete editable
+            # phase set. The saved editor interface will later define the
+            # effective bus phase mask.
+            if side == "from":
+                voltage_refs.append(VarPowerFlowRefferenceType.vf_N)
+                voltage_refs.append(VarPowerFlowRefferenceType.vf_A)
+                voltage_refs.append(VarPowerFlowRefferenceType.vf_B)
+                voltage_refs.append(VarPowerFlowRefferenceType.vf_C)
 
-            for reference, visible_name in ac_current_refs:
-                specs.append(ConnectionVarSpec("output", reference, visible_name))
+                current_refs.append(VarPowerFlowRefferenceType.if_N)
+                current_refs.append(VarPowerFlowRefferenceType.if_A)
+                current_refs.append(VarPowerFlowRefferenceType.if_B)
+                current_refs.append(VarPowerFlowRefferenceType.if_C)
+            elif side == "to":
+                voltage_refs.append(VarPowerFlowRefferenceType.vt_N)
+                voltage_refs.append(VarPowerFlowRefferenceType.vt_A)
+                voltage_refs.append(VarPowerFlowRefferenceType.vt_B)
+                voltage_refs.append(VarPowerFlowRefferenceType.vt_C)
+
+                current_refs.append(VarPowerFlowRefferenceType.it_N)
+                current_refs.append(VarPowerFlowRefferenceType.it_A)
+                current_refs.append(VarPowerFlowRefferenceType.it_B)
+                current_refs.append(VarPowerFlowRefferenceType.it_C)
+            else:
+                QtWidgets.QMessageBox.warning(
+                    self,
+                    "EMT branch interface",
+                    f"Unsupported EMT branch side '{side}'. No ports were created for this side.",
+                )
+
+        reference: VarPowerFlowRefferenceType
+
+        for reference in voltage_refs:
+            specs.append(ConnectionVarSpec("input", reference, f"{reference.value}_{safe_bus_name}"))
+
+        for reference in current_refs:
+            specs.append(ConnectionVarSpec(
+                "output",
+                reference,
+                f"net_conn_{reference.value}_{safe_bus_name}_{self.api_object.name}",
+            ))
 
     def _sync_rlc_combo_load_base_values(self, template_kwargs: Dict[str, Any]) -> None:
         """
@@ -9049,10 +9123,14 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
     def _build_emt_injection_connection_specs(self) -> List[ConnectionVarSpec]:
         """
-        Build the EMT connection-variable specs for an injection device.
+        Build the default editable EMT connection specs for an injection device.
 
-        AC buses expose N/A/B/C voltage and current ports. DC buses expose only
-        Vdc/Idc ports.
+        AC injections always open with the full N/A/B/C voltage-current
+        interface. This is intentional because the editor must let the user
+        decide which phases are actually needed.
+
+        DC injections only expose the DC interface because a DC bus has no AC
+        phase domain.
 
         :return: Connection variable specifications.
         """
@@ -9060,23 +9138,43 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         specs: List[ConnectionVarSpec] = list()
 
         if self.api_object.bus.is_dc:
+            # A DC injection has one voltage input and one injected current
+            # output. No AC phase ports are valid for this bus domain.
             specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.Vdc, f"Vdc_{safe_bus_name}"))
-            specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.Idc,
-                                           f"net_conn_{VarPowerFlowRefferenceType.Idc.value}_{self.api_object.name}"))
+            specs.append(ConnectionVarSpec(
+                "output",
+                VarPowerFlowRefferenceType.Idc,
+                f"net_conn_{VarPowerFlowRefferenceType.Idc.value}_{self.api_object.name}",
+            ))
         else:
+            # An AC injection starts with the complete editable phase set.
+            # The user can remove phases, and the apply step will rebuild
+            # the connected bus EMT shell from the remaining ports.
             specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.v_N, f"v_N_{safe_bus_name}"))
             specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.v_A, f"v_A_{safe_bus_name}"))
             specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.v_B, f"v_B_{safe_bus_name}"))
             specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.v_C, f"v_C_{safe_bus_name}"))
 
-            specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.i_N,
-                                           f"net_conn_{VarPowerFlowRefferenceType.i_N.value}_{self.api_object.name}"))
-            specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.i_A,
-                                           f"net_conn_{VarPowerFlowRefferenceType.i_A.value}_{self.api_object.name}"))
-            specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.i_B,
-                                           f"net_conn_{VarPowerFlowRefferenceType.i_B.value}_{self.api_object.name}"))
-            specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.i_C,
-                                           f"net_conn_{VarPowerFlowRefferenceType.i_C.value}_{self.api_object.name}"))
+            specs.append(ConnectionVarSpec(
+                "output",
+                VarPowerFlowRefferenceType.i_N,
+                f"net_conn_{VarPowerFlowRefferenceType.i_N.value}_{self.api_object.name}",
+            ))
+            specs.append(ConnectionVarSpec(
+                "output",
+                VarPowerFlowRefferenceType.i_A,
+                f"net_conn_{VarPowerFlowRefferenceType.i_A.value}_{self.api_object.name}",
+            ))
+            specs.append(ConnectionVarSpec(
+                "output",
+                VarPowerFlowRefferenceType.i_B,
+                f"net_conn_{VarPowerFlowRefferenceType.i_B.value}_{self.api_object.name}",
+            ))
+            specs.append(ConnectionVarSpec(
+                "output",
+                VarPowerFlowRefferenceType.i_C,
+                f"net_conn_{VarPowerFlowRefferenceType.i_C.value}_{self.api_object.name}",
+            ))
 
         return specs
 
@@ -9182,6 +9280,152 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return: Bus name with spaces replaced by underscores.
         """
         return bus.name.replace(" ", "_")
+
+    def _get_current_root_interface_refs(self) -> set[VarPowerFlowRefferenceType]:
+        """
+        Return the references still present in the saved root interface.
+
+        The root block interface is the authoritative result of the editor
+        session. When the user removes a visible connection variable, the
+        corresponding variable disappears from ``main_block.in_vars`` or
+        ``main_block.out_vars`` and should not be recreated silently later.
+
+        :return: Set of power-flow reference types still exposed by the block.
+        """
+        refs: set[VarPowerFlowRefferenceType] = set()
+        var: Var
+        mapping_ref: VarPowerFlowRefferenceType
+        mapped_var: Var | None
+
+        # Collect references from explicit root inputs.
+        for var in self.main_block.in_vars:
+            if var.ref is not None:
+                refs.add(var.ref)
+            else:
+                pass
+
+        # Collect references from explicit root outputs.
+        for var in self.main_block.out_vars:
+            if var.ref is not None:
+                refs.add(var.ref)
+            else:
+                pass
+
+        # Collect references from the external mapping because some variables
+        # may be kept through mapping updates after connection edits.
+        for mapping_ref, mapped_var in self.main_block.external_mapping.items():
+            if mapped_var is not None:
+                refs.add(mapping_ref)
+            else:
+                pass
+
+        return refs
+
+    def _rebuild_emt_bus_model_from_editor_mask(self, bus: Bus, mask: list[bool]) -> bool:
+        """
+        Rebuild one EMT bus shell from the phases kept by the editor user.
+
+        :param bus: Bus API object.
+        :param mask: AC phase mask ordered as ``[N, A, B, C]``.
+        :return: ``True`` when the bus model was rebuilt successfully.
+        """
+        success: bool = False
+
+        if bus.is_dc:
+            # DC buses ignore the AC mask and are rebuilt with the DC-only
+            # EMT shell.
+            bus.emt_model = BusEmtTemplate(
+                vf=self.var_factory,
+                mask=list([False, False, False, False]),
+                is_dc=True,
+                name=f"{bus.name}_emt_template",
+            ).block
+            success = True
+        else:
+            if any(mask):
+                # AC buses are rebuilt with exactly the phase mask implied by
+                # the remaining editor ports.
+                bus.emt_model = BusEmtTemplate(
+                    vf=self.var_factory,
+                    mask=mask,
+                    is_dc=False,
+                    name=f"{bus.name}_emt_template",
+                ).block
+                success = True
+            else:
+                # Empty AC interfaces cannot define a KCL shell. This state is
+                # handled through a GUI warning instead of throwing an exception.
+                QtWidgets.QMessageBox.warning(
+                    self,
+                    "Invalid EMT bus interface",
+                    f"The EMT interface for bus '{bus.name}' has no remaining AC phases. "
+                    "Keep at least one voltage or current phase port before applying changes.",
+                )
+                success = False
+
+        return success
+
+    def _sync_emt_bus_models_from_current_interface(self) -> bool:
+        """
+        Rebuild connected EMT bus shells from the ports left in the editor.
+
+        The intended workflow is:
+        1. the editor opens with the complete editable EMT AC interface,
+        2. the user removes unneeded phases,
+        3. applying changes rebuilds the bus EMT model from the remaining
+           network ports.
+
+        :return: ``True`` when all required bus EMT models were synchronised.
+        """
+        refs: set[VarPowerFlowRefferenceType] = self._get_current_root_interface_refs()
+        success: bool = True
+
+        if isinstance(self.api_object, InjectionParent):
+            if self.api_object.bus.is_dc:
+                success = self._rebuild_emt_bus_model_from_editor_mask(
+                    bus=self.api_object.bus,
+                    mask=list([False, False, False, False]),
+                )
+            else:
+                mask: list[bool] = build_emt_injection_bus_mask_from_refs(refs)
+                success = self._rebuild_emt_bus_model_from_editor_mask(
+                    bus=self.api_object.bus,
+                    mask=mask,
+                )
+
+        elif isinstance(self.api_object, BranchParent):
+            if self.api_object.bus_from.is_dc:
+                success_from: bool = self._rebuild_emt_bus_model_from_editor_mask(
+                    bus=self.api_object.bus_from,
+                    mask=list([False, False, False, False]),
+                )
+            else:
+                mask_from: list[bool] = build_emt_branch_bus_mask_from_refs(refs=refs, side="from")
+                success_from = self._rebuild_emt_bus_model_from_editor_mask(
+                    bus=self.api_object.bus_from,
+                    mask=mask_from,
+                )
+
+            if self.api_object.bus_to.is_dc:
+                success_to: bool = self._rebuild_emt_bus_model_from_editor_mask(
+                    bus=self.api_object.bus_to,
+                    mask=list([False, False, False, False]),
+                )
+            else:
+                mask_to: list[bool] = build_emt_branch_bus_mask_from_refs(refs=refs, side="to")
+                success_to = self._rebuild_emt_bus_model_from_editor_mask(
+                    bus=self.api_object.bus_to,
+                    mask=mask_to,
+                )
+
+            success = success_from and success_to
+
+        else:
+            # Template editing or unsupported objects do not own concrete bus
+            # interfaces, so there is nothing to synchronise.
+            success = True
+
+        return success
 
     def add_api_obj_mapping(self):
 
@@ -9942,7 +10186,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param item: Scene item selected from the context menu.
         :return: None.
         """
-        if not isinstance(item, BlockItem) or item.subsys is None:
+        if not isinstance(item, (BlockItem, GenericBlockItem)) or item.subsys is None:
             return
         else:
             pass
@@ -9997,7 +10241,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
-    def _replace_scene_block_from_template(self, item: BlockItem, new_block: Block, modal_kind: str, modal_config: Dict[str, Any]) -> None:
+    def _replace_scene_block_from_template(self, item: BlockItem | GenericBlockItem, new_block: Block, modal_kind: str, modal_config: Dict[str, Any]) -> None:
         """
         Replace one scene block contents while preserving its identity and diagram node.
 
@@ -10808,18 +11052,31 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             else:
                 self.close()
 
+
+
         elif self.mode == DynamicSimulationMode.EMT:
+
             if self.api_object.emt_template is not None:
-                # Todo: Here are the changes
                 self.api_object.emt_template = None
-            copy_block_state(source_block=self.main_block, target_block=self.original_block)
-            self.has_unapplied_changes = False
-            self.changes_applied = True
-            self.dirtyStateChanged.emit(False)
-            if self.workspace_embedded:
-                pass
             else:
-                self.close()
+                pass
+            # Before copying the edited block back to the device, rebuild the
+            # connected EMT bus shells using the network ports that the user
+            # has actually kept in the editor.
+            bus_models_synchronised: bool = self._sync_emt_bus_models_from_current_interface()
+            if bus_models_synchronised:
+                copy_block_state(source_block=self.main_block, target_block=self.original_block)
+                self.has_unapplied_changes = False
+                self.changes_applied = True
+                self.dirtyStateChanged.emit(False)
+                if self.workspace_embedded:
+                    pass
+                else:
+                    self.close()
+            else:
+                # Do not apply the edited model if the bus interface is invalid.
+                # The warning is already emitted by the synchronisation method.
+                pass
 
     def open_inspect_dialog(self):
         """
@@ -10923,6 +11180,23 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     )
                     self.scene.addItem(generic_item)
                     generic_item.setPos(QPointF(node.x, node.y))
+                    modal_kind, modal_config = get_modal_template_metadata(block_model)
+                    if modal_kind == "jmarti_line_emt" and modal_config is not None:
+                        generic_item.setToolTip(self._build_jmarti_modal_tooltip(modal_config))
+                    elif modal_kind == "source_emt" and modal_config is not None:
+                        generic_item.setToolTip(self._build_source_emt_modal_tooltip(modal_config))
+                    elif modal_kind == "dc_source_emt" and modal_config is not None:
+                        generic_item.setToolTip(self._build_dc_source_emt_modal_tooltip(modal_config))
+                    elif modal_kind == "balanced_source_emt" and modal_config is not None:
+                        generic_item.setToolTip(self._build_balanced_source_emt_modal_tooltip(modal_config))
+                    elif modal_kind == "arbitrary_source_emt" and modal_config is not None:
+                        generic_item.setToolTip(self._build_arbitrary_source_emt_modal_tooltip(modal_config))
+                    elif modal_kind == "transient_source_emt" and modal_config is not None:
+                        generic_item.setToolTip(self._build_transient_source_emt_modal_tooltip(modal_config))
+                    elif modal_kind == "induction_motor_emt" and modal_config is not None:
+                        generic_item.setToolTip(self._build_induction_motor_emt_modal_tooltip(modal_config))
+                    else:
+                        pass
                     brush = generic_item.brush()
                     brush.setColor(QColor(node.color))
                     generic_item.setBrush(brush)

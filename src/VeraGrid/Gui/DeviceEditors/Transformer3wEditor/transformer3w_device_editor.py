@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import sys
 
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 
 from VeraGrid.Gui.DeviceEditors.TemplateDeviceEditor.template_device_editor import TemplateDeviceEditor
 from VeraGrid.Gui.DeviceEditors.Transformer3wEditor.transformer3w_editor import Transformer3WEditor
@@ -91,12 +91,10 @@ class Transformer3WDeviceEditor(TemplateDeviceEditor):
         self.transformer3w_design_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self.transformer3w_design_tab)
         self.transformer3w_button_layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout()
         self.transformer3w_apply_button: QtWidgets.QPushButton = QtWidgets.QPushButton(
-            "Apply transformer 3W design",
+            "Accept",
             self.transformer3w_design_tab,
         )
-        self.transformer3w_button_layout.addWidget(self.transformer3w_apply_button)
-        self.transformer3w_button_layout.addStretch()
-        self.transformer3w_design_layout.addLayout(self.transformer3w_button_layout)
+        self.transformer3w_apply_button.setIcon(QtGui.QIcon(":/Icons/icons/accept.png"))
 
         if self.circuit is not None:
             self.transformer3w_design_widget = EmbeddedTransformer3WDesignEditorWidget(
@@ -116,7 +114,12 @@ class Transformer3WDeviceEditor(TemplateDeviceEditor):
             )
             self.transformer3w_design_layout.addWidget(missing_msg)
 
-        self.tab_widget.addTab(self.transformer3w_design_tab, "Transformer3WEditor")
+        self.transformer3w_button_layout.addStretch()
+        self.transformer3w_button_layout.addWidget(self.transformer3w_apply_button)
+        self.transformer3w_design_layout.addLayout(self.transformer3w_button_layout)
+
+        transformer3w_tab_index: int = self.tab_widget.addTab(self.transformer3w_design_tab, "Transformer3WEditor")
+        self.tab_widget.setTabIcon(transformer3w_tab_index, QtGui.QIcon(":/Icons/icons/transformer3w.png"))
 
     def _apply_transformer3w_design(self) -> None:
         """

@@ -8,7 +8,7 @@ import sys
 from typing import Callable, Sequence
 
 import numpy as np
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 
 from VeraGrid.Gui.DeviceEditors.GeneratorEditor.generator_editor_gui import Ui_GeneratorQCurveEditorDialog
 from VeraGrid.Gui.DeviceEditors.GeneratorEditor.SolarPowerWizard.solar_power_wizzard import SolarPvWizard
@@ -629,7 +629,8 @@ class GeneratorEditor(TemplateDeviceEditor):
             Snom=self.api_object.Snom,
         )
         self.qcurve_tab_layout.addWidget(self.qcurve_editor_widget)
-        self.tab_widget.addTab(self.qcurve_tab, "QCurveEditor")
+        qcurve_tab_index: int = self.tab_widget.addTab(self.qcurve_tab, "Q curve editor")
+        self.tab_widget.setTabIcon(qcurve_tab_index, QtGui.QIcon(":/Icons/icons/plot.png"))
         self.qcurve_editor_widget.curve_changed.connect(self._on_qcurve_data_changed)
 
     def _build_solar_tab(self) -> None:
@@ -639,11 +640,9 @@ class GeneratorEditor(TemplateDeviceEditor):
         self.solar_tab: QtWidgets.QWidget = QtWidgets.QWidget(self.tab_widget)
         self.solar_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self.solar_tab)
         self.solar_button_layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout()
-        self.solar_apply_button: QtWidgets.QPushButton = QtWidgets.QPushButton("Apply to Generator", self.solar_tab)
+        self.solar_apply_button: QtWidgets.QPushButton = QtWidgets.QPushButton("Accept", self.solar_tab)
+        self.solar_apply_button.setIcon(QtGui.QIcon(":/Icons/icons/accept.png"))
         self.solar_apply_button.setEnabled(False)
-        self.solar_button_layout.addWidget(self.solar_apply_button)
-        self.solar_button_layout.addStretch()
-        self.solar_layout.addLayout(self.solar_button_layout)
 
         bus: Bus | None = self._get_generator_bus()
         if self.circuit is not None and self.circuit.has_time_series and bus is not None:
@@ -668,7 +667,12 @@ class GeneratorEditor(TemplateDeviceEditor):
             )
             self.solar_layout.addWidget(missing_msg)
 
-        self.tab_widget.addTab(self.solar_tab, "SolarEditor")
+        self.solar_button_layout.addStretch()
+        self.solar_button_layout.addWidget(self.solar_apply_button)
+        self.solar_layout.addLayout(self.solar_button_layout)
+
+        solar_tab_index: int = self.tab_widget.addTab(self.solar_tab, "Solar editor")
+        self.tab_widget.setTabIcon(solar_tab_index, QtGui.QIcon(":/Icons/icons/solar_power.png"))
 
     def _build_wind_tab(self) -> None:
         """
@@ -677,11 +681,9 @@ class GeneratorEditor(TemplateDeviceEditor):
         self.wind_tab: QtWidgets.QWidget = QtWidgets.QWidget(self.tab_widget)
         self.wind_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self.wind_tab)
         self.wind_button_layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout()
-        self.wind_apply_button: QtWidgets.QPushButton = QtWidgets.QPushButton("Apply to Generator", self.wind_tab)
+        self.wind_apply_button: QtWidgets.QPushButton = QtWidgets.QPushButton("Accept", self.wind_tab)
+        self.wind_apply_button.setIcon(QtGui.QIcon(":/Icons/icons/accept.png"))
         self.wind_apply_button.setEnabled(False)
-        self.wind_button_layout.addWidget(self.wind_apply_button)
-        self.wind_button_layout.addStretch()
-        self.wind_layout.addLayout(self.wind_button_layout)
 
         bus: Bus | None = self._get_generator_bus()
         if self.circuit is not None and self.circuit.has_time_series and bus is not None:
@@ -706,7 +708,12 @@ class GeneratorEditor(TemplateDeviceEditor):
             )
             self.wind_layout.addWidget(missing_msg)
 
-        self.tab_widget.addTab(self.wind_tab, "WindFarmEditor")
+        self.wind_button_layout.addStretch()
+        self.wind_button_layout.addWidget(self.wind_apply_button)
+        self.wind_layout.addLayout(self.wind_button_layout)
+
+        wind_tab_index: int = self.tab_widget.addTab(self.wind_tab, "Wind farm editor")
+        self.tab_widget.setTabIcon(wind_tab_index, QtGui.QIcon(":/Icons/icons/wind_power.png"))
 
     def _plot_qcurve(self) -> None:
         """

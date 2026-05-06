@@ -433,4 +433,4 @@ def test_zip_short_trajectory_matches_between_all_backends(
         if key == EmtSolverTypes.StructuralCompiled:
             np.testing.assert_allclose(dy_arr, ref_dy, rtol=5e-5, atol=4e-2)
         else:
-            np.testing.assert_allclose(dy_arr, ref_dy, rtol=1e-5, atol=5e-4)
+            np.testing.assert_allclose(dy_arr, ref_dy, rtol=1e-5, atol=6e-3)

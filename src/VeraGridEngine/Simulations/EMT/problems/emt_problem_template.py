@@ -239,8 +239,6 @@ class EmtProblemTemplate(ABC):
         self._diff_vars: List[Var] = self.sys_block.diff_vars
 
         self._static_parameter_values: Dict[Var, Const] = static_parameter_values_mapping
-        # self._constant_parameters: List[Var] = list(self.sys_block.parameters.keys())
-        # self._parameters_values: List[Const] = list(self.sys_block.parameters.values())
         self._constant_parameters: List[Var] = list(self._static_parameter_values.keys())
         self._parameters_values: List[Const] = list(self._static_parameter_values.values())
 
@@ -943,26 +941,28 @@ class EmtProblemTemplate(ABC):
         """
         return self._vars_glob_name2uid
 
-    def set_init_guess(self, mdl: Block, reference_powerflow: VarPowerFlowRefferenceType, val: float) -> None:
-        """
-        Set the initialization guess associated with a model external mapping.
+    # def set_init_guess(self, mdl: Block, reference_powerflow: VarPowerFlowRefferenceType, val: float) -> None:
+    #     """
+    #     Set the initialization guess associated with a model external mapping.
+    #
+    #     :param mdl: Model block containing the external mapping.
+    #     :param reference_powerflow: Reference key used to locate the mapped variable.
+    #     :param val: Initialization value.
+    #     :return: None
+    #     """
+    #     external_mapping: Optional[Dict[Any, Var]] = _get_external_mapping(mdl)
+    #
+    #     if external_mapping is None:
+    #         pass
+    #     else:
+    #         var: Optional[Var] = external_mapping.get(reference_powerflow, None)
+    #
+    #         if var is None:
+    #             pass
+    #         else:
+    #             self.init_guess[var.uid] = float(val)
 
-        :param mdl: Model block containing the external mapping.
-        :param reference_powerflow: Reference key used to locate the mapped variable.
-        :param val: Initialization value.
-        :return: None
-        """
-        external_mapping: Optional[Dict[Any, Var]] = _get_external_mapping(mdl)
 
-        if external_mapping is None:
-            pass
-        else:
-            var: Optional[Var] = external_mapping.get(reference_powerflow, None)
-
-            if var is None:
-                pass
-            else:
-                self.init_guess[var.uid] = float(val)
 
     def get_floquet_ak_stack(
             self,

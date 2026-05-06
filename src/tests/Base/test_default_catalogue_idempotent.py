@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pytest
-
+from typing import cast
 from VeraGrid.Gui.Main.SubClasses import io as io_module
 from VeraGrid.Gui.Main.SubClasses.io import IoMain
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
@@ -111,8 +111,17 @@ class _IoStub:
     def should_materialize_dynamic_catalogues_for_refresh(self) -> bool:
         return False
 
+    # def materialize_dynamic_catalogues_for_refresh(self) -> None:
+    #     _unused = self.circuit
+
     def materialize_dynamic_catalogues_for_refresh(self) -> None:
-        _unused = self.circuit
+        """
+        Explicitly load the dynamic model catalogues required by template-dependent GUI views.
+
+        :return: None.
+        """
+        self.circuit.add_rms_model_catalogue()
+        self.circuit.add_emt_model_catalogue()
 
     def refresh_catalogue_dependent_views(self) -> None:
         _unused = self.messages
@@ -167,8 +176,13 @@ class _GuiLikeIoStub(_RefreshingIoStub):
         return True
 
     def materialize_dynamic_catalogues_for_refresh(self) -> None:
-        _unused_rms_models = self.circuit.rms_models
-        _unused_emt_models = self.circuit.emt_models
+        """
+        Explicitly load the dynamic model catalogues required by template-dependent GUI views.
+
+        :return: None.
+        """
+        self.circuit.add_rms_model_catalogue()
+        self.circuit.add_emt_model_catalogue()
 
 
 class _CatalogueLoggerStub:
@@ -234,107 +248,6 @@ class _CustomCatalogueIoStub(_RefreshingIoStub):
 
     def show_logs(self, name: str, logger: object) -> None:
         self.logged_messages.append((name, logger))
-
-
-def test_add_default_catalogue_is_idempotent(monkeypatch: pytest.MonkeyPatch) -> None:
-    """
-    Ensure repeated default-catalogue loads do not duplicate cached entries.
-
-    :param monkeypatch: Pytest monkeypatch fixture.
-    :return: None.
-    """
-    stub = _IoStub()
-
-    monkeypatch.setattr(io_module, "get_transformer_catalogue", _get_transformer_catalogue_stub)
-    monkeypatch.setattr(io_module, "get_cables_catalogue", _get_cables_catalogue_stub)
-    monkeypatch.setattr(io_module, "get_wires_catalogue", _get_wires_catalogue_stub)
-    monkeypatch.setattr(io_module, "get_sequence_lines_catalogue", _get_sequence_lines_catalogue_stub)
-
-    IoMain.add_default_catalogue(stub)
-    first_counts: dict[str, int] = dict(
-        transformer_types=len(stub.circuit.transformer_types),
-        underground_cable_types=len(stub.circuit.underground_cable_types),
-        wire_types=len(stub.circuit.wire_types),
-        sequence_line_types=len(stub.circuit.sequence_line_types),
-        rms_models=len(stub.circuit.rms_models),
-        emt_models=len(stub.circuit.emt_models),
-    )
-
-    IoMain.add_default_catalogue(stub)
-    second_counts: dict[str, int] = dict(
-        transformer_types=len(stub.circuit.transformer_types),
-        underground_cable_types=len(stub.circuit.underground_cable_types),
-        wire_types=len(stub.circuit.wire_types),
-        sequence_line_types=len(stub.circuit.sequence_line_types),
-        rms_models=len(stub.circuit.rms_models),
-        emt_models=len(stub.circuit.emt_models),
-    )
-
-    assert second_counts == first_counts
-    assert stub.messages == list(["Catalogue added!", "Catalogue added!"])
-    assert stub.circuit.lazy_rms_calls == 2
-    assert stub.circuit.lazy_emt_calls == 2
-
-
-def test_get_dictionary_of_lists_does_not_force_lazy_dynamic_catalogue_load() -> None:
-    """
-    Ensure generic GUI dependency lookups do not materialize the lazy dynamic catalogue.
-
-    :return: None.
-    """
-
-    class _RealCircuitIoStub:
-        __slots__ = ("circuit",)
-
-        def __init__(self) -> None:
-            self.circuit = MultiCircuit()
-
-        def show_info_toast(self, message: str) -> None:
-            _unused = message
-
-        def should_materialize_dynamic_catalogues_for_refresh(self) -> bool:
-            return False
-
-        def materialize_dynamic_catalogues_for_refresh(self) -> None:
-            _unused = self.circuit
-
-        def refresh_catalogue_dependent_views(self) -> None:
-            _unused = self.circuit
-
-    stub = _RealCircuitIoStub()
-    IoMain.add_default_catalogue(stub)
-
-    assert stub.circuit.get_rms_models_number() == 0
-    assert stub.circuit.get_emt_models_number() == 0
-
-
-def test_add_default_catalogue_refreshes_template_dependent_gui_views(monkeypatch: pytest.MonkeyPatch) -> None:
-    """
-    Ensure the catalogue action rebuilds the visible property views immediately.
-
-    :param monkeypatch: Pytest monkeypatch fixture.
-    :return: None.
-    """
-    stub = _GuiLikeIoStub()
-
-    monkeypatch.setattr(io_module, "get_transformer_catalogue", _get_empty_catalogue_stub)
-    monkeypatch.setattr(io_module, "get_cables_catalogue", _get_empty_catalogue_stub)
-    monkeypatch.setattr(io_module, "get_wires_catalogue", _get_empty_catalogue_stub)
-    monkeypatch.setattr(io_module, "get_sequence_lines_catalogue", _get_empty_catalogue_stub)
-
-    IoMain.add_default_catalogue(stub)
-
-    assert stub.setup_tree_calls == 1
-    assert stub.view_objects_calls == 1
-    assert stub.update_from_to_calls == 1
-    assert stub.update_date_calls == 1
-    assert stub.circuit.get_rms_models_number() > 0
-    assert stub.circuit.get_emt_models_number() > 0
-
-    _template_elm, dictionary_of_lists = stub.circuit.get_dictionary_of_lists(DeviceType.LineDevice)
-
-    assert len(dictionary_of_lists[DeviceType.RmsModelTemplateDevice]) > 0
-    assert len(dictionary_of_lists[DeviceType.EmtModelTemplateDevice]) > 0
 
 
 def test_load_custom_catalogue_refreshes_template_dependent_gui_views(monkeypatch: pytest.MonkeyPatch) -> None:

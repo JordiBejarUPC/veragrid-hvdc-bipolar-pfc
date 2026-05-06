@@ -40,10 +40,9 @@ from VeraGridEngine.basic_structures import Logger, CxVec
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Templates.Emt.bergeron_line_emt_template import BergeronHistoryRuntime
 from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_runtime import JMartiHistoryRuntime
-from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
-from VeraGridEngine.Simulations.EMT.initialization_emt import EmtInitializationReport, run_emt_native_initialization
+from VeraGridEngine.Simulations.EMT.initialization_emt import EmtInitializationReport, run_emt_native_initialization, _compute_missing_dx0
 from VeraGridEngine.Utils.Symbolic.explicit_initialization_symbolic import init_explicit_common, build_symbolic_vector_single_equation_compiler
 from VeraGridEngine.Utils.Symbolic.compiled_functions import get_compiled_functions_cache_stats
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_algebraic_vars
@@ -908,33 +907,37 @@ def _get_expected_pi_line_terminal_refs(ph_mask: List[bool]) -> List[VarPowerFlo
     return ordered_refs
 
 
-def _normalize_pi_line_phase_layout(branch: Any, grid: MultiCircuit, mdl: Block) -> Block:
+def _normalize_pi_line_phase_layout(branch: Any, mdl: Block, logger: Logger) -> Block:
     """
-    Rebuild the standard pi-line template when its symbolic phase layout does not
-    match the physical branch connection mask.
+    Validate that a pi-line EMT block matches the physical branch phase layout.
 
     The EMT parameter mapper writes reduced branch matrices into the fixed NABC
-    API map using ``branch.ys``. After the recent API change, callers can create
-    a pi-line template with a phase mask that does not match ``branch.ys``. When
-    that happens, the symbolic block keeps terminal inputs for non-existent bus
-    phases and later substitutions introduce ``None`` or unresolved UIDs.
-
-    This helper keeps the public explicit-mask API in place, but re-aligns the
-    standard pi-line block with the physical branch mask right before the EMT
-    problem flattens the device into the global system.
+    API map using ``branch.ys``. This helper therefore checks that the symbolic
+    pi-line terminal layout still matches the physical branch phase mask before
+    the device is flattened into the system model. A mismatch is a topology
+    error, so the function reports it through the shared logger and preserves the
+    original model instead of silently rebuilding it.
 
     :param branch: Grid branch device.
-    :param grid: Parent circuit, used for the shared variable factory.
-    :return: Block.
+    :param mdl: EMT block associated with the branch.
+    :param logger: Shared system logger used to report invalid topology states.
+    :return: Original block after validation.
     """
     api_obj_mapping: Any = mdl.api_obj_mapping
 
+    # Only standard pi-line templates expose the resistance entry used below.
+    # Non-dict mappings or blocks without that API slot are outside this
+    # validation path, so they are preserved unchanged.
     if not isinstance(api_obj_mapping, dict):
         return mdl
+    else:
+        if ParamPowerFlowRefferenceType.Rnn not in api_obj_mapping:
+            return mdl
+        else:
+            pass
 
-    if ParamPowerFlowRefferenceType.Rnn not in api_obj_mapping:
-        return mdl
-
+    # The branch admittance mask is the physical topology source of truth, so it
+    # defines which symbolic terminal voltage references must exist on the block.
     ph_mask: List[bool] = list([
         bool(branch.ys.phN),
         bool(branch.ys.phA),
@@ -944,6 +947,8 @@ def _normalize_pi_line_phase_layout(branch: Any, grid: MultiCircuit, mdl: Block)
 
     expected_refs: List[VarPowerFlowRefferenceType] = _get_expected_pi_line_terminal_refs(ph_mask)
 
+    # Only bus-terminal voltage references participate in the topology check.
+    # Other inputs can remain on the block without affecting phase consistency.
     tracked_refs: Set[VarPowerFlowRefferenceType] = {
         VarPowerFlowRefferenceType.vf_N,
         VarPowerFlowRefferenceType.vf_A,
@@ -960,16 +965,22 @@ def _normalize_pi_line_phase_layout(branch: Any, grid: MultiCircuit, mdl: Block)
     for in_var in mdl.in_vars:
         if in_var.ref in tracked_refs:
             current_refs.append(in_var.ref)
+        else:
+            pass
 
+    # A mismatch means the symbolic template and the EMT topology disagree about
+    # how many branch terminals exist. That state is invalid because later model
+    # assembly would bind non-existent phases, so it must be surfaced explicitly.
     if current_refs != expected_refs:
-        return get_pi_line_emt_template(
-            vf=grid.var_factory,
-            phN=ph_mask[0],
-            phA=ph_mask[1],
-            phB=ph_mask[2],
-            phC=ph_mask[3],
-            name=mdl.name,
-        ).block
+        logger.add_error(
+            msg="Pi-line template has a different number of phases than the EMT model (topology mismatch).",
+            device=branch.name,
+            device_class=str(branch.device_type),
+            value=str(current_refs),
+            expected_value=str(expected_refs),
+        )
+    else:
+        pass
 
     return mdl
 
@@ -1273,7 +1284,11 @@ class EmtProblemDae(EmtProblemTemplate):
         self._seed_all_switched_vsc_models()
         self._seed_all_switch_models()
         self.init_guess.update(self._temp_post_init_guess)
-        self.diff_init_guess.update(self._temp_post_diff_init_guess)
+        for diff_uid, diff_value in self._temp_post_diff_init_guess.items():
+            if diff_uid in self.diff_init_guess:
+                pass
+            else:
+                self.diff_init_guess[diff_uid] = float(diff_value)
         native_init_s: float = _toc(t_phase_start)
         t_phase_start = _tic()
 
@@ -1286,6 +1301,21 @@ class EmtProblemDae(EmtProblemTemplate):
         # piecewise expressions before that would preserve the undefined default
         # and break the initial runtime-parameter evaluation.
         self.set_events_group(None)
+        if self.initialization_report is None:
+            pass
+        else:
+            _compute_missing_dx0(
+                problem=self,
+                report=self.initialization_report,
+                x_full=self.get_x0(),
+                dx_full=self.get_dx0(),
+                runtime_params=self.event_params_values.copy(),
+                constant_params=np.asarray(
+                    [float(const.value) for const in self.get_parameters_values()],
+                    dtype=np.float64,
+                ),
+                include_existing=True,
+            )
         events_group_finalize_s: float = _toc(t_phase_start)
 
         t_done = _toc(t_build)
@@ -1448,15 +1478,10 @@ class EmtProblemDae(EmtProblemTemplate):
                 seen_blocks.add(mdl_id)
 
                 try:
-                    params_array: np.ndarray = np.zeros(len(self._constant_parameters))
-
-                    for param, const in mdl.parameters.items():
-                        param_idx: int | None = self.uid2idx_params.get(param.uid, None)
-
-                        if param_idx is None:
-                            params_array = params_array
-                        else:
-                            params_array[param_idx] = const.value
+                    params_array: np.ndarray = np.asarray(
+                        [float(const.value) for const in self.get_parameters_values()],
+                        dtype=np.float64,
+                    )
 
                     self.init_guess, self.diff_init_guess = init_explicit_common(
                         mdl=mdl,
@@ -2702,7 +2727,7 @@ class EmtProblemDae(EmtProblemTemplate):
             f: int = bus_dict[br.bus_from]
             t: int = bus_dict[br.bus_to]
             br_working_mdl: Block = self._get_or_create_working_emt_model(br)
-            br_working_mdl = _normalize_pi_line_phase_layout(branch=br, grid=grid, mdl=br_working_mdl)
+            br_working_mdl = _normalize_pi_line_phase_layout(branch=br, mdl=br_working_mdl, logger=self.logger)
             self._set_working_emt_model(br, br_working_mdl)
 
             mdl: Block = self._process_device_model(br, sys_block)
@@ -2974,12 +2999,6 @@ class EmtProblemDae(EmtProblemTemplate):
             mdl: Block = self._process_device_model(inj, sys_block)
             b: int = bus_dict[inj.bus]
 
-            # if inj.device_type == DeviceType.LoadDevice:
-            #     self._assign_api_obj_mapping_load(inj)
-            # elif inj.device_type == DeviceType.GeneratorDevice:
-            #         self._assign_api_obj_mapping_generator(inj)
-            # else:
-            #     pass
             assign_static_api_object_mapping_for_device(
                 grid=grid,
                 device=inj,
@@ -4065,6 +4084,7 @@ class EmtProblemDae(EmtProblemTemplate):
                     mdl=mdl,
                     key=current_keys[phase_index],
                     value=current_instantaneous,
+                    persist_after_native_init=True,
                 )
                 self.set_if_exists(
                     mdl=mdl,
@@ -4210,7 +4230,7 @@ class EmtProblemDae(EmtProblemTemplate):
                 v_N: float = np.sqrt(2.0) * np.imag(V_N)
                 d_v_N: float = omega_base * np.sqrt(2.0) * np.real(V_N)
 
-                self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_N, v_N)
+                self.set_init_guess_and_preserve_post_init(mdl, VarPowerFlowRefferenceType.v_N, v_N)
                 self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_N, d_v_N)
             else:
                 pass
@@ -4220,7 +4240,7 @@ class EmtProblemDae(EmtProblemTemplate):
                 v_A: float = np.sqrt(2.0) * np.imag(V_A)
                 d_v_A: float = omega_base * np.sqrt(2.0) * np.real(V_A)
 
-                self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_A, v_A)
+                self.set_init_guess_and_preserve_post_init(mdl, VarPowerFlowRefferenceType.v_A, v_A)
                 self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_A, d_v_A)
             else:
                 pass
@@ -4230,7 +4250,7 @@ class EmtProblemDae(EmtProblemTemplate):
                 v_B: float = np.sqrt(2.0) * np.imag(V_B)
                 d_v_B: float = omega_base * np.sqrt(2.0) * np.real(V_B)
 
-                self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_B, v_B)
+                self.set_init_guess_and_preserve_post_init(mdl, VarPowerFlowRefferenceType.v_B, v_B)
                 self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_B, d_v_B)
             else:
                 pass
@@ -4240,7 +4260,7 @@ class EmtProblemDae(EmtProblemTemplate):
                 v_C: float = np.sqrt(2.0) * np.imag(V_C)
                 d_v_C: float = omega_base * np.sqrt(2.0) * np.real(V_C)
 
-                self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_C, v_C)
+                self.set_init_guess_and_preserve_post_init(mdl, VarPowerFlowRefferenceType.v_C, v_C)
                 self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_C, d_v_C)
             else:
                 pass
@@ -4303,28 +4323,28 @@ class EmtProblemDae(EmtProblemTemplate):
                 v_N: float = np.sqrt(2.0) * np.imag(V_N)
                 d_v_N: float = omega_base * np.sqrt(2.0) * np.real(V_N)
 
-                self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_N, v_N)
+                self.set_init_guess_and_preserve_post_init(mdl, VarPowerFlowRefferenceType.v_N, v_N)
                 self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_N, d_v_N)
 
             if _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowRefferenceType.v_A) is not None:
                 v_A: float = np.sqrt(2.0) * np.imag(V_A)
                 d_v_A: float = omega_base * np.sqrt(2.0) * np.real(V_A)
 
-                self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_A, v_A)
+                self.set_init_guess_and_preserve_post_init(mdl, VarPowerFlowRefferenceType.v_A, v_A)
                 self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_A, d_v_A)
 
             if _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowRefferenceType.v_B) is not None:
                 v_B: float = np.sqrt(2.0) * np.imag(V_B)
                 d_v_B: float = omega_base * np.sqrt(2.0) * np.real(V_B)
 
-                self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_B, v_B)
+                self.set_init_guess_and_preserve_post_init(mdl, VarPowerFlowRefferenceType.v_B, v_B)
                 self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_B, d_v_B)
 
             if _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowRefferenceType.v_C) is not None:
                 v_C: float = np.sqrt(2.0) * np.imag(V_C)
                 d_v_C: float = omega_base * np.sqrt(2.0) * np.real(V_C)
 
-                self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_C, v_C)
+                self.set_init_guess_and_preserve_post_init(mdl, VarPowerFlowRefferenceType.v_C, v_C)
                 self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_C, d_v_C)
 
     def _get_vsc_terminal_indices(self,
@@ -4868,8 +4888,8 @@ class EmtProblemDae(EmtProblemTemplate):
                 else:
                     path_mode_seed = 0.0
 
-        self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Vf_dc, value=v_f)
-        self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Vt_dc, value=v_t)
+        self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Vf_dc, value=v_f, persist_after_native_init=True)
+        self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Vt_dc, value=v_t, persist_after_native_init=True)
         self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.DcPathModeSeed, value=path_mode_seed)
         self.set_if_exists(
             mdl=mdl,
@@ -5089,8 +5109,8 @@ class EmtProblemDae(EmtProblemTemplate):
                 else:
                     pass
 
-                self.set_if_exists(mdl=mdl, key=if_key, value=float(i_f0))
-                self.set_if_exists(mdl=mdl, key=it_key, value=float(i_t0))
+                self.set_if_exists(mdl=mdl, key=if_key, value=float(i_f0), persist_after_native_init=True)
+                self.set_if_exists(mdl=mdl, key=it_key, value=float(i_t0), persist_after_native_init=True)
             else:
                 pass
 
@@ -5098,7 +5118,7 @@ class EmtProblemDae(EmtProblemTemplate):
         if neutral_if_var is not None:
             i_f_neutral = -(from_phase_currents.get("A", 0.0 + 0.0j) + from_phase_currents.get("B", 0.0 + 0.0j) + from_phase_currents.get("C", 0.0 + 0.0j))
             neutral_value = float(np.sqrt(2.0) * np.imag(i_f_neutral))
-            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.if_N, value=neutral_value)
+            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.if_N, value=neutral_value, persist_after_native_init=True)
             if neutral_if_var is not None:
                 self._temp_post_init_guess[neutral_if_var.uid] = neutral_value
             else:
@@ -5110,7 +5130,7 @@ class EmtProblemDae(EmtProblemTemplate):
         if neutral_it_var is not None:
             i_t_neutral = -(to_phase_currents.get("A", 0.0 + 0.0j) + to_phase_currents.get("B", 0.0 + 0.0j) + to_phase_currents.get("C", 0.0 + 0.0j))
             neutral_value = float(np.sqrt(2.0) * np.imag(i_t_neutral))
-            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.it_N, value=neutral_value)
+            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.it_N, value=neutral_value, persist_after_native_init=True)
             if neutral_it_var is not None:
                 self._temp_post_init_guess[neutral_it_var.uid] = neutral_value
             else:
@@ -5391,8 +5411,8 @@ class EmtProblemDae(EmtProblemTemplate):
                 else:
                     pass
 
-                self.set_if_exists(mdl=mdl, key=if_key, value=float(i_f0))
-                self.set_if_exists(mdl=mdl, key=it_key, value=float(i_t0))
+                self.set_if_exists(mdl=mdl, key=if_key, value=float(i_f0), persist_after_native_init=True)
+                self.set_if_exists(mdl=mdl, key=it_key, value=float(i_t0), persist_after_native_init=True)
             else:
                 pass
 
@@ -5400,7 +5420,7 @@ class EmtProblemDae(EmtProblemTemplate):
         if neutral_if_var is not None:
             i_f_neutral = -(from_phase_currents.get("A", 0.0 + 0.0j) + from_phase_currents.get("B", 0.0 + 0.0j) + from_phase_currents.get("C", 0.0 + 0.0j))
             neutral_value = float(np.sqrt(2.0) * np.imag(i_f_neutral))
-            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.if_N, value=neutral_value)
+            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.if_N, value=neutral_value, persist_after_native_init=True)
             if neutral_if_var is not None:
                 self._temp_post_init_guess[neutral_if_var.uid] = neutral_value
             else:
@@ -5412,7 +5432,7 @@ class EmtProblemDae(EmtProblemTemplate):
         if neutral_it_var is not None:
             i_t_neutral = -(to_phase_currents.get("A", 0.0 + 0.0j) + to_phase_currents.get("B", 0.0 + 0.0j) + to_phase_currents.get("C", 0.0 + 0.0j))
             neutral_value = float(np.sqrt(2.0) * np.imag(i_t_neutral))
-            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.it_N, value=neutral_value)
+            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.it_N, value=neutral_value, persist_after_native_init=True)
             if neutral_it_var is not None:
                 self._temp_post_init_guess[neutral_it_var.uid] = neutral_value
             else:
