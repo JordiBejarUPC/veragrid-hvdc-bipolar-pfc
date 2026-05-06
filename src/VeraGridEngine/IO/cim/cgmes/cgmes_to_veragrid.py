@@ -546,7 +546,8 @@ def find_associated_buses(cgmes_elm: CGMES_ASSETS,
                           TopologicalNode_tpe,
                           DCTopologicalNode_tpe,
                           logger: DataLogger,
-                          cgmes_version: CGMESVersions | None = None) -> List[gcdev.Bus]:
+                          cgmes_version: CGMESVersions | None = None,
+                          prefer_connectivity_node: bool = False) -> List[gcdev.Bus]:
     """
     This function finds the buses connected to a device
     :param cgmes_elm: some CGMES element
@@ -566,7 +567,7 @@ def find_associated_buses(cgmes_elm: CGMES_ASSETS,
     if cgmes_terminals is not None:
         buses = list()
         for cgmes_terminal in cgmes_terminals:
-            if cgmes_version == CGMESVersions.v3_0_0:
+            if prefer_connectivity_node or cgmes_version == CGMESVersions.v3_0_0:
                 bus = find_terminal_bus_connectivity_priority(
                     cgmes_terminal=cgmes_terminal,
                     bus_dict=bus_dict,
@@ -587,6 +588,188 @@ def find_associated_buses(cgmes_elm: CGMES_ASSETS,
                          device_class=cgmes_elm.tpe)
 
     return buses
+
+
+def deduplicate_buses_preserve_order(buses: List[gcdev.Bus]) -> List[gcdev.Bus]:
+    """
+    Deduplicate a bus list preserving order by bus idtag.
+
+    This is useful when CGMES profile merges produce repeated terminals that map
+    to the same electrical pair.
+    """
+    unique_buses: List[gcdev.Bus] = list()
+    seen: set[str] = set()
+    for bus in buses:
+        if bus.idtag not in seen:
+            unique_buses.append(bus)
+            seen.add(bus.idtag)
+    return unique_buses
+
+
+def derive_switch_bus_pair(calc_nodes: List[gcdev.Bus],
+                           allow_terminal_pair_merge: bool) -> Tuple[gcdev.Bus | None, gcdev.Bus | None]:
+    """
+    Derive a two-bus switch pair from terminal-mapped buses.
+
+    :param calc_nodes: Buses mapped from all switch terminals.
+    :param allow_terminal_pair_merge: Allow collapsing repeated terminal mappings.
+    :return: Pair of buses or (None, None) when no valid pair is available.
+    """
+    if len(calc_nodes) == 2:
+        # Keep legacy behavior for canonical two-terminal switches.
+        return calc_nodes[0], calc_nodes[1]
+    else:
+        pass
+
+    if allow_terminal_pair_merge:
+        unique_calc_nodes: List[gcdev.Bus] = deduplicate_buses_preserve_order(calc_nodes)
+        if len(calc_nodes) > 2 and len(unique_calc_nodes) == 2:
+            return unique_calc_nodes[0], unique_calc_nodes[1]
+        elif len(calc_nodes) > 2 and len(unique_calc_nodes) == 1:
+            # Preserve historical permissive handling for repeated same-bus references.
+            return calc_nodes[0], calc_nodes[1]
+        else:
+            return None, None
+    else:
+        return None, None
+
+
+def has_v2_4_15_terminal_pathology_for_switch_merge(
+        cgmes_model: CgmesCircuit,
+        device_to_terminal_dict: Dict[str, List[CGMES_TERMINAL]]) -> bool:
+    """
+    Detect known terminal-pathology patterns that justify switch pair merging.
+
+    :param cgmes_model: CGMES model.
+    :param device_to_terminal_dict: Device-to-terminal mapping.
+    :return: True when known pathological signatures are detected.
+    """
+    malformed_equivalent_injections: int = 0
+    for equivalent_injection in cgmes_model.cgmes_assets.EquivalentInjection_list:
+        terminals: List[CGMES_TERMINAL] | None = device_to_terminal_dict.get(equivalent_injection.uuid, None)
+        terminal_count: int = 0 if terminals is None else len(terminals)
+        if terminal_count == 0:
+            malformed_equivalent_injections += 1
+        else:
+            pass
+
+    malformed_ac_lines: int = 0
+    for ac_line_segment in cgmes_model.cgmes_assets.ACLineSegment_list:
+        terminals = device_to_terminal_dict.get(ac_line_segment.uuid, None)
+        terminal_count = 0 if terminals is None else len(terminals)
+        if terminal_count == 1:
+            malformed_ac_lines += 1
+        else:
+            pass
+
+    if malformed_equivalent_injections > 0 or malformed_ac_lines > 0:
+        return True
+    else:
+        return False
+
+
+def detect_switch_terminal_pairing_preference(cgmes_model: CgmesCircuit,
+                                              cgmes_topology_mode: CgmesTopologyMode,
+                                              device_to_terminal_dict: Dict[str, List[CGMES_TERMINAL]],
+                                              bus_dict: Dict[str, gcdev.Bus]) -> bool:
+    """
+    Decide if switch terminal pairing should prioritize ConnectivityNode.
+    """
+    # This detection is only intended for CGMES 2.4.15.
+    if cgmes_model.cgmes_version != CGMESVersions.v2_4_15:
+        return False
+    else:
+        pass
+    if not has_v2_4_15_terminal_pathology_for_switch_merge(
+            cgmes_model=cgmes_model,
+            device_to_terminal_dict=device_to_terminal_dict):
+        return False
+    else:
+        pass
+
+    TopologicalNode_tpe = cgmes_model.cgmes_assets.class_dict.get("TopologicalNode")
+    DCTopologicalNode_tpe = cgmes_model.cgmes_assets.class_dict.get("DCTopologicalNode")
+
+    switch_elements = (
+        cgmes_model.cgmes_assets.Switch_list
+        + cgmes_model.cgmes_assets.Breaker_list
+        + cgmes_model.cgmes_assets.Disconnector_list
+        + cgmes_model.cgmes_assets.LoadBreakSwitch_list
+    )
+
+    if len(switch_elements) == 0:
+        return False
+    else:
+        pass
+
+    cn_valid, cn_invalid = score_switch_pairing_mode(
+        switch_elements=switch_elements,
+        prefer_connectivity=True,
+        device_to_terminal_dict=device_to_terminal_dict,
+        bus_dict=bus_dict,
+        TopologicalNode_tpe=TopologicalNode_tpe,
+        DCTopologicalNode_tpe=DCTopologicalNode_tpe,
+        cgmes_version=cgmes_model.cgmes_version
+    )
+    tn_valid, tn_invalid = score_switch_pairing_mode(
+        switch_elements=switch_elements,
+        prefer_connectivity=False,
+        device_to_terminal_dict=device_to_terminal_dict,
+        bus_dict=bus_dict,
+        TopologicalNode_tpe=TopologicalNode_tpe,
+        DCTopologicalNode_tpe=DCTopologicalNode_tpe,
+        cgmes_version=cgmes_model.cgmes_version
+    )
+
+    if cn_valid > tn_valid:
+        return True
+    if cn_valid < tn_valid:
+        return False
+    # tie-breaker: fewer invalid elements wins; final tie keeps legacy behavior
+    if cn_invalid < tn_invalid:
+        return True
+    return False
+
+
+def score_switch_pairing_mode(switch_elements: List[CGMES_ASSETS],
+                              prefer_connectivity: bool,
+                              device_to_terminal_dict: Dict[str, List[CGMES_TERMINAL]],
+                              bus_dict: Dict[str, gcdev.Bus],
+                              TopologicalNode_tpe,
+                              DCTopologicalNode_tpe,
+                              cgmes_version: CGMESVersions) -> Tuple[int, int]:
+    """
+    Score a switch pairing mode by counting valid two-bus matches.
+
+    :param switch_elements: Switch-like CGMES elements to evaluate.
+    :param prefer_connectivity: Whether to prioritize ConnectivityNode.
+    :param device_to_terminal_dict: Device-to-terminal mapping.
+    :param bus_dict: Imported bus lookup.
+    :param TopologicalNode_tpe: TopologicalNode class type.
+    :param DCTopologicalNode_tpe: DCTopologicalNode class type.
+    :param cgmes_version: CGMES version.
+    :return: Tuple(valid_two_bus_count, invalid_count).
+    """
+    valid_two_bus: int = 0
+    invalid: int = 0
+    silent_logger: DataLogger = DataLogger()
+    for switch_element in switch_elements:
+        nodes: List[gcdev.Bus] = find_associated_buses(
+            cgmes_elm=switch_element,
+            device_to_terminal_dict=device_to_terminal_dict,
+            bus_dict=bus_dict,
+            TopologicalNode_tpe=TopologicalNode_tpe,
+            DCTopologicalNode_tpe=DCTopologicalNode_tpe,
+            logger=silent_logger,
+            cgmes_version=cgmes_version,
+            prefer_connectivity_node=prefer_connectivity
+        )
+        unique_nodes: List[gcdev.Bus] = deduplicate_buses_preserve_order(nodes)
+        if len(unique_nodes) == 2:
+            valid_two_bus += 1
+        else:
+            invalid += 1
+    return valid_two_bus, invalid
 
 
 def get_gcdev_buses(cgmes_model: CgmesCircuit,
@@ -686,12 +869,32 @@ def get_gcdev_buses(cgmes_model: CgmesCircuit,
                                      device_class=cn_elm.tpe,
                                      device_property="nominalVoltage")
             elif nominal_voltage is None:
-                logger.add_error(msg='Nominal voltage is None. Maybe boundary was not attached for import :(',
-                                 device=cn_elm.rdfid,
-                                 device_class=cn_elm.tpe,
-                                 device_property="nominalVoltage")
-                # raise Exception("Nominal voltage is missing for Bus (Maybe boundary was not attached for import) !")
-                return calc_node_dict, True
+                recovered_voltage = None
+                if hasattr(cn_elm, "TopologicalNode"):
+                    cn_tp_uuid = normalize_cgmes_reference_uuid(cn_elm.TopologicalNode)
+                    if cn_tp_uuid is not None:
+                        recovered_voltage = tn_voltage_hints.get(cn_tp_uuid, None)
+
+                if recovered_voltage is None:
+                    recovered_voltage = float(default_nominal_voltage)
+                    logger.add_warning(
+                        msg='Nominal voltage is None. Falling back to default nominal voltage',
+                        device=cn_elm.rdfid,
+                        device_class=cn_elm.tpe,
+                        device_property="nominalVoltage",
+                        value=None,
+                        expected_value=recovered_voltage
+                    )
+                else:
+                    logger.add_warning(
+                        msg='Recovered ConnectivityNode nominal voltage from related TopologicalNode hints',
+                        device=cn_elm.rdfid,
+                        device_class=cn_elm.tpe,
+                        device_property="nominalVoltage",
+                        value=None,
+                        expected_value=recovered_voltage
+                    )
+                nominal_voltage = recovered_voltage
 
             if voltage is not None and nominal_voltage is not None:
                 if nominal_voltage != 0.0:
@@ -769,12 +972,27 @@ def get_gcdev_buses(cgmes_model: CgmesCircuit,
                                      device_class=tp_node.tpe,
                                      device_property="nominalVoltage")
             elif nominal_voltage is None:
-                logger.add_error(msg='Nominal voltage is None. Maybe boundary was not attached for import :(',
-                                 device=tp_node.rdfid,
-                                 device_class=tp_node.tpe,
-                                 device_property="nominalVoltage")
-                # raise Exception("Nominal voltage is missing for Bus (Maybe boundary was not attached for import) !")
-                return calc_node_dict, True
+                tp_hint_voltage = tn_voltage_hints.get(tp_node.uuid, None)
+                if tp_hint_voltage is not None:
+                    nominal_voltage = tp_hint_voltage
+                    logger.add_warning(
+                        msg='Recovered TopologicalNode nominal voltage from terminal associations after missing base reference',
+                        device=tp_node.rdfid,
+                        device_class=tp_node.tpe,
+                        device_property="nominalVoltage",
+                        value=None,
+                        expected_value=tp_hint_voltage
+                    )
+                else:
+                    nominal_voltage = float(default_nominal_voltage)
+                    logger.add_warning(
+                        msg='Nominal voltage is None. Falling back to default nominal voltage',
+                        device=tp_node.rdfid,
+                        device_class=tp_node.tpe,
+                        device_property="nominalVoltage",
+                        value=None,
+                        expected_value=nominal_voltage
+                    )
 
             if voltage is not None and nominal_voltage is not None:
                 if nominal_voltage != 0.0:
@@ -1369,7 +1587,8 @@ def get_gcdev_loads(cgmes_model: CgmesCircuit,
                                                TopologicalNode_tpe=TopologicalNode_tpe,
                                                DCTopologicalNode_tpe=DCTopologicalNode_tpe,
                                                logger=logger,
-                                               cgmes_version=cgmes_model.cgmes_version)
+                                               cgmes_version=cgmes_model.cgmes_version,
+                                               prefer_connectivity_node=True)
 
             if len(calc_nodes) == 1:
                 calc_node = calc_nodes[0]
@@ -2870,7 +3089,9 @@ def get_gcdev_switches(cgmes_model: CgmesCircuit,
                        gcdev_model: MultiCircuit,
                        bus_dict: Dict[str, gcdev.Bus],
                        device_to_terminal_dict: Dict[str, List[CGMES_TERMINAL]],
-                       logger: DataLogger) -> None:
+                       logger: DataLogger,
+                       prefer_connectivity_node_for_terminal_pairing: bool = False,
+                       allow_terminal_pair_merge: bool = False) -> None:
     """
     Convert the CGMES switching devices to gcdev
 
@@ -2936,12 +3157,47 @@ def get_gcdev_switches(cgmes_model: CgmesCircuit,
                                                TopologicalNode_tpe=TopologicalNode_tpe,
                                                DCTopologicalNode_tpe=DCTopologicalNode_tpe,
                                                logger=logger,
-                                               cgmes_version=cgmes_model.cgmes_version)
+                                               cgmes_version=cgmes_model.cgmes_version,
+                                               prefer_connectivity_node=(
+                                                   prefer_connectivity_node_for_terminal_pairing
+                                               ))
+            calc_node_f, calc_node_t = derive_switch_bus_pair(
+                calc_nodes=calc_nodes,
+                allow_terminal_pair_merge=allow_terminal_pair_merge
+            )
+            if allow_terminal_pair_merge and (calc_node_f is None or calc_node_t is None):
+                # Fallback: try the opposite pairing mode before dropping.
+                alt_calc_nodes = find_associated_buses(
+                    cgmes_elm=cgmes_elm,
+                    device_to_terminal_dict=device_to_terminal_dict,
+                    bus_dict=bus_dict,
+                    TopologicalNode_tpe=TopologicalNode_tpe,
+                    DCTopologicalNode_tpe=DCTopologicalNode_tpe,
+                    logger=logger,
+                    cgmes_version=cgmes_model.cgmes_version,
+                    prefer_connectivity_node=(
+                        not prefer_connectivity_node_for_terminal_pairing
+                    )
+                )
+                calc_node_f, calc_node_t = derive_switch_bus_pair(
+                    calc_nodes=alt_calc_nodes,
+                    allow_terminal_pair_merge=allow_terminal_pair_merge
+                )
+                if calc_node_f is not None and calc_node_t is not None:
+                    calc_nodes = alt_calc_nodes
 
-            if len(calc_nodes) == 2:
-                calc_node_f = calc_nodes[0]
-                calc_node_t = calc_nodes[1]
+            unique_calc_nodes = deduplicate_buses_preserve_order(calc_nodes)
+            if allow_terminal_pair_merge and len(calc_nodes) > 2 and len(unique_calc_nodes) == 2:
+                logger.add_warning(
+                    msg='Collapsed repeated switch terminals to one bus pair',
+                    device=cgmes_elm.rdfid,
+                    device_class=cgmes_elm.tpe,
+                    device_property="number of associated terminals",
+                    value=len(calc_nodes),
+                    expected_value=2
+                )
 
+            if calc_node_f is not None and calc_node_t is not None:
                 operational_current_rate = rates_dict.get(cgmes_elm.uuid, None)  # A
                 if operational_current_rate and cgmes_elm.BaseVoltage is not None:
                     # rate in MVA = A / 1000 * kV * sqrt(3)    CORRECTED!
@@ -2983,7 +3239,7 @@ def get_gcdev_switches(cgmes_model: CgmesCircuit,
                                  device=cgmes_elm.rdfid,
                                  device_class=cgmes_elm.tpe,
                                  device_property="number of associated terminals",
-                                 value=len(calc_nodes),
+                                 value=f"raw={len(calc_nodes)}, unique={len(unique_calc_nodes)}",
                                  expected_value=2)
 
 
@@ -3475,11 +3731,22 @@ def cgmes_to_veragrid(cgmes_model: CgmesCircuit,
                                       device_to_terminal_dict=device_to_terminal_dict,
                                       logger=logger)
 
+    prefer_connectivity_for_switch_pairing = detect_switch_terminal_pairing_preference(
+        cgmes_model=cgmes_model,
+        cgmes_topology_mode=cgmes_topology_mode,
+        device_to_terminal_dict=device_to_terminal_dict,
+        bus_dict=bus_dict
+    )
+
     get_gcdev_switches(cgmes_model=cgmes_model,
                        gcdev_model=gc_model,
                        bus_dict=bus_dict,
                        device_to_terminal_dict=device_to_terminal_dict,
-                       logger=logger, )
+                       logger=logger,
+                       prefer_connectivity_node_for_terminal_pairing=(
+                           prefer_connectivity_for_switch_pairing
+                       ),
+                       allow_terminal_pair_merge=prefer_connectivity_for_switch_pairing)
 
     cgmes_model.emit_progress(91)
     cgmes_model.emit_text("Converting CGMES to VeraGrid - HVDC")
