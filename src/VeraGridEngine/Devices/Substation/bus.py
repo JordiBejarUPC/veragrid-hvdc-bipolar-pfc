@@ -71,7 +71,7 @@ class Bus(DynamicBusDevice):
             tpe=bool,
             definition='Force the bus to be of slack type.',
             profile_name='',
-            cat=[PrpCat.TP],
+            cat=[PrpCat.TP, PrpCat.PF, PrpCat.PF3],
         ),
         GCProp(
             prop_name='is_dc',
@@ -79,7 +79,7 @@ class Bus(DynamicBusDevice):
             tpe=bool,
             definition='Is this bus of DC type?.',
             profile_name='',
-            cat=[PrpCat.TP],
+            cat=[PrpCat.TP, PrpCat.PF],
         ),
         GCProp(
             prop_name='is_grounded',
@@ -87,7 +87,7 @@ class Bus(DynamicBusDevice):
             tpe=bool,
             definition='Is this bus connected to ground?.',
             profile_name='',
-            cat=[PrpCat.TP],
+            cat=[PrpCat.TP, PrpCat.PF],
         ),
         GCProp(
             prop_name='graphic_type',
@@ -218,7 +218,7 @@ class Bus(DynamicBusDevice):
             tpe=DeviceType.AreaDevice,
             definition='Area of the bus',
             profile_name='',
-            cat=[PrpCat.TP],
+            cat=[PrpCat.TP, PrpCat.NTC],
         ),
         GCProp(
             prop_name='zone',
@@ -263,13 +263,6 @@ class Bus(DynamicBusDevice):
             tpe=float,
             definition='latitude of the bus.',
             profile_name='',
-            cat=[PrpCat.TP],
-        ),
-        GCProp(
-            prop_name='is_grounded',
-            units='',
-            tpe=bool,
-            definition='Is this bus neutral grounded?.',
             cat=[PrpCat.TP],
         ),
         GCProp(
