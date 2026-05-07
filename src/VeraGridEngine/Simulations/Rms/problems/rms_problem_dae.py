@@ -940,6 +940,17 @@ class RmsProblemDae(RmsProblemTemplate):
             if eq is None or (isinstance(eq, Const) and eq.value is None):
                 raise Exception(f"Runtime event parameter {self._runtime_all_parameters_source[i]} has None Value")
 
+        # Keep runtime event-parameter sources aligned with explicit initialization
+        # results. Explicit initialization resolves scalar event parameters by
+        # replacing entries in ``_event_parameters_eqs0`` with ``Const(value)``.
+        # Mirror those resolved constants into runtime sources so event-group
+        # baselines and runtime arrays start from the same initialized values.
+        for i, eq0 in enumerate(self._event_parameters_eqs0):
+            if isinstance(eq0, Const) and eq0.value is not None:
+                self._runtime_all_eqs_source[i] = Const(eq0.value)
+            else:
+                pass
+
         # add the nodal balance equations
         ac_virtual_buses = [elm.bus_to.idtag for elm in grid.get_vsc()]
         for i, elm in enumerate(self.grid.buses):
