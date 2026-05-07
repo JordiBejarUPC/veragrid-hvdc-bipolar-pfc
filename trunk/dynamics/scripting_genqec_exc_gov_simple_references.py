@@ -11,16 +11,15 @@ from matplotlib import pyplot as plt
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
-from VeraGridEngine.Simulations.Rms.rms_results import RmsResults
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template_references import get_complete_generator_template_rms
-from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
-from VeraGridEngine.Templates.templates_common_functions import set_rms_model
+from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_rms_model
 from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, RmsInitializationMethod
+from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod
 from VeraGridEngine.Devices.Events.rms_event import RmsEvent
 import VeraGridEngine.api as gce
 

@@ -274,7 +274,8 @@ def run_demo_simulation(
     """
     promote_internal_equation_vars(root_block)
     root_block.unify_blocks()
-    problem = GenericEmtProblem(sys_block=root_block, glob_time=glob_time_var)
+    static_parameter_values_mapping: Dict[Var, Const] = dict()
+    problem = GenericEmtProblem(sys_block=root_block, glob_time=glob_time_var,static_parameter_values_mapping=static_parameter_values_mapping)
     seed_zero_initial_guess(problem)
     boundary_updater = build_boundary_updater_from_block(problem)
     step_count: int = int(round(float(t_end) / float(dt)))

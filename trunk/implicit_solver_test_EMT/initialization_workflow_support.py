@@ -16,7 +16,7 @@ from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template imp
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicVector
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Expr, Var
-from VeraGridEngine.Templates.templates_common_functions import set_emt_model
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
 from VeraGridEngine.enumerations import DynamicIntegrationMethod, EmtInitializationMethod, EmtSolverTypes, ShuntConnectionType
 
 

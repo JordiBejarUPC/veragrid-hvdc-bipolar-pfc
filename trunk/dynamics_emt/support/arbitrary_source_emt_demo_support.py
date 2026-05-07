@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -32,9 +33,12 @@ class ArbitrarySourceEmtDemoProblem(EmtProblemTemplate):
 
     __slots__ = ["grid"]
 
-    def __init__(self, grid: MultiCircuit, sys_block: Block, glob_time: Var) -> None:
+    def __init__(self, grid: MultiCircuit,
+                 sys_block: Block,
+                 glob_time: Var,
+                 static_parameter_values_mapping: Dict[Var, Const] ) -> None:
         self.grid = grid
-        super().__init__(sys_block=sys_block, glob_time=glob_time)
+        super().__init__(sys_block=sys_block, glob_time=glob_time, static_parameter_values_mapping=static_parameter_values_mapping)
 
 
 class ArbitrarySourceEmtCaseResult:
@@ -119,9 +123,10 @@ def _build_arbitrary_source_case_problem(case_name: str,
         init_eqs={bus_voltage: Const(0.0), load_current: Const(0.0)},
     )
     root_block.unify_blocks()
+    static_parameter_values_mapping: Dict[Var, Const] = dict()
 
     grid: MultiCircuit = MultiCircuit()
-    problem: ArbitrarySourceEmtDemoProblem = ArbitrarySourceEmtDemoProblem(grid=grid, sys_block=root_block, glob_time=glob_time)
+    problem: ArbitrarySourceEmtDemoProblem = ArbitrarySourceEmtDemoProblem(grid=grid, sys_block=root_block, glob_time=glob_time, static_parameter_values_mapping=static_parameter_values_mapping)
     output_dir: Path = get_plot_results_directory("arbitrary_source_emt", "symbolic")
     png_path: Path = output_dir / f"{case_name}.png"
     return problem, bus_voltage, source_current, load_current, png_path

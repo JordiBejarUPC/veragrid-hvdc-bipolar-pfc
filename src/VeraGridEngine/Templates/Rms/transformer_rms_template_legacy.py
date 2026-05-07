@@ -9,7 +9,7 @@ from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGridEngine.Utils.Symbolic.block import Block, VarPowerFlowRefferenceType
 from VeraGridEngine.Utils.Symbolic.symbolic import sin, cos
-from VeraGridEngine.Templates.templates_common_functions import tf_to_diffblock_with_output, tf_to_block, discrete_control_block
+from VeraGridEngine.Utils.Symbolic.block_helpers import tf_to_block, tf_to_diffblock_with_output, discrete_control_block
 from VeraGridEngine.enumerations import WindingsConnection
 
 

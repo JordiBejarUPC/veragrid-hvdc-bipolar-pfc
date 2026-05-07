@@ -17,16 +17,16 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'sr
 import numpy as np
 import matplotlib.pyplot as plt
 import VeraGridEngine.api as vge
-from VeraGridEngine.enumerations import ConverterControlType, VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
+from VeraGridEngine.enumerations import ConverterControlType, VarPowerFlowRefferenceType
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import SolverType
 from VeraGridEngine.Templates.Rms.vsc_gfl_dclinked import build_vsc_rms, build_trafo_vsc
-from VeraGridEngine.Templates.Rms.dc_voltage_source import DCVoltageSource, DCCurrentSource
+from VeraGridEngine.Templates.Rms.dc_voltage_source import DCCurrentSource
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
 from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Devices.Events.rms_event import RmsEvent
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
-from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
-from VeraGridEngine.Templates.templates_common_functions import set_rms_model
+from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_rms_model
 from VeraGridEngine.Utils.Symbolic.block import Block
 
 

@@ -1,3 +1,7 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+# SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
 from types import SimpleNamespace
@@ -193,8 +197,8 @@ def test_balanced_load_values_are_distributed_to_phase_keys() -> None:
     assert np.isclose(_const_value(block, ParamPowerFlowRefferenceType.Ql0_A), 1.0 / 30.0)
 
 
-def test_load_runtime_parameter_targets_accept_static_api_mapping() -> None:
-    """Load EMT setpoints may be runtime parameters and still need static seeds."""
+def test_load_static_api_mapping_does_not_seed_runtime_event_dict_targets() -> None:
+    """Load static api-object mapping must not write runtime event targets."""
     grid: SimpleNamespace = _make_grid(sbase=100.0, fbase=60.0)
     bus: Bus = Bus(name="bus", Vnom=20.0)
     load: Load = Load(name="load", P=90.0, Q=30.0)
@@ -218,9 +222,12 @@ def test_load_runtime_parameter_targets_accept_static_api_mapping() -> None:
 
     assign_static_api_object_mapping_for_device(grid=grid, device=load, mdl=block, logger=None)
 
-    assert np.isclose(float(block.event_dict[p_target].value), 0.3)
-    assert np.isclose(float(block.event_dict[q_target].value), 0.1)
-    assert np.isclose(float(block.event_dict[omega_target].value), 2.0 * np.pi * 60.0)
+    assert p_target not in block.parameters
+    assert q_target not in block.parameters
+    assert omega_target not in block.parameters
+    assert np.isclose(float(block.event_dict[p_target].value), 0.0)
+    assert np.isclose(float(block.event_dict[q_target].value), 0.0)
+    assert np.isclose(float(block.event_dict[omega_target].value), 0.0)
 
 
 def test_existing_generator_mapping_values_remain_unchanged() -> None:

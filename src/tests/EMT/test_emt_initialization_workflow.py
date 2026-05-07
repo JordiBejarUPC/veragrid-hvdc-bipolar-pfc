@@ -3,7 +3,7 @@
 # file, You can see it at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-from typing import Tuple
+from typing import Dict, Tuple
 
 import numpy as np
 
@@ -21,7 +21,7 @@ from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template imp
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicVector
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Expr, Var
-from VeraGridEngine.Templates.templates_common_functions import set_emt_model
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
 from VeraGridEngine.enumerations import DynamicIntegrationMethod, EmtSolverTypes, ShuntConnectionType, EmtInitializationMethod, EmtInitializationStatus
 
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
@@ -220,7 +220,12 @@ def build_single_state_single_algebraic_problem() -> Tuple[GenericEmtProblem, Si
         algebraic_eqs=[y_var - Const(2.0)],
         init_eqs={x_var: Const(2.0)},
     )
-    problem = GenericEmtProblem(sys_block=block, glob_time=var_factory.add_var("t_glob_init_0"))
+    static_parameter_values_mapping: Dict[Var, Const] = dict()
+    problem = GenericEmtProblem(
+        sys_block=block,
+        glob_time=var_factory.add_var("t_glob_init_0"),
+        static_parameter_values_mapping=static_parameter_values_mapping,
+    )
     context = SimpleInitializationContext(x_var=x_var, y_var=y_var, dx_var=dx_var)
     return problem, context
 
@@ -249,7 +254,12 @@ def build_unresolved_state_problem() -> Tuple[GenericEmtProblem, SimpleInitializ
         algebraic_vars=[y_var],
         algebraic_eqs=[y_var - Const(3.0)],
     )
-    problem = GenericEmtProblem(sys_block=block, glob_time=var_factory.add_var("t_glob_init_1"))
+    static_parameter_values_mapping: Dict[Var, Const] = dict()
+    problem = GenericEmtProblem(
+        sys_block=block,
+        glob_time=var_factory.add_var("t_glob_init_1"),
+        static_parameter_values_mapping=static_parameter_values_mapping,
+    )
     context = SimpleInitializationContext(x_var=x_var, y_var=y_var, dx_var=dx_var)
     return problem, context
 

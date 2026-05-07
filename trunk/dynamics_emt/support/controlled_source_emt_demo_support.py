@@ -9,6 +9,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
+from typing import Dict
 
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Events.emt_event import EmtEvent
@@ -35,9 +36,12 @@ class ControlledSourceEmtDemoProblem(EmtProblemTemplate):
 
     __slots__ = ["grid"]
 
-    def __init__(self, grid: MultiCircuit, sys_block: Block, glob_time: Var) -> None:
+    def __init__(self, grid: MultiCircuit,
+                 sys_block: Block,
+                 glob_time: Var,
+                 static_parameter_values_mapping: Dict[Var, Const]) -> None:
         self.grid = grid
-        super().__init__(sys_block=sys_block, glob_time=glob_time)
+        super().__init__(sys_block=sys_block, glob_time=glob_time,static_parameter_values_mapping=static_parameter_values_mapping)
 
 
 class ControlledSourceEmtCaseResult:
@@ -165,7 +169,8 @@ def _build_controlled_source_case_problem(case_name: str,
         )
     )
 
-    problem: ControlledSourceEmtDemoProblem = ControlledSourceEmtDemoProblem(grid=grid, sys_block=root_block, glob_time=glob_time)
+    static_parameter_values_mapping: Dict[Var, Const] = dict()
+    problem: ControlledSourceEmtDemoProblem = ControlledSourceEmtDemoProblem(grid=grid, sys_block=root_block, glob_time=glob_time,static_parameter_values_mapping=static_parameter_values_mapping)
     problem.set_events_group(event_group)
     output_dir: Path = get_plot_results_directory("controlled_source_emt", "symbolic")
     png_path: Path = output_dir / f"{case_name}.png"

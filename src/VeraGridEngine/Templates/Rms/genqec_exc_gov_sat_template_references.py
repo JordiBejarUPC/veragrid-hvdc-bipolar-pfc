@@ -12,12 +12,9 @@ from VeraGridEngine.enumerations import DeviceType, ParamPowerFlowRefferenceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import (Block, find_name_in_block )
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
-from VeraGridEngine.Templates.templates_common_functions import (tf_to_block, tf_to_diffblock_with_output,
-                                                                 tf_to_diffblock_with_antiwindup,
-                                                                 tf_to_block_with_states,
-                                                                 connect_models,
-                                                                 to_implicit)
-
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import (connect_models)
+from VeraGridEngine.Utils.Symbolic.block_helpers import tf_to_block, tf_to_diffblock_with_output, \
+    tf_to_block_with_states, tf_to_diffblock_with_antiwindup
 
 
 def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec rms template") -> RmsModelTemplate:

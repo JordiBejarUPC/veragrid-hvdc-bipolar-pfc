@@ -385,7 +385,7 @@ class ResultsMain(SimulationsMain):
         :param results: Dynamic results object associated with the study.
         :return: Cached or newly created dynamics-results handler.
         """
-        handler = self.dynamic_results_handlers.get(study_name, None)
+        handler: DynamicsResultsHandler | None = self.dynamic_results_handlers.get(study_name, None)
 
         if handler is None:
             handler = DynamicsResultsHandler(results=results)
@@ -393,15 +393,15 @@ class ResultsMain(SimulationsMain):
             handler.get_plots_model().rowsInserted.connect(self.expand_dynamic_plots_tree)
             return handler
 
-        elif handler.results is results:
+        elif type(handler.results) == type(results):
+            # Reusing the handler preserves the user's dynamic plot groups across
+            # repeated runs of the same study while replacing only the result-backed Vars.
+            handler.update_results(results=results)
             return handler
 
-        # elif handler.can_reuse_with_results(results=results): # NOT WORKING!
-        # # Re-use already created dynamic plots for the same simulation but with some changes (events,etc) -> not working because uid changes
-        #     handler.update_results(results=results)
-        #     return handler
         else:
-
+            # RMS and EMT handlers cannot be mixed because their result containers use
+            # different event-group fields and value-array layouts.
             handler = DynamicsResultsHandler(results=results)
             self.dynamic_results_handlers[study_name] = handler
             handler.get_plots_model().rowsInserted.connect(self.expand_dynamic_plots_tree)

@@ -38,7 +38,7 @@ from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template imp
     get_generator_thevenin_rl_emt_template,
 )
 from VeraGridEngine.Templates.Emt.xfmr_emt_template import get_xfmr_emt_template
-from VeraGridEngine.Templates.templates_common_functions import set_emt_model
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
 from VeraGridEngine.Utils.Symbolic.block import Block
 
 

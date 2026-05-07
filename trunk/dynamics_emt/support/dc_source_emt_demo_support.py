@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 
 from __future__ import annotations
-
+from typing import Dict
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -37,9 +37,10 @@ class DcSourceEmtDemoProblem(EmtProblemTemplate):
 
     __slots__ = ["grid"]
 
-    def __init__(self, grid: MultiCircuit, sys_block: Block, glob_time: Var) -> None:
+    def __init__(self, grid: MultiCircuit, sys_block: Block, glob_time: Var,
+                 static_parameter_values_mapping: Dict[Var, Const]) -> None:
         self.grid = grid
-        super().__init__(sys_block=sys_block, glob_time=glob_time)
+        super().__init__(sys_block=sys_block, glob_time=glob_time,static_parameter_values_mapping=static_parameter_values_mapping)
 
 
 class DcSourceEmtCaseResult:
@@ -190,8 +191,8 @@ def _build_dc_source_case_problem(case_name: str,
             name=f"{case_name}_step",
         )
     )
-
-    problem: DcSourceEmtDemoProblem = DcSourceEmtDemoProblem(grid=grid, sys_block=root_block, glob_time=glob_time)
+    static_parameter_values_mapping: Dict[Var, Const] = dict()
+    problem: DcSourceEmtDemoProblem = DcSourceEmtDemoProblem(grid=grid, sys_block=root_block, glob_time=glob_time,static_parameter_values_mapping=static_parameter_values_mapping)
     problem.set_events_group(event_group)
     output_dir: Path = get_plot_results_directory("dc_source_emt", "symbolic")
     png_path: Path = output_dir / f"{case_name}.png"

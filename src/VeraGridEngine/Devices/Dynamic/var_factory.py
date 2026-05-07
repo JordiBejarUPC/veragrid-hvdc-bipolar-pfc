@@ -82,6 +82,7 @@ class VarFactory(EditableDevice):
                 reference: VarPowerFlowRefferenceType | None = None,
                 shared_reference: str | None = None,
                 network_conn: bool = False,
+                shared_reference: str | None = None,
                 uid: int | None = None,
                 diff_var: Var | None = None,
                 base_var: Var | None = None) -> Var:
@@ -134,9 +135,9 @@ class VarFactory(EditableDevice):
 
     def add_diff_var(self,
                      name: str,
-                     shared_reference: SharedVarReferenceType | None = None,
                      reference: VarPowerFlowRefferenceType | None = None,
                      network_conn: bool = False,
+                     shared_reference: SharedVarReferenceType | None = None,
                      uid: int | None = None,
                      diff_var: Var | None = None,
                      base_var: Var | None = None) -> Var:

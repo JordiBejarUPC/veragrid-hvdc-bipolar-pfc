@@ -8,13 +8,11 @@ import sys
 import re
 from enum import EnumMeta
 from typing import Any, Sequence
-
 import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
-
 from VeraGrid.Gui.associations_model import AssociationsModel
 from VeraGrid.Gui.DeviceEditors.TemplateDeviceEditor.template_device_editor_gui import Ui_TemplateDeviceEditorDialog
-from VeraGrid.Gui.gui_functions import ComboDelegate, FloatDelegate, IntDelegate, TextDelegate
+from VeraGrid.Gui.gui_functions import ComboDelegate, FloatDelegate, IntDelegate, TextDelegate, ComplexDelegate
 from VeraGrid.Gui.Widgets.matplotlibwidget import MatplotlibWidget
 from VeraGrid.Gui.messages import warning_msg
 from VeraGrid.Gui.object_model import ObjectsModel
@@ -28,7 +26,7 @@ from VeraGridEngine.enumerations import DeviceType, PrpCat
 
 
 
-def parse_profile_cell_value(value: object, tpe: type) -> tuple[bool, object]:
+def parse_profile_cell_value(value: Any, tpe: type) -> tuple[bool, object]:
     """
     Parse an edited profile cell value according to the profile data type.
 
@@ -75,26 +73,6 @@ def parse_profile_cell_value(value: object, tpe: type) -> tuple[bool, object]:
         return True, value
 
 
-def cast_default_profile_value(raw_value: object, tpe: type) -> object:
-    """
-    Cast one snapshot value to the profile column type for profile extension.
-
-    :param raw_value: Snapshot value.
-    :param tpe: Declared property type.
-    :return: Casted value.
-    """
-    if tpe is bool:
-        return bool(raw_value)
-    elif tpe is float:
-        return float(raw_value)
-    elif tpe is int:
-        return int(raw_value)
-    elif tpe is str:
-        return str(raw_value)
-    else:
-        return raw_value
-
-
 class MultiFormatProfilesTableModel(QtCore.QAbstractTableModel):
     """
     Profile table model for a single device with mixed column data formats.
@@ -117,6 +95,7 @@ class MultiFormatProfilesTableModel(QtCore.QAbstractTableModel):
         self.device: EditableDevice = device
         self.profile_properties: list[GCProp] = profile_properties
         self.time_labels: list[str] = time_labels
+        self._profiles: list[AnyProfile] = [self.device.get_profile_by_prop(prop=prop) for prop in self.profile_properties]
 
         # Keep all profile columns aligned to the same number of time rows.
         self._normalize_profile_lengths()
@@ -153,8 +132,7 @@ class MultiFormatProfilesTableModel(QtCore.QAbstractTableModel):
         """
         if index.isValid():
             if role == int(QtCore.Qt.ItemDataRole.DisplayRole) or role == int(QtCore.Qt.ItemDataRole.EditRole):
-                prop: GCProp = self.profile_properties[index.column()]
-                profile: AnyProfile = self.device.get_profile_by_prop(prop=prop)
+                profile: AnyProfile = self._profiles[index.column()]
                 row_index: int = index.row()
                 if row_index < profile.size():
                     value: object = profile[row_index]
@@ -181,7 +159,7 @@ class MultiFormatProfilesTableModel(QtCore.QAbstractTableModel):
         if index.isValid():
             if role == int(QtCore.Qt.ItemDataRole.EditRole):
                 prop: GCProp = self.profile_properties[index.column()]
-                profile: AnyProfile = self.device.get_profile_by_prop(prop=prop)
+                profile: AnyProfile = self._profiles[index.column()]
                 row_index: int = index.row()
                 if row_index < profile.size():
                     ok: bool
@@ -267,22 +245,10 @@ class MultiFormatProfilesTableModel(QtCore.QAbstractTableModel):
         """
         target_rows: int = len(self.time_labels)
         if target_rows > 0:
-            for prop in self.profile_properties:
-                profile: AnyProfile = self.device.get_profile_by_prop(prop=prop)
+            for profile in self._profiles:
                 current_rows: int = profile.size()
-                if current_rows < target_rows:
-                    snapshot_value: object = self.device.get_snapshot_value(prop=prop)
-                    default_value: object = cast_default_profile_value(raw_value=snapshot_value, tpe=prop.tpe)
-                    profile_values: np.ndarray = profile.toarray()
-                    extension: np.ndarray = np.full(target_rows - current_rows, default_value, dtype=object)
-                    resized_values: np.ndarray = np.r_[profile_values, extension]
-                    profile.set(np.asarray(resized_values))
-                elif current_rows > target_rows and target_rows > 0:
-                    profile_values = profile.toarray()
-                    resized_values = np.asarray(profile_values[:target_rows])
-                    profile.set(resized_values)
-                else:
-                    pass
+                if current_rows != target_rows:
+                    profile.resize(target_rows)
         else:
             pass
 
@@ -302,6 +268,7 @@ class TemplateDeviceEditor(QtWidgets.QDialog):
         QtWidgets.QDialog.__init__(self)
         self.api_object: EditableDevice = api_object
         self.circuit: MultiCircuit | None = circuit
+        self.delegate_dictionary: dict[object, list[object]] = self._build_delegate_dictionary()
 
         # Load UI from Qt Designer definition.
         self.ui = Ui_TemplateDeviceEditorDialog()
@@ -392,8 +359,10 @@ class TemplateDeviceEditor(QtWidgets.QDialog):
             parent=self.profiles_table_view,
         )
         self.profiles_table_view.setModel(self.profiles_model)
-        self.profiles_table_view.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
-        self.profiles_table_view.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+        self.profiles_table_view.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Interactive)
+        self.profiles_table_view.horizontalHeader().setStretchLastSection(True)
+        self.profiles_table_view.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Fixed)
+        self.profiles_table_view.verticalHeader().setDefaultSectionSize(self.fontMetrics().height() + 8)
         self._configure_profiles_table_delegates()
 
         # Build associations controls and model.
@@ -441,7 +410,6 @@ class TemplateDeviceEditor(QtWidgets.QDialog):
 
         :return: Configured ``ObjectsModel``.
         """
-        delegate_dictionary: dict[DeviceType, list[object]] = self._build_delegate_dictionary()
         property_list: list[GCProp] = list(self.api_object.property_list)
         filter_prop = self.prop_filter_dict[self.ui.filterComboBox.currentText()]
         model: ObjectsModel = ObjectsModel(
@@ -451,7 +419,7 @@ class TemplateDeviceEditor(QtWidgets.QDialog):
             parent=self.properties_table_view,
             editable=True,
             transposed=True,
-            dictionary_of_lists=delegate_dictionary,
+            dictionary_of_lists=self.delegate_dictionary,
             properties_filter=filter_prop
         )
 
@@ -662,13 +630,44 @@ class TemplateDeviceEditor(QtWidgets.QDialog):
             elif prop.tpe is str:
                 text_delegate: TextDelegate = TextDelegate(self.profiles_table_view)
                 self.profiles_table_view.setItemDelegateForColumn(column_index, text_delegate)
+            elif prop.tpe is complex:
+                complex_delegate: ComplexDelegate = ComplexDelegate(self.profiles_table_view)
+                self.profiles_table_view.setItemDelegateForColumn(column_index, complex_delegate)
             elif isinstance(prop.tpe, EnumMeta):
                 enum_objects: list[object] = list(prop.tpe)
                 enum_names: list[str] = [enum_obj.value for enum_obj in enum_objects]
                 enum_delegate: ComboDelegate = ComboDelegate(self.profiles_table_view, enum_objects, enum_names)
                 self.profiles_table_view.setItemDelegateForColumn(column_index, enum_delegate)
             else:
-                self.profiles_table_view.setItemDelegateForColumn(column_index, None)
+                delegate_objects: list[object] | None = self._get_profile_delegate_objects(prop=prop)
+                if delegate_objects is not None:
+                    names: list[str] = ["None"] + [obj.name for obj in delegate_objects]
+                    objects: list[object | None] = [None] + delegate_objects
+                    fk_delegate: ComboDelegate = ComboDelegate(
+                        parent=self.profiles_table_view,
+                        objects=objects,
+                        object_names=names,
+                    )
+                    self.profiles_table_view.setItemDelegateForColumn(column_index, fk_delegate)
+                else:
+                    self.profiles_table_view.setItemDelegateForColumn(column_index, None)
+
+    def _get_profile_delegate_objects(self, prop: GCProp) -> list[object] | None:
+        """
+        Return the object list used by one profile foreign-key delegate.
+
+        Resolution order mirrors ``ObjectsModel``:
+        ``(prop.name, prop.tpe)`` -> ``prop.name`` -> ``prop.tpe``.
+        """
+        specific_key: tuple[str, type] = (prop.name, prop.tpe)
+        if specific_key in self.delegate_dictionary:
+            return self.delegate_dictionary[specific_key]
+        elif prop.name in self.delegate_dictionary:
+            return self.delegate_dictionary[prop.name]
+        elif prop.tpe in self.delegate_dictionary:
+            return self.delegate_dictionary[prop.tpe]
+        else:
+            return None
 
     def _install_profiles_shortcuts(self) -> None:
         """

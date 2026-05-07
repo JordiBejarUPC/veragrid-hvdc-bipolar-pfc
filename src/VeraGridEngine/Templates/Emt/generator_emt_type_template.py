@@ -10,9 +10,9 @@ from VeraGridEngine.Utils.Symbolic import symbolic as sym
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import Block, find_name_in_block, Const
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DeviceType, ParamPowerFlowRefferenceType
-from VeraGridEngine.Templates.templates_common_functions import (tf_to_block, tf_to_diffblock_with_output,
-                                                                 tf_to_diffblock_with_antiwindup,
-                                                                 tf_to_block_with_states)
+from VeraGridEngine.Utils.Symbolic.block_helpers import tf_to_block, tf_to_diffblock_with_output, \
+    tf_to_block_with_states, tf_to_diffblock_with_antiwindup
+
 
 def get_simple_generator_emt_template(vf: VarFactory, name: str = "simple_emt_type_generator_template") -> EmtModelTemplate:
     """
