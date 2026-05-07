@@ -750,6 +750,49 @@ class SimulationsMain(TimeEventsMain):
         return model
 
     @staticmethod
+    def get_catalogue_combination_tree_model(
+            drv: sim.CatalogueOptimizationDriver) -> QtGui.QStandardItemModel:
+        """
+        Build the model for the Variations panel after a Catalogue Optimization run.
+        Only Pareto-front combinations are listed (using the deduplicated indices
+        produced by InvestmentsEvaluationResults.finalize). Each combination row
+        is expanded to show one child per decision variable in the form
+        "<branch_name>: <integer index>", so the user can read off which
+        template-pool index was chosen for each branch.
+
+        :param drv: CatalogueOptimizationDriver instance with finalized results
+        :return: QStandardItemModel with one top-level row per Pareto combination
+        """
+        model: QtGui.QStandardItemModel = QtGui.QStandardItemModel()
+        model.setHorizontalHeaderLabels(["Pareto combination"] + list(drv.results.f_names))
+
+        # Iterate over Pareto-front rows only. sorting_indices points back into
+        # the full _x/_f arrays, so drv.results.x[i, :] is the right slice. We
+        # tag each row with its combination index via UserRole so the click
+        # handler can recover the integer x vector independently of any Qt
+        # sorting or filtering applied to the view.
+        for i in drv.results.sorting_indices:
+            x_vec: np.ndarray = drv.results.x[i, :]
+            label_item: QtGui.QStandardItem = QtGui.QStandardItem(f"Pareto combination {i}")
+            label_item.setData(int(i), QtCore.Qt.ItemDataRole.UserRole)
+            row_items: List[QtGui.QStandardItem] = [label_item] + [
+                QtGui.QStandardItem(f"{fi:.2f}") for fi in drv.results.f[i, :]
+            ]
+            model.appendRow(row_items)
+
+            # One child per decision variable: "<branch name>: <integer index>".
+            # Unlike the Investments panel (binary vector, where zeros are
+            # hidden), every catalogue slot has a meaningful non-zero meaning,
+            # so we list all of them — the integer alone tells the user which
+            # template pool index NSGA-3 picked for each branch.
+            for k in range(len(x_vec)):
+                child_text: str = f"{drv.results.x_names[k]}: {int(x_vec[k])}"
+                name_item: QtGui.QStandardItem = QtGui.QStandardItem(child_text)
+                label_item.appendRow([name_item])
+
+        return model
+
+    @staticmethod
     def get_short_circuits_combination_tree_model(drv: sim.ShortCircuitDriver) -> QtGui.QStandardItemModel:
         """
         Get the investments combination tree model
@@ -775,6 +818,10 @@ class SimulationsMain(TimeEventsMain):
         else:
             if drv.tpe == SimulationTypes.InvestmentsEvaluation_run:
                 model = self.get_investments_combination_tree_model(drv=drv)
+                self.ui.combinationsTreeView.setModel(model)
+
+            elif drv.tpe == SimulationTypes.CatalogueOptimization_run:
+                model = self.get_catalogue_combination_tree_model(drv=drv)
                 self.ui.combinationsTreeView.setModel(model)
 
             elif drv.tpe == SimulationTypes.ShortCircuit_run:
@@ -3978,8 +4025,10 @@ class SimulationsMain(TimeEventsMain):
         """
         Post-execution callback for the catalogue optimization driver.
 
-        Mirrors `post_investments_evaluation`: it removes the running-simulation flag, refreshes
-        the available results combo and recolours the diagrams to expose the new results.
+        Mirrors `post_investments_evaluation`: clears the running-simulation flag,
+        refreshes the available-results combo, applies the best Pareto member's
+        templates to the live MultiCircuit so the user lands on a usable grid
+        state, and recolours the diagrams to expose the new results.
 
         :return:
         """
@@ -3993,6 +4042,26 @@ class SimulationsMain(TimeEventsMain):
             QtGui.QGuiApplication.processEvents()
 
             self.update_available_results()
+
+            # Apply the best Pareto member's templates to the live grid so the
+            # diagram immediately reflects the optimizer's top recommendation.
+            # The driver itself reverts state after every evaluation (via the
+            # problem's _restore_baseline), so right now every branch is back
+            # at its pre-evaluation baseline. We re-apply the chosen combo on
+            # top so subsequent clicks in the Variations panel can use the
+            # same restore-then-apply convention without ambiguity about what
+            # state the grid is currently in.
+            if driver is not None and len(results.sorting_indices) > 0:
+                best_x: np.ndarray = results.x[results.sorting_indices[0], :]
+                # Restore baseline first, then apply: matches the click handler
+                # so the auto-displayed state is identical to what clicking the
+                # same Pareto row would produce.
+                driver.problem._restore_baseline()
+                driver.problem._apply_combination(x=best_x)
+            else:
+                # No Pareto results available - leave the grid at baseline.
+                pass
+
             self.colour_diagrams()
         else:
             pass

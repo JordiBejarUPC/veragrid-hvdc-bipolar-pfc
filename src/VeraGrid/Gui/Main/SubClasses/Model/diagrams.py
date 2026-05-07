@@ -3409,6 +3409,8 @@ class DiagramsMain(CompiledArraysMain):
         - ShortCircuit: re-colours the diagram for the clicked short-circuit case.
         - InvestmentsEvaluation: applies the clicked Pareto combination to the
           live MultiCircuit (sticky behaviour) and refreshes the diagram.
+        - CatalogueOptimization: applies the clicked Pareto combination's
+          templates to the live MultiCircuit and refreshes the diagram.
         """
         indices = self.ui.combinationsTreeView.selectedIndexes()
 
@@ -3443,6 +3445,10 @@ class DiagramsMain(CompiledArraysMain):
                 elif current_study == sim.InvestmentsEvaluationDriver.tpe.value:
                     # delegate to the dedicated handler so this dispatcher stays small
                     self.apply_investments_combination(clicked_index=indices[0])
+
+                elif current_study == sim.CatalogueOptimizationDriver.tpe.value:
+                    # delegate to the dedicated catalogue handler
+                    self.apply_catalogue_combination(clicked_index=indices[0])
 
                 else:
                     # the active study has no per-combination behaviour - nothing to do
@@ -3545,6 +3551,94 @@ class DiagramsMain(CompiledArraysMain):
         self.colour_diagrams()
         self.show_info_toast(f"Applied Pareto combination {i}: "
                              f"{len(inv_list)} investments active")
+        return None
+
+    def apply_catalogue_combination(self, clicked_index: QtCore.QModelIndex) -> None:
+        """
+        Apply the Pareto combination tagged on the clicked tree item to the live
+        MultiCircuit by swapping each selected branch's electrical parameters to
+        those of the chosen template, then refresh the diagrams.
+
+        The clicked index may be either a top-level combination row or one of
+        its decision-variable children; we walk up to the top-level item to
+        recover the combination index that was stamped via Qt.UserRole when
+        the model was built.
+
+        Behaviour is sticky: every click first restores every problem-tracked
+        branch to its baseline state captured at problem-construction time
+        (in CatalogueOptimizationProblem.snapshots), then applies the templates
+        for the selected combination's x vector. This matches the convention
+        the optimizer used per evaluation, so the diagram exactly reproduces
+        the state NSGA-3 scored for that combination, and a click on a
+        different row cleanly replaces the previous selection.
+
+        WARNING: every click overwrites each branch's electrical parameters
+        (R, X, B, rate, ...) and template pointers via apply_template. If the
+        user has unsaved manual edits to those branches, they will be lost
+        after the first click. Tell users to save the project before exploring
+        combinations.
+
+        :param clicked_index: QModelIndex of the row (or child row) the user clicked
+        """
+        # Walk up to the top-level row, since the tree shows decision-variable
+        # entries as children of each combination row and clicks may land on
+        # a child item.
+        top_index: QtCore.QModelIndex = clicked_index
+        while top_index.parent().isValid():
+            top_index = top_index.parent()
+
+        # The combination index was stamped on column 0 at model-build time;
+        # read it from the column-0 sibling so we get the tagged item even if
+        # the user clicked a different column of the same row.
+        column_zero_index: QtCore.QModelIndex = top_index.sibling(top_index.row(), 0)
+        user_data = column_zero_index.data(QtCore.Qt.ItemDataRole.UserRole)
+
+        if user_data is None:
+            # row was not tagged with a combination index (defensive guard)
+            return None
+        else:
+            i: int = int(user_data)
+
+        driver, results = self.session.catalogue_optimization
+        if driver is None or results is None:
+            # results were cleared between panel build and click
+            self.show_warning_toast("Catalogue optimization results are no longer available")
+            return None
+        else:
+            pass
+
+        # Recover the integer x vector for this Pareto member.
+        x_vec: np.ndarray = results.x[i, :]
+
+        # Force a clean baseline before applying the combo: revert every branch
+        # tracked by the problem to its pre-evaluation snapshot. Without this
+        # step, parameter changes from a previous click would compound, and a
+        # branch whose chosen template differs between two combos would end
+        # up with the most recently-applied template both times.
+        driver.problem._restore_baseline()
+
+        # Apply the templates for the selected combination on top of the
+        # restored baseline. _apply_combination performs branch.apply_template
+        # for every decision slot using x_vec[i] as the pool index.
+        driver.problem._apply_combination(x=x_vec)
+
+        # Refresh active/inactive pen styles on every open schematic. Catalogue
+        # optimization does not toggle device.active itself, but apply_template
+        # may indirectly affect rendering (rate-based widths, etc.), so we run
+        # the same recolour pass we use for Investments to keep the diagrams
+        # consistent with the live state.
+        for diagram_widget in self.diagram_widgets_list:
+            if isinstance(diagram_widget, SchematicWidget):
+                diagram_widget.recolour_mode()
+            else:
+                # non-schematic widgets do not encode branch state via pen
+                # styling, so they have nothing to refresh here
+                pass
+
+        # Re-apply result-based colouring on top of the refreshed pen styling.
+        self.colour_diagrams()
+        self.show_info_toast(f"Applied catalogue combination {i}: "
+                             f"{len(x_vec)} branches updated")
         return None
 
     def reset_diagram_coordinates(self):
