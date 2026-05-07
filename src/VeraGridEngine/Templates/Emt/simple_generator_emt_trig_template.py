@@ -22,7 +22,7 @@ def get_simple_generator_emt_template_trig_transform(
     name: str = "simple_emt_type_generator_template_ml",
 ) -> EmtModelTemplate:
     """
-    Multilinear-trig variant of get_simple_generator_emt_template.
+    Multilinear reformulation variant of get_simple_generator_emt_template.
 
     This function is intentionally kept equivalent to
     `Templates/Emt/simple_generator_emt_template.py:get_simple_generator_emt_template`

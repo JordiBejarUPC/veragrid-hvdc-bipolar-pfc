@@ -2896,6 +2896,7 @@ class DiagramsMain(CompiledArraysMain):
                         self.circuit.add_rms_event(event)
 
             else:
+                print("Selected devices: ", target_devices)
                 self.show_warning_toast(f"Select one and only one device to add event to")
 
     def add_emt_event_to_selected(self) -> None:

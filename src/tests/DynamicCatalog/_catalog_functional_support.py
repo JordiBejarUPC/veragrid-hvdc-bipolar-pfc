@@ -117,6 +117,8 @@ class FunctionalRuntimeProblem:
         self.glob_time = glob_time_var
 
         ordered_vars: list[Var] = list()
+        runtime_vars: list[Var] = list(block.event_dict.keys()) + list(block.mode_dict.keys())
+        runtime_uids: set[int] = set(var.uid for var in runtime_vars)
         group_vars: list[list[Var]] = [block.state_vars, block.algebraic_vars, block.in_vars, list(block.init_eqs.keys()), list(block.diff_init_eqs.keys())]
         group_var_list: list[Var]
         candidate_var: Var
@@ -130,12 +132,18 @@ class FunctionalRuntimeProblem:
 
         expr_item: Expr | Comparison | float | int | bool
         for expr_item in expr_list:
-            append_expr_vars(ordered_vars, expr_item)
+            expr_vars: list[Var] = list()
+            expr_var: Var
+            append_expr_vars(expr_vars, expr_item)
+            for expr_var in expr_vars:
+                if expr_var.uid not in runtime_uids:
+                    append_unique_var(ordered_vars, expr_var)
+                else:
+                    pass
 
         self.uid2idx_vars = {var.uid: idx for idx, var in enumerate(ordered_vars)}
         self.vars_by_uid = {var.uid: var for var in ordered_vars}
 
-        runtime_vars: list[Var] = list(block.event_dict.keys()) + list(block.mode_dict.keys())
         dedup_runtime: list[Var] = list()
         runtime_var: Var
         for runtime_var in runtime_vars:
@@ -569,6 +577,8 @@ class FunctionalRuntimeProblem:
         self.glob_time = glob_time_var
 
         ordered_vars: list[Var] = list()
+        runtime_vars: list[Var] = list(block.event_dict.keys()) + list(block.mode_dict.keys())
+        runtime_uids: set[int] = set(var.uid for var in runtime_vars)
         group_vars: list[list[Var]] = [block.state_vars, block.algebraic_vars, block.in_vars, list(block.init_eqs.keys()), list(block.diff_init_eqs.keys())]
         group_var_list: list[Var]
         candidate_var: Var
@@ -583,12 +593,18 @@ class FunctionalRuntimeProblem:
 
         expr_item: Expr | Comparison | float | int | bool
         for expr_item in expr_list:
-            append_expr_vars(ordered_vars, expr_item)
+            expr_vars: list[Var] = list()
+            expr_var: Var
+            append_expr_vars(expr_vars, expr_item)
+            for expr_var in expr_vars:
+                if expr_var.uid not in runtime_uids:
+                    append_unique_var(ordered_vars, expr_var)
+                else:
+                    pass
 
         self.uid2idx_vars = {var.uid: idx for idx, var in enumerate(ordered_vars)}
         self.vars_by_uid = {var.uid: var for var in ordered_vars}
 
-        runtime_vars: list[Var] = list(block.event_dict.keys()) + list(block.mode_dict.keys())
         dedup_runtime: list[Var] = list()
         runtime_var: Var
         for runtime_var in runtime_vars:

@@ -4,23 +4,20 @@
 # SPDX-License-Identifier: MPL-2.0
 
 from abc import ABC
-from typing import List, Dict, Callable
-import numpy as np
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
+from typing import List, Dict
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.basic_structures import Vec
 from VeraGridEngine.Simulations.driver_template import DummySignal
-from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
+from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Templates.Rms.genqec_phasor_rms_template import get_complete_generator_template_phasor
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
 from VeraGridEngine.Templates.Rms.shunt_template import get_shunt_template
 from VeraGridEngine.Templates.Rms.transformer_rms_template import initialize_trafo_rms
-from VeraGridEngine.Templates.Rms.vsc_gfl import VscGflBuild
 from VeraGridEngine.Templates.Rms.vsc_gfl_dclinked import build_vsc_rms
-from VeraGridEngine.Templates.templates_common_functions import set_rms_model
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_rms_model
 
 
 class RmsProblemTemplate(ABC):
@@ -134,6 +131,7 @@ class RmsProblemTemplate(ABC):
 
     def populate_missing_models(self, grid: MultiCircuit):
 
+        # todo: not sure this should be done, it edits the grid (input)
         ## BUSES:
         for bus in grid.buses:
             if bus.rms_model.empty():

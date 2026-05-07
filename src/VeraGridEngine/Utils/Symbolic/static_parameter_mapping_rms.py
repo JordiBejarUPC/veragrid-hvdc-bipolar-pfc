@@ -457,65 +457,6 @@ def api_mapping_has_any_key(
     return has_key
 
 
-def boolean_to_float(value: bool) -> float:
-    """
-    Convert a static boolean into the EMT scalar convention.
-
-    :param value: Static boolean value.
-    :return: ``1.0`` when ``True``, ``0.0`` when ``False``.
-    """
-    out: float
-
-    if value:
-        out = 1.0
-    else:
-        out = 0.0
-
-    return out
-
-
-def omega_base_from_grid(grid: MultiCircuit) -> float:
-    """
-    Return the angular base frequency of the network.
-
-    :param grid: Static network model.
-    :return: Angular base frequency in rad/s.
-    """
-    return 2.0 * np.pi * float(grid.fBase)
-
-
-def frequency_base_hz_from_grid(grid: MultiCircuit) -> float:
-    """
-    Return the nominal frequency base of the network.
-
-    :param grid: Static network model.
-    :return: Nominal frequency in Hz.
-    """
-    return float(grid.fBase)
-
-
-def mw_to_pu_on_grid_base(value_mw: float, grid: MultiCircuit) -> float:
-    """
-    Convert MW-like static power to p.u. on ``grid.Sbase``.
-
-    :param value_mw: Static active-power-like quantity in MW.
-    :param grid: Static network model.
-    :return: Per-unit value on ``grid.Sbase``.
-    """
-    return float(value_mw) / float(grid.Sbase)
-
-
-def mvar_to_pu_on_grid_base(value_mvar: float, grid: MultiCircuit) -> float:
-    """
-    Convert MVAr-like static power to p.u. on ``grid.Sbase``.
-
-    :param value_mvar: Static reactive-power-like quantity in MVAr.
-    :param grid: Static network model.
-    :return: Per-unit value on ``grid.Sbase``.
-    """
-    return float(value_mvar) / float(grid.Sbase)
-
-
 def _float_or_zero(value: float | None) -> float:
     """
     Return one scalar value, replacing ``None`` with zero.
@@ -1700,7 +1641,7 @@ def assign_common_injection_static_api_mapping(
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowRefferenceType.device_active,
-        value=boolean_to_float(bool(device.active)),
+        value= 1.0 if bool(device.active) else 0.0,
         logger=logger,
         device_name=device_name,
         problem_mapping=problem_mapping,
@@ -1736,7 +1677,7 @@ def assign_common_branch_static_api_mapping(
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowRefferenceType.device_active,
-        value=boolean_to_float(bool(device.active)),
+        value= 1.0 if bool(device.active) else 0.0,
         logger=logger,
         device_name=device_name,
         problem_mapping=problem_mapping,
@@ -1819,7 +1760,7 @@ def assign_load_static_api_mapping(
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowRefferenceType.load_p_pu,
-        value=mw_to_pu_on_grid_base(float(load.P), grid),
+        value=float(load.P) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
         problem_mapping=problem_mapping,
@@ -1827,7 +1768,7 @@ def assign_load_static_api_mapping(
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowRefferenceType.load_q_pu,
-        value=mvar_to_pu_on_grid_base(float(load.Q), grid),
+        value=float(load.Q) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
         problem_mapping=problem_mapping,
@@ -1883,7 +1824,7 @@ def assign_load_static_api_mapping(
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowRefferenceType.load_g_pu,
-        value=mw_to_pu_on_grid_base(float(load.G), grid),
+        value=float(load.G) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
         problem_mapping=problem_mapping,
@@ -1891,7 +1832,7 @@ def assign_load_static_api_mapping(
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowRefferenceType.load_b_pu,
-        value=mvar_to_pu_on_grid_base(float(load.B), grid),
+        value=float(load.B) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
         problem_mapping=problem_mapping,
@@ -1947,7 +1888,7 @@ def assign_load_static_api_mapping(
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowRefferenceType.load_ir_pu,
-        value=mw_to_pu_on_grid_base(float(load.Ir), grid),
+        value=float(load.Ir) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
         problem_mapping=problem_mapping,
@@ -1955,7 +1896,7 @@ def assign_load_static_api_mapping(
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowRefferenceType.load_ii_pu,
-        value=mvar_to_pu_on_grid_base(float(load.Ii), grid),
+        value=float(load.Ii) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
         problem_mapping=problem_mapping,
@@ -2011,7 +1952,7 @@ def assign_load_static_api_mapping(
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowRefferenceType.load_contract_power_pu,
-        value=mw_to_pu_on_grid_base(float(load._contract_power), grid),
+        value=float(load._contract_power) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
         problem_mapping=problem_mapping,
@@ -2047,7 +1988,7 @@ def assign_load_static_api_mapping(
         problem_mapping=problem_mapping,
         )
     else:
-        omega_base: float = omega_base_from_grid(grid)
+        omega_base: float = 2.0 * np.pi * float(grid.fBase)
         p_values: np.ndarray = phase_p_pu_abc
         q_values: np.ndarray = phase_q_pu_abc
 
@@ -2109,7 +2050,7 @@ def assign_static_generator_static_api_mapping(
     :return: None.
     """
     device_name: str = str(static_generator.name)
-    omega_base: float = omega_base_from_grid(grid)
+    omega_base: float = 2.0 * np.pi * float(grid.fBase)
     phase_p_pu_abc: np.ndarray
     phase_q_pu_abc: np.ndarray
 
@@ -2126,7 +2067,7 @@ def assign_static_generator_static_api_mapping(
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowRefferenceType.load_p_pu,
-        value=mw_to_pu_on_grid_base(float(static_generator.P), grid),
+        value=float(static_generator.P) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
         problem_mapping=problem_mapping,
@@ -2134,7 +2075,7 @@ def assign_static_generator_static_api_mapping(
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowRefferenceType.load_q_pu,
-        value=mvar_to_pu_on_grid_base(float(static_generator.Q), grid),
+        value=float(static_generator.Q) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
         problem_mapping=problem_mapping,
@@ -2270,7 +2211,7 @@ def assign_external_grid_static_api_mapping(
     :return: None.
     """
     device_name: str = str(external_grid.name)
-    omega_base: float = omega_base_from_grid(grid)
+    omega_base: float = 2.0 * np.pi * float(grid.fBase)
     phase_p_pu_abc: np.ndarray
     phase_q_pu_abc: np.ndarray
 
@@ -2287,7 +2228,7 @@ def assign_external_grid_static_api_mapping(
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowRefferenceType.load_p_pu,
-        value=mw_to_pu_on_grid_base(float(external_grid.P), grid),
+        value=float(external_grid.P) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
         problem_mapping=problem_mapping,
@@ -2351,7 +2292,7 @@ def assign_external_grid_static_api_mapping(
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowRefferenceType.load_q_pu,
-        value=mvar_to_pu_on_grid_base(float(external_grid.Q), grid),
+        value=float(external_grid.Q) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
         problem_mapping=problem_mapping,
@@ -2414,25 +2355,25 @@ def assign_shunt_static_api_mapping(
 
     assign_api_mapping_value_if_present(mdl=mdl,
                                         key=ParamPowerFlowRefferenceType.shunt_g_pu,
-                                        value=mw_to_pu_on_grid_base(float(shunt.G), grid),
+                                        value=float(shunt.G) / float(grid.Sbase),
                                         logger=logger,
                                         device_name=device_name
                                         )
     assign_api_mapping_value_if_present(mdl=mdl,
                                         key=ParamPowerFlowRefferenceType.shunt_b_pu,
-                                        value=mvar_to_pu_on_grid_base(float(shunt.B), grid),
+                                        value=float(shunt.B) / float(grid.Sbase),
                                         logger=logger,
                                         device_name=device_name
                                         )
     assign_api_mapping_value_if_present(mdl=mdl,
                                         key=ParamPowerFlowRefferenceType.shunt_g0_pu,
-                                        value=mw_to_pu_on_grid_base(float(shunt.G0), grid),
+                                        value=float(shunt.G0) / float(grid.Sbase),
                                         logger=logger,
                                         device_name=device_name
                                         )
     assign_api_mapping_value_if_present(mdl=mdl,
                                         key=ParamPowerFlowRefferenceType.shunt_b0_pu,
-                                        value=mvar_to_pu_on_grid_base(float(shunt.B0), grid),
+                                        value=float(shunt.B0) / float(grid.Sbase),
                                         logger=logger,
                                         device_name=device_name
                                         )
@@ -2532,7 +2473,7 @@ def assign_controllable_shunt_static_api_mapping(
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowRefferenceType.controllable_shunt_gmin_pu,
-        value=mw_to_pu_on_grid_base(float(controllable_shunt.Gmin), grid),
+        value=float(controllable_shunt.Gmin) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
         problem_mapping=problem_mapping,
@@ -2540,7 +2481,7 @@ def assign_controllable_shunt_static_api_mapping(
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowRefferenceType.controllable_shunt_gmax_pu,
-        value=mw_to_pu_on_grid_base(float(controllable_shunt.Gmax), grid),
+        value=float(controllable_shunt.Gmax) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
         problem_mapping=problem_mapping,
@@ -2548,7 +2489,7 @@ def assign_controllable_shunt_static_api_mapping(
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowRefferenceType.controllable_shunt_bmin_pu,
-        value=mvar_to_pu_on_grid_base(float(controllable_shunt.Bmin), grid),
+        value=float(controllable_shunt.Bmin) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
         problem_mapping=problem_mapping,
@@ -2556,7 +2497,7 @@ def assign_controllable_shunt_static_api_mapping(
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowRefferenceType.controllable_shunt_bmax_pu,
-        value=mvar_to_pu_on_grid_base(float(controllable_shunt.Bmax), grid),
+        value=float(controllable_shunt.Bmax) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
         problem_mapping=problem_mapping,
@@ -2606,13 +2547,13 @@ def assign_current_injection_static_api_mapping(
 
     assign_api_mapping_value_if_present(mdl=mdl,
                                         key=ParamPowerFlowRefferenceType.current_injection_ir_pu,
-                                        value=mw_to_pu_on_grid_base(float(current_injection.Ir), grid),
+                                        value=float(current_injection.Ir) / float(grid.Sbase),
                                         logger=logger,
                                         device_name=device_name
                                         )
     assign_api_mapping_value_if_present(mdl=mdl,
                                         key=ParamPowerFlowRefferenceType.current_injection_ii_pu,
-                                        value=mvar_to_pu_on_grid_base(float(current_injection.Ii), grid),
+                                        value=float(current_injection.Ii) / float(grid.Sbase),
                                         logger=logger,
                                         device_name=device_name
                                         )
@@ -2670,7 +2611,7 @@ def assign_generator_static_api_mapping(
     :return: None.
     """
     device_name: str = str(generator.name)
-    omega_base: float = omega_base_from_grid(grid)
+    omega_base: float = 2.0 * np.pi * float(grid.fBase)
 
     assign_common_injection_static_api_mapping(
         grid=grid,
@@ -2693,7 +2634,7 @@ def assign_generator_static_api_mapping(
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowRefferenceType.fn,
-        value=frequency_base_hz_from_grid(grid),
+        value=float(grid.fBase),
         logger=logger,
         device_name=device_name,
         problem_mapping=problem_mapping,
@@ -2733,7 +2674,7 @@ def assign_generator_static_api_mapping(
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowRefferenceType.generator_p_pu,
-        value=mw_to_pu_on_grid_base(float(generator.P), grid),
+        value=float(generator.P) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
         problem_mapping=problem_mapping,
@@ -2741,7 +2682,7 @@ def assign_generator_static_api_mapping(
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowRefferenceType.generator_q_pu,
-        value=mvar_to_pu_on_grid_base(float(generator.Q), grid),
+        value=float(generator.Q) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
         problem_mapping=problem_mapping,
@@ -2749,7 +2690,7 @@ def assign_generator_static_api_mapping(
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowRefferenceType.generator_pmin_pu,
-        value=mw_to_pu_on_grid_base(float(generator.Pmin), grid),
+        value=float(generator.Pmin) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
         problem_mapping=problem_mapping,
@@ -2757,7 +2698,7 @@ def assign_generator_static_api_mapping(
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowRefferenceType.generator_pmax_pu,
-        value=mw_to_pu_on_grid_base(float(generator.Pmax), grid),
+        value=float(generator.Pmax) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
         problem_mapping=problem_mapping,
@@ -2765,7 +2706,7 @@ def assign_generator_static_api_mapping(
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowRefferenceType.generator_qmin_pu,
-        value=mvar_to_pu_on_grid_base(float(generator.Qmin), grid),
+        value=float(generator.Qmin) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
         problem_mapping=problem_mapping,
@@ -2773,7 +2714,7 @@ def assign_generator_static_api_mapping(
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowRefferenceType.generator_qmax_pu,
-        value=mvar_to_pu_on_grid_base(float(generator.Qmax), grid),
+        value=float(generator.Qmax) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
         problem_mapping=problem_mapping,
@@ -2829,7 +2770,7 @@ def assign_generator_static_api_mapping(
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowRefferenceType.generator_is_controlled,
-        value=boolean_to_float(bool(generator.is_controlled)),
+        value=1.0 if bool(generator.is_controlled) else 0.0,
         logger=logger,
         device_name=device_name,
         problem_mapping=problem_mapping,
@@ -2837,7 +2778,7 @@ def assign_generator_static_api_mapping(
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowRefferenceType.generator_enabled_dispatch,
-        value=boolean_to_float(bool(generator.enabled_dispatch)),
+        value=1.0 if bool(generator.enabled_dispatch) else 0.0,
         logger=logger,
         device_name=device_name,
         problem_mapping=problem_mapping,
@@ -2845,7 +2786,7 @@ def assign_generator_static_api_mapping(
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowRefferenceType.generator_must_run,
-        value=boolean_to_float(bool(generator.must_run)),
+        value=1.0 if bool(generator.must_run) else 0.0,
         logger=logger,
         device_name=device_name,
         problem_mapping=problem_mapping,
@@ -2853,7 +2794,7 @@ def assign_generator_static_api_mapping(
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowRefferenceType.generator_use_reactive_power_curve,
-        value=boolean_to_float(bool(generator.use_reactive_power_curve)),
+        value=1.0 if bool(generator.use_reactive_power_curve) else 0.0,
         logger=logger,
         device_name=device_name,
         problem_mapping=problem_mapping,
@@ -2987,7 +2928,7 @@ def assign_vsc_static_api_mapping(
     :return: None.
     """
     device_name: str = str(vsc.name)
-    omega_base: float = omega_base_from_grid(grid)
+    omega_base: float = 2.0 * np.pi * float(grid.fBase)
 
     assign_common_branch_static_api_mapping(
         device=vsc,
@@ -3254,7 +3195,7 @@ def assign_transformer2w_static_api_mapping(
 
     device_name: str = str(transformer.name)
     eps_value: float = 1.0e-12
-    omega_base: float = omega_base_from_grid(grid)
+    omega_base: float = 2.0 * np.pi * float(grid.fBase)
     sn_value: float = max(float(transformer.Sn), 1.0e-9)
     pcu_kw_value: float = max(float(transformer.Pcu), 0.0)
     pfe_kw_value: float = max(float(transformer.Pfe), 0.0)

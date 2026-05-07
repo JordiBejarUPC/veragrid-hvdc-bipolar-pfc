@@ -10,7 +10,7 @@ import VeraGridEngine.api as gce
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
-from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
+from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_tensygrid import (
     RmsProblemTensygrid,

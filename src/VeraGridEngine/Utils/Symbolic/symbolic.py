@@ -17,7 +17,7 @@ import numba as nb
 from typing import Any, Dict, Mapping, Union, List, Sequence, Tuple, Set, Optional
 
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
-# from VeraGridEngine.Devices.Dynamic.var_factory import SharedVarReferenceType
+
 
 NUMBER = Union[int, float, complex]
 
@@ -406,12 +406,12 @@ class Var(Expr):
     Any variable
     """
 
-    __slots__ = ("name", "_ref", "_shared_ref", "_network_conn", "uid", "diff_var", "base_var", "_origin_var")
+    __slots__ = ("name", "_ref", "_network_conn", "_shared_ref", "uid", "diff_var", "base_var", "_origin_var")
 
     def __init__(self, name: str,
                  reference: VarPowerFlowRefferenceType | None = None,
-                 shared_reference: SharedVarReferenceType | None = None,
                  network_conn: bool = False,
+                 shared_reference: SharedVarReferenceType | None = None,
                  uid: int | None = None,
                  diff_var: Var | None = None,
                  base_var: Var | None = None):
@@ -427,9 +427,9 @@ class Var(Expr):
         """
         super().__init__(uid=uid)
         self.name: str = name
-        self._shared_ref: SharedVarReferenceType | None = shared_reference
         self._ref: VarPowerFlowRefferenceType | None = reference
         self._network_conn: bool = network_conn
+        self._shared_ref: SharedVarReferenceType | None = shared_reference
         self.diff_var = diff_var
         self.base_var: Var | None = base_var  # assign reference to base var
         self._origin_var: Var | None = None
@@ -449,6 +449,8 @@ class Var(Expr):
         else:
             result: Var = Var.__new__(Var)
             memo[id(self)] = result
+            if isinstance(self._shared_ref, bool):
+                print("")
 
             result.uid = self.uid
             result.name = self.name
@@ -458,6 +460,8 @@ class Var(Expr):
             result.diff_var = copy.deepcopy(self.diff_var, memo)
             result.base_var = copy.deepcopy(self.base_var, memo)
             result._origin_var = None
+            if isinstance(result._shared_ref, bool):
+                print("")
             return result
 
     def eval(self, **bindings: float) -> float:

@@ -49,10 +49,10 @@ def get_line_rms_template(vfactory: VarFactory, name="Line_rms_template") -> Rms
 
     pi2 = np.pi / 2
     templ.block.algebraic_eqs = [
-        (Pf - ((inputs[0] ** 2 * g) - g * inputs[0] * inputs[2] * cos(inputs[1] - inputs[3]) + b * inputs[0] * inputs[2] * cos(inputs[1] - inputs[3] + pi2))),
-        (Qf - (inputs[0] ** 2 * (-bsh / 2 - b) - g * inputs[0] * inputs[2] * sin(inputs[1] - inputs[3]) + b * inputs[0] * inputs[2] * sin(inputs[1] - inputs[3] + pi2))),
-        (Pt - ((inputs[2] ** 2 * g) - g * inputs[2] * inputs[0] * cos(inputs[3] - inputs[1]) + b * inputs[2] * inputs[0] * cos(inputs[3] - inputs[1] + pi2))),
-        (Qt - (inputs[2] ** 2 * (-bsh / 2 - b) - g * inputs[2] * inputs[0] * sin(inputs[3] - inputs[1]) + b * inputs[2] * inputs[0] * sin(inputs[3] - inputs[1] + pi2))),
+        u * (Pf - ((inputs[0] ** 2 * g) - g * inputs[0] * inputs[2] * cos(inputs[1] - inputs[3]) + b * inputs[0] * inputs[2] * cos(inputs[1] - inputs[3] + pi2))),
+        u * (Qf - (inputs[0] ** 2 * (-bsh / 2 - b) - g * inputs[0] * inputs[2] * sin(inputs[1] - inputs[3]) + b * inputs[0] * inputs[2] * sin(inputs[1] - inputs[3] + pi2))),
+        u * (Pt - ((inputs[2] ** 2 * g) - g * inputs[2] * inputs[0] * cos(inputs[3] - inputs[1]) + b * inputs[2] * inputs[0] * cos(inputs[3] - inputs[1] + pi2))),
+        u * (Qt - (inputs[2] ** 2 * (-bsh / 2 - b) - g * inputs[2] * inputs[0] * sin(inputs[3] - inputs[1]) + b * inputs[2] * inputs[0] * sin(inputs[3] - inputs[1] + pi2))),
     ]
 
     templ.block.external_mapping = {
@@ -85,8 +85,8 @@ def get_dc_line_rms_template(vfactory: VarFactory, name="DC_Line_rms_template") 
     templ.tpe = DeviceType.DCLineDevice
     templ.name = name
 
-    Vdcf = vfactory.add_var("Vdcf_" + name, VarPowerFlowRefferenceType.Vmf)
-    Vdct = vfactory.add_var("Vdct_" + name, VarPowerFlowRefferenceType.Vmt)
+    Vdcf = vfactory.add_var("Vdcf_" + name, reference=VarPowerFlowRefferenceType.Vmf)
+    Vdct = vfactory.add_var("Vdct_" + name, reference=VarPowerFlowRefferenceType.Vmt)
     inputs: List[Var] = [Vdcf, Vdct]
 
     If_dc = vfactory.add_var("If_dc")

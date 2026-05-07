@@ -135,8 +135,8 @@ class VarFactory(EditableDevice):
     def add_diff_var(self,
                      name: str,
                      reference: VarPowerFlowRefferenceType | None = None,
-                     shared_reference: SharedVarReferenceType | None = None,
                      network_conn: bool = False,
+                     shared_reference: SharedVarReferenceType | None = None,
                      uid: int | None = None,
                      diff_var: Var | None = None,
                      base_var: Var | None = None) -> Var:

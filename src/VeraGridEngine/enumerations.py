@@ -3421,6 +3421,7 @@ class ParamPowerFlowRefferenceType(Enum):
     transformer_short_circuit_loss_kw = "transformer_short_circuit_loss_kw"
     transformer_tap_ratio = "transformer_tap_ratio"
     transformer_tap_module = "transformer_tap_module"
+    transformer_tap_phase = "transformer_tap_phase"
     transformer_nominal_voltage_ratio = "transformer_nominal_voltage_ratio"
     transformer_total_voltage_ratio = "transformer_total_voltage_ratio"
     transformer_terminal_capacitance_pu_s = "transformer_terminal_capacitance_pu_s"
