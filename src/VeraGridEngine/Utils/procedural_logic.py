@@ -814,6 +814,71 @@ class SampledValueLogic(ProceduralLogicBase):
         )
 
 
+class HardSaturationLogic(ProceduralLogicBase):
+    """
+    Sample one input and apply hard saturation to a runtime mode variable.
+    """
+
+    __slots__ = ["output_var_name", "u_expr", "u_min_expr", "u_max_expr", "output_idx", "_u_eval", "_u_min_eval", "_u_max_eval"]
+    logic_tpe = ProceduralLogicType.HardSaturation
+
+    def __init__(
+        self,
+        output_var_name: str,
+        u_expr: Expr | Comparison,
+        u_min_expr: Expr | Comparison,
+        u_max_expr: Expr | Comparison,
+        name: str = "",
+    ) -> None:
+        super().__init__(name=name)
+        self.output_var_name = output_var_name
+        self.u_expr = u_expr
+        self.u_min_expr = u_min_expr
+        self.u_max_expr = u_max_expr
+        self.output_idx = -1
+        self._u_eval: Callable[[float, Vec, Vec], float] | None = None
+        self._u_min_eval: Callable[[float, Vec, Vec], float] | None = None
+        self._u_max_eval: Callable[[float, Vec, Vec], float] | None = None
+
+    def bind(self, problem: EmtProblemTemplate) -> None:
+        super().bind(problem)
+        output_var = _find_var_by_name(problem.sys_block, self.output_var_name)
+        self.output_idx = int(problem.uid2idx_event_params[output_var.uid])
+        self._u_eval = self._build_numeric_evaluator(self.u_expr)
+        self._u_min_eval = self._build_numeric_evaluator(self.u_min_expr)
+        self._u_max_eval = self._build_numeric_evaluator(self.u_max_expr)
+
+    def update(self, t: float, x: Vec, params: Vec) -> None:
+        if self._u_eval is None:
+            self._u_eval = self._build_numeric_evaluator(self.u_expr)
+        if self._u_min_eval is None:
+            self._u_min_eval = self._build_numeric_evaluator(self.u_min_expr)
+        if self._u_max_eval is None:
+            self._u_max_eval = self._build_numeric_evaluator(self.u_max_expr)
+
+        assert self._u_eval is not None
+        assert self._u_min_eval is not None
+        assert self._u_max_eval is not None
+
+        u_val: float = float(self._u_eval(t, x, params))
+        u_min_val: float = float(self._u_min_eval(t, x, params))
+        u_max_val: float = float(self._u_max_eval(t, x, params))
+        if u_min_val <= u_max_val:
+            params[self.output_idx] = min(max(u_val, u_min_val), u_max_val)
+        else:
+            params[self.output_idx] = min(max(u_val, u_max_val), u_min_val)
+
+    def remap(self, var_mapping: VarRemap) -> "HardSaturationLogic":
+        name_mapping = _build_name_mapping(var_mapping)
+        return HardSaturationLogic(
+            output_var_name=name_mapping.get(self.output_var_name, self.output_var_name),
+            u_expr=_subs_expr_like(self.u_expr, var_mapping),
+            u_min_expr=_subs_expr_like(self.u_min_expr, var_mapping),
+            u_max_expr=_subs_expr_like(self.u_max_expr, var_mapping),
+            name=self.name,
+        )
+
+
 class TimeDelayLogic(ProceduralLogicBase):
     """
     Sample one input and expose its delayed value through a runtime mode variable.
@@ -1489,6 +1554,33 @@ def sampled_value(output: Var | str, source: Expr | Comparison, name: str = "") 
     return SampledValueLogic(
         output_var_name=output_name,
         source_expr=source,
+        name=output_name if name == "" else name,
+    )
+
+
+def hard_saturation(
+    output: Var | str,
+    u: Expr | Comparison,
+    u_min: Expr | Comparison,
+    u_max: Expr | Comparison,
+    name: str = "",
+) -> HardSaturationLogic:
+    """
+    Build one procedural hard-saturation entry updated outside Newton residuals.
+
+    :param output: Runtime mode variable receiving saturated value.
+    :param u: Unsaturated input expression.
+    :param u_min: Lower saturation bound.
+    :param u_max: Upper saturation bound.
+    :param name: Optional logic name.
+    :return: Hard-saturation procedural logic entry.
+    """
+    output_name = _coerce_var_name(output)
+    return HardSaturationLogic(
+        output_var_name=output_name,
+        u_expr=u,
+        u_min_expr=u_min,
+        u_max_expr=u_max,
         name=output_name if name == "" else name,
     )
 
@@ -3024,6 +3116,14 @@ def procedural_logic_entry_to_dict(entry: ProceduralLogicBase) -> ProceduralLogi
             "source_expr": _expr_like_to_dict(entry.source_expr),
         })
         return data
+    elif isinstance(entry, HardSaturationLogic):
+        data.update({
+            "output_var_name": entry.output_var_name,
+            "u_expr": _expr_like_to_dict(entry.u_expr),
+            "u_min_expr": _expr_like_to_dict(entry.u_min_expr),
+            "u_max_expr": _expr_like_to_dict(entry.u_max_expr),
+        })
+        return data
     elif isinstance(entry, TimeDelayLogic):
         data.update({
             "output_var_name": entry.output_var_name,
@@ -3144,6 +3244,16 @@ def _sampled_value_logic_from_dict(data: ProceduralLogicData) -> SampledValueLog
     return SampledValueLogic(
         output_var_name=str(data["output_var_name"]),
         source_expr=_expr_like_from_dict(_get_expr_like_field(data, "source_expr")),
+        name=str(data.get("name", "")),
+    )
+
+
+def _hard_saturation_logic_from_dict(data: ProceduralLogicData) -> HardSaturationLogic:
+    return HardSaturationLogic(
+        output_var_name=str(data["output_var_name"]),
+        u_expr=_expr_like_from_dict(_get_expr_like_field(data, "u_expr")),
+        u_min_expr=_expr_like_from_dict(_get_expr_like_field(data, "u_min_expr")),
+        u_max_expr=_expr_like_from_dict(_get_expr_like_field(data, "u_max_expr")),
         name=str(data.get("name", "")),
     )
 
@@ -3328,6 +3438,8 @@ def build_procedural_logic_entry(data: ProceduralLogicData) -> ProceduralLogicBa
         return _fixed_sample_logic_from_dict(data)
     elif logic_tpe == ProceduralLogicType.SampledValue:
         return _sampled_value_logic_from_dict(data)
+    elif logic_tpe == ProceduralLogicType.HardSaturation:
+        return _hard_saturation_logic_from_dict(data)
     elif logic_tpe == ProceduralLogicType.TimeDelay:
         return _time_delay_logic_from_dict(data)
     elif logic_tpe == ProceduralLogicType.MovingAverage:

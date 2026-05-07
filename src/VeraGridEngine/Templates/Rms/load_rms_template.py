@@ -32,8 +32,8 @@ def get_load_rms_template(
     Pl = vfactory.add_var("Pl", reference=VarPowerFlowRefferenceType.P)
     Ql = vfactory.add_var("Ql", reference=VarPowerFlowRefferenceType.Q)
 
-    templ.block.event_dict[Pl0] = vfactory.add_const(pl0_init)
-    templ.block.event_dict[Ql0] = vfactory.add_const(ql0_init)
+    templ.block.event_dict[Pl0] = Pl
+    templ.block.event_dict[Ql0] = Ql
 
     templ.block.algebraic_vars = [Pl, Ql]
     templ.block.out_vars = [Pl, Ql]
@@ -52,10 +52,10 @@ def get_load_rms_template(
         ParamPowerFlowRefferenceType.Ql0: Ql0,
     }
 
-    templ.block.init_eqs = {
-        Pl0: Pl,
-        Ql0: Ql,
-    }
+    #templ.block.init_eqs = {
+    #    Pl0: Pl,
+    #    Ql0: Ql,
+    #}
     templ.block.in_vars = inputs
 
     return templ
