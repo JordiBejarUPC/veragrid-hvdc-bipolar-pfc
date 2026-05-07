@@ -500,10 +500,23 @@ def get_gcdev_dc_device_to_terminal_dict(
 
         if dc_node is not None:
             dc_tp = conv_dc_term.DCTopologicalNode
-            if isinstance(dc_node.DCTerminals[0], dc_terminal_type):
-                dc_term_n = dc_node.DCTerminals[0]
-            elif isinstance(dc_node.DCTerminals[1], dc_terminal_type):
-                dc_term_n = dc_node.DCTerminals[1]
+
+            dc_node_terminals = getattr(dc_node, "DCTerminals", None)
+            if dc_node_terminals is None or len(dc_node_terminals) == 0:
+                logger.add_error(
+                    msg='No DCTerminals in DCNode',
+                    device=conv_dc_term.rdfid,
+                    device_class=conv_dc_term.tpe,
+                    device_property="DCNode.DCTerminals",
+                    value=dc_node_terminals,
+                    comment="get_gcdev_dc_device_to_terminal_dict"
+                )
+                continue
+
+            if isinstance(dc_node_terminals[0], dc_terminal_type):
+                dc_term_n = dc_node_terminals[0]
+            elif len(dc_node_terminals) > 1 and isinstance(dc_node_terminals[1], dc_terminal_type):
+                dc_term_n = dc_node_terminals[1]
             else:
                 logger.add_error(
                     msg='No DCTerminal in DCNode Terminals [0:1]',
@@ -513,8 +526,21 @@ def get_gcdev_dc_device_to_terminal_dict(
                     value=conv_dc_term.DCNode,
                     comment="get_gcdev_dc_device_to_terminal_dict"
                 )
+                continue
 
-            if isinstance(dc_term_n.DCConductingEquipment, dc_ground_type):
+            dc_term_n_cond_eq = getattr(dc_term_n, "DCConductingEquipment", None)
+            if dc_term_n_cond_eq is None:
+                logger.add_error(
+                    msg='No DCConductingEquipment in DCTerminal',
+                    device=conv_dc_term.rdfid,
+                    device_class=conv_dc_term.tpe,
+                    device_property="DCTerminal.DCConductingEquipment",
+                    value=dc_term_n,
+                    comment="get_gcdev_dc_device_to_terminal_dict"
+                )
+                continue
+
+            if isinstance(dc_term_n_cond_eq, dc_ground_type):
                 logger.add_info(msg='DCGround ACDC converter DC terminals are not imported',
                                 device=conv_dc_term.rdfid,
                                 device_class=conv_dc_term.tpe,
@@ -526,6 +552,13 @@ def get_gcdev_dc_device_to_terminal_dict(
                 continue
             else:  # DCTerminals for ACDCConverter DC side
                 dc_cond_eq = conv_dc_term.DCConductingEquipment  # the VSC
+                if dc_cond_eq is None:
+                    logger.add_error(msg='No DCConductingEquipment',
+                                     device=conv_dc_term.rdfid,
+                                     device_class=conv_dc_term.tpe,
+                                     device_property="DCConductingEquipment",
+                                     comment="get_gcdev_dc_device_to_terminal_dict")
+                    continue
                 lst = dc_device_to_terminal_dict.get(dc_cond_eq.uuid, None)
                 if lst is None:
                     dc_device_to_terminal_dict[dc_cond_eq.uuid] = [dc_term_n]
