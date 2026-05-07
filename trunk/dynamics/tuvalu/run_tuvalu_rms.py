@@ -428,7 +428,7 @@ def main() -> int:
 
     print("Running RMS dynamic simulation...")
     rms_options = vg.RmsOptions(
-        simulation_time=10.0,
+        simulation_time=1.0,
         time_step=0.01,
         max_iter=60,
         tolerance=1e-6,

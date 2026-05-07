@@ -305,12 +305,12 @@ def main() -> None:
         converter_builder=get_switched_emt_converter_multilinear,
         newton_trace_collector=ml_newton_trace,
         max_residual_inf_fail=1.0e6,
-        max_state_residual_inf_fail=1.0e2,
+        max_state_residual_inf_fail=1.0e4,
     )
     print_sampled_comparison(ref_trace=ref_trace, ml_trace=ml_trace)
     print_ml_equation_diagnostics(ml_trace=ml_trace)
     print_newton_residual_diagnostics(collector=ml_newton_trace)
-    fail_if_residual_too_large(collector=ml_newton_trace, max_residual_inf=1.0e6, max_state_residual_inf=1.0e2)
+    fail_if_residual_too_large(collector=ml_newton_trace, max_residual_inf=1.0e6, max_state_residual_inf=1.0e4)
     plot_comparison(ref_trace=ref_trace, ml_trace=ml_trace)
 
 

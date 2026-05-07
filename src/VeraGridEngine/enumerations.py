@@ -3971,6 +3971,7 @@ class ProceduralLogicType(Enum):
     Base = "base"
     FixedSample = "fixed_sample"
     SampledValue = "sampled_value"
+    HardSaturation = "hard_saturation"
     FlipFlop = "flipflop"
     AnalogFlipFlop = "analog_flipflop"
     PickupDropoff = "pickup_dropoff"
@@ -4023,4 +4024,3 @@ class EmtInitializationStatus(Enum):
             return EmtInitializationStatus[s]
         except KeyError:
             return s
-

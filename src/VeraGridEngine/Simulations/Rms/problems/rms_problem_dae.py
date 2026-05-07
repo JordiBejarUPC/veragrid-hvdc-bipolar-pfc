@@ -8,16 +8,19 @@ import numpy as np
 import pandas as pd
 import scipy.sparse as sp
 
-from VeraGridEngine.enumerations import ParamPowerFlowRefferenceType
+from VeraGridEngine import DeviceType
+from VeraGridEngine.enumerations import ParamPowerFlowRefferenceType, DeviceType
 from VeraGridEngine.Devices import MultiCircuit
 from VeraGridEngine.Simulations.driver_template import DummySignal
 from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr, piecewise, get_expression_vars)
 from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicParamsVector, SymbolicDerivative
 from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, RmsInitializationMethod
 from VeraGridEngine.basic_structures import Vec, ObjVec, BoolVec, Logger
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
+from VeraGridEngine.Simulations.Rms.initialization_rms import run_rms_native_initialization
 from VeraGridEngine.Utils.Symbolic.explicit_initialization_symbolic import (init_explicit_common,
                                                                             build_rms_single_equation_compiler)
 from VeraGridEngine.Simulations.Rms.initialization import init_pseudo_transient
@@ -47,6 +50,27 @@ from VeraGridEngine.Utils.Symbolic.static_parameter_mapping_rms import (
 )
 
 from VeraGridEngine.Utils.procedural_logic import BlockProceduralLogicUpdater
+
+def assign_static_parameters(elm:Any, parameter_reference: ParamPowerFlowRefferenceType) -> Const:
+    if elm.device_type == DeviceType.LineDevice:
+        return assign_line_static_parameters(elm, parameter_reference)
+    else:
+        raise ValueError(f"Not possible to assign static values to {elm.device_type}")
+
+def assign_line_static_parameters(elm: Any, parameter_reference: ParamPowerFlowRefferenceType) -> Const:
+    if parameter_reference == ParamPowerFlowRefferenceType.g:
+        return Const(float(elm.R / (elm.R ** 2 + elm.X ** 2)))
+    if parameter_reference == ParamPowerFlowRefferenceType.b:
+        return Const(float(-elm.X / (elm.R ** 2 + elm.X ** 2)))
+    if parameter_reference == ParamPowerFlowRefferenceType.bsh:
+        return Const(elm.B)
+    if parameter_reference == ParamPowerFlowRefferenceType.r:
+        return Const(elm.R)
+    if parameter_reference == ParamPowerFlowRefferenceType.l:
+        return Const(elm.X)
+    else:
+        raise ValueError("parameter reference expression missing")
+
 
 def _tic():
     return time.perf_counter()
@@ -185,7 +209,6 @@ class RmsProblemDae(RmsProblemTemplate):
         self._constant_parameters: List[Var] = list()
         self._parameters_values: List[Const] = list()
         self._static_parameterm_values_mapping: Dict[Var, Const] = dict()
-        self._globalname_count: Dict[str, int] = dict()
 
         self._runtime_all_parameters_source: List[Var] = list()
         self._runtime_all_eqs_source: List[Expr | Const] = list()
@@ -282,7 +305,6 @@ class RmsProblemDae(RmsProblemTemplate):
             bus_dict[elm] = bus_num
 
             # default initialization
-            # TODO delete init here!
             if elm.rms_model.empty():
                 initialize_bus_rms(elm, self.grid.var_factory)
                 # initialize_bus_rms, get_bus_rms_algebraic_vars
@@ -313,11 +335,11 @@ class RmsProblemDae(RmsProblemTemplate):
                                       device=elm.name)
             else:
 
-                assign_static_api_object_mapping_for_device(grid=self.grid,
-                                                            device=elm,
-                                                            mdl=elm.rms_model,
-                                                            problem_mapping=self._static_parameterm_values_mapping,
-                                                            logger=None)
+                # assign_static_api_object_mapping_for_device(grid=self.grid,
+                #                                             device=elm,
+                #                                             mdl=elm.rms_model,
+                #                                             problem_mapping=self._static_parameterm_values_mapping,
+                #                                             logger=None)
                 # # modify function to fill self._static_parameterm_values_mapping
 
                 if ParamPowerFlowRefferenceType.g in elm.rms_model.api_obj_mapping:
@@ -419,13 +441,6 @@ class RmsProblemDae(RmsProblemTemplate):
                     tap_phase = elm.tap_phase
                     ys = 1.0 / complex(elm.R, elm.X)
                     ysh = elm.G + 1j * elm.B
-
-                    # TODO: Uncoment when everything works
-                    # assign_static_api_object_mapping_for_device(grid=self.grid,
-                    #                                             device=elm,
-                    #                                             mdl=elm.rms_model,
-                    #                                             problem_mapping=self._static_parameterm_values_mapping,
-                    #                                             logger=None)
 
                     transformer_param_values: Dict[ParamPowerFlowRefferenceType, float] = {
                         ParamPowerFlowRefferenceType.g: ys.real,
@@ -733,7 +748,6 @@ class RmsProblemDae(RmsProblemTemplate):
                 bus_index = bus_dict[elm.bus]
 
                 # get variables from bus
-                # TODO: delete init here!
                 if elm.bus.rms_model.empty():
                     initialize_bus_rms(elm.bus, self.grid.var_factory)
 
@@ -932,7 +946,8 @@ class RmsProblemDae(RmsProblemTemplate):
         # add the nodal balance equations
         ac_virtual_buses = [elm.bus_to.idtag for elm in grid.get_vsc()]
         for i, elm in enumerate(self.grid.buses):
-            if len(elm.rms_model.algebraic_eqs) == 0:
+            mdl = block_deep_copy(elm.rms_model, grid.var_factory)
+            if len(mdl.algebraic_eqs) == 0:
                 if not P_used[i] and not Q_used[i]:
                     self.logger.add_error("Isolated bus", value=i)
                 else:
@@ -1600,35 +1615,20 @@ class RmsProblemDae(RmsProblemTemplate):
             self._compiler_names_dict[v.uid] = f"{self.VARS_NAME}[{self._n_vars}]"
             self._alias_names_dict[v.uid] = f"{self.VARS_NAME}_{self._n_vars}"
             self._uid2idx_vars[v.uid] = self._n_vars
-            var_glob_name =  v.name + elm.name
-            if var_glob_name not in self._globalname_count:
-                self._vars_glob_name2uid[var_glob_name] = v.uid
-                self._globalname_count[var_glob_name] = 1
-                print("")
-            else:
-                self._vars_glob_name2uid[v.name + elm.name + str(self._globalname_count[var_glob_name])] = v.uid
-                self._globalname_count[var_glob_name] += 1
+            self._register_global_var_name(name_key=v.name + elm.name, uid=v.uid, block=mdl)
             self.add_device_var(dev=elm, var=v)
             self.sys_vars[v.uid] = v
             self._state_vars.append(v)
             self._n_vars += 1
 
         for v in mdl.algebraic_vars:
-            if v.name == "Vmf":
-                print("")
             if v.uid in self._uid2idx_vars:
                 raise ValueError(f"Algebraic variable '{v.name}' (uid={v.uid}) is already registered in the system. "
                                  f"Previous device may have created a duplicate variable.")
             self._compiler_names_dict[v.uid] = f"{self.VARS_NAME}[{self._n_vars}]"
             self._alias_names_dict[v.uid] = f"{self.VARS_NAME}_{self._n_vars}"
             self._uid2idx_vars[v.uid] = self._n_vars
-            var_glob_name = v.name + elm.name + str(0)
-            if var_glob_name not in self._globalname_count:
-                self._vars_glob_name2uid[v.name + elm.name + str(0)] = v.uid
-                self._globalname_count[var_glob_name] = 1
-            else:
-                self._vars_glob_name2uid[v.name + elm.name + str(self._globalname_count[var_glob_name])] = v.uid
-                self._globalname_count[var_glob_name] += 1
+            self._register_global_var_name(name_key=v.name + elm.name, uid=v.uid, block=mdl)
             self.add_device_var(dev=elm, var=v)
             self.sys_vars[v.uid] = v
             self._algebraic_vars.append(v)
@@ -1640,19 +1640,25 @@ class RmsProblemDae(RmsProblemTemplate):
             if ep.uid in self._uid2idx_params:
                 raise ValueError(f"Parameter '{ep.name}' (uid={ep.uid}) is already registered in the system. "
                                  f"Previous device may have created a duplicate parameter.")
-
             self._compiler_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}[{self._n_params}]"
             self._alias_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}_{self._n_params}"
             self._uid2idx_params[ep.uid] = self._n_params
             self._constant_parameters.append(ep)
-            # search value in self._static_parameterm_values_mapping
-            if ep in self._static_parameterm_values_mapping:
-                self._parameters_values.append(self._static_parameterm_values_mapping[ep])
-            else:
-                self._parameters_values.append(const)
-                print(f"missing parameter {ep} in static parameters mapping")
-
+            self._parameters_values.append(const)
             self._n_params += 1
+
+        # for ep, const in mdl.parameters.items():
+        #     if ep.uid in self._uid2idx_params:
+        #         raise ValueError(f"Parameter '{ep.name}' (uid={ep.uid}) is already registered in the system. "
+        #                          f"Previous device may have created a duplicate parameter.")
+        #
+        #     self._compiler_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}[{self._n_params}]"
+        #     self._alias_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}_{self._n_params}"
+        #     self._uid2idx_params[ep.uid] = self._n_params
+        #     self._constant_parameters.append(ep)
+        #     # search value in self._static_parameterm_values_mapping
+        #     self._parameters_values.append(self._static_parameterm_values_mapping[ep])
+        #     self._n_params += 1
 
         # m is for variable parameters
         self._register_runtime_event_parameters(dev=elm, mdl=mdl)
@@ -1708,13 +1714,7 @@ class RmsProblemDae(RmsProblemTemplate):
             self._compiler_names_dict[v.uid] = f"{self.DIFF_NAME}[{self._n_diff}]"
             self._alias_names_dict[v.uid] = f"{self.DIFF_NAME}_{self._n_diff}"
             self._uid2idx_diff[v.uid] = self._n_diff
-            var_glob_name = v.name + elm.name + str(0)
-            if var_glob_name not in self._globalname_count:
-                self._vars_glob_name2uid[v.name + elm.name + str(0)] = v.uid
-                self._globalname_count[var_glob_name] = 1
-            else:
-                self._vars_glob_name2uid[v.name + elm.name + str(self._globalname_count[var_glob_name])] = v.uid
-                self._globalname_count[var_glob_name] += 1
+            self._register_global_var_name(name_key=v.name + elm.name, uid=v.uid, block=mdl)
             self.add_device_var(dev=elm, var=v)
             self._diff_vars.append(v)
             self._n_diff += 1
@@ -1811,6 +1811,27 @@ class RmsProblemDae(RmsProblemTemplate):
         :return:
         """
         return self._vars_glob_name2uid
+
+    def _register_global_var_name(self, name_key: str, uid: int, block: Block | None = None) -> None:
+        prev_uid = self._vars_glob_name2uid.get(name_key)
+        if prev_uid is None or prev_uid == uid:
+            self._vars_glob_name2uid[name_key] = uid
+            return
+
+        block_tag = ""
+        if block is not None:
+            block_tag = f"::{block.name}#{block.uid}"
+
+        disambiguated_key = f"{name_key}{block_tag}"
+        if disambiguated_key == name_key:
+            disambiguated_key = f"{name_key} [{uid}]"
+
+        if disambiguated_key in self._vars_glob_name2uid and self._vars_glob_name2uid[disambiguated_key] != uid:
+            raise ValueError(
+                f"Global variable name collision for '{name_key}' and fallback '{disambiguated_key}': "
+                f"existing uid={self._vars_glob_name2uid[disambiguated_key]}, new uid={uid}."
+            )
+        self._vars_glob_name2uid[disambiguated_key] = uid
 
     @property
     def uid2idx_vars(self):
