@@ -3464,16 +3464,18 @@ class DiagramsMain(CompiledArraysMain):
         investment-name children; we walk up to the top-level item to recover the
         combination index that was stamped via Qt.UserRole when the model was built.
 
-        Behaviour is sticky: every click first reverts every investment-touched
-        device to the snapshot baseline captured right after the evaluation, then
-        sets the selected combination's investments to active=True. This means a
-        second click on a different row replaces the previous selection cleanly.
+        Behaviour is sticky: every click first deactivates every investment-touched
+        device in the live grid, then activates only the investments belonging to
+        the clicked combination. This matches the convention the optimizer used
+        for each evaluation (an x of all zeros = every investment off), so the
+        diagram exactly reproduces the state the optimizer scored for that combo
+        and a click on a different row cleanly replaces the previous selection.
 
-        WARNING: only the snapshot 'active' flag is restored on revert. The active
-        *profile* (time-series) was overwritten by set_investments_status when the
-        previous combination was applied, and that data is not recoverable from
-        the baseline. Tell users to save the project before exploring combinations
-        if their grid has a meaningful active profile.
+        WARNING: every click overwrites the active *profile* (time-series) of
+        each touched device via set_investments_status. Any pre-existing
+        time-series active profile is lost permanently after the first click and
+        cannot be recovered. Tell users to save the project before exploring
+        combinations if their grid has a meaningful active profile.
 
         :param clicked_index: QModelIndex of the row (or child row) the user clicked
         """
@@ -3507,29 +3509,20 @@ class DiagramsMain(CompiledArraysMain):
         x_vec: np.ndarray = results.x[i, :]
         inv_list = driver.problem.get_investments_for_combination(x=x_vec)
 
-        # Sticky revert: restore every device touched by any investment to the
-        # snapshot captured at evaluation time. Without this step, devices that
-        # were switched on by a previous click would stay on, compounding
-        # selections instead of replacing them.
+        # Force a clean baseline before applying the combo: deactivate every
+        # device touched by any investment in the grid. Without this step,
+        # branches that were switched on by a previous click would stay on,
+        # compounding selections instead of replacing them. We use the cached
+        # _investments_all list (snapshot at evaluation finish) rather than the
+        # current self.circuit.investments so the deactivation set is stable
+        # across clicks and identical to what post_investments_evaluation
+        # used when seeding the diagram.
         all_elements_dict, _ = self.circuit.get_all_elements_dict()
-        for idtag, original_active in self._investments_baseline.items():
-            device = all_elements_dict.get(idtag, None)
-            if device is not None:
-                device.active = original_active
-                # also overwrite the active profile so the time-series view is
-                # consistent with the snapshot we just restored (the original
-                # profile shape is already gone from a previous click)
-                profile = device.get_profile('active')
-                if profile is not None:
-                    profile.fill(original_active)
-                else:
-                    # device has no active profile - snapshot-only restore is enough
-                    pass
-            else:
-                # device was deleted between baseline capture and now - skip it
-                pass
+        self.circuit.set_investments_status(investments_list=self._investments_all,
+                                            status=False,
+                                            all_elements_dict=all_elements_dict)
 
-        # apply the selected combination on top of the now-baseline state
+        # apply the selected combination on top of the now-deactivated state
         self.circuit.set_investments_status(investments_list=inv_list,
                                             status=True,
                                             all_elements_dict=all_elements_dict)

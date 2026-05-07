@@ -57,15 +57,18 @@ class SimulationsMain(TimeEventsMain):
 
         self._remote_jobs: Dict[str, RemoteJobDriver] = dict()
 
-        # Snapshot baseline of device.active flags for every investment-touched device,
-        # captured right after an Investments-evaluation run. Used by the Variations-panel
-        # click handler to revert the previous selection before applying a new combination
-        # (so the panel behaves stickily across clicks).
-        # WARNING: snapshot only. set_investments_status overwrites the device's active
-        # *profile* (per-timestep) on every apply, so any pre-existing time-series active
-        # profile on these devices is lost permanently after the first click and cannot be
-        # restored from this baseline.
-        self._investments_baseline: Dict[str, bool] = dict()
+        # Snapshot of every Investment in the live circuit at the moment an
+        # Investments-evaluation run finishes. The Variations-panel click handler
+        # uses it to deactivate every investment-touched device first, and then
+        # activate only the investments belonging to the clicked Pareto
+        # combination — matching the convention the optimizer used internally
+        # (an x vector of zeros = every investment off).
+        # WARNING: snapshot semantic only. set_investments_status overwrites each
+        # touched device's active *profile* (per-timestep) on every click. Any
+        # pre-existing time-series active profile on these devices is lost
+        # permanently after the first click. Save the project before exploring
+        # combinations if the original profile shape matters.
+        self._investments_all: List[dev.Investment] = list()
 
         # Power Flow Methods
         self.se_solvers_dict, se_solvers_mdl = gf.enums_to_model(
@@ -3149,26 +3152,15 @@ class SimulationsMain(TimeEventsMain):
 
             self.update_available_results()
 
-            # Capture the snapshot baseline of device.active for every device touched
-            # by any investment in the live grid BEFORE we apply anything. The
-            # Variations-panel click handler uses this to revert the previously-clicked
-            # combination before applying a new one, so selections behave stickily.
-            # WARNING: snapshot only. set_investments_status will overwrite each
-            # device's active *profile* (per-timestep) when a combination is applied,
-            # and the original time-series profile is not stored here. Repeated
-            # clicks therefore leave the active profile filled with the last
-            # applied status; the original profile shape is lost.
-            self._investments_baseline = dict()
+            # Cache every Investment object in the live grid so the Variations-panel
+            # click handler can deactivate them all before activating just the ones
+            # in the clicked Pareto combination. We snapshot the list itself (not
+            # device states) because per-click semantics are "force every touched
+            # device to inactive, then activate the selected subset" — exactly the
+            # convention the optimizer used. This avoids the bug where capturing
+            # device.active states could leak True flags through the revert path.
+            self._investments_all = list(self.circuit.investments)
             all_elements_dict, _ = self.circuit.get_all_elements_dict()
-            for inv in self.circuit.investments:
-                # device targeted by the investment must exist; if it was deleted
-                # between investment creation and now, just skip the snapshot
-                device = all_elements_dict.get(inv.device_idtag, None)
-                if device is not None:
-                    self._investments_baseline[inv.device_idtag] = bool(device.active)
-                else:
-                    # device missing from the grid - nothing to snapshot for it
-                    pass
 
             # create a schematic diagram for the best Pareto-optimal investment combination
             if driver is not None and len(results.sorting_indices) > 0:
@@ -3183,6 +3175,13 @@ class SimulationsMain(TimeEventsMain):
                 # point to the copy, and clicking a Pareto combination later would
                 # silently change self.circuit while the diagram (still bound to the
                 # untouched copy) showed every branch as dashed forever.
+                # First deactivate every investment-touched device, then activate
+                # only the ones in best_x — same all-off-then-selected convention
+                # the click handler uses, so the auto-generated diagram is
+                # consistent with what a click on the same Pareto row would do.
+                self.circuit.set_investments_status(investments_list=self._investments_all,
+                                                    status=False,
+                                                    all_elements_dict=all_elements_dict)
                 self.circuit.set_investments_status(investments_list=inv_list,
                                                     status=True,
                                                     all_elements_dict=all_elements_dict)
