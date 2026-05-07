@@ -775,10 +775,10 @@ def detect_switch_terminal_pairing_preference(cgmes_model: CgmesCircuit,
     DCTopologicalNode_tpe = cgmes_model.cgmes_assets.class_dict.get("DCTopologicalNode")
 
     switch_elements = (
-        cgmes_model.cgmes_assets.Switch_list
-        + cgmes_model.cgmes_assets.Breaker_list
-        + cgmes_model.cgmes_assets.Disconnector_list
-        + cgmes_model.cgmes_assets.LoadBreakSwitch_list
+            cgmes_model.cgmes_assets.Switch_list
+            + cgmes_model.cgmes_assets.Breaker_list
+            + cgmes_model.cgmes_assets.Disconnector_list
+            + cgmes_model.cgmes_assets.LoadBreakSwitch_list
     )
 
     if len(switch_elements) == 0:
@@ -1608,6 +1608,18 @@ def get_gcdev_hvdc_from_dcline_and_vscs(
             if rated_udc is None:
                 rated_udc = 200.0
 
+            Vset_f = vsc_list[0].targetUpcc / bus_from_resolved[0].Vnom  # if not found, 1.0 p.u.
+            if Vset_f > 1.1:
+                Vset_f = 1.1
+            elif Vset_f < 0.9:
+                Vset_f = 0.9
+
+            Vset_t = vsc_list[1].targetUpcc / bus_to_resolved[0].Vnom
+            if Vset_t > 1.1:
+                Vset_t = 1.1
+            elif Vset_t < 0.9:
+                Vset_t = 0.9
+
             gcdev_elm = gcdev.HvdcLine(
                 bus_from=bus_from_resolved[0],
                 bus_to=bus_to_resolved[0],
@@ -1619,8 +1631,8 @@ def get_gcdev_hvdc_from_dcline_and_vscs(
                 # rate=rate,
                 # rate of DCLine? or ratedP of Converter?
                 # no Limit for DC terminal in XML
-                Vset_f=vsc_list[0].targetUpcc,  # if not found, 1.0 p.u.
-                Vset_t=vsc_list[1].targetUpcc,
+                Vset_f=Vset_f,  # if not found, 1.0 p.u.
+                Vset_t=Vset_t,
                 r=dc_line_sgm.resistance,
                 dc_link_voltage=rated_udc,
             )
@@ -1750,7 +1762,7 @@ def get_gcdev_loads(cgmes_model: CgmesCircuit,
                         def _exponent_to_zip(exp: float):
                             exp = max(0.0, min(2.0, exp))
                             if exp <= 1.0:
-                                return 1.0 - exp, exp, 0.0       # (P, I, Z) weights
+                                return 1.0 - exp, exp, 0.0  # (P, I, Z) weights
                             else:
                                 return 0.0, 2.0 - exp, exp - 1.0
 
@@ -1985,12 +1997,13 @@ def get_gcdev_external_grids(cgmes_model: CgmesCircuit,
                                                        logger=logger)
                         mode = ExternalGridMode.VD
                     else:
-                        logger.add_warning(msg='EquivalentInjection voltage regulation ignored due to missing target or nominal voltage',
-                                           device=cgmes_elm.rdfid,
-                                           device_class=cgmes_elm.tpe,
-                                           device_property="regulationTarget",
-                                           value=regulation_target,
-                                           expected_value="finite target and Bus.Vnom > 0")
+                        logger.add_warning(
+                            msg='EquivalentInjection voltage regulation ignored due to missing target or nominal voltage',
+                            device=cgmes_elm.rdfid,
+                            device_class=cgmes_elm.tpe,
+                            device_property="regulationTarget",
+                            value=regulation_target,
+                            expected_value="finite target and Bus.Vnom > 0")
                 elif getattr(cgmes_elm, "controlEnabled", False):
                     regulating_control = getattr(cgmes_elm, "RegulatingControl", None)
                     if regulating_control is not None:
@@ -2002,18 +2015,20 @@ def get_gcdev_external_grids(cgmes_model: CgmesCircuit,
                                                            logger=logger)
                             mode = ExternalGridMode.VD
                         else:
-                            logger.add_warning(msg='ExternalNetworkInjection voltage regulation ignored due to missing target or nominal voltage',
-                                               device=cgmes_elm.rdfid,
-                                               device_class=cgmes_elm.tpe,
-                                               device_property="RegulatingControl.targetValue",
-                                               value=target_value,
-                                               expected_value="finite target and Bus.Vnom > 0")
+                            logger.add_warning(
+                                msg='ExternalNetworkInjection voltage regulation ignored due to missing target or nominal voltage',
+                                device=cgmes_elm.rdfid,
+                                device_class=cgmes_elm.tpe,
+                                device_property="RegulatingControl.targetValue",
+                                value=target_value,
+                                expected_value="finite target and Bus.Vnom > 0")
                     else:
-                        logger.add_warning(msg='ExternalNetworkInjection controlEnabled but RegulatingControl is missing',
-                                           device=cgmes_elm.rdfid,
-                                           device_class=cgmes_elm.tpe,
-                                           device_property="RegulatingControl",
-                                           value='None')
+                        logger.add_warning(
+                            msg='ExternalNetworkInjection controlEnabled but RegulatingControl is missing',
+                            device=cgmes_elm.rdfid,
+                            device_class=cgmes_elm.tpe,
+                            device_property="RegulatingControl",
+                            value='None')
                 elif getattr(cgmes_elm, "referencePriority", 0) == 1:
                     mode = ExternalGridMode.VD
 
@@ -2248,12 +2263,13 @@ def get_gcdev_series_compensators(cgmes_model: CgmesCircuit,
                 r0 = float(cgmes_elm.r0) / z_base if cgmes_elm.r0 is not None else 1e-20
                 x0 = float(cgmes_elm.x0) / z_base if cgmes_elm.x0 is not None else 1e-20
             else:
-                logger.add_warning(msg='SeriesCompensator nominal voltage is missing or invalid; default p.u. values used',
-                                   device=cgmes_elm.rdfid,
-                                   device_class=cgmes_elm.tpe,
-                                   device_property="BaseVoltage.nominalVoltage",
-                                   value=v_nom,
-                                   expected_value='> 0.0')
+                logger.add_warning(
+                    msg='SeriesCompensator nominal voltage is missing or invalid; default p.u. values used',
+                    device=cgmes_elm.rdfid,
+                    device_class=cgmes_elm.tpe,
+                    device_property="BaseVoltage.nominalVoltage",
+                    value=v_nom,
+                    expected_value='> 0.0')
                 r = 1e-20
                 x = 1e-20
                 r0 = 1e-20
@@ -2456,8 +2472,8 @@ def get_gcdev_ac_transformers(cgmes_model: CgmesCircuit,
 
                     # get per unit values
                     r, x, g, b, r0, x0, g0, b0 = get_pu_values_power_transformer(cgmes_elm,
-                                                                                  Sbase,
-                                                                                  cgmes_model=cgmes_model)
+                                                                                 Sbase,
+                                                                                 cgmes_model=cgmes_model)
                     rated_s = windings[0].ratedS
 
                     gcdev_elm = gcdev.Transformer2W(
@@ -2559,8 +2575,8 @@ def get_gcdev_ac_transformers(cgmes_model: CgmesCircuit,
 
                     # assign values
                     r12, r23, r31, x12, x23, x31 = get_pu_values_power_transformer3w(cgmes_elm,
-                                                                                      Sbase,
-                                                                                      cgmes_model=cgmes_model)
+                                                                                     Sbase,
+                                                                                     cgmes_model=cgmes_model)
 
                     gcdev_elm = gcdev.Transformer3W(idtag=cgmes_elm.uuid,
                                                     code=cgmes_elm.description,
@@ -2799,12 +2815,13 @@ def get_transformer_tap_changers(cgmes_model: CgmesCircuit,
                             tc_type = TapChangerTypes.VoltageRegulation
                             tap_module_control_mode = TapModuleControl.Vm
                         else:
-                            logger.add_warning(msg="TapChangerControl voltage mode ignored: regulation terminal not mapped to bus",
-                                               device=tap_changer.rdfid,
-                                               device_class=tap_changer.tpe,
-                                               device_property="TapChangerControl.Terminal",
-                                               value='None',
-                                               expected_value='Bus')
+                            logger.add_warning(
+                                msg="TapChangerControl voltage mode ignored: regulation terminal not mapped to bus",
+                                device=tap_changer.rdfid,
+                                device_class=tap_changer.tpe,
+                                device_property="TapChangerControl.Terminal",
+                                value='None',
+                                expected_value='Bus')
                 else:
                     logger.add_warning(msg="No TapChangerControl found for RatioTapChanger",
                                        device=tap_changer.rdfid,
@@ -3242,12 +3259,12 @@ def get_gcdev_controllable_shunts(
             gcdev_model.add_controllable_shunt(bus=calc_node, api_obj=gcdev_elm)
 
         else:
-                logger.add_error(msg='Not exactly one terminal',
-                                 device=cgmes_elm.rdfid,
-                                 device_class=cgmes_elm.tpe,
-                                 device_property="number of associated terminals",
-                                 value=len(calc_nodes),
-                                 expected_value=1)
+            logger.add_error(msg='Not exactly one terminal',
+                             device=cgmes_elm.rdfid,
+                             device_class=cgmes_elm.tpe,
+                             device_property="number of associated terminals",
+                             value=len(calc_nodes),
+                             expected_value=1)
 
 
 def get_gcdev_static_var_compensators(cgmes_model: CgmesCircuit,
