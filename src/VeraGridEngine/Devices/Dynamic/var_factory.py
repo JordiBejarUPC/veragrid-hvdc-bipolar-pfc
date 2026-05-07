@@ -81,6 +81,7 @@ class VarFactory(EditableDevice):
                 name: str,
                 reference: VarPowerFlowRefferenceType | None = None,
                 network_conn: bool = False,
+                shared_reference: SharedVarReferenceType | None = None,
                 uid: int | None = None,
                 diff_var: Var | None = None,
                 base_var: Var | None = None) -> Var:

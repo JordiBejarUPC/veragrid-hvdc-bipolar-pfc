@@ -905,6 +905,83 @@ class Block:
             for var_to_subs, incoming_var in pairs:
                 self.update_model(var_to_subs, incoming_var)
 
+    def find_var_in_equations(self,var: Var) -> bool:
+        """
+        find a var in the equations of a block
+        :param var:
+        :return:
+        """
+
+        for i, eq in enumerate(self.algebraic_eqs):
+            if eq.contains_var:
+                return True
+
+        for i, eq in enumerate(self.state_eqs):
+            if eq.contains_var:
+                return True
+
+        for i, eq in enumerate(self.differential_eqs):
+            if eq.contains_var:
+                return True
+
+        for var, eq in self.init_eqs.items():
+            if eq.contains_var:
+                return True
+
+        for var, eq in self.diff_init_eqs.items():
+            if eq.contains_var:
+                return True
+
+        for var, eq in self.event_dict.items():
+            if eq.contains_var:
+                return True
+
+        for var, eq in self.mode_dict.items():
+            if eq.contains_var:
+                return True
+
+        for var_pf_ref, mdl_var in self.external_mapping.items():
+            if mdl_var is var:
+               return True
+
+        return False
+
+        # add procedural logic here
+
+    def find_var_in_block(self, var: Var) -> bool:
+        """
+        Replace variables
+        :param var:
+        :return:
+        """
+        if self.find_var_in_equations(var):
+            return True
+        if self.children:
+            for child in self.children:
+                if child.find_var_in_equations(var):
+                    return True
+
+        return False
+
+def find_connections(mdl1: Block, mdl2: Block) -> List[tuple[Var, Var]]:
+    """
+    find connections between the two blocks by vars searching
+    :return:
+    :rtype:
+    """
+
+    # connect inputs mdl2 with outputs mdl1
+    pairs = [
+        (outp, inpt)
+        for outp in mdl1.out_vars
+        for inpt in mdl2.in_vars
+        if
+        outp.shared_ref == inpt.shared_ref and outp.shared_ref is not None and inpt.shared_ref is not None and mdl2.find_var_in_block(
+            outp)
+    ]
+
+
+    return pairs
 
 def find_name_in_block(name: str, block: Block) -> Var | None:
     """
