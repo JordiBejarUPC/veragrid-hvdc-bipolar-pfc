@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import sys
 
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 
 from VeraGrid.Gui.DeviceEditors.LineEditor.line_editor import LineEditor
 from VeraGrid.Gui.DeviceEditors.TemplateDeviceEditor.template_device_editor import TemplateDeviceEditor
@@ -87,10 +87,8 @@ class LineDeviceEditor(TemplateDeviceEditor):
         self.line_design_tab: QtWidgets.QWidget = QtWidgets.QWidget(self.tab_widget)
         self.line_design_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self.line_design_tab)
         self.line_design_button_layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout()
-        self.line_design_apply_button: QtWidgets.QPushButton = QtWidgets.QPushButton("Apply line design", self.line_design_tab)
-        self.line_design_button_layout.addWidget(self.line_design_apply_button)
-        self.line_design_button_layout.addStretch()
-        self.line_design_layout.addLayout(self.line_design_button_layout)
+        self.line_design_apply_button: QtWidgets.QPushButton = QtWidgets.QPushButton("Accept", self.line_design_tab)
+        self.line_design_apply_button.setIcon(QtGui.QIcon(":/Icons/icons/accept.png"))
 
         if self.circuit is not None:
             self.line_design_widget = EmbeddedLineDesignEditorWidget(
@@ -110,7 +108,12 @@ class LineDeviceEditor(TemplateDeviceEditor):
             )
             self.line_design_layout.addWidget(missing_msg)
 
-        self.tab_widget.addTab(self.line_design_tab, "LineEditor")
+        self.line_design_button_layout.addStretch()
+        self.line_design_button_layout.addWidget(self.line_design_apply_button)
+        self.line_design_layout.addLayout(self.line_design_button_layout)
+
+        line_tab_index: int = self.tab_widget.addTab(self.line_design_tab, "Line editor")
+        self.tab_widget.setTabIcon(line_tab_index, QtGui.QIcon(":/Icons/icons/ac_line.png"))
 
     def _apply_line_design(self) -> None:
         """
