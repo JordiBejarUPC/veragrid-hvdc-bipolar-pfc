@@ -206,8 +206,15 @@ class SwitchedConverterHandoverTrace:
     :param P_f_arr: Filtered active-power measurement trace.
     :param Q_f_arr: Filtered reactive-power measurement trace.
     :param v_cmd_d_arr: d-axis converter voltage command trace.
+    :param v_d_cap_arr: Explicit d-axis saturation output trace when available.
+    :param v_cmd_d_u_arr: Unsaturated d-axis converter voltage command trace.
     :param v_cmd_q_arr: q-axis converter voltage command trace.
     :param v_lim_arr: Converter voltage-limit trace.
+    :param v_lim_aux_arr: Auxiliary converter voltage-limit trace.
+    :param v_cmd_d_aux_arr: Auxiliary d-axis command trace.
+    :param v_cmd_q_aux_arr: Auxiliary q-axis command trace.
+    :param v_cmd_norm_arr: Auxiliary command-norm trace.
+    :param v_cmd_norm_aux_arr: Auxiliary mirrored command-norm trace.
     :param m_a_u_arr: Unsaturated phase-A modulation trace.
     :param gate_a_arr: Phase-A gate trace.
     :param gate_b_arr: Phase-B gate trace.
@@ -255,8 +262,23 @@ class SwitchedConverterHandoverTrace:
         "P_f_arr",
         "Q_f_arr",
         "v_cmd_d_arr",
+        "v_d_cap_arr",
+        "v_cmd_d_u_arr",
         "v_cmd_q_arr",
         "v_lim_arr",
+        "v_lim_aux_arr",
+        "v_cmd_d_aux_arr",
+        "v_cmd_q_aux_arr",
+        "v_cmd_norm_arr",
+        "v_cmd_norm_aux_arr",
+        "ml_sat_u_plus1_max_arr",
+        "ml_sat_u_plus2_max_arr",
+        "ml_sat_u_minus1_max_arr",
+        "ml_sat_u_minus2_max_arr",
+        "ml_sat_u_plus1_min_arr",
+        "ml_sat_u_plus2_min_arr",
+        "ml_sat_u_minus1_min_arr",
+        "ml_sat_u_minus2_min_arr",
         "m_a_u_arr",
         "gate_a_arr",
         "gate_b_arr",
@@ -304,8 +326,23 @@ class SwitchedConverterHandoverTrace:
             P_f_arr: np.ndarray,
             Q_f_arr: np.ndarray,
             v_cmd_d_arr: np.ndarray,
+            v_d_cap_arr: np.ndarray,
+            v_cmd_d_u_arr: np.ndarray,
             v_cmd_q_arr: np.ndarray,
             v_lim_arr: np.ndarray,
+            v_lim_aux_arr: np.ndarray,
+            v_cmd_d_aux_arr: np.ndarray,
+            v_cmd_q_aux_arr: np.ndarray,
+            v_cmd_norm_arr: np.ndarray,
+            v_cmd_norm_aux_arr: np.ndarray,
+            ml_sat_u_plus1_max_arr: np.ndarray,
+            ml_sat_u_plus2_max_arr: np.ndarray,
+            ml_sat_u_minus1_max_arr: np.ndarray,
+            ml_sat_u_minus2_max_arr: np.ndarray,
+            ml_sat_u_plus1_min_arr: np.ndarray,
+            ml_sat_u_plus2_min_arr: np.ndarray,
+            ml_sat_u_minus1_min_arr: np.ndarray,
+            ml_sat_u_minus2_min_arr: np.ndarray,
             m_a_u_arr: np.ndarray,
             gate_a_arr: np.ndarray,
             gate_b_arr: np.ndarray,
@@ -350,8 +387,23 @@ class SwitchedConverterHandoverTrace:
         self.P_f_arr: np.ndarray = P_f_arr
         self.Q_f_arr: np.ndarray = Q_f_arr
         self.v_cmd_d_arr: np.ndarray = v_cmd_d_arr
+        self.v_d_cap_arr: np.ndarray = v_d_cap_arr
+        self.v_cmd_d_u_arr: np.ndarray = v_cmd_d_u_arr
         self.v_cmd_q_arr: np.ndarray = v_cmd_q_arr
         self.v_lim_arr: np.ndarray = v_lim_arr
+        self.v_lim_aux_arr: np.ndarray = v_lim_aux_arr
+        self.v_cmd_d_aux_arr: np.ndarray = v_cmd_d_aux_arr
+        self.v_cmd_q_aux_arr: np.ndarray = v_cmd_q_aux_arr
+        self.v_cmd_norm_arr: np.ndarray = v_cmd_norm_arr
+        self.v_cmd_norm_aux_arr: np.ndarray = v_cmd_norm_aux_arr
+        self.ml_sat_u_plus1_max_arr: np.ndarray = ml_sat_u_plus1_max_arr
+        self.ml_sat_u_plus2_max_arr: np.ndarray = ml_sat_u_plus2_max_arr
+        self.ml_sat_u_minus1_max_arr: np.ndarray = ml_sat_u_minus1_max_arr
+        self.ml_sat_u_minus2_max_arr: np.ndarray = ml_sat_u_minus2_max_arr
+        self.ml_sat_u_plus1_min_arr: np.ndarray = ml_sat_u_plus1_min_arr
+        self.ml_sat_u_plus2_min_arr: np.ndarray = ml_sat_u_plus2_min_arr
+        self.ml_sat_u_minus1_min_arr: np.ndarray = ml_sat_u_minus1_min_arr
+        self.ml_sat_u_minus2_min_arr: np.ndarray = ml_sat_u_minus2_min_arr
         self.m_a_u_arr: np.ndarray = m_a_u_arr
         self.gate_a_arr: np.ndarray = gate_a_arr
         self.gate_b_arr: np.ndarray = gate_b_arr
@@ -988,6 +1040,7 @@ def build_switched_converter_trace(
     P_f_var: Var = require_problem_var(problem=problem, var_name=f"P_f_{model_name}")
     Q_f_var: Var = require_problem_var(problem=problem, var_name=f"Q_f_{model_name}")
     v_cmd_d_var: Var = require_problem_var(problem=problem, var_name=f"v_cmd_d_{model_name}")
+    v_cmd_d_u_var: Var = require_problem_var(problem=problem, var_name=f"v_cmd_d_u_{model_name}")
     v_cmd_q_var: Var = require_problem_var(problem=problem, var_name=f"v_cmd_q_{model_name}")
     v_lim_var: Var = require_problem_var(problem=problem, var_name=f"v_lim_{model_name}")
     m_a_u_var: Var = require_problem_var(problem=problem, var_name=f"m_a_u_{model_name}_plant_bridge")
@@ -1002,6 +1055,20 @@ def build_switched_converter_trace(
     i_c_arr: np.ndarray
     i_dc_conv_sw_arr: np.ndarray
     failed_substep_times_s_arr: np.ndarray
+    v_lim_aux_arr: np.ndarray
+    v_cmd_d_aux_arr: np.ndarray
+    v_cmd_q_aux_arr: np.ndarray
+    v_cmd_norm_arr: np.ndarray
+    v_cmd_norm_aux_arr: np.ndarray
+    v_d_cap_arr: np.ndarray
+    ml_sat_u_plus1_max_arr: np.ndarray
+    ml_sat_u_plus2_max_arr: np.ndarray
+    ml_sat_u_minus1_max_arr: np.ndarray
+    ml_sat_u_minus2_max_arr: np.ndarray
+    ml_sat_u_plus1_min_arr: np.ndarray
+    ml_sat_u_plus2_min_arr: np.ndarray
+    ml_sat_u_minus1_min_arr: np.ndarray
+    ml_sat_u_minus2_min_arr: np.ndarray
     initialization_requested: str = ""
     initialization_used: str = ""
     trace: SwitchedConverterHandoverTrace
@@ -1032,6 +1099,27 @@ def build_switched_converter_trace(
         k_v_conv_arr=np.array(state_traj[:, problem.get_var_idx(k_v_conv_var)], copy=True),
     )
 
+    def _optional_signal(var_name: str) -> np.ndarray:
+        variable_opt: Var | None = find_name_in_block(name=var_name, block=problem.sys_block)
+        if variable_opt is None:
+            return np.full(shape=(state_traj.shape[0],), fill_value=np.nan, dtype=float)
+        return np.array(state_traj[:, problem.get_var_idx(variable_opt)], copy=True)
+
+    v_lim_aux_arr = _optional_signal(f"v_lim_aux_{model_name}")
+    v_cmd_d_aux_arr = _optional_signal(f"v_cmd_d_aux_{model_name}")
+    v_cmd_q_aux_arr = _optional_signal(f"v_cmd_q_aux_{model_name}")
+    v_cmd_norm_arr = _optional_signal(f"v_cmd_norm_{model_name}")
+    v_cmd_norm_aux_arr = _optional_signal(f"v_cmd_norm_aux_{model_name}")
+    v_d_cap_arr = _optional_signal(f"v_d_cap_{model_name}")
+    ml_sat_u_plus1_max_arr = _optional_signal(f"u_plus1_v_d_cap_{model_name}_max")
+    ml_sat_u_plus2_max_arr = _optional_signal(f"u_plus2_v_d_cap_{model_name}_max")
+    ml_sat_u_minus1_max_arr = _optional_signal(f"u_minus1_v_d_cap_{model_name}_max")
+    ml_sat_u_minus2_max_arr = _optional_signal(f"u_minus2_v_d_cap_{model_name}_max")
+    ml_sat_u_plus1_min_arr = _optional_signal(f"u_plus1_v_d_cap_{model_name}_min")
+    ml_sat_u_plus2_min_arr = _optional_signal(f"u_plus2_v_d_cap_{model_name}_min")
+    ml_sat_u_minus1_min_arr = _optional_signal(f"u_minus1_v_d_cap_{model_name}_min")
+    ml_sat_u_minus2_min_arr = _optional_signal(f"u_minus2_v_d_cap_{model_name}_min")
+
     trace = SwitchedConverterHandoverTrace(
         t_arr=np.array(time_arr, copy=True),
         mode_t_arr=tracing_updater.get_time_trace(),
@@ -1059,8 +1147,23 @@ def build_switched_converter_trace(
         P_f_arr=np.array(state_traj[:, problem.get_var_idx(P_f_var)], copy=True),
         Q_f_arr=np.array(state_traj[:, problem.get_var_idx(Q_f_var)], copy=True),
         v_cmd_d_arr=np.array(state_traj[:, problem.get_var_idx(v_cmd_d_var)], copy=True),
+        v_d_cap_arr=v_d_cap_arr,
+        v_cmd_d_u_arr=np.array(state_traj[:, problem.get_var_idx(v_cmd_d_u_var)], copy=True),
         v_cmd_q_arr=np.array(state_traj[:, problem.get_var_idx(v_cmd_q_var)], copy=True),
         v_lim_arr=np.array(state_traj[:, problem.get_var_idx(v_lim_var)], copy=True),
+        v_lim_aux_arr=v_lim_aux_arr,
+        v_cmd_d_aux_arr=v_cmd_d_aux_arr,
+        v_cmd_q_aux_arr=v_cmd_q_aux_arr,
+        v_cmd_norm_arr=v_cmd_norm_arr,
+        v_cmd_norm_aux_arr=v_cmd_norm_aux_arr,
+        ml_sat_u_plus1_max_arr=ml_sat_u_plus1_max_arr,
+        ml_sat_u_plus2_max_arr=ml_sat_u_plus2_max_arr,
+        ml_sat_u_minus1_max_arr=ml_sat_u_minus1_max_arr,
+        ml_sat_u_minus2_max_arr=ml_sat_u_minus2_max_arr,
+        ml_sat_u_plus1_min_arr=ml_sat_u_plus1_min_arr,
+        ml_sat_u_plus2_min_arr=ml_sat_u_plus2_min_arr,
+        ml_sat_u_minus1_min_arr=ml_sat_u_minus1_min_arr,
+        ml_sat_u_minus2_min_arr=ml_sat_u_minus2_min_arr,
         m_a_u_arr=np.array(state_traj[:, problem.get_var_idx(m_a_u_var)], copy=True),
         gate_a_arr=gate_a_arr,
         gate_b_arr=gate_b_arr,
@@ -1093,6 +1196,9 @@ def simulate_switched_converter_handover(
         q_ki: float = 60.0,
         tau_meas_s: float = 0.005,
         converter_builder: Callable[[Any, str], Any] = get_switched_emt_converter,
+        newton_trace_collector: Optional[Any] = None,
+        max_residual_inf_fail: float = float("inf"),
+        max_state_residual_inf_fail: float = float("inf"),
 ) -> SwitchedConverterHandoverTrace:
     """
     Simulate the full hybrid switched-converter case and collect handover traces.
@@ -1121,6 +1227,8 @@ def simulate_switched_converter_handover(
         converter_builder=converter_builder,
     )
     problem: EmtProblemDae = case_context.problem
+    if newton_trace_collector is not None:
+        problem.set_newton_trace_collector(newton_trace_collector)
     switching_enabled_idx: int = require_runtime_mode_index(
         problem=problem,
         mode_name=f"switching_enabled_mode_{case_context.vsc.name}",
@@ -1148,6 +1256,10 @@ def simulate_switched_converter_handover(
         h=float(problem.options.time_step),
         method=problem.options.integration_method,
     )
+    if hasattr(solver, "_max_residual_inf_fail"):
+        solver._max_residual_inf_fail = float(max_residual_inf_fail)
+    if hasattr(solver, "_max_state_residual_inf_fail"):
+        solver._max_state_residual_inf_fail = float(max_state_residual_inf_fail)
     time_arr, state_traj, _diff_traj, well_initialized, converged = solver.simulate(
         boundary_updater=tracing_updater,
     )

@@ -80,6 +80,7 @@ def _build_bridge_filter_current_control_block(vf: VarFactory, name: str) -> Blo
     v_cmd_d: Var = vf.add_var(name=f"v_cmd_d_{name}")
     v_cmd_q: Var = vf.add_var(name=f"v_cmd_q_{name}")
     v_cmd_0: Var = vf.add_var(name=f"v_cmd_0_{name}")
+    v_d_cap_out: Var = vf.add_var(name=f"v_d_cap_{name}")
     v_q_cap: Var = vf.add_var(name=f"v_q_cap_{name}")
     v_q_cap_aux: Var = vf.add_var(name=f"v_q_cap_aux_{name}")
     v_0_cap: Var = vf.add_var(name=f"v_0_cap_{name}")
@@ -103,7 +104,17 @@ def _build_bridge_filter_current_control_block(vf: VarFactory, name: str) -> Blo
     v_cmd_q0: Expr = -R_f * i_q0 + L_f * i_d0
     ml_v_d_cap_block: Block
     v_d_cap: Expr
-    ml_v_d_cap_block, v_d_cap = sym_ml.ml_hard_sat(vf=vf, u=v_cmd_d_u, u_min=-v_lim, u_max=v_lim, name=f"v_d_cap_{name}")
+    ml_v_d_cap_block, v_d_cap = sym_ml.ml_hard_sat(
+        vf=vf,
+        u=v_cmd_d_u,
+        u_min=-v_lim,
+        u_max=v_lim,
+        name=f"v_d_cap_{name}",
+        alternative_positive_part=True,
+        scale_balance=Const(10.0),
+        scale_complementarity=Const(100.0),
+        scale_equalities=Const(10.0),
+    )
     v_lim_sq_expr: Expr = v_lim * v_lim_aux
     v_cmd_d_sq_expr: Expr = v_cmd_d * v_cmd_d_aux
     v_cmd_q_sq_expr: Expr = v_cmd_q * v_cmd_q_aux
@@ -146,6 +157,7 @@ def _build_bridge_filter_current_control_block(vf: VarFactory, name: str) -> Blo
             v_q_cap - v_q_cap_aux,
             v_0_cap * v_0_cap_aux - v_0_cap_rhs,
             v_0_cap - v_0_cap_aux,
+            v_d_cap_out - v_d_cap,
             v_cmd_d - v_d_cap,
             v_cmd_q - sym.hard_sat(v_cmd_q_u, -v_q_cap, v_q_cap),
             v_cmd_0 - sym.hard_sat(v_cmd_0_u, -v_0_cap, v_0_cap),
@@ -157,7 +169,7 @@ def _build_bridge_filter_current_control_block(vf: VarFactory, name: str) -> Blo
             v_lim_aux, v_cmd_d_aux, v_cmd_q_aux,
             v_cmd_norm, v_cmd_norm_aux, v_cmd_d0_aux, v_cmd_q0_aux,
             v_q_cap, v_q_cap_aux, v_0_cap, v_0_cap_aux,
-            v_cmd_d, v_cmd_q, v_cmd_0,
+            v_d_cap_out, v_cmd_d, v_cmd_q, v_cmd_0,
         ]),
         init_eqs=dict([
             (xi_id, c0),
@@ -182,6 +194,7 @@ def _build_bridge_filter_current_control_block(vf: VarFactory, name: str) -> Blo
             (v_q_cap_aux, sym.sqrt(v_q_cap_rhs)),
             (v_0_cap, sym.sqrt(v_0_cap_rhs)),
             (v_0_cap_aux, sym.sqrt(v_0_cap_rhs)),
+            (v_d_cap_out, v_d_cap),
             (v_cmd_d, v_cmd_d0),
             (v_cmd_q, v_cmd_q0),
             (v_cmd_0, c0),
