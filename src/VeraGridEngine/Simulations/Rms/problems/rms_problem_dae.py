@@ -319,7 +319,46 @@ class RmsProblemDae(RmsProblemTemplate):
                                                             problem_mapping=self._static_parameterm_values_mapping,
                                                             logger=None)
                 # # modify function to fill self._static_parameterm_values_mapping
-                # rms models already connected to buses
+
+                if ParamPowerFlowRefferenceType.g in elm.rms_model.api_obj_mapping:
+                    elm.rms_model.parameters[
+                        elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.g]] = Const(
+                        float(elm.R / (elm.R ** 2 + elm.X ** 2)))
+                if ParamPowerFlowRefferenceType.b in elm.rms_model.api_obj_mapping:
+                    elm.rms_model.parameters[
+                        elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.b]] = Const(
+                        float(-elm.X / (elm.R ** 2 + elm.X ** 2)))
+                if ParamPowerFlowRefferenceType.bsh in elm.rms_model.api_obj_mapping:
+                    elm.rms_model.parameters[
+                        elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.bsh]] = Const(elm.B)
+                if ParamPowerFlowRefferenceType.r in elm.rms_model.api_obj_mapping:
+                    elm.rms_model.parameters[
+                        elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.r]] = Const(elm.R)
+                if ParamPowerFlowRefferenceType.l in elm.rms_model.api_obj_mapping:
+                    elm.rms_model.parameters[elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.l]] = Const(elm.X)
+                if isinstance(elm, Transformer2W):
+                    vtap_f, vtap_t = elm.get_virtual_taps()
+
+                    if ParamPowerFlowRefferenceType.transformer_tap_module in elm.rms_model.api_obj_mapping:
+                        elm.rms_model.parameters[
+                            elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.transformer_tap_module]
+                        ] = Const(elm.tap_module)
+
+                    if ParamPowerFlowRefferenceType.transformer_tap_ratio in elm.rms_model.api_obj_mapping:
+                        elm.rms_model.parameters[
+                            elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.transformer_tap_ratio]
+                        ] = Const(elm.tap_module)
+
+                    if ParamPowerFlowRefferenceType.vtap_f in elm.rms_model.api_obj_mapping:
+                        elm.rms_model.parameters[
+                            elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.vtap_f]
+                        ] = Const(vtap_f)
+
+                    if ParamPowerFlowRefferenceType.vtap_t in elm.rms_model.api_obj_mapping:
+                        elm.rms_model.parameters[
+                            elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.vtap_t]
+                        ] = Const(vtap_t)
+
                 Vmf, Vaf = get_bus_rms_algebraic_vars(elm.bus_from.rms_model)
                 Vmt, Vat = get_bus_rms_algebraic_vars(elm.bus_to.rms_model)
 

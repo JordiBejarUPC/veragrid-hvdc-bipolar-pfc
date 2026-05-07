@@ -584,7 +584,8 @@ class JitSymbolicSolver:
         'jit_compiler', '_residual_debug_info', '_newton_diag_config',
         '_predictor', '_runtime_param_count', '_static_parameter_buffer', '_full_parameter_buffer',
         '_residual_buffer', '_trial_state_buffer', '_trial_residual_buffer', '_trial_residual_evaluator',
-        '_backend_build_stats', '_last_runtime_stats', '_last_sim_loop_time'
+        '_backend_build_stats', '_last_runtime_stats', '_last_sim_loop_time',
+        '_max_residual_inf_fail', '_max_state_residual_inf_fail'
     ]
 
     def __init__(self,
@@ -597,7 +598,9 @@ class JitSymbolicSolver:
                  dense_threshold: int = 100,
                  verbose: bool = False,
                  newton_max_iter: int = 15,
-                 newton_diag_config: NewtonDiagnosticsConfig | None = None)-> None:
+                 newton_diag_config: NewtonDiagnosticsConfig | None = None,
+                 max_residual_inf_fail: float = np.inf,
+                 max_state_residual_inf_fail: float = np.inf)-> None:
         """
         :param problem: The DAE problem definition.
         :param t0: Initial time.
@@ -618,6 +621,8 @@ class JitSymbolicSolver:
         self.dense_threshold = dense_threshold
         self.verbose = verbose
         self.newton_max_iter: int = int(newton_max_iter)
+        self._max_residual_inf_fail: float = float(max_residual_inf_fail)
+        self._max_state_residual_inf_fail: float = float(max_state_residual_inf_fail)
         self._newton_diag_config = newton_diag_config or NewtonDiagnosticsConfig(
             compute_dense_cond=False,
             enable_fallback=False,
@@ -1168,6 +1173,31 @@ class JitSymbolicSolver:
                     else:
                         substep_numerical_failure = True
                         break
+
+                    if res_norm_inf > self._max_residual_inf_fail:
+                        raise RuntimeError(
+                            "JIT solver aborted due to large nonlinear residual: "
+                            f"res_inf={res_norm_inf:.6e} at t={t_curr:.6e}, step={i}, iter={k}, "
+                            f"limit={self._max_residual_inf_fail:.6e}."
+                        )
+
+                    if n_states > 0:
+                        state_res_inf = float(np.max(np.abs(res[:n_states])))
+                        if state_res_inf > self._max_state_residual_inf_fail:
+                            raise RuntimeError(
+                                "JIT solver aborted due to large state residual: "
+                                f"state_res_inf={state_res_inf:.6e} at t={t_curr:.6e}, step={i}, iter={k}, "
+                                f"limit={self._max_state_residual_inf_fail:.6e}."
+                            )
+
+                    ctx.res_norm_inf = float(res_norm_inf)
+                    if trace_collector is not None and hasattr(trace_collector, "record_residual_vector"):
+                        trace_collector.record_residual_vector(
+                            ctx=ctx,
+                            residual=res,
+                            top_k=5,
+                            debug_info=self._residual_debug_info,
+                        )
 
                     if i == 0 and self.verbose:
                         _print_residual_debug_table(

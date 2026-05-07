@@ -80,6 +80,7 @@ class VarFactory(EditableDevice):
     def add_var(self,
                 name: str,
                 reference: VarPowerFlowRefferenceType | None = None,
+                shared_reference: str | None = None,
                 network_conn: bool = False,
                 shared_reference: str | None = None,
                 uid: int | None = None,
