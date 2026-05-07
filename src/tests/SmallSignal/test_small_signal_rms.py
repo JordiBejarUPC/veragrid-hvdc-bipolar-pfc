@@ -435,6 +435,8 @@ def stability_kundur_no_shunt():
     grid.add_generator(bus=bus3, api_obj=gen3)
     grid.add_generator(bus=bus4, api_obj=gen4)
 
+    gce.save_file(grid, "kundur.veragrid")
+
     t_end_setup = time.perf_counter()
 
     ###########################################################################################################################

@@ -323,6 +323,9 @@ class RmsProblemDae(RmsProblemTemplate):
                 Vmf, Vaf = get_bus_rms_algebraic_vars(elm.bus_from.rms_model)
                 Vmt, Vat = get_bus_rms_algebraic_vars(elm.bus_to.rms_model)
 
+                if Vmf not in self.algebraic_vars:
+                    print("")
+
                 if Vmf is not None and VarPowerFlowRefferenceType.Vmf in elm.rms_model.external_mapping:
                     elm.rms_model.update_model(
                         elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vmf], Vmf)
