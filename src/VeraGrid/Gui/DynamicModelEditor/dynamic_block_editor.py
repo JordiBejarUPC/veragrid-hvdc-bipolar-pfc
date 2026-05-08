@@ -396,27 +396,6 @@ def _transformer_modal_config_allows_modify(modal_kind: str | None, modal_config
     else:
         return modal_kind is not None
 
-
-def open_dyn_params_editor(var_factory: VarFactory, api_object: Any,
-                           preferred_mode: DynamicSimulationMode | None = None):
-    """
-    Opens the dynamic parameters editor dialog.
-
-    :param var_factory: Variable factory for creating new variables.
-    :param api_object: Device/API object containing rms_model or emt_model.
-    :param preferred_mode: Simulation mode (RMS or EMT).
-    :return: None
-    """
-    if preferred_mode == DynamicSimulationMode.RMS:
-        blk = api_object.rms_model
-        print("")
-    else:
-        blk = api_object.emt_model
-
-    dialog = ParametersEditorDialog(var_factory=var_factory, block=blk)
-    dialog.exec()
-
-
 def build_variables_rows(block: Block | None, rows: List[BlockParameterRow]):
     if block is not None:
         build_block_variables_rows(block, rows)
@@ -4832,7 +4811,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             for child in self.main_block.children:
                 item = self.generate_block_item_for_block(child)
                 blocks_list.append(item)
-            self.connect_items(blocks_list)
+            if len(blocks_list) != 0:
+                self.connect_items(blocks_list)
             # here we add the connection variables to the main block
             if self.main_editor:
                 self.add_connection_vars()
@@ -6917,40 +6897,36 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 if port.base_var is not None and port.base_var.uid == source_var.uid:
                     source_port = port
                     break
-            if source_port is None:
-                continue
 
             target_port = None
             for port in item_dest.inputs:
                 if port.base_var is not None and port.base_var.uid == target_var.uid:
                     target_port = port
                     break
-            if target_port is None:
-                continue
+            if target_port is not None and source_port is not None:
 
-            connection = ConnectionItem(
-                source_port=source_port,
-                target_port=target_port,
-                diagram=self.diagram
-            )
-            self.scene.addItem(connection)
-            self.diagram.add_branch(
-                connectionitem_uid=connection.uid,
-                device_uid_from=item_source.subsys.uid,
-                device_uid_to=item_dest.subsys.uid,
-                port_number_from=source_port.index,
-                port_number_to=target_port.index,
-                color=WIRE_COLOR.name()
-            )
+                connection = ConnectionItem(
+                    source_port=source_port,
+                    target_port=target_port,
+                    diagram=self.diagram
+                )
+                self.scene.addItem(connection)
+                self.diagram.add_branch(
+                    connectionitem_uid=connection.uid,
+                    device_uid_from=item_source.subsys.uid,
+                    device_uid_to=item_dest.subsys.uid,
+                    port_number_from=source_port.index,
+                    port_number_to=target_port.index,
+                    color=WIRE_COLOR.name()
+                )
 
 
     def generate_block_item_for_block(self, block_model: Block) -> GenericBlockItem | None:
         """
         Create and place a block item in the canvas scene.
 
-        :param block:
-        :param x_pos:
-        :param y_pos:
+        :param block_model:
+
         :return:
         """
         item_name: str = f"{block_model.name}"

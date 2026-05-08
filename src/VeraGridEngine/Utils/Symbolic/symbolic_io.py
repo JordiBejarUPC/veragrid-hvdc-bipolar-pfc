@@ -736,6 +736,7 @@ def duplicate_var(var_factory: VarFactory, old_to_new_var: Dict[int, Var], var: 
                     name=var.name,
                     reference=var.ref,
                     network_conn=var.network_conn,
+                    shared_reference=var.shared_ref,
                     diff_var=None,
                     base_var=base_var_new
                 )
@@ -747,8 +748,7 @@ def duplicate_var(var_factory: VarFactory, old_to_new_var: Dict[int, Var], var: 
                     name=var.name,
                     reference=var.ref,
                     network_conn=var.network_conn,
-                    # diff_var=None,
-                    # base_var=base_var_new
+                    shared_reference=var.shared_ref,
                 )
 
             old_to_new_var[var.uid] = new_var
@@ -957,7 +957,7 @@ def _duplicate_block(block: Block,
     :return: Duplicated block.
     """
     old_vars_by_uid: Dict[int, Var] = _collect_block_vars_by_uid(block)
-    old_var: Var
+
     for old_var in old_vars_by_uid.values():
         duplicate_var(var_factory, old_to_new_var, old_var)
 

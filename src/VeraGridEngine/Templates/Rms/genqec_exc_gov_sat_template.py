@@ -32,8 +32,8 @@ def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec rms template") -> R
 
     inputs = [vfactory.add_var("Vm_" + name, reference=VarPowerFlowRefferenceType.Vm),
               vfactory.add_var("Va_" + name, reference=VarPowerFlowRefferenceType.Va),
-              vfactory.add_var("Tm_" + name),
-              vfactory.add_var("Vf_" + name)]
+              vfactory.add_var("Tm_" + name, shared_reference="tm_reference"),
+              vfactory.add_var("Vf_" + name, shared_reference="vf_reference")]
 
     # ______________________________________________________________________________________
     #                                    variables
@@ -41,7 +41,7 @@ def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec rms template") -> R
 
     # State variables
     delta = vfactory.add_var("delta" + name)  # rotor angle
-    omega = vfactory.add_var("omega" + name)  # rotor electrical speed
+    omega = vfactory.add_var("omega" + name, shared_reference="omega_reference")  # rotor electrical speed
     Eq1 = vfactory.add_var("Eq1" + name)  # internal emf behind Xd'
     Ed1 = vfactory.add_var("Ed1" + name)
     Eq_prime = vfactory.add_var("Eq_prime" + name)  # transient voltage q-axis
@@ -58,8 +58,8 @@ def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec rms template") -> R
     Vq = vfactory.add_var("Vq" + name)
     Psid = vfactory.add_var("Psid" + name)
     Psiq = vfactory.add_var("Psiq" + name)
-    Te = vfactory.add_var("Te" + name)
-    IRPu = vfactory.add_var("IRPu" + name)
+    Te = vfactory.add_var("Te" + name, shared_reference="te_reference")
+    IRPu = vfactory.add_var("IRPu" + name, shared_reference="irpu_reference")
 
     # Saturated resistances
     Xd_2prime_sat = vfactory.add_var('Xd_2prime_sat' + name)
@@ -305,13 +305,13 @@ def get_governor_rms(vfactory: VarFactory, name: str = "Governor") -> RmsModelTe
         "K8": vfactory.add_const(0.0),
     }
 
-    inputs = [vfactory.add_var("omega_"), vfactory.add_var('Te_')]
+    inputs = [vfactory.add_var("omega_", shared_reference="omega_reference"), vfactory.add_var('Te_', shared_reference="te_reference")]
 
     # ______________________________________________________________________________________
     #                                    variables
     # ______________________________________________________________________________________
 
-    Tm = vfactory.add_var("Tm")  # Mechanical power input (pu
+    Tm = vfactory.add_var("Tm", shared_reference="tm_reference")  # Mechanical power input (pu
     et = vfactory.add_var("et")
 
     # reference
@@ -491,7 +491,7 @@ def get_stabilizer_rms(vfactory: VarFactory, name: str = "stabilizer") -> RmsMod
     # input variables
     # omega: omega from generator
 
-    inputs = [vfactory.add_var("omega_")]
+    inputs = [vfactory.add_var("omega_", shared_reference="omega_reference")]
 
     # PSS parameters with typical values
 
@@ -509,7 +509,7 @@ def get_stabilizer_rms(vfactory: VarFactory, name: str = "stabilizer") -> RmsMod
     }
 
     # variables
-    Vpss = vfactory.add_var('V_pss')
+    Vpss = vfactory.add_var('V_pss', shared_reference="vpss_reference")
 
     vars_block = Block(
         algebraic_vars=[],
@@ -616,7 +616,7 @@ def get_exciter_rms(vfactory: VarFactory, name: str = "exciter") -> RmsModelTemp
     # Va: measured stator voltage (from generator) (pu)
     # Vpss: output from power system stabilizer (pu)
 
-    inputs = [vfactory.add_var("IRPu_"), vfactory.add_var("Vm_"), vfactory.add_var("Vpss_")]
+    inputs = [vfactory.add_var("IRPu_", shared_reference="irpu_reference"), vfactory.add_var("Vm_"), vfactory.add_var("Vpss_", shared_reference="vpss_reference")]
 
     algebraic_vars = []
 
@@ -624,7 +624,7 @@ def get_exciter_rms(vfactory: VarFactory, name: str = "exciter") -> RmsModelTemp
     #                                    variables
     # ______________________________________________________________________________________
 
-    Vf = vfactory.add_var("Vf")
+    Vf = vfactory.add_var("Vf", shared_reference="vf_reference")
     Efe = vfactory.add_var('Efe')
     UsRefPu = vfactory.add_var(name="UsRefPu")  # reference voltage (pu)
 

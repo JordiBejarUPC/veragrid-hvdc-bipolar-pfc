@@ -958,7 +958,7 @@ class Block:
             return True
         if self.children:
             for child in self.children:
-                if child.find_var_in_equations(var):
+                if child.find_var_in_block(var):
                     return True
 
         return False
