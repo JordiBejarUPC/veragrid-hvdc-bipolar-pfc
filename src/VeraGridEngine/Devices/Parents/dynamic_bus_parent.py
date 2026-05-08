@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 
 from __future__ import annotations
-from typing import Tuple
+from typing import Any, List, Tuple
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice, GCProp
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Utils.Symbolic.block import Block
@@ -20,6 +20,7 @@ class DynamicBusDevice(PhysicalDevice):
         '_var_factory',
         '_rms_model',
         '_emt_model',
+        '_pending_emt_devices',
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
@@ -65,6 +66,7 @@ class DynamicBusDevice(PhysicalDevice):
         self._var_factory: VarFactory | None = None
         self._rms_model: Block = Block()
         self._emt_model: Block = Block()
+        self._pending_emt_devices: List[Any] = list()
 
     def set_var_factory(self, val: VarFactory) -> None:
         """
@@ -106,4 +108,33 @@ class DynamicBusDevice(PhysicalDevice):
             self._emt_model = val
         else:
             raise ValueError(f"EMT model cannot accept {val}")
+
+    def add_pending_emt_device(self, device: Any) -> None:
+        """
+        Store one single-bus device whose EMT model must wait for a bus shell.
+
+        :param device: Device waiting for one EMT bus shell.
+        :return: None.
+        """
+        if device in self._pending_emt_devices:
+            pass
+        else:
+            self._pending_emt_devices.append(device)
+
+    def remove_pending_emt_device(self, device: Any) -> None:
+        """
+        Remove one single-bus device from the pending EMT connection queue.
+
+        :param device: Device that no longer needs deferred EMT bus connection.
+        :return: None.
+        """
+        self._pending_emt_devices = [item for item in self._pending_emt_devices if item is not device]
+
+    def get_pending_emt_devices(self) -> List[Any]:
+        """
+        Return the devices waiting for deferred EMT bus connection.
+
+        :return: Copy of the pending EMT device list.
+        """
+        return list(self._pending_emt_devices)
 

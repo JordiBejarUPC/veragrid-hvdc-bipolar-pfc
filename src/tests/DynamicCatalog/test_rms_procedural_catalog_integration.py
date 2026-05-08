@@ -66,6 +66,7 @@ def _build_procedural_catalog_load_rms_template(vf: VarFactory,
     enable_block.event_dict[enable_param] = vf.add_const(1.0, name="Enable")
     enable_block.mode_dict[enable_mode] = vf.add_const(1.0, name="Enable mode")
     enable_block.connect([enable_block.in_vars[0]], [p_ref])
+    enable_block.init_eqs[enable_block.out_vars[0]] = p_ref
 
     template.block = Block(
         children=[enable_block],
@@ -77,6 +78,12 @@ def _build_procedural_catalog_load_rms_template(vf: VarFactory,
             p_out - enable_block.out_vars[0],
             q_out - q_ref,
         ],
+        init_eqs={
+            p_ref: p_ref_const,
+            q_ref: q_ref_const,
+            p_out: enable_block.out_vars[0],
+            q_out: q_ref,
+        },
         out_vars=[p_out, q_out],
         name=name,
     )

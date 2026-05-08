@@ -6,7 +6,6 @@
 import numpy as np
 import pandas as pd
 
-from VeraGridEngine.enumerations import EmtSolverTypes
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.driver_template import DriverTemplate
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
@@ -18,9 +17,8 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlo
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonDiagnosticsConfig
 from VeraGridEngine.IO.fmu.importer.emt_boundary import build_emt_boundary_updater
-from VeraGridEngine.Devices.Events.emt_events_group import EmtEventsGroup
 from VeraGridEngine.basic_structures import Vec, StrVec
-from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
+from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 
 from VeraGridEngine.enumerations import EngineType, SimulationTypes
 
@@ -109,8 +107,8 @@ class EmtSimulationDriver(DriverTemplate):
         t: Vec = np.arange(steps + 1) * self.options.time_step
 
         # initialize buses
-        for bus in self.grid.buses:
-            get_bus_emt_template(self.grid, bus)
+        # for bus in self.grid.buses:
+        #     get_bus_emt_template(self.grid, bus)
 
         # create the problem
         problem = build_emt_problem(

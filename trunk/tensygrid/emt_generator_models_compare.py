@@ -13,7 +13,7 @@ import numpy as np
 import VeraGridEngine.api as vg
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
 from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbolicSolver
-from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
+from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.Emt.simple_generator_emt_template import get_simple_generator_emt_template as get_simple_generator_reference_template
 from VeraGridEngine.Templates.Emt.simple_generator_emt_trig_template import get_simple_generator_emt_template_trig_transform
 
