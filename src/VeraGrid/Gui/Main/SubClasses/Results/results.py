@@ -239,10 +239,9 @@ class ResultsMain(SimulationsMain):
         # The handler owns the mapping between tree nodes and simulation variable objects.
         if self.dynamic_results_handler is not None:
             source_index: QtCore.QModelIndex = self.dynamic_results_handler.map_to_source(index=index)
-            selected_var = self.dynamic_results_handler.get_var_from_index(index=source_index)
-            if selected_var is not None:
-                group_name = self.ui.eventsGroupComboBox.currentText()
-                self.dynamic_results_handler.plot_var(var=selected_var, group_name=group_name)
+            selected_series = self.dynamic_results_handler.get_series_from_index(index=source_index)
+            if selected_series is not None:
+                self.dynamic_results_handler.plot_series(series=selected_series)
                 return None
             else:
                 return None

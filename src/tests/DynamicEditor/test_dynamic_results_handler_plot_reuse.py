@@ -185,6 +185,32 @@ def build_emt_results(device_entries: Sequence[Tuple[FakeDynamicDevice, Sequence
     return results
 
 
+def build_rms_results_with_groups(device_entries: Sequence[Tuple[FakeDynamicDevice, Sequence[Var]]],
+                                  group_names: Sequence[str]) -> RmsResults:
+    """
+    Build RMS results with an explicit set of event-group labels.
+
+    :param device_entries: Devices and their plotted variables.
+    :param group_names: Ordered RMS event-group names.
+    :return: RMS results object.
+    """
+    results: RmsResults = build_rms_results(device_entries=device_entries)
+    results.rms_events_group_names = np.array(group_names, dtype=str)
+    results.ng = len(group_names)
+    results.well_initialized = np.zeros(results.ng, dtype=bool)
+    results.converged = np.zeros(results.ng, dtype=bool)
+    results.values = np.zeros((results.nt, results.nv, results.ng), dtype=float)
+    if results.nv > 0:
+        results.values[:, :, :] = np.arange(results.nt * results.nv * results.ng, dtype=float).reshape(
+            results.nt,
+            results.nv,
+            results.ng,
+        )
+    else:
+        pass
+    return results
+
+
 def get_group_var_uids(handler: DynamicsResultsHandler, group_name: str) -> List[int]:
     """
     Get the restored variable uids stored in one plot group.
@@ -267,7 +293,7 @@ def test_dynamic_plot_restores_remaining_vars_only() -> None:
 
 def test_dynamic_plot_keeps_group_empty_when_device_name_changes() -> None:
     """
-    Do not restore a variable when the owning device name changes.
+    Restore a variable when the stable device idtag still matches.
     """
     ensure_qt_application()
 
@@ -283,7 +309,7 @@ def test_dynamic_plot_keeps_group_empty_when_device_name_changes() -> None:
                                                                variable_uids=[1])
     handler.update_results(results=new_results)
 
-    assert get_group_var_uids(handler=handler, group_name="Plot 1") == list()
+    assert get_group_var_uids(handler=handler, group_name="Plot 1") == [101]
 
 
 def test_dynamic_plot_keeps_group_empty_when_var_name_changes() -> None:
@@ -309,7 +335,7 @@ def test_dynamic_plot_keeps_group_empty_when_var_name_changes() -> None:
 
 def test_dynamic_plot_skips_ambiguous_visible_signature() -> None:
     """
-    Skip restoration when duplicate ``device.name`` and ``var.name`` pairs exist.
+    Restore the exact matching series even if another visible signature also exists.
     """
     ensure_qt_application()
 
@@ -326,7 +352,7 @@ def test_dynamic_plot_skips_ambiguous_visible_signature() -> None:
                                                                variable_uids=[1])
     handler.update_results(results=new_results)
 
-    assert get_group_var_uids(handler=handler, group_name="Plot 1") == list()
+    assert get_group_var_uids(handler=handler, group_name="Plot 1") == [101]
 
 
 def test_dynamic_plot_restores_multiple_groups() -> None:
@@ -375,3 +401,51 @@ def test_dynamic_results_handler_type_reuse_protection() -> None:
 
     assert not type(emt_handler.results) == type(rms_results)
     assert type(rms_handler.results) == type(new_rms_results)
+
+
+def test_dynamic_plot_can_store_same_var_from_multiple_rms_groups() -> None:
+    """
+    Allow the same device variable from multiple RMS event groups in one plot.
+    """
+    ensure_qt_application()
+
+    results: RmsResults = build_rms_results_with_groups([
+        (make_device(name="DeviceA", idtag="dev-a"), [make_var(name="v_A", uid=1)]),
+    ], group_names=["With event", "Without event"])
+
+    handler: DynamicsResultsHandler = DynamicsResultsHandler(results=results)
+    assert handler.create_plot_group(name="Plot 1") is True
+
+    series_list = handler.series_by_var_uid[1]
+    assert len(series_list) == 2
+    assert handler.add_series_to_group(group_name="Plot 1", series_key=series_list[0].get_key()) is True
+    assert handler.add_series_to_group(group_name="Plot 1", series_key=series_list[1].get_key()) is True
+
+    group = handler.plot_groups.get_group(name="Plot 1")
+    assert group is not None
+    restored_series = group.get_series()
+    assert len(restored_series) == 2
+    assert restored_series[0].get_key() != restored_series[1].get_key()
+
+
+def test_dynamic_plot_restores_duplicate_var_names_by_exact_key() -> None:
+    """
+    Preserve both duplicate variable names on the same device using exact series keys.
+    """
+    ensure_qt_application()
+
+    old_results: RmsResults = build_rms_results([
+        (make_device(name="DeviceA", idtag="dev-a"), [make_var(name="v_A", uid=1), make_var(name="v_A", uid=2)]),
+    ])
+    new_results: RmsResults = build_rms_results([
+        (make_device(name="DeviceA", idtag="dev-a"), [make_var(name="v_A", uid=101), make_var(name="v_A", uid=102)]),
+    ])
+
+    handler: DynamicsResultsHandler = DynamicsResultsHandler(results=old_results)
+    assert handler.create_plot_group(name="Plot 1") is True
+    assert handler.add_var_to_group(group_name="Plot 1", var_uid=1) is True
+    assert handler.add_var_to_group(group_name="Plot 1", var_uid=2) is True
+
+    handler.update_results(results=new_results)
+
+    assert get_group_var_uids(handler=handler, group_name="Plot 1") == [101, 102]
