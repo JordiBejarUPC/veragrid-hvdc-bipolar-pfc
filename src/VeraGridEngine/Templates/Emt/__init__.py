@@ -3,8 +3,6 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-from VeraGridEngine.Templates.Emt.bus_emt_template import BusEmtTemplate
-
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import (get_shunt_c_emt_template,
                                                                  get_ground_emt_template,
                                                                  get_grounding_link_emt_template,

@@ -12,9 +12,9 @@ from scipy.sparse.linalg import spsolve
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Devices.Injections.generator import Generator
-from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
+from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 
-from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod
+from VeraGridEngine.enumerations import DynamicIntegrationMethod
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions

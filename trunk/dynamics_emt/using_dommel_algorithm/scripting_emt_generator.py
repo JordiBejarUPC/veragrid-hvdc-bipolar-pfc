@@ -11,7 +11,7 @@ from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGrid.trunk.dynamics_emt.support.plot_emt_results import plot_ilines, plot_generators, plot_isource, plot_voltages, plot_v_i
 from VeraGridEngine.Templates.Emt.simple_generator_emt_template import get_simple_generator_emt_template
-from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
+from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlowDriver3Ph

@@ -16,7 +16,7 @@ from VeraGridEngine.enumerations import (DeviceType, BuildStatus, SubObjectType,
 from VeraGridEngine.Utils.Symbolic.symbolic_io import duplicate_block
 
 
-from VeraGridEngine.Utils.Symbolic.templates_common_functions import connect_bus_variables
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import connect_bus_variables_rms, connect_bus_variables_emt
 
 
 
@@ -284,7 +284,7 @@ class DynamicDevice(PhysicalDevice):
 
             if self.auto_update_enabled:
                 rms_mdl = duplicate_block(val.block, self._var_factory)
-                connect_bus_variables(self, rms_mdl, self._var_factory)
+                connect_bus_variables_rms(self, rms_mdl, self._var_factory)
                 self.rms_model = rms_mdl
 
         elif val is None:
@@ -310,8 +310,10 @@ class DynamicDevice(PhysicalDevice):
 
             if self.auto_update_enabled:
                 val.block.unify_blocks()
+                emt_mdl = duplicate_block(val.block, self._var_factory)
+                connect_bus_variables_emt(self, emt_mdl, self._var_factory, allow_deferred_connection=True)
 
-                self.emt_model = duplicate_block(val.block, self._var_factory)
+                self.emt_model = emt_mdl
         elif val is None:
             self._emt_template = None
         else:
