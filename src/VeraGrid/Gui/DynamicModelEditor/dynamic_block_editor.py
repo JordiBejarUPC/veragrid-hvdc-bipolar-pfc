@@ -1390,7 +1390,7 @@ class PortItem(QGraphicsEllipseItem):
         self.setPen(QPen(PORT_BORDER, 1.5))
         self.setZValue(3)
         self.setAcceptHoverEvents(True)
-        self.subsystem: BlockItem = subsystem
+        self.subsystem: BlockItem | GenericBlockItem = subsystem
         self.is_input: bool = is_input
         self.connections: List["ConnectionItem"] | None = None
         self.index: int = index
@@ -1504,7 +1504,7 @@ class ConnectionItem(QGraphicsPathItem):
     """
 
     def __init__(self, source_port: PortItem | BranchingItem, target_port: PortItem | BranchingItem,
-                 diagram=None, con_uid=None, uid=None):
+                 diagram=None, con_uid=None, uid=None, elbow_points: List[QPointF] = None):
         """
         Build the connection item.
 
@@ -1513,6 +1513,7 @@ class ConnectionItem(QGraphicsPathItem):
         :param diagram: BlockDiagram reference
         :param con_uid: Connection uid in the diagram
         :param uid: Optional specific uid to use
+        :param elbow_points: List of QPointF for editable elbow positions
         """
         super().__init__()
         self.uid: int = uid if uid is not None else _new_uid()
@@ -1534,24 +1535,236 @@ class ConnectionItem(QGraphicsPathItem):
         self.setAcceptHoverEvents(True)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, False)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, True)
+        self.setAcceptedMouseButtons(Qt.MouseButton.LeftButton)
 
+        self.elbow_points: List[QPointF] = elbow_points if elbow_points is not None else []
+        self.elbows: List[ElbowItem] = []
+        self._dragging_segment: int = -1
+        self._original_path_elements: List[QPointF] = []
         self.update_path()
+        self._create_elbow_items()
+
+        if self.diagram is not None:
+            self.diagram.add_branch(
+                connectionitem_uid=self.con_uid,
+                device_uid_from=self.source_port.subsystem.subsys.uid,
+                device_uid_to=self.target_port.subsystem.subsys.uid,
+                port_number_from=self.source_port.index,
+                port_number_to=self.target_port.index,
+                color=self.pen().color().name(),
+                elbow_points=[(pt.x(), pt.y()) for pt in self.elbow_points]
+            )
 
     def update_path(self) -> None:
         """
-        Recompute the orthogonal path from current port positions using the global router.
+        Recompute the orthogonal path from current port positions.
 
         :return:
         """
-        scene = self.source_port.scene()
-        path = OrthogonalRouter.compute_path(
-            self.source_port.scenePos(),
-            self.target_port.scenePos(),
-            source_port=self.source_port,
-            target_port=self.target_port,
-            scene=scene
-        )
+        path: QPainterPath = QPainterPath(self.source_port.scenePos())
+
+        if self.elbow_points:
+            for pt in self.elbow_points:
+                path.lineTo(pt)
+        else:
+            path = build_orthogonal_connection_path(
+                self.source_port.scenePos(),
+                self.target_port.scenePos()
+            )
+
+        path.lineTo(self.target_port.scenePos())
         self.setPath(path)
+
+    def _create_elbow_items(self) -> None:
+        for elbow in self.elbows:
+            elbow.setParentItem(None)
+            if elbow.scene():
+                elbow.scene().removeItem(elbow)
+        self.elbows.clear()
+
+        for i, pt in enumerate(self.elbow_points):
+            elbow = ElbowItem(self, i, pt)
+            self.scene().addItem(elbow)
+            self.elbows.append(elbow)
+
+    def _on_elbow_moved(self, index: int, new_pos: QPointF) -> None:
+        if index < 0 or index >= len(self.elbows):
+            return
+
+        self.elbow_points[index] = new_pos
+
+        prev_pt = self.source_port.scenePos()
+        next_pt = self.target_port.scenePos()
+
+        if index > 0:
+            prev_pt = self.elbow_points[index - 1]
+        if index < len(self.elbow_points) - 1:
+            next_pt = self.elbow_points[index + 1]
+
+        dx1 = new_pos.x() - prev_pt.x()
+        dy1 = new_pos.y() - prev_pt.y()
+        dx2 = next_pt.x() - new_pos.x()
+        dy2 = next_pt.y() - new_pos.y()
+
+        if abs(dx1) > abs(dy1):
+            self.elbow_points[index].setY(prev_pt.y())
+        else:
+            self.elbow_points[index].setX(prev_pt.x())
+
+        if index < len(self.elbow_points) - 1:
+            if abs(dx2) > abs(dy2):
+                self.elbow_points[index + 1].setY(new_pos.y())
+            else:
+                self.elbow_points[index + 1].setX(new_pos.x())
+
+        for i, elbow in enumerate(self.elbows):
+            elbow.setPos(self.elbow_points[i])
+
+        self.update_path()
+        self._save_elbow_points()
+
+    def _save_elbow_points(self) -> None:
+        if self.con_uid in self.diagram.con_data:
+            self.diagram.con_data[self.con_uid].elbow_points = [
+                (pt.x(), pt.y()) for pt in self.elbow_points
+            ]
+
+    def _segment_hit_test(self, pos: QPointF, threshold: float = 12.0) -> tuple:
+        """
+        Find the segment closest to pos using actual path elements.
+        Returns (segment_index, is_horizontal) or (-1, False) if none.
+        """
+        path: QPainterPath = self.path()
+        if path.isEmpty():
+            return (-1, False)
+
+        elements: List[QPointF] = []
+        for i in range(path.elementCount()):
+            elem = path.elementAt(i)
+            elements.append(QPointF(elem.x, elem.y))
+
+        if len(elements) < 2:
+            return (-1, False)
+
+        for i in range(len(elements) - 1):
+            p1: QPointF = elements[i]
+            p2: QPointF = elements[i + 1]
+
+            dy: float = abs(p2.y() - p1.y())
+            dx: float = abs(p2.x() - p1.x())
+
+            if dy < 1:
+                if p1.y() - threshold <= pos.y() <= p1.y() + threshold:
+                    if min(p1.x(), p2.x()) - threshold <= pos.x() <= max(p1.x(), p2.x()) + threshold:
+                        return (i, True)
+            elif dx < 1:
+                if p1.x() - threshold <= pos.x() <= p1.x() + threshold:
+                    if min(p1.y(), p2.y()) - threshold <= pos.y() <= max(p1.y(), p2.y()) + threshold:
+                        return (i, False)
+            else:
+                min_x: float = min(p1.x(), p2.x()) - threshold
+                max_x: float = max(p1.x(), p2.x()) + threshold
+                min_y: float = min(p1.y(), p2.y()) - threshold
+                max_y: float = max(p1.y(), p2.y()) + threshold
+                if min_x <= pos.x() <= max_x and min_y <= pos.y() <= max_y:
+                    return (i, False)
+
+        return (-1, False)
+
+    def mousePressEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
+        scene_pos: QPointF = event.scenePos()
+        seg_idx, is_horizontal = self._segment_hit_test(scene_pos)
+        if seg_idx >= 0:
+            self._dragging_segment = seg_idx
+            self._original_path_elements = []
+            path: QPainterPath = self.path()
+            for i in range(path.elementCount()):
+                elem = path.elementAt(i)
+                self._original_path_elements.append(QPointF(elem.x, elem.y))
+            event.accept()
+            return
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
+        if self._dragging_segment >= 0:
+            new_pos: QPointF = event.scenePos()
+
+            path: QPainterPath = self.path()
+            elements: List[QPointF] = []
+            for i in range(path.elementCount()):
+                elem = path.elementAt(i)
+                elements.append(QPointF(elem.x, elem.y))
+
+            if not elements or self._dragging_segment >= len(elements) - 1:
+                super().mouseMoveEvent(event)
+                return
+
+            seg_idx: int = self._dragging_segment
+            p1: QPointF = elements[seg_idx]
+            p2: QPointF = elements[seg_idx + 1]
+
+            dy: float = abs(p2.y() - p1.y())
+            dx: float = abs(p2.x() - p1.x())
+
+            if dy < 1:
+                new_y: float = new_pos.y()
+                new_x: float = p1.x()
+            elif dx < 1:
+                new_x: float = new_pos.x()
+                new_y: float = p1.y()
+            else:
+                new_x = new_pos.x()
+                new_y = new_pos.y()
+
+            new_elements: List[QPointF] = [QPointF(pt) for pt in elements]
+
+            if dy < 1:
+                if seg_idx == 0:
+                    new_elements[seg_idx + 1] = QPointF(elements[seg_idx + 1].x(), new_y)
+                elif seg_idx == len(elements) - 2:
+                    new_elements[seg_idx] = QPointF(elements[seg_idx].x(), new_y)
+                else:
+                    new_elements[seg_idx] = QPointF(elements[seg_idx].x(), new_y)
+                    new_elements[seg_idx + 1] = QPointF(elements[seg_idx + 1].x(), new_y)
+            elif dx < 1:
+                if seg_idx == 0:
+                    new_elements[seg_idx + 1] = QPointF(new_x, elements[seg_idx + 1].y())
+                elif seg_idx == len(elements) - 2:
+                    new_elements[seg_idx] = QPointF(new_x, elements[seg_idx].y())
+                else:
+                    new_elements[seg_idx] = QPointF(new_x, elements[seg_idx].y())
+                    new_elements[seg_idx + 1] = QPointF(new_x, elements[seg_idx + 1].y())
+
+            self._rebuild_path_from_elements(new_elements)
+            event.accept()
+            return
+        super().mouseMoveEvent(event)
+
+    def _rebuild_path_from_elements(self, elements: List[QPointF]) -> None:
+        """
+        Rebuild the path and elbow_points from a list of points.
+        """
+        if len(elements) < 2:
+            return
+
+        path: QPainterPath = QPainterPath(elements[0])
+        for i in range(1, len(elements)):
+            path.lineTo(elements[i])
+        self.setPath(path)
+
+        if len(elements) > 2:
+            self.elbow_points = elements[1:-1]
+        else:
+            self.elbow_points = []
+        self._save_elbow_points()
+
+    def mouseReleaseEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
+        if self._dragging_segment >= 0:
+            self._dragging_segment = -1
+            self._original_path_elements = []
+            event.accept()
+            return
+        super().mouseReleaseEvent(event)
 
     def hoverEnterEvent(self, event: QtWidgets.QGraphicsSceneHoverEvent) -> None:
         """
@@ -1578,6 +1791,34 @@ class ConnectionItem(QGraphicsPathItem):
         pen.setColor(WIRE_COLOR)
         pen.setWidthF(2.5)
         self.setPen(pen)
+
+
+class ElbowItem(QGraphicsEllipseItem):
+    def __init__(self, connection_item: "ConnectionItem", index: int, pos: QPointF = QPointF()):
+        radius = 5
+        super().__init__(-radius, -radius, radius * 2, radius * 2)
+        self.connection_item = connection_item
+        self.index = index
+        self.setBrush(QBrush(WIRE_COLOR))
+        self.setPen(QPen(QColor("#173042"), 1.5))
+        self.setZValue(2)
+        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, True)
+        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, True)
+        self.setPos(pos)
+    
+    def itemChange(self, change, value):
+        if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:
+            scene = self.connection_item.scene()
+            if scene is not None:
+                rect = scene.sceneRect()
+                x = max(rect.left(), min(value.x(), rect.right()))
+                y = max(rect.top(), min(value.y(), rect.bottom()))
+                return QPointF(x, y)
+        return super().itemChange(change, value)
+    
+    def mouseMoveEvent(self, event):
+        super().mouseMoveEvent(event)
+        self.connection_item._on_elbow_moved(self.index, self.scenePos())
 
 
 class ExpressionTextEditorDialog(QDialog):
@@ -3426,15 +3667,13 @@ class GenericBlockItem(QGraphicsRectItem):
 
     def itemChange(self, change, value):
         if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:
+            if self.position_changed_callback is not None:
+                self.position_changed_callback(value.x(), value.y())
             for port in self.inputs + self.outputs:
                 if port.connections:
                     for conn in port.connections:
                         conn.update_path()
-            if self.position_changed_callback is not None:
-                self.position_changed_callback(value.x(), value.y())
         return super().itemChange(change, value)
-
-
 
 
 class BlockItem(QGraphicsRectItem):
@@ -3777,23 +4016,19 @@ class BlockItem(QGraphicsRectItem):
 
     def itemChange(self, change: QGraphicsItem.GraphicsItemChange, value: Any) -> Any:
         """
-        Update connection geometry when the block moves.
+        Handle position changes.
 
         :param change:
         :param value:
         :return:
         """
         if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:
-            port: PortItem
-            for port in self.inputs + self.outputs:
-                if port.connections is not None:
-                    conn: ConnectionItem
-                    for conn in port.connections:
-                        conn.update_path()
-                else:
-                    pass
             if self.position_changed_callback is not None:
                 self.position_changed_callback(value.x(), value.y())
+            for port in self.inputs + self.outputs:
+                if port.connections:
+                    for conn in port.connections:
+                        conn.update_path()
             return super().itemChange(change, value)
         else:
             return super().itemChange(change, value)
@@ -4308,7 +4543,8 @@ class DiagramScene(QGraphicsScene):
                 device_uid_to=target_block.subsys.uid,
                 port_number_from=source_port.index,
                 port_number_to=target_port.index,
-                color=connection.pen().color().name()
+                color=connection.pen().color().name(),
+                elbow_points=[]
             )
         else:
             pass
@@ -11268,7 +11504,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     connection: ConnectionItem = ConnectionItem(
                         src_port, dst_port,
                         diagram=self.diagram,
-                        con_uid=uid
+                        con_uid=uid,
+                        elbow_points=elbow_points
                     )
 
                     pen: QPen = connection.pen()
