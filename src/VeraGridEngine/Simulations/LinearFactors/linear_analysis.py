@@ -114,10 +114,11 @@ def make_jacobian_ptdf(Ybus: sp.csc_matrix,
     # compute the Jacobian
     J = AC_jacobian(Ybus, V, pvpq, pq)
 
+    # When the slack is distributed,w e want a uniform participation factor
+    # across all involved slack generators. So we do 1 - 1/n = (n-1)/n
+    # in the diagona. Off-diagonal we have -1/n, so the sum is 0, as expected
     if distribute_slack:
-        dP: Mat = np.ones((n, n)) * (-1 / (n - 1))
-        for i in range(n):
-            dP[i, i] = 1.0
+        dP: Mat = np.eye(n) - 1.0 / n
     else:
         dP = np.eye(n, n)
 
@@ -142,7 +143,7 @@ def make_jacobian_ptdf(Ybus: sp.csc_matrix,
 def make_ptdf(Bpqpv: sp.csc_matrix,
               Bf: sp.csc_matrix,
               no_slack: IntVec,
-              distribute_slack: bool = True) -> Mat:
+              distribute_slack: bool = False) -> Mat:
     """
     Build the PTDF matrix
     :param Bpqpv: DC-linear susceptance matrix already sliced
@@ -155,9 +156,7 @@ def make_ptdf(Bpqpv: sp.csc_matrix,
     n = Bf.shape[1]  # number of buses
 
     if distribute_slack:
-        dP: Mat = np.ones((n, n)) * (-1 / (n - 1))
-        for i in range(n):
-            dP[i, i] = 1.0
+        dP: Mat = np.eye(n) - 1.0 / n
     else:
         dP: Mat = np.eye(n, n)
 
@@ -273,9 +272,7 @@ def make_acdc_ptdf(nc: NumericalCircuit, logger: Logger,
                 no_slack.append(i)
 
     if distribute_slack:
-        dP: Mat = np.ones((n, n)) * (-1 / (n - 1))
-        for i in range(n):
-            dP[i, i] = 1.0
+        dP: Mat = np.eye(n) - 1.0 / n
     else:
         dP = np.eye(n, n)
 
@@ -393,7 +390,7 @@ class LinearAnalysis:
 
     def __init__(self,
                  nc: NumericalCircuit,
-                 distributed_slack: bool = True,
+                 distributed_slack: bool = False,
                  correct_values: bool = False,
                  logger: Logger = Logger()):
         """
