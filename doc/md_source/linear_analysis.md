@@ -29,29 +29,6 @@ Compared with a full AC power flow, the linear model is much faster and is there
 
 It is not intended to replace the non-linear power flow in all situations. Its main value is speed and interpretability.
 
-## PTDF And LODF
-
-### PTDF
-
-The **Power Transfer Distribution Factor** matrix tells how a change in injection at a bus affects the flow of each
-branch.
-
-In practice, PTDF answers questions such as:
-
-- if I inject more power at this bus, which lines will pick up the transfer?
-- which branches are most sensitive to a given transfer?
-- how can I approximate branch flows over time without repeatedly running a full non-linear solver?
-
-### LODF
-
-The **Line Outage Distribution Factor** matrix tells how the outage of one branch redistributes flow on the remaining
-branches.
-
-In practice, LODF answers questions such as:
-
-- what happens to branch flows if one line is disconnected?
-- which outages are likely to create overloads elsewhere?
-- how severe is a given N-1 branch outage from a flow redistribution perspective?
 
 ## Available Outputs
 
@@ -85,7 +62,7 @@ The result model also exposes tabular views through `mdl()` for:
 The linear analysis options are:
 
 - `distribute_slack`:
-  whether the slack effect is distributed across buses instead of concentrated at one reference
+  whether the active-power mismatch is distributed across PV and slack buses instead of concentrated at one reference
 - `correct_values`:
   whether the analysis should apply internal corrections for out-of-range values
 - `ptdf_threshold`:
@@ -94,6 +71,465 @@ The linear analysis options are:
   LODF sparsification threshold
 
 For most workflows, `distribute_slack` and `correct_values` are the most relevant settings.
+
+
+## Theory
+
+Linear analysis uses a lossless active-power approximation to produce two main sensitivity matrices:
+
+- **PTDF**, the Power Transfer Distribution Factor matrix, which maps bus active-power injections to branch active-power flows.
+- **LODF**, the Line Outage Distribution Factor matrix, which maps the pre-contingency flow of an outaged branch to the flow changes on the remaining branches.
+
+The formulas below are applied independently to each connected island. A slack correction must never transfer active-power mismatch between electrically disconnected islands.
+
+### Network Matrices
+
+For one island, let:
+
+- $n$ be the number of buses in the island.
+- $m$ be the number of passive branches with impedance in the island.
+- $P \in \mathbb{R}^{n}$ be the bus active-power injection vector.
+- $P_f \in \mathbb{R}^{m}$ be the branch active-power flow vector, oriented from the branch `from` bus to the branch `to` bus.
+- $\theta \in \mathbb{R}^{n}$ be the bus voltage-angle vector.
+
+Define the branch-bus incidence matrix $A \in \mathbb{R}^{m \times n}$ as:
+
+$$
+A_{k i} =
+\begin{cases}
+1, & i = F_k \\
+-1, & i = T_k \\
+0, & \text{otherwise}
+\end{cases}
+$$
+
+where $F_k$ and $T_k$ are the `from` and `to` buses of branch $k$.
+
+With this orientation, the linear branch flow model is:
+
+$$
+P_f = B_f \theta
+$$
+
+and the nodal active-power balance is:
+
+$$
+P = A^{\mathsf{T}} P_f = B_{\mathrm{bus}} \theta
+$$
+
+where:
+
+$$
+B_f = \operatorname{diag}(b) A
+$$
+
+and:
+
+$$
+B_{\mathrm{bus}} = A^{\mathsf{T}} \operatorname{diag}(b) A
+$$
+
+Here $b_k$ is the active-power sensitivity of branch $k$ with respect to its angle difference. In the simplest DC model,
+$b_k = 1 / x_k$. In the actual numerical implementation, transformer tap effects and other branch parameters are
+included in the produced $B_f$ and $B_{\mathrm{bus}}$ matrices.
+
+### Single-Reference PTDF
+
+Because $B_{\mathrm{bus}}$ is singular for a connected lossless island, one bus angle is used as the reference. Let $s$ be
+the selected reference bus and let $\mathcal{N}$ be the set of non-reference buses.
+
+The reduced nodal equation is:
+
+$$
+P_{\mathcal{N}} = B_{\mathrm{bus}, \mathcal{N}\mathcal{N}} \theta_{\mathcal{N}}
+$$
+
+so:
+
+$$
+\theta_{\mathcal{N}} = B_{\mathrm{bus}, \mathcal{N}\mathcal{N}}^{-1} P_{\mathcal{N}}
+$$
+
+The single-reference PTDF matrix $H^{(0)} \in \mathbb{R}^{m \times n}$ is then built as:
+
+$$
+H^{(0)}_{:, \mathcal{N}} = B_{f, :, \mathcal{N}} B_{\mathrm{bus}, \mathcal{N}\mathcal{N}}^{-1}
+$$
+
+and:
+
+$$
+H^{(0)}_{:, s} = 0
+$$
+
+Thus, for a raw injection vector $P$:
+
+$$
+P_f = H^{(0)} P
+$$
+
+In single-slack mode, this flow is balanced by assigning the island active-power mismatch to the reference slack bus.
+For nodal-balance checks, define:
+
+$$
+\Delta P = \mathbf{1}^{\mathsf{T}} P
+$$
+
+and:
+
+$$
+w_i^{\mathrm{slack}} =
+\begin{cases}
+1, & i = s \\
+0, & i \ne s
+\end{cases}
+$$
+
+The effective injection vector is:
+
+$$
+P^{\mathrm{eff}} = P - w^{\mathrm{slack}} \Delta P
+$$
+
+or, component-wise:
+
+$$
+P_i^{\mathrm{eff}} = P_i \quad \text{for } i \ne s
+$$
+
+$$
+P_s^{\mathrm{eff}} = P_s - \sum_{i=1}^{n} P_i = - \sum_{i \ne s} P_i
+$$
+
+Therefore, when `distribute_slack = False`, the PTDF production matrix is not modified:
+
+$$
+D_{\mathrm{PTDF}} = I
+$$
+
+$$
+H = H^{(0)}
+$$
+
+but the Kirchhoff balance check must compare branch-flow divergence against $P^{\mathrm{eff}}$, not necessarily against
+the raw injection vector $P$.
+
+### Distributed-Slack PTDF
+
+When `distribute_slack = True`, the PTDF is modified so that the balancing injection is distributed only over buses that
+can regulate active power in the linear model.
+
+The numerical bus type convention is:
+
+| Code | Bus type |
+|------|----------|
+| `1` | PQ |
+| `2` | PV |
+| `3` | Slack |
+
+The latest distributed-slack convention uses PV and Slack buses only. Define the participating set:
+
+$$
+\mathcal{G} = \left\{ i \;\middle|\; \operatorname{bus\_type}_i = 2 \;\lor\; \operatorname{bus\_type}_i = 3 \right\}
+$$
+
+The participation vector $w \in \mathbb{R}^{n}$ is:
+
+$$
+w_i =
+\begin{cases}
+\dfrac{1}{|\mathcal{G}|}, & i \in \mathcal{G} \\
+0, & i \notin \mathcal{G}
+\end{cases}
+$$
+
+so that:
+
+$$
+\mathbf{1}^{\mathsf{T}} w = 1
+$$
+
+The distributed-slack transaction matrix is:
+
+$$
+D = I - w \mathbf{1}^{\mathsf{T}}
+$$
+
+or, entry-wise:
+
+$$
+D_{ij} = \delta_{ij} - w_i
+$$
+
+where $\delta_{ij}$ is the Kronecker delta. Only the rows of PV and Slack buses are modified, because only those buses
+have nonzero participation weights.
+
+The effective injection vector is:
+
+$$
+P^{\mathrm{eff}} = D P
+$$
+
+therefore:
+
+$$
+P^{\mathrm{eff}} = P - w \left( \mathbf{1}^{\mathsf{T}} P \right)
+$$
+
+and:
+
+$$
+\sum_{i=1}^{n} P_i^{\mathrm{eff}} = 0
+$$
+
+The distributed-slack PTDF is produced by right-multiplying the single-reference PTDF by $D$:
+
+$$
+H = H^{(0)} D
+$$
+
+The branch flows are then computed from the raw injection vector as:
+
+$$
+P_f = H P = H^{(0)} D P = H^{(0)} P^{\mathrm{eff}}
+$$
+
+Each PTDF column is therefore a balanced transaction. For a unit injection at bus $j$:
+
+$$
+D e_j = e_j - w
+$$
+
+so column $j$ of the distributed-slack PTDF represents an injection at bus $j$ balanced by withdrawals over the PV and
+Slack buses according to $w$.
+
+This replaces the older all-bus convention:
+
+$$
+D_{ij}^{\mathrm{old}} =
+\begin{cases}
+1, & i = j \\
+-\dfrac{1}{n - 1}, & i \ne j
+\end{cases}
+$$
+
+The older convention assigned the balancing power to all other buses, including PQ buses, and excluded the injection bus
+itself from the balancing set. The new convention uses a fixed participation vector based on `bus_types`, so PQ buses do
+not absorb active-power mismatch.
+
+### PTDF Production Summary
+
+For each island, the PTDF production can be summarized as:
+
+$$
+H^{(0)}_{:, \mathcal{N}} = B_{f, :, \mathcal{N}} B_{\mathrm{bus}, \mathcal{N}\mathcal{N}}^{-1}
+$$
+
+$$
+H^{(0)}_{:, s} = 0
+$$
+
+If `distribute_slack = False`:
+
+$$
+H = H^{(0)}
+$$
+
+If `distribute_slack = True`:
+
+$$
+D = I - w \mathbf{1}^{\mathsf{T}}
+$$
+
+$$
+H = H^{(0)} D
+$$
+
+The resulting PTDF maps bus injections to branch flows:
+
+$$
+P_f = H P
+$$
+
+For distributed slack, this is equivalent to:
+
+$$
+P_f = H^{(0)} P^{\mathrm{eff}}
+$$
+
+with:
+
+$$
+P^{\mathrm{eff}} = D P
+$$
+
+### Nodal-Balance Check
+
+With the branch-flow orientation defined by $A$, branch-flow divergence is:
+
+$$
+\operatorname{div}(P_f) = A^{\mathsf{T}} P_f
+$$
+
+The linear Kirchhoff balance check is:
+
+$$
+A^{\mathsf{T}} P_f - P^{\mathrm{eff}} \approx 0
+$$
+
+For `distribute_slack = True`:
+
+$$
+P^{\mathrm{eff}} = D P
+$$
+
+For `distribute_slack = False` with one reference slack bus $s$:
+
+$$
+P^{\mathrm{eff}} = P - w^{\mathrm{slack}} \left( \mathbf{1}^{\mathsf{T}} P \right)
+$$
+
+This distinction is important: the vector used to compute flows and the vector used to check nodal balance are not always
+the same raw vector. If the original $P$ comes from an AC operating point, it may contain active losses or mismatch that
+must be absorbed by the slack convention in the lossless linear model.
+
+### LODF Production
+
+The LODF matrix is produced from branch-to-branch PTDFs.
+
+For branch $k$, define the endpoint transaction vector:
+
+$$
+a_k = e_{F_k} - e_{T_k}
+$$
+
+where $e_{F_k}$ and $e_{T_k}$ are unit vectors at the `from` and `to` buses of branch $k$. Collecting all endpoint
+transaction vectors gives:
+
+$$
+A^{\mathsf{T}} = \begin{bmatrix} a_1 & a_2 & \cdots & a_m \end{bmatrix}
+$$
+
+The branch-to-branch PTDF matrix is:
+
+$$
+K = H A^{\mathsf{T}}
+$$
+
+so:
+
+$$
+K_{\ell k} = H_{\ell, :} \left( e_{F_k} - e_{T_k} \right)
+$$
+
+$K_{\ell k}$ is the sensitivity of branch $\ell$ to a unit transaction from the `from` bus of branch $k$ to the `to` bus
+of branch $k$.
+
+For the outage of branch $k$, the LODF denominator is:
+
+$$
+d_k = 1 - K_{kk}
+$$
+
+For non-islanding outages, the LODF entries are:
+
+$$
+\operatorname{LODF}_{\ell k} = \frac{K_{\ell k}}{1 - K_{kk}} \quad \text{for } \ell \ne k
+$$
+
+and the diagonal is set to:
+
+$$
+\operatorname{LODF}_{kk} = -1
+$$
+
+The post-contingency flow approximation for outage $k$ is then:
+
+$$
+P_{f, \ell}^{\mathrm{post}(k)} = P_{f, \ell}^{\mathrm{pre}} + \operatorname{LODF}_{\ell k} P_{f, k}^{\mathrm{pre}}
+$$
+
+for $\ell \ne k$, and:
+
+$$
+P_{f, k}^{\mathrm{post}(k)} = 0
+$$
+
+If:
+
+$$
+1 - K_{kk} \approx 0
+$$
+
+then the outaged branch is island-forming or numerically close to island-forming. In that case, the standard LODF value is
+not finite, because removing the branch changes network connectivity. Production code should mark or correct those values
+according to the selected correction policy.
+
+The branch endpoint transaction $a_k$ is balanced because:
+
+$$
+\mathbf{1}^{\mathsf{T}} a_k = 0
+$$
+
+Therefore, for the corrected distributed-slack matrix:
+
+$$
+D a_k = a_k
+$$
+
+This means the LODF calculation is independent of the distributed-slack participation vector, provided the PTDF uses the
+consistent formulation:
+
+$$
+H = H^{(0)} D
+$$
+
+The slack convention matters for mapping arbitrary bus injections $P$ to flows, but endpoint-to-endpoint branch outage
+transactions are already balanced.
+
+### Avoiding Double Correction
+
+There are two valid usage patterns.
+
+If the PTDF already includes the slack-distribution matrix:
+
+$$
+H = H^{(0)} D
+$$
+
+then compute flows from the raw injection vector:
+
+$$
+P_f = H P
+$$
+
+and check nodal balance with:
+
+$$
+P^{\mathrm{eff}} = D P
+$$
+
+Alternatively, if using the single-reference PTDF externally:
+
+$$
+H = H^{(0)}
+$$
+
+then first correct the injection vector:
+
+$$
+P^{\mathrm{eff}} = D P
+$$
+
+and then compute:
+
+$$
+P_f = H^{(0)} P^{\mathrm{eff}}
+$$
+
+Do not apply the slack matrix to both the PTDF and the input vector, because that applies the same slack correction twice.
+
+
 
 ## Snapshot Linear Analysis
 
