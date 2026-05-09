@@ -93,6 +93,7 @@ def make_jacobian_ptdf(Ybus: sp.csc_matrix,
                        V: CxVec,
                        pq: IntVec,
                        pv: IntVec,
+                       bus_types: IntVec,
                        distribute_slack: bool = False) -> Mat:
     """
     Compute the AC-PTDF
@@ -103,6 +104,7 @@ def make_jacobian_ptdf(Ybus: sp.csc_matrix,
     :param V: voltages array
     :param pq: array of pq node indices
     :param pv: array of pv node indices
+    :param bus_types: Array of bus types
     :param distribute_slack: distribute slack?
     :return: AC-PTDF matrix (Branches, buses)
     """
@@ -114,12 +116,13 @@ def make_jacobian_ptdf(Ybus: sp.csc_matrix,
     # compute the Jacobian
     J = AC_jacobian(Ybus, V, pvpq, pq)
 
-    if distribute_slack:
-        dP: Mat = np.ones((n, n)) * (-1 / (n - 1))
-        for i in range(n):
-            dP[i, i] = 1.0
-    else:
-        dP = np.eye(n, n)
+    # if distribute_slack:
+    #     dP: Mat = np.ones((n, n)) * (-1 / (n - 1))
+    #     for i in range(n):
+    #         dP[i, i] = 1.0
+    # else:
+    #     dP = np.eye(n, n)
+    dP = make_dP_from_bus_types(bus_types=bus_types, distribute_slack=distribute_slack)
 
     # compose the compatible array (the Q increments are considered zero
     dQ = np.zeros((npq, n))
@@ -248,6 +251,7 @@ def make_corrected_injections(P: Vec, bus_types: IntVec, distribute_slack: bool)
 
     return P_eff
 
+
 @nb.njit(cache=True)
 def make_corrected_injections_2d(P: Mat, bus_types: IntVec, distribute_slack: bool) -> Mat:
     """
@@ -343,12 +347,15 @@ def make_ptdf(Bpqpv: sp.csc_matrix,
     return H
 
 
-def make_acdc_ptdf(nc: NumericalCircuit, logger: Logger,
+def make_acdc_ptdf(nc: NumericalCircuit,
+                   logger: Logger,
+                   bus_types: IntVec,
                    distribute_slack: bool = False) -> Mat:
     """
     Build the ACDC PTDF matrix
     :param nc: NumericalCircuit
     :param logger: Logger
+    :param bus_types: Array of bus types for the distributed slack
     :param distribute_slack: distribute the slack?
     :return: PTDF matrix. It is a full matrix of dimensions Branches x buses
     """
@@ -435,12 +442,11 @@ def make_acdc_ptdf(nc: NumericalCircuit, logger: Logger,
             else:
                 no_slack.append(i)
 
-    if distribute_slack:
-        dP: Mat = np.ones((n, n)) * (-1 / (n - 1))
-        for i in range(n):
-            dP[i, i] = 1.0
-    else:
-        dP = np.eye(n, n)
+    # if distribute_slack:
+    #     dP: Mat = np.eye(n) - 1.0 / n
+    # else:
+    #     dP = np.eye(n, n)
+    dP = make_dP_from_bus_types(bus_types=bus_types, distribute_slack=distribute_slack)
 
     Ared = A[no_slack, :][:, no_slack]
     Pred = dP[no_slack, :]
@@ -556,7 +562,7 @@ class LinearAnalysis:
 
     def __init__(self,
                  nc: NumericalCircuit,
-                 distributed_slack: bool = True,
+                 distributed_slack: bool = False,
                  correct_values: bool = False,
                  logger: Logger = Logger()):
         """
@@ -602,6 +608,7 @@ class LinearAnalysis:
                             ptdf_island = make_acdc_ptdf(
                                 nc=island,
                                 logger=self.logger,
+                                bus_types=island.bus_data.bus_types,
                                 distribute_slack=distributed_slack
                             )
 
