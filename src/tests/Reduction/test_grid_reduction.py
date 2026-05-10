@@ -453,6 +453,8 @@ def test_ptdf_projected_antena():
     # fname = os.path.join('src', 'tests', 'data', 'grids', '6bus_antena.veragrid')
     grid = gce.open_file(filename=fname)
 
+    grid.buses[0].is_slack = True
+
     P_original_gen = 0.0
     for gen in grid.generators:
         P_original_gen += gen.P
