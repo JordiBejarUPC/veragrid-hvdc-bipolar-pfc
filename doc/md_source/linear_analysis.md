@@ -1,61 +1,37 @@
 # 📏 Linear analysis
 
-Linear analysis in VeraGrid provides a fast approximation of power transfer impacts using sensitivity factors instead of
-solving the full non-linear power flow every time. It is especially useful for screening studies, contingency analysis,
-time-series approximations, and transfer sensitivity calculations.
+Linear analysis in VeraGrid provides a fast approximation of the power flow and 
+power transfer impacts using sensitivity factors instead of solving the full 
+non-linear power flow every time. It is especially useful for screening studies, 
+contingency analysis, time-series approximations, and transfer sensitivity calculations.
 
 The most important outputs are:
 
-- **PTDF**: Power Transfer Distribution Factors
-- **LODF**: Line Outage Distribution Factors
+- **PTDF**: Power Transfer Distribution Factors for branches HvdcLine and VSC.
+- **LODF**: Line Outage Distribution Factors for branches HvdcLine and VSC.
+- **Pf**: Lossless Power flows through the branches.
+- **Pbus**: Modified injections to match the PTDF formation.
+(i.e. with distributed slack, the SLACK and PV nodes get modified)
 
 These factors describe how injections or outages propagate through branch flows.
 
-## What The Study Evaluates
+It is not intended to replace the non-linear power flow in all situations. 
+Its main value is speed and interpretability.
 
-The linear analysis approximates the network around its base operating point and computes:
+## Interpretation Notes
 
-- branch flow sensitivities to bus injections
-- branch flow sensitivities to line outages
-- approximate branch active powers
-- approximate branch loading
-
-Compared with a full AC power flow, the linear model is much faster and is therefore well suited for:
-
-- contingency screening
-- sensitivity studies
-- linear time-series flow approximation
-- remedial action logic such as SRAP
-
-It is not intended to replace the non-linear power flow in all situations. Its main value is speed and interpretability.
+- Large PTDF absolute values indicate strong sensitivity of a branch to injections at a bus.
+- Large LODF absolute values indicate strong flow redistribution after the outage of another branch.
+- Linear branch loadings are very useful for screening, but not all overloads found linearly will match the exact
+  non-linear AC solution.
+- Time-series linear analysis is often good for ranking and trend analysis, even when exact MW values differ somewhat
+  from Newton-Raphson.
 
 
-## Available Outputs
 
-The `LinearAnalysisResults` object exposes:
 
-- `PTDF`: Power transfer distribution factors
-- `LODF`: Line (actually all branches with impedance) distribution factors.
-- `HvdcDF`: HVDCLines distribution factors (sensitivity to the set power)
-- `HvdcODF`: HVDCLines outage distribution factors.
-- `VscDF`: VSC converters distribution factors (sensitivity to the set power)
-- `VscODF`: VSC converters outage distribution factors.
-- `Sf`: approximate branch active power flow
-- `loading`: approximate branch loading
-- `Sbus`: bus power injections
 
-The result model also exposes tabular views through `mdl()` for:
-
-- `ResultTypes.PTDF`
-- `ResultTypes.LODF`
-- `ResultTypes.HvdcPTDF`
-- `ResultTypes.HvdcODF`
-- `ResultTypes.VscPTDF`
-- `ResultTypes.VscODF`
-- `ResultTypes.BranchActivePowerFrom`
-- `ResultTypes.BranchLoading`
-
-## Main Options
+## Options
 
 ![](figures/settings-pf.png)
 
@@ -530,12 +506,66 @@ $$
 Do not apply the slack matrix to both the PTDF and the input vector, because that applies the same slack correction twice.
 
 
+### SRAP: Automatic Power Reduction System
 
-## Snapshot Linear Analysis
+The Automatic Power Reduction System, or **SRAP**, is a linear sensitivity-based mechanism used in contingency analysis
+to determine whether an overload can be dismissed by corrective generation re-dispatch.
+
+![](figures/settings-con.png)
+
+![](figures/SRAP.png)
+
+The idea is simple:
+
+- a contingency produces an overload on a monitored branch
+- a set of generators has known sensitivities with respect to that overload
+- available upward or downward redispatch is combined with those sensitivities
+- if the overload can be removed within the allowed corrective margin, the contingency can be dismissed
+
+Example:
+
+Imagine that a line overloads by 5 MW after a contingency. Three plants are identified as significant for relieving
+that overload:
+
+- plant 1: generating 80 MW, with PTDF sensitivity `0.11`
+- plant 2: generating 30 MW, with PTDF sensitivity `0.09`
+- plant 3: generating 50 MW, with PTDF sensitivity `0.07`
+
+Assume the SRAP limit is 90 MW of redispatch.
+
+We build arrays ordered by sensitivity:
+
+- `sensitivity = [0.11, 0.09, 0.07]`
+- `p_available = [80, 30, 30]`
+
+Then we compute the contribution `f = sensitivity * p_available`.
+
+If the resulting corrective capability is larger than the overload, the contingency can be considered solvable by SRAP
+and may be dismissed from the critical set.
+
+A contingency study with SRAP activated can be run as follows:
+
+```python
+con_options = ContingencyAnalysisOptions()
+con_options.use_srap = True
+con_options.engine = ContingencyEngine.Linear
+
+con_drv = ContingencyAnalysisDriver(
+    grid=grid,
+    options=con_options,
+    engine=EngineType.VeraGrid
+)
+
+con_drv.run()
+```
+
+
+
+## API
+
+### Snapshot Linear Analysis
 
 This is the standard single-state linear study.
-
-
 
 Using the simplified API:
 
@@ -617,7 +647,7 @@ Branch 2-3   -1.000000    0.344795    0.307071   -1.000000   -1.000000   -0.3070
 Branch 3-4   -0.457143   -0.655205    1.000000   -0.457143   -0.457143   -1.000000
 ```
 
-## Time-Series Linear Analysis
+### Time-Series Linear Analysis
 
 The time-series driver uses the same linear sensitivity idea to approximate branch flows over many time steps.
 
@@ -641,7 +671,51 @@ print(drv.results.Sf)
 print(drv.results.loading)
 ```
 
-## Linear vs Non-Linear Comparison
+
+
+## Benchmark
+
+### Linear Algebra Frameworks Benchmark
+
+#### IEEE 39 1-year time series
+
+The experiment measures the time taken by the time-series simulation using different linear algebra solvers.
+
+The power flow tolerance is set to `1e-4`.
+
+The time in seconds taken using each solver is:
+
+|         | KLU   | LAPACK | ILU   | SuperLU | Pardiso |
+|---------|-------|--------|-------|---------|---------|
+| Test 1  | 82.03 | 82.10  | 81.79 | 82.88   | 93.23   |
+| Test 2  | 80.22 | 80.84  | 81.71 | 81.37   | 95.29   |
+| Test 3  | 79.53 | 82.32  | 82.75 | 80.98   | 92.62   |
+| Test 4  | 80.06 | 82.66  | 82.14 | 80.17   | 97.60   |
+| Test 5  | 80.07 | 80.51  | 81.94 | 80.03   | 93.39   |
+| Average | 80.38 | 81.68  | 82.07 | 81.09   | 94.42   |
+
+#### 2869 Pegase 1-week time series
+
+The experiment measures the time taken by the time-series simulation using different linear algebra solvers.
+
+The power flow tolerance is set to `1e-4`.
+
+The time in seconds taken using each solver is:
+
+|         | KLU   | LAPACK | ILU   | SuperLU | Pardiso |
+|---------|-------|--------|-------|---------|---------|
+| Test 1  | 2.46  | 2.50   | 2.52  | 2.48    | 2.54    |
+| Test 2  | 2.35  | 2.31   | 2.36  | 2.32    | 2.59    |
+| Test 3  | 2.40  | 2.42   | 2.46  | 2.46    | 2.46    |
+| Test 4  | 2.33  | 2.31   | 2.34  | 2.33    | 2.42    |
+| Test 5  | 2.31  | 2.32   | 2.45  | 2.33    | 2.51    |
+| Average | 2.37  | 2.37   | 2.43  | 2.39    | 2.51    |
+
+From these tests, the solvers are roughly equivalent for this type of simulation, except Pardiso, which performs
+worse than the others in these specific benchmarks.
+
+
+### Linear vs Non-Linear Comparison
 
 One of the most common uses of the linear model is to compare it against a Newton-Raphson time-series power flow.
 
@@ -693,110 +767,7 @@ plt.show()
 This comparison is important because it shows where the linear model is accurate enough for screening and where the
 full non-linear power flow is still necessary.
 
-## SRAP: Automatic Power Reduction System
 
-The Automatic Power Reduction System, or **SRAP**, is a linear sensitivity-based mechanism used in contingency analysis
-to determine whether an overload can be dismissed by corrective generation re-dispatch.
-
-![](figures/settings-con.png)
-
-![](figures/SRAP.png)
-
-The idea is simple:
-
-- a contingency produces an overload on a monitored branch
-- a set of generators has known sensitivities with respect to that overload
-- available upward or downward redispatch is combined with those sensitivities
-- if the overload can be removed within the allowed corrective margin, the contingency can be dismissed
-
-Example:
-
-Imagine that a line overloads by 5 MW after a contingency. Three plants are identified as significant for relieving
-that overload:
-
-- plant 1: generating 80 MW, with PTDF sensitivity `0.11`
-- plant 2: generating 30 MW, with PTDF sensitivity `0.09`
-- plant 3: generating 50 MW, with PTDF sensitivity `0.07`
-
-Assume the SRAP limit is 90 MW of redispatch.
-
-We build arrays ordered by sensitivity:
-
-- `sensitivity = [0.11, 0.09, 0.07]`
-- `p_available = [80, 30, 30]`
-
-Then we compute the contribution `f = sensitivity * p_available`.
-
-If the resulting corrective capability is larger than the overload, the contingency can be considered solvable by SRAP
-and may be dismissed from the critical set.
-
-A contingency study with SRAP activated can be run as follows:
-
-```python
-con_options = ContingencyAnalysisOptions()
-con_options.use_srap = True
-con_options.engine = ContingencyEngine.Linear
-
-con_drv = ContingencyAnalysisDriver(
-    grid=grid,
-    options=con_options,
-    engine=EngineType.VeraGrid
-)
-
-con_drv.run()
-```
-
-## Interpretation Notes
-
-- Large PTDF absolute values indicate strong sensitivity of a branch to injections at a bus.
-- Large LODF absolute values indicate strong flow redistribution after the outage of another branch.
-- Linear branch loadings are very useful for screening, but not all overloads found linearly will match the exact
-  non-linear AC solution.
-- Time-series linear analysis is often good for ranking and trend analysis, even when exact MW values differ somewhat
-  from Newton-Raphson.
-
-## Benchmark
-
-### Linear Algebra Frameworks Benchmark
-
-#### IEEE 39 1-year time series
-
-The experiment measures the time taken by the time-series simulation using different linear algebra solvers.
-
-The power flow tolerance is set to `1e-4`.
-
-The time in seconds taken using each solver is:
-
-|         | KLU   | LAPACK | ILU   | SuperLU | Pardiso |
-|---------|-------|--------|-------|---------|---------|
-| Test 1  | 82.03 | 82.10  | 81.79 | 82.88   | 93.23   |
-| Test 2  | 80.22 | 80.84  | 81.71 | 81.37   | 95.29   |
-| Test 3  | 79.53 | 82.32  | 82.75 | 80.98   | 92.62   |
-| Test 4  | 80.06 | 82.66  | 82.14 | 80.17   | 97.60   |
-| Test 5  | 80.07 | 80.51  | 81.94 | 80.03   | 93.39   |
-| Average | 80.38 | 81.68  | 82.07 | 81.09   | 94.42   |
-
-#### 2869 Pegase 1-week time series
-
-The experiment measures the time taken by the time-series simulation using different linear algebra solvers.
-
-The power flow tolerance is set to `1e-4`.
-
-The time in seconds taken using each solver is:
-
-|         | KLU   | LAPACK | ILU   | SuperLU | Pardiso |
-|---------|-------|--------|-------|---------|---------|
-| Test 1  | 2.46  | 2.50   | 2.52  | 2.48    | 2.54    |
-| Test 2  | 2.35  | 2.31   | 2.36  | 2.32    | 2.59    |
-| Test 3  | 2.40  | 2.42   | 2.46  | 2.46    | 2.46    |
-| Test 4  | 2.33  | 2.31   | 2.34  | 2.33    | 2.42    |
-| Test 5  | 2.31  | 2.32   | 2.45  | 2.33    | 2.51    |
-| Average | 2.37  | 2.37   | 2.43  | 2.39    | 2.51    |
-
-From these tests, the solvers are roughly equivalent for this type of simulation, except Pardiso, which performs
-worse than the others in these specific benchmarks.
-
-<!-- BEGIN RESULTS REGISTERED PROPERTIES -->
 
 ## Registered Result Properties
 
@@ -820,6 +791,18 @@ The snapshot linear analysis result stores sensitivity matrices and the base lin
 | `voltage` | `CxVec` | Complex bus voltage solution. |
 | `loading` | `Vec` | Branch loading result. |
 
+The result model also exposes tabular views through `mdl()` for:
+
+- `ResultTypes.PTDF`
+- `ResultTypes.LODF`
+- `ResultTypes.HvdcPTDF`
+- `ResultTypes.HvdcODF`
+- `ResultTypes.VscPTDF`
+- `ResultTypes.VscODF`
+- `ResultTypes.BranchActivePowerFrom`
+- `ResultTypes.BranchLoading`
+- - `ResultTypes.BranchActivePower`
+
 ### `LinearAnalysisTimeSeriesResults` registered properties
 
 The time-series linear analysis result stores linearized voltages, injections, flows, losses, and loading over time.
@@ -834,4 +817,8 @@ The time-series linear analysis result stores linearized voltages, injections, f
 | `S` | `CxMat` | Complex bus power result matrix. |
 | `losses` | `CxMat` | Complex branch losses. |
 | `loading` | `CxMat` | Branch loading result. |
+
+
+
+
 <!-- END RESULTS REGISTERED PROPERTIES -->
