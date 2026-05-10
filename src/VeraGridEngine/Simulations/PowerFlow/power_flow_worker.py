@@ -920,13 +920,8 @@ def multi_island_pf_nc(nc: NumericalCircuit,
             Sbus_input=Sbus_input,
         )
         V0 = results_0.voltage
-        if nc.topology_performed:
-            mapping = nc.get_reduction_bus_mapping()
-        else:
-            mapping = None
     else:
         V0 = nc.bus_data.Vbus if V_guess is None else V_guess[nc.bus_data.original_idx]
-        mapping = None
 
     if nc.active_branch_data.any_pf_control:
 
@@ -949,11 +944,7 @@ def multi_island_pf_nc(nc: NumericalCircuit,
 
         # expand voltages if there was a bus topology reduction
         if nc.topology_performed:
-            if mapping is None:
-                results.voltage = nc.propagate_bus_result(results.voltage)
-            else:
-                # we pick the originally performed mapping
-                results.voltage = results.voltage[mapping]
+            results.voltage = nc.propagate_bus_result(results.voltage)
 
         # do the reactive power partition and store the values
         results.gen_q, results.battery_q = split_bus_quantity(
@@ -987,11 +978,7 @@ def multi_island_pf_nc(nc: NumericalCircuit,
 
         # expand voltages if there was a bus topology reduction
         if nc.topology_performed:
-            if mapping is None:
-                results.voltage = nc.propagate_bus_result(results.voltage)
-            else:
-                # we pick the originally performed mapping
-                results.voltage = results.voltage[mapping]
+            results.voltage = nc.propagate_bus_result(results.voltage)
 
         # do the reactive power partition and store the values
         results.gen_q, results.battery_q = split_bus_quantity(
