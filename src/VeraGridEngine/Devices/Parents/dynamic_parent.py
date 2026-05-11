@@ -283,9 +283,8 @@ class DynamicDevice(PhysicalDevice):
             self._clear_rms_fmu_config()
 
             if self.auto_update_enabled:
-                val.block.unify_blocks()
                 rms_mdl = duplicate_block(val.block, self._var_factory)
-                # connect_bus_variables_rms(self, rms_mdl, self._var_factory)
+                connect_bus_variables_rms(self, rms_mdl, self._var_factory)
                 self.rms_model = rms_mdl
 
         elif val is None:

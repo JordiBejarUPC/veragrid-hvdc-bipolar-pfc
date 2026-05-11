@@ -210,6 +210,14 @@ class Expr:
         """
         return mapping.get(self, self)
 
+    def contains_var(self, var: Var) -> bool:
+        """
+        Check if this expression contains the given variable.
+        :param var: Variable to search for.
+        :return: True if var is in this expression.
+        """
+        return False
+
     def to_dict(self) -> Dict[str, Any]:
         """
         returns a dictionary
@@ -365,6 +373,9 @@ class Const(Expr):
 
         return self
 
+    def contains_var(self, var: Var) -> bool:
+        return False
+
     def __str__(self) -> str:
         return str(self.value)
 
@@ -497,6 +508,9 @@ class Var(Expr):
         if self.name in mapping:
             return mapping[self.name]
         return self
+
+    def contains_var(self, var: Var) -> bool:
+        return self.uid == var.uid
 
     def __str__(self) -> str:
         return self.name
@@ -907,6 +921,9 @@ class BinOp(Expr):
             return mapping[self]
         return BinOp(self.left.subs(mapping), self.op, self.right.subs(mapping))
 
+    def contains_var(self, var: Var) -> bool:
+        return self.left.contains_var(var) or self.right.contains_var(var)
+
     def __str__(self) -> str:
         return f"({self.left}) {self.op} ({self.right})"
 
@@ -1022,6 +1039,9 @@ class UnOp(Expr):
         if self in mapping:
             return mapping[self]
         return UnOp(self.op, self.operand.subs(mapping))
+
+    def contains_var(self, var: Var) -> bool:
+        return self.operand.contains_var(var)
 
     def __str__(self) -> str:
         return f"{self.op}({self.operand})"
@@ -1266,6 +1286,9 @@ class Func(Expr):
         if self in mapping:
             return mapping[self]
         return Func(self.arg.subs(mapping), self.op)
+
+    def contains_var(self, var: Var) -> bool:
+        return self.arg.contains_var(var)
 
     def __str__(self) -> str:
         return f"{self.op}({self.arg})"
@@ -1679,7 +1702,11 @@ class Func2(Expr):
             self.arg2.subs(mapping),
         )
 
+    def contains_var(self, var: Var) -> bool:
+        return self.arg1.contains_var(var) or self.arg2.contains_var(var)
+
     def __str__(self) -> str:
+        return f"{self.name}({self.arg1}, {self.arg2})"
         return f"{self.name}({self.arg1}, {self.arg2})"
 
     def __repr__(self) -> str:

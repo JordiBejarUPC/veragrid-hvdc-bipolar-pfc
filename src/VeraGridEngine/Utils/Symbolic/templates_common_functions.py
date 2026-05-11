@@ -153,7 +153,7 @@ def connect_models(mdl1: Block, mdl2: Block):
         (outp, inpt)
         for outp in mdl1.out_vars
         for inpt in mdl2.in_vars
-        if outp.ref == inpt.shared_ref and outp.shared_ref is not None and inpt.shared_ref is not None
+        if outp.shared_ref == inpt.shared_ref and outp.shared_ref is not None and inpt.shared_ref is not None
     ]
 
     for outp, inpt in pairs:
