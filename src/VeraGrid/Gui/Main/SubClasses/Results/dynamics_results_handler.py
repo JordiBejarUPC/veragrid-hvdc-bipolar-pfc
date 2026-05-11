@@ -1160,13 +1160,15 @@ class DynamicsResultsHandler:
         gr_idx: int = self.group_idx[group_name]
         self.results.plot_var(var=var, group_idx=gr_idx)
 
-    def plot_group(self, plot_group_name: str, dyn_group_name: str) -> bool:
+    def plot_group(self, plot_group_name: str) -> bool:
         """
         Plot all variables stored in one plot group.
 
         :param plot_group_name: Plot-group name selected by the user.
-        :param dyn_group_name: RMS/EMT events group name selected in the combobox.
         :return: ``True`` when the plot group existed and was plotted.
+
+        Each stored dynamic series already knows its event-group source, so the
+        group plot no longer depends on any global event-group selector.
         """
         plot_group: DynamicsPlotGroup | None = self.plot_groups.get_group(name=plot_group_name)
         if plot_group is not None:
@@ -1181,20 +1183,24 @@ class DynamicsResultsHandler:
                         x_values, y_values = self._get_series_plot_data(series=variable)
                         label: str = variable.get_plot_label(has_multiple_sources=self.has_multiple_sources())
                     elif isinstance(variable, Var):
-                        group_idx: int = self.group_idx[dyn_group_name]
                         x_values = self.results.time_array
-                        result_path, values_idx = self._resolve_result_path_and_component_index(variable=variable)
-                        if result_path == "values":
-                            y_values = self.results.values[:, values_idx, group_idx]
-                        elif result_path == "diff_values" and hasattr(self.results, "diff_values"):
-                            y_values = self.results.diff_values[:, values_idx, group_idx]
+                        # Legacy raw ``Var`` entries are still tolerated, but
+                        # only when they resolve to exactly one current series.
+                        compatible_series: List[DynamicResultSeries] = self.series_by_var_uid.get(variable.uid, list())
+                        if len(compatible_series) == 1:
+                            _, y_values = self._get_series_plot_data(series=compatible_series[0])
+                            label = compatible_series[0].get_plot_label(
+                                has_multiple_sources=self.has_multiple_sources()
+                            )
                         else:
-                            continue
-                        label = variable.name
+                            y_values = None
                     else:
-                        continue
+                        y_values = None
 
-                    axis.plot(x_values, y_values, label=label)
+                    if y_values is not None:
+                        axis.plot(x_values, y_values, label=label)
+                    else:
+                        pass
 
                 axis.legend()
                 axis.set_title(plot_group_name)
@@ -1207,12 +1213,11 @@ class DynamicsResultsHandler:
 
 
 
-    def plot_entry_from_index(self, index: QtCore.QModelIndex, dyn_group_name: str) -> bool:
+    def plot_entry_from_index(self, index: QtCore.QModelIndex) -> bool:
         """
         Plot the selected plots-tree entry.
 
         :param index: Selected plots-tree index.
-        :param dyn_group_name: Selected RMS/EMT events group name.
         :return: ``True`` when something was plotted.
         """
         selected_var: DynamicResultSeries | None = self.get_plot_series_from_index(index=index)
@@ -1222,17 +1227,20 @@ class DynamicsResultsHandler:
         else:
             plot_group_name: str | None = self.get_plot_group_name_from_index(index=index)
             if plot_group_name is not None:
-                return self.plot_group(plot_group_name=plot_group_name, dyn_group_name=dyn_group_name)
+                return self.plot_group(plot_group_name=plot_group_name)
             else:
                 return False
 
 
-    def get_data_from_plot_index(self, index: QtCore.QModelIndex, dyn_group_name: str) -> ResultsModel | None:
+    def get_data_from_plot_index(self, index: QtCore.QModelIndex) -> ResultsModel | None:
         """
+        Build the table model for one selected dynamic plot.
 
-        :param index:
-        :param dyn_group_name:
-        :return:
+        :param index: Selected plots-tree index.
+        :return: Results model for the selected dynamic plot, or ``None``.
+
+        The table reconstruction uses the source-specific series already stored
+        in the plot group, so it does not need any external event-group state.
         """
         plot_group_name: str | None = self.get_plot_group_name_from_index(index=index)
 
@@ -1247,9 +1255,8 @@ class DynamicsResultsHandler:
                     if isinstance(variable, DynamicResultSeries):
                         compatible_series.append(variable)
                     else:
-                        group_idx: int = self.group_idx[dyn_group_name]
                         series_list: List[DynamicResultSeries] = self.series_by_var_uid.get(variable.uid, list())
-                        if len(series_list) == 1 and series_list[0].get_group_idx() == group_idx:
+                        if len(series_list) == 1:
                             compatible_series.append(series_list[0])
                         else:
                             pass
