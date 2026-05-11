@@ -949,6 +949,7 @@ class NumericalCircuit:
 
             # remap
             self.passive_branch_data.remap(self.__bus_map_arr)
+            self.active_branch_data.remap(self.__bus_map_arr)
             self.vsc_data.remap(self.__bus_map_arr)
             self.hvdc_data.remap(self.__bus_map_arr)
             self.load_data.remap(self.__bus_map_arr)
