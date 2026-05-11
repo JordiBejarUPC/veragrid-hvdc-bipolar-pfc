@@ -209,7 +209,12 @@ def _build_case(builder) -> Tuple[GenericEmtProblem, JitSymbolicSolver, Dict[str
     block, vars_map = builder(vf)
     block.unify_blocks()
 
-    problem = GenericEmtProblem(sys_block=block, glob_time=vf.add_var(f"t_{block.name}"))
+    static_parameter_values_mapping: Dict[Var, Const] = dict(block.parameters)
+    problem = GenericEmtProblem(
+        sys_block=block,
+        glob_time=vf.add_var(f"t_{block.name}"),
+        static_parameter_values_mapping=static_parameter_values_mapping,
+    )
     solver = JitSymbolicSolver(
         problem=problem,
         t0=0.0,

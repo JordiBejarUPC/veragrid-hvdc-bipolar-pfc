@@ -7,8 +7,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, List
 
 from PySide6.QtCore import QPointF, Qt
-from PySide6.QtGui import QCursor, QPainterPath, QPainterPathStroker, QPen
-from PySide6.QtWidgets import QGraphicsPathItem, QGraphicsSceneContextMenuEvent, QGraphicsSceneMouseEvent
+from PySide6.QtGui import QColor, QCursor, QPainter, QPainterPath, QPainterPathStroker, QPen
+from PySide6.QtWidgets import (QGraphicsPathItem, QGraphicsSceneContextMenuEvent, QGraphicsSceneMouseEvent,
+                               QStyleOptionGraphicsItem, QWidget)
 
 if TYPE_CHECKING:
     from VeraGrid.Gui.Diagrams.MapWidget.Branches.map_line_container import MapLineContainer
@@ -81,11 +82,41 @@ class MapLinePolyline(QGraphicsPathItem):
         Return a widened stroke shape to make line picking reliable.
         """
         stroker = QPainterPathStroker()
-        # Keep picking very close to the rendered stroke to avoid blocking nearby drags.
-        stroker.setWidth(max(1.0, self.width * 1.15))
+        # Use the actual rendered stroke width so hit-testing stays strictly on the polyline.
+        pick_width = self.pen().widthF()
+        if pick_width <= 0.0:
+            pick_width = 0.5
+        else:
+            pass
+        stroker.setWidth(pick_width)
         stroker.setCapStyle(Qt.PenCapStyle.RoundCap)
         stroker.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
         return stroker.createStroke(self.path())
+
+    def paint(self,
+              painter: QPainter,
+              option: QStyleOptionGraphicsItem,
+              widget: QWidget | None = None) -> None:
+        """
+        Paint the line and a path-aligned selection highlight.
+        """
+        line_path = self.path()
+
+        base_pen = QPen(self.pen())
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.setPen(base_pen)
+        painter.drawPath(line_path)
+
+        if self.isSelected():
+            selection_pen = QPen(QColor(255, 255, 255, 110),
+                                 max(self.container.editor.diagram.min_branch_width, self.width * 1.05),
+                                 Qt.PenStyle.DotLine,
+                                 Qt.PenCapStyle.RoundCap,
+                                 Qt.PenJoinStyle.RoundJoin)
+            painter.setPen(selection_pen)
+            painter.drawPath(line_path)
+        else:
+            pass
 
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         """
@@ -97,6 +128,15 @@ class MapLinePolyline(QGraphicsPathItem):
             event.accept()
             return
         QGraphicsPathItem.mousePressEvent(self, event)
+
+    def mouseDoubleClickEvent(self, event: QGraphicsSceneMouseEvent) -> None:
+        """
+        Open the branch editor on double click.
+
+        :param event: Mouse event.
+        """
+        self.container.call_editor()
+        event.accept()
 
     def contextMenuEvent(self, event: QGraphicsSceneContextMenuEvent) -> None:
         """

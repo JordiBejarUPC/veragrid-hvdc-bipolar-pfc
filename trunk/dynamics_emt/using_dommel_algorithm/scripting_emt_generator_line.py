@@ -3,9 +3,6 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-import sys
-import os
-
 import numpy as np
 import pandas as pd
 
@@ -16,7 +13,7 @@ from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGridEngine.Devices.Branches.line import Line
 from VeraGrid.trunk.dynamics_emt.support.plot_emt_results import plot_ilines, plot_generators, plot_isource, plot_voltages, plot_v_i
 from VeraGridEngine.Templates.Emt.simple_generator_emt_template import get_simple_generator_emt_template
-from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
+from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlowDriver3Ph

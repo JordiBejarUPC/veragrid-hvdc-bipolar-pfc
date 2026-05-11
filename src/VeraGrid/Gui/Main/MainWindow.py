@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'MainWindow.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.9.2
+## Created by: Qt User Interface Compiler version 6.11.0
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -1342,6 +1342,11 @@ class Ui_mainWindow(object):
         self.horizontalSpacer_2 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
         self.horizontalLayout_28.addItem(self.horizontalSpacer_2)
+
+        self.dbFilterComboBox = QComboBox(self.frame_54)
+        self.dbFilterComboBox.setObjectName(u"dbFilterComboBox")
+
+        self.horizontalLayout_28.addWidget(self.dbFilterComboBox)
 
         self.structure_analysis_pushButton = QPushButton(self.frame_54)
         self.structure_analysis_pushButton.setObjectName(u"structure_analysis_pushButton")

@@ -6,13 +6,15 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-from typing import Union, Tuple
+from typing import Union, Tuple, List
 from matplotlib import pyplot as plt
 
 from VeraGridEngine.basic_structures import Logger, CxVec
 from VeraGridEngine.Devices.Substation.bus import Bus
-from VeraGridEngine.enumerations import DeviceType, BuildStatus, SubObjectType
+from VeraGridEngine.enumerations import DeviceType, BuildStatus, SubObjectType, GeneratorType, PrpCat
 from VeraGridEngine.Devices.Associations.association import Associations
+from VeraGridEngine.Devices.Associations.fuel import Fuel
+from VeraGridEngine.Devices.Associations.emission_gas import EmissionGas
 from VeraGridEngine.Devices.Injections.generator_q_curve import GeneratorQCurve
 from VeraGridEngine.Devices.Profiles import ProfileBool, ProfileFloat
 from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
@@ -74,6 +76,11 @@ class Generator(InjectionParent):
         '_X0',
         '_R2',
         '_X2',
+        '_Rs',
+        '_Xs',
+        '_Xm',
+        '_Rr',
+        '_Xr',
         '_Pf',
         '_Pf_prof',
         '_is_controlled',
@@ -99,72 +106,303 @@ class Generator(InjectionParent):
         'freq',
         '_must_run',
         '_must_run_prof',
+        'tpe'
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
 
-        GCProp(key='P', units='MW', tpe=float, definition='Active power', profile_name='P_prof'),
-        GCProp(key='Pmin', units='MW', tpe=float, definition='Minimum active power. Used in OPF.',
-               profile_name='Pmin_prof'),
-        GCProp(key='Pmax', units='MW', tpe=float, definition='Maximum active power. Used in OPF.',
-               profile_name='Pmax_prof'),
-        GCProp(key='Q', units='MVAr', tpe=float, definition='Reactive power', profile_name='Q_prof'),
-        GCProp(key='Qmin', units='MVAr', tpe=float, definition='Minimum reactive power.',
-               profile_name='Qmin_prof'),
-        GCProp(key='Qmax', units='MVAr', tpe=float, definition='Maximum reactive power.',
-               profile_name='Qmax_prof'),
-        GCProp(key='is_controlled', units='', tpe=bool, definition='Is this generator voltage-controlled?'),
-        GCProp(key='control_bus', units='', tpe=DeviceType.BusDevice, definition='Control bus',
-               editable=True),
-        GCProp(key='Pf', units='', tpe=float,
-               definition='Power factor (cos(phi)). This is used for non-controlled generators.',
-               profile_name='Pf_prof'),
-        GCProp(key='Vset', units='p.u.', tpe=float,
-               definition='Set voltage. This is used for controlled generators.', profile_name='Vset_prof'),
-        GCProp(key='Snom', units='MVA', tpe=float, definition='Nominal power.'),
+        GCProp(
+            prop_name='P',
+            units='MW',
+            tpe=float,
+            definition='Active power',
+            profile_name='P_prof',
+            cat=[PrpCat.PF],
+        ),
+        GCProp(
+            prop_name='Pmin',
+            units='MW',
+            tpe=float,
+            definition='Minimum active power. Used in OPF.',
+            profile_name='Pmin_prof',
+            cat=[PrpCat.OPF],
+        ),
+        GCProp(
+            prop_name='Pmax',
+            units='MW',
+            tpe=float,
+            definition='Maximum active power. Used in OPF.',
+            profile_name='Pmax_prof',
+            cat=[PrpCat.OPF],
+        ),
+        GCProp(
+            prop_name='Q',
+            units='MVAr',
+            tpe=float,
+            definition='Reactive power',
+            profile_name='Q_prof',
+            cat=[PrpCat.PF],
+        ),
+        GCProp(
+            prop_name='Qmin',
+            units='MVAr',
+            tpe=float,
+            definition='Minimum reactive power.',
+            profile_name='Qmin_prof',
+            cat=[PrpCat.PF, PrpCat.OPF],
+        ),
+        GCProp(
+            prop_name='Qmax',
+            units='MVAr',
+            tpe=float,
+            definition='Maximum reactive power.',
+            profile_name='Qmax_prof',
+            cat=[PrpCat.PF, PrpCat.OPF],
+        ),
+        GCProp(
+            prop_name='is_controlled',
+            units='',
+            tpe=bool,
+            definition='Is this generator voltage-controlled?',
+            cat=[PrpCat.PF],
+        ),
+        GCProp(
+            prop_name='control_bus',
+            units='',
+            tpe=DeviceType.BusDevice,
+            definition='Control bus',
+            editable=True,
+            cat=[PrpCat.PF],
+        ),
+        GCProp(
+            prop_name='Pf',
+            units='',
+            tpe=float,
+            definition='Power factor (cos(phi)). This is used for non-controlled generators.',
+            profile_name='Pf_prof',
+            cat=[PrpCat.PF],
+        ),
+        GCProp(
+            prop_name='Vset',
+            units='p.u.',
+            tpe=float,
+            definition='Set voltage. This is used for controlled generators.',
+            profile_name='Vset_prof',
+            cat=[PrpCat.PF],
+        ),
+        GCProp(
+            prop_name='Snom',
+            units='MVA',
+            tpe=float,
+            definition='Nominal power.',
+            cat=[PrpCat.TP],
+        ),
 
-        GCProp(key='use_reactive_power_curve', units='', tpe=bool,
-               definition='Use the reactive power capability curve?'),
-        GCProp(key='q_curve', units='MVAr', tpe=SubObjectType.GeneratorQCurve,
-               definition='Capability curve data (double click on the generator to edit)',
-               editable=False, display=False),
-        GCProp(key='R1', units='p.u.', tpe=float, definition='Total positive sequence resistance.'),
-        GCProp(key='X1', units='p.u.', tpe=float, definition='Total positive sequence reactance.'),
-        GCProp(key='R0', units='p.u.', tpe=float, definition='Total zero sequence resistance.'),
-        GCProp(key='X0', units='p.u.', tpe=float, definition='Total zero sequence reactance.'),
-        GCProp(key='R2', units='p.u.', tpe=float, definition='Total negative sequence resistance.'),
-        GCProp(key='X2', units='p.u.', tpe=float, definition='Total negative sequence reactance.'),
-        GCProp(key='Cost2', units='e/MW²/h', tpe=float, definition='Generation quadratic cost. Used in OPF.',
-               profile_name='Cost2_prof'),
-        GCProp(key='Cost0', units='e/h', tpe=float, definition='Generation constant cost. Used in OPF.',
-               profile_name='Cost0_prof'),
-        GCProp(key='startup_cost', units='e/h', tpe=float, definition='Generation start-up cost. Used in OPF.',
-               old_names=["StartupCost"]),
-        GCProp(key='shutdown_cost', units='e/h', tpe=float, definition='Generation shut-down cost. Used in OPF.',
-               old_names=["ShutdownCost"]),
-        GCProp(key='min_time_up', units='h', tpe=float,
-               definition='Minimum time that the generator has to be on when started. Used in OPF.',
-               old_names=["MinTimeUp"]),
-        GCProp(key='min_time_down', units='h', tpe=float,
-               definition='Minimum time that the generator has to be off when shut down. Used in OPF.',
-               old_names=["MinTimeDown"]),
-        GCProp(key='ramp_up', units='MW/h', tpe=float,
-               definition='Maximum amount of generation increase per hour.',
-               old_names=["RampUp"]),
-        GCProp(key='ramp_down', units='MW/h', tpe=float,
-               definition='Maximum amount of generation decrease per hour.',
-               old_names=["RampDown"]),
-        GCProp(key='enabled_dispatch', units='', tpe=bool, profile_name="enabled_dispatch_prof",
-               definition='Enabled for dispatch? Used in OPF.'),
-        GCProp(key='must_run', units='', tpe=bool, profile_name="must_run_prof",
-               definition='P >= Pmin constraint. Used in OPF with unit commitment active.'),
-        GCProp(key='emissions', units='t/MWh', tpe=SubObjectType.Associations,
-               definition='List of emissions', display=False),
-        GCProp(key='fuels', units='t/MWh', tpe=SubObjectType.Associations,
-               definition='List of fuels', display=False),
-        GCProp(key='srap_enabled', units='', tpe=bool,
-               definition='Is the unit available for SRAP participation?',
-               editable=True, profile_name="srap_enabled_prof"),
+        GCProp(
+            prop_name='use_reactive_power_curve',
+            units='',
+            tpe=bool,
+            definition='Use the reactive power capability curve?',
+            cat=[PrpCat.PF],
+        ),
+        GCProp(
+            prop_name='q_curve',
+            units='MVAr',
+            tpe=SubObjectType.GeneratorQCurve,
+            definition='Capability curve data (double click on the generator to edit)',
+            editable=False,
+            display=False,
+            cat=[PrpCat.PF],
+        ),
+        GCProp(
+            prop_name='R1',
+            units='p.u.',
+            tpe=float,
+            definition='Total positive sequence resistance.',
+            cat=[PrpCat.SC],
+        ),
+        GCProp(
+            prop_name='X1',
+            units='p.u.',
+            tpe=float,
+            definition='Total positive sequence reactance.',
+            cat=[PrpCat.SC],
+        ),
+        GCProp(
+            prop_name='R0',
+            units='p.u.',
+            tpe=float,
+            definition='Total zero sequence resistance.',
+            cat=[PrpCat.SC],
+        ),
+        GCProp(
+            prop_name='X0',
+            units='p.u.',
+            tpe=float,
+            definition='Total zero sequence reactance.',
+            cat=[PrpCat.SC],
+        ),
+        GCProp(
+            prop_name='R2',
+            units='p.u.',
+            tpe=float,
+            definition='Total negative sequence resistance.',
+            cat=[PrpCat.SC],
+        ),
+        GCProp(
+            prop_name='X2',
+            units='p.u.',
+            tpe=float,
+            definition='Total negative sequence reactance.',
+            cat=[PrpCat.SC],
+        ),
+        GCProp(
+            prop_name='Rs',
+            units='p.u.',
+            tpe=float,
+            definition='Stator winding resistance (AG).',
+            cat=[PrpCat.PF],
+        ),
+        GCProp(
+            prop_name='Xs',
+            units='p.u.',
+            tpe=float,
+            definition='Stator leakage reactance (AG).',
+            cat=[PrpCat.PF, PrpCat.SC],
+        ),
+        GCProp(
+            prop_name='Xm',
+            units='p.u.',
+            tpe=float,
+            definition='Magnetizing reactance (AG).',
+            cat=[PrpCat.PF, PrpCat.SC],
+        ),
+        GCProp(
+            prop_name='Rr',
+            units='p.u.',
+            tpe=float,
+            definition='Rotor resistance (AG).',
+            cat=[PrpCat.PF, PrpCat.SC],
+        ),
+        GCProp(
+            prop_name='Xr',
+            units='p.u.',
+            tpe=float,
+            definition='Rotor reactance (AG).',
+            cat=[PrpCat.PF, PrpCat.SC],
+        ),
+        GCProp(
+            prop_name='Cost2',
+            units='e/MW²/h',
+            tpe=float,
+            definition='Generation quadratic cost. Used in OPF.',
+            profile_name='Cost2_prof',
+            cat=[PrpCat.OPF],
+        ),
+        GCProp(
+            prop_name='Cost0',
+            units='e/h',
+            tpe=float,
+            definition='Generation constant cost. Used in OPF.',
+            profile_name='Cost0_prof',
+            cat=[PrpCat.OPF],
+        ),
+        GCProp(
+            prop_name='startup_cost',
+            units='e/h',
+            tpe=float,
+            definition='Generation start-up cost. Used in OPF.',
+            old_names=["StartupCost"],
+            cat=[PrpCat.OPF],
+        ),
+        GCProp(
+            prop_name='shutdown_cost',
+            units='e/h',
+            tpe=float,
+            definition='Generation shut-down cost. Used in OPF.',
+            old_names=["ShutdownCost"],
+            cat=[PrpCat.OPF],
+        ),
+        GCProp(
+            prop_name='min_time_up',
+            units='h',
+            tpe=float,
+            definition='Minimum time that the generator has to be on when started. Used in OPF.',
+            old_names=["MinTimeUp"],
+            cat=[PrpCat.OPF],
+        ),
+        GCProp(
+            prop_name='min_time_down',
+            units='h',
+            tpe=float,
+            definition='Minimum time that the generator has to be off when shut down. Used in OPF.',
+            old_names=["MinTimeDown"],
+            cat=[PrpCat.OPF],
+        ),
+        GCProp(
+            prop_name='ramp_up',
+            units='MW/h',
+            tpe=float,
+            definition='Maximum amount of generation increase per hour.',
+            old_names=["RampUp"],
+            cat=[PrpCat.OPF],
+        ),
+        GCProp(
+            prop_name='ramp_down',
+            units='MW/h',
+            tpe=float,
+            definition='Maximum amount of generation decrease per hour.',
+            old_names=["RampDown"],
+            cat=[PrpCat.OPF],
+        ),
+        GCProp(
+            prop_name='enabled_dispatch',
+            units='',
+            tpe=bool,
+            profile_name="enabled_dispatch_prof",
+            definition='Enabled for dispatch? Used in OPF.',
+            cat=[PrpCat.OPF],
+        ),
+        GCProp(
+            prop_name='must_run',
+            units='',
+            tpe=bool,
+            profile_name="must_run_prof",
+            definition='P >= Pmin constraint. Used in OPF with unit commitment active.',
+            cat=[PrpCat.OPF],
+        ),
+        GCProp(
+            prop_name='emissions',
+            units='t/MWh',
+            tpe=SubObjectType.Associations,
+            definition='List of emissions',
+            display=False,
+            cat=[PrpCat.OPF],
+        ),
+        GCProp(
+            prop_name='fuels',
+            units='t/MWh',
+            tpe=SubObjectType.Associations,
+            definition='List of fuels',
+            display=False,
+            cat=[PrpCat.OPF],
+        ),
+        GCProp(
+            prop_name='srap_enabled',
+            units='',
+            tpe=bool,
+            definition='Is the unit available for SRAP participation?',
+            editable=True,
+            profile_name="srap_enabled_prof",
+            cat=[PrpCat.CON],
+        ),
+        GCProp(
+            prop_name='tpe',
+            units='',
+            tpe=GeneratorType,
+            definition='Machine type of the generator.',
+            cat=[PrpCat.PF, PrpCat.TP],
+        ),
     )
 
     def __init__(self,
@@ -197,6 +435,11 @@ class Generator(InjectionParent):
                  x0: float = 1e-20,
                  r2: float = 1e-20,
                  x2: float = 1e-20,
+                 Rs: float = 1e-20,
+                 Xs: float = 1e-20,
+                 Xm: float = 1e-20,
+                 Rr: float = 1e-20,
+                 Xr: float = 1e-20,
                  freq=60.0,
                  capex: float = 0,
                  opex: float = 0,
@@ -208,7 +451,8 @@ class Generator(InjectionParent):
                  min_time_up=0.0,
                  min_time_down=0.0,
                  ramp_up=1e20,
-                 ramp_down=1e20):
+                 ramp_down=1e20,
+                 tpe: GeneratorType = GeneratorType.Synchronous):
         """
 
         :param name: Name of the generator
@@ -239,12 +483,18 @@ class Generator(InjectionParent):
         :param x0:
         :param r2:
         :param x2:
+        :param Rs: Stator winding resistance [pu]
+        :param Xs: Stator leakage reactance [pu]
+        :param Xm: Magnetising reactance [pu]
+        :param Rr: Rotor resistance [pu]
+        :param Xr: Rotor reactance [pu]
         :param freq:
         :param capex:
         :param opex:
         :param srap_enabled:
         :param build_status:
         :param must_run:
+        :param tpe: Machine type of the generator, as it can be synchronous or asynchronous
         """
         InjectionParent.__init__(self,
                                  name=name,
@@ -309,6 +559,21 @@ class Generator(InjectionParent):
         # negative sequence reactance
         self.X2 = float(x2)
 
+        # stator winding resistance
+        self.Rs = float(Rs)
+
+        # stator leakage reactance
+        self.Xs = float(Xs)
+
+        # magnetizing reactance
+        self.Xm = float(Xm)
+
+        # rotor resistance
+        self.Rr = float(Rr)
+
+        # rotor reactance
+        self.Xr = float(Xr)
+
         # Power factor
         self._Pf = float(power_factor)
 
@@ -359,6 +624,9 @@ class Generator(InjectionParent):
         self.Sbase = float(Sbase)
 
         self.freq = freq
+
+        self.tpe: GeneratorType = tpe
+
 
     @property
     def P(self) -> float:
@@ -1093,6 +1361,101 @@ class Generator(InjectionParent):
         self._X2 = float(val)
 
     @property
+    def Rs(self) -> float:
+        """
+        Get ``Rs``.
+
+        :return: float
+        """
+        return self._Rs
+
+    @Rs.setter
+    def Rs(self, val: float) -> None:
+        """
+        Set ``Rs``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Rs = float(val)
+
+    @property
+    def Xs(self) -> float:
+        """
+        Get ``Xs``.
+
+        :return: float
+        """
+        return self._Xs
+
+    @Xs.setter
+    def Xs(self, val: float) -> None:
+        """
+        Set ``Xs``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Xs = float(val)
+
+    @property
+    def Xm(self) -> float:
+        """
+        Get ``Xm``.
+
+        :return: float
+        """
+        return self._Xm
+
+    @Xm.setter
+    def Xm(self, val: float) -> None:
+        """
+        Set ``Xm``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Xm = float(val)
+
+    @property
+    def Rr(self) -> float:
+        """
+        Get ``Rr``.
+
+        :return: float
+        """
+        return self._Rr
+
+    @Rr.setter
+    def Rr(self, val: float) -> None:
+        """
+        Set ``Rr``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Rr = float(val)
+
+    @property
+    def Xr(self) -> float:
+        """
+        Get ``Xr``.
+
+        :return: float
+        """
+        return self._Xr
+
+    @Xr.setter
+    def Xr(self, val: float) -> None:
+        """
+        Set ``Xr``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Xr = float(val)
+
+    @property
     def Cost2(self) -> float:
         """
         Get ``Cost2``.
@@ -1282,11 +1645,36 @@ class Generator(InjectionParent):
         """
         self._must_run = bool(val)
 
-    # def initialize_rms(self, var_factory: VarFactory):
-    #     """
-    #     Initialize the RMS model
-    #     """
-    #
-    #     if self._rms_model.empty():
-    #         generator_template = get_complete_generator_template(var_factory)
-    #         self.rms_model = generator_template.block
+    @property
+    def fuels_list(self) -> List[Fuel]:
+        """
+        get the Fuel list
+        :return: Fuel
+        """
+        return self.fuels.to_list()
+
+    def get_first_fuel(self) -> Fuel | None:
+        """
+        Get the first fuels available
+        :return: Technology
+        """
+        for key, association in self.fuels.data.items():
+            return association.api_object
+        return None
+
+    @property
+    def emissions_list(self) -> List[EmissionGas]:
+        """
+        get the EmissionGas list
+        :return: EmissionGas list
+        """
+        return self.emissions.to_list()
+
+    def get_first_emission(self) -> EmissionGas | None:
+        """
+        Get the first emissions available
+        :return: Technology
+        """
+        for key, association in self.emissions.data.items():
+            return association.api_object
+        return None

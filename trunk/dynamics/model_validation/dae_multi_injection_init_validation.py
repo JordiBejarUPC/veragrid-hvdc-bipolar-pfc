@@ -26,7 +26,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..",
 
 import VeraGridEngine.api as gce
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
+from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_zip_template import ZIPLoadBuild
 from VeraGridEngine.Templates.Rms.genrow1_rms_template import get_genrow1_rms_template

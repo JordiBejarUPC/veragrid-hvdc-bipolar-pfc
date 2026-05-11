@@ -11,7 +11,6 @@ from time import perf_counter
 from typing import Any, cast, Dict, List, Optional, Tuple
 
 import os
-import matplotlib.pyplot as plt
 from trunk.dynamics_emt.support.emt_plot_exports import (
     extract_three_phase_matrix,
     get_plot_results_directory,
@@ -42,7 +41,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlow
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
 from VeraGridEngine.Templates.Emt.load_zip_emt_template import get_load_ZIP_emt_template
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
-from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
+from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 
 from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbolicSolver
 from VeraGridEngine.Simulations.EMT.solvers.solver_AD import JitAdSolver
@@ -51,9 +50,8 @@ from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import St
 
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonTraceCollector
 from VeraGridEngine.enumerations import (BranchImpedanceMode, DynamicIntegrationMethod, EmtInitializationMethod,
-                                         EmtSolverTypes, ShuntConnectionType, SolverType,
-                                         VarPowerFlowRefferenceType)
-from VeraGridEngine.Templates.templates_common_functions import set_emt_model
+                                         EmtSolverTypes, ShuntConnectionType, SolverType)
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
 
 ###########################################################################################################################
 # Build VeraGrid object

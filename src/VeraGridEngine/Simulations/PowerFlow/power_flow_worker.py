@@ -143,7 +143,7 @@ def __solve_island_complete_support(nc: NumericalCircuit,
                 problem = PfAcDcWithNegativePoles(V0=final_solution.V,
                                                   S0=S0,
                                                   I0=I0,
-                                                  Y0=Y0,
+                                                  Y0=-Y0,
                                                   Qmin=Qmin,
                                                   Qmax=Qmax,
                                                   nc=nc,
@@ -161,7 +161,7 @@ def __solve_island_complete_support(nc: NumericalCircuit,
                 problem = PfAcDcWithNegativePoles(V0=final_solution.V,
                                                   S0=S0,
                                                   I0=I0,
-                                                  Y0=Y0,
+                                                  Y0=-Y0,
                                                   Qmin=Qmin,
                                                   Qmax=Qmax,
                                                   nc=nc,
@@ -180,7 +180,7 @@ def __solve_island_complete_support(nc: NumericalCircuit,
                 problem = PfAcDcWithNegativePoles(V0=final_solution.V,
                                                   S0=S0,
                                                   I0=I0,
-                                                  Y0=Y0,
+                                                  Y0=-Y0,
                                                   Qmin=Qmin,
                                                   Qmax=Qmax,
                                                   nc=nc,
@@ -218,7 +218,23 @@ def __solve_island_complete_support(nc: NumericalCircuit,
 
             else:
                 # for any other method, raise exception
-                raise Exception(solver_type.value + ' Not supported in power flow mode')
+                logger.add_error('Solver not supported in power flow mode', value=solver_type.value)
+                problem = PfAcDcWithNegativePoles(V0=final_solution.V,
+                                                  S0=S0,
+                                                  I0=I0,
+                                                  Y0=-Y0,
+                                                  Qmin=Qmin,
+                                                  Qmax=Qmax,
+                                                  nc=nc,
+                                                  options=options,
+                                                  logger=logger)
+
+                solution = newton_raphson_fx(problem=problem,
+                                             tol=options.tolerance,
+                                             max_iter=options.max_iter,
+                                             trust=options.trust_radius,
+                                             verbose=options.verbose,
+                                             logger=logger)
 
             # record the solution type
             solution.method = solver_type
@@ -1038,7 +1054,8 @@ def multi_island_pf(multi_circuit: MultiCircuit,
         control_taps_phase=options.control_taps_phase,
         control_remote_voltage=options.control_remote_voltage,
         logger=logger,
-        fill_three_phase=False  # This worker is only for positive sequence
+        fill_three_phase=False,  # This worker is only for positive sequence
+        consider_grounded_buses=len(multi_circuit.vsc_devices) > 0
     )
 
     res = multi_island_pf_nc(nc=nc, options=options, logger=logger)

@@ -15,7 +15,7 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Templates.Rms.generation_tensygrid_ml import get_complete_generator_template
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
-from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
+from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration

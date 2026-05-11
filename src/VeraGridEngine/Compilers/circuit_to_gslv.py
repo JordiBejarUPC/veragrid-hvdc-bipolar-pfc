@@ -1057,13 +1057,18 @@ def convert_controllable_shunt(elm: dev.ControllableShunt, bus_dict: Dict[str, "
     :param time_indices:
     :return:
     """
+    if isinstance(elm.g_steps, np.ndarray):
+        number_of_steps: int = elm.g_steps.size()
+    else:
+        raise TypeError(f"ControllableShunt.g_steps must be np.ndarray, got {type(elm.g_steps)}")
+
     sh = pg.ControllableShunt(
         nt=n_time,
         bus=None if elm.bus is None else bus_dict[elm.bus.idtag],
         name=elm.name,
         idtag=elm.idtag,
         code=str(elm.code),
-        number_of_steps=elm.g_steps.size(),
+        number_of_steps=number_of_steps,
         step=elm.step,
         g_per_step=elm.g_per_step,
         b_per_step=elm.b_per_step,
@@ -1766,7 +1771,7 @@ def convert_vsc(elm: dev.VSC, bus_dict: Dict[str, "pg.Bus"], n_time: int,
         code=str(elm.code),
         active=elm.active,
         rate=9999.0,
-        kdp=elm.kdp,
+        kdp=elm.control1_droop,
         alpha1=elm.alpha1,
         alpha2=elm.alpha2,
         alpha3=elm.alpha3,

@@ -4,13 +4,12 @@
 # SPDX-License-Identifier: MPL-2.0
 
 import cProfile
-import numpy as np
 from matplotlib import pyplot as plt
 
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
 from VeraGridEngine.Templates.Emt.vsc_gfl_emt import VscGflEmtBuild
-from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
+from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.Rms.vsc_template import PVCellBuild
 from VeraGridEngine.Templates.Rms.dc_voltage_source import DCVoltageSource
 from VeraGridEngine.Templates.Emt.simple_generator_emt_template import get_simple_generator_emt_template

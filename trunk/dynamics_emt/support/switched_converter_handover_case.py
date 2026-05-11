@@ -20,7 +20,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 import sys
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 
 def ensure_repo_import_paths() -> None:
@@ -66,13 +66,11 @@ from VeraGridEngine.Simulations.EMT.emt_solver_factory import build_emt_solver
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
 from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import BoundaryUpdateWrapper
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
-from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlowDriver3Ph
-from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
+from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.Emt.converter_switched_emt_template import get_switched_emt_converter
 from VeraGridEngine.Templates.Emt.dc_load_emt_template import get_dc_load_emt_template
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
-from VeraGridEngine.Templates.Emt.transformer_emt_template import get_transformer_emt_template
-from VeraGridEngine.Templates.templates_common_functions import set_emt_model
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.Utils.procedural_logic import build_boundary_updater_from_block
@@ -206,8 +204,15 @@ class SwitchedConverterHandoverTrace:
     :param P_f_arr: Filtered active-power measurement trace.
     :param Q_f_arr: Filtered reactive-power measurement trace.
     :param v_cmd_d_arr: d-axis converter voltage command trace.
+    :param v_d_cap_arr: Explicit d-axis saturation output trace when available.
+    :param v_cmd_d_u_arr: Unsaturated d-axis converter voltage command trace.
     :param v_cmd_q_arr: q-axis converter voltage command trace.
     :param v_lim_arr: Converter voltage-limit trace.
+    :param v_lim_aux_arr: Auxiliary converter voltage-limit trace.
+    :param v_cmd_d_aux_arr: Auxiliary d-axis command trace.
+    :param v_cmd_q_aux_arr: Auxiliary q-axis command trace.
+    :param v_cmd_norm_arr: Auxiliary command-norm trace.
+    :param v_cmd_norm_aux_arr: Auxiliary mirrored command-norm trace.
     :param m_a_u_arr: Unsaturated phase-A modulation trace.
     :param gate_a_arr: Phase-A gate trace.
     :param gate_b_arr: Phase-B gate trace.
@@ -222,6 +227,9 @@ class SwitchedConverterHandoverTrace:
     :param total_newton_iterations: Total Newton iterations.
     :param jacobian_evaluations: Total Jacobian evaluations.
     :param aligned_substeps: Forced aligned substeps.
+    :param failed_substeps: Number of EMT local substeps that exhausted the Newton iterations.
+    :param first_failed_time_s: First simulation time where one EMT local substep failed to converge.
+    :param failed_substep_times_s_arr: Exact simulation times where one EMT local substep failed to converge.
     :return: None.
     """
 
@@ -252,8 +260,23 @@ class SwitchedConverterHandoverTrace:
         "P_f_arr",
         "Q_f_arr",
         "v_cmd_d_arr",
+        "v_d_cap_arr",
+        "v_cmd_d_u_arr",
         "v_cmd_q_arr",
         "v_lim_arr",
+        "v_lim_aux_arr",
+        "v_cmd_d_aux_arr",
+        "v_cmd_q_aux_arr",
+        "v_cmd_norm_arr",
+        "v_cmd_norm_aux_arr",
+        "ml_sat_u_plus1_max_arr",
+        "ml_sat_u_plus2_max_arr",
+        "ml_sat_u_minus1_max_arr",
+        "ml_sat_u_minus2_max_arr",
+        "ml_sat_u_plus1_min_arr",
+        "ml_sat_u_plus2_min_arr",
+        "ml_sat_u_minus1_min_arr",
+        "ml_sat_u_minus2_min_arr",
         "m_a_u_arr",
         "gate_a_arr",
         "gate_b_arr",
@@ -268,6 +291,9 @@ class SwitchedConverterHandoverTrace:
         "total_newton_iterations",
         "jacobian_evaluations",
         "aligned_substeps",
+        "failed_substeps",
+        "first_failed_time_s",
+        "failed_substep_times_s_arr",
     ])
 
     def __init__(
@@ -298,8 +324,23 @@ class SwitchedConverterHandoverTrace:
             P_f_arr: np.ndarray,
             Q_f_arr: np.ndarray,
             v_cmd_d_arr: np.ndarray,
+            v_d_cap_arr: np.ndarray,
+            v_cmd_d_u_arr: np.ndarray,
             v_cmd_q_arr: np.ndarray,
             v_lim_arr: np.ndarray,
+            v_lim_aux_arr: np.ndarray,
+            v_cmd_d_aux_arr: np.ndarray,
+            v_cmd_q_aux_arr: np.ndarray,
+            v_cmd_norm_arr: np.ndarray,
+            v_cmd_norm_aux_arr: np.ndarray,
+            ml_sat_u_plus1_max_arr: np.ndarray,
+            ml_sat_u_plus2_max_arr: np.ndarray,
+            ml_sat_u_minus1_max_arr: np.ndarray,
+            ml_sat_u_minus2_max_arr: np.ndarray,
+            ml_sat_u_plus1_min_arr: np.ndarray,
+            ml_sat_u_plus2_min_arr: np.ndarray,
+            ml_sat_u_minus1_min_arr: np.ndarray,
+            ml_sat_u_minus2_min_arr: np.ndarray,
             m_a_u_arr: np.ndarray,
             gate_a_arr: np.ndarray,
             gate_b_arr: np.ndarray,
@@ -314,6 +355,9 @@ class SwitchedConverterHandoverTrace:
             total_newton_iterations: float,
             jacobian_evaluations: float,
             aligned_substeps: float,
+            failed_substeps: float,
+            first_failed_time_s: float,
+            failed_substep_times_s_arr: np.ndarray,
     ) -> None:
         self.t_arr: np.ndarray = t_arr
         self.mode_t_arr: np.ndarray = mode_t_arr
@@ -341,8 +385,23 @@ class SwitchedConverterHandoverTrace:
         self.P_f_arr: np.ndarray = P_f_arr
         self.Q_f_arr: np.ndarray = Q_f_arr
         self.v_cmd_d_arr: np.ndarray = v_cmd_d_arr
+        self.v_d_cap_arr: np.ndarray = v_d_cap_arr
+        self.v_cmd_d_u_arr: np.ndarray = v_cmd_d_u_arr
         self.v_cmd_q_arr: np.ndarray = v_cmd_q_arr
         self.v_lim_arr: np.ndarray = v_lim_arr
+        self.v_lim_aux_arr: np.ndarray = v_lim_aux_arr
+        self.v_cmd_d_aux_arr: np.ndarray = v_cmd_d_aux_arr
+        self.v_cmd_q_aux_arr: np.ndarray = v_cmd_q_aux_arr
+        self.v_cmd_norm_arr: np.ndarray = v_cmd_norm_arr
+        self.v_cmd_norm_aux_arr: np.ndarray = v_cmd_norm_aux_arr
+        self.ml_sat_u_plus1_max_arr: np.ndarray = ml_sat_u_plus1_max_arr
+        self.ml_sat_u_plus2_max_arr: np.ndarray = ml_sat_u_plus2_max_arr
+        self.ml_sat_u_minus1_max_arr: np.ndarray = ml_sat_u_minus1_max_arr
+        self.ml_sat_u_minus2_max_arr: np.ndarray = ml_sat_u_minus2_max_arr
+        self.ml_sat_u_plus1_min_arr: np.ndarray = ml_sat_u_plus1_min_arr
+        self.ml_sat_u_plus2_min_arr: np.ndarray = ml_sat_u_plus2_min_arr
+        self.ml_sat_u_minus1_min_arr: np.ndarray = ml_sat_u_minus1_min_arr
+        self.ml_sat_u_minus2_min_arr: np.ndarray = ml_sat_u_minus2_min_arr
         self.m_a_u_arr: np.ndarray = m_a_u_arr
         self.gate_a_arr: np.ndarray = gate_a_arr
         self.gate_b_arr: np.ndarray = gate_b_arr
@@ -357,6 +416,9 @@ class SwitchedConverterHandoverTrace:
         self.total_newton_iterations: float = float(total_newton_iterations)
         self.jacobian_evaluations: float = float(jacobian_evaluations)
         self.aligned_substeps: float = float(aligned_substeps)
+        self.failed_substeps: float = float(failed_substeps)
+        self.first_failed_time_s: float = float(first_failed_time_s)
+        self.failed_substep_times_s_arr: np.ndarray = failed_substep_times_s_arr
 
     def get_pre_handover_mask(self, margin_s: float = 1.0e-12) -> np.ndarray:
         """
@@ -816,6 +878,12 @@ def build_switched_vsc_case(
         p_transfer_mw: float = 30.0,
         pf_seed_p_transfer_mw: float | None = None,
         omega_sw_hz: float = 1000.0,
+        r_eq_pu: float = 0.03,
+        l_eq_pu: float = 1.0,
+        q_kp: float = 1.6,
+        q_ki: float = 60.0,
+        tau_meas_s: float = 0.005,
+        converter_builder: Callable[[Any, str], Any] = get_switched_emt_converter,
 ) -> SwitchedConverterCaseContext:
     """
     Build the switched EMT VSC validation case.
@@ -824,6 +892,11 @@ def build_switched_vsc_case(
     :param p_transfer_mw: Active-power transfer absorbed by the DC load in MW.
     :param pf_seed_p_transfer_mw: Optional active-power value used only for the PF seed.
     :param omega_sw_hz: PWM switching frequency in hertz.
+    :param r_eq_pu: AC filter resistance in pu.
+    :param l_eq_pu: AC filter inductance in pu.
+    :param q_kp: Reactive-power loop proportional gain.
+    :param q_ki: Reactive-power loop integral gain.
+    :param tau_meas_s: Reactive and active power measurement time constant in seconds.
     :return: Structured case context.
     """
     resolved_pf_seed_p_transfer_mw: float = float(p_transfer_mw if pf_seed_p_transfer_mw is None else pf_seed_p_transfer_mw)
@@ -873,25 +946,27 @@ def build_switched_vsc_case(
 
     # Every physical device receives its EMT model before the DAE is assembled.
     gen_mdl = get_generator_thevenin_rl_emt_template(vf=grid.var_factory).block
-    vsc_mdl = get_switched_emt_converter(vf=grid.var_factory, name=vsc.name).block
+    vsc_mdl = converter_builder(vf=grid.var_factory, name=vsc.name).block
     dc_load_mdl = get_dc_load_emt_template(vf=grid.var_factory, name="dc_load_emt_switched").block
 
     # Align the switched case with the pseudo-EMT reference tuning on the same physical topology.
-    vsc_mdl.set_parameter_in_model(var_name=f"R_eq_{vsc.name}", new_value=0.03)
+    vsc_mdl.set_parameter_in_model(var_name=f"R_eq_{vsc.name}", new_value=r_eq_pu)
     # The switched benchmark needs a stronger AC filter than the pseudo-EMT average model so that the
     # bus voltage remains close to a sinusoidal waveform while the bridge still commutates explicitly.
-    vsc_mdl.set_parameter_in_model(var_name=f"L_eq_{vsc.name}", new_value=1.0)
+    vsc_mdl.set_parameter_in_model(var_name=f"L_eq_{vsc.name}", new_value=l_eq_pu)
     vsc_mdl.set_parameter_in_model(var_name=f"pll_kp_{vsc.name}", new_value=40.0)
     vsc_mdl.set_parameter_in_model(var_name=f"pll_ki_{vsc.name}", new_value=400.0)
     vsc_mdl.set_parameter_in_model(var_name=f"i_kp_{vsc.name}", new_value=0.6)
     vsc_mdl.set_parameter_in_model(var_name=f"i_ki_{vsc.name}", new_value=50.0)
     vsc_mdl.set_parameter_in_model(var_name=f"vdc_kp_{vsc.name}", new_value=2.0)
     vsc_mdl.set_parameter_in_model(var_name=f"vdc_ki_{vsc.name}", new_value=30.0)
-    vsc_mdl.set_parameter_in_model(var_name=f"q_kp_{vsc.name}", new_value=0.8)
-    vsc_mdl.set_parameter_in_model(var_name=f"q_ki_{vsc.name}", new_value=20.0)
+    # The switched bridge needs a faster q-loop and power measurement than the averaged reference
+    # case so the filtered reactive-power channel recovers within one fundamental cycle.
+    vsc_mdl.set_parameter_in_model(var_name=f"q_kp_{vsc.name}", new_value=q_kp)
+    vsc_mdl.set_parameter_in_model(var_name=f"q_ki_{vsc.name}", new_value=q_ki)
     vsc_mdl.set_parameter_in_model(var_name=f"i_max_{vsc.name}", new_value=1.3)
     vsc_mdl.set_parameter_in_model(var_name=f"m_max_{vsc.name}", new_value=0.95)
-    vsc_mdl.set_parameter_in_model(var_name=f"tau_meas_{vsc.name}", new_value=0.01)
+    vsc_mdl.set_parameter_in_model(var_name=f"tau_meas_{vsc.name}", new_value=tau_meas_s)
     vsc_mdl.set_parameter_in_model(var_name=f"aw_gain_{vsc.name}", new_value=0.1)
     vsc_mdl.set_parameter_in_model(var_name=f"vdc_floor_{vsc.name}", new_value=0.05)
     vsc_mdl.set_parameter_in_model(var_name=f"omega_sw_{vsc.name}", new_value=2.0 * np.pi * float(omega_sw_hz))
@@ -923,7 +998,7 @@ def build_switched_converter_trace(
         tracing_updater: RuntimeTraceUpdater,
         well_initialized: bool,
         converged: bool,
-        runtime_stats: dict[str, float],
+        runtime_stats: dict[str, Any],
 ) -> SwitchedConverterHandoverTrace:
     """
     Extract one structured switched-converter trace object from a raw EMT trajectory.
@@ -963,6 +1038,7 @@ def build_switched_converter_trace(
     P_f_var: Var = require_problem_var(problem=problem, var_name=f"P_f_{model_name}")
     Q_f_var: Var = require_problem_var(problem=problem, var_name=f"Q_f_{model_name}")
     v_cmd_d_var: Var = require_problem_var(problem=problem, var_name=f"v_cmd_d_{model_name}")
+    v_cmd_d_u_var: Var = require_problem_var(problem=problem, var_name=f"v_cmd_d_u_{model_name}")
     v_cmd_q_var: Var = require_problem_var(problem=problem, var_name=f"v_cmd_q_{model_name}")
     v_lim_var: Var = require_problem_var(problem=problem, var_name=f"v_lim_{model_name}")
     m_a_u_var: Var = require_problem_var(problem=problem, var_name=f"m_a_u_{model_name}_plant_bridge")
@@ -976,9 +1052,26 @@ def build_switched_converter_trace(
     i_b_arr: np.ndarray
     i_c_arr: np.ndarray
     i_dc_conv_sw_arr: np.ndarray
+    failed_substep_times_s_arr: np.ndarray
+    v_lim_aux_arr: np.ndarray
+    v_cmd_d_aux_arr: np.ndarray
+    v_cmd_q_aux_arr: np.ndarray
+    v_cmd_norm_arr: np.ndarray
+    v_cmd_norm_aux_arr: np.ndarray
+    v_d_cap_arr: np.ndarray
+    ml_sat_u_plus1_max_arr: np.ndarray
+    ml_sat_u_plus2_max_arr: np.ndarray
+    ml_sat_u_minus1_max_arr: np.ndarray
+    ml_sat_u_minus2_max_arr: np.ndarray
+    ml_sat_u_plus1_min_arr: np.ndarray
+    ml_sat_u_plus2_min_arr: np.ndarray
+    ml_sat_u_minus1_min_arr: np.ndarray
+    ml_sat_u_minus2_min_arr: np.ndarray
     initialization_requested: str = ""
     initialization_used: str = ""
     trace: SwitchedConverterHandoverTrace
+
+    failed_substep_times_s_arr = np.asarray(runtime_stats.get("failed_substep_times_s", list()), dtype=float)
 
     if problem.initialization_report is None:
         initialization_requested = ""
@@ -1003,6 +1096,27 @@ def build_switched_converter_trace(
         i_c_arr=i_c_arr,
         k_v_conv_arr=np.array(state_traj[:, problem.get_var_idx(k_v_conv_var)], copy=True),
     )
+
+    def _optional_signal(var_name: str) -> np.ndarray:
+        variable_opt: Var | None = find_name_in_block(name=var_name, block=problem.sys_block)
+        if variable_opt is None:
+            return np.full(shape=(state_traj.shape[0],), fill_value=np.nan, dtype=float)
+        return np.array(state_traj[:, problem.get_var_idx(variable_opt)], copy=True)
+
+    v_lim_aux_arr = _optional_signal(f"v_lim_aux_{model_name}")
+    v_cmd_d_aux_arr = _optional_signal(f"v_cmd_d_aux_{model_name}")
+    v_cmd_q_aux_arr = _optional_signal(f"v_cmd_q_aux_{model_name}")
+    v_cmd_norm_arr = _optional_signal(f"v_cmd_norm_{model_name}")
+    v_cmd_norm_aux_arr = _optional_signal(f"v_cmd_norm_aux_{model_name}")
+    v_d_cap_arr = _optional_signal(f"v_d_cap_{model_name}")
+    ml_sat_u_plus1_max_arr = _optional_signal(f"u_plus1_v_d_cap_{model_name}_max")
+    ml_sat_u_plus2_max_arr = _optional_signal(f"u_plus2_v_d_cap_{model_name}_max")
+    ml_sat_u_minus1_max_arr = _optional_signal(f"u_minus1_v_d_cap_{model_name}_max")
+    ml_sat_u_minus2_max_arr = _optional_signal(f"u_minus2_v_d_cap_{model_name}_max")
+    ml_sat_u_plus1_min_arr = _optional_signal(f"u_plus1_v_d_cap_{model_name}_min")
+    ml_sat_u_plus2_min_arr = _optional_signal(f"u_plus2_v_d_cap_{model_name}_min")
+    ml_sat_u_minus1_min_arr = _optional_signal(f"u_minus1_v_d_cap_{model_name}_min")
+    ml_sat_u_minus2_min_arr = _optional_signal(f"u_minus2_v_d_cap_{model_name}_min")
 
     trace = SwitchedConverterHandoverTrace(
         t_arr=np.array(time_arr, copy=True),
@@ -1031,8 +1145,23 @@ def build_switched_converter_trace(
         P_f_arr=np.array(state_traj[:, problem.get_var_idx(P_f_var)], copy=True),
         Q_f_arr=np.array(state_traj[:, problem.get_var_idx(Q_f_var)], copy=True),
         v_cmd_d_arr=np.array(state_traj[:, problem.get_var_idx(v_cmd_d_var)], copy=True),
+        v_d_cap_arr=v_d_cap_arr,
+        v_cmd_d_u_arr=np.array(state_traj[:, problem.get_var_idx(v_cmd_d_u_var)], copy=True),
         v_cmd_q_arr=np.array(state_traj[:, problem.get_var_idx(v_cmd_q_var)], copy=True),
         v_lim_arr=np.array(state_traj[:, problem.get_var_idx(v_lim_var)], copy=True),
+        v_lim_aux_arr=v_lim_aux_arr,
+        v_cmd_d_aux_arr=v_cmd_d_aux_arr,
+        v_cmd_q_aux_arr=v_cmd_q_aux_arr,
+        v_cmd_norm_arr=v_cmd_norm_arr,
+        v_cmd_norm_aux_arr=v_cmd_norm_aux_arr,
+        ml_sat_u_plus1_max_arr=ml_sat_u_plus1_max_arr,
+        ml_sat_u_plus2_max_arr=ml_sat_u_plus2_max_arr,
+        ml_sat_u_minus1_max_arr=ml_sat_u_minus1_max_arr,
+        ml_sat_u_minus2_max_arr=ml_sat_u_minus2_max_arr,
+        ml_sat_u_plus1_min_arr=ml_sat_u_plus1_min_arr,
+        ml_sat_u_plus2_min_arr=ml_sat_u_plus2_min_arr,
+        ml_sat_u_minus1_min_arr=ml_sat_u_minus1_min_arr,
+        ml_sat_u_minus2_min_arr=ml_sat_u_minus2_min_arr,
         m_a_u_arr=np.array(state_traj[:, problem.get_var_idx(m_a_u_var)], copy=True),
         gate_a_arr=gate_a_arr,
         gate_b_arr=gate_b_arr,
@@ -1047,6 +1176,9 @@ def build_switched_converter_trace(
         total_newton_iterations=float(runtime_stats.get("total_newton_iterations", float("nan"))),
         jacobian_evaluations=float(runtime_stats.get("jacobian_evaluations", float("nan"))),
         aligned_substeps=float(runtime_stats.get("aligned_substeps", float("nan"))),
+        failed_substeps=float(runtime_stats.get("failed_substeps", float("nan"))),
+        first_failed_time_s=float(runtime_stats.get("first_failed_time_s", float("nan"))),
+        failed_substep_times_s_arr=failed_substep_times_s_arr,
     )
     return trace
 
@@ -1056,6 +1188,15 @@ def simulate_switched_converter_handover(
         p_transfer_mw: float = 30.0,
         pf_seed_p_transfer_mw: float | None = None,
         omega_sw_hz: float = 1000.0,
+        r_eq_pu: float = 0.03,
+        l_eq_pu: float = 1.0,
+        q_kp: float = 1.6,
+        q_ki: float = 60.0,
+        tau_meas_s: float = 0.005,
+        converter_builder: Callable[[Any, str], Any] = get_switched_emt_converter,
+        newton_trace_collector: Optional[Any] = None,
+        max_residual_inf_fail: float = float("inf"),
+        max_state_residual_inf_fail: float = float("inf"),
 ) -> SwitchedConverterHandoverTrace:
     """
     Simulate the full hybrid switched-converter case and collect handover traces.
@@ -1064,6 +1205,11 @@ def simulate_switched_converter_handover(
     :param p_transfer_mw: Active-power transfer absorbed by the DC load in MW.
     :param pf_seed_p_transfer_mw: Optional active-power value used only for the PF seed.
     :param omega_sw_hz: PWM switching frequency in hertz.
+    :param r_eq_pu: AC filter resistance in pu.
+    :param l_eq_pu: AC filter inductance in pu.
+    :param q_kp: Reactive-power loop proportional gain.
+    :param q_ki: Reactive-power loop integral gain.
+    :param tau_meas_s: Reactive and active power measurement time constant in seconds.
     :return: Structured switched-converter handover trace.
     """
     case_context: SwitchedConverterCaseContext = build_switched_vsc_case(
@@ -1071,8 +1217,16 @@ def simulate_switched_converter_handover(
         p_transfer_mw=p_transfer_mw,
         pf_seed_p_transfer_mw=pf_seed_p_transfer_mw,
         omega_sw_hz=omega_sw_hz,
+        r_eq_pu=r_eq_pu,
+        l_eq_pu=l_eq_pu,
+        q_kp=q_kp,
+        q_ki=q_ki,
+        tau_meas_s=tau_meas_s,
+        converter_builder=converter_builder,
     )
     problem: EmtProblemDae = case_context.problem
+    if newton_trace_collector is not None:
+        problem.set_newton_trace_collector(newton_trace_collector)
     switching_enabled_idx: int = require_runtime_mode_index(
         problem=problem,
         mode_name=f"switching_enabled_mode_{case_context.vsc.name}",
@@ -1085,7 +1239,7 @@ def simulate_switched_converter_handover(
     _diff_traj: np.ndarray
     well_initialized: bool
     converged: bool
-    runtime_stats: dict[str, float]
+    runtime_stats: dict[str, Any]
     trace: SwitchedConverterHandoverTrace
 
     assert base_updater is not None
@@ -1100,6 +1254,10 @@ def simulate_switched_converter_handover(
         h=float(problem.options.time_step),
         method=problem.options.integration_method,
     )
+    if hasattr(solver, "_max_residual_inf_fail"):
+        solver._max_residual_inf_fail = float(max_residual_inf_fail)
+    if hasattr(solver, "_max_state_residual_inf_fail"):
+        solver._max_state_residual_inf_fail = float(max_state_residual_inf_fail)
     time_arr, state_traj, _diff_traj, well_initialized, converged = solver.simulate(
         boundary_updater=tracing_updater,
     )
@@ -1796,6 +1954,13 @@ def print_switched_converter_summary(trace: SwitchedConverterHandoverTrace) -> N
     print(f"Newton iterations       : {trace.total_newton_iterations: .0f}")
     print(f"Jacobian evaluations    : {trace.jacobian_evaluations: .0f}")
     print(f"Aligned substeps        : {trace.aligned_substeps: .0f}")
+    if trace.failed_substeps > 0.0:
+        print(f"Failed Newton substeps  : {trace.failed_substeps: .0f}")
+        print(f"First failed time [s]   : {trace.first_failed_time_s: .6e}")
+        print("Convergence meaning     : one or more local Newton solves hit the iteration limit")
+        print(f"Failed times [s]        : {np.array2string(trace.failed_substep_times_s_arr, precision=6, separator=', ')}")
+    else:
+        pass
     print("-" * 80)
     print("TAIL-WINDOW CONTROL DIAGNOSTICS")
     print("-" * 80)
@@ -1838,6 +2003,11 @@ def run_switched_converter_handover_case(
         p_transfer_mw: float = 30.0,
         pf_seed_p_transfer_mw: float | None = None,
         omega_sw_hz: float = 1000.0,
+        r_eq_pu: float = 0.03,
+        l_eq_pu: float = 1.0,
+        q_kp: float = 1.6,
+        q_ki: float = 60.0,
+        tau_meas_s: float = 0.005,
 ) -> SwitchedConverterHandoverTrace:
     """
     Run the switched converter handover case, validate it and optionally export plots.
@@ -1850,6 +2020,11 @@ def run_switched_converter_handover_case(
     :param p_transfer_mw: Active-power transfer absorbed by the DC load in MW.
     :param pf_seed_p_transfer_mw: Optional active-power value used only for the PF seed.
     :param omega_sw_hz: PWM switching frequency in hertz.
+    :param r_eq_pu: AC filter resistance in pu.
+    :param l_eq_pu: AC filter inductance in pu.
+    :param q_kp: Reactive-power loop proportional gain.
+    :param q_ki: Reactive-power loop integral gain.
+    :param tau_meas_s: Reactive and active power measurement time constant in seconds.
     :return: Structured switched-converter handover trace.
     """
     trace: SwitchedConverterHandoverTrace = simulate_switched_converter_handover(
@@ -1857,6 +2032,11 @@ def run_switched_converter_handover_case(
         p_transfer_mw=p_transfer_mw,
         pf_seed_p_transfer_mw=pf_seed_p_transfer_mw,
         omega_sw_hz=omega_sw_hz,
+        r_eq_pu=r_eq_pu,
+        l_eq_pu=l_eq_pu,
+        q_kp=q_kp,
+        q_ki=q_ki,
+        tau_meas_s=tau_meas_s,
     )
     plot_path: Path | None
 

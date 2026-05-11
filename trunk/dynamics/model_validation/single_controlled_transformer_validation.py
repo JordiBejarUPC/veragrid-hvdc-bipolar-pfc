@@ -16,7 +16,7 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Templates.Rms.load_zip_template import ZIPLoadBuild
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
-from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
+from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Templates.Rms.transformer_rms_template import initialize_trafo_rms
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions

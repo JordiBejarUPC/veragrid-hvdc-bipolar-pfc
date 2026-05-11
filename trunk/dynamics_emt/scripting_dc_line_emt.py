@@ -36,12 +36,12 @@ from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
 from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import BoundaryUpdateWrapper, JitSymbolicSolver
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
-from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
+from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.Emt.converter_emt_template import get_emt_ideal_converter
 from VeraGridEngine.Templates.Emt.dc_line_emt_template import get_dc_line_emt_template
 from VeraGridEngine.Templates.Emt.dc_load_emt_template import get_dc_load_emt_template
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
-from VeraGridEngine.Templates.templates_common_functions import set_emt_model
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.enumerations import DynamicIntegrationMethod, ConverterControlType, SolverType, VarPowerFlowRefferenceType
@@ -394,7 +394,7 @@ def run_dc_line_case(enable_plots: bool = False) -> None:
         max_records=4000,
     )
 
-    time_s, state_traj, _diff_traj = solver.simulate(boundary_updater=boundary_updater)
+    time_s, state_traj, _diff_traj, _, _ = solver.simulate(boundary_updater=boundary_updater)
 
     # The variables are taken directly from the EMT external mapping to avoid fragile name heuristics.
     v_source_var = bus_dc_source.emt_model.external_mapping[VarPowerFlowRefferenceType.Vdc]

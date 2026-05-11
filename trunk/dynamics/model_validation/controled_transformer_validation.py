@@ -17,7 +17,7 @@ from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
 from VeraGridEngine.Templates.Rms.load_zip_template import ZIPLoadBuild
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.genrow1_rms_template import get_genrow1_rms_template
-from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
+from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration

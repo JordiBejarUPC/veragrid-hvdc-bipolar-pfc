@@ -14,7 +14,8 @@ from VeraGridEngine.enumerations import (
     WindingType,
     ShuntControlMode,
     ConverterControlType,
-    ConverterFaultControlType
+    ConverterFaultControlType,
+    GeneratorType
 )
 import VeraGridEngine.Devices as dev
 from VeraGridEngine.Devices.Branches.wire import Wire
@@ -24,6 +25,60 @@ from VeraGridEngine.IO.dgs.dgs_circuit import DgsCircuit
 from VeraGridEngine.IO.dgs.dgs_objects import *
 
 TDgsObject = TypeVar("TDgsObject")
+
+
+def _is_element_closed_by_cubicle_switches(
+    element_id: str,
+    cubics_by_objid: Dict[str, List[StaCubic]],
+    switch_by_cubic_id: Dict[str, StaSwitch],
+) -> bool:
+    cbs = cubics_by_objid.get(_ref_id(element_id), [])
+    if not cbs:
+        return True  # no cubicles found -> keep legacy behavior
+    found_switch = False
+    for cb in cbs:
+        cb_id = _ref_id(cb.ID)
+        if not cb_id:
+            continue
+        sw = switch_by_cubic_id.get(cb_id)
+        if sw is None:
+            continue
+        found_switch = True
+        if int(sw.on_off) == 0:
+            return False
+    # if no StaSwitch rows for those cubicles, keep backward-compatible behavior
+    return True if not found_switch else True
+
+
+def _get_tr3_winding_closed_states(
+    tr3_id: str,
+    cubics_by_objid: Dict[str, List[StaCubic]],
+    switch_by_cubic_id: Dict[str, StaSwitch],
+    bus_by_term_id: Dict[str, dev.Bus],
+    bus_hv: dev.Bus,
+    bus_mv: dev.Bus,
+    bus_lv: dev.Bus,
+) -> tuple[bool, bool, bool]:
+    hv_closed = True
+    mv_closed = True
+    lv_closed = True
+    for cb in cubics_by_objid.get(_ref_id(tr3_id), []):
+        cb_id = _ref_id(cb.ID)
+        term_id = _ref_id(cb.fold_id)
+        if not cb_id or not term_id:
+            continue
+        sw = switch_by_cubic_id.get(cb_id)
+        if sw is None:
+            continue  # no StaSwitch => keep default True
+        is_closed = int(sw.on_off) != 0
+        bus = bus_by_term_id.get(term_id)
+        if bus is bus_hv:
+            hv_closed = hv_closed and is_closed
+        elif bus is bus_mv:
+            mv_closed = mv_closed and is_closed
+        elif bus is bus_lv:
+            lv_closed = lv_closed and is_closed
+    return hv_closed, mv_closed, lv_closed
 
 
 def _ref_id(x: str | None) -> str | None:
@@ -519,7 +574,12 @@ def convert_dgs_to_wire(typcon: TypCon) -> Wire:
 
     # PowerFactory: diatub may be 0/empty for non-tubular conductors.
     diatub = float(typcon.diatub)
-    is_tube = diatub > 0.0
+
+    # Conductor Model (Solid or Tubular)
+    if typcon.iModel == 1:
+        is_tube = True
+    else:
+        is_tube = False
 
     # Keep a compact but informative stranding label.
     stranding = f"ncsub={int(typcon.ncsub)}, dsubc={float(typcon.dsubc)}"
@@ -925,6 +985,7 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
                                logger: Logger,
                                cubics_by_objid: Dict[str, List[StaCubic]],
                                bus_by_term_id: Dict[str, dev.Bus],
+                               switch_by_cubic_id: Dict[str, StaSwitch],
                                parallel_index: int = 0,
                                parallel_count: int = 1) -> dev.Transformer2W:
     """
@@ -988,7 +1049,9 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
                               bus_to=bus_vg_to,
                               name=transformer_name,
                               idtag=transformer_idtag,
-                              active=not tr2.outserv)
+                              active=not tr2.outserv and _is_element_closed_by_cubicle_switches(element_id=tr2.ID,
+                                                                                                  cubics_by_objid=cubics_by_objid,
+                                                                                                  switch_by_cubic_id=switch_by_cubic_id),)
 
     trafo.apply_template(obj=template, Sbase=baseMVA, logger=logger)
     trafo.vector_group_number = int(round(float(typtr2_raw.nt2ag))) % 12
@@ -1137,6 +1200,7 @@ def convert_dgs_to_transformer3w(tr3: ElmTr3,
                                  logger: Logger,
                                  cubics_by_objid: Dict[str, List[StaCubic]],
                                  bus_by_term_id: Dict[str, dev.Bus],
+                                 switch_by_cubic_id: Dict[str, StaSwitch],
                                  parallel_index: int = 0,
                                  parallel_count: int = 1) -> dev.Transformer3W:
     """
@@ -1244,6 +1308,19 @@ def convert_dgs_to_transformer3w(tr3: ElmTr3,
         pf_connection_code=str(template.tr3cn_l),
         pf_vector_group_angle=float(template.nt3ag_l)
     )
+
+    hv_closed, mv_closed, lv_closed = _get_tr3_winding_closed_states(
+        tr3_id=tr3.ID,
+        cubics_by_objid=cubics_by_objid,
+        switch_by_cubic_id=switch_by_cubic_id,
+        bus_by_term_id=bus_by_term_id,
+        bus_hv=bus_hv,
+        bus_mv=bus_mv,
+        bus_lv=bus_lv,
+    )
+    trafo3w.winding1.active = hv_closed
+    trafo3w.winding2.active = mv_closed
+    trafo3w.winding3.active = lv_closed
 
     return trafo3w
 
@@ -1703,6 +1780,114 @@ def convert_dgs_to_line(
     return line
 
 
+def convert_dgs_common_impedance_to_series_reactance(
+        element: ElmZpu,
+        buses: List[dev.Bus],
+        bus_by_terminal_id: Dict[str, dev.Bus],
+        stacubic_dict: Dict[str, List[int]],
+        cubics_by_obj_id: Dict[str, List[StaCubic]],
+        logger: Logger,
+        Sbase_vg: float
+) -> dev.SeriesReactance:
+    """
+    Convert a PowerFactory DGS common impedance element into a VeraGrid Line device.
+
+    Supported DGS elements:
+    - ElmZpu (Common Impedance)
+
+    The connectivity is resolved through StaCubic terminals, exactly like lines/transformers.
+    """
+
+    # Resolve buses via StaCubic.fold_id -> ElmTerm.ID -> Bus (same approach as lines/transformers)
+    term_ids: List[str] = get_terminal_ids(element_id=element.ID, cubics_by_objid=cubics_by_obj_id)
+    if len(term_ids) != 2:
+        raise ValueError(
+            f"ElmZpu '{element.loc_name}' (ID={element.ID}) is not connected to exactly 2 terminals.")
+
+    bus_from, bus_to = get_branch_buses(
+        elm_id=element.ID,
+        stacubic_dict=stacubic_dict,
+        buses=buses,
+        cubics_by_objid=cubics_by_obj_id,
+        bus_by_term_id=bus_by_terminal_id
+    )
+
+    name: str = element.loc_name
+
+    r1 = element.r_pu * Sbase_vg / element.Sn
+    x1 = element.x_pu * Sbase_vg / element.Sn
+
+    sr = dev.SeriesReactance(
+        bus_from=bus_from,
+        bus_to=bus_to,
+        name=name,
+        idtag=_ref_id(element.ID),
+        active=not element.outserv,
+        r=r1,
+        x=x1,
+        rate=element.Sn
+    )
+
+    return sr
+
+
+def convert_dgs_series_capacitor_to_reactance(
+        element: ElmScap,
+        buses: List[dev.Bus],
+        bus_by_terminal_id: Dict[str, dev.Bus],
+        stacubic_dict: Dict[str, List[int]],
+        cubics_by_obj_id: Dict[str, List[StaCubic]],
+        logger: Logger,
+        sbase_mva: float = 100.0
+) -> dev.SeriesReactance:
+    """
+    Convert a PowerFactory DGS series capacitor element into a VeraGrid SeriesReactance device.
+
+    Supported DGS elements:
+    - ElmScap (Series Capacitor)
+
+    The connectivity is resolved through StaCubic terminals, exactly like lines/transformers.
+    """
+
+    # Resolve buses via StaCubic.fold_id -> ElmTerm.ID -> Bus (same approach as lines/transformers)
+    term_ids: List[str] = get_terminal_ids(element_id=element.ID, cubics_by_objid=cubics_by_obj_id)
+    if len(term_ids) != 2:
+        raise ValueError(
+            f"ElmSind '{element.loc_name}' (ID={element.ID}) is not connected to exactly 2 terminals.")
+
+    bus_from, bus_to = get_branch_buses(
+        elm_id=element.ID,
+        stacubic_dict=stacubic_dict,
+        buses=buses,
+        cubics_by_objid=cubics_by_obj_id,
+        bus_by_term_id=bus_by_terminal_id
+    )
+
+    name: str = element.loc_name
+
+    # Rated power calculation [MVA]
+    Ur = element.ucn
+    Ir = element.Curn
+    Sr = np.sqrt(3) * Ur * Ir
+
+    # Series capacitive reactance [pu]
+    Zbase = Ur**2 / sbase_mva
+    x = -1 * element.xcap / Zbase
+
+    series_reactance = dev.SeriesReactance(
+        bus_from=bus_from,
+        bus_to=bus_to,
+        name=name,
+        idtag=_ref_id(element.ID),
+        active=not element.outserv,
+        r=0.0,
+        x=x,
+        rate=Sr
+    )
+
+    return series_reactance
+
+
 def convert_dgs_to_series_reactance(
         element: ElmSind,
         buses: List[dev.Bus],
@@ -1798,7 +1983,7 @@ def convert_dgs_to_series_reactance(
         x0=x0_pu,
         r2=r2_pu,
         x2=x2_pu,
-        rate=1.0
+        rate=sn_mva
     )
 
     return series_reactance
@@ -1860,6 +2045,41 @@ def _extract_load_pq(elmlod: ElmLod, logger: Logger) -> Tuple[float, float]:
     return p, q
 
 
+def convert_dgs_ward_equivalent_to_load(elmvac: ElmVac,
+                                        stacubic_dict: Dict[str, List[int]],
+                                        buses: List[dev.Bus],
+                                        logger: Logger,
+                                        cubics_by_objid: Dict[str, List[StaCubic]],
+                                        bus_by_term_id: Dict[str, dev.Bus]) -> Tuple[dev.Bus, dev.Load]:
+    """
+    Convert ElmVac to VeraGrid Load.
+    """
+    bus = get_injection_bus(elm_id=elmvac.ID,
+                            stacubic_dict=stacubic_dict,
+                            buses=buses,
+                            cubics_by_objid=cubics_by_objid,
+                            bus_by_term_id=bus_by_term_id)
+
+    name: str = elmvac.loc_name
+
+    constant_p = elmvac.Pload - elmvac.Pgen # Net constant P active power [MW]
+    constant_q = elmvac.Qload - elmvac.Qgen # Net constant Q reactive power [Mvar]
+    constant_g = elmvac.Pzload # Constant Z active power [MW]
+    constant_b = -1 * elmvac.Qzload # Constant Z reactive power [Mvar]
+
+    load = dev.Load(
+        name=name,
+        idtag=_ref_id(elmvac.ID),
+        P=constant_p,
+        Q=constant_q,
+        G=constant_g,
+        B=constant_b,
+        active=not bool(elmvac.outserv)
+    )
+
+    return bus, load
+
+
 def convert_dgs_to_load(elmlod: ElmLod,
                         stacubic_dict: Dict[str, List[int]],
                         buses: List[dev.Bus],
@@ -1886,6 +2106,81 @@ def convert_dgs_to_load(elmlod: ElmLod,
 
     return bus, load
 
+
+def convert_dgs_staticgen_to_gen(elmgenstat: ElmGenstat,
+                                      stacubic_dict: Dict[str, List[int]],
+                                      buses: List[dev.Bus],
+                                      logger: Logger,
+                                      cubics_by_objid: Dict[str, List[StaCubic]],
+                                      bus_by_term_id: Dict[str, dev.Bus],
+                                      parallel_index: int = 0,
+                                      parallel_count: int = 1) -> Tuple[dev.Bus, dev.Generator]:
+    """
+    Convert ElmGenstat to VeraGrid Generator.
+    """
+    bus = get_injection_bus(elm_id=elmgenstat.ID,
+                            stacubic_dict=stacubic_dict,
+                            buses=buses,
+                            cubics_by_objid=cubics_by_objid,
+                            bus_by_term_id=bus_by_term_id)
+
+    # Slack/reference machine indicator (PowerFactory exports ip_ctrl=1 on the slack generator)
+    if int(elmgenstat.ip_ctrl) == 1:
+        bus.is_slack = True
+
+    generator_name = _get_non_empty_name(elmgenstat.loc_name, f"{_ref_id(elmgenstat.ID)}")
+    generator_name = _get_parallel_device_name(generator_name, parallel_index, parallel_count)
+    generator_idtag = _get_parallel_device_idtag(_ref_id(elmgenstat.ID), parallel_index, parallel_count)
+
+    gen = dev.Generator(
+        name=generator_name,
+        idtag=generator_idtag,
+        P=float(elmgenstat.pgini),
+        vset=float(elmgenstat.usetp),
+        Snom=float(elmgenstat.sgn),
+        active=not bool(elmgenstat.outserv)
+    )
+
+    return bus, gen
+
+
+def convert_dgs_staticgen_to_battery(elmgenstat: ElmGenstat,
+                                     stacubic_dict: Dict[str, List[int]],
+                                     buses: List[dev.Bus],
+                                     logger: Logger,
+                                     cubics_by_objid: Dict[str, List[StaCubic]],
+                                     bus_by_term_id: Dict[str, dev.Bus],
+                                     parallel_index: int = 0,
+                                     parallel_count: int = 1) -> Tuple[dev.Bus, dev.Battery]:
+    """
+    Convert Storage ElmGenstat to VeraGrid Battery.
+    """
+    bus = get_injection_bus(elm_id=elmgenstat.ID,
+                            stacubic_dict=stacubic_dict,
+                            buses=buses,
+                            cubics_by_objid=cubics_by_objid,
+                            bus_by_term_id=bus_by_term_id)
+
+    name = _get_non_empty_name(elmgenstat.loc_name, f"Storage_{_ref_id(elmgenstat.ID)}")
+    name = _get_parallel_device_name(name, parallel_index, parallel_count)
+    battery_idtag = _get_parallel_device_idtag(_ref_id(elmgenstat.ID), parallel_index, parallel_count)
+
+    # Power Factor from P and Q
+    P = float(elmgenstat.pgini)
+    Q = float(elmgenstat.qgini)
+    pf = np.cos(np.atan(Q/(P + 1e-20)))
+
+    batttery = dev.Battery(
+        name=name,
+        idtag=battery_idtag,
+        P=P,
+        power_factor=pf,
+        is_controlled=False,
+        Snom=float(elmgenstat.sgn),
+        active=not bool(elmgenstat.outserv)
+    )
+
+    return bus, batttery
 
 def convert_dgs_to_static_gen(elmgenstat: ElmGenstat,
                               stacubic_dict: Dict[str, List[int]],
@@ -1920,12 +2215,6 @@ def convert_dgs_to_static_gen(elmgenstat: ElmGenstat,
         Snom=float(elmgenstat.sgn),
         active=not bool(elmgenstat.outserv)
     )
-
-    # Preserve PowerFactory 'ip_ctrl' (1 means this is the reference/slack machine)
-    if int(elmgenstat.ip_ctrl) == 1:
-        bus.is_slack = True
-    else:
-        pass
 
     return bus, stagen
 
@@ -1968,17 +2257,16 @@ def convert_dgs_staticgen_to_vsc(elmgenstat: ElmGenstat,
         alpha2=0.0,
         alpha3=0.0,
         control1=ConverterControlType.Pac,
-        control2=ConverterControlType.Qac,
+        control2=ConverterControlType.Q_droop,
         control1_val=-1.0 * float(elmgenstat.pgini),
         control2_val=-1.0 * float(elmgenstat.qgini),
         fault_control=ConverterFaultControlType.WECC_WT_Type_4B,
-        kdp=float(elmgenstat.ddroop),
-        u_setpoint_min=float(elmgenstat.usp_min),
-        u_setpoint_max=float(elmgenstat.usp_max),
-        u_setpoint=float(elmgenstat.usetp),
-        du_setpoint=0.0,
-        Q_min=float(elmgenstat.cQ_min),
-        Q_max=float(elmgenstat.cQ_max)
+        control2_droop=float(elmgenstat.ddroop),
+        control2_droop_val_min=float(elmgenstat.usp_min),
+        control2_droop_val_max=float(elmgenstat.usp_max),
+        control2_droop_val=float(elmgenstat.usetp),
+        control2_val_min=float(elmgenstat.cQ_min),
+        control2_val_max=float(elmgenstat.cQ_max)
     )
 
     return dc_bus, vsc
@@ -2031,7 +2319,7 @@ def convert_dgs_external_grid_to_generator(elmxnet: ElmXnet,
         bus.is_slack = True
 
     elif bustype == 'PV':
-        gen.vset = elmxnet.usetp
+        gen.Vset = elmxnet.usetp
         gen.P = elmxnet.pgini
 
     elif bustype == 'PQ':
@@ -2217,6 +2505,10 @@ def _extract_shunt_gb(elmshnt: ElmShnt, f: float, logger: Logger) -> Tuple[float
             device_class="ElmShnt",
             value=shtype
         )
+
+    if elmshnt.ncapa == 0 and elmshnt.ncapx <= 1:
+        g_mw = 0.0
+        b_mvar = 0.0
 
     return g_mw, b_mvar
 
@@ -2414,7 +2706,7 @@ def convert_dgs_svs_to_vsc(elmsvs: ElmSvs,
                                cubics_by_objid=cubics_by_objid,
                                bus_by_term_id=bus_by_term_id)
 
-    dc_bus = dev.Bus(name=f'{_ref_id(ac_bus.name)}_DC',
+    dc_bus = dev.Bus(name=f'{_ref_id(ac_bus.name)}_SVS_DC',
                      is_dc=True,
                      is_slack=True,
                      xpos=ac_bus.x,
@@ -2457,13 +2749,12 @@ def convert_dgs_svs_to_vsc(elmsvs: ElmSvs,
             rate = elmsvs.Srated # Rated Power [MVA]
             u_setpoint = elmsvs.usetp # Voltage Setpoint [pu]
 
+
             control1 = ConverterControlType.Pac
             control1_val = 0.0  # Active power injection of the SVS [MW]
 
-            control2 = ConverterControlType.Qac
-            Qdroop = rate / kpd * 100
-            Q = Qdroop * (np.abs(1.0) - u_setpoint)  # Reactive power injection of the SVS [MVAr]
-            control2_val = Q  # Reactive power injection of the SVS [MVAr]
+            control2 = ConverterControlType.Q_droop
+            control2_val = 0.0  # Reactive power injection of the SVS [MVAr]
 
             ysvs = 0.0  # Fixed admittance based on 1 MVA / Ub^2
 
@@ -2501,8 +2792,8 @@ def convert_dgs_svs_to_vsc(elmsvs: ElmSvs,
         control1_val=control1_val,
         control2_val=control2_val,
         ysvs=ysvs,
-        kdp=kpd,
-        u_setpoint=u_setpoint
+        control2_droop=kpd,
+        control2_droop_val=u_setpoint
     )
 
     return dc_bus, vsc
@@ -2713,6 +3004,7 @@ def convert_dgs_to_generator(elmsym: ElmSym,
     gen = dev.Generator(name=name,
                         idtag=generator_idtag,
                         P=p_mw,
+                        Q=q_mvar,
                         power_factor=pf,
                         vset=vset,
                         is_controlled=is_controlled,
@@ -2754,22 +3046,22 @@ def convert_dgs_to_asm_generator(elmasm: ElmAsm,
                                  stacubic_dict: Dict[str, List[int]],
                                  buses: List[dev.Bus],
                                  typasmo_dict: Dict[str, TypAsmo],
-                                 baseMVA: float,
                                  logger: Logger,
                                  cubics_by_objid: Dict[str, List[StaCubic]],
                                  bus_by_term_id: Dict[str, dev.Bus],
                                  parallel_index: int = 0,
                                  parallel_count: int = 1) -> Tuple[dev.Bus, dev.Generator]:
     """
-    Convert ElmAsm (asynchronous machine) to VeraGrid Generator.
+    Convert ElmAsm (asynchronous machine) to VeraGrid Generator (asynchronous type).
 
     Important notes:
     - We model ElmAsm as a non-voltage-controlled Generator (PQ behavior).
-    - VeraGrid stores PQ behavior via (P, power_factor). There is no explicit Q field for PQ generators.
-    - Therefore, we deduce the power factor from (P, Q) in the DGS.
-    - If P and Q have opposite sign, VeraGrid cannot reproduce that sign combination using only Pf.
-      In that case we log a warning and compute Pf from magnitudes.
+    - The active power P is given as a parameter from PowerFactory, as the user defines it.
+    - With the active power P, the asynchronous machine equivalent circuit is solve to find the slip.
+    - When the slip is known, the algorithm computes the corresponding reactive power Q injection.
+    - For more detail, refer to the VeraGrid documentation.
     """
+
     name = _get_non_empty_name(elmasm.loc_name, f"ElmAsm_{_ref_id(elmasm.ID)}")
     name = _get_parallel_device_name(name, parallel_index, parallel_count)
     generator_idtag = _get_parallel_device_idtag(_ref_id(elmasm.ID), parallel_index, parallel_count)
@@ -2781,73 +3073,105 @@ def convert_dgs_to_asm_generator(elmasm: ElmAsm,
                             cubics_by_objid=cubics_by_objid,
                             bus_by_term_id=bus_by_term_id)
 
-    p_mw: float = float(elmasm.pgini)
-    q_mvar: float = float(elmasm.qgini)
+    if elmasm.i_mot == 0: # Check that the asynchronous machine is a Generator
 
-    # Deduce power factor from P and Q
-    # For a PQ generator in VeraGrid: Q ~= P * sqrt(1/Pf^2 - 1)
-    abs_p: float = abs(p_mw)
-    abs_q: float = abs(q_mvar)
+        if elmasm.idfig == 0: # Also check that it is a Standard Asynchronous Machine
 
-    if abs_p > 0.0:
-        s_mva: float = math.sqrt(p_mw * p_mw + q_mvar * q_mvar)
-        if s_mva > 0.0:
-            pf: float = abs_p / s_mva
+            if elmasm.bustp == 'AS' and elmasm.pmode == 0: # Finally, check the bus type and the power input mode
+
+                P: float = float(elmasm.pgini) # AG active power P
+
+                typasmo: TypAsmo | None = typasmo_dict.get(elmasm.typ_id, None) # AG type
+
+                if typasmo is not None:
+
+                    Sr = float(typasmo.sgn) * 1e-3 # Rated apparent power [MVA]
+                    Rs = float(typasmo.rstr) # Stator resistance [pu]
+                    Xs = float(typasmo.xstr) # Stator reactance [pu]
+                    Xm = float(typasmo.xm) # Magnetising reactance [pu]
+                    Rr = float(typasmo.rrtrA) # Rotor resistance [pu]
+                    Xr = float(typasmo.xrtrA) # Rotor reactance [pu]
+
+                    gen = dev.Generator(name=name,
+                                        idtag=generator_idtag,
+                                        P=P,
+                                        power_factor=1.0,
+                                        is_controlled=False,
+                                        Snom=Sr,
+                                        active=(elmasm.outserv == 0),
+                                        Rs=Rs,
+                                        Xs=Xs,
+                                        Xm=Xm,
+                                        Rr=Rr,
+                                        Xr=Xr,
+                                        tpe=GeneratorType.Asynchronous)
+
+
+
+                else:
+                    logger.add_warning(
+                        msg=f"The Asynchronous Generator does not have an assigned type (TypAsmo).",
+                        device=name,
+                        device_class="ElmAsm",
+                        value=typasmo
+                    )
+
+                    gen = dev.Generator(name=name,
+                                        idtag=generator_idtag,
+                                        P=P,
+                                        power_factor=1.0,
+                                        is_controlled=False,
+                                        Snom=P,
+                                        active=(elmasm.outserv == 0),
+                                        tpe=GeneratorType.Asynchronous)
+
+            else:
+                logger.add_warning(
+                    msg=f"Bus type is not AS or the input mode is not Electrical power.",
+                    device=name,
+                    device_class="ElmAsm",
+                    value=elmasm.bustp
+                )
+
+                gen = dev.Generator(name=name,
+                                    idtag=generator_idtag,
+                                    P=0.0,
+                                    power_factor=1.0,
+                                    is_controlled=False,
+                                    active=(elmasm.outserv == 0),
+                                    tpe=GeneratorType.Asynchronous)
+
         else:
-            pf = 1.0
-    else:
-        # If P is zero, Pf cannot encode Q (VeraGrid formula would give Q=0).
-        # We keep Pf=1.0 and warn if Q is not zero.
-        pf = 1.0
-        if abs_q > 0.0:
-
             logger.add_warning(
-                f"PQ Generator in VeraGrid cannot encode reactive power when P=0 using only Pf. Using pf=1.0",
+                msg=f"The AG is not an Standard Asynchronous Machine.",
                 device=name,
                 device_class="ElmAsm",
-                value=q_mvar
+                value=elmasm.idfig
             )
 
-    # If P and Q signs differ, VeraGrid Pf-only representation cannot match that sign combination
-    if p_mw * q_mvar < 0.0:
+            gen = dev.Generator(name=name,
+                                idtag=generator_idtag,
+                                P=0.0,
+                                power_factor=1.0,
+                                is_controlled=False,
+                                active=(elmasm.outserv == 0),
+                                tpe=GeneratorType.Asynchronous)
 
+    else:
         logger.add_warning(
-            f"P and Q with opposite sign cannot be handled",
+            msg=f"The asynchronous machine is not a generator, is a motor!",
             device=name,
             device_class="ElmAsm",
-            value=q_mvar
+            value=elmasm.i_mot
         )
 
-    # Resolve Snom from TypAsmo if available
-    snom: float = 9999.0
-    typasmo: TypAsmo | None = typasmo_dict.get(elmasm.typ_id, None)
-    if typasmo is None:
-        typasmo = typasmo_dict.get(_ref_id(elmasm.typ_id), None)
-
-    if typasmo is not None:
-        # Prefer nominal apparent power if present
-        if typasmo.sgn != 0.0:
-            snom = float(typasmo.sgn)
-        else:
-            # Fallback: if cosn is available, estimate S from Pn/cosn
-            if typasmo.pgn != 0.0 and typasmo.cosn != 0.0:
-                snom = float(typasmo.pgn / typasmo.cosn)
-    else:
-        # Fallback to operating point apparent power if non-zero
-        s_op: float = math.sqrt(p_mw * p_mw + q_mvar * q_mvar)
-        if s_op > 0.0:
-            snom = float(s_op)
-
-    # ElmAsm should behave as PQ (no voltage control)
-    gen = dev.Generator(name=name,
-                        idtag=generator_idtag,
-                        P=p_mw,
-                        power_factor=pf,
-                        vset=1.0,
-                        is_controlled=False,
-                        Snom=snom,
-                        active=(elmasm.outserv == 0),
-                        Sbase=baseMVA)
+        gen = dev.Generator(name=name,
+                            idtag=generator_idtag,
+                            P=0.0,
+                            power_factor=1.0,
+                            is_controlled=False,
+                            active=(elmasm.outserv == 0),
+                            tpe=GeneratorType.Asynchronous)
 
     return bus, gen
 
@@ -3008,6 +3332,22 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
         if tid is not None:
             typ_switch_dict[tid] = typ_switch
 
+    # switches (PowerFactory/DGS: ElmCoup is the real device; StaCubic resolves connectivity)
+    switch_by_cubic_id: Dict[str, StaSwitch] = build_switch_by_cubic_id(staswitchs=dgs_grid.staswitchs)
+
+    vg_switches: List[dev.Switch] = convert_dgs_to_switches_from_elmcoup(
+        elmcoups=dgs_grid.elmcoups,
+        cubics_by_objid=cubics_by_objid,
+        bus_by_term_id=bus_by_term_id,
+        switch_by_cubic_id=switch_by_cubic_id,
+        typ_switch_by_id=typ_switch_dict,
+        sbase_mva=baseMVA,
+        logger=logger
+    )
+
+    for sw in vg_switches:
+        grid.add_switch(obj=sw)
+
     # Generators
     for elmsym in dgs_grid.elmsyms:
         parallel_count = _get_parallel_device_count(count=int(elmsym.ngnum))
@@ -3036,7 +3376,6 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
                 stacubic_dict=stacubic_dict,
                 buses=grid.buses,
                 typasmo_dict=typasmo_dict,
-                baseMVA=baseMVA,
                 logger=logger,
                 cubics_by_objid=cubics_by_objid,
                 bus_by_term_id=bus_by_term_id,
@@ -3045,6 +3384,21 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
             )
 
             grid.add_generator(bus=bus, api_obj=gen)
+
+    # AC Voltage Sources
+    for elmvac in dgs_grid.elmvacs:
+
+        if elmvac.itype == 2:
+            bus, load = convert_dgs_ward_equivalent_to_load(
+                elmvac=elmvac,
+                stacubic_dict=stacubic_dict,
+                buses=grid.buses,
+                logger=logger,
+                cubics_by_objid=cubics_by_objid,
+                bus_by_term_id=bus_by_term_id
+            )
+
+            grid.add_load(bus=bus, api_obj=load)
 
     # Loads
     for elmlod in dgs_grid.elmlods:
@@ -3066,7 +3420,7 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
 
         for parallel_index in range(parallel_count):
 
-            if elmgenstat.cCategory == 'Wind':
+            if elmgenstat.cCategory == 'Wind' and not bool(elmgenstat.outserv):
                 dc_bus, vsc = convert_dgs_staticgen_to_vsc(
                     elmgenstat=elmgenstat,
                     stacubic_dict=stacubic_dict,
@@ -3080,7 +3434,46 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
                 grid.add_bus(dc_bus)
                 grid.add_vsc(vsc)
 
-            else:
+            elif elmgenstat.cCategory == 'HVDC Terminal':
+                bus, gen = convert_dgs_staticgen_to_gen(
+                    elmgenstat=elmgenstat,
+                    stacubic_dict=stacubic_dict,
+                    buses=grid.buses,
+                    logger=logger,
+                    cubics_by_objid=cubics_by_objid,
+                    bus_by_term_id=bus_by_term_id,
+                    parallel_index=parallel_index,
+                    parallel_count=parallel_count
+                )
+                grid.add_generator(bus=bus, api_obj=gen)
+
+            elif elmgenstat.cCategory == 'Storage':
+                bus, battery = convert_dgs_staticgen_to_battery(
+                    elmgenstat=elmgenstat,
+                    stacubic_dict=stacubic_dict,
+                    buses=grid.buses,
+                    logger=logger,
+                    cubics_by_objid=cubics_by_objid,
+                    bus_by_term_id=bus_by_term_id,
+                    parallel_index=parallel_index,
+                    parallel_count=parallel_count
+                )
+                grid.add_battery(bus=bus, api_obj=battery)
+
+            elif elmgenstat.av_mode == 'constv':
+                bus, gen = convert_dgs_staticgen_to_gen(
+                    elmgenstat=elmgenstat,
+                    stacubic_dict=stacubic_dict,
+                    buses=grid.buses,
+                    logger=logger,
+                    cubics_by_objid=cubics_by_objid,
+                    bus_by_term_id=bus_by_term_id,
+                    parallel_index=parallel_index,
+                    parallel_count=parallel_count
+                )
+                grid.add_generator(bus=bus, api_obj=gen)
+
+            else: # Standard Constant Q Static Generator
                 bus, stagen = convert_dgs_to_static_gen(
                     elmgenstat=elmgenstat,
                     stacubic_dict=stacubic_dict,
@@ -3485,6 +3878,52 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
                 except ValueError as e:
                     logger.add_warning(str(e), device_class="ElmLne", device=api_line.name)
 
+    # common impedances
+    for elmzpu in dgs_grid.elmzpus:
+        sr = convert_dgs_common_impedance_to_series_reactance(
+            element=elmzpu,
+            buses=grid.buses,
+            bus_by_terminal_id=bus_by_term_id,
+            stacubic_dict=stacubic_dict,
+            cubics_by_obj_id=cubics_by_objid,
+            logger=logger,
+            Sbase_vg=baseMVA
+        )
+        # MultiCircuit supports generic branch insertion
+        # Optional grouping metadata: assign BranchGroup based on the DGS hierarchical folder reference.
+        # IMPORTANT: this does not affect electrical connectivity.
+        fold_id = _ref_id(elmzpu.fold_id)
+        if fold_id is not None and fold_id != "":
+            bg = branch_group_by_id.get(fold_id)
+            if bg is not None:
+                sr.group = bg
+
+        grid.add_series_reactance(sr)
+
+
+    # series capacitors
+    for elmscap in dgs_grid.elmscaps:
+        sr = convert_dgs_series_capacitor_to_reactance(
+            element=elmscap,
+            buses=grid.buses,
+            bus_by_terminal_id=bus_by_term_id,
+            stacubic_dict=stacubic_dict,
+            cubics_by_obj_id=cubics_by_objid,
+            logger=logger,
+            sbase_mva=baseMVA
+        )
+        # MultiCircuit supports generic branch insertion
+        # Optional grouping metadata: assign BranchGroup based on the DGS hierarchical folder reference.
+        # IMPORTANT: this does not affect electrical connectivity.
+        fold_id = _ref_id(elmscap.fold_id)
+        if fold_id is not None and fold_id != "":
+            bg = branch_group_by_id.get(fold_id)
+            if bg is not None:
+                sr.group = bg
+
+        grid.add_series_reactance(obj=sr)
+
+
     # series reactances / impedances
     for elmsind in dgs_grid.elmsinds:
         sr = convert_dgs_to_series_reactance(
@@ -3508,21 +3947,7 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
 
         grid.add_series_reactance(obj=sr)
 
-    # switches (PowerFactory/DGS: ElmCoup is the real device; StaCubic resolves connectivity)
-    switch_by_cubic_id: Dict[str, StaSwitch] = build_switch_by_cubic_id(staswitchs=dgs_grid.staswitchs)
 
-    vg_switches: List[dev.Switch] = convert_dgs_to_switches_from_elmcoup(
-        elmcoups=dgs_grid.elmcoups,
-        cubics_by_objid=cubics_by_objid,
-        bus_by_term_id=bus_by_term_id,
-        switch_by_cubic_id=switch_by_cubic_id,
-        typ_switch_by_id=typ_switch_dict,
-        sbase_mva=baseMVA,
-        logger=logger
-    )
-
-    for sw in vg_switches:
-        grid.add_switch(obj=sw)
     # Transformers 2W
     for elmtr2 in dgs_grid.elmtr2s:
         parallel_count = _get_parallel_device_count(count=int(elmtr2.ntnum))
@@ -3538,6 +3963,7 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
                 logger=logger,
                 cubics_by_objid=cubics_by_objid,
                 bus_by_term_id=bus_by_term_id,
+                switch_by_cubic_id=switch_by_cubic_id,
                 parallel_index=parallel_index,
                 parallel_count=parallel_count
             )
@@ -3600,6 +4026,7 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
                 logger=logger,
                 cubics_by_objid=cubics_by_objid,
                 bus_by_term_id=bus_by_term_id,
+                switch_by_cubic_id=switch_by_cubic_id,
                 parallel_index=parallel_index,
                 parallel_count=parallel_count
             )

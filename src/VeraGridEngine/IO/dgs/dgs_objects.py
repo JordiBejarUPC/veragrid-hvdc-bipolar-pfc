@@ -529,29 +529,39 @@ class BlkSum(DGSElement):
 class ElmAsm(DGSElement):
     element_type = 'ElmAsm'
     properties_list = [
-        DgsProperty('ID', 'a:40', 'Unique identifier for DGS file', py_name='ID'),
+        DgsProperty('FID', 'a:40', 'Unique identifier for DGS file', py_name='ID'),
+        DgsProperty('OP', 'a:1', 'Operation', py_name='OP'),
         DgsProperty('loc_name', 'a', 'Name', py_name='loc_name'),
         DgsProperty('fold_id', 'p', 'In Folder', py_name='fold_id'),
         DgsProperty('typ_id', 'p', 'Type in TypAsmo', py_name='typ_id'),
-        DgsProperty('chr_name', 'a', 'Characteristic Name', py_name='chr_name'),
-        DgsProperty('i_mot', 'i', 'Operating Mode: Generator:Motor', py_name='i_mot'),
         DgsProperty('ngnum', 'i', 'Number of Parallel Machines', py_name='ngnum'),
+        DgsProperty('i_mot', 'i', 'Operating Mode: Generator:Motor', py_name='i_mot'),
         DgsProperty('outserv', 'i', 'Out of Service', py_name='outserv'),
         DgsProperty('pgini', 'r', 'Active Power Setpoint in MW', py_name='pgini'),
         DgsProperty('qgini', 'r', 'Reactive Power Setpoint in MVAr', py_name='qgini'),
+        DgsProperty('chr_name', 'a', 'Characteristic Name', py_name='chr_name'),
+        DgsProperty('idfig', 'i', 'Machine type', py_name='idfig'),
+        DgsProperty('bustp', 'a:4', 'Bus type: AS:PQ', py_name='bustp'),
+        DgsProperty('cCategory', 'a', 'Plant Category', py_name='cCategory'),
+        DgsProperty('pmode', 'i', 'Electrical power:Mechanical power:Mechanical torque', py_name='pmode'),
     ]
 
     def __init__(self) -> None:
-        self.ID: str = ""
-        self.loc_name: str = ""
-        self.fold_id: str = ""
-        self.typ_id: str = ""
-        self.chr_name: str = ""
-        self.i_mot: int = 0
+        self.ID: str = ''
+        self.OP: str = ''
+        self.loc_name: str = ''
+        self.fold_id: str = ''
+        self.typ_id: str = ''
         self.ngnum: int = 0
+        self.i_mot: int = 0
         self.outserv: int = 0
         self.pgini: float = 0.0
         self.qgini: float = 0.0
+        self.chr_name: str = ''
+        self.idfig: int = 0
+        self.bustp: str = ''
+        self.cCategory: str = ''
+        self.pmode: int = 0
 
 
 class ElmCoup(DGSElement):
@@ -722,6 +732,70 @@ class ElmLne(DGSElement):
         self.inAir: int = 0
 
 
+class ElmZpu(DGSElement):
+    element_type = 'ElmZpu'
+    properties_list = [
+        DgsProperty('FID', 'a:40', 'DGS field FID (a:40)', py_name='ID'),
+        DgsProperty('OP', 'a:1', 'DGS field OP (a:1)', py_name='OP'),
+        DgsProperty('loc_name', 'a:80', 'Name', py_name='loc_name'),
+        DgsProperty('for_name', 'a:100', 'Foreign Key', py_name='for_name'),
+        DgsProperty('fold_id', 'p', 'In Folder', py_name='fold_id'),
+
+        DgsProperty('Sn', 'r', 'Rated Power in MVA', py_name='Sn'),
+        DgsProperty('ratfac', 'r', 'Rating Factor', py_name='ratfac'),
+        DgsProperty('r_pu', 'r', 'Positive-Sequence Impedance i-j: Real Part in p.u.',
+                    py_name='r_pu'),
+        DgsProperty('x_pu', 'r', 'Positive-Sequence Impedance i-j: Imaginary Part in p.u.',
+                    py_name='x_pu'),
+
+        DgsProperty('outserv', 'i', 'Out of Service', py_name='outserv'),
+    ]
+
+    def __init__(self):
+        self.ID: str = ""
+        self.OP: str = ""
+        self.loc_name: str = ""
+        self.for_name: str = ""
+        self.fold_id: str = ""
+
+        self.Sn: float = 0.0
+        self.ratfac: float = 0.0
+        self.r_pu: float = 0.0
+        self.x_pu: float = 0.0
+
+        self.outserv: int = 0
+
+
+class ElmScap(DGSElement):
+    element_type = 'ElmScap'
+    properties_list = [
+        DgsProperty('FID', 'a:40', 'DGS field FID (a:40)', py_name='ID'),
+        DgsProperty('OP', 'a:1', 'DGS field OP (a:1)', py_name='OP'),
+        DgsProperty('loc_name', 'a:80', 'Name', py_name='loc_name'),
+        DgsProperty('for_name', 'a:100', 'Foreign Key', py_name='for_name'),
+        DgsProperty('fold_id', 'p', 'In Folder', py_name='fold_id'),
+
+        DgsProperty('ucn', 'r', 'Rated Voltage in kV', py_name='ucn'),
+        DgsProperty('Curn', 'r', 'Rated Current in kA', py_name='Curn'),
+        DgsProperty('xcap', 'r', 'Reactance 1/B in Ohm', py_name='xcap'),
+
+        DgsProperty('outserv', 'i', 'Out of Service', py_name='outserv'),
+    ]
+
+    def __init__(self):
+        self.ID: str = ""
+        self.OP: str = ""
+        self.loc_name: str = ""
+        self.for_name: str = ""
+        self.fold_id: str = ""
+
+        self.ucn: float = 0.0
+        self.Curn: float = 0.0
+        self.xcap: float = 0.0
+
+        self.outserv: int = 0
+
+
 class ElmSind(DGSElement):
     element_type = 'ElmSind'
     properties_list = [
@@ -802,6 +876,46 @@ class ElmLnesec(DGSElement):
         self.dline: float = 0.0
         self.fline: float = 0.0
         self.index: float = 0.0
+
+
+class ElmVac(DGSElement):
+    element_type = 'ElmVac'
+    properties_list = [
+        DgsProperty('FID', 'a:40', 'DGS field FID (a:40)', py_name='ID'),
+        DgsProperty('OP', 'a:1', 'DGS field OP (a:1)', py_name='OP'),
+        DgsProperty('loc_name', 'a:80', 'Name', py_name='loc_name'),
+        DgsProperty('for_name', 'a:100', 'Foreign Key', py_name='for_name'),
+        DgsProperty('fold_id', 'p', 'In Folder', py_name='fold_id'),
+
+        DgsProperty('outserv', 'i', 'Out of Service', py_name='outserv'),
+        DgsProperty('itype', 'i',
+                    '0=Voltage Source, 1=Ideal RC-Source, 2=Ward Equivalent, 3=Extended Ward Equivalent',
+                    py_name='itype'),
+
+        DgsProperty('Pload', 'r', 'Constant P Load - Active Power in MW', py_name='Pload'),
+        DgsProperty('Qload', 'r', 'Constant Q Load - Reactive Power in Mvar', py_name='Qload'),
+        DgsProperty('Pgen', 'r', 'Generated Active Power in MW', py_name='Pgen'),
+        DgsProperty('Qgen', 'r', 'Generated Reactive Power in Mvar', py_name='Qgen'),
+        DgsProperty('Pzload', 'r', 'Constant Z Load - Active Power in MW', py_name='Pzload'),
+        DgsProperty('Qzload', 'r', 'Constant Z Load - Reactive Power in Mvar', py_name='Qzload'),
+    ]
+
+    def __init__(self):
+        self.ID: str = ""
+        self.OP: str = ""
+        self.loc_name: str = ""
+        self.for_name: str = ""
+        self.fold_id: str = ""
+
+        self.outserv: int = 0
+        self.itype: int = 0
+
+        self.Pload: float = 0.0
+        self.Qload: float = 0.0
+        self.Pgen: float = 0.0
+        self.Qgen: float = 0.0
+        self.Pzload: float = 0.0
+        self.Qzload: float = 0.0
 
 
 class ElmLod(DGSElement):
@@ -1968,6 +2082,8 @@ class TypAsmo(DGSElement):
         DgsProperty('ugn', 'r', 'Rated Voltage in kV', py_name='ugn'),
         DgsProperty('xmrtr', 'r', 'Rotor Mutual Reactance in p.u.', py_name='xmrtr'),
         DgsProperty('xstr', 'r', 'Stator Reactance in p.u.', py_name='xstr'),
+        DgsProperty('rrtrA', 'r', 'Rotor resistance in p.u.', py_name='rrtrA'),
+        DgsProperty('xrtrA', 'r', 'Rotor reactance in p.u.', py_name='xrtrA'),
     ]
 
     def __init__(self) -> None:
@@ -1992,6 +2108,8 @@ class TypAsmo(DGSElement):
         self.nslty: int = 0
         self.rstr: float = 0.0
         self.xm: float = 0.0
+        self.rrtrA: float = 0.0
+        self.xrtrA: float = 0.0
 
 
 class TypFuse(DGSElement):
@@ -2405,6 +2523,7 @@ class TypCon(DGSElement):
         DgsProperty(name='diaco', dgs_type='r', description='Outer Diameter in mm', py_name='diaco'),
         DgsProperty(name='diatub', dgs_type='r', description='Inner Diameter in mm', py_name='diatub'),
         DgsProperty(name='mlei', dgs_type='a:20', description='Conductor Material', py_name='mlei'),
+        DgsProperty(name='iModel', dgs_type='i', description='Solid or Tubular conductor', py_name='iModel'),
     ]
 
     def __init__(self):
@@ -2420,6 +2539,7 @@ class TypCon(DGSElement):
         self.diaco: float = 0.0
         self.diatub: float = 0.0
         self.mlei: str = ''
+        self.iModel: int = 1
 
 
 class TypCt(DGSElement):

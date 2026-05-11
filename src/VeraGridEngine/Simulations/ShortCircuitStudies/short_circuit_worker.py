@@ -23,7 +23,8 @@ from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_basic_formulation_3ph 
                                                                                         expand3ph)
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
-from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_full_acdc_with_negative_poles import PfAcDcWithNegativePoles
+from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_full_acdc_with_negative_poles_sc import \
+    PfAcDcWithNegativePolesSc
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.newton_raphson_fx import newton_raphson_fx
 from VeraGridEngine.basic_structures import Logger
 
@@ -757,7 +758,6 @@ def short_circuit_vsc(nc: NumericalCircuit,
                       fault_bus: int,
                       options: PowerFlowOptions,
                       logger: Logger):
-
     if logger is None:
         logger = Logger()
 
@@ -782,7 +782,7 @@ def short_circuit_vsc(nc: NumericalCircuit,
 
     # Disable voltage magnitude and angle control for all generators during short-circuit
     bus_gen_idx = nc.generator_data.bus_idx
-    
+
     original_is_vm_controlled = nc.bus_data.is_vm_controlled[bus_gen_idx].copy()
     original_is_va_controlled = nc.bus_data.is_va_controlled[bus_gen_idx].copy()
     original_is_p_controlled = nc.bus_data.is_p_controlled[bus_gen_idx].copy()
@@ -828,7 +828,7 @@ def short_circuit_vsc(nc: NumericalCircuit,
         # Y0_linear = - np.conj(S0_non_gen / (np.conj(V_pf) * V_pf)) - I0 / V_pf - Y0 + Ygen + Yfault
         Y0_linear = - I0 / V_pf - Y0 + Ygen + Yfault
 
-        I0_linear = np.zeros(shape=nbus, dtype=complex) # Add generator's norton
+        I0_linear = np.zeros(shape=nbus, dtype=complex)  # Add generator's norton
         for gen_i in range(len(bus_gen_idx)):
             Ugen = V_pf[bus_gen_idx[gen_i]]
             Sgen = S0_gen[bus_gen_idx[gen_i]]
@@ -842,16 +842,16 @@ def short_circuit_vsc(nc: NumericalCircuit,
 
         if len(indices.vd) > 0:
 
-            problem = PfAcDcWithNegativePoles(V0=V_pf,
-                                              S0=S0_non_gen,
-                                              I0=I0_linear,
-                                              Y0=Y0_linear,
-                                              St_vsc_pf=St_vsc_pf,
-                                              Qmin=Qmin,
-                                              Qmax=Qmax,
-                                              nc=nc,
-                                              options=options,
-                                              logger=logger)
+            problem = PfAcDcWithNegativePolesSc(V0=V_pf,
+                                                S0=S0_non_gen,
+                                                I0=I0_linear,
+                                                Y0=Y0_linear,
+                                                St_vsc_pf=St_vsc_pf,
+                                                Qmin=Qmin,
+                                                Qmax=Qmax,
+                                                nc=nc,
+                                                options=options,
+                                                logger=logger)
 
             solution = newton_raphson_fx(problem=problem,
                                          tol=options.tolerance,
@@ -911,7 +911,7 @@ def short_circuit_vsc(nc: NumericalCircuit,
     sc_results.vsc_St[:, 0] = pf_results.St_vsc  # in MVA already
     sc_results.vsc_If[:, 0] = pf_results.If_vsc  # in p.u.
     sc_results.vsc_It[:, 0] = pf_results.It_vsc  # in p.u.
-    sc_results.vsc_losses[:, 0] = pf_results.losses_vsc # in MVA already
+    sc_results.vsc_losses[:, 0] = pf_results.losses_vsc  # in MVA already
     sc_results.vsc_loading[:, 0] = pf_results.loading_vsc
 
     # Restore original generator control flags
