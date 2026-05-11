@@ -162,6 +162,40 @@ def ml_heaviside(vf: VarFactory, u:Expr, name:str=''):
     )
     return positive_part_block, hv
 
+
+def ml_heaviside_sigmoid(
+    vf: VarFactory,
+    u: Expr,
+    name: str = '',
+    k: Expr = Const(20.0),
+    exp_clip: Expr = Const(60.0),
+):
+    hv = vf.add_var('hv_' + name)
+    sig_arg = sym.max(sym.min(k * u, exp_clip), -exp_clip)
+    hv_rhs = Const(1.0) / (Const(1.0) + sym.exp(-sig_arg))
+    block = Block(
+        algebraic_eqs=[hv - hv_rhs],
+        algebraic_vars=[hv],
+        init_eqs={hv: hv_rhs},
+    )
+    return block, hv
+
+
+def ml_hard_sat_sigmoid(
+    vf: VarFactory,
+    u: Expr,
+    u_min: Expr,
+    u_max: Expr,
+    name: str = '',
+    k: Expr = Const(20.0),
+    exp_clip: Expr = Const(60.0),
+):
+    block_min, h_min = ml_heaviside_sigmoid(vf, u - u_min, name=f"{name}_min", k=k, exp_clip=exp_clip)
+    block_max, h_max = ml_heaviside_sigmoid(vf, u - u_max, name=f"{name}_max", k=k, exp_clip=exp_clip)
+    sat_expr = u_min + (u - u_min) * h_min - (u - u_max) * h_max
+    block = Block(children=[block_min, block_max])
+    return block, sat_expr
+
 def ml_piecewise_aux(vf: VarFactory, x: Expr, name: str = None):
     x, all_blocks, _ = ml_piecewise(vf, x, name=name, counter=0)
     block = Block(children = all_blocks)

@@ -9,7 +9,7 @@ import copy
 import uuid
 from typing import List, Dict, Any, Tuple
 
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, _expr_to_dict, _dict_to_expr
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, Comparison, _expr_to_dict, _dict_to_expr
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
 
@@ -32,6 +32,7 @@ class Block:
                  state_eqs: List[Expr] | None = None,
                  algebraic_vars: List[Var] | None = None,
                  algebraic_eqs: List[Expr] | None = None,
+                 inequalities: List[Expr | Comparison] | None = None,
                  diff_vars: List[Var] | None = None,
                  reformulated_vars: List[Var] | None = None,
                  differential_eqs: List[Expr] | None = None,
@@ -78,6 +79,7 @@ class Block:
 
         self.algebraic_vars: List[Var] = list() if algebraic_vars is None else algebraic_vars
         self.algebraic_eqs: List[Expr] = list() if algebraic_eqs is None else algebraic_eqs
+        self.inequalities: List[Expr | Comparison] = list() if inequalities is None else inequalities
 
         self.diff_vars: List[Var] = list() if diff_vars is None else diff_vars
         self.reformulated_vars: List[Var] = list() if reformulated_vars is None else reformulated_vars
@@ -155,6 +157,7 @@ class Block:
 
             "state_eqs": [_expr_to_dict(e) for e in self.state_eqs],
             "algebraic_eqs": [_expr_to_dict(e) for e in self.algebraic_eqs],
+            "inequalities": [_expr_to_dict(e) for e in self.inequalities],
             "differential_eqs": [_expr_to_dict(e) for e in self.differential_eqs],
 
             "init_eqs": {
@@ -242,6 +245,7 @@ class Block:
             state_eqs=[_dict_to_expr(data=e) for e in data["state_eqs"]],
             algebraic_vars=[_dict_to_expr(data=v) for v in data["algebraic_vars"]],
             algebraic_eqs=[_dict_to_expr(data=e) for e in data["algebraic_eqs"]],
+            inequalities=[_dict_to_expr(data=e) for e in data.get("inequalities", [])],
             diff_vars=[_dict_to_expr(data=v) for v in data["diff_vars"]],
             reformulated_vars=[_dict_to_expr(data=v) for v in data["reformulated_vars"]],
             differential_eqs=[_dict_to_expr(data=e) for e in data["differential_eqs"]],
@@ -355,6 +359,7 @@ class Block:
             result.state_eqs = copy.deepcopy(self.state_eqs, memo)
             result.algebraic_vars = copy.deepcopy(self.algebraic_vars, memo)
             result.algebraic_eqs = copy.deepcopy(self.algebraic_eqs, memo)
+            result.inequalities = copy.deepcopy(self.inequalities, memo)
             result.diff_vars = copy.deepcopy(self.diff_vars, memo)
             result.reformulated_vars = copy.deepcopy(self.reformulated_vars, memo)
             result.differential_eqs = copy.deepcopy(self.differential_eqs, memo)
@@ -452,6 +457,7 @@ class Block:
                 not self.state_eqs and
                 not self.algebraic_vars and
                 not self.algebraic_eqs and
+                not self.inequalities and
                 not self.diff_vars and
                 not self.reformulated_vars and
                 not self.differential_eqs and
@@ -548,6 +554,7 @@ class Block:
         block.unify_blocks()
         self.algebraic_vars.extend(block.algebraic_vars)
         self.algebraic_eqs.extend(block.algebraic_eqs)
+        self.inequalities.extend(block.inequalities)
         self.state_vars.extend(block.state_vars)
         self.state_eqs.extend(block.state_eqs)
         self.diff_vars.extend(block.diff_vars)
@@ -581,6 +588,7 @@ class Block:
         for b in self.get_all_blocks():
             mdl_placeholder.algebraic_vars.extend(b.algebraic_vars)
             mdl_placeholder.algebraic_eqs.extend(b.algebraic_eqs)
+            mdl_placeholder.inequalities.extend(b.inequalities)
             mdl_placeholder.state_vars.extend(b.state_vars)
             mdl_placeholder.state_eqs.extend(b.state_eqs)
             mdl_placeholder.diff_vars.extend(b.diff_vars)
@@ -610,6 +618,7 @@ class Block:
 
         self.algebraic_vars = mdl_placeholder.algebraic_vars
         self.algebraic_eqs = mdl_placeholder.algebraic_eqs
+        self.inequalities = mdl_placeholder.inequalities
         self.state_vars = mdl_placeholder.state_vars
         self.state_eqs = mdl_placeholder.state_eqs
         self.diff_vars = mdl_placeholder.diff_vars
@@ -685,6 +694,9 @@ class Block:
         for i, eq in enumerate(self.algebraic_eqs):
             new_equ = eq.subs({old: new})
             self.algebraic_eqs[i] = new_equ
+        for i, eq in enumerate(self.inequalities):
+            new_equ = eq.subs({old: new})
+            self.inequalities[i] = new_equ
         for i, eq in enumerate(self.state_eqs):
             new_equ = eq.subs({old: new})
             self.state_eqs[i] = new_equ
@@ -795,6 +807,8 @@ class Block:
 
         for i, eq in enumerate(self.algebraic_eqs):
             self.algebraic_eqs[i] = eq.subs(var_mapping)
+        for i, eq in enumerate(self.inequalities):
+            self.inequalities[i] = eq.subs(var_mapping)
         for i, eq in enumerate(self.state_eqs):
             self.state_eqs[i] = eq.subs(var_mapping)
         for i, eq in enumerate(self.differential_eqs):
