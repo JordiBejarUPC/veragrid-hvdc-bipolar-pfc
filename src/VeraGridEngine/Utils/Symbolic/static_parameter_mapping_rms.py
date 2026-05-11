@@ -2939,6 +2939,34 @@ def assign_vsc_static_api_mapping(
 
     assign_api_mapping_value_if_present(
         mdl=mdl,
+        key=ParamPowerFlowRefferenceType.alpha1,
+        value=float(vsc.alpha1),
+        logger=logger,
+        device_name=device_name,
+        problem_mapping=problem_mapping,
+    )
+
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowRefferenceType.alpha2,
+        value=float(vsc.alpha2),
+        logger=logger,
+        device_name=device_name,
+        problem_mapping=problem_mapping,
+    )
+
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowRefferenceType.alpha3,
+        value=float(vsc.alpha3),
+        logger=logger,
+        device_name=device_name,
+        problem_mapping=problem_mapping,
+    )
+
+
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
         key=ParamPowerFlowRefferenceType.Sbase,
         value=float(grid.Sbase),
         logger=logger,

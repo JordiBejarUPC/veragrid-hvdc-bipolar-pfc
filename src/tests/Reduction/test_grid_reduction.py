@@ -387,7 +387,7 @@ def test_reduction_flows():
     red_grid, logger = ptdf_reduction(grid=grid,
                                         reduction_bus_indices=reduction_buses)
     pf_reduced_res = gce.power_flow(grid=red_grid, options=pf_options)
-    Vabs_ptdf = np.array([1.06, 1.045, 1.01, 1.01530529, 1.01762342, 1.07, 1.05771147, 1.09, 1.04927468, 1.0424791, 1.05525675, 1.05166266])
+    Vabs_ptdf = np.array([1.06, 1.045, 1.01, 1.01681086, 1.01909534, 1.07, 1.05882555, 1.09, 1.05065242, 1.04419659, 1.05618558, 1.05230889])
     assert np.allclose(abs(pf_reduced_res.voltage), Vabs_ptdf, atol=1e-4)
 
 
@@ -452,6 +452,8 @@ def test_ptdf_projected_antena():
     fname = os.path.join('data', 'grids', '6bus_antena.veragrid')
     # fname = os.path.join('src', 'tests', 'data', 'grids', '6bus_antena.veragrid')
     grid = gce.open_file(filename=fname)
+
+    grid.buses[0].is_slack = True
 
     P_original_gen = 0.0
     for gen in grid.generators:

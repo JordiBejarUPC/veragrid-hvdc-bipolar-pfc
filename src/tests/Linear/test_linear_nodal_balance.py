@@ -66,6 +66,7 @@ def test_linear_nodal_balance_driver() -> None:
         res = drv.results
 
         #  "Kirchhoff" check -------------------------------------------------------------------------------------------
+        print("P corrected:", res.Sbus.real)
         nodal_balance = -res.Sbus.real  # this is the injections initialization
 
         # Now we sum the flows
@@ -77,6 +78,7 @@ def test_linear_nodal_balance_driver() -> None:
             nodal_balance[j] -= res.Sf[k].real
 
         assert np.allclose(nodal_balance, 0.0, atol=1e-6)
+        print("Node balance: ", nodal_balance)
         print(f"{fname} [distributed: {distributed_slack}] -> Passed")
 
 

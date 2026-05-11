@@ -9,7 +9,7 @@ from VeraGridEngine.enumerations import BusMode, TapPhaseControl, TapModuleContr
 from VeraGridEngine.basic_structures import Vec, IntVec, BoolVec
 
 
-# @nb.njit(cache=True)
+@nb.njit(cache=True)
 def compile_types(Pbus: Vec,
                   types: IntVec) -> Tuple[IntVec, IntVec, IntVec, IntVec, IntVec, IntVec]:
     """
