@@ -7,7 +7,7 @@ from PySide6 import QtCore, QtWidgets, QtGui
 from matplotlib import pyplot as plt
 from typing import Union, Dict
 
-from VeraGrid.Gui.Main.SubClasses.Results.dynamics_results_handler import DynamicsResultsHandler
+from VeraGrid.Gui.Main.SubClasses.Results.dynamics_results_handler import DynamicsResultsHandler, PlotSimulationType
 from VeraGrid.Gui.table_view_header_wrap import HeaderViewWithWordWrap
 import VeraGrid.Gui.gui_functions as gf
 from VeraGrid.Gui.messages import error_msg, warning_msg, yes_no_question
@@ -16,7 +16,7 @@ from VeraGrid.Gui.results_model import ResultsModel
 from VeraGrid.Gui.general_dialogues import fill_tree_from_logs
 import VeraGridEngine.Utils.Filtering as flt
 from VeraGridEngine.basic_structures import Logger
-from VeraGridEngine.enumerations import ResultTypes, SimulationTypes
+from VeraGridEngine.enumerations import ResultTypes, SimulationTypes, PlotSimulationType
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.Simulations.Rms.rms_results import RmsResults
 from VeraGridEngine.Simulations.EMT.emt_results import EmtResults
@@ -56,6 +56,8 @@ class ResultsMain(SimulationsMain):
         self.ui.addDynamicPlotButton.clicked.connect(self.add_dynamic_plot_group)
         self.ui.deleteDynamicPlotButton.clicked.connect(self.delete_dynamic_plot_entry)
         self.ui.dynamicsTablePlotButton.clicked.connect(self.plot_dynamic_plot_entry)
+        self.ui.prepareRmsDynamicPlotsButton.clicked.connect(self.prepare_rms_dynamic_plots)
+        self.ui.prepareEmtDynamicPlotsButton.clicked.connect(self.prepare_emt_dynamic_plots)
         self.ui.deleteDriverButton.clicked.connect(self.delete_results_driver)
         self.ui.saveResultsLogsButton.clicked.connect(self.save_results_logs)
 
@@ -397,7 +399,7 @@ class ResultsMain(SimulationsMain):
         handler: DynamicsResultsHandler | None = self.dynamic_results_handlers.get(study_name, None)
 
         if handler is None:
-            handler = DynamicsResultsHandler(results=results)
+            handler = DynamicsResultsHandler(results=results, circuit=self.circuit)
             self.dynamic_results_handlers[study_name] = handler
             handler.get_plots_model().rowsInserted.connect(self.expand_dynamic_plots_tree)
             return handler
@@ -405,16 +407,55 @@ class ResultsMain(SimulationsMain):
         elif type(handler.results) == type(results):
             # Reusing the handler preserves the user's dynamic plot groups across
             # repeated runs of the same study while replacing only the result-backed Vars.
+            handler.circuit = self.circuit
             handler.update_results(results=results)
             return handler
 
         else:
             # RMS and EMT handlers cannot be mixed because their result containers use
             # different event-group fields and value-array layouts.
-            handler = DynamicsResultsHandler(results=results)
+            handler = DynamicsResultsHandler(results=results, circuit=self.circuit)
             self.dynamic_results_handlers[study_name] = handler
             handler.get_plots_model().rowsInserted.connect(self.expand_dynamic_plots_tree)
             return handler
+
+    def _show_pre_simulation_dynamic_plot_editor(self, simulation_type: PlotSimulationType) -> None:
+        """
+        Open the dynamic plot editor for one simulation family without results.
+
+        :param simulation_type: Simulation family identifier.
+        :return: Nothing.
+        """
+        handler: DynamicsResultsHandler = DynamicsResultsHandler(
+            results=None,
+            circuit=self.circuit,
+            simulation_type=simulation_type,
+        )
+        self.dynamic_results_handler = handler
+
+        # The same Dynamics tab is reused in pre-simulation mode so the user can
+        # prepare persistent plot definitions before any runtime result arrays exist.
+        self.ui.dynamicsDeviceTreeView.setModel(handler.get_view_model())
+        self.ui.dynamicsPlotsTreeView.setModel(handler.get_plots_model())
+        self.ui.dynamicsPlotsTreeView.expandAll()
+        self.ui.dynamicsTableView.setModel(None)
+        self.ui.resultsTabWidget.setCurrentIndex(1)
+
+    def prepare_rms_dynamic_plots(self) -> None:
+        """
+        Open the pre-simulation RMS dynamic plot editor.
+
+        :return: Nothing.
+        """
+        self._show_pre_simulation_dynamic_plot_editor(simulation_type=PlotSimulationType.RMS)
+
+    def prepare_emt_dynamic_plots(self) -> None:
+        """
+        Open the pre-simulation EMT dynamic plot editor.
+
+        :return: Nothing.
+        """
+        self._show_pre_simulation_dynamic_plot_editor(simulation_type=PlotSimulationType.EMT)
 
     def plot_results(self):
         """

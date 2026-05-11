@@ -469,6 +469,8 @@ class IoMain(ScenariosMain):
 
                 # clear the results
                 self.clear_results()
+                self.dynamic_results_handlers = dict()
+                self.clear_dynamic_results_view()
 
                 self.ui.grid_name_line_edit.setText(self.circuit.name)
 
