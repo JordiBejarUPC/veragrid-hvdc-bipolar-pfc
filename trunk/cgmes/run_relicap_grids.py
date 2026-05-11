@@ -69,6 +69,20 @@ SUBFOLDERS = {
 
     ],
 
+    "Espheim + DC-Espheim-Svedala": [
+        f"{FOLDER}/Espheim/Grid/cimxml/20220615T2230Z__Espheim_EQ_1.xml",
+        f"{FOLDER}/Espheim/Grid/cimxml/20220615T2230Z_2D_Espheim_SSH_1.xml",
+        f"{FOLDER}/Espheim/Grid/cimxml/20220615T2230Z_2D_Espheim_SV_1.xml",
+        f"{FOLDER}/Espheim/Grid/cimxml/20220615T2230Z_2D_Espheim_TP_1.xml",
+        f"{FOLDER}/DC-Espheim-Svedala/Grid/cimxml/20220615T2230Z_2D_HVDC-Espheim-Svedala_TP_1.xml",
+        f"{FOLDER}/DC-Espheim-Svedala/Grid/cimxml/20220615T2230Z_2D_HVDC-Espheim-Svedala_SV_1.xml",
+        f"{FOLDER}/DC-Espheim-Svedala/Grid/cimxml/20220615T2230Z_2D_HVDC-Espheim-Svedala_SSH_1.xml",
+        f"{FOLDER}/DC-Espheim-Svedala/Grid/cimxml/20220615T2230Z__HVDC-Espheim-Svedala_EQ_1.xml",
+        f"{FOLDER}/boundaryData/Grid/cimxml/Boundary_Border-Svedala-Espheim.xml",
+        f"{FOLDER}/boundaryData/Grid/cimxml/Boundary_Border-Espheim-Portheim.xml",
+        f"{FOLDER}/commonData/Grid/cimxml/Grid_CommonData_CGM-CD.xml",
+    ],
+
     "Galia": [  # Galia
         f"{FOLDER}/Galia/Grid/cimxml/20220615T2230Z_2D_Galia_TP_1.xml",
         f"{FOLDER}/Galia/Grid/cimxml/20220615T2230Z_2D_Galia_SSH_1.xml",
@@ -183,7 +197,22 @@ SUBFOLDERS = {
         f"{FOLDER}/commonData/Grid/cimxml/Grid_CommonData_CGM-CD.xml",
         # f"{FOLDER}/commonData/NetworkCode/cimxml/Org-NineRealms_CD.xml",
         # f"{FOLDER}/commonData/NetworkCode/cimxml/Org-NineRealms_CD_OR.xml",
-    ]
+    ],
+
+    "Svedala + DC-Espheim-Svedala": [
+        f"{FOLDER}/Svedala/Grid/cimxml/20220615T2230Z_2D_Svedala_SV_1.xml",
+        f"{FOLDER}/Svedala/Grid/cimxml/20220615T2230Z_2D_Svedala_TP_1.xml",
+        f"{FOLDER}/Svedala/Grid/cimxml/20220615T2230Z_2D_Svedala_SSH_1.xml",
+        f"{FOLDER}/Svedala/Grid/cimxml/20220615T2230Z__Svedala_EQ_1.xml",
+        f"{FOLDER}/DC-Espheim-Svedala/Grid/cimxml/20220615T2230Z_2D_HVDC-Espheim-Svedala_TP_1.xml",
+        f"{FOLDER}/DC-Espheim-Svedala/Grid/cimxml/20220615T2230Z_2D_HVDC-Espheim-Svedala_SV_1.xml",
+        f"{FOLDER}/DC-Espheim-Svedala/Grid/cimxml/20220615T2230Z_2D_HVDC-Espheim-Svedala_SSH_1.xml",
+        f"{FOLDER}/DC-Espheim-Svedala/Grid/cimxml/20220615T2230Z__HVDC-Espheim-Svedala_EQ_1.xml",
+        f"{FOLDER}/boundaryData/Grid/cimxml/Boundary_Border-Svedala-Espheim.xml",
+        f"{FOLDER}/boundaryData/Grid/cimxml/Boundary_Border-Svedala-Belgovia.xml",
+        f"{FOLDER}/boundaryData/Grid/cimxml/Boundary_Border-Espheim-Portheim.xml",
+        f"{FOLDER}/commonData/Grid/cimxml/Grid_CommonData_CGM-CD.xml",
+    ],
 }
 
 
