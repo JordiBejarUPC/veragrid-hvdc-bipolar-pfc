@@ -44,7 +44,7 @@ contributors_msg += ('Chavdar Ivanov, '
 contributors_msg += ('Rubén Carmona Pardo, '
                      'Julio González Mejías, '
                      'Jesús Riquelme Santos (Contingencies and PTDF testing)\n')
-contributors_msg += 'Alex Blanco Castro (3-phase ABC power flow and short circuit)\n'
+contributors_msg += 'Alex Blanco Castro (ACDC and 3-phase ABC power flow and short circuit)\n'
 contributors_msg += 'Marina Rosés Gibert (RMS and EMT)\n'
 contributors_msg += 'María Sans Esqué (RMS and EMT)\n'
 contributors_msg += 'Pablo de Juan Vela (RMS, EMT and Tensors for EMT)\n'
