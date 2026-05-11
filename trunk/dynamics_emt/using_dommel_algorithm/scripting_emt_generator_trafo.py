@@ -9,11 +9,10 @@ from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Devices.Injections.generator import Generator
-from VeraGridEngine.Devices.Branches.line import Line
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGrid.trunk.dynamics_emt.support.plot_emt_results import plot_ilines, plot_generators, plot_isource, plot_voltages, plot_v_i, plot_itrafo
 from VeraGridEngine.Templates.Emt.simple_generator_emt_template import get_simple_generator_emt_template
-from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
+from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlowDriver3Ph

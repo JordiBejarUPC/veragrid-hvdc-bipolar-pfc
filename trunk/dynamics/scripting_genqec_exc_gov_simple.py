@@ -11,16 +11,15 @@ from matplotlib import pyplot as plt
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
-from VeraGridEngine.Simulations.Rms.rms_results import RmsResults
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
-from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
-from VeraGridEngine.Templates.templates_common_functions import set_rms_model
+from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_rms_model
 from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, RmsInitializationMethod
+from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod
 from VeraGridEngine.Devices.Events.rms_event import RmsEvent
 import VeraGridEngine.api as gce
 
@@ -196,6 +195,8 @@ grid.add_rms_events_group(events_group)
 event = RmsEvent(device=load, parameter=Pl0, time=0.1, value=-0.098, group=events_group)
 grid.add_rms_event(event)
 
+gce.save_file(grid, "my_saved_grid.veragrid")
+
 # gce.save_file(grid=grid, filename="saved_grid_1.veragrid")
 # grid_opened = gce.open_file("saved_grid_1.veragrid")
 #
@@ -227,7 +228,8 @@ rms_events_group_names = np.array(0)
 # uid_save = [var.uid for var in vars_to_save]
 
 
-
+gce.save_file(grid=grid, filename="2bus_genqec_load_test.veragrid")
+grid1 = gce.open_file("2bus_genqec_load_test.veragrid")
 ######################################################################################################
 # Power flow
 ######################################################################################################

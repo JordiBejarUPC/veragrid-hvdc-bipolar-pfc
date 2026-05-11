@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+from typing import Dict
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -39,7 +40,12 @@ class SourceEmtDemoProblem(EmtProblemTemplate):
 
     def __init__(self, grid: MultiCircuit, sys_block: Block, glob_time: Var) -> None:
         self.grid = grid
-        super().__init__(sys_block=sys_block, glob_time=glob_time)
+        static_parameter_values_mapping: Dict[Var, Const] = dict(sys_block.parameters)
+        super().__init__(
+            sys_block=sys_block,
+            glob_time=glob_time,
+            static_parameter_values_mapping=static_parameter_values_mapping,
+        )
 
 
 class SourceEmtCaseResult:

@@ -20,7 +20,7 @@ if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
 
 from pathlib import Path
-from typing import List, Dict
+from typing import List
 
 from trunk.dynamics_emt.support.emt_plot_exports import (
     get_plot_results_directory,
@@ -37,7 +37,7 @@ from VeraGridEngine.Devices.Events.emt_events_group import EmtEventsGroup
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
 from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import StructuralCompiledSolver
-from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
+from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import (
     get_generator_thevenin_rl_emt_template,
 )
@@ -46,7 +46,7 @@ from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_emt_t
 from VeraGridEngine.enumerations import ShuntConnectionType
 
 from VeraGridEngine.Templates.Emt.xfmr_emt_template import get_xfmr_emt_template
-from VeraGridEngine.Templates.templates_common_functions import set_emt_model
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
 
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlowDriver3Ph
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions

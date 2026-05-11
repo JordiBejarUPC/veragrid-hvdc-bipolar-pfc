@@ -33,18 +33,18 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlow
 
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_emt_template
-from VeraGridEngine.Templates.Emt.generator_emt_type_template import get_generator_emt_type_template, get_complete_generator_template_emt, get_generator_sauer_pai_type_emt_template
-from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
+from VeraGridEngine.Templates.Emt.generator_emt_type_template import get_complete_generator_template_emt
+from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 
 from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbolicSolver
 from VeraGridEngine.Simulations.EMT.solvers.solver_AD import JitAdSolver
 from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import StructuralVectorizedSolver
 from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import StructuralCompiledSolver
 
-from VeraGridEngine.Templates.templates_common_functions import set_emt_model
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
 
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonTraceCollector
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, EmtSolverTypes, ShuntConnectionType
+from VeraGridEngine.enumerations import DynamicIntegrationMethod, EmtSolverTypes, ShuntConnectionType
 import VeraGridEngine.api as gce
 
 ###########################################################################################################################
@@ -98,7 +98,7 @@ line0.apply_template(tower, grid.Sbase, grid.fBase)
 # load
 # P=1.0
 # Q= 0.999999
-R_ph =100 #ohm
+R_ph = 100 #ohm
 v_ph = vnom / (3**0.5)
 P_ph = (v_ph**2) / R_ph # kv*kv/ohm = MW
 

@@ -1,0 +1,147 @@
+/home/santi/Git/eRoots/VeraGrid/.venv/bin/python /home/santi/Git/eRoots/VeraGrid/trunk/cgmes/run_relicap_grids.py
+ortools available
+/home/santi/Git/eRoots/VeraGrid/.venv/lib/python3.14/site-packages/requests/__init__.py:113: RequestsDependencyWarning: urllib3 (2.6.3) or chardet (6.0.0.post1)/charset_normalizer (3.4.4) doesn't match a supported version!
+  warnings.warn(
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Belgovia
+
+	 /home/santi/Git/GitHub/relicapgrid/Instance/Belgovia/Grid/cimxml/20220615T2230Z_2D_Belgovia_TP_1.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/Belgovia/Grid/cimxml/20220615T2230Z_2D_Belgovia_SSH_1.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/Belgovia/Grid/cimxml/20220615T2230Z__Belgovia_EQ_1.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/Belgovia/Grid/cimxml/20220615T2230Z_2D_Belgovia_SV_1.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/boundaryData/Grid/cimxml/Boundary_Border-Galia-Belgovia.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/boundaryData/Grid/cimxml/Boundary_Border-Svedala-Belgovia.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/commonData/Grid/cimxml/Grid_CommonData_CGM-CD.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/commonData/NetworkCode/cimxml/Org-NineRealms_CD.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/commonData/NetworkCode/cimxml/Org-NineRealms_CD_OR.xml
+	converged: True
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Britheim
+
+	 /home/santi/Git/GitHub/relicapgrid/Instance/Britheim/Grid/cimxml/20220615T2230Z_2D_Britheim_TP_1.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/Britheim/Grid/cimxml/20220615T2230Z_2D_Britheim_SSH_1.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/Britheim/Grid/cimxml/20220615T2230Z__Britheim_EQ_1.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/Britheim/Grid/cimxml/20220615T2230Z_2D_Britheim_SV_1.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/boundaryData/Grid/cimxml/Boundary_Border-Galia-Britheim.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/commonData/Grid/cimxml/Grid_CommonData_CGM-CD.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/commonData/NetworkCode/cimxml/Org-NineRealms_CD.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/commonData/NetworkCode/cimxml/Org-NineRealms_CD_OR.xml
+	converged: True
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Espheim
+
+	 /home/santi/Git/GitHub/relicapgrid/Instance/Espheim/Grid/cimxml/20220615T2230Z__Espheim_EQ_1.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/Espheim/Grid/cimxml/20220615T2230Z_2D_Espheim_SSH_1.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/Espheim/Grid/cimxml/20220615T2230Z_2D_Espheim_SV_1.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/Espheim/Grid/cimxml/20220615T2230Z_2D_Espheim_TP_1.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/DC-Espheim-Svedala/Grid/cimxml/20220615T2230Z_2D_HVDC-Espheim-Svedala_TP_1.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/DC-Espheim-Svedala/Grid/cimxml/20220615T2230Z_2D_HVDC-Espheim-Svedala_SV_1.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/DC-Espheim-Svedala/Grid/cimxml/20220615T2230Z_2D_HVDC-Espheim-Svedala_SSH_1.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/DC-Espheim-Svedala/Grid/cimxml/20220615T2230Z__HVDC-Espheim-Svedala_EQ_1.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/boundaryData/Grid/cimxml/Boundary_Border-Svedala-Espheim.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/boundaryData/Grid/cimxml/Boundary_Border-Espheim-Portheim.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/commonData/Grid/cimxml/Grid_CommonData_CGM-CD.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/commonData/NetworkCode/cimxml/Org-NineRealms_CD.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/commonData/NetworkCode/cimxml/Org-NineRealms_CD_OR.xml
+	converged: False
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Galia
+
+	 /home/santi/Git/GitHub/relicapgrid/Instance/Galia/Grid/cimxml/20220615T2230Z_2D_Galia_TP_1.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/Galia/Grid/cimxml/20220615T2230Z_2D_Galia_SSH_1.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/Galia/Grid/cimxml/20220615T2230Z__Galia_EQ_1.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/Galia/Grid/cimxml/20220615T2230Z_2D_Galia_SV_1.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/DC-Nordheim-Galia/Grid/cimxml/20220615T2230Z_2D_HVDC-Nordheim-Galia_SSH_1.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/DC-Nordheim-Galia/Grid/cimxml/20220615T2230Z_2D_HVDC-Nordheim-Galia_TP_1.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/DC-Nordheim-Galia/Grid/cimxml/20220615T2230Z__HVDC-Nordheim-Galia_EQ_1.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/DC-Nordheim-Galia/Grid/cimxml/20220615T2230Z_2D_HVDC-Nordheim-Galia_SV_1.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/boundaryData/Grid/cimxml/Boundary_Border-Galia-Belgovia.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/boundaryData/Grid/cimxml/Boundary_Border-Galia-Britheim.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/boundaryData/Grid/cimxml/Boundary_Border-Galia-Nordheim.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/commonData/Grid/cimxml/Grid_CommonData_CGM-CD.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/commonData/NetworkCode/cimxml/Org-NineRealms_CD.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/commonData/NetworkCode/cimxml/Org-NineRealms_CD_OR.xml
+	converged: False
+Warning: TopologicalNode or rdfid missing in machine SynchronousMachine:09443aa6-3279-4704-b9d3-5586098c0bed.
+Warning: TopologicalNode or rdfid missing in machine SynchronousMachine:3a3b27be-b18b-4385-b557-6735d733baf0.
+Warning: TopologicalNode or rdfid missing in machine SynchronousMachine:a6241f6e-63b5-4146-b9f7-a8277e6830db.
+Warning: TopologicalNode or rdfid missing in machine SynchronousMachine:4fbcc3b5-af30-4940-a0f4-686ad1439467.
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Jotunheim
+
+	 /home/santi/Git/GitHub/relicapgrid/Instance/Jotunheim/Grid/cimxml/20220615T2230Z_2D_Svedala_SSH_2.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/Jotunheim/Grid/cimxml/20220615T2230Z_2D_Britheim_SSH_2.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/Jotunheim/Grid/cimxml/20220615T2230Z_2D_Jotunheim_TP_1.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/Jotunheim/Grid/cimxml/20220615T2230Z_2D_Belgovia_SSH_2.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/Jotunheim/Grid/cimxml/20220615T2230Z_2D_HVDC_Espheim-Svedala_SSH_2.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/Jotunheim/Grid/cimxml/20220615T2230Z_2D_HVDC_Nordheim-Galia_SSH_2.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/Jotunheim/Grid/cimxml/20220615T2230Z_2D_Jotunheim_SV_1.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/Jotunheim/Grid/cimxml/20220615T2230Z_2D_Espheim_SSH_2.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/Jotunheim/Grid/cimxml/20241223T0642Z_2D_Portheim_SSH_2.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/Jotunheim/Grid/cimxml/20220615T2230Z_2D_Nordheim_SSH_2.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/Jotunheim/Grid/cimxml/20220615T2230Z_2D_Galia_SSH_2.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/commonData/Grid/cimxml/Grid_CommonData_CGM-CD.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/commonData/NetworkCode/cimxml/Org-NineRealms_CD.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/commonData/NetworkCode/cimxml/Org-NineRealms_CD_OR.xml
+	converged: True
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Nordheim
+
+	 /home/santi/Git/GitHub/relicapgrid/Instance/Nordheim/Grid/cimxml/20220615T2230Z_2D_Nordheim_SV_1.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/Nordheim/Grid/cimxml/20220615T2230Z_2D_Nordheim_SSH_1.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/Nordheim/Grid/cimxml/20220615T2230Z__Nordheim_EQ_1.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/Nordheim/Grid/cimxml/20220615T2230Z_2D_Nordheim_TP_1.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/DC-Nordheim-Galia/Grid/cimxml/20220615T2230Z_2D_HVDC-Nordheim-Galia_SSH_1.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/DC-Nordheim-Galia/Grid/cimxml/20220615T2230Z_2D_HVDC-Nordheim-Galia_TP_1.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/DC-Nordheim-Galia/Grid/cimxml/20220615T2230Z__HVDC-Nordheim-Galia_EQ_1.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/DC-Nordheim-Galia/Grid/cimxml/20220615T2230Z_2D_HVDC-Nordheim-Galia_SV_1.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/boundaryData/Grid/cimxml/Boundary_Border-Galia-Nordheim.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/commonData/Grid/cimxml/Grid_CommonData_CGM-CD.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/commonData/NetworkCode/cimxml/Org-NineRealms_CD.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/commonData/NetworkCode/cimxml/Org-NineRealms_CD_OR.xml
+	converged: False
+Warning: TopologicalNode or rdfid missing in machine SynchronousMachine:a6241f6e-63b5-4146-b9f7-a8277e6830db.
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Portheim
+
+	 /home/santi/Git/GitHub/relicapgrid/Instance/Portheim/Grid/cimxml/20241223T0642Z_2D_Portheim_EQ_1.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/Portheim/Grid/cimxml/20241223T0642Z_2D_Portheim_SSH_1.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/boundaryData/Grid/cimxml/Boundary_Border-Galia-Belgovia.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/boundaryData/Grid/cimxml/Boundary_Border-Galia-Britheim.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/boundaryData/Grid/cimxml/Boundary_Border-Svedala-Espheim.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/boundaryData/Grid/cimxml/Boundary_Border-Svedala-Belgovia.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/boundaryData/Grid/cimxml/Boundary_Border-Espheim-Portheim.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/boundaryData/Grid/cimxml/Boundary_Border-Galia-Nordheim.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/commonData/Grid/cimxml/Grid_CommonData_CGM-CD.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/commonData/NetworkCode/cimxml/Org-NineRealms_CD.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/commonData/NetworkCode/cimxml/Org-NineRealms_CD_OR.xml
+	converged: True
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Svedala
+
+	 /home/santi/Git/GitHub/relicapgrid/Instance/Svedala/Grid/cimxml/20220615T2230Z_2D_Svedala_SV_1.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/Svedala/Grid/cimxml/20220615T2230Z_2D_Svedala_TP_1.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/Svedala/Grid/cimxml/20220615T2230Z_2D_Svedala_SSH_1.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/Svedala/Grid/cimxml/20220615T2230Z__Svedala_EQ_1.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/DC-Espheim-Svedala/Grid/cimxml/20220615T2230Z_2D_HVDC-Espheim-Svedala_TP_1.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/DC-Espheim-Svedala/Grid/cimxml/20220615T2230Z_2D_HVDC-Espheim-Svedala_SV_1.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/DC-Espheim-Svedala/Grid/cimxml/20220615T2230Z_2D_HVDC-Espheim-Svedala_SSH_1.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/DC-Espheim-Svedala/Grid/cimxml/20220615T2230Z__HVDC-Espheim-Svedala_EQ_1.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/boundaryData/Grid/cimxml/Boundary_Border-Svedala-Espheim.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/boundaryData/Grid/cimxml/Boundary_Border-Svedala-Belgovia.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/commonData/Grid/cimxml/Grid_CommonData_CGM-CD.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/commonData/NetworkCode/cimxml/Org-NineRealms_CD.xml
+	 /home/santi/Git/GitHub/relicapgrid/Instance/commonData/NetworkCode/cimxml/Org-NineRealms_CD_OR.xml
+	converged: False
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+        Name  Converged     Error
+0   Belgovia       True 6.049e-12
+1   Britheim       True 1.921e-07
+2    Espheim      False 2.143e-01
+3      Galia      False 6.874e+03
+4  Jotunheim       True 0.000e+00
+5   Nordheim      False 6.874e+03
+6   Portheim       True 0.000e+00
+7    Svedala      False 2.412e+03
+
+Process finished with exit code 0

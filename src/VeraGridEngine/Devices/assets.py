@@ -7356,15 +7356,18 @@ class Assets:
                 d.set_var_factory(self._var_factory)
             self._transformers2w = devices
 
+
         elif device_type == DeviceType.Transformer3WDevice:
             for d in devices:
                 d.set_var_factory(self._var_factory)
             self._transformers3w = devices
 
+
         elif device_type == DeviceType.TransformerNwDevice:
             for d in devices:
                 d.set_var_factory(self._var_factory)
             self._transformers_nw = devices
+
 
         elif device_type == DeviceType.WindingDevice:
             for d in devices:
@@ -8798,7 +8801,8 @@ class Assets:
             tem.get_complete_generator_template_rms(vfactory=self._var_factory),
             tem.get_genrow_rms_template(vfactory=self._var_factory),
             tem.get_line_rms_template(vfactory=self._var_factory),
-            tem.get_load_rms_template(vfactory=self._var_factory)
+            tem.get_load_rms_template(vfactory=self._var_factory),
+            tem.get_pvd1_rms_template(vfactory=self._var_factory),
         ]
 
     def add_emt_model_catalogue(self):

@@ -228,13 +228,13 @@ def _build_bridge_filter_pll_input_filter_block(vf: VarFactory, name: str) -> Bl
     eps: Const = Const(1.0e-10)
     c_pi: Const = Const(np.pi)
     c0: Const = Const(0.0)
-    tau_pll_vq_expr: Expr = c_pi / sym.max(omega_sw, eps)
+    inv_tau_pll_vq_expr: Expr =  sym.max(omega_sw, eps)/c_pi
 
     return Block(
         state_eqs=list([
             # The switched plant should feed the PLL with the low-frequency q-axis content rather than
             # with the raw switching ripple of the network-side voltage measurement.
-            (v_q_raw - v_q_pll_f) / tau_pll_vq_expr,
+            (v_q_raw - v_q_pll_f) * inv_tau_pll_vq_expr,
         ]),
         state_vars=list([v_q_pll_f]),
         diff_vars=list([d_v_q_pll_f]),

@@ -416,6 +416,15 @@ class InjectionParent(DynamicDevice):
         """
         return self.technologies.to_list()
 
+    def get_first_technology(self) -> Technology | None:
+        """
+        Get the first technology available
+        :return: Technology
+        """
+        for key, association in self.technologies.data.items():
+            return association.api_object
+        return None
+
     def get_bus_pos(self, bus: Bus | None = None) -> int:
         """
         Get the bus position

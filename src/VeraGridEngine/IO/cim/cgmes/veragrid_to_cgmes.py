@@ -2,7 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-from typing import Union, List
+from typing import Union, List, Dict
 
 import numpy as np
 
@@ -46,7 +46,8 @@ from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions impo
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
 from VeraGridEngine.data_logger import DataLogger
 from VeraGridEngine.enumerations import (TapChangerTypes, TapPhaseControl, TapModuleControl, CGMESVersions,
-                                         ExternalGridMode, ShuntControlMode, ConverterControlType)
+                                         ExternalGridMode, ShuntControlMode, ConverterControlType,
+                                         ContingencyOperationTypes)
 
 
 def set_declared_cgmes_property(cgmes_object: CGMES_ASSETS,
@@ -525,6 +526,9 @@ def convert_vsc_devices_to_cgmes(multicircuit_model: MultiCircuit,
             gc_vsc=gc_vsc,
             p_set=p_set,
             v_set=v_set,
+            target_upcc_base_voltage=(gc_vsc.bus_to.Vnom
+                                      if gc_vsc.bus_to is not None and gc_vsc.bus_to.Vnom > 0.0
+                                      else None),
             ver=ver,
             logger=logger
         )
@@ -2785,6 +2789,9 @@ def convert_hvdc_line_to_cgmes(multicircuit_model: MultiCircuit,
             gc_vsc=None,
             p_set=hvdc_line.Pset,
             v_set=hvdc_line.Vset_f,
+            target_upcc_base_voltage=(hvdc_line.bus_from.Vnom
+                                      if hvdc_line.bus_from is not None and hvdc_line.bus_from.Vnom > 0.0
+                                      else None),
             ver=ver,
             logger=logger
         )
@@ -2828,6 +2835,9 @@ def convert_hvdc_line_to_cgmes(multicircuit_model: MultiCircuit,
             gc_vsc=None,
             p_set=-hvdc_line.Pset,
             v_set=hvdc_line.Vset_t,
+            target_upcc_base_voltage=(hvdc_line.bus_to.Vnom
+                                      if hvdc_line.bus_to is not None and hvdc_line.bus_to.Vnom > 0.0
+                                      else None),
             ver=ver,
             logger=logger
         )
@@ -2927,6 +2937,221 @@ def get_cgmes_busbar_sections(gc_model: MultiCircuit,
         cgmes_model.add(bbs)
 
 
+def is_hex_uuid_token(value: str) -> bool:
+    """
+    Check whether a string is a 32-hex UUID token.
+
+    :param value: Candidate token.
+    :return: ``True`` when the token is 32 hexadecimal characters.
+    """
+    if len(value) == 32:
+        try:
+            int(value, 16)
+            return True
+        except ValueError:
+            return False
+    else:
+        return False
+
+
+def build_cgmes_rdfid_from_veragrid_idtag(veragrid_idtag: str) -> str:
+    """
+    Build a CGMES RDF identifier from a VeraGrid idtag.
+
+    :param veragrid_idtag: VeraGrid object idtag.
+    :return: CGMES rdfid string.
+    """
+    stripped_idtag: str = veragrid_idtag.strip()
+    if len(stripped_idtag) == 0:
+        return get_new_rdfid()
+    else:
+        normalized_idtag: str = stripped_idtag.replace('-', '').replace('_', '')
+        if is_hex_uuid_token(normalized_idtag):
+            return form_rdfid(normalized_idtag)
+        else:
+            return stripped_idtag
+
+
+def resolve_cgmes_equipment_by_veragrid_idtag(cgmes_model: CgmesCircuit,
+                                              veragrid_idtag: str) -> CGMES_ASSETS | None:
+    """
+    Resolve one exported CGMES equipment object by VeraGrid idtag.
+
+    :param cgmes_model: Target CGMES model.
+    :param veragrid_idtag: VeraGrid equipment idtag.
+    :return: CGMES equipment object or ``None`` when not found.
+    """
+    stripped_idtag: str = veragrid_idtag.strip()
+    if len(stripped_idtag) == 0:
+        return None
+    else:
+        candidate_rdfid: str = build_cgmes_rdfid_from_veragrid_idtag(veragrid_idtag=stripped_idtag)
+        candidate_equipment: CGMES_ASSETS | None = cgmes_model.all_objects_dict.get(candidate_rdfid, None)
+        if candidate_equipment is not None:
+            return candidate_equipment
+        else:
+            direct_equipment: CGMES_ASSETS | None = cgmes_model.all_objects_dict.get(stripped_idtag, None)
+            if direct_equipment is not None:
+                return direct_equipment
+            else:
+                normalized_idtag: str = stripped_idtag.replace('-', '').replace('_', '')
+                if len(normalized_idtag) > 0:
+                    for cgmes_object in cgmes_model.all_objects_dict.values():
+                        if cgmes_object.uuid == normalized_idtag:
+                            return cgmes_object
+                        else:
+                            pass
+                    return None
+                else:
+                    return None
+
+
+def map_contingency_status_uri(contingency_value: float) -> str:
+    """
+    Map VeraGrid contingency Active value to the NCP status URI.
+
+    :param contingency_value: VeraGrid contingency value.
+    :return: ContingencyEquipmentStatusKind URI.
+    """
+    if np.isclose(contingency_value, 0.0):
+        return "https://cim.ucaiug.io/ns#ContingencyEquipmentStatusKind.outOfService"
+    else:
+        return "https://cim.ucaiug.io/ns#ContingencyEquipmentStatusKind.inService"
+
+
+def get_cgmes_contingencies(multicircuit_model: MultiCircuit,
+                            cgmes_model: CgmesCircuit,
+                            logger: DataLogger) -> None:
+    """
+    Export VeraGrid contingencies to CGMES NCP contingency objects.
+
+    Mapping strategy:
+        - One VeraGrid ``ContingencyGroup`` -> one NCP ``OrdinaryContingency``.
+        - One VeraGrid ``Contingency`` -> one NCP ``ContingencyEquipment``.
+        - VeraGrid ``ContingencyOperationTypes.Active`` value -> NCP contingent status URI.
+
+    :param multicircuit_model: Source VeraGrid model.
+    :param cgmes_model: Target CGMES model.
+    :param logger: Data logger.
+    :return: Nothing.
+    """
+    if len(multicircuit_model.contingencies) == 0:
+        return
+    else:
+        pass
+
+    class_dict: Dict[str, type] = cgmes_model.cgmes_assets.class_dict
+    ordinary_contingency_class: type | None = class_dict.get("OrdinaryContingency", None)
+    contingency_equipment_class: type | None = class_dict.get("ContingencyEquipment", None)
+
+    if ordinary_contingency_class is None:
+        logger.add_warning(
+            msg='CGMES model has no OrdinaryContingency class; skipping contingency export'
+        )
+        return
+    else:
+        if contingency_equipment_class is None:
+            logger.add_warning(
+                msg='CGMES model has no ContingencyEquipment class; skipping contingency export'
+            )
+            return
+        else:
+            pass
+
+    contingencies_by_group: Dict[gcdev.ContingencyGroup, List[gcdev.Contingency]] = (
+        multicircuit_model.get_contingencies_by_group()
+    )
+    if len(contingencies_by_group) == 0:
+        return
+    else:
+        pass
+
+    exported_group_count: int = 0
+    exported_contingency_count: int = 0
+    skipped_contingency_count: int = 0
+
+    for group, contingency_list in contingencies_by_group.items():
+        group_rdfid: str = build_cgmes_rdfid_from_veragrid_idtag(veragrid_idtag=group.idtag)
+        cgmes_group: CGMES_ASSETS = ordinary_contingency_class(rdfid=group_rdfid)
+
+        if len(group.name) > 0:
+            group_name: str = group.name
+        else:
+            group_name = group.idtag
+
+        cgmes_group.name = group_name
+        cgmes_group.description = str(group.category)
+        cgmes_group.normalMustStudy = group.active
+        cgmes_group.mustStudy = group.active
+
+        contingency_elements: List[CGMES_ASSETS] = list()
+
+        for contingency in contingency_list:
+            if contingency.prop == ContingencyOperationTypes.Active:
+                target_equipment: CGMES_ASSETS | None = resolve_cgmes_equipment_by_veragrid_idtag(
+                    cgmes_model=cgmes_model,
+                    veragrid_idtag=contingency.device_idtag
+                )
+                if target_equipment is None:
+                    skipped_contingency_count += 1
+                    logger.add_warning(
+                        msg='Could not resolve CGMES equipment for contingency export',
+                        device=contingency.idtag,
+                        device_class=contingency.device_type.value,
+                        device_property='device_idtag',
+                        value=contingency.device_idtag
+                    )
+                else:
+                    contingency_rdfid: str = build_cgmes_rdfid_from_veragrid_idtag(
+                        veragrid_idtag=contingency.idtag
+                    )
+                    cgmes_equipment_contingency: CGMES_ASSETS = contingency_equipment_class(rdfid=contingency_rdfid)
+
+                    if len(contingency.device_name) > 0:
+                        contingency_target_name: str = contingency.device_name
+                    else:
+                        contingency_target_name = contingency.device_idtag
+
+                    cgmes_equipment_contingency.name = f"{group_name}::{contingency_target_name}"
+                    cgmes_equipment_contingency.description = contingency.comment
+                    cgmes_equipment_contingency.Contingency = cgmes_group
+                    cgmes_equipment_contingency.Equipment = target_equipment
+                    cgmes_equipment_contingency.contingentStatus = map_contingency_status_uri(
+                        contingency_value=contingency.value
+                    )
+
+                    contingency_elements.append(cgmes_equipment_contingency)
+                    cgmes_model.add(cgmes_equipment_contingency)
+                    exported_contingency_count += 1
+            else:
+                skipped_contingency_count += 1
+                logger.add_warning(
+                    msg='Unsupported contingency operation type for CGMES export',
+                    device=contingency.idtag,
+                    device_class=contingency.device_type.value,
+                    device_property='prop',
+                    value=str(contingency.prop),
+                    expected_value=str(ContingencyOperationTypes.Active)
+                )
+
+        if len(contingency_elements) > 0:
+            cgmes_group.ContingencyElement = contingency_elements
+            cgmes_model.add(cgmes_group)
+            exported_group_count += 1
+        else:
+            pass
+
+    if exported_contingency_count > 0:
+        logger.add_info(
+            msg='Exported NCP contingencies',
+            value=exported_contingency_count,
+            expected_value=len(multicircuit_model.contingencies),
+            comment=f"Groups={exported_group_count}, Skipped={skipped_contingency_count}"
+        )
+    else:
+        pass
+
+
 # endregion
 
 
@@ -2986,6 +3211,11 @@ def veragrid_to_cgmes(gc_model: MultiCircuit,
     convert_hvdc_line_to_cgmes(gc_model, cgmes_model, ver, logger)
     convert_vsc_devices_to_cgmes(gc_model, cgmes_model, ver, logger)
     convert_dc_lines_to_cgmes(gc_model, cgmes_model, ver, logger)
+
+    # NCP contingencies are exported after equipment so references are resolvable.
+    get_cgmes_contingencies(multicircuit_model=gc_model,
+                            cgmes_model=cgmes_model,
+                            logger=logger)
 
     # RESULTS: sv classes
     if pf_results:

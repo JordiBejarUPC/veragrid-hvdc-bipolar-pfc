@@ -397,6 +397,10 @@ class Block:
         x = self.compare(other)
         return x
 
+    # def set_const(self, ref: ParamPowerFlowRefferenceType, val: Const):
+    #
+    #     self.parameters[self.api_obj_mapping[ref]] = val
+
     def set_parameter_in_model(self, var_name: str, new_value: float):
         """
         updates parameter value given a name and a value
@@ -573,12 +577,14 @@ class Block:
         Union[None, VeraGridEngine.Utils.Symbolic.block.Block]
         """
         mdl_placeholder = Block()
+        list_blocks = self.get_all_blocks()
         for b in self.get_all_blocks():
             mdl_placeholder.algebraic_vars.extend(b.algebraic_vars)
             mdl_placeholder.algebraic_eqs.extend(b.algebraic_eqs)
             mdl_placeholder.state_vars.extend(b.state_vars)
             mdl_placeholder.state_eqs.extend(b.state_eqs)
             mdl_placeholder.diff_vars.extend(b.diff_vars)
+            mdl_placeholder.differential_eqs.extend(b.differential_eqs)
             mdl_placeholder.reformulated_vars.extend(b.reformulated_vars)
             mdl_placeholder.external_mapping.update(b.external_mapping)
             mdl_placeholder.api_obj_mapping.update(b.api_obj_mapping)
@@ -607,6 +613,7 @@ class Block:
         self.state_vars = mdl_placeholder.state_vars
         self.state_eqs = mdl_placeholder.state_eqs
         self.diff_vars = mdl_placeholder.diff_vars
+        self.differential_eqs = mdl_placeholder.differential_eqs
         self.event_dict = mdl_placeholder.event_dict
         self.mode_dict = mdl_placeholder.mode_dict
         self.parameters = mdl_placeholder.parameters
@@ -886,6 +893,7 @@ class Block:
         """
         Function to connect two blocks by variables sharing
         """
+        # here we just change uid and name of the vars_to_subs
         pairs: List[Tuple[Var, Var]] = list(zip(vars_to_subs, incoming_vars))
         can_use_bulk_update: bool = self.can_use_bulk_connect_update(pairs)
         var_to_subs: Var
@@ -897,6 +905,83 @@ class Block:
             for var_to_subs, incoming_var in pairs:
                 self.update_model(var_to_subs, incoming_var)
 
+    def find_var_in_equations(self,var: Var) -> bool:
+        """
+        find a var in the equations of a block
+        :param var:
+        :return:
+        """
+
+        for i, eq in enumerate(self.algebraic_eqs):
+            if eq.contains_var:
+                return True
+
+        for i, eq in enumerate(self.state_eqs):
+            if eq.contains_var:
+                return True
+
+        for i, eq in enumerate(self.differential_eqs):
+            if eq.contains_var:
+                return True
+
+        for var, eq in self.init_eqs.items():
+            if eq.contains_var:
+                return True
+
+        for var, eq in self.diff_init_eqs.items():
+            if eq.contains_var:
+                return True
+
+        for var, eq in self.event_dict.items():
+            if eq.contains_var:
+                return True
+
+        for var, eq in self.mode_dict.items():
+            if eq.contains_var:
+                return True
+
+        for var_pf_ref, mdl_var in self.external_mapping.items():
+            if mdl_var is var:
+               return True
+
+        return False
+
+        # add procedural logic here
+
+    def find_var_in_block(self, var: Var) -> bool:
+        """
+        Replace variables
+        :param var:
+        :return:
+        """
+        if self.find_var_in_equations(var):
+            return True
+        if self.children:
+            for child in self.children:
+                if child.find_var_in_block(var):
+                    return True
+
+        return False
+
+def find_connections(mdl1: Block, mdl2: Block) -> List[tuple[Var, Var]]:
+    """
+    find connections between the two blocks by vars searching
+    :return:
+    :rtype:
+    """
+
+    # connect inputs mdl2 with outputs mdl1
+    pairs = [
+        (outp, inpt)
+        for outp in mdl1.out_vars
+        for inpt in mdl2.in_vars
+        if
+        outp.shared_ref == inpt.shared_ref and outp.shared_ref is not None and inpt.shared_ref is not None and mdl2.find_var_in_block(
+            outp)
+    ]
+
+
+    return pairs
 
 def find_name_in_block(name: str, block: Block) -> Var | None:
     """
