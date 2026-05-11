@@ -125,8 +125,12 @@ class EmtResults(ResultsTemplate):
 
     def get_devices_dict_tree(self) -> Dict[DeviceType, Dict[ALL_DEV_TYPES, List[Var]]]:
         """
+        Build the device-variable tree consumed by the dynamic results handler.
 
-        :return:
+        :return: Nested mapping ``{device_type: {device: [variables]}}``.
+
+        The handler preserves this structure when building the GUI tree of
+        available dynamic variables.
         """
         tree: Dict[DeviceType, Dict[ALL_DEV_TYPES, List[Var]]] = dict()
 

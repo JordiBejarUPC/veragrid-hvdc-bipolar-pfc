@@ -383,6 +383,12 @@ class ResultsMain(SimulationsMain):
         :param study_name: Study name shown in the results tree.
         :param results: Dynamic results object associated with the study.
         :return: Cached or newly created dynamics-results handler.
+
+        Handlers are cached per study name so user-defined dynamic plot groups
+        survive repeated simulations. Reuse only happens when the previous and
+        new results belong to the same dynamics family; otherwise a fresh
+        handler is created because RMS and EMT expose different event-group and
+        array layouts.
         """
         handler: DynamicsResultsHandler | None = self.dynamic_results_handlers.get(study_name, None)
 

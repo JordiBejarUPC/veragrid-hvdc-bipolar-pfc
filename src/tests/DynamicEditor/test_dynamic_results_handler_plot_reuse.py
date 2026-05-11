@@ -226,6 +226,21 @@ def get_group_var_uids(handler: DynamicsResultsHandler, group_name: str) -> List
         return list()
 
 
+def get_group_series_group_indexes(handler: DynamicsResultsHandler, group_name: str) -> List[int]:
+    """
+    Get the restored event-group indexes stored in one plot group.
+
+    :param handler: Dynamics results handler under test.
+    :param group_name: Plot-group name.
+    :return: Event-group indexes in insertion order.
+    """
+    group = handler.plot_groups.get_group(name=group_name)
+    if group is not None:
+        return [series.get_group_idx() for series in group.get_series()]
+    else:
+        return list()
+
+
 def build_handler_with_group(results: RmsResults | EmtResults,
                              group_name: str,
                              variable_uids: Sequence[int]) -> DynamicsResultsHandler:
@@ -426,6 +441,108 @@ def test_dynamic_plot_can_store_same_var_from_multiple_rms_groups() -> None:
     restored_series = group.get_series()
     assert len(restored_series) == 2
     assert restored_series[0].get_key() != restored_series[1].get_key()
+
+
+def test_dynamic_plot_restores_event_groups_by_label_after_reorder() -> None:
+    """
+    Restore the same semantic event groups even when a rerun changes their order.
+    """
+    ensure_qt_application()
+
+    old_results: RmsResults = build_rms_results_with_groups([
+        (make_device(name="DeviceA", idtag="dev-a"), [make_var(name="v_A", uid=1)]),
+    ], group_names=["With event", "Without event"])
+    new_results: RmsResults = build_rms_results_with_groups([
+        (make_device(name="DeviceA", idtag="dev-a"), [make_var(name="v_A", uid=101)]),
+    ], group_names=["Without event", "With event"])
+
+    handler: DynamicsResultsHandler = DynamicsResultsHandler(results=old_results)
+    assert handler.create_plot_group(name="Plot 1") is True
+
+    old_series_list = handler.series_by_var_uid[1]
+    assert len(old_series_list) == 2
+    assert handler.add_series_to_group(group_name="Plot 1", series_key=old_series_list[0].get_key()) is True
+    assert handler.add_series_to_group(group_name="Plot 1", series_key=old_series_list[1].get_key()) is True
+
+    handler.update_results(results=new_results)
+
+    assert get_group_var_uids(handler=handler, group_name="Plot 1") == [101, 101]
+    assert get_group_series_group_indexes(handler=handler, group_name="Plot 1") == [1, 0]
+
+
+def test_dynamic_plot_prunes_missing_event_group_when_only_subset_is_rerun() -> None:
+    """
+    Keep only the plot entries whose semantic event group still exists.
+    """
+    ensure_qt_application()
+
+    old_results: RmsResults = build_rms_results_with_groups([
+        (make_device(name="DeviceA", idtag="dev-a"), [make_var(name="v_A", uid=1)]),
+    ], group_names=["With event", "Without event"])
+    new_results: RmsResults = build_rms_results_with_groups([
+        (make_device(name="DeviceA", idtag="dev-a"), [make_var(name="v_A", uid=101)]),
+    ], group_names=["Without event"])
+
+    handler: DynamicsResultsHandler = DynamicsResultsHandler(results=old_results)
+    assert handler.create_plot_group(name="Plot 1") is True
+
+    old_series_list = handler.series_by_var_uid[1]
+    assert len(old_series_list) == 2
+    assert handler.add_series_to_group(group_name="Plot 1", series_key=old_series_list[0].get_key()) is True
+    assert handler.add_series_to_group(group_name="Plot 1", series_key=old_series_list[1].get_key()) is True
+
+    handler.update_results(results=new_results)
+
+    assert get_group_var_uids(handler=handler, group_name="Plot 1") == [101]
+    assert get_group_series_group_indexes(handler=handler, group_name="Plot 1") == [0]
+
+
+def test_dynamic_plot_prunes_event_group_when_label_becomes_ambiguous() -> None:
+    """
+    Drop a plot entry when the rerun exposes multiple matching event groups.
+    """
+    ensure_qt_application()
+
+    old_results: RmsResults = build_rms_results_with_groups([
+        (make_device(name="DeviceA", idtag="dev-a"), [make_var(name="v_A", uid=1)]),
+    ], group_names=["With event"])
+    new_results: RmsResults = build_rms_results_with_groups([
+        (make_device(name="DeviceA", idtag="dev-a"), [make_var(name="v_A", uid=101)]),
+    ], group_names=["With event", "With event"])
+
+    handler: DynamicsResultsHandler = DynamicsResultsHandler(results=old_results)
+    assert handler.create_plot_group(name="Plot 1") is True
+
+    old_series_list = handler.series_by_var_uid[1]
+    assert len(old_series_list) == 1
+    assert handler.add_series_to_group(group_name="Plot 1", series_key=old_series_list[0].get_key()) is True
+
+    handler.update_results(results=new_results)
+
+    assert get_group_var_uids(handler=handler, group_name="Plot 1") == list()
+
+
+def test_dynamic_plot_keeps_unaffected_emt_device_vars_after_model_change() -> None:
+    """
+    Keep unaffected EMT device variables when another device changes model.
+    """
+    ensure_qt_application()
+
+    old_results: EmtResults = build_emt_results([
+        (make_device(name="GeneratorA", idtag="gen-a"), [make_var(name="efd", uid=1), make_var(name="omega", uid=2)]),
+        (make_device(name="LoadA", idtag="load-a"), [make_var(name="p", uid=3)]),
+    ])
+    new_results: EmtResults = build_emt_results([
+        (make_device(name="GeneratorA", idtag="gen-a"), [make_var(name="eq1", uid=101)]),
+        (make_device(name="LoadA", idtag="load-a"), [make_var(name="p", uid=102)]),
+    ])
+
+    handler: DynamicsResultsHandler = build_handler_with_group(results=old_results,
+                                                               group_name="Plot 1",
+                                                               variable_uids=[1, 3])
+    handler.update_results(results=new_results)
+
+    assert get_group_var_uids(handler=handler, group_name="Plot 1") == [102]
 
 
 def test_dynamic_plot_restores_duplicate_var_names_by_exact_key() -> None:

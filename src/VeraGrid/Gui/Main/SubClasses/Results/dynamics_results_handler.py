@@ -67,6 +67,21 @@ def _get_var_label(variable: Var) -> str:
 class DynamicResultSeriesKey:
     """
     Stable identity for one plottable dynamic-result series.
+
+    The key identifies the exact series selected by the user, not just the
+    visible variable name. Its fields intentionally capture the dimensions that
+    can otherwise collide in the GUI:
+
+    * simulation family (RMS versus EMT),
+    * event-group source within that family,
+    * device type and device ``idtag``,
+    * result array namespace (``values`` versus ``diff_values``),
+    * variable position on the device, and
+    * component index in the underlying results array.
+
+    Plot groups store and restore these keys so the handler can reuse plots
+    across repeated runs of the same study without relying on transient
+    ``Var.uid`` values.
     """
 
     __slots__ = (
@@ -161,6 +176,11 @@ class DynamicResultSeriesKey:
 class DynamicResultSeries:
     """
     Source-specific dynamic-result series bound to current results arrays.
+
+    A single ``Var`` can produce multiple ``DynamicResultSeries`` objects when a
+    results object contains multiple event groups. Each series wraps the current
+    ``Var`` together with its :class:`DynamicResultSeriesKey` and the event-group
+    index needed to read the correct data slice.
     """
 
     __slots__ = (
@@ -237,7 +257,12 @@ def _set_item_icon(item: QtGui.QStandardItem, icon_key: str) -> None:
 
 class DynamicsPlotGroup:
     """
-    Group of variables to be plotted together.
+    Group of plot-variable references selected by the user.
+
+    The group stores ``DynamicResultSeries`` instances whenever possible. This
+    means one plot can contain variables from multiple event groups because each
+    stored entry already includes its own source identity. Legacy ``Var``
+    entries are still tolerated so older tests and callers keep working.
     """
 
     __slots__ = ("_name", "_vars")
@@ -273,7 +298,7 @@ class DynamicsPlotGroup:
 
     def get_series(self) -> List[DynamicResultSeries | Var]:
         """
-        Get the stored plot entries.
+        Get the stored plot-variable references.
 
         :return: Entries in insertion order.
         """
@@ -658,8 +683,13 @@ def build_dynamics_tree_model(tree_data: Dict[DeviceType, Dict[ALL_DEV_TYPES, Li
     :param var_role: Qt item-data role used to store the ``Var`` instance in leaf nodes.
     :param mime_type: Mime type exported when dragging a variable.
     :param series_by_var_uid: Source-specific dynamic series grouped by current variable uid.
-    :param has_multiple_sources: ``True`` when multiple result sources must be shown.
+    :param has_multiple_sources: ``True`` when multiple event-group sources must be shown.
     :return: Source tree model ready to be assigned to a QTreeView.
+
+    The tree uses the existing device hierarchy from the results object. When a
+    variable exists in multiple event groups, the variable node gets one child
+    per source-specific series so the drag payload can preserve the exact source
+    selected by the user.
     """
     # The source model owns the full device hierarchy and the drag payload for variable leaves.
     model: DynamicsDeviceTreeModel = DynamicsDeviceTreeModel(var_role=var_role, mime_type=mime_type)
@@ -707,12 +737,21 @@ def build_dynamics_tree_model(tree_data: Dict[DeviceType, Dict[ALL_DEV_TYPES, Li
 
 class DynamicsResultsHandler:
     """
-    Prepare GUI structures from RMS/EMT dynamics results.
+    Prepare GUI structures for dynamic-result selection, plotting, and reuse.
+
+    The handler owns two related views of the same results object:
+
+    * the available-variable tree built from the current results, and
+    * the user-defined plot groups that store plot-variable references.
+
+    Plot groups are preserved across repeated runs of the same study by
+    snapshotting their series identities before replacing the results object,
+    then restoring only the entries that still resolve against the new results.
     """
 
     __slots__ = ("results", "tree_data", "tree_model", "proxy_model", "plots_model", "group_idx",
-                 "var_role", "group_name_role", "drag_mime_type", "plot_groups", "series_by_key",
-                 "series_by_var_uid", "source_labels")
+                  "var_role", "group_name_role", "drag_mime_type", "plot_groups", "series_by_key",
+                  "series_by_var_uid", "source_labels")
 
     def __init__(self, results: RmsResults|EmtResults):
         """
@@ -731,7 +770,7 @@ class DynamicsResultsHandler:
         self.group_idx: Dict[str, int] = dict()
         self.tree_data: Dict[DeviceType, Dict[ALL_DEV_TYPES, List[Var]]] = dict()
         self.tree_model: DynamicsDeviceTreeModel | None = None
-        self.series_by_key: Dict[DynamicResultSeriesKey, DynamicResultSeries] = dict()
+        self.series_by_key: Dict[DynamicResultSeriesKey, List[DynamicResultSeries]] = dict()
         self.series_by_var_uid: Dict[int, List[DynamicResultSeries]] = dict()
         self.source_labels: List[str] = list()
 
@@ -1011,9 +1050,12 @@ class DynamicsResultsHandler:
         :param group_name: Target plot-group name.
         :param series_key: Stable identity of the plotted series.
         :return: ``True`` when the series was inserted.
+
+        Using a source-specific key instead of a raw ``Var.uid`` allows one plot
+        to contain multiple event-group instances of the same visible variable.
         """
         group: DynamicsPlotGroup | None = self.plot_groups.get_group(name=group_name)
-        variable: DynamicResultSeries | None = self.series_by_key.get(series_key, None)
+        variable: DynamicResultSeries | None = self._get_unique_series_for_key(series_key=series_key)
         if group is not None:
             if variable is not None:
                 inserted: bool = group.add_var(variable=variable)
@@ -1050,7 +1092,7 @@ class DynamicsResultsHandler:
         :return: ``True`` when the series was removed.
         """
         group: DynamicsPlotGroup | None = self.plot_groups.get_group(name=group_name)
-        variable: DynamicResultSeries | None = self.series_by_key.get(series_key, None)
+        variable: DynamicResultSeries | None = self._get_unique_series_for_key(series_key=series_key)
         if group is not None:
             if variable is not None:
                 removed: bool = group.remove_var(variable=variable)
@@ -1251,6 +1293,9 @@ class DynamicsResultsHandler:
     def _get_group_names(self, results: RmsResults | EmtResults) -> Sequence[str]:
         """
         Get the ordered event-group labels for the current results object.
+
+        :param results: Current RMS or EMT results object.
+        :return: Ordered event-group labels as exposed by the results object.
         """
         if type(results) == RmsResults:
             return [str(gr) for gr in results.rms_events_group_names]
@@ -1261,13 +1306,28 @@ class DynamicsResultsHandler:
 
     def _build_source_id(self, results: RmsResults | EmtResults, group_idx: int) -> str:
         """
-        Build a stable source id for one event-group position.
+        Build a source identifier for one event-group position.
+
+        :param results: Current RMS or EMT results object.
+        :param group_idx: Event-group index within the results arrays.
+        :return: Identifier scoped to the results family and group index.
+
+        The source id follows the event-group label instead of the array
+        position. This keeps plot restoration stable when a repeated simulation
+        emits only a subset of groups or changes their order.
         """
-        return str(results.study_results_type.value) + ":" + str(group_idx)
+        group_names: Sequence[str] = self._get_group_names(results=results)
+        return str(results.study_results_type.value) + ":" + str(group_names[group_idx])
 
     def _resolve_result_path_and_component_index(self, variable: Var) -> tuple[str, int]:
         """
         Resolve which result array and column index stores one variable.
+
+        :param variable: Variable to resolve in the current results object.
+        :return: Pair ``(result_path, component_index)``.
+
+        EMT exposes both ``values`` and ``diff_values`` arrays, so the returned
+        path becomes part of the dynamic-variable identity.
         """
         if type(self.results) == RmsResults:
             return "values", self.results.uid2idx[variable.uid]
@@ -1284,6 +1344,14 @@ class DynamicsResultsHandler:
     def _refresh_results_state(self, results: RmsResults | EmtResults) -> None:
         """
         Rebuild source lookup maps and the device tree for the given results object.
+
+        :param results: New RMS or EMT results object.
+        :return: Nothing.
+
+        This method derives the current universe of plottable series from the
+        results tree. For every ``(device, variable, event-group)`` combination
+        it creates a :class:`DynamicResultSeries` and indexes it both by exact
+        key and by current ``Var.uid`` for compatibility.
         """
         self.results = results
         self.source_labels = list(self._get_group_names(results=self.results))
@@ -1310,6 +1378,9 @@ class DynamicsResultsHandler:
                     group_idx: int
                     source_label: str
                     for group_idx, source_label in enumerate(self.source_labels):
+                        # A distinct series is created per event group so plots
+                        # can mix sources without losing the exact origin of each
+                        # selected variable.
                         key: DynamicResultSeriesKey = DynamicResultSeriesKey(
                             simulation_type=self.results.study_results_type,
                             source_id=self._build_source_id(results=self.results, group_idx=group_idx),
@@ -1327,7 +1398,7 @@ class DynamicsResultsHandler:
                             device_label=device_label,
                             variable_label=_get_var_label(variable=variable),
                         )
-                        self.series_by_key[key] = series
+                        self.series_by_key.setdefault(key, list()).append(series)
                         self.series_by_var_uid.setdefault(variable.uid, list()).append(series)
 
         self.tree_model = build_dynamics_tree_model(
@@ -1338,6 +1409,22 @@ class DynamicsResultsHandler:
             has_multiple_sources=self.has_multiple_sources(),
         )
         self.proxy_model.setSourceModel(self.tree_model)
+
+    def _get_unique_series_for_key(self, series_key: DynamicResultSeriesKey) -> DynamicResultSeries | None:
+        """
+        Resolve one exact series key only when it maps to a unique current series.
+
+        :param series_key: Stable plot-variable identity.
+        :return: Matching current series, or ``None`` when missing or ambiguous.
+
+        Ambiguous matches are pruned instead of guessed so repeated simulations
+        cannot silently reconnect a plot entry to the wrong event-group series.
+        """
+        candidate_series: List[DynamicResultSeries] = self.series_by_key.get(series_key, list())
+        if len(candidate_series) == 1:
+            return candidate_series[0]
+        else:
+            return None
 
     def _get_series_plot_data(self, series: DynamicResultSeries) -> tuple[np.ndarray, np.ndarray]:
         """
@@ -1381,11 +1468,16 @@ class DynamicsResultsHandler:
 
     def _snapshot_plot_groups(self) -> List[tuple[str, List[DynamicResultSeriesKey | tuple[str, str, str]]]]:
         """
-        Snapshot current plot groups using stable series keys.
+        Snapshot current plot groups using stable plot-variable references.
 
         Legacy ``Var`` entries are converted best-effort to the old visible signature.
 
         :return: List of tuples ``(group_name, [series_key_or_legacy_signature, ...])``.
+
+        ``DynamicResultSeriesKey`` is the preferred identity because it preserves
+        the exact event group and exact duplicate variable instance. The legacy
+        signature exists only to keep compatibility with older in-memory plot
+        entries that still store raw ``Var`` objects.
         """
         variable_signature_by_uid: Dict[int, tuple[str, str, str]] = self._build_uid_to_variable_signature_index()
         snapshot: List[tuple[str, List[DynamicResultSeriesKey | tuple[str, str, str]]]] = list()
@@ -1410,6 +1502,45 @@ class DynamicsResultsHandler:
             snapshot.append((group.get_name(), var_signatures))
 
         return snapshot
+
+    def _build_series_semantic_signature(self,
+                                         series_key: DynamicResultSeriesKey) -> tuple[str, str, str, str, str]:
+        """
+        Build a per-series semantic signature that survives array reindexing.
+
+        :param series_key: Exact plot-variable key.
+        :return: Tuple describing the semantic identity of one plotted series.
+
+        The signature intentionally omits variable and component indexes so a
+        device model change can reorder arrays without breaking unrelated plot
+        entries. Any non-unique semantic match is treated as ambiguous and
+        therefore pruned.
+        """
+        return (
+            str(series_key._simulation_type.value),
+            str(series_key._source_id),
+            str(series_key._device_type.value),
+            str(series_key._device_idtag),
+            str(series_key._result_path),
+        )
+
+    def _build_semantic_signature_to_series_index(self) -> Dict[tuple[str, str, str, str, str], List[DynamicResultSeries]]:
+        """
+        Build a lookup table from semantic series identity to current series candidates.
+
+        :return: Dictionary mapping semantic signatures to matching current series.
+        """
+        series_by_signature: Dict[tuple[str, str, str, str, str], List[DynamicResultSeries]] = dict()
+
+        series_key: DynamicResultSeriesKey
+        current_series_list: List[DynamicResultSeries]
+        for series_key, current_series_list in self.series_by_key.items():
+            signature: tuple[str, str, str, str, str] = self._build_series_semantic_signature(series_key=series_key)
+            stored_series_list: List[DynamicResultSeries] = series_by_signature.get(signature, list())
+            stored_series_list.extend(current_series_list)
+            series_by_signature[signature] = stored_series_list
+
+        return series_by_signature
 
     # def _restore_plot_groups_from_snapshot(self, snapshot: List[tuple[str, List[int]]]) -> None:
     #     """
@@ -1445,8 +1576,15 @@ class DynamicsResultsHandler:
 
         :param snapshot: Plot-group snapshot created with ``_snapshot_plot_groups()``.
         :return: Nothing.
+
+        Entries that no longer resolve in the new results are silently omitted.
+        This is the pruning step that removes invalid plot variables after a
+        repeated simulation.
         """
         restored_plot_groups: DynamicsPlotGroups = DynamicsPlotGroups()
+        series_by_semantic_signature: Dict[tuple[str, str, str, str, str], List[DynamicResultSeries]] = (
+            self._build_semantic_signature_to_series_index()
+        )
         variable_by_signature: Dict[tuple[str, str, str], List[DynamicResultSeries]] = (
             self._build_variable_signature_to_series_index()
         )
@@ -1464,8 +1602,25 @@ class DynamicsResultsHandler:
                     for var_signature in var_signatures:
                         variable: DynamicResultSeries | None
                         if isinstance(var_signature, DynamicResultSeriesKey):
-                            variable = self.series_by_key.get(var_signature, None)
+                            variable = self._get_unique_series_for_key(series_key=var_signature)
+                            if variable is None:
+                                semantic_signature: tuple[str, str, str, str, str] = (
+                                    self._build_series_semantic_signature(series_key=var_signature)
+                                )
+                                candidate_series: List[DynamicResultSeries] = series_by_semantic_signature.get(
+                                    semantic_signature,
+                                    list(),
+                                )
+                                if len(candidate_series) == 1:
+                                    variable = candidate_series[0]
+                                else:
+                                    variable = None
+                            else:
+                                pass
                         else:
+                            # Legacy ``Var`` snapshots do not encode event-group
+                            # identity, so ambiguous matches are discarded instead
+                            # of guessing and restoring the wrong series.
                             candidate_series: List[DynamicResultSeries] = variable_by_signature.get(var_signature, list())
                             if len(candidate_series) == 1:
                                 variable = candidate_series[0]
@@ -1488,8 +1643,9 @@ class DynamicsResultsHandler:
         Build a lookup table from current variable uid to stable device-variable signature.
 
         The result tree already stores the relationship between devices and variables.
-        This method converts that tree into a lookup that can translate the existing
-        plot variables from ``Var.uid`` to ``(device.idtag, device.name, variable.name)``.
+        This method converts that tree into a lookup that can translate legacy
+        plot-variable references from ``Var.uid`` to
+        ``(device.idtag, device.name, variable.name)``.
 
         :return: Dictionary mapping ``Var.uid`` to ``(device_idtag, device_name, variable_name)``.
         """
@@ -1507,9 +1663,10 @@ class DynamicsResultsHandler:
             device: ALL_DEV_TYPES
             variables: List[Var]
             for device, variables in devices_data.items():
-                # The results tree already exposes device idtag and device name.
-                # Storing both keeps the match stable across repeated simulations and
-                # also prevents restoring a plot if the device is later renamed.
+                # The legacy signature supplements the stable device idtag with the
+                # visible device name. This avoids matching a different visible
+                # device after a rename, but it also means renames can prevent
+                # legacy entries from being restored.
                 device_idtag: str = str(device.idtag)
                 device_name: str = str(device.name)
 
@@ -1526,6 +1683,10 @@ class DynamicsResultsHandler:
         Build a lookup table from legacy visible signature to current source-specific series.
 
         :return: Dictionary mapping ``(device_idtag, device_name, variable_name)`` to candidate series.
+
+        The value is a list because the legacy signature does not include
+        event-group identity and cannot distinguish duplicate visible variables
+        on its own.
         """
         variable_by_signature: Dict[tuple[str, str, str], List[DynamicResultSeries]] = dict()
 
@@ -1558,6 +1719,10 @@ class DynamicsResultsHandler:
 
         :param results: New RMS/EMT results for the same study type.
         :return: Nothing.
+
+        The restoration process is exact-key first. Any entry whose key no
+        longer exists in the new results is dropped, which prunes stale plot
+        variables after a rerun.
         """
         plot_groups_snapshot = self._snapshot_plot_groups()
         self._refresh_results_state(results=results)
