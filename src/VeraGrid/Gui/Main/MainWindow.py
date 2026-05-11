@@ -2065,12 +2065,6 @@ class Ui_mainWindow(object):
         self.horizontalLayout_15.setObjectName(u"horizontalLayout_15")
         self.horizontalLayout_15.setSizeConstraint(QLayout.SizeConstraint.SetDefaultConstraint)
         self.horizontalLayout_15.setContentsMargins(6, 0, 6, 0)
-        self.eventsGroupComboBox = QComboBox(self.frame_3)
-        self.eventsGroupComboBox.setObjectName(u"eventsGroupComboBox")
-        self.eventsGroupComboBox.setMinimumSize(QSize(140, 0))
-
-        self.horizontalLayout_15.addWidget(self.eventsGroupComboBox)
-
         self.search_dynamic_objects_lineEdit = QLineEdit(self.frame_3)
         self.search_dynamic_objects_lineEdit.setObjectName(u"search_dynamic_objects_lineEdit")
         self.search_dynamic_objects_lineEdit.setMaximumSize(QSize(240, 16777215))
@@ -6266,9 +6260,6 @@ class Ui_mainWindow(object):
 #endif // QT_CONFIG(tooltip)
         self.plot_data_pushButton.setText("")
         self.resultsTabWidget.setTabText(self.resultsTabWidget.indexOf(self.tab_7), QCoreApplication.translate("mainWindow", u"Tables", None))
-#if QT_CONFIG(tooltip)
-        self.eventsGroupComboBox.setToolTip(QCoreApplication.translate("mainWindow", u"Select the events group to view", None))
-#endif // QT_CONFIG(tooltip)
 #if QT_CONFIG(tooltip)
         self.search_dynamic_objects_lineEdit.setToolTip(QCoreApplication.translate("mainWindow", u"Type the search term", None))
 #endif // QT_CONFIG(tooltip)

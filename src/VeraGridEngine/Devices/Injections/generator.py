@@ -6,13 +6,15 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-from typing import Union, Tuple
+from typing import Union, Tuple, List
 from matplotlib import pyplot as plt
 
 from VeraGridEngine.basic_structures import Logger, CxVec
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.enumerations import DeviceType, BuildStatus, SubObjectType, GeneratorType, PrpCat
 from VeraGridEngine.Devices.Associations.association import Associations
+from VeraGridEngine.Devices.Associations.fuel import Fuel
+from VeraGridEngine.Devices.Associations.emission_gas import EmissionGas
 from VeraGridEngine.Devices.Injections.generator_q_curve import GeneratorQCurve
 from VeraGridEngine.Devices.Profiles import ProfileBool, ProfileFloat
 from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
@@ -1642,3 +1644,37 @@ class Generator(InjectionParent):
         :return: None
         """
         self._must_run = bool(val)
+
+    @property
+    def fuels_list(self) -> List[Fuel]:
+        """
+        get the Fuel list
+        :return: Fuel
+        """
+        return self.fuels.to_list()
+
+    def get_first_fuel(self) -> Fuel | None:
+        """
+        Get the first fuels available
+        :return: Technology
+        """
+        for key, association in self.fuels.data.items():
+            return association.api_object
+        return None
+
+    @property
+    def emissions_list(self) -> List[EmissionGas]:
+        """
+        get the EmissionGas list
+        :return: EmissionGas list
+        """
+        return self.emissions.to_list()
+
+    def get_first_emission(self) -> EmissionGas | None:
+        """
+        Get the first emissions available
+        :return: Technology
+        """
+        for key, association in self.emissions.data.items():
+            return association.api_object
+        return None
