@@ -142,6 +142,7 @@ def get_gcdev_contingencies(cgmes_model: CgmesCircuit,
     contingency_equipment_by_contingency: Dict[str, List[CGMES_ASSETS]] = dict()
     imported_contingency_count: int = 0
     skipped_contingency_count: int = 0
+    skipped_empty_group_count: int = 0
 
     for contingency_equipment in contingency_equipment_list:
         contingency_obj: object = contingency_equipment.Contingency
@@ -183,18 +184,9 @@ def get_gcdev_contingencies(cgmes_model: CgmesCircuit,
             else:
                 contingency_group_active = True
 
-            contingency_group: gcdev.ContingencyGroup | None = contingency_group_lookup.get(contingency_uuid, None)
-            if contingency_group is None:
-                contingency_group = gcdev.ContingencyGroup(
-                    idtag=contingency_uuid,
-                    name=contingency_name,
-                    category=contingency_obj.tpe,
-                    active=contingency_group_active
-                )
-                gcdev_model.add_contingency_group(contingency_group)
-                contingency_group_lookup[contingency_uuid] = contingency_group
-            else:
-                pass
+            # Defer group creation until we import at least one valid contingency element.
+            # This avoids orphan groups that later break contingency analyses expecting group->contingency mapping.
+            contingency_imported_for_group: bool = False
 
             for contingency_equipment in contingency_elements:
                 equipment_obj: object = contingency_equipment.Equipment
@@ -229,6 +221,21 @@ def get_gcdev_contingencies(cgmes_model: CgmesCircuit,
                         if contingency_active_value is None:
                             skipped_contingency_count += 1
                         else:
+                            contingency_group: gcdev.ContingencyGroup | None = contingency_group_lookup.get(
+                                contingency_uuid, None
+                            )
+                            if contingency_group is None:
+                                contingency_group = gcdev.ContingencyGroup(
+                                    idtag=contingency_uuid,
+                                    name=contingency_name,
+                                    category=contingency_obj.tpe,
+                                    active=contingency_group_active
+                                )
+                                gcdev_model.add_contingency_group(contingency_group)
+                                contingency_group_lookup[contingency_uuid] = contingency_group
+                            else:
+                                pass
+
                             contingency_description: object = contingency_obj.description
                             if isinstance(contingency_description, str):
                                 contingency_comment: str = contingency_description
@@ -259,13 +266,34 @@ def get_gcdev_contingencies(cgmes_model: CgmesCircuit,
                             )
                             gcdev_model.add_contingency(gcdev_contingency)
                             imported_contingency_count += 1
+                            contingency_imported_for_group = True
+
+            if contingency_imported_for_group:
+                pass
+            else:
+                skipped_empty_group_count += 1
+                logger.add_warning(
+                    msg='Skipped NCP contingency group because no valid contingency equipment could be imported',
+                    device=contingency_obj.rdfid,
+                    device_class=contingency_obj.tpe,
+                    device_property='Contingency',
+                    value=contingency_uuid
+                )
 
     if imported_contingency_count > 0:
         logger.add_info(
             msg='Imported NCP contingencies',
             value=imported_contingency_count,
             expected_value=len(contingency_equipment_list),
-            comment=f"Skipped={skipped_contingency_count}"
+            comment=f"Skipped={skipped_contingency_count}; EmptyGroups={skipped_empty_group_count}"
         )
     else:
-        pass
+        if skipped_empty_group_count > 0:
+            logger.add_warning(
+                msg='No NCP contingencies imported',
+                value=skipped_contingency_count,
+                expected_value=len(contingency_equipment_list),
+                comment=f"EmptyGroups={skipped_empty_group_count}"
+            )
+        else:
+            pass
