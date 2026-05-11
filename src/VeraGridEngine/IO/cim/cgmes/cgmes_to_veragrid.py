@@ -3790,6 +3790,19 @@ def get_gcdev_switches(cgmes_model: CgmesCircuit,
                     retained=cgmes_elm.retained,
                     normal_open=cgmes_elm.normalOpen
                 )
+                # Keep CGMES "retained" as metadata, but force switches reducible
+                # so VeraGrid always solves topology internally from switch states.
+                gcdev_elm.reducible = True
+
+                if cgmes_elm.retained:
+                    logger.add_warning(
+                        msg='CGMES Switch.retained is preserved as metadata but ignored for topology reduction; switch forced reducible.',
+                        device=cgmes_elm.rdfid,
+                        device_class=cgmes_elm.tpe,
+                        device_property='retained',
+                        value=True,
+                        expected_value='metadata-only'
+                    )
 
                 gcdev_model.add_switch(gcdev_elm)
             else:
