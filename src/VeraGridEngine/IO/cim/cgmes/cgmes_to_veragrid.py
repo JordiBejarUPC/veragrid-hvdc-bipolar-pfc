@@ -40,6 +40,10 @@ from VeraGridEngine.IO.cim.cgmes.cgmes_utils import (get_nominal_voltage,
                                                      extract_base_voltage_value,
                                                      recover_base_voltage_from_container,
                                                      recover_base_voltage_from_topological_node)
+import VeraGridEngine.IO.cim.cgmes.CgmestoVeraGrid.ncp_contingencies as ncp_contingencies
+import VeraGridEngine.IO.cim.cgmes.CgmestoVeraGrid.ncp_remedials as ncp_remedials
+import VeraGridEngine.IO.cim.cgmes.CgmestoVeraGrid.ncp_instructions as ncp_instructions
+import VeraGridEngine.IO.cim.cgmes.CgmestoVeraGrid.ncp_availability as ncp_availability
 
 from VeraGridEngine.data_logger import DataLogger
 from VeraGridEngine.enumerations import TapChangerTypes, TapPhaseControl, TapModuleControl, ShuntControlMode
@@ -904,26 +908,11 @@ def parse_contingency_equipment_status(contingent_status: str | None,
              - 1.0 means explicit in-service
              - None means unsupported status
     """
-    if contingent_status is None:
-        return 0.0
-    else:
-        pass
-
-    status_text: str = str(contingent_status).lower()
-    if "outofservice" in status_text:
-        return 0.0
-    elif "inservice" in status_text:
-        return 1.0
-    else:
-        logger.add_warning(
-            msg='Unsupported contingency equipment status',
-            device=contingency_equipment.rdfid,
-            device_class=contingency_equipment.tpe,
-            device_property='contingentStatus',
-            value=contingent_status,
-            expected_value='outOfService or inService'
-        )
-        return None
+    return ncp_contingencies.parse_contingency_equipment_status(
+        contingent_status=contingent_status,
+        logger=logger,
+        contingency_equipment=contingency_equipment
+    )
 
 
 def build_contingency_device_lookup(gcdev_model: MultiCircuit) -> Dict[str, object]:
@@ -933,38 +922,7 @@ def build_contingency_device_lookup(gcdev_model: MultiCircuit) -> Dict[str, obje
     :param gcdev_model: VeraGrid model.
     :return: Dictionary keyed by canonical/normalized device idtag.
     """
-    contingency_device_lookup: Dict[str, object] = dict()
-    contingency_devices: List[object] = list()
-
-    # Stage 1: build a flat list of devices that can be affected by contingencies.
-    # The algorithm uses explicit branch + injection collections so VSC/HVDC are included.
-    for branch_device in gcdev_model.get_branches(add_vsc=True, add_hvdc=True, add_switch=True):
-        contingency_devices.append(branch_device)
-    for injection_device in gcdev_model.get_injection_devices():
-        contingency_devices.append(injection_device)
-
-    # Stage 2: index each device both by raw idtag and normalized UUID-like key.
-    # This enables robust matching when CGMES references include separators.
-    for contingency_device in contingency_devices:
-        contingency_device_idtag: str = contingency_device.idtag
-        if len(contingency_device_idtag) > 0:
-            if contingency_device_idtag in contingency_device_lookup:
-                pass
-            else:
-                contingency_device_lookup[contingency_device_idtag] = contingency_device
-
-            normalized_idtag: str | None = normalize_cgmes_reference_uuid(contingency_device_idtag)
-            if normalized_idtag is not None:
-                if normalized_idtag in contingency_device_lookup:
-                    pass
-                else:
-                    contingency_device_lookup[normalized_idtag] = contingency_device
-            else:
-                pass
-        else:
-            pass
-
-    return contingency_device_lookup
+    return ncp_contingencies.build_contingency_device_lookup(gcdev_model=gcdev_model)
 
 
 def get_ncp_contingency_objects(cgmes_model: CgmesCircuit) -> List[CGMES_ASSETS]:
@@ -974,30 +932,7 @@ def get_ncp_contingency_objects(cgmes_model: CgmesCircuit) -> List[CGMES_ASSETS]
     :param cgmes_model: CGMES model.
     :return: De-duplicated contingency object list.
     """
-    contingency_objects: List[CGMES_ASSETS] = list()
-    contingency_by_uuid: Dict[str, CGMES_ASSETS] = dict()
-    contingency_lists: List[List[CGMES_ASSETS]] = list()
-
-    # Stage 1: collect each explicit contingency subtype list.
-    contingency_lists.append(cgmes_model.cgmes_assets.Contingency_list)
-    contingency_lists.append(cgmes_model.cgmes_assets.OrdinaryContingency_list)
-    contingency_lists.append(cgmes_model.cgmes_assets.ExceptionalContingency_list)
-    contingency_lists.append(cgmes_model.cgmes_assets.OutOfRangeContingency_list)
-
-    # Stage 2: de-duplicate by UUID because the same object can appear through base+subclass lists.
-    for contingency_list in contingency_lists:
-        for contingency_obj in contingency_list:
-            contingency_uuid: str = contingency_obj.uuid
-            if contingency_uuid in contingency_by_uuid:
-                pass
-            else:
-                contingency_by_uuid[contingency_uuid] = contingency_obj
-
-    # Stage 3: keep deterministic insertion order from the dictionary.
-    for contingency_obj in contingency_by_uuid.values():
-        contingency_objects.append(contingency_obj)
-
-    return contingency_objects
+    return ncp_contingencies.get_ncp_contingency_objects(cgmes_model=cgmes_model)
 
 
 def get_gcdev_contingencies(cgmes_model: CgmesCircuit,
@@ -1016,152 +951,11 @@ def get_gcdev_contingencies(cgmes_model: CgmesCircuit,
     :param logger: Data logger.
     :return: Nothing.
     """
-    contingency_objects: List[CGMES_ASSETS] = get_ncp_contingency_objects(cgmes_model=cgmes_model)
-    contingency_equipment_list: List[CGMES_ASSETS] = cgmes_model.cgmes_assets.ContingencyEquipment_list
-
-    if len(contingency_objects) == 0:
-        return
-    else:
-        pass
-
-    contingency_device_lookup: Dict[str, object] = build_contingency_device_lookup(gcdev_model=gcdev_model)
-    contingency_group_lookup: Dict[str, gcdev.ContingencyGroup] = dict()
-    contingency_equipment_by_contingency: Dict[str, List[CGMES_ASSETS]] = dict()
-    imported_contingency_count: int = 0
-    skipped_contingency_count: int = 0
-
-    # Stage 1: index every ContingencyEquipment by the linked contingency UUID.
-    # This prepares fast access for the next stage where groups/elements are created.
-    for contingency_equipment in contingency_equipment_list:
-        contingency_obj: object = contingency_equipment.Contingency
-        if contingency_obj is None or isinstance(contingency_obj, str):
-            logger.add_warning(
-                msg='ContingencyEquipment without resolved Contingency reference',
-                device=contingency_equipment.rdfid,
-                device_class=contingency_equipment.tpe,
-                device_property='Contingency',
-                value=contingency_obj,
-                expected_value='resolved object'
-            )
-        else:
-            contingency_uuid: str = contingency_obj.uuid
-            lst: List[CGMES_ASSETS] | None = contingency_equipment_by_contingency.get(contingency_uuid, None)
-            if lst is None:
-                contingency_equipment_by_contingency[contingency_uuid] = [contingency_equipment]
-            else:
-                lst.append(contingency_equipment)
-
-    # Stage 2: build VeraGrid contingency groups and elements.
-    # Each NCP contingency becomes one VeraGrid ContingencyGroup.
-    # Each NCP ContingencyEquipment becomes one VeraGrid Contingency entry.
-    for contingency_obj in contingency_objects:
-        contingency_uuid: str = contingency_obj.uuid
-        contingency_elements: List[CGMES_ASSETS] | None = contingency_equipment_by_contingency.get(contingency_uuid, None)
-        if contingency_elements is None:
-            pass
-        else:
-            contingency_name: str = contingency_obj.name
-            if len(contingency_name) > 0:
-                pass
-            else:
-                contingency_name = contingency_uuid
-
-            normal_must_study: bool | None = contingency_obj.normalMustStudy
-            must_study: bool | None = contingency_obj.mustStudy
-            if isinstance(normal_must_study, bool):
-                contingency_group_active: bool = normal_must_study
-            elif isinstance(must_study, bool):
-                contingency_group_active = must_study
-            else:
-                contingency_group_active = True
-
-            contingency_group: gcdev.ContingencyGroup | None = contingency_group_lookup.get(contingency_uuid, None)
-            if contingency_group is None:
-                contingency_group = gcdev.ContingencyGroup(
-                    idtag=contingency_uuid,
-                    name=contingency_name,
-                    category=contingency_obj.tpe,
-                    active=contingency_group_active
-                )
-                gcdev_model.add_contingency_group(contingency_group)
-                contingency_group_lookup[contingency_uuid] = contingency_group
-            else:
-                pass
-
-            # Stage 3: convert each contingent equipment operation into one VeraGrid contingency action.
-            for contingency_equipment in contingency_elements:
-                equipment_obj: object = contingency_equipment.Equipment
-                if equipment_obj is None or isinstance(equipment_obj, str):
-                    skipped_contingency_count += 1
-                    logger.add_warning(
-                        msg='ContingencyEquipment without resolved Equipment reference',
-                        device=contingency_equipment.rdfid,
-                        device_class=contingency_equipment.tpe,
-                        device_property='Equipment',
-                        value=equipment_obj,
-                        expected_value='resolved object'
-                    )
-                else:
-                    equipment_uuid: str = equipment_obj.uuid
-                    target_device: object | None = contingency_device_lookup.get(equipment_uuid, None)
-                    if target_device is None:
-                        skipped_contingency_count += 1
-                        logger.add_warning(
-                            msg='Contingency target equipment not imported as a contingency-capable VeraGrid device',
-                            device=contingency_equipment.rdfid,
-                            device_class=contingency_equipment.tpe,
-                            device_property='Equipment.uuid',
-                            value=equipment_uuid
-                        )
-                    else:
-                        contingency_active_value: float | None = parse_contingency_equipment_status(
-                            contingent_status=contingency_equipment.contingentStatus,
-                            logger=logger,
-                            contingency_equipment=contingency_equipment
-                        )
-                        if contingency_active_value is None:
-                            skipped_contingency_count += 1
-                        else:
-                            contingency_description: object = contingency_obj.description
-                            if isinstance(contingency_description, str):
-                                contingency_comment: str = contingency_description
-                            else:
-                                contingency_comment = ""
-
-                            target_code_raw: object = target_device.code
-                            if isinstance(target_code_raw, str):
-                                target_code: str = target_code_raw
-                            else:
-                                target_code = ""
-
-                            target_name_raw: str = target_device.name
-                            if isinstance(target_name_raw, str):
-                                target_name: str = target_name_raw
-                            else:
-                                target_name = "device"
-
-                            gcdev_contingency = gcdev.Contingency(
-                                device=target_device,
-                                idtag=contingency_equipment.uuid,
-                                name=f"{contingency_name}::{target_name}",
-                                code=target_code,
-                                prop=ContingencyOperationTypes.Active,
-                                value=contingency_active_value,
-                                group=contingency_group,
-                                comment=contingency_comment
-                            )
-                            gcdev_model.add_contingency(gcdev_contingency)
-                            imported_contingency_count += 1
-
-    if imported_contingency_count > 0:
-        logger.add_info(
-            msg='Imported NCP contingencies',
-            value=imported_contingency_count,
-            expected_value=len(contingency_equipment_list),
-            comment=f"Skipped={skipped_contingency_count}"
-        )
-    else:
-        pass
+    ncp_contingencies.get_gcdev_contingencies(
+        cgmes_model=cgmes_model,
+        gcdev_model=gcdev_model,
+        logger=logger
+    )
 
 
 def get_ncp_remedial_action_objects(cgmes_model: CgmesCircuit) -> List[CGMES_ASSETS]:
@@ -1171,33 +965,7 @@ def get_ncp_remedial_action_objects(cgmes_model: CgmesCircuit) -> List[CGMES_ASS
     :param cgmes_model: CGMES model.
     :return: De-duplicated remedial action object list.
     """
-    remedial_objects: List[CGMES_ASSETS] = list()
-    remedial_by_uuid: Dict[str, CGMES_ASSETS] = dict()
-    remedial_lists: List[List[CGMES_ASSETS]] = list()
-
-    # Stage 1: collect all remedial-action class lists that can represent the root remedial object.
-    remedial_lists.append(cgmes_model.cgmes_assets.RemedialAction_list)
-    remedial_lists.append(cgmes_model.cgmes_assets.GridStateAlterationRemedialAction_list)
-    remedial_lists.append(cgmes_model.cgmes_assets.SchemeRemedialAction_list)
-    remedial_lists.append(cgmes_model.cgmes_assets.PowerRemedialAction_list)
-    remedial_lists.append(cgmes_model.cgmes_assets.CountertradeRemedialAction_list)
-    remedial_lists.append(cgmes_model.cgmes_assets.RedispatchRemedialAction_list)
-    remedial_lists.append(cgmes_model.cgmes_assets.AvailabilityRemedialAction_list)
-
-    # Stage 2: de-duplicate by UUID because one instance can be reachable via base+derived lists.
-    for remedial_list in remedial_lists:
-        for remedial_action in remedial_list:
-            remedial_uuid: str = remedial_action.uuid
-            if remedial_uuid in remedial_by_uuid:
-                pass
-            else:
-                remedial_by_uuid[remedial_uuid] = remedial_action
-
-    # Stage 3: keep deterministic insertion order from the dictionary values.
-    for remedial_action in remedial_by_uuid.values():
-        remedial_objects.append(remedial_action)
-
-    return remedial_objects
+    return ncp_remedials.get_ncp_remedial_action_objects(cgmes_model=cgmes_model)
 
 
 def build_remedial_action_to_contingency_lookup(cgmes_model: CgmesCircuit,
@@ -1213,65 +981,10 @@ def build_remedial_action_to_contingency_lookup(cgmes_model: CgmesCircuit,
     :param logger: Data logger.
     :return: Dictionary keyed by remedial action UUID with contingency UUID values.
     """
-    remedial_to_contingency: Dict[str, str] = dict()
-
-    # Stage 1: use explicit RA schedule linking when available.
-    for remedial_schedule in cgmes_model.cgmes_assets.RemedialActionSchedule_list:
-        remedial_action_ref: object = remedial_schedule.RemedialAction
-        contingency_ref: object = remedial_schedule.Contingency
-
-        if remedial_action_ref is None or isinstance(remedial_action_ref, str):
-            pass
-        else:
-            if contingency_ref is None or isinstance(contingency_ref, str):
-                pass
-            else:
-                remedial_uuid: str = remedial_action_ref.uuid
-                contingency_uuid: str = contingency_ref.uuid
-                mapped_contingency_uuid: str | None = remedial_to_contingency.get(remedial_uuid, None)
-                if mapped_contingency_uuid is None:
-                    remedial_to_contingency[remedial_uuid] = contingency_uuid
-                elif mapped_contingency_uuid == contingency_uuid:
-                    pass
-                else:
-                    logger.add_warning(
-                        msg='Conflicting contingency links for remedial action',
-                        device=remedial_schedule.rdfid,
-                        device_class=remedial_schedule.tpe,
-                        device_property='RemedialActionSchedule.Contingency',
-                        value=contingency_uuid,
-                        expected_value=mapped_contingency_uuid
-                    )
-
-    # Stage 2: enrich from ContingencyWithRemedialAction relation for cases without schedule link.
-    for contingency_with_remedial in cgmes_model.cgmes_assets.ContingencyWithRemedialAction_list:
-        remedial_action_ref = contingency_with_remedial.RemedialAction
-        contingency_ref = contingency_with_remedial.Contingency
-
-        if remedial_action_ref is None or isinstance(remedial_action_ref, str):
-            pass
-        else:
-            if contingency_ref is None or isinstance(contingency_ref, str):
-                pass
-            else:
-                remedial_uuid = remedial_action_ref.uuid
-                contingency_uuid = contingency_ref.uuid
-                mapped_contingency_uuid = remedial_to_contingency.get(remedial_uuid, None)
-                if mapped_contingency_uuid is None:
-                    remedial_to_contingency[remedial_uuid] = contingency_uuid
-                elif mapped_contingency_uuid == contingency_uuid:
-                    pass
-                else:
-                    logger.add_warning(
-                        msg='Conflicting contingency links for remedial action',
-                        device=contingency_with_remedial.rdfid,
-                        device_class=contingency_with_remedial.tpe,
-                        device_property='ContingencyWithRemedialAction.Contingency',
-                        value=contingency_uuid,
-                        expected_value=mapped_contingency_uuid
-                    )
-
-    return remedial_to_contingency
+    return ncp_remedials.build_remedial_action_to_contingency_lookup(
+        cgmes_model=cgmes_model,
+        logger=logger
+    )
 
 
 def normalize_property_reference_text(property_reference: str | None) -> str:
@@ -1281,10 +994,7 @@ def normalize_property_reference_text(property_reference: str | None) -> str:
     :param property_reference: Raw property-reference value.
     :return: Lower-case normalized string.
     """
-    if property_reference is None:
-        return ""
-    else:
-        return str(property_reference).strip().lower()
+    return ncp_remedials.normalize_property_reference_text(property_reference=property_reference)
 
 
 def collect_grid_state_range_constraints(grid_state_action: CGMES_ASSETS) -> List[CGMES_ASSETS]:
@@ -1294,25 +1004,7 @@ def collect_grid_state_range_constraints(grid_state_action: CGMES_ASSETS) -> Lis
     :param grid_state_action: NCP GridStateAlteration-derived object.
     :return: List of linked RangeConstraint objects.
     """
-    collected_constraints: List[CGMES_ASSETS] = list()
-    range_constraint_ref: object = grid_state_action.RangeConstraint
-
-    if range_constraint_ref is None:
-        pass
-    elif isinstance(range_constraint_ref, list):
-        for constraint_item in range_constraint_ref:
-            if constraint_item is None:
-                pass
-            elif isinstance(constraint_item, str):
-                pass
-            else:
-                collected_constraints.append(constraint_item)
-    elif isinstance(range_constraint_ref, str):
-        pass
-    else:
-        collected_constraints.append(range_constraint_ref)
-
-    return collected_constraints
+    return ncp_remedials.collect_grid_state_range_constraints(grid_state_action=grid_state_action)
 
 
 def map_topology_action_to_active_value(topology_action: CGMES_ASSETS,
@@ -1330,47 +1022,10 @@ def map_topology_action_to_active_value(topology_action: CGMES_ASSETS,
     :param logger: Data logger.
     :return: Active value (0.0 or 1.0) or None when unsupported.
     """
-    property_reference_text: str = normalize_property_reference_text(topology_action.PropertyReference)
-    if "switch.open" in property_reference_text:
-        switch_open_target: bool = True
-        range_constraints: List[CGMES_ASSETS] = collect_grid_state_range_constraints(
-            grid_state_action=topology_action
-        )
-
-        # Stage 1: derive target open-state from numeric range values when available.
-        for range_constraint in range_constraints:
-            range_value_candidate: float | None = None
-            if isinstance(range_constraint.value, (float, int)):
-                range_value_candidate = float(range_constraint.value)
-            elif isinstance(range_constraint.normalValue, (float, int)):
-                range_value_candidate = float(range_constraint.normalValue)
-            else:
-                pass
-
-            if range_value_candidate is None:
-                pass
-            elif range_value_candidate >= 0.5:
-                switch_open_target = True
-                break
-            else:
-                switch_open_target = False
-                break
-
-        # Stage 2: convert switch-open command into device active state.
-        if switch_open_target:
-            return 0.0
-        else:
-            return 1.0
-    else:
-        logger.add_warning(
-            msg='Unsupported topology action property reference',
-            device=topology_action.rdfid,
-            device_class=topology_action.tpe,
-            device_property='PropertyReference',
-            value=topology_action.PropertyReference,
-            expected_value='.../Switch.open'
-        )
-        return None
+    return ncp_remedials.map_topology_action_to_active_value(
+        topology_action=topology_action,
+        logger=logger
+    )
 
 
 def get_gcdev_remedial_actions(cgmes_model: CgmesCircuit,
@@ -1390,159 +1045,11 @@ def get_gcdev_remedial_actions(cgmes_model: CgmesCircuit,
     :param logger: Data logger.
     :return: Nothing.
     """
-    remedial_objects: List[CGMES_ASSETS] = get_ncp_remedial_action_objects(cgmes_model=cgmes_model)
-    topology_action_list: List[CGMES_ASSETS] = cgmes_model.cgmes_assets.TopologyAction_list
-
-    if len(remedial_objects) == 0 or len(topology_action_list) == 0:
-        return
-    else:
-        pass
-
-    device_lookup: Dict[str, object] = build_contingency_device_lookup(gcdev_model=gcdev_model)
-    remedial_to_contingency: Dict[str, str] = build_remedial_action_to_contingency_lookup(
+    ncp_remedials.get_gcdev_remedial_actions(
         cgmes_model=cgmes_model,
+        gcdev_model=gcdev_model,
         logger=logger
     )
-    contingency_group_lookup: Dict[str, gcdev.ContingencyGroup] = dict()
-    for contingency_group in gcdev_model.contingency_groups:
-        contingency_group_lookup[contingency_group.idtag] = contingency_group
-
-    remedial_group_lookup: Dict[str, gcdev.RemedialActionGroup] = dict()
-    imported_remedial_action_count: int = 0
-    skipped_remedial_action_count: int = 0
-    processed_topology_action_uuid: set[str] = set()
-
-    # Stage 1: each TopologyAction contributes one VeraGrid remedial action.
-    for topology_action in topology_action_list:
-        topology_action_uuid: str = topology_action.uuid
-        if topology_action_uuid in processed_topology_action_uuid:
-            pass
-        else:
-            processed_topology_action_uuid.add(topology_action_uuid)
-
-            remedial_action_ref: object = topology_action.GridStateAlterationRemedialAction
-            if remedial_action_ref is None or isinstance(remedial_action_ref, str):
-                skipped_remedial_action_count += 1
-                logger.add_warning(
-                    msg='TopologyAction without resolved GridStateAlterationRemedialAction reference',
-                    device=topology_action.rdfid,
-                    device_class=topology_action.tpe,
-                    device_property='GridStateAlterationRemedialAction',
-                    value=remedial_action_ref,
-                    expected_value='resolved object'
-                )
-            else:
-                switch_ref: object = topology_action.Switch
-                if switch_ref is None or isinstance(switch_ref, str):
-                    skipped_remedial_action_count += 1
-                    logger.add_warning(
-                        msg='TopologyAction without resolved Switch reference',
-                        device=topology_action.rdfid,
-                        device_class=topology_action.tpe,
-                        device_property='Switch',
-                        value=switch_ref,
-                        expected_value='resolved object'
-                    )
-                else:
-                    target_device: object | None = device_lookup.get(switch_ref.uuid, None)
-                    if target_device is None:
-                        skipped_remedial_action_count += 1
-                        logger.add_warning(
-                            msg='Remedial action target switch not imported as a contingency-capable VeraGrid device',
-                            device=topology_action.rdfid,
-                            device_class=topology_action.tpe,
-                            device_property='Switch.uuid',
-                            value=switch_ref.uuid
-                        )
-                    else:
-                        remedial_value: float | None = map_topology_action_to_active_value(
-                            topology_action=topology_action,
-                            logger=logger
-                        )
-                        if remedial_value is None:
-                            skipped_remedial_action_count += 1
-                        else:
-                            remedial_uuid: str = remedial_action_ref.uuid
-                            remedial_group: gcdev.RemedialActionGroup | None = remedial_group_lookup.get(
-                                remedial_uuid, None
-                            )
-                            if remedial_group is None:
-                                remedial_name: str = remedial_action_ref.name
-                                if len(remedial_name) > 0:
-                                    pass
-                                else:
-                                    remedial_name = remedial_uuid
-
-                                remedial_category: str = remedial_action_ref.tpe
-                                if isinstance(remedial_action_ref.kind, str) and len(remedial_action_ref.kind) > 0:
-                                    remedial_category = f"{remedial_action_ref.tpe}:{remedial_action_ref.kind}"
-                                else:
-                                    pass
-
-                                contingency_uuid: str | None = remedial_to_contingency.get(remedial_uuid, None)
-                                if contingency_uuid is None:
-                                    linked_contingency_group: gcdev.ContingencyGroup | None = None
-                                else:
-                                    linked_contingency_group = contingency_group_lookup.get(contingency_uuid, None)
-
-                                remedial_group = gcdev.RemedialActionGroup(
-                                    idtag=remedial_uuid,
-                                    name=remedial_name,
-                                    category=remedial_category,
-                                    conn_group=linked_contingency_group
-                                )
-                                gcdev_model.add_remedial_action_group(remedial_group)
-                                remedial_group_lookup[remedial_uuid] = remedial_group
-                            else:
-                                pass
-
-                            target_device_code_raw: object = target_device.code
-                            if isinstance(target_device_code_raw, str):
-                                target_device_code: str = target_device_code_raw
-                            else:
-                                target_device_code = ""
-
-                            target_device_name_raw: object = target_device.name
-                            if isinstance(target_device_name_raw, str) and len(target_device_name_raw) > 0:
-                                target_device_name: str = target_device_name_raw
-                            else:
-                                target_device_name = "switch"
-
-                            if isinstance(topology_action.description, str):
-                                remedial_comment: str = topology_action.description
-                            elif isinstance(remedial_action_ref.description, str):
-                                remedial_comment = remedial_action_ref.description
-                            else:
-                                remedial_comment = ""
-
-                            topology_action_name: str = topology_action.name
-                            if len(topology_action_name) > 0:
-                                remedial_action_name: str = topology_action_name
-                            else:
-                                remedial_action_name = f"{remedial_group.name}::{target_device_name}"
-
-                            gcdev_remedial_action = gcdev.RemedialAction(
-                                device=target_device,
-                                idtag=topology_action_uuid,
-                                name=remedial_action_name,
-                                code=target_device_code,
-                                prop=ContingencyOperationTypes.Active,
-                                value=remedial_value,
-                                group=remedial_group,
-                                comment=remedial_comment
-                            )
-                            gcdev_model.add_remedial_action(gcdev_remedial_action)
-                            imported_remedial_action_count += 1
-
-    if imported_remedial_action_count > 0:
-        logger.add_info(
-            msg='Imported NCP remedial actions (TopologyAction subset)',
-            value=imported_remedial_action_count,
-            expected_value=len(topology_action_list),
-            comment=f"Skipped={skipped_remedial_action_count}"
-        )
-    else:
-        pass
 
 
 def parse_ncp_time_to_utc_timestamp(raw_time: str | None,
@@ -1556,33 +1063,23 @@ def parse_ncp_time_to_utc_timestamp(raw_time: str | None,
     :param source_object: Source CGMES object for diagnostics.
     :return: Parsed UTC timestamp or ``None``.
     """
-    if raw_time is None:
-        return None
-    else:
-        pass
+    return ncp_instructions.parse_ncp_time_to_utc_timestamp(
+        raw_time=raw_time,
+        logger=logger,
+        source_object=source_object
+    )
 
-    parsed_time: pd.Timestamp | None = None
-    parsed_candidate = pd.to_datetime(raw_time, utc=True, errors='coerce')
-    if pd.isna(parsed_candidate):
-        if source_object is None:
-            logger.add_warning(
-                msg='Invalid NCP time point ignored',
-                device_class='NCP',
-                device_property='atTime',
-                value=raw_time
-            )
-        else:
-            logger.add_warning(
-                msg='Invalid NCP time point ignored',
-                device=source_object.rdfid,
-                device_class=source_object.tpe,
-                device_property='atTime',
-                value=raw_time
-            )
-    else:
-        parsed_time = pd.Timestamp(parsed_candidate)
 
-    return parsed_time
+def parse_ncp_bool(raw_value: object) -> bool | None:
+    """
+    Parse one NCP boolean candidate value.
+
+    The parser accepts canonical bool values and common string encodings.
+
+    :param raw_value: Raw boolean candidate.
+    :return: Parsed bool or ``None`` when not parseable.
+    """
+    return ncp_availability.parse_ncp_bool(raw_value=raw_value)
 
 
 def collect_ncp_ps_sis_timestamps(cgmes_model: CgmesCircuit,
@@ -1594,33 +1091,26 @@ def collect_ncp_ps_sis_timestamps(cgmes_model: CgmesCircuit,
     :param logger: Data logger.
     :return: List of parsed UTC timestamps.
     """
-    collected_timestamps: List[pd.Timestamp] = list()
+    return ncp_instructions.collect_ncp_ps_sis_timestamps(
+        cgmes_model=cgmes_model,
+        logger=logger
+    )
 
-    # Stage 1: collect PowerSchedule timestamps from PowerTimePoint objects.
-    for power_time_point in cgmes_model.cgmes_assets.PowerTimePoint_list:
-        parsed_time: pd.Timestamp | None = parse_ncp_time_to_utc_timestamp(
-            raw_time=power_time_point.atTime,
-            logger=logger,
-            source_object=power_time_point
-        )
-        if parsed_time is None:
-            pass
-        else:
-            collected_timestamps.append(parsed_time)
 
-    # Stage 2: collect StateInstructionSchedule timestamps from GridStateAlterationTimePoint objects.
-    for grid_state_time_point in cgmes_model.cgmes_assets.GridStateAlterationTimePoint_list:
-        parsed_time = parse_ncp_time_to_utc_timestamp(
-            raw_time=grid_state_time_point.atTime,
-            logger=logger,
-            source_object=grid_state_time_point
-        )
-        if parsed_time is None:
-            pass
-        else:
-            collected_timestamps.append(parsed_time)
+def collect_ncp_availability_timestamps(cgmes_model: CgmesCircuit,
+                                        logger: DataLogger) -> List[pd.Timestamp]:
+    """
+    Collect availability schedule timestamps from NCP EventTimePoint objects.
 
-    return collected_timestamps
+    :param cgmes_model: CGMES model.
+    :param logger: Data logger.
+    :return: List of parsed UTC timestamps.
+    """
+    return ncp_instructions.collect_ncp_availability_timestamps(
+        cgmes_model=cgmes_model,
+        logger=logger,
+        parse_time_to_utc_timestamp=parse_ncp_time_to_utc_timestamp
+    )
 
 
 def build_time_index_lookup_from_profile(time_profile: pd.DatetimeIndex) -> Dict[int, int]:
@@ -1630,14 +1120,7 @@ def build_time_index_lookup_from_profile(time_profile: pd.DatetimeIndex) -> Dict
     :param time_profile: Grid time profile.
     :return: Mapping from nanoseconds since epoch to profile index.
     """
-    time_lookup: Dict[int, int] = dict()
-    for time_index, timestamp in enumerate(time_profile):
-        timestamp_ns: int = int(pd.Timestamp(timestamp).value)
-        if timestamp_ns in time_lookup:
-            pass
-        else:
-            time_lookup[timestamp_ns] = int(time_index)
-    return time_lookup
+    return ncp_instructions.build_time_index_lookup_from_profile(time_profile=time_profile)
 
 
 def get_first_resolved_cgmes_reference(reference: object) -> object | None:
@@ -1651,21 +1134,21 @@ def get_first_resolved_cgmes_reference(reference: object) -> object | None:
     :param reference: Raw CGMES relation value.
     :return: First resolved object reference or ``None``.
     """
-    if reference is None:
-        return None
-    elif isinstance(reference, str):
-        return None
-    elif isinstance(reference, list):
-        for reference_item in reference:
-            if reference_item is None:
-                pass
-            elif isinstance(reference_item, str):
-                pass
-            else:
-                return reference_item
-        return None
-    else:
-        return reference
+    return ncp_instructions.get_first_resolved_cgmes_reference(reference=reference)
+
+
+def get_resolved_cgmes_reference_list(reference: object) -> List[object]:
+    """
+    Resolve every object reference from one CGMES relation field.
+
+    CGMES relation fields can contain one object, a list of objects, unresolved
+    strings, or ``None``. This helper returns only resolved object references and
+    keeps deterministic order for stable conversion behavior.
+
+    :param reference: Raw CGMES relation value.
+    :return: List of resolved object references.
+    """
+    return ncp_availability.get_resolved_cgmes_reference_list(reference=reference)
 
 
 def get_first_resolved_cgmes_reference_uuid(reference: object) -> str | None:
@@ -1675,11 +1158,7 @@ def get_first_resolved_cgmes_reference_uuid(reference: object) -> str | None:
     :param reference: Raw CGMES relation value.
     :return: UUID of the first resolved object or ``None``.
     """
-    resolved_reference: object | None = get_first_resolved_cgmes_reference(reference=reference)
-    if resolved_reference is None:
-        return None
-    else:
-        return resolved_reference.uuid
+    return ncp_instructions.get_first_resolved_cgmes_reference_uuid(reference=reference)
 
 
 def ensure_ncp_instruction_time_profile(gcdev_model: MultiCircuit,
@@ -1693,48 +1172,11 @@ def ensure_ncp_instruction_time_profile(gcdev_model: MultiCircuit,
     :param logger: Data logger.
     :return: Nanosecond-timestamp to profile-index mapping.
     """
-    if len(timestamps) == 0:
-        return dict()
-    else:
-        pass
-
-    # Stage 1: normalize all incoming timestamps to a unique sorted UTC index.
-    timestamp_ns_set: set[int] = set()
-    for timestamp in timestamps:
-        timestamp_ns_set.add(int(timestamp.value))
-
-    normalized_ns_values: List[int] = sorted(list(timestamp_ns_set))
-    normalized_new_index: pd.DatetimeIndex = pd.to_datetime(
-        np.array(normalized_ns_values, dtype=np.int64),
-        utc=True
+    return ncp_instructions.ensure_ncp_instruction_time_profile(
+        gcdev_model=gcdev_model,
+        timestamps=timestamps,
+        logger=logger
     )
-
-    # Stage 2: merge with any existing time profile already present in the model.
-    existing_time_profile: pd.DatetimeIndex | None = gcdev_model.time_profile
-    if existing_time_profile is None:
-        combined_index: pd.DatetimeIndex = normalized_new_index
-    elif len(existing_time_profile) == 0:
-        combined_index = normalized_new_index
-    else:
-        merged_ns_set: set[int] = set()
-        for timestamp in existing_time_profile:
-            merged_ns_set.add(int(pd.Timestamp(timestamp).value))
-        for timestamp in normalized_new_index:
-            merged_ns_set.add(int(pd.Timestamp(timestamp).value))
-
-        merged_ns_values: List[int] = sorted(list(merged_ns_set))
-        combined_index = pd.to_datetime(np.array(merged_ns_values, dtype=np.int64), utc=True)
-
-    # Stage 3: allocate profiles for every device using the merged index.
-    gcdev_model.format_profiles(index=combined_index)
-
-    logger.add_info(
-        msg='Initialized VeraGrid profiles for NCP PS/SIS instructions',
-        value=len(normalized_new_index),
-        expected_value=len(combined_index)
-    )
-
-    return build_time_index_lookup_from_profile(time_profile=combined_index)
 
 
 def build_ncp_instruction_device_lookup(cgmes_model: CgmesCircuit,
@@ -1752,96 +1194,10 @@ def build_ncp_instruction_device_lookup(cgmes_model: CgmesCircuit,
     :param gcdev_model: VeraGrid model.
     :return: Device lookup dictionary.
     """
-    device_lookup: Dict[str, object] = build_contingency_device_lookup(gcdev_model=gcdev_model)
-
-    # Stage 1: map GeneratingUnit UUIDs to imported Generator devices.
-    for synchronous_machine in cgmes_model.cgmes_assets.SynchronousMachine_list:
-        generating_unit_uuid: str | None = get_first_resolved_cgmes_reference_uuid(
-            reference=synchronous_machine.GeneratingUnit
-        )
-        if generating_unit_uuid is None:
-            pass
-        else:
-            generator_device: object | None = device_lookup.get(synchronous_machine.uuid, None)
-            if generator_device is None:
-                pass
-            else:
-                if generating_unit_uuid in device_lookup:
-                    pass
-                else:
-                    device_lookup[generating_unit_uuid] = generator_device
-
-    # Stage 2: map RegulatingControl UUIDs to controlled equipment devices.
-    for regulating_control in cgmes_model.cgmes_assets.RegulatingControl_list:
-        controlled_equipment_uuid: str | None = None
-
-        regulating_cond_eq_uuid: str | None = get_first_resolved_cgmes_reference_uuid(
-            reference=regulating_control.RegulatingCondEq
-        )
-        if regulating_cond_eq_uuid is None:
-            terminal_ref: object | None = get_first_resolved_cgmes_reference(
-                reference=regulating_control.Terminal
-            )
-            if terminal_ref is None:
-                pass
-            else:
-                controlled_equipment_uuid = get_first_resolved_cgmes_reference_uuid(
-                    reference=terminal_ref.ConductingEquipment
-                )
-        else:
-            controlled_equipment_uuid = regulating_cond_eq_uuid
-
-        if controlled_equipment_uuid is None:
-            pass
-        else:
-            controlled_device: object | None = device_lookup.get(controlled_equipment_uuid, None)
-            if controlled_device is None:
-                pass
-            else:
-                if regulating_control.uuid in device_lookup:
-                    pass
-                else:
-                    device_lookup[regulating_control.uuid] = controlled_device
-
-    # Stage 3: map TapChanger UUIDs to imported transformer devices.
-    tap_changer_lists: List[List[CGMES_ASSETS]] = list()
-    if cgmes_model.cgmes_version == CGMESVersions.v3_0_0:
-        tap_changer_lists.append(cgmes_model.cgmes_assets.RatioTapChanger_list)
-        tap_changer_lists.append(cgmes_model.cgmes_assets.PhaseTapChanger_list)
-        tap_changer_lists.append(cgmes_model.cgmes_assets.PhaseTapChangerAsymmetrical_list)
-        tap_changer_lists.append(cgmes_model.cgmes_assets.PhaseTapChangerLinear_list)
-        tap_changer_lists.append(cgmes_model.cgmes_assets.PhaseTapChangerNonLinear_list)
-        tap_changer_lists.append(cgmes_model.cgmes_assets.PhaseTapChangerSymmetrical_list)
-        tap_changer_lists.append(cgmes_model.cgmes_assets.PhaseTapChangerTabular_list)
-    else:
-        pass
-
-    for tap_changer_list in tap_changer_lists:
-        for tap_changer in tap_changer_list:
-            transformer_uuid: str | None = None
-            transformer_end_ref: object | None = get_first_resolved_cgmes_reference(
-                reference=tap_changer.TransformerEnd
-            )
-            if transformer_end_ref is None:
-                pass
-            else:
-                transformer_uuid = get_first_resolved_cgmes_reference_uuid(
-                    reference=transformer_end_ref.PowerTransformer
-                )
-
-            if transformer_uuid is None:
-                pass
-            else:
-                transformer_device: object | None = device_lookup.get(transformer_uuid, None)
-                if transformer_device is None:
-                    pass
-                else:
-                    if tap_changer.uuid in device_lookup:
-                        pass
-                    else:
-                        device_lookup[tap_changer.uuid] = transformer_device
-
-    return device_lookup
+    return ncp_instructions.build_ncp_instruction_device_lookup(
+        cgmes_model=cgmes_model,
+        gcdev_model=gcdev_model
+    )
 
 
 def resolve_power_schedule_target_devices(power_schedule: CGMES_ASSETS,
@@ -1853,50 +1209,10 @@ def resolve_power_schedule_target_devices(power_schedule: CGMES_ASSETS,
     :param device_lookup: CGMES UUID to VeraGrid device lookup.
     :return: Ordered unique list of target devices.
     """
-    target_devices: List[object] = list()
-    seen_device_idtags: set[str] = set()
-
-    candidate_references: List[object] = list()
-    candidate_references.append(power_schedule.GeneratingUnit)
-    candidate_references.append(power_schedule.EquivalentInjection)
-    candidate_references.append(power_schedule.EnergyConnection)
-    candidate_references.append(power_schedule.HydroPump)
-    candidate_references.append(power_schedule.PowerElectronicsUnit)
-
-    for candidate_reference in candidate_references:
-        if candidate_reference is None:
-            pass
-        elif isinstance(candidate_reference, list):
-            for candidate_reference_item in candidate_reference:
-                if candidate_reference_item is None or isinstance(candidate_reference_item, str):
-                    pass
-                else:
-                    target_device: object | None = device_lookup.get(candidate_reference_item.uuid, None)
-                    if target_device is None:
-                        pass
-                    else:
-                        target_device_idtag: str = target_device.idtag
-                        if target_device_idtag in seen_device_idtags:
-                            pass
-                        else:
-                            target_devices.append(target_device)
-                            seen_device_idtags.add(target_device_idtag)
-        else:
-            if isinstance(candidate_reference, str):
-                target_device = None
-            else:
-                target_device = device_lookup.get(candidate_reference.uuid, None)
-            if target_device is None:
-                pass
-            else:
-                target_device_idtag: str = target_device.idtag
-                if target_device_idtag in seen_device_idtags:
-                    pass
-                else:
-                    target_devices.append(target_device)
-                    seen_device_idtags.add(target_device_idtag)
-
-    return target_devices
+    return ncp_instructions.resolve_power_schedule_target_devices(
+        power_schedule=power_schedule,
+        device_lookup=device_lookup
+    )
 
 
 def extract_grid_state_action_setpoint_value(grid_state_action: CGMES_ASSETS) -> float | None:
@@ -1910,25 +1226,7 @@ def extract_grid_state_action_setpoint_value(grid_state_action: CGMES_ASSETS) ->
     :param grid_state_action: NCP GridStateAlteration-derived action.
     :return: Numeric setpoint candidate or ``None``.
     """
-    resolved_value: float | None = None
-    range_constraints: List[CGMES_ASSETS] = collect_grid_state_range_constraints(
-        grid_state_action=grid_state_action
-    )
-
-    for range_constraint in range_constraints:
-        if isinstance(range_constraint.value, (float, int)):
-            resolved_value = float(range_constraint.value)
-        elif isinstance(range_constraint.normalValue, (float, int)):
-            resolved_value = float(range_constraint.normalValue)
-        else:
-            pass
-
-        if resolved_value is None:
-            pass
-        else:
-            break
-
-    return resolved_value
+    return ncp_instructions.extract_grid_state_action_setpoint_value(grid_state_action=grid_state_action)
 
 
 def resolve_grid_state_action_target_device(grid_state_action: CGMES_ASSETS,
@@ -1942,52 +1240,11 @@ def resolve_grid_state_action_target_device(grid_state_action: CGMES_ASSETS,
     :param logger: Data logger.
     :return: Target device or ``None``.
     """
-    target_reference: object | None = None
-
-    if grid_state_action.tpe == 'TopologyAction':
-        target_reference = grid_state_action.Switch
-    elif grid_state_action.tpe == 'RotatingMachineAction':
-        target_reference = grid_state_action.RotatingMachine
-    elif grid_state_action.tpe == 'RegulatingControlAction':
-        target_reference = grid_state_action.RegulatingControl
-    elif grid_state_action.tpe == 'EquivalentInjectionAction':
-        target_reference = grid_state_action.EquivalentInjection
-    elif grid_state_action.tpe == 'LoadAction':
-        target_reference = grid_state_action.EnergyConsumer
-    elif grid_state_action.tpe == 'TapPositionAction':
-        target_reference = grid_state_action.TapChanger
-    elif grid_state_action.tpe == 'StaticVarCompensatorAction':
-        target_reference = grid_state_action.StaticVarCompensator
-    else:
-        target_reference = None
-
-    if target_reference is None:
-        logger.add_warning(
-            msg='Unsupported NCP action type for SIS/SSI conversion',
-            device=grid_state_action.rdfid,
-            device_class=grid_state_action.tpe
-        )
-        return None
-    elif isinstance(target_reference, str):
-        logger.add_warning(
-            msg='NCP action target reference unresolved',
-            device=grid_state_action.rdfid,
-            device_class=grid_state_action.tpe,
-            value=target_reference
-        )
-        return None
-    else:
-        target_device: object | None = device_lookup.get(target_reference.uuid, None)
-        if target_device is None:
-            logger.add_warning(
-                msg='NCP action target not imported in VeraGrid model',
-                device=grid_state_action.rdfid,
-                device_class=grid_state_action.tpe,
-                value=target_reference.uuid
-            )
-            return None
-        else:
-            return target_device
+    return ncp_instructions.resolve_grid_state_action_target_device(
+        grid_state_action=grid_state_action,
+        device_lookup=device_lookup,
+        logger=logger
+    )
 
 
 def get_action_property_and_value(grid_state_action: CGMES_ASSETS,
@@ -1999,55 +1256,10 @@ def get_action_property_and_value(grid_state_action: CGMES_ASSETS,
     :param logger: Data logger.
     :return: Tuple (property_name, property_value) where each entry may be ``None``.
     """
-    property_reference_text: str = normalize_property_reference_text(grid_state_action.PropertyReference)
-    setpoint_value: float | None = extract_grid_state_action_setpoint_value(grid_state_action=grid_state_action)
-
-    if "switch.open" in property_reference_text:
-        switch_open_target: bool = True
-        if setpoint_value is None:
-            pass
-        elif setpoint_value >= 0.5:
-            switch_open_target = True
-        else:
-            switch_open_target = False
-
-        if switch_open_target:
-            return "active", 0.0
-        else:
-            return "active", 1.0
-
-    elif "rotatingmachine.p" in property_reference_text:
-        return "P", setpoint_value
-    elif "rotatingmachine.q" in property_reference_text:
-        return "Q", setpoint_value
-    elif "regulatingcontrol.targetvalue" in property_reference_text:
-        return "Vset", setpoint_value
-    elif "equivalentinjection.p" in property_reference_text:
-        return "P", setpoint_value
-    elif "equivalentinjection.q" in property_reference_text:
-        return "Q", setpoint_value
-    elif "energyconsumer.p" in property_reference_text:
-        return "P", setpoint_value
-    elif "energyconsumer.q" in property_reference_text:
-        return "Q", setpoint_value
-    elif "tapchanger.step" in property_reference_text:
-        logger.add_warning(
-            msg='TapChanger step action is not converted yet in SIS/SSI conversion',
-            device=grid_state_action.rdfid,
-            device_class=grid_state_action.tpe,
-            device_property='PropertyReference',
-            value=grid_state_action.PropertyReference
-        )
-        return None, None
-    else:
-        logger.add_warning(
-            msg='Unsupported PropertyReference in SIS/SSI conversion',
-            device=grid_state_action.rdfid,
-            device_class=grid_state_action.tpe,
-            device_property='PropertyReference',
-            value=grid_state_action.PropertyReference
-        )
-        return None, None
+    return ncp_instructions.get_action_property_and_value(
+        grid_state_action=grid_state_action,
+        logger=logger
+    )
 
 
 def set_device_property_at_time(target_device: object,
@@ -2067,23 +1279,14 @@ def set_device_property_at_time(target_device: object,
     :param logger: Data logger.
     :return: ``True`` when assignment succeeded.
     """
-    registered_property = target_device.registered_properties.get(property_name, None)
-    if registered_property is None:
-        logger.add_warning(
-            msg='Target device does not expose requested NCP property',
-            device=source_action.rdfid,
-            device_class=source_action.tpe,
-            device_property=property_name,
-            value=target_device.idtag
-        )
-        return False
-    else:
-        target_device.set_property_value(
-            prop=registered_property,
-            value=property_value,
-            t_idx=time_index
-        )
-        return True
+    return ncp_instructions.set_device_property_at_time(
+        target_device=target_device,
+        property_name=property_name,
+        property_value=property_value,
+        time_index=time_index,
+        source_action=source_action,
+        logger=logger
+    )
 
 
 def apply_power_schedule_profiles(cgmes_model: CgmesCircuit,
@@ -2101,99 +1304,13 @@ def apply_power_schedule_profiles(cgmes_model: CgmesCircuit,
     :param logger: Data logger.
     :return: Number of successful profile assignments.
     """
-    applied_assignment_count: int = 0
-
-    for power_time_point in cgmes_model.cgmes_assets.PowerTimePoint_list:
-        parsed_time: pd.Timestamp | None = parse_ncp_time_to_utc_timestamp(
-            raw_time=power_time_point.atTime,
-            logger=logger,
-            source_object=power_time_point
-        )
-        if parsed_time is None:
-            pass
-        else:
-            time_index: int | None = time_index_lookup.get(int(parsed_time.value), None)
-            if time_index is None:
-                logger.add_warning(
-                    msg='PowerTimePoint timestamp not found in initialized profile',
-                    device=power_time_point.rdfid,
-                    device_class=power_time_point.tpe,
-                    device_property='atTime',
-                    value=power_time_point.atTime
-                )
-            else:
-                power_schedule_ref: object = power_time_point.PowerSchedule
-                if power_schedule_ref is None or isinstance(power_schedule_ref, str):
-                    logger.add_warning(
-                        msg='PowerTimePoint without resolved PowerSchedule reference',
-                        device=power_time_point.rdfid,
-                        device_class=power_time_point.tpe,
-                        device_property='PowerSchedule',
-                        value=power_schedule_ref
-                    )
-                else:
-                    target_devices: List[object] = resolve_power_schedule_target_devices(
-                        power_schedule=power_schedule_ref,
-                        device_lookup=device_lookup
-                    )
-                    if len(target_devices) == 0:
-                        logger.add_warning(
-                            msg='PowerSchedule target devices not imported',
-                            device=power_schedule_ref.rdfid,
-                            device_class=power_schedule_ref.tpe
-                        )
-                    else:
-                        p_value_raw: float | None = None
-                        if isinstance(power_time_point.activatedP, (float, int)):
-                            p_value_raw = float(power_time_point.activatedP)
-                        elif isinstance(power_time_point.p, (float, int)):
-                            p_value_raw = float(power_time_point.p)
-                        else:
-                            pass
-
-                        q_value_raw: float | None = None
-                        if isinstance(power_time_point.activatedQ, (float, int)):
-                            q_value_raw = float(power_time_point.activatedQ)
-                        elif isinstance(power_time_point.q, (float, int)):
-                            q_value_raw = float(power_time_point.q)
-                        else:
-                            pass
-
-                        for target_device in target_devices:
-                            if p_value_raw is None:
-                                pass
-                            else:
-                                if isinstance(target_device, gcdev.Generator):
-                                    p_value_to_apply: float = -float(p_value_raw)
-                                else:
-                                    p_value_to_apply = float(p_value_raw)
-
-                                if set_device_property_at_time(
-                                        target_device=target_device,
-                                        property_name='P',
-                                        property_value=p_value_to_apply,
-                                        time_index=time_index,
-                                        source_action=power_time_point,
-                                        logger=logger):
-                                    applied_assignment_count += 1
-                                else:
-                                    pass
-
-                            if q_value_raw is None:
-                                pass
-                            else:
-                                if set_device_property_at_time(
-                                        target_device=target_device,
-                                        property_name='Q',
-                                        property_value=float(q_value_raw),
-                                        time_index=time_index,
-                                        source_action=power_time_point,
-                                        logger=logger):
-                                    applied_assignment_count += 1
-                                else:
-                                    pass
-
-    return applied_assignment_count
+    return ncp_instructions.apply_power_schedule_profiles(
+        cgmes_model=cgmes_model,
+        gcdev_model=gcdev_model,
+        device_lookup=device_lookup,
+        time_index_lookup=time_index_lookup,
+        logger=logger
+    )
 
 
 def apply_sis_profiles(cgmes_model: CgmesCircuit,
@@ -2209,78 +1326,12 @@ def apply_sis_profiles(cgmes_model: CgmesCircuit,
     :param logger: Data logger.
     :return: Number of successful profile assignments.
     """
-    applied_assignment_count: int = 0
-
-    for grid_state_time_point in cgmes_model.cgmes_assets.GridStateAlterationTimePoint_list:
-        parsed_time: pd.Timestamp | None = parse_ncp_time_to_utc_timestamp(
-            raw_time=grid_state_time_point.atTime,
-            logger=logger,
-            source_object=grid_state_time_point
-        )
-        if parsed_time is None:
-            pass
-        else:
-            time_index: int | None = time_index_lookup.get(int(parsed_time.value), None)
-            if time_index is None:
-                logger.add_warning(
-                    msg='GridStateAlterationTimePoint timestamp not found in initialized profile',
-                    device=grid_state_time_point.rdfid,
-                    device_class=grid_state_time_point.tpe,
-                    device_property='atTime',
-                    value=grid_state_time_point.atTime
-                )
-            else:
-                if grid_state_time_point.enabled:
-                    grid_state_schedule_ref: object = grid_state_time_point.GridStateAlterationSchedule
-                    if grid_state_schedule_ref is None or isinstance(grid_state_schedule_ref, str):
-                        logger.add_warning(
-                            msg='GridStateAlterationTimePoint without resolved schedule reference',
-                            device=grid_state_time_point.rdfid,
-                            device_class=grid_state_time_point.tpe,
-                            device_property='GridStateAlterationSchedule'
-                        )
-                    else:
-                        grid_state_action_ref: object = grid_state_schedule_ref.GridStateAlteration
-                        if grid_state_action_ref is None or isinstance(grid_state_action_ref, str):
-                            logger.add_warning(
-                                msg='GridStateAlterationSchedule without resolved action reference',
-                                device=grid_state_schedule_ref.rdfid,
-                                device_class=grid_state_schedule_ref.tpe,
-                                device_property='GridStateAlteration'
-                            )
-                        else:
-                            property_name: str | None
-                            property_value: float | bool | None
-                            property_name, property_value = get_action_property_and_value(
-                                grid_state_action=grid_state_action_ref,
-                                logger=logger
-                            )
-                            if property_name is None or property_value is None:
-                                pass
-                            else:
-                                target_device: object | None = resolve_grid_state_action_target_device(
-                                    grid_state_action=grid_state_action_ref,
-                                    device_lookup=device_lookup,
-                                    logger=logger
-                                )
-                                if target_device is None:
-                                    pass
-                                else:
-                                    if set_device_property_at_time(
-                                            target_device=target_device,
-                                            property_name=property_name,
-                                            property_value=property_value,
-                                            time_index=time_index,
-                                            source_action=grid_state_action_ref,
-                                            logger=logger):
-                                        applied_assignment_count += 1
-                                    else:
-                                        pass
-                else:
-                    # SIS with enabled=False means no instruction is applied at this timestamp.
-                    pass
-
-    return applied_assignment_count
+    return ncp_instructions.apply_sis_profiles(
+        cgmes_model=cgmes_model,
+        device_lookup=device_lookup,
+        time_index_lookup=time_index_lookup,
+        logger=logger
+    )
 
 
 def apply_ssi_profiles(cgmes_model: CgmesCircuit,
@@ -2296,80 +1347,84 @@ def apply_ssi_profiles(cgmes_model: CgmesCircuit,
     :param logger: Data logger.
     :return: Number of successful assignments.
     """
-    applied_assignment_count: int = 0
-    action_lists: List[List[CGMES_ASSETS]] = list()
-    action_lists.append(cgmes_model.cgmes_assets.TopologyAction_list)
-    action_lists.append(cgmes_model.cgmes_assets.RotatingMachineAction_list)
-    action_lists.append(cgmes_model.cgmes_assets.RegulatingControlAction_list)
-    action_lists.append(cgmes_model.cgmes_assets.EquivalentInjectionAction_list)
-    action_lists.append(cgmes_model.cgmes_assets.LoadAction_list)
-    action_lists.append(cgmes_model.cgmes_assets.TapPositionAction_list)
-    action_lists.append(cgmes_model.cgmes_assets.StaticVarCompensatorAction_list)
+    return ncp_instructions.apply_ssi_profiles(
+        cgmes_model=cgmes_model,
+        gcdev_model=gcdev_model,
+        device_lookup=device_lookup,
+        logger=logger
+    )
 
-    deduplicated_actions: Dict[str, CGMES_ASSETS] = dict()
-    for action_list in action_lists:
-        for grid_state_action in action_list:
-            if grid_state_action.uuid in deduplicated_actions:
-                pass
-            else:
-                deduplicated_actions[grid_state_action.uuid] = grid_state_action
 
-    time_indices: List[int] = list()
-    if gcdev_model.time_profile is None:
-        pass
-    else:
-        for time_index in gcdev_model.get_all_time_indices():
-            time_indices.append(int(time_index))
+def get_event_time_point_sort_key(event_point: Tuple[pd.Timestamp, bool]) -> int:
+    """
+    Get sorting key for one event time point tuple.
 
-    for grid_state_action in deduplicated_actions.values():
-        if grid_state_action.enabled:
-            property_name: str | None
-            property_value: float | bool | None
-            property_name, property_value = get_action_property_and_value(
-                grid_state_action=grid_state_action,
-                logger=logger
-            )
-            if property_name is None or property_value is None:
-                pass
-            else:
-                target_device: object | None = resolve_grid_state_action_target_device(
-                    grid_state_action=grid_state_action,
-                    device_lookup=device_lookup,
-                    logger=logger
-                )
-                if target_device is None:
-                    pass
-                else:
-                    if set_device_property_at_time(
-                            target_device=target_device,
-                            property_name=property_name,
-                            property_value=property_value,
-                            time_index=None,
-                            source_action=grid_state_action,
-                            logger=logger):
-                        applied_assignment_count += 1
-                    else:
-                        pass
+    :param event_point: Tuple with timestamp and active state.
+    :return: Nanoseconds since epoch used for chronological sorting.
+    """
+    return ncp_availability.get_event_time_point_sort_key(event_point=event_point)
 
-                    if len(time_indices) > 0:
-                        for time_index in time_indices:
-                            if set_device_property_at_time(
-                                    target_device=target_device,
-                                    property_name=property_name,
-                                    property_value=property_value,
-                                    time_index=time_index,
-                                    source_action=grid_state_action,
-                                    logger=logger):
-                                applied_assignment_count += 1
-                            else:
-                                pass
-                    else:
-                        pass
-        else:
-            # SSI only applies actions explicitly marked as enabled.
-            pass
 
-    return applied_assignment_count
+def build_event_schedule_timepoints_lookup(cgmes_model: CgmesCircuit) -> Dict[str, List[CGMES_ASSETS]]:
+    """
+    Build EventSchedule UUID to EventTimePoint list mapping.
+
+    :param cgmes_model: CGMES model.
+    :return: Dictionary keyed by EventSchedule UUID.
+    """
+    return ncp_availability.build_event_schedule_timepoints_lookup(
+        cgmes_model=cgmes_model,
+        get_first_resolved_reference=get_first_resolved_cgmes_reference
+    )
+
+
+def build_availability_schedule_status_map(time_profile: pd.DatetimeIndex,
+                                           schedule_time_points: List[Tuple[pd.Timestamp, bool]]) -> np.ndarray:
+    """
+    Build one boolean availability map over the complete VeraGrid time profile.
+
+    The resulting array is piecewise constant and starts as available. Every
+    event point updates the current availability state from its timestamp
+    onwards.
+
+    :param time_profile: VeraGrid global time profile.
+    :param schedule_time_points: Ordered list of (timestamp, is_active) events.
+    :return: Boolean array where ``True`` means available.
+    """
+    return ncp_availability.build_availability_schedule_status_map(
+        time_profile=time_profile,
+        schedule_time_points=schedule_time_points
+    )
+
+
+def apply_ncp_availability_profiles(cgmes_model: CgmesCircuit,
+                                    gcdev_model: MultiCircuit,
+                                    device_lookup: Dict[str, object],
+                                    logger: DataLogger) -> int:
+    """
+    Apply NCP ER/AVS availability schedules as VeraGrid ``active`` profile gates.
+
+    Mapping policy:
+        - ``AvailabilityEquipment`` is converted.
+        - ``ActualSchedule`` is preferred over ``PlannedSchedule``.
+        - Only unavailable states are enforced (``active=0``); available states
+          do not force ``active=1`` to avoid overriding SIS/topology controls.
+
+    :param cgmes_model: CGMES model.
+    :param gcdev_model: VeraGrid model.
+    :param device_lookup: CGMES UUID to VeraGrid device lookup.
+    :param logger: Data logger.
+    :return: Number of successful ``active`` assignments.
+    """
+    return ncp_availability.apply_ncp_availability_profiles(
+        cgmes_model=cgmes_model,
+        gcdev_model=gcdev_model,
+        device_lookup=device_lookup,
+        logger=logger,
+        get_first_resolved_reference=get_first_resolved_cgmes_reference,
+        parse_time_to_utc_timestamp=parse_ncp_time_to_utc_timestamp,
+        set_device_property_at_time=set_device_property_at_time
+    )
 
 
 def get_gcdev_ncp_ps_sis_ssi_instructions(cgmes_model: CgmesCircuit,
@@ -2378,62 +1433,23 @@ def get_gcdev_ncp_ps_sis_ssi_instructions(cgmes_model: CgmesCircuit,
     """
     Convert NCP PS/SIS/SSI instructions into VeraGrid time profiles and setpoints.
 
-    The algorithm has three explicit stages:
+    The algorithm has four explicit stages:
 
-        1. Collect PS/SIS timestamps and allocate the global VeraGrid time profile.
+        1. Collect PS/SIS + availability timestamps and allocate the global VeraGrid time profile.
         2. Apply SSI as baseline instruction (snapshot + full profile baseline when profile exists).
-        3. Apply PS and SIS point-in-time instructions onto that profile.
+        3. Apply ER/AVS availability gates over active profiles.
+        4. Apply PS and SIS point-in-time instructions onto that profile.
 
     :param cgmes_model: CGMES model.
     :param gcdev_model: VeraGrid model.
     :param logger: Data logger.
     :return: Nothing.
     """
-    instruction_device_lookup: Dict[str, object] = build_ncp_instruction_device_lookup(
-        cgmes_model=cgmes_model,
-        gcdev_model=gcdev_model
-    )
-
-    ps_sis_timestamps: List[pd.Timestamp] = collect_ncp_ps_sis_timestamps(
-        cgmes_model=cgmes_model,
-        logger=logger
-    )
-    time_index_lookup: Dict[int, int] = ensure_ncp_instruction_time_profile(
-        gcdev_model=gcdev_model,
-        timestamps=ps_sis_timestamps,
-        logger=logger
-    )
-
-    applied_ssi_count: int = apply_ssi_profiles(
+    ncp_instructions.get_gcdev_ncp_ps_sis_ssi_instructions(
         cgmes_model=cgmes_model,
         gcdev_model=gcdev_model,
-        device_lookup=instruction_device_lookup,
         logger=logger
     )
-    applied_ps_count: int = apply_power_schedule_profiles(
-        cgmes_model=cgmes_model,
-        gcdev_model=gcdev_model,
-        device_lookup=instruction_device_lookup,
-        time_index_lookup=time_index_lookup,
-        logger=logger
-    )
-    applied_sis_count: int = apply_sis_profiles(
-        cgmes_model=cgmes_model,
-        device_lookup=instruction_device_lookup,
-        time_index_lookup=time_index_lookup,
-        logger=logger
-    )
-
-    total_assignments: int = applied_ssi_count + applied_ps_count + applied_sis_count
-    if total_assignments > 0:
-        logger.add_info(
-            msg='Imported NCP PS/SIS/SSI instructions',
-            value=total_assignments,
-            expected_value=len(ps_sis_timestamps),
-            comment=f"SSI={applied_ssi_count}, PS={applied_ps_count}, SIS={applied_sis_count}"
-        )
-    else:
-        pass
 
 
 def derive_switch_bus_pair(calc_nodes: List[gcdev.Bus],

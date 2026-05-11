@@ -3,7 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-from typing import Dict, Tuple, Type
+from typing import Dict, Tuple, Type, TypeAlias
 
 from VeraGridEngine.IO.cim.cgmes.ncp.devices.actions.acdc_converter_action import ACDCConverterAction
 from VeraGridEngine.IO.cim.cgmes.ncp.devices.metadata.activity import Activity
@@ -142,7 +142,7 @@ from VeraGridEngine.IO.cim.cgmes.ncp.devices.metadata.verification import Verifi
 from VeraGridEngine.IO.cim.cgmes.ncp.devices.operations.voltage_angle_limit import VoltageAngleLimit
 
 
-NCP_ASSETS = (
+NCP_ASSETS: TypeAlias = (
     ACDCConverterAction |
     Activity |
     Agent |
@@ -559,4 +559,3 @@ class NcpAssets:
         self.TriggerCondition_list = list()
         self.Verification_list = list()
         self.VoltageAngleLimit_list = list()
-
