@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from typing import Dict, List, Tuple, Union
 import numpy as np
+import pandas as pd
 import VeraGridEngine.IO.cim.cgmes.cgmes_enums as cgmes_enums
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.enumerations import (CGMESVersions, CgmesTopologyMode, ConverterControlType, ExternalGridMode,
@@ -39,6 +40,10 @@ from VeraGridEngine.IO.cim.cgmes.cgmes_utils import (get_nominal_voltage,
                                                      extract_base_voltage_value,
                                                      recover_base_voltage_from_container,
                                                      recover_base_voltage_from_topological_node)
+import VeraGridEngine.IO.cim.cgmes.CgmestoVeraGrid.ncp_contingencies as ncp_contingencies
+import VeraGridEngine.IO.cim.cgmes.CgmestoVeraGrid.ncp_remedials as ncp_remedials
+import VeraGridEngine.IO.cim.cgmes.CgmestoVeraGrid.ncp_instructions as ncp_instructions
+import VeraGridEngine.IO.cim.cgmes.CgmestoVeraGrid.ncp_availability as ncp_availability
 
 from VeraGridEngine.data_logger import DataLogger
 from VeraGridEngine.enumerations import TapChangerTypes, TapPhaseControl, TapModuleControl, ShuntControlMode
@@ -903,26 +908,11 @@ def parse_contingency_equipment_status(contingent_status: str | None,
              - 1.0 means explicit in-service
              - None means unsupported status
     """
-    if contingent_status is None:
-        return 0.0
-    else:
-        pass
-
-    status_text: str = str(contingent_status).lower()
-    if "outofservice" in status_text:
-        return 0.0
-    elif "inservice" in status_text:
-        return 1.0
-    else:
-        logger.add_warning(
-            msg='Unsupported contingency equipment status',
-            device=contingency_equipment.rdfid,
-            device_class=contingency_equipment.tpe,
-            device_property='contingentStatus',
-            value=contingent_status,
-            expected_value='outOfService or inService'
-        )
-        return None
+    return ncp_contingencies.parse_contingency_equipment_status(
+        contingent_status=contingent_status,
+        logger=logger,
+        contingency_equipment=contingency_equipment
+    )
 
 
 def build_contingency_device_lookup(gcdev_model: MultiCircuit) -> Dict[str, object]:
@@ -932,38 +922,7 @@ def build_contingency_device_lookup(gcdev_model: MultiCircuit) -> Dict[str, obje
     :param gcdev_model: VeraGrid model.
     :return: Dictionary keyed by canonical/normalized device idtag.
     """
-    contingency_device_lookup: Dict[str, object] = dict()
-    contingency_devices: List[object] = list()
-
-    # Stage 1: build a flat list of devices that can be affected by contingencies.
-    # The algorithm uses explicit branch + injection collections so VSC/HVDC are included.
-    for branch_device in gcdev_model.get_branches(add_vsc=True, add_hvdc=True, add_switch=True):
-        contingency_devices.append(branch_device)
-    for injection_device in gcdev_model.get_injection_devices():
-        contingency_devices.append(injection_device)
-
-    # Stage 2: index each device both by raw idtag and normalized UUID-like key.
-    # This enables robust matching when CGMES references include separators.
-    for contingency_device in contingency_devices:
-        contingency_device_idtag: str = contingency_device.idtag
-        if len(contingency_device_idtag) > 0:
-            if contingency_device_idtag in contingency_device_lookup:
-                pass
-            else:
-                contingency_device_lookup[contingency_device_idtag] = contingency_device
-
-            normalized_idtag: str | None = normalize_cgmes_reference_uuid(contingency_device_idtag)
-            if normalized_idtag is not None:
-                if normalized_idtag in contingency_device_lookup:
-                    pass
-                else:
-                    contingency_device_lookup[normalized_idtag] = contingency_device
-            else:
-                pass
-        else:
-            pass
-
-    return contingency_device_lookup
+    return ncp_contingencies.build_contingency_device_lookup(gcdev_model=gcdev_model)
 
 
 def get_ncp_contingency_objects(cgmes_model: CgmesCircuit) -> List[CGMES_ASSETS]:
@@ -973,30 +932,7 @@ def get_ncp_contingency_objects(cgmes_model: CgmesCircuit) -> List[CGMES_ASSETS]
     :param cgmes_model: CGMES model.
     :return: De-duplicated contingency object list.
     """
-    contingency_objects: List[CGMES_ASSETS] = list()
-    contingency_by_uuid: Dict[str, CGMES_ASSETS] = dict()
-    contingency_lists: List[List[CGMES_ASSETS]] = list()
-
-    # Stage 1: collect each explicit contingency subtype list.
-    contingency_lists.append(cgmes_model.cgmes_assets.Contingency_list)
-    contingency_lists.append(cgmes_model.cgmes_assets.OrdinaryContingency_list)
-    contingency_lists.append(cgmes_model.cgmes_assets.ExceptionalContingency_list)
-    contingency_lists.append(cgmes_model.cgmes_assets.OutOfRangeContingency_list)
-
-    # Stage 2: de-duplicate by UUID because the same object can appear through base+subclass lists.
-    for contingency_list in contingency_lists:
-        for contingency_obj in contingency_list:
-            contingency_uuid: str = contingency_obj.uuid
-            if contingency_uuid in contingency_by_uuid:
-                pass
-            else:
-                contingency_by_uuid[contingency_uuid] = contingency_obj
-
-    # Stage 3: keep deterministic insertion order from the dictionary.
-    for contingency_obj in contingency_by_uuid.values():
-        contingency_objects.append(contingency_obj)
-
-    return contingency_objects
+    return ncp_contingencies.get_ncp_contingency_objects(cgmes_model=cgmes_model)
 
 
 def get_gcdev_contingencies(cgmes_model: CgmesCircuit,
@@ -1015,152 +951,505 @@ def get_gcdev_contingencies(cgmes_model: CgmesCircuit,
     :param logger: Data logger.
     :return: Nothing.
     """
-    contingency_objects: List[CGMES_ASSETS] = get_ncp_contingency_objects(cgmes_model=cgmes_model)
-    contingency_equipment_list: List[CGMES_ASSETS] = cgmes_model.cgmes_assets.ContingencyEquipment_list
+    ncp_contingencies.get_gcdev_contingencies(
+        cgmes_model=cgmes_model,
+        gcdev_model=gcdev_model,
+        logger=logger
+    )
 
-    if len(contingency_objects) == 0:
-        return
-    else:
-        pass
 
-    contingency_device_lookup: Dict[str, object] = build_contingency_device_lookup(gcdev_model=gcdev_model)
-    contingency_group_lookup: Dict[str, gcdev.ContingencyGroup] = dict()
-    contingency_equipment_by_contingency: Dict[str, List[CGMES_ASSETS]] = dict()
-    imported_contingency_count: int = 0
-    skipped_contingency_count: int = 0
+def get_ncp_remedial_action_objects(cgmes_model: CgmesCircuit) -> List[CGMES_ASSETS]:
+    """
+    Collect NCP remedial action objects from supported remedial subclasses.
 
-    # Stage 1: index every ContingencyEquipment by the linked contingency UUID.
-    # This prepares fast access for the next stage where groups/elements are created.
-    for contingency_equipment in contingency_equipment_list:
-        contingency_obj: object = contingency_equipment.Contingency
-        if contingency_obj is None or isinstance(contingency_obj, str):
-            logger.add_warning(
-                msg='ContingencyEquipment without resolved Contingency reference',
-                device=contingency_equipment.rdfid,
-                device_class=contingency_equipment.tpe,
-                device_property='Contingency',
-                value=contingency_obj,
-                expected_value='resolved object'
-            )
-        else:
-            contingency_uuid: str = contingency_obj.uuid
-            lst: List[CGMES_ASSETS] | None = contingency_equipment_by_contingency.get(contingency_uuid, None)
-            if lst is None:
-                contingency_equipment_by_contingency[contingency_uuid] = [contingency_equipment]
-            else:
-                lst.append(contingency_equipment)
+    :param cgmes_model: CGMES model.
+    :return: De-duplicated remedial action object list.
+    """
+    return ncp_remedials.get_ncp_remedial_action_objects(cgmes_model=cgmes_model)
 
-    # Stage 2: build VeraGrid contingency groups and elements.
-    # Each NCP contingency becomes one VeraGrid ContingencyGroup.
-    # Each NCP ContingencyEquipment becomes one VeraGrid Contingency entry.
-    for contingency_obj in contingency_objects:
-        contingency_uuid: str = contingency_obj.uuid
-        contingency_elements: List[CGMES_ASSETS] | None = contingency_equipment_by_contingency.get(contingency_uuid, None)
-        if contingency_elements is None:
-            pass
-        else:
-            contingency_name: str = contingency_obj.name
-            if len(contingency_name) > 0:
-                pass
-            else:
-                contingency_name = contingency_uuid
 
-            normal_must_study: bool | None = contingency_obj.normalMustStudy
-            must_study: bool | None = contingency_obj.mustStudy
-            if isinstance(normal_must_study, bool):
-                contingency_group_active: bool = normal_must_study
-            elif isinstance(must_study, bool):
-                contingency_group_active = must_study
-            else:
-                contingency_group_active = True
+def build_remedial_action_to_contingency_lookup(cgmes_model: CgmesCircuit,
+                                                logger: DataLogger) -> Dict[str, str]:
+    """
+    Build a map from remedial-action UUID to contingency UUID.
 
-            contingency_group: gcdev.ContingencyGroup | None = contingency_group_lookup.get(contingency_uuid, None)
-            if contingency_group is None:
-                contingency_group = gcdev.ContingencyGroup(
-                    idtag=contingency_uuid,
-                    name=contingency_name,
-                    category=contingency_obj.tpe,
-                    active=contingency_group_active
-                )
-                gcdev_model.add_contingency_group(contingency_group)
-                contingency_group_lookup[contingency_uuid] = contingency_group
-            else:
-                pass
+    Data sources:
+        - RemedialActionSchedule.Contingency
+        - ContingencyWithRemedialAction relation
 
-            # Stage 3: convert each contingent equipment operation into one VeraGrid contingency action.
-            for contingency_equipment in contingency_elements:
-                equipment_obj: object = contingency_equipment.Equipment
-                if equipment_obj is None or isinstance(equipment_obj, str):
-                    skipped_contingency_count += 1
-                    logger.add_warning(
-                        msg='ContingencyEquipment without resolved Equipment reference',
-                        device=contingency_equipment.rdfid,
-                        device_class=contingency_equipment.tpe,
-                        device_property='Equipment',
-                        value=equipment_obj,
-                        expected_value='resolved object'
-                    )
-                else:
-                    equipment_uuid: str = equipment_obj.uuid
-                    target_device: object | None = contingency_device_lookup.get(equipment_uuid, None)
-                    if target_device is None:
-                        skipped_contingency_count += 1
-                        logger.add_warning(
-                            msg='Contingency target equipment not imported as a contingency-capable VeraGrid device',
-                            device=contingency_equipment.rdfid,
-                            device_class=contingency_equipment.tpe,
-                            device_property='Equipment.uuid',
-                            value=equipment_uuid
-                        )
-                    else:
-                        contingency_active_value: float | None = parse_contingency_equipment_status(
-                            contingent_status=contingency_equipment.contingentStatus,
-                            logger=logger,
-                            contingency_equipment=contingency_equipment
-                        )
-                        if contingency_active_value is None:
-                            skipped_contingency_count += 1
-                        else:
-                            contingency_description: object = contingency_obj.description
-                            if isinstance(contingency_description, str):
-                                contingency_comment: str = contingency_description
-                            else:
-                                contingency_comment = ""
+    :param cgmes_model: CGMES model.
+    :param logger: Data logger.
+    :return: Dictionary keyed by remedial action UUID with contingency UUID values.
+    """
+    return ncp_remedials.build_remedial_action_to_contingency_lookup(
+        cgmes_model=cgmes_model,
+        logger=logger
+    )
 
-                            target_code_raw: object = target_device.code
-                            if isinstance(target_code_raw, str):
-                                target_code: str = target_code_raw
-                            else:
-                                target_code = ""
 
-                            target_name_raw: str = target_device.name
-                            if isinstance(target_name_raw, str):
-                                target_name: str = target_name_raw
-                            else:
-                                target_name = "device"
+def normalize_property_reference_text(property_reference: str | None) -> str:
+    """
+    Normalize an NCP property-reference URI/text.
 
-                            gcdev_contingency = gcdev.Contingency(
-                                device=target_device,
-                                idtag=contingency_equipment.uuid,
-                                name=f"{contingency_name}::{target_name}",
-                                code=target_code,
-                                prop=ContingencyOperationTypes.Active,
-                                value=contingency_active_value,
-                                group=contingency_group,
-                                comment=contingency_comment
-                            )
-                            gcdev_model.add_contingency(gcdev_contingency)
-                            imported_contingency_count += 1
+    :param property_reference: Raw property-reference value.
+    :return: Lower-case normalized string.
+    """
+    return ncp_remedials.normalize_property_reference_text(property_reference=property_reference)
 
-    if imported_contingency_count > 0:
-        logger.add_info(
-            msg='Imported NCP contingencies',
-            value=imported_contingency_count,
-            expected_value=len(contingency_equipment_list),
-            comment=f"Skipped={skipped_contingency_count}"
-        )
-    else:
-        pass
+
+def collect_grid_state_range_constraints(grid_state_action: CGMES_ASSETS) -> List[CGMES_ASSETS]:
+    """
+    Collect RangeConstraint references linked to one GridStateAlteration action.
+
+    :param grid_state_action: NCP GridStateAlteration-derived object.
+    :return: List of linked RangeConstraint objects.
+    """
+    return ncp_remedials.collect_grid_state_range_constraints(grid_state_action=grid_state_action)
+
+
+def map_topology_action_to_active_value(topology_action: CGMES_ASSETS,
+                                        logger: DataLogger) -> float | None:
+    """
+    Map an NCP TopologyAction to VeraGrid ``Active`` contingency/remedial value.
+
+    Mapping rules:
+        - Only ``PropertyReference`` ending with ``Switch.open`` is supported.
+        - ``Switch.open`` = 1 means opened switch -> Active = 0.
+        - ``Switch.open`` = 0 means closed switch -> Active = 1.
+        - If no numeric range value is available, default to opened switch.
+
+    :param topology_action: NCP TopologyAction object.
+    :param logger: Data logger.
+    :return: Active value (0.0 or 1.0) or None when unsupported.
+    """
+    return ncp_remedials.map_topology_action_to_active_value(
+        topology_action=topology_action,
+        logger=logger
+    )
+
+
+def get_gcdev_remedial_actions(cgmes_model: CgmesCircuit,
+                               gcdev_model: MultiCircuit,
+                               logger: DataLogger) -> None:
+    """
+    Convert NCP remedial actions to VeraGrid RemedialActionGroup/RemedialAction objects.
+
+    Current conversion scope:
+        - NCP ``GridStateAlterationRemedialAction`` linked through ``TopologyAction``.
+        - ``TopologyAction.Switch`` mapped to VeraGrid target device.
+        - ``PropertyReference`` ``Switch.open`` mapped to VeraGrid ``Active`` property.
+        - Optional linkage to imported contingency groups through RAS / CO-RA relations.
+
+    :param cgmes_model: CGMES model.
+    :param gcdev_model: VeraGrid model.
+    :param logger: Data logger.
+    :return: Nothing.
+    """
+    ncp_remedials.get_gcdev_remedial_actions(
+        cgmes_model=cgmes_model,
+        gcdev_model=gcdev_model,
+        logger=logger
+    )
+
+
+def parse_ncp_time_to_utc_timestamp(raw_time: str | None,
+                                    logger: DataLogger,
+                                    source_object: CGMES_ASSETS | None = None) -> pd.Timestamp | None:
+    """
+    Parse one NCP timestamp string into a UTC pandas timestamp.
+
+    :param raw_time: Serialized datetime text.
+    :param logger: Data logger.
+    :param source_object: Source CGMES object for diagnostics.
+    :return: Parsed UTC timestamp or ``None``.
+    """
+    return ncp_instructions.parse_ncp_time_to_utc_timestamp(
+        raw_time=raw_time,
+        logger=logger,
+        source_object=source_object
+    )
+
+
+def parse_ncp_bool(raw_value: object) -> bool | None:
+    """
+    Parse one NCP boolean candidate value.
+
+    The parser accepts canonical bool values and common string encodings.
+
+    :param raw_value: Raw boolean candidate.
+    :return: Parsed bool or ``None`` when not parseable.
+    """
+    return ncp_availability.parse_ncp_bool(raw_value=raw_value)
+
+
+def collect_ncp_ps_sis_timestamps(cgmes_model: CgmesCircuit,
+                                  logger: DataLogger) -> List[pd.Timestamp]:
+    """
+    Collect every PS/SIS schedule timestamp used for profile initialization.
+
+    :param cgmes_model: CGMES model.
+    :param logger: Data logger.
+    :return: List of parsed UTC timestamps.
+    """
+    return ncp_instructions.collect_ncp_ps_sis_timestamps(
+        cgmes_model=cgmes_model,
+        logger=logger
+    )
+
+
+def collect_ncp_availability_timestamps(cgmes_model: CgmesCircuit,
+                                        logger: DataLogger) -> List[pd.Timestamp]:
+    """
+    Collect availability schedule timestamps from NCP EventTimePoint objects.
+
+    :param cgmes_model: CGMES model.
+    :param logger: Data logger.
+    :return: List of parsed UTC timestamps.
+    """
+    return ncp_instructions.collect_ncp_availability_timestamps(
+        cgmes_model=cgmes_model,
+        logger=logger,
+        parse_time_to_utc_timestamp=parse_ncp_time_to_utc_timestamp
+    )
+
+
+def build_time_index_lookup_from_profile(time_profile: pd.DatetimeIndex) -> Dict[int, int]:
+    """
+    Build nanosecond-timestamp to profile-index lookup for one time profile.
+
+    :param time_profile: Grid time profile.
+    :return: Mapping from nanoseconds since epoch to profile index.
+    """
+    return ncp_instructions.build_time_index_lookup_from_profile(time_profile=time_profile)
+
+
+def get_first_resolved_cgmes_reference(reference: object) -> object | None:
+    """
+    Resolve the first object reference from a CGMES property.
+
+    Many CGMES relationships can be single references or lists of references
+    after profile merge. This helper normalizes both forms into one resolved
+    object for deterministic conversion logic.
+
+    :param reference: Raw CGMES relation value.
+    :return: First resolved object reference or ``None``.
+    """
+    return ncp_instructions.get_first_resolved_cgmes_reference(reference=reference)
+
+
+def get_resolved_cgmes_reference_list(reference: object) -> List[object]:
+    """
+    Resolve every object reference from one CGMES relation field.
+
+    CGMES relation fields can contain one object, a list of objects, unresolved
+    strings, or ``None``. This helper returns only resolved object references and
+    keeps deterministic order for stable conversion behavior.
+
+    :param reference: Raw CGMES relation value.
+    :return: List of resolved object references.
+    """
+    return ncp_availability.get_resolved_cgmes_reference_list(reference=reference)
+
+
+def get_first_resolved_cgmes_reference_uuid(reference: object) -> str | None:
+    """
+    Resolve the first object UUID from a CGMES property.
+
+    :param reference: Raw CGMES relation value.
+    :return: UUID of the first resolved object or ``None``.
+    """
+    return ncp_instructions.get_first_resolved_cgmes_reference_uuid(reference=reference)
+
+
+def ensure_ncp_instruction_time_profile(gcdev_model: MultiCircuit,
+                                        timestamps: List[pd.Timestamp],
+                                        logger: DataLogger) -> Dict[int, int]:
+    """
+    Ensure VeraGrid time profile exists for PS/SIS instructions and return index lookup.
+
+    :param gcdev_model: VeraGrid model.
+    :param timestamps: Collected PS/SIS timestamps.
+    :param logger: Data logger.
+    :return: Nanosecond-timestamp to profile-index mapping.
+    """
+    return ncp_instructions.ensure_ncp_instruction_time_profile(
+        gcdev_model=gcdev_model,
+        timestamps=timestamps,
+        logger=logger
+    )
+
+
+def build_ncp_instruction_device_lookup(cgmes_model: CgmesCircuit,
+                                        gcdev_model: MultiCircuit) -> Dict[str, object]:
+    """
+    Build a device lookup used by PS/SIS/SSI conversions.
+
+    Lookup keys include:
+        - Direct CGMES equipment UUIDs.
+        - GeneratingUnit UUID mapped to imported synchronous-machine generator device.
+        - RegulatingControl UUID mapped to the controlled equipment device.
+        - TapChanger UUID mapped to imported transformer device.
+
+    :param cgmes_model: CGMES model.
+    :param gcdev_model: VeraGrid model.
+    :return: Device lookup dictionary.
+    """
+    return ncp_instructions.build_ncp_instruction_device_lookup(
+        cgmes_model=cgmes_model,
+        gcdev_model=gcdev_model
+    )
+
+
+def resolve_power_schedule_target_devices(power_schedule: CGMES_ASSETS,
+                                          device_lookup: Dict[str, object]) -> List[object]:
+    """
+    Resolve target VeraGrid devices for one PowerSchedule object.
+
+    :param power_schedule: NCP PowerSchedule object.
+    :param device_lookup: CGMES UUID to VeraGrid device lookup.
+    :return: Ordered unique list of target devices.
+    """
+    return ncp_instructions.resolve_power_schedule_target_devices(
+        power_schedule=power_schedule,
+        device_lookup=device_lookup
+    )
+
+
+def extract_grid_state_action_setpoint_value(grid_state_action: CGMES_ASSETS) -> float | None:
+    """
+    Extract the first numeric setpoint candidate from action range constraints.
+
+    Priority:
+        1. ``RangeConstraint.value``
+        2. ``RangeConstraint.normalValue``
+
+    :param grid_state_action: NCP GridStateAlteration-derived action.
+    :return: Numeric setpoint candidate or ``None``.
+    """
+    return ncp_instructions.extract_grid_state_action_setpoint_value(grid_state_action=grid_state_action)
+
+
+def resolve_grid_state_action_target_device(grid_state_action: CGMES_ASSETS,
+                                            device_lookup: Dict[str, object],
+                                            logger: DataLogger) -> object | None:
+    """
+    Resolve one VeraGrid target device for a GridStateAlteration action.
+
+    :param grid_state_action: NCP action object.
+    :param device_lookup: CGMES UUID to VeraGrid device lookup.
+    :param logger: Data logger.
+    :return: Target device or ``None``.
+    """
+    return ncp_instructions.resolve_grid_state_action_target_device(
+        grid_state_action=grid_state_action,
+        device_lookup=device_lookup,
+        logger=logger
+    )
+
+
+def get_action_property_and_value(grid_state_action: CGMES_ASSETS,
+                                  logger: DataLogger) -> Tuple[str | None, float | bool | None]:
+    """
+    Map one GridStateAlteration action to VeraGrid property/value pair.
+
+    :param grid_state_action: NCP action object.
+    :param logger: Data logger.
+    :return: Tuple (property_name, property_value) where each entry may be ``None``.
+    """
+    return ncp_instructions.get_action_property_and_value(
+        grid_state_action=grid_state_action,
+        logger=logger
+    )
+
+
+def set_device_property_at_time(target_device: object,
+                                property_name: str,
+                                property_value: float | bool,
+                                time_index: int | None,
+                                source_action: CGMES_ASSETS,
+                                logger: DataLogger) -> bool:
+    """
+    Set one VeraGrid property value for snapshot or profile time index.
+
+    :param target_device: VeraGrid device.
+    :param property_name: VeraGrid property name.
+    :param property_value: Property value to set.
+    :param time_index: Time index or ``None`` for snapshot.
+    :param source_action: Source CGMES action.
+    :param logger: Data logger.
+    :return: ``True`` when assignment succeeded.
+    """
+    return ncp_instructions.set_device_property_at_time(
+        target_device=target_device,
+        property_name=property_name,
+        property_value=property_value,
+        time_index=time_index,
+        source_action=source_action,
+        logger=logger
+    )
+
+
+def apply_power_schedule_profiles(cgmes_model: CgmesCircuit,
+                                  gcdev_model: MultiCircuit,
+                                  device_lookup: Dict[str, object],
+                                  time_index_lookup: Dict[int, int],
+                                  logger: DataLogger) -> int:
+    """
+    Apply NCP PowerSchedule (PS) setpoints into VeraGrid profiles.
+
+    :param cgmes_model: CGMES model.
+    :param gcdev_model: VeraGrid model.
+    :param device_lookup: CGMES UUID to VeraGrid device lookup.
+    :param time_index_lookup: Timestamp-ns to profile-index lookup.
+    :param logger: Data logger.
+    :return: Number of successful profile assignments.
+    """
+    return ncp_instructions.apply_power_schedule_profiles(
+        cgmes_model=cgmes_model,
+        gcdev_model=gcdev_model,
+        device_lookup=device_lookup,
+        time_index_lookup=time_index_lookup,
+        logger=logger
+    )
+
+
+def apply_sis_profiles(cgmes_model: CgmesCircuit,
+                       device_lookup: Dict[str, object],
+                       time_index_lookup: Dict[int, int],
+                       logger: DataLogger) -> int:
+    """
+    Apply StateInstructionSchedule (SIS) time-point actions into VeraGrid profiles.
+
+    :param cgmes_model: CGMES model.
+    :param device_lookup: CGMES UUID to VeraGrid device lookup.
+    :param time_index_lookup: Timestamp-ns to profile-index lookup.
+    :param logger: Data logger.
+    :return: Number of successful profile assignments.
+    """
+    return ncp_instructions.apply_sis_profiles(
+        cgmes_model=cgmes_model,
+        device_lookup=device_lookup,
+        time_index_lookup=time_index_lookup,
+        logger=logger
+    )
+
+
+def apply_ssi_profiles(cgmes_model: CgmesCircuit,
+                       gcdev_model: MultiCircuit,
+                       device_lookup: Dict[str, object],
+                       logger: DataLogger) -> int:
+    """
+    Apply SteadyStateInstruction (SSI) actions as baseline snapshot/profile values.
+
+    :param cgmes_model: CGMES model.
+    :param gcdev_model: VeraGrid model.
+    :param device_lookup: CGMES UUID to VeraGrid device lookup.
+    :param logger: Data logger.
+    :return: Number of successful assignments.
+    """
+    return ncp_instructions.apply_ssi_profiles(
+        cgmes_model=cgmes_model,
+        gcdev_model=gcdev_model,
+        device_lookup=device_lookup,
+        logger=logger
+    )
+
+
+def get_event_time_point_sort_key(event_point: Tuple[pd.Timestamp, bool]) -> int:
+    """
+    Get sorting key for one event time point tuple.
+
+    :param event_point: Tuple with timestamp and active state.
+    :return: Nanoseconds since epoch used for chronological sorting.
+    """
+    return ncp_availability.get_event_time_point_sort_key(event_point=event_point)
+
+
+def build_event_schedule_timepoints_lookup(cgmes_model: CgmesCircuit) -> Dict[str, List[CGMES_ASSETS]]:
+    """
+    Build EventSchedule UUID to EventTimePoint list mapping.
+
+    :param cgmes_model: CGMES model.
+    :return: Dictionary keyed by EventSchedule UUID.
+    """
+    return ncp_availability.build_event_schedule_timepoints_lookup(
+        cgmes_model=cgmes_model,
+        get_first_resolved_reference=get_first_resolved_cgmes_reference
+    )
+
+
+def build_availability_schedule_status_map(time_profile: pd.DatetimeIndex,
+                                           schedule_time_points: List[Tuple[pd.Timestamp, bool]]) -> np.ndarray:
+    """
+    Build one boolean availability map over the complete VeraGrid time profile.
+
+    The resulting array is piecewise constant and starts as available. Every
+    event point updates the current availability state from its timestamp
+    onwards.
+
+    :param time_profile: VeraGrid global time profile.
+    :param schedule_time_points: Ordered list of (timestamp, is_active) events.
+    :return: Boolean array where ``True`` means available.
+    """
+    return ncp_availability.build_availability_schedule_status_map(
+        time_profile=time_profile,
+        schedule_time_points=schedule_time_points
+    )
+
+
+def apply_ncp_availability_profiles(cgmes_model: CgmesCircuit,
+                                    gcdev_model: MultiCircuit,
+                                    device_lookup: Dict[str, object],
+                                    logger: DataLogger) -> int:
+    """
+    Apply NCP ER/AVS availability schedules as VeraGrid ``active`` profile gates.
+
+    Mapping policy:
+        - ``AvailabilityEquipment`` is converted.
+        - ``ActualSchedule`` is preferred over ``PlannedSchedule``.
+        - Only unavailable states are enforced (``active=0``); available states
+          do not force ``active=1`` to avoid overriding SIS/topology controls.
+
+    :param cgmes_model: CGMES model.
+    :param gcdev_model: VeraGrid model.
+    :param device_lookup: CGMES UUID to VeraGrid device lookup.
+    :param logger: Data logger.
+    :return: Number of successful ``active`` assignments.
+    """
+    return ncp_availability.apply_ncp_availability_profiles(
+        cgmes_model=cgmes_model,
+        gcdev_model=gcdev_model,
+        device_lookup=device_lookup,
+        logger=logger,
+        get_first_resolved_reference=get_first_resolved_cgmes_reference,
+        parse_time_to_utc_timestamp=parse_ncp_time_to_utc_timestamp,
+        set_device_property_at_time=set_device_property_at_time
+    )
+
+
+def get_gcdev_ncp_ps_sis_ssi_instructions(cgmes_model: CgmesCircuit,
+                                          gcdev_model: MultiCircuit,
+                                          logger: DataLogger) -> None:
+    """
+    Convert NCP PS/SIS/SSI instructions into VeraGrid time profiles and setpoints.
+
+    The algorithm has four explicit stages:
+
+        1. Collect PS/SIS + availability timestamps and allocate the global VeraGrid time profile.
+        2. Apply SSI as baseline instruction (snapshot + full profile baseline when profile exists).
+        3. Apply ER/AVS availability gates over active profiles.
+        4. Apply PS and SIS point-in-time instructions onto that profile.
+
+    :param cgmes_model: CGMES model.
+    :param gcdev_model: VeraGrid model.
+    :param logger: Data logger.
+    :return: Nothing.
+    """
+    ncp_instructions.get_gcdev_ncp_ps_sis_ssi_instructions(
+        cgmes_model=cgmes_model,
+        gcdev_model=gcdev_model,
+        logger=logger
+    )
 
 
 def derive_switch_bus_pair(calc_nodes: List[gcdev.Bus],
@@ -4664,6 +4953,16 @@ def cgmes_to_veragrid(cgmes_model: CgmesCircuit,
     get_gcdev_contingencies(cgmes_model=cgmes_model,
                             gcdev_model=gc_model,
                             logger=logger)
+
+    # NCP remedial actions are converted after contingencies so linkage can point to contingency groups.
+    get_gcdev_remedial_actions(cgmes_model=cgmes_model,
+                               gcdev_model=gc_model,
+                               logger=logger)
+
+    # NCP PS/SIS/SSI instructions are converted after all target devices exist.
+    get_gcdev_ncp_ps_sis_ssi_instructions(cgmes_model=cgmes_model,
+                                          gcdev_model=gc_model,
+                                          logger=logger)
 
     cgmes_model.emit_progress(100)
     cgmes_model.emit_text("Cgmes import done!")
