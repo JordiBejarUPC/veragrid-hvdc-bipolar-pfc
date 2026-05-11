@@ -48,6 +48,13 @@ class Switch(BranchParent):
             cat=[PrpCat.TP],
         ),
         GCProp(
+            prop_name='retain',
+            units="",
+            tpe=bool,
+            definition='Alias of retained used by CGMES workflows',
+            cat=[PrpCat.TP],
+        ),
+        GCProp(
             prop_name='normal_open',
             units="",
             tpe=bool,
@@ -85,7 +92,8 @@ class Switch(BranchParent):
                  retained=False,
                  normal_open=False,
                  rated_current=0.0,
-                 graphic_type: SwitchGraphicType = SwitchGraphicType.CircuitBreaker):
+                 graphic_type: SwitchGraphicType = SwitchGraphicType.CircuitBreaker,
+                 retain: bool | None = None):
         """
         Switch device
         :param bus_from: Bus from
@@ -107,7 +115,7 @@ class Switch(BranchParent):
                               bus_from=bus_from,
                               bus_to=bus_to,
                               active=active,
-                              reducible=not retained,
+                              reducible=True,
                               rate=rate,
                               contingency_factor=contingency_factor,
                               protection_rating_factor=protection_rating_factor,
@@ -241,6 +249,4 @@ class Switch(BranchParent):
 
         self.R *= b
         self.X *= b
-
-
 
