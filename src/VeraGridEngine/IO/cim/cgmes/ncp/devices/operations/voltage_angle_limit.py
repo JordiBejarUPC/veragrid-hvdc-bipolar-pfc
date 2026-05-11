@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import Dict, TYPE_CHECKING
 from VeraGridEngine.IO.base.units import UnitMultiplier, UnitSymbol
 from VeraGridEngine.IO.cim.cgmes.cgmes_property import CgmesProperty
+from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType
 from VeraGridEngine.data_logger import DataLogger
 from VeraGridEngine.IO.cim.cgmes.cgmes_v3_0_0.devices.operational_limit import OperationalLimit
 
@@ -17,11 +18,11 @@ if TYPE_CHECKING:
 class VoltageAngleLimit(OperationalLimit):
     """NCP CGMES extension class."""
     LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
-        CgmesProperty(property_name='AngleReferenceTerminal', class_type='Terminal', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='VoltageAngleSchedule', class_type=str, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='isFlowToRefTerminal', class_type=bool, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='normalValue', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='value', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
+        CgmesProperty(property_name='AngleReferenceTerminal', class_type='Terminal', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.ER, CgmesProfileType.AVS, CgmesProfileType.GD]),
+        CgmesProperty(property_name='VoltageAngleSchedule', class_type=str, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.ER, CgmesProfileType.AVS, CgmesProfileType.GD]),
+        CgmesProperty(property_name='isFlowToRefTerminal', class_type=bool, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.ER, CgmesProfileType.AVS, CgmesProfileType.GD]),
+        CgmesProperty(property_name='normalValue', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.ER, CgmesProfileType.AVS, CgmesProfileType.GD]),
+        CgmesProperty(property_name='value', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.ER, CgmesProfileType.AVS, CgmesProfileType.GD]),
     )
     __slots__ = ('AngleReferenceTerminal', 'VoltageAngleSchedule', 'isFlowToRefTerminal', 'normalValue', 'value')
 

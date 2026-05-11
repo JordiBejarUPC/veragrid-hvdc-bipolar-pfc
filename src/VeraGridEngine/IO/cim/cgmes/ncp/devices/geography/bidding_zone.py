@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import Dict, TYPE_CHECKING
 from VeraGridEngine.IO.base.units import UnitMultiplier, UnitSymbol
 from VeraGridEngine.IO.cim.cgmes.cgmes_property import CgmesProperty
+from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType
 from VeraGridEngine.data_logger import DataLogger
 from VeraGridEngine.IO.cim.cgmes.cgmes_v3_0_0.devices.power_system_resource import PowerSystemResource
 
@@ -21,17 +22,17 @@ if TYPE_CHECKING:
 class BiddingZone(PowerSystemResource):
     """NCP CGMES extension class."""
     LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
-        CgmesProperty(property_name='AreaInterchangeController', class_type=str, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='BiddingZoneAction', class_type=str, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='CapacityCalculationRegion', class_type='CapacityCalculationRegion', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='FromBiddingZoneBorder', class_type='BiddingZoneBorder', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='PowerCapacity', class_type=str, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='PowerRemedialAction', class_type='PowerRemedialAction', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='PowerSchedule', class_type='PowerSchedule', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='SchedulingArea', class_type='SchedulingArea', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='ToBiddingZoneBorder', class_type='BiddingZoneBorder', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='isTradeEnabled', class_type=bool, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='netPosition', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
+        CgmesProperty(property_name='AreaInterchangeController', class_type=str, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.MA, CgmesProfileType.PSP]),
+        CgmesProperty(property_name='BiddingZoneAction', class_type=str, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.MA, CgmesProfileType.PSP]),
+        CgmesProperty(property_name='CapacityCalculationRegion', class_type='CapacityCalculationRegion', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.MA, CgmesProfileType.PSP]),
+        CgmesProperty(property_name='FromBiddingZoneBorder', class_type='BiddingZoneBorder', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.MA, CgmesProfileType.PSP]),
+        CgmesProperty(property_name='PowerCapacity', class_type=str, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.MA, CgmesProfileType.PSP]),
+        CgmesProperty(property_name='PowerRemedialAction', class_type='PowerRemedialAction', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.MA, CgmesProfileType.PSP]),
+        CgmesProperty(property_name='PowerSchedule', class_type='PowerSchedule', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.MA, CgmesProfileType.PSP]),
+        CgmesProperty(property_name='SchedulingArea', class_type='SchedulingArea', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.MA, CgmesProfileType.PSP]),
+        CgmesProperty(property_name='ToBiddingZoneBorder', class_type='BiddingZoneBorder', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.MA, CgmesProfileType.PSP]),
+        CgmesProperty(property_name='isTradeEnabled', class_type=bool, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.MA, CgmesProfileType.PSP]),
+        CgmesProperty(property_name='netPosition', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.MA, CgmesProfileType.PSP]),
     )
     __slots__ = ('AreaInterchangeController', 'BiddingZoneAction', 'CapacityCalculationRegion', 'FromBiddingZoneBorder', 'PowerCapacity', 'PowerRemedialAction', 'PowerSchedule', 'SchedulingArea', 'ToBiddingZoneBorder', 'isTradeEnabled', 'netPosition')
 

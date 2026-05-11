@@ -8,7 +8,8 @@ from typing import Dict, List, Tuple, Union
 import numpy as np
 import VeraGridEngine.IO.cim.cgmes.cgmes_enums as cgmes_enums
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
-from VeraGridEngine.enumerations import CGMESVersions, CgmesTopologyMode, ConverterControlType, ExternalGridMode
+from VeraGridEngine.enumerations import (CGMESVersions, CgmesTopologyMode, ConverterControlType, ExternalGridMode,
+                                         ContingencyOperationTypes)
 import VeraGridEngine.Devices as gcdev
 import VeraGridEngine.IO.cim.cgmes.cgmes_assets.cgmes_2_4_15_assets as cgmes24
 import VeraGridEngine.IO.cim.cgmes.cgmes_assets.cgmes_3_0_0_assets as cgmes30
@@ -829,8 +830,8 @@ def ensure_dangling_boundary_bus_and_external_grid(cgmes_line: CGMES_ASSETS,
             device=cgmes_line.rdfid,
             device_class=cgmes_line.tpe,
             device_property='number of associated terminals',
-            value=len(cgmes_terminals),
-            expected_value=2
+            value=str(len(cgmes_terminals)),
+            expected_value="2"
         )
 
     has_existing_external_grid: bool = False
@@ -866,8 +867,8 @@ def log_collapsed_terminal_mapping_warning(logger: DataLogger,
         device=cgmes_elm.rdfid,
         device_class=cgmes_elm.tpe,
         device_property="number of associated terminals",
-        value=raw_count,
-        expected_value=expected_count
+        value=str(raw_count),
+        expected_value=str(expected_count)
     )
 
 
@@ -886,6 +887,280 @@ def get_cgmes_equipment_active_state(cgmes_elm: CGMES_ASSETS,
         active = active and not bool(getattr(cgmes_elm, "open", False))
 
     return active
+
+
+def parse_contingency_equipment_status(contingent_status: str | None,
+                                       logger: DataLogger,
+                                       contingency_equipment: CGMES_ASSETS) -> float | None:
+    """
+    Convert NCP ``contingentStatus`` into VeraGrid contingency ``Active`` value.
+
+    :param contingent_status: NCP contingent status URI/text.
+    :param logger: Data logger.
+    :param contingency_equipment: Source NCP ContingencyEquipment object.
+    :return: Target ``Active`` value:
+             - 0.0 means outage (outOfService)
+             - 1.0 means explicit in-service
+             - None means unsupported status
+    """
+    if contingent_status is None:
+        return 0.0
+    else:
+        pass
+
+    status_text: str = str(contingent_status).lower()
+    if "outofservice" in status_text:
+        return 0.0
+    elif "inservice" in status_text:
+        return 1.0
+    else:
+        logger.add_warning(
+            msg='Unsupported contingency equipment status',
+            device=contingency_equipment.rdfid,
+            device_class=contingency_equipment.tpe,
+            device_property='contingentStatus',
+            value=contingent_status,
+            expected_value='outOfService or inService'
+        )
+        return None
+
+
+def build_contingency_device_lookup(gcdev_model: MultiCircuit) -> Dict[str, object]:
+    """
+    Build lookup table for devices that can be targeted by contingencies.
+
+    :param gcdev_model: VeraGrid model.
+    :return: Dictionary keyed by canonical/normalized device idtag.
+    """
+    contingency_device_lookup: Dict[str, object] = dict()
+    contingency_devices: List[object] = list()
+
+    # Stage 1: build a flat list of devices that can be affected by contingencies.
+    # The algorithm uses explicit branch + injection collections so VSC/HVDC are included.
+    for branch_device in gcdev_model.get_branches(add_vsc=True, add_hvdc=True, add_switch=True):
+        contingency_devices.append(branch_device)
+    for injection_device in gcdev_model.get_injection_devices():
+        contingency_devices.append(injection_device)
+
+    # Stage 2: index each device both by raw idtag and normalized UUID-like key.
+    # This enables robust matching when CGMES references include separators.
+    for contingency_device in contingency_devices:
+        contingency_device_idtag: str = contingency_device.idtag
+        if len(contingency_device_idtag) > 0:
+            if contingency_device_idtag in contingency_device_lookup:
+                pass
+            else:
+                contingency_device_lookup[contingency_device_idtag] = contingency_device
+
+            normalized_idtag: str | None = normalize_cgmes_reference_uuid(contingency_device_idtag)
+            if normalized_idtag is not None:
+                if normalized_idtag in contingency_device_lookup:
+                    pass
+                else:
+                    contingency_device_lookup[normalized_idtag] = contingency_device
+            else:
+                pass
+        else:
+            pass
+
+    return contingency_device_lookup
+
+
+def get_ncp_contingency_objects(cgmes_model: CgmesCircuit) -> List[CGMES_ASSETS]:
+    """
+    Collect NCP contingency objects from all supported contingency subclasses.
+
+    :param cgmes_model: CGMES model.
+    :return: De-duplicated contingency object list.
+    """
+    contingency_objects: List[CGMES_ASSETS] = list()
+    contingency_by_uuid: Dict[str, CGMES_ASSETS] = dict()
+    contingency_lists: List[List[CGMES_ASSETS]] = list()
+
+    # Stage 1: collect each explicit contingency subtype list.
+    contingency_lists.append(cgmes_model.cgmes_assets.Contingency_list)
+    contingency_lists.append(cgmes_model.cgmes_assets.OrdinaryContingency_list)
+    contingency_lists.append(cgmes_model.cgmes_assets.ExceptionalContingency_list)
+    contingency_lists.append(cgmes_model.cgmes_assets.OutOfRangeContingency_list)
+
+    # Stage 2: de-duplicate by UUID because the same object can appear through base+subclass lists.
+    for contingency_list in contingency_lists:
+        for contingency_obj in contingency_list:
+            contingency_uuid: str = contingency_obj.uuid
+            if contingency_uuid in contingency_by_uuid:
+                pass
+            else:
+                contingency_by_uuid[contingency_uuid] = contingency_obj
+
+    # Stage 3: keep deterministic insertion order from the dictionary.
+    for contingency_obj in contingency_by_uuid.values():
+        contingency_objects.append(contingency_obj)
+
+    return contingency_objects
+
+
+def get_gcdev_contingencies(cgmes_model: CgmesCircuit,
+                            gcdev_model: MultiCircuit,
+                            logger: DataLogger) -> None:
+    """
+    Convert NCP contingencies to VeraGrid ContingencyGroup/Contingency objects.
+
+    Conversion scope:
+        - NCP ``Contingency`` / ``OrdinaryContingency`` / ``ExceptionalContingency`` / ``OutOfRangeContingency``
+        - ``ContingencyEquipment`` references mapped to imported VeraGrid devices
+        - ``contingentStatus`` mapped to Contingency ``Active`` property changes
+
+    :param cgmes_model: CGMES model.
+    :param gcdev_model: VeraGrid model.
+    :param logger: Data logger.
+    :return: Nothing.
+    """
+    contingency_objects: List[CGMES_ASSETS] = get_ncp_contingency_objects(cgmes_model=cgmes_model)
+    contingency_equipment_list: List[CGMES_ASSETS] = cgmes_model.cgmes_assets.ContingencyEquipment_list
+
+    if len(contingency_objects) == 0:
+        return
+    else:
+        pass
+
+    contingency_device_lookup: Dict[str, object] = build_contingency_device_lookup(gcdev_model=gcdev_model)
+    contingency_group_lookup: Dict[str, gcdev.ContingencyGroup] = dict()
+    contingency_equipment_by_contingency: Dict[str, List[CGMES_ASSETS]] = dict()
+    imported_contingency_count: int = 0
+    skipped_contingency_count: int = 0
+
+    # Stage 1: index every ContingencyEquipment by the linked contingency UUID.
+    # This prepares fast access for the next stage where groups/elements are created.
+    for contingency_equipment in contingency_equipment_list:
+        contingency_obj: object = contingency_equipment.Contingency
+        if contingency_obj is None or isinstance(contingency_obj, str):
+            logger.add_warning(
+                msg='ContingencyEquipment without resolved Contingency reference',
+                device=contingency_equipment.rdfid,
+                device_class=contingency_equipment.tpe,
+                device_property='Contingency',
+                value=contingency_obj,
+                expected_value='resolved object'
+            )
+        else:
+            contingency_uuid: str = contingency_obj.uuid
+            lst: List[CGMES_ASSETS] | None = contingency_equipment_by_contingency.get(contingency_uuid, None)
+            if lst is None:
+                contingency_equipment_by_contingency[contingency_uuid] = [contingency_equipment]
+            else:
+                lst.append(contingency_equipment)
+
+    # Stage 2: build VeraGrid contingency groups and elements.
+    # Each NCP contingency becomes one VeraGrid ContingencyGroup.
+    # Each NCP ContingencyEquipment becomes one VeraGrid Contingency entry.
+    for contingency_obj in contingency_objects:
+        contingency_uuid: str = contingency_obj.uuid
+        contingency_elements: List[CGMES_ASSETS] | None = contingency_equipment_by_contingency.get(contingency_uuid, None)
+        if contingency_elements is None:
+            pass
+        else:
+            contingency_name: str = contingency_obj.name
+            if len(contingency_name) > 0:
+                pass
+            else:
+                contingency_name = contingency_uuid
+
+            normal_must_study: bool | None = contingency_obj.normalMustStudy
+            must_study: bool | None = contingency_obj.mustStudy
+            if isinstance(normal_must_study, bool):
+                contingency_group_active: bool = normal_must_study
+            elif isinstance(must_study, bool):
+                contingency_group_active = must_study
+            else:
+                contingency_group_active = True
+
+            contingency_group: gcdev.ContingencyGroup | None = contingency_group_lookup.get(contingency_uuid, None)
+            if contingency_group is None:
+                contingency_group = gcdev.ContingencyGroup(
+                    idtag=contingency_uuid,
+                    name=contingency_name,
+                    category=contingency_obj.tpe,
+                    active=contingency_group_active
+                )
+                gcdev_model.add_contingency_group(contingency_group)
+                contingency_group_lookup[contingency_uuid] = contingency_group
+            else:
+                pass
+
+            # Stage 3: convert each contingent equipment operation into one VeraGrid contingency action.
+            for contingency_equipment in contingency_elements:
+                equipment_obj: object = contingency_equipment.Equipment
+                if equipment_obj is None or isinstance(equipment_obj, str):
+                    skipped_contingency_count += 1
+                    logger.add_warning(
+                        msg='ContingencyEquipment without resolved Equipment reference',
+                        device=contingency_equipment.rdfid,
+                        device_class=contingency_equipment.tpe,
+                        device_property='Equipment',
+                        value=equipment_obj,
+                        expected_value='resolved object'
+                    )
+                else:
+                    equipment_uuid: str = equipment_obj.uuid
+                    target_device: object | None = contingency_device_lookup.get(equipment_uuid, None)
+                    if target_device is None:
+                        skipped_contingency_count += 1
+                        logger.add_warning(
+                            msg='Contingency target equipment not imported as a contingency-capable VeraGrid device',
+                            device=contingency_equipment.rdfid,
+                            device_class=contingency_equipment.tpe,
+                            device_property='Equipment.uuid',
+                            value=equipment_uuid
+                        )
+                    else:
+                        contingency_active_value: float | None = parse_contingency_equipment_status(
+                            contingent_status=contingency_equipment.contingentStatus,
+                            logger=logger,
+                            contingency_equipment=contingency_equipment
+                        )
+                        if contingency_active_value is None:
+                            skipped_contingency_count += 1
+                        else:
+                            contingency_description: object = contingency_obj.description
+                            if isinstance(contingency_description, str):
+                                contingency_comment: str = contingency_description
+                            else:
+                                contingency_comment = ""
+
+                            target_code_raw: object = target_device.code
+                            if isinstance(target_code_raw, str):
+                                target_code: str = target_code_raw
+                            else:
+                                target_code = ""
+
+                            target_name_raw: str = target_device.name
+                            if isinstance(target_name_raw, str):
+                                target_name: str = target_name_raw
+                            else:
+                                target_name = "device"
+
+                            gcdev_contingency = gcdev.Contingency(
+                                device=target_device,
+                                idtag=contingency_equipment.uuid,
+                                name=f"{contingency_name}::{target_name}",
+                                code=target_code,
+                                prop=ContingencyOperationTypes.Active,
+                                value=contingency_active_value,
+                                group=contingency_group,
+                                comment=contingency_comment
+                            )
+                            gcdev_model.add_contingency(gcdev_contingency)
+                            imported_contingency_count += 1
+
+    if imported_contingency_count > 0:
+        logger.add_info(
+            msg='Imported NCP contingencies',
+            value=imported_contingency_count,
+            expected_value=len(contingency_equipment_list),
+            comment=f"Skipped={skipped_contingency_count}"
+        )
+    else:
+        pass
 
 
 def derive_switch_bus_pair(calc_nodes: List[gcdev.Bus],
@@ -1164,8 +1439,8 @@ def get_gcdev_buses(cgmes_model: CgmesCircuit,
                         device=cn_elm.rdfid,
                         device_class=cn_elm.tpe,
                         device_property="nominalVoltage",
-                        value=None,
-                        expected_value=recovered_voltage
+                        value="None",
+                        expected_value=str(recovered_voltage)
                     )
                 else:
                     logger.add_warning(
@@ -1173,8 +1448,8 @@ def get_gcdev_buses(cgmes_model: CgmesCircuit,
                         device=cn_elm.rdfid,
                         device_class=cn_elm.tpe,
                         device_property="nominalVoltage",
-                        value=None,
-                        expected_value=recovered_voltage
+                        value="None",
+                        expected_value=str(recovered_voltage)
                     )
                 nominal_voltage = recovered_voltage
 
@@ -4384,6 +4659,11 @@ def cgmes_to_veragrid(cgmes_model: CgmesCircuit,
             device_to_terminal_dict=device_to_terminal_dict,
             logger=logger,
         )
+
+    # NCP contingencies are converted only after all candidate target devices exist.
+    get_gcdev_contingencies(cgmes_model=cgmes_model,
+                            gcdev_model=gc_model,
+                            logger=logger)
 
     cgmes_model.emit_progress(100)
     cgmes_model.emit_text("Cgmes import done!")

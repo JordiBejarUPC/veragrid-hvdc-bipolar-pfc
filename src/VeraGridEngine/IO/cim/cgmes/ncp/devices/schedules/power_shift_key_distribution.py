@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import Dict, TYPE_CHECKING
 from VeraGridEngine.IO.base.units import UnitMultiplier, UnitSymbol
 from VeraGridEngine.IO.cim.cgmes.cgmes_property import CgmesProperty
+from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType
 from VeraGridEngine.data_logger import DataLogger
 from VeraGridEngine.IO.cim.cgmes.cgmes_v3_0_0.devices.identified_object import IdentifiedObject
 
@@ -19,9 +20,9 @@ if TYPE_CHECKING:
 class PowerShiftKeyDistribution(IdentifiedObject):
     """NCP CGMES extension class."""
     LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
-        CgmesProperty(property_name='PowerBidSchedule', class_type='PowerBidSchedule', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='PowerShiftKeySchedule', class_type='PowerShiftKeySchedule', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='PowerShiftKeyStrategy', class_type='PowerShiftKeyStrategy', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
+        CgmesProperty(property_name='PowerBidSchedule', class_type='PowerBidSchedule', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.RAS, CgmesProfileType.PS, CgmesProfileType.AVS, CgmesProfileType.SHS, CgmesProfileType.SIS]),
+        CgmesProperty(property_name='PowerShiftKeySchedule', class_type='PowerShiftKeySchedule', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.RAS, CgmesProfileType.PS, CgmesProfileType.AVS, CgmesProfileType.SHS, CgmesProfileType.SIS]),
+        CgmesProperty(property_name='PowerShiftKeyStrategy', class_type='PowerShiftKeyStrategy', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.RAS, CgmesProfileType.PS, CgmesProfileType.AVS, CgmesProfileType.SHS, CgmesProfileType.SIS]),
     )
     __slots__ = ('PowerBidSchedule', 'PowerShiftKeySchedule', 'PowerShiftKeyStrategy')
 

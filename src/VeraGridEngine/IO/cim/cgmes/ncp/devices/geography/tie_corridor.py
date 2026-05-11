@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import Dict, TYPE_CHECKING
 from VeraGridEngine.IO.base.units import UnitMultiplier, UnitSymbol
 from VeraGridEngine.IO.cim.cgmes.cgmes_property import CgmesProperty
+from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType
 from VeraGridEngine.data_logger import DataLogger
 from VeraGridEngine.IO.cim.cgmes.cgmes_v3_0_0.devices.power_system_resource import PowerSystemResource
 
@@ -20,13 +21,13 @@ if TYPE_CHECKING:
 class TieCorridor(PowerSystemResource):
     """NCP CGMES extension class."""
     LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
-        CgmesProperty(property_name='AreaDispatchableUnit', class_type='AreaDispatchableUnit', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='BiddingZoneBorder', class_type='BiddingZoneBorder', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='LoadFrequencyControlArea', class_type='LoadFrequencyControlArea', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='TieFlow', class_type='TieFlow', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='delayRegulatingReserve', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='maxRegulatingReserveRamp', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='thresholdRegulatingReserve', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
+        CgmesProperty(property_name='AreaDispatchableUnit', class_type='AreaDispatchableUnit', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.MA, CgmesProfileType.PSP]),
+        CgmesProperty(property_name='BiddingZoneBorder', class_type='BiddingZoneBorder', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.MA, CgmesProfileType.PSP]),
+        CgmesProperty(property_name='LoadFrequencyControlArea', class_type='LoadFrequencyControlArea', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.MA, CgmesProfileType.PSP]),
+        CgmesProperty(property_name='TieFlow', class_type='TieFlow', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.MA, CgmesProfileType.PSP]),
+        CgmesProperty(property_name='delayRegulatingReserve', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.MA, CgmesProfileType.PSP]),
+        CgmesProperty(property_name='maxRegulatingReserveRamp', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.MA, CgmesProfileType.PSP]),
+        CgmesProperty(property_name='thresholdRegulatingReserve', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.MA, CgmesProfileType.PSP]),
     )
     __slots__ = ('AreaDispatchableUnit', 'BiddingZoneBorder', 'LoadFrequencyControlArea', 'TieFlow', 'delayRegulatingReserve', 'maxRegulatingReserveRamp', 'thresholdRegulatingReserve')
 

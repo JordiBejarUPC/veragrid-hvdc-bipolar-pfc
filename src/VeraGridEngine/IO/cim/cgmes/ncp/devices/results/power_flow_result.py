@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import Dict, TYPE_CHECKING
 from VeraGridEngine.IO.base.units import UnitMultiplier, UnitSymbol
 from VeraGridEngine.IO.cim.cgmes.cgmes_property import CgmesProperty
+from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType
 from VeraGridEngine.data_logger import DataLogger
 from VeraGridEngine.IO.cim.cgmes.base import Base
 
@@ -21,22 +22,22 @@ if TYPE_CHECKING:
 class PowerFlowResult(Base):
     """NCP CGMES extension class."""
     LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
-        CgmesProperty(property_name='ACDCTerminal', class_type='ACDCTerminal', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='OperationalLimit', class_type='OperationalLimit', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='PowerTransferCorridor', class_type='PowerTransferCorridor', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='RemedialActionApplied', class_type=str, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='ReportedByRegion', class_type='Region', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='TopologicalNode', class_type='TopologicalNode', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='absoluteValue', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='atTime', class_type=str, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='isViolation', class_type=bool, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='value', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='valueA', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='valueAngle', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='valueV', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='valueVA', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='valueVAR', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='valueW', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
+        CgmesProperty(property_name='ACDCTerminal', class_type='ACDCTerminal', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.SAR]),
+        CgmesProperty(property_name='OperationalLimit', class_type='OperationalLimit', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.SAR]),
+        CgmesProperty(property_name='PowerTransferCorridor', class_type='PowerTransferCorridor', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.SAR]),
+        CgmesProperty(property_name='RemedialActionApplied', class_type=str, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.SAR]),
+        CgmesProperty(property_name='ReportedByRegion', class_type='Region', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.SAR]),
+        CgmesProperty(property_name='TopologicalNode', class_type='TopologicalNode', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.SAR]),
+        CgmesProperty(property_name='absoluteValue', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.SAR]),
+        CgmesProperty(property_name='atTime', class_type=str, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.SAR]),
+        CgmesProperty(property_name='isViolation', class_type=bool, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.SAR]),
+        CgmesProperty(property_name='value', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.SAR]),
+        CgmesProperty(property_name='valueA', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.SAR]),
+        CgmesProperty(property_name='valueAngle', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.SAR]),
+        CgmesProperty(property_name='valueV', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.SAR]),
+        CgmesProperty(property_name='valueVA', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.SAR]),
+        CgmesProperty(property_name='valueVAR', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.SAR]),
+        CgmesProperty(property_name='valueW', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.SAR]),
     )
     __slots__ = ('ACDCTerminal', 'OperationalLimit', 'PowerTransferCorridor', 'RemedialActionApplied', 'ReportedByRegion', 'TopologicalNode', 'absoluteValue', 'atTime', 'isViolation', 'value', 'valueA', 'valueAngle', 'valueV', 'valueVA', 'valueVAR', 'valueW')
 

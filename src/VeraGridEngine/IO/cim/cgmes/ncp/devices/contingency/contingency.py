@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import Dict, TYPE_CHECKING
 from VeraGridEngine.IO.base.units import UnitMultiplier, UnitSymbol
 from VeraGridEngine.IO.cim.cgmes.cgmes_property import CgmesProperty
+from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType
 from VeraGridEngine.data_logger import DataLogger
 from VeraGridEngine.IO.cim.cgmes.cgmes_v3_0_0.devices.identified_object import IdentifiedObject
 
@@ -23,20 +24,20 @@ if TYPE_CHECKING:
 class Contingency(IdentifiedObject):
     """NCP CGMES extension class."""
     LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
-        CgmesProperty(property_name='AssessedElementWithContingency', class_type='AssessedElementWithContingency', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='ContingencyElement', class_type='ContingencyElement', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='ContingencyPowerFlowResult', class_type='ContingencyPowerFlowResult', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='ContingencySchedule', class_type=str, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='ContingencyWithRemedialAction', class_type='ContingencyWithRemedialAction', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='CurativeRemedialActionSchedule', class_type='RemedialActionSchedule', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='EquipmentOperator', class_type='SystemOperator', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='ObservableQuantity', class_type=str, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='PinContingency', class_type='PinContingency', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='SimulationEvents', class_type=str, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='mustStudy', class_type=bool, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='normalMustStudy', class_type=bool, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='normalProbability', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
-        CgmesProperty(property_name='probability', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[]),
+        CgmesProperty(property_name='AssessedElementWithContingency', class_type='AssessedElementWithContingency', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.CO, CgmesProfileType.SAR]),
+        CgmesProperty(property_name='ContingencyElement', class_type='ContingencyElement', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.CO, CgmesProfileType.SAR]),
+        CgmesProperty(property_name='ContingencyPowerFlowResult', class_type='ContingencyPowerFlowResult', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.CO, CgmesProfileType.SAR]),
+        CgmesProperty(property_name='ContingencySchedule', class_type=str, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.CO, CgmesProfileType.SAR]),
+        CgmesProperty(property_name='ContingencyWithRemedialAction', class_type='ContingencyWithRemedialAction', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.CO, CgmesProfileType.SAR]),
+        CgmesProperty(property_name='CurativeRemedialActionSchedule', class_type='RemedialActionSchedule', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.CO, CgmesProfileType.SAR]),
+        CgmesProperty(property_name='EquipmentOperator', class_type='SystemOperator', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.CO, CgmesProfileType.SAR]),
+        CgmesProperty(property_name='ObservableQuantity', class_type=str, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.CO, CgmesProfileType.SAR]),
+        CgmesProperty(property_name='PinContingency', class_type='PinContingency', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.CO, CgmesProfileType.SAR]),
+        CgmesProperty(property_name='SimulationEvents', class_type=str, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.CO, CgmesProfileType.SAR]),
+        CgmesProperty(property_name='mustStudy', class_type=bool, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.CO, CgmesProfileType.SAR]),
+        CgmesProperty(property_name='normalMustStudy', class_type=bool, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.CO, CgmesProfileType.SAR]),
+        CgmesProperty(property_name='normalProbability', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.CO, CgmesProfileType.SAR]),
+        CgmesProperty(property_name='probability', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.CO, CgmesProfileType.SAR]),
     )
     __slots__ = ('AssessedElementWithContingency', 'ContingencyElement', 'ContingencyPowerFlowResult', 'ContingencySchedule', 'ContingencyWithRemedialAction', 'CurativeRemedialActionSchedule', 'EquipmentOperator', 'ObservableQuantity', 'PinContingency', 'SimulationEvents', 'mustStudy', 'normalMustStudy', 'normalProbability', 'probability')
 
