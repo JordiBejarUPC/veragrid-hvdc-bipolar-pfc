@@ -11,6 +11,7 @@ from VeraGridEngine.enumerations import DeviceType, ParamPowerFlowRefferenceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import (Block, find_name_in_block )
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import connect_models
 from VeraGridEngine.Utils.Symbolic.block_helpers import tf_to_block, tf_to_diffblock_with_output, \
     tf_to_block_with_states, to_implicit, tf_to_diffblock_with_antiwindup
 
@@ -616,7 +617,7 @@ def get_exciter_rms(vfactory: VarFactory, name: str = "exciter") -> RmsModelTemp
     # Va: measured stator voltage (from generator) (pu)
     # Vpss: output from power system stabilizer (pu)
 
-    inputs = [vfactory.add_var("IRPu_", shared_reference="irpu_reference"), vfactory.add_var("Vm_"), vfactory.add_var("Vpss_", shared_reference="vpss_reference")]
+    inputs = [vfactory.add_var("IRPu_", shared_reference="irpu_reference"), vfactory.add_var("Vm_", reference=VarPowerFlowRefferenceType.Vm), vfactory.add_var("Vpss_", shared_reference="vpss_reference")]
 
     algebraic_vars = []
 
@@ -1064,18 +1065,15 @@ def get_complete_generator_template_rms(vfactory: VarFactory, name="complete gen
     stabilizer_mdl = get_stabilizer_rms(vfactory=vfactory).block
 
     # connect models
-    genqec_mdl.connect([genqec_mdl.in_vars[3]], [exciter_mdl.out_vars[0]])
-    exciter_mdl.connect([exciter_mdl.in_vars[0]], [genqec_mdl.out_vars[3]])
+    # missing to connect power flow variables between non bus models
     exciter_mdl.connect([exciter_mdl.in_vars[1]], [genqec_mdl.in_vars[0]])
-    exciter_mdl.connect([exciter_mdl.in_vars[2]], [stabilizer_mdl.out_vars[0]])
+    connect_models(genqec_mdl, exciter_mdl)
 
-    stabilizer_mdl.connect([stabilizer_mdl.in_vars[0]], [genqec_mdl.out_vars[2]])
+    connect_models(exciter_mdl, stabilizer_mdl)
 
-    genqec_mdl.connect([genqec_mdl.in_vars[2]], [governor_mdl.out_vars[0]])
+    connect_models(stabilizer_mdl, genqec_mdl)
 
-    governor_mdl.connect([governor_mdl.in_vars[0]], [genqec_mdl.out_vars[2]])
-
-    governor_mdl.connect([governor_mdl.in_vars[1]], [genqec_mdl.out_vars[4]])
+    connect_models(genqec_mdl, governor_mdl)
 
     templ.block.children.append(genqec_mdl)
     templ.block.children.append(governor_mdl)
