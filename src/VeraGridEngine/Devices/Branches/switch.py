@@ -48,13 +48,6 @@ class Switch(BranchParent):
             cat=[PrpCat.TP],
         ),
         GCProp(
-            prop_name='retain',
-            units="",
-            tpe=bool,
-            definition='Alias of retained used by CGMES workflows',
-            cat=[PrpCat.TP],
-        ),
-        GCProp(
             prop_name='normal_open',
             units="",
             tpe=bool,
