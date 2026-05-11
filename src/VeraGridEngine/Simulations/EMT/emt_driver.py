@@ -18,7 +18,6 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowRes
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonDiagnosticsConfig
 from VeraGridEngine.IO.fmu.importer.emt_boundary import build_emt_boundary_updater
 from VeraGridEngine.basic_structures import Vec, StrVec
-from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 
 from VeraGridEngine.enumerations import EngineType, SimulationTypes
 
