@@ -3,7 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 import json
-from typing import Dict, List, Sequence, Tuple
+from typing import Dict, List, Sequence
 import numpy as np
 from matplotlib import pyplot as plt
 from PySide6 import QtCore, QtGui
