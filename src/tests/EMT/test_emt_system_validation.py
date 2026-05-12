@@ -170,6 +170,25 @@ def _make_external_mapping_block(refs: list[VarPowerFlowRefferenceType], name_su
     return Block(external_mapping=external_mapping, out_vars=out_vars)
 
 
+def test_set_emt_model_materializes_missing_bus_shell() -> None:
+    """Ensure EMT assignment helpers initialize the connected bus shell immediately."""
+    grid = gce.MultiCircuit(Sbase=2.0, fbase=50.0)
+    bus = gce.Bus(name="Bus0", Vnom=10.0, is_slack=True)
+    generator = gce.Generator(name="Gen0", vset=1.0, Snom=grid.Sbase, freq=50.0, r1=0.001, x1=1.7)
+
+    grid.add_bus(bus)
+    grid.add_generator(bus=bus, api_obj=generator)
+
+    generator_model = Block(state_vars=[grid.var_factory.add_var(name="omega_test", uid=9001)])
+
+    assert bus.emt_model.empty() is True
+
+    set_emt_model(device=generator, model=generator_model, var_factory=grid.var_factory)
+
+    assert bus.emt_model.empty() is False
+    assert VarPowerFlowRefferenceType.v_A in bus.emt_model.external_mapping
+
+
 # =============================================================================
 # TEST 1: scripting_example_thevequiv_piline_Rload_emt
 # Positive case - should pass validation without raising EmtTopologyError

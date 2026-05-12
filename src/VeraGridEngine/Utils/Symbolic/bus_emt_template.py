@@ -161,8 +161,6 @@ def get_bus_emt_template(grid: MultiCircuit,
 
     # choose template depending on the number of phases
     bus.emt_model = BusEmtTemplate(vf=vf, mask=mask, is_dc=bus.is_dc, name=f"{bus.name}_emt_template").block
-
-
 def get_bus_emt_algebraic_vars(bus_emt_model: Block) -> Tuple[
     Optional[Var], Optional[Var], Optional[Var], Optional[Var]]:
     """

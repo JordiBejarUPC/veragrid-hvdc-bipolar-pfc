@@ -2552,20 +2552,24 @@ class EmtProblemDae(EmtProblemTemplate):
             # Add model to system mappings
             # Populates tracking dictionaries to maintain the relationship between
             # electrical devices and their corresponding symbolic variables.
-            for v in mdl.state_vars:
-                self.add_device_var(dev=dev, var=v)
-                self._vars_glob_name2uid[v.name + dev.name] = v.uid
-                self._vars2device[v.uid] = dev
+            block_item: Block
+            for block_item in mdl.get_all_blocks():
+                v: Var
+                for v in block_item.state_vars:
+                    self.add_device_var(dev=dev, var=v)
+                    self._vars_glob_name2uid[v.name + dev.name] = v.uid
+                    self._vars2device[v.uid] = dev
 
-            for v in mdl.algebraic_vars:
-                self.add_device_var(dev=dev, var=v)
-                self._vars_glob_name2uid[v.name + dev.name] = v.uid
-                self._vars2device[v.uid] = dev
+                for v in block_item.algebraic_vars:
+                    self.add_device_var(dev=dev, var=v)
+                    self._vars_glob_name2uid[v.name + dev.name] = v.uid
+                    self._vars2device[v.uid] = dev
 
-            for dv in mdl.diff_vars:
-                self.add_device_var(dev=dev, var=dv)
-                self._vars_glob_name2uid[dv.name + dev.name] = dv.uid
-                self._vars2device[dv.uid] = dev
+                dv: Var
+                for dv in block_item.diff_vars:
+                    self.add_device_var(dev=dev, var=dv)
+                    self._vars_glob_name2uid[dv.name + dev.name] = dv.uid
+                    self._vars2device[dv.uid] = dev
 
             queue_emt_fmu_cs_device(self, dev, mdl)
             queue_emt_fmu_me_device(self, dev, mdl)
