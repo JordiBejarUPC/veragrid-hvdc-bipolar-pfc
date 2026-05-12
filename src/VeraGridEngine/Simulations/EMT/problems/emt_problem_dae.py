@@ -4124,54 +4124,6 @@ class EmtProblemDae(EmtProblemTemplate):
             self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.P, value=p_total)
             self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Q, value=q_total)
 
-            phi_var: Optional[Any] = _get_external_mapping_var_if_present(
-                mdl=mdl,
-                key=VarPowerFlowRefferenceType.phi,
-            )
-            if phi_var is not None:
-                a_operator: complex = np.exp(1j * 2.0 * np.pi / 3.0)
-
-                va: complex = complex(voltage_vector[1])
-                vb: complex = complex(voltage_vector[2])
-                vc: complex = complex(voltage_vector[3])
-
-                sa: complex = complex(phase_power[1])
-                sb: complex = complex(phase_power[2])
-                sc: complex = complex(phase_power[3])
-
-                if abs(va) > 1.0e-12:
-                    ia: complex = np.conj(sa / va)
-                else:
-                    ia = 0.0 + 0.0j
-
-                if abs(vb) > 1.0e-12:
-                    ib: complex = np.conj(sb / vb)
-                else:
-                    ib = 0.0 + 0.0j
-
-                if abs(vc) > 1.0e-12:
-                    ic: complex = np.conj(sc / vc)
-                else:
-                    ic = 0.0 + 0.0j
-
-                positive_voltage: complex = (va + a_operator * vb + (a_operator * a_operator) * vc) / 3.0
-                positive_current: complex = (ia + a_operator * ib + (a_operator * a_operator) * ic) / 3.0
-
-                phi_voltage: float = float(np.angle(positive_voltage))
-                phi_current: float = float(np.angle(positive_current))
-                angle_difference: float = phi_current - phi_voltage
-                phi_value: float = float(np.arctan2(np.sin(angle_difference), np.cos(angle_difference)))
-
-                vpk_value: float = float(np.sqrt(2.0) * np.abs(positive_voltage))
-                ipk_value: float = float(np.sqrt(2.0) * np.abs(positive_current))
-
-                self.set_external_param(mdl, VarPowerFlowRefferenceType.phi_v, phi_voltage)
-                self.set_external_param(mdl, VarPowerFlowRefferenceType.phi, phi_value)
-                self.set_external_param(mdl, VarPowerFlowRefferenceType.Vpk, vpk_value)
-                self.set_external_param(mdl, VarPowerFlowRefferenceType.Ipk, ipk_value)
-            else:
-                pass
-
             omega_base: float = 2.0 * np.pi * self.grid.fBase
             voltage_derivative_keys: List[VarPowerFlowRefferenceType] = list([
                 VarPowerFlowRefferenceType.d_v_N,
