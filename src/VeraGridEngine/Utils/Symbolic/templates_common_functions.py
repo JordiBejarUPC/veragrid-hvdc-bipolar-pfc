@@ -13,7 +13,7 @@ from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
-
+from VeraGridEngine.Utils.Symbolic.bus_emt_template import BusEmtTemplate
 
 def connect_line_rms_from(mdl1: Block, mdl2: Block):
     """
@@ -153,7 +153,7 @@ def connect_models(mdl1: Block, mdl2: Block):
         (outp, inpt)
         for outp in mdl1.out_vars
         for inpt in mdl2.in_vars
-        if outp.ref == inpt.shared_ref and outp.shared_ref is not None and inpt.shared_ref is not None
+        if outp.shared_ref == inpt.shared_ref and outp.shared_ref is not None and inpt.shared_ref is not None
     ]
 
     for outp, inpt in pairs:
@@ -188,7 +188,7 @@ def connect_models(mdl1: Block, mdl2: Block):
 
 
     #print("")
-def connect_bus_variables(device: Any, model:Block, var_factory: VarFactory | None):
+def connect_bus_variables_rms(device: Any, model:Block, var_factory: VarFactory | None):
     """
     connect the bus variables of the model with the api_object bus variables
     :param device:
@@ -240,6 +240,235 @@ def connect_bus_variables(device: Any, model:Block, var_factory: VarFactory | No
                 raise ValueError("var factory not associated to grid element")
         connect_models_power_flow(device.bus.rms_model, model)
 
+def connect_pending_injection_bus_variables_emt(bus: Any) -> None:
+    """
+    Connect deferred single-bus EMT devices once one bus shell exists.
+
+    The GUI can assign one injection EMT template before any branch template has
+    created the bus EMT shell. In that case the device model is duplicated and
+    queued on the bus. When one branch later materializes the bus shell, this
+    helper completes the pending bus-to-device EMT connections.
+
+    :param bus: Bus whose pending EMT injection devices must be connected.
+    :return: None.
+    """
+    pending_devices = bus.get_pending_emt_devices()
+    pending_device: Any
+
+    for pending_device in pending_devices:
+        if bus.emt_model.empty():
+            pass
+        else:
+            if pending_device.emt_model.empty():
+                pass
+            else:
+                connect_injection_emt(bus.emt_model, pending_device.emt_model)
+                bus.remove_pending_emt_device(pending_device)
+
+
+def connect_bus_variables_emt(device: Any,
+                              model: Block,
+                              var_factory: VarFactory | None,
+                              allow_deferred_connection: bool = False):
+    """
+    connect the bus variables of the model with the api_object bus variables
+    :param device:
+    :type device:
+    :param model:
+    :type model:
+    :param var_factory:
+    :type var_factory:
+    :return:
+    :rtype:
+    """
+
+    if device.device_type in [DeviceType.BranchDevice, DeviceType.LineDevice, DeviceType.Transformer2WDevice, DeviceType.Transformer3WDevice]:
+        # Check if using phasor or polar coordinates by looking at bus model outputs
+        bus_from = device.bus_from
+        # create bus mask to know number of phases
+        mask = [False, False, False, False]  # [N, A, B, C]
+        if not bus_from.is_dc:
+            ys_phase_device_types = {
+                DeviceType.LineDevice,
+            }
+            transformer_phase_device_types = {
+                DeviceType.Transformer2WDevice,
+                DeviceType.WindingDevice,
+            }
+            abc_phase_device_types = {
+                DeviceType.VscDevice,
+                DeviceType.SeriesReactanceDevice,
+                DeviceType.UpfcDevice,
+                DeviceType.SwitchDevice,
+                DeviceType.HVDCLineDevice,
+                DeviceType.DCLineDevice,
+            }
+
+            if device.device_type in ys_phase_device_types and device.ys is not None:
+                mask[0] |= bool(device.ys.phN)
+                mask[1] |= bool(device.ys.phA)
+                mask[2] |= bool(device.ys.phB)
+                mask[3] |= bool(device.ys.phC)
+            elif device.device_type in transformer_phase_device_types:
+                mask[1] = True
+                mask[2] = True
+                mask[3] = True
+            elif device.device_type in abc_phase_device_types:
+                mask[1] = True
+                mask[2] = True
+                mask[3] = True
+            else:
+                mask[1] = True
+                mask[2] = True
+                mask[3] = True
+
+        # modify/create bus block
+        if var_factory is not None:
+            if bus_from.emt_model.empty():
+                bus_from.emt_model = BusEmtTemplate(vf=var_factory,
+                                                    mask = mask,
+                                                    is_dc = bus_from.is_dc).block
+            else:
+                if not bus_from.is_dc:
+                    # Get the external mapping of the already existing bus EMT model
+                    external_mapping = bus_from.emt_model.external_mapping
+
+                    # Detect which AC phases are already present in the existing bus model
+                    existing_mask = [False, False, False, False]  # [N, A, B, C]
+                    existing_mask[0] = external_mapping.get(VarPowerFlowRefferenceType.v_N, None) is not None
+                    existing_mask[1] = external_mapping.get(VarPowerFlowRefferenceType.v_A, None) is not None
+                    existing_mask[2] = external_mapping.get(VarPowerFlowRefferenceType.v_B, None) is not None
+                    existing_mask[3] = external_mapping.get(VarPowerFlowRefferenceType.v_C, None) is not None
+                    # Merge the phases required by the already existing bus model and the new device
+                    required_mask = [
+                        existing_mask[0] or mask[0],
+                        existing_mask[1] or mask[1],
+                        existing_mask[2] or mask[2],
+                        existing_mask[3] or mask[3],
+                    ]
+                    # Recreate the bus EMT model only if the required phase layout changed
+                    if required_mask != existing_mask:
+                        bus_from.emt_model = BusEmtTemplate(
+                            vf=var_factory,
+                            mask=required_mask,
+                            is_dc=bus_from.is_dc
+                        ).block
+                    else:
+                        pass
+
+        else:
+                raise ValueError("var factory not associated to grid element")
+
+        # connect inputs and outputs
+        connect_line_emt_from(device.bus_from.emt_model, model)
+        connect_pending_injection_bus_variables_emt(device.bus_from)
+
+        # bus to
+        bus_to = device.bus_to
+        # create bus mask to know number of phases
+        mask = [False, False, False, False]  # [N, A, B, C]
+        if not bus_to.is_dc:
+            ys_phase_device_types = {
+                DeviceType.LineDevice,
+            }
+            transformer_phase_device_types = {
+                DeviceType.Transformer2WDevice,
+                DeviceType.WindingDevice,
+            }
+            abc_phase_device_types = {
+                DeviceType.VscDevice,
+                DeviceType.SeriesReactanceDevice,
+                DeviceType.UpfcDevice,
+                DeviceType.SwitchDevice,
+                DeviceType.HVDCLineDevice,
+                DeviceType.DCLineDevice,
+            }
+
+            if device.device_type in ys_phase_device_types and device.ys is not None:
+                mask[0] |= bool(device.ys.phN)
+                mask[1] |= bool(device.ys.phA)
+                mask[2] |= bool(device.ys.phB)
+                mask[3] |= bool(device.ys.phC)
+            elif device.device_type in transformer_phase_device_types:
+                mask[1] = True
+                mask[2] = True
+                mask[3] = True
+            elif device.device_type in abc_phase_device_types:
+                mask[1] = True
+                mask[2] = True
+                mask[3] = True
+            else:
+                mask[1] = True
+                mask[2] = True
+                mask[3] = True
+
+        # modify/create bus block
+        if var_factory is not None:
+            if bus_to.emt_model.empty():
+                bus_to.emt_model = BusEmtTemplate(vf=var_factory,
+                                                    mask=mask,
+                                                    is_dc=bus_to.is_dc).block
+            else:
+                if not bus_to.is_dc:
+                    # Get the external mapping of the already existing bus EMT model
+                    external_mapping = bus_to.emt_model.external_mapping
+
+                    # Detect which AC phases are already present in the existing bus model
+                    existing_mask = [False, False, False, False]  # [N, A, B, C]
+                    existing_mask[0] = external_mapping.get(VarPowerFlowRefferenceType.v_N, None) is not None
+                    existing_mask[1] = external_mapping.get(VarPowerFlowRefferenceType.v_A, None) is not None
+                    existing_mask[2] = external_mapping.get(VarPowerFlowRefferenceType.v_B, None) is not None
+                    existing_mask[3] = external_mapping.get(VarPowerFlowRefferenceType.v_C, None) is not None
+                    # Merge the phases required by the already existing bus model and the new device
+                    required_mask = [
+                        existing_mask[0] or mask[0],
+                        existing_mask[1] or mask[1],
+                        existing_mask[2] or mask[2],
+                        existing_mask[3] or mask[3],
+                    ]
+                    # Recreate the bus EMT model only if the required phase layout changed
+                    if required_mask != existing_mask:
+                        bus_to.emt_model = BusEmtTemplate(
+                            vf=var_factory,
+                            mask=required_mask,
+                            is_dc=bus_to.is_dc
+                        ).block
+                    else:
+                        pass
+
+        else:
+            raise ValueError("var factory not associated to grid element")
+
+        # connect inputs and outputs
+        connect_line_emt_to(device.bus_to.emt_model, model)
+        connect_pending_injection_bus_variables_emt(device.bus_to)
+
+
+    else:
+        if device.bus.emt_model.empty():
+            if var_factory is not None:
+                if device.bus.is_dc:
+                    device.bus.emt_model = BusEmtTemplate(
+                        vf=var_factory,
+                        mask=[False, False, False, False],
+                        is_dc=True,
+                    ).block
+                else:
+                    if allow_deferred_connection:
+                        # Keep the duplicated EMT device model and defer only the
+                        # bus connection until one branch creates the EMT shell.
+                        device.bus.add_pending_emt_device(device)
+                    else:
+                        raise ValueError(
+                            f"Connection Bus EMT model cannot be empty, initialize {device.bus.name} EMT model"
+                        )
+            else:
+                raise ValueError("var factory not associated to grid element")
+        if device.bus.emt_model.empty():
+            pass
+        else:
+            connect_injection_emt(device.bus.emt_model, model)
+
 
 def set_rms_model(device: Any, model:Block, var_factory: VarFactory):
     """
@@ -275,7 +504,8 @@ def set_rms_model(device: Any, model:Block, var_factory: VarFactory):
 
     else:
         if not device.bus.rms_model.empty():
-            connect_models_power_flow(device.bus.rms_model, model)
+            for mdl in model.get_all_blocks():
+                connect_models_power_flow(device.bus.rms_model, mdl)
 
         else:
             raise ValueError(f"Connection Bus RMS model cannot be empty, initialize {device.bus.name} RMS model")
@@ -355,6 +585,38 @@ def connect_line_emt_to(mdl1: Block, mdl2: Block):
     for outp, inpt in pairs:
         mdl2.connect([inpt], [outp])
 
+
+def connect_injection_emt(mdl1: Block, mdl2: Block) -> None:
+    """
+    Connect one bus EMT shell to one single-bus EMT injection model.
+
+    The bus shell exposes EMT bus voltages as outputs. Single-bus injection
+    templates consume those same voltage references directly on their inputs,
+    so the connection rule is one direct reference match per supported node.
+
+    :param mdl1: Bus EMT model.
+    :param mdl2: EMT model of one single-bus injection device.
+    :return: None.
+    """
+    # Single-bus EMT devices use the same enum references as the bus shell, so
+    # the algorithm only needs to match equal EMT voltage references.
+    phase_map = {
+        VarPowerFlowRefferenceType.v_N: VarPowerFlowRefferenceType.v_N,
+        VarPowerFlowRefferenceType.v_A: VarPowerFlowRefferenceType.v_A,
+        VarPowerFlowRefferenceType.v_B: VarPowerFlowRefferenceType.v_B,
+        VarPowerFlowRefferenceType.v_C: VarPowerFlowRefferenceType.v_C,
+        VarPowerFlowRefferenceType.Vdc: VarPowerFlowRefferenceType.Vdc,
+    }
+
+    pairs = [
+        (outp, inpt)
+        for outp in mdl1.out_vars
+        for inpt in mdl2.in_vars
+        if outp.ref in phase_map and phase_map[outp.ref] == inpt.ref
+    ]
+
+    for outp, inpt in pairs:
+        mdl2.connect([inpt], [outp])
 
 def connect_vsc_emt_from(mdl1: Block, mdl2: Block, is_dc_bus: bool = False):
     """
@@ -487,7 +749,7 @@ def set_emt_model(device: Any, model: Block, var_factory: VarFactory):
     else:
         # Generic device connection (e.g., Loads, Generators connected to a single bus)
         if not device.bus.emt_model.empty():
-            connect_models(device.bus.emt_model, model)
+            connect_injection_emt(device.bus.emt_model, model)
         else:
             raise ValueError(f"Connection Bus EMT model cannot be empty, initialize {device.bus.name} EMT model")
 

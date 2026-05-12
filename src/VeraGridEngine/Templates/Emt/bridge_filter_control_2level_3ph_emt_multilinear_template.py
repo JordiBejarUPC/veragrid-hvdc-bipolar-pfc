@@ -8,12 +8,12 @@ from typing import Dict, Tuple
 import numpy as np
 
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
-import VeraGridEngine.Utils.Symbolic.symbolic_ml as sym_ml
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Templates.Emt.bridge_filter_2level_3ph_emt_multilinear_template import get_bridge_filter_2level_3ph_emt_multilinear_template
 from VeraGridEngine.Utils.Symbolic.block import Block, build_name_to_var_lookup
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Expr, Var
+from VeraGridEngine.Utils.procedural_logic import hard_saturation
 from VeraGridEngine.enumerations import DeviceType
 
 
@@ -102,19 +102,8 @@ def _build_bridge_filter_current_control_block(vf: VarFactory, name: str) -> Blo
     i_q0: Expr = c23 * (Q_ref / sbase) / (Vpk + eps)
     v_cmd_d0: Expr = Vpk - R_f * i_d0 - L_f * i_q0
     v_cmd_q0: Expr = -R_f * i_q0 + L_f * i_d0
-    ml_v_d_cap_block: Block
-    v_d_cap: Expr
-    ml_v_d_cap_block, v_d_cap = sym_ml.ml_hard_sat(
-        vf=vf,
-        u=v_cmd_d_u,
-        u_min=-v_lim,
-        u_max=v_lim,
-        name=f"v_d_cap_{name}",
-        alternative_positive_part=True,
-        scale_balance=Const(10.0),
-        scale_complementarity=Const(100.0),
-        scale_equalities=Const(10.0),
-    )
+    v_d_cap_mode: Var = vf.add_var(name=f"v_d_cap_mode_{name}")
+    v_d_cap_expr: Expr = sym.hard_sat(v_cmd_d_u, -v_lim, v_lim)
     v_lim_sq_expr: Expr = v_lim * v_lim_aux
     v_cmd_d_sq_expr: Expr = v_cmd_d * v_cmd_d_aux
     v_cmd_q_sq_expr: Expr = v_cmd_q * v_cmd_q_aux
@@ -157,8 +146,8 @@ def _build_bridge_filter_current_control_block(vf: VarFactory, name: str) -> Blo
             v_q_cap - v_q_cap_aux,
             v_0_cap * v_0_cap_aux - v_0_cap_rhs,
             v_0_cap - v_0_cap_aux,
-            v_d_cap_out - v_d_cap,
-            v_cmd_d - v_d_cap,
+            v_d_cap_out - v_d_cap_mode,
+            v_cmd_d - v_d_cap_out,
             v_cmd_q - sym.hard_sat(v_cmd_q_u, -v_q_cap, v_q_cap),
             v_cmd_0 - sym.hard_sat(v_cmd_0_u, -v_0_cap, v_0_cap),
         ]),
@@ -170,6 +159,9 @@ def _build_bridge_filter_current_control_block(vf: VarFactory, name: str) -> Blo
             v_cmd_norm, v_cmd_norm_aux, v_cmd_d0_aux, v_cmd_q0_aux,
             v_q_cap, v_q_cap_aux, v_0_cap, v_0_cap_aux,
             v_d_cap_out, v_cmd_d, v_cmd_q, v_cmd_0,
+        ]),
+        mode_dict=dict([
+            (v_d_cap_mode, c0),
         ]),
         init_eqs=dict([
             (xi_id, c0),
@@ -194,7 +186,7 @@ def _build_bridge_filter_current_control_block(vf: VarFactory, name: str) -> Blo
             (v_q_cap_aux, sym.sqrt(v_q_cap_rhs)),
             (v_0_cap, sym.sqrt(v_0_cap_rhs)),
             (v_0_cap_aux, sym.sqrt(v_0_cap_rhs)),
-            (v_d_cap_out, v_d_cap),
+            (v_d_cap_out, v_d_cap_expr),
             (v_cmd_d, v_cmd_d0),
             (v_cmd_q, v_cmd_q0),
             (v_cmd_0, c0),
@@ -206,7 +198,15 @@ def _build_bridge_filter_current_control_block(vf: VarFactory, name: str) -> Blo
         ]),
         in_vars=list([v_d, v_q, v_0, i_d, i_q, i_0, omega_pll, omega_base, R_f, L_f, i_0_ref, i_d_ref, i_q_ref, i_kp, i_ki, aw_gain, m_max, Vdc_ref, v_dc, vdc_floor, sbase, P_ref, Q_ref, P_loss0, Vpk]),
         out_vars=list([v_cmd_d, v_cmd_q, v_cmd_0, k_v_conv]),
-        children=list([ml_v_d_cap_block]),
+        procedural_logic=list([
+            hard_saturation(
+                output=v_d_cap_mode,
+                u=v_cmd_d_u,
+                u_min=-v_lim,
+                u_max=v_lim,
+                name=f"v_d_cap_sat_sample_{name}",
+            ),
+        ]),
         name=f"{name}_current_ctrl",
     )
 

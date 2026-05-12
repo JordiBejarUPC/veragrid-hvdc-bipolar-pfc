@@ -63,6 +63,59 @@ def collect_event_vars(block) -> list:
     return vars_list
 
 
+def print_load_pl0_snapshot(grid: vg.MultiCircuit, stage: str) -> None:
+    print(f"\n[Pl0 snapshot] {stage}")
+    found = 0
+    for load in grid.get_loads():
+        mdl = getattr(load, "rms_model", None)
+        if mdl is None:
+            continue
+
+        pl0_var = find_name_in_block("Pl0", mdl)
+        if pl0_var is None:
+            continue
+
+        found += 1
+        in_event = pl0_var in mdl.event_dict
+        event_value = None
+        if in_event:
+            event_expr = mdl.event_dict[pl0_var]
+            event_value = getattr(event_expr, "value", None)
+
+        print(
+            f"load={load.name} Pl0_uid={pl0_var.uid} in_event_dict={in_event} "
+            f"event_value={event_value} static_P={float(load.P):+.6f}"
+        )
+
+    if found == 0:
+        print("No Pl0 variable found in load RMS models")
+
+
+def print_problem_pl0_initialization(grid: vg.MultiCircuit, problem) -> None:
+    print("\n[Pl0 initialization in problem]")
+    found = 0
+    for load in grid.get_loads():
+        mdl = getattr(load, "rms_model", None)
+        if mdl is None:
+            continue
+
+        pl0_var = find_name_in_block("Pl0", mdl)
+        if pl0_var is None:
+            continue
+
+        found += 1
+        event_idx = problem._uid2idx_event_params.get(pl0_var.uid, None)
+        init_expr = problem.event_params_init_dict.get(pl0_var.uid, None)
+        runtime_expr = None
+        if event_idx is not None and event_idx < len(problem._event_parameters_eqs0):
+            runtime_expr = problem._event_parameters_eqs0[event_idx]
+
+        initialized_value = problem.event_params_init_dict.get(pl0_var.uid, None)
+
+    if found == 0:
+        print("No Pl0 variable found in load RMS models")
+
+
 def apply_profile_snapshot(grid: vg.MultiCircuit, profile_idx: int | None = None) -> None:
     nt = int(grid.get_time_number())
     if nt <= 0:
@@ -386,24 +439,13 @@ def plot_bus_vm_va(grid: vg.MultiCircuit, problem, t, y, output_file: Path) -> N
 
 def main() -> int:
     base_grid_path = repo_root / "trunk" / "tuvalu" / "funafuti_base.veragrid"
-    profiles_excel = repo_root.parent / "Tuvalu" / "data" / "profiles_and_scenarios.xlsx"
-    demand_excel = repo_root.parent / "Tuvalu" / "data" / "plant_data" / "combined_output_hand_corrected.xlsx"
-
     print(f"Loading Tuvalu base grid: {base_grid_path}")
     grid = vg.open_file(str(base_grid_path))
 
-    print("Populating one-step time-series profiles...")
-    populator = TuvaluGridPopulator(
-        grid=grid,
-        profiles_and_scenarios_excel=profiles_excel,
-        demand_excel=demand_excel,
-        start_year=2024,
-        profile_steps=24,
-    )
-    populator.populate()
-    apply_profile_snapshot(grid=grid, profile_idx=None)
+    print("Using base-grid snapshot values (no time-series profile population)")
 
     initialize_tuvalu_rms_models(grid)
+    print_load_pl0_snapshot(grid=grid, stage="after initialize_tuvalu_rms_models")
 
     print("Running snapshot power flow...")
     pf_driver = vg.PowerFlowDriver(
@@ -428,7 +470,7 @@ def main() -> int:
 
     print("Running RMS dynamic simulation...")
     rms_options = vg.RmsOptions(
-        simulation_time=10.0,
+        simulation_time=1.0,
         time_step=0.01,
         max_iter=60,
         tolerance=1e-6,
@@ -441,6 +483,7 @@ def main() -> int:
         pf_results=pf_results,
         progress_signal=None,
     )
+    print_problem_pl0_initialization(grid=grid, problem=problem)
     problem.set_events_group(rms_events_group=events_group)
     problem.reset_boundary_update_state(0.0)
 

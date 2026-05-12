@@ -2019,6 +2019,7 @@ class ResultTypes(Enum):
 
     BusActivePowerIncrement = "ΔP: Active power increment"
 
+    BranchActivePowerFromBase = 'Pf: Active power "from" base case'
     BranchActivePowerFrom = 'Pf: Active power "from"'
     BranchActivePowerFromA = 'PfA: Active power "from" A'
     BranchActivePowerFromB = 'PfB: Active power "from" B'
@@ -3804,6 +3805,23 @@ class DynamicSimulationMode(Enum):
         """
         return list(map(lambda c: c.value, cls))
 
+
+class PlotSimulationType(Enum):
+    """
+    Simulation family used by persistent dynamic plot definitions and handlers.
+    """
+
+    RMS = "RMS"
+    EMT = "EMT"
+
+    def __str__(self) -> str:
+        """
+        Return the persistent label used by dynamic plot assets.
+
+        :return: Persistent simulation-family label.
+        """
+        return self.value
+
 class BlockScopeMode(Enum):
     """
     Block extraction scope modes for DGS block parsing.
@@ -3971,6 +3989,7 @@ class ProceduralLogicType(Enum):
     Base = "base"
     FixedSample = "fixed_sample"
     SampledValue = "sampled_value"
+    HardSaturation = "hard_saturation"
     FlipFlop = "flipflop"
     AnalogFlipFlop = "analog_flipflop"
     PickupDropoff = "pickup_dropoff"
@@ -4023,4 +4042,3 @@ class EmtInitializationStatus(Enum):
             return EmtInitializationStatus[s]
         except KeyError:
             return s
-

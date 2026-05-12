@@ -38,7 +38,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlo
 from VeraGridEngine.Templates.Emt.bess_avm_emt_template import (
     get_bess_avm_grid_following_emt_template,
 )
-from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
+from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import (
     get_generator_thevenin_rl_emt_template,
 )

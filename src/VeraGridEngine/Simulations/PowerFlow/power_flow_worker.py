@@ -74,7 +74,7 @@ def __solve_island_complete_support(nc: NumericalCircuit,
     I0 = nc.get_current_injections_pu()
     Y0 = nc.get_admittance_injections_pu()
 
-    if len(indices.vd) == 0:
+    if len(indices.vd) == 0 or len(indices.no_slack) == 0:
         solution = NumericPowerFlowResults(V=np.zeros(len(S0), dtype=complex),
                                            Scalc=S0,
                                            m=nc.active_branch_data.tap_module,
@@ -107,7 +107,6 @@ def __solve_island_complete_support(nc: NumericalCircuit,
         return solution, report
 
     else:
-
         final_solution = NumericPowerFlowResults(V=V0,
                                                  converged=False,
                                                  norm_f=1e200,
@@ -218,10 +217,30 @@ def __solve_island_complete_support(nc: NumericalCircuit,
 
             else:
                 # for any other method, raise exception
-                raise Exception(solver_type.value + ' Not supported in power flow mode')
+                logger.add_error('Solver not supported in power flow mode', value=solver_type.value)
+                problem = PfAcDcWithNegativePoles(V0=final_solution.V,
+                                                  S0=S0,
+                                                  I0=I0,
+                                                  Y0=-Y0,
+                                                  Qmin=Qmin,
+                                                  Qmax=Qmax,
+                                                  nc=nc,
+                                                  options=options,
+                                                  logger=logger)
+
+                solution = newton_raphson_fx(problem=problem,
+                                             tol=options.tolerance,
+                                             max_iter=options.max_iter,
+                                             trust=options.trust_radius,
+                                             verbose=options.verbose,
+                                             logger=logger)
 
             # record the solution type
             solution.method = solver_type
+            if np.isfinite(solution.norm_f) and solution.norm_f <= options.tolerance:
+                solution.converged = True
+            else:
+                pass
 
             # record the method used, if it improved the solution
             if abs(solution.norm_f) < abs(final_solution.norm_f):
@@ -317,7 +336,7 @@ def __solve_island_limited_support(island: NumericalCircuit,
 
     Sbase_plus_hvdc: CxVec = S_base + Shvdc
 
-    if len(indices.vd) == 0:
+    if len(indices.vd) == 0 or len(indices.no_slack) == 0:
         solution = NumericPowerFlowResults(V=np.zeros(len(S_base), dtype=complex),
                                            Scalc=Sbase_plus_hvdc,
                                            m=island.active_branch_data.tap_module,
@@ -649,6 +668,10 @@ def __solve_island_limited_support(island: NumericalCircuit,
 
             # record the solution type
             solution.method = solver_type
+            if np.isfinite(solution.norm_f) and solution.norm_f <= options.tolerance:
+                solution.converged = True
+            else:
+                pass
 
             # record the method used, if it improved the solution
             if abs(solution.norm_f) < abs(final_solution.norm_f):

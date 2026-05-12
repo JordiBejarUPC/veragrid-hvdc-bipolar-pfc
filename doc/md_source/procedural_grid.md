@@ -1,4 +1,4 @@
-# (insert emoji) Procedural grid
+# 🫧 Procedural grid
 
 Lore ispum
 

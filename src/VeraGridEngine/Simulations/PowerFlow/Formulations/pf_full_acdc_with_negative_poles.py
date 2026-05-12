@@ -2684,35 +2684,6 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
 
         # VSC ----------------------------------------------------------------------------------------------------------
 
-        # Assign Pt and Qt for all VSCs from the bus power balance,
-        # just like generator Q is derived post-hoc in standard power flow.
-        # For VSCs where the solver already determined Pt/Qt, the bus mismatch
-        # is ~0, so this is a no-op. For VSCs where Pt or Qt was not
-        # constrained (e.g. Pac+Vm_ac), this recovers the correct value.
-        Scalc_passive = compute_power(self.adm.Ybus, self.V)
-        Sbus_load = self.S0 + self.V * np.conj(self.I0) + self.V * np.conj(self.V) * np.conj(self.Y0)
-        St_vsc_pu = make_complex(self.Pt_vsc, self.Qt_vsc)
-        Sf_hvdc_pu = make_complex(self.Pf_hvdc, self.Qf_hvdc)
-        St_hvdc_pu = make_complex(self.Pt_hvdc, self.Qt_hvdc)
-        Scalc_active = calc_flows_active_branch_per_bus(
-            nbus=self.nc.bus_data.nbus,
-            F_hvdc=self.nc.hvdc_data.F,
-            T_hvdc=self.nc.hvdc_data.T,
-            Sf_hvdc=Sf_hvdc_pu,
-            St_hvdc=St_hvdc_pu,
-            Fdcp_vsc=self.nc.vsc_data.F,
-            Fdcn_vsc=self.nc.vsc_data.F_dcn,
-            T_vsc=self.nc.vsc_data.T,
-            Pfp_vsc=self.Pfp_vsc,
-            Pfn_vsc=self.Pfn_vsc,
-            St_vsc=St_vsc_pu
-        )
-        dS = Scalc_passive + Scalc_active - Sbus_load
-        T_vsc = self.nc.vsc_data.T
-        for i in range(self.nc.nvsc):
-            self.Pt_vsc[i] -= dS[T_vsc[i]].real
-            self.Qt_vsc[i] -= dS[T_vsc[i]].imag
-
         Pfp_vsc = self.Pfp_vsc * self.nc.Sbase
         Pfn_vsc = self.Pfn_vsc * self.nc.Sbase
         St_vsc = make_complex(self.Pt_vsc, self.Qt_vsc) * self.nc.Sbase

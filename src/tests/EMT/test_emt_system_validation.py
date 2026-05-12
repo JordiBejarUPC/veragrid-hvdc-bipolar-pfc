@@ -25,7 +25,7 @@ from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_te
 from VeraGridEngine.Templates.Emt.bergeron_line_emt_template import get_bergeron_line_emt_template
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_emt_template
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
-from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
+from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.Emt.transformer_emt_template import get_transformer_emt_template
 from VeraGridEngine.Templates.Emt.converter_emt_template import get_emt_ideal_converter
 from VeraGridEngine.Templates.Emt.converter_switched_emt_template import get_switched_emt_converter
@@ -755,3 +755,94 @@ def test_interface_validation_rejects_shared_dc_branch_collision() -> None:
 
     with pytest.raises(EmtInterfaceValidationError, match="Use If_dc and It_dc instead"):
         problem._validate_dynamic_emt_interfaces()
+
+
+def test_set_emt_model_connects_single_bus_ac_injection_refs() -> None:
+    """Single-bus AC EMT injections must bind their voltage inputs to the bus shell."""
+    grid = gce.MultiCircuit(Sbase=100.0, fbase=50.0)
+    bus = gce.Bus(name="BusABC", Vnom=20.0)
+    load = gce.Load(name="LoadABC", P=10.0, Q=1.0)
+    grid.add_bus(bus)
+    grid.add_load(bus, load)
+
+    bus.emt_model = _make_external_mapping_block([
+        VarPowerFlowRefferenceType.v_A,
+        VarPowerFlowRefferenceType.v_B,
+        VarPowerFlowRefferenceType.v_C,
+    ], "bus_connect_abc")
+
+    load_mdl = get_shunt_r_emt_template(vf=grid.var_factory, phA=True, phB=True, phC=True).block
+    set_emt_model(device=load, model=load_mdl, var_factory=grid.var_factory)
+
+    assert load.emt_model.external_mapping[VarPowerFlowRefferenceType.v_A].uid == bus.emt_model.external_mapping[VarPowerFlowRefferenceType.v_A].uid
+    assert load.emt_model.external_mapping[VarPowerFlowRefferenceType.v_B].uid == bus.emt_model.external_mapping[VarPowerFlowRefferenceType.v_B].uid
+    assert load.emt_model.external_mapping[VarPowerFlowRefferenceType.v_C].uid == bus.emt_model.external_mapping[VarPowerFlowRefferenceType.v_C].uid
+
+
+def test_set_emt_model_connects_single_bus_dc_injection_refs() -> None:
+    """Single-bus DC EMT injections must bind their DC input to the bus shell."""
+    grid = gce.MultiCircuit(Sbase=100.0, fbase=50.0)
+    bus = gce.Bus(name="BusDC", Vnom=320.0, is_dc=True)
+    load = gce.Load(name="LoadDC", P=10.0, Q=0.0)
+    grid.add_bus(bus)
+    grid.add_load(bus, load)
+
+    bus.emt_model = _make_external_mapping_block([
+        VarPowerFlowRefferenceType.Vdc,
+    ], "bus_connect_dc")
+
+    load_mdl = get_dc_load_emt_template(vf=grid.var_factory).block
+    set_emt_model(device=load, model=load_mdl, var_factory=grid.var_factory)
+
+    assert load.emt_model.external_mapping[VarPowerFlowRefferenceType.Vdc].uid == bus.emt_model.external_mapping[VarPowerFlowRefferenceType.Vdc].uid
+
+
+def test_emt_template_setter_allows_gui_order_injection_branch_injection() -> None:
+    """The GUI EMT template setter must tolerate generator-line-load assignment order."""
+    grid = gce.MultiCircuit(Sbase=2.0, fbase=50.0)
+    bus0 = gce.Bus(name="Bus0", Vnom=10.0, is_slack=True)
+    bus1 = gce.Bus(name="Bus1", Vnom=10.0)
+    grid.add_bus(bus0)
+    grid.add_bus(bus1)
+
+    line0 = gce.Line(name="line0", bus_from=bus0, bus_to=bus1, length=10.0, rate=900.0)
+    load = gce.Load(name="load", P=10.0, Q=1.0)
+    gen0 = gce.Generator(name="Gen0", vset=1.0, Snom=grid.Sbase, freq=50.0, r1=0.001, x1=1.7)
+
+    tower = gce.OverheadLineType(name="Tower", Vnom=10.0)
+    wire = gce.Wire(
+        name="Panther 30/7 ACSR",
+        diameter=21.0,
+        diameter_internal=9.0,
+        is_tube=True,
+        r=0.1363,
+        max_current=1,
+    )
+    tower.add_wire_relationship(wire=wire, xpos=-12.65, ypos=27.5, phase=1)
+    tower.add_wire_relationship(wire=wire, xpos=0.0, ypos=27.5, phase=2)
+    tower.add_wire_relationship(wire=wire, xpos=12.65, ypos=27.5, phase=3)
+    tower.compute()
+    line0.apply_template(tower, grid.Sbase, grid.fBase)
+
+    grid.add_line(line0)
+    grid.add_generator(bus=bus0, api_obj=gen0)
+    grid.add_load(bus=bus1, api_obj=load)
+
+    gen0.emt_template = get_generator_thevenin_rl_emt_template(vf=grid.var_factory)
+    assert not gen0.emt_model.empty()
+    assert len(bus0.get_pending_emt_devices()) == 1
+
+    line0.emt_template = get_pi_line_emt_template(vf=grid.var_factory, phN=False, phA=True, phB=True, phC=True)
+    load.emt_template = get_shunt_r_emt_template(vf=grid.var_factory, phA=True, phB=True, phC=True)
+
+    assert len(bus0.get_pending_emt_devices()) == 0
+    assert len(bus1.get_pending_emt_devices()) == 0
+    assert not line0.emt_model.empty()
+    assert not load.emt_model.empty()
+
+    assert gen0.emt_model.external_mapping[VarPowerFlowRefferenceType.v_A].uid == bus0.emt_model.external_mapping[VarPowerFlowRefferenceType.v_A].uid
+    assert gen0.emt_model.external_mapping[VarPowerFlowRefferenceType.v_B].uid == bus0.emt_model.external_mapping[VarPowerFlowRefferenceType.v_B].uid
+    assert gen0.emt_model.external_mapping[VarPowerFlowRefferenceType.v_C].uid == bus0.emt_model.external_mapping[VarPowerFlowRefferenceType.v_C].uid
+    assert load.emt_model.external_mapping[VarPowerFlowRefferenceType.v_A].uid == bus1.emt_model.external_mapping[VarPowerFlowRefferenceType.v_A].uid
+    assert load.emt_model.external_mapping[VarPowerFlowRefferenceType.v_B].uid == bus1.emt_model.external_mapping[VarPowerFlowRefferenceType.v_B].uid
+    assert load.emt_model.external_mapping[VarPowerFlowRefferenceType.v_C].uid == bus1.emt_model.external_mapping[VarPowerFlowRefferenceType.v_C].uid
