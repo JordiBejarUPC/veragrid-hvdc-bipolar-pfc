@@ -161,24 +161,17 @@ def test_rms_catalog_procedural_logic_changes_load_output_during_real_simulation
         freq=50.0,
     )
 
-    genqec_mdl = get_complete_generator_template_rms(grid.var_factory).block
+    genqec_template = get_complete_generator_template_rms(grid.var_factory)
     line_mdl = get_line_rms_template(grid.var_factory).block
     load_mdl, enable_param, enable_mode, p_out = _build_procedural_catalog_load_rms_template(grid.var_factory)
 
-    genqec_mdl.connect([genqec_mdl.in_vars[0]], [bus0.rms_model.out_vars[0]])
-    genqec_mdl.connect([genqec_mdl.in_vars[1]], [bus0.rms_model.out_vars[1]])
     line_mdl.connect([line_mdl.in_vars[0]], [bus0.rms_model.out_vars[0]])
     line_mdl.connect([line_mdl.in_vars[1]], [bus0.rms_model.out_vars[1]])
     line_mdl.connect([line_mdl.in_vars[2]], [bus1.rms_model.out_vars[0]])
     line_mdl.connect([line_mdl.in_vars[3]], [bus1.rms_model.out_vars[1]])
 
-    big_gen = Block(children=[genqec_mdl])
-    big_gen.external_mapping.update({VarPowerFlowRefferenceType.P: genqec_mdl.out_vars[0]})
-    big_gen.external_mapping.update({VarPowerFlowRefferenceType.Q: genqec_mdl.out_vars[1]})
-
     line0.rms_model = line_mdl
     load.rms_model = load_mdl.block
-    gen0.rms_model = big_gen
 
     events_group = RmsEventsGroup("catalog-procedural-rms")
     disable_event = RmsEvent(device=load, parameter=enable_param, time=0.05, value=0.0, group=events_group)
@@ -187,6 +180,7 @@ def test_rms_catalog_procedural_logic_changes_load_output_during_real_simulation
     grid.add_line(line0)
     grid.add_load(bus=bus1, api_obj=load)
     grid.add_generator(bus=bus0, api_obj=gen0)
+    gen0.rms_template = genqec_template
 
     options = gce.PowerFlowOptions(
         solver_type=gce.SolverType.NR,

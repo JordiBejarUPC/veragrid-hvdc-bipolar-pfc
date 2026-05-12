@@ -339,13 +339,12 @@ def _build_rms_demo_grid() -> tuple[MultiCircuit, Load]:
     )
     load: Load = Load(name="ImportedLoad", P=10.0, Q=1.0)
 
-    line.rms_model = get_line_rms_template(grid.var_factory).block
-    generator.rms_model = get_complete_generator_template_rms(grid.var_factory).block
-    grid.add_rms_events_group(RmsEventsGroup(name="default_rms_example_group"))
-
     grid.add_line(line)
     grid.add_generator(bus=bus_slack, api_obj=generator)
     grid.add_load(bus=bus_load, api_obj=load)
+    line.rms_template = get_line_rms_template(grid.var_factory)
+    generator.rms_template = get_complete_generator_template_rms(grid.var_factory)
+    grid.add_rms_events_group(RmsEventsGroup(name="default_rms_example_group"))
     return grid, load
 
 
