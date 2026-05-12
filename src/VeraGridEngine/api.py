@@ -370,10 +370,10 @@ def linear_opf(grid: MultiCircuit,
     """
 
     # declare the snapshot opf
-    opf_driver = OptimalPowerFlowDriver(grid=grid, options=options)
-    opf_driver.run()
+    opf_driver_ = OptimalPowerFlowDriver(grid=grid, options=options)
+    opf_driver_.run()
 
-    return opf_driver.results
+    return opf_driver_.results
 
 
 def simple_opf(grid: MultiCircuit,
@@ -388,48 +388,16 @@ def simple_opf(grid: MultiCircuit,
     """
 
     # declare the snapshot opf
-    opf_driver = OptimalPowerFlowDriver(grid=grid, options=options)
-    opf_driver.run()
+    opf_driver_ = OptimalPowerFlowDriver(grid=grid, options=options)
+    opf_driver_.run()
 
-    return opf_driver.results
+    return opf_driver_.results
 
 
 def balanced_pf(grid: MultiCircuit,
                 options: PowerFlowOptions = None,
                 opf_options: OptimalPowerFlowOptions = None,
                 engine=EngineType.VeraGrid) -> PowerFlowResults:
-    """
-    Run Linear Optimal Power Flow
-    :param engine:
-    :param options:
-    :param grid: MultiCircuit instance
-    :param opf_options: Optimal Power Flow Options instance (optional)
-    :return: PowerFlowResults instance
-    """
-    if opf_options is None:
-        opf_options = OptimalPowerFlowOptions(solver=SolverType.GREEDY_DISPATCH_OPF)
-
-    # declare the snapshot opf
-    opf_driver = OptimalPowerFlowDriver(grid=grid, options=opf_options)
-    opf_driver.run()
-
-    if options is None:
-        options = PowerFlowOptions()
-
-    driver = PowerFlowDriver(grid=grid,
-                             options=options,
-                             opf_results=opf_driver.results,
-                             engine=engine)
-
-    driver.run()
-
-    return driver.results
-
-
-def balanced_pf(grid: MultiCircuit,
-                options: PowerFlowOptions = None,
-                opf_options: OptimalPowerFlowOptions = None,
-                engine=EngineType.VeraGrid) -> OptimalPowerFlowResults:
     """
     Run Linear Optimal Power Flow and feed that to a power flow
     :param grid: MultiCircuit instance
@@ -442,20 +410,20 @@ def balanced_pf(grid: MultiCircuit,
         opf_options = OptimalPowerFlowOptions(solver=SolverType.GREEDY_DISPATCH_OPF)
 
     # declare the snapshot opf
-    opf_driver = OptimalPowerFlowDriver(grid=grid, options=opf_options)
-    opf_driver.run()
+    opf_driver_ = OptimalPowerFlowDriver(grid=grid, options=opf_options)
+    opf_driver_.run()
 
     if options is None:
         options = PowerFlowOptions()
 
-    driver = PowerFlowDriver(grid=grid,
+    driver_ = PowerFlowDriver(grid=grid,
                              options=options,
-                             opf_results=opf_driver.results,
+                             opf_results=opf_driver_.results,
                              engine=engine)
 
-    driver.run()
+    driver_.run()
 
-    return driver.results
+    return driver_.results
 
 
 def contingencies_ts(circuit: MultiCircuit,
