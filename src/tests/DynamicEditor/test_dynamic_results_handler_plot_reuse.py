@@ -6,10 +6,13 @@ import numpy as np
 from PySide6 import QtCore
 
 from VeraGrid.Gui.Main.SubClasses.Results.dynamics_results_handler import DynamicsResultsHandler
+from VeraGridEngine.Devices.Events.dynamic_plot import DynamicPlot
+from VeraGridEngine.Devices.Events.dynamic_plot_entry import DynamicPlotEntry
+from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.EMT.emt_results import EmtResults
 from VeraGridEngine.Simulations.Rms.rms_results import RmsResults
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
-from VeraGridEngine.enumerations import DeviceType
+from VeraGridEngine.enumerations import DeviceType, PlotSimulationType
 
 
 class FakeDynamicDevice:
@@ -105,6 +108,7 @@ def build_rms_results(device_entries: Sequence[Tuple[FakeDynamicDevice, Sequence
     """
     time_array: np.ndarray = np.array([0.0, 1.0], dtype=float)
     group_names: np.ndarray = np.array(["Group 1"], dtype=str)
+    group_idtags: np.ndarray = np.array(["rms-group-1"], dtype=str)
     variables: List[Var] = list()
     uid2idx: Dict[int, int] = dict()
     vars_glob_name2uid: Dict[str, int] = dict()
@@ -125,6 +129,7 @@ def build_rms_results(device_entries: Sequence[Tuple[FakeDynamicDevice, Sequence
     results: RmsResults = RmsResults(
         time_array=time_array,
         rms_events_group_names=group_names,
+        rms_events_group_idtags=group_idtags,
         variables=variables,
         uid2idx=uid2idx,
         vars_glob_name2uid=vars_glob_name2uid,
@@ -148,6 +153,7 @@ def build_emt_results(device_entries: Sequence[Tuple[FakeDynamicDevice, Sequence
     """
     time_array: np.ndarray = np.array([0.0, 1.0], dtype=float)
     group_names: np.ndarray = np.array(["Group 1"], dtype=str)
+    group_idtags: np.ndarray = np.array(["emt-group-1"], dtype=str)
     variables: List[Var] = list()
     uid2idx_vars: Dict[int, int] = dict()
     uid2idx_diff: Dict[int, int] = dict()
@@ -169,6 +175,7 @@ def build_emt_results(device_entries: Sequence[Tuple[FakeDynamicDevice, Sequence
     results: EmtResults = EmtResults(
         time_array=time_array,
         emt_events_group_names=group_names,
+        emt_events_group_idtags=group_idtags,
         variables=variables,
         diff_variables=list(),
         uid2idx_vars=uid2idx_vars,
@@ -196,6 +203,10 @@ def build_rms_results_with_groups(device_entries: Sequence[Tuple[FakeDynamicDevi
     """
     results: RmsResults = build_rms_results(device_entries=device_entries)
     results.rms_events_group_names = np.array(group_names, dtype=str)
+    results.rms_events_group_idtags = np.array(
+        ["rms-group-" + str(group_name).replace(" ", "-").lower() for group_name in group_names],
+        dtype=str,
+    )
     results.ng = len(group_names)
     results.well_initialized = np.zeros(results.ng, dtype=bool)
     results.converged = np.zeros(results.ng, dtype=bool)
@@ -543,6 +554,85 @@ def test_dynamic_plot_keeps_unaffected_emt_device_vars_after_model_change() -> N
     handler.update_results(results=new_results)
 
     assert get_group_var_uids(handler=handler, group_name="Plot 1") == [102]
+
+
+def test_asset_backed_dynamic_plot_entry_uses_device_idtag_binding() -> None:
+    """
+    Restore only the asset entry that matches the stable device idtag.
+    """
+    ensure_qt_application()
+
+    old_results: RmsResults = build_rms_results([
+        (make_device(name="DeviceA", idtag="dev-a-1"), [make_var(name="v_A", uid=1)]),
+        (make_device(name="DeviceA", idtag="dev-a-2"), [make_var(name="v_A", uid=2)]),
+    ])
+    new_results: RmsResults = build_rms_results([
+        (make_device(name="DeviceA", idtag="dev-a-1"), [make_var(name="v_A", uid=101)]),
+        (make_device(name="DeviceA", idtag="dev-a-2"), [make_var(name="v_A", uid=102)]),
+    ])
+
+    circuit: MultiCircuit = MultiCircuit(name="binding")
+    plot_asset: DynamicPlot = DynamicPlot(name="Plot 1", simulation_type=PlotSimulationType.RMS)
+    circuit.add_dynamic_plot(obj=plot_asset)
+    circuit.add_dynamic_plot_entry(obj=DynamicPlotEntry(
+        variable=None,
+        plot=plot_asset,
+        group=None,
+        device=None,
+        simulation_type=PlotSimulationType.RMS,
+        event_group_idtag="rms-group-1",
+        event_group_name="Group 1",
+        curve_device_type=DeviceType.NoDevice,
+        device_idtag="dev-a-2",
+        device_name_hint="DeviceA",
+        variable_name="v_A",
+        result_path_kind="values",
+        enabled=True,
+        runtime_series_key_payload="",
+    ))
+
+    handler: DynamicsResultsHandler = DynamicsResultsHandler(results=old_results, circuit=circuit)
+    handler.update_results(results=new_results)
+
+    assert get_group_var_uids(handler=handler, group_name="Plot 1") == [102]
+
+
+def test_unresolved_asset_entry_remains_persistent_in_circuit() -> None:
+    """
+    Keep unresolved persistent plot entries in the circuit assets.
+    """
+    ensure_qt_application()
+
+    results: RmsResults = build_rms_results([
+        (make_device(name="DeviceA", idtag="dev-a"), [make_var(name="v_A", uid=1)]),
+    ])
+
+    circuit: MultiCircuit = MultiCircuit(name="unresolved")
+    plot_asset: DynamicPlot = DynamicPlot(name="Plot 1", simulation_type=PlotSimulationType.RMS)
+    circuit.add_dynamic_plot(obj=plot_asset)
+    unresolved_entry: DynamicPlotEntry = DynamicPlotEntry(
+        variable=None,
+        plot=plot_asset,
+        group=None,
+        device=None,
+        simulation_type=PlotSimulationType.RMS,
+        event_group_idtag="rms-group-1",
+        event_group_name="Group 1",
+        curve_device_type=DeviceType.NoDevice,
+        device_idtag="missing-device",
+        device_name_hint="Missing",
+        variable_name="missing_var",
+        result_path_kind="values",
+        enabled=True,
+        runtime_series_key_payload="",
+    )
+    circuit.add_dynamic_plot_entry(obj=unresolved_entry)
+
+    handler: DynamicsResultsHandler = DynamicsResultsHandler(results=results, circuit=circuit)
+
+    assert len(circuit.dynamic_plot_entries) == 1
+    assert circuit.dynamic_plot_entries[0] is unresolved_entry
+    assert get_group_var_uids(handler=handler, group_name="Plot 1") == list()
 
 
 def test_dynamic_plot_restores_duplicate_var_names_by_exact_key() -> None:

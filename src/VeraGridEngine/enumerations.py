@@ -3804,6 +3804,23 @@ class DynamicSimulationMode(Enum):
         """
         return list(map(lambda c: c.value, cls))
 
+
+class PlotSimulationType(Enum):
+    """
+    Simulation family used by persistent dynamic plot definitions and handlers.
+    """
+
+    RMS = "RMS"
+    EMT = "EMT"
+
+    def __str__(self) -> str:
+        """
+        Return the persistent label used by dynamic plot assets.
+
+        :return: Persistent simulation-family label.
+        """
+        return self.value
+
 class BlockScopeMode(Enum):
     """
     Block extraction scope modes for DGS block parsing.

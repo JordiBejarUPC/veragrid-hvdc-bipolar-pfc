@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'MainWindow.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.11.0
+## Created by: Qt User Interface Compiler version 6.10.1
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -594,6 +594,10 @@ class Ui_mainWindow(object):
         icon78.addFile(u":/Icons/icons/dyn.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         self.actionRun_Dynamic_RMS_Simulation.setIcon(icon78)
         self.actionRun_Dynamic_RMS_Simulation.setMenuRole(QAction.MenuRole.TextHeuristicRole)
+        self.actionPrepare_RMS_Dynamic_Plots = QAction(mainWindow)
+        self.actionPrepare_RMS_Dynamic_Plots.setObjectName(u"actionPrepare_RMS_Dynamic_Plots")
+        self.actionPrepare_RMS_Dynamic_Plots.setIcon(icon78)
+        self.actionPrepare_RMS_Dynamic_Plots.setMenuRole(QAction.MenuRole.TextHeuristicRole)
         self.actionRun_Small_Signal_RMS_Simulation = QAction(mainWindow)
         self.actionRun_Small_Signal_RMS_Simulation.setObjectName(u"actionRun_Small_Signal_RMS_Simulation")
         icon79 = QIcon()
@@ -710,6 +714,10 @@ class Ui_mainWindow(object):
         icon96.addFile(u":/Icons/icons/dyn_emt.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         self.actionRun_Dynamic_EMT_Simulation.setIcon(icon96)
         self.actionRun_Dynamic_EMT_Simulation.setMenuRole(QAction.MenuRole.TextHeuristicRole)
+        self.actionPrepare_EMT_Dynamic_Plots = QAction(mainWindow)
+        self.actionPrepare_EMT_Dynamic_Plots.setObjectName(u"actionPrepare_EMT_Dynamic_Plots")
+        self.actionPrepare_EMT_Dynamic_Plots.setIcon(icon96)
+        self.actionPrepare_EMT_Dynamic_Plots.setMenuRole(QAction.MenuRole.TextHeuristicRole)
         self.actionRun_Small_Signal_EMT_Simulation = QAction(mainWindow)
         self.actionRun_Small_Signal_EMT_Simulation.setObjectName(u"actionRun_Small_Signal_EMT_Simulation")
         icon97 = QIcon()
@@ -2076,6 +2084,16 @@ class Ui_mainWindow(object):
         self.search_dynamic_objects_Button.setIcon(icon62)
 
         self.horizontalLayout_15.addWidget(self.search_dynamic_objects_Button)
+
+        self.prepareRmsDynamicPlotsButton = QPushButton(self.frame_3)
+        self.prepareRmsDynamicPlotsButton.setObjectName(u"prepareRmsDynamicPlotsButton")
+
+        self.horizontalLayout_15.addWidget(self.prepareRmsDynamicPlotsButton)
+
+        self.prepareEmtDynamicPlotsButton = QPushButton(self.frame_3)
+        self.prepareEmtDynamicPlotsButton.setObjectName(u"prepareEmtDynamicPlotsButton")
+
+        self.horizontalLayout_15.addWidget(self.prepareEmtDynamicPlotsButton)
 
         self.horizontalSpacer_15 = QSpacerItem(248, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
@@ -5869,6 +5887,10 @@ class Ui_mainWindow(object):
 #if QT_CONFIG(tooltip)
         self.actionRun_Dynamic_RMS_Simulation.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p><span style=\" font-weight:700;\">RMS Simulation</span></p><p>Run a dynamic RMS simulation</p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
+        self.actionPrepare_RMS_Dynamic_Plots.setText(QCoreApplication.translate("mainWindow", u"Prepare RMS dynamic plots", None))
+#if QT_CONFIG(tooltip)
+        self.actionPrepare_RMS_Dynamic_Plots.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p><span style=\" font-weight:700;\">Prepare RMS dynamic plots</span></p><p>Open the RMS dynamic plot editor before running the simulation</p></body></html>", None))
+#endif // QT_CONFIG(tooltip)
         self.actionRun_Small_Signal_RMS_Simulation.setText(QCoreApplication.translate("mainWindow", u"Small-Signal RMS Simulation", None))
         self.actionRun_Small_Signal_RMS_Simulation.setIconText(QCoreApplication.translate("mainWindow", u"Small-Signal RMS Simulation", None))
 #if QT_CONFIG(tooltip)
@@ -5908,6 +5930,10 @@ class Ui_mainWindow(object):
         self.actionRun_Dynamic_EMT_Simulation.setText(QCoreApplication.translate("mainWindow", u"Dynamic EMT Simulation", None))
 #if QT_CONFIG(tooltip)
         self.actionRun_Dynamic_EMT_Simulation.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p><span style=\" font-weight:700;\">EMT Simulation</span></p><p>Run a dynamic EMT simulation</p></body></html>", None))
+#endif // QT_CONFIG(tooltip)
+        self.actionPrepare_EMT_Dynamic_Plots.setText(QCoreApplication.translate("mainWindow", u"Prepare EMT dynamic plots", None))
+#if QT_CONFIG(tooltip)
+        self.actionPrepare_EMT_Dynamic_Plots.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p><span style=\" font-weight:700;\">Prepare EMT dynamic plots</span></p><p>Open the EMT dynamic plot editor before running the simulation</p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
         self.actionRun_Small_Signal_EMT_Simulation.setText(QCoreApplication.translate("mainWindow", u"Small-Signal EMT Simulation", None))
         self.actionRun_Small_Signal_EMT_Simulation.setIconText(QCoreApplication.translate("mainWindow", u"Small-Signal EMT Simulation", None))
@@ -6267,6 +6293,14 @@ class Ui_mainWindow(object):
         self.search_dynamic_objects_Button.setToolTip(QCoreApplication.translate("mainWindow", u"Smart search", None))
 #endif // QT_CONFIG(tooltip)
         self.search_dynamic_objects_Button.setText("")
+#if QT_CONFIG(tooltip)
+        self.prepareRmsDynamicPlotsButton.setToolTip(QCoreApplication.translate("mainWindow", u"Open the RMS pre-simulation dynamic plot editor", None))
+#endif // QT_CONFIG(tooltip)
+        self.prepareRmsDynamicPlotsButton.setText(QCoreApplication.translate("mainWindow", u"RMS plots", None))
+#if QT_CONFIG(tooltip)
+        self.prepareEmtDynamicPlotsButton.setToolTip(QCoreApplication.translate("mainWindow", u"Open the EMT pre-simulation dynamic plot editor", None))
+#endif // QT_CONFIG(tooltip)
+        self.prepareEmtDynamicPlotsButton.setText(QCoreApplication.translate("mainWindow", u"EMT plots", None))
 #if QT_CONFIG(tooltip)
         self.addDynamicPlotButton.setToolTip(QCoreApplication.translate("mainWindow", u"Add new plot", None))
 #endif // QT_CONFIG(tooltip)

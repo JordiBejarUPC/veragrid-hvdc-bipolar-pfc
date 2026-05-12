@@ -638,7 +638,7 @@ def test_nc_active_works() -> None:
     the numerical circuit active status
     has zero flow, for many power flow algorithms
     """
-    fname = os.path.join('../Base/data', 'grids', 'RAW', 'IEEE 14 bus.raw')
+    fname = os.path.join('data', 'grids', 'RAW', 'IEEE 14 bus.raw')
     main_circuit = FileOpen(fname).open()
     nc = compile_numerical_circuit_at(main_circuit, t_idx=None)
 
@@ -664,7 +664,7 @@ def test_adjacency_calc():
     :return: csc_matrix
     """
 
-    fname = os.path.join('../Base/data', 'grids', 'RAW', 'IEEE 14 bus.raw')
+    fname = os.path.join('data', 'grids', 'RAW', 'IEEE 14 bus.raw')
     main_circuit = FileOpen(fname).open()
     nc = compile_numerical_circuit_at(main_circuit, t_idx=None)
     consider_hvdc_as_island_links = True
@@ -854,7 +854,7 @@ def test_lynn_Ybus():
 
     :return:
     """
-    fname = os.path.join('../Base/data', 'grids', 'lynn5node.gridcal')
+    fname = os.path.join('data', 'grids', 'lynn5node.gridcal')
     main_circuit = FileOpen(fname).open()
 
     # main_circuit = get_lynn_5_bus()
@@ -898,7 +898,7 @@ def test_lynn_Ybus2():
 
     :return:
     """
-    fname = os.path.join('../Base/data', 'grids', 'lynn5node.gridcal')
+    fname = os.path.join('data', 'grids', 'lynn5node.gridcal')
     main_circuit = FileOpen(fname).open()
 
     # main_circuit = get_lynn_5_bus()
@@ -934,7 +934,7 @@ def test_lynn_Ybus3() -> None:
     manually and then the assembles Ybus from the possible islands local Ybuses and compares both
     :return:
     """
-    fname = os.path.join('../Base/data', 'grids', 'lynn5node.gridcal')
+    fname = os.path.join('data', 'grids', 'lynn5node.gridcal')
     main_circuit = FileOpen(fname).open()
 
     # main_circuit = get_lynn_5_bus()
@@ -1004,7 +1004,7 @@ def test_island_slicing():
     """
     This tests checks that things are properly sliced
     """
-    fname = os.path.join('../Base/data', 'grids', '8_nodes_2_islands.gridcal')
+    fname = os.path.join('data', 'grids', '8_nodes_2_islands.gridcal')
     main_circuit = FileOpen(fname).open()
 
     # main_circuit = get_lynn_5_bus()
@@ -1026,7 +1026,7 @@ def test_island_slicing():
 
 
 def test_segmenting_by_hvdc():
-    fname = os.path.join('../Base/data', 'grids', '8_nodes_2_islands_hvdc.gridcal')
+    fname = os.path.join('data', 'grids', '8_nodes_2_islands_hvdc.gridcal')
 
     grid = open_file(fname)
 
@@ -1054,7 +1054,7 @@ def test_segmenting_by_hvdc():
 
 
 def test_switch_reduction():
-    fname = os.path.join('../Base/data', 'grids', 'DGS', 'Reduced_SPEN_v9_south_west_v3.dgs')
+    fname = os.path.join('data', 'grids', 'DGS', 'Reduced_SPEN_v9_south_west_v3.dgs')
 
     grid = open_file(fname)
 
