@@ -925,13 +925,15 @@ def get_full_pseudo_emt_converter(
     v_A = vf.add_var(name=f"v_A_{name}", reference=VarPowerFlowRefferenceType.v_A)
     v_B = vf.add_var(name=f"v_B_{name}", reference=VarPowerFlowRefferenceType.v_B)
     v_C = vf.add_var(name=f"v_C_{name}", reference=VarPowerFlowRefferenceType.v_C)
-    v_dc_bus = vf.add_var(name=f"v_dc_bus_{name}", reference=VarPowerFlowRefferenceType.Vdc)
-
     # AC/DC physical converter block: parameters, DC link, power, losses, and DC terminal relation.
     vsc_block = _build_pseudo_emt_converter_vsc_block(
         vf=vf,
         name=name,
     )
+    # Reuse the physical VSC block DC-bus input directly at the template root.
+    # Creating an extra wrapper variable here leaves one free symbolic node in the
+    # unified equations, which later confuses the structural compiled backend.
+    v_dc_bus = vsc_block.in_vars[6]
 
     # Control hierarchy blocks.
     pll_block = _build_pseudo_emt_converter_pll_block(vf=vf, name=name)
@@ -943,7 +945,7 @@ def get_full_pseudo_emt_converter(
 
     # Direct network wiring: the terminal pass-through block is intentionally removed.
     transformer_block.connect(transformer_block.in_vars[0:3], [v_A, v_B, v_C])
-    vsc_block.connect([vsc_block.in_vars[6]], [v_dc_bus])
+    vsc_block.in_vars[6] = v_dc_bus
 
     # Transformer provides dq0 measurements and interface currents to the VSC/control hierarchy.
     vsc_block.connect(vsc_block.in_vars[0:3], transformer_block.out_vars[6:9])
