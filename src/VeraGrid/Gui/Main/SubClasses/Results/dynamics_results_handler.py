@@ -2439,6 +2439,64 @@ class DynamicsResultsHandler:
         else:
             raise Exception("Unsupported dynamics results type")
 
+    def _variable_is_exported_in_current_results(self, variable: Var) -> bool:
+        """
+        Check whether one device variable is exported by the current results object.
+
+        :param variable: Variable referenced by the per-device results tree.
+        :return: ``True`` when the variable exists in one current results array.
+
+        RMS device-variable maps can still contain declarative differential
+        variables that are not exported into ``results.values``. The dynamic
+        results tree must ignore those unresolved entries instead of crashing
+        while building source-specific plot series.
+        """
+        if type(self.results) == RmsResults:
+            return variable.uid in self.results.uid2idx
+        else:
+            if type(self.results) == EmtResults:
+                return variable.uid in self.results.uid2idx_vars or variable.uid in self.results.uid2idx_diff
+            else:
+                raise Exception("Unsupported dynamics results type")
+
+    def _build_exported_results_tree_data(self) -> Dict[DeviceType, Dict[ALL_DEV_TYPES, List[Var]]]:
+        """
+        Build the runtime device tree using only variables exported by the results.
+
+        :return: Filtered device tree grouped by device type and device.
+        """
+        raw_tree_data: Dict[DeviceType, Dict[ALL_DEV_TYPES, List[Var]]] = self.results.get_devices_dict_tree()
+        filtered_tree_data: Dict[DeviceType, Dict[ALL_DEV_TYPES, List[Var]]] = dict()
+
+        device_tpe: DeviceType
+        devices_data: Dict[ALL_DEV_TYPES, List[Var]]
+        for device_tpe, devices_data in raw_tree_data.items():
+            filtered_devices: Dict[ALL_DEV_TYPES, List[Var]] = dict()
+
+            device: ALL_DEV_TYPES
+            variables: List[Var]
+            for device, variables in devices_data.items():
+                exported_variables: List[Var] = list()
+
+                variable: Var
+                for variable in variables:
+                    if self._variable_is_exported_in_current_results(variable=variable):
+                        exported_variables.append(variable)
+                    else:
+                        pass
+
+                if len(exported_variables) > 0:
+                    filtered_devices[device] = exported_variables
+                else:
+                    pass
+
+            if len(filtered_devices) > 0:
+                filtered_tree_data[device_tpe] = filtered_devices
+            else:
+                pass
+
+        return filtered_tree_data
+
     def _refresh_results_state(self, results: RmsResults | EmtResults) -> None:
         """
         Rebuild source lookup maps and the device tree for the given results object.
@@ -2454,7 +2512,7 @@ class DynamicsResultsHandler:
         self.results = results
         self.source_labels = list(self._get_group_names(results=self.results))
         self.group_idx = self._build_group_idx(results=self.results)
-        self.tree_data = self.results.get_devices_dict_tree()
+        self.tree_data = self._build_exported_results_tree_data()
         self.series_by_key = dict()
         self.series_by_var_uid = dict()
 
