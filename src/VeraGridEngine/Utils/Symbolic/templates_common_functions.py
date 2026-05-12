@@ -460,7 +460,7 @@ def connect_bus_variables_emt(device: Any,
                     # persistent EMT bus variables.
                     device.bus.emt_model = BusEmtTemplate(
                         vf=var_factory,
-                        mask=[True, True, True, True],
+                        mask=[False, True, True, True],
                         is_dc=False,
                         name=f"{device.bus.name}_emt_template",
                     ).block

@@ -561,6 +561,7 @@ def test_template_style_pre_simulation_emt_tree_includes_bus_voltage_variables()
     bus_variables = handler.tree_data[DeviceType.BusDevice][bus]
     bus_variable_names = [variable.name for variable in bus_variables]
 
+    assert not any(name.startswith("v_N_") for name in bus_variable_names)
     assert len(bus_variable_names) > 0
     assert any(name.startswith("v_") for name in bus_variable_names)
 
@@ -613,6 +614,7 @@ def test_editor_assignment_initializes_emt_bus_before_tree_discovery() -> None:
     bus_variables = handler.tree_data[DeviceType.BusDevice][bus]
     bus_variable_names = [variable.name for variable in bus_variables]
 
+    assert not any(name.startswith("v_N_") for name in bus_variable_names)
     assert len(bus_variable_names) > 0
     assert any(name.startswith("v_") for name in bus_variable_names)
 

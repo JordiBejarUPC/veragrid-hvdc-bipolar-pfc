@@ -1136,7 +1136,7 @@ def _initialize_editor_assigned_emt_bus_model(bus: Bus,
             else:
                 bus.emt_model = BusEmtTemplate(
                     vf=var_factory,
-                    mask=[True, True, True, True],
+                    mask=[False, True, True, True],
                     is_dc=False,
                     name=f"{bus.name}_emt_template",
                 ).block

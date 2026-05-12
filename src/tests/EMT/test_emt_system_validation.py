@@ -170,8 +170,8 @@ def _make_external_mapping_block(refs: list[VarPowerFlowRefferenceType], name_su
     return Block(external_mapping=external_mapping, out_vars=out_vars)
 
 
-def test_set_emt_model_materializes_missing_bus_shell() -> None:
-    """Ensure EMT assignment helpers initialize the connected bus shell immediately."""
+def test_emt_template_assignment_materializes_missing_bus_shell() -> None:
+    """Ensure EMT template assignment initializes the connected bus shell immediately."""
     grid = gce.MultiCircuit(Sbase=2.0, fbase=50.0)
     bus = gce.Bus(name="Bus0", Vnom=10.0, is_slack=True)
     generator = gce.Generator(name="Gen0", vset=1.0, Snom=grid.Sbase, freq=50.0, r1=0.001, x1=1.7)
@@ -179,13 +179,12 @@ def test_set_emt_model_materializes_missing_bus_shell() -> None:
     grid.add_bus(bus)
     grid.add_generator(bus=bus, api_obj=generator)
 
-    generator_model = Block(state_vars=[grid.var_factory.add_var(name="omega_test", uid=9001)])
-
     assert bus.emt_model.empty() is True
 
-    set_emt_model(device=generator, model=generator_model, var_factory=grid.var_factory)
+    generator.emt_template = get_generator_thevenin_rl_emt_template(vf=grid.var_factory)
 
     assert bus.emt_model.empty() is False
+    assert bus.emt_model.external_mapping[VarPowerFlowRefferenceType.v_N] is None
     assert VarPowerFlowRefferenceType.v_A in bus.emt_model.external_mapping
 
 
@@ -849,7 +848,8 @@ def test_emt_template_setter_allows_gui_order_injection_branch_injection() -> No
 
     gen0.emt_template = get_generator_thevenin_rl_emt_template(vf=grid.var_factory)
     assert not gen0.emt_model.empty()
-    assert len(bus0.get_pending_emt_devices()) == 1
+    assert len(bus0.get_pending_emt_devices()) == 0
+    assert not bus0.emt_model.empty()
 
     line0.emt_template = get_pi_line_emt_template(vf=grid.var_factory, phN=False, phA=True, phB=True, phC=True)
     load.emt_template = get_shunt_r_emt_template(vf=grid.var_factory, phA=True, phB=True, phC=True)
