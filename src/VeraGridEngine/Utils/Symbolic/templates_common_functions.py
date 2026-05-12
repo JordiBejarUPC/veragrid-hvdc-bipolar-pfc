@@ -506,7 +506,8 @@ def set_rms_model(device: Any, model:Block, var_factory: VarFactory):
 
     else:
         if not device.bus.rms_model.empty():
-            connect_models_power_flow(device.bus.rms_model, model)
+            for mdl in model.get_all_blocks():
+                connect_models_power_flow(device.bus.rms_model, mdl)
 
         else:
             raise ValueError(f"Connection Bus RMS model cannot be empty, initialize {device.bus.name} RMS model")

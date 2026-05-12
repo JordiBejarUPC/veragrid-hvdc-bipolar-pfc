@@ -73,10 +73,12 @@ def linear_contingency_analysis(nc: NumericalCircuit,
         # if linear, just re-use the linear analysis
         Sbus: CxVec = nc.get_power_injections()  # MW
         flows_n = linear_analysis.get_flows(Sbus=Sbus, P_hvdc=nc.hvdc_data.Pset)
+        results.Sf_base = flows_n
     else:
         # Run a proper base power flow
         base_res = multi_island_pf_nc(nc=nc, options=options.pf_options)
         flows_n = base_res.Sf.real
+        results.Sf_base = base_res.Sf
 
     # get the contingency branch indices
     mon_idx = nc.passive_branch_data.get_monitor_enabled_indices()
@@ -186,6 +188,7 @@ def linear_contingency_scan_numba(nbr: int,
 
     # base flow
     Sbr0 = np.dot(PTDF, Pbus)
+
     problems = list()
 
     for mm in nb.prange(len(mon_idx)):
@@ -211,4 +214,4 @@ def linear_contingency_scan_numba(nbr: int,
         else:
             problems.append((m, -1))
 
-    return SbrCon, LoadingCon, problems
+    return Sbr0, SbrCon, LoadingCon, problems

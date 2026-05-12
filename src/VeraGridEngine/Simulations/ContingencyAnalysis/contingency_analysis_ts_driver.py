@@ -196,6 +196,7 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
             # Sf[i_con, k_br]
 
             # Sbus (ncon, nbus)
+            results.Sf_base[it, :] = res_t.Sf_base
             results.S[it, :] = max_abs_per_col_cx(res_t.Sbus).real
 
             results.max_flows[it, :] = max_abs_per_col_cx(res_t.Sf).real
@@ -307,7 +308,7 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
             )
 
             results.S[it, :] = max_abs_per_col(res_t.Sbus.real)
-
+            results.Sf_base[it, :] = res_t.Sf_base
             results.max_flows[it, :] = max_abs_per_col(res_t.Sf.real)
 
             # Note: Loading is (ncon, nbranch)
@@ -398,7 +399,7 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
             # get the corresponding linear analysis
             lin_t = linear.get_linear_analysis_at(t_idx=t)
 
-            SbrCon, LoadingCon, problems = linear_contingency_scan_numba(
+            Sbr0, SbrCon, LoadingCon, problems = linear_contingency_scan_numba(
                 nbr=nc.nbr,
                 n_con_groups=n_con_groups,
                 Pbus=Pbus_mat[t, :],
@@ -412,7 +413,7 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
             )
 
             results.S[it, :] = np.max(np.abs(Pbus_mat[t, :]))
-
+            results.Sf_base[it, :] = Sbr0
             results.max_flows[it, :] = max_abs_per_col(SbrCon)
 
             # Note: Loading is (ncon, nbranch)
