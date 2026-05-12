@@ -526,6 +526,47 @@ def contingencies_ts(circuit: MultiCircuit,
     return driver_contingencies.results
 
 
+def contingency_analysis(grid: MultiCircuit,
+                         options: ContingencyAnalysisOptions | None = None) -> ContingencyAnalysisResults:
+    """
+
+    :param grid:
+    :param options:
+    :return:
+    """
+    pf_options = PowerFlowOptions(solver_type=SolverType.NR)
+
+    # declare the contingency options
+    if options is None:
+        options = ContingencyAnalysisOptions(
+
+            # Contingency method to use
+            contingency_method=ContingencyMethod.PowerFlow,
+
+            # optional, you can send here any contingency groups
+            contingency_groups=grid.get_contingency_groups(),
+
+            # if no power flow options are provided
+            # a linear power flow is used
+            pf_options=pf_options
+        )
+
+    # Get all the defined contingency groups from the circuit
+    contingency_groups = grid.get_contingency_groups()
+
+    # Pass the list of contingency groups as required (optional)
+    linear_multiple_contingencies = LinearMultiContingencies(grid=grid,
+                                                             contingency_groups_used=contingency_groups)
+
+    simulation = ContingencyAnalysisDriver(grid=grid,
+                                           options=options,
+                                           linear_multiple_contingencies=linear_multiple_contingencies)
+
+    simulation.run()
+
+    return simulation.results
+
+
 def clustering(circuit: MultiCircuit, n_points=100) -> ClusteringResults:
     """
     Perform a clustering analysis for time series
