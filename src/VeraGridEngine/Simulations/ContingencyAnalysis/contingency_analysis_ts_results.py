@@ -7,12 +7,11 @@ import numpy as np
 import pandas as pd
 from typing import Union
 
-from VeraGridEngine import CxMat
 from VeraGridEngine.Simulations.results_table import ResultsTable
 from VeraGridEngine.Simulations.results_template import ResultsTemplate, ResultsProperty
 from VeraGridEngine.DataStructures.numerical_circuit import NumericalCircuit
 from VeraGridEngine.Simulations.ContingencyAnalysis.contingencies_report import ContingencyResultsReport
-from VeraGridEngine.basic_structures import DateVec, IntVec, StrVec, Mat
+from VeraGridEngine.basic_structures import DateVec, IntVec, StrVec, Mat, CxVec, CxMat
 from VeraGridEngine.enumerations import StudyResultsType, ResultTypes, DeviceType
 from VeraGridEngine.Simulations.Clustering.clustering_results import ClusteringResults
 
