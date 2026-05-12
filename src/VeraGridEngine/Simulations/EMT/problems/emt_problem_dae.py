@@ -784,6 +784,39 @@ def _find_internal_var_for_init(block: Block, var_name: str) -> Optional[Var]:
     return None
 
 
+def _find_internal_var_by_prefix(block: Block, name_prefix: str) -> Optional[Var]:
+    """
+    Return one internal state/algebraic/differential variable by name prefix.
+
+    This helper is used for templates whose cloned working blocks may not keep an
+    easily reconstructable root-block name, while their internal variable prefixes
+    remain stable.
+
+    :param block: Root block to inspect.
+    :param name_prefix: Variable-name prefix.
+    :return: Matching solver-owned variable or ``None``.
+    """
+    variable: Var
+    child_block: Block
+    nested_variable: Optional[Var]
+
+    for variable_list in [block.state_vars, block.algebraic_vars, block.diff_vars]:
+        for variable in variable_list:
+            if variable.name.startswith(name_prefix):
+                return variable
+            else:
+                pass
+
+    for child_block in block.children:
+        nested_variable = _find_internal_var_by_prefix(child_block, name_prefix)
+        if nested_variable is not None:
+            return nested_variable
+        else:
+            pass
+
+    return None
+
+
 def _find_internal_runtime_var(block: Block, var_name: str) -> Optional[Var]:
     """
     Return one internal runtime parameter variable by name.
@@ -1177,6 +1210,7 @@ class EmtProblemDae(EmtProblemTemplate):
         self._mode_event_cursor: Dict[int, int] = dict()
         self._runtime_parameter_eqs0: List[Any] = list()
         self._event_parameter_device_idtags: Dict[int, str] = dict()
+        self._event_parameter_name_lookup: Dict[Tuple[str, str], int] = dict()
         self._continuous_event_parameter_uids: Set[int] = set()
         self._discrete_event_parameter_uids: Set[int] = set()
         self._active_events_group: EmtEventsGroup | None = None
@@ -2543,29 +2577,35 @@ class EmtProblemDae(EmtProblemTemplate):
             else:
                 for parameter in mdl.event_dict.keys():
                     self._event_parameter_device_idtags[parameter.uid] = dev.idtag
+                    self._event_parameter_name_lookup[(str(dev.idtag), str(parameter.name))] = parameter.uid
                     self._continuous_event_parameter_uids.add(parameter.uid)
 
                 for parameter in mdl.mode_dict.keys():
                     self._event_parameter_device_idtags[parameter.uid] = dev.idtag
+                    self._event_parameter_name_lookup[(str(dev.idtag), str(parameter.name))] = parameter.uid
                     self._discrete_event_parameter_uids.add(parameter.uid)
 
             # Add model to system mappings
             # Populates tracking dictionaries to maintain the relationship between
             # electrical devices and their corresponding symbolic variables.
-            for v in mdl.state_vars:
-                self.add_device_var(dev=dev, var=v)
-                self._vars_glob_name2uid[v.name + dev.name] = v.uid
-                self._vars2device[v.uid] = dev
+            block_item: Block
+            for block_item in mdl.get_all_blocks():
+                v: Var
+                for v in block_item.state_vars:
+                    self.add_device_var(dev=dev, var=v)
+                    self._vars_glob_name2uid[v.name + dev.name] = v.uid
+                    self._vars2device[v.uid] = dev
 
-            for v in mdl.algebraic_vars:
-                self.add_device_var(dev=dev, var=v)
-                self._vars_glob_name2uid[v.name + dev.name] = v.uid
-                self._vars2device[v.uid] = dev
+                for v in block_item.algebraic_vars:
+                    self.add_device_var(dev=dev, var=v)
+                    self._vars_glob_name2uid[v.name + dev.name] = v.uid
+                    self._vars2device[v.uid] = dev
 
-            for dv in mdl.diff_vars:
-                self.add_device_var(dev=dev, var=dv)
-                self._vars_glob_name2uid[dv.name + dev.name] = dv.uid
-                self._vars2device[dv.uid] = dev
+                dv: Var
+                for dv in block_item.diff_vars:
+                    self.add_device_var(dev=dev, var=dv)
+                    self._vars_glob_name2uid[dv.name + dev.name] = dv.uid
+                    self._vars2device[dv.uid] = dev
 
             queue_emt_fmu_cs_device(self, dev, mdl)
             queue_emt_fmu_me_device(self, dev, mdl)
@@ -3196,6 +3236,36 @@ class EmtProblemDae(EmtProblemTemplate):
 
         return registered_device_idtag == event_device_idtag
 
+    def _resolve_registered_event_parameter_uid(self, evt: Any) -> int | None:
+        """
+        Resolve the runtime-parameter UID targeted by one EMT event.
+
+        Events are often authored against the reusable device model stored on the
+        grid element, while the EMT problem operates on cloned working models with
+        fresh symbolic UIDs. This resolver first tries the direct UID match and
+        then falls back to ``(device_idtag, parameter.name)`` so the event can be
+        applied to the corresponding working-model parameter.
+
+        :param evt: EMT event under inspection.
+        :return: Registered runtime-parameter UID or ``None`` when not found.
+        """
+        if isinstance(evt.parameter, Var):
+            direct_uid: int = int(evt.parameter.uid)
+
+            if direct_uid in self._event_parameter_device_idtags:
+                return direct_uid
+            else:
+                pass
+
+            event_device_idtag_raw: Any = evt.device_idtag
+            if event_device_idtag_raw is None:
+                return None
+            else:
+                lookup_key: Tuple[str, str] = (str(event_device_idtag_raw), str(evt.parameter.name))
+                return self._event_parameter_name_lookup.get(lookup_key, None)
+        else:
+            return None
+
     def set_events_group(self, emt_events_group: EmtEventsGroup | None) -> None:
         """
         Activate the selected EMT events group inside the problem runtime layer.
@@ -3232,9 +3302,9 @@ class EmtProblemDae(EmtProblemTemplate):
         emt_events: List[Any] = self._get_emt_events_for_group(emt_events_group)
 
         for evt in emt_events:
-            if isinstance(evt.parameter, Var):
-                parameter_uid: int = evt.parameter.uid
+            parameter_uid: int | None = self._resolve_registered_event_parameter_uid(evt)
 
+            if parameter_uid is not None:
                 if self._event_targets_registered_parameter(evt, parameter_uid):
                     if parameter_uid in self._discrete_event_parameter_uids:
                         event_list: List[Tuple[float, float, bool]] = scheduled_mode_events.setdefault(
@@ -4124,6 +4194,19 @@ class EmtProblemDae(EmtProblemTemplate):
             self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.P, value=p_total)
             self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Q, value=q_total)
 
+            # The Thevenin generator templates reconstruct an internal balanced emf
+            # from the PF seed. Those internal variables are not externally mapped,
+            # so they must be preserved explicitly across the later native-init pass.
+            if injection.device_type == DeviceType.GeneratorDevice:
+                self._seed_thevenin_internal_emf_from_pf(
+                    injection=injection,
+                    mdl=mdl,
+                    phase_power=phase_power,
+                    voltage_vector=voltage_vector,
+                )
+            else:
+                pass
+
             omega_base: float = 2.0 * np.pi * self.grid.fBase
             voltage_derivative_keys: List[VarPowerFlowRefferenceType] = list([
                 VarPowerFlowRefferenceType.d_v_N,
@@ -4143,6 +4226,136 @@ class EmtProblemDae(EmtProblemTemplate):
                 else:
                     pass
                 phase_index += 1
+
+    def _seed_thevenin_internal_emf_from_pf(
+            self,
+            injection: Any,
+            mdl: Block,
+            phase_power: np.ndarray,
+            voltage_vector: np.ndarray,
+    ) -> None:
+        """
+        Preserve the PF-consistent internal emf initialization of Thevenin generators.
+
+        The Thevenin templates expose ``theta`` and ``e_A/e_B/e_C`` only as internal
+        symbolic variables. The generic native EMT initialization can overwrite those
+        exact explicit-init values with weaker guesses because they are not part of
+        the external PF mapping. This helper reconstructs the same balanced emf from
+        the already available PF seed and stores it as a post-native-init value.
+
+        The helper is intentionally no-op for non-Thevenin generator models because
+        the required internal variable names will simply be absent.
+
+        :param injection: Generator device under initialization.
+        :param mdl: Working EMT model of the generator.
+        :param phase_power: Complex power seed in NABC order.
+        :param voltage_vector: Complex bus-voltage seed in NABC order.
+        :return: None.
+        """
+        c_sqrt_2: float = float(np.sqrt(2.0))
+        phase_a: complex = complex(voltage_vector[1])
+        phase_b: complex = complex(voltage_vector[2])
+        phase_c: complex = complex(voltage_vector[3])
+        power_a: complex = complex(phase_power[1])
+        power_b: complex = complex(phase_power[2])
+        power_c: complex = complex(phase_power[3])
+        a_operator: complex = np.exp(1j * 2.0 * np.pi / 3.0)
+        current_a: complex
+        current_b: complex
+        current_c: complex
+
+        if abs(phase_a) > 1.0e-12:
+            current_a = np.conj(power_a / phase_a)
+        else:
+            current_a = 0.0 + 0.0j
+
+        if abs(phase_b) > 1.0e-12:
+            current_b = np.conj(power_b / phase_b)
+        else:
+            current_b = 0.0 + 0.0j
+
+        if abs(phase_c) > 1.0e-12:
+            current_c = np.conj(power_c / phase_c)
+        else:
+            current_c = 0.0 + 0.0j
+
+        # The positive-sequence phasors define the same operating point used by the
+        # explicit-init equations inside the Thevenin template.
+        voltage_positive_sequence: complex = (
+            phase_a + a_operator * phase_b + (a_operator * a_operator) * phase_c
+        ) / 3.0
+        current_positive_sequence: complex = (
+            current_a + a_operator * current_b + (a_operator * a_operator) * current_c
+        ) / 3.0
+        phi_v: float = float(np.angle(voltage_positive_sequence))
+        phi_i: float = float(np.angle(current_positive_sequence))
+        phi_rel_raw: float = float(phi_i - phi_v)
+        phi_rel: float = float(np.arctan2(np.sin(phi_rel_raw), np.cos(phi_rel_raw)))
+        voltage_peak: float = float(c_sqrt_2 * np.abs(voltage_positive_sequence))
+        current_peak: float = float(c_sqrt_2 * np.abs(current_positive_sequence))
+        resistance_s: float = float(injection.R1)
+        reactance_s: float = float(injection.X1)
+
+        # The internal emf is built in the local frame first and then rotated back
+        # to the absolute electrical angle used by the abc sinusoidal source.
+        e_re_rel: float = float(
+            voltage_peak
+            + resistance_s * current_peak * np.cos(phi_rel)
+            - reactance_s * current_peak * np.sin(phi_rel)
+        )
+        e_im_rel: float = float(
+            resistance_s * current_peak * np.sin(phi_rel)
+            + reactance_s * current_peak * np.cos(phi_rel)
+        )
+        theta_abs: float = float(phi_v + np.arctan2(e_im_rel, e_re_rel))
+        emf_peak: float = float(np.sqrt(e_re_rel * e_re_rel + e_im_rel * e_im_rel))
+        e_a_value: float = float(emf_peak * np.sin(theta_abs))
+        e_b_value: float = float(emf_peak * np.sin(theta_abs - 2.0 * np.pi / 3.0))
+        e_c_value: float = float(emf_peak * np.sin(theta_abs + 2.0 * np.pi / 3.0))
+
+        # The recent Thevenin refactor moved the internal emf reconstruction to
+        # algebraic equations driven by init-only runtime parameters. Explicit
+        # initialization resolves those parameters correctly, but the later
+        # event-group activation rebuilds the runtime-parameter vector from the
+        # model-owned ``event_dict`` definitions. Persisting the PF-derived
+        # positive-sequence values here keeps the first simulation step aligned
+        # with the exact steady-state source used by explicit initialization.
+        self.set_internal_runtime_if_exists(mdl=mdl, var_name="phi_v_" + mdl.name, value=phi_v)
+        self.set_internal_runtime_if_exists(mdl=mdl, var_name="phi_" + mdl.name, value=phi_rel)
+        self.set_internal_runtime_if_exists(mdl=mdl, var_name="Vpk_" + mdl.name, value=voltage_peak)
+        self.set_internal_runtime_if_exists(mdl=mdl, var_name="Ipk_" + mdl.name, value=current_peak)
+
+        theta_var: Optional[Var] = _find_internal_var_by_prefix(mdl, "theta_")
+        e_a_var: Optional[Var] = _find_internal_var_by_prefix(mdl, "e_A_")
+        e_b_var: Optional[Var] = _find_internal_var_by_prefix(mdl, "e_B_")
+        e_c_var: Optional[Var] = _find_internal_var_by_prefix(mdl, "e_C_")
+
+        # The preserved guesses are written directly into both init dictionaries so
+        # the later native-init pass starts from the PF-consistent emf and the final
+        # post-native state keeps the same values.
+        if theta_var is not None:
+            self._temp_init_guess[theta_var.uid] = theta_abs
+            self._temp_post_init_guess[theta_var.uid] = theta_abs
+        else:
+            pass
+
+        if e_a_var is not None:
+            self._temp_init_guess[e_a_var.uid] = e_a_value
+            self._temp_post_init_guess[e_a_var.uid] = e_a_value
+        else:
+            pass
+
+        if e_b_var is not None:
+            self._temp_init_guess[e_b_var.uid] = e_b_value
+            self._temp_post_init_guess[e_b_var.uid] = e_b_value
+        else:
+            pass
+
+        if e_c_var is not None:
+            self._temp_init_guess[e_c_var.uid] = e_c_value
+            self._temp_post_init_guess[e_c_var.uid] = e_c_value
+        else:
+            pass
 
 
 
@@ -6053,16 +6266,17 @@ class EmtProblemDae(EmtProblemTemplate):
         Q_meas0_pu: float = float(np.imag(VA * np.conj(IA) + VB * np.conj(IB) + VC * np.conj(IC)))
         P_meas0: float = P_meas0_pu * sbase0
         i_dc0_conv: float = -P_meas0_pu / max(v_dc_eff, eps)
+        configured_p0_value: float = _get_internal_runtime_default(mdl, f"P0_{model_name}", P_meas0)
         P_ref0: float
         Q_ref0: float
         Vdc_ref0: float
-        self.set_internal_runtime_if_exists(mdl, f"P0_{model_name}", P_meas0)
+        self.set_internal_runtime_if_exists(mdl, f"P0_{model_name}", configured_p0_value)
         P_ref0, Q_ref0, Vdc_ref0 = _resolve_converter_control_reference_values(
             control1_code=control1_code,
             control2_code=control2_code,
             control1_val=control1_val0,
             control2_val=control2_val0,
-            p0_value=P_meas0,
+            p0_value=configured_p0_value,
         )
         P_ref_pu0: float = P_ref0 / max(sbase0, eps)
         Q_ref_pu0: float = Q_ref0 / max(sbase0, eps)

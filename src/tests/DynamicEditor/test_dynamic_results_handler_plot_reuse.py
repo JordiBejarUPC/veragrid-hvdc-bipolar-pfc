@@ -192,6 +192,30 @@ def build_emt_results(device_entries: Sequence[Tuple[FakeDynamicDevice, Sequence
     return results
 
 
+def build_rms_results_with_unexported_device_var(device: FakeDynamicDevice,
+                                                 exported_var: Var,
+                                                 unexported_var: Var) -> RmsResults:
+    """
+    Build one RMS results object whose device tree contains one unexported variable.
+
+    :param device: Device referenced by the results tree.
+    :param exported_var: Variable present in ``results.values``.
+    :param unexported_var: Variable present only in ``devices_vars_info``.
+    :return: RMS results object.
+    """
+    results: RmsResults = RmsResults(
+        time_array=np.array([0.0, 1.0], dtype=float),
+        rms_events_group_names=np.array(["Group 1"], dtype=str),
+        rms_events_group_idtags=np.array(["rms-group-1"], dtype=str),
+        variables=[exported_var],
+        uid2idx={exported_var.uid: 0},
+        vars_glob_name2uid={device.idtag + ":" + exported_var.name + ":" + str(exported_var.uid): exported_var.uid},
+        devices_vars_info={device: [exported_var, unexported_var]},
+    )
+    results.values[:, :, 0] = np.array([[0.0], [1.0]], dtype=float)
+    return results
+
+
 def build_rms_results_with_groups(device_entries: Sequence[Tuple[FakeDynamicDevice, Sequence[Var]]],
                                   group_names: Sequence[str]) -> RmsResults:
     """
@@ -656,3 +680,23 @@ def test_dynamic_plot_restores_duplicate_var_names_by_exact_key() -> None:
     handler.update_results(results=new_results)
 
     assert get_group_var_uids(handler=handler, group_name="Plot 1") == [101, 102]
+
+
+def test_dynamic_results_handler_skips_unexported_rms_device_vars() -> None:
+    """
+    Ignore RMS device variables that are not exported in the runtime results arrays.
+    """
+    ensure_qt_application()
+
+    device: FakeDynamicDevice = make_device(name="DeviceA", idtag="dev-a")
+    results: RmsResults = build_rms_results_with_unexported_device_var(
+        device=device,
+        exported_var=make_var(name="omega", uid=1),
+        unexported_var=make_var(name="domega", uid=2),
+    )
+
+    handler: DynamicsResultsHandler = DynamicsResultsHandler(results=results)
+
+    assert 1 in handler.series_by_var_uid
+    assert 2 not in handler.series_by_var_uid
+    assert handler.tree_data[device.device_type][device][0].name == "omega"

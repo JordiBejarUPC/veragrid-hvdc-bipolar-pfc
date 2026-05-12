@@ -36,6 +36,7 @@ from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType, 
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms, get_bus_rms_algebraic_vars
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import BusEmtTemplate, get_bus_emt_template, get_bus_emt_algebraic_vars
 from VeraGridEngine.Devices.Substation.bus import Bus
+from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
@@ -1094,6 +1095,97 @@ def copy_block_state(source_block: Block, target_block: Block) -> None:
     target_block.event_dict = source_clone.event_dict
     target_block.mode_dict = source_clone.mode_dict
     target_block.diagram = source_block.diagram
+
+
+def _initialize_editor_assigned_rms_bus_model(bus: Bus, var_factory: VarFactory) -> None:
+    """
+    Initialize one missing RMS bus model after assigning one editor-built device model.
+
+    :param bus: Connected bus.
+    :param var_factory: Shared symbolic variable factory.
+    :return: None.
+    """
+    if bus.rms_model.empty():
+        initialize_bus_rms(bus=bus, vf=var_factory)
+    else:
+        pass
+
+
+def _initialize_editor_assigned_emt_bus_model(bus: Bus,
+                                              circuit: MultiCircuit | None,
+                                              var_factory: VarFactory) -> None:
+    """
+    Initialize one missing EMT bus shell after assigning one editor-built device model.
+
+    :param bus: Connected bus.
+    :param circuit: Owning circuit when available.
+    :param var_factory: Shared symbolic variable factory.
+    :return: None.
+    """
+    if bus.emt_model.empty():
+        if circuit is not None:
+            get_bus_emt_template(grid=circuit, bus=bus)
+        else:
+            if bus.is_dc:
+                bus.emt_model = BusEmtTemplate(
+                    vf=var_factory,
+                    mask=[False, False, False, False],
+                    is_dc=True,
+                    name=f"{bus.name}_emt_template",
+                ).block
+            else:
+                bus.emt_model = BusEmtTemplate(
+                    vf=var_factory,
+                    mask=[False, True, True, True],
+                    is_dc=False,
+                    name=f"{bus.name}_emt_template",
+                ).block
+    else:
+        pass
+
+
+def initialize_connected_bus_models_for_editor_assignment(api_object: Any,
+                                                          circuit: MultiCircuit | None,
+                                                          var_factory: VarFactory,
+                                                          mode: DynamicSimulationMode) -> None:
+    """
+    Initialize missing connected bus models right after one Dynamic Editor assignment.
+
+    :param api_object: Edited concrete device.
+    :param circuit: Owning circuit when available.
+    :param var_factory: Shared symbolic variable factory.
+    :param mode: Dynamic simulation domain being edited.
+    :return: None.
+    """
+    if isinstance(api_object, InjectionParent):
+        bus: Bus | None = api_object.bus
+        if bus is None:
+            pass
+        else:
+            if mode == DynamicSimulationMode.RMS:
+                _initialize_editor_assigned_rms_bus_model(bus=bus, var_factory=var_factory)
+            else:
+                if mode == DynamicSimulationMode.EMT:
+                    _initialize_editor_assigned_emt_bus_model(bus=bus, circuit=circuit, var_factory=var_factory)
+                else:
+                    raise ValueError(f"Unsupported dynamic editor mode {mode}")
+    else:
+        if isinstance(api_object, BranchParent):
+            if mode == DynamicSimulationMode.RMS:
+                _initialize_editor_assigned_rms_bus_model(bus=api_object.bus_from, var_factory=var_factory)
+                _initialize_editor_assigned_rms_bus_model(bus=api_object.bus_to, var_factory=var_factory)
+            else:
+                if mode == DynamicSimulationMode.EMT:
+                    _initialize_editor_assigned_emt_bus_model(bus=api_object.bus_from,
+                                                              circuit=circuit,
+                                                              var_factory=var_factory)
+                    _initialize_editor_assigned_emt_bus_model(bus=api_object.bus_to,
+                                                              circuit=circuit,
+                                                              var_factory=var_factory)
+                else:
+                    raise ValueError(f"Unsupported dynamic editor mode {mode}")
+        else:
+            pass
 
 
 def build_block_symbol_namespace(block: Block) -> Dict[str, Expr]:
@@ -11280,6 +11372,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 # Todo: Here are the changes
                 self.api_object.rms_template = None
             copy_block_state(source_block=self.main_block, target_block=self.original_block)
+            initialize_connected_bus_models_for_editor_assignment(api_object=self.api_object,
+                                                                  circuit=self.circuit,
+                                                                  var_factory=self.var_factory,
+                                                                  mode=self.mode)
             self.has_unapplied_changes = False
             self.changes_applied = True
             self.dirtyStateChanged.emit(False)
@@ -11302,6 +11398,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             bus_models_synchronised: bool = self._sync_emt_bus_models_from_current_interface()
             if bus_models_synchronised:
                 copy_block_state(source_block=self.main_block, target_block=self.original_block)
+                initialize_connected_bus_models_for_editor_assignment(api_object=self.api_object,
+                                                                      circuit=self.circuit,
+                                                                      var_factory=self.var_factory,
+                                                                      mode=self.mode)
                 self.has_unapplied_changes = False
                 self.changes_applied = True
                 self.dirtyStateChanged.emit(False)

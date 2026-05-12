@@ -11,6 +11,7 @@ from VeraGridEngine.Utils.Symbolic import symbolic as sym
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DeviceType, ParamPowerFlowRefferenceType
+from VeraGridEngine.Templates.Emt.generator_emt_type_template import get_pf_positive_sequence_init_refs
 
 def get_generator_thevenin_rl_emt_template(vf: VarFactory,
                                            name: str = "emt_thevenin_eq_generator_template"
@@ -67,6 +68,7 @@ def get_generator_thevenin_rl_emt_template(vf: VarFactory,
     # Constants for symbolic expressions
     # ----------------------------------------------------------------------------------
     c05 = vf.add_const(0.5)
+    c_eps_emf = vf.add_const(1.0e-24)
 
     # ----------------------------------------------------------------------------------
     # Inputs: bus terminal instantaneous phase voltages
@@ -74,6 +76,18 @@ def get_generator_thevenin_rl_emt_template(vf: VarFactory,
     v_A = vf.add_var(name=f"v_A_{name}", reference=VarPowerFlowRefferenceType.v_A)
     v_B = vf.add_var(name=f"v_B_{name}", reference=VarPowerFlowRefferenceType.v_B)
     v_C = vf.add_var(name=f"v_C_{name}", reference=VarPowerFlowRefferenceType.v_C)
+    # These PF-derived references are injected by the EMT problem builder before
+    # native initialization so the template can reconstruct the positive-sequence
+    # operating point in a solver-agnostic way.
+    d_v_A = vf.add_var(name=f"d_v_A_{name}", reference=VarPowerFlowRefferenceType.d_v_A)
+    d_v_B = vf.add_var(name=f"d_v_B_{name}", reference=VarPowerFlowRefferenceType.d_v_B)
+    d_v_C = vf.add_var(name=f"d_v_C_{name}", reference=VarPowerFlowRefferenceType.d_v_C)
+    p_A = vf.add_var(name=f"P_A_{name}", reference=VarPowerFlowRefferenceType.P_A)
+    q_A = vf.add_var(name=f"Q_A_{name}", reference=VarPowerFlowRefferenceType.Q_A)
+    p_B = vf.add_var(name=f"P_B_{name}", reference=VarPowerFlowRefferenceType.P_B)
+    q_B = vf.add_var(name=f"Q_B_{name}", reference=VarPowerFlowRefferenceType.Q_B)
+    p_C = vf.add_var(name=f"P_C_{name}", reference=VarPowerFlowRefferenceType.P_C)
+    q_C = vf.add_var(name=f"Q_C_{name}", reference=VarPowerFlowRefferenceType.Q_C)
     inputs = [v_A, v_B, v_C]
 
     # ----------------------------------------------------------------------------------
@@ -113,12 +127,39 @@ def get_generator_thevenin_rl_emt_template(vf: VarFactory,
     Vpk = vf.add_var("Vpk_" + name)
     Ipk = vf.add_var("Ipk_" + name)
 
+    # The PF references above are converted into positive-sequence polar values.
+    # This gives the Thevenin template the same initialization information that
+    # the more detailed machine templates already use.
+    phi_v_init: sym.Expr
+    phi_init: sym.Expr
+    vpk_init: sym.Expr
+    ipk_init: sym.Expr
+    phi_v_init, phi_init, vpk_init, ipk_init = get_pf_positive_sequence_init_refs(
+        v_a=v_A,
+        v_b=v_B,
+        v_c=v_C,
+        d_v_a=d_v_A,
+        d_v_b=d_v_B,
+        d_v_c=d_v_C,
+        p_a=p_A,
+        q_a=q_A,
+        p_b=p_B,
+        q_b=q_B,
+        p_c=p_C,
+        q_c=q_C,
+        omega_base=omega_base,
+    )
+
     E_scale = vf.add_var("E_scale_" + name)
 
     E_re = Vpk + R_s * Ipk * sym.cos(phi) - X_s * Ipk * sym.sin(phi)
     E_im = R_s * Ipk * sym.sin(phi) + X_s * Ipk * sym.cos(phi)
-    delta_expr = sym.atan(E_im / E_re)
-    Epk_expr = ((E_re ** 2 + E_im ** 2) ** c05)
+    # ``atan2`` keeps the source-angle reconstruction well defined when the
+    # real component crosses zero, which avoids NaN seeds during explicit init.
+    delta_expr = sym.atan2(E_im, E_re)
+    # A tiny regularization keeps AD/Jacobian backends from producing NaNs when
+    # the emf-magnitude derivative is evaluated exactly at zero.
+    Epk_expr = ((E_re ** 2 + E_im ** 2 + c_eps_emf) ** c05)
 
     # ----------------------------------------------------------------------------------
     # Block
@@ -164,12 +205,12 @@ def get_generator_thevenin_rl_emt_template(vf: VarFactory,
         VarPowerFlowRefferenceType.Q: None,
         VarPowerFlowRefferenceType.P_N: None,
         VarPowerFlowRefferenceType.Q_N: None,
-        VarPowerFlowRefferenceType.P_A: None,
-        VarPowerFlowRefferenceType.Q_A: None,
-        VarPowerFlowRefferenceType.P_B: None,
-        VarPowerFlowRefferenceType.Q_B: None,
-        VarPowerFlowRefferenceType.P_C: None,
-        VarPowerFlowRefferenceType.Q_C: None,
+        VarPowerFlowRefferenceType.P_A: p_A,
+        VarPowerFlowRefferenceType.Q_A: q_A,
+        VarPowerFlowRefferenceType.P_B: p_B,
+        VarPowerFlowRefferenceType.Q_B: q_B,
+        VarPowerFlowRefferenceType.P_C: p_C,
+        VarPowerFlowRefferenceType.Q_C: q_C,
         VarPowerFlowRefferenceType.i_N: None,
         VarPowerFlowRefferenceType.i_A: i_A,
         VarPowerFlowRefferenceType.i_B: i_B,
@@ -179,9 +220,9 @@ def get_generator_thevenin_rl_emt_template(vf: VarFactory,
         VarPowerFlowRefferenceType.Vpk: Vpk,
         VarPowerFlowRefferenceType.Ipk: Ipk,
         VarPowerFlowRefferenceType.d_v_N: None,
-        VarPowerFlowRefferenceType.d_v_A: None,
-        VarPowerFlowRefferenceType.d_v_B: None,
-        VarPowerFlowRefferenceType.d_v_C: None,
+        VarPowerFlowRefferenceType.d_v_A: d_v_A,
+        VarPowerFlowRefferenceType.d_v_B: d_v_B,
+        VarPowerFlowRefferenceType.d_v_C: d_v_C,
     }
 
     # ----------------------------------------------------------------------------------
@@ -196,7 +237,23 @@ def get_generator_thevenin_rl_emt_template(vf: VarFactory,
     }
 
     templ.block.event_dict = {
+        # The PF-derived abc references must live in the runtime-parameter layer
+        # because VeraGrid seeds external EMT references through ``event_dict``.
+        # Without these placeholders the corresponding symbolic variables keep
+        # their default zero values and the reconstructed internal emf collapses
+        # to zero during initialization.
+        d_v_A: vf.add_const(None),
+        d_v_B: vf.add_const(None),
+        d_v_C: vf.add_const(None),
+        p_A: vf.add_const(None),
+        q_A: vf.add_const(None),
+        p_B: vf.add_const(None),
+        q_B: vf.add_const(None),
+        p_C: vf.add_const(None),
+        q_C: vf.add_const(None),
         # PF-derived init-only values
+        # These placeholders are resolved from ``init_eqs`` once the PF-derived
+        # abc seeds have been injected into the model-owned variables.
         phi_v: vf.add_const(None),
         phi: vf.add_const(None),
         Vpk: vf.add_const(None),
@@ -236,6 +293,12 @@ def get_generator_thevenin_rl_emt_template(vf: VarFactory,
 
 
     templ.block.init_eqs = {
+        # The PF-derived positive-sequence quantities must be resolved before the
+        # internal emf angle can be reconstructed.
+        phi_v: phi_v_init,
+        phi: phi_init,
+        Vpk: vpk_init,
+        Ipk: ipk_init,
         theta: phi_v + delta_expr,
 
         e_A: E_scale * Epk_expr * sym.sin(theta),
@@ -356,6 +419,7 @@ def get_generator_thevenin_rl_emt_template_with_ref(
     # Constants used in symbolic expressions.
     # ------------------------------------------------------------------
     c05 = vf.add_const(0.5)
+    c_eps_emf = vf.add_const(1.0e-24)
     c0 = vf.add_const(0.0)
     c1 = vf.add_const(1.0)
 
@@ -365,6 +429,18 @@ def get_generator_thevenin_rl_emt_template_with_ref(
     v_A = vf.add_var(name=f"v_A_{name}", reference=VarPowerFlowRefferenceType.v_A)
     v_B = vf.add_var(name=f"v_B_{name}", reference=VarPowerFlowRefferenceType.v_B)
     v_C = vf.add_var(name=f"v_C_{name}", reference=VarPowerFlowRefferenceType.v_C)
+    # The sharing-enabled variant relies on the same PF-derived abc references as
+    # the base Thevenin template so both models reconstruct the same operating
+    # point during explicit initialization.
+    d_v_A = vf.add_var(name=f"d_v_A_{name}", reference=VarPowerFlowRefferenceType.d_v_A)
+    d_v_B = vf.add_var(name=f"d_v_B_{name}", reference=VarPowerFlowRefferenceType.d_v_B)
+    d_v_C = vf.add_var(name=f"d_v_C_{name}", reference=VarPowerFlowRefferenceType.d_v_C)
+    p_A = vf.add_var(name=f"P_A_{name}", reference=VarPowerFlowRefferenceType.P_A)
+    q_A = vf.add_var(name=f"Q_A_{name}", reference=VarPowerFlowRefferenceType.Q_A)
+    p_B = vf.add_var(name=f"P_B_{name}", reference=VarPowerFlowRefferenceType.P_B)
+    q_B = vf.add_var(name=f"Q_B_{name}", reference=VarPowerFlowRefferenceType.Q_B)
+    p_C = vf.add_var(name=f"P_C_{name}", reference=VarPowerFlowRefferenceType.P_C)
+    q_C = vf.add_var(name=f"Q_C_{name}", reference=VarPowerFlowRefferenceType.Q_C)
     inputs: List[Any] = list([v_A, v_B, v_C])
 
     # ------------------------------------------------------------------
@@ -417,6 +493,26 @@ def get_generator_thevenin_rl_emt_template_with_ref(
     Vpk = vf.add_var(name=f"Vpk_{name}")
     Ipk = vf.add_var(name=f"Ipk_{name}")
 
+    phi_v_init: sym.Expr
+    phi_init: sym.Expr
+    vpk_init: sym.Expr
+    ipk_init: sym.Expr
+    phi_v_init, phi_init, vpk_init, ipk_init = get_pf_positive_sequence_init_refs(
+        v_a=v_A,
+        v_b=v_B,
+        v_c=v_C,
+        d_v_a=d_v_A,
+        d_v_b=d_v_B,
+        d_v_c=d_v_C,
+        p_a=p_A,
+        q_a=q_A,
+        p_b=p_B,
+        q_b=q_B,
+        p_c=p_C,
+        q_c=q_C,
+        omega_base=omega_base,
+    )
+
     # ------------------------------------------------------------------
     # Optional sharing references and internal controller gains.
     # The references are assigned by EmtProblemDae when multiple generators
@@ -439,8 +535,10 @@ def get_generator_thevenin_rl_emt_template_with_ref(
     # ------------------------------------------------------------------
     E_re = Vpk + R_s * Ipk * sym.cos(phi) - X_s * Ipk * sym.sin(phi)
     E_im = R_s * Ipk * sym.sin(phi) + X_s * Ipk * sym.cos(phi)
-    delta_expr = sym.atan(E_im / E_re)
-    Epk_expr = (E_re ** 2 + E_im ** 2) ** c05
+    # ``atan2`` keeps the reconstructed emf angle consistent across quadrants and
+    # avoids undefined divisions when the steady-state real component is zero.
+    delta_expr = sym.atan2(E_im, E_re)
+    Epk_expr = (E_re ** 2 + E_im ** 2 + c_eps_emf) ** c05
 
     # ------------------------------------------------------------------
     # Power measurement errors used by the sharing controllers.
@@ -542,6 +640,15 @@ def get_generator_thevenin_rl_emt_template_with_ref(
         VarPowerFlowRefferenceType.v_A: v_A,
         VarPowerFlowRefferenceType.v_B: v_B,
         VarPowerFlowRefferenceType.v_C: v_C,
+        VarPowerFlowRefferenceType.d_v_A: d_v_A,
+        VarPowerFlowRefferenceType.d_v_B: d_v_B,
+        VarPowerFlowRefferenceType.d_v_C: d_v_C,
+        VarPowerFlowRefferenceType.P_A: p_A,
+        VarPowerFlowRefferenceType.Q_A: q_A,
+        VarPowerFlowRefferenceType.P_B: p_B,
+        VarPowerFlowRefferenceType.Q_B: q_B,
+        VarPowerFlowRefferenceType.P_C: p_C,
+        VarPowerFlowRefferenceType.Q_C: q_C,
         VarPowerFlowRefferenceType.i_A: i_A,
         VarPowerFlowRefferenceType.i_B: i_B,
         VarPowerFlowRefferenceType.i_C: i_C,
@@ -573,6 +680,20 @@ def get_generator_thevenin_rl_emt_template_with_ref(
     # that acted directly on dtheta/dt.
     # ------------------------------------------------------------------
     templ.block.event_dict = dict({
+        # The sharing-enabled variant uses the same seeded PF references. They
+        # must be registered as runtime parameters so the EMT problem builder can
+        # inject the three-phase PF data before initialization starts.
+        d_v_A: vf.add_const(None),
+        d_v_B: vf.add_const(None),
+        d_v_C: vf.add_const(None),
+        p_A: vf.add_const(None),
+        q_A: vf.add_const(None),
+        p_B: vf.add_const(None),
+        q_B: vf.add_const(None),
+        p_C: vf.add_const(None),
+        q_C: vf.add_const(None),
+        # These placeholders are resolved from ``init_eqs`` after the PF-derived
+        # abc references have been seeded into the symbolic model.
         phi_v: vf.add_const(None),
         phi: vf.add_const(None),
         Vpk: vf.add_const(None),
@@ -583,6 +704,7 @@ def get_generator_thevenin_rl_emt_template_with_ref(
         ki_share_q: vf.add_const(5.0),
         k_delta_share: vf.add_const(20.0),
         k_e_scale: vf.add_const(10.0),
+        E_scale: c1,
     })
 
     # ------------------------------------------------------------------
@@ -591,9 +713,12 @@ def get_generator_thevenin_rl_emt_template_with_ref(
     # operating point, so it does not create a jump at t = 0.
     # ------------------------------------------------------------------
     templ.block.init_eqs = dict({
+        phi_v: phi_v_init,
+        phi: phi_init,
+        Vpk: vpk_init,
+        Ipk: ipk_init,
         theta: phi_v + delta_expr,
         delta_share: c0,
-        E_scale: c1,
         xi_share_p: c0,
         xi_share_q: c0,
         e_A: E_scale * Epk_expr * sym.sin(theta_eff),

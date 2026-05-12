@@ -269,7 +269,7 @@ def connect_pending_injection_bus_variables_emt(bus: Any) -> None:
 def connect_bus_variables_emt(device: Any,
                               model: Block,
                               var_factory: VarFactory | None,
-                              allow_deferred_connection: bool = False):
+                              allow_deferred_connection: bool = False) -> None:
     """
     connect the bus variables of the model with the api_object bus variables
     :param device:
@@ -452,16 +452,18 @@ def connect_bus_variables_emt(device: Any,
                         vf=var_factory,
                         mask=[False, False, False, False],
                         is_dc=True,
+                        name=f"{device.bus.name}_emt_template",
                     ).block
                 else:
-                    if allow_deferred_connection:
-                        # Keep the duplicated EMT device model and defer only the
-                        # bus connection until one branch creates the EMT shell.
-                        device.bus.add_pending_emt_device(device)
-                    else:
-                        raise ValueError(
-                            f"Connection Bus EMT model cannot be empty, initialize {device.bus.name} EMT model"
-                        )
+                    # Template assignment must materialize the real bus shell at
+                    # assignment time so the rest of the workflow sees the same
+                    # persistent EMT bus variables.
+                    device.bus.emt_model = BusEmtTemplate(
+                        vf=var_factory,
+                        mask=[False, True, True, True],
+                        is_dc=False,
+                        name=f"{device.bus.name}_emt_template",
+                    ).block
             else:
                 raise ValueError("var factory not associated to grid element")
         if device.bus.emt_model.empty():

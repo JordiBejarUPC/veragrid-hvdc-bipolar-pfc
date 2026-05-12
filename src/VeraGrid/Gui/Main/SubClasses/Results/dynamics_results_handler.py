@@ -3,7 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 import json
-from typing import Dict, List, Sequence
+from typing import Dict, List, Sequence, Set
 import numpy as np
 from matplotlib import pyplot as plt
 from PySide6 import QtCore, QtGui
@@ -15,6 +15,7 @@ from VeraGridEngine.Devices.Events.dynamic_plot_entry import DynamicPlotEntry
 from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Devices.Events.emt_events_group import EmtEventsGroup
 from VeraGridEngine.Devices.Parents.dynamic_parent import DynamicDevice
+from VeraGridEngine.Devices.Parents.dynamic_bus_parent import DynamicBusDevice
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Simulations.Rms.rms_results import RmsResults
@@ -69,6 +70,75 @@ def _get_var_label(variable: Var) -> str:
     """
     # The symbolic variable name is the exact identifier used by the simulation arrays.
     return variable.name
+
+
+def _append_unique_variables(target: List[Var], seen_uids: Set[int], variables: Sequence[Var]) -> None:
+    """
+    Append variables while preserving the first occurrence of each uid.
+
+    :param target: Ordered target list.
+    :param seen_uids: Set of already appended variable uids.
+    :param variables: Variables to append.
+    :return: None.
+    """
+    variable: Var
+    for variable in variables:
+        if variable.uid in seen_uids:
+            pass
+        else:
+            target.append(variable)
+            seen_uids.add(variable.uid)
+
+
+def collect_dynamic_model_plot_variables(model: Block,
+                                         simulation_type: PlotSimulationType | str) -> List[Var]:
+    """
+    Collect plottable variables from one dynamic-model block hierarchy.
+
+    :param model: Assigned dynamic model block.
+    :param simulation_type: Simulation family identifier.
+    :return: Ordered plottable variables without duplicated uids.
+
+    Dynamic Editor-created models can keep their symbolic variables inside
+    child blocks instead of on the root wrapper block. This helper traverses
+    the full block hierarchy so pre-simulation discovery matches the runtime
+    compilation behaviour for both template and editor-created models.
+    """
+    resolved_simulation_type: PlotSimulationType
+    if isinstance(simulation_type, PlotSimulationType):
+        resolved_simulation_type = simulation_type
+    else:
+        resolved_simulation_type = _parse_plot_simulation_type(simulation_type=str(simulation_type))
+
+    ordered_variables: List[Var] = list()
+    seen_uids: Set[int] = set()
+    block_item: Block
+    for block_item in model.get_all_blocks():
+        _append_unique_variables(target=ordered_variables, seen_uids=seen_uids, variables=block_item.state_vars)
+        _append_unique_variables(target=ordered_variables, seen_uids=seen_uids, variables=block_item.algebraic_vars)
+        if resolved_simulation_type == PlotSimulationType.EMT:
+            _append_unique_variables(target=ordered_variables, seen_uids=seen_uids, variables=block_item.diff_vars)
+        else:
+            pass
+
+    return ordered_variables
+
+
+def _collect_dynamic_model_diff_var_uids(model: Block) -> Set[int]:
+    """
+    Collect all differential-variable uids declared by one block hierarchy.
+
+    :param model: Assigned dynamic model block.
+    :return: Set of differential-variable uids.
+    """
+    diff_var_uids: Set[int] = set()
+    block_item: Block
+    for block_item in model.get_all_blocks():
+        variable: Var
+        for variable in block_item.diff_vars:
+            diff_var_uids.add(variable.uid)
+
+    return diff_var_uids
 
 
 def _parse_plot_simulation_type(simulation_type: str) -> PlotSimulationType:
@@ -126,21 +196,18 @@ def build_pre_simulation_dynamic_tree_data(circuit: MultiCircuit,
 
     device: ALL_DEV_TYPES
     for device in circuit.get_all_elements_iter():
-        if isinstance(device, DynamicDevice):
+        include_device: bool = isinstance(device, DynamicDevice)
+        if isinstance(device, DynamicBusDevice):
+            include_device = True
+        else:
+            pass
+
+        if include_device:
             variables: List[Var] = list()
 
-            if resolved_simulation_type == PlotSimulationType.RMS:
-                rms_block: Block = _get_pre_simulation_block(device=device, simulation_type=resolved_simulation_type)
-                variables.extend(rms_block.state_vars)
-                variables.extend(rms_block.algebraic_vars)
-            else:
-                if resolved_simulation_type == PlotSimulationType.EMT:
-                    emt_block: Block = _get_pre_simulation_block(device=device, simulation_type=resolved_simulation_type)
-                    variables.extend(emt_block.state_vars)
-                    variables.extend(emt_block.algebraic_vars)
-                    variables.extend(emt_block.diff_vars)
-                else:
-                    pass
+            model_block: Block = _get_pre_simulation_block(device=device, simulation_type=resolved_simulation_type)
+            variables.extend(collect_dynamic_model_plot_variables(model=model_block,
+                                                                  simulation_type=resolved_simulation_type))
 
             if len(variables) > 0:
                 devices_by_type: Dict[ALL_DEV_TYPES, List[Var]] = tree_data.get(device.device_type, dict())
@@ -154,7 +221,8 @@ def build_pre_simulation_dynamic_tree_data(circuit: MultiCircuit,
     return tree_data
 
 
-def _get_pre_simulation_block(device: DynamicDevice, simulation_type: PlotSimulationType) -> Block:
+def _get_pre_simulation_block(device: DynamicDevice | DynamicBusDevice,
+                              simulation_type: PlotSimulationType) -> Block:
     """
     Get the declarative block that should feed the pre-simulation variable tree.
 
@@ -166,6 +234,17 @@ def _get_pre_simulation_block(device: DynamicDevice, simulation_type: PlotSimula
     choice. Template blocks are preferred because they are the authoritative
     configuration immediately after the user swaps a model in the editor.
     """
+    if isinstance(device, DynamicBusDevice):
+        if simulation_type == PlotSimulationType.RMS:
+            return device.rms_model
+        else:
+            if simulation_type == PlotSimulationType.EMT:
+                return device.emt_model
+            else:
+                raise ValueError("Unsupported pre-simulation plot family")
+    else:
+        pass
+
     if simulation_type == PlotSimulationType.RMS:
         if device.rms_template is not None:
             return device.rms_template.block
@@ -1248,7 +1327,9 @@ class DynamicsResultsHandler:
         else:
             return list()
 
-    def _get_pre_simulation_result_path_kind(self, device: DynamicDevice, variable: Var) -> str:
+    def _get_pre_simulation_result_path_kind(self,
+                                             device: DynamicDevice | DynamicBusDevice,
+                                             variable: Var) -> str:
         """
         Determine the expected result namespace for one declarative model variable.
 
@@ -1257,7 +1338,9 @@ class DynamicsResultsHandler:
         :return: Expected result namespace.
         """
         if self.plot_simulation_type == PlotSimulationType.EMT:
-            if variable in device.emt_model.diff_vars:
+            emt_block: Block = _get_pre_simulation_block(device=device, simulation_type=self.plot_simulation_type)
+            diff_var_uids: Set[int] = _collect_dynamic_model_diff_var_uids(model=emt_block)
+            if variable.uid in diff_var_uids:
                 return "diff_values"
             else:
                 return "values"
@@ -1279,7 +1362,7 @@ class DynamicsResultsHandler:
             device: ALL_DEV_TYPES
             variables: List[Var]
             for device, variables in devices_data.items():
-                if isinstance(device, DynamicDevice):
+                if isinstance(device, (DynamicDevice, DynamicBusDevice)):
                     device_label: str = _get_device_label(device=device)
                     variable: Var
                     for variable in variables:
@@ -2356,6 +2439,64 @@ class DynamicsResultsHandler:
         else:
             raise Exception("Unsupported dynamics results type")
 
+    def _variable_is_exported_in_current_results(self, variable: Var) -> bool:
+        """
+        Check whether one device variable is exported by the current results object.
+
+        :param variable: Variable referenced by the per-device results tree.
+        :return: ``True`` when the variable exists in one current results array.
+
+        RMS device-variable maps can still contain declarative differential
+        variables that are not exported into ``results.values``. The dynamic
+        results tree must ignore those unresolved entries instead of crashing
+        while building source-specific plot series.
+        """
+        if type(self.results) == RmsResults:
+            return variable.uid in self.results.uid2idx
+        else:
+            if type(self.results) == EmtResults:
+                return variable.uid in self.results.uid2idx_vars or variable.uid in self.results.uid2idx_diff
+            else:
+                raise Exception("Unsupported dynamics results type")
+
+    def _build_exported_results_tree_data(self) -> Dict[DeviceType, Dict[ALL_DEV_TYPES, List[Var]]]:
+        """
+        Build the runtime device tree using only variables exported by the results.
+
+        :return: Filtered device tree grouped by device type and device.
+        """
+        raw_tree_data: Dict[DeviceType, Dict[ALL_DEV_TYPES, List[Var]]] = self.results.get_devices_dict_tree()
+        filtered_tree_data: Dict[DeviceType, Dict[ALL_DEV_TYPES, List[Var]]] = dict()
+
+        device_tpe: DeviceType
+        devices_data: Dict[ALL_DEV_TYPES, List[Var]]
+        for device_tpe, devices_data in raw_tree_data.items():
+            filtered_devices: Dict[ALL_DEV_TYPES, List[Var]] = dict()
+
+            device: ALL_DEV_TYPES
+            variables: List[Var]
+            for device, variables in devices_data.items():
+                exported_variables: List[Var] = list()
+
+                variable: Var
+                for variable in variables:
+                    if self._variable_is_exported_in_current_results(variable=variable):
+                        exported_variables.append(variable)
+                    else:
+                        pass
+
+                if len(exported_variables) > 0:
+                    filtered_devices[device] = exported_variables
+                else:
+                    pass
+
+            if len(filtered_devices) > 0:
+                filtered_tree_data[device_tpe] = filtered_devices
+            else:
+                pass
+
+        return filtered_tree_data
+
     def _refresh_results_state(self, results: RmsResults | EmtResults) -> None:
         """
         Rebuild source lookup maps and the device tree for the given results object.
@@ -2371,7 +2512,7 @@ class DynamicsResultsHandler:
         self.results = results
         self.source_labels = list(self._get_group_names(results=self.results))
         self.group_idx = self._build_group_idx(results=self.results)
-        self.tree_data = self.results.get_devices_dict_tree()
+        self.tree_data = self._build_exported_results_tree_data()
         self.series_by_key = dict()
         self.series_by_var_uid = dict()
 

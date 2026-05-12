@@ -2019,6 +2019,7 @@ class ResultTypes(Enum):
 
     BusActivePowerIncrement = "ΔP: Active power increment"
 
+    BranchActivePowerFromBase = 'Pf: Active power "from" base case'
     BranchActivePowerFrom = 'Pf: Active power "from"'
     BranchActivePowerFromA = 'PfA: Active power "from" A'
     BranchActivePowerFromB = 'PfB: Active power "from" B'
