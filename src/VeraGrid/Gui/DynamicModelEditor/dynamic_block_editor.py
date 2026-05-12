@@ -1541,7 +1541,7 @@ class ConnectionItem(QGraphicsPathItem):
         self._dragging_segment: int = -1
         self._original_path_elements: List[QPointF] = []
         self.update_path()
-        self._create_elbow_items()
+        # self._create_elbow_items()
 
         if self.diagram is not None:
             self.diagram.add_branch(
@@ -4505,34 +4505,15 @@ class DiagramScene(QGraphicsScene):
 
             dst_var: Var = source_block.subsys.out_vars[source_port.index]
             target_input_var: Var = target_block.subsys.in_vars[target_port.index]
-            # key: VarPowerFlowRefferenceType
-            # value: Var | None
-            #
+
             if target_input_var.network_conn:
-                source_block.subsys.update_model(dst_var, target_input_var)
-
-                for key, value in self.editor.main_block.external_mapping.items():
-                    if value is dst_var:
-                        self.editor.main_block.external_mapping[key] = target_input_var
-                    else:
-                        pass
-
-                    source_block.subsys.out_vars[source_port.index] = target_input_var
-                    source_block.refresh_port_metadata()
-
-
+                self.editor.var_factory.add_connection(dst_var, target_input_var)
+                source_block.refresh_port_metadata()
 
             else:
                 # The destination model must substitute its local input placeholder with the source variable.
-                target_block.subsys.update_model(target_input_var, dst_var)
+                self.editor.var_factory.add_connection(target_input_var, dst_var)
 
-                for key, value in self.editor.main_block.external_mapping.items():
-                    if value is target_input_var:
-                        self.editor.main_block.external_mapping[key] = dst_var
-                    else:
-                        pass
-
-                target_block.subsys.in_vars[target_port.index] = dst_var
                 target_block.refresh_port_metadata()
             self.addItem(connection)
 
@@ -8811,8 +8792,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param item:
         :return:
         """
-        source_port: PortItem = item.source_port
-        target_port: PortItem = item.target_port
+        source_port: PortItem | BranchingItem = item.source_port
+        target_port: PortItem | BranchingItem = item.target_port
 
         if item.uid in self.diagram.con_data:
             del self.diagram.con_data[item.uid]
@@ -8847,43 +8828,17 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         self.scene.removeItem(item)
 
-        if source_port.subsystem.subsys is not None:
+        # disconnect variables
+        if source_port.subsystem.subsys is not None and target_port.subsystem.subsys is not None:
             dst_var: Var = source_port.subsystem.subsys.out_vars[source_port.index]
+            target_var: Var = target_port.subsystem.subsys.in_vars[target_port.index]
 
-            if dst_var.network_conn:
-
-                target_var: Var
-                # i: int
-                # eq: Expr
-
-                if source_port.base_var is not None:
-                    target_var = source_port.base_var
-                else:
-                    target_var = source_port.subsystem.subsys.out_vars[source_port.index]
-
-                # The destination equations and variables must be restored to the original local input variable.
-                source_port.subsystem.subsys.update_model(dst_var, target_var)
-
-                source_port.subsystem.subsys.out_vars[source_port.index] = target_var
+            if target_var.network_conn:
+                self.var_factory.remove_connection(dst_var, target_var)
                 source_port.subsystem.refresh_port_metadata()
-
-        if target_port.subsystem.subsys is not None:
-            dst_var: Var = source_port.subsystem.subsys.out_vars[source_port.index]
-
-            if not dst_var.network_conn:
-                if target_port.base_var is not None:
-                    target_var = target_port.base_var
-                else:
-                    target_var = target_port.subsystem.subsys.in_vars[target_port.index]
-
-                # The destination equations and variables must be restored to the original local input variable.
-                target_port.subsystem.subsys.update_model(dst_var, target_var)
-
-                target_port.subsystem.subsys.in_vars[target_port.index] = target_var
+            else:
+                self.var_factory.remove_connection(target_var, dst_var)
                 target_port.subsystem.refresh_port_metadata()
-
-        else:
-            pass
 
     def remove_block_item(self, item: BlockItem | GenericBlockItem) -> None:
         """
