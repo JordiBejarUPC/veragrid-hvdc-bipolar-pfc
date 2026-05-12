@@ -1,605 +1,1567 @@
 from __future__ import annotations
 
 import os
+import re
 import sys
-from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Callable
 
-import VeraGridEngine as vg
-import VeraGridEngine.api as gce
+try:
+    import VeraGridEngine.api as gce
+except Exception:
+    gce = None
 from VeraGridEngine.IO.cim.cgmes.cgmes_circuit import CgmesCircuit
 from VeraGridEngine.IO.cim.cgmes.cgmes_data_parser import CgmesDataParser
 from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType
 from VeraGridEngine.IO.file_open import open_cgmes
+from VeraGridEngine.__version__ import __VeraGridEngine_VERSION__
 from VeraGridEngine.data_logger import DataLogger
 from VeraGridEngine.enumerations import CGMESVersions
-from VeraGridEngine.__version__ import __VeraGridEngine_VERSION__
 
-from run_relicap_grids import FOLDER, SUBFOLDERS
+from run_relicap_grids import FOLDER, SUBFOLDERS, create_case_package
 
-USE_CASES_ROOT = "/home/santi/Git/GitHub/relicapgrid/TestUseCases"
-
-
-@dataclass
-class ChapterResult:
-    use_case_id: str
-    name: str
-    source_md: str
-    ok: bool
-    message: str
-    status: str
+try:
+    import VeraGridEngine as vg
+except Exception:
+    vg = None
 
 
-class RelicapCgmesLoader:
-    def __init__(self, case_files: dict[str, list[str]]):
-        self.case_files = case_files
-        self._cache: dict[str, CgmesCircuit] = {}
-        self._co_exec_check_done: bool = False
-        self._co_exec_check_ok: bool = False
-        self._co_exec_check_message: str = "not executed"
+class TestResult:
+    """Simple test result row.
+
+    :param chapter_md: Relative markdown chapter path.
+    :param chapter_title: Rendered chapter title.
+    :param use_case_id: Short use case code.
+    :param use_case_name: Human use case name.
+    :param status: PASS, FAIL, or SKIP.
+    :param detail: Result detail message.
+    """
+    __slots__ = ("chapter_md", "chapter_title", "use_case_id", "use_case_name", "status", "detail")
+
+    def __init__(
+        self,
+        chapter_md: str,
+        chapter_title: str,
+        use_case_id: str,
+        use_case_name: str,
+        status: str,
+        detail: str,
+    ) -> None:
+        self.chapter_md: str = chapter_md
+        self.chapter_title: str = chapter_title
+        self.use_case_id: str = use_case_id
+        self.use_case_name: str = use_case_name
+        self.status: str = status
+        self.detail: str = detail
+
+
+class PowerFlowModelResult:
+    """Power-flow result for one ReliCapGrid model.
+
+    :param model_name: Model name from run_relicap_grids.SUBFOLDERS.
+    :param files_included: Existing files used for the model.
+    :param converged: Convergence status text.
+    :param error_achieved: Solver error text.
+    """
+    __slots__ = ("model_name", "files_included", "converged", "error_achieved")
+
+    def __init__(self, model_name: str, files_included: list[str], converged: str, error_achieved: str) -> None:
+        self.model_name: str = model_name
+        self.files_included: list[str] = files_included
+        self.converged: str = converged
+        self.error_achieved: str = error_achieved
+
+
+class ModelLogStats:
+    """CGMES loading logger statistics for one model.
+
+    :param model_name: Model name from run_relicap_grids.SUBFOLDERS.
+    :param total: Total log entries.
+    :param errors: Error log entries.
+    :param warnings: Warning log entries.
+    :param information: Information log entries.
+    :param divergences: Divergence log entries.
+    :param top_messages: Most frequent logger messages.
+    """
+    __slots__ = ("model_name", "total", "errors", "warnings", "information", "divergences", "top_messages")
+
+    def __init__(
+        self,
+        model_name: str,
+        total: int,
+        errors: int,
+        warnings: int,
+        information: int,
+        divergences: int,
+        top_messages: list[str],
+    ) -> None:
+        self.model_name: str = model_name
+        self.total: int = total
+        self.errors: int = errors
+        self.warnings: int = warnings
+        self.information: int = information
+        self.divergences: int = divergences
+        self.top_messages: list[str] = top_messages
+
+
+class RelicapLoader:
+    """CGMES model loader with in-memory cache.
+
+    :param case_files: Mapping of case names to input file paths.
+    """
+    __slots__ = ("_case_files", "_cache")
+
+    def __init__(self, case_files: dict[str, list[str]]) -> None:
+        self._case_files: dict[str, list[str]] = case_files
+        self._cache: dict[str, CgmesCircuit] = dict()
+
+    def existing_files(self, case_name: str) -> list[str]:
+        """Get existing file paths for a case.
+
+        :param case_name: Case key from SUBFOLDERS.
+        :return: Existing paths.
+        """
+        all_paths: list[str] = self._case_files[case_name]
+        paths: list[str] = list()
+        for path in all_paths:
+            if os.path.isfile(path):
+                paths.append(path)
+            else:
+                pass
+        return paths
 
     def load_case(self, case_name: str) -> CgmesCircuit:
-        cached = self._cache.get(case_name)
+        """Load and parse a case into a CGMES circuit.
+
+        :param case_name: Case key from SUBFOLDERS.
+        :return: Parsed CGMES circuit.
+        :raises AssertionError: If no files exist.
+        """
+        cached: CgmesCircuit | None = self._cache.get(case_name, None)
         if cached is not None:
             return cached
+        else:
+            pass
 
-        files = [path for path in self.case_files[case_name] if os.path.isfile(path)]
-        if not files:
+        files: list[str] = self.existing_files(case_name)
+        if len(files) == 0:
             raise AssertionError(f"{case_name}: no files found")
+        else:
+            pass
 
-        parser = CgmesDataParser(logger=DataLogger())
+        parser: CgmesDataParser = CgmesDataParser(logger=DataLogger())
         parser.load_files(files=files)
-        version = parser.cgmes_version or CGMESVersions.v3_0_0
-
-        model = CgmesCircuit(cgmes_version=version, logger=DataLogger())
+        version: CGMESVersions = parser.cgmes_version or CGMESVersions.v3_0_0
+        model: CgmesCircuit = CgmesCircuit(cgmes_version=version, logger=DataLogger())
         model.parse_files(data_parser=parser)
-
         self._cache[case_name] = model
         return model
 
-    def get_existing_files(self, case_name: str) -> list[str]:
-        files = [path for path in self.case_files[case_name] if os.path.isfile(path)]
-        return files
 
-    def case_file_stats(self, case_name: str) -> tuple[int, int]:
-        files = self.case_files[case_name]
-        existing = sum(1 for path in files if os.path.isfile(path))
-        missing = len(files) - existing
-        return existing, missing
+class ContingencyRowCheck:
+    """Callable contingency row checker.
 
-    @staticmethod
-    def find_object(model: CgmesCircuit, object_id: str):
-        for list_name, object_list in model.cgmes_assets.__dict__.items():
-            if list_name.endswith("_list") and isinstance(object_list, list):
-                for obj in object_list:
-                    if getattr(obj, "rdfid", None) == object_id or getattr(obj, "mRID", None) == object_id:
-                        return list_name, obj
-        return None, None
+    :param loader: Shared loader.
+    :param eq_ids: Equipment IDs to resolve.
+    :param co_ids: Contingency IDs to resolve/export-check.
+    """
+    __slots__ = ("_loader", "_eq_ids", "_co_ids")
 
-
-def _check_found(model: CgmesCircuit, object_id: str, label: str) -> object:
-    list_name, obj = RelicapCgmesLoader.find_object(model, object_id)
-    if obj is None:
-        raise AssertionError(f"{label}: object {object_id} not found")
-    return obj
-
-
-def chapter_assessed_elements(loader: RelicapCgmesLoader) -> str:
-    model = loader.load_case("Belgovia")
-
-    ae_secured = _check_found(model, "992c2de6-e206-45b3-a76a-f4a691e8839a", "Secured AE")
-    assert getattr(ae_secured, "inBaseCase", None) is True, "Secured AE must be in base case"
-
-    ae_scanned = _check_found(model, "1eb2eb03-dda6-4e59-b7c8-a2edb117d676", "Scanned AE")
-    assert getattr(ae_scanned, "inBaseCase", None) is False, "Scanned AE must not be in base case"
-    assert getattr(ae_scanned, "ScannedForRegion", None) is not None, "Scanned AE must have ScannedForRegion"
-
-    ae_scanned_only = _check_found(model, "d463cbba-c89c-4199-bbb9-1a33d90cae2c", "Scanned-only AE")
-    assert getattr(ae_scanned_only, "ScannedForRegion", None) is not None, "Scanned-only AE must have ScannedForRegion"
-    assert getattr(ae_scanned_only, "SecuredForRegion", None) is None, "Scanned-only AE must not have SecuredForRegion"
-
-    _check_found(model, "7221ae31-f736-4ae2-8ce1-f3dd605cefd6", "AssessedElementSchedule")
-    ae_timepoint = _check_found(model, "a26e3ae0-0a7d-4f42-ad64-e9105ec3cd41", "AssessedElementTimePoint")
-    assert getattr(ae_timepoint, "enabled", None) is False, "AssessedElementTimePoint must disable AE"
-
-    ae_full_scope = _check_found(model, "d17943b5-9d10-4f8b-bb07-18c3a3822348", "AE full scope")
-    assert getattr(ae_full_scope, "isCombinableWithContingency", None) is True, "AE full scope must be combinable"
-    ae_limited = _check_found(model, "663c6c3c-1777-4eb7-98b0-c23233ce0f71", "AE limited scope")
-    assert getattr(ae_limited, "isCombinableWithContingency", None) is False, "AE limited scope must be non-combinable"
-    _check_found(model, "1f38d403-a822-4c24-93c0-0f18ac699ef1", "Excluded AE-CO pair")
-    _check_found(model, "deb4c65f-c3fc-414e-baa3-692829e3eec2", "Included AE-CO pair")
-
-    ae_ra_link = _check_found(model, "66f786ce-5e2a-427d-9eb8-4e1462045c27", "AE-RA link")
-    assert getattr(ae_ra_link, "AssessedElement", None) is not None, "AE-RA link needs AssessedElement"
-    assert getattr(ae_ra_link, "RemedialAction", None) is not None, "AE-RA link needs RemedialAction"
-    return "assessed element IDs and key flags are valid"
-
-
-def chapter_availability_schedule(loader: RelicapCgmesLoader) -> str:
-    model = loader.load_case("Svedala")
-    _check_found(model, "d394295f-9d18-4d9f-9808-bd23282bf60f", "AvailabilitySchedule")
-    _check_found(model, "14b2b671-e92b-40e6-abf8-ad37811b33c7", "AvailabilityRemedialAction")
-    return "availability schedule and remedial action objects are present"
-
-
-def chapter_contingencies(loader: RelicapCgmesLoader) -> str:
-    model = loader.load_case("Belgovia")
-    contingency_lists = [
-        model.cgmes_assets.Contingency_list,
-        model.cgmes_assets.OrdinaryContingency_list,
-        model.cgmes_assets.ExceptionalContingency_list,
-        model.cgmes_assets.OutOfRangeContingency_list,
-    ]
-    count = sum(len(lst) for lst in contingency_lists)
-    assert count > 0, "No contingency objects found in Belgovia CO data"
-    return f"found {count} contingency objects across CO classes"
-
-
-def chapter_generation_correction(_: RelicapCgmesLoader) -> str:
-    return "SKIP: markdown says anonymized IGM still needs integration"
-
-
-def chapter_sips_gate_logic(_: RelicapCgmesLoader) -> str:
-    return "SKIP: dedicated SIPS datasets referenced in markdown are not available in local instance"
-
-
-def chapter_sips_current_flow(_: RelicapCgmesLoader) -> str:
-    return "SKIP: dedicated SIPS datasets referenced in markdown are not available in local instance"
-
-
-def chapter_sips_last_line(_: RelicapCgmesLoader) -> str:
-    return "SKIP: dedicated SIPS datasets referenced in markdown are not available in local instance"
-
-
-def chapter_sips_generation(_: RelicapCgmesLoader) -> str:
-    return "SKIP: dedicated SIPS datasets referenced in markdown are not available in local instance"
-
-
-def chapter_sips_voltage(_: RelicapCgmesLoader) -> str:
-    return "SKIP: dedicated SIPS datasets referenced in markdown are not available in local instance"
-
-
-def chapter_sips_complex(_: RelicapCgmesLoader) -> str:
-    return "SKIP: dedicated SIPS datasets referenced in markdown are not available in local instance"
-
-
-def chapter_remedial_actions(loader: RelicapCgmesLoader) -> str:
-    svedala = loader.load_case("Svedala")
-    espheim = loader.load_case("Espheim")
-    belgovia = loader.load_case("Belgovia")
-
-    _check_found(svedala, "6d2c8901-d068-4d22-8ce9-7379644b4f17", "Topology RA")
-    _check_found(svedala, "176d262c-701c-4ced-99b2-a155c136e787", "Topology Action")
-    _check_found(svedala, "598ab84e-a575-40ad-bf66-c1ab41c65093", "RA dependency 1")
-    _check_found(svedala, "13c29cc3-3d99-4c5b-abac-085f0d319eab", "RA dependency 2")
-    _check_found(espheim, "d856a2a2-3de4-4a7b-aea4-d363c13d9014", "Espheim RA")
-    _check_found(espheim, "4d3757fd-b40a-4d7b-be47-6553935234ff", "Espheim TopologyAction")
-    _check_found(espheim, "f5205bd4-637a-4eb7-b0d8-e03638bc570b", "Espheim GridStateAlterationSchedule")
-
-    _check_found(svedala, "96f93b71-420f-456f-932e-9ac3f724b683", "RAS refusal response")
-    _check_found(svedala, "f7231aa5-d497-41f3-a5d5-9d4af74444f0", "RAS dependency")
-    _check_found(svedala, "51361821-0a40-4e5a-a49d-29c266ea2ecc", "New RAS")
-    _check_found(svedala, "7e422768-207d-455f-976e-0b1cb2338509", "Post-RAO topology RA 1")
-    _check_found(svedala, "fa3e3533-345a-4ef1-a46d-3ab6d251924a", "Post-RAO topology RA 2")
-    _check_found(svedala, "6a9b5221-bb3f-421b-89c1-886b100aa68a", "RA group")
-    _check_found(svedala, "1c1e39cf-15a1-4874-9739-d9e6dc90ee11", "EventSchedule 1")
-    _check_found(svedala, "023512a8-150d-4300-8159-807275eafd48", "EventSchedule 2")
-    _check_found(svedala, "279bfb00-1b2a-4592-af3a-dba9403d1abd", "RAS 1")
-    _check_found(svedala, "87e90c47-43d8-4e5c-b2ad-5c67d3a74842", "RAS 2")
-
-    _check_found(belgovia, "30f6377d-5e35-4dd0-a53d-c1992043855e", "Countertrade RA")
-    _check_found(belgovia, "27940387-6935-47b6-ab25-8742bac2a266", "PowerSchedule")
-    _check_found(belgovia, "ae6a5ddd-fe7e-40b2-bcb6-cbd2882434e7", "PowerBidSchedule")
-    _check_found(belgovia, "fa73cfee-ff54-43cd-816b-51394cd76f0f", "Redispatch RA variant 1")
-    _check_found(belgovia, "9d72d12a-f135-437a-83fa-ef3e5b23f41f", "Redispatch RA variant 2")
-    _check_found(belgovia, "7ab20445-576c-4162-aad5-d097d894a8e0", "PowerShiftKeyDistribution")
-    _check_found(belgovia, "3b5748de-39f2-45d7-9a66-65819c667e91", "PowerShiftKeySchedule")
-    return "remedial action IDs from markdown are present"
-
-
-def remedial_uc1(loader: RelicapCgmesLoader) -> str:
-    svedala = loader.load_case("Svedala")
-    _check_found(svedala, "6d2c8901-d068-4d22-8ce9-7379644b4f17", "Topology RA")
-    _check_found(svedala, "176d262c-701c-4ced-99b2-a155c136e787", "Topology Action")
-    return "topology remedial action with one topology action exists"
-
-
-def remedial_uc2(loader: RelicapCgmesLoader) -> str:
-    svedala = loader.load_case("Svedala")
-    _check_found(svedala, "598ab84e-a575-40ad-bf66-c1ab41c65093", "RA dependency 1")
-    _check_found(svedala, "13c29cc3-3d99-4c5b-abac-085f0d319eab", "RA dependency 2")
-    return "dependent topology remedial actions exist"
-
-
-def remedial_uc3(loader: RelicapCgmesLoader) -> str:
-    espheim = loader.load_case("Espheim")
-    _check_found(espheim, "d856a2a2-3de4-4a7b-aea4-d363c13d9014", "Espheim RA")
-    _check_found(espheim, "4d3757fd-b40a-4d7b-be47-6553935234ff", "Espheim TopologyAction")
-    _check_found(espheim, "f5205bd4-637a-4eb7-b0d8-e03638bc570b", "Espheim GridStateAlterationSchedule")
-    return "pre-RAO modification objects exist"
-
-
-def remedial_uc4(loader: RelicapCgmesLoader) -> str:
-    svedala = loader.load_case("Svedala")
-    _check_found(svedala, "96f93b71-420f-456f-932e-9ac3f724b683", "RAS refusal response")
-    _check_found(svedala, "f7231aa5-d497-41f3-a5d5-9d4af74444f0", "RAS dependency")
-    _check_found(svedala, "51361821-0a40-4e5a-a49d-29c266ea2ecc", "New RAS")
-    return "post-RAO proposal objects exist"
-
-
-def remedial_uc5(loader: RelicapCgmesLoader) -> str:
-    svedala = loader.load_case("Svedala")
-    _check_found(svedala, "7e422768-207d-455f-976e-0b1cb2338509", "Post-RAO topology RA 1")
-    _check_found(svedala, "fa3e3533-345a-4ef1-a46d-3ab6d251924a", "Post-RAO topology RA 2")
-    _check_found(svedala, "6a9b5221-bb3f-421b-89c1-886b100aa68a", "RA group")
-    _check_found(svedala, "1c1e39cf-15a1-4874-9739-d9e6dc90ee11", "EventSchedule 1")
-    _check_found(svedala, "023512a8-150d-4300-8159-807275eafd48", "EventSchedule 2")
-    _check_found(svedala, "279bfb00-1b2a-4592-af3a-dba9403d1abd", "RAS 1")
-    _check_found(svedala, "87e90c47-43d8-4e5c-b2ad-5c67d3a74842", "RAS 2")
-    return "post-RAO activation objects exist"
-
-
-def remedial_uc6(loader: RelicapCgmesLoader) -> str:
-    belgovia = loader.load_case("Belgovia")
-    _check_found(belgovia, "30f6377d-5e35-4dd0-a53d-c1992043855e", "Countertrade RA")
-    _check_found(belgovia, "27940387-6935-47b6-ab25-8742bac2a266", "PowerSchedule")
-    _check_found(belgovia, "ae6a5ddd-fe7e-40b2-bcb6-cbd2882434e7", "PowerBidSchedule")
-    return "countertrade remedial action objects exist"
-
-
-def remedial_uc7(loader: RelicapCgmesLoader) -> str:
-    belgovia = loader.load_case("Belgovia")
-    _check_found(belgovia, "fa73cfee-ff54-43cd-816b-51394cd76f0f", "Redispatch RA variant 1")
-    _check_found(belgovia, "9d72d12a-f135-437a-83fa-ef3e5b23f41f", "Redispatch RA variant 2")
-    _check_found(belgovia, "7ab20445-576c-4162-aad5-d097d894a8e0", "PowerShiftKeyDistribution")
-    _check_found(belgovia, "3b5748de-39f2-45d7-9a66-65819c667e91", "PowerShiftKeySchedule")
-    return "redispatch remedial action objects exist"
-
-
-def no_validator(_: RelicapCgmesLoader) -> str:
-    return "SKIP: no specific checks provided by the test specification"
-
-
-CO_UC1_ROWS: list[tuple[str, list[str], list[str]]] = list([
-    ("Loss of TieLine between Belgovia and Galia", ["d9622e7f-5bf0-4e7e-b766-b8596c6fe4ae"], ["7e31c67d-67ba-4592-8ac1-9e806d697c8e"]),
-    ("Loss of TieLine between Belgovia and Svedala", ["ed0c5d75-4a54-43c8-b782-b20d7431630b"], ["e9eab3fe-c328-4f78-9bc1-77adb59f6ba7"]),
-    ("Loss of TieLine between Espheim and Svedala", ["ed0c5d75-4a54-43c8-b782-b20d7431630b"], ["e9eab3fe-c328-4f78-9bc1-77adb59f6ba7"]),
-    ("Loss of power transformer in Svedala", ["f1c13f90-6d89-4a37-a51c-94742ad2dd72"], ["e05bbe20-9d4a-40da-9777-8424d216785d"]),
-    ("Loss of LinearShuntCompensator", ["0489d903-c766-11e1-8775-005056c00008"], ["62eac668-82a1-4739-8cfc-de929b78ef7e"]),
-    ("Loss of NonlinearShuntCompensator", ["8464a151-ec39-4e7a-8321-06c41e63958c"], ["ab92defa-ef8e-4d13-a242-5b1a9fe956f6"]),
-    ("Loss of HVDC converter DC-3P-Convert-1", ["038ce404-30dc-4289-b9db-7076cb870b8e"], ["038ce404-30dc-4289-b9db-7076cb870b8e"]),
-    ("Loss of HVDC line", ["be09fc02-de3f-49e4-aa84-94803bcc5d76"], ["504b48fb-de1f-4f7e-928f-8585daaf7b72"]),
-    ("Loss of synchronous machine", ["550ebe0d-f2b2-48c1-991f-cebea43a21aa"], ["37997e71-cb7d-4a8c-baa6-2a1594956da9"]),
-    ("Loss of demand facility", ["cb459405-cc14-4215-a45c-416789205904"], ["65582e87-5035-4465-8dd9-cb655224b29f"]),
-    ("N-2 loss of two tie-lines", ["04566cf8-c766-11e1-8775-005056c00008", "0475dbd8-c766-11e1-8775-005056c00008"], ["9d17b84c-33b5-4a68-b8b9-ed5b31038d40", "13334fdf-9cc2-4341-adb6-1281269040b4"]),
-])
-
-
-class CoUc1RowValidator:
-    __slots__ = ("_eq_ids", "_co_ids")
-
-    def __init__(self, eq_ids: list[str], co_ids: list[str]) -> None:
+    def __init__(self, loader: RelicapLoader, eq_ids: list[str], co_ids: list[str]) -> None:
+        self._loader: RelicapLoader = loader
         self._eq_ids: list[str] = eq_ids
         self._co_ids: list[str] = co_ids
 
-    def __call__(self, loader: RelicapCgmesLoader) -> str:
-        return run_co_uc1_row_check(loader, self._eq_ids, self._co_ids)
+    def __call__(self) -> str:
+        """Run the row check.
+
+        :return: Success detail.
+        """
+        return check_contingency_row(self._loader, self._eq_ids, self._co_ids)
 
 
-def _collect_mrid_strings(model: CgmesCircuit) -> set[str]:
-    mrids: set[str] = set()
-    for list_name, object_list in model.cgmes_assets.__dict__.items():
-        if list_name.endswith("_list") and isinstance(object_list, list):
-            for obj in object_list:
-                rdfid = getattr(obj, "rdfid", None)
-                if isinstance(rdfid, str):
-                    mrids.add(rdfid)
-                else:
-                    pass
-                m_rid = getattr(obj, "mRID", None)
-                if isinstance(m_rid, str):
-                    mrids.add(m_rid)
-                else:
-                    pass
+def make_result(chapter_md: str, chapter_title: str, uc_id: str, uc_name: str, status: str, detail: str) -> TestResult:
+    """Build a result row.
+
+    :param chapter_md: Relative markdown chapter path.
+    :param chapter_title: Chapter title to render.
+    :param uc_id: Short use case code.
+    :param uc_name: Use case name.
+    :param status: PASS, FAIL, or SKIP.
+    :param detail: Result detail.
+    :return: Result object.
+    """
+    return TestResult(chapter_md=chapter_md, chapter_title=chapter_title, use_case_id=uc_id, use_case_name=uc_name, status=status, detail=detail)
+
+
+def make_relative_paths(paths: list[str]) -> list[str]:
+    """Convert absolute input paths into report-friendly relative paths.
+
+    :param paths: Absolute file paths.
+    :return: Paths relative to the ReliCapGrid instance folder when possible.
+    """
+    relative_paths: list[str] = list()
+    for path in paths:
+        normalized_path: str = os.path.normpath(path)
+        if os.path.isfile(normalized_path):
+            try:
+                relative_path: str = os.path.relpath(normalized_path, FOLDER)
+            except ValueError:
+                relative_path = normalized_path
+            relative_paths.append(relative_path)
         else:
             pass
-    return mrids
+    return relative_paths
 
 
-def _check_co_profile_export_contains_ids(model: CgmesCircuit, ids_to_check: list[str]) -> tuple[bool, str]:
-    model_xml = model.get_model_xml(profiles=[CgmesProfileType.CO])
-    co_xml = model_xml.get(CgmesProfileType.CO, None)
-    if isinstance(co_xml, str):
-        pass
-    else:
-        return False, "CO profile XML export not available"
+def message_count_sort_key(item: tuple[str, int]) -> int:
+    """Get the message count used to rank logger messages.
 
-    missing_ids: list[str] = list()
-    for item_id in ids_to_check:
-        if item_id in co_xml:
-            pass
-        else:
-            missing_ids.append(item_id)
-
-    if len(missing_ids) == 0:
-        return True, "CO profile export contains referenced CO IDs"
-    else:
-        return False, "CO profile export missing IDs: " + ", ".join(missing_ids)
+    :param item: Message and count pair.
+    :return: Count value.
+    """
+    return item[1]
 
 
-def _check_co_execution_stability(loader: RelicapCgmesLoader) -> tuple[bool, str]:
-    if loader._co_exec_check_done:
-        return loader._co_exec_check_ok, loader._co_exec_check_message
-    else:
-        pass
+def build_log_stats(model_name: str, logger: DataLogger | None) -> ModelLogStats:
+    """Build logger statistics for one model.
 
-    files = loader.get_existing_files("Belgovia")
-    if len(files) == 0:
-        loader._co_exec_check_done = True
-        loader._co_exec_check_ok = False
-        loader._co_exec_check_message = "Belgovia case files not found"
-        return loader._co_exec_check_ok, loader._co_exec_check_message
-    else:
-        pass
-
-    grid, _ = open_cgmes(files, version=CGMESVersions.v3_0_0)
-    branches = grid.get_branches(add_vsc=True, add_hvdc=True, add_switch=True)
-    base_branch_state: dict[str, bool] = dict()
-    for branch in branches:
-        base_branch_state[branch.idtag] = bool(branch.active)
-
-    base_contingency_count = len(grid.contingencies)
-    gce.contingency_analysis(grid)
-    post_contingency_count = len(grid.contingencies)
-
-    same_branch_state = True
-    for branch in branches:
-        if base_branch_state.get(branch.idtag, False) == bool(branch.active):
-            pass
-        else:
-            same_branch_state = False
-
-    same_contingency_count = (base_contingency_count == post_contingency_count)
-    loader._co_exec_check_done = True
-    loader._co_exec_check_ok = (same_branch_state and same_contingency_count)
-    if loader._co_exec_check_ok:
-        loader._co_exec_check_message = "contingency execution preserved base network state and contingency count"
-    else:
-        loader._co_exec_check_message = "contingency execution altered base network state or contingency count"
-    return loader._co_exec_check_ok, loader._co_exec_check_message
-
-
-def run_co_uc1_row_check(loader: RelicapCgmesLoader, eq_ids: list[str], co_ids: list[str]) -> str:
-    model = loader.load_case("Combination 3 (Belgovia + Svedala +Galia + Espheim + Britheim )")
-    all_mrids = _collect_mrid_strings(model)
-
-    missing_eq: list[str] = list()
-    for eq_id in eq_ids:
-        if eq_id in all_mrids:
-            pass
-        else:
-            missing_eq.append(eq_id)
-
-    missing_co: list[str] = list()
-    for co_id in co_ids:
-        if co_id in all_mrids:
-            pass
-        else:
-            missing_co.append(co_id)
-
-    if len(missing_eq) == 0 and len(missing_co) == 0:
-        pass
-    else:
-        raise AssertionError(
-            "resolution check failed; missing EQ IDs: "
-            + ", ".join(missing_eq)
-            + " ; missing CO IDs: "
-            + ", ".join(missing_co)
+    :param model_name: Model name.
+    :param logger: CGMES loading logger.
+    :return: Logger statistics.
+    """
+    if logger is None:
+        return ModelLogStats(
+            model_name=model_name,
+            total=0,
+            errors=0,
+            warnings=0,
+            information=0,
+            divergences=0,
+            top_messages=["Logger unavailable"],
         )
-
-    stable_ok, stable_msg = _check_co_execution_stability(loader)
-    if stable_ok:
-        pass
     else:
-        raise AssertionError("execution stability check failed; " + stable_msg)
-
-    export_ok, export_msg = _check_co_profile_export_contains_ids(model, co_ids)
-    if export_ok:
         pass
+
+    errors: int = 0
+    warnings: int = 0
+    information: int = 0
+    divergences: int = 0
+    message_counts: dict[str, int] = dict()
+    for entry in logger.entries:
+        severity: str = entry.severity.value
+        if severity == "Error":
+            errors = errors + 1
+        else:
+            pass
+        if severity == "Warning":
+            warnings = warnings + 1
+        else:
+            pass
+        if severity == "Information":
+            information = information + 1
+        else:
+            pass
+        if severity == "Divergence":
+            divergences = divergences + 1
+        else:
+            pass
+
+        count: int | None = message_counts.get(entry.msg, None)
+        if count is None:
+            message_counts[entry.msg] = 1
+        else:
+            message_counts[entry.msg] = count + 1
+
+    sorted_messages: list[tuple[str, int]] = sorted(message_counts.items(), key=message_count_sort_key, reverse=True)
+    top_messages: list[str] = list()
+    for item in sorted_messages[:5]:
+        top_messages.append(f"{item[0]} ({item[1]})")
+    if len(top_messages) == 0:
+        top_messages.append("No log entries")
     else:
-        raise AssertionError("CO export/content check failed; " + export_msg)
+        pass
 
-    return "resolved+executed+exported checks passed for row"
-
-USE_CASE_CATALOG: list[tuple[str, str, str, Callable[[RelicapCgmesLoader], str]]] = list([
-    ("PF_UC1", "Power Flow Base Validation", "Contingencies_use_cases/Contingencies_use_cases.md", chapter_contingencies),
-    ("BDS_UC1", "Boundary Dataset Structure", "Contingencies_use_cases/Contingencies_use_cases.md", no_validator),
-    ("CD_UC1", "Common Data Validation", "Contingencies_use_cases/Contingencies_use_cases.md", no_validator),
-    ("RD_UC1", "Regional Dataset Validation", "Contingencies_use_cases/Contingencies_use_cases.md", no_validator),
-    ("CO_UC1", "Contingencies use cases", "Contingencies_use_cases/Contingencies_use_cases.md", chapter_contingencies),
-    ("ER_UC1", "Equipment Reliability Variant 1", "Remedial_Action_use_cases/Remedial_Action_use_cases.md", no_validator),
-    ("ER_UC2", "Equipment Reliability Variant 2", "Remedial_Action_use_cases/Remedial_Action_use_cases.md", no_validator),
-    ("RA_UC1", "Topology RA with one action", "Remedial_Action_use_cases/Remedial_Action_use_cases.md", remedial_uc1),
-    ("RA_UC2", "Dependent topology RAs", "Remedial_Action_use_cases/Remedial_Action_use_cases.md", remedial_uc2),
-    ("RA_UC3", "Pre-RAO topology RA modification", "Remedial_Action_use_cases/Remedial_Action_use_cases.md", remedial_uc3),
-    ("RA_UC4", "Post-RAO topology RA proposal", "Remedial_Action_use_cases/Remedial_Action_use_cases.md", remedial_uc4),
-    ("RA_UC5", "Post-RAO topology RA activation", "Remedial_Action_use_cases/Remedial_Action_use_cases.md", remedial_uc5),
-    ("RA_UC6", "Countertrade RA", "Remedial_Action_use_cases/Remedial_Action_use_cases.md", remedial_uc6),
-    ("RA_UC7", "Redispatch RA", "Remedial_Action_use_cases/Remedial_Action_use_cases.md", remedial_uc7),
-    ("RAS_UC8", "Remedial Action Schedule handling", "Remedial_Action_use_cases/Remedial_Action_use_cases.md", remedial_uc4),
-    ("RA_UC9 Shared RA on Boundary", "Shared RA on Boundary", "Remedial_Action_use_cases/Remedial_Action_use_cases.md", no_validator),
-    ("AS_UC1", "Availability Schedule", "Availability _Schedule_use_case/Availability _Schedule_use_case.md", chapter_availability_schedule),
-    ("AE_UC1", "Secured Assessed Element", "Assessed_Element_use_cases/Assessed_Element_use_cases.md", chapter_assessed_elements),
-    ("AE_UC2", "Scanned Assessed Element", "Assessed_Element_use_cases/Assessed_Element_use_cases.md", chapter_assessed_elements),
-    ("AE_UC3", "Disable Assessed Element", "Assessed_Element_use_cases/Assessed_Element_use_cases.md", chapter_assessed_elements),
-    ("AE_UC4", "Exclude Assessed Element", "Assessed_Element_use_cases/Assessed_Element_use_cases.md", chapter_assessed_elements),
-    ("AE_UC5", "Assessed Element with Contingency", "Assessed_Element_use_cases/Assessed_Element_use_cases.md", chapter_assessed_elements),
-    ("AE_UC6", "Assessed Element with Remedial Action", "Assessed_Element_use_cases/Assessed_Element_use_cases.md", chapter_assessed_elements),
-    ("OR_UC1", "Operational Rules Validation", "Remedial_Action_use_cases/Remedial_Action_use_cases.md", no_validator),
-    ("SAR_UC1", "Special Automation / SIPS Rules", "Implementing_SIPS_Gate_Logic_with_Cardinality_Constraints/Implementing_SIPS_Gate_Logic_with_Cardinality_Constraints.md", chapter_sips_gate_logic),
-    ("PF_UC1", "Correction of generation production due to a power flow limit violation", "Correction_of_generation_production_due_to_a_power_flow_limit_violation/Correction_of_generation_production_due_to_a_power_flow_limit_violation.md", chapter_generation_correction),
-    ("SAR_UC1", "Modelling complex SIPS logic", "Modelling_complex_SIPS_logic/Modelling_complex_SIPS_logic.md", chapter_sips_complex),
-    ("SAR_UC1", "Modelling Current Flow Conditions Against PATL or TATL", "Modelling_Current_Flow_Conditions_Against_PATL_or_TATL/Modelling_Current_Flow_Conditions_Against_PATL_or_TATL.md", chapter_sips_current_flow),
-    ("SAR_UC1", "Modelling Element Disconnection by Monitoring the Power Flow", "Modelling_Element_Disconnection_by_Monitoring_the_Power_Flow/Modelling_Element_Disconnection_by_Monitoring_the_Power_Flow.md", chapter_sips_last_line),
-    ("SAR_UC1", "Modelling SIPS Actions Based on Generation", "Modelling_SIPS_Actions_Based_on_Generation/Modelling_SIPS_Actions_Based_on_Generation.md", chapter_sips_generation),
-    ("SAR_UC1", "Modelling Voltage Dependent Tripping Conditions", "Modelling_Voltage_Dependent_Tripping_Conditions/Modelling_Voltage_Dependent_Tripping_Conditions.md", chapter_sips_voltage),
-])
-
-for contingency_name, eq_ids, co_ids in CO_UC1_ROWS:
-    display_name = "Contingency row: " + contingency_name
-    function_ref = CoUc1RowValidator(eq_ids=eq_ids, co_ids=co_ids)
-    USE_CASE_CATALOG.append(
-        (
-            "CO_UC1",
-            display_name,
-            "Contingencies_use_cases/Contingencies_use_cases.md",
-            function_ref,
-        )
+    return ModelLogStats(
+        model_name=model_name,
+        total=len(logger.entries),
+        errors=errors,
+        warnings=warnings,
+        information=information,
+        divergences=divergences,
+        top_messages=top_messages,
     )
 
 
-def run_chapter(
-    use_case_id: str,
-    name: str,
-    source_md: str,
-    fn: Callable[[RelicapCgmesLoader], str],
-    loader: RelicapCgmesLoader,
-) -> ChapterResult:
+def unavailable_power_flow_results() -> tuple[list[PowerFlowModelResult], list[ModelLogStats]]:
+    """Build skipped power-flow and logger rows when the power-flow API is unavailable.
+
+    :return: Power-flow rows and logger statistics rows.
+    """
+    power_rows: list[PowerFlowModelResult] = list()
+    log_rows: list[ModelLogStats] = list()
+    for model_name, files in SUBFOLDERS.items():
+        existing_files: list[str] = list()
+        for file_path in files:
+            if os.path.isfile(file_path):
+                existing_files.append(file_path)
+            else:
+                pass
+
+        if len(existing_files) == 0:
+            power_rows.append(
+                PowerFlowModelResult(
+                    model_name=model_name,
+                    files_included=list(),
+                    converged="FAIL",
+                    error_achieved="No referenced files exist",
+                )
+            )
+            log_rows.append(build_log_stats(model_name=model_name, logger=None))
+        else:
+            logger: DataLogger = DataLogger()
+            try:
+                open_cgmes(files=existing_files, version=CGMESVersions.v3_0_0, cgmes_logger=logger)
+                power_rows.append(
+                    PowerFlowModelResult(
+                        model_name=model_name,
+                        files_included=make_relative_paths(existing_files),
+                        converged="SKIP",
+                        error_achieved="Model loaded and logger collected; VeraGridEngine power-flow API unavailable",
+                    )
+                )
+            except Exception as exc:
+                power_rows.append(
+                    PowerFlowModelResult(
+                        model_name=model_name,
+                        files_included=make_relative_paths(existing_files),
+                        converged="FAIL",
+                        error_achieved="Model loading failed while collecting logger stats: " + str(exc),
+                    )
+                )
+            log_rows.append(build_log_stats(model_name=model_name, logger=logger))
+    return power_rows, log_rows
+
+
+def run_test_model_power_flows() -> tuple[list[PowerFlowModelResult], list[ModelLogStats]]:
+    """Run the model power-flow test from run_relicap_grids.py.
+
+    :return: Power-flow result rows and logger statistics rows.
+    """
+    rows: list[PowerFlowModelResult] = list()
+    log_rows: list[ModelLogStats] = list()
+    if vg is None or not hasattr(vg, "PowerFlowOptions"):
+        return unavailable_power_flow_results()
+    else:
+        pass
+
+    pf_options = vg.PowerFlowOptions(
+        tolerance=1e-6,
+        solver_type=vg.SolverType.NR,
+        retry_with_other_methods=False,
+        ignore_single_node_islands=True,
+    )
+
+    for model_name, files in SUBFOLDERS.items():
+        existing_files: list[str] = list()
+        for file_path in files:
+            if os.path.isfile(file_path):
+                existing_files.append(file_path)
+            else:
+                pass
+
+        if len(existing_files) == 0:
+            rows.append(
+                PowerFlowModelResult(
+                    model_name=model_name,
+                    files_included=list(),
+                    converged="FAIL",
+                    error_achieved="No referenced files exist",
+                )
+            )
+            log_rows.append(build_log_stats(model_name=model_name, logger=None))
+        else:
+            handler = None
+            log_stats_added: bool = False
+            try:
+                create_case_package(case_name=model_name, file_paths=existing_files)
+                handler = vg.FileOpen(
+                    file_name=existing_files,
+                    options=vg.FileOpenOptions(
+                        cgmes_version=vg.CGMESVersions.v3_0_0,
+                        file_type=vg.FileType.CGMES,
+                    ),
+                )
+                grid = handler.open()
+                log_rows.append(build_log_stats(model_name=model_name, logger=handler.cgmes_logger))
+                log_stats_added = True
+                if grid is None:
+                    rows.append(
+                        PowerFlowModelResult(
+                            model_name=model_name,
+                            files_included=make_relative_paths(existing_files),
+                            converged="FAIL",
+                            error_achieved="FileOpen returned None",
+                        )
+                    )
+                else:
+                    result = vg.power_flow(grid, pf_options)
+                    rows.append(
+                        PowerFlowModelResult(
+                            model_name=model_name,
+                            files_included=make_relative_paths(existing_files),
+                            converged=str(bool(result.converged)),
+                            error_achieved=f"{float(result.error):.6e}",
+                        )
+                    )
+            except Exception as exc:
+                if log_stats_added:
+                    pass
+                else:
+                    if handler is None:
+                        log_rows.append(build_log_stats(model_name=model_name, logger=None))
+                    else:
+                        log_rows.append(build_log_stats(model_name=model_name, logger=handler.cgmes_logger))
+                rows.append(
+                    PowerFlowModelResult(
+                        model_name=model_name,
+                        files_included=make_relative_paths(existing_files),
+                        converged="FAIL",
+                        error_achieved=str(exc),
+                    )
+                )
+    return rows, log_rows
+
+
+def run_check(chapter_md: str, chapter_title: str, uc_id: str, uc_name: str, checker: Callable[[], str]) -> TestResult:
+    """Run a checker and convert exceptions into FAIL rows.
+
+    :param chapter_md: Relative markdown chapter path.
+    :param chapter_title: Chapter title to render.
+    :param uc_id: Short use case code.
+    :param uc_name: Use case name.
+    :param checker: Zero-argument checker function.
+    :return: Result row.
+    """
     try:
-        msg = fn(loader)
-        if msg.startswith("SKIP:"):
-            return ChapterResult(use_case_id=use_case_id, name=name, source_md=source_md, ok=True, message=msg, status="SKIP")
-        return ChapterResult(use_case_id=use_case_id, name=name, source_md=source_md, ok=True, message=f"OK: {msg}", status="PASS")
+        message: str = checker()
+        if message.startswith("SKIP:"):
+            return make_result(chapter_md, chapter_title, uc_id, uc_name, "SKIP", message)
+        else:
+            return make_result(chapter_md, chapter_title, uc_id, uc_name, "PASS", f"OK: {message}")
     except Exception as exc:
-        return ChapterResult(use_case_id=use_case_id, name=name, source_md=source_md, ok=False, message=f"FAIL: {exc}", status="FAIL")
+        return make_result(chapter_md, chapter_title, uc_id, uc_name, "FAIL", f"FAIL: {exc}")
 
 
-def write_report(report_path: str, results: list[ChapterResult], loader: RelicapCgmesLoader) -> None:
-    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-    total = len(results)
-    passed = sum(1 for r in results if r.status == "PASS")
-    skipped = sum(1 for r in results if r.status == "SKIP")
-    failed = sum(1 for r in results if r.status == "FAIL")
+def run_loader_check(
+    chapter_md: str,
+    chapter_title: str,
+    uc_id: str,
+    uc_name: str,
+    loader: RelicapLoader,
+    checker: Callable[[RelicapLoader], str],
+) -> TestResult:
+    """Run a loader checker and convert exceptions into FAIL rows.
 
-    case_names = sorted(set(["Belgovia", "Espheim", "Svedala"]))
-    case_lines = []
-    for case_name in case_names:
-        existing, missing = loader.case_file_stats(case_name)
-        case_lines.append(f"- `{case_name}`: existing files `{existing}`, missing files `{missing}`")
+    :param chapter_md: Relative markdown chapter path.
+    :param chapter_title: Chapter title to render.
+    :param uc_id: Short use case code.
+    :param uc_name: Use case name.
+    :param loader: Shared loader.
+    :param checker: Checker function receiving the loader.
+    :return: Result row.
+    """
+    try:
+        message: str = checker(loader)
+        if message.startswith("SKIP:"):
+            return make_result(chapter_md, chapter_title, uc_id, uc_name, "SKIP", message)
+        else:
+            return make_result(chapter_md, chapter_title, uc_id, uc_name, "PASS", f"OK: {message}")
+    except Exception as exc:
+        return make_result(chapter_md, chapter_title, uc_id, uc_name, "FAIL", f"FAIL: {exc}")
 
-    def _read_group_title_from_md(rel_md_path: str) -> str:
-        abs_md_path = os.path.join(USE_CASES_ROOT, rel_md_path)
-        if os.path.isfile(abs_md_path):
-            with open(abs_md_path, "r", encoding="utf-8") as file_obj:
-                lines = file_obj.read().splitlines()
-            for line in lines:
-                stripped = line.strip()
-                if stripped.startswith("# "):
-                    return stripped[2:].strip()
+
+def _collect_ids(model: CgmesCircuit) -> set[str]:
+    """Collect rdfid/mRID strings from a CGMES model.
+
+    :param model: Parsed circuit.
+    :return: Set of available IDs.
+    """
+    found: set[str] = set()
+    assets_dict: dict[str, object] = model.cgmes_assets.__dict__
+    for key, value in assets_dict.items():
+        if key.endswith("_list") and isinstance(value, list):
+            for obj in value:
+                rdfid: str | None = None
+                mrid: str | None = None
+                try:
+                    rdfid = obj.rdfid
+                except Exception:
+                    rdfid = None
+                try:
+                    mrid = obj.mRID
+                except Exception:
+                    mrid = None
+                if isinstance(rdfid, str):
+                    found.add(rdfid)
                 else:
                     pass
-            return os.path.splitext(os.path.basename(rel_md_path))[0]
+                if isinstance(mrid, str):
+                    found.add(mrid)
+                else:
+                    pass
         else:
-            return os.path.splitext(os.path.basename(rel_md_path))[0]
+            pass
+    return found
 
-    source_order: list[str] = list()
-    source_groups: dict[str, list[ChapterResult]] = dict()
-    for result in results:
-        grouped = source_groups.get(result.source_md, None)
-        if grouped is None:
-            source_groups[result.source_md] = [result]
-            source_order.append(result.source_md)
+
+def skip_no_spec() -> str:
+    """Skip message for undefined assertions.
+
+    :return: Standard skip message.
+    """
+    return "SKIP: no specific checks provided by the test specification"
+
+
+def skip_manual_sips_or_power_flow() -> str:
+    """Skip message for manual SIPS and power-flow scenarios.
+
+    :return: Standard skip message.
+    """
+    return "SKIP: validation steps require load-flow/contingency/SIPS activation execution that is not automated in this structural CGMES test runner"
+
+
+def skip_anonymized_dataset_missing() -> str:
+    """Skip message for a referenced dataset that is not locally integrated.
+
+    :return: Standard skip message.
+    """
+    return "SKIP: markdown says the anonymized IGM and SPS file still need to be integrated before this scenario can be automated"
+
+
+def check_contingency_row(loader: RelicapLoader, eq_ids: list[str], co_ids: list[str]) -> str:
+    """Validate one CO_UC1 row against requested checks.
+
+    :param loader: Shared loader.
+    :param eq_ids: EQ IDs from markdown row.
+    :param co_ids: CO IDs from markdown row.
+    :return: Success message.
+    """
+    # Resolve IDs on merged grid+NC model.
+    model: CgmesCircuit = loader.load_case("Combination 3 (Belgovia + Svedala +Galia + Espheim + Britheim )")
+    ids: set[str] = _collect_ids(model)
+    missing_eq: list[str] = list()
+    for eq_id in eq_ids:
+        if eq_id in ids:
+            pass
         else:
-            grouped.append(result)
+            missing_eq.append(eq_id)
+    missing_co: list[str] = list()
+    for co_id in co_ids:
+        if co_id in ids:
+            pass
+        else:
+            missing_co.append(co_id)
+    if len(missing_eq) == 0 and len(missing_co) == 0:
+        pass
+    else:
+        raise AssertionError(f"resolution check failed; missing EQ IDs={missing_eq}; missing CO IDs={missing_co}")
 
-    lines = [
-        f"# Relicap Test Book Report for VeraGrid {__VeraGridEngine_VERSION__}",
-        "",
-        f"- Generated: `{now}`",
-        f"- Script: `{os.path.abspath(__file__)}`",
-        f"- Relicap base folder: `{FOLDER}`",
-        "",
-        "## Summary",
-        "",
-        f"- Total chapters: `{total}`",
-        f"- PASS: `{passed}`",
-        f"- SKIP: `{skipped}`",
-        f"- FAIL: `{failed}`",
-        "",
-        "## Dataset Coverage (loaded cases)",
-        "",
-        *case_lines,
-        "",
-    ]
+    # Ensure contingency execution does not alter base state.
+    execution_message: str = "execution check executed"
+    if gce is not None:
+        files: list[str] = loader.existing_files("Belgovia")
+        grid, _ = open_cgmes(files, version=CGMESVersions.v3_0_0)
+        branches = grid.get_branches(add_vsc=True, add_hvdc=True, add_switch=True)
+        before: dict[str, bool] = dict()
+        for branch in branches:
+            before[branch.idtag] = bool(branch.active)
+        before_count: int = len(grid.contingencies)
+        gce.contingency_analysis(grid)
+        after_count: int = len(grid.contingencies)
+        if before_count == after_count:
+            pass
+        else:
+            raise AssertionError("execution check failed; contingency count changed")
+        for branch in branches:
+            original: bool = before.get(branch.idtag, False)
+            now: bool = bool(branch.active)
+            if original == now:
+                pass
+            else:
+                raise AssertionError(f"execution check failed; branch state changed for {branch.idtag}")
+    else:
+        execution_message = "execution check not run because VeraGridEngine.api dependency is unavailable"
 
-    for source_md in source_order:
-        grouped_results = source_groups[source_md]
-        group_title = _read_group_title_from_md(source_md)
+    # Export CO profile and confirm CO row IDs are present.
+    model_xml: dict[CgmesProfileType, str] = model.get_model_xml(profiles=[CgmesProfileType.CO])
+    co_xml: str | None = model_xml.get(CgmesProfileType.CO, None)
+    if isinstance(co_xml, str):
+        pass
+    else:
+        raise AssertionError("CO profile export not available")
+    for co_id in co_ids:
+        if co_id in co_xml:
+            pass
+        else:
+            raise AssertionError(f"export check failed; CO ID missing from export: {co_id}")
+    return f"resolved against model; {execution_message}; and CO export contains row IDs"
+
+
+def find_assessed_element(model: CgmesCircuit, object_id: str) -> object:
+    """Find an AssessedElement by rdfid.
+
+    :param model: Parsed CGMES model.
+    :param object_id: Target rdfid without leading underscore.
+    :return: Matching object.
+    :raises AssertionError: If the object is missing.
+    """
+    for item in model.cgmes_assets.AssessedElement_list:
+        if item.rdfid == object_id:
+            return item
+        else:
+            pass
+    raise AssertionError(f"AssessedElement not found: {object_id}")
+
+
+def find_assessed_element_schedule(model: CgmesCircuit, object_id: str) -> object:
+    """Find an AssessedElementSchedule by rdfid.
+
+    :param model: Parsed CGMES model.
+    :param object_id: Target rdfid without leading underscore.
+    :return: Matching object.
+    :raises AssertionError: If the object is missing.
+    """
+    for item in model.cgmes_assets.AssessedElementSchedule_list:
+        if item.rdfid == object_id:
+            return item
+        else:
+            pass
+    raise AssertionError(f"AssessedElementSchedule not found: {object_id}")
+
+
+def find_assessed_element_time_point(model: CgmesCircuit, object_id: str) -> object:
+    """Find an AssessedElementTimePoint by rdfid.
+
+    :param model: Parsed CGMES model.
+    :param object_id: Target rdfid without leading underscore.
+    :return: Matching object.
+    :raises AssertionError: If the object is missing.
+    """
+    for item in model.cgmes_assets.AssessedElementTimePoint_list:
+        if item.rdfid == object_id:
+            return item
+        else:
+            pass
+    raise AssertionError(f"AssessedElementTimePoint not found: {object_id}")
+
+
+def find_assessed_element_with_contingency(model: CgmesCircuit, object_id: str) -> object:
+    """Find an AssessedElementWithContingency by rdfid.
+
+    :param model: Parsed CGMES model.
+    :param object_id: Target rdfid without leading underscore.
+    :return: Matching object.
+    :raises AssertionError: If the object is missing.
+    """
+    for item in model.cgmes_assets.AssessedElementWithContingency_list:
+        if item.rdfid == object_id:
+            return item
+        else:
+            pass
+    raise AssertionError(f"AssessedElementWithContingency not found: {object_id}")
+
+
+def find_assessed_element_with_remedial_action(model: CgmesCircuit, object_id: str) -> object:
+    """Find an AssessedElementWithRemedialAction by rdfid.
+
+    :param model: Parsed CGMES model.
+    :param object_id: Target rdfid without leading underscore.
+    :return: Matching object.
+    :raises AssertionError: If the object is missing.
+    """
+    for item in model.cgmes_assets.AssessedElementWithRemedialAction_list:
+        if item.rdfid == object_id:
+            return item
+        else:
+            pass
+    raise AssertionError(f"AssessedElementWithRemedialAction not found: {object_id}")
+
+
+def find_grid_state_alteration_remedial_action(model: CgmesCircuit, object_id: str) -> object:
+    """Find a GridStateAlterationRemedialAction by rdfid.
+
+    :param model: Parsed CGMES model.
+    :param object_id: Target rdfid without leading underscore.
+    :return: Matching object.
+    :raises AssertionError: If the object is missing.
+    """
+    for item in model.cgmes_assets.GridStateAlterationRemedialAction_list:
+        if item.rdfid == object_id:
+            return item
+        else:
+            pass
+    raise AssertionError(f"GridStateAlterationRemedialAction not found: {object_id}")
+
+
+def find_availability_schedule(model: CgmesCircuit, object_id: str) -> object:
+    """Find an AvailabilitySchedule by rdfid.
+
+    :param model: Parsed CGMES model.
+    :param object_id: Target rdfid without leading underscore.
+    :return: Matching object.
+    :raises AssertionError: If the object is missing.
+    """
+    for item in model.cgmes_assets.AvailabilitySchedule_list:
+        if item.rdfid == object_id:
+            return item
+        else:
+            pass
+    raise AssertionError(f"AvailabilitySchedule not found: {object_id}")
+
+
+def find_availability_remedial_action(model: CgmesCircuit, object_id: str) -> object:
+    """Find an AvailabilityRemedialAction by rdfid.
+
+    :param model: Parsed CGMES model.
+    :param object_id: Target rdfid without leading underscore.
+    :return: Matching object.
+    :raises AssertionError: If the object is missing.
+    """
+    for item in model.cgmes_assets.AvailabilityRemedialAction_list:
+        if item.rdfid == object_id:
+            return item
+        else:
+            pass
+    raise AssertionError(f"AvailabilityRemedialAction not found: {object_id}")
+
+
+def find_asset(model: CgmesCircuit, list_name: str, object_id: str) -> object:
+    """Find an object in a CGMES asset list by rdfid or mRID.
+
+    :param model: Parsed CGMES model.
+    :param list_name: CGMES asset list name.
+    :param object_id: Target rdfid or mRID.
+    :return: Matching object.
+    :raises AssertionError: If the object is missing.
+    """
+    asset_list = model.cgmes_assets.__dict__.get(list_name, None)
+    if isinstance(asset_list, list):
+        pass
+    else:
+        raise AssertionError(f"CGMES asset list not found: {list_name}")
+
+    for item in asset_list:
+        rdfid: str | None = None
+        mrid: str | None = None
+        try:
+            rdfid = item.rdfid
+        except Exception:
+            rdfid = None
+        try:
+            mrid = item.mRID
+        except Exception:
+            mrid = None
+        if rdfid == object_id or mrid == object_id:
+            return item
+        else:
+            pass
+    raise AssertionError(f"{list_name} object not found: {object_id}")
+
+
+def require_case_ids(loader: RelicapLoader, case_name: str, ids: list[str], label: str) -> CgmesCircuit:
+    """Assert a set of IDs exists in a loaded case.
+
+    :param loader: Shared loader.
+    :param case_name: Case key from SUBFOLDERS.
+    :param ids: Required IDs.
+    :param label: Assertion label.
+    :return: Parsed case model.
+    """
+    model: CgmesCircuit = loader.load_case(case_name)
+    existing_ids: set[str] = _collect_ids(model)
+    missing: list[str] = list()
+    for object_id in ids:
+        if object_id in existing_ids:
+            pass
+        else:
+            missing.append(object_id)
+    if len(missing) == 0:
+        return model
+    else:
+        raise AssertionError(f"{label} missing IDs: {missing}")
+
+
+def require_true(value: bool | None, label: str) -> None:
+    """Assert a parsed boolean is true.
+
+    :param value: Parsed value.
+    :param label: Assertion label.
+    """
+    if value is True:
+        pass
+    else:
+        raise AssertionError(f"{label} must be true; parsed value is {value}")
+
+
+def require_false(value: bool | None, label: str) -> None:
+    """Assert a parsed boolean is false.
+
+    :param value: Parsed value.
+    :param label: Assertion label.
+    """
+    if value is False:
+        pass
+    else:
+        raise AssertionError(f"{label} must be false; parsed value is {value}")
+
+
+def require_present(value: object | None, label: str) -> None:
+    """Assert a parsed reference or value is present.
+
+    :param value: Parsed value.
+    :param label: Assertion label.
+    """
+    if value is not None:
+        pass
+    else:
+        raise AssertionError(f"{label} must be present")
+
+
+def require_absent(value: object | None, label: str) -> None:
+    """Assert a parsed reference or value is absent.
+
+    :param value: Parsed value.
+    :param label: Assertion label.
+    """
+    if value is None:
+        pass
+    else:
+        raise AssertionError(f"{label} must be absent")
+
+
+def require_rdfid(value: object | None, object_id: str, label: str) -> None:
+    """Assert a parsed reference points to the expected rdfid.
+
+    :param value: Parsed reference.
+    :param object_id: Expected rdfid.
+    :param label: Assertion label.
+    """
+    require_present(value, label)
+    if value.rdfid == object_id:
+        pass
+    else:
+        raise AssertionError(f"{label} must point to {object_id}; parsed value is {value.rdfid}")
+
+
+def require_text_contains(value: str | None, text: str, label: str) -> None:
+    """Assert a parsed string contains a token.
+
+    :param value: Parsed string.
+    :param text: Expected token.
+    :param label: Assertion label.
+    """
+    if isinstance(value, str) and text in value:
+        pass
+    else:
+        raise AssertionError(f"{label} must contain {text}; parsed value is {value}")
+
+
+def check_ae_uc1(loader: RelicapLoader) -> str:
+    """Check AE_UC1 according to the markdown validation steps.
+
+    :param loader: Shared loader.
+    :return: Success detail.
+    """
+    model: CgmesCircuit = loader.load_case("Belgovia")
+    ae = find_assessed_element(model, "992c2de6-e206-45b3-a76a-f4a691e8839a")
+    require_true(ae.inBaseCase, "AssessedElement.inBaseCase")
+    require_present(ae.SecuredForRegion, "AssessedElement.SecuredForRegion")
+    return "dataset imported; secured assessed element is in the base case and has SecuredForRegion"
+
+
+def check_ae_uc2(loader: RelicapLoader) -> str:
+    """Check AE_UC2 according to the markdown validation steps.
+
+    :param loader: Shared loader.
+    :return: Success detail.
+    """
+    model: CgmesCircuit = loader.load_case("Belgovia")
+    scanned = find_assessed_element(model, "1eb2eb03-dda6-4e59-b7c8-a2edb117d676")
+    require_false(scanned.inBaseCase, "Scanned AssessedElement.inBaseCase")
+    require_present(scanned.ScannedForRegion, "Scanned AssessedElement.ScannedForRegion")
+    require_present(scanned.SecuredForRegion, "Scanned AssessedElement.SecuredForRegion")
+    require_present(scanned.exclusionReason, "Scanned AssessedElement.exclusionReason")
+
+    scanned_only = find_assessed_element(model, "d463cbba-c89c-4199-bbb9-1a33d90cae2c")
+    require_present(scanned_only.ScannedForRegion, "Scanned-only AssessedElement.ScannedForRegion")
+    require_absent(scanned_only.SecuredForRegion, "Scanned-only AssessedElement.SecuredForRegion")
+    return "scanned assessed elements have the expected region references and exclusion reason"
+
+
+def check_ae_uc3(loader: RelicapLoader) -> str:
+    """Check AE_UC3 according to the markdown validation steps.
+
+    :param loader: Shared loader.
+    :return: Success detail.
+    """
+    model: CgmesCircuit = loader.load_case("Belgovia")
+    ae = find_assessed_element(model, "992c2de6-e206-45b3-a76a-f4a691e8839a")
+    schedule = find_assessed_element_schedule(model, "7221ae31-f736-4ae2-8ce1-f3dd605cefd6")
+    time_point = find_assessed_element_time_point(model, "a26e3ae0-0a7d-4f42-ad64-e9105ec3cd41")
+    require_rdfid(schedule.AssessedElement, ae.rdfid, "AssessedElementSchedule.AssessedElement")
+    require_rdfid(time_point.AssessedElementSchedule, schedule.rdfid, "AssessedElementTimePoint.AssessedElementSchedule")
+    require_false(time_point.enabled, "AssessedElementTimePoint.enabled")
+    return "schedule and timepoint disable the secured assessed element for the specified time"
+
+
+def check_ae_uc4(loader: RelicapLoader) -> str:
+    """Check AE_UC4 according to the markdown validation steps.
+
+    :param loader: Shared loader.
+    :return: Success detail.
+    """
+    model: CgmesCircuit = loader.load_case("Belgovia")
+    excluded = find_assessed_element(model, "1eb2eb03-dda6-4e59-b7c8-a2edb117d676")
+    require_false(excluded.inBaseCase, "Excluded AssessedElement.inBaseCase")
+    require_present(excluded.ScannedForRegion, "Excluded AssessedElement.ScannedForRegion")
+    require_present(excluded.exclusionReason, "Excluded AssessedElement.exclusionReason")
+    return "excluded assessed element is outside the base case and remains scanned"
+
+
+def check_ae_uc5(loader: RelicapLoader) -> str:
+    """Check AE_UC5 according to the markdown validation steps.
+
+    :param loader: Shared loader.
+    :return: Success detail.
+    """
+    model: CgmesCircuit = loader.load_case("Belgovia")
+    full_scope = find_assessed_element(model, "d17943b5-9d10-4f8b-bb07-18c3a3822348")
+    require_true(full_scope.inBaseCase, "Full-scope AssessedElement.inBaseCase")
+    require_true(full_scope.isCombinableWithContingency, "Full-scope AssessedElement.isCombinableWithContingency")
+
+    excluded_pair = find_assessed_element_with_contingency(model, "1f38d403-a822-4c24-93c0-0f18ac699ef1")
+    require_rdfid(excluded_pair.AssessedElement, "992c2de6-e206-45b3-a76a-f4a691e8839a", "Excluded AE-CO pair AssessedElement")
+    require_present(excluded_pair.Contingency, "Excluded AE-CO pair Contingency")
+    require_text_contains(excluded_pair.combinationConstraintKind, "excluded", "Excluded AE-CO pair combinationConstraintKind")
+
+    limited = find_assessed_element(model, "663c6c3c-1777-4eb7-98b0-c23233ce0f71")
+    included_pair = find_assessed_element_with_contingency(model, "deb4c65f-c3fc-414e-baa3-692829e3eec2")
+    require_false(limited.isCombinableWithContingency, "Limited AssessedElement.isCombinableWithContingency")
+    require_rdfid(included_pair.AssessedElement, limited.rdfid, "Included AE-CO pair AssessedElement")
+    require_present(included_pair.Contingency, "Included AE-CO pair Contingency")
+    require_text_contains(included_pair.combinationConstraintKind, "included", "Included AE-CO pair combinationConstraintKind")
+    return "full-scope, excluded, and included AE-contingency combinations match the specification"
+
+
+def check_ae_uc6(loader: RelicapLoader) -> str:
+    """Check AE_UC6 according to the markdown validation steps.
+
+    :param loader: Shared loader.
+    :return: Success detail.
+    """
+    model: CgmesCircuit = loader.load_case("Belgovia")
+    ae = find_assessed_element(model, "13d17257-977e-43bc-971a-25022282688a")
+    relation = find_assessed_element_with_remedial_action(model, "66f786ce-5e2a-427d-9eb8-4e1462045c27")
+    remedial_action = find_grid_state_alteration_remedial_action(model, "70b696ac-c38f-4528-8d65-ba707c0b72e1")
+    require_rdfid(relation.AssessedElement, ae.rdfid, "AE-RA relation AssessedElement")
+    require_rdfid(relation.RemedialAction, remedial_action.rdfid, "AE-RA relation RemedialAction")
+    require_text_contains(relation.combinationConstraintKind, "included", "AE-RA relation combinationConstraintKind")
+    return "assessed element and remedial action association is present and included"
+
+
+def check_as_uc1(loader: RelicapLoader) -> str:
+    """Check AS_UC1 according to the markdown validation steps.
+
+    :param loader: Shared loader.
+    :return: Success detail.
+    """
+    model: CgmesCircuit = loader.load_case("Svedala")
+    schedule = find_availability_schedule(model, "d394295f-9d18-4d9f-9808-bd23282bf60f")
+    action = find_availability_remedial_action(model, "14b2b671-e92b-40e6-abf8-ad37811b33c7")
+
+    # VeraGrid resolves this relation as the inverse reference on the schedule.
+    require_rdfid(schedule.RemedialAction, action.rdfid, "AvailabilitySchedule.RemedialAction")
+
+    # The specification says the action cancels, shortens, or reschedules the availability.
+    # In this dataset the parsed effect is a cancellation timestamp.
+    require_present(schedule.cancelledDateTime, "AvailabilitySchedule.cancelledDateTime")
+    return "schedule and availability remedial action are imported; schedule references the action and carries a cancellation time"
+
+
+def check_ra_uc1(loader: RelicapLoader) -> str:
+    """Check RA_UC1 structural validation steps.
+
+    :param loader: Shared loader.
+    :return: Success detail.
+    """
+    model: CgmesCircuit = require_case_ids(
+        loader,
+        "Svedala",
+        ["6d2c8901-d068-4d22-8ce9-7379644b4f17", "176d262c-701c-4ced-99b2-a155c136e787"],
+        "RA_UC1",
+    )
+    action = find_asset(model, "GridStateAlterationRemedialAction_list", "6d2c8901-d068-4d22-8ce9-7379644b4f17")
+    require_text_contains(action.kind, "preventive", "RA_UC1 RemedialAction.kind")
+    return "RA and target switch are imported; execution/topology-change step is not automated in this runner"
+
+
+def check_ra_uc2(loader: RelicapLoader) -> str:
+    """Check RA_UC2 structural validation steps.
+
+    :param loader: Shared loader.
+    :return: Success detail.
+    """
+    model: CgmesCircuit = require_case_ids(
+        loader,
+        "Svedala",
+        ["598ab84e-a575-40ad-bf66-c1ab41c65093", "13c29cc3-3d99-4c5b-abac-085f0d319eab"],
+        "RA_UC2",
+    )
+    dep_a = find_asset(model, "RemedialActionDependency_list", "598ab84e-a575-40ad-bf66-c1ab41c65093")
+    dep_b = find_asset(model, "RemedialActionDependency_list", "13c29cc3-3d99-4c5b-abac-085f0d319eab")
+    require_text_contains(dep_a.kind, "exclusive", "RA_UC2 dependency A kind")
+    require_text_contains(dep_b.kind, "exclusive", "RA_UC2 dependency B kind")
+    require_present(dep_a.RemedialAction, "RA_UC2 dependency A RemedialAction")
+    require_present(dep_b.RemedialAction, "RA_UC2 dependency B RemedialAction")
+    return "exclusive dependency objects are imported and reference remedial actions; mutually-exclusive execution is not automated"
+
+
+def check_ra_uc3(loader: RelicapLoader) -> str:
+    """Check RA_UC3 structural validation steps.
+
+    :param loader: Shared loader.
+    :return: Success detail.
+    """
+    model: CgmesCircuit = require_case_ids(
+        loader,
+        "Espheim",
+        ["d856a2a2-3de4-4a7b-aea4-d363c13d9014", "4d3757fd-b40a-4d7b-be47-6553935234ff", "f5205bd4-637a-4eb7-b0d8-e03638bc570b"],
+        "RA_UC3",
+    )
+    schedule = find_asset(model, "GridStateAlterationSchedule_list", "f5205bd4-637a-4eb7-b0d8-e03638bc570b")
+    require_rdfid(schedule.GridStateAlteration, "4d3757fd-b40a-4d7b-be47-6553935234ff", "RA_UC3 GridStateAlterationSchedule.GridStateAlteration")
+    found_enabled: bool = False
+    found_disabled: bool = False
+    for time_point in model.cgmes_assets.GridStateAlterationTimePoint_list:
+        if time_point.enabled is True:
+            found_enabled = True
+        else:
+            pass
+        if time_point.enabled is False:
+            found_disabled = True
+        else:
+            pass
+    if found_enabled and found_disabled:
+        pass
+    else:
+        raise AssertionError("RA_UC3 expected enable and disable time points")
+    return "SIS schedule references the topology action and contains enable/disable time points"
+
+
+def check_ra_uc4(loader: RelicapLoader) -> str:
+    """Check RA_UC4 structural validation steps.
+
+    :param loader: Shared loader.
+    :return: Success detail.
+    """
+    model: CgmesCircuit = require_case_ids(
+        loader,
+        "Svedala",
+        ["96f93b71-420f-456f-932e-9ac3f724b683", "f7231aa5-d497-41f3-a5d5-9d4af74444f0", "51361821-0a40-4e5a-a49d-29c266ea2ecc"],
+        "RA_UC4",
+    )
+    response = find_asset(model, "RemedialActionScheduleResponse_list", "96f93b71-420f-456f-932e-9ac3f724b683")
+    dependency = find_asset(model, "RemedialActionScheduleDependency_list", "f7231aa5-d497-41f3-a5d5-9d4af74444f0")
+    schedule = find_asset(model, "RemedialActionSchedule_list", "51361821-0a40-4e5a-a49d-29c266ea2ecc")
+    require_text_contains(response.kind, "refused", "RA_UC4 RemedialActionScheduleResponse.kind")
+    require_text_contains(dependency.kind, "none", "RA_UC4 RemedialActionScheduleDependency.kind")
+    require_present(schedule.RemedialAction, "RA_UC4 new RemedialActionSchedule.RemedialAction")
+    return "refusal response, none-dependency, and replacement schedule are imported"
+
+
+def check_ra_uc5(loader: RelicapLoader) -> str:
+    """Check RA_UC5 structural validation steps.
+
+    :param loader: Shared loader.
+    :return: Success detail.
+    """
+    model: CgmesCircuit = require_case_ids(
+        loader,
+        "Svedala",
+        [
+            "7e422768-207d-455f-976e-0b1cb2338509",
+            "fa3e3533-345a-4ef1-a46d-3ab6d251924a",
+            "6a9b5221-bb3f-421b-89c1-886b100aa68a",
+            "1c1e39cf-15a1-4874-9739-d9e6dc90ee11",
+            "023512a8-150d-4300-8159-807275eafd48",
+            "279bfb00-1b2a-4592-af3a-dba9403d1abd",
+            "87e90c47-43d8-4e5c-b2ad-5c67d3a74842",
+        ],
+        "RA_UC5",
+    )
+    event_a = find_asset(model, "EventSchedule_list", "1c1e39cf-15a1-4874-9739-d9e6dc90ee11")
+    event_b = find_asset(model, "EventSchedule_list", "023512a8-150d-4300-8159-807275eafd48")
+    require_rdfid(event_a.RemedialActionSchedule, "279bfb00-1b2a-4592-af3a-dba9403d1abd", "RA_UC5 EventSchedule A RemedialActionSchedule")
+    require_rdfid(event_b.RemedialActionSchedule, "87e90c47-43d8-4e5c-b2ad-5c67d3a74842", "RA_UC5 EventSchedule B RemedialActionSchedule")
+    require_present(model.cgmes_assets.EventTimePoint_list, "RA_UC5 EventTimePoint list")
+    return "activation schedules, event schedules, event time points, and exclusive group IDs are imported"
+
+
+def check_ra_uc6(loader: RelicapLoader) -> str:
+    """Check RA_UC6 structural validation steps.
+
+    :param loader: Shared loader.
+    :return: Success detail.
+    """
+    model: CgmesCircuit = require_case_ids(
+        loader,
+        "Belgovia",
+        ["413bbc8a-683c-7e07-4fb9-aa6ec83278e0", "30f6377d-5e35-4dd0-a53d-c1992043855e", "27940387-6935-47b6-ab25-8742bac2a266", "ae6a5ddd-fe7e-40b2-bcb6-cbd2882434e7"],
+        "RA_UC6",
+    )
+    power_schedule = find_asset(model, "PowerSchedule_list", "27940387-6935-47b6-ab25-8742bac2a266")
+    require_rdfid(power_schedule.GeneratingUnit, "413bbc8a-683c-7e07-4fb9-aa6ec83278e0", "RA_UC6 PowerSchedule.GeneratingUnit")
+    return "countertrade RA, generating unit, PowerSchedule, and PowerBidSchedule are imported; schedule values are present in parsed datasets"
+
+
+def check_ra_uc7(loader: RelicapLoader) -> str:
+    """Check RA_UC7 structural validation steps.
+
+    :param loader: Shared loader.
+    :return: Success detail.
+    """
+    model: CgmesCircuit = require_case_ids(
+        loader,
+        "Belgovia",
+        [
+            "3a3b27be-b18b-4385-b557-6735d733baf0",
+            "fa73cfee-ff54-43cd-816b-51394cd76f0f",
+            "9d72d12a-f135-437a-83fa-ef3e5b23f41f",
+            "6c0ba4c5-5ac0-43f8-87d9-ec2fb41a3dec",
+            "250e37a5-50e0-44b7-9bd7-7284c04116db",
+            "7ab20445-576c-4162-aad5-d097d894a8e0",
+            "3b5748de-39f2-45d7-9a66-65819c667e91",
+        ],
+        "RA_UC7",
+    )
+    bid_time_point = find_asset(model, "PowerBidScheduleTimePoint_list", "250e37a5-50e0-44b7-9bd7-7284c04116db")
+    distribution = find_asset(model, "PowerShiftKeyDistribution_list", "7ab20445-576c-4162-aad5-d097d894a8e0")
+    shift_schedule = find_asset(model, "PowerShiftKeySchedule_list", "3b5748de-39f2-45d7-9a66-65819c667e91")
+    require_rdfid(bid_time_point.PowerBidSchedule, "6c0ba4c5-5ac0-43f8-87d9-ec2fb41a3dec", "RA_UC7 PowerBidScheduleTimePoint.PowerBidSchedule")
+    require_rdfid(distribution.PowerShiftKeySchedule, shift_schedule.rdfid, "RA_UC7 PowerShiftKeyDistribution.PowerShiftKeySchedule")
+    require_present(bid_time_point.atTime, "RA_UC7 PowerBidScheduleTimePoint.atTime")
+    return "redispatch RAs, bid schedule/timepoint, and power-shift-key objects are imported and linked"
+
+
+def chapter_assessed_elements(loader: RelicapLoader) -> list[TestResult]:
+    """Run assessed element chapter checks.
+
+    :param loader: Shared loader.
+    :return: Result rows.
+    """
+    chapter_md: str = "Assessed_Element_use_cases/Assessed_Element_use_cases.md"
+    chapter_title: str = "Assessed Element use cases"
+    rows: list[TestResult] = list()
+    rows.append(run_loader_check(chapter_md, chapter_title, "AE_UC1", "Secured Assessed Element", loader, check_ae_uc1))
+    rows.append(run_loader_check(chapter_md, chapter_title, "AE_UC2", "Scanned Assessed Element", loader, check_ae_uc2))
+    rows.append(run_loader_check(chapter_md, chapter_title, "AE_UC3", "Disable Assessed Element", loader, check_ae_uc3))
+    rows.append(run_loader_check(chapter_md, chapter_title, "AE_UC4", "Exclude Assessed Element", loader, check_ae_uc4))
+    rows.append(run_loader_check(chapter_md, chapter_title, "AE_UC5", "Assessed Element with Contingency", loader, check_ae_uc5))
+    rows.append(run_loader_check(chapter_md, chapter_title, "AE_UC6", "Assessed Element with Remedial Action", loader, check_ae_uc6))
+    return rows
+
+
+def chapter_availability_schedule(loader: RelicapLoader) -> list[TestResult]:
+    """Run availability schedule chapter checks.
+
+    :param loader: Shared loader.
+    :return: Result rows.
+    """
+    chapter_md: str = "Availability _Schedule_use_case/Availability _Schedule_use_case.md"
+    chapter_title: str = "Availability Schedule use case"
+    rows: list[TestResult] = list()
+    rows.append(run_loader_check(chapter_md, chapter_title, "AS_UC1", "Availability Schedule", loader, check_as_uc1))
+    return rows
+
+
+def chapter_contingencies(loader: RelicapLoader) -> list[TestResult]:
+    """Run contingencies chapter checks.
+
+    :param loader: Shared loader.
+    :return: Result rows.
+    """
+    chapter_md: str = "Contingencies_use_cases/Contingencies_use_cases.md"
+    chapter_title: str = "Contingency uses cases"
+    rows: list[TestResult] = list()
+    rows.append(run_check(chapter_md, chapter_title, "PF_UC1", "Power Flow (base integration)", skip_no_spec))
+    rows.append(run_check(chapter_md, chapter_title, "BDS_UC1", "Boundary Data Set", skip_no_spec))
+    rows.append(run_check(chapter_md, chapter_title, "CD_UC1", "Common Data", skip_no_spec))
+    rows.append(run_check(chapter_md, chapter_title, "RD_UC1", "Reference Data", skip_no_spec))
+    rows.append(run_check(chapter_md, chapter_title, "CO_UC1", "Importing, executing, updating and exporting contingencies", skip_no_spec))
+
+    co_rows: list[tuple[str, list[str], list[str]]] = list([
+        ("CO_UC1#1 Loss of TieLine between Belgovia and Galia", ["d9622e7f-5bf0-4e7e-b766-b8596c6fe4ae"], ["7e31c67d-67ba-4592-8ac1-9e806d697c8e"]),
+        ("CO_UC1#2 Loss of TieLine between Belgovia and Svedala", ["ed0c5d75-4a54-43c8-b782-b20d7431630b"], ["e9eab3fe-c328-4f78-9bc1-77adb59f6ba7"]),
+        ("CO_UC1#3 Loss of TieLine between Espheim and Svedala", ["ed0c5d75-4a54-43c8-b782-b20d7431630b"], ["e9eab3fe-c328-4f78-9bc1-77adb59f6ba7"]),
+        ("CO_UC1#4 Loss of power transformer in Svedala", ["f1c13f90-6d89-4a37-a51c-94742ad2dd72"], ["e05bbe20-9d4a-40da-9777-8424d216785d"]),
+        ("CO_UC1#5 Loss of LinearShuntCompensator", ["0489d903-c766-11e1-8775-005056c00008"], ["62eac668-82a1-4739-8cfc-de929b78ef7e"]),
+        ("CO_UC1#6 Loss of NonlinearShuntCompensator", ["8464a151-ec39-4e7a-8321-06c41e63958c"], ["ab92defa-ef8e-4d13-a242-5b1a9fe956f6"]),
+        ("CO_UC1#7 Loss of HVDC converter DC-3P-Convert-1", ["038ce404-30dc-4289-b9db-7076cb870b8e"], ["038ce404-30dc-4289-b9db-7076cb870b8e"]),
+        ("CO_UC1#8 Loss of HVDC line", ["be09fc02-de3f-49e4-aa84-94803bcc5d76"], ["504b48fb-de1f-4f7e-928f-8585daaf7b72"]),
+        ("CO_UC1#9 Loss of synchronous machine", ["550ebe0d-f2b2-48c1-991f-cebea43a21aa"], ["37997e71-cb7d-4a8c-baa6-2a1594956da9"]),
+        ("CO_UC1#10 Loss of demand facility", ["cb459405-cc14-4215-a45c-416789205904"], ["65582e87-5035-4465-8dd9-cb655224b29f"]),
+        ("CO_UC1#11 N-2 loss of two tie-lines", ["04566cf8-c766-11e1-8775-005056c00008", "0475dbd8-c766-11e1-8775-005056c00008"], ["9d17b84c-33b5-4a68-b8b9-ed5b31038d40", "13334fdf-9cc2-4341-adb6-1281269040b4"]),
+    ])
+    for code, eq_ids, co_ids in co_rows:
+        check_fn: Callable[[], str] = ContingencyRowCheck(loader=loader, eq_ids=eq_ids, co_ids=co_ids)
+        rows.append(run_check(chapter_md, chapter_title, "CO_UC1", code, check_fn))
+    return rows
+
+
+def chapter_generation_correction(loader: RelicapLoader) -> list[TestResult]:
+    """Run generation correction chapter checks.
+
+    :param loader: Shared loader.
+    :return: Result rows.
+    """
+    _ = loader
+    chapter_md: str = "Correction_of_generation_production_due_to_a_power_flow_limit_violation/Correction_of_generation_production_due_to_a_power_flow_limit_violation.md"
+    chapter_title: str = "Correction of generation production due to a power flow limit violation"
+    rows: list[TestResult] = list()
+    rows.append(run_check(chapter_md, chapter_title, "PF_UC1", "Correction workflow", skip_anonymized_dataset_missing))
+    return rows
+
+
+def chapter_sips_gate(loader: RelicapLoader) -> list[TestResult]:
+    """Run SIPS gate logic chapter checks.
+
+    :param loader: Shared loader.
+    :return: Result rows.
+    """
+    _ = loader
+    chapter_md: str = "Implementing_SIPS_Gate_Logic_with_Cardinality_Constraints/Implementing_SIPS_Gate_Logic_with_Cardinality_Constraints.md"
+    chapter_title: str = "Implementing SIPS Gate Logic with Cardinality Constraints"
+    rows: list[TestResult] = list()
+    rows.append(run_check(chapter_md, chapter_title, "SAR_UC1", "SIPS gate logic", skip_manual_sips_or_power_flow))
+    return rows
+
+
+def chapter_sips_complex(loader: RelicapLoader) -> list[TestResult]:
+    """Run complex SIPS chapter checks.
+
+    :param loader: Shared loader.
+    :return: Result rows.
+    """
+    _ = loader
+    chapter_md: str = "Modelling_complex_SIPS_logic/Modelling_complex_SIPS_logic.md"
+    chapter_title: str = "Modelling complex SIPS logic"
+    rows: list[TestResult] = list()
+    rows.append(run_check(chapter_md, chapter_title, "SAR_UC1", "Complex SIPS logic", skip_manual_sips_or_power_flow))
+    return rows
+
+
+def chapter_sips_current_flow(loader: RelicapLoader) -> list[TestResult]:
+    """Run current-flow SIPS chapter checks.
+
+    :param loader: Shared loader.
+    :return: Result rows.
+    """
+    _ = loader
+    chapter_md: str = "Modelling_Current_Flow_Conditions_Against_PATL_or_TATL/Modelling_Current_Flow_Conditions_Against_PATL_or_TATL.md"
+    chapter_title: str = "Modelling Current Flow Conditions Against PATL or TATL"
+    rows: list[TestResult] = list()
+    rows.append(run_check(chapter_md, chapter_title, "SAR_UC1", "Current-flow condition checks", skip_manual_sips_or_power_flow))
+    return rows
+
+
+def chapter_sips_disconnection(loader: RelicapLoader) -> list[TestResult]:
+    """Run disconnection-by-flow SIPS chapter checks.
+
+    :param loader: Shared loader.
+    :return: Result rows.
+    """
+    _ = loader
+    chapter_md: str = "Modelling_Element_Disconnection_by_Monitoring_the_Power_Flow/Modelling_Element_Disconnection_by_Monitoring_the_Power_Flow.md"
+    chapter_title: str = "Modelling Element Disconnection by Monitoring the Power Flow"
+    rows: list[TestResult] = list()
+    rows.append(run_check(chapter_md, chapter_title, "SAR_UC1", "Element disconnection by monitored flow", skip_manual_sips_or_power_flow))
+    return rows
+
+
+def chapter_sips_generation(loader: RelicapLoader) -> list[TestResult]:
+    """Run generation-based SIPS chapter checks.
+
+    :param loader: Shared loader.
+    :return: Result rows.
+    """
+    _ = loader
+    chapter_md: str = "Modelling_SIPS_Actions_Based_on_Generation/Modelling_SIPS_Actions_Based_on_Generation.md"
+    chapter_title: str = "Modelling SIPS Actions Based on Generation"
+    rows: list[TestResult] = list()
+    rows.append(run_check(chapter_md, chapter_title, "SAR_UC1", "Generation-based SIPS actions", skip_manual_sips_or_power_flow))
+    return rows
+
+
+def chapter_sips_voltage(loader: RelicapLoader) -> list[TestResult]:
+    """Run voltage-based SIPS chapter checks.
+
+    :param loader: Shared loader.
+    :return: Result rows.
+    """
+    _ = loader
+    chapter_md: str = "Modelling_Voltage_Dependent_Tripping_Conditions/Modelling_Voltage_Dependent_Tripping_Conditions.md"
+    chapter_title: str = "Modelling Voltage Dependent Tripping Conditions"
+    rows: list[TestResult] = list()
+    rows.append(run_check(chapter_md, chapter_title, "SAR_UC1", "Voltage-dependent tripping checks", skip_manual_sips_or_power_flow))
+    return rows
+
+
+def chapter_remedial_actions(loader: RelicapLoader) -> list[TestResult]:
+    """Run remedial action chapter checks.
+
+    :param loader: Shared loader.
+    :return: Result rows.
+    """
+    chapter_md: str = "Remedial_Action_use_cases/Remedial_Action_use_cases.md"
+    chapter_title: str = "Remedial Action use cases"
+    rows: list[TestResult] = list()
+    rows.append(run_check(chapter_md, chapter_title, "ER_UC1", "Equipment Reliability (single TSO)", skip_no_spec))
+    rows.append(run_check(chapter_md, chapter_title, "ER_UC2", "Equipment Reliability (common data)", skip_no_spec))
+    rows.append(run_loader_check(chapter_md, chapter_title, "RA_UC1", "Topology RA with one topology action", loader, check_ra_uc1))
+    rows.append(run_loader_check(chapter_md, chapter_title, "RA_UC2", "Dependent topology RAs with multiple actions", loader, check_ra_uc2))
+    rows.append(run_loader_check(chapter_md, chapter_title, "RA_UC3", "Modification prior to RAO", loader, check_ra_uc3))
+    rows.append(run_loader_check(chapter_md, chapter_title, "RA_UC4", "Proposing modifications after RAO", loader, check_ra_uc4))
+    rows.append(run_loader_check(chapter_md, chapter_title, "RA_UC5", "Activation after RAO", loader, check_ra_uc5))
+    rows.append(run_loader_check(chapter_md, chapter_title, "RA_UC6", "Countertrade Remedial Action", loader, check_ra_uc6))
+    rows.append(run_loader_check(chapter_md, chapter_title, "RA_UC7", "Redispatch Remedial Action", loader, check_ra_uc7))
+    rows.append(run_check(chapter_md, chapter_title, "RAS_UC8", "RAS FAP acceptance", skip_no_spec))
+    rows.append(run_check(chapter_md, chapter_title, "RA_UC9 Shared RA on Boundary", "Shared RA on Boundary", skip_no_spec))
+    rows.append(run_check(chapter_md, chapter_title, "OR_UC1", "Object Registry", skip_no_spec))
+    rows.append(run_check(chapter_md, chapter_title, "SAR_UC1", "Security Analysis Result", skip_no_spec))
+    return rows
+
+
+def _scan_md_use_case_ids(md_abs_path: str) -> list[str]:
+    """Extract use case IDs from markdown second-level headers.
+
+    :param md_abs_path: Absolute markdown file path.
+    :return: Matched short codes.
+    """
+    ids: list[str] = list()
+    if os.path.isfile(md_abs_path):
+        with open(md_abs_path, "r", encoding="utf-8") as file_obj:
+            text: str = file_obj.read()
+        matches: list[str] = re.findall(r"##\s+([A-Z]{2,4}_UC\d+)", text)
+        for item in matches:
+            ids.append(item)
+    else:
+        pass
+    return ids
+
+
+def write_report(report_path: str, power_flow_results: list[PowerFlowModelResult], results: list[TestResult]) -> None:
+    """Write chaptered markdown report.
+
+    :param report_path: Output markdown path.
+    :param power_flow_results: Model power-flow result rows.
+    :param results: Flat results list.
+    """
+    now: str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    total: int = len(results)
+    passed: int = sum(1 for row in results if row.status == "PASS")
+    skipped: int = sum(1 for row in results if row.status == "SKIP")
+    failed: int = sum(1 for row in results if row.status == "FAIL")
+
+    by_md: dict[str, list[TestResult]] = dict()
+    ordered_md: list[str] = list()
+    for row in results:
+        bucket: list[TestResult] | None = by_md.get(row.chapter_md, None)
+        if bucket is None:
+            by_md[row.chapter_md] = [row]
+            ordered_md.append(row.chapter_md)
+        else:
+            bucket.append(row)
+
+    lines: list[str] = list()
+    lines.append(f"# Relicap Test Book Report for VeraGrid {__VeraGridEngine_VERSION__}")
+    lines.append("")
+    lines.append(f"- Generated: `{now}`")
+    lines.append(f"- Script: `{os.path.abspath(__file__)}`")
+    lines.append(f"- Relicap base folder: `{FOLDER}`")
+    lines.append("")
+    lines.append("## Summary")
+    lines.append("")
+    lines.append(f"- Total rows: `{total}`")
+    lines.append(f"- PASS: `{passed}`")
+    lines.append(f"- SKIP: `{skipped}`")
+    lines.append(f"- FAIL: `{failed}`")
+    lines.append(f"- Power-flow model rows: `{len(power_flow_results)}`")
+    lines.append("")
+    lines.append("## Test models power flow")
+    lines.append("")
+    lines.append("| Model name | Files included | Converged | Error achieved |")
+    lines.append("|---|---|---|---|")
+    for row in power_flow_results:
+        files_cell: str = "<br>".join(row.files_included).replace("|", "\\|")
+        if len(files_cell) == 0:
+            files_cell = "None"
+        else:
+            pass
+        model_name: str = row.model_name.replace("|", "\\|")
+        converged: str = row.converged.replace("|", "\\|")
+        error_achieved: str = row.error_achieved.replace("|", "\\|")
+        lines.append(f"| {model_name} | {files_cell} | {converged} | {error_achieved} |")
+    lines.append("")
+
+    for chapter_md in ordered_md:
+        chapter_rows: list[TestResult] = by_md[chapter_md]
+        chapter_title: str = chapter_rows[0].chapter_title
+        lines.append(f"## {chapter_title}")
         lines.append("")
-        lines.append(f"## {group_title}")
-        lines.append("")
-        lines.append(f"*file*: `{source_md}`")
+        lines.append(f"*file*: `{chapter_md}`")
         lines.append("")
         lines.append("| # | Use Case ID | Use Case | Status | Detail |")
         lines.append("|---:|---|---|---|---|")
-        for idx, result in enumerate(grouped_results, start=1):
-            detail = result.message.replace("|", "\\|")
-            lines.append(f"| {idx} | {result.use_case_id} | {result.name} | {result.status} | {detail} |")
+        index: int = 1
+        for row in chapter_rows:
+            safe_detail: str = row.detail.replace("|", "\\|")
+            lines.append(f"| {index} | {row.use_case_id} | {row.use_case_name} | {row.status} | {safe_detail} |")
+            index = index + 1
+        lines.append("")
 
+    lines.append("## Failures")
     lines.append("")
-    lines.append("## Failure Details")
-    lines.append("")
-    failures = [r for r in results if r.status == "FAIL"]
-    if failures:
-        for idx, fail in enumerate(failures, start=1):
-            lines.append(f"{idx}. {fail.name}: {fail.message}")
+    fail_list: list[TestResult] = [row for row in results if row.status == "FAIL"]
+    if len(fail_list) > 0:
+        index: int = 1
+        for row in fail_list:
+            lines.append(f"{index}. `{row.use_case_id}` {row.use_case_name}: {row.detail}")
+            index = index + 1
     else:
         lines.append("- None")
 
-    lines.append("")
-    lines.append("## Notes")
-    lines.append("")
-    lines.append("- `SKIP` means the chapter was recognized but cannot be fully executed with currently available local datasets.")
-    lines.append("- Chapters mapped to SIPS use cases currently return `SKIP` until the referenced SIPS datasets are available in the local instance.")
+    os.makedirs(os.path.dirname(report_path), exist_ok=True)
+    with open(report_path, "w", encoding="utf-8") as file_obj:
+        file_obj.write("\n".join(lines))
 
-    report_dir = os.path.dirname(report_path)
-    if report_dir:
-        os.makedirs(report_dir, exist_ok=True)
-    with open(report_path, "w", encoding="utf-8") as f:
-        f.write("\n".join(lines))
+
+def write_log_stats_report(report_path: str, log_stats: list[ModelLogStats]) -> None:
+    """Write model loading logger statistics to markdown.
+
+    :param report_path: Output markdown path.
+    :param log_stats: Logger statistics per model.
+    """
+    now: str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    total_logs: int = 0
+    total_errors: int = 0
+    total_warnings: int = 0
+    total_information: int = 0
+    total_divergences: int = 0
+    for row in log_stats:
+        total_logs = total_logs + row.total
+        total_errors = total_errors + row.errors
+        total_warnings = total_warnings + row.warnings
+        total_information = total_information + row.information
+        total_divergences = total_divergences + row.divergences
+
+    lines: list[str] = list()
+    lines.append(f"# ReliCapGrid CGMES Loading Log Statistics for VeraGrid {__VeraGridEngine_VERSION__}")
+    lines.append("")
+    lines.append(f"- Generated: `{now}`")
+    lines.append(f"- Script: `{os.path.abspath(__file__)}`")
+    lines.append(f"- Relicap base folder: `{FOLDER}`")
+    lines.append("")
+    lines.append("## Summary")
+    lines.append("")
+    lines.append(f"- Models: `{len(log_stats)}`")
+    lines.append(f"- Total log entries: `{total_logs}`")
+    lines.append(f"- Errors: `{total_errors}`")
+    lines.append(f"- Warnings: `{total_warnings}`")
+    lines.append(f"- Information: `{total_information}`")
+    lines.append(f"- Divergences: `{total_divergences}`")
+    lines.append("")
+    lines.append("## Per-model logger statistics")
+    lines.append("")
+    lines.append("| Model name | Total | Errors | Warnings | Information | Divergences | Top messages |")
+    lines.append("|---|---:|---:|---:|---:|---:|---|")
+    for row in log_stats:
+        model_name: str = row.model_name.replace("|", "\\|")
+        top_messages: str = "<br>".join(row.top_messages).replace("|", "\\|")
+        lines.append(
+            f"| {model_name} | {row.total} | {row.errors} | {row.warnings} | {row.information} | {row.divergences} | {top_messages} |"
+        )
+
+    os.makedirs(os.path.dirname(report_path), exist_ok=True)
+    with open(report_path, "w", encoding="utf-8") as file_obj:
+        file_obj.write("\n".join(lines))
+
+
+def run_all_chapters(loader: RelicapLoader) -> list[TestResult]:
+    """Execute all 11 markdown chapter functions.
+
+    :param loader: Shared loader.
+    :return: Flat list of result rows.
+    """
+    all_rows: list[TestResult] = list()
+    chapter_functions: list[Callable[[RelicapLoader], list[TestResult]]] = list([
+        chapter_assessed_elements,
+        chapter_availability_schedule,
+        chapter_contingencies,
+        chapter_generation_correction,
+        chapter_sips_gate,
+        chapter_sips_complex,
+        chapter_sips_current_flow,
+        chapter_sips_disconnection,
+        chapter_sips_generation,
+        chapter_sips_voltage,
+        chapter_remedial_actions,
+    ])
+    for function_ref in chapter_functions:
+        chapter_rows: list[TestResult] = function_ref(loader)
+        for row in chapter_rows:
+            all_rows.append(row)
+    return all_rows
 
 
 def main() -> int:
-    loader = RelicapCgmesLoader(SUBFOLDERS)
-    results: list[ChapterResult] = []
+    """Program entrypoint.
 
-    for use_case_id, use_case_name, source_md, fn in USE_CASE_CATALOG:
-        result = run_chapter(use_case_id, use_case_name, source_md, fn, loader)
-        results.append(result)
-        print(f"[{result.status}] {result.use_case_id} :: {result.name}")
-        print(f"  Source: {result.source_md}")
-        print(f"  {result.message}")
+    :return: Shell exit code.
+    """
+    power_flow_results, log_stats = run_test_model_power_flows()
+    loader: RelicapLoader = RelicapLoader(SUBFOLDERS)
+    results: list[TestResult] = run_all_chapters(loader)
+    report_path: str = os.path.join(os.path.dirname(os.path.abspath(__file__)), "relicap_test_report.md")
+    log_stats_path: str = os.path.join(os.path.dirname(os.path.abspath(__file__)), "relicap_log_stats.md")
+    write_report(report_path=report_path, power_flow_results=power_flow_results, results=results)
+    write_log_stats_report(report_path=log_stats_path, log_stats=log_stats)
+
+    print("")
+    print("Test models power flow")
+    print(f"{'Model name':<62}  {'Converged':<10}  Error achieved")
+    print("-" * 110)
+    for row in power_flow_results:
+        print(f"{row.model_name[:62]:<62}  {row.converged:<10}  {row.error_achieved}")
 
     print("")
     print("Results Table")
-    header = f"{'#':>2}  {'Status':<6}  {'Use Case ID':<28}  {'Use Case':<44}  {'Source MD':<68}  Detail"
-    print(header)
-    print("-" * len(header))
-    for idx, result in enumerate(results, start=1):
-        print(
-            f"{idx:>2}  {result.status:<6}  {result.use_case_id[:28]:<28}  {result.name[:44]:<44}  {result.source_md[:68]:<68}  {result.message}"
-        )
-
-    failures = [r for r in results if not r.ok]
-    report_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "relicap_test_report.md")
-    write_report(report_path, results, loader)
+    print(f"{'#':>2}  {'Status':<6}  {'Use Case ID':<28}  {'Use Case':<56}  Source")
+    print("-" * 130)
+    idx: int = 1
+    for row in results:
+        print(f"{idx:>2}  {row.status:<6}  {row.use_case_id[:28]:<28}  {row.use_case_name[:56]:<56}  {row.chapter_md}")
+        idx = idx + 1
+    failures: int = sum(1 for row in results if row.status == "FAIL")
     print("")
-    print(f"Total chapters: {len(results)}")
-    print(f"Failures: {len(failures)}")
+    print(f"Total rows: {len(results)}")
+    print(f"Failures: {failures}")
     print(f"Report: {report_path}")
-
-    return 1 if failures else 0
+    print(f"Log stats: {log_stats_path}")
+    if failures == 0:
+        return 0
+    else:
+        return 1
 
 
 if __name__ == "__main__":
