@@ -712,9 +712,7 @@ class SimulationsMain(TimeEventsMain):
     def get_investments_combination_tree_model(drv: sim.InvestmentsEvaluationDriver) -> QtGui.QStandardItemModel:
         """
         Build the model for the Variations panel after an Investments evaluation.
-        Only Pareto-front combinations are listed (using the deduplicated indices
-        produced by InvestmentsEvaluationResults.finalize); non-Pareto rows would
-        clutter the panel without adding information.
+        Only Pareto-front combinations are listed.
 
         :param drv: InvestmentsEvaluationDriver instance with finalized results
         :return: QStandardItemModel with one top-level row per Pareto combination

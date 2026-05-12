@@ -1,12 +1,14 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at https://mozilla.org/MPL/2.0/.  
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
-from typing import List, TYPE_CHECKING
+from typing import List, Optional, Set, TYPE_CHECKING
 import numpy as np
+import networkx as nx
 from PySide6 import QtWidgets
 
+from VeraGrid.ThirdParty.adjustText import adjust_text
 from VeraGrid.Gui.Diagrams.MapWidget.Substation.substation_graphic_item import SubstationGraphicItem
 from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import haversine_distance, GridMapWidget
 from VeraGridEngine.Devices.Diagrams.map_location import MapLocation
@@ -18,12 +20,12 @@ from VeraGridEngine.Topology.Procedural.procedural_grid_engine import Procedural
 from VeraGridEngine.basic_structures import Logger
 from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import make_diagram_from_buses, SchematicWidget
 from VeraGrid.Gui.ProceduralGrid.voltage_warning import VoltageWarningDialog
-from VeraGrid.Gui.ProceduralGrid.procedural_grid_preview import ProceduralGridPreviewDialog
 from VeraGrid.Gui.general_dialogues import LogsDialogue, CheckListDialogue
 
 if TYPE_CHECKING:
     from VeraGrid.Gui.Main.SubClasses.simulations import SimulationsMain
     from VeraGridEngine.Devices.types import ALL_DEV_TYPES
+    from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 
 
 class ProceduralGridWindow(QtWidgets.QDialog):
@@ -67,9 +69,34 @@ class ProceduralGridWindow(QtWidgets.QDialog):
             [se_graphic.api_object for se_graphic in self.connection_substations_graphics_list]
         ))
 
+        # State of the last successful preview. Accept can only run once these are populated.
+        self._engine: Optional[ProceduralGridComputationEngine] = None
+        self._expanded_grid: Optional[MultiCircuit] = None
+        self._method: Optional[ProceduralGridMethods] = None
+        self._logger: Optional[Logger] = None
+
+        # Accept stays disabled until the user has previewed a result
+        self.ui.acceptButton.setEnabled(False)
+
         # Button click
-        self.ui.computeButton.clicked.connect(self.compute)
+        self.ui.previewButton.clicked.connect(self.preview)
+        self.ui.acceptButton.clicked.connect(self.accept_result)
         self.ui.computeCandidatesButton.clicked.connect(self.compute_candidates)
+
+        # Any change to the inputs invalidates the previously previewed result so the user
+        # cannot accept a graph that no longer matches the parameters on screen
+        self.ui.methodComboBox.currentIndexChanged.connect(self._invalidate_preview)
+
+    def _invalidate_preview(self) -> None:
+        """
+        Discard the previously computed preview state and disable Accept until the
+        user previews again. Called whenever an input that feeds the engine changes.
+        """
+        self._engine = None
+        self._expanded_grid = None
+        self._method = None
+        self._logger = None
+        self.ui.acceptButton.setEnabled(False)
 
     def compute_candidates(self):
         """
@@ -109,6 +136,9 @@ class ProceduralGridWindow(QtWidgets.QDialog):
                 [se_graphic.api_object for se_graphic in self.candidate_list]
             ))
 
+        # Recomputed candidates change the engine inputs, so invalidate any prior preview
+        self._invalidate_preview()
+
     def _check_substation_voltages(self, substations):
         """
         Returns offenders and valid voltages.
@@ -128,12 +158,13 @@ class ProceduralGridWindow(QtWidgets.QDialog):
 
         return offenders, sorted(known_voltages)
 
-    def compute(self):
+    def preview(self) -> None:
         """
-        Validate inputs, run the expansion engine, show a preview dialog and —
-        only if the user confirms — apply the result to the application.
+        Validate inputs, run the expansion engine and draw the resulting topology
+        on the embedded plot. Stores the engine result on the instance so that
+        :meth:`accept_result` can apply it without recomputing.
 
-        :return:
+        :return: ``None``.
         """
         # 1. Get the chosen method
         method: ProceduralGridMethods = self.methods_dict[self.ui.methodComboBox.currentText()]
@@ -148,6 +179,8 @@ class ProceduralGridWindow(QtWidgets.QDialog):
             dlg = VoltageWarningDialog(offenders=offenders, valid_voltages=valid_voltages, parent=self)
             dlg.setModal(True)
             dlg.exec()
+            # Voltage mismatch: do not enable Accept; user must fix inputs first
+            self._invalidate_preview()
             return None
         else:
             pass
@@ -171,13 +204,115 @@ class ProceduralGridWindow(QtWidgets.QDialog):
         else:
             raise NotImplementedError(f"Method {method} not implemented")
 
-        # 5. Show the preview dialog; only proceed if the user confirms
-        preview_dlg = ProceduralGridPreviewDialog(engine=engine, method=method, parent=self)
-        if preview_dlg.exec() == QtWidgets.QDialog.Accepted:
-            self._apply_to_app(engine=engine, expanded_grid=expanded_grid, method=method, logger=logger)
+        # 5. Persist the computed state so that Accept can apply it without recomputing,
+        # then draw the topology on the embedded plot and enable Accept
+        self._engine = engine
+        self._expanded_grid = expanded_grid
+        self._method = method
+        self._logger = logger
+
+        self._update_summary(engine=engine)
+        self._draw_graph(engine=engine)
+        self.ui.acceptButton.setEnabled(True)
+        return None
+
+    def accept_result(self) -> None:
+        """
+        Apply the previously previewed result to the application. Does nothing if
+        no successful preview is currently held on the instance (Accept should be
+        disabled in that case, but we guard against accidental double-clicks).
+
+        :return: ``None``.
+        """
+        if self._engine is None or self._expanded_grid is None or self._method is None or self._logger is None:
             return None
         else:
-            return None
+            pass
+
+        self._apply_to_app(engine=self._engine,
+                           expanded_grid=self._expanded_grid,
+                           method=self._method,
+                           logger=self._logger)
+        return None
+
+    def _update_summary(self, engine: ProceduralGridComputationEngine) -> None:
+        """
+        Update the summary label above the plot with the count of new buses,
+        lines and transformers that the previewed expansion would create.
+
+        :param engine: The engine whose result is being summarised.
+        """
+        n_new_buses: int = len(engine.get_new_buses())
+        n_new_lines: int = len(engine.get_new_lines())
+        n_new_transformers: int = len(engine.get_new_transformers())
+        self.ui.summaryLabel.setText(
+            f'{n_new_buses} new bus(es), {n_new_lines} new line(s) and '
+            f'{n_new_transformers} new transformer(s) will be added to the grid.'
+        )
+
+    def _draw_graph(self, engine: ProceduralGridComputationEngine) -> None:
+        """
+        Build a NetworkX graph from the engine result and render it on the
+        embedded MatplotlibWidget. Existing buses (targets and candidates) are
+        drawn in light blue; newly created buses are drawn in light green.
+
+        :param engine: The engine whose buses and lines are used to build the graph.
+        """
+        all_buses: List[dev.Bus] = engine.get_buses()
+        new_buses: List[dev.Bus] = engine.get_new_buses()
+        new_lines: List[dev.Line] = engine.get_new_lines()
+        new_transformers: List[dev.Transformer2W] = engine.get_new_transformers()
+
+        # Build a set of new-bus names for O(1) membership checks
+        new_bus_names: Set[str] = set()
+        for bus in new_buses:
+            new_bus_names.add(bus.name)
+
+        G: nx.Graph = nx.Graph()
+        pos: dict = dict()
+        existing_node_names: List[str] = list()
+        new_node_names: List[str] = list()
+
+        # Add all buses as nodes, recording which colour group they belong to
+        for bus in all_buses:
+            G.add_node(bus.name)
+            pos[bus.name] = (bus.longitude, bus.latitude)
+            if bus.name in new_bus_names:
+                new_node_names.append(bus.name)
+            else:
+                existing_node_names.append(bus.name)
+
+        # Add new lines as edges
+        for line in new_lines:
+            G.add_edge(line.bus_from.name, line.bus_to.name)
+
+        # Add new transformers as edges
+        for transformer in new_transformers:
+            G.add_edge(transformer.bus_from.name, transformer.bus_to.name)
+
+        # Clear the matplotlib canvas before redrawing so successive Preview clicks
+        # do not stack graphs on top of each other
+        self.ui.plotWidget.clear()
+        ax = self.ui.plotWidget.get_axis()
+
+        # Draw existing buses in blue and new buses in green so the user can
+        # clearly distinguish what is being added to the grid
+        nx.draw_networkx_nodes(G, pos=pos, nodelist=existing_node_names,
+                               ax=ax, node_color='lightblue', node_size=300)
+        nx.draw_networkx_nodes(G, pos=pos, nodelist=new_node_names,
+                               ax=ax, node_color='lightgreen', node_size=300)
+        nx.draw_networkx_edges(G, pos=pos, ax=ax)
+
+        # Place labels as Text objects first, then let adjustText reposition
+        # them so that overlapping labels (including co-located nodes) are
+        # spread apart automatically
+        texts: List = list()
+        for node, (x, y) in pos.items():
+            texts.append(ax.text(x, y, node, fontsize=7))
+
+        adjust_text(texts, ax=ax)
+
+        self.ui.plotWidget.redraw()
 
     def _apply_to_app(self,
                       engine: ProceduralGridComputationEngine,
