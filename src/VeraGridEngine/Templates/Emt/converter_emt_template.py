@@ -755,15 +755,10 @@ def _build_pseudo_emt_converter_inner_loop_block(vf: VarFactory, name: str) -> B
 
     i_d0 = c23 * ((P_ref / sbase) + (P_loss0 / sbase)) / (Vpk + eps)
     i_q0 = c23 * (Q_ref / sbase) / (Vpk + eps)
-    # dq convention used by the pseudo-EMT converter:
-    # * the PLL aligns the d-axis with the positive-sequence bus voltage,
-    # * positive i_d means active current injected into the AC bus,
-    # * positive i_q means reactive current injected into the AC bus.
-    # Positive current is AC-bus injection, so the converter-side voltage must
-    # exceed the bus voltage by the equivalent branch drop during export and be
-    # lower during absorption.
-    v_cmd_d0 = Vpk + R_eq * i_d0 + L_eq * i_q0
-    v_cmd_q0 = R_eq * i_q0 - L_eq * i_d0
+    # Match the switched-converter branch-drop convention used by the EMT seed
+    # helper so the pseudo model starts from the same commanded dq voltage.
+    v_cmd_d0 = Vpk - R_eq * i_d0 + L_eq * i_q0
+    v_cmd_q0 = -R_eq * i_q0 - L_eq * i_d0
     v_d_cap = sym.hard_sat(v_cmd_d_u, -v_lim, v_lim)
     v_q_cap = sym.sqrt(sym.max(v_lim * v_lim - v_cmd_d * v_cmd_d, eps))
     v_0_cap = sym.sqrt(sym.max((v_lim * v_lim - v_cmd_d * v_cmd_d - v_cmd_q * v_cmd_q) / vf.add_const(3.0), eps / vf.add_const(3.0)))
@@ -787,9 +782,9 @@ def _build_pseudo_emt_converter_inner_loop_block(vf: VarFactory, name: str) -> B
             # Unsaturated 0-axis PI output.
             v_pi_0_u - (i_kp * (i_0_ref - i_0) + xi_i0),
             # Unsaturated d-axis converter voltage command with decoupling.
-            v_cmd_d_u - (v_d + R_eq * i_d + omega_ratio * L_eq * i_q + v_pi_d_u),
+            v_cmd_d_u - (v_d - R_eq * i_d + omega_ratio * L_eq * i_q - v_pi_d_u),
             # Unsaturated q-axis converter voltage command with decoupling.
-            v_cmd_q_u - (v_q + R_eq * i_q - omega_ratio * L_eq * i_d + v_pi_q_u),
+            v_cmd_q_u - (v_q - R_eq * i_q - omega_ratio * L_eq * i_d - v_pi_q_u),
             # Unsaturated 0-axis converter voltage command.
             v_cmd_0_u - (v_0 - R_eq * i_0 - v_pi_0_u),
             # Modulation-limit gain based on the nominal operating-point command.
@@ -879,11 +874,10 @@ def _build_pseudo_emt_converter_transformer_block(vf: VarFactory, name: str) -> 
 
     return Block(
         state_eqs=[
-            # The AC-side current sign is bus-injection-positive. Therefore the
-            # interface dynamics are driven by the converter voltage minus the
-            # bus voltage across the equivalent branch.
-            (omega_base * (v_cmd_d - v_d - R_eq * i_d - omega_ratio * L_eq * i_q)) / L_eq,
-            (omega_base * (v_cmd_q - v_q - R_eq * i_q + omega_ratio * L_eq * i_d)) / L_eq,
+            # Match the switched-converter RL branch sign convention so the pseudo
+            # interface current dynamics use the same physical voltage drop model.
+            (omega_base * (v_d - v_cmd_d - R_eq * i_d + omega_ratio * L_eq * i_q)) / L_eq,
+            (omega_base * (v_q - v_cmd_q - R_eq * i_q - omega_ratio * L_eq * i_d)) / L_eq,
             # Balanced three-wire operation has no neutral return path, so the
             # pseudo-EMT converter must not build up a zero-sequence current.
             # Keep the 0-axis state explicitly damped to zero.

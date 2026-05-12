@@ -6253,16 +6253,17 @@ class EmtProblemDae(EmtProblemTemplate):
         Q_meas0_pu: float = float(np.imag(VA * np.conj(IA) + VB * np.conj(IB) + VC * np.conj(IC)))
         P_meas0: float = P_meas0_pu * sbase0
         i_dc0_conv: float = -P_meas0_pu / max(v_dc_eff, eps)
+        configured_p0_value: float = _get_internal_runtime_default(mdl, f"P0_{model_name}", P_meas0)
         P_ref0: float
         Q_ref0: float
         Vdc_ref0: float
-        self.set_internal_runtime_if_exists(mdl, f"P0_{model_name}", P_meas0)
+        self.set_internal_runtime_if_exists(mdl, f"P0_{model_name}", configured_p0_value)
         P_ref0, Q_ref0, Vdc_ref0 = _resolve_converter_control_reference_values(
             control1_code=control1_code,
             control2_code=control2_code,
             control1_val=control1_val0,
             control2_val=control2_val0,
-            p0_value=P_meas0,
+            p0_value=configured_p0_value,
         )
         P_ref_pu0: float = P_ref0 / max(sbase0, eps)
         Q_ref_pu0: float = Q_ref0 / max(sbase0, eps)
