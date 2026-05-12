@@ -395,7 +395,7 @@ def build_problem(
     """
     options: EmtOptions = EmtOptions(
         time_step=2.0e-5,
-        simulation_time=0.3,
+        simulation_time=1,
         tolerance=1e-6,
         solver_type=EmtSolverTypes.StructuralCompiled,
         initialization_method=EmtInitializationMethod.Explicit,

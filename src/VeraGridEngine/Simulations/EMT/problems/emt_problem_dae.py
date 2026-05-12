@@ -4312,6 +4312,19 @@ class EmtProblemDae(EmtProblemTemplate):
         e_a_value: float = float(emf_peak * np.sin(theta_abs))
         e_b_value: float = float(emf_peak * np.sin(theta_abs - 2.0 * np.pi / 3.0))
         e_c_value: float = float(emf_peak * np.sin(theta_abs + 2.0 * np.pi / 3.0))
+
+        # The recent Thevenin refactor moved the internal emf reconstruction to
+        # algebraic equations driven by init-only runtime parameters. Explicit
+        # initialization resolves those parameters correctly, but the later
+        # event-group activation rebuilds the runtime-parameter vector from the
+        # model-owned ``event_dict`` definitions. Persisting the PF-derived
+        # positive-sequence values here keeps the first simulation step aligned
+        # with the exact steady-state source used by explicit initialization.
+        self.set_internal_runtime_if_exists(mdl=mdl, var_name="phi_v_" + mdl.name, value=phi_v)
+        self.set_internal_runtime_if_exists(mdl=mdl, var_name="phi_" + mdl.name, value=phi_rel)
+        self.set_internal_runtime_if_exists(mdl=mdl, var_name="Vpk_" + mdl.name, value=voltage_peak)
+        self.set_internal_runtime_if_exists(mdl=mdl, var_name="Ipk_" + mdl.name, value=current_peak)
+
         theta_var: Optional[Var] = _find_internal_var_by_prefix(mdl, "theta_")
         e_a_var: Optional[Var] = _find_internal_var_by_prefix(mdl, "e_A_")
         e_b_var: Optional[Var] = _find_internal_var_by_prefix(mdl, "e_B_")
