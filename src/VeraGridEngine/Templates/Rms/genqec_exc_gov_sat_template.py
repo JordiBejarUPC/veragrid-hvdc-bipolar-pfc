@@ -1065,15 +1065,29 @@ def get_complete_generator_template_rms(vfactory: VarFactory, name="complete gen
     stabilizer_mdl = get_stabilizer_rms(vfactory=vfactory).block
 
     # connect models
-    # missing to connect power flow variables between non bus models
+    genqec_mdl.connect([genqec_mdl.in_vars[3]], [exciter_mdl.out_vars[0]])
+    exciter_mdl.connect([exciter_mdl.in_vars[0]], [genqec_mdl.out_vars[3]])
     exciter_mdl.connect([exciter_mdl.in_vars[1]], [genqec_mdl.in_vars[0]])
-    connect_models(genqec_mdl, exciter_mdl)
+    exciter_mdl.connect([exciter_mdl.in_vars[2]], [stabilizer_mdl.out_vars[0]])
 
-    connect_models(exciter_mdl, stabilizer_mdl)
+    stabilizer_mdl.connect([stabilizer_mdl.in_vars[0]], [genqec_mdl.out_vars[2]])
 
-    connect_models(stabilizer_mdl, genqec_mdl)
+    genqec_mdl.connect([genqec_mdl.in_vars[2]], [governor_mdl.out_vars[0]])
 
-    connect_models(genqec_mdl, governor_mdl)
+    governor_mdl.connect([governor_mdl.in_vars[0]], [genqec_mdl.out_vars[2]])
+
+    governor_mdl.connect([governor_mdl.in_vars[1]], [genqec_mdl.out_vars[4]])
+
+    # # connect models
+    # # missing to connect power flow variables between non bus models
+    # exciter_mdl.connect([exciter_mdl.in_vars[1]], [genqec_mdl.in_vars[0]])
+    # connect_models(genqec_mdl, exciter_mdl)
+    #
+    # connect_models(exciter_mdl, stabilizer_mdl)
+    #
+    # connect_models(stabilizer_mdl, genqec_mdl)
+    #
+    # connect_models(genqec_mdl, governor_mdl)
 
     templ.block.children.append(genqec_mdl)
     templ.block.children.append(governor_mdl)

@@ -4494,8 +4494,8 @@ class DiagramScene(QGraphicsScene):
         :param target_port:
         :return:
         """
-        source_block: BlockItem = source_port.subsystem
-        target_block: BlockItem = target_port.subsystem
+        source_block: BlockItem | GenericBlockItem = source_port.subsystem
+        target_block: BlockItem | GenericBlockItem = target_port.subsystem
 
         if source_block.subsys is not None and target_block.subsys is not None:
             connection: ConnectionItem = ConnectionItem(
