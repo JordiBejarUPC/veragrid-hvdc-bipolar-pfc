@@ -19,9 +19,81 @@ from VeraGridEngine.__version__ import __VeraGridEngine_VERSION__
 from VeraGridEngine.data_logger import DataLogger
 from VeraGridEngine.enumerations import CGMESVersions
 
-from run_relicap_grids import FOLDER, SUBFOLDERS, create_case_package
+try:
+    import VeraGridEngine as vg
+except Exception:
+    vg = None
 
-import VeraGridEngine as vg
+
+SCRIPT_DIR: str = os.path.dirname(os.path.abspath(__file__))
+FOLDER: str = "/home/santi/Git/GitHub/relicapgrid/Instance"
+PACKAGE_DIR: str = os.path.join(SCRIPT_DIR, "packages")
+
+
+def discover_case_files_from_packages(package_dir: str) -> dict[str, list[str]]:
+    """Discover Relicap case inputs from local case ZIP packages.
+
+    :param package_dir: Directory containing one ZIP per case.
+    :return: Mapping of case name to list of input files.
+    """
+    case_files: dict[str, list[str]] = dict()
+    if os.path.isdir(package_dir):
+        for file_name in sorted(os.listdir(package_dir)):
+            if file_name.lower().endswith(".zip"):
+                case_name: str = file_name[:-4]
+                case_path: str = os.path.join(package_dir, file_name)
+                case_files[case_name] = [case_path]
+            else:
+                pass
+    else:
+        pass
+    return case_files
+
+
+SUBFOLDERS: dict[str, list[str]] = discover_case_files_from_packages(PACKAGE_DIR)
+
+
+def create_case_package(case_name: str,
+                        file_paths: list[str],
+                        output_dir: str = PACKAGE_DIR,
+                        base_dir: str = FOLDER) -> str:
+    """Create a ZIP package for a case.
+
+    If an existing ZIP is already supplied as the only input file, it is reused.
+
+    :param case_name: Case display name.
+    :param file_paths: Input files.
+    :param output_dir: Destination directory.
+    :param base_dir: Base directory for relative archive names.
+    :return: ZIP path.
+    """
+    if len(file_paths) == 1:
+        only_file: str = file_paths[0]
+        if os.path.isfile(only_file) and only_file.lower().endswith(".zip"):
+            return only_file
+        else:
+            pass
+    else:
+        pass
+
+    os.makedirs(output_dir, exist_ok=True)
+    zip_path: str = os.path.join(output_dir, f"{case_name}.zip")
+    added_files: set[str] = set()
+
+    with zipfile.ZipFile(zip_path, mode="w", compression=zipfile.ZIP_DEFLATED) as zip_file:
+        for file_path in file_paths:
+            normalized_path: str = os.path.normpath(file_path)
+            if normalized_path in added_files or not os.path.isfile(normalized_path):
+                pass
+            else:
+                added_files.add(normalized_path)
+                try:
+                    archive_name: str = os.path.relpath(normalized_path, base_dir)
+                except ValueError:
+                    archive_name = os.path.basename(normalized_path)
+                zip_file.write(normalized_path, archive_name)
+
+    return zip_path
 
 
 def sanitize_file_token(raw_value: str) -> str:
