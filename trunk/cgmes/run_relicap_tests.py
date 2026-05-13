@@ -1581,6 +1581,58 @@ def run_all_chapters(loader: RelicapLoader) -> list[TestResult]:
     return all_rows
 
 
+def export_selected_case_contingency_profiles(loader: RelicapLoader) -> list[str]:
+    """Export CO profiles for selected Relicap cases into test output ZIP files.
+
+    :param loader: Shared loader.
+    :return: Exported ZIP paths.
+    """
+    case_names: list[str] = list([
+        "Svedala",
+        "Belgovia",
+        "Espheim + DC-Espheim-Svedala",
+    ])
+    exported_paths: list[str] = list()
+
+    for case_name in case_names:
+        if case_name in loader._case_files:
+            model: CgmesCircuit = loader.load_case(case_name)
+            exported_path: str = export_co_profile_to_test_zip(model=model, export_tag=case_name)
+            exported_paths.append(exported_path)
+        else:
+            pass
+
+    return exported_paths
+
+
+def export_all_power_flow_case_models(loader: RelicapLoader) -> list[str]:
+    """Export all imported power-flow case CGMES profiles into ZIP files.
+
+    :param loader: Shared loader.
+    :return: Exported ZIP paths.
+    """
+    script_dir: str = os.path.dirname(os.path.abspath(__file__))
+    output_dir: str = os.path.join(script_dir, "test_outputs")
+    os.makedirs(output_dir, exist_ok=True)
+
+    exported_paths: list[str] = list()
+    for case_name in SUBFOLDERS.keys():
+        model: CgmesCircuit = loader.load_case(case_name)
+        case_token: str = sanitize_file_token(raw_value=case_name)
+        zip_path: str = os.path.join(output_dir, f"{case_token}_full_model_export.zip")
+        model_xml: dict[CgmesProfileType, str] = model.get_model_xml()
+
+        with zipfile.ZipFile(zip_path, mode="w", compression=zipfile.ZIP_DEFLATED) as zip_file:
+            for profile_tpe, xml_text in model_xml.items():
+                profile_name: str = profile_tpe.value if hasattr(profile_tpe, "value") else str(profile_tpe)
+                profile_token: str = sanitize_file_token(raw_value=profile_name)
+                zip_file.writestr(f"{profile_token}.xml", xml_text)
+
+        exported_paths.append(zip_path)
+
+    return exported_paths
+
+
 def main() -> int:
     """Program entrypoint.
 
@@ -1589,6 +1641,8 @@ def main() -> int:
     power_flow_results, log_stats = run_test_model_power_flows()
     loader: RelicapLoader = RelicapLoader(SUBFOLDERS)
     results: list[TestResult] = run_all_chapters(loader)
+    exported_contingency_profiles: list[str] = export_selected_case_contingency_profiles(loader=loader)
+    exported_full_models: list[str] = export_all_power_flow_case_models(loader=loader)
     report_path: str = os.path.join(os.path.dirname(os.path.abspath(__file__)), "relicap_test_report.md")
     log_stats_path: str = os.path.join(os.path.dirname(os.path.abspath(__file__)), "relicap_log_stats.md")
     write_report(report_path=report_path, power_flow_results=power_flow_results, results=results)
@@ -1615,6 +1669,18 @@ def main() -> int:
     print(f"Failures: {failures}")
     print(f"Report: {report_path}")
     print(f"Log stats: {log_stats_path}")
+    if len(exported_contingency_profiles) > 0:
+        print("Exported contingency ZIPs:")
+        for exported_path in exported_contingency_profiles:
+            print(f" - {exported_path}")
+    else:
+        pass
+    if len(exported_full_models) > 0:
+        print("Exported full model ZIPs:")
+        for exported_path in exported_full_models:
+            print(f" - {exported_path}")
+    else:
+        pass
     if failures == 0:
         return 0
     else:
