@@ -1,6 +1,6 @@
 # Relicap Test Book Report for VeraGrid 6.0.10
 
-- Generated: `2026-05-12 17:47:41 UTC`
+- Generated: `2026-05-13 07:24:05 UTC`
 - Script: `/home/santi/Git/eRoots/VeraGrid/trunk/cgmes/run_relicap_tests.py`
 - Relicap base folder: `/home/santi/Git/GitHub/relicapgrid/Instance`
 
