@@ -21,10 +21,7 @@ from VeraGridEngine.enumerations import CGMESVersions
 
 from run_relicap_grids import FOLDER, SUBFOLDERS, create_case_package
 
-try:
-    import VeraGridEngine as vg
-except Exception:
-    vg = None
+import VeraGridEngine as vg
 
 
 def sanitize_file_token(raw_value: str) -> str:
