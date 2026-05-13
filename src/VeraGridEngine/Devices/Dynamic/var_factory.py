@@ -29,6 +29,7 @@ class VarFactory(EditableDevice):
         '_vars_info',
         '_references_dict',
         '_vars_references_dict',
+        '_vars_connected_dict',
 
     )
 
@@ -58,6 +59,8 @@ class VarFactory(EditableDevice):
         self._vars_info: Dict[Any, List[Var]] = dict()
         self._references_dict: Dict[str, SharedVarReferenceType] = dict()
         self._vars_references_dict: Dict[int, List[Var]] = dict()
+        self._vars_connected_dict = dict()
+        # self._vars_connected_dict: Dict[int, Dict[str, List[Var] | Dict[int, str] | Dict[int, int]]] = dict()
 
     @property
     def vars_info(self) -> Dict[Any, List[Var]]:
@@ -189,6 +192,36 @@ class VarFactory(EditableDevice):
         self._const_dict[v.uid] = v
         return v
 
+    def add_connection(self, var_to_subs: Var, incoming_var: Var):
+
+        if not incoming_var.uid in self._vars_connected_dict:
+            self._vars_connected_dict[incoming_var.uid] = {'vars': list(),
+                                                           'names': dict(),
+                                                           'uids': dict()}
+
+        self._vars_connected_dict[incoming_var.uid]['vars'].append(var_to_subs)
+        self._vars_connected_dict[incoming_var.uid]['names'][var_to_subs.non_mutable_uid] = var_to_subs.name
+        self._vars_connected_dict[incoming_var.uid]['uids'][var_to_subs.non_mutable_uid] = var_to_subs.uid
+
+        if var_to_subs.uid in self._vars_connected_dict:
+            for var in self._vars_connected_dict[var_to_subs.uid]['vars']:
+                var.name = incoming_var.name
+                var.uid = incoming_var.uid
+
+        var_to_subs.name = incoming_var.name
+        var_to_subs.uid = incoming_var.uid
+
+    def remove_connection(self, var_to_disconnect: Var, outgoing_var: Var):
+        self._vars_connected_dict[outgoing_var.uid]['vars'].remove(var_to_disconnect)
+        var_to_disconnect.name = self._vars_connected_dict[outgoing_var.uid]['names'][var_to_disconnect.non_mutable_uid]
+        var_to_disconnect.uid = self._vars_connected_dict[outgoing_var.uid]['uids'][var_to_disconnect.non_mutable_uid]
+        del self._vars_connected_dict[outgoing_var.uid]['names'][var_to_disconnect.non_mutable_uid]
+        del self._vars_connected_dict[outgoing_var.uid]['uids'][var_to_disconnect.non_mutable_uid]
+        if var_to_disconnect.uid in self._vars_connected_dict:
+            for var in self._vars_connected_dict[var_to_disconnect.uid]['vars']:
+                var.name = var_to_disconnect.name
+                var.uid = var_to_disconnect.uid
+
     def get_const(self, uid: int) -> Const:
         """
         Gets a Cont from the class
@@ -307,7 +340,7 @@ class VarFactory(EditableDevice):
             else:
                 key_power_flow_ref = None
 
-            obj = Var(name=data["name"], uid=data["uid"], shared_reference=key_ref, reference=key_power_flow_ref)
+            obj = Var(name=data["name"], uid=data["uid"], shared_reference=key_ref, reference=key_power_flow_ref, non_mutable_uid=data["non_mutable_uid"])
             if ref_data_dict is not None:
                 ref_data_uid = ref_data_dict["uid"]
                 if ref_data_uid is not None:

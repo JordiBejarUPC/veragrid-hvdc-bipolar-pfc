@@ -5,6 +5,7 @@
 
 import os
 import pandas as pd
+import numpy as np
 from pandas.testing import assert_frame_equal
 
 from VeraGridEngine.Utils.Symbolic.block import Block
@@ -16,9 +17,10 @@ from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_rms_model
 
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, RmsInitializationMethod
-from VeraGridEngine.Devices.Aggregation import RmsEvent
+from VeraGridEngine.Devices.Events.rms_event import RmsEvent
 import VeraGridEngine.api as gce
 
 
@@ -42,22 +44,21 @@ def test_simulation_with_event():
     #########
     # retrieve reference results df
 
-    folder = os.path.join('data', 'dynamics')
-    name = "simulation_with_event.csv"
-
-    # fname = os.path.join(folder, name)
-
     fname = "simulation_with_event.csv"
 
     reference_df = pd.read_csv(fname)
 
     ###########################################################################################################################
     # Build VeraGrid object
-
-
-
+    #####################################################################################
+    #                    Grid
+    #####################################################################################
 
     grid = gce.MultiCircuit(Sbase=100, fbase=50.0)
+
+    #####################################################################################
+    #                    Devices
+    #####################################################################################
 
     # Buses
     bus0 = gce.Bus(name="Bus0", Vnom=10, is_slack=True)
@@ -72,19 +73,17 @@ def test_simulation_with_event():
     # Lines
     line0 = gce.Line(name="line 0-2", bus_from=bus0, bus_to=bus1, r=0.029585798816568046, x=0.07100591715976332, b=0.03,
                      rate=900.0)
+    grid.add_line(line0)
 
     # load
     load = gce.Load(P=9.999999, Q=0.999999)
+    grid.add_load(bus=bus1, api_obj=load)
 
     # Generators
     gen0 = gce.Generator(name="Gen0", P=10, vset=1.0, Snom=900,
-                         x1=0.86138701, r1=0.3, freq=50.0,
-                         M=10.0,
-                         D=1.0,
-                         omega_ref=1.0,
-                         Kp=1.0,
-                         Ki=10.0,
+                         x1=0.86138701, r1=0.3, freq=50.0
                          )
+    grid.add_generator(bus=bus0, api_obj=gen0)
 
     ######################################################################################################
     # Build Rms models
@@ -99,45 +98,31 @@ def test_simulation_with_event():
     # load
     load_mdl = get_load_rms_template(grid.var_factory).block
 
-    # connection with buses
+    # set models parameters
+    load_mdl.set_parameter_in_model(var_name="Pl0", new_value=-0.0999999)
+    load_mdl.set_parameter_in_model(var_name="Ql0", new_value=-0.009999999862208533)
 
-    genqec_mdl.connect([genqec_mdl.in_vars[0]], [bus0.rms_model.out_vars[0]])
-    genqec_mdl.connect([genqec_mdl.in_vars[1]], [bus0.rms_model.out_vars[1]])
+    ######################################################################################################
+    # Add models to devices
+    ######################################################################################################
 
-    line_mdl.connect([line_mdl.in_vars[0]], [bus0.rms_model.out_vars[0]])
-    line_mdl.connect([line_mdl.in_vars[1]], [bus0.rms_model.out_vars[1]])
+    set_rms_model(device=gen0, model=genqec_mdl, var_factory=grid.var_factory)
 
-    line_mdl.connect([line_mdl.in_vars[2]], [bus1.rms_model.out_vars[0]])
-    line_mdl.connect([line_mdl.in_vars[3]], [bus1.rms_model.out_vars[1]])
+    set_rms_model(device=line0, model=line_mdl, var_factory=grid.var_factory)
 
-    # u_gov = find_name_in_block("u_gov1", gov1_mdl)
+    set_rms_model(device=load, model=load_mdl, var_factory=grid.var_factory)
 
-    load_mdl.connect([load_mdl.in_vars[0]], [bus1.rms_model.out_vars[0]])
-    load_mdl.connect([load_mdl.in_vars[1]], [bus1.rms_model.out_vars[1]])
+    ######################################################################################################
+    # Create event
+    ######################################################################################################
 
-    # external mapping
-
-    big_gen1 = Block(children=[genqec_mdl])
-
-    big_gen1.external_mapping.update({VarPowerFlowRefferenceType.P: genqec_mdl.out_vars[0]})
-    big_gen1.external_mapping.update({VarPowerFlowRefferenceType.Q: genqec_mdl.out_vars[1]})
-
-    # add models to dyn_host
-    line0.rms_model = line_mdl
-    load.rms_model = load_mdl
-    gen0.rms_model = big_gen1
-
-    # apply event
     Pl0 = find_name_in_block('Pl0', load_mdl)
-    events_group = RmsEventsGroup("simulation1")
-    event = RmsEvent(device=load, parameter=Pl0, time=0.1, value=-0.09, group=events_group)
+    events_group = RmsEventsGroup(name="simulation1")
+    grid.add_rms_events_group(events_group)
+    event = RmsEvent(device=load, parameter=Pl0, time=0.1, value=-0.098, group=events_group)
     grid.add_rms_event(event)
 
-
-    grid.add_line(line0)
-    grid.add_load(bus=bus1, api_obj=load)
-    grid.add_generator(bus=bus0, api_obj=gen0)
-
+    rms_events_group_names = np.array(0)
 
     options = gce.PowerFlowOptions(
         solver_type=gce.SolverType.NR,
@@ -196,7 +181,10 @@ def test_simulation_with_event():
     cols = [f"var{i}" for i in range(0, y.shape[1])]
     results_df = pd.DataFrame(y, columns=cols)
 
+    # results_df.to_csv("simulation_with_event.csv", index=False)
+
     results_df = results_df[reference_df.columns]
+
 
     assert_frame_equal(
         results_df.reset_index(drop=True),
@@ -205,7 +193,7 @@ def test_simulation_with_event():
         check_index_type=False,
         atol=1e-6
     )
-
+#---------------------------------------------------------------------
 
 
 test_simulation_with_event()
