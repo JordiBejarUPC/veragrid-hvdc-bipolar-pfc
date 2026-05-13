@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
-from typing import Dict, List
+from typing import Dict, List, Set
 
 import VeraGridEngine.Devices as gcdev
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
@@ -118,6 +118,67 @@ def get_ncp_contingency_objects(cgmes_model: CgmesCircuit) -> List[CGMES_ASSETS]
     return contingency_objects
 
 
+def build_converter_to_dcline_lookup(cgmes_model: CgmesCircuit) -> Dict[str, str]:
+    """
+    Build a mapping from CGMES converter UUID to paired DCLineSegment UUID.
+
+    The mapping is inferred through DC nodes:
+    ``CsConverter -> ACDCConverterDCTerminal -> DCNode <- DCTerminal <- DCLineSegment``.
+
+    :param cgmes_model: CGMES model.
+    :return: Dictionary keyed by converter UUID with value DCLineSegment UUID.
+    """
+    converter_to_dcnode_uuid: Dict[str, str] = dict()
+    dcnode_to_dcline_uuid_list: Dict[str, List[str]] = dict()
+    converter_to_dcline_uuid: Dict[str, str] = dict()
+
+    for converter_terminal in cgmes_model.cgmes_assets.ACDCConverterDCTerminal_list:
+        converter_equipment: object = converter_terminal.DCConductingEquipment
+        converter_dcnode: object = converter_terminal.DCNode
+        if converter_equipment is None or isinstance(converter_equipment, str):
+            pass
+        else:
+            if converter_dcnode is None or isinstance(converter_dcnode, str):
+                pass
+            else:
+                converter_uuid: str = converter_equipment.uuid
+                dcnode_uuid: str = converter_dcnode.uuid
+                converter_to_dcnode_uuid[converter_uuid] = dcnode_uuid
+
+    for dc_terminal in cgmes_model.cgmes_assets.DCTerminal_list:
+        line_equipment: object = dc_terminal.DCConductingEquipment
+        line_dcnode: object = dc_terminal.DCNode
+        if line_equipment is None or isinstance(line_equipment, str):
+            pass
+        else:
+            if line_dcnode is None or isinstance(line_dcnode, str):
+                pass
+            else:
+                if line_equipment.tpe == "DCLineSegment":
+                    dcnode_uuid = line_dcnode.uuid
+                    line_uuid = line_equipment.uuid
+                    line_list: List[str] | None = dcnode_to_dcline_uuid_list.get(dcnode_uuid, None)
+                    if line_list is None:
+                        dcnode_to_dcline_uuid_list[dcnode_uuid] = [line_uuid]
+                    else:
+                        line_list.append(line_uuid)
+                else:
+                    pass
+
+    for converter_uuid, dcnode_uuid in converter_to_dcnode_uuid.items():
+        candidate_lines: List[str] | None = dcnode_to_dcline_uuid_list.get(dcnode_uuid, None)
+        if candidate_lines is None:
+            pass
+        else:
+            unique_line_ids: Set[str] = set(candidate_lines)
+            if len(unique_line_ids) > 0:
+                converter_to_dcline_uuid[converter_uuid] = candidate_lines[0]
+            else:
+                pass
+
+    return converter_to_dcline_uuid
+
+
 def get_gcdev_contingencies(cgmes_model: CgmesCircuit,
                             gcdev_model: MultiCircuit,
                             logger: DataLogger) -> None:
@@ -138,6 +199,7 @@ def get_gcdev_contingencies(cgmes_model: CgmesCircuit,
         pass
 
     contingency_device_lookup: Dict[str, object] = build_contingency_device_lookup(gcdev_model=gcdev_model)
+    converter_to_dcline_uuid_lookup: Dict[str, str] = build_converter_to_dcline_lookup(cgmes_model=cgmes_model)
     contingency_group_lookup: Dict[str, gcdev.ContingencyGroup] = dict()
     contingency_equipment_by_contingency: Dict[str, List[CGMES_ASSETS]] = dict()
     imported_contingency_count: int = 0
@@ -190,7 +252,11 @@ def get_gcdev_contingencies(cgmes_model: CgmesCircuit,
 
             for contingency_equipment in contingency_elements:
                 equipment_obj: object = contingency_equipment.Equipment
-                if equipment_obj is None or isinstance(equipment_obj, str):
+                target_device: object | None = None
+                equipment_uuid: str = ""
+                equipment_tpe: str = ""
+
+                if equipment_obj is None:
                     skipped_contingency_count += 1
                     logger.add_warning(
                         msg='ContingencyEquipment without resolved Equipment reference',
@@ -198,11 +264,54 @@ def get_gcdev_contingencies(cgmes_model: CgmesCircuit,
                         device_class=contingency_equipment.tpe,
                         device_property='Equipment',
                         value=equipment_obj,
-                        expected_value='resolved object'
+                        expected_value='resolved object or UUID reference'
                     )
                 else:
-                    equipment_uuid: str = equipment_obj.uuid
-                    target_device: object | None = contingency_device_lookup.get(equipment_uuid, None)
+                    if isinstance(equipment_obj, str):
+                        normalized_equipment_uuid: str | None = normalize_cgmes_reference_uuid(equipment_obj)
+                        if normalized_equipment_uuid is None:
+                            equipment_uuid = ""
+                        else:
+                            equipment_uuid = normalized_equipment_uuid
+                        equipment_tpe = ""
+                    else:
+                        equipment_uuid = equipment_obj.uuid
+                        equipment_tpe = equipment_obj.tpe
+
+                    if len(equipment_uuid) > 0:
+                        target_device = contingency_device_lookup.get(equipment_uuid, None)
+                    else:
+                        pass
+
+                    # Fallback mapping for simplified HVDC conversion:
+                    # CsConverter contingencies should target the merged DC/HVDC line device.
+                    if target_device is None:
+                        mapped_dcline_uuid: str | None = converter_to_dcline_uuid_lookup.get(equipment_uuid, None)
+                        if mapped_dcline_uuid is None:
+                            pass
+                        else:
+                            target_device = contingency_device_lookup.get(mapped_dcline_uuid, None)
+                            if target_device is None:
+                                logger.add_warning(
+                                    msg='Contingency converter mapped to DC line but mapped device is not in VeraGrid lookup',
+                                    device=contingency_equipment.rdfid,
+                                    device_class=contingency_equipment.tpe,
+                                    device_property='Equipment.uuid',
+                                    value=equipment_uuid,
+                                    expected_value=mapped_dcline_uuid
+                                )
+                            else:
+                                logger.add_info(
+                                    msg='Mapped contingency converter target to merged DC/HVDC line',
+                                    device=contingency_equipment.rdfid,
+                                    device_class=contingency_equipment.tpe,
+                                    device_property='Equipment.uuid',
+                                    value=equipment_uuid,
+                                    expected_value=mapped_dcline_uuid
+                                )
+                    else:
+                        pass
+
                     if target_device is None:
                         skipped_contingency_count += 1
                         logger.add_warning(
@@ -210,7 +319,8 @@ def get_gcdev_contingencies(cgmes_model: CgmesCircuit,
                             device=contingency_equipment.rdfid,
                             device_class=contingency_equipment.tpe,
                             device_property='Equipment.uuid',
-                            value=equipment_uuid
+                            value=equipment_uuid,
+                            expected_value=equipment_tpe
                         )
                     else:
                         contingency_active_value: float | None = parse_contingency_equipment_status(
