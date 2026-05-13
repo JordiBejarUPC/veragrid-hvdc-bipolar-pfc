@@ -21,7 +21,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOpt
 from VeraGridEngine.Simulations.Rms.rms_driver import RmsSimulationDriver
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import BusEmtTemplate
-from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
+from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template_with_ref
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
@@ -367,7 +367,7 @@ def _build_emt_demo_grid() -> tuple[MultiCircuit, Load]:
     bus._emt_model = bus_template.block
 
     generator: Generator = Generator(name="Gen0", P=0.0, vset=1.0, Snom=900.0, x1=0.2, r1=0.01)
-    generator_template = get_generator_thevenin_rl_emt_template(grid=grid, gen=generator, name="emt_thevenin_source")
+    generator_template = get_generator_thevenin_rl_emt_template_with_ref(grid=grid, gen=generator, name="emt_thevenin_source")
 
     # The public setter still serializes through external mappings with `None` placeholders, so we attach directly.
     generator._emt_template = generator_template

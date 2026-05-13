@@ -18,7 +18,7 @@ from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.Emt.dc_line_emt_template import get_dc_line_emt_template
 from VeraGridEngine.Templates.Emt.dc_load_emt_template import get_dc_load_emt_template
 from VeraGridEngine.Templates.Emt.converter_emt_template import get_emt_ideal_converter
-from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
+from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template_with_ref
 from VeraGridEngine.Templates.Emt.valve_emt_template import get_valve_emt_template
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
 from VeraGridEngine.Utils.procedural_logic import build_boundary_updater_from_block
@@ -615,7 +615,7 @@ def _assign_dc_line_runtime_models(grid: gce.MultiCircuit, generator: gce.Genera
     :param dc_load: DC load.
     :return: None.
     """
-    generator_model = get_generator_thevenin_rl_emt_template(vf=grid.var_factory).block
+    generator_model = get_generator_thevenin_rl_emt_template_with_ref(vf=grid.var_factory).block
     vsc_model = get_emt_ideal_converter(vf=grid.var_factory, name=vsc.name).block
     dc_line_model = get_dc_line_emt_template(vf=grid.var_factory, name=dc_branch.name).block
     dc_load_model = get_dc_load_emt_template(vf=grid.var_factory, name="dc_load_runtime_case").block
@@ -638,7 +638,7 @@ def _assign_valve_runtime_models(grid: gce.MultiCircuit, generator: gce.Generato
     :param dc_load: DC load.
     :return: None.
     """
-    generator_model = get_generator_thevenin_rl_emt_template(vf=grid.var_factory).block
+    generator_model = get_generator_thevenin_rl_emt_template_with_ref(vf=grid.var_factory).block
     vsc_model = get_emt_ideal_converter(vf=grid.var_factory, name=vsc.name).block
     valve_model = get_valve_emt_template(
         vf=grid.var_factory,
@@ -1105,7 +1105,7 @@ def test_valve_template_initializes_mode_from_dc_power_flow_seed() -> None:
 
     pf_results, pf_results_3ph = _run_power_flow(grid)
 
-    gen_mdl = get_generator_thevenin_rl_emt_template(vf=grid.var_factory).block
+    gen_mdl = get_generator_thevenin_rl_emt_template_with_ref(vf=grid.var_factory).block
     vsc_mdl = get_emt_ideal_converter(vf=grid.var_factory, name=vsc.name).block
     valve_mdl = get_valve_emt_template(
         vf=grid.var_factory,

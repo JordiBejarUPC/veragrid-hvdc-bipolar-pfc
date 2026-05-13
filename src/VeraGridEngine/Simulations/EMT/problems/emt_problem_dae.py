@@ -1291,7 +1291,13 @@ class EmtProblemDae(EmtProblemTemplate):
                 params_offset=0,
             )
 
-        self._runtime_parameter_eqs0 = list(self._runtime_all_eqs_source)
+        # The retained runtime snapshot must follow the finalized flat runtime
+        # vector order, not the original block-discovery order. Bergeron history
+        # parameters are classified as retained mode parameters and moved to the
+        # tail of the runtime vector, so preserving the already partitioned event
+        # equation list keeps later event-group activation aligned with
+        # ``uid2idx_event_params``.
+        self._runtime_parameter_eqs0 = list(self._event_parameters_eqs)
         finalize_emt_fmu_cs_devices(self)
         finalize_emt_fmu_me_devices(self)
         from VeraGridEngine.Utils.procedural_logic import build_boundary_updater_from_block
@@ -3149,6 +3155,7 @@ class EmtProblemDae(EmtProblemTemplate):
                     bus_index=b,
                     seed_store=seed_store,
                     injection_index=injection_index,
+                    generator_count_same_bus=int(generator_count_same_bus[b]),
                 )
 
             if inj.device_type == DeviceType.GeneratorDevice and not inj.bus.is_dc:
@@ -3438,18 +3445,20 @@ class EmtProblemDae(EmtProblemTemplate):
         self._runtime_continuous_eqs = list()
         self._runtime_mode_eqs = list()
 
-        n_source: int = len(self._runtime_all_parameters_source)
-        i: int = 0
-        while i < n_source:
-            parameter: Var = self._runtime_all_parameters_source[i]
-            equation: Any = active_runtime_eqs[i]
+        # ``active_runtime_eqs`` is already expressed in the flat runtime-vector
+        # order used by ``uid2idx_event_params`` and by the solver runtime buffer.
+        # Re-splitting it through ``_runtime_all_parameters_source`` would switch
+        # back to source-block order and scramble retained mode parameters such as
+        # Bergeron history terms. The slices keep the continuous/mode partition
+        # aligned with the finalized flat parameter layout.
+        runtime_continuous_eqs: List[Any] = list(active_runtime_eqs[self._runtime_continuous_slice])
+        runtime_mode_eqs: List[Any] = list(active_runtime_eqs[self._runtime_mode_slice])
 
-            if parameter.uid in self._runtime_mode_uids:
-                self._runtime_mode_eqs.append(equation)
-            else:
-                self._runtime_continuous_eqs.append(equation)
+        for equation in runtime_continuous_eqs:
+            self._runtime_continuous_eqs.append(equation)
 
-            i += 1
+        for equation in runtime_mode_eqs:
+            self._runtime_mode_eqs.append(equation)
 
         self._event_parameters_eqs = list()
 
@@ -4098,6 +4107,7 @@ class EmtProblemDae(EmtProblemTemplate):
             bus_index: int,
             seed_store: EmtInjectionSeedStore,
             injection_index: int,
+            generator_count_same_bus: int,
     ) -> None:
         """
         Apply the precomputed PF seed of one injection into the EMT model.
@@ -4145,11 +4155,18 @@ class EmtProblemDae(EmtProblemTemplate):
                     )
         else:
             phase_power: np.ndarray = seed_store.get_ac_seed(injection_index)
+            phase_current_vector: np.ndarray = np.zeros(4, dtype=np.complex128)
+            preserve_generator_current_seed: bool
 
             if self.power_flow_results_3ph is None:
                 voltage_vector: np.ndarray = self._get_bus_voltage_vector_balanced(bus_index)
             else:
                 voltage_vector = self._get_bus_voltage_vector_3ph(bus_index)
+
+            if injection.device_type == DeviceType.GeneratorDevice and generator_count_same_bus <= 1:
+                preserve_generator_current_seed = False
+            else:
+                preserve_generator_current_seed = True
 
             phase_index: int = 0
             p_total: float = 0.0
@@ -4183,13 +4200,14 @@ class EmtProblemDae(EmtProblemTemplate):
                 else:
                     phase_current = 0.0 + 0.0j
 
+                phase_current_vector[phase_index] = phase_current
                 current_instantaneous: float = float(np.sqrt(2.0) * np.imag(phase_current))
 
                 self.set_if_exists(
                     mdl=mdl,
                     key=current_keys[phase_index],
                     value=current_instantaneous,
-                    persist_after_native_init=True,
+                    persist_after_native_init=preserve_generator_current_seed,
                 )
                 self.set_if_exists(
                     mdl=mdl,
@@ -4205,6 +4223,19 @@ class EmtProblemDae(EmtProblemTemplate):
                 p_total += float(np.real(phase_complex_power))
                 q_total += float(np.imag(phase_complex_power))
                 phase_index += 1
+
+            if injection.device_type == DeviceType.GeneratorDevice:
+                self._set_vsc_pf_positive_sequence(
+                    mdl=mdl,
+                    VA=complex(voltage_vector[1]),
+                    VB=complex(voltage_vector[2]),
+                    VC=complex(voltage_vector[3]),
+                    IA=complex(phase_current_vector[1]),
+                    IB=complex(phase_current_vector[2]),
+                    IC=complex(phase_current_vector[3]),
+                )
+            else:
+                pass
 
             neutral_var = _get_external_mapping_var_if_present(
                 mdl=mdl,
@@ -4232,7 +4263,7 @@ class EmtProblemDae(EmtProblemTemplate):
             # The Thevenin generator templates reconstruct an internal balanced emf
             # from the PF seed. Those internal variables are not externally mapped,
             # so they must be preserved explicitly across the later native-init pass.
-            if injection.device_type == DeviceType.GeneratorDevice:
+            if injection.device_type == DeviceType.GeneratorDevice and generator_count_same_bus > 1:
                 self._seed_thevenin_internal_emf_from_pf(
                     injection=injection,
                     mdl=mdl,
@@ -5220,6 +5251,8 @@ class EmtProblemDae(EmtProblemTemplate):
         st_sum: complex = 0.0 + 0.0j
         from_phase_currents: Dict[str, complex] = dict()
         to_phase_currents: Dict[str, complex] = dict()
+        from_phase_currents_inst: Dict[str, float] = dict()
+        to_phase_currents_inst: Dict[str, float] = dict()
 
         for ph in phases:
             sf_key: Optional[VarPowerFlowRefferenceType] = sf_key_dict[ph]
@@ -5306,11 +5339,13 @@ class EmtProblemDae(EmtProblemTemplate):
                 if ph in {"A", "B", "C"}:
                     from_phase_currents[ph] = complex(i_f)
                     to_phase_currents[ph] = complex(i_t)
+                    from_phase_currents_inst[ph] = float(i_f0)
+                    to_phase_currents_inst[ph] = float(i_t0)
                 else:
                     pass
 
-                self.set_if_exists(mdl=mdl, key=if_key, value=float(i_f0), persist_after_native_init=True)
-                self.set_if_exists(mdl=mdl, key=it_key, value=float(i_t0), persist_after_native_init=True)
+                self.set_if_exists(mdl=mdl, key=if_key, value=float(i_f0), persist_after_native_init=False)
+                self.set_if_exists(mdl=mdl, key=it_key, value=float(i_t0), persist_after_native_init=False)
             else:
                 pass
 
@@ -5318,11 +5353,7 @@ class EmtProblemDae(EmtProblemTemplate):
         if neutral_if_var is not None:
             i_f_neutral = -(from_phase_currents.get("A", 0.0 + 0.0j) + from_phase_currents.get("B", 0.0 + 0.0j) + from_phase_currents.get("C", 0.0 + 0.0j))
             neutral_value = float(np.sqrt(2.0) * np.imag(i_f_neutral))
-            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.if_N, value=neutral_value, persist_after_native_init=True)
-            if neutral_if_var is not None:
-                self._temp_post_init_guess[neutral_if_var.uid] = neutral_value
-            else:
-                pass
+            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.if_N, value=neutral_value, persist_after_native_init=False)
         else:
             pass
 
@@ -5330,13 +5361,24 @@ class EmtProblemDae(EmtProblemTemplate):
         if neutral_it_var is not None:
             i_t_neutral = -(to_phase_currents.get("A", 0.0 + 0.0j) + to_phase_currents.get("B", 0.0 + 0.0j) + to_phase_currents.get("C", 0.0 + 0.0j))
             neutral_value = float(np.sqrt(2.0) * np.imag(i_t_neutral))
-            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.it_N, value=neutral_value, persist_after_native_init=True)
-            if neutral_it_var is not None:
-                self._temp_post_init_guess[neutral_it_var.uid] = neutral_value
-            else:
-                pass
+            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.it_N, value=neutral_value, persist_after_native_init=False)
         else:
             pass
+
+        if find_name_in_block(f"i_f_A_{mdl.name}", mdl) is not None:
+            self.set_internal_init_if_exists(mdl, f"i_f_A_{mdl.name}", from_phase_currents_inst.get("A", 0.0))
+            self.set_internal_init_if_exists(mdl, f"i_f_B_{mdl.name}", from_phase_currents_inst.get("B", 0.0))
+            self.set_internal_init_if_exists(mdl, f"i_f_C_{mdl.name}", from_phase_currents_inst.get("C", 0.0))
+            self.set_internal_init_if_exists(mdl, f"i_t_A_{mdl.name}", to_phase_currents_inst.get("A", 0.0))
+            self.set_internal_init_if_exists(mdl, f"i_t_B_{mdl.name}", to_phase_currents_inst.get("B", 0.0))
+            self.set_internal_init_if_exists(mdl, f"i_t_C_{mdl.name}", to_phase_currents_inst.get("C", 0.0))
+        else:
+            if find_name_in_block(f"i_ser_A_{mdl.name}", mdl) is not None:
+                self.set_internal_init_if_exists(mdl, f"i_ser_A_{mdl.name}", from_phase_currents_inst.get("A", 0.0))
+                self.set_internal_init_if_exists(mdl, f"i_ser_B_{mdl.name}", from_phase_currents_inst.get("B", 0.0))
+                self.set_internal_init_if_exists(mdl, f"i_ser_C_{mdl.name}", from_phase_currents_inst.get("C", 0.0))
+            else:
+                pass
 
         omega_base: float = 2.0 * np.pi * self.grid.fBase
         for ph in phases:
@@ -5611,8 +5653,8 @@ class EmtProblemDae(EmtProblemTemplate):
                 else:
                     pass
 
-                self.set_if_exists(mdl=mdl, key=if_key, value=float(i_f0), persist_after_native_init=True)
-                self.set_if_exists(mdl=mdl, key=it_key, value=float(i_t0), persist_after_native_init=True)
+                self.set_if_exists(mdl=mdl, key=if_key, value=float(i_f0), persist_after_native_init=False)
+                self.set_if_exists(mdl=mdl, key=it_key, value=float(i_t0), persist_after_native_init=False)
             else:
                 pass
 
@@ -5620,11 +5662,7 @@ class EmtProblemDae(EmtProblemTemplate):
         if neutral_if_var is not None:
             i_f_neutral = -(from_phase_currents.get("A", 0.0 + 0.0j) + from_phase_currents.get("B", 0.0 + 0.0j) + from_phase_currents.get("C", 0.0 + 0.0j))
             neutral_value = float(np.sqrt(2.0) * np.imag(i_f_neutral))
-            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.if_N, value=neutral_value, persist_after_native_init=True)
-            if neutral_if_var is not None:
-                self._temp_post_init_guess[neutral_if_var.uid] = neutral_value
-            else:
-                pass
+            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.if_N, value=neutral_value, persist_after_native_init=False)
         else:
             pass
 
@@ -5632,11 +5670,7 @@ class EmtProblemDae(EmtProblemTemplate):
         if neutral_it_var is not None:
             i_t_neutral = -(to_phase_currents.get("A", 0.0 + 0.0j) + to_phase_currents.get("B", 0.0 + 0.0j) + to_phase_currents.get("C", 0.0 + 0.0j))
             neutral_value = float(np.sqrt(2.0) * np.imag(i_t_neutral))
-            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.it_N, value=neutral_value, persist_after_native_init=True)
-            if neutral_it_var is not None:
-                self._temp_post_init_guess[neutral_it_var.uid] = neutral_value
-            else:
-                pass
+            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.it_N, value=neutral_value, persist_after_native_init=False)
         else:
             pass
 
