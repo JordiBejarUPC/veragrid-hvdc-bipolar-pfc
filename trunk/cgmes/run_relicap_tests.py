@@ -14,6 +14,7 @@ except Exception:
 from VeraGridEngine.IO.cim.cgmes.cgmes_circuit import CgmesCircuit
 from VeraGridEngine.IO.cim.cgmes.cgmes_data_parser import CgmesDataParser
 from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType
+from VeraGridEngine.IO.file_save import FileSave, FileSavingOptions
 from VeraGridEngine.IO.file_open import open_cgmes
 from VeraGridEngine.__version__ import __VeraGridEngine_VERSION__
 from VeraGridEngine.data_logger import DataLogger
@@ -99,13 +100,59 @@ def export_veragrid_model_to_cgmes_v3(grid: object, model_name: str) -> str | No
     model_token: str = sanitize_file_token(raw_value=model_name)
     output_zip_path: str = os.path.join(output_dir, f"{model_token}_veragrid_to_cgmes_v3.zip")
 
-    vg.save_cgmes_file(
-        grid=grid,
-        filename=output_zip_path,
-        cgmes_boundary_set_path=boundary_zip_path,
-        cgmes_version=vg.CGMESVersions.v3_0_0,
-        pf_results=None,
-    )
+    save_options: FileSavingOptions = FileSavingOptions(file_type=vg.FileType.CGMES)
+    save_options.cgmes_version = vg.CGMESVersions.v3_0_0
+    save_options.cgmes_boundary_set = boundary_zip_path
+    save_options.cgmes_one_file_per_profile = False
+    save_options.cgmes_profiles = list([
+        CgmesProfileType.EQ,
+        CgmesProfileType.OP,
+        CgmesProfileType.SC,
+        CgmesProfileType.TP,
+        CgmesProfileType.SSH,
+        CgmesProfileType.SV,
+        CgmesProfileType.GL,
+        CgmesProfileType.CO,
+    ])
+
+    save_handler: FileSave = FileSave(circuit=grid, file_name=output_zip_path, options=save_options)
+    save_handler.save()
+
+    expected_profile_tokens: list[str] = list([
+        "EQ",
+        "OP",
+        "SC",
+        "TP",
+        "SSH",
+        "SV",
+        "GL",
+        "CO",
+    ])
+    with zipfile.ZipFile(output_zip_path, mode="r") as zip_file:
+        exported_names: set[str] = set(zip_file.namelist())
+    missing_files: list[str] = list()
+    expected_token: str
+    for expected_token in expected_profile_tokens:
+        found_profile: bool = False
+        exported_name: str
+        for exported_name in exported_names:
+            profile_tag_a: str = f"_{expected_token}_"
+            profile_tag_b: str = f"_{expected_token}_v3.xml"
+            if profile_tag_a in exported_name and exported_name.endswith(".xml"):
+                found_profile = True
+            elif exported_name.endswith(profile_tag_b):
+                found_profile = True
+            else:
+                pass
+        if found_profile:
+            pass
+        else:
+            missing_files.append(expected_token)
+    if len(missing_files) > 0:
+        raise AssertionError(
+            "Incomplete CGMES export, missing profiles: " + ", ".join(missing_files)
+        )
+
     return output_zip_path
 
 
@@ -531,10 +578,7 @@ def run_test_model_power_flows() -> tuple[list[PowerFlowModelResult], list[Model
                     )
                 else:
                     result = vg.power_flow(grid, pf_options)
-                    try:
-                        export_veragrid_model_to_cgmes_v3(grid=grid, model_name=model_name)
-                    except Exception:
-                        pass
+                    export_veragrid_model_to_cgmes_v3(grid=grid, model_name=model_name)
                     rows.append(
                         PowerFlowModelResult(
                             model_name=model_name,
