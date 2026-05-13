@@ -1,6 +1,6 @@
 # ReliCapGrid CGMES Loading Log Statistics for VeraGrid 6.0.12
 
-- Generated: `2026-05-13 11:39:18 UTC`
+- Generated: `2026-05-13 13:45:05 UTC`
 - Script: `/home/santi/Git/eRoots/VeraGrid/trunk/cgmes/run_relicap_tests.py`
 - Relicap base folder: `/home/santi/Git/GitHub/relicapgrid/Instance`
 
