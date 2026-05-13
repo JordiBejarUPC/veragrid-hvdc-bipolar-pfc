@@ -63,7 +63,7 @@ def get_battery_avm_emt_template(vf: VarFactory, name: str) -> EmtModelTemplate:
     :return: Battery-side EMT template.
     """
     templ = EmtModelTemplate()
-    templ.tpe = DeviceType.BatteryDevice  # TODO: not sure if VSC or PV/BESS if exists
+    templ.tpe = DeviceType.BatteryDevice
     templ.name = name
     templ.block.name = name
     # ------------------------------------------------------------------

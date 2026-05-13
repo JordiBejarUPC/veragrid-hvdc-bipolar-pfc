@@ -471,17 +471,6 @@ def build_power_flow_options() -> PowerFlowOptions:
         orthogonalize_controls=False,
     )
 
-
-def run_power_flow(grid: gce.MultiCircuit) -> PowerFlowResults:
-    """
-    Run the balanced power flow used by the EMT initializer.
-
-    :param grid: VeraGrid circuit.
-    :return: Power-flow results.
-    """
-    return gce.power_flow(grid=grid, options=build_power_flow_options())
-
-
 def build_power_flow_options_3ph() -> PowerFlowOptions:
     """
     Create the 3-phase PF options used to seed branch EMT initialization.
@@ -1042,7 +1031,7 @@ def run_case(case: BessCase) -> tuple[np.ndarray, BessPlotData]:
     :return: Time vector and signal dictionary.
     """
     objects: BessRunObjects = build_grid(case)
-    pf_results: PowerFlowResults = run_power_flow(objects.grid)
+    pf_results: PowerFlowResults = gce.power_flow(grid=objects.grid, options=build_power_flow_options())
 
     print("\n" + "=" * 80)
     print(f"Balanced power flow results | case = {case.name}")
