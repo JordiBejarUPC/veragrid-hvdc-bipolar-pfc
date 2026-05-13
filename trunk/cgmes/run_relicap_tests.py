@@ -18,6 +18,8 @@ from VeraGridEngine.IO.file_open import open_cgmes
 from VeraGridEngine.__version__ import __VeraGridEngine_VERSION__
 from VeraGridEngine.data_logger import DataLogger
 from VeraGridEngine.enumerations import CGMESVersions
+from run_relicap_grids import FOLDER as RELICAP_FOLDER
+from run_relicap_grids import SUBFOLDERS as RELICAP_SUBFOLDERS
 
 try:
     import VeraGridEngine as vg
@@ -26,31 +28,9 @@ except Exception:
 
 
 SCRIPT_DIR: str = os.path.dirname(os.path.abspath(__file__))
-FOLDER: str = "/home/santi/Git/GitHub/relicapgrid/Instance"
+FOLDER: str = RELICAP_FOLDER
 PACKAGE_DIR: str = os.path.join(SCRIPT_DIR, "packages")
-
-
-def discover_case_files_from_packages(package_dir: str) -> dict[str, list[str]]:
-    """Discover Relicap case inputs from local case ZIP packages.
-
-    :param package_dir: Directory containing one ZIP per case.
-    :return: Mapping of case name to list of input files.
-    """
-    case_files: dict[str, list[str]] = dict()
-    if os.path.isdir(package_dir):
-        for file_name in sorted(os.listdir(package_dir)):
-            if file_name.lower().endswith(".zip"):
-                case_name: str = file_name[:-4]
-                case_path: str = os.path.join(package_dir, file_name)
-                case_files[case_name] = [case_path]
-            else:
-                pass
-    else:
-        pass
-    return case_files
-
-
-SUBFOLDERS: dict[str, list[str]] = discover_case_files_from_packages(PACKAGE_DIR)
+SUBFOLDERS: dict[str, list[str]] = dict(RELICAP_SUBFOLDERS)
 
 
 def create_case_package(case_name: str,
@@ -94,6 +74,39 @@ def create_case_package(case_name: str,
                 zip_file.write(normalized_path, archive_name)
 
     return zip_path
+
+
+def export_veragrid_model_to_cgmes_v3(grid: object, model_name: str) -> str | None:
+    """Export one VeraGrid model to CGMES 3.0 zip.
+
+    :param grid: VeraGrid MultiCircuit.
+    :param model_name: Model case name.
+    :return: Exported ZIP path or None if export cannot run.
+    """
+    if vg is None:
+        return None
+    else:
+        pass
+
+    boundary_zip_path: str = os.path.join(SCRIPT_DIR, "19700101T0000Z_.zip")
+    if os.path.isfile(boundary_zip_path):
+        pass
+    else:
+        return None
+
+    output_dir: str = os.path.join(SCRIPT_DIR, "test_outputs")
+    os.makedirs(output_dir, exist_ok=True)
+    model_token: str = sanitize_file_token(raw_value=model_name)
+    output_zip_path: str = os.path.join(output_dir, f"{model_token}_veragrid_to_cgmes_v3.zip")
+
+    vg.save_cgmes_file(
+        grid=grid,
+        filename=output_zip_path,
+        cgmes_boundary_set_path=boundary_zip_path,
+        cgmes_version=vg.CGMESVersions.v3_0_0,
+        pf_results=None,
+    )
+    return output_zip_path
 
 
 def sanitize_file_token(raw_value: str) -> str:
@@ -497,7 +510,6 @@ def run_test_model_power_flows() -> tuple[list[PowerFlowModelResult], list[Model
             handler = None
             log_stats_added: bool = False
             try:
-                create_case_package(case_name=model_name, file_paths=existing_files)
                 handler = vg.FileOpen(
                     file_name=existing_files,
                     options=vg.FileOpenOptions(
@@ -519,6 +531,10 @@ def run_test_model_power_flows() -> tuple[list[PowerFlowModelResult], list[Model
                     )
                 else:
                     result = vg.power_flow(grid, pf_options)
+                    try:
+                        export_veragrid_model_to_cgmes_v3(grid=grid, model_name=model_name)
+                    except Exception:
+                        pass
                     rows.append(
                         PowerFlowModelResult(
                             model_name=model_name,
