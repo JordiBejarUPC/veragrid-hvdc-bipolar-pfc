@@ -1111,35 +1111,128 @@ def _initialize_editor_assigned_rms_bus_model(bus: Bus, var_factory: VarFactory)
         pass
 
 
+def _build_editor_assigned_emt_bus_mask(bus: Bus,
+                                        api_object: Any,
+                                        editor_interface_refs: set[VarPowerFlowRefferenceType]) -> list[bool] | None:
+    """
+    Build the EMT AC phase mask implied by the current editor interface.
+
+    The algorithm uses the edited root-interface references as the source of
+    truth because those references reflect which ports the user kept before
+    pressing apply. The bus argument is then matched against the edited device
+    so the correct side-specific mask can be extracted.
+
+    :param bus: Connected bus that may need an EMT shell.
+    :param api_object: Edited concrete device that owns the interface.
+    :param editor_interface_refs: References that still exist in the editor.
+    :return: Phase mask ordered as ``[N, A, B, C]`` when the interface can be mapped to the bus, else ``None``.
+    """
+    mask: list[bool] | None = None
+
+    # Injection devices expose one bus interface, so the edited references map
+    # directly to that single connected bus.
+    if isinstance(api_object, InjectionParent):
+        if api_object.bus is bus:
+            mask = list([False, False, False, False])
+            mask[0] = VarPowerFlowRefferenceType.v_N in editor_interface_refs or VarPowerFlowRefferenceType.i_N in editor_interface_refs
+            mask[1] = VarPowerFlowRefferenceType.v_A in editor_interface_refs or VarPowerFlowRefferenceType.i_A in editor_interface_refs
+            mask[2] = VarPowerFlowRefferenceType.v_B in editor_interface_refs or VarPowerFlowRefferenceType.i_B in editor_interface_refs
+            mask[3] = VarPowerFlowRefferenceType.v_C in editor_interface_refs or VarPowerFlowRefferenceType.i_C in editor_interface_refs
+        else:
+            mask = None
+    else:
+        # Branch devices expose two side-specific interfaces, so the edited bus
+        # must first be matched against the from or to side before the mask is
+        # evaluated from the remaining references.
+        if isinstance(api_object, BranchParent):
+            if api_object.bus_from is bus:
+                mask = list([False, False, False, False])
+                mask[0] = VarPowerFlowRefferenceType.vf_N in editor_interface_refs or VarPowerFlowRefferenceType.if_N in editor_interface_refs
+                mask[1] = VarPowerFlowRefferenceType.vf_A in editor_interface_refs or VarPowerFlowRefferenceType.if_A in editor_interface_refs
+                mask[2] = VarPowerFlowRefferenceType.vf_B in editor_interface_refs or VarPowerFlowRefferenceType.if_B in editor_interface_refs
+                mask[3] = VarPowerFlowRefferenceType.vf_C in editor_interface_refs or VarPowerFlowRefferenceType.if_C in editor_interface_refs
+            else:
+                if api_object.bus_to is bus:
+                    mask = list([False, False, False, False])
+                    mask[0] = VarPowerFlowRefferenceType.vt_N in editor_interface_refs or VarPowerFlowRefferenceType.it_N in editor_interface_refs
+                    mask[1] = VarPowerFlowRefferenceType.vt_A in editor_interface_refs or VarPowerFlowRefferenceType.it_A in editor_interface_refs
+                    mask[2] = VarPowerFlowRefferenceType.vt_B in editor_interface_refs or VarPowerFlowRefferenceType.it_B in editor_interface_refs
+                    mask[3] = VarPowerFlowRefferenceType.vt_C in editor_interface_refs or VarPowerFlowRefferenceType.it_C in editor_interface_refs
+                else:
+                    mask = None
+        else:
+            mask = None
+
+    return mask
+
+
 def _initialize_editor_assigned_emt_bus_model(bus: Bus,
+                                              api_object: Any,
                                               circuit: MultiCircuit | None,
-                                              var_factory: VarFactory) -> None:
+                                              var_factory: VarFactory,
+                                              editor_interface_refs: set[VarPowerFlowRefferenceType] | None = None) -> None:
     """
     Initialize one missing EMT bus shell after assigning one editor-built device model.
 
     :param bus: Connected bus.
+    :param api_object: Edited concrete device that owns the current interface.
     :param circuit: Owning circuit when available.
     :param var_factory: Shared symbolic variable factory.
+    :param editor_interface_refs: References still exposed by the current editor interface.
     :return: None.
     """
     if bus.emt_model.empty():
-        if circuit is not None:
-            get_bus_emt_template(grid=circuit, bus=bus)
+        # Editor-driven assignments must preserve the phase ports that the user
+        # kept in the GUI instead of falling back to a hardcoded AC shell.
+        if editor_interface_refs is not None:
+            mask: list[bool] | None = _build_editor_assigned_emt_bus_mask(bus=bus,
+                                                                          api_object=api_object,
+                                                                          editor_interface_refs=editor_interface_refs)
         else:
+            mask = None
+
+        # When a dynamic editor mask is available, use it directly because it
+        # reflects the final saved interface. Otherwise preserve the previous
+        # circuit-derived or default initialization path.
+        if mask is not None:
             if bus.is_dc:
                 bus.emt_model = BusEmtTemplate(
                     vf=var_factory,
-                    mask=[False, False, False, False],
+                    mask=list([False, False, False, False]),
                     is_dc=True,
                     name=f"{bus.name}_emt_template",
                 ).block
             else:
-                bus.emt_model = BusEmtTemplate(
-                    vf=var_factory,
-                    mask=[False, True, True, True],
-                    is_dc=False,
-                    name=f"{bus.name}_emt_template",
-                ).block
+                if any(mask):
+                    bus.emt_model = BusEmtTemplate(
+                        vf=var_factory,
+                        mask=mask,
+                        is_dc=False,
+                        name=f"{bus.name}_emt_template",
+                    ).block
+                else:
+                    # A fully removed AC interface cannot define an EMT bus
+                    # shell, so this state is left untouched instead of forcing
+                    # an invalid template or throwing from here.
+                    pass
+        else:
+            if circuit is not None:
+                get_bus_emt_template(grid=circuit, bus=bus)
+            else:
+                if bus.is_dc:
+                    bus.emt_model = BusEmtTemplate(
+                        vf=var_factory,
+                        mask=list([False, False, False, False]),
+                        is_dc=True,
+                        name=f"{bus.name}_emt_template",
+                    ).block
+                else:
+                    bus.emt_model = BusEmtTemplate(
+                        vf=var_factory,
+                        mask=list([False, True, True, True]),
+                        is_dc=False,
+                        name=f"{bus.name}_emt_template",
+                    ).block
     else:
         pass
 
@@ -1147,7 +1240,8 @@ def _initialize_editor_assigned_emt_bus_model(bus: Bus,
 def initialize_connected_bus_models_for_editor_assignment(api_object: Any,
                                                           circuit: MultiCircuit | None,
                                                           var_factory: VarFactory,
-                                                          mode: DynamicSimulationMode) -> None:
+                                                          mode: DynamicSimulationMode,
+                                                          editor_interface_refs: set[VarPowerFlowRefferenceType] | None = None) -> None:
     """
     Initialize missing connected bus models right after one Dynamic Editor assignment.
 
@@ -1155,6 +1249,7 @@ def initialize_connected_bus_models_for_editor_assignment(api_object: Any,
     :param circuit: Owning circuit when available.
     :param var_factory: Shared symbolic variable factory.
     :param mode: Dynamic simulation domain being edited.
+    :param editor_interface_refs: References still exposed by the current editor interface.
     :return: None.
     """
     if isinstance(api_object, InjectionParent):
@@ -1166,7 +1261,11 @@ def initialize_connected_bus_models_for_editor_assignment(api_object: Any,
                 _initialize_editor_assigned_rms_bus_model(bus=bus, var_factory=var_factory)
             else:
                 if mode == DynamicSimulationMode.EMT:
-                    _initialize_editor_assigned_emt_bus_model(bus=bus, circuit=circuit, var_factory=var_factory)
+                    _initialize_editor_assigned_emt_bus_model(bus=bus,
+                                                              api_object=api_object,
+                                                              circuit=circuit,
+                                                              var_factory=var_factory,
+                                                              editor_interface_refs=editor_interface_refs)
                 else:
                     raise ValueError(f"Unsupported dynamic editor mode {mode}")
     else:
@@ -1177,11 +1276,15 @@ def initialize_connected_bus_models_for_editor_assignment(api_object: Any,
             else:
                 if mode == DynamicSimulationMode.EMT:
                     _initialize_editor_assigned_emt_bus_model(bus=api_object.bus_from,
+                                                              api_object=api_object,
                                                               circuit=circuit,
-                                                              var_factory=var_factory)
+                                                              var_factory=var_factory,
+                                                              editor_interface_refs=editor_interface_refs)
                     _initialize_editor_assigned_emt_bus_model(bus=api_object.bus_to,
+                                                              api_object=api_object,
                                                               circuit=circuit,
-                                                              var_factory=var_factory)
+                                                              var_factory=var_factory,
+                                                              editor_interface_refs=editor_interface_refs)
                 else:
                     raise ValueError(f"Unsupported dynamic editor mode {mode}")
         else:
@@ -11432,7 +11535,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
 
         elif self.mode == DynamicSimulationMode.EMT:
-
             if self.api_object.emt_template is not None:
                 self.api_object.emt_template = None
             else:
@@ -11443,10 +11545,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             bus_models_synchronised: bool = self._sync_emt_bus_models_from_current_interface()
             if bus_models_synchronised:
                 copy_block_state(source_block=self.main_block, target_block=self.original_block)
-                initialize_connected_bus_models_for_editor_assignment(api_object=self.api_object,
-                                                                      circuit=self.circuit,
-                                                                      var_factory=self.var_factory,
-                                                                      mode=self.mode)
                 self.has_unapplied_changes = False
                 self.changes_applied = True
                 self.dirtyStateChanged.emit(False)
