@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import re
 import sys
+import zipfile
 from datetime import datetime, timezone
 from typing import Callable
 
@@ -24,6 +25,49 @@ try:
     import VeraGridEngine as vg
 except Exception:
     vg = None
+
+
+def sanitize_file_token(raw_value: str) -> str:
+    """Build a filesystem-safe token for output file names.
+
+    :param raw_value: Raw text token.
+    :return: Sanitized token.
+    """
+    sanitized_value: str = re.sub(r"[^A-Za-z0-9_.-]+", "_", raw_value)
+    if len(sanitized_value) > 0:
+        return sanitized_value
+    else:
+        return "co_export"
+
+
+def export_co_profile_to_test_zip(model: CgmesCircuit, export_tag: str) -> str:
+    """Export the CO profile to a test output zip file.
+
+    :param model: Parsed CGMES circuit.
+    :param export_tag: Tag used in output file naming.
+    :return: Absolute path to the created zip file.
+    :raises AssertionError: If CO profile export is unavailable.
+    """
+    # Build the CO XML document from the loaded CGMES model.
+    model_xml: dict[CgmesProfileType, str] = model.get_model_xml(profiles=[CgmesProfileType.CO])
+    co_xml: str | None = model_xml.get(CgmesProfileType.CO, None)
+    if isinstance(co_xml, str):
+        pass
+    else:
+        raise AssertionError("CO profile export not available")
+
+    # Place exported test artifacts under trunk/cgmes/test_outputs.
+    script_dir: str = os.path.dirname(os.path.abspath(__file__))
+    output_dir: str = os.path.join(script_dir, "test_outputs")
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Write one zip per contingency-row export.
+    sanitized_tag: str = sanitize_file_token(raw_value=export_tag)
+    zip_path: str = os.path.join(output_dir, f"{sanitized_tag}_CO_export.zip")
+    with zipfile.ZipFile(zip_path, mode="w", compression=zipfile.ZIP_DEFLATED) as zip_file:
+        zip_file.writestr("CO_profile.xml", co_xml)
+
+    return zip_path
 
 
 class TestResult:
@@ -593,19 +637,35 @@ def check_contingency_row(loader: RelicapLoader, eq_ids: list[str], co_ids: list
     else:
         execution_message = "execution check not run because VeraGridEngine.api dependency is unavailable"
 
-    # Export CO profile and confirm CO row IDs are present.
-    model_xml: dict[CgmesProfileType, str] = model.get_model_xml(profiles=[CgmesProfileType.CO])
-    co_xml: str | None = model_xml.get(CgmesProfileType.CO, None)
-    if isinstance(co_xml, str):
+    # Export CO profile to a zip output and confirm IDs are present in the exported XML.
+    export_tag_source: str = ""
+    if len(co_ids) > 0:
+        export_tag_source = co_ids[0]
+    else:
+        if len(eq_ids) > 0:
+            export_tag_source = eq_ids[0]
+        else:
+            export_tag_source = "co_row"
+
+    exported_zip_path: str = export_co_profile_to_test_zip(model=model, export_tag=export_tag_source)
+    if os.path.isfile(exported_zip_path):
         pass
     else:
-        raise AssertionError("CO profile export not available")
+        raise AssertionError(f"CO profile export zip not created: {exported_zip_path}")
+
+    with zipfile.ZipFile(exported_zip_path, mode="r") as zip_file:
+        co_xml_raw: bytes = zip_file.read("CO_profile.xml")
+    co_xml: str = co_xml_raw.decode("utf-8")
+
     for co_id in co_ids:
         if co_id in co_xml:
             pass
         else:
             raise AssertionError(f"export check failed; CO ID missing from export: {co_id}")
-    return f"resolved against model; {execution_message}; and CO export contains row IDs"
+    return (
+        f"resolved against model; {execution_message}; "
+        f"and CO export zip contains row IDs ({os.path.basename(exported_zip_path)})"
+    )
 
 
 def find_assessed_element(model: CgmesCircuit, object_id: str) -> object:
