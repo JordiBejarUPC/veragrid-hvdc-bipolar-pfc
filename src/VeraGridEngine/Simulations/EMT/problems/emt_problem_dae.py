@@ -2654,6 +2654,41 @@ class EmtProblemDae(EmtProblemTemplate):
         else:
             pass
 
+    @staticmethod
+    def _assign_event_mapping_value_if_present(mdl: Block,
+                                               key: ParamPowerFlowRefferenceType,
+                                               value: float,
+    ) -> None:
+        """
+        Assign one runtime/event parameter exposed through ``api_obj_mapping``.
+
+        Some higher-level EMT wrappers expose PF-derived sharing targets through
+        ``api_obj_mapping`` even though the actual parameter lives in
+        ``event_dict``. Those values must be seeded on the runtime side before
+        explicit initialization, but they must not pass through the static API
+        assignment helper.
+
+        :param mdl: EMT model block.
+        :param key: API mapping reference key.
+        :param value: Runtime value to assign.
+        :return: None.
+        """
+        api_obj_mapping: Any = mdl.api_obj_mapping
+        target: Any | None
+
+        if isinstance(api_obj_mapping, dict):
+            target = api_obj_mapping.get(key, None)
+
+            if target is None:
+                pass
+            else:
+                if target in mdl.event_dict:
+                    mdl.event_dict[target] = Const(float(value))
+                else:
+                    pass
+        else:
+            pass
+
 
     # ---------------------------------------------------------------------
     # BUILD STRUCTURE
@@ -4393,40 +4428,40 @@ class EmtProblemDae(EmtProblemTemplate):
             if _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowRefferenceType.v_N) is not None:
                 V_N = self.power_flow_results_3ph.voltage_N[bus_index]
                 v_N: float = np.sqrt(2.0) * np.imag(V_N)
-                d_v_N: float = omega_base * np.sqrt(2.0) * np.real(V_N)
+                # d_v_N: float = omega_base * np.sqrt(2.0) * np.real(V_N)
 
                 self.set_init_guess_and_preserve_post_init(mdl, VarPowerFlowRefferenceType.v_N, v_N)
-                self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_N, d_v_N)
+                # self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_N, d_v_N)
             else:
                 pass
 
             if _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowRefferenceType.v_A) is not None:
                 V_A = self.power_flow_results_3ph.voltage_A[bus_index]
                 v_A: float = np.sqrt(2.0) * np.imag(V_A)
-                d_v_A: float = omega_base * np.sqrt(2.0) * np.real(V_A)
+                # d_v_A: float = omega_base * np.sqrt(2.0) * np.real(V_A)
 
                 self.set_init_guess_and_preserve_post_init(mdl, VarPowerFlowRefferenceType.v_A, v_A)
-                self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_A, d_v_A)
+                # self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_A, d_v_A)
             else:
                 pass
 
             if _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowRefferenceType.v_B) is not None:
                 V_B = self.power_flow_results_3ph.voltage_B[bus_index]
                 v_B: float = np.sqrt(2.0) * np.imag(V_B)
-                d_v_B: float = omega_base * np.sqrt(2.0) * np.real(V_B)
+                # d_v_B: float = omega_base * np.sqrt(2.0) * np.real(V_B)
 
                 self.set_init_guess_and_preserve_post_init(mdl, VarPowerFlowRefferenceType.v_B, v_B)
-                self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_B, d_v_B)
+                # self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_B, d_v_B)
             else:
                 pass
 
             if _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowRefferenceType.v_C) is not None:
                 V_C = self.power_flow_results_3ph.voltage_C[bus_index]
                 v_C: float = np.sqrt(2.0) * np.imag(V_C)
-                d_v_C: float = omega_base * np.sqrt(2.0) * np.real(V_C)
+                # d_v_C: float = omega_base * np.sqrt(2.0) * np.real(V_C)
 
                 self.set_init_guess_and_preserve_post_init(mdl, VarPowerFlowRefferenceType.v_C, v_C)
-                self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_C, d_v_C)
+                # self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_C, d_v_C)
             else:
                 pass
 
@@ -4486,31 +4521,31 @@ class EmtProblemDae(EmtProblemTemplate):
 
             if _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowRefferenceType.v_N) is not None:
                 v_N: float = np.sqrt(2.0) * np.imag(V_N)
-                d_v_N: float = omega_base * np.sqrt(2.0) * np.real(V_N)
+                # d_v_N: float = omega_base * np.sqrt(2.0) * np.real(V_N)
 
                 self.set_init_guess_and_preserve_post_init(mdl, VarPowerFlowRefferenceType.v_N, v_N)
-                self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_N, d_v_N)
+                # self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_N, d_v_N)
 
             if _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowRefferenceType.v_A) is not None:
                 v_A: float = np.sqrt(2.0) * np.imag(V_A)
-                d_v_A: float = omega_base * np.sqrt(2.0) * np.real(V_A)
+                # d_v_A: float = omega_base * np.sqrt(2.0) * np.real(V_A)
 
                 self.set_init_guess_and_preserve_post_init(mdl, VarPowerFlowRefferenceType.v_A, v_A)
-                self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_A, d_v_A)
+                # self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_A, d_v_A)
 
             if _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowRefferenceType.v_B) is not None:
                 v_B: float = np.sqrt(2.0) * np.imag(V_B)
-                d_v_B: float = omega_base * np.sqrt(2.0) * np.real(V_B)
+                # d_v_B: float = omega_base * np.sqrt(2.0) * np.real(V_B)
 
                 self.set_init_guess_and_preserve_post_init(mdl, VarPowerFlowRefferenceType.v_B, v_B)
-                self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_B, d_v_B)
+                # self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_B, d_v_B)
 
             if _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowRefferenceType.v_C) is not None:
                 v_C: float = np.sqrt(2.0) * np.imag(V_C)
-                d_v_C: float = omega_base * np.sqrt(2.0) * np.real(V_C)
+                # d_v_C: float = omega_base * np.sqrt(2.0) * np.real(V_C)
 
                 self.set_init_guess_and_preserve_post_init(mdl, VarPowerFlowRefferenceType.v_C, v_C)
-                self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_C, d_v_C)
+                # self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_C, d_v_C)
 
     def _get_vsc_terminal_indices(self,
                                   f_bus_idx: int,
@@ -7085,9 +7120,19 @@ class EmtProblemDae(EmtProblemTemplate):
             value=p_ref_value,
             static_parameter_values_mapping=static_parameter_values_mapping,
         )
+        self._assign_event_mapping_value_if_present(
+            mdl=mdl,
+            key=ParamPowerFlowRefferenceType.generator_share_p_ref,
+            value=p_ref_value,
+        )
         self._assign_api_mapping_value_if_present(
             mdl=mdl,
             key=ParamPowerFlowRefferenceType.generator_share_q_ref,
             value=q_ref_value,
             static_parameter_values_mapping=static_parameter_values_mapping,
+        )
+        self._assign_event_mapping_value_if_present(
+            mdl=mdl,
+            key=ParamPowerFlowRefferenceType.generator_share_q_ref,
+            value=q_ref_value,
         )
