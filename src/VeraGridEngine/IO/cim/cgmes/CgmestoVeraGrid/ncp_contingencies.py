@@ -231,7 +231,11 @@ def get_gcdev_contingencies(cgmes_model: CgmesCircuit,
         if contingency_elements is None:
             pass
         else:
-            contingency_name: str = contingency_obj.name
+            contingency_name_obj: object = contingency_obj.name
+            if isinstance(contingency_name_obj, str):
+                contingency_name: str = contingency_name_obj
+            else:
+                contingency_name = ""
             if len(contingency_name) > 0:
                 pass
             else:
