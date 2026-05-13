@@ -7,25 +7,38 @@ from __future__ import annotations
 
 import os
 import sys
-from dataclasses import dataclass
-from typing import Dict, List, Tuple
+from typing import Final
 
 import matplotlib.pyplot as plt
 import numpy as np
 
-SCRIPT_DIR: str = os.path.abspath(os.path.dirname(__file__))
-REPO_ROOT: str = os.path.abspath(os.path.join(SCRIPT_DIR, "..", ".."))
-SRC_ROOT: str = os.path.join(REPO_ROOT, "src")
+def _configure_python_path() -> None:
+    """
+    Configure the import path for direct script execution.
 
-if SRC_ROOT not in sys.path:
-    sys.path.insert(0, SRC_ROOT)
-else:
-    sys.path = sys.path
+    The example script can be launched from the repository root or from the
+    ``trunk`` folder. The function therefore inserts the source folder and the
+    repository root explicitly so the complete VeraGrid package path resolves in
+    both situations.
 
-if REPO_ROOT not in sys.path:
-    sys.path.insert(0, REPO_ROOT)
-else:
-    sys.path = sys.path
+    :return: None.
+    """
+    script_dir: str = os.path.abspath(os.path.dirname(__file__))
+    repo_root: str = os.path.abspath(os.path.join(script_dir, "..", ".."))
+    src_root: str = os.path.join(repo_root, "src")
+
+    if src_root not in sys.path:
+        sys.path.insert(0, src_root)
+    else:
+        sys.path = sys.path
+
+    if repo_root not in sys.path:
+        sys.path.insert(0, repo_root)
+    else:
+        sys.path = sys.path
+
+
+_configure_python_path()
 
 import VeraGridEngine.api as gce
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
@@ -75,7 +88,6 @@ external DC bus is needed for this example.
 """
 
 
-@dataclass(frozen=True)
 class BessCase:
     """
     Container for one BESS EMT simulation case.
@@ -87,13 +99,28 @@ class BessCase:
     :param initial_soc: Initial battery state of charge in pu.
     """
 
-    name: str
-    active_power_mw: float
-    reactive_power_mvar: float
-    initial_soc: float
+    __slots__: Final[tuple[str, str, str, str]] = ("name", "active_power_mw", "reactive_power_mvar", "initial_soc")
+
+    def __init__(self, name: str, active_power_mw: float, reactive_power_mvar: float, initial_soc: float) -> None:
+        """
+        Store one simulation-case definition.
+
+        :param name: Human-readable case name.
+        :param active_power_mw: Active-power target in MW.
+        :param reactive_power_mvar: Reactive-power target in MVAr.
+        :param initial_soc: Initial SoC in pu.
+        :return: None.
+        """
+        # The case name is used to build all symbolic variable names.
+        self.name: str = name
+        # The active-power target defines whether the BESS exports or absorbs.
+        self.active_power_mw: float = active_power_mw
+        # The reactive-power target is kept explicit even for unity-power-factor runs.
+        self.reactive_power_mvar: float = reactive_power_mvar
+        # The initial state of charge seeds the battery energy state.
+        self.initial_soc: float = initial_soc
 
 
-@dataclass(frozen=True)
 class BessRunObjects:
     """
     Key objects created for one EMT case.
@@ -107,15 +134,49 @@ class BessRunObjects:
         complete BESS EMT model.
     """
 
-    grid: gce.MultiCircuit
-    bus_grid: gce.Bus
-    bus_bess: gce.Bus
-    generator: gce.Generator
-    transformer: gce.Transformer2W
-    bess_equivalent: gce.Load
+    __slots__: Final[tuple[str, str, str, str, str, str]] = (
+        "grid",
+        "bus_grid",
+        "bus_bess",
+        "generator",
+        "transformer",
+        "bess_equivalent",
+    )
+
+    def __init__(
+        self,
+        grid: gce.MultiCircuit,
+        bus_grid: gce.Bus,
+        bus_bess: gce.Bus,
+        generator: gce.Generator,
+        transformer: gce.Transformer2W,
+        bess_equivalent: gce.Load,
+    ) -> None:
+        """
+        Store the static objects created for one run.
+
+        :param grid: VeraGrid circuit.
+        :param bus_grid: Slack/source AC bus.
+        :param bus_bess: BESS PCC bus.
+        :param generator: Thevenin source generator.
+        :param transformer: Source-to-PCC transformer.
+        :param bess_equivalent: Static PQ carrier for the BESS EMT model.
+        :return: None.
+        """
+        # The full grid is needed by the PF and EMT builders.
+        self.grid: gce.MultiCircuit = grid
+        # The slack bus hosts the source model.
+        self.bus_grid: gce.Bus = bus_grid
+        # The PCC bus hosts the BESS equivalent object.
+        self.bus_bess: gce.Bus = bus_bess
+        # The generator provides the Thevenin source behaviour.
+        self.generator: gce.Generator = generator
+        # The transformer keeps a non-degenerate two-bus AC topology.
+        self.transformer: gce.Transformer2W = transformer
+        # The load-like object is the API carrier for the BESS EMT model.
+        self.bess_equivalent: gce.Load = bess_equivalent
 
 
-@dataclass(frozen=True)
 class BessEmtBlocks:
     """
     EMT blocks attached to the key static devices.
@@ -125,15 +186,181 @@ class BessEmtBlocks:
     :param bess_mdl: Complete BESS EMT block.
     """
 
-    gen_mdl: Block
-    transformer_mdl: Block
-    bess_mdl: Block
+    __slots__: Final[tuple[str, str, str]] = ("gen_mdl", "transformer_mdl", "bess_mdl")
+
+    def __init__(self, gen_mdl: Block, transformer_mdl: Block, bess_mdl: Block) -> None:
+        """
+        Store the EMT blocks attached to the static devices.
+
+        :param gen_mdl: Thevenin source EMT block.
+        :param transformer_mdl: EMT transformer block.
+        :param bess_mdl: Complete BESS EMT block.
+        :return: None.
+        """
+        # The generator block is attached to the slack source.
+        self.gen_mdl: Block = gen_mdl
+        # The transformer block propagates the AC interface dynamics.
+        self.transformer_mdl: Block = transformer_mdl
+        # The BESS block contains the battery, VSC, PLL and controls.
+        self.bess_mdl: Block = bess_mdl
 
 
-CASES: List[BessCase] = [
-    BessCase(name="discharge", active_power_mw=5.0, reactive_power_mvar=0.0, initial_soc=0.70),
-    BessCase(name="charge", active_power_mw=-5.0, reactive_power_mvar=0.0, initial_soc=0.30),
-]
+class BessPlotData:
+    """
+    Store the trajectories plotted and validated for one case.
+
+    Each field is kept explicit so the plotting and validation stages cannot
+    silently swap signal names, which is especially important for SoC and PLL
+    diagnostics.
+
+    :param v_ac_a: PCC phase-A voltage.
+    :param v_ac_b: PCC phase-B voltage.
+    :param v_ac_c: PCC phase-C voltage.
+    :param i_a: BESS phase-A current injection.
+    :param i_b: BESS phase-B current injection.
+    :param i_c: BESS phase-C current injection.
+    :param p: AC active power at the converter terminal.
+    :param q: AC reactive power at the converter terminal.
+    :param p_grid: Grid-facing active power using the export-positive convention.
+    :param v_dc_internal: Internal VSC DC-link voltage.
+    :param i_dc_vsc: VSC DC current using the native converter sign convention.
+    :param i_dc_battery_sign: The same DC current mapped to battery sign.
+    :param soc: Battery state of charge in pu.
+    :param v_oc: Battery open-circuit voltage.
+    :param v_dc_bus: Battery terminal DC-bus voltage.
+    :param i_bat: Battery current using the discharge-positive convention.
+    :param p_bat: Battery terminal power using the discharge-positive convention.
+    :param theta_pll: PLL angle if available.
+    :param omega_pll: PLL frequency if available.
+    :param i_d: d-axis current if available.
+    :param i_q: q-axis current if available.
+    :param i_0: zero-sequence current if available.
+    """
+
+    __slots__: Final[tuple[str, ...]] = (
+        "v_ac_a",
+        "v_ac_b",
+        "v_ac_c",
+        "i_a",
+        "i_b",
+        "i_c",
+        "p",
+        "q",
+        "p_grid",
+        "v_dc_internal",
+        "i_dc_vsc",
+        "i_dc_battery_sign",
+        "soc",
+        "v_oc",
+        "v_dc_bus",
+        "i_bat",
+        "p_bat",
+        "theta_pll",
+        "omega_pll",
+        "i_d",
+        "i_q",
+        "i_0",
+    )
+
+    def __init__(
+        self,
+        v_ac_a: np.ndarray,
+        v_ac_b: np.ndarray,
+        v_ac_c: np.ndarray,
+        i_a: np.ndarray,
+        i_b: np.ndarray,
+        i_c: np.ndarray,
+        p: np.ndarray,
+        q: np.ndarray,
+        p_grid: np.ndarray,
+        v_dc_internal: np.ndarray,
+        i_dc_vsc: np.ndarray,
+        i_dc_battery_sign: np.ndarray,
+        soc: np.ndarray,
+        v_oc: np.ndarray,
+        v_dc_bus: np.ndarray,
+        i_bat: np.ndarray,
+        p_bat: np.ndarray,
+        theta_pll: np.ndarray | None,
+        omega_pll: np.ndarray | None,
+        i_d: np.ndarray | None,
+        i_q: np.ndarray | None,
+        i_0: np.ndarray | None,
+    ) -> None:
+        """
+        Store one complete set of output trajectories.
+
+        :param v_ac_a: PCC phase-A voltage.
+        :param v_ac_b: PCC phase-B voltage.
+        :param v_ac_c: PCC phase-C voltage.
+        :param i_a: BESS phase-A current injection.
+        :param i_b: BESS phase-B current injection.
+        :param i_c: BESS phase-C current injection.
+        :param p: AC active power.
+        :param q: AC reactive power.
+        :param p_grid: Grid-facing active power.
+        :param v_dc_internal: Internal DC-link voltage.
+        :param i_dc_vsc: Native VSC DC current.
+        :param i_dc_battery_sign: DC current expressed with battery sign.
+        :param soc: Battery SoC.
+        :param v_oc: Battery OCV.
+        :param v_dc_bus: Battery terminal DC voltage.
+        :param i_bat: Battery current.
+        :param p_bat: Battery power.
+        :param theta_pll: Optional PLL angle.
+        :param omega_pll: Optional PLL frequency.
+        :param i_d: Optional d-axis current.
+        :param i_q: Optional q-axis current.
+        :param i_0: Optional zero-sequence current.
+        :return: None.
+        """
+        # The three PCC phase voltages are needed to interpret current direction.
+        self.v_ac_a: np.ndarray = v_ac_a
+        self.v_ac_b: np.ndarray = v_ac_b
+        self.v_ac_c: np.ndarray = v_ac_c
+        # The phase currents expose the AC-side sign convention directly.
+        self.i_a: np.ndarray = i_a
+        self.i_b: np.ndarray = i_b
+        self.i_c: np.ndarray = i_c
+        # The AC active and reactive powers come from the VSC model outputs.
+        self.p: np.ndarray = p
+        self.q: np.ndarray = q
+        # Grid power uses the same export-positive sign convention as P.
+        self.p_grid: np.ndarray = p_grid
+        # The DC-link voltage indicates whether the internal energy balance is stable.
+        self.v_dc_internal: np.ndarray = v_dc_internal
+        # The raw VSC DC current is kept for debugging the imported converter block.
+        self.i_dc_vsc: np.ndarray = i_dc_vsc
+        # The battery-sign DC current is what users expect when reading battery plots.
+        self.i_dc_battery_sign: np.ndarray = i_dc_battery_sign
+        # SoC is stored separately so it cannot be confused with PLL frequency.
+        self.soc: np.ndarray = soc
+        # OCV and terminal DC voltage show the battery-side electrical state.
+        self.v_oc: np.ndarray = v_oc
+        self.v_dc_bus: np.ndarray = v_dc_bus
+        # Battery current and power now follow the corrected discharge-positive sign.
+        self.i_bat: np.ndarray = i_bat
+        self.p_bat: np.ndarray = p_bat
+        # PLL and dq0 diagnostics remain optional because template internals can evolve.
+        self.theta_pll: np.ndarray | None = theta_pll
+        self.omega_pll: np.ndarray | None = omega_pll
+        self.i_d: np.ndarray | None = i_d
+        self.i_q: np.ndarray | None = i_q
+        self.i_0: np.ndarray | None = i_0
+
+
+def build_cases() -> list[BessCase]:
+    """
+    Create the charge and discharge validation cases.
+
+    :return: List of simulation cases.
+    """
+    cases: list[BessCase] = list()
+    # The discharge case checks generator-like export behaviour.
+    cases.append(BessCase(name="discharge", active_power_mw=5.0, reactive_power_mvar=0.0, initial_soc=0.70))
+    # The charge case checks load-like import behaviour.
+    cases.append(BessCase(name="charge", active_power_mw=-5.0, reactive_power_mvar=0.0, initial_soc=0.30))
+    return cases
 
 
 def _converter_control_type_code(control: ConverterControlType) -> float:
@@ -311,7 +538,12 @@ def attach_emt_models(objects: BessRunObjects, case: BessCase) -> BessEmtBlocks:
     """
     emt_active_power_mw: float = case.active_power_mw
 
+    # The battery OCV model uses the same linear SoC-dependent voltage law as the
+    # EMT template. The converter scaling reference is kept slightly below that
+    # value so the charging case retains voltage headroom instead of pinning the
+    # inner loop at the modulation limit.
     vdc_nominal_pu: float = 0.85 + (1.15 - 0.85) * case.initial_soc
+    vdc_control_ref_pu: float = max(vdc_nominal_pu - 0.02, 0.05)
 
     bus: gce.Bus
     for bus in objects.grid.buses:
@@ -339,13 +571,17 @@ def attach_emt_models(objects: BessRunObjects, case: BessCase) -> BessEmtBlocks:
     bess_mdl.set_parameter_in_model(var_name=f"control1_val_bess_avm_{case.name}", new_value=emt_active_power_mw)
     bess_mdl.set_parameter_in_model(var_name=f"control2_val_bess_avm_{case.name}", new_value=case.reactive_power_mvar)
     bess_mdl.set_parameter_in_model(var_name=f"P0_bess_avm_{case.name}", new_value=emt_active_power_mw)
-    bess_mdl.set_parameter_in_model(var_name=f"Vdc_nom_bess_avm_{case.name}", new_value=vdc_nominal_pu)
+    bess_mdl.set_parameter_in_model(var_name=f"Vdc_nom_bess_avm_{case.name}", new_value=vdc_control_ref_pu)
 
     bess_mdl.set_parameter_in_model(var_name=f"R_eq_bess_avm_{case.name}", new_value=0.05)
     bess_mdl.set_parameter_in_model(var_name=f"L_eq_bess_avm_{case.name}", new_value=0.20)
     bess_mdl.set_parameter_in_model(var_name=f"C_dc_bess_avm_{case.name}", new_value=0.20)
     bess_mdl.set_parameter_in_model(var_name=f"R_dc_bess_avm_{case.name}", new_value=1e6)
-    bess_mdl.set_parameter_in_model(var_name=f"R_dc_term_bess_avm_{case.name}", new_value=0.0001)
+    # The generic pseudo-converter uses a nearly ideal DC terminal resistor, but
+    # the direct battery-to-VSC coupling in this BESS example needs a finite
+    # interface resistance to keep the DC algebraic loop passive and numerically
+    # well-conditioned.
+    bess_mdl.set_parameter_in_model(var_name=f"R_dc_term_bess_avm_{case.name}", new_value=0.05)
     bess_mdl.set_parameter_in_model(var_name=f"pll_kp_bess_avm_{case.name}", new_value=10.0)
     bess_mdl.set_parameter_in_model(var_name=f"pll_ki_bess_avm_{case.name}", new_value=100.0)
     bess_mdl.set_parameter_in_model(var_name=f"i_kp_bess_avm_{case.name}", new_value=0.3)
@@ -395,7 +631,7 @@ def build_problem(
     """
     options: EmtOptions = EmtOptions(
         time_step=2.0e-5,
-        simulation_time=1,
+        simulation_time=0.7,
         tolerance=1e-6,
         solver_type=EmtSolverTypes.StructuralCompiled,
         initialization_method=EmtInitializationMethod.Explicit,
@@ -499,7 +735,7 @@ def build_plot_data(
     blocks: BessEmtBlocks,
     y_values: np.ndarray,
     case: BessCase,
-) -> Dict[str, np.ndarray | None]:
+) -> BessPlotData:
     """
     Collect key trajectories for BESS validation plots.
 
@@ -508,49 +744,69 @@ def build_plot_data(
     :param blocks: Attached EMT blocks.
     :param y_values: EMT solution matrix.
     :param case: Simulation case.
-    :return: Named signal dictionary.
+    :return: Structured plot data.
     """
-    data: Dict[str, np.ndarray | None] = dict()
+    # The PCC voltage trajectories are the network-side reference for all plots.
+    v_ac_a: np.ndarray = get_signal(problem, objects.bus_bess.emt_model, f"v_A_Bus_BESS_{case.name}_emt_template", y_values)
+    v_ac_b: np.ndarray = get_signal(problem, objects.bus_bess.emt_model, f"v_B_Bus_BESS_{case.name}_emt_template", y_values)
+    v_ac_c: np.ndarray = get_signal(problem, objects.bus_bess.emt_model, f"v_C_Bus_BESS_{case.name}_emt_template", y_values)
 
-    data["v_ac_a"] = get_signal(problem, objects.bus_bess.emt_model, f"v_A_Bus_BESS_{case.name}_emt_template", y_values)
-    data["v_ac_b"] = get_signal(problem, objects.bus_bess.emt_model, f"v_B_Bus_BESS_{case.name}_emt_template", y_values)
-    data["v_ac_c"] = get_signal(problem, objects.bus_bess.emt_model, f"v_C_Bus_BESS_{case.name}_emt_template", y_values)
+    # The AC current trajectories expose the export/import behaviour at the PCC.
+    i_a: np.ndarray = get_signal(problem, blocks.bess_mdl, f"i_A_bess_avm_{case.name}", y_values)
+    i_b: np.ndarray = get_signal(problem, blocks.bess_mdl, f"i_B_bess_avm_{case.name}", y_values)
+    i_c: np.ndarray = get_signal(problem, blocks.bess_mdl, f"i_C_bess_avm_{case.name}", y_values)
 
-    data["i_a"] = get_signal(problem, blocks.bess_mdl, f"i_A_bess_avm_{case.name}", y_values)
-    data["i_b"] = get_signal(problem, blocks.bess_mdl, f"i_B_bess_avm_{case.name}", y_values)
-    data["i_c"] = get_signal(problem, blocks.bess_mdl, f"i_C_bess_avm_{case.name}", y_values)
+    # The converter exports AC power using the same sign convention expected by the user.
+    p: np.ndarray = get_signal(problem, blocks.bess_mdl, f"P_bess_avm_{case.name}", y_values)
+    q: np.ndarray = get_signal(problem, blocks.bess_mdl, f"Q_bess_avm_{case.name}", y_values)
+    p_grid: np.ndarray = p
 
-    data["p"] = get_signal(problem, blocks.bess_mdl, f"P_bess_avm_{case.name}", y_values)
-    data["q"] = get_signal(problem, blocks.bess_mdl, f"Q_bess_avm_{case.name}", y_values)
-    data["v_dc_internal"] = get_signal(problem, blocks.bess_mdl, f"v_dc_bess_avm_{case.name}", y_values)
-    data["i_dc"] = get_signal(problem, blocks.bess_mdl, f"i_dc_bess_avm_{case.name}", y_values)
+    # The native converter DC current is retained, but a battery-sign version is also stored.
+    v_dc_internal: np.ndarray = get_signal(problem, blocks.bess_mdl, f"v_dc_bess_avm_{case.name}", y_values)
+    i_dc_vsc: np.ndarray = get_signal(problem, blocks.bess_mdl, f"i_dc_bess_avm_{case.name}", y_values)
+    i_dc_battery_sign: np.ndarray = -i_dc_vsc
 
-    data["soc"] = get_signal(problem, blocks.bess_mdl, f"soc_bess_avm_{case.name}", y_values)
-    data["v_oc"] = get_signal(problem, blocks.bess_mdl, f"v_oc_bat_bess_avm_{case.name}", y_values)
-    data["v_dc_bus"] = get_signal(problem, blocks.bess_mdl, f"v_dc_bus_bat_bess_avm_{case.name}", y_values)
-    data["i_bat"] = get_signal(problem, blocks.bess_mdl, f"i_bat_bess_avm_{case.name}", y_values)
-    data["p_bat_internal"] = get_signal(problem, blocks.bess_mdl, f"p_bat_bess_avm_{case.name}", y_values)
+    # The battery trajectories now use the corrected discharge-positive convention.
+    soc: np.ndarray = get_signal(problem, blocks.bess_mdl, f"soc_bess_avm_{case.name}", y_values)
+    v_oc: np.ndarray = get_signal(problem, blocks.bess_mdl, f"v_oc_bat_bess_avm_{case.name}", y_values)
+    v_dc_bus: np.ndarray = get_signal(problem, blocks.bess_mdl, f"v_dc_bus_bat_bess_avm_{case.name}", y_values)
+    i_bat: np.ndarray = get_signal(problem, blocks.bess_mdl, f"i_bat_bess_avm_{case.name}", y_values)
+    p_bat: np.ndarray = get_signal(problem, blocks.bess_mdl, f"p_bat_bess_avm_{case.name}", y_values)
 
-    data["theta_pll"] = get_optional_signal(problem, blocks.bess_mdl, f"theta_pll_bess_avm_{case.name}", y_values)
-    data["omega_pll"] = get_optional_signal(problem, blocks.bess_mdl, f"omega_pll_bess_avm_{case.name}", y_values)
-    data["i_d"] = get_optional_signal(problem, blocks.bess_mdl, f"i_d_bess_avm_{case.name}", y_values)
-    data["i_q"] = get_optional_signal(problem, blocks.bess_mdl, f"i_q_bess_avm_{case.name}", y_values)
-    data["i_0"] = get_optional_signal(problem, blocks.bess_mdl, f"i_0_bess_avm_{case.name}", y_values)
+    # Optional diagnostics are separated explicitly so SoC cannot be confused with PLL frequency.
+    theta_pll: np.ndarray | None = get_optional_signal(problem, blocks.bess_mdl, f"theta_pll_bess_avm_{case.name}", y_values)
+    omega_pll: np.ndarray | None = get_optional_signal(problem, blocks.bess_mdl, f"omega_pll_bess_avm_{case.name}", y_values)
+    i_d: np.ndarray | None = get_optional_signal(problem, blocks.bess_mdl, f"i_d_bess_avm_{case.name}", y_values)
+    i_q: np.ndarray | None = get_optional_signal(problem, blocks.bess_mdl, f"i_q_bess_avm_{case.name}", y_values)
+    i_0: np.ndarray | None = get_optional_signal(problem, blocks.bess_mdl, f"i_0_bess_avm_{case.name}", y_values)
 
-    if data["p"] is None:
-        data["p_grid"] = None
-    else:
-        data["p_grid"] = data["p"]
+    return BessPlotData(
+        v_ac_a=v_ac_a,
+        v_ac_b=v_ac_b,
+        v_ac_c=v_ac_c,
+        i_a=i_a,
+        i_b=i_b,
+        i_c=i_c,
+        p=p,
+        q=q,
+        p_grid=p_grid,
+        v_dc_internal=v_dc_internal,
+        i_dc_vsc=i_dc_vsc,
+        i_dc_battery_sign=i_dc_battery_sign,
+        soc=soc,
+        v_oc=v_oc,
+        v_dc_bus=v_dc_bus,
+        i_bat=i_bat,
+        p_bat=p_bat,
+        theta_pll=theta_pll,
+        omega_pll=omega_pll,
+        i_d=i_d,
+        i_q=i_q,
+        i_0=i_0,
+    )
 
-    if data["p_bat_internal"] is None:
-        data["p_bat"] = None
-    else:
-        data["p_bat"] = -data["p_bat_internal"]
 
-    return data
-
-
-def print_case_metrics(case: BessCase, time_values: np.ndarray, data: Dict[str, np.ndarray | None]) -> None:
+def print_case_metrics(case: BessCase, time_values: np.ndarray, data: BessPlotData) -> None:
     """
     Print compact numerical diagnostics for one case.
 
@@ -559,12 +815,12 @@ def print_case_metrics(case: BessCase, time_values: np.ndarray, data: Dict[str, 
     :param data: Signal dictionary.
     :return: None.
     """
-    p_values: np.ndarray | None = data["p"]
-    p_grid_values: np.ndarray | None = data["p_grid"]
-    q_values: np.ndarray | None = data["q"]
-    soc_values: np.ndarray | None = data["soc"]
-    vdc_values: np.ndarray | None = data["v_dc_internal"]
-    pbat_values: np.ndarray | None = data["p_bat"]
+    p_values: np.ndarray = data.p
+    p_grid_values: np.ndarray = data.p_grid
+    q_values: np.ndarray = data.q
+    soc_values: np.ndarray = data.soc
+    vdc_values: np.ndarray = data.v_dc_internal
+    pbat_values: np.ndarray = data.p_bat
 
     mask: np.ndarray = time_values >= 0.5 * time_values[-1]
 
@@ -572,21 +828,16 @@ def print_case_metrics(case: BessCase, time_values: np.ndarray, data: Dict[str, 
     print(f"BESS EMT metrics | case = {case.name}")
     print("=" * 80)
     print("  note                    : `P AC` and `P grid` are export-positive, `P_bat` is battery-discharge-positive")
+    print("  note                    : plotted `VSC Idc` is shown with battery sign, so charge appears negative")
 
-    if p_values is not None:
-        print(f"  mean P AC second half   : {float(np.mean(p_values[mask])): .6f} pu")
-    if p_grid_values is not None:
-        print(f"  mean P grid second half : {float(np.mean(p_grid_values[mask])): .6f} pu")
-    if q_values is not None:
-        print(f"  mean Q second half      : {float(np.mean(q_values[mask])): .6f} pu")
-    if pbat_values is not None:
-        print(f"  mean P_bat second half  : {float(np.mean(pbat_values[mask])): .6f} pu")
-    if soc_values is not None:
-        print(f"  initial SoC             : {float(soc_values[0]): .6f}")
-        print(f"  final SoC               : {float(soc_values[-1]): .6f}")
-        print(f"  min/max SoC             : {float(np.min(soc_values)): .6f} / {float(np.max(soc_values)): .6f}")
-    if vdc_values is not None:
-        print(f"  min/max internal Vdc    : {float(np.min(vdc_values)): .6f} / {float(np.max(vdc_values)): .6f}")
+    print(f"  mean P AC second half   : {float(np.mean(p_values[mask])): .6f} pu")
+    print(f"  mean P grid second half : {float(np.mean(p_grid_values[mask])): .6f} pu")
+    print(f"  mean Q second half      : {float(np.mean(q_values[mask])): .6f} pu")
+    print(f"  mean P_bat second half  : {float(np.mean(pbat_values[mask])): .6f} pu")
+    print(f"  initial SoC             : {float(soc_values[0]): .6f}")
+    print(f"  final SoC               : {float(soc_values[-1]): .6f}")
+    print(f"  min/max SoC             : {float(np.min(soc_values)): .6f} / {float(np.max(soc_values)): .6f}")
+    print(f"  min/max internal Vdc    : {float(np.min(vdc_values)): .6f} / {float(np.max(vdc_values)): .6f}")
 
 
 def compute_fundamental_phase_shift_deg(
@@ -647,7 +898,7 @@ def compute_waveform_distortion_metric(
     return numerator / max(denominator, 1.0e-10)
 
 
-def validate_case(case: BessCase, time_values: np.ndarray, data: Dict[str, np.ndarray | None]) -> bool:
+def validate_case(case: BessCase, time_values: np.ndarray, data: BessPlotData) -> bool:
     """
     Validate one BESS charge/discharge case.
 
@@ -657,12 +908,12 @@ def validate_case(case: BessCase, time_values: np.ndarray, data: Dict[str, np.nd
     :return: True if the case passes the checks.
     """
     mask: np.ndarray = time_values >= 0.5 * time_values[-1]
-    p_values: np.ndarray = data["p"]
-    q_values: np.ndarray = data["q"]
-    i_a_values: np.ndarray = data["i_a"]
-    i_b_values: np.ndarray = data["i_b"]
-    i_c_values: np.ndarray = data["i_c"]
-    vdc_values: np.ndarray = data["v_dc_internal"]
+    p_values: np.ndarray = data.p
+    q_values: np.ndarray = data.q
+    i_a_values: np.ndarray = data.i_a
+    i_b_values: np.ndarray = data.i_b
+    i_c_values: np.ndarray = data.i_c
+    vdc_values: np.ndarray = data.v_dc_internal
     p_target_pu: float = case.active_power_mw / 100.0
     q_target_pu: float = case.reactive_power_mvar / 100.0
     mean_p: float = float(np.mean(p_values[mask]))
@@ -673,7 +924,7 @@ def validate_case(case: BessCase, time_values: np.ndarray, data: Dict[str, np.nd
     max_neutral_sum: float = float(np.max(np.abs(i_a_values[mask] + i_b_values[mask] + i_c_values[mask])))
     phase_shift_deg: float = compute_fundamental_phase_shift_deg(
         time_values=time_values[mask],
-        voltage_values=data["v_ac_a"][mask],
+        voltage_values=data.v_ac_a[mask],
         current_values=i_a_values[mask],
         frequency_hz=50.0,
     )
@@ -699,7 +950,7 @@ def validate_case(case: BessCase, time_values: np.ndarray, data: Dict[str, np.nd
     return case_passed
 
 
-def plot_one_case(case: BessCase, time_values: np.ndarray, data: Dict[str, np.ndarray | None]) -> None:
+def plot_one_case(case: BessCase, time_values: np.ndarray, data: BessPlotData) -> None:
     """
     Plot one complete BESS EMT simulation case.
 
@@ -710,63 +961,80 @@ def plot_one_case(case: BessCase, time_values: np.ndarray, data: Dict[str, np.nd
     """
     figure, axes = plt.subplots(5, 1, figsize=(13, 15), sharex=True)
     figure.suptitle(f"Level-1 AVM grid-following BESS EMT example | {case.name}")
+    soc_axis = axes[4]
+    diag_axis = soc_axis.twinx()
 
-    axes[0].plot(time_values, data["v_ac_a"], label="Va")
-    axes[0].plot(time_values, data["v_ac_b"], label="Vb")
-    axes[0].plot(time_values, data["v_ac_c"], label="Vc")
+    axes[0].plot(time_values, data.v_ac_a, label="Va")
+    axes[0].plot(time_values, data.v_ac_b, label="Vb")
+    axes[0].plot(time_values, data.v_ac_c, label="Vc")
     axes[0].set_ylabel("Voltage [pu]")
     axes[0].set_title("AC bus phase voltages")
     axes[0].grid(True)
     axes[0].legend(loc="upper right")
 
-    axes[1].plot(time_values, data["i_a"], label="iA BESS")
-    axes[1].plot(time_values, data["i_b"], label="iB BESS")
-    axes[1].plot(time_values, data["i_c"], label="iC BESS")
+    axes[1].plot(time_values, data.i_a, label="iA BESS")
+    axes[1].plot(time_values, data.i_b, label="iB BESS")
+    axes[1].plot(time_values, data.i_c, label="iC BESS")
     axes[1].set_ylabel("Current [pu]")
     axes[1].set_title("BESS AC current injection")
     axes[1].grid(True)
     axes[1].legend(loc="upper right")
 
-    axes[2].plot(time_values, data["p"], label="P AC")
-    axes[2].plot(time_values, data["p_grid"], label="P grid")
-    axes[2].plot(time_values, data["q"], label="Q AC")
-    axes[2].plot(time_values, data["p_bat"], "--", label="P battery")
+    axes[2].plot(time_values, data.p, label="P AC")
+    axes[2].plot(time_values, data.p_grid, label="P grid")
+    axes[2].plot(time_values, data.q, label="Q AC")
+    axes[2].plot(time_values, data.p_bat, "--", label="P battery")
     axes[2].axhline(case.active_power_mw / 100.0, linestyle=":", linewidth=1.0, label="Battery P target / Sbase")
     axes[2].set_ylabel("Power [pu]")
     axes[2].set_title("AC power, grid export power and battery terminal power")
     axes[2].grid(True)
     axes[2].legend(loc="upper right")
 
-    axes[3].plot(time_values, data["v_dc_internal"], label="internal Vdc")
-    axes[3].plot(time_values, data["v_dc_bus"], "--", label="battery terminal Vdc")
-    axes[3].plot(time_values, data["v_oc"], ":", label="battery OCV")
-    axes[3].plot(time_values, data["i_dc"], label="VSC Idc")
-    axes[3].plot(time_values, data["i_bat"], "--", label="battery current")
+    axes[3].plot(time_values, data.v_dc_internal, label="internal Vdc")
+    axes[3].plot(time_values, data.v_dc_bus, "--", label="battery terminal Vdc")
+    axes[3].plot(time_values, data.v_oc, ":", label="battery OCV")
+    axes[3].plot(time_values, data.i_dc_battery_sign, label="VSC Idc (battery sign)")
+    axes[3].plot(time_values, data.i_bat, "--", label="battery current")
     axes[3].set_ylabel("DC [pu]")
     axes[3].set_title("DC-link and battery terminal variables")
     axes[3].grid(True)
     axes[3].legend(loc="upper right")
 
-    axes[4].plot(time_values, data["soc"], label="SoC")
-    if data["i_d"] is not None:
-        axes[4].plot(time_values, data["i_d"], label="i_d")
-    if data["i_q"] is not None:
-        axes[4].plot(time_values, data["i_q"], label="i_q")
-    if data["i_0"] is not None:
-        axes[4].plot(time_values, data["i_0"], label="i_0")
-    if data["omega_pll"] is not None:
-        axes[4].plot(time_values, data["omega_pll"], label="omega_pll")
-    axes[4].set_xlabel("Time [s]")
-    axes[4].set_ylabel("Internal values")
-    axes[4].set_title("SoC, dq0 currents and PLL diagnostic variables")
-    axes[4].grid(True)
-    axes[4].legend(loc="upper right")
+    # SoC stays on its own axis so the 50 Hz PLL frequency cannot visually mask it.
+    soc_axis.plot(time_values, data.soc, label="SoC", color="tab:blue")
+    soc_axis.set_ylabel("SoC [pu]")
+    soc_axis.set_ylim(0.0, 1.0)
+
+    # Current-controller and PLL diagnostics are placed on the secondary axis.
+    if data.i_d is not None:
+        diag_axis.plot(time_values, data.i_d, label="i_d", color="tab:orange")
+    else:
+        diag_axis = diag_axis
+    if data.i_q is not None:
+        diag_axis.plot(time_values, data.i_q, label="i_q", color="tab:green")
+    else:
+        diag_axis = diag_axis
+    if data.i_0 is not None:
+        diag_axis.plot(time_values, data.i_0, label="i_0", color="tab:red")
+    else:
+        diag_axis = diag_axis
+    if data.omega_pll is not None:
+        diag_axis.plot(time_values, data.omega_pll, label="omega_pll", color="tab:purple")
+    else:
+        diag_axis = diag_axis
+    soc_axis.set_xlabel("Time [s]")
+    diag_axis.set_ylabel("dq0 / PLL diagnostics")
+    soc_axis.set_title("SoC, dq0 currents and PLL diagnostic variables")
+    soc_axis.grid(True)
+    soc_handles, soc_labels = soc_axis.get_legend_handles_labels()
+    diag_handles, diag_labels = diag_axis.get_legend_handles_labels()
+    soc_axis.legend(soc_handles + diag_handles, soc_labels + diag_labels, loc="upper right")
 
     figure.tight_layout()
     plt.show()
 
 
-def run_case(case: BessCase) -> Tuple[np.ndarray, Dict[str, np.ndarray | None]]:
+def run_case(case: BessCase) -> tuple[np.ndarray, BessPlotData]:
     """
     Build, initialize and simulate one BESS EMT case.
 
@@ -801,7 +1069,7 @@ def run_case(case: BessCase) -> Tuple[np.ndarray, Dict[str, np.ndarray | None]]:
     print(f"well_initialized = {well_initialized}")
     print(f"converged = {converged}")
 
-    data: Dict[str, np.ndarray | None] = build_plot_data(
+    data: BessPlotData = build_plot_data(
         problem=problem,
         objects=objects,
         blocks=blocks,
@@ -820,7 +1088,11 @@ def main() -> None:
 
     :return: None.
     """
-    for case in CASES:
+    cases: list[BessCase] = build_cases()
+
+    for case in cases:
+        time_values: np.ndarray
+        data: BessPlotData
         time_values, data = run_case(case)
         plot_one_case(case=case, time_values=time_values, data=data)
 
