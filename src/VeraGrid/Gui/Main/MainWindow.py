@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'MainWindow.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.11.0
+## Created by: Qt User Interface Compiler version 6.10.1
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -860,7 +860,7 @@ class Ui_mainWindow(object):
         self.toolBox.addItem(self.page, icon49, u"Diagrams")
         self.page_2 = QWidget()
         self.page_2.setObjectName(u"page_2")
-        self.page_2.setGeometry(QRect(0, 0, 382, 361))
+        self.page_2.setGeometry(QRect(0, 0, 302, 360))
         self.verticalLayout_51 = QVBoxLayout(self.page_2)
         self.verticalLayout_51.setObjectName(u"verticalLayout_51")
         self.frame_24 = QFrame(self.page_2)
@@ -1042,7 +1042,7 @@ class Ui_mainWindow(object):
         self.toolBox.addItem(self.page_2, icon40, u"Map settings")
         self.page_3 = QWidget()
         self.page_3.setObjectName(u"page_3")
-        self.page_3.setGeometry(QRect(0, 0, 394, 355))
+        self.page_3.setGeometry(QRect(0, 0, 174, 232))
         self.verticalLayout_47 = QVBoxLayout(self.page_3)
         self.verticalLayout_47.setObjectName(u"verticalLayout_47")
         self.frame_49 = QFrame(self.page_3)
@@ -1109,7 +1109,7 @@ class Ui_mainWindow(object):
         self.toolBox.addItem(self.page_3, icon59, u"Schematic settings")
         self.page_4 = QWidget()
         self.page_4.setObjectName(u"page_4")
-        self.page_4.setGeometry(QRect(0, 0, 394, 355))
+        self.page_4.setGeometry(QRect(0, 0, 126, 242))
         self.verticalLayout_29 = QVBoxLayout(self.page_4)
         self.verticalLayout_29.setObjectName(u"verticalLayout_29")
         self.frame_51 = QFrame(self.page_4)
@@ -5423,6 +5423,7 @@ class Ui_mainWindow(object):
         self.menuSimulations.addAction(self.actionFind_node_groups)
         self.menuSimulations.addAction(self.actionPower_flow_Stochastic)
         self.menuSimulations.addAction(self.actionInvestments_evaluation)
+        self.menuSimulations.addAction(self.actionCatalogue_element_optimization)
         self.menuSimulations.addAction(self.actionReliability)
         self.menuSimulations.addAction(self.actionBlackout_cascade)
         self.menuSimulations.addSeparator()
@@ -5438,7 +5439,6 @@ class Ui_mainWindow(object):
         self.menuModel.addAction(self.actionGrid_reduction)
         self.menuModel.addAction(self.actionProcedural_grid_expansion)
         self.menuModel.addAction(self.actionRestore_investments)
-        self.menuModel.addAction(self.actionCatalogue_element_optimization)
         self.menuModel.addAction(self.actionre_index_time)
         self.menuModel.addAction(self.actionScale)
         self.menuModel.addSeparator()

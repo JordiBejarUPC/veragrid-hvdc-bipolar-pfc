@@ -349,8 +349,8 @@
                            <rect>
                             <x>0</x>
                             <y>0</y>
-                            <width>382</width>
-                            <height>361</height>
+                            <width>302</width>
+                            <height>360</height>
                            </rect>
                           </property>
                           <attribute name="icon">
@@ -744,8 +744,8 @@
                            <rect>
                             <x>0</x>
                             <y>0</y>
-                            <width>394</width>
-                            <height>355</height>
+                            <width>174</width>
+                            <height>232</height>
                            </rect>
                           </property>
                           <attribute name="icon">
@@ -895,8 +895,8 @@
                            <rect>
                             <x>0</x>
                             <y>0</y>
-                            <width>394</width>
-                            <height>355</height>
+                            <width>126</width>
+                            <height>242</height>
                            </rect>
                           </property>
                           <attribute name="icon">
@@ -11017,6 +11017,7 @@ QProgressBar::chunk{
     <addaction name="actionFind_node_groups"/>
     <addaction name="actionPower_flow_Stochastic"/>
     <addaction name="actionInvestments_evaluation"/>
+    <addaction name="actionCatalogue_element_optimization"/>
     <addaction name="actionReliability"/>
     <addaction name="actionBlackout_cascade"/>
     <addaction name="separator"/>
@@ -11042,7 +11043,6 @@ QProgressBar::chunk{
     <addaction name="actionGrid_reduction"/>
     <addaction name="actionProcedural_grid_expansion"/>
     <addaction name="actionRestore_investments"/>
-    <addaction name="actionCatalogue_element_optimization"/>
     <addaction name="actionre_index_time"/>
     <addaction name="actionScale"/>
     <addaction name="separator"/>
