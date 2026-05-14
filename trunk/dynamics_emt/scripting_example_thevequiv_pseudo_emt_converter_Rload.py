@@ -36,7 +36,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowRes
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.Emt.converter_emt_template import get_full_pseudo_emt_converter
 from VeraGridEngine.Templates.Emt.dc_load_emt_template import get_dc_load_emt_template
-from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
+from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template_with_ref
 from VeraGridEngine.Templates.Emt.transformer_emt_template import get_transformer_emt_template
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
 from VeraGridEngine.Utils.Symbolic.block import Block, find_name_in_block
@@ -153,7 +153,7 @@ def attach_emt_models(
     for bus in grid.buses:
         get_bus_emt_template(grid, bus)
 
-    gen_mdl: Block = get_generator_thevenin_rl_emt_template(vf=grid.var_factory).block
+    gen_mdl: Block = get_generator_thevenin_rl_emt_template_with_ref(vf=grid.var_factory).block
     transformer_mdl: Block = get_transformer_emt_template(vf=grid.var_factory, name="ac_thevenin_link_emt").block
 
     # The PF uses `Pdc/Qac` to create the non-zero operating point. The EMT case

@@ -30,7 +30,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowRes
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.Emt.pv_emt_template import PvEmtModelLevel, get_pv_grid_following_emt_template
-from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
+from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template_with_ref
 from VeraGridEngine.Templates.Emt.transformer_emt_template import get_transformer_emt_template
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
 from VeraGridEngine.Utils.Symbolic.block import Block, find_name_in_block
@@ -707,7 +707,7 @@ def attach_emt_models(objects: PvRunObjects, case: PvCaseDefinition) -> PvEmtBlo
     for bus in objects.grid.buses:
         get_bus_emt_template(objects.grid, bus)
 
-    gen_mdl: Block = get_generator_thevenin_rl_emt_template(
+    gen_mdl: Block = get_generator_thevenin_rl_emt_template_with_ref(
         vf=objects.grid.var_factory,
         name=f"gen_thev_{objects.run_name}",
     ).block

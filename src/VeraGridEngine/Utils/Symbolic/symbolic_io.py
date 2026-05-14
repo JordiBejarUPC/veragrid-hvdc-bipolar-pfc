@@ -47,6 +47,7 @@ def symbolic_objects_to_dict(obj_dict: Dict[int, Var | Const | Var]) -> List[Dic
                         "type": "DiffVar",
                         "name": expr.name,
                         "uid": expr.uid,
+                        "non_mutable_uid": expr.non_mutable_uid,
                         "base_var": expr.base_var.uid,
                         "shared_ref": {"name": shared.name if shared is not None else None,
                                 "uid": shared.uid if shared is not None else None},
@@ -57,6 +58,7 @@ def symbolic_objects_to_dict(obj_dict: Dict[int, Var | Const | Var]) -> List[Dic
                         "type": "DiffVar",
                         "name": expr.name,
                         "uid": expr.uid,
+                        "non_mutable_uid": expr.non_mutable_uid,
                         "base_var": expr.base_var.uid,
                         "shared_ref": {"name": shared.name if shared is not None else None,
                                 "uid": shared.uid if shared is not None else None},
@@ -71,6 +73,7 @@ def symbolic_objects_to_dict(obj_dict: Dict[int, Var | Const | Var]) -> List[Dic
                     lst.append({"type": "Var",
                                 "name": expr.name,
                                 "uid": expr.uid,
+                                "non_mutable_uid": expr.non_mutable_uid,
                                 "base_var": None,
                                 "shared_ref": {"name": shared.name if shared is not None else None,
                                                 "uid": shared.uid if shared is not None else None},
@@ -80,6 +83,7 @@ def symbolic_objects_to_dict(obj_dict: Dict[int, Var | Const | Var]) -> List[Dic
                     lst.append({"type": "Var",
                                 "name": expr.name,
                                 "uid": expr.uid,
+                                "non_mutable_uid": expr.non_mutable_uid,
                                 "base_var": None,
                                 "shared_ref": {"name": shared.name if shared is not None else None,
                                                 "uid": shared.uid if shared is not None else None},
@@ -182,6 +186,21 @@ def expr_to_dict(expr: Expr,
             "uid": expr.uid,
         }
 
+    elif isinstance(expr, Func2):
+        return {
+            "type": "Func2",
+            "name": expr.name,
+            "arg1": expr_to_dict(expr=expr.arg1,
+                                  const_dict=const_dict,
+                                  var_dict=var_dict,
+                                  diff_var_dict=diff_var_dict),
+            "arg2": expr_to_dict(expr=expr.arg2,
+                                  const_dict=const_dict,
+                                  var_dict=var_dict,
+                                  diff_var_dict=diff_var_dict),
+            "uid": expr.uid,
+        }
+
     else:
         raise TypeError(f"Unsupported Expr subclass: {type(expr).__name__}")
 
@@ -213,7 +232,7 @@ def expr_list_to_list(lst: List[Expr],
 def parse_expr(data: Dict[str, Any],
                const_dict: Dict[int, Const],
                var_dict: Dict[int, Var],
-               diff_var_dict: Dict[int, Var]) -> Const | Var | Var | UnOp | BinOp | Func:
+               diff_var_dict: Dict[int, Var]) -> Const | Var | UnOp | BinOp | Func | Func2:
     """
     De-Serialize expression from dictionary
     :param data: Some dictionary containing the expression
@@ -262,6 +281,18 @@ def parse_expr(data: Dict[str, Any],
 
         obj = Func(arg=arg, op=data["op"], uid=data["uid"])
 
+    elif t == "Func2":
+        arg1: Const | Var | UnOp | BinOp | Func | Func2 = parse_expr(data=data["arg1"],
+                                                                      const_dict=const_dict,
+                                                                      var_dict=var_dict,
+                                                                      diff_var_dict=diff_var_dict)
+        arg2: Const | Var | UnOp | BinOp | Func | Func2 = parse_expr(data=data["arg2"],
+                                                                      const_dict=const_dict,
+                                                                      var_dict=var_dict,
+                                                                      diff_var_dict=diff_var_dict)
+
+        obj = Func2(name=data["name"], arg1=arg1, arg2=arg2, uid=data["uid"])
+
     else:
         raise ValueError(f"Unknown type '{t}' in symbolic deserialization")
 
@@ -271,7 +302,7 @@ def parse_expr(data: Dict[str, Any],
 def parse_expr_list(lst: List[Dict[str, Any]],
                     const_dict: Dict[int, Const],
                     var_dict: Dict[int, Var],
-                    diff_var_dict: Dict[int, Var]) -> List[Const | Var | Var | UnOp | BinOp | Func]:
+                    diff_var_dict: Dict[int, Var]) -> List[Const | Var | UnOp | BinOp | Func | Func2]:
     """
 
     :param lst:
