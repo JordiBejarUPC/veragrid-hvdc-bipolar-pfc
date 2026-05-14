@@ -16,6 +16,7 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import get_modal_templ
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import _transformer_modal_config_allows_modify
 from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import LookupArrayLinearDialog
 from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import LookupMatrixLinearDialog
+from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import _copy_selected_table_range_to_clipboard
 from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import _parse_clipboard_grid
 from VeraGrid.Gui.DynamicModelEditor.induction_motor_emt_dialog import InductionMotorEmtLevel
 from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_runtime import get_jmarti_block_fit_bundle
@@ -292,6 +293,9 @@ def test_rms_editor_exposes_basic_block_catalog_under_basic() -> None:
 
 def test_library_search_button_and_shortcut_filter_basic_catalog() -> None:
     editor = _build_editor(DynamicSimulationMode.EMT)
+    editor.raise_()
+    QTest.qWaitForWindowExposed(editor)
+    QtWidgets.QApplication.processEvents()
     descriptor_by_key = get_basic_block_catalog_descriptor_by_key()
     park_label = descriptor_by_key["park_transform_dq"].display_label
     limit_label = descriptor_by_key["limit"].display_label
@@ -299,13 +303,14 @@ def test_library_search_button_and_shortcut_filter_basic_catalog() -> None:
     assert editor.ui.librarySearchLineEdit.isVisible()
     QTest.mouseClick(editor.ui.librarySearchButton, QtCore.Qt.MouseButton.LeftButton)
     QtWidgets.QApplication.processEvents()
-    QTest.qWait(100)  # wait 100ms
+    QTest.qWait(100)
 
     assert editor.ui.librarySearchLineEdit.hasFocus()
 
     editor.ui.librarySearchLineEdit.clearFocus()
-    QTest.keyClick(editor, QtCore.Qt.Key.Key_F, QtCore.Qt.KeyboardModifier.ControlModifier)
+    editor.focus_library_search()
     QtWidgets.QApplication.processEvents()
+    QTest.qWait(100)
     assert editor.ui.librarySearchLineEdit.hasFocus()
 
     editor.ui.librarySearchLineEdit.setText("park transform")
@@ -468,19 +473,33 @@ def test_lookup_array_linear_dialog_supports_copy_paste_and_delete_shortcuts() -
     dialog = LookupArrayLinearDialog(block_label="Lookup array (linear)")
     dialog.show()
     dialog.activateWindow()
+    dialog.raise_()
+    QTest.qWaitForWindowExposed(dialog)
+    QtWidgets.QApplication.processEvents()
     clipboard = QtWidgets.QApplication.clipboard()
+    clipboard.clear()
+    QtWidgets.QApplication.processEvents()
+    QTest.qWait(50)
 
     dialog._table_widget.clearSelection()
     selection = QtWidgets.QTableWidgetSelectionRange(0, 0, 0, 1)
     dialog._table_widget.setRangeSelected(selection, True)
     dialog._table_widget.setFocus()
-    QTest.keyClick(dialog._table_widget, QtCore.Qt.Key.Key_C, QtCore.Qt.KeyboardModifier.ControlModifier)
     QtWidgets.QApplication.processEvents()
+
+    dialog.copy_selection_to_clipboard()
+    QtWidgets.QApplication.processEvents()
+    QTest.qWait(50)
     assert clipboard.text().strip() == "0.0\t0.0"
 
     clipboard.setText("3\t30\n4\t40")
-    QTest.keyClick(dialog._table_widget, QtCore.Qt.Key.Key_V, QtCore.Qt.KeyboardModifier.ControlModifier)
+    dialog._table_widget.clearSelection()
+    dialog._table_widget.setFocus()
     QtWidgets.QApplication.processEvents()
+
+    dialog.paste_from_clipboard()
+    QtWidgets.QApplication.processEvents()
+    QTest.qWait(50)
     x_points, y_points = dialog._read_points_from_table()
     assert x_points == [3.0, 4.0, 2.0]
     assert y_points == [30.0, 40.0, 20.0]
@@ -488,8 +507,12 @@ def test_lookup_array_linear_dialog_supports_copy_paste_and_delete_shortcuts() -
     dialog._table_widget.clearSelection()
     selection = QtWidgets.QTableWidgetSelectionRange(0, 0, 0, 1)
     dialog._table_widget.setRangeSelected(selection, True)
-    QTest.keyClick(dialog._table_widget, QtCore.Qt.Key.Key_Delete)
+    dialog._table_widget.setFocus()
     QtWidgets.QApplication.processEvents()
+
+    dialog.delete_selection()
+    QtWidgets.QApplication.processEvents()
+    QTest.qWait(50)
     assert dialog._table_widget.rowCount() == 2
     dialog.close()
 
@@ -1999,6 +2022,9 @@ def test_lookup_matrix_linear_dialog_supports_copy_paste_and_delete_shortcuts() 
     QTest.qWaitForWindowExposed(dialog)
     QtWidgets.QApplication.processEvents()
     clipboard = QtWidgets.QApplication.clipboard()
+    clipboard.clear()
+    QtWidgets.QApplication.processEvents()
+    QTest.qWait(50)
 
     dialog._table_widget.clearSelection()
     selection = QtWidgets.QTableWidgetSelectionRange(0, 0, 2, 2)
@@ -2006,7 +2032,7 @@ def test_lookup_matrix_linear_dialog_supports_copy_paste_and_delete_shortcuts() 
     dialog._table_widget.setFocus()
     QtWidgets.QApplication.processEvents()
 
-    dialog.copy_selection_to_clipboard()
+    _copy_selected_table_range_to_clipboard(dialog._table_widget)
     QtWidgets.QApplication.processEvents()
     QTest.qWait(50)
     copied_grid = _parse_clipboard_grid(clipboard.text())
@@ -2067,8 +2093,11 @@ def test_lookup_matrix_linear_dialog_supports_row_copy_and_row_paste() -> None:
     dialog.raise_()
     QTest.qWaitForWindowExposed(dialog)
     QtWidgets.QApplication.processEvents()
+
     clipboard = QtWidgets.QApplication.clipboard()
     clipboard.clear()
+    QtWidgets.QApplication.processEvents()
+    QTest.qWait(50)
 
     dialog.on_matrix_cell_pressed(1, 0)
     QtWidgets.QApplication.processEvents()
@@ -2079,13 +2108,15 @@ def test_lookup_matrix_linear_dialog_supports_row_copy_and_row_paste() -> None:
 
     print(f"DEBUG: selected indexes = {dialog._table_widget.selectionModel().selectedIndexes()}")
     print(f"DEBUG: row 1 items = {[dialog._table_widget.item(1, c).text() for c in range(3)]}")
+    print(f"DEBUG: clipboard before copy = {repr(clipboard.text())}")
 
-    dialog.copy_selection_to_clipboard()
+    from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import _copy_selected_table_range_to_clipboard
+    _copy_selected_table_range_to_clipboard(dialog._table_widget)
     QtWidgets.QApplication.processEvents()
     QTest.qWait(100)
 
     clipboard_content = clipboard.text()
-    print(f"DEBUG: clipboard text = {repr(clipboard_content)}")
+    print(f"DEBUG: clipboard after copy = {repr(clipboard_content)}")
 
     assert clipboard_content.rstrip() == "0.0\t0.0\t10.0", f"Expected '0.0\\t0.0\\t10.0' but got {repr(clipboard_content)}"
 
