@@ -5217,7 +5217,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.doItButton.clicked.connect(self.apply_changes)
         self.ui.toolBox.currentChanged.connect(self.on_side_panel_page_changed)
         self.scene.selectionChanged.connect(self.on_scene_selection_changed)
-        if not self.main_block.empty() and not self.main_block.diagram.node_data:
+        if not self.main_block.empty() and not self.main_block.diagram.node_data and self.main_editor:
             blocks_list = list()
             for child in self.main_block.children:
                 item = self.generate_block_item_for_block(child)

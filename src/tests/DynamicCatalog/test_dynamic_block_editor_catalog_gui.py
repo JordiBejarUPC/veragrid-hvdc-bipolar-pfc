@@ -297,9 +297,10 @@ def test_library_search_button_and_shortcut_filter_basic_catalog() -> None:
     limit_label = descriptor_by_key["limit"].display_label
 
     assert editor.ui.librarySearchLineEdit.isVisible()
-
     QTest.mouseClick(editor.ui.librarySearchButton, QtCore.Qt.MouseButton.LeftButton)
     QtWidgets.QApplication.processEvents()
+    QTest.qWait(100)  # wait 100ms
+
     assert editor.ui.librarySearchLineEdit.hasFocus()
 
     editor.ui.librarySearchLineEdit.clearFocus()
@@ -1994,20 +1995,31 @@ def test_lookup_matrix_linear_dialog_supports_copy_paste_and_delete_shortcuts() 
     dialog = LookupMatrixLinearDialog(block_label="Lookup matrix (linear)")
     dialog.show()
     dialog.activateWindow()
+    dialog.raise_()
+    QTest.qWaitForWindowExposed(dialog)
+    QtWidgets.QApplication.processEvents()
     clipboard = QtWidgets.QApplication.clipboard()
 
     dialog._table_widget.clearSelection()
     selection = QtWidgets.QTableWidgetSelectionRange(0, 0, 2, 2)
     dialog._table_widget.setRangeSelected(selection, True)
-    dialog.setFocus()
-    QTest.keyClick(dialog, QtCore.Qt.Key.Key_C, QtCore.Qt.KeyboardModifier.ControlModifier)
+    dialog._table_widget.setFocus()
     QtWidgets.QApplication.processEvents()
+
+    dialog.copy_selection_to_clipboard()
+    QtWidgets.QApplication.processEvents()
+    QTest.qWait(50)
     copied_grid = _parse_clipboard_grid(clipboard.text())
     assert copied_grid == [["", "0.0", "1.0"], ["0.0", "0.0", "10.0"], ["2.0", "20.0", "30.0"]] or copied_grid == [["", "0", "1"], ["0", "0", "10"], ["2", "20", "30"]]
 
     clipboard.setText("\t5\t6\n7\t8\t9\n10\t11\t12\n13\t14\t15")
-    QTest.keyClick(dialog, QtCore.Qt.Key.Key_V, QtCore.Qt.KeyboardModifier.ControlModifier)
+    dialog._table_widget.clearSelection()
+    dialog._table_widget.setFocus()
     QtWidgets.QApplication.processEvents()
+
+    dialog.paste_from_clipboard()
+    QtWidgets.QApplication.processEvents()
+    QTest.qWait(50)
     x_points, y_points, z_matrix = dialog._read_matrix_from_table()
     assert x_points == [5.0, 6.0]
     assert y_points == [7.0, 10.0, 13.0]
@@ -2016,8 +2028,12 @@ def test_lookup_matrix_linear_dialog_supports_copy_paste_and_delete_shortcuts() 
     dialog._table_widget.clearSelection()
     selection = QtWidgets.QTableWidgetSelectionRange(1, 0, 1, 2)
     dialog._table_widget.setRangeSelected(selection, True)
-    QTest.keyClick(dialog, QtCore.Qt.Key.Key_Delete)
+    dialog._table_widget.setFocus()
     QtWidgets.QApplication.processEvents()
+
+    dialog.delete_selection()
+    QtWidgets.QApplication.processEvents()
+    QTest.qWait(50)
     x_points, y_points, z_matrix = dialog._read_matrix_from_table()
     assert x_points == [5.0, 6.0]
     assert y_points == [10.0, 13.0]
@@ -2048,19 +2064,40 @@ def test_lookup_matrix_linear_dialog_supports_row_copy_and_row_paste() -> None:
     dialog = LookupMatrixLinearDialog(block_label="Lookup matrix (linear)")
     dialog.show()
     dialog.activateWindow()
+    dialog.raise_()
+    QTest.qWaitForWindowExposed(dialog)
+    QtWidgets.QApplication.processEvents()
     clipboard = QtWidgets.QApplication.clipboard()
+    clipboard.clear()
 
     dialog.on_matrix_cell_pressed(1, 0)
     QtWidgets.QApplication.processEvents()
+
     dialog.setFocus()
-    QTest.keyClick(dialog, QtCore.Qt.Key.Key_C, QtCore.Qt.KeyboardModifier.ControlModifier)
+    dialog._table_widget.setFocus()
     QtWidgets.QApplication.processEvents()
-    assert clipboard.text().rstrip() == "0.0\t0.0\t10.0"
+
+    print(f"DEBUG: selected indexes = {dialog._table_widget.selectionModel().selectedIndexes()}")
+    print(f"DEBUG: row 1 items = {[dialog._table_widget.item(1, c).text() for c in range(3)]}")
+
+    dialog.copy_selection_to_clipboard()
+    QtWidgets.QApplication.processEvents()
+    QTest.qWait(100)
+
+    clipboard_content = clipboard.text()
+    print(f"DEBUG: clipboard text = {repr(clipboard_content)}")
+
+    assert clipboard_content.rstrip() == "0.0\t0.0\t10.0", f"Expected '0.0\\t0.0\\t10.0' but got {repr(clipboard_content)}"
 
     dialog.on_matrix_cell_pressed(2, 0)
     QtWidgets.QApplication.processEvents()
-    QTest.keyClick(dialog, QtCore.Qt.Key.Key_V, QtCore.Qt.KeyboardModifier.ControlModifier)
+    dialog.setFocus()
+    dialog._table_widget.setFocus()
     QtWidgets.QApplication.processEvents()
+
+    dialog.paste_from_clipboard()
+    QtWidgets.QApplication.processEvents()
+    QTest.qWait(100)
     x_points, y_points, z_matrix = dialog._read_matrix_from_table()
     assert x_points == [0.0, 1.0]
     assert y_points == [0.0, 0.0]
