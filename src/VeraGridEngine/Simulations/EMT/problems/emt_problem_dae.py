@@ -177,6 +177,16 @@ def _xfmr_phase_permutation_matrix(clock: int) -> np.ndarray:
                 [0.0, 1.0, 0.0],
             ], dtype=float)
 
+def find_name_in_block(name: str, block: Block):
+    for var in block.algebraic_vars + block.state_vars + list(block.event_dict.keys()) + block.diff_vars:
+        if name == var.name:
+            return var
+
+    for mdl in block.children:
+        res = find_name_in_block(name, mdl)
+        if res is not None:
+            return res
+
 
 class EmtTopologyError(Exception):
     """
@@ -7170,3 +7180,4 @@ class EmtProblemDae(EmtProblemTemplate):
             key=ParamPowerFlowRefferenceType.generator_share_q_ref,
             value=q_ref_value,
         )
+
