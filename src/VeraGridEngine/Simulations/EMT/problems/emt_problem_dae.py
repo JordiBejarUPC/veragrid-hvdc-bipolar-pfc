@@ -445,11 +445,96 @@ def _get_bus_v_list(
     return out
 
 def _get_external_mapping(mdl: Block) -> Optional[Dict[Any, Var]]:
-    external_mapping: Optional[Dict[Any, Var]] = mdl.external_mapping
-    if external_mapping is None:
+    """
+    Return the flattened external mapping exposed by one block hierarchy.
+
+    Wrapper EMT models may keep the actual PF-to-EMT variable bindings inside
+    nested child blocks. The build stage therefore needs to inspect the whole
+    hierarchy and merge the first occurrence of each key so later lookup sites
+    can recover child initialization references from the wrapper root.
+
+    :param mdl: Root block to inspect.
+    :return: Flattened external mapping, or ``None`` when no mapping exists.
+    """
+    external_mapping: Dict[Any, Var] = _collect_external_mapping_from_block(mdl)
+
+    # An empty merged mapping means the hierarchy does not expose PF bindings.
+    if len(external_mapping) == 0:
         return None
     else:
         return external_mapping
+
+
+def _collect_block_hierarchy(mdl: Block) -> List[Block]:
+    """
+    Collect every block reachable from one root block.
+
+    The EMT editor may persist one wrapper root around the actual device block.
+    Rebuilding wrapper-owned metadata therefore starts by traversing the full
+    hierarchy exactly once while avoiding revisiting the same block object.
+
+    :param mdl: Root block to inspect.
+    :return: Ordered list with the reachable block objects.
+    """
+    blocks: List[Block] = list()
+    stack: List[Block] = list([mdl])
+    visited: Set[int] = set()
+
+    # The explicit stack keeps the traversal iterative and avoids recursion
+    # depth concerns when the GUI creates nested wrapper structures.
+    while len(stack) > 0:
+        block: Block = stack.pop()
+        block_id: int = id(block)
+
+        # Every block is processed only once so merged metadata stays stable.
+        if block_id not in visited:
+            visited.add(block_id)
+            blocks.append(block)
+
+            # Child blocks are pushed so the caller can inspect nested metadata
+            # such as PF references and explicit-init registrations.
+            child: Block
+            for child in block.children:
+                stack.append(child)
+        else:
+            pass
+
+    return blocks
+
+
+def _collect_external_mapping_from_block(mdl: Block) -> Dict[Any, Var]:
+    """
+    Collect the external mapping from one block hierarchy.
+
+    Wrapper models may keep the exposed PF reference variables in nested child
+    blocks. This helper merges the hierarchy into one root-level mapping while
+    preserving the first occurrence of each key, which matches the existing
+    API-object mapping recovery strategy used by the EMT builder.
+
+    :param mdl: Root block to inspect.
+    :return: Flattened external mapping.
+    """
+    mapping: Dict[Any, Var] = dict()
+    blocks: List[Block] = _collect_block_hierarchy(mdl)
+    block: Block
+
+    # The root block keeps precedence, while child-only keys are recovered so
+    # PF-derived initialization metadata survives wrapper reconstruction.
+    for block in blocks:
+        local_mapping: Optional[Dict[Any, Var]] = block.external_mapping
+
+        if local_mapping is None:
+            pass
+        else:
+            key: Any
+            value: Var
+            for key, value in local_mapping.items():
+                if key not in mapping:
+                    mapping[key] = value
+                else:
+                    pass
+
+    return mapping
 
 
 def _collect_api_obj_mapping_from_block(mdl: Block) -> Dict[ParamPowerFlowRefferenceType, Any]:
@@ -464,27 +549,20 @@ def _collect_api_obj_mapping_from_block(mdl: Block) -> Dict[ParamPowerFlowReffer
     :return: Flattened API-object mapping.
     """
     mapping: Dict[ParamPowerFlowRefferenceType, Any] = dict()
-    stack: List[Block] = list([mdl])
-    visited: Set[int] = set()
+    blocks: List[Block] = _collect_block_hierarchy(mdl)
+    block: Block
 
-    while len(stack) > 0:
-        block: Block = stack.pop()
-        block_id: int = id(block)
-
-        if block_id not in visited:
-            visited.add(block_id)
-
-            local_mapping: Dict[ParamPowerFlowRefferenceType, Any] = block.api_obj_mapping
-            for key, value in local_mapping.items():
-                if key not in mapping:
-                    mapping[key] = value
-                else:
-                    pass
-
-            for child in block.children:
-                stack.append(child)
-        else:
-            pass
+    # The same hierarchy walk used for external mappings is reused here so the
+    # wrapper-recovery policy stays identical for all PF initialization data.
+    for block in blocks:
+        local_mapping: Dict[ParamPowerFlowRefferenceType, Any] = block.api_obj_mapping
+        key: ParamPowerFlowRefferenceType
+        value: Any
+        for key, value in local_mapping.items():
+            if key not in mapping:
+                mapping[key] = value
+            else:
+                pass
 
     return mapping
 
@@ -911,6 +989,33 @@ def _find_internal_runtime_var_owner(block: Block, var_name: str) -> Tuple[Optio
             pass
 
     return None, None
+
+
+def _find_event_var_owner(block: Block, target_var: Var) -> Optional[Block]:
+    """
+    Return the block that owns one runtime event parameter variable.
+
+    GUI-authored EMT models may keep the actual runtime parameter inside a child
+    block while the wrapper root exposes only proxy metadata. Runtime seeding
+    therefore has to locate the block that owns the parameter before updating
+    the corresponding ``event_dict`` entry.
+
+    :param block: Root block to inspect.
+    :param target_var: Runtime parameter variable to locate.
+    :return: Owner block or ``None`` when the variable is not present.
+    """
+    blocks: List[Block] = _collect_block_hierarchy(block)
+    block_item: Block
+
+    # The hierarchy walk is explicit so wrapper roots and leaf models follow the
+    # same ownership lookup path during PF-derived runtime seeding.
+    for block_item in blocks:
+        if target_var in block_item.event_dict:
+            return block_item
+        else:
+            pass
+
+    return None
 
 
 def _get_expected_pi_line_terminal_refs(ph_mask: List[bool]) -> List[VarPowerFlowRefferenceType]:
@@ -1447,23 +1552,36 @@ class EmtProblemDae(EmtProblemTemplate):
     # ---------------------------------------------------------------------
     def _register_init_model(self, mdl: Block) -> None:
         """
-        Register a block for explicit initialization if it defines init_eqs.
+        Register every block in one hierarchy that defines explicit init equations.
 
-        :param mdl: Block to inspect.
+        Wrapper EMT roots may not own ``init_eqs`` directly because the actual
+        initialization equations live in nested child blocks. The registration
+        pass therefore traverses the full hierarchy and stores every unique block
+        that contributes explicit initialization equations.
+
+        :param mdl: Root block to inspect.
         :return: None
         """
-        init_eqs = mdl.init_eqs
+        blocks: List[Block] = _collect_block_hierarchy(mdl)
+        block: Block
 
-        if init_eqs is None or len(init_eqs) == 0:
-            pass
-        else:
-            mid: int = id(mdl)
+        # Every nested block is inspected because the GUI may wrap the actual
+        # device model inside non-physical container blocks.
+        for block in blocks:
+            init_eqs: Any = block.init_eqs
 
-            if mid in self._models_with_init_eqs_seen:
+            if init_eqs is None or len(init_eqs) == 0:
                 pass
             else:
-                self._models_with_init_eqs_seen.add(mid)
-                self._models_with_init_eqs.append(mdl)
+                mid: int = id(block)
+
+                # The seen-set keeps the explicit-init schedule stable even if
+                # the same working model is visited from multiple build paths.
+                if mid in self._models_with_init_eqs_seen:
+                    pass
+                else:
+                    self._models_with_init_eqs_seen.add(mid)
+                    self._models_with_init_eqs.append(block)
 
     def get_build_report(self) -> Dict[str, float]:
         """
@@ -1476,23 +1594,35 @@ class EmtProblemDae(EmtProblemTemplate):
 
     def _register_diff_init_model(self, mdl: Block) -> None:
         """
-        Register a block for explicit differential initialization if it defines diff_init_eqs.
+        Register every block in one hierarchy that defines diff-init equations.
 
-        :param mdl: Block to inspect.
+        Wrapper EMT roots may keep differential explicit-initialization metadata
+        in nested child blocks. This routine traverses the full hierarchy so the
+        later explicit-init stage executes every unique contributing block.
+
+        :param mdl: Root block to inspect.
         :return: None
         """
-        diff_init_eqs = mdl.diff_init_eqs
+        blocks: List[Block] = _collect_block_hierarchy(mdl)
+        block: Block
 
-        if diff_init_eqs is None or len(diff_init_eqs) == 0:
-            pass
-        else:
-            mid: int = id(mdl)
+        # The traversal mirrors the normal explicit-init registration path so
+        # both algebraic and differential init metadata follow the same policy.
+        for block in blocks:
+            diff_init_eqs: Any = block.diff_init_eqs
 
-            if mid in self._models_with_diff_init_eqs_seen:
+            if diff_init_eqs is None or len(diff_init_eqs) == 0:
                 pass
             else:
-                self._models_with_diff_init_eqs_seen.add(mid)
-                self._models_with_diff_init_eqs.append(mdl)
+                mid: int = id(block)
+
+                # Duplicate registrations are ignored so execution order remains
+                # deterministic when wrappers reference the same child block.
+                if mid in self._models_with_diff_init_eqs_seen:
+                    pass
+                else:
+                    self._models_with_diff_init_eqs_seen.add(mid)
+                    self._models_with_diff_init_eqs.append(block)
 
     def _run_explicit_initialization(self)-> None:
         """
@@ -2566,30 +2696,60 @@ class EmtProblemDae(EmtProblemTemplate):
         Register a device EMT model into the global system block.
 
         The device model is flattened before being attached to the system block.
-        Some wrapper-style models store ``api_obj_mapping`` in nested child blocks,
-         For that reason, the mapping is rebuilt first and restored on the
-        device block before flattening.
+        Some wrapper-style models store PF-initialization metadata in nested child
+        blocks. For that reason, the relevant mappings are rebuilt first and then
+        restored on the device root before the block is added to the global system.
 
         :param dev: Device object from the grid.
         :param sys_block: Main DAE system block.
         :return: Unified device block.
         """
         mdl: Block = self._get_or_create_working_emt_model(dev)
+        resolved_external_mapping: Dict[Any, Var]
 
+        # Wrapper roots may not own the PF-parameter mapping directly, so the
+        # hierarchy is flattened into one root-visible mapping before build use.
         resolved_api_mapping: Dict[ParamPowerFlowRefferenceType, Any] = _collect_api_obj_mapping_from_block(mdl)
         if len(resolved_api_mapping) > 0:
             mdl.api_obj_mapping = resolved_api_mapping
         else:
             pass
 
+        # Wrapper roots may also hide PF variable references in leaf blocks.
+        # Re-attaching the merged mapping on the root keeps all later lookups
+        # consistent with the already recovered API-object mapping.
+        resolved_external_mapping = _collect_external_mapping_from_block(mdl)
+        if len(resolved_external_mapping) > 0:
+            mdl.external_mapping = resolved_external_mapping
+        else:
+            pass
+
         dev_key: int = id(dev)
         if dev_key not in self._registered_working_emt_models:
+            parameter_owner_blocks: List[Block] = _collect_block_hierarchy(mdl)
+            parameter_owner_block: Block
+
             # Register runtime-updatable EMT parameters declared by the device block.
             # EMT runtime events are no longer baked into the symbolic model during the
             # parsing phase. Instead, the problem stores the event-capable parameters and
             # later activates the selected EMT event group through ``set_events_group()``.
             if not mdl.event_dict and not mdl.mode_dict:
-                pass
+                # Wrapper roots may keep all runtime parameters inside nested child
+                # blocks, so the registration pass must still inspect the full
+                # hierarchy before deciding that nothing needs to be registered.
+                for parameter_owner_block in parameter_owner_blocks:
+                    if parameter_owner_block is mdl:
+                        pass
+                    else:
+                        for parameter in parameter_owner_block.event_dict.keys():
+                            self._event_parameter_device_idtags[parameter.uid] = dev.idtag
+                            self._event_parameter_name_lookup[(str(dev.idtag), str(parameter.name))] = parameter.uid
+                            self._continuous_event_parameter_uids.add(parameter.uid)
+
+                        for parameter in parameter_owner_block.mode_dict.keys():
+                            self._event_parameter_device_idtags[parameter.uid] = dev.idtag
+                            self._event_parameter_name_lookup[(str(dev.idtag), str(parameter.name))] = parameter.uid
+                            self._discrete_event_parameter_uids.add(parameter.uid)
             else:
                 for parameter in mdl.event_dict.keys():
                     self._event_parameter_device_idtags[parameter.uid] = dev.idtag
@@ -2600,6 +2760,24 @@ class EmtProblemDae(EmtProblemTemplate):
                     self._event_parameter_device_idtags[parameter.uid] = dev.idtag
                     self._event_parameter_name_lookup[(str(dev.idtag), str(parameter.name))] = parameter.uid
                     self._discrete_event_parameter_uids.add(parameter.uid)
+
+                # Child blocks may define additional runtime parameters that are
+                # not re-exported on the wrapper root. Those nested parameters
+                # must also be registered so later EMT event activation and
+                # runtime seeding can find them by UID and by device/name.
+                for parameter_owner_block in parameter_owner_blocks:
+                    if parameter_owner_block is mdl:
+                        pass
+                    else:
+                        for parameter in parameter_owner_block.event_dict.keys():
+                            self._event_parameter_device_idtags[parameter.uid] = dev.idtag
+                            self._event_parameter_name_lookup[(str(dev.idtag), str(parameter.name))] = parameter.uid
+                            self._continuous_event_parameter_uids.add(parameter.uid)
+
+                        for parameter in parameter_owner_block.mode_dict.keys():
+                            self._event_parameter_device_idtags[parameter.uid] = dev.idtag
+                            self._event_parameter_name_lookup[(str(dev.idtag), str(parameter.name))] = parameter.uid
+                            self._discrete_event_parameter_uids.add(parameter.uid)
 
             # Add model to system mappings
             # Populates tracking dictionaries to maintain the relationship between
@@ -2656,15 +2834,24 @@ class EmtProblemDae(EmtProblemTemplate):
         :return: Assignment status.
         """
         api_obj_mapping: Any = mdl.api_obj_mapping
+        event_owner: Optional[Block]
 
         if isinstance(api_obj_mapping, dict):
             target: Any | None = api_obj_mapping.get(key, None)
 
             if target is not None:
-                if target in mdl.event_dict:
-                    pass
+                if isinstance(target, Var):
+                    # Wrapper roots may expose API mappings for parameters whose
+                    # actual runtime storage belongs to a nested child block.
+                    # Static assignment must therefore skip every target that is
+                    # owned by any child ``event_dict`` in the hierarchy.
+                    event_owner = _find_event_var_owner(mdl, target)
+                    if event_owner is not None:
+                        pass
+                    else:
+                        static_parameter_values_mapping[target] = value if isinstance(value, Const) else Const(float(value))
                 else:
-                    static_parameter_values_mapping[target] = value if isinstance(value, Const) else Const(float(value))
+                    pass
             else:
                 pass
         else:
@@ -2690,6 +2877,7 @@ class EmtProblemDae(EmtProblemTemplate):
         :return: None.
         """
         api_obj_mapping: Any = mdl.api_obj_mapping
+        owner_block: Optional[Block]
         target: Any | None
 
         if isinstance(api_obj_mapping, dict):
@@ -2698,8 +2886,15 @@ class EmtProblemDae(EmtProblemTemplate):
             if target is None:
                 pass
             else:
-                if target in mdl.event_dict:
-                    mdl.event_dict[target] = Const(float(value))
+                if isinstance(target, Var):
+                    # The mapped runtime parameter may live in a nested child
+                    # block, so the assignment must target the owner block that
+                    # actually stores the mutable ``event_dict`` entry.
+                    owner_block = _find_event_var_owner(mdl, target)
+                    if owner_block is None:
+                        pass
+                    else:
+                        owner_block.event_dict[target] = Const(float(value))
                 else:
                     pass
         else:
@@ -5932,8 +6127,10 @@ class EmtProblemDae(EmtProblemTemplate):
         Ih_t0_red = i_t0_red - rt.Gc_red @ v_t0_red
 
         for k in range(rt.m):
-            mdl.event_dict[rt.Ih_f[k]] = self.grid.var_factory.add_const(float(Ih_f0_red[k]))
-            mdl.event_dict[rt.Ih_t[k]] = self.grid.var_factory.add_const(float(Ih_t0_red[k]))
+            # mdl.event_dict[rt.Ih_f[k]] = self.grid.var_factory.add_const(float(Ih_f0_red[k]))
+            # mdl.event_dict[rt.Ih_t[k]] = self.grid.var_factory.add_const(float(Ih_t0_red[k]))
+            mdl.event_dict[rt.Ih_f[k]] = Const(float(Ih_f0_red[k]))
+            mdl.event_dict[rt.Ih_t[k]] = Const(float(Ih_t0_red[k]))
 
         rt.initialize_buffers_from_initial_point(
             v_f0_red=v_f0_red,
@@ -6034,8 +6231,8 @@ class EmtProblemDae(EmtProblemTemplate):
 
         phase_index = 0
         while phase_index < rt.m:
-            mdl.event_dict[rt.Ih_f[phase_index]] = self.grid.var_factory.add_const(float(np.real(ih_f_phase[phase_index])))
-            mdl.event_dict[rt.Ih_t[phase_index]] = self.grid.var_factory.add_const(float(np.real(ih_t_phase[phase_index])))
+            mdl.event_dict[rt.Ih_f[phase_index]] = Const(float(np.real(ih_f_phase[phase_index])))
+            mdl.event_dict[rt.Ih_t[phase_index]] = Const(float(np.real(ih_t_phase[phase_index])))
             phase_index += 1
 
     def _try_set_jmarti_pf_init_balanced(
@@ -6149,6 +6346,7 @@ class EmtProblemDae(EmtProblemTemplate):
         :return: None
         """
         external_mapping: Optional[Dict[Any, Var]] = _get_external_mapping(mdl)
+        owner_block: Optional[Block]
 
         if external_mapping is None:
             pass
@@ -6158,14 +6356,22 @@ class EmtProblemDae(EmtProblemTemplate):
             if mapped_var is None:
                 pass
             else:
-                if mapped_var in mdl.event_dict:
-                    # mdl.event_dict[mapped_var] = self.grid.var_factory.add_const(float(value))
-                    mdl.event_dict[mapped_var] = Const(float(value))
-                else:
+                # GUI wrapper roots may expose one PF reference whose mutable
+                # runtime storage actually belongs to a nested child block.
+                # The assignment must therefore target the block that owns the
+                # ``event_dict`` entry instead of assuming root ownership.
+                owner_block = _find_event_var_owner(mdl, mapped_var)
+                if owner_block is None:
                     value_float: float = float(value)
                     self._temp_init_guess[mapped_var.uid] = value_float
                     if persist_after_native_init:
                         self._temp_post_init_guess[mapped_var.uid] = value_float
+                    else:
+                        pass
+                else:
+                    owner_block.event_dict[mapped_var] = Const(float(value))
+                    if persist_after_native_init:
+                        self._temp_post_init_guess[mapped_var.uid] = float(value)
                     else:
                         pass
 
@@ -6820,12 +7026,22 @@ class EmtProblemDae(EmtProblemTemplate):
         Set a PF-derived value either as an event parameter if the mapped variable belongs to mdl.event_dict.
         """
         var: Optional[Any] = _get_external_mapping_var_if_present(mdl=mdl, key=key)
+        owner_block: Optional[Block]
 
         if var is None:
             return
+        else:
+            pass
 
-        if var in mdl.event_dict:
-            mdl.event_dict[var] = Const(float(value))
+        if isinstance(var, Var):
+            # GUI wrapper roots often expose the PF reference while the actual
+            # mutable runtime parameter lives in a child ``event_dict``. The
+            # value must therefore be written to the owning child block.
+            owner_block = _find_event_var_owner(mdl, var)
+            if owner_block is None:
+                pass
+            else:
+                owner_block.event_dict[var] = Const(float(value))
         else:
             pass
 
