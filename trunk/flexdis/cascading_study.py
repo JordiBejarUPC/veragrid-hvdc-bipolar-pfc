@@ -25,10 +25,10 @@ from VeraGridEngine.enumerations import FaultType, MethodShortCircuit, SolverTyp
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions
 from VeraGridEngine.Simulations.ShortCircuitStudies.short_circuit_options import ShortCircuitOptions
 from VeraGridEngine.Simulations.ShortCircuitStudies.short_circuit_driver import ShortCircuitDriver
-from VeraGridEngine.Devices.Aggregation.short_cirtcuit_event import ShortCircuitEvent
+from VeraGridEngine.Devices.Events.short_cirtcuit_event import ShortCircuitEvent
 
-FILEPATH = '/Users/Josep/Desktop/VeraGrid/trunk/flexdis/ieee33_flexdis.veragrid'
-RESULTS_DIR = '/Users/Josep/Desktop/VeraGrid/trunk/flexdis/docs'
+FILEPATH = '/Users/josep/Desktop/VeraGrid/trunk/flexdis/ieee33_flexdis.veragrid'
+RESULTS_DIR = '/Users/josep/Desktop/VeraGrid/trunk/flexdis/docs'
 
 # VSC power injections (MW)
 VSC_POWER = {
@@ -49,13 +49,7 @@ def run_scenario(min_ac_v: float, scenario_label: str) -> dict:
     # Load fresh grid for each scenario
     grid = gce.open_file(FILEPATH)
 
-    # Set fault impedance on all AC buses (near-bolted 3ph fault)
-    for bus in grid.buses:
-        if not bus.is_dc:
-            bus.r_fault = 1e-6
-            bus.x_fault = 1e-6
-
-    # Set min_ac_voltage on all VSCs
+    # Set min_ac_voltage on all VSCs (fault impedance set per-event below)
     for vsc in grid.vsc_devices:
         vsc.min_ac_voltage = min_ac_v
 
@@ -92,10 +86,6 @@ def run_scenario(min_ac_v: float, scenario_label: str) -> dict:
     for fault_bus in ac_buses:
         # Reload grid each time (sequences_vsc modifies VSC controls internally)
         grid = gce.open_file(FILEPATH)
-        for bus in grid.buses:
-            if not bus.is_dc:
-                bus.r_fault = 1e-6
-                bus.x_fault = 1e-6
         for vsc in grid.vsc_devices:
             vsc.min_ac_voltage = min_ac_v
 
@@ -109,6 +99,8 @@ def run_scenario(min_ac_v: float, scenario_label: str) -> dict:
             method=MethodShortCircuit.sequences_vsc,
             name=f"Fault {fault_bus.name}",
             active=True,
+            r_fault=1e-6,
+            x_fault=1e-6,
         )
         grid.add_short_circuit_event(sc_event)
 
