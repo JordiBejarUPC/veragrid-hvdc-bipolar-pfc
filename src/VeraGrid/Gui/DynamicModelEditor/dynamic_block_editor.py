@@ -9183,6 +9183,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         if self.mode == DynamicSimulationMode.RMS:
             self.add_connection_vars_rms()
 
+
+
         elif self.mode == DynamicSimulationMode.EMT:
             if isinstance(self.api_object, BranchParent):
                 specs = self._build_emt_branch_connection_specs()
@@ -9231,6 +9233,25 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 {VarPowerFlowRefferenceType.Vmt: Vmt})
             self.main_block.external_mapping.update(
                 {VarPowerFlowRefferenceType.Vat: Vat})
+
+            # add connection variables
+            Pf = self.var_factory.add_var('net_conn_Pf', VarPowerFlowRefferenceType.P, True)
+            Qf = self.var_factory.add_var('net_conn_Qf', VarPowerFlowRefferenceType.Q, True)
+
+            self.main_block.out_vars.append(Pf)
+            self.main_block.out_vars.append(Qf)
+
+            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.P: Pf})
+            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Q: Qf})
+
+            Pt = self.var_factory.add_var('net_conn_Pt', VarPowerFlowRefferenceType.P, True)
+            Qt = self.var_factory.add_var('net_conn_Qt', VarPowerFlowRefferenceType.Q, True)
+
+            self.main_block.out_vars.append(Pt)
+            self.main_block.out_vars.append(Qt)
+
+            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.P: Pt})
+            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Q: Qt})
 
         elif isinstance(self.api_object, InjectionParent):
 
