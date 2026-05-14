@@ -6,7 +6,7 @@ from __future__ import annotations
 from typing import List, Optional, Set, TYPE_CHECKING
 import numpy as np
 import networkx as nx
-from PySide6 import QtWidgets
+from PySide6 import QtWidgets, QtCore, QtGui
 
 from VeraGrid.ThirdParty.adjustText import adjust_text
 from VeraGrid.Gui.Diagrams.MapWidget.Substation.substation_graphic_item import SubstationGraphicItem
@@ -47,7 +47,8 @@ class ProceduralGridWindow(QtWidgets.QDialog):
         # Setup combobox
         self.methods_dict, methods_mdl = enums_to_model(
             [ProceduralGridMethods.SteinerAlone,
-             ProceduralGridMethods.SteinerAndOptimization]
+             ProceduralGridMethods.SteinerAndOptimization,
+             ProceduralGridMethods.CatalogueOptimizationOnly]
         )
         self.ui.methodComboBox.setModel(methods_mdl)
         self.ui.methodComboBox.setCurrentIndex(0)
@@ -84,8 +85,13 @@ class ProceduralGridWindow(QtWidgets.QDialog):
         self.ui.computeCandidatesButton.clicked.connect(self.compute_candidates)
 
         # Any change to the inputs invalidates the previously previewed result so the user
-        # cannot accept a graph that no longer matches the parameters on screen
-        self.ui.methodComboBox.currentIndexChanged.connect(self._invalidate_preview)
+        # cannot accept a graph that no longer matches the parameters on screen, and also
+        # reconfigures which inputs / buttons are enabled to match the new method.
+        self.ui.methodComboBox.currentIndexChanged.connect(self._on_method_changed)
+
+        # Initialise the enable/disable state of the inputs and buttons so it matches the
+        # method currently shown in the combo box at construction time.
+        self._on_method_changed()
 
     def _invalidate_preview(self) -> None:
         """
@@ -97,6 +103,53 @@ class ProceduralGridWindow(QtWidgets.QDialog):
         self._method = None
         self._logger = None
         self.ui.acceptButton.setEnabled(False)
+
+    def _on_method_changed(self) -> None:
+        """
+        Reconfigure the dialog when the user picks a different method in the combo.
+
+        Two behaviours are needed:
+
+        * For the Steiner methods we keep the existing Preview/Accept flow: the user
+          edits target/candidate inputs, clicks Preview to compute and draw a result,
+          then clicks Accept to apply it. Accept stays disabled until a successful
+          Preview has populated the engine state.
+        * For the catalogue-only method there is no preview to draw because the
+          optimization runs asynchronously through the application session, and the
+          target/candidate widgets do not feed into it (the branches come from the
+          active schematic selection). Preview is therefore disabled and Accept is
+          enabled directly so the user can launch the optimization in one click.
+
+        :return: ``None``.
+        """
+        # Always discard any previously previewed state: switching method invalidates it.
+        self._invalidate_preview()
+
+        # Resolve the method currently selected in the combo box
+        method: ProceduralGridMethods = self.methods_dict[self.ui.methodComboBox.currentText()]
+
+        if method == ProceduralGridMethods.CatalogueOptimizationOnly:
+            # The catalogue optimization does not use target/candidate substations and does not
+            # produce a synchronous preview, so grey out the unused inputs to make that obvious
+            # and let the user click Accept straight away.
+            self.ui.previewButton.setEnabled(False)
+            self.ui.previewButton.setToolTip("Not applicable for catalogue optimization")
+            self.ui.targetSubstationListView.setEnabled(False)
+            self.ui.candidateSubstationListView.setEnabled(False)
+            self.ui.topClosestSpinBox.setEnabled(False)
+            self.ui.computeCandidatesButton.setEnabled(False)
+            self.ui.acceptButton.setEnabled(True)
+        else:
+            # Steiner methods: restore the standard Preview-then-Accept flow with all inputs
+            # available. Accept remains disabled until a Preview succeeds (handled above by
+            # _invalidate_preview).
+            self.ui.previewButton.setEnabled(True)
+            self.ui.previewButton.setToolTip("Preview")
+            self.ui.targetSubstationListView.setEnabled(True)
+            self.ui.candidateSubstationListView.setEnabled(True)
+            self.ui.topClosestSpinBox.setEnabled(True)
+            self.ui.computeCandidatesButton.setEnabled(True)
+        return None
 
     def compute_candidates(self):
         """
@@ -195,14 +248,28 @@ class ProceduralGridWindow(QtWidgets.QDialog):
             logger=logger
         )
 
-        if method == ProceduralGridMethods.SteinerAlone:
-            expanded_grid = engine.run_steiner_alone()
+        # The Steiner + NSGA-3 catalogue path can take many seconds; show a busy cursor
+        # while the engine runs so the user has visible feedback that the dialog is working.
+        QtGui.QGuiApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.CursorShape.WaitCursor))
+        try:
+            if method == ProceduralGridMethods.SteinerAlone:
+                expanded_grid = engine.run_steiner_alone()
 
-        elif method == ProceduralGridMethods.SteinerAndOptimization:
-            expanded_grid = engine.run_optimization()
+            elif method == ProceduralGridMethods.SteinerAndOptimization:
+                # Reuse the same widgets the standalone catalogue feature uses so users get a
+                # single, consistent place to control pf options and the evaluation budget.
+                pf_options = self.app.get_selected_power_flow_options()
+                max_eval_per_var: int = self.app.ui.max_investments_evluation_number_spinBox.value()
+                expanded_grid = engine.run_steiner_tree_and_optimization(
+                    pf_options=pf_options,
+                    max_eval_per_var=max_eval_per_var,
+                )
 
-        else:
-            raise NotImplementedError(f"Method {method} not implemented")
+            else:
+                raise NotImplementedError(f"Method {method} not implemented")
+        finally:
+            # Always restore the cursor, even if the engine raises.
+            QtGui.QGuiApplication.restoreOverrideCursor()
 
         # 5. Persist the computed state so that Accept can apply it without recomputing,
         # then draw the topology on the embedded plot and enable Accept
@@ -222,8 +289,25 @@ class ProceduralGridWindow(QtWidgets.QDialog):
         no successful preview is currently held on the instance (Accept should be
         disabled in that case, but we guard against accidental double-clicks).
 
+        For the ``CatalogueOptimizationOnly`` method there is no synchronous preview:
+        we close the dialog and delegate straight to the existing application handler
+        which launches the optimization through the session and reports its own
+        warnings / progress.
+
         :return: ``None``.
         """
+        # Branch on method: the catalogue-only method does not go through the engine
+        # preview path; it reuses the application's catalogue optimization handler.
+        method: ProceduralGridMethods = self.methods_dict[self.ui.methodComboBox.currentText()]
+        if method == ProceduralGridMethods.CatalogueOptimizationOnly:
+            # Close first so that any warning popup raised by the handler (no selection,
+            # no schematic, already running, etc.) appears cleanly over the main window.
+            self.close()
+            self.app.catalogue_element_optimization()
+            return None
+        else:
+            pass
+
         if self._engine is None or self._expanded_grid is None or self._method is None or self._logger is None:
             return None
         else:

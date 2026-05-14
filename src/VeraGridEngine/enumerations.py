@@ -3945,6 +3945,7 @@ class ProceduralGridMethods(Enum):
     """
     SteinerAlone = "Steiner tree"
     SteinerAndOptimization = "Steiner tree + optimization"
+    CatalogueOptimizationOnly = "Catalogue optimization only"
 
     def __str__(self):
         return self.value
