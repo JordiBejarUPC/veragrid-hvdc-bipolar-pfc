@@ -140,7 +140,7 @@ def create_block_of_type(var_factory: VarFactory,
 
     # Thevenin equivalent generator
     elif block_type == BlockType.EMT_THEVENIN:
-        blk = tem.get_generator_thevenin_rl_emt_template(var_factory).block
+        blk = tem.get_generator_thevenin_rl_emt_template_with_ref(var_factory).block
         blk.name = item_name
         return blk
 

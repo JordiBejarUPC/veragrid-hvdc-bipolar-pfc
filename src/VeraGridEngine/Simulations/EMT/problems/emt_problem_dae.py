@@ -177,6 +177,16 @@ def _xfmr_phase_permutation_matrix(clock: int) -> np.ndarray:
                 [0.0, 1.0, 0.0],
             ], dtype=float)
 
+def find_name_in_block(name: str, block: Block):
+    for var in block.algebraic_vars + block.state_vars + list(block.event_dict.keys()) + block.diff_vars:
+        if name == var.name:
+            return var
+
+    for mdl in block.children:
+        res = find_name_in_block(name, mdl)
+        if res is not None:
+            return res
+
 
 class EmtTopologyError(Exception):
     """
@@ -1291,7 +1301,13 @@ class EmtProblemDae(EmtProblemTemplate):
                 params_offset=0,
             )
 
-        self._runtime_parameter_eqs0 = list(self._runtime_all_eqs_source)
+        # The retained runtime snapshot must follow the finalized flat runtime
+        # vector order, not the original block-discovery order. Bergeron history
+        # parameters are classified as retained mode parameters and moved to the
+        # tail of the runtime vector, so preserving the already partitioned event
+        # equation list keeps later event-group activation aligned with
+        # ``uid2idx_event_params``.
+        self._runtime_parameter_eqs0 = list(self._event_parameters_eqs)
         finalize_emt_fmu_cs_devices(self)
         finalize_emt_fmu_me_devices(self)
         from VeraGridEngine.Utils.procedural_logic import build_boundary_updater_from_block
@@ -2654,6 +2670,41 @@ class EmtProblemDae(EmtProblemTemplate):
         else:
             pass
 
+    @staticmethod
+    def _assign_event_mapping_value_if_present(mdl: Block,
+                                               key: ParamPowerFlowRefferenceType,
+                                               value: float,
+    ) -> None:
+        """
+        Assign one runtime/event parameter exposed through ``api_obj_mapping``.
+
+        Some higher-level EMT wrappers expose PF-derived sharing targets through
+        ``api_obj_mapping`` even though the actual parameter lives in
+        ``event_dict``. Those values must be seeded on the runtime side before
+        explicit initialization, but they must not pass through the static API
+        assignment helper.
+
+        :param mdl: EMT model block.
+        :param key: API mapping reference key.
+        :param value: Runtime value to assign.
+        :return: None.
+        """
+        api_obj_mapping: Any = mdl.api_obj_mapping
+        target: Any | None
+
+        if isinstance(api_obj_mapping, dict):
+            target = api_obj_mapping.get(key, None)
+
+            if target is None:
+                pass
+            else:
+                if target in mdl.event_dict:
+                    mdl.event_dict[target] = Const(float(value))
+                else:
+                    pass
+        else:
+            pass
+
 
     # ---------------------------------------------------------------------
     # BUILD STRUCTURE
@@ -3114,6 +3165,7 @@ class EmtProblemDae(EmtProblemTemplate):
                     bus_index=b,
                     seed_store=seed_store,
                     injection_index=injection_index,
+                    generator_count_same_bus=int(generator_count_same_bus[b]),
                 )
 
             if inj.device_type == DeviceType.GeneratorDevice and not inj.bus.is_dc:
@@ -3403,18 +3455,20 @@ class EmtProblemDae(EmtProblemTemplate):
         self._runtime_continuous_eqs = list()
         self._runtime_mode_eqs = list()
 
-        n_source: int = len(self._runtime_all_parameters_source)
-        i: int = 0
-        while i < n_source:
-            parameter: Var = self._runtime_all_parameters_source[i]
-            equation: Any = active_runtime_eqs[i]
+        # ``active_runtime_eqs`` is already expressed in the flat runtime-vector
+        # order used by ``uid2idx_event_params`` and by the solver runtime buffer.
+        # Re-splitting it through ``_runtime_all_parameters_source`` would switch
+        # back to source-block order and scramble retained mode parameters such as
+        # Bergeron history terms. The slices keep the continuous/mode partition
+        # aligned with the finalized flat parameter layout.
+        runtime_continuous_eqs: List[Any] = list(active_runtime_eqs[self._runtime_continuous_slice])
+        runtime_mode_eqs: List[Any] = list(active_runtime_eqs[self._runtime_mode_slice])
 
-            if parameter.uid in self._runtime_mode_uids:
-                self._runtime_mode_eqs.append(equation)
-            else:
-                self._runtime_continuous_eqs.append(equation)
+        for equation in runtime_continuous_eqs:
+            self._runtime_continuous_eqs.append(equation)
 
-            i += 1
+        for equation in runtime_mode_eqs:
+            self._runtime_mode_eqs.append(equation)
 
         self._event_parameters_eqs = list()
 
@@ -4063,6 +4117,7 @@ class EmtProblemDae(EmtProblemTemplate):
             bus_index: int,
             seed_store: EmtInjectionSeedStore,
             injection_index: int,
+            generator_count_same_bus: int,
     ) -> None:
         """
         Apply the precomputed PF seed of one injection into the EMT model.
@@ -4110,11 +4165,18 @@ class EmtProblemDae(EmtProblemTemplate):
                     )
         else:
             phase_power: np.ndarray = seed_store.get_ac_seed(injection_index)
+            phase_current_vector: np.ndarray = np.zeros(4, dtype=np.complex128)
+            preserve_generator_current_seed: bool
 
             if self.power_flow_results_3ph is None:
                 voltage_vector: np.ndarray = self._get_bus_voltage_vector_balanced(bus_index)
             else:
                 voltage_vector = self._get_bus_voltage_vector_3ph(bus_index)
+
+            if injection.device_type == DeviceType.GeneratorDevice and generator_count_same_bus <= 1:
+                preserve_generator_current_seed = False
+            else:
+                preserve_generator_current_seed = True
 
             phase_index: int = 0
             p_total: float = 0.0
@@ -4148,13 +4210,14 @@ class EmtProblemDae(EmtProblemTemplate):
                 else:
                     phase_current = 0.0 + 0.0j
 
+                phase_current_vector[phase_index] = phase_current
                 current_instantaneous: float = float(np.sqrt(2.0) * np.imag(phase_current))
 
                 self.set_if_exists(
                     mdl=mdl,
                     key=current_keys[phase_index],
                     value=current_instantaneous,
-                    persist_after_native_init=True,
+                    persist_after_native_init=preserve_generator_current_seed,
                 )
                 self.set_if_exists(
                     mdl=mdl,
@@ -4170,6 +4233,19 @@ class EmtProblemDae(EmtProblemTemplate):
                 p_total += float(np.real(phase_complex_power))
                 q_total += float(np.imag(phase_complex_power))
                 phase_index += 1
+
+            if injection.device_type == DeviceType.GeneratorDevice:
+                self._set_vsc_pf_positive_sequence(
+                    mdl=mdl,
+                    VA=complex(voltage_vector[1]),
+                    VB=complex(voltage_vector[2]),
+                    VC=complex(voltage_vector[3]),
+                    IA=complex(phase_current_vector[1]),
+                    IB=complex(phase_current_vector[2]),
+                    IC=complex(phase_current_vector[3]),
+                )
+            else:
+                pass
 
             neutral_var = _get_external_mapping_var_if_present(
                 mdl=mdl,
@@ -4197,7 +4273,7 @@ class EmtProblemDae(EmtProblemTemplate):
             # The Thevenin generator templates reconstruct an internal balanced emf
             # from the PF seed. Those internal variables are not externally mapped,
             # so they must be preserved explicitly across the later native-init pass.
-            if injection.device_type == DeviceType.GeneratorDevice:
+            if injection.device_type == DeviceType.GeneratorDevice and generator_count_same_bus > 1:
                 self._seed_thevenin_internal_emf_from_pf(
                     injection=injection,
                     mdl=mdl,
@@ -4393,40 +4469,40 @@ class EmtProblemDae(EmtProblemTemplate):
             if _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowRefferenceType.v_N) is not None:
                 V_N = self.power_flow_results_3ph.voltage_N[bus_index]
                 v_N: float = np.sqrt(2.0) * np.imag(V_N)
-                d_v_N: float = omega_base * np.sqrt(2.0) * np.real(V_N)
+                # d_v_N: float = omega_base * np.sqrt(2.0) * np.real(V_N)
 
                 self.set_init_guess_and_preserve_post_init(mdl, VarPowerFlowRefferenceType.v_N, v_N)
-                self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_N, d_v_N)
+                # self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_N, d_v_N)
             else:
                 pass
 
             if _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowRefferenceType.v_A) is not None:
                 V_A = self.power_flow_results_3ph.voltage_A[bus_index]
                 v_A: float = np.sqrt(2.0) * np.imag(V_A)
-                d_v_A: float = omega_base * np.sqrt(2.0) * np.real(V_A)
+                # d_v_A: float = omega_base * np.sqrt(2.0) * np.real(V_A)
 
                 self.set_init_guess_and_preserve_post_init(mdl, VarPowerFlowRefferenceType.v_A, v_A)
-                self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_A, d_v_A)
+                # self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_A, d_v_A)
             else:
                 pass
 
             if _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowRefferenceType.v_B) is not None:
                 V_B = self.power_flow_results_3ph.voltage_B[bus_index]
                 v_B: float = np.sqrt(2.0) * np.imag(V_B)
-                d_v_B: float = omega_base * np.sqrt(2.0) * np.real(V_B)
+                # d_v_B: float = omega_base * np.sqrt(2.0) * np.real(V_B)
 
                 self.set_init_guess_and_preserve_post_init(mdl, VarPowerFlowRefferenceType.v_B, v_B)
-                self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_B, d_v_B)
+                # self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_B, d_v_B)
             else:
                 pass
 
             if _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowRefferenceType.v_C) is not None:
                 V_C = self.power_flow_results_3ph.voltage_C[bus_index]
                 v_C: float = np.sqrt(2.0) * np.imag(V_C)
-                d_v_C: float = omega_base * np.sqrt(2.0) * np.real(V_C)
+                # d_v_C: float = omega_base * np.sqrt(2.0) * np.real(V_C)
 
                 self.set_init_guess_and_preserve_post_init(mdl, VarPowerFlowRefferenceType.v_C, v_C)
-                self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_C, d_v_C)
+                # self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_C, d_v_C)
             else:
                 pass
 
@@ -4486,31 +4562,31 @@ class EmtProblemDae(EmtProblemTemplate):
 
             if _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowRefferenceType.v_N) is not None:
                 v_N: float = np.sqrt(2.0) * np.imag(V_N)
-                d_v_N: float = omega_base * np.sqrt(2.0) * np.real(V_N)
+                # d_v_N: float = omega_base * np.sqrt(2.0) * np.real(V_N)
 
                 self.set_init_guess_and_preserve_post_init(mdl, VarPowerFlowRefferenceType.v_N, v_N)
-                self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_N, d_v_N)
+                # self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_N, d_v_N)
 
             if _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowRefferenceType.v_A) is not None:
                 v_A: float = np.sqrt(2.0) * np.imag(V_A)
-                d_v_A: float = omega_base * np.sqrt(2.0) * np.real(V_A)
+                # d_v_A: float = omega_base * np.sqrt(2.0) * np.real(V_A)
 
                 self.set_init_guess_and_preserve_post_init(mdl, VarPowerFlowRefferenceType.v_A, v_A)
-                self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_A, d_v_A)
+                # self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_A, d_v_A)
 
             if _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowRefferenceType.v_B) is not None:
                 v_B: float = np.sqrt(2.0) * np.imag(V_B)
-                d_v_B: float = omega_base * np.sqrt(2.0) * np.real(V_B)
+                # d_v_B: float = omega_base * np.sqrt(2.0) * np.real(V_B)
 
                 self.set_init_guess_and_preserve_post_init(mdl, VarPowerFlowRefferenceType.v_B, v_B)
-                self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_B, d_v_B)
+                # self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_B, d_v_B)
 
             if _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowRefferenceType.v_C) is not None:
                 v_C: float = np.sqrt(2.0) * np.imag(V_C)
-                d_v_C: float = omega_base * np.sqrt(2.0) * np.real(V_C)
+                # d_v_C: float = omega_base * np.sqrt(2.0) * np.real(V_C)
 
                 self.set_init_guess_and_preserve_post_init(mdl, VarPowerFlowRefferenceType.v_C, v_C)
-                self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_C, d_v_C)
+                # self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_C, d_v_C)
 
     def _get_vsc_terminal_indices(self,
                                   f_bus_idx: int,
@@ -5185,6 +5261,8 @@ class EmtProblemDae(EmtProblemTemplate):
         st_sum: complex = 0.0 + 0.0j
         from_phase_currents: Dict[str, complex] = dict()
         to_phase_currents: Dict[str, complex] = dict()
+        from_phase_currents_inst: Dict[str, float] = dict()
+        to_phase_currents_inst: Dict[str, float] = dict()
 
         for ph in phases:
             sf_key: Optional[VarPowerFlowRefferenceType] = sf_key_dict[ph]
@@ -5271,11 +5349,13 @@ class EmtProblemDae(EmtProblemTemplate):
                 if ph in {"A", "B", "C"}:
                     from_phase_currents[ph] = complex(i_f)
                     to_phase_currents[ph] = complex(i_t)
+                    from_phase_currents_inst[ph] = float(i_f0)
+                    to_phase_currents_inst[ph] = float(i_t0)
                 else:
                     pass
 
-                self.set_if_exists(mdl=mdl, key=if_key, value=float(i_f0), persist_after_native_init=True)
-                self.set_if_exists(mdl=mdl, key=it_key, value=float(i_t0), persist_after_native_init=True)
+                self.set_if_exists(mdl=mdl, key=if_key, value=float(i_f0), persist_after_native_init=False)
+                self.set_if_exists(mdl=mdl, key=it_key, value=float(i_t0), persist_after_native_init=False)
             else:
                 pass
 
@@ -5283,11 +5363,7 @@ class EmtProblemDae(EmtProblemTemplate):
         if neutral_if_var is not None:
             i_f_neutral = -(from_phase_currents.get("A", 0.0 + 0.0j) + from_phase_currents.get("B", 0.0 + 0.0j) + from_phase_currents.get("C", 0.0 + 0.0j))
             neutral_value = float(np.sqrt(2.0) * np.imag(i_f_neutral))
-            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.if_N, value=neutral_value, persist_after_native_init=True)
-            if neutral_if_var is not None:
-                self._temp_post_init_guess[neutral_if_var.uid] = neutral_value
-            else:
-                pass
+            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.if_N, value=neutral_value, persist_after_native_init=False)
         else:
             pass
 
@@ -5295,13 +5371,24 @@ class EmtProblemDae(EmtProblemTemplate):
         if neutral_it_var is not None:
             i_t_neutral = -(to_phase_currents.get("A", 0.0 + 0.0j) + to_phase_currents.get("B", 0.0 + 0.0j) + to_phase_currents.get("C", 0.0 + 0.0j))
             neutral_value = float(np.sqrt(2.0) * np.imag(i_t_neutral))
-            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.it_N, value=neutral_value, persist_after_native_init=True)
-            if neutral_it_var is not None:
-                self._temp_post_init_guess[neutral_it_var.uid] = neutral_value
-            else:
-                pass
+            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.it_N, value=neutral_value, persist_after_native_init=False)
         else:
             pass
+
+        if find_name_in_block(f"i_f_A_{mdl.name}", mdl) is not None:
+            self.set_internal_init_if_exists(mdl, f"i_f_A_{mdl.name}", from_phase_currents_inst.get("A", 0.0))
+            self.set_internal_init_if_exists(mdl, f"i_f_B_{mdl.name}", from_phase_currents_inst.get("B", 0.0))
+            self.set_internal_init_if_exists(mdl, f"i_f_C_{mdl.name}", from_phase_currents_inst.get("C", 0.0))
+            self.set_internal_init_if_exists(mdl, f"i_t_A_{mdl.name}", to_phase_currents_inst.get("A", 0.0))
+            self.set_internal_init_if_exists(mdl, f"i_t_B_{mdl.name}", to_phase_currents_inst.get("B", 0.0))
+            self.set_internal_init_if_exists(mdl, f"i_t_C_{mdl.name}", to_phase_currents_inst.get("C", 0.0))
+        else:
+            if find_name_in_block(f"i_ser_A_{mdl.name}", mdl) is not None:
+                self.set_internal_init_if_exists(mdl, f"i_ser_A_{mdl.name}", from_phase_currents_inst.get("A", 0.0))
+                self.set_internal_init_if_exists(mdl, f"i_ser_B_{mdl.name}", from_phase_currents_inst.get("B", 0.0))
+                self.set_internal_init_if_exists(mdl, f"i_ser_C_{mdl.name}", from_phase_currents_inst.get("C", 0.0))
+            else:
+                pass
 
         omega_base: float = 2.0 * np.pi * self.grid.fBase
         for ph in phases:
@@ -5576,8 +5663,8 @@ class EmtProblemDae(EmtProblemTemplate):
                 else:
                     pass
 
-                self.set_if_exists(mdl=mdl, key=if_key, value=float(i_f0), persist_after_native_init=True)
-                self.set_if_exists(mdl=mdl, key=it_key, value=float(i_t0), persist_after_native_init=True)
+                self.set_if_exists(mdl=mdl, key=if_key, value=float(i_f0), persist_after_native_init=False)
+                self.set_if_exists(mdl=mdl, key=it_key, value=float(i_t0), persist_after_native_init=False)
             else:
                 pass
 
@@ -5585,11 +5672,7 @@ class EmtProblemDae(EmtProblemTemplate):
         if neutral_if_var is not None:
             i_f_neutral = -(from_phase_currents.get("A", 0.0 + 0.0j) + from_phase_currents.get("B", 0.0 + 0.0j) + from_phase_currents.get("C", 0.0 + 0.0j))
             neutral_value = float(np.sqrt(2.0) * np.imag(i_f_neutral))
-            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.if_N, value=neutral_value, persist_after_native_init=True)
-            if neutral_if_var is not None:
-                self._temp_post_init_guess[neutral_if_var.uid] = neutral_value
-            else:
-                pass
+            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.if_N, value=neutral_value, persist_after_native_init=False)
         else:
             pass
 
@@ -5597,11 +5680,7 @@ class EmtProblemDae(EmtProblemTemplate):
         if neutral_it_var is not None:
             i_t_neutral = -(to_phase_currents.get("A", 0.0 + 0.0j) + to_phase_currents.get("B", 0.0 + 0.0j) + to_phase_currents.get("C", 0.0 + 0.0j))
             neutral_value = float(np.sqrt(2.0) * np.imag(i_t_neutral))
-            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.it_N, value=neutral_value, persist_after_native_init=True)
-            if neutral_it_var is not None:
-                self._temp_post_init_guess[neutral_it_var.uid] = neutral_value
-            else:
-                pass
+            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.it_N, value=neutral_value, persist_after_native_init=False)
         else:
             pass
 
@@ -7085,9 +7164,20 @@ class EmtProblemDae(EmtProblemTemplate):
             value=p_ref_value,
             static_parameter_values_mapping=static_parameter_values_mapping,
         )
+        self._assign_event_mapping_value_if_present(
+            mdl=mdl,
+            key=ParamPowerFlowRefferenceType.generator_share_p_ref,
+            value=p_ref_value,
+        )
         self._assign_api_mapping_value_if_present(
             mdl=mdl,
             key=ParamPowerFlowRefferenceType.generator_share_q_ref,
             value=q_ref_value,
             static_parameter_values_mapping=static_parameter_values_mapping,
         )
+        self._assign_event_mapping_value_if_present(
+            mdl=mdl,
+            key=ParamPowerFlowRefferenceType.generator_share_q_ref,
+            value=q_ref_value,
+        )
+

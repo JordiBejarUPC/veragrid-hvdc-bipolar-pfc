@@ -5,8 +5,6 @@
 
 
 import numpy as np
-from sympy.codegen.ast import complex128
-
 from VeraGridEngine.DataStructures.numerical_circuit import NumericalCircuit
 from VeraGridEngine.Simulations.results_table import ResultsTable
 from VeraGridEngine.Simulations.results_template import ResultsTemplate, ResultsProperty

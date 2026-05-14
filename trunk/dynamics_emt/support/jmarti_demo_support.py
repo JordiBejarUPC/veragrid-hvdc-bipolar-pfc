@@ -33,7 +33,7 @@ from VeraGridEngine.Templates.Emt.bergeron_line_emt_template import get_bergeron
 from VeraGridEngine.Templates.Emt.jmarti_line_emt_template import get_jmarti_line_emt_template
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_emt_template
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
-from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
+from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template_with_ref
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
 from VeraGridEngine.enumerations import DynamicEventTransitionType, DynamicIntegrationMethod, EmtInitializationMethod, EmtLineTypes, EmtSolverTypes, ShuntConnectionType, SolverType, VarPowerFlowRefferenceType
 
@@ -498,7 +498,7 @@ def build_demo_line_case_grid(model_tpe: EmtLineTypes) -> tuple[MultiCircuit, Li
     for bus in grid.buses:
         get_bus_emt_template(grid, bus)
 
-    generator_model = get_generator_thevenin_rl_emt_template(vf=grid.var_factory, name="Gen").block
+    generator_model = get_generator_thevenin_rl_emt_template_with_ref(vf=grid.var_factory, name="Gen").block
 
     if model_tpe == EmtLineTypes.PI:
         line_model = get_pi_line_emt_template(vf=grid.var_factory, phN=False, phA=True, phB=True, phC=True, name="Line").block

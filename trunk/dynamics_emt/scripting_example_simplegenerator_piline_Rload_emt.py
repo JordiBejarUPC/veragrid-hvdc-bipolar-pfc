@@ -34,6 +34,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlow
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_emt_template
 from VeraGridEngine.Templates.Emt.simple_generator_emt_template import get_simple_generator_emt_template
+# from VeraGridEngine.Templates.Emt.generator_emt_type_template import get_complete_generator_template_emt
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
 
@@ -124,7 +125,6 @@ for bus in grid.buses:
 
 # generator
 gen_mdl = get_simple_generator_emt_template(vf = grid.var_factory).block
-# gen_mdl = get_generator_emt_type_template(grid=grid, gen = gen0).block
 
 # line
 line_mdl = get_pi_line_emt_template(vf=grid.var_factory, phN = False, phA = True, phB = True, phC = True).block

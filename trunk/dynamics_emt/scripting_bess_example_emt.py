@@ -53,7 +53,7 @@ from VeraGridEngine.Templates.Emt.bess_avm_emt_template import (
 )
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import (
-    get_generator_thevenin_rl_emt_template,
+    get_generator_thevenin_rl_emt_template_with_ref,
 )
 from VeraGridEngine.Templates.Emt.transformer_emt_template import get_transformer_emt_template
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
@@ -471,17 +471,6 @@ def build_power_flow_options() -> PowerFlowOptions:
         orthogonalize_controls=False,
     )
 
-
-def run_power_flow(grid: gce.MultiCircuit) -> PowerFlowResults:
-    """
-    Run the balanced power flow used by the EMT initializer.
-
-    :param grid: VeraGrid circuit.
-    :return: Power-flow results.
-    """
-    return gce.power_flow(grid=grid, options=build_power_flow_options())
-
-
 def build_power_flow_options_3ph() -> PowerFlowOptions:
     """
     Create the 3-phase PF options used to seed branch EMT initialization.
@@ -549,7 +538,7 @@ def attach_emt_models(objects: BessRunObjects, case: BessCase) -> BessEmtBlocks:
     for bus in objects.grid.buses:
         get_bus_emt_template(objects.grid, bus)
 
-    gen_mdl: Block = get_generator_thevenin_rl_emt_template(
+    gen_mdl: Block = get_generator_thevenin_rl_emt_template_with_ref(
         vf=objects.grid.var_factory,
         name=f"gen_thev_{case.name}",
     ).block
@@ -1042,7 +1031,7 @@ def run_case(case: BessCase) -> tuple[np.ndarray, BessPlotData]:
     :return: Time vector and signal dictionary.
     """
     objects: BessRunObjects = build_grid(case)
-    pf_results: PowerFlowResults = run_power_flow(objects.grid)
+    pf_results: PowerFlowResults = gce.power_flow(grid=objects.grid, options=build_power_flow_options())
 
     print("\n" + "=" * 80)
     print(f"Balanced power flow results | case = {case.name}")
