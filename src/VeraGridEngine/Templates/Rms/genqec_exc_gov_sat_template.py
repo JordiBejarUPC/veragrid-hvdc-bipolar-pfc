@@ -16,7 +16,7 @@ from VeraGridEngine.Utils.Symbolic.block_helpers import tf_to_block, tf_to_diffb
     tf_to_block_with_states, to_implicit, tf_to_diffblock_with_antiwindup
 
 
-def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec rms template") -> RmsModelTemplate:
+def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec_rms_template") -> RmsModelTemplate:
     """
      generator with quadratic saturation
     """
@@ -1049,7 +1049,7 @@ def OELBuild(vfactory: VarFactory, name: str = "OEL") -> RmsModelTemplate:
     return oel_block, V_oel_sat
 
 
-def get_complete_generator_template_rms(vfactory: VarFactory, name="complete generator rms template") -> RmsModelTemplate:
+def get_complete_generator_template_rms(vfactory: VarFactory, name="complete_generator_rms_template") -> RmsModelTemplate:
     """
     
     :return: 
