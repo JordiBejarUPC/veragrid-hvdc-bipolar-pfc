@@ -343,7 +343,7 @@ def run_sparse_small_signal_stability(problem: RmsProblemTemplate,
                                                  J_aug_lu=J_aug_lu)
     else:
         # 3. CREATE THE SHIFT-AND-INVERT OPERATOR (A^-1 * E * v)
-        E = problem.get_E_matrix()
+        E = problem.get_E_matrix(x, dx)
         n_states = problem.get_diff_var_number()
         op_methods = SparseGeneralizedShiftInvertMethods(
             n_states=n_states,
