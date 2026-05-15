@@ -251,7 +251,7 @@ def run_dense_small_signal_stability(problem: RmsProblemTemplate,
         eig_results = list(la.eig(A_bal, left=True, right=True))
     else:
         h = problem.get_dt_value()
-        h = 1e9
+        # h = 1e9
         E_matrix = problem.get_E_matrix(x, dx)
 
         nx = problem.get_states_number()
@@ -599,7 +599,7 @@ class SmallSignalStabilityRmsDriver(DriverTemplate):
             pass
 
         n = self.problem.get_states_number()
-        if self.k >= n - 1:
+        if self.k >= n - 1 or self.k == 0:
             (eigenvalues,
              participation_factors,
              damping_ratios,
