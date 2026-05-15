@@ -1996,9 +1996,9 @@ class SchematicWidget(BaseDiagramWidget):
         transformer = pyproj.Transformer.from_crs(4326, 25830, always_xy=True)
 
         # the longitude is more related to x, the latitude is more related to y
-        y, x = transformer.transform(xx=lon, yy=lat)
-        x *= - factor
-        y *= - factor
+        x, y = transformer.transform(xx=lon, yy=lat)
+        x *= factor
+        y *= - factor  # Qt's scene y-axis points downward, so negate northing to put north at the top
 
         # delete the offset
         if remove_offset:
