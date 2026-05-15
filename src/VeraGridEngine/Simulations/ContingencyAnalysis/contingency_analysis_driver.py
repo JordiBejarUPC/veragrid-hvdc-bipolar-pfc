@@ -169,7 +169,11 @@ class ContingencyAnalysisDriver(DriverTemplate):
                     contingency_groups_used=self.options.contingency_groups
                     if self.options.contingency_groups is not None else self.grid.contingency_groups
                 )
-                linear_multiple_contingencies.compute(lin)
+                linear_multiple_contingencies.compute(
+                    lin=lin,
+                    ptdf_threshold=self.options.lin_options.ptdf_threshold,
+                    lodf_threshold=self.options.lin_options.lodf_threshold
+                )
 
                 self.results = linear_contingency_analysis(
                     nc=nc,

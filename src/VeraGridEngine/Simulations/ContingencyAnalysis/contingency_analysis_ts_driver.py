@@ -267,8 +267,15 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
                                        if self.options.contingency_groups is None
                                        else self.options.contingency_groups)
 
-        linear = LinearAnalysisTs(grid=self.grid)
-
+        linear = LinearAnalysisTs(
+            grid=self.grid,
+            distributed_slack=self.options.lin_options.distribute_slack,
+            correct_values=self.options.lin_options.correct_values,
+            time_indices=self.time_indices,
+            contingency_groups_used=contingency_groups_used,
+            ptdf_threshold=self.options.lin_options.ptdf_threshold,
+            lodf_threshold=self.options.lin_options.lodf_threshold
+        )
 
         area_names, bus_area_indices, F, T, hvdc_F, hvdc_T = self.grid.get_branch_areas_info()
 
@@ -384,7 +391,13 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
 
         mon_idx = np.where(nc.passive_branch_data.monitor_loading == 1)[0]
 
-        linear = LinearAnalysisTs(grid=self.grid)
+        linear = LinearAnalysisTs(
+            grid=self.grid,
+            distributed_slack=self.options.lin_options.distribute_slack,
+            correct_values=self.options.lin_options.correct_values,
+            time_indices=self.time_indices,
+            compute_multi_contingencies=False
+        )
 
         Pbus_mat = self.grid.get_Pbus_prof()
 

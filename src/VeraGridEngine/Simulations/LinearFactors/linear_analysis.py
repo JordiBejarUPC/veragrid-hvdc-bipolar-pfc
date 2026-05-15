@@ -1286,13 +1286,20 @@ class LinearAnalysisTs:
                  distributed_slack: bool = False,
                  correct_values: bool = False,
                  time_indices: IntVec | None = None,
-                 contingency_groups_used: List[ContingencyGroup] | None = None):
+                 contingency_groups_used: List[ContingencyGroup] | None = None,
+                 ptdf_threshold: float = 1e-4,
+                 lodf_threshold: float = 1e-4,
+                 compute_multi_contingencies: bool = True):
         """
         Constructor
         :param grid: MultiCircuit instance
         :param distributed_slack: boolean to distribute slack
         :param correct_values: boolean to fix out layer values
         :param time_indices: Array of time indices
+        :param contingency_groups_used: list of contingency groups to use (all the grid's if None)
+        :param ptdf_threshold: threshold for PTDF's to be converted to sparse
+        :param lodf_threshold: threshold for LODF's to be converted to sparse
+        :param compute_multi_contingencies: also pre-compute the LinearMultiContingencies
         """
 
         if not grid.has_time_series:
@@ -1320,16 +1327,20 @@ class LinearAnalysisTs:
                                  correct_values=correct_values)
             self._linear_analysis[t_idx] = lin
 
-            # "smart" Contingency factors
-            linear_multiple_contingencies = LinearMultiContingencies(
-                grid=grid,
-                contingency_groups_used=contingency_groups_used
-                if contingency_groups_used is not None
-                else grid.contingency_groups
-            )
-            linear_multiple_contingencies.compute(lin)
+            if compute_multi_contingencies:
+                linear_multiple_contingencies = LinearMultiContingencies(
+                    grid=grid,
+                    contingency_groups_used=contingency_groups_used
+                    if contingency_groups_used is not None
+                    else grid.contingency_groups
+                )
+                linear_multiple_contingencies.compute(
+                    lin=lin,
+                    ptdf_threshold=ptdf_threshold,
+                    lodf_threshold=lodf_threshold
+                )
 
-            self._linear_multi_contingencies[t_idx] = linear_multiple_contingencies
+                self._linear_multi_contingencies[t_idx] = linear_multiple_contingencies
 
         self.nbr = grid.get_branch_number()
         self.nbus = grid.get_bus_number()
