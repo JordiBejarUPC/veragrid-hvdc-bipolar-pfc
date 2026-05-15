@@ -2106,6 +2106,7 @@ class DiagramsMain(CompiledArraysMain):
                         time_index=self.get_diagram_slider_index()
                     )
 
+                    diagram_widget.center_nodes()
                     self.add_diagram_widget_and_diagram(diagram_widget=diagram_widget,
                                                         diagram=diagram)
                     self.set_diagrams_list_view()
@@ -2137,6 +2138,7 @@ class DiagramsMain(CompiledArraysMain):
                 time_index=self.get_diagram_slider_index()
             )
 
+            diagram_widget.center_nodes()
             self.add_diagram_widget_and_diagram(diagram_widget=diagram_widget, diagram=diagram)
             self.set_diagrams_list_view()
             self.show_info_toast(f"{diagram.name} added")
@@ -2166,6 +2168,7 @@ class DiagramsMain(CompiledArraysMain):
                 time_index=self.get_diagram_slider_index()
             )
 
+            diagram_widget.center_nodes()
             self.add_diagram_widget_and_diagram(diagram_widget=diagram_widget,
                                                 diagram=diagram)
             self.set_diagrams_list_view()
