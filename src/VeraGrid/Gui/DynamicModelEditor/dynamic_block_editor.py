@@ -5202,7 +5202,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.doItButton.clicked.connect(self.apply_changes)
         self.ui.toolBox.currentChanged.connect(self.on_side_panel_page_changed)
         self.scene.selectionChanged.connect(self.on_scene_selection_changed)
-        if not self.main_block.empty() and not self.main_block.diagram.node_data and self.main_editor:
+        if not self.main_block.empty() and not self.main_block.diagram.node_data:
             blocks_list = list()
             for child in self.main_block.children:
                 item = self.generate_block_item_for_block(child)
@@ -11482,9 +11482,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return:
         """
         if self.mode == DynamicSimulationMode.RMS:
-            if self.api_object.rms_template is not None:
-                # Todo: Here are the changes
-                self.api_object.rms_template = None
             copy_block_state(source_block=self.main_block, target_block=self.original_block)
             initialize_connected_bus_models_for_editor_assignment(api_object=self.api_object,
                                                                   circuit=self.circuit,
