@@ -267,10 +267,8 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
                                        if self.options.contingency_groups is None
                                        else self.options.contingency_groups)
 
-        linear_multiple_contingencies = LinearMultiContingencies(
-            grid=self.grid,
-            contingency_groups_used=contingency_groups_used
-        )
+        linear = LinearAnalysisTs(grid=self.grid)
+
 
         area_names, bus_area_indices, F, T, hvdc_F, hvdc_T = self.grid.get_branch_areas_info()
 
@@ -294,7 +292,8 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
             res_t = linear_contingency_analysis(
                 nc=nc,
                 options=self.options,
-                linear_multiple_contingencies=linear_multiple_contingencies,
+                linear_analysis=linear.get_linear_analysis_at(t),
+                linear_multiple_contingencies=linear.get_multiple_contingencies_at(t),
                 area_names=area_names,
                 bus_area_indices=bus_area_indices,
                 F=F,

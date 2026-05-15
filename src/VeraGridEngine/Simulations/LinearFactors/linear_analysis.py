@@ -1285,7 +1285,8 @@ class LinearAnalysisTs:
     def __init__(self, grid: MultiCircuit,
                  distributed_slack: bool = False,
                  correct_values: bool = False,
-                 time_indices: IntVec | None = None):
+                 time_indices: IntVec | None = None,
+                 contingency_groups_used: List[ContingencyGroup] | None = None):
         """
         Constructor
         :param grid: MultiCircuit instance
@@ -1306,13 +1307,29 @@ class LinearAnalysisTs:
         self.groups, self.mapping = find_different_states(mat)
 
         self._linear_analysis: Dict[int, LinearAnalysis] = dict()
+        self._linear_multi_contingencies: Dict[int, LinearMultiContingencies] = dict()
 
         # compile the linear analysis for the different time steps
         for t_idx, list_of_represented_time_steps in self.groups.items():
+            # Compile the snapshot
             nc = compile_numerical_circuit_at(circuit=grid, t_idx=t_idx)
-            self._linear_analysis[t_idx] = LinearAnalysis(nc=nc,
-                                                          distributed_slack=distributed_slack,
-                                                          correct_values=correct_values)
+
+            # Linear analysis (PTDF & LODF)
+            lin = LinearAnalysis(nc=nc,
+                                 distributed_slack=distributed_slack,
+                                 correct_values=correct_values)
+            self._linear_analysis[t_idx] = lin
+
+            # "smart" Contingency factors
+            linear_multiple_contingencies = LinearMultiContingencies(
+                grid=grid,
+                contingency_groups_used=contingency_groups_used
+                if contingency_groups_used is not None
+                else grid.contingency_groups
+            )
+            linear_multiple_contingencies.compute(lin)
+
+            self._linear_multi_contingencies[t_idx] = linear_multiple_contingencies
 
         self.nbr = grid.get_branch_number()
         self.nbus = grid.get_bus_number()
@@ -1329,6 +1346,20 @@ class LinearAnalysisTs:
 
         # get the linear analysis
         lin: LinearAnalysis = self._linear_analysis[t_i]
+
+        return lin
+
+    def get_multiple_contingencies_at(self, t_idx: int) -> LinearMultiContingencies:
+        """
+
+        :param t_idx:
+        :return:
+        """
+        # get the base index
+        t_i = self.mapping[t_idx]
+
+        # get the linear analysis
+        lin: LinearMultiContingencies = self._linear_multi_contingencies[t_i]
 
         return lin
 
