@@ -964,7 +964,7 @@ class Block:
 
         return False
 
-def find_connections(mdl1: Block, mdl2: Block) -> List[tuple[Var, Var]]:
+def find_connections(mdl1: Block, mdl2: Block) -> tuple[List[tuple[Var, Var]], List[tuple[Var, Var]]]:
     """
     find connections between the two blocks by vars searching
     :return:
@@ -980,8 +980,16 @@ def find_connections(mdl1: Block, mdl2: Block) -> List[tuple[Var, Var]]:
         outp.shared_ref == inpt.shared_ref and outp.shared_ref is not None and inpt.shared_ref is not None and outp.uid == inpt.uid
     ]
 
+    power_flow_pairs =  [
+        (outp, inpt)
+        for outp in mdl1.out_vars
+        for inpt in mdl2.in_vars
+        if
+        outp.ref == inpt.ref and outp.ref is not None and inpt.ref is not None and outp.uid == inpt.uid
+    ]
 
-    return pairs
+
+    return pairs, power_flow_pairs
 
 def find_name_in_block(name: str, block: Block) -> Var | None:
     """

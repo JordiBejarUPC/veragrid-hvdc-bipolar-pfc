@@ -58,6 +58,7 @@ def connect_models_power_flow(mdl1: Block, mdl2: Block):
         if outp.ref == inpt.ref
     ]
     for pair in pairs:
+        # Todo: change connection method to use var_factory
         mdl2.connect([pair[1]], [pair[0]])
 
 

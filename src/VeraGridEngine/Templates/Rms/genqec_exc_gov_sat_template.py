@@ -51,8 +51,8 @@ def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec_rms_template") -> R
     Psiq_prime = vfactory.add_var("Psiq_prime" + name)  # transient voltage d-axis
 
     # Algebraic variables
-    Pg = vfactory.add_var('Pg' + name)
-    Qg = vfactory.add_var('Qg' + name)
+    Pg = vfactory.add_var('Pg' + name, reference=VarPowerFlowRefferenceType.P)
+    Qg = vfactory.add_var('Qg' + name, reference=VarPowerFlowRefferenceType.Q)
     Id = vfactory.add_var("Id" + name)
     Iq = vfactory.add_var("Iq" + name)
     Vd = vfactory.add_var("Vd" + name)
