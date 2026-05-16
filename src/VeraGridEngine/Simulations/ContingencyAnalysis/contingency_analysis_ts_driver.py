@@ -196,13 +196,11 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
             # Sf[i_con, k_br]
 
             # Sbus (ncon, nbus)
-            results.Sf_base[it, :] = res_t.Sf_base
+            results.Sf_base[it, :] = res_t.Sf_base.real
             results.S[it, :] = max_abs_per_col_cx(res_t.Sbus).real
-
             results.max_flows[it, :] = max_abs_per_col_cx(res_t.Sf).real
 
             # Note: Loading is (ncon, nbranch)
-
             loading_abs = np.abs(res_t.loading)
             overloading = loading_abs.copy()
             overloading[overloading <= 1.0] = 0
@@ -267,9 +265,14 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
                                        if self.options.contingency_groups is None
                                        else self.options.contingency_groups)
 
-        linear_multiple_contingencies = LinearMultiContingencies(
+        linear = LinearAnalysisTs(
             grid=self.grid,
-            contingency_groups_used=contingency_groups_used
+            distributed_slack=self.options.lin_options.distribute_slack,
+            correct_values=self.options.lin_options.correct_values,
+            time_indices=self.time_indices,
+            contingency_groups_used=contingency_groups_used,
+            ptdf_threshold=self.options.lin_options.ptdf_threshold,
+            lodf_threshold=self.options.lin_options.lodf_threshold
         )
 
         area_names, bus_area_indices, F, T, hvdc_F, hvdc_T = self.grid.get_branch_areas_info()
@@ -294,7 +297,8 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
             res_t = linear_contingency_analysis(
                 nc=nc,
                 options=self.options,
-                linear_multiple_contingencies=linear_multiple_contingencies,
+                linear_analysis=linear.get_linear_analysis_at(t),
+                linear_multiple_contingencies=linear.get_multiple_contingencies_at(t),
                 area_names=area_names,
                 bus_area_indices=bus_area_indices,
                 F=F,
@@ -385,7 +389,13 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
 
         mon_idx = np.where(nc.passive_branch_data.monitor_loading == 1)[0]
 
-        linear = LinearAnalysisTs(grid=self.grid)
+        linear = LinearAnalysisTs(
+            grid=self.grid,
+            distributed_slack=self.options.lin_options.distribute_slack,
+            correct_values=self.options.lin_options.correct_values,
+            time_indices=self.time_indices,
+            compute_multi_contingencies=False
+        )
 
         Pbus_mat = self.grid.get_Pbus_prof()
 

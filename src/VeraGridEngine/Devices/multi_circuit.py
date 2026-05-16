@@ -1102,7 +1102,7 @@ class MultiCircuit(Assets):
         # the longitude is more related to x, the latitude is more related to y
         x, y = transformer.transform(xx=lon, yy=lat)
         x *= factor
-        y *= factor
+        y *= - factor  # the schematic scene y-axis points downward, so negate northing to put north at the top
 
         # delete the offset
         if remove_offset:
