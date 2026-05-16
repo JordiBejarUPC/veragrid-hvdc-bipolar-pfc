@@ -5417,6 +5417,8 @@ class Ui_mainWindow(object):
         self.menuSimulations.addAction(self.actionContingency_analysis)
         self.menuSimulations.addAction(self.actionRun_Dynamic_RMS_Simulation)
         self.menuSimulations.addAction(self.actionRun_Small_Signal_RMS_Simulation)
+        self.menuSimulations.addAction(self.actionRun_Dynamic_EMT_Simulation)
+        self.menuSimulations.addAction(self.actionRun_Small_Signal_EMT_Simulation)
         self.menuSimulations.addSeparator()
         self.menuSimulations.addAction(self.actionOPF)
         self.menuSimulations.addAction(self.actionNodal_capacity)
