@@ -196,13 +196,11 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
             # Sf[i_con, k_br]
 
             # Sbus (ncon, nbus)
-            results.Sf_base[it, :] = res_t.Sf_base
+            results.Sf_base[it, :] = res_t.Sf_base.real
             results.S[it, :] = max_abs_per_col_cx(res_t.Sbus).real
-
             results.max_flows[it, :] = max_abs_per_col_cx(res_t.Sf).real
 
             # Note: Loading is (ncon, nbranch)
-
             loading_abs = np.abs(res_t.loading)
             overloading = loading_abs.copy()
             overloading[overloading <= 1.0] = 0
