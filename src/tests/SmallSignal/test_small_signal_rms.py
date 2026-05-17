@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import numpy as np
 
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, RmsInitializationMethod
@@ -435,7 +436,8 @@ def stability_kundur_no_shunt():
     grid.add_generator(bus=bus3, api_obj=gen3)
     grid.add_generator(bus=bus4, api_obj=gen4)
 
-    gce.save_file(grid, "kundur.veragrid")
+    os.makedirs(os.path.join("data", "output"), exist_ok=True)
+    gce.save_file(grid, os.path.join("data", "output", "kundur.veragrid"))
 
     t_end_setup = time.perf_counter()
 

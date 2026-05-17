@@ -62,7 +62,7 @@ from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.Emt.converter_emt_template import get_full_pseudo_emt_converter
 from VeraGridEngine.Templates.Emt.converter_switched_emt_template import get_switched_emt_converter
 from VeraGridEngine.Templates.Emt.dc_load_emt_template import get_dc_load_emt_template
-from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
+from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template_with_ref
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
 from VeraGridEngine.Utils.procedural_logic import build_boundary_updater_from_block
 from VeraGridEngine.Utils.Symbolic.block import Block, find_name_in_block
@@ -651,7 +651,7 @@ def attach_common_device_models(
     :param dc_load_model_name: Name used for the DC load EMT model.
     :return: Tuple with generator, converter and DC-load EMT blocks.
     """
-    gen_mdl: Block = get_generator_thevenin_rl_emt_template(vf=grid.var_factory).block
+    gen_mdl: Block = get_generator_thevenin_rl_emt_template_with_ref(vf=grid.var_factory).block
     dc_load_mdl: Block = get_dc_load_emt_template(vf=grid.var_factory, name=dc_load_model_name).block
 
     set_emt_model(device=generator, model=gen_mdl, var_factory=grid.var_factory)

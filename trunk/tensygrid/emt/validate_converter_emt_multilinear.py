@@ -43,7 +43,7 @@ from VeraGridEngine.Templates.Emt.converter_emt_multilinear_template import get_
 from VeraGridEngine.Templates.Emt.converter_emt_template import get_emt_ideal_converter
 from VeraGridEngine.Templates.Emt.dc_load_emt_template import get_dc_load_emt_template
 from VeraGridEngine.Templates.Emt.transformer_emt_template import get_transformer_emt_template
-from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
+from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template_with_ref
 from VeraGridEngine.Templates.templates_common_functions import set_emt_model
 from VeraGridEngine.Utils.Symbolic.block import Var, find_name_in_block
 from VeraGridEngine.Utils.procedural_logic import build_boundary_updater_from_block
@@ -144,7 +144,7 @@ def simulate_case(label: str, converter_builder: callable) -> CaseResults:
 
     pf_results = gce.power_flow(grid=grid, options=build_pf_options())
 
-    gen_mdl = get_generator_thevenin_rl_emt_template(vf=grid.var_factory).block
+    gen_mdl = get_generator_thevenin_rl_emt_template_with_ref(vf=grid.var_factory).block
     trafo_mdl = get_transformer_emt_template(vf=grid.var_factory, name=trafo.name).block
     vsc_mdl = converter_builder(vf=grid.var_factory, name=vsc.name).block
     dc_load_mdl = get_dc_load_emt_template(vf=grid.var_factory, name="dc_load_emt_cmp").block

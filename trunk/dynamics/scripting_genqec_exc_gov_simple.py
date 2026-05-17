@@ -142,7 +142,7 @@ for bus in grid.buses:
 
 
 # Lines
-line0 = gce.Line(name="line 0-2", bus_from=bus0, bus_to=bus1, r=0.029585798816568046, x=0.07100591715976332, b=0.03,
+line0 = gce.Line(name="line 0-2", bus_from=bus0, bus_to=bus1, r=0.029585, x=0.071005, b=0.03,
                  rate=900.0)
 grid.add_line(line0)
 
@@ -171,8 +171,8 @@ line_mdl = get_line_rms_template(grid.var_factory).block
 load_mdl = get_load_rms_template(grid.var_factory).block
 
 # set models parameters
-load_mdl.set_parameter_in_model(var_name="Pl0", new_value=-0.0999999)
-load_mdl.set_parameter_in_model(var_name="Ql0", new_value=-0.009999999862208533)
+# load_mdl.set_parameter_in_model(var_name="Pl0", new_value=-0.0999999)
+# load_mdl.set_parameter_in_model(var_name="Ql0", new_value=-0.009999999862208533)
 
 ######################################################################################################
 # Add models to devices
