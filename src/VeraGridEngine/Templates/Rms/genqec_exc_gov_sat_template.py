@@ -16,7 +16,7 @@ from VeraGridEngine.Utils.Symbolic.block_helpers import tf_to_block, tf_to_diffb
     tf_to_block_with_states, to_implicit, tf_to_diffblock_with_antiwindup
 
 
-def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec rms template") -> RmsModelTemplate:
+def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec_rms_template") -> RmsModelTemplate:
     """
      generator with quadratic saturation
     """
@@ -258,7 +258,6 @@ def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec rms template") -> R
             Te: (Psid * Iq - Psiq * Id),
 
             IRPu: Eq1 * (1 + Sa),
-            Sat: vfactory.add_const(1) + Sa,
             Iq_sat: Iq / Sat,
             Id_sat: Id / Sat,
 
@@ -306,7 +305,8 @@ def get_governor_rms(vfactory: VarFactory, name: str = "Governor") -> RmsModelTe
         "K8": vfactory.add_const(0.0),
     }
 
-    inputs = [vfactory.add_var("omega_", shared_reference="omega_reference"), vfactory.add_var('Te_', shared_reference="te_reference")]
+    inputs = [vfactory.add_var("omega_", shared_reference="omega_reference"),
+              vfactory.add_var('Te_', shared_reference="te_reference")]
 
     # ______________________________________________________________________________________
     #                                    variables
@@ -1049,7 +1049,7 @@ def OELBuild(vfactory: VarFactory, name: str = "OEL") -> RmsModelTemplate:
     return oel_block, V_oel_sat
 
 
-def get_complete_generator_template_rms(vfactory: VarFactory, name="complete generator rms template") -> RmsModelTemplate:
+def get_complete_generator_template_rms(vfactory: VarFactory, name="complete_generator_rms_template") -> RmsModelTemplate:
     """
     
     :return: 
@@ -1065,29 +1065,22 @@ def get_complete_generator_template_rms(vfactory: VarFactory, name="complete gen
     stabilizer_mdl = get_stabilizer_rms(vfactory=vfactory).block
 
     # connect models
-    genqec_mdl.connect([genqec_mdl.in_vars[3]], [exciter_mdl.out_vars[0]])
-    exciter_mdl.connect([exciter_mdl.in_vars[0]], [genqec_mdl.out_vars[3]])
-    exciter_mdl.connect([exciter_mdl.in_vars[1]], [genqec_mdl.in_vars[0]])
-    exciter_mdl.connect([exciter_mdl.in_vars[2]], [stabilizer_mdl.out_vars[0]])
+    vfactory.add_connection(genqec_mdl.in_vars[3], exciter_mdl.out_vars[0])
 
-    stabilizer_mdl.connect([stabilizer_mdl.in_vars[0]], [genqec_mdl.out_vars[2]])
+    vfactory.add_connection(exciter_mdl.in_vars[0], genqec_mdl.out_vars[3])
 
-    genqec_mdl.connect([genqec_mdl.in_vars[2]], [governor_mdl.out_vars[0]])
+    vfactory.add_connection(exciter_mdl.in_vars[1], genqec_mdl.in_vars[0])
 
-    governor_mdl.connect([governor_mdl.in_vars[0]], [genqec_mdl.out_vars[2]])
+    vfactory.add_connection(exciter_mdl.in_vars[2], stabilizer_mdl.out_vars[0])
 
-    governor_mdl.connect([governor_mdl.in_vars[1]], [genqec_mdl.out_vars[4]])
+    vfactory.add_connection(stabilizer_mdl.in_vars[0], genqec_mdl.out_vars[2])
 
-    # # connect models
-    # # missing to connect power flow variables between non bus models
-    # exciter_mdl.connect([exciter_mdl.in_vars[1]], [genqec_mdl.in_vars[0]])
-    # connect_models(genqec_mdl, exciter_mdl)
-    #
-    # connect_models(exciter_mdl, stabilizer_mdl)
-    #
-    # connect_models(stabilizer_mdl, genqec_mdl)
-    #
-    # connect_models(genqec_mdl, governor_mdl)
+    vfactory.add_connection(genqec_mdl.in_vars[2], governor_mdl.out_vars[0])
+
+    vfactory.add_connection(governor_mdl.in_vars[0], genqec_mdl.out_vars[2])
+
+    vfactory.add_connection(governor_mdl.in_vars[1], genqec_mdl.out_vars[4])
+
 
     templ.block.children.append(genqec_mdl)
     templ.block.children.append(governor_mdl)

@@ -2192,7 +2192,13 @@ def get_gcdev_vsc_converters(cgmes_model: CgmesCircuit,
     TopologicalNode_tpe = cgmes_model.cgmes_assets.class_dict.get("TopologicalNode")
     DCTopologicalNode_tpe = cgmes_model.cgmes_assets.class_dict.get("DCTopologicalNode")
 
-    for cgmes_elm in cgmes_model.cgmes_assets.VsConverter_list:
+    converter_objects: List[CGMES_ASSETS] = list()
+    for vs_converter in cgmes_model.cgmes_assets.VsConverter_list:
+        converter_objects.append(vs_converter)
+    for cs_converter in cgmes_model.cgmes_assets.CsConverter_list:
+        converter_objects.append(cs_converter)
+
+    for cgmes_elm in converter_objects:
 
         bus_dc = find_associated_buses(cgmes_elm=cgmes_elm,
                                        device_to_terminal_dict=dc_device_to_terminal_dict,
@@ -2226,6 +2232,12 @@ def get_gcdev_vsc_converters(cgmes_model: CgmesCircuit,
 
         if len(bus_dc_resolved) == 1 and len(bus_ac_resolved) == 1:
 
+            converter_p_raw: object = getattr(cgmes_elm, "p", 0.0)
+            if isinstance(converter_p_raw, (int, float)):
+                converter_p: float = float(converter_p_raw)
+            else:
+                converter_p = 0.0
+
             gcdev_elm = gcdev.VSC(
                 bus_from=bus_dc_resolved[0],
                 bus_to=bus_ac_resolved[0],
@@ -2237,7 +2249,7 @@ def get_gcdev_vsc_converters(cgmes_model: CgmesCircuit,
                 # alpha2 = 0.015,
                 # alpha3 = 0.2,
                 control1=ConverterControlType.Pdc,
-                control1_val=cgmes_elm.p,
+                control1_val=converter_p,
                 control2=ConverterControlType.Vm_dc,
                 control2_val=1.0,
             )
@@ -2245,14 +2257,14 @@ def get_gcdev_vsc_converters(cgmes_model: CgmesCircuit,
             gcdev_model.add_vsc(gcdev_elm)
 
         else:
-            logger.add_error(msg='VSC has to have one AC and one DC terminal',
+            logger.add_error(msg='Converter has to have one AC and one DC terminal',
                              device=cgmes_elm.rdfid,
                              device_class=cgmes_elm.tpe,
                              device_property="number of associated terminals",
                              value=(f"dc_raw={len(bus_dc)}, dc_unique={len(bus_dc_unique)}, "
                                     f"ac_raw={len(bus_ac)}, ac_unique={len(bus_ac_unique)}"),
                              expected_value=1,
-                             comment="Import VSC from CGMES")
+                             comment="Import VSC-equivalent converter from CGMES")
 
     return
 
@@ -2300,23 +2312,24 @@ def get_gcdev_hvdc_from_dcline_and_vscs(
                        for device, term in dc_device_to_terminal_dict.items()
                        if term[0] in dc_terminals]
 
-        vsc_list = [vsc
-                    for vsc in cgmes_model.cgmes_assets.VsConverter_list
-                    if vsc.uuid in device_list]
+        converter_list = [converter
+                          for converter in (list(cgmes_model.cgmes_assets.VsConverter_list)
+                                            + list(cgmes_model.cgmes_assets.CsConverter_list))
+                          if converter.uuid in device_list]
 
         # ONLY one line + two converters structure can be simplified
-        if len(vsc_list) != 2:
-            logger.add_info(msg='Not exactly two VSCs for DCLine(Segment)! cannot be simplified',
+        if len(converter_list) != 2:
+            logger.add_info(msg='Not exactly two converters for DCLine(Segment)! cannot be simplified',
                             device=dc_line_sgm.rdfid,
                             device_class=dc_line_sgm.tpe,
-                            device_property="number of connected VSConverters",
-                            value=len(vsc_list),
+                            device_property="number of connected converters",
+                            value=len(converter_list),
                             expected_value=2,
                             comment="get_gcdev_hvdc_from_dcline_and_vscs")
 
         else:
             # bus_from: AC side of VSC 1
-            bus_from = find_associated_buses(cgmes_elm=vsc_list[0],
+            bus_from = find_associated_buses(cgmes_elm=converter_list[0],
                                              device_to_terminal_dict=device_to_terminal_dict,
                                              bus_dict=bus_dict,
                                              TopologicalNode_tpe=TopologicalNode_tpe,
@@ -2325,7 +2338,7 @@ def get_gcdev_hvdc_from_dcline_and_vscs(
                                              cgmes_version=cgmes_model.cgmes_version)
 
             # bus_to: AC side of VSC 2
-            bus_to = find_associated_buses(cgmes_elm=vsc_list[1],
+            bus_to = find_associated_buses(cgmes_elm=converter_list[1],
                                            device_to_terminal_dict=device_to_terminal_dict,
                                            bus_dict=bus_dict,
                                            TopologicalNode_tpe=TopologicalNode_tpe,
@@ -2344,12 +2357,12 @@ def get_gcdev_hvdc_from_dcline_and_vscs(
 
             if bus_from_collapsed:
                 log_collapsed_terminal_mapping_warning(logger=logger,
-                                                       cgmes_elm=vsc_list[0],
+                                                       cgmes_elm=converter_list[0],
                                                        raw_count=len(bus_from),
                                                        expected_count=1)
             if bus_to_collapsed:
                 log_collapsed_terminal_mapping_warning(logger=logger,
-                                                       cgmes_elm=vsc_list[1],
+                                                       cgmes_elm=converter_list[1],
                                                        raw_count=len(bus_to),
                                                        expected_count=1)
 
@@ -2366,21 +2379,35 @@ def get_gcdev_hvdc_from_dcline_and_vscs(
                 )
                 continue
 
-            rated_udc = getattr(vsc_list[0], 'ratedUdc', None)
+            rated_udc = getattr(converter_list[0], 'ratedUdc', None)
             if rated_udc is None:
                 rated_udc = 200.0
 
-            Vset_f = vsc_list[0].targetUpcc / bus_from_resolved[0].Vnom  # if not found, 1.0 p.u.
+            target_upcc_f: object = getattr(converter_list[0], 'targetUpcc', bus_from_resolved[0].Vnom)
+            if isinstance(target_upcc_f, (int, float)):
+                Vset_f = float(target_upcc_f) / bus_from_resolved[0].Vnom
+            else:
+                Vset_f = 1.0
             if Vset_f > 1.1:
                 Vset_f = 1.1
             elif Vset_f < 0.9:
                 Vset_f = 0.9
 
-            Vset_t = vsc_list[1].targetUpcc / bus_to_resolved[0].Vnom
+            target_upcc_t: object = getattr(converter_list[1], 'targetUpcc', bus_to_resolved[0].Vnom)
+            if isinstance(target_upcc_t, (int, float)):
+                Vset_t = float(target_upcc_t) / bus_to_resolved[0].Vnom
+            else:
+                Vset_t = 1.0
             if Vset_t > 1.1:
                 Vset_t = 1.1
             elif Vset_t < 0.9:
                 Vset_t = 0.9
+
+            converter_p_raw: object = getattr(converter_list[0], "p", 0.0)
+            if isinstance(converter_p_raw, (int, float)):
+                converter_p: float = abs(float(converter_p_raw))
+            else:
+                converter_p = 0.0
 
             gcdev_elm = gcdev.HvdcLine(
                 bus_from=bus_from_resolved[0],
@@ -2389,7 +2416,7 @@ def get_gcdev_hvdc_from_dcline_and_vscs(
                 idtag=dc_line_sgm.uuid,
                 code=dc_line_sgm.description,
                 active=get_cgmes_equipment_active_state(dc_line_sgm),
-                Pset=abs(vsc_list[0].p),  # power of the VS converter
+                Pset=converter_p,  # power of the converter
                 # rate=rate,
                 # rate of DCLine? or ratedP of Converter?
                 # no Limit for DC terminal in XML

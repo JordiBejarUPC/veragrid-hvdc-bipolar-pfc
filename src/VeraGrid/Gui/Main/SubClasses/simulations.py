@@ -3438,6 +3438,8 @@ class SimulationsMain(TimeEventsMain):
 
                         if pf_results is not None:
 
+                            self.add_simulation(SimulationTypes.RmsDynamic_run)
+
                             # self.add_simulation(SimulationTypes.RmsDynamic_run)
                             self.ui.progress_label.setText('Running rms simulation...')
                             QtGui.QGuiApplication.processEvents()
@@ -3528,7 +3530,8 @@ class SimulationsMain(TimeEventsMain):
 
                     if not len(self.circuit.emt_events_groups) == 0:
                         if pf_results_3ph is not None:
-                            # self.add_simulation(SimulationTypes.RmsDynamic_run)
+
+                            self.add_simulation(SimulationTypes.EmtDynamic_run)
                             self.ui.progress_label.setText('Running emt simulation...')
                             QtGui.QGuiApplication.processEvents()
                             self.LOCK()

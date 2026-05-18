@@ -69,7 +69,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOpti
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.Emt.converter_switched_emt_template import get_switched_emt_converter
 from VeraGridEngine.Templates.Emt.dc_load_emt_template import get_dc_load_emt_template
-from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
+from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template_with_ref
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
@@ -945,7 +945,7 @@ def build_switched_vsc_case(
     dc_load.P = float(p_transfer_mw)
 
     # Every physical device receives its EMT model before the DAE is assembled.
-    gen_mdl = get_generator_thevenin_rl_emt_template(vf=grid.var_factory).block
+    gen_mdl = get_generator_thevenin_rl_emt_template_with_ref(vf=grid.var_factory).block
     vsc_mdl = converter_builder(vf=grid.var_factory, name=vsc.name).block
     dc_load_mdl = get_dc_load_emt_template(vf=grid.var_factory, name="dc_load_emt_switched").block
 

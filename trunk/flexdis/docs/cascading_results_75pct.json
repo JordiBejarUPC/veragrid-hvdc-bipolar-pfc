@@ -1,0 +1,3382 @@
+{
+  "study": "Cascading VSC Disconnection - IEEE 33-bus FlexDis (75% penetration)",
+  "method": "sequences_vsc (full AC/DC power flow during fault)",
+  "date": "2026-05-14",
+  "fault_type": "LLLG (3-phase bolted, Zf=1e-6+j1e-6)",
+  "penetration_target": 0.75,
+  "total_load_mw": 3.715,
+  "total_der_mw": 2.7862,
+  "actual_penetration": 0.75,
+  "vsc_injections_mw": {
+    "VSC Bus 18": 0.6966,
+    "VSC Bus 22": 0.5224,
+    "VSC Bus 25": 1.0448,
+    "VSC Bus 33": 0.5224
+  },
+  "vsc_rate_mva": 1.57,
+  "scenarios": {
+    "A \u2014 No LVRT (0.85 p.u.)": {
+      "min_ac_voltage": 0.85,
+      "summary": {
+        "n_faults_total": 33,
+        "n_faults_causing_disconnect": 32,
+        "max_vscs_disconnected": 4,
+        "max_lost_generation_mw": 2.7862,
+        "avg_vscs_disconnected": 2.3,
+        "total_der_mw": 2.7862,
+        "disconnection_distribution": {
+          "0": 1,
+          "4": 2,
+          "3": 11,
+          "2": 16,
+          "1": 3
+        }
+      },
+      "faults": [
+        {
+          "fault_bus": "Bus 1",
+          "min_sc_voltage": 0.9544,
+          "n_disconnected": 0,
+          "lost_generation_mw": 0,
+          "disconnected_vscs": [],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "v_ac": 0.9767,
+              "pfp_sc": 0.6966
+            },
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 1.0024,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.9935,
+              "pfp_sc": 1.0448
+            },
+            {
+              "name": "VSC Bus 33",
+              "v_ac": 0.9554,
+              "pfp_sc": 0.5224
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 2",
+          "min_sc_voltage": 0.0001,
+          "n_disconnected": 4,
+          "lost_generation_mw": 2.7862,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0073,
+              "p_mw": 0.6966,
+              "pfp_sc": -0.0
+            },
+            {
+              "name": "VSC Bus 22",
+              "ac_bus": "Bus 22",
+              "v_ac": 0.1068,
+              "p_mw": 0.5224,
+              "pfp_sc": -0.0
+            },
+            {
+              "name": "VSC Bus 25",
+              "ac_bus": "Bus 25",
+              "v_ac": 0.0942,
+              "p_mw": 1.0448,
+              "pfp_sc": 0.0
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.0472,
+              "p_mw": 0.5224,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": []
+        },
+        {
+          "fault_bus": "Bus 3",
+          "min_sc_voltage": 0.0001,
+          "n_disconnected": 3,
+          "lost_generation_mw": 2.2638,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0496,
+              "p_mw": 0.6966,
+              "pfp_sc": 0.0
+            },
+            {
+              "name": "VSC Bus 25",
+              "ac_bus": "Bus 25",
+              "v_ac": 0.0318,
+              "p_mw": 1.0448,
+              "pfp_sc": -0.0
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.0379,
+              "p_mw": 0.5224,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.8522,
+              "pfp_sc": 0.5224
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 4",
+          "min_sc_voltage": 0.0001,
+          "n_disconnected": 3,
+          "lost_generation_mw": 2.2638,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0309,
+              "p_mw": 0.6966,
+              "pfp_sc": -0.0
+            },
+            {
+              "name": "VSC Bus 25",
+              "ac_bus": "Bus 25",
+              "v_ac": 0.34,
+              "p_mw": 1.0448,
+              "pfp_sc": 0.0
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.0277,
+              "p_mw": 0.5224,
+              "pfp_sc": -0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9086,
+              "pfp_sc": 0.5224
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 5",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 3,
+          "lost_generation_mw": 2.2638,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.061,
+              "p_mw": 0.6966,
+              "pfp_sc": 0.0
+            },
+            {
+              "name": "VSC Bus 25",
+              "ac_bus": "Bus 25",
+              "v_ac": 0.5301,
+              "p_mw": 1.0448,
+              "pfp_sc": -0.0
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.0069,
+              "p_mw": 0.5224,
+              "pfp_sc": -0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9347,
+              "pfp_sc": 0.5224
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 6",
+          "min_sc_voltage": 0.0001,
+          "n_disconnected": 3,
+          "lost_generation_mw": 2.2638,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0064,
+              "p_mw": 0.6966,
+              "pfp_sc": -0.0
+            },
+            {
+              "name": "VSC Bus 25",
+              "ac_bus": "Bus 25",
+              "v_ac": 0.7513,
+              "p_mw": 1.0448,
+              "pfp_sc": 1.0448
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.0492,
+              "p_mw": 0.5224,
+              "pfp_sc": -0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9632,
+              "pfp_sc": 0.5224
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 7",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 3,
+          "lost_generation_mw": 2.2638,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0533,
+              "p_mw": 0.6966,
+              "pfp_sc": -0.0
+            },
+            {
+              "name": "VSC Bus 25",
+              "ac_bus": "Bus 25",
+              "v_ac": 0.7521,
+              "p_mw": 1.0448,
+              "pfp_sc": 1.0448
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.011,
+              "p_mw": 0.5224,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9633,
+              "pfp_sc": 0.5224
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 8",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 3,
+          "lost_generation_mw": 2.2638,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0258,
+              "p_mw": 0.6966,
+              "pfp_sc": 0.0
+            },
+            {
+              "name": "VSC Bus 25",
+              "ac_bus": "Bus 25",
+              "v_ac": 0.8269,
+              "p_mw": 1.0448,
+              "pfp_sc": 1.0448
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.2149,
+              "p_mw": 0.5224,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9755,
+              "pfp_sc": 0.5224
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 9",
+          "min_sc_voltage": 0.0001,
+          "n_disconnected": 2,
+          "lost_generation_mw": 1.219,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0013,
+              "p_mw": 0.6966,
+              "pfp_sc": -0.0
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.3834,
+              "p_mw": 0.5224,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9819,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.8664,
+              "pfp_sc": 1.0448
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 10",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 2,
+          "lost_generation_mw": 1.219,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0235,
+              "p_mw": 0.6966,
+              "pfp_sc": 0.0
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.5028,
+              "p_mw": 0.5224,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.986,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.8912,
+              "pfp_sc": 1.0448
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 11",
+          "min_sc_voltage": 0.0001,
+          "n_disconnected": 2,
+          "lost_generation_mw": 1.219,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.004,
+              "p_mw": 0.6966,
+              "pfp_sc": -0.0
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.5151,
+              "p_mw": 0.5224,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9864,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.8938,
+              "pfp_sc": 1.0448
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 12",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 2,
+          "lost_generation_mw": 1.219,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0408,
+              "p_mw": 0.6966,
+              "pfp_sc": -0.0
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.5025,
+              "p_mw": 0.5224,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.986,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.8911,
+              "pfp_sc": 1.0448
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 13",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 2,
+          "lost_generation_mw": 1.219,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0036,
+              "p_mw": 0.6966,
+              "pfp_sc": -0.0
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.677,
+              "p_mw": 0.5224,
+              "pfp_sc": 0.5224
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9907,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.9205,
+              "pfp_sc": 1.0448
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 14",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 2,
+          "lost_generation_mw": 1.219,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0234,
+              "p_mw": 0.6966,
+              "pfp_sc": 0.0
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.5026,
+              "p_mw": 0.5224,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.986,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.8912,
+              "pfp_sc": 1.0448
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 15",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 2,
+          "lost_generation_mw": 1.219,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0223,
+              "p_mw": 0.6966,
+              "pfp_sc": 0.0
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.6832,
+              "p_mw": 0.5224,
+              "pfp_sc": 0.5224
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.991,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.9221,
+              "pfp_sc": 1.0448
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 16",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 2,
+          "lost_generation_mw": 1.219,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0177,
+              "p_mw": 0.6966,
+              "pfp_sc": 0.0
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.7339,
+              "p_mw": 0.5224,
+              "pfp_sc": 0.5224
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9931,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.9352,
+              "pfp_sc": 1.0448
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 17",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 2,
+          "lost_generation_mw": 1.219,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0,
+              "p_mw": 0.6966,
+              "pfp_sc": 0.0
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.7383,
+              "p_mw": 0.5224,
+              "pfp_sc": 0.5224
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9934,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.9366,
+              "pfp_sc": 1.0448
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 18",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 2,
+          "lost_generation_mw": 1.219,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0,
+              "p_mw": 0.6966,
+              "pfp_sc": -0.0
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.7788,
+              "p_mw": 0.5224,
+              "pfp_sc": 0.5224
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.995,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.9471,
+              "pfp_sc": 1.0448
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 19",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 4,
+          "lost_generation_mw": 2.7862,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.7058,
+              "p_mw": 0.6966,
+              "pfp_sc": 0.6966
+            },
+            {
+              "name": "VSC Bus 22",
+              "ac_bus": "Bus 22",
+              "v_ac": 0.0024,
+              "p_mw": 0.5224,
+              "pfp_sc": -0.0
+            },
+            {
+              "name": "VSC Bus 25",
+              "ac_bus": "Bus 25",
+              "v_ac": 0.6961,
+              "p_mw": 1.0448,
+              "pfp_sc": 1.0448
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.6613,
+              "p_mw": 0.5224,
+              "pfp_sc": 0.5224
+            }
+          ],
+          "connected_vscs": []
+        },
+        {
+          "fault_bus": "Bus 20",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 1,
+          "lost_generation_mw": 0.5224,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "ac_bus": "Bus 22",
+              "v_ac": 0.0173,
+              "p_mw": 0.5224,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "v_ac": 0.9328,
+              "pfp_sc": 0.6966
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.9505,
+              "pfp_sc": 1.0448
+            },
+            {
+              "name": "VSC Bus 33",
+              "v_ac": 0.9106,
+              "pfp_sc": 0.5224
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 21",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 1,
+          "lost_generation_mw": 0.5224,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "ac_bus": "Bus 22",
+              "v_ac": 0.0,
+              "p_mw": 0.5224,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "v_ac": 0.9422,
+              "pfp_sc": 0.6966
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.9597,
+              "pfp_sc": 1.0448
+            },
+            {
+              "name": "VSC Bus 33",
+              "v_ac": 0.9202,
+              "pfp_sc": 0.5224
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 22",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 1,
+          "lost_generation_mw": 0.5224,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "ac_bus": "Bus 22",
+              "v_ac": 0.0,
+              "p_mw": 0.5224,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "v_ac": 0.9521,
+              "pfp_sc": 0.6966
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.9694,
+              "pfp_sc": 1.0448
+            },
+            {
+              "name": "VSC Bus 33",
+              "v_ac": 0.9303,
+              "pfp_sc": 0.5224
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 23",
+          "min_sc_voltage": 0.0001,
+          "n_disconnected": 3,
+          "lost_generation_mw": 2.2638,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.1529,
+              "p_mw": 0.6966,
+              "pfp_sc": 0.0
+            },
+            {
+              "name": "VSC Bus 25",
+              "ac_bus": "Bus 25",
+              "v_ac": 0.0233,
+              "p_mw": 1.0448,
+              "pfp_sc": -0.0
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.0317,
+              "p_mw": 0.5224,
+              "pfp_sc": -0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9105,
+              "pfp_sc": 0.5224
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 24",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 3,
+          "lost_generation_mw": 2.2638,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.7331,
+              "p_mw": 0.6966,
+              "pfp_sc": 0.6966
+            },
+            {
+              "name": "VSC Bus 25",
+              "ac_bus": "Bus 25",
+              "v_ac": 0.0006,
+              "p_mw": 1.0448,
+              "pfp_sc": -0.0
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.6915,
+              "p_mw": 0.5224,
+              "pfp_sc": 0.5224
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9591,
+              "pfp_sc": 0.5224
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 25",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 3,
+          "lost_generation_mw": 2.2638,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.8091,
+              "p_mw": 0.6966,
+              "pfp_sc": 0.6966
+            },
+            {
+              "name": "VSC Bus 25",
+              "ac_bus": "Bus 25",
+              "v_ac": 0.0,
+              "p_mw": 1.0448,
+              "pfp_sc": -0.0
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.7755,
+              "p_mw": 0.5224,
+              "pfp_sc": 0.5224
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.973,
+              "pfp_sc": 0.5224
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 26",
+          "min_sc_voltage": 0.0001,
+          "n_disconnected": 3,
+          "lost_generation_mw": 2.2638,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0164,
+              "p_mw": 0.6966,
+              "pfp_sc": -0.0
+            },
+            {
+              "name": "VSC Bus 25",
+              "ac_bus": "Bus 25",
+              "v_ac": 0.7683,
+              "p_mw": 1.0448,
+              "pfp_sc": 1.0448
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.0434,
+              "p_mw": 0.5224,
+              "pfp_sc": -0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9659,
+              "pfp_sc": 0.5224
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 27",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 3,
+          "lost_generation_mw": 2.2638,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.024,
+              "p_mw": 0.6966,
+              "pfp_sc": 0.0
+            },
+            {
+              "name": "VSC Bus 25",
+              "ac_bus": "Bus 25",
+              "v_ac": 0.7532,
+              "p_mw": 1.0448,
+              "pfp_sc": 1.0448
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.0125,
+              "p_mw": 0.5224,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9635,
+              "pfp_sc": 0.5224
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 28",
+          "min_sc_voltage": 0.0001,
+          "n_disconnected": 2,
+          "lost_generation_mw": 1.219,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.2965,
+              "p_mw": 0.6966,
+              "pfp_sc": 0.0
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.0274,
+              "p_mw": 0.5224,
+              "pfp_sc": -0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9796,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.852,
+              "pfp_sc": 1.0448
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 29",
+          "min_sc_voltage": 0.0001,
+          "n_disconnected": 2,
+          "lost_generation_mw": 1.219,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.4395,
+              "p_mw": 0.6966,
+              "pfp_sc": 0.0
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.0323,
+              "p_mw": 0.5224,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.984,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.8792,
+              "pfp_sc": 1.0448
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 30",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 2,
+          "lost_generation_mw": 1.219,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.4835,
+              "p_mw": 0.6966,
+              "pfp_sc": 0.0
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.0017,
+              "p_mw": 0.5224,
+              "pfp_sc": -0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9855,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.8882,
+              "pfp_sc": 1.0448
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 31",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 2,
+          "lost_generation_mw": 1.219,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.6765,
+              "p_mw": 0.6966,
+              "pfp_sc": 0.6966
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.0261,
+              "p_mw": 0.5224,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9888,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.9084,
+              "pfp_sc": 1.0448
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 32",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 2,
+          "lost_generation_mw": 1.219,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.6928,
+              "p_mw": 0.6966,
+              "pfp_sc": 0.6966
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.028,
+              "p_mw": 0.5224,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9895,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.9131,
+              "pfp_sc": 1.0448
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 33",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 2,
+          "lost_generation_mw": 1.219,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.7015,
+              "p_mw": 0.6966,
+              "pfp_sc": 0.6966
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.0,
+              "p_mw": 0.5224,
+              "pfp_sc": -0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9899,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.9154,
+              "pfp_sc": 1.0448
+            }
+          ]
+        }
+      ]
+    },
+    "B \u2014 Moderate LVRT (0.50 p.u.)": {
+      "min_ac_voltage": 0.5,
+      "summary": {
+        "n_faults_total": 33,
+        "n_faults_causing_disconnect": 32,
+        "max_vscs_disconnected": 4,
+        "max_lost_generation_mw": 2.7862,
+        "avg_vscs_disconnected": 1.55,
+        "total_der_mw": 2.7862,
+        "disconnection_distribution": {
+          "0": 1,
+          "4": 1,
+          "3": 3,
+          "2": 10,
+          "1": 18
+        }
+      },
+      "faults": [
+        {
+          "fault_bus": "Bus 1",
+          "min_sc_voltage": 0.9544,
+          "n_disconnected": 0,
+          "lost_generation_mw": 0,
+          "disconnected_vscs": [],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "v_ac": 0.9767,
+              "pfp_sc": 0.6966
+            },
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 1.0024,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.9935,
+              "pfp_sc": 1.0448
+            },
+            {
+              "name": "VSC Bus 33",
+              "v_ac": 0.9554,
+              "pfp_sc": 0.5224
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 2",
+          "min_sc_voltage": 0.0001,
+          "n_disconnected": 4,
+          "lost_generation_mw": 2.7862,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0073,
+              "p_mw": 0.6966,
+              "pfp_sc": -0.0
+            },
+            {
+              "name": "VSC Bus 22",
+              "ac_bus": "Bus 22",
+              "v_ac": 0.1068,
+              "p_mw": 0.5224,
+              "pfp_sc": -0.0
+            },
+            {
+              "name": "VSC Bus 25",
+              "ac_bus": "Bus 25",
+              "v_ac": 0.0942,
+              "p_mw": 1.0448,
+              "pfp_sc": 0.0
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.0472,
+              "p_mw": 0.5224,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": []
+        },
+        {
+          "fault_bus": "Bus 3",
+          "min_sc_voltage": 0.0001,
+          "n_disconnected": 3,
+          "lost_generation_mw": 2.2638,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0496,
+              "p_mw": 0.6966,
+              "pfp_sc": 0.0
+            },
+            {
+              "name": "VSC Bus 25",
+              "ac_bus": "Bus 25",
+              "v_ac": 0.0318,
+              "p_mw": 1.0448,
+              "pfp_sc": -0.0
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.0379,
+              "p_mw": 0.5224,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.8522,
+              "pfp_sc": 0.5224
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 4",
+          "min_sc_voltage": 0.0001,
+          "n_disconnected": 3,
+          "lost_generation_mw": 2.2638,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0309,
+              "p_mw": 0.6966,
+              "pfp_sc": -0.0
+            },
+            {
+              "name": "VSC Bus 25",
+              "ac_bus": "Bus 25",
+              "v_ac": 0.34,
+              "p_mw": 1.0448,
+              "pfp_sc": 0.0
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.0277,
+              "p_mw": 0.5224,
+              "pfp_sc": -0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9086,
+              "pfp_sc": 0.5224
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 5",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 2,
+          "lost_generation_mw": 1.219,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.061,
+              "p_mw": 0.6966,
+              "pfp_sc": 0.0
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.0069,
+              "p_mw": 0.5224,
+              "pfp_sc": -0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9347,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.5301,
+              "pfp_sc": -0.0
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 6",
+          "min_sc_voltage": 0.0001,
+          "n_disconnected": 2,
+          "lost_generation_mw": 1.219,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0064,
+              "p_mw": 0.6966,
+              "pfp_sc": -0.0
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.0492,
+              "p_mw": 0.5224,
+              "pfp_sc": -0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9632,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.7513,
+              "pfp_sc": 1.0448
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 7",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 2,
+          "lost_generation_mw": 1.219,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0533,
+              "p_mw": 0.6966,
+              "pfp_sc": -0.0
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.011,
+              "p_mw": 0.5224,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9633,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.7521,
+              "pfp_sc": 1.0448
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 8",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 2,
+          "lost_generation_mw": 1.219,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0258,
+              "p_mw": 0.6966,
+              "pfp_sc": 0.0
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.2149,
+              "p_mw": 0.5224,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9755,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.8269,
+              "pfp_sc": 1.0448
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 9",
+          "min_sc_voltage": 0.0001,
+          "n_disconnected": 2,
+          "lost_generation_mw": 1.219,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0013,
+              "p_mw": 0.6966,
+              "pfp_sc": -0.0
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.3834,
+              "p_mw": 0.5224,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9819,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.8664,
+              "pfp_sc": 1.0448
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 10",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 1,
+          "lost_generation_mw": 0.6966,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0235,
+              "p_mw": 0.6966,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.986,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.8912,
+              "pfp_sc": 1.0448
+            },
+            {
+              "name": "VSC Bus 33",
+              "v_ac": 0.5028,
+              "pfp_sc": 0.0
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 11",
+          "min_sc_voltage": 0.0001,
+          "n_disconnected": 1,
+          "lost_generation_mw": 0.6966,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.004,
+              "p_mw": 0.6966,
+              "pfp_sc": -0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9864,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.8938,
+              "pfp_sc": 1.0448
+            },
+            {
+              "name": "VSC Bus 33",
+              "v_ac": 0.5151,
+              "pfp_sc": 0.0
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 12",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 1,
+          "lost_generation_mw": 0.6966,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0408,
+              "p_mw": 0.6966,
+              "pfp_sc": -0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.986,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.8911,
+              "pfp_sc": 1.0448
+            },
+            {
+              "name": "VSC Bus 33",
+              "v_ac": 0.5025,
+              "pfp_sc": 0.0
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 13",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 1,
+          "lost_generation_mw": 0.6966,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0036,
+              "p_mw": 0.6966,
+              "pfp_sc": -0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9907,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.9205,
+              "pfp_sc": 1.0448
+            },
+            {
+              "name": "VSC Bus 33",
+              "v_ac": 0.677,
+              "pfp_sc": 0.5224
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 14",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 1,
+          "lost_generation_mw": 0.6966,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0234,
+              "p_mw": 0.6966,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.986,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.8912,
+              "pfp_sc": 1.0448
+            },
+            {
+              "name": "VSC Bus 33",
+              "v_ac": 0.5026,
+              "pfp_sc": 0.0
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 15",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 1,
+          "lost_generation_mw": 0.6966,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0223,
+              "p_mw": 0.6966,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.991,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.9221,
+              "pfp_sc": 1.0448
+            },
+            {
+              "name": "VSC Bus 33",
+              "v_ac": 0.6832,
+              "pfp_sc": 0.5224
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 16",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 1,
+          "lost_generation_mw": 0.6966,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0177,
+              "p_mw": 0.6966,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9931,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.9352,
+              "pfp_sc": 1.0448
+            },
+            {
+              "name": "VSC Bus 33",
+              "v_ac": 0.7339,
+              "pfp_sc": 0.5224
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 17",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 1,
+          "lost_generation_mw": 0.6966,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0,
+              "p_mw": 0.6966,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9934,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.9366,
+              "pfp_sc": 1.0448
+            },
+            {
+              "name": "VSC Bus 33",
+              "v_ac": 0.7383,
+              "pfp_sc": 0.5224
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 18",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 1,
+          "lost_generation_mw": 0.6966,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0,
+              "p_mw": 0.6966,
+              "pfp_sc": -0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.995,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.9471,
+              "pfp_sc": 1.0448
+            },
+            {
+              "name": "VSC Bus 33",
+              "v_ac": 0.7788,
+              "pfp_sc": 0.5224
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 19",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 1,
+          "lost_generation_mw": 0.5224,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "ac_bus": "Bus 22",
+              "v_ac": 0.0024,
+              "p_mw": 0.5224,
+              "pfp_sc": -0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "v_ac": 0.7058,
+              "pfp_sc": 0.6966
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.6961,
+              "pfp_sc": 1.0448
+            },
+            {
+              "name": "VSC Bus 33",
+              "v_ac": 0.6613,
+              "pfp_sc": 0.5224
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 20",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 1,
+          "lost_generation_mw": 0.5224,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "ac_bus": "Bus 22",
+              "v_ac": 0.0173,
+              "p_mw": 0.5224,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "v_ac": 0.9328,
+              "pfp_sc": 0.6966
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.9505,
+              "pfp_sc": 1.0448
+            },
+            {
+              "name": "VSC Bus 33",
+              "v_ac": 0.9106,
+              "pfp_sc": 0.5224
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 21",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 1,
+          "lost_generation_mw": 0.5224,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "ac_bus": "Bus 22",
+              "v_ac": 0.0,
+              "p_mw": 0.5224,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "v_ac": 0.9422,
+              "pfp_sc": 0.6966
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.9597,
+              "pfp_sc": 1.0448
+            },
+            {
+              "name": "VSC Bus 33",
+              "v_ac": 0.9202,
+              "pfp_sc": 0.5224
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 22",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 1,
+          "lost_generation_mw": 0.5224,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "ac_bus": "Bus 22",
+              "v_ac": 0.0,
+              "p_mw": 0.5224,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "v_ac": 0.9521,
+              "pfp_sc": 0.6966
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.9694,
+              "pfp_sc": 1.0448
+            },
+            {
+              "name": "VSC Bus 33",
+              "v_ac": 0.9303,
+              "pfp_sc": 0.5224
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 23",
+          "min_sc_voltage": 0.0001,
+          "n_disconnected": 3,
+          "lost_generation_mw": 2.2638,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.1529,
+              "p_mw": 0.6966,
+              "pfp_sc": 0.0
+            },
+            {
+              "name": "VSC Bus 25",
+              "ac_bus": "Bus 25",
+              "v_ac": 0.0233,
+              "p_mw": 1.0448,
+              "pfp_sc": -0.0
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.0317,
+              "p_mw": 0.5224,
+              "pfp_sc": -0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9105,
+              "pfp_sc": 0.5224
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 24",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 1,
+          "lost_generation_mw": 1.0448,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 25",
+              "ac_bus": "Bus 25",
+              "v_ac": 0.0006,
+              "p_mw": 1.0448,
+              "pfp_sc": -0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "v_ac": 0.7331,
+              "pfp_sc": 0.6966
+            },
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9591,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 33",
+              "v_ac": 0.6915,
+              "pfp_sc": 0.5224
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 25",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 1,
+          "lost_generation_mw": 1.0448,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 25",
+              "ac_bus": "Bus 25",
+              "v_ac": 0.0,
+              "p_mw": 1.0448,
+              "pfp_sc": -0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "v_ac": 0.8091,
+              "pfp_sc": 0.6966
+            },
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.973,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 33",
+              "v_ac": 0.7755,
+              "pfp_sc": 0.5224
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 26",
+          "min_sc_voltage": 0.0001,
+          "n_disconnected": 2,
+          "lost_generation_mw": 1.219,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0164,
+              "p_mw": 0.6966,
+              "pfp_sc": -0.0
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.0434,
+              "p_mw": 0.5224,
+              "pfp_sc": -0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9659,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.7683,
+              "pfp_sc": 1.0448
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 27",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 2,
+          "lost_generation_mw": 1.219,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.024,
+              "p_mw": 0.6966,
+              "pfp_sc": 0.0
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.0125,
+              "p_mw": 0.5224,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9635,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.7532,
+              "pfp_sc": 1.0448
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 28",
+          "min_sc_voltage": 0.0001,
+          "n_disconnected": 2,
+          "lost_generation_mw": 1.219,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.2965,
+              "p_mw": 0.6966,
+              "pfp_sc": 0.0
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.0274,
+              "p_mw": 0.5224,
+              "pfp_sc": -0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9796,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.852,
+              "pfp_sc": 1.0448
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 29",
+          "min_sc_voltage": 0.0001,
+          "n_disconnected": 2,
+          "lost_generation_mw": 1.219,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.4395,
+              "p_mw": 0.6966,
+              "pfp_sc": 0.0
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.0323,
+              "p_mw": 0.5224,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.984,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.8792,
+              "pfp_sc": 1.0448
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 30",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 2,
+          "lost_generation_mw": 1.219,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.4835,
+              "p_mw": 0.6966,
+              "pfp_sc": 0.0
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.0017,
+              "p_mw": 0.5224,
+              "pfp_sc": -0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9855,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.8882,
+              "pfp_sc": 1.0448
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 31",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 1,
+          "lost_generation_mw": 0.5224,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.0261,
+              "p_mw": 0.5224,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "v_ac": 0.6765,
+              "pfp_sc": 0.6966
+            },
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9888,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.9084,
+              "pfp_sc": 1.0448
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 32",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 1,
+          "lost_generation_mw": 0.5224,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.028,
+              "p_mw": 0.5224,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "v_ac": 0.6928,
+              "pfp_sc": 0.6966
+            },
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9895,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.9131,
+              "pfp_sc": 1.0448
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 33",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 1,
+          "lost_generation_mw": 0.5224,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.0,
+              "p_mw": 0.5224,
+              "pfp_sc": -0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "v_ac": 0.7015,
+              "pfp_sc": 0.6966
+            },
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9899,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.9154,
+              "pfp_sc": 1.0448
+            }
+          ]
+        }
+      ]
+    },
+    "C \u2014 Stringent LVRT (0.10 p.u.)": {
+      "min_ac_voltage": 0.1,
+      "summary": {
+        "n_faults_total": 33,
+        "n_faults_causing_disconnect": 32,
+        "max_vscs_disconnected": 3,
+        "max_lost_generation_mw": 2.2638,
+        "avg_vscs_disconnected": 1.3,
+        "total_der_mw": 2.7862,
+        "disconnection_distribution": {
+          "0": 1,
+          "3": 2,
+          "2": 7,
+          "1": 23
+        }
+      },
+      "faults": [
+        {
+          "fault_bus": "Bus 1",
+          "min_sc_voltage": 0.9544,
+          "n_disconnected": 0,
+          "lost_generation_mw": 0,
+          "disconnected_vscs": [],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "v_ac": 0.9767,
+              "pfp_sc": 0.6966
+            },
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 1.0024,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.9935,
+              "pfp_sc": 1.0448
+            },
+            {
+              "name": "VSC Bus 33",
+              "v_ac": 0.9554,
+              "pfp_sc": 0.5224
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 2",
+          "min_sc_voltage": 0.0001,
+          "n_disconnected": 3,
+          "lost_generation_mw": 2.2638,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0073,
+              "p_mw": 0.6966,
+              "pfp_sc": -0.0
+            },
+            {
+              "name": "VSC Bus 25",
+              "ac_bus": "Bus 25",
+              "v_ac": 0.0942,
+              "p_mw": 1.0448,
+              "pfp_sc": 0.0
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.0472,
+              "p_mw": 0.5224,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.1068,
+              "pfp_sc": -0.0
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 3",
+          "min_sc_voltage": 0.0001,
+          "n_disconnected": 3,
+          "lost_generation_mw": 2.2638,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0496,
+              "p_mw": 0.6966,
+              "pfp_sc": 0.0
+            },
+            {
+              "name": "VSC Bus 25",
+              "ac_bus": "Bus 25",
+              "v_ac": 0.0318,
+              "p_mw": 1.0448,
+              "pfp_sc": -0.0
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.0379,
+              "p_mw": 0.5224,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.8522,
+              "pfp_sc": 0.5224
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 4",
+          "min_sc_voltage": 0.0001,
+          "n_disconnected": 2,
+          "lost_generation_mw": 1.219,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0309,
+              "p_mw": 0.6966,
+              "pfp_sc": -0.0
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.0277,
+              "p_mw": 0.5224,
+              "pfp_sc": -0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9086,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.34,
+              "pfp_sc": 0.0
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 5",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 2,
+          "lost_generation_mw": 1.219,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.061,
+              "p_mw": 0.6966,
+              "pfp_sc": 0.0
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.0069,
+              "p_mw": 0.5224,
+              "pfp_sc": -0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9347,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.5301,
+              "pfp_sc": -0.0
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 6",
+          "min_sc_voltage": 0.0001,
+          "n_disconnected": 2,
+          "lost_generation_mw": 1.219,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0064,
+              "p_mw": 0.6966,
+              "pfp_sc": -0.0
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.0492,
+              "p_mw": 0.5224,
+              "pfp_sc": -0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9632,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.7513,
+              "pfp_sc": 1.0448
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 7",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 2,
+          "lost_generation_mw": 1.219,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0533,
+              "p_mw": 0.6966,
+              "pfp_sc": -0.0
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.011,
+              "p_mw": 0.5224,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9633,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.7521,
+              "pfp_sc": 1.0448
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 8",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 1,
+          "lost_generation_mw": 0.6966,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0258,
+              "p_mw": 0.6966,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9755,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.8269,
+              "pfp_sc": 1.0448
+            },
+            {
+              "name": "VSC Bus 33",
+              "v_ac": 0.2149,
+              "pfp_sc": 0.0
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 9",
+          "min_sc_voltage": 0.0001,
+          "n_disconnected": 1,
+          "lost_generation_mw": 0.6966,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0013,
+              "p_mw": 0.6966,
+              "pfp_sc": -0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9819,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.8664,
+              "pfp_sc": 1.0448
+            },
+            {
+              "name": "VSC Bus 33",
+              "v_ac": 0.3834,
+              "pfp_sc": 0.0
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 10",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 1,
+          "lost_generation_mw": 0.6966,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0235,
+              "p_mw": 0.6966,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.986,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.8912,
+              "pfp_sc": 1.0448
+            },
+            {
+              "name": "VSC Bus 33",
+              "v_ac": 0.5028,
+              "pfp_sc": 0.0
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 11",
+          "min_sc_voltage": 0.0001,
+          "n_disconnected": 1,
+          "lost_generation_mw": 0.6966,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.004,
+              "p_mw": 0.6966,
+              "pfp_sc": -0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9864,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.8938,
+              "pfp_sc": 1.0448
+            },
+            {
+              "name": "VSC Bus 33",
+              "v_ac": 0.5151,
+              "pfp_sc": 0.0
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 12",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 1,
+          "lost_generation_mw": 0.6966,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0408,
+              "p_mw": 0.6966,
+              "pfp_sc": -0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.986,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.8911,
+              "pfp_sc": 1.0448
+            },
+            {
+              "name": "VSC Bus 33",
+              "v_ac": 0.5025,
+              "pfp_sc": 0.0
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 13",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 1,
+          "lost_generation_mw": 0.6966,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0036,
+              "p_mw": 0.6966,
+              "pfp_sc": -0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9907,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.9205,
+              "pfp_sc": 1.0448
+            },
+            {
+              "name": "VSC Bus 33",
+              "v_ac": 0.677,
+              "pfp_sc": 0.5224
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 14",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 1,
+          "lost_generation_mw": 0.6966,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0234,
+              "p_mw": 0.6966,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.986,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.8912,
+              "pfp_sc": 1.0448
+            },
+            {
+              "name": "VSC Bus 33",
+              "v_ac": 0.5026,
+              "pfp_sc": 0.0
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 15",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 1,
+          "lost_generation_mw": 0.6966,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0223,
+              "p_mw": 0.6966,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.991,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.9221,
+              "pfp_sc": 1.0448
+            },
+            {
+              "name": "VSC Bus 33",
+              "v_ac": 0.6832,
+              "pfp_sc": 0.5224
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 16",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 1,
+          "lost_generation_mw": 0.6966,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0177,
+              "p_mw": 0.6966,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9931,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.9352,
+              "pfp_sc": 1.0448
+            },
+            {
+              "name": "VSC Bus 33",
+              "v_ac": 0.7339,
+              "pfp_sc": 0.5224
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 17",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 1,
+          "lost_generation_mw": 0.6966,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0,
+              "p_mw": 0.6966,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9934,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.9366,
+              "pfp_sc": 1.0448
+            },
+            {
+              "name": "VSC Bus 33",
+              "v_ac": 0.7383,
+              "pfp_sc": 0.5224
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 18",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 1,
+          "lost_generation_mw": 0.6966,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0,
+              "p_mw": 0.6966,
+              "pfp_sc": -0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.995,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.9471,
+              "pfp_sc": 1.0448
+            },
+            {
+              "name": "VSC Bus 33",
+              "v_ac": 0.7788,
+              "pfp_sc": 0.5224
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 19",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 1,
+          "lost_generation_mw": 0.5224,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "ac_bus": "Bus 22",
+              "v_ac": 0.0024,
+              "p_mw": 0.5224,
+              "pfp_sc": -0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "v_ac": 0.7058,
+              "pfp_sc": 0.6966
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.6961,
+              "pfp_sc": 1.0448
+            },
+            {
+              "name": "VSC Bus 33",
+              "v_ac": 0.6613,
+              "pfp_sc": 0.5224
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 20",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 1,
+          "lost_generation_mw": 0.5224,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "ac_bus": "Bus 22",
+              "v_ac": 0.0173,
+              "p_mw": 0.5224,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "v_ac": 0.9328,
+              "pfp_sc": 0.6966
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.9505,
+              "pfp_sc": 1.0448
+            },
+            {
+              "name": "VSC Bus 33",
+              "v_ac": 0.9106,
+              "pfp_sc": 0.5224
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 21",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 1,
+          "lost_generation_mw": 0.5224,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "ac_bus": "Bus 22",
+              "v_ac": 0.0,
+              "p_mw": 0.5224,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "v_ac": 0.9422,
+              "pfp_sc": 0.6966
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.9597,
+              "pfp_sc": 1.0448
+            },
+            {
+              "name": "VSC Bus 33",
+              "v_ac": 0.9202,
+              "pfp_sc": 0.5224
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 22",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 1,
+          "lost_generation_mw": 0.5224,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "ac_bus": "Bus 22",
+              "v_ac": 0.0,
+              "p_mw": 0.5224,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "v_ac": 0.9521,
+              "pfp_sc": 0.6966
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.9694,
+              "pfp_sc": 1.0448
+            },
+            {
+              "name": "VSC Bus 33",
+              "v_ac": 0.9303,
+              "pfp_sc": 0.5224
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 23",
+          "min_sc_voltage": 0.0001,
+          "n_disconnected": 2,
+          "lost_generation_mw": 1.5672,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 25",
+              "ac_bus": "Bus 25",
+              "v_ac": 0.0233,
+              "p_mw": 1.0448,
+              "pfp_sc": -0.0
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.0317,
+              "p_mw": 0.5224,
+              "pfp_sc": -0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "v_ac": 0.1529,
+              "pfp_sc": 0.0
+            },
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9105,
+              "pfp_sc": 0.5224
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 24",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 1,
+          "lost_generation_mw": 1.0448,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 25",
+              "ac_bus": "Bus 25",
+              "v_ac": 0.0006,
+              "p_mw": 1.0448,
+              "pfp_sc": -0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "v_ac": 0.7331,
+              "pfp_sc": 0.6966
+            },
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9591,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 33",
+              "v_ac": 0.6915,
+              "pfp_sc": 0.5224
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 25",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 1,
+          "lost_generation_mw": 1.0448,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 25",
+              "ac_bus": "Bus 25",
+              "v_ac": 0.0,
+              "p_mw": 1.0448,
+              "pfp_sc": -0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "v_ac": 0.8091,
+              "pfp_sc": 0.6966
+            },
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.973,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 33",
+              "v_ac": 0.7755,
+              "pfp_sc": 0.5224
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 26",
+          "min_sc_voltage": 0.0001,
+          "n_disconnected": 2,
+          "lost_generation_mw": 1.219,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.0164,
+              "p_mw": 0.6966,
+              "pfp_sc": -0.0
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.0434,
+              "p_mw": 0.5224,
+              "pfp_sc": -0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9659,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.7683,
+              "pfp_sc": 1.0448
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 27",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 2,
+          "lost_generation_mw": 1.219,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "ac_bus": "Bus 18",
+              "v_ac": 0.024,
+              "p_mw": 0.6966,
+              "pfp_sc": 0.0
+            },
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.0125,
+              "p_mw": 0.5224,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9635,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.7532,
+              "pfp_sc": 1.0448
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 28",
+          "min_sc_voltage": 0.0001,
+          "n_disconnected": 1,
+          "lost_generation_mw": 0.5224,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.0274,
+              "p_mw": 0.5224,
+              "pfp_sc": -0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "v_ac": 0.2965,
+              "pfp_sc": 0.0
+            },
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9796,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.852,
+              "pfp_sc": 1.0448
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 29",
+          "min_sc_voltage": 0.0001,
+          "n_disconnected": 1,
+          "lost_generation_mw": 0.5224,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.0323,
+              "p_mw": 0.5224,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "v_ac": 0.4395,
+              "pfp_sc": 0.0
+            },
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.984,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.8792,
+              "pfp_sc": 1.0448
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 30",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 1,
+          "lost_generation_mw": 0.5224,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.0017,
+              "p_mw": 0.5224,
+              "pfp_sc": -0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "v_ac": 0.4835,
+              "pfp_sc": 0.0
+            },
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9855,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.8882,
+              "pfp_sc": 1.0448
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 31",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 1,
+          "lost_generation_mw": 0.5224,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.0261,
+              "p_mw": 0.5224,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "v_ac": 0.6765,
+              "pfp_sc": 0.6966
+            },
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9888,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.9084,
+              "pfp_sc": 1.0448
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 32",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 1,
+          "lost_generation_mw": 0.5224,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.028,
+              "p_mw": 0.5224,
+              "pfp_sc": 0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "v_ac": 0.6928,
+              "pfp_sc": 0.6966
+            },
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9895,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.9131,
+              "pfp_sc": 1.0448
+            }
+          ]
+        },
+        {
+          "fault_bus": "Bus 33",
+          "min_sc_voltage": 0.0,
+          "n_disconnected": 1,
+          "lost_generation_mw": 0.5224,
+          "disconnected_vscs": [
+            {
+              "name": "VSC Bus 33",
+              "ac_bus": "Bus 33",
+              "v_ac": 0.0,
+              "p_mw": 0.5224,
+              "pfp_sc": -0.0
+            }
+          ],
+          "connected_vscs": [
+            {
+              "name": "VSC Bus 18",
+              "v_ac": 0.7015,
+              "pfp_sc": 0.6966
+            },
+            {
+              "name": "VSC Bus 22",
+              "v_ac": 0.9899,
+              "pfp_sc": 0.5224
+            },
+            {
+              "name": "VSC Bus 25",
+              "v_ac": 0.9154,
+              "pfp_sc": 1.0448
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

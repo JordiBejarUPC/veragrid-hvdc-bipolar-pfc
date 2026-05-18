@@ -129,7 +129,7 @@ def run_case(line_model: str) -> dict[str, np.ndarray]:
     grid.add_generator(bus=bus0, api_obj=gen)
     grid.add_load(bus=bus1, api_obj=load)
 
-    gen_mdl = vg.get_generator_thevenin_rl_emt_template(vf=grid.var_factory).block
+    gen_mdl = vg.get_generator_thevenin_rl_emt_template_with_ref(vf=grid.var_factory).block
     if line_model == "pi":
         line_mdl = vg.get_pi_line_emt_template(vf=grid.var_factory, phN=False, phA=True, phB=True, phC=True).block
     else:

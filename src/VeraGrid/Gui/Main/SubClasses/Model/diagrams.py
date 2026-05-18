@@ -2106,6 +2106,7 @@ class DiagramsMain(CompiledArraysMain):
                         time_index=self.get_diagram_slider_index()
                     )
 
+                    diagram_widget.center_nodes()
                     self.add_diagram_widget_and_diagram(diagram_widget=diagram_widget,
                                                         diagram=diagram)
                     self.set_diagrams_list_view()
@@ -2137,6 +2138,7 @@ class DiagramsMain(CompiledArraysMain):
                 time_index=self.get_diagram_slider_index()
             )
 
+            diagram_widget.center_nodes()
             self.add_diagram_widget_and_diagram(diagram_widget=diagram_widget, diagram=diagram)
             self.set_diagrams_list_view()
             self.show_info_toast(f"{diagram.name} added")
@@ -2166,6 +2168,7 @@ class DiagramsMain(CompiledArraysMain):
                 time_index=self.get_diagram_slider_index()
             )
 
+            diagram_widget.center_nodes()
             self.add_diagram_widget_and_diagram(diagram_widget=diagram_widget,
                                                 diagram=diagram)
             self.set_diagrams_list_view()
@@ -2613,8 +2616,9 @@ class DiagramsMain(CompiledArraysMain):
             if diagram is not None:
                 if isinstance(diagram, SchematicWidget):
 
-                    if yes_no_question("All nodes in the current diagram will be positioned to a 2D plane projection "
-                                       "of their latitude and longitude. "
+                    if yes_no_question("All buses will be positioned to a 2D plane projection of their "
+                                       "latitude and longitude. This updates the current diagram and the "
+                                       "stored bus x, y, so diagrams created afterwards use the new positions. "
                                        "Are you sure of this?"):
                         diagram.fill_xy_from_lat_lon(destructive=True)
                         diagram.center_nodes()

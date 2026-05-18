@@ -14,7 +14,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlow
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_rlc_combo_emt_template
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
-from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
+from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template_with_ref
 from VeraGridEngine.Templates.Emt.transformer_emt_template import get_transformer_emt_template
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
 from VeraGridEngine.enumerations import DynamicIntegrationMethod, EmtInitializationMethod, EmtSolverTypes, ShuntConnectionType, SolverType, VarPowerFlowRefferenceType, WindingType
@@ -126,7 +126,7 @@ def _build_transformer_neutral_grid() -> tuple[gce.MultiCircuit, gce.Transformer
     for bus in grid.buses:
         get_bus_emt_template(grid, bus)
 
-    generator_model = get_generator_thevenin_rl_emt_template(vf=grid.var_factory, name="Gen").block
+    generator_model = get_generator_thevenin_rl_emt_template_with_ref(vf=grid.var_factory, name="Gen").block
     transformer_model = get_transformer_emt_template(vf=grid.var_factory, conn_f=transformer.conn_f, conn_t=transformer.conn_t, name="TRAFO").block
     line_model = get_pi_line_emt_template(vf=grid.var_factory, phN=True, phA=True, phB=True, phC=True, name="Line").block
     load_model = get_shunt_rlc_combo_emt_template(

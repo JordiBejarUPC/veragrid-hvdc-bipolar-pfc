@@ -408,6 +408,10 @@ def get_simple_generator_emt_template(vf: VarFactory, name: str = "simple_emt_ty
     omega_ref = vf.add_var("omega_ref_" + name)  # pu
     delta = vf.add_var("delta_" + name)  # difference between rotor angle and grid angle
 
+    # These symbolic expressions reconstruct the PF-consistent phasor quantities
+    # from the seeded EMT voltage and power references. The expressions are used
+    # later in ``init_eqs`` so runtime-parameter initialization does not depend on
+    # bus algebraic variables that are not available yet.
     phi_v_init: sym.Expr
     phi_init: sym.Expr
     vpk_init: sym.Expr
@@ -427,6 +431,15 @@ def get_simple_generator_emt_template(vf: VarFactory, name: str = "simple_emt_ty
         q_c=q_C,
         omega_base=omega_base,
     )
+
+    # These placeholders store the PF-consistent phasor quantities as runtime
+    # parameters first. The initialization stage then resolves ``delta`` from the
+    # stored values, which keeps the generator compatible with the EMT builder
+    # ordering where bus voltages are initialized after runtime parameters.
+    phi_v = vf.add_var("phi_v_" + name)
+    phi = vf.add_var("phi_" + name)
+    Vpk = vf.add_var("Vpk_" + name)
+    Ipk = vf.add_var("Ipk_" + name)
 
     Kp = vf.add_var("Kp_" + name)
     Ki = vf.add_var("Ki_" + name)
@@ -525,6 +538,10 @@ def get_simple_generator_emt_template(vf: VarFactory, name: str = "simple_emt_ty
         VarPowerFlowRefferenceType.Q_B: q_B,
         VarPowerFlowRefferenceType.P_C: p_C,
         VarPowerFlowRefferenceType.Q_C: q_C,
+        VarPowerFlowRefferenceType.phi_v: phi_v,
+        VarPowerFlowRefferenceType.phi: phi,
+        VarPowerFlowRefferenceType.Vpk: Vpk,
+        VarPowerFlowRefferenceType.Ipk: Ipk,
     }
 
 
@@ -554,10 +571,17 @@ def get_simple_generator_emt_template(vf: VarFactory, name: str = "simple_emt_ty
         q_B: vf.add_const(None),
         p_C: vf.add_const(None),
         q_C: vf.add_const(None),
-        delta: sym.atan(
-            (Ra * ipk_init * sym.sin(phi_init) - omega_ref * (Lmq + La) * ipk_init * sym.cos(phi_init)) /
-            (vpk_init + Ra * ipk_init * sym.cos(phi_init) + omega_ref * (Lmq + La) * ipk_init * sym.sin(phi_init))
-        ),
+        # The phasor placeholders are resolved during explicit initialization
+        # from the PF-derived EMT references before ``delta`` is consumed.
+        phi_v: vf.add_const(None),
+        phi: vf.add_const(None),
+        Vpk: vf.add_const(None),
+        Ipk: vf.add_const(None),
+        # ``delta`` depends on PF-derived phasor values that are only available
+        # after explicit initialization resolves the placeholder runtime refs.
+        # Keeping it as a runtime placeholder prevents an invalid early evaluation
+        # with zero-valued defaults during problem construction.
+        delta: vf.add_const(None),
         Kq_share: vf.add_const(0.2),
     }
     templ.block.api_obj_mapping = {
@@ -577,7 +601,19 @@ def get_simple_generator_emt_template(vf: VarFactory, name: str = "simple_emt_ty
         et: vf.add_const(0.0),
         omega: omega_ref,
 
-        theta: phi_v_init + delta,
+        # The initialization first materializes the PF-consistent phasor values
+        # into runtime parameters. This makes the subsequent ``delta`` evaluation
+        # independent from unresolved bus algebraic variables.
+        phi_v: phi_v_init,
+        phi: phi_init,
+        Vpk: vpk_init,
+        Ipk: ipk_init,
+        delta: sym.atan(
+            (Ra * Ipk * sym.sin(phi) - omega_ref * (Lmq + La) * Ipk * sym.cos(phi)) /
+            (Vpk + Ra * Ipk * sym.cos(phi) + omega_ref * (Lmq + La) * Ipk * sym.sin(phi))
+        ),
+
+        theta: phi_v + delta,
 
 
         v_d: 2 / 3 * (sym.sin(theta) * inputs[0] +

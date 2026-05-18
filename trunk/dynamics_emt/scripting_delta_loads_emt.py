@@ -14,7 +14,7 @@ from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.Emt.load_exponential_emt_template import get_exponential_load_emt
 from VeraGridEngine.Templates.Emt.load_zip_emt_template import get_load_ZIP_emt_template
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
-from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
+from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template_with_ref
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
 from VeraGridEngine.enumerations import DynamicIntegrationMethod, EmtInitializationMethod, EmtSolverTypes, ShuntConnectionType, SolverType, VarPowerFlowRefferenceType
 from trunk.dynamics_emt.support.emt_plot_exports import get_plot_results_directory
@@ -101,7 +101,7 @@ def _build_problem(builder: Callable, case_name: str) -> tuple[EmtProblemDae, gc
     grid, line, generator, load = _build_delta_demo_grid()
     pf_res_3ph = _run_power_flow(grid)
 
-    generator_model = get_generator_thevenin_rl_emt_template(vf=grid.var_factory, name="Gen").block
+    generator_model = get_generator_thevenin_rl_emt_template_with_ref(vf=grid.var_factory, name="Gen").block
     line_model = get_pi_line_emt_template(vf=grid.var_factory, phN=False, phA=True, phB=True, phC=True, name="Line").block
     load_model = builder(
         vf=grid.var_factory,

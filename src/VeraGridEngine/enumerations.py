@@ -823,6 +823,7 @@ class ConverterControlType(Enum):
     Pdc = 'P_dc'
     Pac = 'P_ac'
     Pdc_angle_droop = 'P_dc_angle_droop'  # PMODE3
+    Pdc_droop = 'P_dc_droop'  # DC power / DC voltage droop: Pdc = Pdc* + Pdroop * (Vdc* - Vdc)
     Q_droop = "Q_droop"
     P_droop = "P_droop"
     Imax = 'Imax'
