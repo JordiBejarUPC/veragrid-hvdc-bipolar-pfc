@@ -421,9 +421,14 @@ def test_vsc_soft_slack_rescues_infeasible_hard_limit():
     grid = gce.open_file(OPF_GRID_TIGHT_VSC)
     _, sol = _solve_generalized_pf(grid)
     opt = gce.OptimalPowerFlowOptions(
-        ips_method=gce.SolverType.NR, ips_tolerance=1e-6, ips_iterations=400,
-        acopf_mode=gce.AcOpfMode.ACOPFslacks, ips_init_with_pf=True,
-        acopf_v0=sol.V, acopf_S0=sol.Scalc)
+        ips_method=gce.SolverType.NR,
+        ips_tolerance=1e-6,
+        ips_iterations=400,
+        acopf_mode=gce.AcOpfMode.ACOPFslacks,
+        ips_init_with_pf=True,
+        acopf_v0=sol.V, 
+        acopf_S0=sol.Scalc
+    )
     res = run_nonlinear_opf(grid=grid, opf_options=opt)
     assert bool(res.converged)
     assert res.error < 1e-6
