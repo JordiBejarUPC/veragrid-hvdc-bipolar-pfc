@@ -7,7 +7,7 @@ import numpy as np
 
 def test_spen_west():
 
-    grid = vge.open_file('data/grids/test_reduced_spen_v10.dgs')
+    grid = vge.open_file('data/grids/DGS/test_reduced_spen_v10.dgs')
 
     pf_options = PowerFlowOptions(control_taps_modules=False)
     res_pf = vge.power_flow(grid=grid, options=pf_options)
