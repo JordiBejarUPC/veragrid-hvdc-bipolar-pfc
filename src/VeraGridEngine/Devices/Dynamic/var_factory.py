@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
-from typing import Union, List, Dict, Any
+from typing import Union, List, Dict, Any, Tuple
 import uuid
 
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
@@ -15,6 +15,24 @@ from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, SharedVarReferenc
 def _new_uid() -> int:
     """Generate a fresh UUID‑v4 string."""
     return uuid.uuid4().int
+
+class Connection:
+    """
+    connection
+    """
+    __slots__ = (
+        'non_mutable_uid',
+        'name',
+        'uid'
+    )
+    def __init__(self,
+                 non_mutable_uid: int,
+                 name: str,
+                 uid: int):
+
+        self.non_mutable_uid = non_mutable_uid
+        self.name = name
+        self.uid = uid
 
 
 class VarFactory(EditableDevice):
@@ -85,7 +103,9 @@ class VarFactory(EditableDevice):
                 reference: VarPowerFlowRefferenceType | None = None,
                 network_conn: bool = False,
                 shared_reference: str | None | SharedVarReferenceType = None,
+                non_mutable_uid: int | None = None,
                 uid: int | None = None,
+
                 diff_var: Var | None = None,
                 base_var: Var | None = None) -> Var:
         """
@@ -94,6 +114,7 @@ class VarFactory(EditableDevice):
         :param shared_reference:
         :param reference:
         :param network_conn:
+        :param non_mutable_uid:
         :param uid:
         :param diff_var:
         :param base_var:
@@ -105,15 +126,15 @@ class VarFactory(EditableDevice):
                 self.create_reference(shared_reference)
                 self._vars_references_dict[self._references_dict[shared_reference].uid] = list()
 
-            v = Var(name=name, shared_reference=self._references_dict[shared_reference], reference=reference, network_conn=network_conn, uid=uid,
+            v = Var(name=name, shared_reference=self._references_dict[shared_reference], reference=reference, network_conn=network_conn, non_mutable_uid=non_mutable_uid, uid=uid,
                     diff_var=None, base_var=None)
             self.save_var_in_vars_references_dict(v, shared_reference)
-            self._var_dict[v.uid] = v
+            self._var_dict[v.non_mutable_uid] = v
             return v
         else:
             v = Var(name=name, reference=reference, network_conn=network_conn, shared_reference=shared_reference, uid=uid,
                     diff_var=None, base_var=None)
-            self._var_dict[v.uid] = v
+            self._var_dict[v.non_mutable_uid] = v
             return v
 
 
@@ -140,6 +161,7 @@ class VarFactory(EditableDevice):
                      reference: VarPowerFlowRefferenceType | None = None,
                      network_conn: bool = False,
                      shared_reference: str | None | SharedVarReferenceType = None,
+                     non_mutable_uid: int | None = None,
                      uid: int | None = None,
                      diff_var: Var | None = None,
                      base_var: Var | None = None) -> Var:
@@ -147,7 +169,7 @@ class VarFactory(EditableDevice):
         Adds a Diff ver to the class
         :param name:
         :param shared_reference:
-        :param reference:
+        :param non_mutable_uid:
         :param network_conn:
         :param uid:
         :param diff_var:
@@ -161,12 +183,12 @@ class VarFactory(EditableDevice):
 
             v = Var(name=name, shared_reference=self._references_dict[shared_reference], reference=reference, network_conn=network_conn, uid=uid, diff_var=diff_var, base_var=base_var)
             self.save_var_in_vars_references_dict(v, shared_reference)
-            self._var_dict[v.uid] = v
-            self._diff_var_dict[v.uid] = v
+            self._var_dict[v.non_mutable_uid] = v
+            self._diff_var_dict[v.non_mutable_uid] = v
             return v
         else:
             v = Var(name=name, reference=reference, network_conn=network_conn, shared_reference=shared_reference, uid=uid, diff_var=diff_var, base_var=base_var)
-            self._diff_var_dict[v.uid] = v
+            self._diff_var_dict[v.non_mutable_uid] = v
             return v
 
     def get_diff_var(self, uid: int) -> Var:
@@ -192,35 +214,43 @@ class VarFactory(EditableDevice):
         self._const_dict[v.uid] = v
         return v
 
+    def connect_variables_by_uid(self, var_to_subs_non_mutable_uid: int,  incoming_var_uid: int, incoming_var_name: str):
+
+        if var_to_subs_non_mutable_uid in self._var_dict:
+            self._var_dict[var_to_subs_non_mutable_uid].uid = incoming_var_uid
+            self._var_dict[var_to_subs_non_mutable_uid].name = incoming_var_name
+        elif var_to_subs_non_mutable_uid in self._diff_var_dict:
+            self._var_dict[var_to_subs_non_mutable_uid].uid = incoming_var_uid
+            self._var_dict[var_to_subs_non_mutable_uid].name = incoming_var_name
+
+        # recursitity for previous connected vars
+        if var_to_subs_non_mutable_uid in self._vars_connected_dict:
+            for connection in self._vars_connected_dict[var_to_subs_non_mutable_uid]:
+                self.connect_variables_by_uid(connection.non_mutable_uid, incoming_var_uid, incoming_var_name)
+
     def add_connection(self, var_to_subs: Var, incoming_var: Var):
 
-        if not incoming_var.uid in self._vars_connected_dict:
-            self._vars_connected_dict[incoming_var.uid] = {'vars': list(),
-                                                           'names': dict(),
-                                                           'uids': dict()}
+        if not incoming_var.non_mutable_uid in self._vars_connected_dict:
+            self._vars_connected_dict[incoming_var.non_mutable_uid] = list()
 
-        self._vars_connected_dict[incoming_var.uid]['vars'].append(var_to_subs)
-        self._vars_connected_dict[incoming_var.uid]['names'][var_to_subs.non_mutable_uid] = var_to_subs.name
-        self._vars_connected_dict[incoming_var.uid]['uids'][var_to_subs.non_mutable_uid] = var_to_subs.uid
+        connection = Connection(var_to_subs.non_mutable_uid, var_to_subs.name, var_to_subs.uid)
+        self._vars_connected_dict[incoming_var.non_mutable_uid].append(connection)
 
-        if var_to_subs.uid in self._vars_connected_dict:
-            for var in self._vars_connected_dict[var_to_subs.uid]['vars']:
-                var.name = incoming_var.name
-                var.uid = incoming_var.uid
-
-        var_to_subs.name = incoming_var.name
-        var_to_subs.uid = incoming_var.uid
+        self.connect_variables_by_uid(connection.non_mutable_uid, incoming_var.uid, incoming_var.name)
 
     def remove_connection(self, var_to_disconnect: Var, outgoing_var: Var):
-        self._vars_connected_dict[outgoing_var.uid]['vars'].remove(var_to_disconnect)
-        var_to_disconnect.name = self._vars_connected_dict[outgoing_var.uid]['names'][var_to_disconnect.non_mutable_uid]
-        var_to_disconnect.uid = self._vars_connected_dict[outgoing_var.uid]['uids'][var_to_disconnect.non_mutable_uid]
-        del self._vars_connected_dict[outgoing_var.uid]['names'][var_to_disconnect.non_mutable_uid]
-        del self._vars_connected_dict[outgoing_var.uid]['uids'][var_to_disconnect.non_mutable_uid]
-        if var_to_disconnect.uid in self._vars_connected_dict:
-            for var in self._vars_connected_dict[var_to_disconnect.uid]['vars']:
-                var.name = var_to_disconnect.name
-                var.uid = var_to_disconnect.uid
+        for i, connection in enumerate(self._vars_connected_dict[outgoing_var.non_mutable_uid]):
+            if connection.non_mutable_uid == var_to_disconnect.non_mutable_uid:
+                self.connect_variables_by_uid(connection.non_mutable_uid, connection.uid, connection.name)
+                del self._vars_connected_dict[outgoing_var.non_mutable_uid][i]
+
+    def add_connections(self, vars_to_subs: List[Var], incoming_vars: List[Var]):
+        pairs: List[Tuple[Var, Var]] = list(zip(vars_to_subs, incoming_vars))
+        var_to_subs: Var
+        incoming_var: Var
+        for var_to_subs, incoming_var in pairs:
+            self.add_connection(var_to_subs, incoming_var)
+
 
     def get_const(self, uid: int) -> Const:
         """
@@ -250,6 +280,22 @@ class VarFactory(EditableDevice):
         :return:
         """
         return self._diff_var_dict
+
+    def get_references_dict(self) -> Dict[str, SharedVarReferenceType]:
+        """
+
+        :return:
+        :rtype:
+        """
+        return self._references_dict
+
+    def get_connections_dict(self) -> Dict[int, List[Connection]]:
+        """
+
+        :return:
+        :rtype:
+        """
+        return self._vars_connected_dict
 
     def get_unique_template_name(self, name: str) -> str:
         """Return one template name that does not collide with existing symbols.
@@ -351,7 +397,7 @@ class VarFactory(EditableDevice):
                         self._vars_references_dict[ref_data_uid].append(obj)
 
             # at this point we can store the object
-            obj_dict[obj.uid] = obj
+            obj_dict[obj.non_mutable_uid] = obj
 
         self._var_dict = obj_dict
 
@@ -419,9 +465,43 @@ class VarFactory(EditableDevice):
                         self._vars_references_dict[ref_data_uid].append(obj)
 
             # at this point we can store the object
-            obj_dict[obj.uid] = obj
+            obj_dict[obj.non_mutable_uid] = obj
 
         self._diff_var_dict = obj_dict
+
+   
+
+    def parse_references_dict(self, datalist: List[Dict[str, Any]]):
+        """
+        Parse references list into _references_dict and _vars_references_dict.
+
+        :param datalist: List of dicts with "type", "name", "uid" for share_reference.
+        :return:
+        """
+        for data in datalist:
+            if data["type"] == "share_reference":
+                ref = SharedVarReferenceType(name=data["name"], uid=data["uid"])
+                self._references_dict[data["name"]] = ref
+                self._vars_references_dict[ref.uid] = list()
+
+    def parse_connections_dict(self, datalist: List[Dict[int, List[Any]]]):
+        """
+        Parse connections list into _vars_connected_dict.
+
+        :param datalist: List of dicts with block_uid -> list of connection dicts.
+        :return:
+        """
+        for uid, connections_list in datalist:
+            for conn_data in connections_list:
+                if conn_data["type"] == "Connection":
+                    conn = Connection(
+                        non_mutable_uid=conn_data["non_mutable_uid"],
+                        name=conn_data["name"],
+                        uid=conn_data["uid"]
+                    )
+                    if uid not in self._vars_connected_dict:
+                        self._vars_connected_dict[uid] = list()
+                    self._vars_connected_dict[uid].append(conn)
 
     def register_var(self, dev:Any, var:Var):
 

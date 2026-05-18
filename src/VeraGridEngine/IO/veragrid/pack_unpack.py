@@ -749,7 +749,7 @@ def veragrid_object_to_json(elm: ALL_DEV_TYPES,
 def gather_model_as_jsons(circuit: MultiCircuit,
                           project_directory: Path | None = None) -> dict[
     str, dict[str, dict[str, str] | list[dict[str, str]]] | dict[
-        str, list[dict[str, Any]] | dict[int, dict[str, Any]] | list[int]]]:
+        str, list[dict[str, Any]] | dict[int, list[Any]] | dict[int, dict[str, Any]] | list[int]]]:
     """
     Transform a MultiCircuit into a collection of Json files
     :param circuit:
@@ -801,6 +801,7 @@ def gather_model_as_jsons(circuit: MultiCircuit,
             "vars": block_saver.get_vars_to_save(),
             "consts": block_saver.get_const_to_save(),
             "diff_vars": block_saver.get_diff_vars_to_save(),
+            "shared_references": block_saver.get_shared_references_to_save(),
             "blocks": block_saver.get_blocks(),
             "main_block_uids": block_saver.main_block_uids,
         }
@@ -812,6 +813,8 @@ def gather_model_as_jsons(circuit: MultiCircuit,
             "vars": block_saver.get_vars_to_save(),
             "consts": block_saver.get_const_to_save(),
             "diff_vars": block_saver.get_diff_vars_to_save(),
+            "shared_references": block_saver.get_shared_references_to_save(),
+            "connections": block_saver.get_connections_to_save(),
             "blocks": block_saver.get_blocks(),
             "main_block_uids": block_saver.main_block_uids,
         }
@@ -1804,9 +1807,11 @@ def parse_veragrid_data(data: VERAGRID_FILE_TYPE,
     symbolic_data = data.get('symbolic_data', None)
     if symbolic_data is not None:
         if len(symbolic_data) > 0:
+            block_parser.parse_references(symbolic_data["shared_references"])
             block_parser.parse_consts(symbolic_data["consts"])
             block_parser.parse_vars(symbolic_data["vars"])
             block_parser.parse_diff_vars(symbolic_data["diff_vars"])
+            block_parser.parse_connections(symbolic_data["connections"])
             for block_uid in symbolic_data["main_block_uids"]:
                 block_parser.parse_block(symbolic_data["blocks"], block_uid)
         else:
