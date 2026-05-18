@@ -166,13 +166,13 @@ def get_transformer_emt_template(
     # ------------------------------------------------------------------
     # Static parameters injected from the API object
     # ------------------------------------------------------------------
-    r1: Var = vf.add_var(name=f"xfmr_r1_{name}")
-    r2: Var = vf.add_var(name=f"xfmr_r2_{name}")
-    l1: Var = vf.add_var(name=f"xfmr_l1_{name}")
-    l2: Var = vf.add_var(name=f"xfmr_l2_{name}")
-    m12: Var = vf.add_var(name=f"xfmr_m_{name}")
-    gm: Var = vf.add_var(name=f"xfmr_gm_{name}")  # kept for compatibility, unused here
-    total_voltage_ratio: Var = vf.add_var(name=f"tap_ratio_{name}")
+    r1: Var = vf.add_var(name=f"trafo_r1_{name}")
+    r2: Var = vf.add_var(name=f"trafo_r2_{name}")
+    l1: Var = vf.add_var(name=f"trafo_l1_{name}")
+    l2: Var = vf.add_var(name=f"trafo_l2_{name}")
+    m12: Var = vf.add_var(name=f"trafo_m_{name}")
+    gm: Var = vf.add_var(name=f"trafo_gm_{name}")  # kept for compatibility, unused here
+    total_voltage_ratio: Var = vf.add_var(name=f"trafo_tap_ratio_{name}")
 
     templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.transformer_winding1_resistance_pu] = r1
     templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.transformer_winding2_resistance_pu] = r2

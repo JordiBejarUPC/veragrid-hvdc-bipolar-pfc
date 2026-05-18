@@ -86,8 +86,11 @@ q_setpoint_1_mvar: float = 0.0
 q_setpoint_2_mvar: float = 0.0
 transfer_power_mw: float = 40.0
 transfer_power_pu: float = transfer_power_mw / sbase_mva
+# reactive power setpoints
 q_setpoint_1_pu: float = q_setpoint_1_mvar / sbase_mva
 q_setpoint_2_pu: float = q_setpoint_2_mvar / sbase_mva
+
+tau = 1/3100
 
 grid: gce.MultiCircuit = gce.MultiCircuit(
     name="Point-to-point HVDC EMT example",
@@ -104,6 +107,7 @@ grid_x_pu: float = omega_base_rad_s * grid_inductance_h / ac_base_impedance_ohm
 print(f"grid_x_pu = {grid_x_pu}")
 coupling_r_pu: float = coupling_resistance_ohm / ac_base_impedance_ohm
 coupling_x_pu: float = omega_base_rad_s * coupling_inductance_h / ac_base_impedance_ohm
+# the dc line impedance is averaged
 dc_line_r_pu: float = (0.5 + 0.25 + 0.4) / dc_base_impedance_ohm
 
 # The averaged pseudo-VSC already includes its own internal AC interface branch.
@@ -111,8 +115,13 @@ dc_line_r_pu: float = (0.5 + 0.25 + 0.4) / dc_base_impedance_ohm
 # instead of retuning the inner loop from the external grid-coupling branch.
 converter_filter_r_pu: float = 0.03
 converter_filter_x_pu: float = 0.12
-current_kp: float = 0.6
-current_ki: float = 50.0
+
+# current_kp: float = 0.6
+# current_ki: float = 50.0
+current_kp: float = coupling_inductance_h / tau
+current_ki: float = coupling_resistance_ohm / tau
+print(f"current_kp = {current_kp}")
+print(f"current_ki = {current_ki}")
 converter_model_sbase_pu: float = 1.0
 dc_link_capacitance_pu: float = 0.8
 vdc_kp_vsc1: float = 2.0
@@ -131,17 +140,17 @@ loss_quadratic_pu: float = 1.0e-4
 ####################################################################################################################
 
 bus_grid_1: gce.Bus = gce.Bus(name="Bus_Grid_1", Vnom=ac_voltage_ll_kv, is_slack=True)
-bus_pcc_1: gce.Bus = gce.Bus(name="Bus_PCC_1", Vnom=ac_voltage_ll_kv)
+# bus_pcc_1: gce.Bus = gce.Bus(name="Bus_PCC_1", Vnom=ac_voltage_ll_kv)
 bus_dc_1: gce.Bus = gce.Bus(name="Bus_DC_1", Vnom=dc_voltage_kv, is_dc=True)
 bus_dc_2: gce.Bus = gce.Bus(name="Bus_DC_2", Vnom=dc_voltage_kv, is_dc=True)
-bus_pcc_2: gce.Bus = gce.Bus(name="Bus_PCC_2", Vnom=ac_voltage_ll_kv)
+# bus_pcc_2: gce.Bus = gce.Bus(name="Bus_PCC_2", Vnom=ac_voltage_ll_kv)
 bus_grid_2: gce.Bus = gce.Bus(name="Bus_Grid_2", Vnom=ac_voltage_ll_kv, is_slack=True)
 
 grid.add_bus(bus_grid_1)
-grid.add_bus(bus_pcc_1)
+# grid.add_bus(bus_pcc_1)
 grid.add_bus(bus_dc_1)
 grid.add_bus(bus_dc_2)
-grid.add_bus(bus_pcc_2)
+# grid.add_bus(bus_pcc_2)
 grid.add_bus(bus_grid_2)
 
 ####################################################################################################################
@@ -173,35 +182,35 @@ grid.add_generator(bus_grid_2, generator_2)
 # not currently provide a dedicated 3ph series-reactor template, so a unity-ratio
 # two-winding transformer object is used here purely as a carrier for the RL
 # branch parameters and EMT equations.
-transformer_1: gce.Transformer2W = gce.Transformer2W(
-    name="Grid_Coupling_1",
-    bus_from=bus_grid_1,
-    bus_to=bus_pcc_1,
-    rate=sbase_mva,
-    r=coupling_r_pu,
-    x=coupling_x_pu,
-    tap_module=1.0,
-    tap_phase=0.0,
-)
-transformer_2: gce.Transformer2W = gce.Transformer2W(
-    name="Grid_Coupling_2",
-    bus_from=bus_grid_2,
-    bus_to=bus_pcc_2,
-    rate=sbase_mva,
-    r=coupling_r_pu,
-    x=coupling_x_pu,
-    tap_module=1.0,
-    tap_phase=0.0,
-)
-grid.add_transformer2w(transformer_1)
-grid.add_transformer2w(transformer_2)
+# transformer_1: gce.Transformer2W = gce.Transformer2W(
+#     name="Grid_Coupling_1",
+#     bus_from=bus_grid_1,
+#     bus_to=bus_pcc_1,
+#     rate=sbase_mva,
+#     r=coupling_r_pu,
+#     x=coupling_x_pu,
+#     tap_module=1.0,
+#     tap_phase=0.0,
+# )
+# transformer_2: gce.Transformer2W = gce.Transformer2W(
+#     name="Grid_Coupling_2",
+#     bus_from=bus_grid_2,
+#     bus_to=bus_pcc_2,
+#     rate=sbase_mva,
+#     r=coupling_r_pu,
+#     x=coupling_x_pu,
+#     tap_module=1.0,
+#     tap_phase=0.0,
+# )
+# grid.add_transformer2w(transformer_1)
+# grid.add_transformer2w(transformer_2)
 
 # Converter 1 regulates DC voltage around the transferred-power operating point.
 # Converter 2 imposes the active-power transfer order from the start.
 converter_1: gce.VSC = gce.VSC(
     name="VSC_1",
     bus_from=bus_dc_1,
-    bus_to=bus_pcc_1,
+    bus_to=bus_grid_1,
     rate=sbase_mva,
     control1=ConverterControlType.Vm_dc,
     control2=ConverterControlType.Qac,
@@ -211,7 +220,7 @@ converter_1: gce.VSC = gce.VSC(
 converter_2: gce.VSC = gce.VSC(
     name="VSC_2",
     bus_from=bus_dc_2,
-    bus_to=bus_pcc_2,
+    bus_to=bus_grid_2,
     rate=sbase_mva,
     control1=ConverterControlType.Pdc,
     control2=ConverterControlType.Qac,
@@ -244,8 +253,8 @@ for bus in grid.buses:
 
 generator_1_mdl: Block = get_generator_thevenin_rl_emt_template_with_ref(vf=grid.var_factory, name="grid1_thevenin_emt").block
 generator_2_mdl: Block = get_generator_thevenin_rl_emt_template_with_ref(vf=grid.var_factory, name="grid2_thevenin_emt").block
-transformer_1_mdl: Block = get_transformer_emt_template(vf=grid.var_factory, name="grid_coupling_1_emt").block
-transformer_2_mdl: Block = get_transformer_emt_template(vf=grid.var_factory, name="grid_coupling_2_emt").block
+# transformer_1_mdl: Block = get_transformer_emt_template(vf=grid.var_factory, name="grid_coupling_1_emt").block
+# transformer_2_mdl: Block = get_transformer_emt_template(vf=grid.var_factory, name="grid_coupling_2_emt").block
 converter_1_mdl: Block = get_full_pseudo_emt_converter(vf=grid.var_factory, name="vsc1_pseudo_emt").block
 converter_2_mdl: Block = get_full_pseudo_emt_converter(vf=grid.var_factory, name="vsc2_pseudo_emt").block
 # The built-in DC line EMT template is used here as requested so the script stays
@@ -262,8 +271,8 @@ converter_1_mdl.set_parameter_in_model(var_name="control1_vsc1_pseudo_emt", new_
 converter_1_mdl.set_parameter_in_model(var_name="control2_vsc1_pseudo_emt", new_value=converter_control_code(ConverterControlType.Qac))
 converter_1_mdl.set_parameter_in_model(var_name="control1_val_vsc1_pseudo_emt", new_value=1.0)
 converter_1_mdl.set_parameter_in_model(var_name="control2_val_vsc1_pseudo_emt", new_value=q_setpoint_1_pu)
-converter_1_mdl.set_parameter_in_model(var_name="R_eq_vsc1_pseudo_emt", new_value=converter_filter_r_pu)
-converter_1_mdl.set_parameter_in_model(var_name="L_eq_vsc1_pseudo_emt", new_value=converter_filter_x_pu)
+converter_1_mdl.set_parameter_in_model(var_name="R_eq_vsc1_pseudo_emt", new_value=coupling_resistance_ohm)
+converter_1_mdl.set_parameter_in_model(var_name="L_eq_vsc1_pseudo_emt", new_value=coupling_inductance_h)
 converter_1_mdl.set_parameter_in_model(var_name="C_dc_vsc1_pseudo_emt", new_value=dc_link_capacitance_pu)
 converter_1_mdl.set_parameter_in_model(var_name="R_dc_vsc1_pseudo_emt", new_value=1e6)
 converter_1_mdl.set_parameter_in_model(var_name="R_dc_term_vsc1_pseudo_emt", new_value=0.0001)
@@ -292,8 +301,8 @@ converter_2_mdl.set_parameter_in_model(var_name="control1_vsc2_pseudo_emt", new_
 converter_2_mdl.set_parameter_in_model(var_name="control2_vsc2_pseudo_emt", new_value=converter_control_code(ConverterControlType.Qac))
 converter_2_mdl.set_parameter_in_model(var_name="control1_val_vsc2_pseudo_emt", new_value=transfer_power_pu)
 converter_2_mdl.set_parameter_in_model(var_name="control2_val_vsc2_pseudo_emt", new_value=q_setpoint_2_pu)
-converter_2_mdl.set_parameter_in_model(var_name="R_eq_vsc2_pseudo_emt", new_value=converter_filter_r_pu)
-converter_2_mdl.set_parameter_in_model(var_name="L_eq_vsc2_pseudo_emt", new_value=converter_filter_x_pu)
+converter_2_mdl.set_parameter_in_model(var_name="R_eq_vsc2_pseudo_emt", new_value=coupling_resistance_ohm)
+converter_2_mdl.set_parameter_in_model(var_name="L_eq_vsc2_pseudo_emt", new_value=coupling_inductance_h)
 converter_2_mdl.set_parameter_in_model(var_name="C_dc_vsc2_pseudo_emt", new_value=dc_link_capacitance_pu)
 converter_2_mdl.set_parameter_in_model(var_name="R_dc_vsc2_pseudo_emt", new_value=1e6)
 converter_2_mdl.set_parameter_in_model(var_name="R_dc_term_vsc2_pseudo_emt", new_value=0.0001)
@@ -323,8 +332,8 @@ converter_2_mdl.set_parameter_in_model(var_name="Vdc_nom_vsc2_pseudo_emt", new_v
 # traverse one grid object and recover both topology and equations.
 set_emt_model(device=generator_1, model=generator_1_mdl, var_factory=grid.var_factory)
 set_emt_model(device=generator_2, model=generator_2_mdl, var_factory=grid.var_factory)
-set_emt_model(device=transformer_1, model=transformer_1_mdl, var_factory=grid.var_factory)
-set_emt_model(device=transformer_2, model=transformer_2_mdl, var_factory=grid.var_factory)
+# set_emt_model(device=transformer_1, model=transformer_1_mdl, var_factory=grid.var_factory)
+# set_emt_model(device=transformer_2, model=transformer_2_mdl, var_factory=grid.var_factory)
 set_emt_model(device=converter_1, model=converter_1_mdl, var_factory=grid.var_factory)
 set_emt_model(device=converter_2, model=converter_2_mdl, var_factory=grid.var_factory)
 set_emt_model(device=dc_line, model=dc_line_mdl, var_factory=grid.var_factory)
@@ -444,12 +453,12 @@ if converged is False:
 # from the transferred-power operating point without any scheduled event.
 power_reference_trace_pu: np.ndarray = np.full(time_s.shape[0], transfer_power_pu, dtype=np.float64)
 
-v_pcc1_a: np.ndarray = get_signal(problem, bus_pcc_1.emt_model, f"v_A_{bus_pcc_1.name}_emt_template", trajectory)
-v_pcc1_b: np.ndarray = get_signal(problem, bus_pcc_1.emt_model, f"v_B_{bus_pcc_1.name}_emt_template", trajectory)
-v_pcc1_c: np.ndarray = get_signal(problem, bus_pcc_1.emt_model, f"v_C_{bus_pcc_1.name}_emt_template", trajectory)
-v_pcc2_a: np.ndarray = get_signal(problem, bus_pcc_2.emt_model, f"v_A_{bus_pcc_2.name}_emt_template", trajectory)
-v_pcc2_b: np.ndarray = get_signal(problem, bus_pcc_2.emt_model, f"v_B_{bus_pcc_2.name}_emt_template", trajectory)
-v_pcc2_c: np.ndarray = get_signal(problem, bus_pcc_2.emt_model, f"v_C_{bus_pcc_2.name}_emt_template", trajectory)
+v_pcc1_a: np.ndarray = get_signal(problem, bus_grid_1.emt_model, f"v_A_{bus_grid_1.name}_emt_template", trajectory)
+v_pcc1_b: np.ndarray = get_signal(problem, bus_grid_1.emt_model, f"v_B_{bus_grid_1.name}_emt_template", trajectory)
+v_pcc1_c: np.ndarray = get_signal(problem, bus_grid_1.emt_model, f"v_C_{bus_grid_1.name}_emt_template", trajectory)
+v_pcc2_a: np.ndarray = get_signal(problem, bus_grid_2.emt_model, f"v_A_{bus_grid_2.name}_emt_template", trajectory)
+v_pcc2_b: np.ndarray = get_signal(problem, bus_grid_2.emt_model, f"v_B_{bus_grid_2.name}_emt_template", trajectory)
+v_pcc2_c: np.ndarray = get_signal(problem, bus_grid_2.emt_model, f"v_C_{bus_grid_2.name}_emt_template", trajectory)
 i_vsc1_a: np.ndarray = get_signal(problem, converter_1_mdl, "i_A_vsc1_pseudo_emt", trajectory)
 i_vsc1_b: np.ndarray = get_signal(problem, converter_1_mdl, "i_B_vsc1_pseudo_emt", trajectory)
 i_vsc1_c: np.ndarray = get_signal(problem, converter_1_mdl, "i_C_vsc1_pseudo_emt", trajectory)
