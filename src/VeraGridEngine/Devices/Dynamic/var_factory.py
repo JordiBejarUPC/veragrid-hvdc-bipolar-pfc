@@ -29,6 +29,7 @@ class VarFactory(EditableDevice):
         '_vars_info',
         '_references_dict',
         '_vars_references_dict',
+        '_vars_connected_dict',
 
     )
 
@@ -58,13 +59,15 @@ class VarFactory(EditableDevice):
         self._vars_info: Dict[Any, List[Var]] = dict()
         self._references_dict: Dict[str, SharedVarReferenceType] = dict()
         self._vars_references_dict: Dict[int, List[Var]] = dict()
+        self._vars_connected_dict = dict()
+        # self._vars_connected_dict: Dict[int, Dict[str, List[Var] | Dict[int, str] | Dict[int, int]]] = dict()
 
     @property
     def vars_info(self) -> Dict[Any, List[Var]]:
         return self._vars_info
 
     def get_vars_to_save(self,
-                         dev:Any,
+                         dev: Any,
                          names: List[str]) -> List[Var]:
         """
         this function returns a list of variables which names are in names
@@ -102,24 +105,24 @@ class VarFactory(EditableDevice):
                 self.create_reference(shared_reference)
                 self._vars_references_dict[self._references_dict[shared_reference].uid] = list()
 
-            v = Var(name=name, shared_reference=self._references_dict[shared_reference], reference=reference, network_conn=network_conn, uid=uid,
+            v = Var(name=name, shared_reference=self._references_dict[shared_reference], reference=reference,
+                    network_conn=network_conn, uid=uid,
                     diff_var=None, base_var=None)
             self.save_var_in_vars_references_dict(v, shared_reference)
             self._var_dict[v.uid] = v
             return v
         else:
-            v = Var(name=name, reference=reference, network_conn=network_conn, shared_reference=shared_reference, uid=uid,
+            v = Var(name=name, reference=reference, network_conn=network_conn, shared_reference=shared_reference,
+                    uid=uid,
                     diff_var=None, base_var=None)
             self._var_dict[v.uid] = v
             return v
 
-
-    def save_var_in_vars_references_dict(self, var:Var, reference:str):
+    def save_var_in_vars_references_dict(self, var: Var, reference: str):
         self._vars_references_dict[self._references_dict[reference].uid].append(var)
 
     def create_reference(self, reference_name: str):
         self._references_dict[reference_name] = SharedVarReferenceType(name=reference_name)
-
 
     def get_var(self, uid: int) -> Var | None:
         """
@@ -156,13 +159,15 @@ class VarFactory(EditableDevice):
                 self.create_reference(shared_reference)
                 self._vars_references_dict[self._references_dict[shared_reference].uid] = list()
 
-            v = Var(name=name, shared_reference=self._references_dict[shared_reference], reference=reference, network_conn=network_conn, uid=uid, diff_var=diff_var, base_var=base_var)
+            v = Var(name=name, shared_reference=self._references_dict[shared_reference], reference=reference,
+                    network_conn=network_conn, uid=uid, diff_var=diff_var, base_var=base_var)
             self.save_var_in_vars_references_dict(v, shared_reference)
             self._var_dict[v.uid] = v
             self._diff_var_dict[v.uid] = v
             return v
         else:
-            v = Var(name=name, reference=reference, network_conn=network_conn, shared_reference=shared_reference, uid=uid, diff_var=diff_var, base_var=base_var)
+            v = Var(name=name, reference=reference, network_conn=network_conn, shared_reference=shared_reference,
+                    uid=uid, diff_var=diff_var, base_var=base_var)
             self._diff_var_dict[v.uid] = v
             return v
 
@@ -177,7 +182,7 @@ class VarFactory(EditableDevice):
     def add_const(self,
                   value: float | None = None,
                   uid: int | None = None,
-                  name: str = "")-> Const:
+                  name: str = "") -> Const:
         """
         Adds a Cont to the class
         :param value:
@@ -188,6 +193,36 @@ class VarFactory(EditableDevice):
         v = Const(value=value, uid=uid, name=name)
         self._const_dict[v.uid] = v
         return v
+
+    def add_connection(self, var_to_subs: Var, incoming_var: Var):
+
+        if not incoming_var.uid in self._vars_connected_dict:
+            self._vars_connected_dict[incoming_var.uid] = {'vars': list(),
+                                                           'names': dict(),
+                                                           'uids': dict()}
+
+        self._vars_connected_dict[incoming_var.uid]['vars'].append(var_to_subs)
+        self._vars_connected_dict[incoming_var.uid]['names'][var_to_subs.non_mutable_uid] = var_to_subs.name
+        self._vars_connected_dict[incoming_var.uid]['uids'][var_to_subs.non_mutable_uid] = var_to_subs.uid
+
+        if var_to_subs.uid in self._vars_connected_dict:
+            for var in self._vars_connected_dict[var_to_subs.uid]['vars']:
+                var.name = incoming_var.name
+                var.uid = incoming_var.uid
+
+        var_to_subs.name = incoming_var.name
+        var_to_subs.uid = incoming_var.uid
+
+    def remove_connection(self, var_to_disconnect: Var, outgoing_var: Var):
+        self._vars_connected_dict[outgoing_var.uid]['vars'].remove(var_to_disconnect)
+        var_to_disconnect.name = self._vars_connected_dict[outgoing_var.uid]['names'][var_to_disconnect.non_mutable_uid]
+        var_to_disconnect.uid = self._vars_connected_dict[outgoing_var.uid]['uids'][var_to_disconnect.non_mutable_uid]
+        del self._vars_connected_dict[outgoing_var.uid]['names'][var_to_disconnect.non_mutable_uid]
+        del self._vars_connected_dict[outgoing_var.uid]['uids'][var_to_disconnect.non_mutable_uid]
+        if var_to_disconnect.uid in self._vars_connected_dict:
+            for var in self._vars_connected_dict[var_to_disconnect.uid]['vars']:
+                var.name = var_to_disconnect.name
+                var.uid = var_to_disconnect.uid
 
     def get_const(self, uid: int) -> Const:
         """
@@ -307,7 +342,13 @@ class VarFactory(EditableDevice):
             else:
                 key_power_flow_ref = None
 
-            obj = Var(name=data["name"], uid=data["uid"], shared_reference=key_ref, reference=key_power_flow_ref)
+            obj = Var(
+                name=data["name"],
+                uid=data["uid"],
+                shared_reference=key_ref,
+                reference=key_power_flow_ref,
+                non_mutable_uid=data.get("non_mutable_uid", None),
+            )
             if ref_data_dict is not None:
                 ref_data_uid = ref_data_dict["uid"]
                 if ref_data_uid is not None:
@@ -323,7 +364,7 @@ class VarFactory(EditableDevice):
         self._var_dict = obj_dict
 
     def parse_diff_var_dict(self,
-            data_list: List[Dict[str, Any]]):
+                            data_list: List[Dict[str, Any]]):
         """
 
         :param data_list:
@@ -373,7 +414,7 @@ class VarFactory(EditableDevice):
             obj = Var(name=data["name"],
                       uid=data["uid"],
                       base_var=base_var,
-                      shared_reference = key_ref,
+                      shared_reference=key_ref,
                       reference=reference_power_flow)
 
             if ref_data_dict is not None:
@@ -390,7 +431,7 @@ class VarFactory(EditableDevice):
 
         self._diff_var_dict = obj_dict
 
-    def register_var(self, dev:Any, var:Var):
+    def register_var(self, dev: Any, var: Var):
 
         """
         Associate a variable with a device

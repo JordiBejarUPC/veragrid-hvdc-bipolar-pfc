@@ -9,7 +9,7 @@ import VeraGridEngine.Utils.Symbolic.symbolic as sym
 from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicJacobian
 from VeraGridEngine.Utils.Symbolic.jit_compiler import SubexpressionAnalyzer
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.symbolic_io import duplicate_block
+from VeraGridEngine.Utils.Symbolic.symbolic_io import duplicate_block, expr_to_dict, parse_expr
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 
 # -----------------------------------------------------------------------------
@@ -81,6 +81,33 @@ def test_serialisation_roundtrip() -> None:
     assert expr.eval(x=0.5, y=2) == clone.eval(x=0.5, y=2)
     # ensure UIDs are preserved
     assert expr.uid == json.loads(blob)["uid"]
+
+
+def test_symbolic_io_func2_roundtrip() -> None:
+    x: sym.Var = sym.Var("x")
+    y: sym.Var = sym.Var("y")
+    expr: sym.Expr = sym.atan2(x + sym.Const(1.0), y * sym.Const(2.0))
+    const_dict: Dict[int, sym.Const] = dict()
+    var_dict: Dict[int, sym.Var] = {x.uid: x, y.uid: y}
+    diff_var_dict: Dict[int, sym.Var] = dict()
+
+    payload: Dict[str, object] = expr_to_dict(expr=expr,
+                                              const_dict=const_dict,
+                                              var_dict=var_dict,
+                                              diff_var_dict=diff_var_dict)
+    restored: sym.Expr = parse_expr(data=payload,
+                                    const_dict=const_dict,
+                                    var_dict=var_dict,
+                                    diff_var_dict=diff_var_dict)
+    payload_roundtrip: Dict[str, object] = expr_to_dict(expr=restored,
+                                                        const_dict=const_dict,
+                                                        var_dict=var_dict,
+                                                        diff_var_dict=diff_var_dict)
+
+    assert isinstance(restored, sym.Func2)
+    assert restored.name == "atan2"
+    assert payload_roundtrip == payload
+    assert math.isclose(restored.eval(x=1.5, y=0.25), expr.eval(x=1.5, y=0.25), rel_tol=1.0e-12)
 
 # -----------------------------------------------------------------------------
 # Immutability guarantees

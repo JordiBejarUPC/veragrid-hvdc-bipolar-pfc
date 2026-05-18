@@ -32,7 +32,7 @@ from VeraGridEngine.Templates.Emt.generator_emt_type_template import (get_simple
                                                                       get_exciter_emt,
                                                                       get_governor_emt,
                                                                       get_stabilizer_emt)
-from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
+from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template_with_ref
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
 from VeraGridEngine.Templates.Emt.bergeron_line_emt_template import get_bergeron_line_emt_template
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import (get_shunt_r_emt_template,
@@ -145,7 +145,7 @@ def create_block_of_type(var_factory: VarFactory,
 
     # Thevenin equivalent generator
     elif block_type == BlockType.EMT_THEVENIN:
-        blk = get_generator_thevenin_rl_emt_template(var_factory).block
+        blk = get_generator_thevenin_rl_emt_template_with_ref(var_factory).block
         blk.name = item_name
         return blk
 

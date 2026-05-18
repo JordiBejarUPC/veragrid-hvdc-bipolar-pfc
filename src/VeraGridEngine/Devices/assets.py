@@ -8819,7 +8819,7 @@ class Assets:
             tem.get_exciter_emt(vf=self._var_factory),
             tem.get_complete_generator_template_emt(vf=self._var_factory),
 
-            tem.get_generator_thevenin_rl_emt_template(vf=self._var_factory),
+            tem.get_generator_thevenin_rl_emt_template_with_ref(vf=self._var_factory),
             tem.get_emt_ideal_converter(vf=self._var_factory),
             tem.get_full_pseudo_emt_converter(vf=self._var_factory),
             tem.get_switched_emt_converter(vf=self._var_factory),

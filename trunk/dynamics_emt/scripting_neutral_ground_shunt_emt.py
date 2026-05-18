@@ -15,7 +15,7 @@ from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_grounding_link_emt_template
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_rlc_combo_emt_template
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
-from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
+from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template_with_ref
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
 from VeraGridEngine.enumerations import DynamicIntegrationMethod, EmtInitializationMethod, EmtSolverTypes, ShuntConnectionType, SolverType, VarPowerFlowRefferenceType
 from trunk.dynamics_emt.support.emt_plot_exports import get_plot_results_directory
@@ -141,7 +141,7 @@ def _build_demo_grid(case_name: str) -> tuple[gce.MultiCircuit, gce.Bus, gce.Loa
     for bus in grid.buses:
         get_bus_emt_template(grid, bus)
 
-    generator_model = get_generator_thevenin_rl_emt_template(vf=grid.var_factory, name="Gen").block
+    generator_model = get_generator_thevenin_rl_emt_template_with_ref(vf=grid.var_factory, name="Gen").block
     line_model = get_pi_line_emt_template(vf=grid.var_factory, phN=line_has_neutral, phA=True, phB=True, phC=True, name="Line").block
     if case_name == "y_floating":
         load_connection = ShuntConnectionType.FloatingStar

@@ -903,7 +903,8 @@ class Block:
             self.update_model_bulk(dict(pairs))
         else:
             for var_to_subs, incoming_var in pairs:
-                self.update_model(var_to_subs, incoming_var)
+                var_to_subs.uid = incoming_var.uid
+                var_to_subs.name = incoming_var.name
 
     def find_var_in_equations(self,var: Var) -> bool:
         """
@@ -976,8 +977,7 @@ def find_connections(mdl1: Block, mdl2: Block) -> List[tuple[Var, Var]]:
         for outp in mdl1.out_vars
         for inpt in mdl2.in_vars
         if
-        outp.shared_ref == inpt.shared_ref and outp.shared_ref is not None and inpt.shared_ref is not None and mdl2.find_var_in_block(
-            outp)
+        outp.shared_ref == inpt.shared_ref and outp.shared_ref is not None and inpt.shared_ref is not None and outp.uid == inpt.uid
     ]
 
 

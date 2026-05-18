@@ -899,7 +899,7 @@ class DataBaseTableMain(DiagramsMain):
 
             elif elm_type == DeviceType.EmtModelTemplateDevice.value:
 
-                name = f'EMT template {len(self.circuit.rms_events)}'
+                name = f'EMT template {len(self.circuit.emt_models)}'
                 obj = dev.EmtModelTemplate(name=name)
                 self.circuit.add_emt_model(obj)
 

@@ -17,6 +17,8 @@ from scipy.sparse import csc_matrix, lil_matrix
 
 from VeraGridEngine.Devices.assets import Assets
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
+from VeraGridEngine.Devices.Parents.dynamic_parent import DynamicDevice
+from VeraGridEngine.Devices.Parents.dynamic_bus_parent import DynamicBusDevice
 from VeraGridEngine.basic_structures import IntVec, Vec, Mat, CxVec, IntMat, CxMat, BoolVec
 
 import VeraGridEngine.Devices as dev
@@ -395,11 +397,22 @@ class MultiCircuit(Assets):
         """
         objects_by_idtag, _ = self.get_all_elements_dict()
 
+        # Devices that host dynamic symbolic blocks must be rebound to the copied
+        # circuit VarFactory before any cross-list references are repaired. The
+        # factory owns the canonical symbol objects used by later dynamic editors
+        # and simulations, so every copied dynamic device must point to this
+        # circuit instance rather than the source circuit factory.
         for elm in self.get_all_elements_iter():
-            set_var_factory = getattr(elm, "set_var_factory", None)
-            if callable(set_var_factory):
-                set_var_factory(self.var_factory)
+            if isinstance(elm, DynamicDevice):
+                elm.set_var_factory(self.var_factory)
+            else:
+                if isinstance(elm, DynamicBusDevice):
+                    elm.set_var_factory(self.var_factory)
+                else:
+                    pass
 
+            # After the factory is correct, rebind any object pointers by idtag so
+            # the copied circuit uses only canonical objects from its own lists.
             elm.rebind_device_references(objects_by_idtag=objects_by_idtag)
 
     def build_graph(self) -> nx.MultiDiGraph:
@@ -1089,7 +1102,7 @@ class MultiCircuit(Assets):
         # the longitude is more related to x, the latitude is more related to y
         x, y = transformer.transform(xx=lon, yy=lat)
         x *= factor
-        y *= factor
+        y *= - factor  # the schematic scene y-axis points downward, so negate northing to put north at the top
 
         # delete the offset
         if remove_offset:

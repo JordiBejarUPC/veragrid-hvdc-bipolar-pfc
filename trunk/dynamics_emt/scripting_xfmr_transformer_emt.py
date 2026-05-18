@@ -35,7 +35,7 @@ from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbol
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_emt_template
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import (
-    get_generator_thevenin_rl_emt_template,
+    get_generator_thevenin_rl_emt_template_with_ref,
 )
 from VeraGridEngine.Templates.Emt.xfmr_emt_template import get_xfmr_emt_template
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
@@ -144,7 +144,7 @@ circuit.add_load(bus_lv, load)
 for bus in circuit.buses:
     get_bus_emt_template(grid=circuit, bus=bus)
 
-gen_mdl = get_generator_thevenin_rl_emt_template(vf=circuit.var_factory, name='gen_test').block
+gen_mdl = get_generator_thevenin_rl_emt_template_with_ref(vf=circuit.var_factory, name='gen_test').block
 xfmr_mdl = get_xfmr_emt_template(vf=circuit.var_factory, name='xfmr_test').block
 load_mdl = get_shunt_r_emt_template(vf=circuit.var_factory, phA=True, phB=True, phC=True).block
 

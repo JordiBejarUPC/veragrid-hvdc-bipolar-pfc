@@ -15,7 +15,7 @@ from enum import EnumMeta as EnumType
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 import VeraGridEngine.Devices as dev
-from VeraGridEngine.Devices.Parents.editable_device import GCProp
+from VeraGridEngine.Devices.Parents.editable_device import GCProp, EditableDevice
 from VeraGridEngine.Devices.Profiles import AnyProfile
 from VeraGridEngine.Utils.Symbolic.symbolic_io import BlockSaver, BlockParser, Block
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES, VERAGRID_FILE_TYPE
@@ -708,31 +708,40 @@ def veragrid_object_to_json(elm: ALL_DEV_TYPES,
             if obj is not None:
                 data[name] = obj.uid
             else:
-                raise ValueError("var must not be None")
+                # Persistent dynamic plot entries may keep unresolved legacy Var
+                # hints as ``None`` while semantic fields remain the canonical
+                # binding identity.
+                data[name] = None
 
         elif prop.tpe == SubObjectType.ConstType:
             if obj is not None:
                 data[name] = obj.uid
             else:
-                raise ValueError("const must not be None")
+                data[name] = None
 
         elif prop.tpe == SubObjectType.Array:
             data[name] = list(obj)
 
         else:
             # if the object is not of a primary type, get the idtag instead
-            if hasattr(obj, 'idtag'):
-                data[name] = obj.idtag
-
-                if prop.has_profile():
-                    data[name + '_prof'] = profile_todict_idtag(elm.get_profile_by_prop(prop=prop))
-
+            if obj is None:
+                data[name] = None
             else:
-                # some data types might not have the idtag, ten just use the str method
-                data[name] = str(obj)
+                if isinstance(obj, EditableDevice):
+                    data[name] = obj.idtag
 
-                if prop.has_profile():
-                    data[name + '_prof'] = profile_todict_str(elm.get_profile_by_prop(prop=prop))
+                    if prop.has_profile():
+                        data[name + '_prof'] = profile_todict_idtag(elm.get_profile_by_prop(prop=prop))
+                    else:
+                        pass
+                else:
+                    # some data types might not have the idtag, ten just use the str method
+                    data[name] = str(obj)
+
+                    if prop.has_profile():
+                        data[name + '_prof'] = profile_todict_str(elm.get_profile_by_prop(prop=prop))
+                    else:
+                        pass
 
     return data
 
