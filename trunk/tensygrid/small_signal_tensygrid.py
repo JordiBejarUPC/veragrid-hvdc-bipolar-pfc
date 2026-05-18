@@ -42,6 +42,7 @@ from phasor_diagnostics import (
     print_bus_current_balance,
 )
 from scipy.optimize import linear_sum_assignment
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_rms_model
 
 
 
@@ -55,7 +56,8 @@ from scipy.optimize import linear_sum_assignment
     "IEEE 118.xlsx"
 """
 grid_folder = project_base / "Grids_and_profiles" / "grids"
-GRID = "IEEE 9 Bus.gridcal"
+#GRID = "IEEE 9 Bus.gridcal"
+GRID = "IEEE39.gridcal"
 USE_CACHED_BUILDER = False
 BUILDER_CACHE_FILE = f'trunk/tensygrid/precomputed_builds/{GRID}.pkl'
 
@@ -112,7 +114,7 @@ def define_problem_with_path(grid_path):
         genqec.connect([genqec.in_vars[0]], [gen.bus.rms_model.out_vars[0]])
 
         genqec.connect([genqec.in_vars[1]], [gen.bus.rms_model.out_vars[1]])
-        vge.set_rms_model(device=gen, model=genqec, var_factory=grid.var_factory)
+        set_rms_model(device=gen, model=genqec, var_factory=grid.var_factory)
 
     ## -LINES:
     for line in grid.lines:
@@ -122,14 +124,14 @@ def define_problem_with_path(grid_path):
         lineec.connect([lineec.in_vars[2]], [line.bus_to.rms_model.out_vars[0]])
         lineec.connect([lineec.in_vars[3]], [line.bus_to.rms_model.out_vars[1]])
         lineec = vge.to_implicit(lineec, grid.var_factory)
-        vge.set_rms_model(device=line, model=lineec, var_factory=grid.var_factory)
+        set_rms_model(device=line, model=lineec, var_factory=grid.var_factory)
     ## -LOADS:
     for load in grid.loads:
         loadec = vge.get_load_phasor_current_rms_template(grid.var_factory, name=load.name).block
         loadec.connect([loadec.in_vars[0]], [load.bus.rms_model.out_vars[0]])
         loadec.connect([loadec.in_vars[1]], [load.bus.rms_model.out_vars[1]])
         #loadec = vge.to_implicit(loadec, grid.var_factory)
-        vge.set_rms_model(device=load, model=loadec, var_factory=grid.var_factory)
+        set_rms_model(device=load, model=loadec, var_factory=grid.var_factory)
     ## -TRANSFORMERS 2w:
     for trafo in grid.transformers2w:
         trafoec = vge.initialize_trafo_rms(trafo, grid.var_factory, use_phasor_template=True).block
@@ -138,14 +140,14 @@ def define_problem_with_path(grid_path):
         trafoec.connect([trafoec.in_vars[2]], [trafo.bus_to.rms_model.out_vars[0]])
         trafoec.connect([trafoec.in_vars[3]], [trafo.bus_to.rms_model.out_vars[1]])
         trafoec = vge.to_implicit(trafoec, grid.var_factory)
-        vge.set_rms_model(device=trafo, model=trafoec, var_factory=grid.var_factory)
+        set_rms_model(device=trafo, model=trafoec, var_factory=grid.var_factory)
     ## -SHUNTS (load like):
     for shunt in grid.shunts:
         shuntec = vge.get_shunt_template(grid.var_factory, name=shunt.name, phasor=True).block
         shuntec.connect([shuntec.in_vars[0]], [shunt.bus.rms_model.out_vars[0]])
         shuntec.connect([shuntec.in_vars[1]], [shunt.bus.rms_model.out_vars[1]])
         shuntec = vge.to_implicit(shuntec, grid.var_factory)
-        vge.set_rms_model(device=shunt, model=shuntec, var_factory=grid.var_factory)
+        set_rms_model(device=shunt, model=shuntec, var_factory=grid.var_factory)
     
     # TRANSFORMERS 3W: Not present in existing grids and not supported
     print("  ✓ Grid with path loaded")
@@ -262,12 +264,12 @@ def define_problem():
     line_mdl.connect([line_mdl.in_vars[3]], [bus1.rms_model.out_vars[1]])
 
     # Attach line model to the line device
-    vge.set_rms_model(device=line, model=line_mdl, var_factory=grid.var_factory)
+    set_rms_model(device=line, model=line_mdl, var_factory=grid.var_factory)
 
     genqec.connect([genqec.in_vars[0]], [bus0.rms_model.out_vars[0]])
     genqec.connect([genqec.in_vars[1]], [bus0.rms_model.out_vars[1]])
 
-    vge.set_rms_model(device=gen, model=genqec, var_factory=grid.var_factory)
+    set_rms_model(device=gen, model=genqec, var_factory=grid.var_factory)
 
     load_mdl = vge.get_load_phasor_current_rms_template(grid.var_factory).block
     load_mdl.connect([load_mdl.in_vars[0]], [bus1.rms_model.out_vars[0]])
@@ -276,7 +278,7 @@ def define_problem():
     # For V ≈ 1.0, Ir ≈ P, Ii ≈ Q
     load_mdl.set_parameter_in_model(var_name="Ir0", new_value=-0.1)
     load_mdl.set_parameter_in_model(var_name="Ii0", new_value=-0.01)
-    vge.set_rms_model(device=load, model=load_mdl, var_factory=grid.var_factory)
+    set_rms_model(device=load, model=load_mdl, var_factory=grid.var_factory)
 
     print("  ✓ Grid created with multilinear generator")
 

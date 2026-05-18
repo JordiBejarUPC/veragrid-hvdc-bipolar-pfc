@@ -1037,14 +1037,10 @@ class RmsProblemPhasor(RmsProblemTemplate):
             block_tag = f"::{block.name}#{block.uid}"
 
         disambiguated_key = f"{name_key}{block_tag}"
-        if disambiguated_key == name_key:
+
+        if disambiguated_key == name_key or disambiguated_key in self._vars_glob_name2uid:
             disambiguated_key = f"{name_key} [{uid}]"
 
-        if disambiguated_key in self._vars_glob_name2uid and self._vars_glob_name2uid[disambiguated_key] != uid:
-            raise ValueError(
-                f"Global variable name collision for '{name_key}' and fallback '{disambiguated_key}': "
-                f"existing uid={self._vars_glob_name2uid[disambiguated_key]}, new uid={uid}."
-            )
         self._vars_glob_name2uid[disambiguated_key] = uid
 
     @property
