@@ -282,7 +282,10 @@ def connect_bus_variables_emt(device: Any,
     :rtype:
     """
 
-    if device.device_type in [DeviceType.BranchDevice, DeviceType.LineDevice, DeviceType.Transformer2WDevice, DeviceType.Transformer3WDevice]:
+    branch_devices = [DeviceType.BranchDevice, DeviceType.LineDevice, DeviceType.Transformer2WDevice,
+                      DeviceType.Transformer3WDevice, DeviceType.DCLineDevice, DeviceType.VscDevice]
+
+    if device.device_type in branch_devices:
         # Check if using phasor or polar coordinates by looking at bus model outputs
         bus_from = device.bus_from
         # create bus mask to know number of phases
