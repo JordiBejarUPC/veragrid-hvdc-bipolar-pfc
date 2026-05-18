@@ -997,7 +997,7 @@ class RmsProblemPhasor(RmsProblemTemplate):
                 print(f"  diff_var[{col}] = {xdot[col]}, value = {E_partial[70, col]}")
         
         E_value[:, :n_diff] = E_partial
-        E_value[:n_states, :n_states] -= np.eye(n_states, dtype=E_value.dtype)
+        E_value[:n_states, :n_states] -= np.eye(n_states, dtype=E_value.dtype) 
 
         return E_value
 
@@ -1102,7 +1102,8 @@ class RmsProblemPhasor(RmsProblemTemplate):
 
     def update_variable_params(self, t: float, x_snapshot: Vec | None = None):
         """Update the variable parameters."""
-        self._variable_parameters_values = self._event_params_fn(self._variable_parameters_values, t)
+        self._variable_parameters_values[:self._n_event_params] = self._event_params_fn(self._variable_parameters_values, t)
+
 
     def initialize_fmu_cs_devices(self, x_snapshot: Vec, t: float = 0.0) -> None:
         """

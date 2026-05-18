@@ -107,6 +107,65 @@ def ml_hard_sat(
     )
     return final_block, final_expr 
 
+
+def mti_hard_sat(
+    vf: VarFactory,
+    u: Expr,
+    ul: Expr,
+    uu: Expr,
+    yl: Expr,
+    yu: Expr,
+    name: str = "",
+):
+    """
+    MTI hard-saturation block with binary mode variables.
+
+    Regions are encoded with booleans:
+    - (b1, b2): lower-threshold side of ``u - ul``
+    - (b3, b4): upper-threshold side of ``u - uu``
+
+    Inequalities are added in MTI residual form ``G <= 0`` as:
+    - ``-(b1 - b2) * (u - ul) <= 0``
+    - ``-(b3 - b4) * (u - uu) <= 0``
+    """
+    b1 = vf.add_var("b1_" + name)
+    b2 = vf.add_var("b2_" + name)
+    b3 = vf.add_var("b3_" + name)
+    b4 = vf.add_var("b4_" + name)
+    y = vf.add_var("y_sat_" + name)
+
+    h_ul = sym.heaviside(u - ul)
+    h_uu = sym.heaviside(u - uu)
+
+    s = (yu - yl) / (uu - ul)
+    y_mid = (u - ul) * s + yl
+    y_expr = b2 * yl + b1 * b4 * y_mid + b3 * yu
+
+    block = Block(
+        algebraic_vars=[y],
+        algebraic_eqs=[y - y_expr],
+        inequalities=[
+            -(b1 - b2) * (u - ul),
+            -(b3 - b4) * (u - uu),
+        ],
+        mode_dict={
+            b1: h_ul,
+            b2: Const(1.0) - h_ul,
+            b3: h_uu,
+            b4: Const(1.0) - h_uu,
+        },
+        boolean_guards={
+            b1: u - ul >= Const(0.0),
+            b2: ul - u >= Const(0.0),
+            b3: u - uu >= Const(0.0),
+            b4: uu - u >= Const(0.0),
+        },
+        init_eqs={
+            y: sym.hard_sat((u - ul) * s + yl, yl, yu),
+        },
+    )
+    return block, y
+
 def exponential_ml(vf: VarFactory, x:Expr, name:str=""):
     algebraic_eqs = list()
     algebraic_vars = list()

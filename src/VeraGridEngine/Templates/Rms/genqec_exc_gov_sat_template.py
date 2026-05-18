@@ -161,9 +161,12 @@ def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec rms template") -> R
     Ed_2prime_expr = Psiq_prime * Xqaux2 + Ed_prime * Xqaux3
     Iq_sat = vfactory.add_var('Iq_sat')
     Id_sat = vfactory.add_var('Id_sat')
-    # Sat = 1 + Sa
-    # Xd_2prime_sat = (Xd_2prime - Xl)/Sat + Xl
-    # Xq_2prime_sat = (Xq_2prime - Xl)/Sat + Xl
+
+    Sat = 1 + Sa
+    Iq_sat = Iq / Sat
+    Id_sat = Id / Sat
+    Xd_2prime_sat = (Xd_2prime - Xl)/Sat + Xl
+    Xq_2prime_sat = (Xq_2prime - Xl)/Sat + Xl
 
     templ.block = Block(
         state_eqs=[
@@ -184,7 +187,6 @@ def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec rms template") -> R
             Vq - (omega * Eq_2prime_expr - Id * Xd_2prime_sat - Iq * Ra),
             Psid - (Eq_2prime_expr - Id * Xd_2prime_sat),
             Psiq - (-Ed_2prime_expr - Iq * Xq_2prime_sat),
-            Te - (Psid * Iq - Psiq * Id),
 
             Ed1 - (Ed_prime - (Xq - Xq_prime) * (
                     Iq_sat - (Ed_prime - Psiq_prime + Iq_sat * (Xq_prime_minus_Xl)) * Xqaux)),
@@ -192,11 +194,12 @@ def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec rms template") -> R
                     Id_sat + (Eq_prime - Psid_prime - Id_sat * (Xd_prime_minus_Xl)) * Xdaux)),
 
             # saturated resistance
-            Sat - (vfactory.add_const(1) + Sa),
-            Id - Id_sat * Sat,
-            Iq - Iq_sat * Sat,
-            Sat * Xd_2prime_sat - (Xd_2prime + Xl * Sa),
-            Sat * Xq_2prime_sat - (Xq_2prime + Xl * Sa),
+            #Sat - (vfactory.add_const(1) + Sa),
+            #Id - Id_sat * Sat,
+            #Iq - Iq_sat * Sat,
+            #Sat * Xd_2prime_sat - (Xd_2prime + Xl * Sa),
+            #Sat * Xq_2prime_sat - (Xq_2prime + Xl * Sa),
+            Te - (Psid * Iq - Psiq * Id),
 
             # flux
             V_dag - (Vd + Id * Ra - Iq * Xl),
@@ -210,16 +213,15 @@ def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec rms template") -> R
         ],
         algebraic_vars=[Pg, Qg, Vd, Vq, Psid, Psiq, Te, Ed1, Eq1, Id, Iq,
                         # saturated resistance
-                        Xq_2prime_sat, Xd_2prime_sat, Id_sat, Iq_sat,
+                        #Xq_2prime_sat, Xd_2prime_sat, Id_sat, Iq_sat, Sat,
                         # flux
-                        Sa, Sat, V_dag, V_qag, Psi_ag,
+                        Sa, V_dag, V_qag, Psi_ag,
                         IRPu],
         init_eqs={
             # Air Gap Voltages and delta
             omega: vfactory.add_const(1),
             Psi_ag: sym.sqrt(Viag_expr ** 2 + Vrag_expr ** 2),
             Sa: A / 2 * ((Psi_ag - B) + sym.sqrt((Psi_ag - B) ** 2 + vfactory.add_const(1e-5))) ** 2,
-            Sat: vfactory.add_const(1) + Sa,
             delta: sym.atan(
                 (inputs[0] * sym.sin(inputs[1]) + sym.imag(
                     sym.conj(Pg + 1j * Qg) / sym.conj(inputs[0] * sym.exp(1j * inputs[1]))) * Ra + sym.real(
@@ -230,9 +232,6 @@ def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec rms template") -> R
                     sym.conj(Pg + 1j * Qg) / sym.conj(inputs[0] * sym.exp(1j * inputs[1]))) *
                  ((Xq - Xl) / (vfactory.add_const(1) + Sa) + Xl))),
 
-            # Saturated Resistances
-            Xd_2prime_sat: (Xd_2prime - Xl + Xl * Sat) / Sat,
-            Xq_2prime_sat: (Xq_2prime - Xl + Xl * Sat) / Sat,
 
             # Terminal Voltages and Intensities in dq frame
             Vd: -(inputs[0] * sym.sin(inputs[1] - delta)),
@@ -257,9 +256,14 @@ def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec rms template") -> R
             Te: (Psid * Iq - Psiq * Id),
 
             IRPu: Eq1 * (1 + Sa),
-            Sat: vfactory.add_const(1) + Sa,
-            Iq_sat: Iq / Sat,
-            Id_sat: Id / Sat,
+            #Iq_sat: Iq / Sat,
+            #Id_sat: Id / Sat,
+            #Sat: vfactory.add_const(1) + Sa,
+            ## Saturated Resistances
+            #Xd_2prime_sat: (Xd_2prime - Xl + Xl * Sat) / Sat,
+            #Xq_2prime_sat: (Xq_2prime - Xl + Xl * Sat) / Sat,
+
+
 
             # We initialize some specific parameters:
         },

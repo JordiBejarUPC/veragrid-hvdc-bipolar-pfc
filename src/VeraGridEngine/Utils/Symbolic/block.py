@@ -46,6 +46,7 @@ class Block:
                  out_vars: List[Var] | None = None,
                  event_dict: Dict[Var, Expr] | None = None,
                  mode_dict: Dict[Var, Expr] | None = None,
+                 boolean_guards: Dict[Var, Expr | Comparison] | None = None,
                  procedural_logic: List[Any] | None = None,
                  external_mapping: Dict[VarPowerFlowRefferenceType, Var] | None = None,
                  api_obj_mapping: Dict[ParamPowerFlowRefferenceType, Var] | None = None,
@@ -114,6 +115,7 @@ class Block:
         # this is the dictionary of "parameters" that may change and their equations
         self.event_dict: Dict[Var, Expr | Const] = dict() if event_dict is None else event_dict
         self.mode_dict: Dict[Var, Expr | Const] = dict() if mode_dict is None else mode_dict
+        self.boolean_guards: Dict[Var, Expr | Comparison] = dict() if boolean_guards is None else boolean_guards
         self.procedural_logic: List[Any] = list() if procedural_logic is None else procedural_logic
 
         self._diagram: BlockDiagram = BlockDiagram()
@@ -190,6 +192,14 @@ class Block:
                     "value": _expr_to_dict(v),
                 }
                 for k, v in self.mode_dict.items()
+            },
+
+            "boolean_guards": {
+                k.uid: {
+                    "key": _expr_to_dict(k),
+                    "value": _expr_to_dict(v),
+                }
+                for k, v in self.boolean_guards.items()
             },
 
             "procedural_logic": self._procedural_logic_to_dict(),
@@ -282,6 +292,10 @@ class Block:
             mode_dict={
                 _dict_to_expr(data=item["key"]): _dict_to_expr(data=item["value"])
                 for item in data.get("mode_dict", {}).values()
+            },
+            boolean_guards={
+                _dict_to_expr(data=item["key"]): _dict_to_expr(data=item["value"])
+                for item in data.get("boolean_guards", {}).values()
             },
             procedural_logic=Block._procedural_logic_from_dict(data.get("procedural_logic", [])),
             external_mapping={
@@ -376,6 +390,7 @@ class Block:
             result.var_mapping = copy.deepcopy(self.var_mapping, memo)
             result.event_dict = copy.deepcopy(self.event_dict, memo)
             result.mode_dict = copy.deepcopy(self.mode_dict, memo)
+            result.boolean_guards = copy.deepcopy(self.boolean_guards, memo)
             result.procedural_logic = copy.deepcopy(self.procedural_logic, memo)
             result._diagram = copy.deepcopy(self._diagram, memo)
 
@@ -470,6 +485,7 @@ class Block:
                 not self.out_vars and
                 not self.event_dict and
                 not self.mode_dict and
+                not self.boolean_guards and
                 not self.procedural_logic and
                 not self.external_mapping and
                 not self.api_obj_mapping and
@@ -566,6 +582,9 @@ class Block:
         for mode_param, eq in block.mode_dict.items():
             self.mode_dict[mode_param] = eq
 
+        for bool_var, guard in block.boolean_guards.items():
+            self.boolean_guards[bool_var] = guard
+
         for param, const in block.parameters.items():
             self.parameters[param] = const
 
@@ -602,6 +621,9 @@ class Block:
             for mode_param, eq in b.mode_dict.items():
                 mdl_placeholder.mode_dict[mode_param] = eq
 
+            for bool_var, guard in b.boolean_guards.items():
+                mdl_placeholder.boolean_guards[bool_var] = guard
+
             for param, const in b.parameters.items():
                 mdl_placeholder.parameters[param] = const
 
@@ -625,6 +647,7 @@ class Block:
         self.differential_eqs = mdl_placeholder.differential_eqs
         self.event_dict = mdl_placeholder.event_dict
         self.mode_dict = mdl_placeholder.mode_dict
+        self.boolean_guards = mdl_placeholder.boolean_guards
         self.parameters = mdl_placeholder.parameters
         self.init_eqs = mdl_placeholder.init_eqs
         self.diff_init_eqs = mdl_placeholder.diff_init_eqs
@@ -690,6 +713,7 @@ class Block:
         diff_init_eqs_new = dict()
         event_dict_new = dict()
         mode_dict_new = dict()
+        boolean_guards_new = dict()
 
         for i, eq in enumerate(self.algebraic_eqs):
             new_equ = eq.subs({old: new})
@@ -737,6 +761,14 @@ class Block:
             else:
                 mode_dict_new.update({var: new_expr})
         self.mode_dict = mode_dict_new
+
+        for var, expr in self.boolean_guards.items():
+            new_expr = expr.subs({old: new})
+            if var is old:
+                boolean_guards_new.update({new: new_expr})
+            else:
+                boolean_guards_new.update({var: new_expr})
+        self.boolean_guards = boolean_guards_new
 
         for var_pf_ref, mdl_var in self.external_mapping.items():
             if mdl_var is old:
@@ -791,6 +823,7 @@ class Block:
         diff_init_eqs_new: Dict[Var, Expr] = dict()
         event_dict_new: Dict[Var, Expr] = dict()
         mode_dict_new: Dict[Var, Expr] = dict()
+        boolean_guards_new: Dict[Var, Expr | Comparison] = dict()
         external_mapping_new: Dict[VarPowerFlowRefferenceType, Var | None] = dict()
         procedural_var_mapping: Dict[Expr | str, Expr] = dict()
         i: int
@@ -833,6 +866,11 @@ class Block:
             new_var = uid_mapping.get(var.uid, None)
             mode_dict_new[var if new_var is None else new_var] = expr.subs(var_mapping)
         self.mode_dict = mode_dict_new
+
+        for var, expr in self.boolean_guards.items():
+            new_var = uid_mapping.get(var.uid, None)
+            boolean_guards_new[var if new_var is None else new_var] = expr.subs(var_mapping)
+        self.boolean_guards = boolean_guards_new
 
         for var_pf_ref, mdl_var in self.external_mapping.items():
             if mdl_var is None:
@@ -978,6 +1016,12 @@ def build_name_to_var_lookup(block: Block) -> Dict[str, Var]:
             lookup[var_obj.name] = var_obj
 
     for var_obj in block.mode_dict.keys():
+        if var_obj.name in lookup:
+            pass
+        else:
+            lookup[var_obj.name] = var_obj
+
+    for var_obj in block.boolean_guards.keys():
         if var_obj.name in lookup:
             pass
         else:

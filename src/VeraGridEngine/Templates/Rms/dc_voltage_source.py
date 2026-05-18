@@ -182,8 +182,8 @@ def DCPowerLimitedSource(vfactory: VarFactory, Vdc, name: str = "") -> RmsModelT
     event_dict = {
         C: vfactory.add_const(0.05),
         Pdc_ref0: vfactory.add_const(None),
-        Pmax: vfactory.add_const(1.0),
-        eps_v: vfactory.add_const(1e-6),
+        Pmax: vfactory.add_const(10.0),
+        eps_v: vfactory.add_const(1e-9),
     }
 
     dc_block = Block(
@@ -198,7 +198,7 @@ def DCPowerLimitedSource(vfactory: VarFactory, Vdc, name: str = "") -> RmsModelT
         out_vars=[Pdc, Idc],
         init_eqs={
             Idc: Pdc / (Vdc + eps_v),
-            Idc_src: Pdc / (Vdc + eps_v),
+            Idc_src: Idc,
             Pdc_ref0: Pdc,
         },
         external_mapping={
