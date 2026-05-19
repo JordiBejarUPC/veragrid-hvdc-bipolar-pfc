@@ -1218,7 +1218,7 @@ class DynamicsResultsHandler:
             return plot_asset
         else:
             if self.circuit is not None:
-                created_plot: DynamicPlot = DynamicPlot(name=group_name, simulation_type=self.plot_simulation_type.value)
+                created_plot: DynamicPlot = DynamicPlot(name=group_name, simulation_type=self.plot_simulation_type)
                 self.circuit.add_dynamic_plot(obj=created_plot)
                 return created_plot
             else:
@@ -1579,7 +1579,7 @@ class DynamicsResultsHandler:
                     plot=plot_asset,
                     group=legacy_group,
                     device=None,
-                    simulation_type=self.plot_simulation_type.value,
+                    simulation_type=self.plot_simulation_type,
                     event_group_idtag=group_idtags[group_idx],
                     event_group_name=group_names[group_idx],
                     curve_device_type=key._device_type,
@@ -1639,7 +1639,7 @@ class DynamicsResultsHandler:
                     plot=plot_asset,
                     group=legacy_group,
                     device=None,
-                    simulation_type=candidate._simulation_type.value,
+                    simulation_type=candidate._simulation_type,
                     event_group_idtag=candidate._event_group_idtag,
                     event_group_name=candidate._event_group_name,
                     curve_device_type=candidate._device_type,

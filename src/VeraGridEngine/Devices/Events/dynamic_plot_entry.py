@@ -150,7 +150,7 @@ class DynamicPlotEntry(EditableDevice):
                   plot: DynamicPlot = None,
                   group: RmsEventsGroup = None,
                   device: Any = None,
-                  simulation_type: PlotSimulationType | str = PlotSimulationType.RMS,
+                  simulation_type: PlotSimulationType = PlotSimulationType.RMS,
                   event_group_idtag: str = "",
                   event_group_name: str = "",
                   curve_device_type: DeviceType = DeviceType.NoDevice,
@@ -226,7 +226,7 @@ class DynamicPlotEntry(EditableDevice):
         return self._simulation_type
 
     @simulation_type.setter
-    def simulation_type(self, val: PlotSimulationType | str) -> None:
+    def simulation_type(self, val: PlotSimulationType) -> None:
         """
         Set the simulation family identifier.
 
@@ -236,10 +236,7 @@ class DynamicPlotEntry(EditableDevice):
         if isinstance(val, PlotSimulationType):
             self._simulation_type = val
         else:
-            if isinstance(val, str):
-                self._simulation_type = PlotSimulationType(val)
-            else:
-                raise ValueError("Unsupported plot simulation type")
+            raise ValueError("Unsupported plot simulation type")
 
     @property
     def event_group_idtag(self) -> str:
