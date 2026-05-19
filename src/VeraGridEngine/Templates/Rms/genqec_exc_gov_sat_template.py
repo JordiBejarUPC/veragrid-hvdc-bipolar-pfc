@@ -258,7 +258,6 @@ def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec_rms_template") -> R
             Te: (Psid * Iq - Psiq * Id),
 
             IRPu: Eq1 * (1 + Sa),
-            Sat: vfactory.add_const(1) + Sa,
             Iq_sat: Iq / Sat,
             Id_sat: Id / Sat,
 
@@ -306,7 +305,8 @@ def get_governor_rms(vfactory: VarFactory, name: str = "Governor") -> RmsModelTe
         "K8": vfactory.add_const(0.0),
     }
 
-    inputs = [vfactory.add_var("omega_", shared_reference="omega_reference"), vfactory.add_var('Te_', shared_reference="te_reference")]
+    inputs = [vfactory.add_var("omega_", shared_reference="omega_reference"),
+              vfactory.add_var('Te_', shared_reference="te_reference")]
 
     # ______________________________________________________________________________________
     #                                    variables

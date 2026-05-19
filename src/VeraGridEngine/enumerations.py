@@ -823,6 +823,7 @@ class ConverterControlType(Enum):
     Pdc = 'P_dc'
     Pac = 'P_ac'
     Pdc_angle_droop = 'P_dc_angle_droop'  # PMODE3
+    Pdc_droop = 'P_dc_droop'  # DC power / DC voltage droop: Pdc = Pdc* + Pdroop * (Vdc* - Vdc)
     Q_droop = "Q_droop"
     P_droop = "P_droop"
     Imax = 'Imax'
@@ -3894,6 +3895,7 @@ class BlockType(Enum):
     EMT_PI_LINE = "EMT_PI_LINE"
     EMT_BERGERON_LINE = "EMT_BERGERON_LINE"
     EMT_JMARTI_LINE = "EMT_JMARTI_LINE"
+    EMT_DC_LINE = "EMT_DC_LINE"
     VOLTAGE_SOURCE_EMT = "VOLTAGE_SOURCE_EMT"
     CURRENT_SOURCE_EMT = "CURRENT_SOURCE_EMT"
     CONTROLLED_VOLTAGE_SOURCE_EMT = "CONTROLLED_VOLTAGE_SOURCE_EMT"

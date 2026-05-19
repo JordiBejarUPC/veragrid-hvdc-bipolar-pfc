@@ -221,7 +221,6 @@ def create_emt_wizard_block(phase_n: bool,
                             block_type: BlockType,
                             item_name: str) -> Block | None:
     """
-
     :param phase_n:
     :type phase_n:
     :param phase_a:
