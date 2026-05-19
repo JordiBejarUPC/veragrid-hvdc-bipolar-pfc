@@ -119,7 +119,7 @@ class EmtEvent(PointerDeviceParent):
         self._group: EmtEventsGroup = group
         self.parameter: Any = parameter
         self.time: float = float(time) if time is not None else 0.0
-        self.end_time: float | None = float(end_time) if end_time is not None else None
+        self.end_time: float = float(end_time) if end_time is not None else self.time+0.0001
         self.value: float = float(value) if value is not None else 0.0
         self.force_step_alignment: bool = bool(force_step_alignment)
         self.transition_type: DynamicEventTransitionType = transition_type
@@ -169,14 +169,12 @@ class EmtEvent(PointerDeviceParent):
         return self._end_time
 
     @end_time.setter
-    def end_time(self, val: float | None) -> None:
+    def end_time(self, val: float) -> None:
         """
         Set ``end_time``.
 
         :param val: Value to assign.
         :return: None.
         """
-        if val is None:
-            self._end_time = None
-        else:
-            self._end_time = float(val)
+
+        self._end_time = float(val)

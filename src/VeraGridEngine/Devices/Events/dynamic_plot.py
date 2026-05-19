@@ -55,8 +55,8 @@ class DynamicPlot(EditableDevice):
                                 code='',
                                 device_type=DeviceType.DynamicPlotGroupDevice,
                                 comment=comment)
-        self._simulation_type: PlotSimulationType = PlotSimulationType.RMS
-        self.simulation_type = simulation_type
+        self._simulation_type: PlotSimulationType = simulation_type
+
 
     @property
     def simulation_type(self) -> PlotSimulationType:
