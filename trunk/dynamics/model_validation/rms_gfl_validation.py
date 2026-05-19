@@ -374,7 +374,7 @@ def initialize_grid2_rms_models(grid2, pf_results):
             initialize_bus_rms(vsc.bus_to, vf)
         vm_vsc = vsc.rms_model.external_mapping[VarPowerFlowRefferenceType.Vm]
         bus_vm = vsc.bus_to.rms_model.external_mapping[VarPowerFlowRefferenceType.Vm]
-        vsc.rms_model.connect([vm_vsc], [bus_vm])
+        grid.var_factory.add_connections([vm_vsc], [bus_vm])
         print("    ✓ VSC RMS model assigned")
 
     for trafo in grid2.transformers2w:
@@ -411,7 +411,7 @@ def initialize_grid2_rms_models(grid2, pf_results):
         bus_vm_t = trafo.bus_to.rms_model.external_mapping[VarPowerFlowRefferenceType.Vm]
         bus_va_t = trafo.bus_to.rms_model.external_mapping[VarPowerFlowRefferenceType.Va]
 
-        trafo.rms_model.connect([vm_f, va_f, vm_t, va_t], [bus_vm_f, bus_va_f, bus_vm_t, bus_va_t])
+        grid.var_factory.add_connections([vm_f, va_f, vm_t, va_t], [bus_vm_f, bus_va_f, bus_vm_t, bus_va_t])
 
         # Force TrafoGFL reactive initialization to match PF branch "to" side.
         branch_list = list(grid2.get_branches_iter(add_vsc=False, add_hvdc=False, add_switch=True))
@@ -496,7 +496,7 @@ def initialize_grid2_rms_models(grid2, pf_results):
             if hasattr(trafo.rms_model, 'in_vars') and len(trafo.rms_model.in_vars) > 0:
                 vdc_trafo = trafo.rms_model.external_mapping[VarPowerFlowRefferenceType.Vdc]
                 vdc_bus = vsc.bus_from.rms_model.out_vars[0]
-                trafo.rms_model.connect([vdc_trafo], [vdc_bus])
+                grid.var_factory.add_connections([vdc_trafo], [vdc_bus])
                 print("  ✓ Connected transformer to DC bus")
 
     print("  ✓ All RMS models initialized successfully")

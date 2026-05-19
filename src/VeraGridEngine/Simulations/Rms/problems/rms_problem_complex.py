@@ -224,19 +224,19 @@ class RmsProblemComplex(RmsProblemTemplate):
                 bus_to_model = elm.bus_to.rms_model
                 
                 # Connect: line.in_vars[0:3] -> [Vrf, Vif, Vrt, Vit]
-                elm.rms_model.connect(
+                grid.var_factory.add_connections(
                     [elm.rms_model.in_vars[0]], 
                     [bus_from_model.out_vars[0]]  # Vrf -> bus.Vr
                 )
-                elm.rms_model.connect(
+                grid.var_factory.add_connections(
                     [elm.rms_model.in_vars[1]], 
                     [bus_from_model.out_vars[1]]  # Vif -> bus.Vi
                 )
-                elm.rms_model.connect(
+                grid.var_factory.add_connections(
                     [elm.rms_model.in_vars[2]], 
                     [bus_to_model.out_vars[0]]    # Vrt -> bus.Vr
                 )
-                elm.rms_model.connect(
+                grid.var_factory.add_connections(
                     [elm.rms_model.in_vars[3]], 
                     [bus_to_model.out_vars[1]]    # Vit -> bus.Vi
                 )

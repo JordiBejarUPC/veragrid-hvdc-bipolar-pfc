@@ -899,12 +899,13 @@ class Block:
         var_to_subs: Var
         incoming_var: Var
 
-        if can_use_bulk_update:
-            self.update_model_bulk(dict(pairs))
-        else:
-            for var_to_subs, incoming_var in pairs:
-                var_to_subs.uid = incoming_var.uid
-                var_to_subs.name = incoming_var.name
+        # if can_use_bulk_update:
+        #     self.update_model_bulk(dict(pairs))
+        # else:
+        for var_to_subs, incoming_var in pairs:
+            self.update_model(var_to_subs, incoming_var)
+            # var_to_subs.uid = incoming_var.uid
+            # var_to_subs.name = incoming_var.name
 
     def find_var_in_equations(self,var: Var) -> bool:
         """

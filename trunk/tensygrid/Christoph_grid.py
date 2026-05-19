@@ -37,10 +37,10 @@ for i, (bf, bt, r, x, b) in enumerate(line_data, 1):
 
     # Asignar modelo RMS a la línea
     line_mdl = vge.get_line_phasor_rms_template(grid.var_factory).block
-    line_mdl.connect([line_mdl.in_vars[0]], [buses[bf].rms_model.out_vars[0]])
-    line_mdl.connect([line_mdl.in_vars[1]], [buses[bf].rms_model.out_vars[1]])
-    line_mdl.connect([line_mdl.in_vars[2]], [buses[bt].rms_model.out_vars[0]])
-    line_mdl.connect([line_mdl.in_vars[3]], [buses[bt].rms_model.out_vars[1]])
+    grid.var_factory.add_connections([line_mdl.in_vars[0]], [buses[bf].rms_model.out_vars[0]])
+    grid.var_factory.add_connections([line_mdl.in_vars[1]], [buses[bf].rms_model.out_vars[1]])
+    grid.var_factory.add_connections([line_mdl.in_vars[2]], [buses[bt].rms_model.out_vars[0]])
+    grid.var_factory.add_connections([line_mdl.in_vars[3]], [buses[bt].rms_model.out_vars[1]])
     set_rms_model(device=line, model=line_mdl, var_factory=grid.var_factory)
 
 # 3. Creación de Cargas (Datos de 'load.csv')
@@ -57,8 +57,8 @@ for i, (bus_idx, p, q) in enumerate(load_data, 1):
 
     # Asignar modelo RMS a la carga (modelo de corriente fasorial)
     load_mdl = vge.get_load_phasor_current_rms_template(grid.var_factory).block
-    load_mdl.connect([load_mdl.in_vars[0]], [buses[bus_idx].rms_model.out_vars[0]])
-    load_mdl.connect([load_mdl.in_vars[1]], [buses[bus_idx].rms_model.out_vars[1]])
+    grid.var_factory.add_connections([load_mdl.in_vars[0]], [buses[bus_idx].rms_model.out_vars[0]])
+    grid.var_factory.add_connections([load_mdl.in_vars[1]], [buses[bus_idx].rms_model.out_vars[1]])
 
     # Inicialización de parámetros de corriente (I = S*/V*, aprox V=1)
     #load_mdl.set_parameter_in_model(var_name="Ir0", new_value=-p)
@@ -82,8 +82,8 @@ grid.add_generator(bus=buses[1], api_obj=gen)
 
 # Asignar modelo RMS al generador
 gen_mdl = vge.get_complete_generator_template_phasor(grid.var_factory, name="Gen1").block
-gen_mdl.connect([gen_mdl.in_vars[0]], [buses[1].rms_model.out_vars[0]])
-gen_mdl.connect([gen_mdl.in_vars[1]], [buses[1].rms_model.out_vars[1]])
+grid.var_factory.add_connections([gen_mdl.in_vars[0]], [buses[1].rms_model.out_vars[0]])
+grid.var_factory.add_connections([gen_mdl.in_vars[1]], [buses[1].rms_model.out_vars[1]])
 set_rms_model(device=gen, model=gen_mdl, var_factory=grid.var_factory)
 
 print("  ✓ Grid created with data from Excel")
