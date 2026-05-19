@@ -305,11 +305,11 @@ def initialize_grid2_rms_models(grid2):
             if hasattr(trafo.rms_model, 'in_vars') and len(trafo.rms_model.in_vars) > 0:
                 vdc_trafo = trafo.rms_model.in_vars[0]
                 vdc_bus = vsc.bus_from.rms_model.out_vars[0]
-                trafo.rms_model.connect([vdc_trafo], [vdc_bus])
+                grid.var_factory.add_connections([vdc_trafo], [vdc_bus])
 
                 pt_vsc = vsc.rms_model.in_vars[1]
                 pt_trafo = trafo.rms_model.out_vars[1]
-                vsc.rms_model.connect([pt_vsc], [pt_trafo])
+                grid.var_factory.add_connections([pt_vsc], [pt_trafo])
                 print(f"  ✓ Connected transformer to DC bus")
 
     

@@ -8,19 +8,18 @@ import numpy as np
 import pandas as pd
 import scipy.sparse as sp
 
-from VeraGridEngine import DeviceType
+
 from VeraGridEngine.enumerations import ParamPowerFlowRefferenceType, DeviceType
 from VeraGridEngine.Devices import MultiCircuit
 from VeraGridEngine.Simulations.driver_template import DummySignal
 from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr, piecewise, get_expression_vars)
-from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicParamsVector, SymbolicDerivative
+from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicParamsVector, SymbolicDerivative, SymbolicJacobian
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, RmsInitializationMethod
 from VeraGridEngine.basic_structures import Vec, ObjVec, BoolVec, Logger
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
-from VeraGridEngine.Simulations.Rms.initialization_rms import run_rms_native_initialization
 from VeraGridEngine.Utils.Symbolic.explicit_initialization_symbolic import (init_explicit_common,
                                                                             build_rms_single_equation_compiler)
 from VeraGridEngine.Simulations.Rms.initialization import init_pseudo_transient
@@ -30,7 +29,7 @@ from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGridEngine.Utils.Symbolic.jit_compiler import RMSCompiler
-from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms, get_bus_rms_algebraic_vars
+from VeraGridEngine.Utils.Symbolic.bus_rms_template import get_bus_rms_algebraic_vars
 from VeraGridEngine.Utils.procedural_logic import build_boundary_updater_from_block
 from VeraGridEngine.IO.fmu.importer.experimental_cs import (
     advance_rms_fmu_cs_devices,
@@ -239,9 +238,9 @@ class RmsProblemDae(RmsProblemTemplate):
         self._j21_fn: Callable[[Vec, Vec, Vec, Vec, float], sp.csc_matrix] | None = None
         self._j22_fn: Callable[[Vec, Vec, Vec, Vec, float], sp.csc_matrix] | None = None
 
-        self._variable_parameters_values: Vec | None = None
-        self._last_variable_parameters_values: Vec | None = None
-        self._constant_params: Vec | None = None
+        self._variable_parameters_values: Optional[Vec] = None
+        self._last_variable_parameters_values: Optional[Vec] = None
+        self._constant_params: Optional[Vec] = None
         self._block_boundary_updater: Any | None = None
         self._fmu_cs_adapters: List[object] = list()
         self._fmu_cs_initialized: bool = False
@@ -271,6 +270,17 @@ class RmsProblemDae(RmsProblemTemplate):
         self._uid2idx_params: Dict[int, int] = dict()
         self._uid2idx_diff: Dict[int, int] = dict()
         self._uid2idx_t: Dict[int, int] = dict()
+
+        # We put algebraic_vars that are actually states first
+        self._algebraic_vars.sort(key=lambda obj: obj.diff_var is None)
+        diff_vars_from_states = [var.diff_var for var in self._state_vars]
+        for i, var in enumerate(diff_vars_from_states):
+            state_var = self._state_vars[i]
+            if var is None:
+                diff_vars_from_states[i] = self.grid.var_factory.add_diff_var(name='aux', base_var=state_var)
+        diff_vars_from_algebraic = [var.diff_var for var in self._algebraic_vars if var.diff_var is not None]
+        self._diff_vars = diff_vars_from_states + diff_vars_from_algebraic
+
 
         # create time global time variable and add it to the compilation dict
         self._glob_time: Var = Var(self.TIME_NAME)
@@ -457,7 +467,11 @@ class RmsProblemDae(RmsProblemTemplate):
             else:
                 mdl = elm.rms_model
 
-                assign_static_api_object_mapping_for_device(self.grid, elm, mdl, self._static_parameters_values_mapping)
+                assign_static_api_object_mapping_for_device(grid=self.grid,
+                                                            device=elm,
+                                                            mdl=mdl,
+                                                            problem_mapping=self._static_parameters_values_mapping,
+                                                            logger=self.logger )
 
 
                 St_vsc = self.power_flow_results.St_vsc / self.grid.Sbase
@@ -1437,7 +1451,7 @@ class RmsProblemDae(RmsProblemTemplate):
         else:
             runtime_mode_slice = slice(0, 0)
 
-        mode_snapshot: Vec | None = None
+        mode_snapshot: Optional[Vec]= None
         if runtime_mode_slice.start != runtime_mode_slice.stop:
             mode_snapshot = ev_param[runtime_mode_slice].copy()
 
@@ -1452,7 +1466,7 @@ class RmsProblemDae(RmsProblemTemplate):
 
             return updated
 
-    def update_variable_params(self, t: float, x_snapshot: Vec | None = None):
+    def update_variable_params(self, t: float, x_snapshot: Optional[Vec] = None):
         """
         Update the variable parameters. Continuous runtime parameters are re-evaluated,
         while retained mode parameters are left untouched unless updated by boundary
@@ -2036,3 +2050,48 @@ class RmsProblemDae(RmsProblemTemplate):
 
     def get_diff_vars(self):
         return self._diff_vars
+
+    def get_E_matrix(self, x: Vec, dx: Vec):
+        # We first find all diff_vars
+
+        all_eqs = self._state_eqs + self._algebraic_eqs
+        xdot = self._diff_vars
+        E_call = SymbolicJacobian(
+            eqs=all_eqs,
+            variables=xdot,
+            compiler_names_dict=self._compiler_names_dict,
+            alias_names_dict=self._alias_names_dict,
+            VARS_NAME=self.VARS_NAME,
+            DIFF_NAME=self.DIFF_NAME,
+            EVENT_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
+            PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
+            static=True
+        )
+
+        n_states = self.get_states_number()
+        n_diff = self.get_diff_var_number()
+        vp = self._variable_parameters_values
+        cp = self._constant_params
+
+        n_vars = self._n_vars
+        E_value = np.zeros((n_vars, n_vars))
+        E_partial = E_call(x, dx, vp, cp, h=0).toarray()
+        print(f"DEBUG: E_partial shape: {E_partial.shape}")
+        print(f"DEBUG: E_partial sample values (non-zero):")
+        nz = np.nonzero(E_partial)
+        # for i in range(min(20, len(nz[0]))):
+        #     row, col = nz[0][i], nz[1][i]
+        #     print(f"  E_partial[{row},{col}] = {E_partial[row, col]}")
+
+        # Debug: show equation 70
+        # print(f"\nDEBUG: Equation 70:")
+        # print(f"  {all_eqs[70]}")
+        # print(f"\nDEBUG: Diff vars involved in row 70:")
+        # for col in range(E_partial.shape[1]):
+        #     if abs(E_partial[70, col]) > 1e-10:
+        #         print(f"  diff_var[{col}] = {xdot[col]}, value = {E_partial[70, col]}")
+
+        E_value[:, :n_diff] = E_partial
+        E_value[:n_states, :n_states] -= np.eye(n_states, dtype=E_value.dtype)
+
+        return E_value

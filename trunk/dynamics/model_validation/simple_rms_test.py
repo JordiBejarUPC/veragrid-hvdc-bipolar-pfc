@@ -99,8 +99,8 @@ def setup_rms_models_expanded(grid):
         
         bus = gen.bus
         print(f"   Connecting Gen {gen.name} to Bus {bus.name}...")
-        genrow_mdl.connect([genrow_mdl.in_vars[0]], [bus.rms_model.out_vars[0]])  # Vm
-        genrow_mdl.connect([genrow_mdl.in_vars[1]], [bus.rms_model.out_vars[1]])  # Va
+        grid.var_factory.add_connections([genrow_mdl.in_vars[0]], [bus.rms_model.out_vars[0]])  # Vm
+        grid.var_factory.add_connections([genrow_mdl.in_vars[1]], [bus.rms_model.out_vars[1]])  # Va
         genrow_mdl.unify_blocks()
         
         big_gen = Block(children=[genrow_mdl])
@@ -123,7 +123,7 @@ def setup_rms_models_expanded(grid):
         
         bus = load.bus
         print(f"   Connecting Load {load.name} to Bus {bus.name}...")
-        load_mdl.connect([load_mdl.in_vars[0]], [bus.rms_model.out_vars[0]])  # Vm
+        grid.var_factory.add_connections([load_mdl.in_vars[0]], [bus.rms_model.out_vars[0]])  # Vm
         load_mdl.unify_blocks()
         
         load.rms_model = load_mdl
@@ -137,11 +137,11 @@ def setup_rms_models_expanded(grid):
         from_bus = line.bus_from
         to_bus = line.bus_to
         print(f"   Connecting Line {line.name} ({from_bus.name} → {to_bus.name})...")
-        
-        line_mdl.connect([line_mdl.in_vars[0]], [from_bus.rms_model.out_vars[0]])  # Vmf
-        line_mdl.connect([line_mdl.in_vars[1]], [from_bus.rms_model.out_vars[1]])  # Vaf
-        line_mdl.connect([line_mdl.in_vars[2]], [to_bus.rms_model.out_vars[0]])    # Vmt
-        line_mdl.connect([line_mdl.in_vars[3]], [to_bus.rms_model.out_vars[1]])    # Vat
+
+        grid.var_factory.add_connections([line_mdl.in_vars[0]], [from_bus.rms_model.out_vars[0]])  # Vmf
+        grid.var_factory.add_connections([line_mdl.in_vars[1]], [from_bus.rms_model.out_vars[1]])  # Vaf
+        grid.var_factory.add_connections([line_mdl.in_vars[2]], [to_bus.rms_model.out_vars[0]])    # Vmt
+        grid.var_factory.add_connections([line_mdl.in_vars[3]], [to_bus.rms_model.out_vars[1]])    # Vat
         line_mdl.unify_blocks()
         
         line.rms_model = line_mdl

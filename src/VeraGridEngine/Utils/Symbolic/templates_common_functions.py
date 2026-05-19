@@ -15,11 +15,12 @@ from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import BusEmtTemplate
 
-def connect_line_rms_from(mdl1: Block, mdl2: Block):
+def connect_line_rms_from(mdl1: Block, mdl2: Block, var_factory:VarFactory):
     """
     This function substitutes input variables for output variables to connect two rms models
     :param mdl1:
     :param mdl2:
+    :param var_factory:
     :return:
     """
     # connect Vm
@@ -30,7 +31,7 @@ def connect_line_rms_from(mdl1: Block, mdl2: Block):
         if outp.ref == VarPowerFlowRefferenceType.Vm and inpt.ref == VarPowerFlowRefferenceType.Vmf
     ]
     for outp, inpt in pairs:
-        mdl2.connect([inpt], [outp])
+        var_factory.add_connections([inpt], [outp])
 
     # connect Va
     pairs = [
@@ -40,13 +41,14 @@ def connect_line_rms_from(mdl1: Block, mdl2: Block):
         if outp.ref == VarPowerFlowRefferenceType.Va and inpt.ref == VarPowerFlowRefferenceType.Vaf
     ]
     for outp, inpt in pairs:
-        mdl2.connect([inpt], [outp])
+        var_factory.add_connections([inpt], [outp])
 
-def connect_models_power_flow(mdl1: Block, mdl2: Block):
+def connect_models_power_flow(mdl1: Block, mdl2: Block, var_factory: VarFactory):
     """
     This function substitutes input variables for output variables to connect two rms models
     :param mdl1:
     :param mdl2:
+    :param var_factory:
     :return:
 
     """
@@ -58,14 +60,16 @@ def connect_models_power_flow(mdl1: Block, mdl2: Block):
         if outp.ref == inpt.ref
     ]
     for pair in pairs:
-        mdl2.connect([pair[1]], [pair[0]])
+        # Todo: change connection method to use var_factory
+        var_factory.add_connections([pair[1]], [pair[0]])
 
 
-def connect_line_rms_to(mdl1: Block, mdl2: Block):
+def connect_line_rms_to(mdl1: Block, mdl2: Block, var_factory:VarFactory):
     """
     This function substitutes input variables for output variables to connect two rms models
     :param mdl1:
     :param mdl2:
+    :param var_factory:
     :return:
     """
     # connect Vm
@@ -76,7 +80,7 @@ def connect_line_rms_to(mdl1: Block, mdl2: Block):
         if outp.ref == VarPowerFlowRefferenceType.Vm and inpt.ref == VarPowerFlowRefferenceType.Vmt
     ]
     for outp, inpt in pairs:
-        mdl2.connect([inpt], [outp])
+        var_factory.add_connections([inpt], [outp])
 
     # connect Va
     pairs = [
@@ -86,10 +90,10 @@ def connect_line_rms_to(mdl1: Block, mdl2: Block):
         if outp.ref == VarPowerFlowRefferenceType.Va and inpt.ref == VarPowerFlowRefferenceType.Vat
     ]
     for outp, inpt in pairs:
-        mdl2.connect([inpt], [outp])
+        var_factory.add_connections([inpt], [outp])
 
 
-def connect_line_phasor_rms_from(mdl1: Block, mdl2: Block):
+def connect_line_phasor_rms_from(mdl1: Block, mdl2: Block, var_factory:VarFactory):
     """
     Connect phasor RMS models for the 'from' end of a line.
     Connects Vr, Vi from bus to line inputs.
@@ -102,7 +106,7 @@ def connect_line_phasor_rms_from(mdl1: Block, mdl2: Block):
         if outp.ref == VarPowerFlowRefferenceType.Vr and inpt.ref == VarPowerFlowRefferenceType.Vrf
     ]
     for outp, inpt in pairs:
-        mdl2.connect([inpt], [outp])
+        var_factory.add_connections([inpt], [outp])
 
     # connect Vi
     pairs = [
@@ -112,10 +116,10 @@ def connect_line_phasor_rms_from(mdl1: Block, mdl2: Block):
         if outp.ref == VarPowerFlowRefferenceType.Vi and inpt.ref == VarPowerFlowRefferenceType.Vif
     ]
     for outp, inpt in pairs:
-        mdl2.connect([inpt], [outp])
+        var_factory.add_connections([inpt], [outp])
 
 
-def connect_line_phasor_rms_to(mdl1: Block, mdl2: Block):
+def connect_line_phasor_rms_to(mdl1: Block, mdl2: Block, var_factory:VarFactory):
     """
     Connect phasor RMS models for the 'to' end of a line.
     Connects Vr, Vi from bus to line inputs.
@@ -128,7 +132,7 @@ def connect_line_phasor_rms_to(mdl1: Block, mdl2: Block):
         if outp.ref == VarPowerFlowRefferenceType.Vr and inpt.ref == VarPowerFlowRefferenceType.Vrt
     ]
     for outp, inpt in pairs:
-        mdl2.connect([inpt], [outp])
+        var_factory.add_connections([inpt], [outp])
 
     # connect Vi
     pairs = [
@@ -138,14 +142,15 @@ def connect_line_phasor_rms_to(mdl1: Block, mdl2: Block):
         if outp.ref == VarPowerFlowRefferenceType.Vi and inpt.ref == VarPowerFlowRefferenceType.Vit
     ]
     for outp, inpt in pairs:
-        mdl2.connect([inpt], [outp])
+        var_factory.add_connections([inpt], [outp])
 
 
-def connect_models(mdl1: Block, mdl2: Block):
+def connect_models(mdl1: Block, mdl2: Block, var_factory:VarFactory):
     """
     This function substitutes input variables for output variables to connect two rms models
     :param mdl1:
     :param mdl2:
+    :param var_factory:
     :return:
     """
     # connect inputs mdl2 with outputs mdl1
@@ -157,7 +162,7 @@ def connect_models(mdl1: Block, mdl2: Block):
     ]
 
     for outp, inpt in pairs:
-        mdl2.connect([inpt], [outp])
+        var_factory.add_connections([inpt], [outp])
 
     # connect inputs mdl1 with outputs mdl2
     pairs = [
@@ -168,24 +173,7 @@ def connect_models(mdl1: Block, mdl2: Block):
     ]
 
     for outp, inpt in pairs:
-        mdl1.connect([inpt], [outp])
-
-    # # connect inputs mdl1 with inputs mdl2
-    # pairs = [
-    #     (inpt1, inpt2)
-    #     for inpt2 in mdl2.in_vars
-    #     for inpt1 in mdl1.in_vars
-    #     if inpt1.power_flow_reference is not None and inpt2.power_flow_reference is not None and inpt1.power_flow_reference == inpt2.power_flow_reference
-    #
-    # ]
-    # for pair in pairs:
-    #     if pair[0].network_conn:
-    #         mdl1.connect([pair[1]], [pair[0]])
-    #     else:
-    #         mdl1.connect([pair[0]], [pair[1]])
-
-
-
+        var_factory.add_connections([inpt], [outp])
 
     #print("")
 def connect_bus_variables_rms(device: Any, model:Block, var_factory: VarFactory | None):
@@ -213,9 +201,11 @@ def connect_bus_variables_rms(device: Any, model:Block, var_factory: VarFactory 
         # Check if bus has Vr/Vi (phasor) or Vm/Va (polar) outputs
         has_phasor = any(v.ref == VarPowerFlowRefferenceType.Vr for v in bus_model.out_vars)
         if has_phasor:
-            connect_line_phasor_rms_from(device.bus_from.rms_model, model)
+            if var_factory is not None:
+                connect_line_phasor_rms_from(device.bus_from.rms_model, model, var_factory)
         else:
-            connect_line_rms_from(device.bus_from.rms_model, model)
+            if var_factory is not None:
+                connect_line_rms_from(device.bus_from.rms_model, model, var_factory)
 
 
         bus_model = device.bus_to.rms_model
@@ -227,9 +217,11 @@ def connect_bus_variables_rms(device: Any, model:Block, var_factory: VarFactory 
         # Check if bus has Vr/Vi (phasor) or Vm/Va (polar) outputs
         has_phasor = any(v.ref == VarPowerFlowRefferenceType.Vr for v in bus_model.out_vars)
         if has_phasor:
-            connect_line_phasor_rms_to(device.bus_to.rms_model, model)
+            if var_factory is not None:
+                connect_line_phasor_rms_to(device.bus_to.rms_model, model, var_factory)
         else:
-            connect_line_rms_to(device.bus_to.rms_model, model)
+            if var_factory is not None:
+                connect_line_rms_to(device.bus_to.rms_model, model, var_factory)
 
 
     else:
@@ -238,7 +230,8 @@ def connect_bus_variables_rms(device: Any, model:Block, var_factory: VarFactory 
                 initialize_bus_rms(device.bus, var_factory)
             else:
                 raise ValueError("var factory not associated to grid element")
-        connect_models_power_flow(device.bus.rms_model, model)
+        if var_factory is not None:
+            connect_models_power_flow(device.bus.rms_model, model, var_factory)
 
 def connect_pending_injection_bus_variables_emt(bus: Any) -> None:
     """
@@ -282,7 +275,10 @@ def connect_bus_variables_emt(device: Any,
     :rtype:
     """
 
-    if device.device_type in [DeviceType.BranchDevice, DeviceType.LineDevice, DeviceType.Transformer2WDevice, DeviceType.Transformer3WDevice]:
+    branch_devices = [DeviceType.BranchDevice, DeviceType.LineDevice, DeviceType.Transformer2WDevice,
+                      DeviceType.Transformer3WDevice, DeviceType.DCLineDevice, DeviceType.VscDevice]
+
+    if device.device_type in branch_devices:
         # Check if using phasor or polar coordinates by looking at bus model outputs
         bus_from = device.bus_from
         # create bus mask to know number of phases
@@ -360,7 +356,7 @@ def connect_bus_variables_emt(device: Any,
                 raise ValueError("var factory not associated to grid element")
 
         # connect inputs and outputs
-        connect_line_emt_from(device.bus_from.emt_model, model)
+        connect_line_emt_from(device.bus_from.emt_model, model, var_factory)
         connect_pending_injection_bus_variables_emt(device.bus_from)
 
         # bus to
@@ -440,7 +436,7 @@ def connect_bus_variables_emt(device: Any,
             raise ValueError("var factory not associated to grid element")
 
         # connect inputs and outputs
-        connect_line_emt_to(device.bus_to.emt_model, model)
+        connect_line_emt_to(device.bus_to.emt_model, model, var_factory)
         connect_pending_injection_bus_variables_emt(device.bus_to)
 
 
@@ -469,7 +465,8 @@ def connect_bus_variables_emt(device: Any,
         if device.bus.emt_model.empty():
             pass
         else:
-            connect_injection_emt(device.bus.emt_model, model)
+            if var_factory is not None:
+                connect_injection_emt(device.bus.emt_model, model, var_factory)
 
 
 def set_rms_model(device: Any, model:Block, var_factory: VarFactory):
@@ -487,9 +484,9 @@ def set_rms_model(device: Any, model:Block, var_factory: VarFactory):
             # Check if bus has Vr/Vi (phasor) or Vm/Va (polar) outputs
             has_phasor = any(v.ref == VarPowerFlowRefferenceType.Vr for v in bus_model.out_vars)
             if has_phasor:
-                connect_line_phasor_rms_from(device.bus_from.rms_model, model)
+                connect_line_phasor_rms_from(device.bus_from.rms_model, model, var_factory)
             else:
-                connect_line_rms_from(device.bus_from.rms_model, model)
+                connect_line_rms_from(device.bus_from.rms_model, model, var_factory)
         else:
             raise ValueError(f"Connection Bus RMS model cannot be empty, initialize {device.bus_from.name} RMS model")
 
@@ -498,16 +495,16 @@ def set_rms_model(device: Any, model:Block, var_factory: VarFactory):
             # Check if bus has Vr/Vi (phasor) or Vm/Va (polar) outputs
             has_phasor = any(v.ref == VarPowerFlowRefferenceType.Vr for v in bus_model.out_vars)
             if has_phasor:
-                connect_line_phasor_rms_to(device.bus_to.rms_model, model)
+                connect_line_phasor_rms_to(device.bus_to.rms_model, model, var_factory)
             else:
-                connect_line_rms_to(device.bus_to.rms_model, model)
+                connect_line_rms_to(device.bus_to.rms_model, model, var_factory)
         else:
             raise ValueError(f"Connection Bus RMS model cannot be empty, initialize {device.bus_to.name} RMS model")
 
     else:
         if not device.bus.rms_model.empty():
             for mdl in model.get_all_blocks():
-                connect_models_power_flow(device.bus.rms_model, mdl)
+                connect_models_power_flow(device.bus.rms_model, mdl, var_factory)
 
         else:
             raise ValueError(f"Connection Bus RMS model cannot be empty, initialize {device.bus.name} RMS model")
@@ -523,7 +520,7 @@ def set_rms_model(device: Any, model:Block, var_factory: VarFactory):
     device.rms_model = model
 
 
-def connect_line_emt_from(mdl1: Block, mdl2: Block):
+def connect_line_emt_from(mdl1: Block, mdl2: Block, var_factory:VarFactory):
     """
     Connects the bus voltages (mdl1) to the "from" side of the line (mdl2)
     for simulations with explicit phases (e.g., EMT).
@@ -531,6 +528,7 @@ def connect_line_emt_from(mdl1: Block, mdl2: Block):
 
     :param mdl1: Bus model (Block)
     :param mdl2: Line model (Block)
+    :param var_factory:
     :return: None
     """
     # Create a dictionary to map the bus output variable
@@ -553,9 +551,9 @@ def connect_line_emt_from(mdl1: Block, mdl2: Block):
 
     # Connect all found pairs
     for outp, inpt in pairs:
-        mdl2.connect([inpt], [outp])
+        var_factory.add_connections([inpt], [outp])
 
-def connect_line_emt_to(mdl1: Block, mdl2: Block):
+def connect_line_emt_to(mdl1: Block, mdl2: Block, var_factory:VarFactory):
     """
     Connects the bus voltages (mdl1) to the "to" side of the line (mdl2)
     for simulations with explicit phases (e.g., EMT).
@@ -563,6 +561,7 @@ def connect_line_emt_to(mdl1: Block, mdl2: Block):
 
     :param mdl1: Bus model (Block)
     :param mdl2: Line model (Block)
+    :param var_factory:
     :return: None
     """
     # Create a dictionary to map the bus output variable
@@ -585,10 +584,10 @@ def connect_line_emt_to(mdl1: Block, mdl2: Block):
 
     # Connect all found pairs
     for outp, inpt in pairs:
-        mdl2.connect([inpt], [outp])
+        var_factory.add_connections([inpt], [outp])
 
 
-def connect_injection_emt(mdl1: Block, mdl2: Block) -> None:
+def connect_injection_emt(mdl1: Block, mdl2: Block, var_factory:VarFactory) -> None:
     """
     Connect one bus EMT shell to one single-bus EMT injection model.
 
@@ -598,6 +597,7 @@ def connect_injection_emt(mdl1: Block, mdl2: Block) -> None:
 
     :param mdl1: Bus EMT model.
     :param mdl2: EMT model of one single-bus injection device.
+    :param var_factory:
     :return: None.
     """
     # Single-bus EMT devices use the same enum references as the bus shell, so
@@ -618,15 +618,16 @@ def connect_injection_emt(mdl1: Block, mdl2: Block) -> None:
     ]
 
     for outp, inpt in pairs:
-        mdl2.connect([inpt], [outp])
+        var_factory.add_connections([inpt], [outp])
 
-def connect_vsc_emt_from(mdl1: Block, mdl2: Block, is_dc_bus: bool = False):
+def connect_vsc_emt_from(mdl1: Block, mdl2: Block, var_factory:VarFactory,is_dc_bus: bool = False):
     """
     Connects the bus voltages to the "from" side of the VSC model.
     For DC buses, connects Vdc. For AC buses, connects abc voltages.
 
     :param mdl1: Bus model (Block)
     :param mdl2: VSC model (Block)
+    :param var_factory:
     :param is_dc_bus: True if bus_from is DC
     :return: None
     """
@@ -656,16 +657,17 @@ def connect_vsc_emt_from(mdl1: Block, mdl2: Block, is_dc_bus: bool = False):
         ]
 
     for outp, inpt in pairs:
-        mdl2.connect([inpt], [outp])
+        var_factory.add_connections([inpt], [outp])
 
 
-def connect_vsc_emt_to(mdl1: Block, mdl2: Block, is_dc_bus: bool = False):
+def connect_vsc_emt_to(mdl1: Block, mdl2: Block, var_factory:VarFactory, is_dc_bus: bool = False):
     """
     Connects the bus voltages to the "to" side of the VSC model.
     For DC buses, connects Vdc. For AC buses, connects abc voltages.
 
     :param mdl1: Bus model (Block)
     :param mdl2: VSC model (Block)
+    :param var_factory:
     :param is_dc_bus: True if bus_to is DC
     :return: None
     """
@@ -695,7 +697,7 @@ def connect_vsc_emt_to(mdl1: Block, mdl2: Block, is_dc_bus: bool = False):
         ]
 
     for outp, inpt in pairs:
-        mdl2.connect([inpt], [outp])
+        var_factory.add_connections([inpt], [outp])
 
 
 def set_emt_model(device: Any, model: Block, var_factory: VarFactory):
@@ -722,14 +724,14 @@ def set_emt_model(device: Any, model: Block, var_factory: VarFactory):
         # Bus FROM connection
         bus_from_model = device.bus_from.emt_model
         if not bus_from_model.empty():
-            connect_line_emt_from(bus_from_model, model)
+            connect_line_emt_from(bus_from_model, model, var_factory)
         else:
             raise ValueError(f"Connection Bus EMT model cannot be empty, initialize {device.bus_from.name} EMT model")
 
         # Bus TO connection
         bus_to_model = device.bus_to.emt_model
         if not bus_to_model.empty():
-            connect_line_emt_to(bus_to_model, model)
+            connect_line_emt_to(bus_to_model, model, var_factory)
         else:
             raise ValueError(f"Connection Bus EMT model cannot be empty, initialize {device.bus_to.name} EMT model")
 
@@ -738,20 +740,20 @@ def set_emt_model(device: Any, model: Block, var_factory: VarFactory):
         # VSC: bus_from is DC, bus_to is AC
         bus_from_model = device.bus_from.emt_model
         if not bus_from_model.empty():
-            connect_vsc_emt_from(bus_from_model, model, is_dc_bus=device.bus_from.is_dc)
+            connect_vsc_emt_from(bus_from_model, model, var_factory, is_dc_bus=device.bus_from.is_dc)
         else:
             raise ValueError(f"Connection Bus EMT model cannot be empty, initialize {device.bus_from.name} EMT model")
 
         bus_to_model = device.bus_to.emt_model
         if not bus_to_model.empty():
-            connect_vsc_emt_to(bus_to_model, model, is_dc_bus=device.bus_to.is_dc)
+            connect_vsc_emt_to(bus_to_model, model, var_factory, is_dc_bus=device.bus_to.is_dc)
         else:
             raise ValueError(f"Connection Bus EMT model cannot be empty, initialize {device.bus_to.name} EMT model")
 
     else:
         # Generic device connection (e.g., Loads, Generators connected to a single bus)
         if not device.bus.emt_model.empty():
-            connect_injection_emt(device.bus.emt_model, model)
+            connect_injection_emt(device.bus.emt_model, model, var_factory)
         else:
             raise ValueError(f"Connection Bus EMT model cannot be empty, initialize {device.bus.name} EMT model")
 

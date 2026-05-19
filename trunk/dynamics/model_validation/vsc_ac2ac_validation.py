@@ -218,9 +218,9 @@ def setup_vsc_model(grid, vsc):
     
     # Connect inputs to bus RMS models
     # vsc_block.in_vars = [vac, theta_ac, vdc]
-    vsc_block.connect([vsc_block.in_vars[0]], [bus_ac.rms_model.model.out_vars[0]])  # vac
-    vsc_block.connect([vsc_block.in_vars[1]], [bus_ac.rms_model.model.out_vars[1]])  # theta_ac
-    vsc_block.connect([vsc_block.in_vars[2]], [bus_dc.rms_model.model.out_vars[0]])  # vdc
+    grid.var_factory.add_connections([vsc_block.in_vars[0]], [bus_ac.rms_model.model.out_vars[0]])  # vac
+    grid.var_factory.add_connections([vsc_block.in_vars[1]], [bus_ac.rms_model.model.out_vars[1]])  # theta_ac
+    grid.var_factory.add_connections([vsc_block.in_vars[2]], [bus_dc.rms_model.model.out_vars[0]])  # vdc
     
     vsc.rms_model = vsc_block
     
