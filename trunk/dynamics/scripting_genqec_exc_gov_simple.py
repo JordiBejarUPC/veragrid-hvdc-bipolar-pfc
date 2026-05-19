@@ -228,8 +228,8 @@ rms_events_group_names = np.array(0)
 # uid_save = [var.uid for var in vars_to_save]
 
 
-gce.save_file(grid=grid, filename="2bus_genqec_load_test.veragrid")
-grid1 = gce.open_file("2bus_genqec_load_test.veragrid")
+gce.save_file(grid=grid, filename="../../src/tests/data/grids/2bus_genqec_load_test.veragrid")
+grid1 = gce.open_file("../../src/tests/data/grids/2bus_genqec_load_test.veragrid")
 ######################################################################################################
 # Power flow
 ######################################################################################################
