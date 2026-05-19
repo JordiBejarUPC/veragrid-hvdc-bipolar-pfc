@@ -4992,6 +4992,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.actionCenter.triggered.connect(self.center_view_on_items)
         self.ui.actionZoom_in.triggered.connect(self.zoom_in_view)
         self.ui.actionZoom_out.triggered.connect(self.zoom_out_view)
+        # self.ui.actionSave_block_to_my_catalogue.connect(self.save_block_to_my_catalogue)
+        # self.ui.actionExport_block.connect(self.export_block)
 
         self.var_factory = var_factory
         self.api_object = api_object
