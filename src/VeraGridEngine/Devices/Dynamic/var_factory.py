@@ -484,14 +484,14 @@ class VarFactory(EditableDevice):
                 self._references_dict[data["name"]] = ref
                 self._vars_references_dict[ref.uid] = list()
 
-    def parse_connections_dict(self, datalist: List[Dict[int, List[Any]]]):
+    def parse_connections_dict(self, datalist: Dict[int, List[Any]]):
         """
         Parse connections list into _vars_connected_dict.
 
         :param datalist: List of dicts with block_uid -> list of connection dicts.
         :return:
         """
-        for uid, connections_list in datalist:
+        for uid, connections_list in datalist.items():
             for conn_data in connections_list:
                 if conn_data["type"] == "Connection":
                     conn = Connection(

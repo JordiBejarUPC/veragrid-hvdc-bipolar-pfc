@@ -650,7 +650,7 @@ class BlockParser:
         """
         self.var_factory.parse_references_dict(datalist=data)
 
-    def parse_connections(self, data: List[Dict[int, List[Any]]]):
+    def parse_connections(self, data: Dict[int, List[Any]]):
         """
 
         :param data:
