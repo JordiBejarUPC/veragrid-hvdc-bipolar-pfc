@@ -1807,11 +1807,13 @@ def parse_veragrid_data(data: VERAGRID_FILE_TYPE,
     symbolic_data = data.get('symbolic_data', None)
     if symbolic_data is not None:
         if len(symbolic_data) > 0:
-            block_parser.parse_references(symbolic_data["shared_references"])
+            if "shared_references" in symbolic_data:
+                block_parser.parse_references(symbolic_data["shared_references"])
             block_parser.parse_consts(symbolic_data["consts"])
             block_parser.parse_vars(symbolic_data["vars"])
             block_parser.parse_diff_vars(symbolic_data["diff_vars"])
-            block_parser.parse_connections(symbolic_data["connections"])
+            if "connections" in symbolic_data:
+                block_parser.parse_connections(symbolic_data["connections"])
             for block_uid in symbolic_data["main_block_uids"]:
                 block_parser.parse_block(symbolic_data["blocks"], block_uid)
         else:
