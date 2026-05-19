@@ -7439,13 +7439,14 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
             # The symbolic block has to be attached first so the graphics item can build its ports from it.
 
-            item.setPos(QtCore.QPointF(0, 0))
+            x, y = self._calculate_next_block_position(item)
+            item.setPos(QtCore.QPointF(x, y))
             self.scene.addItem(item)
 
             self.diagram.add_node(
                 name=item_name,
-                x=0,
-                y=0,
+                x=x,
+                y=y,
                 tpe="",
                 device_uid=block_model.uid
             )
@@ -7455,6 +7456,34 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             return item
         else:
             return None
+
+    def _calculate_next_block_position(self, item: GenericBlockItem) -> tuple[float, float]:
+        """
+        Calculate the next available position for a block item using a grid layout.
+
+        :param item: The block item to calculate position for (used to get its dimensions).
+        :return: Tuple of (x, y) coordinates.
+        """
+        SCENE_WIDTH: float = 1200.0
+        SCENE_HEIGHT: float = 800.0
+        MARGIN_Y: float = 80.0
+        COL_SPACING: float = 200.0
+        ROW_SPACING: float = 150.0
+
+        existing_count = sum(1 for i in self.scene.items() if isinstance(i, GenericBlockItem))
+
+        GRID_COLS: int = 3
+
+        row: int = existing_count // GRID_COLS
+        col: int = existing_count % GRID_COLS
+
+        total_width: float = GRID_COLS * COL_SPACING
+        start_x: float = (SCENE_WIDTH - total_width) / 2
+
+        x: float = start_x + col * COL_SPACING
+        y: float = MARGIN_Y + row * ROW_SPACING
+
+        return x, y
 
     def create_connection_block_item(self, var: Var, block_type: BlockType, x_pos: float,
                                      y_pos: float, blocks_list: List[BlockItem] | None) -> BlockItem | None:
