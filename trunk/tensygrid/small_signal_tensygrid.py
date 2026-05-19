@@ -53,11 +53,12 @@ from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_rms_mod
     "IEEE 14.xlsx"
     "case_ACTIVSg2000.matpower"
     "Texas 2000 + VSC"
+    "IEEE39.gridcal"
     "IEEE 118.xlsx"
 """
 grid_folder = project_base / "Grids_and_profiles" / "grids"
 #GRID = "IEEE 9 Bus.gridcal"
-GRID = "IEEE39.gridcal"
+GRID = "IEEE 9 Bus.gridcal"
 USE_CACHED_BUILDER = False
 BUILDER_CACHE_FILE = f'trunk/tensygrid/precomputed_builds/{GRID}.pkl'
 
