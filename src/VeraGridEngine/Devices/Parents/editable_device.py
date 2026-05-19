@@ -24,7 +24,7 @@ from VeraGridEngine.enumerations import (DeviceType, PrpCat, TimeFrame, BuildSta
                                          EmtLineTypes, EmtProblemTypes, EmtInitializationMethod,
                                          SmallSignalEmtBuildTypes, FmuTemplateDomain,
                                          EraSvdSolverType, ShuntControlMode, RmsProblemTypes, FmuTemplateDomain,
-                                         FmuTemplateMode, RmsInitializationMethod, EmtSolverTypes, PlotSimulationType)
+                                         FmuTemplateMode, RmsInitializationMethod, EmtSolverTypes, PlotSimulationType,DynamicEventTransitionType)
 # types that can be assigned to a VeraGrid property
 GCPROP_TYPES = Union[
     Type[int],
@@ -79,6 +79,7 @@ GCPROP_TYPES = Union[
     Type[FmuTemplateDomain],
     Type[FmuTemplateMode],
     Type[PlotSimulationType],
+    Type[DynamicEventTransitionType],
 ]
 
 

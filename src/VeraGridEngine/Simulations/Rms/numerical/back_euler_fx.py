@@ -185,9 +185,13 @@ class BackEulerImplicitIntegration:
                         )
 
                     try:
-                        self.problem.update_variable_params(t=t_local_prev, x_snapshot=x_new)
+                        # RMS ramp events must be evaluated at the current local
+                        # solve target time so the implicit step sees the ramped
+                        # parameter value during the event interval. Using the
+                        # previous local time turns the ramp into a held step.
+                        self.problem.update_variable_params(t=t_curr, x_snapshot=x_new)
                     except TypeError:
-                        self.problem.update_variable_params(t_local_prev)
+                        self.problem.update_variable_params(t_curr)
 
                     self.problem.update(t_curr, x_new, self.problem._variable_parameters_values)
 

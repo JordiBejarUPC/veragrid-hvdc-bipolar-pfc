@@ -119,7 +119,7 @@ class EmtEvent(PointerDeviceParent):
         self._group: EmtEventsGroup = group
         self.parameter: Any = parameter
         self.time: float = float(time) if time is not None else 0.0
-        self.end_time: float = float(end_time) if end_time is not None else self.time+0.0001
+        self.end_time: float = float(end_time) if end_time is not None else self.time+1e-20
         self.value: float = float(value) if value is not None else 0.0
         self.force_step_alignment: bool = bool(force_step_alignment)
         self.transition_type: DynamicEventTransitionType = transition_type
