@@ -445,8 +445,8 @@ def test_duplicate_block_preserves_parent_child_variable_links_with_new_uids() -
     assert copied_dx.base_var is copied_x
     assert copied_child.state_eqs[0].left is copied_dx
     assert copied_child.state_eqs[0].right is copied_x
-    assert target_vf.get_var(copied_x.uid) is copied_x
-    assert target_vf.get_diff_var(copied_dx.uid) is copied_dx
+    assert target_vf.get_var(copied_x.non_mutable_uid) is copied_x
+    assert target_vf.get_diff_var(copied_dx.non_mutable_uid) is copied_dx
 
 
 # -----------------------------------------------------------------------------
