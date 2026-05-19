@@ -894,12 +894,13 @@ class RmsProblemPhasor(RmsProblemTemplate):
 
         # m is for variable parameters
         for ep, eq in mdl.event_dict.items():
+            k = len(self._variable_parameters)
             if ep.uid in self._uid2idx_event_params:
                 raise ValueError(f"Event parameter '{ep.name}' (uid={ep.uid}) is already registered in the system. "
                                f"Previous device may have created a duplicate event parameter.")
-            self._compiler_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}[{self._n_event_params}]"
-            self._alias_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}_{self._n_event_params}"
-            self._uid2idx_event_params[ep.uid] = self._n_event_params
+            self._compiler_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}[{k}]"
+            self._alias_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}_{k}"
+            self._uid2idx_event_params[ep.uid] = k
             self._variable_parameters.append(ep)
             self._event_parameters_eqs.append(eq)
             self._n_event_params += 1

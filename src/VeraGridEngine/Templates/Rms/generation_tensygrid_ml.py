@@ -371,8 +371,8 @@ def GovernorBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
         K: vfactory.add_const(10.0),  # governor gain (inverse droop)
         Pmax: vfactory.add_const(12.0),  # max mechanical power (pu)
         Pmin: vfactory.add_const(-1.0),  # min mechanical power (pu)
-        Uc: vfactory.add_const(-0.5),  # max valve closing rate (pu/s)
-        Uo: vfactory.add_const(0.5),  # max valve opening rate (pu/s)
+        Uc: vfactory.add_const(-0.05),  # max valve closing rate (pu/s)
+        Uo: vfactory.add_const(0.05),  # max valve opening rate (pu/s)
         T_aux: vfactory.add_const(0.0),
 
     }
@@ -419,7 +419,7 @@ def GovernorBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
         x=y2_1,
         name='gov1',
     )
-    if name == "Gen0":
+    if name == "Gen0" and False:
         ml_block2, y2_bis = sym_ml.mti_hard_sat(vfactory, y2_2, Pmin, Pmax, Pmin, Pmax, name="gov_pow")
     else:
         ml_block2, y2_bis = sym_ml.ml_hard_sat(vfactory, y2_2, Pmin, Pmax)
@@ -567,10 +567,7 @@ def StabilizerBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
         name='stabilizer5',
     )
 
-    if name == "Gen0":
-        ml_block, Vpss_sat = sym_ml.mti_hard_sat(vfactory, y5, VPssMinPu, VPssMaxPu, VPssMinPu, VPssMaxPu, name="pss")
-    else:
-        ml_block, Vpss_sat = sym_ml.ml_hard_sat(vfactory, y5, VPssMinPu, VPssMaxPu)
+    ml_block, Vpss_sat = sym_ml.ml_hard_sat(vfactory, y5, VPssMinPu, VPssMaxPu)
     algebraic_eqs = list()
     algebraic_eqs.append(Vpss_sat - Vpss)
 
