@@ -9,7 +9,6 @@ import os
 from itertools import product
 
 import numpy as np
-import scipy.sparse as sp
 
 from VeraGridEngine.basic_structures import Vec
 from VeraGridEngine.Utils.Symbolic.symbolic import Expr, Comparison, Const, get_expression_vars
@@ -452,25 +451,106 @@ class RmsProblemMTI(RmsProblemPhasor):
         return dg
 
     def build_mti_incidence_and_order(self, x: Vec, dx: Vec, h: float) -> None:
-        # Build incidence from the full implicit DAE Jacobian, not only J22.
-        if self.get_states_number() == 0:
-            j_full = self.get_j22(x, dx, h)
-        else:
-            j11 = self.get_j11(x, dx, h)
-            j12 = self.get_j12(x, dx, h)
-            j21 = self.get_j21(x, dx, h)
-            j22 = self.get_j22(x, dx, h)
-            n_state = self.get_states_number()
-            i_state = sp.eye(m=n_state, n=n_state, format="csc")
-            j11_imp = (i_state - h * j11).tocsc()
-            j12_imp = (-h * j12).tocsc()
-            j_full = sp.bmat([[j11_imp, j12_imp], [j21, j22]], format="csc")
-
-        self._mti_incidence = build_incidence_from_jacobian(j_full)
+        self._mti_incidence = self._build_incidence_from_equation_structure()
+        n_eq, n_var = self._mti_incidence.shape
+        nnz = int(np.count_nonzero(self._mti_incidence))
+        print(f"[MTI-INC] shape=({n_eq},{n_var}) nnz={nnz}")
         order = build_connected_subproblem_order(self._mti_incidence)
         if len(order) == 0:
-            order = build_single_subproblem_order(n_eq=j_full.shape[0], n_vars=j_full.shape[1])
+            n_eq, n_vars = self._mti_incidence.shape
+            order = build_single_subproblem_order(n_eq=n_eq, n_vars=n_vars)
+            print("[MTI-INC] connected-order empty, using single-subproblem fallback")
         self._mti_solving_order = order
+        n_sub = len({int(r.subproblem) for r in order}) if len(order) > 0 else 0
+        n_subset = len({int(r.subset) for r in order}) if len(order) > 0 else 0
+        print(f"[MTI-INC] solving_order_rows={len(order)} subsets={n_subset} subproblems={n_sub}")
+
+    def _build_incidence_from_equation_structure(self) -> np.ndarray:
+        """
+        Build incidence structurally from equation-variable membership.
+
+        MTI-toolbox-like layout:
+            rows = [equalities; inequalities]
+            cols = [diff vars; continuous vars; booleans]
+
+        Entry (i, j) is 1 if unknown j appears structurally in equation i.
+        """
+        n_state = self.get_states_number()
+        n_alg = len(self._algebraic_eqs)
+        n_eq = n_state + n_alg
+        n_ineq = len(self._mti_inequalities_compiled)
+        n_diff = self.get_diff_var_number()
+        n_vars = self.get_all_vars_number()
+
+        bool_param_indices = list(self.get_mti_boolean_parameter_indices)
+        n_bool = len(bool_param_indices)
+
+        # Map boolean UID -> local boolean-column index
+        bool_uid_to_local_col: dict[int, int] = {}
+        for k, pidx in enumerate(bool_param_indices):
+            if 0 <= int(pidx) < len(self._variable_parameters):
+                bvar = self._variable_parameters[int(pidx)]
+                bool_uid_to_local_col[bvar.uid] = k
+
+        off_diff = 0
+        off_vars = n_diff
+        off_bool = n_diff + n_vars
+        incidence_matrix = np.zeros((n_eq + n_ineq, n_diff + n_vars + n_bool), dtype=int)
+
+        # State equations: toolbox-style structural dependency from the
+        # symbolic RHS only (no implicit BE identity injection).
+        for i, eq in enumerate(self._state_eqs):
+            for v in get_expression_vars(eq):
+                didx = self._uid2idx_diff.get(v.uid, None)
+                if didx is not None:
+                    incidence_matrix[i, off_diff + int(didx)] = 1
+                    continue
+                idx = self.uid2idx_vars.get(v.uid, None)
+                if idx is not None:
+                    incidence_matrix[i, off_vars + int(idx)] = 1
+                    continue
+                bcol = bool_uid_to_local_col.get(v.uid, None)
+                if bcol is not None:
+                    incidence_matrix[i, off_bool + int(bcol)] = 1
+
+        # Algebraic equations
+        for j, eq in enumerate(self._algebraic_eqs):
+            row = n_state + j
+            for v in get_expression_vars(eq):
+                didx = self._uid2idx_diff.get(v.uid, None)
+                if didx is not None:
+                    incidence_matrix[row, off_diff + int(didx)] = 1
+                    continue
+                idx = self.uid2idx_vars.get(v.uid, None)
+                if idx is not None:
+                    incidence_matrix[row, off_vars + int(idx)] = 1
+                    continue
+                bcol = bool_uid_to_local_col.get(v.uid, None)
+                if bcol is not None:
+                    incidence_matrix[row, off_bool + int(bcol)] = 1
+
+        # Inequalities
+        for j, ineq in enumerate(self._mti_inequalities_compiled):
+            row = n_eq + j
+            for v in get_expression_vars(ineq):
+                didx = self._uid2idx_diff.get(v.uid, None)
+                if didx is not None:
+                    incidence_matrix[row, off_diff + int(didx)] = 1
+                    continue
+                idx = self.uid2idx_vars.get(v.uid, None)
+                if idx is not None:
+                    incidence_matrix[row, off_vars + int(idx)] = 1
+                    continue
+                bcol = bool_uid_to_local_col.get(v.uid, None)
+                if bcol is not None:
+                    incidence_matrix[row, off_bool + int(bcol)] = 1
+
+        nnz = int(np.count_nonzero(incidence_matrix))
+        print(
+            "[MTI-INC] blocks "
+            f"eq={n_eq} ineq={n_ineq} diff={n_diff} vars={n_vars} bool={n_bool} nnz={nnz}"
+        )
+        return incidence_matrix
 
     def get_mti_solving_order(self) -> list[MTISubProblemRow]:
         return list(self._mti_solving_order)
@@ -481,27 +561,39 @@ class RmsProblemMTI(RmsProblemPhasor):
 
         Each group entry is (eq_indices0, var_indices0) with 0-based indices.
         """
+        debug = os.getenv("RMS_MTI_DEBUG", "0").strip() in ("1", "true", "True", "yes", "on")
+
         if self._mti_incidence is None or len(self._mti_solving_order) == 0:
             n = self.get_all_vars_number()
             all_idx = np.arange(n, dtype=int)
+            if debug:
+                print("[MTI-STAGE] no incidence/solving order, returning full fallback stage")
             return ([(all_idx, all_idx)], [(all_idx, all_idx)], [])
 
         if ineq_idx < 0 or ineq_idx >= len(self._ineq_var_positions):
             n = self.get_all_vars_number()
             all_idx = np.arange(n, dtype=int)
+            if debug:
+                print(f"[MTI-STAGE] invalid ineq_idx={ineq_idx}, using full fallback stage")
             return ([(all_idx, all_idx)], [(all_idx, all_idx)], [])
 
         touched_vars = self._ineq_var_positions[ineq_idx]
         if touched_vars.size == 0:
             n = self.get_all_vars_number()
             all_idx = np.arange(n, dtype=int)
+            if debug:
+                print(f"[MTI-STAGE] ineq_idx={ineq_idx} touched_vars empty, using full fallback stage")
             return ([(all_idx, all_idx)], [(all_idx, all_idx)], [])
 
         rows = self._mti_solving_order
-        subset_ids = sorted({int(r.subset) for r in rows if (int(r.var_idx) - 1) in set(touched_vars.tolist())})
+        n_diff = self.get_diff_var_number()
+        touched_cols = set((n_diff + touched_vars).tolist())
+        subset_ids = sorted({int(r.subset) for r in rows if (int(r.var_idx) - 1) in touched_cols})
         if len(subset_ids) == 0:
             n = self.get_all_vars_number()
             all_idx = np.arange(n, dtype=int)
+            if debug:
+                print(f"[MTI-STAGE] ineq_idx={ineq_idx} no subset hit, using full fallback stage")
             return ([(all_idx, all_idx)], [(all_idx, all_idx)], [])
 
         event_subset_ids = set(subset_ids)
@@ -526,7 +618,13 @@ class RmsProblemMTI(RmsProblemPhasor):
         stage = 0
         for _, _, eqs, vars_ in ordered:
             subsets_here = {int(r.subset) for r in rows if (int(r.eq_idx) - 1) in eqs or (int(r.var_idx) - 1) in vars_}
-            item = (np.asarray(sorted(eqs), dtype=int), np.asarray(sorted(vars_), dtype=int))
+            n_eq_cont = self.get_states_number() + len(self._algebraic_eqs)
+            eqs_cont = sorted([e for e in eqs if 0 <= int(e) < n_eq_cont])
+            # Solver state vector only contains continuous vars; drop boolean
+            # incidence columns from stage var-index sets.
+            n_x = self.get_all_vars_number()
+            vars_cont = sorted([int(v) - n_diff for v in vars_ if n_diff <= int(v) < (n_diff + n_x)])
+            item = (np.asarray(eqs_cont, dtype=int), np.asarray(vars_cont, dtype=int))
             is_event = len(subsets_here & event_subset_ids) > 0
             if stage == 0 and not is_event:
                 previous.append(item)
@@ -540,7 +638,15 @@ class RmsProblemMTI(RmsProblemPhasor):
         if len(event) == 0:
             n = self.get_all_vars_number()
             all_idx = np.arange(n, dtype=int)
+            if debug:
+                print(f"[MTI-STAGE] ineq_idx={ineq_idx} empty event group, fallback to full event stage")
             return (previous if len(previous) > 0 else [(all_idx, all_idx)], [(all_idx, all_idx)], following)
+
+        if debug:
+            print(
+                f"[MTI-STAGE] ineq_idx={ineq_idx} touched={touched_vars.size} "
+                f"subsets={len(subset_ids)} prev={len(previous)} event={len(event)} foll={len(following)}"
+            )
 
         return previous, event, following
 
@@ -560,25 +666,38 @@ class RmsProblemMTI(RmsProblemPhasor):
 
         If structural mapping is unavailable, fall back to full enumeration.
         """
+        debug = os.getenv("RMS_MTI_DEBUG", "0").strip() in ("1", "true", "True", "yes", "on")
         n_bool = len(self.get_mti_boolean_parameter_indices)
         if n_bool == 0:
+            if debug:
+                print("[MTI-LOC-CAND] n_bool=0 -> single empty candidate")
             return [np.zeros(0, dtype=float)]
 
         if self._mti_incidence is None or len(self._mti_solving_order) == 0:
+            if debug:
+                print("[MTI-LOC-CAND] no incidence/order -> full enumeration")
             return self.enumerate_all_boolean_candidates()
 
         if ineq_idx < 0 or ineq_idx >= len(self._ineq_var_positions):
+            if debug:
+                print(f"[MTI-LOC-CAND] invalid ineq_idx={ineq_idx} -> full enumeration")
             return self.enumerate_all_boolean_candidates()
 
         touched_vars = self._ineq_var_positions[ineq_idx]
         if touched_vars.size == 0:
+            if debug:
+                print(f"[MTI-LOC-CAND] ineq_idx={ineq_idx} touched_vars empty -> full enumeration")
             return self.enumerate_all_boolean_candidates()
 
         subset_ids = set()
+        n_diff = self.get_diff_var_number()
+        touched_cols = set((n_diff + touched_vars).tolist())
         for row in self._mti_solving_order:
-            if (row.var_idx - 1) in touched_vars:
+            if (row.var_idx - 1) in touched_cols:
                 subset_ids.add(row.subset)
         if len(subset_ids) == 0:
+            if debug:
+                print(f"[MTI-LOC-CAND] ineq_idx={ineq_idx} no subset hit -> full enumeration")
             return self.enumerate_all_boolean_candidates()
 
         subset_to_vars: dict[int, set[int]] = {}
@@ -599,6 +718,8 @@ class RmsProblemMTI(RmsProblemPhasor):
                 local_positions.append(k)
 
         if len(local_positions) == 0:
+            if debug:
+                print(f"[MTI-LOC-CAND] ineq_idx={ineq_idx} no local bool positions -> full enumeration")
             return self.enumerate_all_boolean_candidates()
 
         z_prev_arr = np.asarray(z_prev, dtype=float)
@@ -608,6 +729,11 @@ class RmsProblemMTI(RmsProblemPhasor):
             for k, p in enumerate(local_positions):
                 z[p] = float(bits[k])
             out.append(z)
+        if debug:
+            print(
+                f"[MTI-LOC-CAND] ineq_idx={ineq_idx} n_bool={n_bool} local={len(local_positions)} "
+                f"candidates={len(out)}"
+            )
         return out
 
     def evaluate_mti_step(self, x: Vec, dx: Vec, xn: Vec, h: float) -> Tuple[Vec, Vec, Vec]:

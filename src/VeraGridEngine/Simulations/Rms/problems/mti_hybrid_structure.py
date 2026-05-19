@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import numpy as np
 import scipy.sparse as sp
-from scipy.sparse.csgraph import connected_components
+from scipy.sparse.csgraph import maximum_bipartite_matching
 
 
 @dataclass
@@ -58,58 +58,89 @@ def build_connected_subproblem_order(incidence: np.ndarray) -> list[MTISubProble
     subsets/subproblems. Rows are paired (eq_i, var_i) within each subset.
     """
     if incidence.size == 0:
+        print("[MTI-ORDER] empty incidence -> empty solving order")
         return []
 
     n_eq, n_var = incidence.shape
-    top = sp.csr_matrix(incidence)
-    bot = top.T
-    z_eq = sp.csr_matrix((n_eq, n_eq))
-    z_var = sp.csr_matrix((n_var, n_var))
-    bip = sp.bmat([[z_eq, top], [bot, z_var]], format="csr")
-    _, labels = connected_components(bip, directed=False)
+    print(f"[MTI-ORDER] incidence shape=({n_eq},{n_var})")
+    if n_eq != n_var:
+        print("[MTI-ORDER] subproblems=0 (ordering aborted: non-square incidence)")
+        raise ValueError(f"Incidence must be square for MTI ordering, got ({n_eq}, {n_var})")
 
-    eq_labels = labels[:n_eq]
-    var_labels = labels[n_eq:]
-    unique_components = sorted(set(eq_labels.tolist() + var_labels.tolist()))
+    Isorted, row_sort, col_sort = _order_incidence_matrix_dmperm_like(incidence)
+    print(
+        f"[MTI-ORDER] sorted shape=({Isorted.shape[0]},{Isorted.shape[1]}) "
+        f"row_perm={row_sort.size} col_perm={col_sort.size}"
+    )
+    n = Isorted.shape[0]
+
+    # MATLAB-style subset/subproblem extraction from off-diagonal coupling.
+    sub_set = np.ones(n, dtype=int)
+    sub_problem = np.ones(n, dtype=int)
+    for l in range(1, n):
+        if not np.any(Isorted[l:, :l]):
+            if not np.any(Isorted[:l, l:]):
+                sub_set[l:] = sub_set[l] + 1
+        if not np.any(Isorted[:l, l:]):
+            sub_problem[l:] = sub_problem[l] + 1
+
+    explicit_solvable = np.zeros(n, dtype=int)
+    k = 0
+    for l in range(n):
+        idx = np.where(Isorted[l, l + 1:])[0]
+        if idx.size > 0:
+            k = max(k, int(np.max(idx)) + l + 1)
+        if (l > k) and (idx.size == 0):
+            explicit_solvable[l] = 1
 
     rows: list[MTISubProblemRow] = []
-    sub_id = 1
-    for comp in unique_components:
-        eq_idx = np.where(eq_labels == comp)[0]
-        var_idx = np.where(var_labels == comp)[0]
-
-        # Keep full equation/variable membership for each connected component.
-        # We encode memberships with lightweight rows so downstream grouping can
-        # reconstruct full sets without dropping indices when |eq| != |var|.
-        if len(eq_idx) == 0 or len(var_idx) == 0:
-            sub_id += 1
-            continue
-
-        v0 = int(var_idx[0])
-        e0 = int(eq_idx[0])
-
-        for e in eq_idx:
-            rows.append(
-                MTISubProblemRow(
-                    var_idx=v0 + 1,
-                    eq_idx=int(e) + 1,
-                    explicit=0,
-                    subset=sub_id,
-                    subproblem=sub_id,
-                )
+    for i in range(n):
+        rows.append(
+            MTISubProblemRow(
+                var_idx=int(col_sort[i]) + 1,
+                eq_idx=int(row_sort[i]) + 1,
+                explicit=int(explicit_solvable[i]),
+                subset=int(sub_set[i]),
+                subproblem=int(sub_problem[i]),
             )
-
-        for v in var_idx:
-            rows.append(
-                MTISubProblemRow(
-                    var_idx=int(v) + 1,
-                    eq_idx=e0 + 1,
-                    explicit=0,
-                    subset=sub_id,
-                    subproblem=sub_id,
-                )
-            )
-
-        sub_id += 1
-
+        )
+    print(
+        f"[MTI-ORDER] rows={len(rows)} subsets={int(np.max(sub_set)) if n>0 else 0} "
+        f"subproblems={int(np.max(sub_problem)) if n>0 else 0} explicit={int(np.sum(explicit_solvable))}"
+    )
     return rows
+
+
+def _order_incidence_matrix_dmperm_like(incidence: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Structural row/column ordering for square incidence.
+
+    MATLAB toolbox uses dmperm(I) and flips permutations. SciPy does not expose
+    dmperm, so we first compute a full structural matching and then order by
+    matched column index. This keeps a strict square structural ordering with
+    no fallback path.
+    """
+    n_eq, n_var = incidence.shape
+    if n_eq != n_var:
+        raise ValueError(f"Incidence must be square, got ({n_eq}, {n_var})")
+
+    inc_csr = sp.csr_matrix((incidence != 0).astype(int))
+    row_to_col = maximum_bipartite_matching(inc_csr, perm_type='row')
+    if np.any(row_to_col < 0):
+        raise ValueError("Incidence has no full structural matching")
+    print("[MTI-ORDER] structural matching complete")
+
+    row_sort = np.arange(n_eq, dtype=int)
+    # Order rows by matched column index, then flip to align with toolbox-style
+    # descending post-permutation ordering.
+    row_sort = row_sort[np.argsort(row_to_col)]
+    col_sort = row_to_col[row_sort]
+    row_sort = row_sort[::-1]
+    col_sort = col_sort[::-1]
+
+    Isorted = incidence[np.ix_(row_sort, col_sort)]
+    print(
+        f"[MTI-ORDER] perm head rows={row_sort[:min(8, row_sort.size)].tolist()} "
+        f"cols={col_sort[:min(8, col_sort.size)].tolist()}"
+    )
+    return Isorted.astype(int), row_sort.astype(int), col_sort.astype(int)
