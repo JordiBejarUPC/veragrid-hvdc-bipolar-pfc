@@ -29,7 +29,10 @@ def get_ptdf_comp_numba(data: Vec, indices: IntVec, indptr: IntVec, PTDF: Mat, m
     :return:
     """
     # Perform the operation
-    result = PTDF[m, :]
+    # We need to create a copy. Otherwise we were modifying the PTDF matrix
+    # and over several passes it degraded making curtailments not converge
+    # += would mutate the original PTDF matrix since it is a view
+    result = PTDF[m, :].copy()
 
     for j, bd_index in enumerate(bd_indices):
         for i in range(indptr[j], indptr[j + 1]):

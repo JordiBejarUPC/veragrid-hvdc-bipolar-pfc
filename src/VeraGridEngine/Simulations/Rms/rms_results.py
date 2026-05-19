@@ -16,7 +16,6 @@ from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 
 
 class RmsResults(ResultsTemplate):
-
     LOCAL_RESULTS_DECLARATIONS = (
         ResultsProperty(name='values', tpe=Vec, old_names=list(), expandable=False),
         ResultsProperty(name='rms_events_group_idtags', tpe=StrVec, old_names=list(), expandable=False),
@@ -76,7 +75,7 @@ class RmsResults(ResultsTemplate):
 
         self.well_initialized = np.zeros(self.ng, dtype=bool)
         self.converged = np.zeros(self.ng, dtype=bool)
-        
+
         self.variables = variables
         self.uid2vars_glob_name = {uid: name for name, uid in vars_glob_name2uid.items()}
         self.devices_vars_info: Dict[ALL_DEV_TYPES, List[Var]] = devices_vars_info
@@ -85,7 +84,6 @@ class RmsResults(ResultsTemplate):
         self.variable_array = np.array([self.uid2vars_glob_name[var.uid] for var in variables], dtype=str)
         self.values = np.zeros((self.nt, self.nv, self.ng), dtype=float)
 
-        
     def get_var(self, uid: int) -> Var:
         """
         
