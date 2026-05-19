@@ -117,20 +117,20 @@ load_mdl = get_load_rms_template(grid.var_factory).block
 # -----------------------------
 # Connect RL line to buses
 # -----------------------------
-line_mdl.connect(
+grid.var_factory.add_connections(
     [line_mdl.in_vars[0]],
     [bus_src.rms_model.out_vars[0]],
 )
-line_mdl.connect(
+grid.var_factory.add_connections(
     [line_mdl.in_vars[1]],
     [bus_src.rms_model.out_vars[1]],
 )
 
-line_mdl.connect(
+grid.var_factory.add_connections(
     [line_mdl.in_vars[2]],
     [bus_rlc.rms_model.out_vars[0]],
 )
-line_mdl.connect(
+grid.var_factory.add_connections(
     [line_mdl.in_vars[3]],
     [bus_rlc.rms_model.out_vars[1]],
 )
@@ -138,11 +138,11 @@ line_mdl.connect(
 # -----------------------------
 # Connect capacitor
 # -----------------------------
-load_mdl.connect(
+grid.var_factory.add_connections(
     [load_mdl.in_vars[0]],
     [bus_rlc.rms_model.out_vars[0]],
 )
-load_mdl.connect(
+grid.var_factory.add_connections(
     [load_mdl.in_vars[1]],
     [bus_rlc.rms_model.out_vars[1]],
 )

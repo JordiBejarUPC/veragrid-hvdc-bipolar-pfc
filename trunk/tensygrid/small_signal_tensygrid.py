@@ -112,41 +112,41 @@ def define_problem_with_path(grid_path):
         genqec = vge.get_complete_generator_template_phasor(grid.var_factory, name=f"Gen{igen}").block
 
 
-        genqec.connect([genqec.in_vars[0]], [gen.bus.rms_model.out_vars[0]])
+        grid.var_factory.add_connections([genqec.in_vars[0]], [gen.bus.rms_model.out_vars[0]])
 
-        genqec.connect([genqec.in_vars[1]], [gen.bus.rms_model.out_vars[1]])
+        grid.var_factory.add_connections([genqec.in_vars[1]], [gen.bus.rms_model.out_vars[1]])
         set_rms_model(device=gen, model=genqec, var_factory=grid.var_factory)
 
     ## -LINES:
     for line in grid.lines:
         lineec = vge.get_line_phasor_rms_template(grid.var_factory, name=line.name).block
-        lineec.connect([lineec.in_vars[0]], [line.bus_from.rms_model.out_vars[0]])
-        lineec.connect([lineec.in_vars[1]], [line.bus_from.rms_model.out_vars[1]])
-        lineec.connect([lineec.in_vars[2]], [line.bus_to.rms_model.out_vars[0]])
-        lineec.connect([lineec.in_vars[3]], [line.bus_to.rms_model.out_vars[1]])
+        grid.var_factory.add_connections([lineec.in_vars[0]], [line.bus_from.rms_model.out_vars[0]])
+        grid.var_factory.add_connections([lineec.in_vars[1]], [line.bus_from.rms_model.out_vars[1]])
+        grid.var_factory.add_connections([lineec.in_vars[2]], [line.bus_to.rms_model.out_vars[0]])
+        grid.var_factory.add_connections([lineec.in_vars[3]], [line.bus_to.rms_model.out_vars[1]])
         lineec = vge.to_implicit(lineec, grid.var_factory)
         set_rms_model(device=line, model=lineec, var_factory=grid.var_factory)
     ## -LOADS:
     for load in grid.loads:
         loadec = vge.get_load_phasor_current_rms_template(grid.var_factory, name=load.name).block
-        loadec.connect([loadec.in_vars[0]], [load.bus.rms_model.out_vars[0]])
-        loadec.connect([loadec.in_vars[1]], [load.bus.rms_model.out_vars[1]])
+        grid.var_factory.add_connections([loadec.in_vars[0]], [load.bus.rms_model.out_vars[0]])
+        grid.var_factory.add_connections([loadec.in_vars[1]], [load.bus.rms_model.out_vars[1]])
         #loadec = vge.to_implicit(loadec, grid.var_factory)
         set_rms_model(device=load, model=loadec, var_factory=grid.var_factory)
     ## -TRANSFORMERS 2w:
     for trafo in grid.transformers2w:
         trafoec = vge.initialize_trafo_rms(trafo, grid.var_factory, use_phasor_template=True).block
-        trafoec.connect([trafoec.in_vars[0]], [trafo.bus_from.rms_model.out_vars[0]])
-        trafoec.connect([trafoec.in_vars[1]], [trafo.bus_from.rms_model.out_vars[1]])
-        trafoec.connect([trafoec.in_vars[2]], [trafo.bus_to.rms_model.out_vars[0]])
-        trafoec.connect([trafoec.in_vars[3]], [trafo.bus_to.rms_model.out_vars[1]])
+        grid.var_factory.add_connections([trafoec.in_vars[0]], [trafo.bus_from.rms_model.out_vars[0]])
+        grid.var_factory.add_connections([trafoec.in_vars[1]], [trafo.bus_from.rms_model.out_vars[1]])
+        grid.var_factory.add_connections([trafoec.in_vars[2]], [trafo.bus_to.rms_model.out_vars[0]])
+        grid.var_factory.add_connections([trafoec.in_vars[3]], [trafo.bus_to.rms_model.out_vars[1]])
         trafoec = vge.to_implicit(trafoec, grid.var_factory)
         set_rms_model(device=trafo, model=trafoec, var_factory=grid.var_factory)
     ## -SHUNTS (load like):
     for shunt in grid.shunts:
         shuntec = vge.get_shunt_template(grid.var_factory, name=shunt.name, phasor=True).block
-        shuntec.connect([shuntec.in_vars[0]], [shunt.bus.rms_model.out_vars[0]])
-        shuntec.connect([shuntec.in_vars[1]], [shunt.bus.rms_model.out_vars[1]])
+        grid.var_factory.add_connections([shuntec.in_vars[0]], [shunt.bus.rms_model.out_vars[0]])
+        grid.var_factory.add_connections([shuntec.in_vars[1]], [shunt.bus.rms_model.out_vars[1]])
         shuntec = vge.to_implicit(shuntec, grid.var_factory)
         set_rms_model(device=shunt, model=shuntec, var_factory=grid.var_factory)
     
@@ -259,22 +259,22 @@ def define_problem():
     genqec = vge.to_implicit(genqec, grid.var_factory)
 
     line_mdl = vge.get_line_phasor_rms_template(grid.var_factory).block
-    line_mdl.connect([line_mdl.in_vars[0]], [bus0.rms_model.out_vars[0]])
-    line_mdl.connect([line_mdl.in_vars[1]], [bus0.rms_model.out_vars[1]])
-    line_mdl.connect([line_mdl.in_vars[2]], [bus1.rms_model.out_vars[0]])
-    line_mdl.connect([line_mdl.in_vars[3]], [bus1.rms_model.out_vars[1]])
+    grid.var_factory.add_connections([line_mdl.in_vars[0]], [bus0.rms_model.out_vars[0]])
+    grid.var_factory.add_connections([line_mdl.in_vars[1]], [bus0.rms_model.out_vars[1]])
+    grid.var_factory.add_connections([line_mdl.in_vars[2]], [bus1.rms_model.out_vars[0]])
+    grid.var_factory.add_connections([line_mdl.in_vars[3]], [bus1.rms_model.out_vars[1]])
 
     # Attach line model to the line device
     set_rms_model(device=line, model=line_mdl, var_factory=grid.var_factory)
 
-    genqec.connect([genqec.in_vars[0]], [bus0.rms_model.out_vars[0]])
-    genqec.connect([genqec.in_vars[1]], [bus0.rms_model.out_vars[1]])
+    grid.var_factory.add_connections([genqec.in_vars[0]], [bus0.rms_model.out_vars[0]])
+    grid.var_factory.add_connections([genqec.in_vars[1]], [bus0.rms_model.out_vars[1]])
 
     set_rms_model(device=gen, model=genqec, var_factory=grid.var_factory)
 
     load_mdl = vge.get_load_phasor_current_rms_template(grid.var_factory).block
-    load_mdl.connect([load_mdl.in_vars[0]], [bus1.rms_model.out_vars[0]])
-    load_mdl.connect([load_mdl.in_vars[1]], [bus1.rms_model.out_vars[1]])
+    grid.var_factory.add_connections([load_mdl.in_vars[0]], [bus1.rms_model.out_vars[0]])
+    grid.var_factory.add_connections([load_mdl.in_vars[1]], [bus1.rms_model.out_vars[1]])
     # Convert power to current: I = S* / V* (approximation for initialization)
     # For V ≈ 1.0, Ir ≈ P, Ii ≈ Q
     load_mdl.set_parameter_in_model(var_name="Ir0", new_value=-0.1)

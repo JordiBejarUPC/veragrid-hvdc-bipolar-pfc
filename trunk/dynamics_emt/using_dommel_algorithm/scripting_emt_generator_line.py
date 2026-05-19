@@ -89,7 +89,7 @@ gen1.emt_model = gen1_template.block
 gen1_mdl = gen1.emt_model
 bus1_mdl = bus1.emt_model
 # Conectar puertos
-gen1_mdl.connect(gen1_mdl.in_vars, bus1_mdl.out_vars)
+grid.var_factory.add_connections(gen1_mdl.in_vars, bus1_mdl.out_vars)
 
 # --- load ---
 # P = 10

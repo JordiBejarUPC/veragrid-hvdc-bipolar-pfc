@@ -395,36 +395,36 @@ def get_bess_avm_grid_following_emt_template(
     # only one change: the VSC DC terminal input is connected to the battery
     # block output instead of an external DC bus variable.
     # ------------------------------------------------------------------
-    transformer_block.connect(transformer_block.in_vars[0:3], [v_A, v_B, v_C])
-    vsc_block.connect([vsc_block.in_vars[6]], [battery_block.out_vars[0]])
+    vf.add_connections(transformer_block.in_vars[0:3], [v_A, v_B, v_C])
+    vf.add_connections([vsc_block.in_vars[6]], [battery_block.out_vars[0]])
 
     # The VSC DC terminal current is fed back to the battery block so the SoC
     # and Thevenin terminal voltage follow the converter operating point.
-    battery_block.connect([battery_block.in_vars[0]], [vsc_block.out_vars[1]])
+    vf.add_connections([battery_block.in_vars[0]], [vsc_block.out_vars[1]])
     # These additional VSC variables are only used to build a closed-form,
     # algebraically consistent battery/DC-link initialization point.
-    battery_block.connect(
+    vf.add_connections(
         battery_block.in_vars[1:4],
         [vsc_block.out_vars[33], vsc_block.out_vars[14], vsc_block.out_vars[15]],
     )
 
     # Transformer/interface provides dq0 voltages and currents to the VSC and
     # the control hierarchy.
-    vsc_block.connect(vsc_block.in_vars[0:3], transformer_block.out_vars[6:9])
-    vsc_block.connect(vsc_block.in_vars[3:6], transformer_block.out_vars[3:6])
-    pll_block.connect([pll_block.in_vars[0]], [transformer_block.out_vars[7]])
-    outer_loop_block.connect(outer_loop_block.in_vars[0:3], transformer_block.out_vars[6:9])
-    outer_loop_block.connect(outer_loop_block.in_vars[3:6], transformer_block.out_vars[3:6])
-    inner_loop_block.connect(inner_loop_block.in_vars[0:3], transformer_block.out_vars[6:9])
-    inner_loop_block.connect(inner_loop_block.in_vars[3:6], transformer_block.out_vars[3:6])
+    vf.add_connections(vsc_block.in_vars[0:3], transformer_block.out_vars[6:9])
+    vf.add_connections(vsc_block.in_vars[3:6], transformer_block.out_vars[3:6])
+    vf.add_connections([pll_block.in_vars[0]], [transformer_block.out_vars[7]])
+    vf.add_connections(outer_loop_block.in_vars[0:3], transformer_block.out_vars[6:9])
+    vf.add_connections(outer_loop_block.in_vars[3:6], transformer_block.out_vars[3:6])
+    vf.add_connections(inner_loop_block.in_vars[0:3], transformer_block.out_vars[6:9])
+    vf.add_connections(inner_loop_block.in_vars[3:6], transformer_block.out_vars[3:6])
 
     # VSC block exports physical quantities and parameters used by the controls.
-    pll_block.connect(
+    vf.add_connections(
         pll_block.in_vars[1:5],
         [vsc_block.out_vars[8], vsc_block.out_vars[16], vsc_block.out_vars[17], vsc_block.out_vars[9]],
     )
-    outer_loop_block.connect([outer_loop_block.in_vars[6], outer_loop_block.in_vars[7]], [vsc_block.out_vars[2], vsc_block.out_vars[3]])
-    outer_loop_block.connect(
+    vf.add_connections([outer_loop_block.in_vars[6], outer_loop_block.in_vars[7]], [vsc_block.out_vars[2], vsc_block.out_vars[3]])
+    vf.add_connections(
         outer_loop_block.in_vars[8:20],
         [
             vsc_block.out_vars[4],
@@ -441,12 +441,12 @@ def get_bess_avm_grid_following_emt_template(
             vsc_block.out_vars[30],
         ],
     )
-    inner_loop_block.connect(
+    vf.add_connections(
         [inner_loop_block.in_vars[6], inner_loop_block.in_vars[7], inner_loop_block.in_vars[8], inner_loop_block.in_vars[9]],
         [pll_block.out_vars[1], vsc_block.out_vars[8], vsc_block.out_vars[11], vsc_block.out_vars[12]],
     )
-    inner_loop_block.connect(inner_loop_block.in_vars[10:13], outer_loop_block.out_vars[2:5])
-    inner_loop_block.connect(
+    vf.add_connections(inner_loop_block.in_vars[10:13], outer_loop_block.out_vars[2:5])
+    vf.add_connections(
         inner_loop_block.in_vars[13:25],
         [
             vsc_block.out_vars[18],
@@ -465,13 +465,13 @@ def get_bess_avm_grid_following_emt_template(
     )
 
     # Controller outputs drive the AC interface dynamics.
-    transformer_block.connect([transformer_block.in_vars[3], transformer_block.in_vars[4]], pll_block.out_vars)
-    transformer_block.connect(
+    vf.add_connections([transformer_block.in_vars[3], transformer_block.in_vars[4]], pll_block.out_vars)
+    vf.add_connections(
         transformer_block.in_vars[5:8],
         [vsc_block.out_vars[8], vsc_block.out_vars[11], vsc_block.out_vars[12]],
     )
-    transformer_block.connect(transformer_block.in_vars[8:11], inner_loop_block.out_vars)
-    transformer_block.connect(
+    vf.add_connections(transformer_block.in_vars[8:11], inner_loop_block.out_vars)
+    vf.add_connections(
         transformer_block.in_vars[11:16],
         [vsc_block.out_vars[4], vsc_block.out_vars[5], vsc_block.out_vars[6], vsc_block.out_vars[26], vsc_block.out_vars[10]],
     )
