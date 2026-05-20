@@ -990,20 +990,37 @@ class RmsProblemPhasor(RmsProblemTemplate):
         for i in range(min(20, len(nz[0]))):
             row, col = nz[0][i], nz[1][i]
             print(f"  E_partial[{row},{col}] = {E_partial[row,col]}")
-        
-        # Debug: show equation 70
-        print(f"\nDEBUG: Equation 70:")
-        print(f"  {all_eqs[70]}")
-        print(f"\nDEBUG: Diff vars involved in row 70:")
-        for col in range(E_partial.shape[1]):
-            if abs(E_partial[70, col]) > 1e-10:
-                print(f"  diff_var[{col}] = {xdot[col]}, value = {E_partial[70, col]}")
+    
         
         E_value[:, :n_diff] = E_partial
         E_value[:n_states, :n_states] -= np.eye(n_states, dtype=E_value.dtype)
 
         return E_value
+    
+    def get_static_state_matrix(self, x:Vec, dx:Vec):
 
+        all_eqs = self._state_eqs + self._algebraic_eqs
+        all_vars = self._state_vars + self._algebraic_vars
+        A_call = SymbolicJacobian(
+            eqs= all_eqs,
+            variables=all_vars,
+            compiler_names_dict=self._compiler_names_dict,
+            alias_names_dict= self._alias_names_dict,
+            VARS_NAME=self.VARS_NAME,
+            DIFF_NAME=self.DIFF_NAME,
+            EVENT_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
+            PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
+            static=True
+        )
+
+
+        vp = self._variable_parameters_values
+        cp = self._constant_params
+        n_vars = self._n_vars
+        A_value = np.zeros((n_vars, n_vars))
+        A_value = A_call(x, dx, vp, cp, h=0).toarray()
+
+        return A_value
 
     def get_device_vars_dict(self) -> Dict[ALL_DEV_TYPES, List[Var]]:
         """Get dictionary of device variables."""

@@ -74,6 +74,7 @@ RUN_DYNAMIC_STEP = False
 RUN_CONSISTENCY_CHECK = False
 RUN_PF_LINE_EQ_CHECK = False
 RUN_EXCITER_DIAGNOSTICS = False
+RUN_SMALL_SIGNAL_DRIVER = False
 PF_LINE_FOCUS_INDEX = 0
 DYNAMIC_SIM_TIME_FAST = 0.05
 DYNAMIC_SIM_TIME_FULL = 0.20
@@ -110,11 +111,9 @@ def define_problem_with_path(grid_path):
     ## -GENERATORS
     for igen, gen in enumerate(grid.generators):
         genqec = vge.get_complete_generator_template_phasor(grid.var_factory, name=f"Gen{igen}").block
-
-
         grid.var_factory.add_connections([genqec.in_vars[0]], [gen.bus.rms_model.out_vars[0]])
-
         grid.var_factory.add_connections([genqec.in_vars[1]], [gen.bus.rms_model.out_vars[1]])
+        genqec = vge.to_implicit(genqec, grid.var_factory)
         set_rms_model(device=gen, model=genqec, var_factory=grid.var_factory)
 
     ## -LINES:
@@ -131,7 +130,7 @@ def define_problem_with_path(grid_path):
         loadec = vge.get_load_phasor_current_rms_template(grid.var_factory, name=load.name).block
         grid.var_factory.add_connections([loadec.in_vars[0]], [load.bus.rms_model.out_vars[0]])
         grid.var_factory.add_connections([loadec.in_vars[1]], [load.bus.rms_model.out_vars[1]])
-        #loadec = vge.to_implicit(loadec, grid.var_factory)
+        loadec = vge.to_implicit(loadec, grid.var_factory)
         set_rms_model(device=load, model=loadec, var_factory=grid.var_factory)
     ## -TRANSFORMERS 2w:
     for trafo in grid.transformers2w:
@@ -431,6 +430,63 @@ def solve_problem(problem: Any = None) -> Any:
         print("\n✅ The system is stable! There is no real part greater than 0.")
     return res, pf_map
 
+
+def run_small_signal_driver(problem: vge.RmsProblemPhasor) -> None:
+    """Run SmallSignalStabilityRmsDriver by injecting the phasor problem."""
+    print("\n" + "=" * 80)
+    print("SMALL SIGNAL ANALYSIS - DRIVER (INJECTED PHASOR PROBLEM)")
+    print("=" * 80)
+
+    pf_results = getattr(problem, "power_flow_results", None)
+    if pf_results is None:
+        print("[WARN] power_flow_results not available in problem, skipping driver run")
+        return
+
+    ss_options = vge.RmsSmallSignalStabilityOptions(ss_assessment_time=0)
+    driver = vge.SmallSignalStabilityRmsDriver(
+        grid=vge.MultiCircuit(Sbase=problem.grid.Sbase),
+        rms_options=problem.options,
+        sss_options=ss_options,
+        pf_results=pf_results,
+    )
+
+    driver.problem = problem
+    driver.k = problem.get_states_number()
+    driver.run()
+
+    eigenvalues = driver.results.eigenvalues
+    participation_factors = driver.results.participation_factors
+
+    finite_mask = np.isfinite(eigenvalues) & (np.abs(eigenvalues) < 1e6)
+    filtered_eigs = eigenvalues[finite_mask]
+    print(f"Finite eigenvalues: {len(filtered_eigs)}")
+
+    print("All finite eigenvalues (driver):")
+    for i, ev in enumerate(filtered_eigs, start=1):
+        print(f"  mode={i:<4} ev={np.real(ev):.6f}+{np.imag(ev):.6f}j")
+
+    unstable = [(i, ev) for i, ev in enumerate(filtered_eigs) if np.real(ev) > 1e-6]
+    if not unstable:
+        print("No unstable eigenvalues found by driver")
+        return
+
+    state_vars = problem.state_and_algebraic_vars
+    print("Unstable modes (driver):")
+    for i, ev in unstable:
+        dominant_state = "N/A"
+        pf_val = 0.0
+        if participation_factors is not None:
+            original_idx = np.flatnonzero(finite_mask)[i]
+            pf = np.abs(participation_factors[:, original_idx])
+            max_pf_idx = int(np.argmax(pf))
+            pf_val = float(pf[max_pf_idx])
+            if max_pf_idx < len(state_vars):
+                dominant_state = str(state_vars[max_pf_idx])
+            else:
+                dominant_state = f"State {max_pf_idx}"
+
+        print(f"  mode={i + 1} ev={np.real(ev):.6f}+{np.imag(ev):.6f}j dominant={dominant_state} PF={pf_val:.3f}")
+
 def main():
     # --- START CHRONO ---
     start_time = time.perf_counter()
@@ -452,6 +508,8 @@ def main():
         # 2. If there is no cache, run the normal heavy simulation
         problem = define_problem_with_path(grid_path)
         if problem:
+            if RUN_SMALL_SIGNAL_DRIVER:
+                run_small_signal_driver(problem)
             # Pass the newly created problem so it can be linearized and cached
             res, _ = solve_problem(problem=problem)
             calculated_evs = res[0]
@@ -605,6 +663,4 @@ if __name__ == "__main__":
                 f"exec_time_solve: {EXEC_METRICS['t_solve']:.4f} sec, "
                 f"sparse: {EXEC_METRICS['is_sparse']}"
             )
-
-
 

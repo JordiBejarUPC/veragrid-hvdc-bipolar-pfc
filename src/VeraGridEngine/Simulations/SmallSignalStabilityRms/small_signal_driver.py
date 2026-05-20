@@ -251,20 +251,21 @@ def run_dense_small_signal_stability(problem: RmsProblemTemplate,
         eig_results = list(la.eig(A_bal, left=True, right=True))
     else:
         h = problem.get_dt_value()
-        # h = 1e9
         E_matrix = problem.get_E_matrix(x, dx)
 
         nx = problem.get_states_number()
         ny = problem.get_algebraic_var_number()
+        # ATTENTION
+        # DO NOT CHANGE 1e18 because we want to compute the derivative dg/dx not the actual jacobian 
         if nx == 0:
             fx = sp.csr_matrix((0, 0))
             fy = sp.csr_matrix((0, ny))
             gx = sp.csr_matrix((ny, 0))
         else:
-            fx = problem.get_j11(x, dx, h)
-            fy = problem.get_j12(x, dx, h)
-            gx = problem.get_j21(x, dx, h)
-        gy = problem.get_j22(x, dx, h)
+            fx = problem.get_j11(x, dx, 1e10)
+            fy = problem.get_j12(x, dx, 1e10)
+            gx = problem.get_j21(x, dx, 1e10)
+        gy = problem.get_j22(x, dx, 1e10)
 
         # 1. BUILD THE ENHANCED JACOBIAN (Sparse)
         J_top = sp.hstack([fx, fy])

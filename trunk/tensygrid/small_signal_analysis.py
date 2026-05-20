@@ -17,6 +17,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..',
 from matplotlib import pyplot as plt
 
 import VeraGridEngine.api as vge
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_rms_model
 
 
 def generate_plots(eigenvalues: np.ndarray, participation_factors: np.ndarray) -> None:
@@ -95,6 +96,7 @@ def small_signal_analysis(show_plt: bool = False, test_mti=False):
 
     # Build RMS models
     genqec = vge.get_complete_generator_template_phasor(grid.var_factory, name="Gen0").block
+    genqec = vge.to_explicit(genqec, grid.var_factory)
 
     line_mdl = vge.get_line_phasor_rms_template(grid.var_factory).block
     grid.var_factory.add_connections([line_mdl.in_vars[0]], [bus0.rms_model.out_vars[0]])
@@ -103,21 +105,17 @@ def small_signal_analysis(show_plt: bool = False, test_mti=False):
     grid.var_factory.add_connections([line_mdl.in_vars[3]], [bus1.rms_model.out_vars[1]])
 
     # Attach line model to the line device
-    vge.set_rms_model(device=line, model=line_mdl, var_factory=grid.var_factory)
+    set_rms_model(device=line, model=line_mdl, var_factory=grid.var_factory)
 
     grid.var_factory.add_connections([genqec.in_vars[0]], [bus0.rms_model.out_vars[0]])
     grid.var_factory.add_connections([genqec.in_vars[1]], [bus0.rms_model.out_vars[1]])
 
-    vge.set_rms_model(device=gen, model=genqec, var_factory=grid.var_factory)
+    set_rms_model(device=gen, model=genqec, var_factory=grid.var_factory)
 
     load_mdl = vge.get_load_phasor_current_rms_template(grid.var_factory).block
     grid.var_factory.add_connections([load_mdl.in_vars[0]], [bus1.rms_model.out_vars[0]])
     grid.var_factory.add_connections([load_mdl.in_vars[1]], [bus1.rms_model.out_vars[1]])
-    # Convert power to current: I = S* / V* (approximation for initialization)
-    # For V ≈ 1.0, Ir ≈ P, Ii ≈ Q
-    load_mdl.set_parameter_in_model(var_name="Ir0", new_value=-0.1)
-    load_mdl.set_parameter_in_model(var_name="Ii0", new_value=-0.01)
-    vge.set_rms_model(device=load, model=load_mdl, var_factory=grid.var_factory)
+    set_rms_model(device=load, model=load_mdl, var_factory=grid.var_factory)
 
     print("  ✓ Grid created with multilinear generator")
 
@@ -296,7 +294,7 @@ def small_signal_analysis(show_plt: bool = False, test_mti=False):
     print(f"  {'Mode':<6} {'Real':<15} {'Imag':<15} {'Freq (Hz)':<12} {'Damping':<12} {'Status':<10} {'Dominant State'}")
     print(f"  {'-' * 130}")
 
-    for i in range(min(10, len(eigenvalues))):
+    for i in range(min(50, len(eigenvalues))):
         lam = eigenvalues[i]
         real_part = np.real(lam)
         imag_part = np.imag(lam)
