@@ -25,12 +25,11 @@ import time, pickle, os
 import multiprocessing as mp
 from typing import Tuple, Any, List
 import numpy as np
-from memory_profiler import profile,LineProfiler, show_results
-#from cryptography.x509 import name
+from memory_profiler import profile, LineProfiler, show_results
+# from cryptography.x509 import name
 from PolynomialMatrixBuilder import PolynomialMatrixBuilder
 from matplotlib import pyplot as plt
 import VeraGridEngine.api as vge
-from VeraGridEngine.Templates.Rms.genqec_phasor_rms_template import get_genqec_phasor
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
 from phasor_diagnostics import (
     check_pf_line_equations,
@@ -44,11 +43,9 @@ from phasor_diagnostics import (
 from scipy.optimize import linear_sum_assignment
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_rms_model
 
-
-
-#GRID = "Texas 2000 + VSC"
-#GRID = "IEEE 14.xlsx"
-#GRID = "case_ACTIVSg2000.matpower"
+# GRID = "Texas 2000 + VSC"
+# GRID = "IEEE 14.xlsx"
+# GRID = "case_ACTIVSg2000.matpower"
 """GRIDS: 
     "IEEE 14.xlsx"
     "case_ACTIVSg2000.matpower"
@@ -57,8 +54,8 @@ from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_rms_mod
     "IEEE 118.xlsx"
 """
 grid_folder = project_base / "Grids_and_profiles" / "grids"
-GRID = "IEEE 118.xlsx"
-#GRID = "IEEE39.gridcal"
+# GRID = "IEEE 118.xlsx"
+GRID = "IEEE 9 Bus.gridcal"
 USE_CACHED_BUILDER = False
 BUILDER_CACHE_FILE = f'trunk/tensygrid/precomputed_builds/{GRID}.pkl'
 
@@ -83,16 +80,19 @@ EXEC_METRICS = {
     "t_builder": 0.0,
     "t_solve": 0.0,
     "is_sparse": False,
-    "stops":0
+    "stops": 0
 }
+
 
 def debug_input(input_bool):
     """
     Function to debug
     """
     EXEC_METRICS["stops"] = EXEC_METRICS["stops"] + 1
-    if input_bool: input(f"Hola, ens quedem parats {EXEC_METRICS['stops']} vegades")
-    else: print(f"Hola, ens quedem parats {EXEC_METRICS['stops']} vegades")
+    if input_bool:
+        input(f"Hola, ens quedem parats {EXEC_METRICS['stops']} vegades")
+    else:
+        print(f"Hola, ens quedem parats {EXEC_METRICS['stops']} vegades")
 
 
 def define_problem_with_path(grid_path):
@@ -110,7 +110,6 @@ def define_problem_with_path(grid_path):
     ## -GENERATORS
     for igen, gen in enumerate(grid.generators):
         genqec = vge.get_complete_generator_template_phasor(grid.var_factory, name=f"Gen{igen}").block
-
 
         grid.var_factory.add_connections([genqec.in_vars[0]], [gen.bus.rms_model.out_vars[0]])
         grid.var_factory.add_connections([genqec.in_vars[1]], [gen.bus.rms_model.out_vars[1]])
@@ -130,7 +129,7 @@ def define_problem_with_path(grid_path):
         loadec = vge.get_load_phasor_current_rms_template(grid.var_factory, name=load.name).block
         grid.var_factory.add_connections([loadec.in_vars[0]], [load.bus.rms_model.out_vars[0]])
         grid.var_factory.add_connections([loadec.in_vars[1]], [load.bus.rms_model.out_vars[1]])
-        #loadec = vge.to_implicit(loadec, grid.var_factory)
+        # loadec = vge.to_implicit(loadec, grid.var_factory)
         set_rms_model(device=load, model=loadec, var_factory=grid.var_factory)
     ## -TRANSFORMERS 2w:
     for trafo in grid.transformers2w:
@@ -148,7 +147,7 @@ def define_problem_with_path(grid_path):
         grid.var_factory.add_connections([shuntec.in_vars[1]], [shunt.bus.rms_model.out_vars[1]])
         shuntec = vge.to_implicit(shuntec, grid.var_factory)
         set_rms_model(device=shunt, model=shuntec, var_factory=grid.var_factory)
-    
+
     # TRANSFORMERS 3W: Not present in existing grids and not supported
     print("  ✓ Grid with path loaded")
 
@@ -157,7 +156,7 @@ def define_problem_with_path(grid_path):
     # ===================================================================
 
     print("\n[2] Running power flow...")
-    #pf_options = vge.PowerFlowOptions(tolerance=1e-13)
+    # pf_options = vge.PowerFlowOptions(tolerance=1e-13)
     pf_options = vge.PowerFlowOptions(tolerance=1e-5)
     pf_results = vge.power_flow(grid, pf_options)
 
@@ -194,10 +193,10 @@ def define_problem_with_path(grid_path):
         verbose=True,
     )
 
-    start_time= time.perf_counter()
+    start_time = time.perf_counter()
     phasor_problem = vge.RmsProblemPhasor(grid=grid, options=rms_options, pf_results=pf_results)
     EXEC_METRICS["n_vars"] = phasor_problem.get_all_vars_number()
-    end_time= time.perf_counter()
+    end_time = time.perf_counter()
     print(f"\n[3.1.0] ⏰ Func phasor_problem took {end_time - start_time:.2f} seconds")
     print(f"  ✓ Phasor problem created with {phasor_problem.get_states_number()} states")
     if RUN_CONSISTENCY_CHECK:
@@ -206,7 +205,7 @@ def define_problem_with_path(grid_path):
         debug_exciter_equations(phasor_problem)
         compare_generator_bus_currents(problem=phasor_problem, pf_results=pf_results)
     print("\n[3.0] Exciter diagnostics...")
-    #debug_exciter_equations(problem=phasor_problem)
+    # debug_exciter_equations(problem=phasor_problem)
     # ===================================================================
     # DYNAMIC VALIDATION
     # ===================================================================
@@ -228,6 +227,7 @@ def define_problem_with_path(grid_path):
             f"final|x|={np.linalg.norm(y_dyn[-1, :]):.4e}"
         )
     return phasor_problem
+
 
 def define_problem():
     """Creates the grid, runs the power flow, and returns the phasor problem."""
@@ -317,7 +317,6 @@ def define_problem():
 
 
 def solve_problem(problem: Any = None) -> Any:
-
     builder = None
 
     if USE_CACHED_BUILDER and os.path.exists(BUILDER_CACHE_FILE):
@@ -336,7 +335,7 @@ def solve_problem(problem: Any = None) -> Any:
 
         print("\n[*] Linearizing model with real parameters...")
         builder.linearize(v_dict=v_dict)
-            # 2. If it does not exist, build it from scratch and save it
+        # 2. If it does not exist, build it from scratch and save it
 
         if USE_CACHED_BUILDER:
             print(f"\n[📦] Saving full builder object to '{BUILDER_CACHE_FILE}'...")
@@ -349,7 +348,7 @@ def solve_problem(problem: Any = None) -> Any:
     res = builder.compute_stability()
 
     eigenvalues = res[0]
-    #print(eigenvalues)
+    # print(eigenvalues)
     stable = res[4]
     margin = res[5] if res[5] is not None else 0.0
     participation_matrix = res[3] if res[3] is not None else None
@@ -385,6 +384,7 @@ def solve_problem(problem: Any = None) -> Any:
     if not unstable_found:
         print("\n✅ The system is stable! There is no real part greater than 0.")
     return res, pf_map
+
 
 def main():
     # --- START CHRONO ---
@@ -536,6 +536,7 @@ def main():
     for ev in unmatched_ref:
         print(f"   {ev.real:.4f} + {ev.imag:.4f}j")
 
+
 if __name__ == "__main__":
     try:
         mp.freeze_support()
@@ -545,10 +546,11 @@ if __name__ == "__main__":
             lp.add_function(solve_problem)
             lp.add_function(define_problem_with_path)
             lp(main)()
-        else: main()
+        else:
+            main()
     except SystemExit:
         print("SystemExit")
-        #print("Error during execution")
+        # print("Error during execution")
     finally:
         if REPORT_TIME:
             print("\n" + "=" * 80)
@@ -561,6 +563,3 @@ if __name__ == "__main__":
                 f"exec_time_solve: {EXEC_METRICS['t_solve']:.4f} sec, "
                 f"sparse: {EXEC_METRICS['is_sparse']}"
             )
-
-
-

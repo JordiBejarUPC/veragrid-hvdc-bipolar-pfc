@@ -595,6 +595,7 @@ class PolynomialMatrixBuilder:
         Returns the operating point dictionary from a defined VeraGrid problem.
         """
         v_dict: dict = dict()
+
         def safe_get_value(val):
             try:
                 return float(val)
@@ -1440,7 +1441,7 @@ class PolynomialMatrixBuilder:
                 a_max = np.max(np.abs(a_data)) if len(a_data) > 0 else 0.0
                 e_max = np.max(np.abs(e_data)) if len(e_data) > 0 else 0.0
                 if a_max < 1e-10 and e_max < 1e-10:
-                    #A_patched[i, i] = -1.0
+                    # A_patched[i, i] = -1.0
                     patched_rows += 1
 
             A_csc = current_a.tocsc()
@@ -1592,49 +1593,74 @@ class PolynomialMatrixBuilder:
 
         print(f"    State-space dimension: {n_dims}")
 
-        M_shift = A_csr - sigma * E_csr
+        # Guard against invalid operating points triggering NaNs
+        if not np.all(np.isfinite(A_csr.data)):
+            print("    [!] Warning: State-Space 'A' matrix contains NaN values! Cleaning...")
+            A_csr.data = np.nan_to_num(A_csr.data)
+        if not np.all(np.isfinite(E_csr.data)):
+            print("    [!] Warning: State-Space 'E' matrix contains NaN values! Cleaning...")
+            E_csr.data = np.nan_to_num(E_csr.data)
 
-        # Structural regularization (WITHOUT LIL MATRIX)
-        row_norms = np.array(np.abs(M_shift).max(axis=1).todense()).flatten()
-        col_norms = np.array(np.abs(M_shift).max(axis=0).todense()).flatten()
+        # --- ROBUST LU FACTORIZATION WITH SIGMA RETRY ---
+        lu_solver = None
+        sigma_candidates = [sigma, 0.0, 1.0j, -1.0j, 1.0, -1.0]
+        for s_val in sigma_candidates:
+            M_shift = A_csr - s_val * E_csr
 
-        zero_rows = np.where(row_norms < 1e-10)[0]
-        zero_cols = np.where(col_norms < 1e-10)[0]
-        all_zeros = np.unique(np.concatenate((zero_rows, zero_cols)))
+            # Structural patching for M_shift (Using safe CSR/CSC operations over LIL to avoid __abs__ AttributeErrors)
+            M_shift_csr = M_shift.tocsr()
+            M_shift_csc = M_shift.tocsc()
 
-        if len(all_zeros) > 0:
-            print(f"    Patching {len(all_zeros)} empty structural nodes (Zero-RAM Diagonal Addition)...")
-            # Create a diagonal array filled with zeros, and put -1.0 only at empty spots
-            patch_diag = np.zeros(n_dims)
-            patch_diag[all_zeros] = -1.0
+            M_abs_csr = M_shift_csr.copy()
+            M_abs_csr.data = np.abs(M_abs_csr.data)
+            row_sums = np.array(M_abs_csr.sum(axis=1)).flatten()
+            zero_rows = np.where(row_sums < 1e-12)[0]
 
-            # Sparse diagonal matrix
-            D = sparse.diags(patch_diag, format='csr')
+            M_abs_csc = M_shift_csc.copy()
+            M_abs_csc.data = np.abs(M_abs_csc.data)
+            col_sums = np.array(M_abs_csc.sum(axis=0)).flatten()
+            zero_cols = np.where(col_sums < 1e-12)[0]
 
-            # Add directly without mutating sparsity structure manually
-            M_shift = M_shift + D
+            M_shift_patched = M_shift.tolil()
+            for idx in np.unique(np.concatenate((zero_rows, zero_cols))):
+                M_shift_patched[idx, idx] = -1.0  # Patch empty diagonal structure
 
-        print(f"    Factoring (A - {sigma}*E) using SuperLU...")
-        try:
-            lu_solver = splu(M_shift.tocsc(), diag_pivot_thresh=1.0)
-        except Exception as e:
-            print(f"    [!] SuperLU factorization error: {e}")
+            M_shift_patched = M_shift_patched.tocsc()  # Convert back to optimized CSC for splu
+
+            try:
+                lu_solver = splu(M_shift_patched)
+                sigma = s_val  # Update sigma to the successful value
+                print(f"    Successfully factored (A - {sigma}*E) using SuperLU.")
+                break
+            except Exception as e:
+                print(f"    [!] SuperLU factorization failed for sigma={s_val}: {e}")
+
+                # Attempt structural regularization for exactly singular blocks (like redundant constraints or isolated subgrids)
+                print(f"    [*] Attempting structural regularization for sigma={s_val}...")
+                try:
+                    # Append a very small, non-interfering term onto the diagonal to cure perfect matrix singularity
+                    reg_matrix = M_shift_patched + sparse.eye(n_dims, format='csc') * 1e-8
+                    lu_solver = splu(reg_matrix)
+                    sigma = s_val
+                    print(f"    Successfully factored with structural regularization.")
+                    break
+                except Exception as e2:
+                    print(f"    [!] Regularized SuperLU failed: {e2}")
+
+        if lu_solver is None:
+            print("    [!!!] All SuperLU factorization attempts failed. Aborting sparse analysis.")
             return [], None, None, None, False, 0.0
 
         def matvec_right(v):
-            y = E_csr.dot(v)
-            return lu_solver.solve(y.real) + 1j * lu_solver.solve(y.imag)
-
-        OP_R = LinearOperator((n_dims, n_dims), matvec=matvec_right, dtype=complex)
-
-        print(f"    Solving right/left modes in parallel...")
+            return lu_solver.solve(E_csr.dot(v))
 
         def matvec_left(v):
-            y = E_csr.T.dot(v)
-            return lu_solver.solve(y.real, trans='T') + 1j * lu_solver.solve(y.imag, trans='T')
+            return lu_solver.solve(E_csr.T.dot(v), trans='T')
 
+        OP_R = LinearOperator((n_dims, n_dims), matvec=matvec_right, dtype=complex)
         OP_L = LinearOperator((n_dims, n_dims), matvec=matvec_left, dtype=complex)
 
+        print(f"    Solving right/left modes in parallel...")
         try:
             with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
                 future_r = executor.submit(eigs, OP_R, k=k_modes, which='LM')
@@ -1788,7 +1814,7 @@ class PolynomialMatrixBuilder:
                 # We take the real part since complex conjugate pairs cancel each other out
                 evolution[i] = np.real(np.sum(mode_coeffs * np.exp(evals * t)))
 
-            plt.plot(time_steps, evolution, label=f"$\\Delta$ {var}", linewidth=2)
+            plt.plot(time_steps, evolution, label=f"$\Delta$ {var}", linewidth=2)
 
         plt.xlabel("Time (s)", fontsize=12)
         plt.ylabel("Deviation from Operating Point ($\\Delta x$)", fontsize=12)
