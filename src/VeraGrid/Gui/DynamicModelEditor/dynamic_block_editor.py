@@ -5095,6 +5095,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 LibraryLeafSpec("Emt pi line", BlockType.EMT_PI_LINE),
                 LibraryLeafSpec("Emt Bergeron line", BlockType.EMT_BERGERON_LINE),
                 LibraryLeafSpec("Emt JMarti line", BlockType.EMT_JMARTI_LINE),
+            ],
+            DeviceType.DCLineDevice: [
                 LibraryLeafSpec("Emt DC line", BlockType.EMT_DC_LINE),
             ],
             DeviceType.LoadDevice: [ # the other types of loads already appear in common emt device blocks
