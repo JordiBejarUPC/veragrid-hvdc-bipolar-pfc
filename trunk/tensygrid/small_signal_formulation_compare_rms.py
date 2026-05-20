@@ -17,6 +17,8 @@ import sys
 from typing import Any
 
 import numpy as np
+import scipy.linalg as la
+import scipy.sparse as sp
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "src")))
 
@@ -56,6 +58,7 @@ def build_problem(formulation: str):
     gen_mdl = get_complete_generator_template_rms(grid.var_factory, name="Gen0").block
     if formulation == "explicit":
         gen_mdl = vge.to_explicit(gen_mdl, grid.var_factory)
+        _ = 0
     elif formulation == "implicit":
         gen_mdl = vge.to_implicit(gen_mdl, grid.var_factory)
 
@@ -95,6 +98,85 @@ def run_driver(problem: Any, pf: Any, rms_options: Any):
     return finite_ev, max_real, unstable
 
 
+def inspect_augmented_jacobian(problem: Any) -> None:
+    """Print diagnostics for the augmented Jacobian used in small signal."""
+    x = problem.get_x0()
+    dx = np.zeros(problem.get_diff_var_number())
+    h = problem.get_dt_value()
+
+    nx = problem.get_states_number()
+    ny = problem.get_algebraic_var_number()
+
+    if nx == 0:
+        fx = sp.csr_matrix((0, 0))
+        fy = sp.csr_matrix((0, ny))
+        gx = sp.csr_matrix((ny, 0))
+    else:
+        fx = problem.get_j11(x, dx, h)
+        fy = problem.get_j12(x, dx, h)
+        gx = problem.get_j21(x, dx, h)
+    gy = problem.get_j22(x, dx, h)
+
+    J_top = sp.hstack([fx, fy])
+    J_bot = sp.hstack([gx, gy])
+    J_aug = sp.vstack([J_top, J_bot], format="csc")
+
+    print(f"J11 shape={fx.shape} nnz={fx.nnz}")
+    print(f"J12 shape={fy.shape} nnz={fy.nnz}")
+    print(f"J21 shape={gx.shape} nnz={gx.nnz}")
+    print(f"J22 shape={gy.shape} nnz={gy.nnz}")
+    print(f"J_aug shape={J_aug.shape} nnz={J_aug.nnz}")
+
+    J_csr = J_aug.tocsr()
+    zero_rows = np.flatnonzero(np.diff(J_csr.indptr) == 0)
+    zero_cols = np.flatnonzero(np.diff(J_aug.indptr) == 0)
+    print(f"zero_rows={len(zero_rows)} zero_cols={len(zero_cols)}")
+    if len(zero_rows):
+        print(f"  first zero rows: {zero_rows[:20].tolist()}")
+    if len(zero_cols):
+        print(f"  first zero cols: {zero_cols[:20].tolist()}")
+
+    dense = J_aug.toarray()
+    rank = np.linalg.matrix_rank(dense)
+    u_svd, svals, vh = la.svd(dense, full_matrices=False)
+    smin = float(svals[-1])
+    smax = float(svals[0])
+    cond = np.inf if smin == 0.0 else smax / smin
+    print(f"rank={rank}/{dense.shape[0]} sigma_min={smin:.3e} sigma_max={smax:.3e} cond={cond:.3e}")
+
+    if rank < dense.shape[0]:
+        vars_list = list(problem._state_vars) + list(problem._algebraic_vars)
+        eqs_list = list(problem._state_eqs) + list(problem._algebraic_eqs)
+
+        right_null = vh[-1, :]
+        left_null = u_svd[:, -1]
+
+        print("Approximate right-null direction (variables, top 12):")
+        ridx = np.argsort(np.abs(right_null))[::-1][:12]
+        for idx in ridx:
+            if abs(right_null[idx]) < 1e-8:
+                continue
+            vname = str(vars_list[idx]) if idx < len(vars_list) else f"var[{idx}]"
+            print(f"  col={idx:<4d} {vname:<40s} coeff={right_null[idx]:+.4e}")
+
+        print("Approximate left-null direction (equations, top 12):")
+        lidx = np.argsort(np.abs(left_null))[::-1][:12]
+        for idx in lidx:
+            if abs(left_null[idx]) < 1e-8:
+                continue
+            ename = str(eqs_list[idx]) if idx < len(eqs_list) else f"eq[{idx}]"
+            print(f"  row={idx:<4d} coeff={left_null[idx]:+.4e} eq={ename}")
+
+    E = problem.get_E_matrix(x, dx)
+    E_dense = E.toarray() if hasattr(E, "toarray") else np.array(E)
+    Erank = np.linalg.matrix_rank(E_dense)
+    Es = la.svdvals(E_dense)
+    Esmin = float(Es[-1])
+    Esmax = float(Es[0])
+    Econd = np.inf if Esmin == 0.0 else Esmax / Esmin
+    print(f"E shape={E_dense.shape} rank={Erank}/{E_dense.shape[0]} sigma_min={Esmin:.3e} cond={Econd:.3e}")
+
+
 def main() -> int:
     for formulation in ["raw", "explicit", "implicit"]:
         print("\n" + "=" * 80)
@@ -108,8 +190,16 @@ def main() -> int:
                 f"alg_vars={problem.get_algebraic_var_number()}"
             )
             print(f"finite_eigs={len(finite_ev)} unstable={unstable} max_real={max_real:+.6f}")
+            print("finite eigenvalues:")
+            for i, ev in enumerate(finite_ev, start=1):
+                print(f"  mode={i:<3d} ev={np.real(ev):+.6f}{np.imag(ev):+.6f}j")
         except Exception as exc:
             print(f"FAILED: {exc}")
+            try:
+                print("-- Jacobian diagnostics after failure --")
+                inspect_augmented_jacobian(problem)
+            except Exception as sub_exc:
+                print(f"diagnostics_failed: {sub_exc}")
 
     return 0
 

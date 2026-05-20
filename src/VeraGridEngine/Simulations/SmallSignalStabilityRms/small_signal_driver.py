@@ -265,14 +265,13 @@ def run_dense_small_signal_stability(problem: RmsProblemTemplate,
             fx = problem.get_j11(x, dx, 1e10)
             fy = problem.get_j12(x, dx, 1e10)
             gx = problem.get_j21(x, dx, 1e10)
-        gy = problem.get_j22(x, dx, 1e10)
+        gy = problem.get_j22(x, dx, 1e15)
 
         # 1. BUILD THE ENHANCED JACOBIAN (Sparse)
         J_top = sp.hstack([fx, fy])
         J_bot = sp.hstack([gx, gy])
-        A_matrix = sp.vstack([J_top, J_bot])
-
-        # Debug: Check A_matrix row 70 for large values
+        A_matrix = sp.vstack([J_top, J_bot]) 
+        A_matrix += sp.eye(nx + ny) * 1e-10
         A_dense = A_matrix.toarray()
         A_orig = A_dense.copy()
         # Convert to dense for eig

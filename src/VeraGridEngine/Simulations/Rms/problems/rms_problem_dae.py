@@ -1491,6 +1491,30 @@ class RmsProblemDae(RmsProblemTemplate):
             self._block_boundary_updater.update(float(t), x_snapshot, full_params)
             self._variable_parameters_values[:] = full_params[:self.get_variable_parameter_number()]
 
+    def get_static_state_matrix(self, x:Vec, dx:Vec):
+
+        all_eqs = self._state_eqs + self._algebraic_eqs
+        all_vars = self._state_vars + self._algebraic_vars
+        A_call = SymbolicJacobian(
+            eqs= all_eqs,
+            variables=all_vars,
+            compiler_names_dict=self._compiler_names_dict,
+            alias_names_dict= self._alias_names_dict,
+            VARS_NAME=self.VARS_NAME,
+            DIFF_NAME=self.DIFF_NAME,
+            EVENT_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
+            PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
+            static=True
+        )
+
+
+        vp = self._variable_parameters_values
+        cp = self._constant_params
+        n_vars = self._n_vars
+        A_value = np.zeros((n_vars, n_vars))
+        A_value = A_call(x, dx, vp, cp, h=0).toarray()
+        return A_value
+
     def update(self, t: float, x: Vec, params: Vec) -> None:
         self._update_dynamic_mode_defaults(t=t, x=x, params=params)
         if self._procedural_logic_updater is not None:
@@ -2069,7 +2093,6 @@ class RmsProblemDae(RmsProblemTemplate):
         )
 
         n_states = self.get_states_number()
-        n_diff = self.get_diff_var_number()
         vp = self._variable_parameters_values
         cp = self._constant_params
 
@@ -2091,7 +2114,15 @@ class RmsProblemDae(RmsProblemTemplate):
         #     if abs(E_partial[70, col]) > 1e-10:
         #         print(f"  diff_var[{col}] = {xdot[col]}, value = {E_partial[70, col]}")
 
-        E_value[:, :n_diff] = E_partial
+        # Map each d(eq)/d(diff_var_j) column to the column of the diff_var base
+        # variable in the global [state_vars + algebraic_vars] ordering.
+        for j, dvar in enumerate(xdot):
+            base_var = dvar.base_var
+            col_idx = self._uid2idx_vars.get(base_var.uid, None)
+            if col_idx is None:
+                continue
+            E_value[:, col_idx] += E_partial[:, j]
+
         E_value[:n_states, :n_states] -= np.eye(n_states, dtype=E_value.dtype)
 
         return E_value

@@ -977,7 +977,6 @@ class RmsProblemPhasor(RmsProblemTemplate):
         )
 
         n_states = self.get_states_number()
-        n_diff   = self.get_diff_var_number()
         vp = self._variable_parameters_values
         cp = self._constant_params
 
@@ -992,7 +991,16 @@ class RmsProblemPhasor(RmsProblemTemplate):
             print(f"  E_partial[{row},{col}] = {E_partial[row,col]}")
     
         
-        E_value[:, :n_diff] = E_partial
+        # Map each d(eq)/d(diff_var_j) column to the column of the diff_var base
+        # variable in the global [state_vars + algebraic_vars] ordering.
+        for j, dvar in enumerate(xdot):
+            base_var = dvar.base_var
+            col_idx = self._uid2idx_vars.get(base_var.uid, None)
+            if col_idx is None:
+                continue
+            E_value[:, col_idx] += E_partial[:, j]
+
+
         E_value[:n_states, :n_states] -= np.eye(n_states, dtype=E_value.dtype)
 
         return E_value
