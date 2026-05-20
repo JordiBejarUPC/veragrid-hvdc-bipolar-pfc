@@ -3576,10 +3576,11 @@ class SimulationsMain(TimeEventsMain):
         else:
             pass
 
-    def post_rms(self):
+    def post_rms(self) -> None:
         """
+        Finalize the RMS simulation workflow and report only active-group status.
 
-        :return:
+        :return: None.
         """
         _, results = self.session.rms_dynamic_simulation
 
@@ -3589,21 +3590,55 @@ class SimulationsMain(TimeEventsMain):
             self.remove_simulation(SimulationTypes.RmsDynamic_run)
             self.update_available_results()
 
-            # report convergence and initialization
-            indices = [i for i, v in enumerate(results.well_initialized) if not v]
-            if indices:
-                for index in indices:
-                    self.show_warning_toast(f"Simulation bad initialized for {results.rms_events_group_names[index]}:/")
-            else:
-                self.show_info_toast("Simulation well initialized for all simulation groups :)")
+            # Only active event groups are simulated, so the completion report
+            # must ignore inactive groups whose default result flags remain False.
+            active_group_indices: list[int] = list()
+            group_count: int = min(len(self.circuit.rms_events_groups), len(results.rms_events_group_names))
+            group_index: int
+            for group_index in range(group_count):
+                rms_events_group = self.circuit.rms_events_groups[group_index]
+                if rms_events_group.active:
+                    active_group_indices.append(group_index)
+                else:
+                    pass
 
-            indices = [i for i, v in enumerate(results.converged) if not v]
-            if indices:
-                for index in indices:
-                    self.show_warning_toast(
-                        f"Simulation not converged for {results.rms_events_group_names[index]}:/")
+            if len(active_group_indices) > 0:
+                # Report initialization failures only for groups that were part
+                # of the executed simulation batch.
+                bad_initialization_names: list[str] = list()
+                active_index: int
+                group_name: str
+                for active_index in active_group_indices:
+                    group_name = str(results.rms_events_group_names[active_index])
+                    if results.well_initialized[active_index]:
+                        pass
+                    else:
+                        bad_initialization_names.append(group_name)
+
+                if len(bad_initialization_names) > 0:
+                    group_name: str
+                    for group_name in bad_initialization_names:
+                        self.show_warning_toast(f"Simulation bad initialized for {group_name}:/")
+                else:
+                    self.show_info_toast("Simulation well initialized for all active simulation groups :)")
+
+                # Report convergence failures only for groups that were part of
+                # the executed simulation batch.
+                not_converged_names: list[str] = list()
+                for active_index in active_group_indices:
+                    group_name = str(results.rms_events_group_names[active_index])
+                    if results.converged[active_index]:
+                        pass
+                    else:
+                        not_converged_names.append(group_name)
+
+                if len(not_converged_names) > 0:
+                    for group_name in not_converged_names:
+                        self.show_warning_toast(f"Simulation not converged for {group_name}:/")
+                else:
+                    self.show_info_toast("Simulation converged for all active simulation groups :)")
             else:
-                self.show_info_toast("Simulation converged for all simulation groups :)")
+                self.show_info_toast("There are no active RMS event groups to report.")
 
         else:
             warning_msg('There are no rms simulation results.', 'Rms simulation')
@@ -3689,10 +3724,11 @@ class SimulationsMain(TimeEventsMain):
         else:
             pass
 
-    def post_emt(self):
+    def post_emt(self) -> None:
         """
+        Finalize the EMT simulation workflow and report only active-group status.
 
-        :return:
+        :return: None.
         """
         _, results = self.session.emt_dynamic_simulation
 
@@ -3702,22 +3738,54 @@ class SimulationsMain(TimeEventsMain):
             self.remove_simulation(SimulationTypes.EmtDynamic_run)
             self.update_available_results()
 
-            # uncomment when convergence and well initialized is reported
-            # # report convergence and initialization
-            # indices = [i for i, v in enumerate(results.well_initialized) if not v]
-            # if indices:
-            #     for index in indices:
-            #         self.show_warning_toast(f"Simulation bad initialized for {results.emt_events_group_names[index]}:/")
-            # else:
-            #     self.show_info_toast("Simulation well initialized for all simulation groups :)")
-            #
-            # indices = [i for i, v in enumerate(results.converged) if not v]
-            # if indices:
-            #     for index in indices:
-            #         self.show_warning_toast(
-            #             f"Simulation not converged for {results.emt_events_group_names[index]}:/")
-            # else:
-            #     self.show_info_toast("Simulation converged for all simulation groups :)")
+            # Only active event groups are simulated, so the completion report
+            # must ignore inactive groups whose default result flags remain False.
+            active_group_indices: list[int] = list()
+            group_count: int = min(len(self.circuit.emt_events_groups), len(results.emt_events_group_names))
+            group_index: int
+            for group_index in range(group_count):
+                emt_events_group = self.circuit.emt_events_groups[group_index]
+                if emt_events_group.active:
+                    active_group_indices.append(group_index)
+                else:
+                    pass
+
+            if len(active_group_indices) > 0:
+                # Report initialization failures only for groups that were part
+                # of the executed simulation batch.
+                bad_initialization_names: list[str] = list()
+                active_index: int
+                group_name: str
+                for active_index in active_group_indices:
+                    group_name = str(results.emt_events_group_names[active_index])
+                    if results.well_initialized[active_index]:
+                        pass
+                    else:
+                        bad_initialization_names.append(group_name)
+
+                if len(bad_initialization_names) > 0:
+                    for group_name in bad_initialization_names:
+                        self.show_warning_toast(f"Simulation bad initialized for {group_name}:/")
+                else:
+                    self.show_info_toast("Simulation well initialized for all active simulation groups :)")
+
+                # Report convergence failures only for groups that were part of
+                # the executed simulation batch.
+                not_converged_names: list[str] = list()
+                for active_index in active_group_indices:
+                    group_name = str(results.emt_events_group_names[active_index])
+                    if results.converged[active_index]:
+                        pass
+                    else:
+                        not_converged_names.append(group_name)
+
+                if len(not_converged_names) > 0:
+                    for group_name in not_converged_names:
+                        self.show_warning_toast(f"Simulation not converged for {group_name}:/")
+                else:
+                    self.show_info_toast("Simulation converged for all active simulation groups :)")
+            else:
+                self.show_info_toast("There are no active EMT event groups to report.")
 
         else:
             warning_msg('There are no emt simulation results.', 'Emt simulation')
