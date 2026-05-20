@@ -144,6 +144,20 @@ event = RmsEvent(device=load, parameter=Pl0, time=0.1, end_time = 0.2, value=-0.
 grid.add_rms_event(event)
 
 
+
+rms_events_group_names = np.array(0)
+
+# choose variables to save values
+# vars_to_save = list()
+# vars_to_save.extend(grid.var_factory.get_vars_to_save(gen0, ["delta", "omega"]))
+# vars_to_save.extend(grid.var_factory.get_vars_to_save(load, ["Pl", "Ql"]))
+#
+#
+# uid_save = [var.uid for var in vars_to_save]
+
+
+gce.save_file(grid=grid, filename="../../src/tests/data/grids/2bus_genqec_load_test.veragrid")
+grid1 = gce.open_file("../../src/tests/data/grids/2bus_genqec_load_test.veragrid")
 ######################################################################################################
 # Power flow
 ######################################################################################################

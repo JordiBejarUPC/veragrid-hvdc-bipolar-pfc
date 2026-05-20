@@ -586,7 +586,7 @@ def build_trafo_slave_block(vfactory: VarFactory,
     dt_id = vfactory.add_diff_var("dt_id" + suffix, base_var=i_d)
     dt_iq = vfactory.add_diff_var("dt_iq" + suffix, base_var=i_q)
 
-    modulator.connect([pmd_mod, pmq_mod], [pmd, pmq])
+    grid.var_factory.add_connections([pmd_mod, pmq_mod], [pmd, pmq])
 
     block = Block(
         algebraic_eqs=[
@@ -654,7 +654,8 @@ def build_trafo_slave_block(vfactory: VarFactory,
 def connect_rms_vsc_to_buses(vsc_model: Block,
                              controlled_bus_model: Block,
                              grid_bus_model: Block,
-                             dc_bus_model: Block) -> None:
+                             dc_bus_model: Block,
+                             var_factory:VarFactory) -> None:
     """
     Connect an RMS VSC block to controlled AC bus, grid AC bus and DC bus.
 
@@ -696,4 +697,4 @@ def connect_rms_vsc_to_buses(vsc_model: Block,
     if not local_vars:
         raise ValueError("No compatible voltage mappings found to connect RMS VSC to buses")
 
-    vsc_model.connect(local_vars, remote_vars)
+    var_factory.add_connections(local_vars, remote_vars)

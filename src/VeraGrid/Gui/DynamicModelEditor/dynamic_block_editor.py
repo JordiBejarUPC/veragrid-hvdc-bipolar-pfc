@@ -4992,28 +4992,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.actionCenter.triggered.connect(self.center_view_on_items)
         self.ui.actionZoom_in.triggered.connect(self.zoom_in_view)
         self.ui.actionZoom_out.triggered.connect(self.zoom_out_view)
+        # self.ui.actionSave_block_to_my_catalogue.connect(self.save_block_to_my_catalogue)
+        # self.ui.actionExport_block.connect(self.export_block)
 
         self.var_factory = var_factory
         self.api_object = api_object
 
-        # Todo: is this correct?
         self.original_block: Block = block  # api_object.rms_model
 
-        try:
-            if mode == DynamicSimulationMode.RMS and self.api_object.rms_template is not None and not block.diagram.node_data and main_editor:
-                model_block = clone_block_for_editing(block)
-                self.main_block: Block = Block()
-                self.main_block.add(model_block)
-            elif mode == DynamicSimulationMode.EMT and self.api_object.emt_template is not None and not block.diagram.node_data and main_editor:
-                model_block = clone_block_for_editing(block)
-                self.main_block: Block = Block()
-                self.main_block.add(model_block)
-            else:
-                self.main_block: Block = clone_block_for_editing(block)
-
-        except AttributeError:  # happens when editing templates from database (they are not connected to any physical device)
-            self.main_block: Block = clone_block_for_editing(block)
-
+        self.main_block: Block = clone_block_for_editing(block)
 
         self.diagram: BlockDiagram = self.main_block.diagram
 
@@ -5250,18 +5237,14 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.doItButton.clicked.connect(self.apply_changes)
         self.ui.toolBox.currentChanged.connect(self.on_side_panel_page_changed)
         self.scene.selectionChanged.connect(self.on_scene_selection_changed)
-        if not self.main_block.empty() and not self.main_block.diagram.node_data and self.main_editor:
+        if not self.main_block.empty() and not self.main_block.diagram.node_data:
             blocks_list = list()
             for child in self.main_block.children:
                 item = self.generate_block_item_for_block(child)
                 blocks_list.append(item)
+            self.add_connection_items(blocks_list)
             if len(blocks_list) != 0:
                 self.connect_items(blocks_list)
-            # here we add the connection variables to the main block
-            if self.main_editor:
-                self.add_connection_vars()
-                self.add_api_obj_mapping()
-            self.add_connection_items()
         elif not self.main_block.diagram.node_data:
             # here we add the connection variables to the main block
             if self.main_editor:
@@ -7377,13 +7360,19 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         for item_1 in items_list:
             for item_2 in items_list:
                 if item_1.subsys.uid != item_2.subsys.uid:
-                    pairs = find_connections(item_1.subsys, item_2.subsys)
+                    pairs, power_flow_pairs = find_connections(item_1.subsys, item_2.subsys)
                     if pairs:
                         self.create_conn_items(item_1, item_2, pairs)
 
-                    pairs = find_connections(item_2.subsys, item_1.subsys)
+                    if power_flow_pairs:
+                        self.create_conn_items(item_1, item_2, power_flow_pairs)
+
+                    pairs, power_flow_pairs = find_connections(item_2.subsys, item_1.subsys)
                     if pairs:
                         self.create_conn_items(item_2, item_1, pairs)
+
+                    if power_flow_pairs:
+                        self.create_conn_items(item_1, item_2, power_flow_pairs)
 
     def create_conn_items(self, item_source: GenericBlockItem, item_dest: GenericBlockItem, pairs:List[tuple[Var, Var]]):
         """
@@ -7450,13 +7439,14 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
             # The symbolic block has to be attached first so the graphics item can build its ports from it.
 
-            item.setPos(QtCore.QPointF(0, 0))
+            x, y = self._calculate_next_block_position(item)
+            item.setPos(QtCore.QPointF(x, y))
             self.scene.addItem(item)
 
             self.diagram.add_node(
                 name=item_name,
-                x=0,
-                y=0,
+                x=x,
+                y=y,
                 tpe="",
                 device_uid=block_model.uid
             )
@@ -7467,8 +7457,36 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             return None
 
+    def _calculate_next_block_position(self, item: GenericBlockItem) -> tuple[float, float]:
+        """
+        Calculate the next available position for a block item using a grid layout.
+
+        :param item: The block item to calculate position for (used to get its dimensions).
+        :return: Tuple of (x, y) coordinates.
+        """
+        SCENE_WIDTH: float = 1200.0
+        SCENE_HEIGHT: float = 800.0
+        MARGIN_Y: float = 80.0
+        COL_SPACING: float = 200.0
+        ROW_SPACING: float = 150.0
+
+        existing_count = sum(1 for i in self.scene.items() if isinstance(i, GenericBlockItem))
+
+        GRID_COLS: int = 3
+
+        row: int = existing_count // GRID_COLS
+        col: int = existing_count % GRID_COLS
+
+        total_width: float = GRID_COLS * COL_SPACING
+        start_x: float = (SCENE_WIDTH - total_width) / 2
+
+        x: float = start_x + col * COL_SPACING
+        y: float = MARGIN_Y + row * ROW_SPACING
+
+        return x, y
+
     def create_connection_block_item(self, var: Var, block_type: BlockType, x_pos: float,
-                                     y_pos: float) -> BlockItem | None:
+                                     y_pos: float, blocks_list: List[BlockItem] | None) -> BlockItem | None:
         """
         Create and place a block item in the canvas scene.
 
@@ -7477,6 +7495,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param block_type:
         :param x_pos:
         :param y_pos:
+        :param blocks_list:
         :return:
         """
         count: int = self.block_counters.get(block_type, 0) + 1
@@ -7500,6 +7519,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             # The editor block is the authoritative model container for later save/rebuild steps.
             self.main_block.add(block_model)
             self.scene.addItem(block_item)
+            if blocks_list is not None:
+                blocks_list.append(block_item)
             block_item.setPos(QtCore.QPointF(x_pos, y_pos))
 
             # Keep the diagram synchronized so later features can rebuild from the same data source.
@@ -9428,7 +9449,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self.main_block.external_mapping.update({VarPowerFlowRefferenceType.P: P})
             self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Q: Q})
 
-    def add_connection_items(self):
+    def add_connection_items(self, blocks_list: List[BlockItem] | None = None):
         """
         for every input and output var in the main block of the editor we build a block item to connect connection variables
 
@@ -9460,12 +9481,12 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         for i, invar in enumerate(self.main_block.in_vars):
             y_pos: float = MARGIN_Y + input_spacing * (i + 1) - BLOCK_HEIGHT / 2
-            self.create_connection_block_item(invar, BlockType.INPUT_CONN, MARGIN_X, y_pos)
+            self.create_connection_block_item(invar, BlockType.INPUT_CONN, MARGIN_X, y_pos, blocks_list)
 
         for i, outvar in enumerate(self.main_block.out_vars):
             y_pos = MARGIN_Y + output_spacing * (i + 1) - BLOCK_HEIGHT / 2
             x_pos: float = SCENE_WIDTH - MARGIN_X - BLOCK_HEIGHT
-            self.create_connection_block_item(outvar, BlockType.OUTPUT_CONN, x_pos, y_pos)
+            self.create_connection_block_item(outvar, BlockType.OUTPUT_CONN, x_pos, y_pos, blocks_list)
 
         self.scene.setSceneRect(0, 0, SCENE_WIDTH, SCENE_HEIGHT)
         self.view.fitInView(self.scene.sceneRect(), QtCore.Qt.AspectRatioMode.KeepAspectRatio)
@@ -11642,9 +11663,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return:
         """
         if self.mode == DynamicSimulationMode.RMS:
-            if self.api_object.rms_template is not None:
-                # Todo: Here are the changes
-                self.api_object.rms_template = None
             copy_block_state(source_block=self.main_block, target_block=self.original_block)
             initialize_connected_bus_models_for_editor_assignment(api_object=self.api_object,
                                                                   circuit=self.circuit,

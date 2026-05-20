@@ -361,10 +361,10 @@ def test_var_factory_deepcopy_keeps_copied_diff_links_internal() -> None:
     dx: sym.Var = vf.add_diff_var("dx", base_var=x)
 
     copied_vf: VarFactory = copy.deepcopy(vf)
-    copied_x_or_none: sym.Var | None = copied_vf.get_var(x.uid)
+    copied_x_or_none: sym.Var | None = copied_vf.get_var(x.non_mutable_uid)
     assert copied_x_or_none is not None
     copied_x: sym.Var = copied_x_or_none
-    copied_dx: sym.Var = copied_vf.get_diff_var(dx.uid)
+    copied_dx: sym.Var = copied_vf.get_diff_var(dx.non_mutable_uid)
 
     assert x.diff_var is dx
     assert dx.base_var is x
@@ -445,8 +445,8 @@ def test_duplicate_block_preserves_parent_child_variable_links_with_new_uids() -
     assert copied_dx.base_var is copied_x
     assert copied_child.state_eqs[0].left is copied_dx
     assert copied_child.state_eqs[0].right is copied_x
-    assert target_vf.get_var(copied_x.uid) is copied_x
-    assert target_vf.get_diff_var(copied_dx.uid) is copied_dx
+    assert target_vf.get_var(copied_x.non_mutable_uid) is copied_x
+    assert target_vf.get_diff_var(copied_dx.non_mutable_uid) is copied_dx
 
 
 # -----------------------------------------------------------------------------

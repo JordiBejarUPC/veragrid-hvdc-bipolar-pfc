@@ -147,15 +147,15 @@ def build_pv_current_injection_model(vf, name: str) -> Block:
     pdc = pv_block.external_mapping[VarPowerFlowRefferenceType.P]
     qt_ref = find_name_in_block("Qt_ref", vsc_block)
 
-    trafo_block.connect([vm_f, va_f, vm_t, va_t, vdc_t], [vm, va, vm, va, vdc])
-    vsc_block.connect([vm_vsc], [vm])
+    grid.var_factory.add_connections([vm_f, va_f, vm_t, va_t, vdc_t], [vm, va, vm, va, vdc])
+    grid.var_factory.add_connections([vm_vsc], [vm])
 
     vm_inner = find_name_in_block("Vm", trafo_block)
     va_inner = find_name_in_block("Va", trafo_block)
     if vm_inner is not None:
-        trafo_block.connect([vm_inner], [vm])
+        grid.var_factory.add_connections([vm_inner], [vm])
     if va_inner is not None:
-        trafo_block.connect([va_inner], [va])
+        grid.var_factory.add_connections([va_inner], [va])
 
     algebraic_eqs = [
         p + pt_t,

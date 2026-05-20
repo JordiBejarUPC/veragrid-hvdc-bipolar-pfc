@@ -44,7 +44,7 @@ def run_triangle_pulse_source_demo(enable_plots: bool = True) -> Dict[str, objec
     set_event_parameter_by_name(triangle_template.block, "f", 1.0)
     set_event_parameter_by_name(pulse_template.block, "K", 0.75)
     set_event_parameter_by_name(pulse_template.block, "T1", 0.08)
-    pulse_template.block.connect([pulse_template.block.in_vars[0]], [triangle_template.block.out_vars[0]])
+    grid.var_factory.add_connections([pulse_template.block.in_vars[0]], [triangle_template.block.out_vars[0]])
 
     x_state = vf.add_var("x_triangle_pulse_demo")
     dx_state = vf.add_diff_var(name="dx_triangle_pulse_demo", base_var=x_state)

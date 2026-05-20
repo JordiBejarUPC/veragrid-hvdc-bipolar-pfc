@@ -1855,20 +1855,20 @@ def get_complete_generator_template_emt(vf: VarFactory, name="complete_generator
     gen_mdl.update_model(gen_mdl.in_vars[1], v_b_in)
     gen_mdl.update_model(gen_mdl.in_vars[2], v_c_in)
 
-    gen_mdl.connect([gen_mdl.in_vars[4]], [exciter_mdl.out_vars[0]]) # v_f
-    exciter_mdl.connect([exciter_mdl.in_vars[0]], [gen_mdl.out_vars[4]]) # IRPu / i_f
+    vf.add_connections([gen_mdl.in_vars[4]], [exciter_mdl.out_vars[0]]) # v_f
+    vf.add_connections([exciter_mdl.in_vars[0]], [gen_mdl.out_vars[4]]) # IRPu / i_f
     exciter_mdl.update_model(exciter_mdl.in_vars[1], v_a_in)  # v_A
     exciter_mdl.update_model(exciter_mdl.in_vars[2], v_b_in)  # v_B
     exciter_mdl.update_model(exciter_mdl.in_vars[3], v_c_in)  # v_C
-    exciter_mdl.connect([exciter_mdl.in_vars[4]], [stabilizer_mdl.out_vars[0]]) # Vpps
+    vf.add_connections([exciter_mdl.in_vars[4]], [stabilizer_mdl.out_vars[0]]) # Vpps
 
-    stabilizer_mdl.connect([stabilizer_mdl.in_vars[0]], [gen_mdl.out_vars[3]]) # omega
+    vf.add_connections([stabilizer_mdl.in_vars[0]], [gen_mdl.out_vars[3]]) # omega
 
-    gen_mdl.connect([gen_mdl.in_vars[3]], [governor_mdl.out_vars[0]]) # Tm
+    vf.add_connections([gen_mdl.in_vars[3]], [governor_mdl.out_vars[0]]) # Tm
 
-    governor_mdl.connect([governor_mdl.in_vars[0]], [gen_mdl.out_vars[3]]) # omega
+    vf.add_connections([governor_mdl.in_vars[0]], [gen_mdl.out_vars[3]]) # omega
 
-    governor_mdl.connect([governor_mdl.in_vars[1]], [gen_mdl.out_vars[5]]) # Te
+    vf.add_connections([governor_mdl.in_vars[1]], [gen_mdl.out_vars[5]]) # Te
 
     templ.block.children.append(gen_mdl)
     templ.block.children.append(governor_mdl)

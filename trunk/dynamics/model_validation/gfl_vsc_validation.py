@@ -273,25 +273,25 @@ vsc_mdl = VscGflBuild(grid.var_factory, control1=CONTROL1_MODE, control2=CONTROL
 pv_cell_block  =  PVCellBuild(grid.var_factory).block
 dc_source = DCVoltageSource(grid.var_factory, bus3.rms_model.out_vars[0]).block
 
-genrow_mdl1.connect([genrow_mdl1.in_vars[0]], [bus1.rms_model.out_vars[0]])
-genrow_mdl1.connect([genrow_mdl1.in_vars[1]], [bus1.rms_model.out_vars[1]])
+grid.var_factory.add_connections([genrow_mdl1.in_vars[0]], [bus1.rms_model.out_vars[0]])
+grid.var_factory.add_connections([genrow_mdl1.in_vars[1]], [bus1.rms_model.out_vars[1]])
 
-load_mdl.connect([load_mdl.in_vars[0]], [bus2.rms_model.out_vars[0]])
+grid.var_factory.add_connections([load_mdl.in_vars[0]], [bus2.rms_model.out_vars[0]])
 
-line12_mdl.connect([line12_mdl.in_vars[0]], [bus1.rms_model.out_vars[0]])
-line12_mdl.connect([line12_mdl.in_vars[1]], [bus1.rms_model.out_vars[1]])
+grid.var_factory.add_connections([line12_mdl.in_vars[0]], [bus1.rms_model.out_vars[0]])
+grid.var_factory.add_connections([line12_mdl.in_vars[1]], [bus1.rms_model.out_vars[1]])
 
-line12_mdl.connect([line12_mdl.in_vars[2]], [bus2.rms_model.out_vars[0]])
-line12_mdl.connect([line12_mdl.in_vars[3]], [bus2.rms_model.out_vars[1]]) 
+grid.var_factory.add_connections([line12_mdl.in_vars[2]], [bus2.rms_model.out_vars[0]])
+grid.var_factory.add_connections([line12_mdl.in_vars[3]], [bus2.rms_model.out_vars[1]])
 
 # Updated connections for new VSC model with 3 inputs: [Vm, Va, Vdc]
 print("\nDEBUG: Before connect:")
 print(f"  VSC in_vars[0] (Vm): {vsc_mdl.in_vars[0].name} (uid={vsc_mdl.in_vars[0].uid})")
 print(f"  Bus2 out_vars[0]: {bus2.rms_model.out_vars[0].name} (uid={bus2.rms_model.out_vars[0].uid})")
 
-vsc_mdl.connect([vsc_mdl.in_vars[0]], [bus2.rms_model.out_vars[0]])  # Vm
-vsc_mdl.connect([vsc_mdl.in_vars[1]], [bus2.rms_model.out_vars[1]])  # Va
-vsc_mdl.connect([vsc_mdl.in_vars[2]], [bus3.rms_model.out_vars[0]])  # Vdc
+grid.var_factory.add_connections([vsc_mdl.in_vars[0]], [bus2.rms_model.out_vars[0]])  # Vm
+grid.var_factory.add_connections([vsc_mdl.in_vars[1]], [bus2.rms_model.out_vars[1]])  # Va
+grid.var_factory.add_connections([vsc_mdl.in_vars[2]], [bus3.rms_model.out_vars[0]])  # Vdc
 
 print("\nDEBUG: After connect:")
 print(f"  VSC in_vars[0] (Vm): {vsc_mdl.in_vars[0].name} (uid={vsc_mdl.in_vars[0].uid})")

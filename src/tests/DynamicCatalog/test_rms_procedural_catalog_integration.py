@@ -65,7 +65,7 @@ def _build_procedural_catalog_load_rms_template(vf: VarFactory,
     enable_mode = next(iter(enable_block.mode_dict.keys()))
     enable_block.event_dict[enable_param] = vf.add_const(1.0, name="Enable")
     enable_block.mode_dict[enable_mode] = vf.add_const(1.0, name="Enable mode")
-    enable_block.connect([enable_block.in_vars[0]], [p_ref])
+    vf.add_connections([enable_block.in_vars[0]], [p_ref])
     enable_block.init_eqs[enable_block.out_vars[0]] = p_ref
 
     template.block = Block(
@@ -194,10 +194,10 @@ def test_rms_catalog_procedural_logic_changes_load_output_during_real_simulation
     line_mdl = get_line_rms_template(grid.var_factory).block
     load_mdl, enable_param, enable_mode, p_out = _build_procedural_catalog_load_rms_template(grid.var_factory)
 
-    line_mdl.connect([line_mdl.in_vars[0]], [bus0.rms_model.out_vars[0]])
-    line_mdl.connect([line_mdl.in_vars[1]], [bus0.rms_model.out_vars[1]])
-    line_mdl.connect([line_mdl.in_vars[2]], [bus1.rms_model.out_vars[0]])
-    line_mdl.connect([line_mdl.in_vars[3]], [bus1.rms_model.out_vars[1]])
+    grid.var_factory.add_connections([line_mdl.in_vars[0]], [bus0.rms_model.out_vars[0]])
+    grid.var_factory.add_connections([line_mdl.in_vars[1]], [bus0.rms_model.out_vars[1]])
+    grid.var_factory.add_connections([line_mdl.in_vars[2]], [bus1.rms_model.out_vars[0]])
+    grid.var_factory.add_connections([line_mdl.in_vars[3]], [bus1.rms_model.out_vars[1]])
 
     line0.rms_model = line_mdl
     load.rms_model = load_mdl.block

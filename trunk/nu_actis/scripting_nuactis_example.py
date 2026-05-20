@@ -468,7 +468,7 @@ dc_vm_f = dc_line.rms_model.external_mapping[VarPowerFlowRefferenceType.Vmf]
 dc_vm_t = dc_line.rms_model.external_mapping[VarPowerFlowRefferenceType.Vmt]
 bus3_vdc = bus3.rms_model.external_mapping[VarPowerFlowRefferenceType.Vdc]
 bus4_vdc = bus4.rms_model.external_mapping[VarPowerFlowRefferenceType.Vdc]
-dc_line.rms_model.connect([dc_vm_f, dc_vm_t], [bus3_vdc, bus4_vdc])
+grid.var_factory.add_connections([dc_vm_f, dc_vm_t], [bus3_vdc, bus4_vdc])
 
 # Connect master/slave trafo-control models to buses
 connect_rms_vsc_to_buses(
@@ -476,12 +476,14 @@ connect_rms_vsc_to_buses(
     controlled_bus_model=bus2_1.rms_model,
     grid_bus_model=bus2.rms_model,
     dc_bus_model=bus3.rms_model,
+    var_factory=grid.var_factory,
 )
 connect_rms_vsc_to_buses(
     vsc_model=trafoB.rms_model,
     controlled_bus_model=bus5_1.rms_model,
     grid_bus_model=bus5.rms_model,
     dc_bus_model=bus4.rms_model,
+    var_factory=grid.var_factory,
 )
 
 # Connect standalone VSC DC/link model to trafo-control outputs
@@ -491,12 +493,12 @@ for vsc_dev, trafo_model in [(vsc_master, trafoA.rms_model), (vsc_slave, trafoB.
     vmf_trafo = trafo_model.external_mapping[VarPowerFlowRefferenceType.Vmf]
 
     if len(vsc_dev.rms_model.in_vars) >= 2:
-        vsc_dev.rms_model.connect(
+        grid.var_factory.add_connections(
             [vsc_dev.rms_model.in_vars[0], vsc_dev.rms_model.in_vars[1]],
             [im_trafo, pf_trafo],
         )
     elif len(vsc_dev.rms_model.in_vars) == 1:
-        vsc_dev.rms_model.connect(
+        grid.var_factory.add_connections(
             [vsc_dev.rms_model.in_vars[0]],
             [vmf_trafo],
         )

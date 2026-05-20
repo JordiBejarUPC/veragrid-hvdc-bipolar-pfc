@@ -49,7 +49,7 @@ def run_lookup_table_catalog_demo(enable_plots: bool = True) -> Dict[str, object
 
     bind_internal_time_vars(triangle_template.block, time_state)
     set_event_parameter_by_name(triangle_template.block, "f", 0.5)
-    lookup_template.block.connect([lookup_template.block.in_vars[0]], [triangle_template.block.out_vars[0]])
+    grid.var_factory.add_connections([lookup_template.block.in_vars[0]], [triangle_template.block.out_vars[0]])
 
     x_state = vf.add_var("x_lookup_demo")
     dx_state = vf.add_diff_var(name="dx_lookup_demo", base_var=x_state)

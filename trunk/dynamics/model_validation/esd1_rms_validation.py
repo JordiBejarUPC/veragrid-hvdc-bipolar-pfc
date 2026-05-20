@@ -83,8 +83,8 @@ def initialize_rms_models(grid: vge.MultiCircuit):
 
     for line in grid.lines:
         line_model = get_line_rms_template(vfactory=vf, name=f"Line_{line.name}").block
-        line_model.connect([line_model.in_vars[0], line_model.in_vars[1]], [line.bus_from.rms_model.out_vars[0], line.bus_from.rms_model.out_vars[1]])
-        line_model.connect([line_model.in_vars[2], line_model.in_vars[3]], [line.bus_to.rms_model.out_vars[0], line.bus_to.rms_model.out_vars[1]])
+        grid.var_factory.add_connections([line_model.in_vars[0], line_model.in_vars[1]], [line.bus_from.rms_model.out_vars[0], line.bus_from.rms_model.out_vars[1]])
+        grid.var_factory.add_connections([line_model.in_vars[2], line_model.in_vars[3]], [line.bus_to.rms_model.out_vars[0], line.bus_to.rms_model.out_vars[1]])
         line_model.unify_blocks()
         line.rms_model = line_model
 

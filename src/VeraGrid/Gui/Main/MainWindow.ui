@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1198</width>
-    <height>742</height>
+    <width>1328</width>
+    <height>796</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -282,8 +282,8 @@
                            <rect>
                             <x>0</x>
                             <y>0</y>
-                            <width>396</width>
-                            <height>298</height>
+                            <width>394</width>
+                            <height>355</height>
                            </rect>
                           </property>
                           <attribute name="icon">
@@ -349,8 +349,8 @@
                            <rect>
                             <x>0</x>
                             <y>0</y>
-                            <width>252</width>
-                            <height>362</height>
+                            <width>302</width>
+                            <height>360</height>
                            </rect>
                           </property>
                           <attribute name="icon">
@@ -744,8 +744,8 @@
                            <rect>
                             <x>0</x>
                             <y>0</y>
-                            <width>171</width>
-                            <height>240</height>
+                            <width>174</width>
+                            <height>232</height>
                            </rect>
                           </property>
                           <attribute name="icon">
@@ -895,8 +895,8 @@
                            <rect>
                             <x>0</x>
                             <y>0</y>
-                            <width>122</width>
-                            <height>244</height>
+                            <width>126</width>
+                            <height>242</height>
                            </rect>
                           </property>
                           <attribute name="icon">
@@ -10914,8 +10914,8 @@ QProgressBar::chunk{
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1198</width>
-     <height>23</height>
+     <width>1328</width>
+     <height>33</height>
     </rect>
    </property>
    <property name="font">
@@ -11026,6 +11026,7 @@ QProgressBar::chunk{
     <addaction name="actionFind_node_groups"/>
     <addaction name="actionPower_flow_Stochastic"/>
     <addaction name="actionInvestments_evaluation"/>
+    <addaction name="actionCatalogue_element_optimization"/>
     <addaction name="actionReliability"/>
     <addaction name="actionBlackout_cascade"/>
     <addaction name="separator"/>
@@ -11050,7 +11051,7 @@ QProgressBar::chunk{
     <addaction name="actionSet_model_x_y_based_on_lat_lon"/>
     <addaction name="actionGrid_reduction"/>
     <addaction name="actionProcedural_grid_expansion"/>
-    <addaction name="actionCatalogue_element_optimization"/>
+    <addaction name="actionRestore_investments"/>
     <addaction name="actionre_index_time"/>
     <addaction name="actionScale"/>
     <addaction name="separator"/>
@@ -12975,6 +12976,18 @@ QProgressBar::chunk{
    </property>
    <property name="text">
     <string>Set model (x,y) based on (lat, lon)</string>
+   </property>
+  </action>
+  <action name="actionRestore_investments">
+   <property name="icon">
+    <iconset resource="../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/data.png</normaloff>:/Icons/icons/data.png</iconset>
+   </property>
+   <property name="text">
+    <string>Restore investments</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::MenuRole::NoRole</enum>
    </property>
   </action>
  </widget>
