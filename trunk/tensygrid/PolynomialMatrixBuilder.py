@@ -1534,7 +1534,7 @@ class PolynomialMatrixBuilder:
         - **Mode Matching:** Since ARPACK may return left and right modes in different
           orders, the Hungarian Algorithm (Linear Sum Assignment) is used to align
           them based on eigenvalue proximity.
-        - **Participation Factors:** Calculated as :math:`P_{ji} = \frac{w_{ji} v_{ji}}{w_i^H v_i}`.
+        - **Participation Factors:** Calculated as :math:`P_{ji} = \\frac{w_{ji} v_{ji}}{w_i^H v_i}`.
         '''
         print(f"\n[+] Starting sparse ARPACK analysis (Shift-and-Invert, sigma={sigma}, k={k_modes})...")
         start = time.time()
