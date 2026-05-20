@@ -66,11 +66,11 @@ class InvestmentsGroup(EditableDevice):
                                 comment=comment)
 
         # Contingency type
-        self.category = category
+        self.category: str = category
 
-        self.discount_rate = discount_rate
+        self.discount_rate: float = discount_rate
 
-        self.CAPEX = CAPEX
+        self.CAPEX: float = CAPEX
 
     # Scalar property accessors coerce assignments to the declared schema types.
 
