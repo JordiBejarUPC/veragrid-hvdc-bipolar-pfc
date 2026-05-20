@@ -116,8 +116,8 @@ def setup_rms_models(grid):
         genrow_mdl = template.block
         
         bus = gen.bus
-        genrow_mdl.connect([genrow_mdl.in_vars[0]], [bus.rms_model.out_vars[0]])
-        genrow_mdl.connect([genrow_mdl.in_vars[1]], [bus.rms_model.out_vars[1]])
+        grid.var_factory.add_connections([genrow_mdl.in_vars[0]], [bus.rms_model.out_vars[0]])
+        grid.var_factory.add_connections([genrow_mdl.in_vars[1]], [bus.rms_model.out_vars[1]])
         genrow_mdl.unify_blocks()
         
         big_gen = Block(children=[genrow_mdl])
@@ -133,10 +133,10 @@ def setup_rms_models(grid):
         
         from_bus = line.bus_from
         to_bus = line.bus_to
-        line_mdl.connect([line_mdl.in_vars[0]], [from_bus.rms_model.out_vars[0]])
-        line_mdl.connect([line_mdl.in_vars[1]], [from_bus.rms_model.out_vars[1]])
-        line_mdl.connect([line_mdl.in_vars[2]], [to_bus.rms_model.out_vars[0]])
-        line_mdl.connect([line_mdl.in_vars[3]], [to_bus.rms_model.out_vars[1]])
+        grid.var_factory.add_connections([line_mdl.in_vars[0]], [from_bus.rms_model.out_vars[0]])
+        grid.var_factory.add_connections([line_mdl.in_vars[1]], [from_bus.rms_model.out_vars[1]])
+        grid.var_factory.add_connections([line_mdl.in_vars[2]], [to_bus.rms_model.out_vars[0]])
+        grid.var_factory.add_connections([line_mdl.in_vars[3]], [to_bus.rms_model.out_vars[1]])
         line_mdl.unify_blocks()
         
         line.rms_model = line_mdl
@@ -151,7 +151,7 @@ def setup_rms_models(grid):
         load_mdl = load_template.block
         
         bus = load.bus
-        load_mdl.connect([load_mdl.in_vars[0]], [bus.rms_model.out_vars[0]])
+        grid.var_factory.add_connections([load_mdl.in_vars[0]], [bus.rms_model.out_vars[0]])
         load_mdl.unify_blocks()
         
         load.rms_model = load_mdl

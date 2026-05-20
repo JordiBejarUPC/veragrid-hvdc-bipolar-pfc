@@ -158,7 +158,6 @@ def _build_catalog_block_item(editor: DynamicBlockEditorGUI, template_key: str):
     assert block_item is not None
     return block_item
 
-
 def _label_texts(label_items) -> list[str]:
     """
     Collect plain-text labels from one graphics label list.
@@ -320,7 +319,12 @@ def test_library_search_button_and_shortcut_filter_basic_catalog() -> None:
     assert park_label in visible_leaf_labels
     assert limit_label not in visible_leaf_labels
 
+
     editor.close()
+    editor.deleteLater()
+    QtWidgets.QApplication.processEvents()
+    QTest.qWait(50)
+    QtWidgets.QApplication.processEvents()
 
 
 def test_proxy_drag_payload_materializes_catalog_template() -> None:

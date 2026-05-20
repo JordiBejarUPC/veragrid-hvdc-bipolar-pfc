@@ -558,13 +558,13 @@ def get_q_vac_droop_emt_template(vf: VarFactory, name: str = 'Q/Vac droop') -> E
     ]
 
     # --- Graphical Connections (resolved from From/To) ---
-    Freeze_Gate_16.connect([Freeze_Gate_16.in_vars[0]], [flag_overload])
-    Freeze_Gate_17.connect([Freeze_Gate_17.in_vars[0]], [flag_overload])
-    PI_with_hold_and_reset_21.connect([PI_with_hold_and_reset_21.in_vars[1]], [FRT1_flag])
-    Summation_Point_23.connect([Summation_Point_23.in_vars[0]], [Vref])
-    Summation_Point_24.connect([Summation_Point_24.in_vars[0]], [Summation_Point_3_27.out_vars[0]])
-    Summation_Point_1_25.connect([Summation_Point_1_25.in_vars[0]], [Qref_sat1])
-    Summation_Point_2_26.connect([Summation_Point_2_26.in_vars[0]], [Qref])
+    vf.add_connections([Freeze_Gate_16.in_vars[0]], [flag_overload])
+    vf.add_connections([Freeze_Gate_17.in_vars[0]], [flag_overload])
+    vf.add_connections([PI_with_hold_and_reset_21.in_vars[1]], [FRT1_flag])
+    vf.add_connections([Summation_Point_23.in_vars[0]], [Vref])
+    vf.add_connections([Summation_Point_24.in_vars[0]], [Summation_Point_3_27.out_vars[0]])
+    vf.add_connections([Summation_Point_1_25.in_vars[0]], [Qref_sat1])
+    vf.add_connections([Summation_Point_2_26.in_vars[0]], [Qref])
 
     templ.block = Block(
         children=[v_0_0, v_0_1, v_0_2, v_1_3, v_1_4, v_1_5, v_1_6, v_1_1_sT_7, v_1_1_sT_8, v_1_s_9, v_1_s_10, v_1_s_11, v_1_s_12, v_2PI_13, C_14, C_15, Freeze_Gate_16, Freeze_Gate_17, K_18, K_19, Limit_20, PI_with_hold_and_reset_21, SIN_22, Summation_Point_23, Summation_Point_24, Summation_Point_1_25, Summation_Point_2_26, Summation_Point_3_27, TDS_Pos_28],

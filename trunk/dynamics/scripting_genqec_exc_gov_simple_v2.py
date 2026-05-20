@@ -18,9 +18,10 @@ from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complet
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_rms_model
 from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
-
-from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod
 from VeraGridEngine.Devices.Events.rms_event import RmsEvent
+
+
+from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod, DynamicEventTransitionType
 import VeraGridEngine.api as gce
 
 ###########################################################################################################################
@@ -39,86 +40,34 @@ def find_name_in_block(name: str, block: Block):
             return res
 
 
-# ###########################################################################################################################
-# # Build VeraGrid object
-#
-# grid = gce.MultiCircuit(Sbase=100, fbase=50.0)
-#
-# # Buses
-# bus0 = gce.Bus(name="Bus0", Vnom=10, is_slack=True)
-# bus1 = gce.Bus(name="Bus1", Vnom=10)
-#
-# grid.add_bus(bus0)
-# grid.add_bus(bus1)
-#
-# for bus in grid.buses:
-#     initialize_bus_rms(bus, vf=grid.var_factory)
-#
-# # Lines
-# line0 = gce.Line(name="line 0-2", bus_from=bus0, bus_to=bus1, r=0.029585798816568046, x=0.07100591715976332, b=0.03,
-#                  rate=900.0)
-#
-# # load
-# load = gce.Load(P=9.999999, Q=0.999999)
-#
-# # Generators
-# gen0 = gce.Generator(name="Gen0", P=10, vset=1.0, Snom=900,
-#                      x1=0.86138701, r1=0.3, freq=50.0
-#                      )
-#
-# ######################################################################################################
-# # Build Rms models
-# ######################################################################################################
-#
-# # generator
-# genqec_mdl = get_complete_generator_template_rms(grid.var_factory).block
-#
-# # line
-# line_mdl = get_line_rms_template(grid.var_factory).block
-#
-# # load
-# load_mdl = get_load_rms_template(grid.var_factory).block
-#
-# # connection with buses
-#
-# genqec_mdl.connect([genqec_mdl.in_vars[0]], [bus0.rms_model.out_vars[0]])
-# genqec_mdl.connect([genqec_mdl.in_vars[1]], [bus0.rms_model.out_vars[1]])
-#
-# line_mdl.connect([line_mdl.in_vars[0]], [bus0.rms_model.out_vars[0]])
-# line_mdl.connect([line_mdl.in_vars[1]], [bus0.rms_model.out_vars[1]])
-#
-# line_mdl.connect([line_mdl.in_vars[2]], [bus1.rms_model.out_vars[0]])
-# line_mdl.connect([line_mdl.in_vars[3]], [bus1.rms_model.out_vars[1]])
-#
-# # u_gov = find_name_in_block("u_gov1", gov1_mdl)
-#
-# load_mdl.connect([load_mdl.in_vars[0]], [bus1.rms_model.out_vars[0]])
-# load_mdl.connect([load_mdl.in_vars[1]], [bus1.rms_model.out_vars[1]])
-#
-# # external mapping
-#
-# big_gen1 = Block(children=[genqec_mdl])
-#
-# big_gen1.external_mapping.update({VarPowerFlowRefferenceType.P: genqec_mdl.out_vars[0]})
-# big_gen1.external_mapping.update({VarPowerFlowRefferenceType.Q: genqec_mdl.out_vars[1]})
-#
-# # add models to dyn_host
-# line0.rms_model = line_mdl
-# load.rms_model = load_mdl
-# gen0.rms_model = big_gen1
-#
-# # apply event
-# Pl0 = find_name_in_block('Pl0', load_mdl)
-# events_group = RmsEventsGroup("simulation1")
-# event = RmsEvent(device=load, parameter=Pl0, time=0.1, value=-0.09, group=events_group)
-# grid.add_rms_event(event)
-#
-# grid.add_line(line0)
-# grid.add_load(bus=bus1, api_obj=load)
-# grid.add_generator(bus=bus0, api_obj=gen0)
-#
-#
-# #
+def evaluate_rms_runtime_parameter_trace(problem: RmsProblemDae,
+                                         parameter,
+                                         time_values: np.ndarray) -> np.ndarray:
+    """
+    Evaluate one RMS runtime event parameter over explicit time samples.
+
+    This diagnostic trace is needed to distinguish whether the ramp is already
+    broken in the runtime event-parameter updater or later in the algebraic load
+    equations that consume that parameter.
+
+    :param problem: Prepared RMS problem.
+    :param parameter: Runtime parameter to inspect.
+    :param time_values: Time samples.
+    :return: Runtime parameter trace.
+    """
+    runtime_index: int = problem.uid2idx_event_params[parameter.uid]
+    trace: np.ndarray = np.zeros(len(time_values), dtype=float)
+    sample_index: int = 0
+
+    while sample_index < len(time_values):
+        runtime_values: np.ndarray = problem._variable_parameters_values.copy()
+        runtime_values = problem.def_event_params_fn(runtime_values, float(time_values[sample_index]))
+        trace[sample_index] = float(runtime_values[runtime_index])
+        sample_index += 1
+
+    return trace
+
+
 #####################################################################################
 #                    Grid
 #####################################################################################
@@ -184,37 +133,16 @@ set_rms_model(device=line0, model=line_mdl, var_factory= grid.var_factory)
 
 set_rms_model(device=load, model=load_mdl, var_factory= grid.var_factory)
 
-
 ######################################################################################################
-# Create event
+# Add event
 ######################################################################################################
-
-Pl0 = find_name_in_block('Pl0', load_mdl)
-events_group = RmsEventsGroup(name="simulation1")
+Pl0 = find_name_in_block("Pl0", load_mdl)
+events_group = RmsEventsGroup("simulation1")
 grid.add_rms_events_group(events_group)
-event = RmsEvent(device=load, parameter=Pl0, time=0.1, value=-0.098, group=events_group)
+# event = RmsEvent(device=load, parameter=Pl0, time=0.1,  value=-0.06, group=events_group, transition_type=DynamicEventTransitionType.Step)
+event = RmsEvent(device=load, parameter=Pl0, time=0.1, end_time = 0.2, value=-0.06, group=events_group, transition_type=DynamicEventTransitionType.Ramp)
 grid.add_rms_event(event)
 
-gce.save_file(grid, "my_saved_grid.veragrid")
-
-# gce.save_file(grid=grid, filename="saved_grid_1.veragrid")
-# grid_opened = gce.open_file("saved_grid_1.veragrid")
-#
-# equal, logger = grid.compare_circuits(grid_opened, detailed_profile_comparison=True)
-# if not equal:
-#     logger.print()
-# # asset for failing
-# assert equal
-
-
-# gce.save_file(grid=grid, filename="saved_grid_1.veragrid")
-# grid_opened = gce.open_file("saved_grid_1.veragrid")
-#
-# equal, logger = grid.compare_circuits(grid_opened, detailed_profile_comparison=True)
-# if not equal:
-#     logger.print()
-# # asset for failing
-# assert equal
 
 
 rms_events_group_names = np.array(0)
@@ -228,8 +156,8 @@ rms_events_group_names = np.array(0)
 # uid_save = [var.uid for var in vars_to_save]
 
 
-gce.save_file(grid=grid, filename="2bus_genqec_load_test.veragrid")
-grid1 = gce.open_file("2bus_genqec_load_test.veragrid")
+gce.save_file(grid=grid, filename="../../src/tests/data/grids/2bus_genqec_load_test.veragrid")
+grid1 = gce.open_file("../../src/tests/data/grids/2bus_genqec_load_test.veragrid")
 ######################################################################################################
 # Power flow
 ######################################################################################################
@@ -283,6 +211,7 @@ problem = RmsProblemDae(grid=grid,
                         pf_results=res)
 
 problem.set_events_group(events_group)
+problem.reset_boundary_update_state(0.0)
 
 
 solver = BackEulerImplicitIntegration(
@@ -329,6 +258,8 @@ y_exciter1 = find_name_in_block("y_exciter1", genqec_mdl)
 y_exciter4 = find_name_in_block("y_exciter4", genqec_mdl)
 Efe = find_name_in_block("Efe", genqec_mdl)
 delta = find_name_in_block("deltaGenqec_rms_template", genqec_mdl)
+
+
 
 # Generator state variables
 plt.plot(t, y[:, problem.get_var_idx(omega)], label="omega (pu)")
@@ -388,3 +319,35 @@ plt.xlim([0, xlim])
 plt.grid(True)
 plt.tight_layout()
 plt.show()
+
+# load P and Q
+P_load_runtime = evaluate_rms_runtime_parameter_trace(problem=problem,
+                                                      parameter=Pl0,
+                                                      time_values=t)
+P_load = find_name_in_block("Pl", load_mdl)
+Q_load = find_name_in_block("Ql", load_mdl)
+
+debug_times = np.array([0.0, 0.1, 0.125, 0.15, 0.175, 0.2, 0.25], dtype=float)
+debug_trace = evaluate_rms_runtime_parameter_trace(problem=problem,
+                                                   parameter=Pl0,
+                                                   time_values=debug_times)
+print("Pl0 debug samples:")
+for debug_index in range(len(debug_times)):
+    print(float(debug_times[debug_index]), float(debug_trace[debug_index]))
+
+# Generator state variables
+plt.plot(t, P_load_runtime, label="Pl0 runtime (pu)", linestyle='--')
+plt.plot(t, y[:, problem.get_var_idx(P_load)], label="P load (pu)")
+plt.plot(t, y[:, problem.get_var_idx(Q_load)], label="Q load (pu)")
+
+
+plt.legend(loc='upper right', ncol=2)
+plt.xlabel("Time (s)")
+plt.ylabel("Load powers (pu)")
+plt.xlim([0, xlim])
+# plt.ylim([0.85, 1.15])
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+

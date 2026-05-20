@@ -36419,3 +36419,5 @@ LOCAL_VERAGRID_NOTES.md
 /trunk/tensygrid/venv_bash/share/man/man1/ttx.1
 /trunk/tensygrid/venv_bash/LICENSE
 /trunk/tensygrid/venv_bash/pyvenv.cfg
+trunk/tensygrid/precomputed_builds/
+trunk/tensygrid/venv_bash/

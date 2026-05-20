@@ -212,7 +212,7 @@ def get_transformer_emt_template(
             nested=True,
             name=name + "_from_grounding_link",
         )
-        from_grounding_link_template.block.connect(from_grounding_link_template.block.in_vars, [vf_n])
+        vf.add_connections(from_grounding_link_template.block.in_vars, [vf_n])
         from_ground_current = from_grounding_link_template.block.out_vars[0]
         from_grounding_link_block = from_grounding_link_template.block
         templ.block.add(from_grounding_link_block)
@@ -229,7 +229,7 @@ def get_transformer_emt_template(
             nested=True,
             name=name + "_to_grounding_link",
         )
-        to_grounding_link_template.block.connect(to_grounding_link_template.block.in_vars, [vt_n])
+        vf.add_connections(to_grounding_link_template.block.in_vars, [vt_n])
         to_ground_current = to_grounding_link_template.block.out_vars[0]
         to_grounding_link_block = to_grounding_link_template.block
         templ.block.add(to_grounding_link_block)
