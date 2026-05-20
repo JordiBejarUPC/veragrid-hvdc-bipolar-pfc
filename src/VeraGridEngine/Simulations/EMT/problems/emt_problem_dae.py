@@ -1361,8 +1361,8 @@ class EmtProblemDae(EmtProblemTemplate):
         validate_interfaces_s: float = _toc(t_phase_start)
         t_phase_start = _tic()
 
-        self._working_emt_models: Dict[int, Block] = dict()
-        self._registered_working_emt_models: Set[int] = set()
+        self._working_emt_models: Dict[str, Block] = dict()
+        self._registered_working_emt_models: Set[str] = set()
 
         # build on local sys_block
         self._build_structure_and_collect(sys_block=sys_block, grid=grid, static_parameter_values_mapping=static_parameter_values_mapping )
@@ -2574,13 +2574,14 @@ class EmtProblemDae(EmtProblemTemplate):
                 bus_phase_connections[(bus, phase)] = set()
 
         vsc_ac_phase_refs = {
+            VarPowerFlowRefferenceType.v_N,
             VarPowerFlowRefferenceType.v_A,
             VarPowerFlowRefferenceType.v_B,
             VarPowerFlowRefferenceType.v_C,
         }
 
         for br in self.grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
-            br_emt_model = self._get_existing_or_grid_emt_model(br)
+            br_emt_model = self._working_emt_models.get(str(br.idtag), br.emt_model)
 
             if br_emt_model is not None:
                 br_bus_from = br.bus_from
@@ -2614,18 +2615,53 @@ class EmtProblemDae(EmtProblemTemplate):
                     else:
                         pass
                 else:
-                    for in_var in br_emt_model.in_vars:
-                        if in_var.ref in branch_phase_refs:
-                            bus_phase = phase_ref_to_bus_phase[in_var.ref]
+                    # Deserialized EMT blocks may preserve branch terminal
+                    # references in nested external mappings even when the root
+                    # ``in_vars`` layout differs from a freshly rebuilt
+                    # template. Build the connectivity view from the recovered
+                    # hierarchical external mapping first, because those keys
+                    # are the canonical semantic contract used across the EMT
+                    # builder.
+                    branch_external_mapping: Optional[Dict[Any, Var]] = _get_external_mapping(br_emt_model)
+                    present_branch_refs: Set[VarPowerFlowRefferenceType] = set()
 
-                            if in_var.ref in {
+                    if branch_external_mapping is not None:
+                        branch_ref_key: Any
+                        branch_ref_var: Var | None
+                        for branch_ref_key, branch_ref_var in branch_external_mapping.items():
+                            if isinstance(branch_ref_key, VarPowerFlowRefferenceType) and branch_ref_var is not None:
+                                present_branch_refs.add(branch_ref_key)
+                            else:
+                                pass
+                    else:
+                        pass
+
+                    # Freshly rebuilt models expose the same contract directly
+                    # on ``in_vars``. Keep that path as a fallback so both live
+                    # and deserialized models are handled uniformly.
+                    if len(present_branch_refs) == 0:
+                        in_var: Var
+                        for in_var in br_emt_model.in_vars:
+                            if in_var.ref is not None:
+                                present_branch_refs.add(in_var.ref)
+                            else:
+                                pass
+                    else:
+                        pass
+
+                    branch_ref: VarPowerFlowRefferenceType
+                    for branch_ref in present_branch_refs:
+                        if branch_ref in branch_phase_refs:
+                            bus_phase = phase_ref_to_bus_phase[branch_ref]
+
+                            if branch_ref in {
                                 VarPowerFlowRefferenceType.vf_N,
                                 VarPowerFlowRefferenceType.vf_A,
                                 VarPowerFlowRefferenceType.vf_B,
                                 VarPowerFlowRefferenceType.vf_C,
                             }:
                                 bus_phase_connections[(br_bus_from, bus_phase)].add(f"branch_from:{br.idtag}")
-                            elif in_var.ref in {
+                            elif branch_ref in {
                                 VarPowerFlowRefferenceType.vt_N,
                                 VarPowerFlowRefferenceType.vt_A,
                                 VarPowerFlowRefferenceType.vt_B,
@@ -2634,18 +2670,18 @@ class EmtProblemDae(EmtProblemTemplate):
                                 bus_phase_connections[(br_bus_to, bus_phase)].add(f"branch_to:{br.idtag}")
                             else:
                                 pass
-                        elif in_var.ref in vsc_ac_phase_refs:
+                        elif branch_ref in vsc_ac_phase_refs:
                             if br_bus_to.is_dc:
-                                bus_phase_connections[(br_bus_from, in_var.ref)].add(f"branch_from:{br.idtag}")
+                                bus_phase_connections[(br_bus_from, branch_ref)].add(f"branch_from:{br.idtag}")
                             else:
-                                bus_phase_connections[(br_bus_to, in_var.ref)].add(f"branch_to:{br.idtag}")
+                                bus_phase_connections[(br_bus_to, branch_ref)].add(f"branch_to:{br.idtag}")
                         else:
                             pass
             else:
                 pass
 
         for inj in self.grid.get_injection_devices_iter():
-            inj_emt_model = self._get_existing_or_grid_emt_model(inj)
+            inj_emt_model = self._working_emt_models.get(str(inj.idtag), inj.emt_model)
 
             if inj_emt_model is not None:
                 inj_bus = inj.bus
@@ -2667,7 +2703,7 @@ class EmtProblemDae(EmtProblemTemplate):
         floating_phases: List[str] = list()
         for bus in self.grid.buses:
             if not bus.is_dc:
-                bus_mdl = self._get_existing_or_grid_emt_model(bus)
+                bus_mdl = self._working_emt_models.get(str(bus.idtag), bus.emt_model)
                 bus_out_refs = {v.ref for v in bus_mdl.out_vars}
                 for phase in ac_phases:
                     connections = bus_phase_connections.get((bus, phase), set())
@@ -2724,7 +2760,10 @@ class EmtProblemDae(EmtProblemTemplate):
         else:
             pass
 
-        dev_key: int = id(dev)
+        # Cache working EMT models by the stable device idtag instead of the
+        # Python object identity so all lookups follow the grid semantic
+        # identifier used by the rest of the EMT event machinery.
+        dev_key: str = str(dev.idtag)
         if dev_key not in self._registered_working_emt_models:
             parameter_owner_blocks: List[Block] = _collect_block_hierarchy(mdl)
             parameter_owner_block: Block
@@ -3014,7 +3053,7 @@ class EmtProblemDae(EmtProblemTemplate):
             t: int = bus_dict[br.bus_to]
             br_working_mdl: Block = self._get_or_create_working_emt_model(br)
             br_working_mdl = _normalize_pi_line_phase_layout(branch=br, mdl=br_working_mdl, logger=self.logger)
-            self._set_working_emt_model(br, br_working_mdl)
+            self._working_emt_models[str(br.idtag)] = br_working_mdl
 
             mdl: Block = self._process_device_model(br, sys_block)
 
@@ -6808,7 +6847,7 @@ class EmtProblemDae(EmtProblemTemplate):
 
             if self.power_flow_results_3ph is not None:
                 self._try_set_vsc_branch_pf_init(
-                    mdl=self._get_existing_or_grid_emt_model(vsc),
+                    mdl=self._working_emt_models.get(str(vsc.idtag), vsc.emt_model),
                     f_bus_idx=f_bus_idx,
                     t_bus_idx=t_bus_idx,
                     sbase=self.grid.Sbase,
@@ -6816,7 +6855,7 @@ class EmtProblemDae(EmtProblemTemplate):
                 )
             else:
                 self._try_set_vsc_branch_pf_init_balanced(
-                    mdl=self._get_existing_or_grid_emt_model(vsc),
+                    mdl= self._working_emt_models.get(str(vsc.idtag), vsc.emt_model),
                     f_bus_idx=f_bus_idx,
                     t_bus_idx=t_bus_idx,
                     sbase=self.grid.Sbase,
@@ -6835,7 +6874,7 @@ class EmtProblemDae(EmtProblemTemplate):
 
         for branch_obj in self.grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
             if branch_obj.device_type == DeviceType.SwitchDevice:
-                mdl = self._get_existing_or_grid_emt_model(branch_obj)
+                mdl = self._working_emt_models.get(str(branch_obj.idtag), branch_obj.emt_model)
 
                 if mdl is None:
                     pass
@@ -7238,7 +7277,7 @@ class EmtProblemDae(EmtProblemTemplate):
         preserve Var.uid values so grid EMT events that target original Vars still
         match by uid.
         """
-        dev_key: int = id(dev)
+        dev_key: str = str(dev.idtag)
         mdl: Block | None = self._working_emt_models.get(dev_key, None)
 
         if mdl is None:
@@ -7246,19 +7285,6 @@ class EmtProblemDae(EmtProblemTemplate):
             self._working_emt_models[dev_key] = mdl
 
         return mdl
-
-    def _set_working_emt_model(self, dev: Any, mdl: Block) -> None:
-        """
-        Replace the working EMT block for one device without touching dev.emt_model.
-        """
-        self._working_emt_models[id(dev)] = mdl
-
-    def _get_existing_or_grid_emt_model(self, dev: Any) -> Block:
-        """
-        Use the working model after structure build, with grid fallback only for
-        pre-build read-only validation.
-        """
-        return self._working_emt_models.get(id(dev), dev.emt_model)
 
     def get_init_guess_table(self,
                              include_all_vars: bool = True,
