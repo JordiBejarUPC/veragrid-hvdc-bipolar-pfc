@@ -57,8 +57,8 @@ from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_rms_mod
     "IEEE 118.xlsx"
 """
 grid_folder = project_base / "Grids_and_profiles" / "grids"
-#GRID = "IEEE 9 Bus.gridcal"
 GRID = "IEEE 9 Bus.gridcal"
+#GRID = "IEEE39.gridcal"
 USE_CACHED_BUILDER = False
 BUILDER_CACHE_FILE = f'trunk/tensygrid/precomputed_builds/{GRID}.pkl'
 
@@ -113,7 +113,6 @@ def define_problem_with_path(grid_path):
 
 
         grid.var_factory.add_connections([genqec.in_vars[0]], [gen.bus.rms_model.out_vars[0]])
-
         grid.var_factory.add_connections([genqec.in_vars[1]], [gen.bus.rms_model.out_vars[1]])
         set_rms_model(device=gen, model=genqec, var_factory=grid.var_factory)
 
@@ -316,52 +315,6 @@ def define_problem():
 
     return phasor_problem
 
-def op_extraction(problem: vge.RmsProblemPhasor) -> dict:
-    """
-    Returns the operating point dictionary from a defined VeraGrid problem.
-    """
-    v_dict: dict = dict()
-    def safe_get_value(val):
-        try:
-            return float(val)
-        except:
-            if hasattr(val, 'value'):
-                try:
-                    return float(val.value)
-                except:
-                    pass
-        return None
-
-    # 3. EXTRACT x0 (Equilibrium point)
-    try:
-        x0 = problem.get_x0()
-        for i, sym in enumerate(problem.state_and_algebraic_vars):
-            v_dict[str(sym.name)] = float(x0[i])
-    except Exception:
-        pass
-
-    # 4. EXTRACTION FROM THE PHOTO PATHS
-    if hasattr(problem, '_variable_parameters') and hasattr(problem, '_variable_parameters_values'):
-        names = problem._variable_parameters
-        values = problem._variable_parameters_values
-        if names is not None and values is not None:
-            # If values is a list/array and names contains the symbols
-            for name_obj, val_obj in zip(names, values):
-                s_name = str(name_obj.name) if hasattr(name_obj, 'name') else str(name_obj)
-                val = safe_get_value(val_obj)
-                if val is not None:
-                    v_dict[s_name] = val
-
-    # Backup just in case there are also fixed constants
-    if hasattr(problem, '_constant_parameters') and hasattr(problem, '_constant_params'):
-        for n, v in zip(problem._constant_parameters, problem._constant_params):
-            s_name = str(n.name) if hasattr(n, 'name') else str(n)
-            val = safe_get_value(v)
-            if val is not None:
-                v_dict[s_name] = val
-
-    return v_dict
-
 
 def solve_problem(problem: Any = None) -> Any:
 
@@ -379,7 +332,7 @@ def solve_problem(problem: Any = None) -> Any:
 
         print("\n[4] Rebuilding equations and extracting exact physics...")
         builder = PolynomialMatrixBuilder(problem=problem, verbose=True)
-        v_dict: dict = op_extraction(problem=problem)
+        v_dict: dict = PolynomialMatrixBuilder.op_extraction(problem=problem)
 
         print("\n[*] Linearizing model with real parameters...")
         builder.linearize(v_dict=v_dict)
@@ -592,7 +545,8 @@ if __name__ == "__main__":
             lp(main)()
         else: main()
     except SystemExit:
-        print("Error during execution")
+        print("SystemExit")
+        #print("Error during execution")
     finally:
         if REPORT_TIME:
             print("\n" + "=" * 80)
