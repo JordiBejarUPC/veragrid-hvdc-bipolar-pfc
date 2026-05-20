@@ -1466,7 +1466,7 @@ class PolynomialMatrixBuilder:
                 k_modes = min(100, n_dims - 2)
                 if k_modes > 0:
                     try:
-                        sparse_res = self.compute_stability_sparse(sigma=2.0, k_modes=k_modes)
+                        sparse_res = self.compute_stability_sparse(sigma=2.0 + 1e-6j, k_modes=k_modes)
                         evals_s, evecs_right_s, evecs_left_s, p_s, stable_s, margin_s = sparse_res
                     except (AttributeError, NotImplementedError) as e:
                         if self.verbose:
@@ -1526,7 +1526,7 @@ class PolynomialMatrixBuilder:
                     participation_matrix[:, m] = 0.0
 
             max_real = float(np.max(np.real(evals)))
-            is_stable = max_real < 1e-6
+            is_stable = max_real < -1e-6
 
             if self.verbose:
                 print(f"  Found {len(evals)} finite eigenvalues (Physical Modes)\n")
@@ -1539,10 +1539,10 @@ class PolynomialMatrixBuilder:
             return None, None, None, None, False, None
 
     def compute_stability_sparse(self, sigma=2.0, k_modes=200):
-        '''
+        """
         Perform stability analysis for large-scale systems using sparse ARPACK.
 
-        This method solves the generalized eigenvalue problem :math:`Av = \\lambda Ev`
+        This method solves the generalized eigenvalue problem Av = λEv
         using the Shift-and-Invert spectral transformation. It computes both right
         and left eigenvectors to derive the Participation Factor matrix, which
         quantifies the influence of state variables on specific system modes.
@@ -1561,16 +1561,16 @@ class PolynomialMatrixBuilder:
         Returns
         -------
         evals : numpy.ndarray
-            Array of found physical eigenvalues (poles) :math:`\\lambda`.
+            Array of found physical eigenvalues (poles) λ.
         V : numpy.ndarray
-            Matrix where each column is a right eigenvector corresponding to `evals`.
+            Matrix where each column is a right eigenvector corresponding to evals.
         W : numpy.ndarray
             Matrix where each column is a matched left eigenvector.
         participation_matrix : numpy.ndarray
-            Matrix of participation factors where entry :math:`P_{ji}` represents
-            the participation of state :math:`j` in mode :math:`i`.
+            Matrix of participation factors where entry P_ji represents
+            the participation of state j in mode i.
         stable : bool
-            Boolean flag indicating system stability (True if all :math:`Re(\\lambda) \\leq 1e-5`).
+            Boolean flag indicating system stability (True if all Re(λ) <= 1e-5).
         margin : float
             The maximum real part among all computed eigenvalues (stability margin).
 
@@ -1581,8 +1581,8 @@ class PolynomialMatrixBuilder:
         - **Mode Matching:** Since ARPACK may return left and right modes in different
           orders, the Hungarian Algorithm (Linear Sum Assignment) is used to align
           them based on eigenvalue proximity.
-        - **Participation Factors:** Calculated as :math:`P_{ji} = \frac{w_{ji} v_{ji}}{w_i^H v_i}`.
-        '''
+        - **Participation Factors:** Calculated as :math:`P_{ji} = \\frac{w_{ji} v_{ji}}{w_i^H v_i}`.
+        """
         print(f"\n[+] Starting sparse ARPACK analysis (Shift-and-Invert, sigma={sigma}, k={k_modes})...")
         start = time.time()
 
@@ -1616,7 +1616,7 @@ class PolynomialMatrixBuilder:
 
         print(f"    Factoring (A - {sigma}*E) using SuperLU...")
         try:
-            lu_solver = splu(M_shift.tocsc())
+            lu_solver = splu(M_shift.tocsc(), diag_pivot_thresh=1.0)
         except Exception as e:
             print(f"    [!] SuperLU factorization error: {e}")
             return [], None, None, None, False, 0.0
@@ -1788,10 +1788,10 @@ class PolynomialMatrixBuilder:
                 # We take the real part since complex conjugate pairs cancel each other out
                 evolution[i] = np.real(np.sum(mode_coeffs * np.exp(evals * t)))
 
-            plt.plot(time_steps, evolution, label=f"$\Delta$ {var}", linewidth=2)
+            plt.plot(time_steps, evolution, label=f"$\\Delta$ {var}", linewidth=2)
 
         plt.xlabel("Time (s)", fontsize=12)
-        plt.ylabel("Deviation from Operating Point ($\Delta x$)", fontsize=12)
+        plt.ylabel("Deviation from Operating Point ($\\Delta x$)", fontsize=12)
         plt.title("Linear Dynamic Evolution (Small Signal)", fontsize=14)
         plt.axhline(0, color='black', linewidth=0.8, linestyle='--')
         plt.grid(True, alpha=0.3)
@@ -1799,15 +1799,19 @@ class PolynomialMatrixBuilder:
         plt.tight_layout()
         plt.show()
 
-    def compute_bifurcation_stability(self, pf_map: dict, evals: np.ndarray, evecs: np.ndarray, margin: float = 0.1,
+    def compute_bifurcation_stability(self, pf_map: dict, evals: np.ndarray,
+                                      evecs_right: np.ndarray, evecs_left: np.ndarray,
+                                      E_matrix: sparse.csc_matrix, margin: float = 0.1,
                                       tolerance: float = 1e-3, t_margin: float = 5.0) -> dict:
         """
         Mathematically evaluates if perturbations in critical modes (near bifurcation)
-        decay within a tolerance limit after a time t_margin.
+        decay within a tolerance limit after a time t_margin using bi-orthogonal projection.
 
         :param pf_map: Dictionary returned by `get_participation_mapping`.
         :param evals: 1D array of eigenvalues.
-        :param evecs: 2D matrix of right eigenvectors.
+        :param evecs_right: 2D matrix of right eigenvectors (V).
+        :param evecs_left: 2D matrix of left eigenvectors (W).
+        :param E_matrix: The sparse descriptor mass matrix (E).
         :param margin: Real part threshold to consider a mode as "critical" (near the imaginary axis).
         :param tolerance: Maximum allowed deviation at t = t_margin for the perturbation to be considered decayed.
         :param t_margin: Time in the future (seconds) where the envelope is analytically evaluated.
@@ -1817,7 +1821,6 @@ class PolynomialMatrixBuilder:
         idx_vars = []
         for idx_counter, s in enumerate(self.all_symbols):
             s_name = s.name
-            # Detect derivatives or state variables based on common naming conventions
             is_deriv = any(s_name.startswith(pre) for pre in ['dx', 'xp', 'd_', 'dt_'])
             is_input = s_name.startswith('u') and not s_name.startswith('u_')
 
@@ -1826,8 +1829,16 @@ class PolynomialMatrixBuilder:
 
         var_name_to_ss_idx = {self.all_symbols[sym_idx].name: i for i, sym_idx in enumerate(idx_vars)}
 
-        # 2. Pre-calculate the Moore-Penrose pseudoinverse (costly, done once)
-        v_pinv = np.linalg.pinv(evecs)
+        # 2. Enforce descriptor bi-orthogonal normalization: w_i^H * E * v_i = 1
+        # Clone matrices to avoid modifying external state
+        V = evecs_right.copy()
+        W = evecs_left.copy()
+
+        for i in range(len(evals)):
+            # Calculate scaling factor for the i-th mode
+            scale_factor = W[:, i].conj().T @ E_matrix @ V[:, i]
+            # Normalize the left eigenvector accordingly
+            W[:, i] = W[:, i] / scale_factor.conj()
 
         if self.verbose:
             print(f"\n[ Bifurcation & Stability Analysis | Margin: +/-{margin} | Time: {t_margin}s ]")
@@ -1838,7 +1849,6 @@ class PolynomialMatrixBuilder:
         for ev, participations in pf_map.items():
             # Identify if the eigenvalue is critically close to the imaginary axis (Non-Hyperbolic point)
             if -margin < np.real(ev) <= margin:
-
                 ev_str = f"{ev:.4f}"
                 report[ev_str] = []
 
@@ -1851,31 +1861,36 @@ class PolynomialMatrixBuilder:
                 for var_name, pf in participations:
                     if not str(var_name).startswith("u_"):
 
-                        # Ensure the variable exists in the state-space mapping
                         if var_name not in var_name_to_ss_idx:
                             continue
 
                         var_idx = var_name_to_ss_idx[var_name]
 
-                        # A. Construct initial physical perturbation (Delta x_i(0) = 0.05)
-                        x0 = np.zeros(evecs.shape[0])
-                        x0[var_idx] = 0.05
+                        # A. Construct descriptor initial perturbation profile (E * x0)
+                        # Instead of an independent x0 vector, we extract the column from E.
+                        # If the variable is purely algebraic, its corresponding column in E is zero,
+                        # automatically forcing a consistent initial algebraic response.
+                        E_x0 = E_matrix[:, var_idx].toarray().flatten() * 0.05
 
-                        # B. Project to modal domain: c = pinv(V) * x0
-                        c = v_pinv @ x0
+                        # B. Project to modal domain using bi-orthogonality: c_i = w_i^H * (E * x0)
+                        # This replaces the mathematically incorrect and slow 'np.linalg.pinv(V)'
+                        c = np.zeros(len(evals), dtype=complex)
+                        for i in range(len(evals)):
+                            c[i] = W[:, i].conj().T @ E_x0
 
-                        # C. Calculate EXACT deviation at t = t_margin
-                        # Contribution of all modes to the variable's state at time t
-                        mode_coeffs = c * evecs[var_idx, :]
+                        # C. Calculate EXACT linear deviation at t = t_margin inside the computed manifold
+                        mode_coeffs = c * V[var_idx, :]
                         delta_at_t = np.real(np.sum(mode_coeffs * np.exp(evals * t_margin)))
 
-                        # D. Evaluate bifurcation/stability criterion
+                        # D. Evaluate bifurcation and stability criteria
                         passed = abs(delta_at_t) < tolerance
 
-                        # Programmatic Alert for stability loss
-                        if not passed:
-                            print(
-                                f"Programmatic alert: The system will lose stability due to bifurcation at {var_name}")
+                        # Programmatic Alerts tailored for critical points
+                        if not passed and np.real(ev) < -1e-4:
+                            print(f"Programmatic alert: Poorly damped mode causing slow decay at {var_name}")
+                        elif not passed and abs(np.real(ev)) <= 1e-4:
+                            print(f"Programmatic alert: True bifurcation detected at {var_name}. "
+                                  f"Linear simulation cannot guarantee long-term boundedness.")
 
                         report[ev_str].append({
                             "variable": var_name,
@@ -1885,7 +1900,7 @@ class PolynomialMatrixBuilder:
 
                         if self.verbose:
                             status = "[OK]" if passed else "[DANGER]"
-                            msg = "decays" if passed else "DOES NOT damp"
+                            msg = "decays" if passed else "DOES NOT damp/converge"
                             symbol = "<" if passed else ">="
                             print(f"  {status} Variable {var_name}: Perturbation {msg}. "
                                   f"Delta(t={t_margin}) = {abs(delta_at_t):.6f} {symbol} {tolerance}")

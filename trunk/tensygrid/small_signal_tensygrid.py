@@ -57,7 +57,7 @@ from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_rms_mod
     "IEEE 118.xlsx"
 """
 grid_folder = project_base / "Grids_and_profiles" / "grids"
-GRID = "IEEE 9 Bus.gridcal"
+GRID = "IEEE 118.xlsx"
 #GRID = "IEEE39.gridcal"
 USE_CACHED_BUILDER = False
 BUILDER_CACHE_FILE = f'trunk/tensygrid/precomputed_builds/{GRID}.pkl'
@@ -359,6 +359,8 @@ def solve_problem(problem: Any = None) -> Any:
     print("=" * 80)
     print(f"  Found {len(eigenvalues)} finite eigenvalues")
     print(f"  System is stable: {stable}")
+    if -1e-6 < margin < 1e6:
+        print("Expected bifurcation. Further analysis is needed.")
     print(f"  Stability margin: {margin:.4f}")
     print("=" * 80)
 
