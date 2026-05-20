@@ -8,7 +8,7 @@ import numpy as np
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'src')))
 from matplotlib import pyplot as plt
 
-from VeraGridEngine.Utils.Symbolic.block import Block, compare_equation_sets
+from VeraGridEngine.Utils.Symbolic.symbolic_compare_expressions import equivalent, equivalent_systems
 from VeraGridEngine.Templates.Rms.genrow_rms_template import get_genrow_rms_template
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
@@ -29,15 +29,6 @@ import VeraGridEngine.api as gce
 ###########################################################################################################################
 
 
-def find_name_in_block(name: str, block: Block):
-    for var in block.algebraic_vars + block.state_vars + list(block.event_dict.keys()):
-        if name == var.name:
-            return var
-
-    for mdl in block.children:
-        res = find_name_in_block(name, mdl)
-        if res is not None:
-            return res
 
 
 grid = gce.MultiCircuit(Sbase=100, fbase=50.0)
@@ -50,10 +41,10 @@ gen1_rms_model.unify_blocks()
 gen2_rms_model = get_complete_generator_template_rms(grid.var_factory).block
 gen2_rms_model.unify_blocks()
 
-eq_added = grid.var_factory.add_var("V1") + grid.var_factory.add_var("V2")
+# eq_added = grid.var_factory.add_var("V1") + grid.var_factory.add_var("V2")
 
-gen2_rms_model.algebraic_eqs.append(eq_added)
+# gen2_rms_model.algebraic_eqs.append(eq_added)
 
-equal = compare_equation_sets(gen1_rms_model.algebraic_eqs, gen2_rms_model.algebraic_eqs)
+equal = equivalent_systems(gen1_rms_model.algebraic_eqs, gen2_rms_model.algebraic_eqs)
 
 print(equal)
