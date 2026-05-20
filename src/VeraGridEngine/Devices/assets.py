@@ -909,6 +909,8 @@ class Assets:
             obj.ensure_profiles_exist(self.time_profile)
         self._dc_lines.append(obj)
 
+        obj.set_var_factory(self._var_factory)
+
     def delete_dc_line(self, obj: dev.DcLine):
         """
         Delete line

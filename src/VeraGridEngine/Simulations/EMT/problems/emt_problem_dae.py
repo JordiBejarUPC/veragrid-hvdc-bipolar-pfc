@@ -534,7 +534,49 @@ def _collect_external_mapping_from_block(mdl: Block) -> Dict[Any, Var]:
                 else:
                     pass
 
+    mapping = _sanitize_external_mapping_for_explicit_dc_terminals(mapping)
+
     return mapping
+
+
+def _sanitize_external_mapping_for_explicit_dc_terminals(mapping: Dict[Any, Var]) -> Dict[Any, Var]:
+    """
+    Remove ambiguous shared DC aliases when explicit terminal mappings exist.
+
+    GUI-loaded EMT wrappers can preserve both the legacy shared DC aliases
+    (``Vdc`` / ``Idc``) and the explicit terminal contract
+    (``Vf_dc`` / ``Vt_dc`` and ``If_dc`` / ``It_dc``). The structural EMT
+    assembly for two-sided DC devices is defined by the explicit side-specific
+    variables. Keeping the shared aliases at the merged root can reintroduce
+    one-sided shortcuts that collapse the assembled sparse system and make the
+    Jacobian exactly singular.
+
+    :param mapping: Flattened external mapping collected from one block hierarchy.
+    :return: Sanitized mapping that preserves only the explicit two-sided DC contract.
+    """
+    sanitized_mapping: Dict[Any, Var] = dict()
+    has_vf: bool = VarPowerFlowRefferenceType.Vf_dc in mapping
+    has_vt: bool = VarPowerFlowRefferenceType.Vt_dc in mapping
+    has_if: bool = VarPowerFlowRefferenceType.If_dc in mapping
+    has_it: bool = VarPowerFlowRefferenceType.It_dc in mapping
+    key: Any
+    value: Var
+
+    for key, value in mapping.items():
+        if key == VarPowerFlowRefferenceType.Vdc:
+            if has_vf and has_vt:
+                pass
+            else:
+                sanitized_mapping[key] = value
+        elif key == VarPowerFlowRefferenceType.Idc:
+            if has_if and has_it:
+                pass
+            else:
+                sanitized_mapping[key] = value
+        else:
+            sanitized_mapping[key] = value
+
+    return sanitized_mapping
 
 
 def _collect_api_obj_mapping_from_block(mdl: Block) -> Dict[ParamPowerFlowRefferenceType, Any]:
@@ -7282,7 +7324,25 @@ class EmtProblemDae(EmtProblemTemplate):
 
         if mdl is None:
             mdl = copy.deepcopy(dev.emt_model)
+            if mdl.children:
+                # Script-built EMT workflows call ``set_emt_model()`` which flattens the
+                # connected hierarchy through ``unify_blocks()`` before the model ever reaches
+                # the solver. GUI-loaded .veragrid files can preserve the pre-unified wrapper
+                # roots instead. The EMT assembly expects the same normalized block shape in
+                # both workflows, otherwise wrapper-only metadata can diverge from the actual
+                # child equations and produce a structurally singular system.
+                mdl.unify_blocks()
+                # The unified placeholder rebuilds the block-level collections from the child
+                # hierarchy. Re-deriving the external mapping afterwards ensures that EMT
+                # initialization seeds the live flattened variables rather than stale wrapper
+                # aliases that may no longer participate directly in the residual equations.
+                mdl.external_mapping = _collect_external_mapping_from_block(mdl)
+                mdl.api_obj_mapping = _collect_api_obj_mapping_from_block(mdl)
+            else:
+                pass
             self._working_emt_models[dev_key] = mdl
+        else:
+            pass
 
         return mdl
 

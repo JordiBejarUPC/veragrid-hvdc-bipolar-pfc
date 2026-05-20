@@ -109,7 +109,7 @@ coupling_inductance_h: float = 30.0e-3
 
 # simulation_time_s: float = 0.5
 # simulation_time_s: float = 0.45
-simulation_time_s: float = 0.42
+simulation_time_s: float = 0.8
 time_step_s: float = 2.0e-5
 q_setpoint_1_mvar: float = 0.0
 q_setpoint_2_mvar: float = 0.0
@@ -127,6 +127,8 @@ q_setpoint_2_pu: float = q_setpoint_2_mvar / sbase_mva
 tau = 1 / 3100
 current_kp: float = coupling_inductance_h / tau
 current_ki: float = coupling_resistance_ohm / tau
+print(f"current_kp = {current_kp}")
+print(f"current_ki = {current_ki}")
 
 converter_model_sbase_pu: float = 1.0
 dc_link_capacitance_pu: float = 0.8
@@ -177,12 +179,19 @@ grid: gce.MultiCircuit = gce.MultiCircuit(
 
 ac_base_impedance_ohm: float = (ac_voltage_ll_kv * ac_voltage_ll_kv) / sbase_mva
 dc_base_impedance_ohm: float = (dc_voltage_kv * dc_voltage_kv) / sbase_mva
+print(f"ac_base_impedance_ohm = {ac_base_impedance_ohm}")
+print(f"dc_base_impedance_ohm = {dc_base_impedance_ohm}")
 omega_base_rad_s: float = 2.0 * np.pi * fbase_hz
 dc_base_inductance_h: float = dc_base_impedance_ohm / omega_base_rad_s
 dc_base_capacitance_f: float = 1.0 / (omega_base_rad_s * dc_base_impedance_ohm)
+print(f"dc_base_inductance_h = {dc_base_inductance_h}")
+print(f"dc_base_capacitance_f = {dc_base_capacitance_f}")
 grid_r_pu: float = grid_resistance_ohm / ac_base_impedance_ohm
 grid_x_pu: float = omega_base_rad_s * grid_inductance_h / ac_base_impedance_ohm
+print(f"grid_r_pu = {grid_r_pu}")
+print(f"grid_x_pu = {grid_x_pu}")
 dc_line_r_pu: float = (0.5 + 0.25 + 0.4) / dc_base_impedance_ohm
+print(f"dc_line_r_pu = {dc_line_r_pu}")
 dc_line_r1_pu: float = 0.5 / dc_base_impedance_ohm
 dc_line_r2_pu: float = 0.25 / dc_base_impedance_ohm
 dc_line_r3_pu: float = 0.4 / dc_base_impedance_ohm
@@ -190,6 +199,14 @@ dc_line_l1_pu: float = 0.005 / dc_base_inductance_h
 dc_line_l2_pu: float = 0.0025 / dc_base_inductance_h
 dc_line_l3_pu: float = 0.004 / dc_base_inductance_h
 dc_line_capacitor_pu: float = 150.0e-6 / dc_base_capacitance_f
+print(f"dc_line_r1_pu = {dc_line_r1_pu}")
+print(f"dc_line_r2_pu = {dc_line_r2_pu}")
+print(f"dc_line_r3_pu = {dc_line_r3_pu}")
+print(f"dc_line_l1_pu = {dc_line_l1_pu}")
+print(f"dc_line_l2_pu = {dc_line_l2_pu}")
+print(f"dc_line_l3_pu = {dc_line_l3_pu}")
+print(f"dc_line_capacitor_pu = {dc_line_capacitor_pu}")
+
 
 bus_grid_1: gce.Bus = gce.Bus(name="Bus_Grid_1", Vnom=ac_voltage_ll_kv, is_slack=True)
 bus_dc_1: gce.Bus = gce.Bus(name="Bus_DC_1", Vnom=dc_voltage_kv, is_dc=True)
@@ -348,17 +365,6 @@ if vsc2_control1_var is None:
     raise RuntimeError("Could not resolve event parameter 'control1_val_vsc2_pseudo_emt'.")
 if vsc1_control1_var is None:
     raise RuntimeError("Could not resolve event parameter 'control1_val_vsc1_pseudo_emt'.")
-
-# step events
-# grid.add_emt_event(EmtEvent(device=dc_line, parameter=p_ext_var, time=p_ext_events[0][0], value=p_ext_events[0][1], group=events_group))
-# grid.add_emt_event(EmtEvent(device=dc_line, parameter=p_ext_var, time=p_ext_events[1][0], value=p_ext_events[1][1], group=events_group))
-# grid.add_emt_event(EmtEvent(device=dc_line, parameter=p_ext_var, time=p_ext_events[2][0], value=p_ext_events[2][1], group=events_group))
-# grid.add_emt_event(EmtEvent(device=converter_1, parameter=vsc1_control1_var, time=0.2, value=-transfer_power_pu, group=events_group))
-# grid.add_emt_event(EmtEvent(device=converter_1, parameter=vsc1_control1_var, time=0.35, value=-0.5 * transfer_power_pu, group=events_group))
-# grid.add_emt_event(EmtEvent(device=converter_1, parameter=vsc1_control1_var, time=0.40, value=-idle_power_pu, group=events_group))
-# grid.add_emt_event(EmtEvent(device=converter_2, parameter=vsc2_control1_var, time=0.2, value=transfer_power_pu, group=events_group))
-# grid.add_emt_event(EmtEvent(device=converter_2, parameter=vsc2_control1_var, time=0.35, value=0.5 * transfer_power_pu, group=events_group))
-# grid.add_emt_event(EmtEvent(device=converter_2, parameter=vsc2_control1_var, time=0.40, value=idle_power_pu, group=events_group))
 
 #  ramp event
 grid.add_emt_event(EmtEvent(device=dc_line, parameter=p_ext_var, time=p_ext_events[0][0], value=p_ext_events[0][1], group=events_group))

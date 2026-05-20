@@ -213,7 +213,11 @@ def create_block_of_type(var_factory: VarFactory,
         blk.name = item_name
         return blk
 
-
+    # DC LINE
+    elif block_type == BlockType.COMPLETE_PSEUDO_VSC_EMT:
+        blk = tem.get_full_pseudo_emt_converter(var_factory).block
+        blk.name = item_name
+        return blk
 
     else:
         raise ValueError(f"Unknown block type: {block_type}")

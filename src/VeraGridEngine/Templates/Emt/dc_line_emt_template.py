@@ -96,7 +96,8 @@ def get_dc_line_emt_template(vf: VarFactory, name: str = "dc_line_emt_template")
         p_t - v_t_dc * i_t_dc,
     ])
 
-    templ.block.out_vars = list([i_f_dc, i_t_dc, p_f, p_t])
+    # templ.block.out_vars = list([i_f_dc, i_t_dc, p_f, p_t])
+    templ.block.out_vars = list([i_f_dc, i_t_dc])
 
     templ.block.external_mapping = dict([
         (VarPowerFlowRefferenceType.Vf_dc, v_f_dc),
@@ -276,7 +277,8 @@ def get_dc_line_with_power_input_emt_template(vf: VarFactory, name: str = "dc_li
         p_t - v_t_dc * i_t_dc,
     ]
 
-    templ.block.out_vars = [i_f_dc, i_t_dc, p_f, p_t]
+    # templ.block.out_vars = [i_f_dc, i_t_dc, p_f, p_t]
+    templ.block.out_vars = [i_f_dc, i_t_dc]
     templ.block.external_mapping = {
         VarPowerFlowRefferenceType.Vf_dc: v_f_dc,
         VarPowerFlowRefferenceType.Vt_dc: v_t_dc,
