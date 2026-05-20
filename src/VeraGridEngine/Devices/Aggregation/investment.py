@@ -8,6 +8,7 @@ from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, GCPro
 from VeraGridEngine.Devices.Parents.pointer_device_parent import PointerDeviceParent
 from VeraGridEngine.Devices.Aggregation.investments_group import InvestmentsGroup
 from VeraGridEngine.enumerations import DeviceType, PrpCat
+from VeraGridEngine.basic_structures import Logger
 
 
 class Investment(PointerDeviceParent):
@@ -30,7 +31,7 @@ class Investment(PointerDeviceParent):
             units='M€',
             tpe=float,
             definition='Capital expenditures. This is the investment value, '
-                                 'it overrides the CAPEX value of the device if it exits.',
+                       'it overrides the CAPEX value of the device if it exits.',
             cat=[PrpCat.INV],
         ),
         GCProp(
@@ -86,7 +87,7 @@ class Investment(PointerDeviceParent):
                  code='',
                  CAPEX: float = 0.0,
                  status: bool = True,
-                 commissioning_date: float=0,
+                 commissioning_date: float = 0,
                  decommissioning_date: float = 0,
                  prop: str = "",
                  value: float = 0,

@@ -4656,6 +4656,23 @@ class Assets:
 
         return res
 
+    def get_investment_by_groups_dict(self) -> Dict[dev.InvestmentsGroup, List[dev.Investment]]:
+        """
+        Get a dictionary of investments groups
+        :return: Dict[investment group index] = list of investments
+        """
+
+        res: Dict[dev.InvestmentsGroup, List[dev.Investment]] = dict()
+        for inv in self._investments:
+            if inv.group is not None:
+                inv_list = res.get(inv.group, None)
+                if inv_list is None:
+                    res[inv.group] = [inv]
+                else:
+                    inv_list.append(inv)
+
+        return res
+
     def get_capex_by_investment_group(self) -> Vec:
         """
         Get array of CAPEX costs per investment group
@@ -4681,14 +4698,37 @@ class Assets:
         """
 
         for inv in self.investments:
-
             if inv.device is not None:
+                inv.device.active = False
+                inv.device.active_prof.fill(False)
 
-                if hasattr(inv.device, "active"):
-                    inv.device.active = False
+    def apply_investments_group(
+            self,
+            inv_group: dev.InvestmentsGroup,
+            inv_groups_dict: Dict[dev.InvestmentsGroup, List[dev.Investment]] | None = None) -> Logger:
+        """
+        Apply the investments that shall be in operation at the model date
+        :param inv_group:
+        :param inv_groups_dict:
+        :return: Logger
+        """
+        logger = Logger()
 
-                if hasattr(inv.device, "active_prof"):
-                    inv.device.active_prof.fill(False)
+        # get the model unix timestamp
+        model_unix = self.snapshot_time.timestamp()
+
+        logger.add_info(msg="Model date", value=str(self.snapshot_time))
+
+        if inv_groups_dict is None:
+            inv_groups_dict = self.get_investment_by_groups_dict()
+
+        investments = inv_groups_dict[inv_group]
+
+        for investment in investments:
+            if investment.commissioning_date <= model_unix <= investment.decommissioning_date:
+                self.apply_investment(investment=investment, logger=logger)
+
+        return logger
 
     # ------------------------------------------------------------------------------------------------------------------
     # Investment
@@ -4737,6 +4777,49 @@ class Assets:
 
             for grp in to_del:
                 self.delete_investment_groups(grp)
+
+    def apply_investment(self, investment: dev.Investment, logger: Logger):
+        """
+        Apply investment
+        :param investment:
+        :param logger:
+        :return:
+        """
+        if investment.device is None:
+            logger.add_error(msg="No device",
+                             device_class="Investment",
+                             device_property="device")
+        else:
+            prp = investment.device.get_property_by_name(investment.prop)
+            try:
+                val = prp.tpe(investment.value)
+                investment.device.set_value(prop=prp, t_idx=None, value=val)
+                logger.add_info(msg="Activated",
+                                device_class="Investment",
+                                device=investment.name,
+                                value=investment.device.name)
+            except ValueError as e:
+                logger.add_error(msg="Cannot cast value",
+                                 device_class="Investment",
+                                 device_property="device")
+
+    def apply_all_relevant_investments(self) -> Logger:
+        """
+        Apply the investments that shall be in operation at the model date
+        :return: Logger
+        """
+        logger = Logger()
+
+        # get the model unix timestamp
+        model_unix = self.snapshot_time.timestamp()
+
+        logger.add_info(msg="Model date", value=str(self.snapshot_time))
+
+        for investment in self.investments:
+            if investment.commissioning_date <= model_unix <= investment.decommissioning_date:
+                self.apply_investment(investment=investment, logger=logger)
+
+        return logger
 
     # ------------------------------------------------------------------------------------------------------------------
     # Rms Events group
