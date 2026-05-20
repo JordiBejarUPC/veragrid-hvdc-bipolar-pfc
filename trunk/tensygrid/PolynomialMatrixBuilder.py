@@ -1576,6 +1576,7 @@ class PolynomialMatrixBuilder:
 
         Notes
         -----
+<<<<<<< HEAD
         Structural Regularization: The method automatically patches empty rows/columns
         in the shifted matrix to prevent singularity during LU factorization.
 
@@ -1585,6 +1586,15 @@ class PolynomialMatrixBuilder:
 
         Participation Factors: Calculated as P_ji = w_ji * v_ji / (w_i^H * v_i).
         """
+=======
+        - **Structural Regularization:** The method automatically patches empty rows/columns
+          in the shifted matrix to prevent singularity during LU factorization.
+        - **Mode Matching:** Since ARPACK may return left and right modes in different
+          orders, the Hungarian Algorithm (Linear Sum Assignment) is used to align
+          them based on eigenvalue proximity.
+        - **Participation Factors:** Calculated as :math:`P_{ji} = \\frac{w_{ji} v_{ji}}{w_i^H v_i}`.
+        '''
+>>>>>>> 85e167a63f4e8d837f530e13d493e62c239ed7ee
         print(f"\n[+] Starting sparse ARPACK analysis (Shift-and-Invert, sigma={sigma}, k={k_modes})...")
         start = time.time()
 
