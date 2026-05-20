@@ -1576,25 +1576,13 @@ class PolynomialMatrixBuilder:
 
         Notes
         -----
-<<<<<<< HEAD
-        Structural Regularization: The method automatically patches empty rows/columns
-        in the shifted matrix to prevent singularity during LU factorization.
-
-        Mode Matching: Since ARPACK may return left and right modes in different
-        orders, the Hungarian Algorithm (Linear Sum Assignment) is used to align
-        them based on eigenvalue proximity.
-
-        Participation Factors: Calculated as P_ji = w_ji * v_ji / (w_i^H * v_i).
-        """
-=======
         - **Structural Regularization:** The method automatically patches empty rows/columns
           in the shifted matrix to prevent singularity during LU factorization.
         - **Mode Matching:** Since ARPACK may return left and right modes in different
           orders, the Hungarian Algorithm (Linear Sum Assignment) is used to align
           them based on eigenvalue proximity.
         - **Participation Factors:** Calculated as :math:`P_{ji} = \\frac{w_{ji} v_{ji}}{w_i^H v_i}`.
-        '''
->>>>>>> 85e167a63f4e8d837f530e13d493e62c239ed7ee
+        """
         print(f"\n[+] Starting sparse ARPACK analysis (Shift-and-Invert, sigma={sigma}, k={k_modes})...")
         start = time.time()
 
@@ -1800,10 +1788,10 @@ class PolynomialMatrixBuilder:
                 # We take the real part since complex conjugate pairs cancel each other out
                 evolution[i] = np.real(np.sum(mode_coeffs * np.exp(evals * t)))
 
-            plt.plot(time_steps, evolution, label=f"$\Delta$ {var}", linewidth=2)
+            plt.plot(time_steps, evolution, label=f"$\\Delta$ {var}", linewidth=2)
 
         plt.xlabel("Time (s)", fontsize=12)
-        plt.ylabel("Deviation from Operating Point ($\Delta x$)", fontsize=12)
+        plt.ylabel("Deviation from Operating Point ($\\Delta x$)", fontsize=12)
         plt.title("Linear Dynamic Evolution (Small Signal)", fontsize=14)
         plt.axhline(0, color='black', linewidth=0.8, linestyle='--')
         plt.grid(True, alpha=0.3)
