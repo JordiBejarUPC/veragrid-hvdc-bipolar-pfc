@@ -2078,6 +2078,45 @@ class DynamicsResultsHandler:
         else:
             return False
 
+    def rename_plot_group(self, old_name: str, new_name: str) -> bool:
+        """
+        Rename one plot group and refresh the plots tree.
+
+        :param old_name: Existing plot-group name.
+        :param new_name: Requested replacement name.
+        :return: ``True`` when the group existed and the rename was applied.
+        """
+        # The new name is normalized first so the runtime state and the persistent
+        # circuit asset follow the exact same validated identifier.
+        clean_name: str = new_name.strip()
+
+        if clean_name != "":
+            # When a circuit exists, the persistent plot asset has to be renamed
+            # together with the runtime group so future reloads preserve the new name.
+            if self.circuit is not None:
+                plot_asset: DynamicPlot | None = self._find_matching_asset_plot(group_name=old_name)
+                clashing_asset: DynamicPlot | None = self._find_matching_asset_plot(group_name=clean_name)
+                if plot_asset is not None:
+                    if clashing_asset is None or clean_name == old_name:
+                        plot_asset.name = clean_name
+                    else:
+                        return False
+                else:
+                    pass
+            else:
+                pass
+
+            # The domain collection remains the source for the Qt tree model, so
+            # the runtime rename must succeed before rebuilding the projection.
+            renamed: bool = self.plot_groups.rename_group(old_name=old_name, new_name=clean_name)
+            if renamed:
+                self.rebuild_plots_model()
+                return True
+            else:
+                return False
+        else:
+            return False
+
     def add_var_to_group(self, group_name: str, var_uid: int) -> bool:
         """
         Add one variable to a plot group and refresh the plots tree.
