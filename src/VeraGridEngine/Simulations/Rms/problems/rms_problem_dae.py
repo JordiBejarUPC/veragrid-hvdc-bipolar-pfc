@@ -35,6 +35,7 @@ from VeraGridEngine.Utils.Symbolic.bus_rms_template import get_bus_rms_algebraic
 from VeraGridEngine.Utils.procedural_logic import build_boundary_updater_from_block
 from VeraGridEngine.IO.fmu.importer.experimental_cs import (
     advance_rms_fmu_cs_devices,
+    align_rms_fmu_cs_device_output_parameters,
     close_rms_fmu_cs_devices,
     initialize_rms_fmu_cs_devices,
     register_rms_fmu_cs_device,
@@ -124,6 +125,27 @@ def _get_next_forced_mode_event_time(
     return next_time
 
 
+def _is_rms_time_strictly_after_event(t_curr: float, event_time: float) -> bool:
+    """
+    Return whether the current RMS time is strictly after one event time.
+
+    The RMS reference trajectories treat the event sample itself as still
+    belonging to the pre-event branch. Floating-point time accumulation can make
+    a nominal sample such as ``0.1`` appear as ``0.10000000000000007``. Using
+    the same alignment tolerance already employed elsewhere in the solver keeps
+    boundary decisions stable and prevents one-sample-early event activation.
+
+    :param t_curr: Current solver time.
+    :param event_time: Event activation time.
+    :return: ``True`` only when the current time is beyond the aligned boundary.
+    """
+
+    if _is_time_aligned(t_curr=t_curr, event_time=event_time):
+        return False
+    else:
+        return t_curr > event_time
+
+
 def _build_ramp_runtime_expr(time_var: Var,
                              start_time: float,
                              end_time: float,
@@ -161,28 +183,43 @@ def _build_ramp_runtime_expr(time_var: Var,
     return start_expr + progress_expr * (Const(float(final_value)) - start_expr)
 
 
-def _normalize_rms_event_transition_type(transition_raw: DynamicEventTransitionType | str | None) -> DynamicEventTransitionType:
+def _is_rms_event_routed_to_scheduled_mode(
+        transition_tpe: DynamicEventTransitionType,
+        parameter_uid: int,
+        discrete_parameter_uids: Set[int],
+        continuous_parameter_uids: Set[int],
+) -> bool:
     """
-    Normalize one RMS event transition value before solver dispatch.
+    Decide whether one RMS event must use the scheduled step path.
 
-    The RMS runtime builder receives event specifications after they pass through
-    GUI and persistence layers that may serialize enums as strings. The solver
-    must compare one explicit enum value so that ramp events follow the ramp
-    branch instead of silently falling back to the step branch.
+    The RMS runtime parameter layer must support two behaviors for the same
+    symbolic parameter. Step events must keep the historical scheduled update
+    path used by existing reference trajectories, while ramp events must stay on
+    the continuous symbolic path so the runtime parameter evolves smoothly over
+    time. This helper therefore routes each event from its transition profile
+    first, and only falls back to the registered parameter class when the event
+    profile does not force a unique path.
 
-    :param transition_raw: Raw transition value stored in one event specification.
-    :return: Normalized transition enum.
+    :param transition_tpe: Normalized event transition type.
+    :param parameter_uid: Runtime parameter unique identifier.
+    :param discrete_parameter_uids: Registered discrete/mode parameter UIDs.
+    :param continuous_parameter_uids: Registered continuous parameter UIDs.
+    :return: ``True`` when the event must use scheduled step handling.
     """
-    if isinstance(transition_raw, DynamicEventTransitionType):
-        return transition_raw
+
+    if transition_tpe == DynamicEventTransitionType.Step:
+        return True
     else:
-        if isinstance(transition_raw, str):
-            if transition_raw == DynamicEventTransitionType.Ramp.value:
-                return DynamicEventTransitionType.Ramp
-            else:
-                return DynamicEventTransitionType.Step
+        if transition_tpe == DynamicEventTransitionType.Ramp:
+            return False
         else:
-            return DynamicEventTransitionType.Step
+            if parameter_uid in discrete_parameter_uids:
+                return True
+            else:
+                if parameter_uid in continuous_parameter_uids:
+                    return False
+                else:
+                    return True
 
 
 def _freeze_runtime_expr_at_time(expr: Expr | Const,
@@ -1059,19 +1096,56 @@ class RmsProblemDae(RmsProblemTemplate):
                 if not self._event_targets_registered_parameter(rms_evt, int(rms_evt.parameter.uid)):
                     pass
                 else:
-                    parameter_uid = int(rms_evt.parameter.uid)
+                    parameter_uid: int = int(rms_evt.parameter.uid)
+                    transition_tpe: DynamicEventTransitionType = rms_evt.transition_type
+                    use_scheduled_mode: bool = _is_rms_event_routed_to_scheduled_mode(
+                        transition_tpe=transition_tpe,
+                        parameter_uid=parameter_uid,
+                        discrete_parameter_uids=self._discrete_event_parameter_uids,
+                        continuous_parameter_uids=self._continuous_event_parameter_uids,
+                    )
 
-                    if parameter_uid in self._discrete_event_parameter_uids:
-                        event_list = scheduled_mode_events.setdefault(parameter_uid, list())
-                        force_step_alignment: bool = bool(rms_evt.force_step_alignment)
+                    # The event routing must preserve the legacy discrete step
+                    # path while still allowing the same symbolic parameter to
+                    # host a continuous ramp. Using the transition profile as the
+                    # primary routing decision keeps the historical step response
+                    # compatible with the reference CSVs and fixes the broken ramp
+                    # behavior without splitting model parameters into separate
+                    # symbolic registrations.
+                    if use_scheduled_mode:
+                        if parameter_uid in self._discrete_event_parameter_uids:
+                            event_list = scheduled_mode_events.setdefault(parameter_uid, list())
+                            force_step_alignment: bool = bool(rms_evt.force_step_alignment)
 
-                        event_list.append(
-                            (
-                                float(rms_evt.time),
-                                float(rms_evt.value),
-                                force_step_alignment,
+                            # Only true discrete/mode parameters should use the
+                            # scheduled latch path. Event-dict parameters such as
+                            # ``Pl0`` historically followed the symbolic piecewise
+                            # path even for step events, and the stored RMS CSV
+                            # references were generated from that behavior.
+                            event_list.append(
+                                (
+                                    float(rms_evt.time),
+                                    float(rms_evt.value),
+                                    force_step_alignment,
+                                )
                             )
-                        )
+                        else:
+                            if parameter_uid in collect_continuous_events:
+                                collect_continuous_events[parameter_uid].append(
+                                    dict({
+                                        # Historical RMS ``event_dict`` step events were evaluated through the
+                                        # symbolic runtime parameter path at the event time itself. Restoring that
+                                        # exact activation time preserves the legacy ``Pl0`` trajectories while the
+                                        # ramp branch below continues to use the dedicated continuous interpolation
+                                        # logic introduced for ramp support.
+                                        "time": float(rms_evt.time),
+                                        "value": float(rms_evt.value),
+                                        "end_time": None,
+                                        "transition_type": DynamicEventTransitionType.Step,
+                                    })
+                                )
+                            else:
+                                pass
                     else:
                         if parameter_uid in collect_continuous_events:
                             collect_continuous_events[parameter_uid].append(
@@ -1079,7 +1153,7 @@ class RmsProblemDae(RmsProblemTemplate):
                                     "time": float(rms_evt.time),
                                     "value": float(rms_evt.value),
                                     "end_time": None if rms_evt.end_time is None else float(rms_evt.end_time),
-                                    "transition_type": rms_evt.transition_type,
+                                    "transition_type": transition_tpe,
                                 })
                             )
                         else:
@@ -1112,10 +1186,7 @@ class RmsProblemDae(RmsProblemTemplate):
                 event_spec: dict[str, Any]
 
                 for event_spec in sorted_specs:
-                    transition_raw: Any = event_spec["transition_type"]
-                    transition_tpe: DynamicEventTransitionType = _normalize_rms_event_transition_type(
-                        transition_raw=transition_raw
-                    )
+                    transition_tpe: DynamicEventTransitionType = event_spec["transition_type"]
 
                     if transition_tpe == DynamicEventTransitionType.Ramp:
                         start_time: float = float(event_spec["time"])
@@ -1385,7 +1456,6 @@ class RmsProblemDae(RmsProblemTemplate):
         self._runtime_mode_eqs = list()
 
         self._uid2idx_event_params = dict()
-
         n_source: int = len(self._runtime_all_parameters_source)
         i: int = 0
 
@@ -1399,7 +1469,6 @@ class RmsProblemDae(RmsProblemTemplate):
             else:
                 self._runtime_continuous_parameters.append(parameter)
                 self._runtime_continuous_eqs.append(equation)
-
             i += 1
 
         self._runtime_continuous_slice = slice(0, len(self._runtime_continuous_parameters))
@@ -1451,7 +1520,16 @@ class RmsProblemDae(RmsProblemTemplate):
                 force_step_alignment: bool
                 event_time, event_value, force_step_alignment = event_list[event_idx]
 
-                if t_curr < event_time:
+                # Scheduled RMS step events must follow the same strict-after
+                # activation boundary as the symbolic ``piecewise`` helper used
+                # by the legacy RMS reference path. The symbolic backend applies
+                # a new value only once ``t`` is strictly greater than the event
+                # time because ``heaviside(0)`` evaluates to zero. Reusing that
+                # convention here keeps scheduled mode updates aligned with the
+                # historical sampled trajectories.
+                if _is_rms_time_strictly_after_event(t_curr=t_curr, event_time=event_time):
+                    pass
+                else:
                     break
 
                 if uid in self._uid2idx_event_params:
@@ -1460,7 +1538,7 @@ class RmsProblemDae(RmsProblemTemplate):
                     runtime_idx = None
 
                 if force_step_alignment:
-                    if _is_time_aligned(t_curr, event_time):
+                    if _is_rms_time_strictly_after_event(t_curr=t_curr, event_time=event_time):
                         if runtime_idx is not None:
                             full_params[runtime_idx] = event_value
                         else:
@@ -1626,20 +1704,43 @@ class RmsProblemDae(RmsProblemTemplate):
 
             return updated
 
-    def update_variable_params(self, t: float, x_snapshot: Optional[Vec] = None):
+    def update_variable_params(self,
+                               t: float,
+                               x_snapshot: Optional[Vec] = None,
+                               scheduled_t: float | None = None) -> None:
         """
         Update the variable parameters. Continuous runtime parameters are re-evaluated,
         while retained mode parameters are left untouched unless updated by boundary
         logic.
 
-        :param t:
-        :param x_snapshot:
-        :return:
+        The RMS implicit solve needs two distinct time views. Continuous ramp-like
+        parameters must be evaluated at the current local target time so the
+        nonlinear solve sees the interpolated value inside the step. Historical
+        scheduled step events, however, must keep the pre-event value on the
+        sample aligned with the event instant and only latch afterwards. The
+        optional ``scheduled_t`` argument therefore lets the caller decouple the
+        continuous symbolic evaluation time from the scheduled event boundary
+        time without duplicating the update logic.
+
+        :param t: Continuous symbolic evaluation time.
+        :param x_snapshot: Current state snapshot used by boundary logic.
+        :param scheduled_t: Optional time used by scheduled step logic.
+        :return: None.
         """
+        scheduled_time: float
+
         if self._event_params_fn is None:
             raise ValueError("_event_params_fn is None")
+        else:
+            pass
+
+        if scheduled_t is None:
+            scheduled_time = float(t)
+        else:
+            scheduled_time = float(scheduled_t)
 
         self._variable_parameters_values = self.def_event_params_fn(self._variable_parameters_values, t)
+        self._apply_scheduled_mode_events(scheduled_time, self._variable_parameters_values)
 
         if self._block_boundary_updater is not None and x_snapshot is not None:
             if self._constant_params is None:
@@ -1655,7 +1756,6 @@ class RmsProblemDae(RmsProblemTemplate):
         self._update_dynamic_mode_defaults(t=t, x=x, params=params)
         if self._procedural_logic_updater is not None:
             self._procedural_logic_updater.update(t=t, x=x, params=params)
-        self._apply_scheduled_mode_events(t, params)
         self._variable_parameters_values[:] = params[: len(self._variable_parameters)]
 
     def add_variables_to_compilation_dicts(self, elm: ALL_DEV_TYPES, mdl: Block):
@@ -2060,6 +2160,7 @@ class RmsProblemDae(RmsProblemTemplate):
 
         if len(self._fmu_cs_adapters) > 0:
             initialize_rms_fmu_cs_devices(problem=self, x_snapshot=x_snapshot, time_value=t)
+            align_rms_fmu_cs_device_output_parameters(problem=self, x_snapshot=x_snapshot, time_value=t)
         else:
             self._fmu_cs_initialized = True
 

@@ -367,7 +367,7 @@ def test_rms_event_accepts_serialized_ramp_transition_metadata() -> None:
     event: RmsEvent = RmsEvent(time=0.1,
                                end_time=0.2,
                                value=1.5,
-                               transition_type=DynamicEventTransitionType.Ramp.value)
+                               transition_type=DynamicEventTransitionType.Ramp)
 
     assert event.time == 0.1
     assert event.end_time == 0.2

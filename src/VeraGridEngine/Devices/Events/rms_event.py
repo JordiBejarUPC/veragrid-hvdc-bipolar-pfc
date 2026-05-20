@@ -10,32 +10,6 @@ from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.enumerations import DeviceType, DynamicEventTransitionType, SubObjectType, PrpCat
 
-
-def _normalize_rms_transition_type(val: DynamicEventTransitionType | str | None) -> DynamicEventTransitionType:
-    """
-    Normalize one RMS event transition representation.
-
-    The RMS event chain can receive the transition profile either as the enum
-    itself or as its serialized string form after UI or persistence round-trips.
-    Normalizing the value at the event boundary keeps the internal state explicit
-    and ensures the solver sees the same semantic transition regardless of how
-    the event object was reconstructed.
-
-    :param val: Candidate transition representation.
-    :return: Normalized transition enum.
-    """
-    if isinstance(val, DynamicEventTransitionType):
-        return val
-    else:
-        if isinstance(val, str):
-            if val == DynamicEventTransitionType.Ramp.value:
-                return DynamicEventTransitionType.Ramp
-            else:
-                return DynamicEventTransitionType.Step
-        else:
-            return DynamicEventTransitionType.Step
-
-
 class RmsEvent(PointerDeviceParent):
     """
     Investment
@@ -260,9 +234,7 @@ class RmsEvent(PointerDeviceParent):
         :param val: Value to assign.
         :return: None
         """
-        # The event object is the narrowest point where serialized transition
-        # metadata can be converted back into the enum expected by the RMS
-        # runtime builder. Doing the conversion here prevents later solver code
-        # from silently degrading a ramp into a step when the event came from a
-        # string-based source.
-        self._transition_type = _normalize_rms_transition_type(val=val)
+        if isinstance(val, DynamicEventTransitionType):
+            self._transition_type = val
+        else:
+            raise TypeError("transition_type must be DynamicEventTransitionType")

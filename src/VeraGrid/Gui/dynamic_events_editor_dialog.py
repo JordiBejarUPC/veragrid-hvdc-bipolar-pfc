@@ -123,7 +123,7 @@ class EventRow:
             if isinstance(transition_data, DynamicEventTransitionType):
                 transition_type = transition_data
             else:
-                transition_type = DynamicEventTransitionType.Step
+                raise TypeError("transition_type must be DynamicEventTransitionType")
         else:
             pass
 

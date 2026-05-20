@@ -58,7 +58,7 @@ class EmtEvent(PointerDeviceParent):
             prop_name='group',
             units='',
             tpe=DeviceType.EmtEventsGroupDevice,
-            definition='RmsEvent group',
+            definition='EmtEvent group',
             cat=[PrpCat.EMT],
         ),
         GCProp(
@@ -157,7 +157,7 @@ class EmtEvent(PointerDeviceParent):
         if isinstance(val, DynamicEventTransitionType):
             self._transition_type = val
         else:
-            self._transition_type = DynamicEventTransitionType.Step
+            raise TypeError("transition_type must be DynamicEventTransitionType")
 
     @property
     def end_time(self) -> float | None:

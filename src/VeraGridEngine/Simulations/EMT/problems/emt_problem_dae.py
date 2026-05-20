@@ -3570,20 +3570,15 @@ class EmtProblemDae(EmtProblemTemplate):
                         )
                     else:
                         if parameter_uid in continuous_events:
-                            transition_type = evt.transition_type
+                            transition_type: DynamicEventTransitionType = evt.transition_type
                             end_time = evt.end_time
-
-                            if isinstance(transition_type, DynamicEventTransitionType):
-                                transition_text = transition_type.value
-                            else:
-                                transition_text = str(transition_type)
 
                             continuous_events[parameter_uid].append(
                                 dict({
                                     "time": float(evt.time),
                                     "value": float(evt.value),
                                     "end_time": None if end_time is None else float(end_time),
-                                    "transition_type": transition_text,
+                                    "transition_type": transition_type,
                                 })
                             )
                         else:
@@ -3596,15 +3591,15 @@ class EmtProblemDae(EmtProblemTemplate):
         for parameter_uid, event_specs in continuous_events.items():
             if len(event_specs) != 0:
                 runtime_idx: int = self.uid2idx_event_params[parameter_uid]
-                sorted_specs: List[Dict[str, float | str | None]] = sorted(
+                sorted_specs: List[Dict[str, float | DynamicEventTransitionType | None]] = sorted(
                     event_specs,
                     key=_continuous_event_spec_time_sort_key,
                 )
                 active_expr: Any = active_runtime_eqs[runtime_idx]
-                event_spec: Dict[str, float | str | None]
+                event_spec: Dict[str, float | DynamicEventTransitionType | None]
 
                 for event_spec in sorted_specs:
-                    if str(event_spec["transition_type"]) == DynamicEventTransitionType.Ramp.value:
+                    if event_spec["transition_type"] == DynamicEventTransitionType.Ramp:
                         start_time: float = float(event_spec["time"])
                         end_time_raw: float | str | None = event_spec["end_time"]
 
