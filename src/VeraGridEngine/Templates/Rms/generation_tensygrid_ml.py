@@ -28,7 +28,7 @@ def _build_hard_sat_block(vfactory: VarFactory, x, xmin, xmax, mode: str = "ml",
     if sat_mode == "mti":
         return sym_ml.mti_hard_sat(vfactory, x, xmin, xmax, xmin, xmax, name=name)
     if sat_mode == "ml":
-        return sym_ml.ml_hard_sat(vfactory, x, xmin, xmax, name=name)
+        return sym_ml.ml_hard_sat(vfactory, x, xmin, xmax)
     raise ValueError(f"Unsupported hard_sat_type '{mode}'. Use: normal, ml, mti, none")
 
 
@@ -419,7 +419,12 @@ def GovernorBuild(vfactory: VarFactory, name: str = "", hard_sat_type: str = "ml
     x2 = Pm_ref - K * y1 - y2_3
 
     y2 = x2 * (1 / parameters["T3"].value)
-    ml_block1, y2_1 = _build_hard_sat_block(vfactory, y2, Uc, Uo, mode=hard_sat_type, name="gov_rate")
+    # Keep previous Gen0 behavior to avoid boolean-combinatorics blow-up in
+    # legacy phasor small-signal workflows.
+    if hard_sat_type.lower() == "ml":
+        ml_block1, y2_1 = _build_hard_sat_block(vfactory, y2, Uc, Uo, mode=hard_sat_type, name="gov_rate")
+    else:
+        ml_block1, y2_1 = _build_hard_sat_block(vfactory, y2, Uc, Uo, mode=hard_sat_type, name="gov_rate")
 
     # y2_1 = sym.hard_sat(y2, Uc, Uo)
     tf1, y2_2, u_gov1 = tf_to_diffblock_with_output(
