@@ -4296,15 +4296,30 @@ def get_gcdev_switches(cgmes_model: CgmesCircuit,
                              device_property="OperationalLimitSet",
                              device=e.rdfid, )
 
-    # convert switch
-    for device_list in [cgmes_model.cgmes_assets.Switch_list,
-                        cgmes_model.cgmes_assets.Breaker_list,
-                        cgmes_model.cgmes_assets.Disconnector_list,
-                        cgmes_model.cgmes_assets.LoadBreakSwitch_list,
-                        # cgmes_model.GroundDisconnector_list
-                        ]:
+    # Convert all known switch-like classes available in the active CGMES assets.
+    switch_like_list_names = [
+        "Switch_list",
+        "Breaker_list",
+        "Disconnector_list",
+        "LoadBreakSwitch_list",
+        "GroundDisconnector_list",
+        "DisconnectingCircuitBreaker_list",
+        "Fuse_list",
+        "Jumper_list",
+        "Cut_list",
+    ]
+    visited_switch_rdfids: set[str] = set()
+    switch_device_lists: List[List[CGMES_ASSETS]] = list()
+    for list_name in switch_like_list_names:
+        if hasattr(cgmes_model.cgmes_assets, list_name):
+            switch_device_lists.append(getattr(cgmes_model.cgmes_assets, list_name))
 
+    # convert switch
+    for device_list in switch_device_lists:
         for cgmes_elm in device_list:
+            if cgmes_elm.rdfid in visited_switch_rdfids:
+                continue
+            visited_switch_rdfids.add(cgmes_elm.rdfid)
             calc_nodes = find_associated_buses(cgmes_elm=cgmes_elm,
                                                device_to_terminal_dict=device_to_terminal_dict,
                                                bus_dict=bus_dict,
