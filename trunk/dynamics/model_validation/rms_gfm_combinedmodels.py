@@ -30,7 +30,7 @@ from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complet
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_zip_template import ZIPLoadBuild
 from VeraGridEngine.Templates.Rms.vsc_gfm import VscGfmBuild
-from VeraGridEngine.Templates.Rms.dc_voltage_source import DCPVSourceAveraged
+from VeraGridEngine.Templates.Rms.dc_voltage_source import DCPVSourceAveraged, DCSimpleSourceAveraged
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_rms_model
 
 
@@ -116,7 +116,7 @@ def build_gfm_current_injection_model(
     q = vf.add_var(f"Q_{name}")
 
     vsc_block = VscGfmBuild(vfactory=vf, name=f"{name}_gfm").block
-    pv_block = DCPVSourceAveraged(vfactory=vf, Vdc=vdc, name=f"{name}_pv").block
+    pv_block = DCSimpleSourceAveraged(vfactory=vf, Vdc=vdc, name=f"{name}_pv").block
 
     vm_vsc = vsc_block.external_mapping[VarPowerFlowRefferenceType.Vmt]
     va_vsc = vsc_block.external_mapping[VarPowerFlowRefferenceType.Vat]
@@ -177,9 +177,11 @@ def build_gfm_current_injection_model(
         pf_expr = pdc_var
 
     if pf_var is not None and pf_expr is not None:
-        model.init_eqs[pf_var] = pf_expr
-    if pdc_var is not None and pf_expr is not None:
-        model.init_eqs[pdc_var] = pf_expr
+        model.init_eqs[pf_var] = -pf_expr
+    if pdc_var is not None and pf_var is not None:
+        model.init_eqs[pdc_var] = pf_var
+    elif pdc_var is not None and pf_expr is not None:
+        model.init_eqs[pdc_var] = -pf_expr
     if idc_var is not None and pdc_var is not None:
         model.init_eqs[idc_var] = pdc_var / vdc
     if idc_src_var is not None and idc_var is not None:
