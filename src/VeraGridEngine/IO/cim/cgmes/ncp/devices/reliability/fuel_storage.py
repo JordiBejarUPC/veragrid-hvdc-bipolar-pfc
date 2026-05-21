@@ -23,7 +23,7 @@ class FuelStorage(PowerSystemResource):
         CgmesProperty(property_name='FossilFuel', class_type='FossilFuel', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.ER]),
         CgmesProperty(property_name='FuelStorageRegularSchedule', class_type='FuelStorageRegularSchedule', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.SHS]),
         CgmesProperty(property_name='FuelStorageSchedule', class_type='FuelStorageSchedule', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.SHS, CgmesProfileType.SIS]),
-        CgmesProperty(property_name='energyStorage', class_type=str, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.SSI]),
+        CgmesProperty(property_name='energyStorage', class_type=str, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', mandatory=True, profiles=[CgmesProfileType.NC, CgmesProfileType.SSI]),
         CgmesProperty(property_name='normalEnergyStorage', class_type=str, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.ER]),
     )
     __slots__ = ('FossilFuel', 'FuelStorageRegularSchedule', 'FuelStorageSchedule', 'energyStorage', 'normalEnergyStorage')

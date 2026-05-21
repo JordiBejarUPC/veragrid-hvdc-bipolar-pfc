@@ -21,8 +21,8 @@ class RotatingMachine(RegulatingCondEq):
 		CgmesProperty(property_name='ratedPowerFactor', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Power factor (nameplate data). It is primarily used for short circuit data exchange according to IEC 60909. The attribute cannot be a negative value.''', profiles=[]),
 		CgmesProperty(property_name='ratedS', class_type=float, multiplier=UnitMultiplier.M, unit=UnitSymbol.VA, description='''Product of the RMS value of the voltage and the RMS value of the current.''', profiles=[]),
 		CgmesProperty(property_name='ratedU', class_type=float, multiplier=UnitMultiplier.k, unit=UnitSymbol.V, description='''Electrical voltage, can be both AC and DC.''', profiles=[]),
-		CgmesProperty(property_name='p', class_type=float, multiplier=UnitMultiplier.M, unit=UnitSymbol.W, description='''Product of RMS value of the voltage and the RMS value of the in-phase component of the current.''', profiles=[]),
-		CgmesProperty(property_name='q', class_type=float, multiplier=UnitMultiplier.M, unit=UnitSymbol.VAr, description='''Product of RMS value of the voltage and the RMS value of the quadrature component of the current.''', profiles=[]),
+		CgmesProperty(property_name='p', class_type=float, multiplier=UnitMultiplier.M, unit=UnitSymbol.W, description='''Product of RMS value of the voltage and the RMS value of the in-phase component of the current.''', mandatory=True, profiles=[]),
+		CgmesProperty(property_name='q', class_type=float, multiplier=UnitMultiplier.M, unit=UnitSymbol.VAr, description='''Product of RMS value of the voltage and the RMS value of the quadrature component of the current.''', mandatory=True, profiles=[]),
 	)
 	__slots__ = ('GeneratingUnit', 'HydroPump', 'ratedPowerFactor', 'ratedS', 'ratedU', 'p', 'q')
 	def __init__(self, rdfid='', tpe='RotatingMachine'):

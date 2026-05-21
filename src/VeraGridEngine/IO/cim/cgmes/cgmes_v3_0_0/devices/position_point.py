@@ -12,10 +12,10 @@ if TYPE_CHECKING:
 
 class PositionPoint(Base):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
-		CgmesProperty(property_name='Location', class_type='Location', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Location described by this position point.''', profiles=[]),
+		CgmesProperty(property_name='Location', class_type='Location', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Location described by this position point.''', mandatory=True, profiles=[]),
 		CgmesProperty(property_name='sequenceNumber', class_type=int, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Zero-relative sequence number of this point within a series of points.''', profiles=[]),
-		CgmesProperty(property_name='xPosition', class_type=str, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''X axis position.''', profiles=[]),
-		CgmesProperty(property_name='yPosition', class_type=str, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Y axis position.''', profiles=[]),
+		CgmesProperty(property_name='xPosition', class_type=str, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''X axis position.''', mandatory=True, profiles=[]),
+		CgmesProperty(property_name='yPosition', class_type=str, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Y axis position.''', mandatory=True, profiles=[]),
 		CgmesProperty(property_name='zPosition', class_type=str, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''(if applicable) Z axis position.''', profiles=[]),
 	)
 	__slots__ = ('Location', 'sequenceNumber', 'xPosition', 'yPosition', 'zPosition')

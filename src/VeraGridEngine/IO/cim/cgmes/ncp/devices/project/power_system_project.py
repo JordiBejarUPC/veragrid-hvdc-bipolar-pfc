@@ -34,7 +34,7 @@ class PowerSystemProject(IdentifiedObject):
         CgmesProperty(property_name='committed', class_type=str, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.PSP]),
         CgmesProperty(property_name='inBuild', class_type=str, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.PSP]),
         CgmesProperty(property_name='inPlan', class_type=str, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.PSP]),
-        CgmesProperty(property_name='officialExpectedCommissioning', class_type=str, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.PSP]),
+        CgmesProperty(property_name='officialExpectedCommissioning', class_type=str, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', mandatory=True, profiles=[CgmesProfileType.NC, CgmesProfileType.PSP]),
         CgmesProperty(property_name='priority', class_type=str, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.PSP]),
     )
     __slots__ = ('AlternativeProject', 'AvailabilitySchedule', 'DependentOnProject', 'DifferenceModel', 'PriorityProject', 'Project', 'ProjectGroup', 'ShadowProject', 'SilhouetteProject', 'cancelled', 'commissioned', 'committed', 'inBuild', 'inPlan', 'officialExpectedCommissioning', 'priority')

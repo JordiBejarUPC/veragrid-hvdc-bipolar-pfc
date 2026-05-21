@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 class Control(IOPoint):
     LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
-        CgmesProperty(property_name='controlType', class_type=str, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Specifies the type of Control. For example, this specifies if the Control represents BreakerOpen, BreakerClose, GeneratorVoltageSetPoint, GeneratorRaise, GeneratorLower, etc.''', profiles=[]),
+        CgmesProperty(property_name='controlType', class_type=str, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Specifies the type of Control. For example, this specifies if the Control represents BreakerOpen, BreakerClose, GeneratorVoltageSetPoint, GeneratorRaise, GeneratorLower, etc.''', mandatory=True, profiles=[]),
         CgmesProperty(property_name='operationInProgress', class_type=bool, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Indicates that a client is currently sending control commands that has not completed.''', profiles=[]),
         CgmesProperty(property_name='timeStamp', class_type=datetime.datetime, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The last time a control output was sent.''', profiles=[]),
         CgmesProperty(property_name='unitMultiplier', class_type=UnitMultiplier, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The unit multiplier of the controlled quantity.''', profiles=[]),

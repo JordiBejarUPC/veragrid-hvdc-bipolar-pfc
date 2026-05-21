@@ -17,13 +17,13 @@ if TYPE_CHECKING:
 
 class TransformerEnd(IdentifiedObject):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
-		CgmesProperty(property_name='BaseVoltage', class_type='BaseVoltage', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Base voltage of the transformer end.  This is essential for PU calculation.''', profiles=[]),
+		CgmesProperty(property_name='BaseVoltage', class_type='BaseVoltage', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Base voltage of the transformer end.  This is essential for PU calculation.''', mandatory=True, profiles=[]),
 		CgmesProperty(property_name='PhaseTapChanger', class_type='PhaseTapChanger', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Phase tap changer associated with this transformer end.''', profiles=[]),
 		CgmesProperty(property_name='RatioTapChanger', class_type='RatioTapChanger', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Ratio tap changer associated with this transformer end.''', profiles=[]),
-		CgmesProperty(property_name='Terminal', class_type='Terminal', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Terminal of the power transformer to which this transformer end belongs.''', profiles=[]),
-		CgmesProperty(property_name='endNumber', class_type=int, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Number for this transformer end, corresponding to the end's order in the power transformer vector group or phase angle clock number.  Highest voltage winding should be 1.  Each end within a power transformer should have a unique subsequent end number.   Note the transformer end number need not match the terminal sequence number.''', profiles=[]),
+		CgmesProperty(property_name='Terminal', class_type='Terminal', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Terminal of the power transformer to which this transformer end belongs.''', mandatory=True, profiles=[]),
+		CgmesProperty(property_name='endNumber', class_type=int, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Number for this transformer end, corresponding to the end's order in the power transformer vector group or phase angle clock number.  Highest voltage winding should be 1.  Each end within a power transformer should have a unique subsequent end number.   Note the transformer end number need not match the terminal sequence number.''', mandatory=True, profiles=[]),
 		CgmesProperty(property_name='rground', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.ohm, description='''Resistance (real part of impedance).''', profiles=[]),
-		CgmesProperty(property_name='grounded', class_type=bool, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''(for Yn and Zn connections) True if the neutral is solidly grounded.''', profiles=[]),
+		CgmesProperty(property_name='grounded', class_type=bool, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''(for Yn and Zn connections) True if the neutral is solidly grounded.''', mandatory=True, profiles=[]),
 		CgmesProperty(property_name='xground', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.ohm, description='''Reactance (imaginary part of impedance), at rated frequency.''', profiles=[]),
 	)
 	__slots__ = ('BaseVoltage', 'PhaseTapChanger', 'RatioTapChanger', 'Terminal', 'endNumber', 'rground', 'grounded', 'xground')

@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 class PhaseTapChanger(TapChanger):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
-		CgmesProperty(property_name='TransformerEnd', class_type='TransformerEnd', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Transformer end to which this phase tap changer belongs.''', profiles=[]),
+		CgmesProperty(property_name='TransformerEnd', class_type='TransformerEnd', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Transformer end to which this phase tap changer belongs.''', mandatory=True, profiles=[]),
 	)
 	__slots__ = ('TransformerEnd',)
 	def __init__(self, rdfid='', tpe='PhaseTapChanger'):

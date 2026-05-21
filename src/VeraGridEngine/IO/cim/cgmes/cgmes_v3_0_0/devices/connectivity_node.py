@@ -19,8 +19,8 @@ class ConnectivityNode(IdentifiedObject):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
 		CgmesProperty(property_name='BoundaryPoint', class_type='BoundaryPoint', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The boundary point associated with the connectivity node.''', profiles=[]),
 		CgmesProperty(property_name='Terminals', class_type='Terminal', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Terminals interconnected with zero impedance at a this connectivity node. ''', profiles=[]),
-		CgmesProperty(property_name='ConnectivityNodeContainer', class_type='ConnectivityNodeContainer', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Container of this connectivity node.''', profiles=[]),
-		CgmesProperty(property_name='TopologicalNode', class_type='TopologicalNode', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The topological node to which this connectivity node is assigned.  May depend on the current state of switches in the network.''', profiles=[]),
+		CgmesProperty(property_name='ConnectivityNodeContainer', class_type='ConnectivityNodeContainer', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Container of this connectivity node.''', mandatory=True, profiles=[]),
+		CgmesProperty(property_name='TopologicalNode', class_type='TopologicalNode', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The topological node to which this connectivity node is assigned.  May depend on the current state of switches in the network.''', mandatory=True, profiles=[]),
 	)
 	__slots__ = ('BoundaryPoint', 'Terminals', 'ConnectivityNodeContainer', 'TopologicalNode')
 	def __init__(self, rdfid='', tpe='ConnectivityNode'):

@@ -15,7 +15,7 @@ class TapChangerTablePoint(Base):
 		CgmesProperty(property_name='r', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Percentage on a defined base.   For example, specify as 100 to indicate at the defined base.''', profiles=[]),
 		CgmesProperty(property_name='ratio', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The voltage at the tap step divided by rated voltage of the transformer end having the tap changer. Hence this is a value close to one.
 For example, if the ratio at step 1 is 1.01, and the rated voltage of the transformer end is 110kV, then the voltage obtained by setting the tap changer to step 1 to is 111.1kV.''', profiles=[]),
-		CgmesProperty(property_name='step', class_type=int, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The tap step.''', profiles=[]),
+		CgmesProperty(property_name='step', class_type=int, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The tap step.''', mandatory=True, profiles=[]),
 		CgmesProperty(property_name='x', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Percentage on a defined base.   For example, specify as 100 to indicate at the defined base.''', profiles=[]),
 	)
 	__slots__ = ('b', 'g', 'r', 'ratio', 'step', 'x')

@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 class PowerElectronicsUnit(Equipment):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
-		CgmesProperty(property_name='PowerElectronicsConnection', class_type='PowerElectronicsConnection', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A power electronics unit has a connection to the AC network.''', profiles=[]),
+		CgmesProperty(property_name='PowerElectronicsConnection', class_type='PowerElectronicsConnection', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A power electronics unit has a connection to the AC network.''', mandatory=True, profiles=[]),
 		CgmesProperty(property_name='maxP', class_type=float, multiplier=UnitMultiplier.M, unit=UnitSymbol.W, description='''Product of RMS value of the voltage and the RMS value of the in-phase component of the current.''', profiles=[]),
 		CgmesProperty(property_name='minP', class_type=float, multiplier=UnitMultiplier.M, unit=UnitSymbol.W, description='''Product of RMS value of the voltage and the RMS value of the in-phase component of the current.''', profiles=[]),
 	)

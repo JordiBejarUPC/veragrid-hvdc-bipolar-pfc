@@ -27,7 +27,7 @@ The coefficient model consist of the attributes:
 - qConstantCurrent
 - qConstantPower.
 The sum of pConstantImpedance, pConstantCurrent and pConstantPower shall equal 1.
-The sum of qConstantImpedance, qConstantCurrent and qConstantPower shall equal 1.''', profiles=[]),
+The sum of qConstantImpedance, qConstantCurrent and qConstantPower shall equal 1.''', mandatory=True, profiles=[]),
 		CgmesProperty(property_name='pConstantCurrent', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Portion of active power load modelled as constant current.''', profiles=[]),
 		CgmesProperty(property_name='pConstantImpedance', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Portion of active power load modelled as constant impedance.''', profiles=[]),
 		CgmesProperty(property_name='pConstantPower', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Portion of active power load modelled as constant power.''', profiles=[]),

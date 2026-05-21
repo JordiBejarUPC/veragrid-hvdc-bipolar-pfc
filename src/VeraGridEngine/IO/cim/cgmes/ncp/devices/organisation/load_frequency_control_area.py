@@ -29,7 +29,7 @@ class LoadFrequencyControlArea(PowerSystemResource):
         CgmesProperty(property_name='frequencyRestorationReserveDelay', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.MA]),
         CgmesProperty(property_name='frequencyRestorationReserveMaxRamp', class_type=str, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.MA]),
         CgmesProperty(property_name='frequencyRestorationReserveThreshold', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.MA]),
-        CgmesProperty(property_name='includeFrequencyBias', class_type=bool, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.MA]),
+        CgmesProperty(property_name='includeFrequencyBias', class_type=bool, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', mandatory=True, profiles=[CgmesProfileType.NC, CgmesProfileType.MA]),
     )
     __slots__ = ('FrequencyControlOperator', 'LoadFrequencyControlBlock', 'SchedulingArea', 'TieCorridor', 'deficientGenerationLimit', 'frequencyBiasFactor', 'frequencyRestorationReserveDelay', 'frequencyRestorationReserveMaxRamp', 'frequencyRestorationReserveThreshold', 'includeFrequencyBias')
 

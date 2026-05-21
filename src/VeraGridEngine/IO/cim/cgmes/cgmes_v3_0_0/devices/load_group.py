@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 class LoadGroup(IdentifiedObject):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
-		CgmesProperty(property_name='SubLoadArea', class_type='SubLoadArea', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The SubLoadArea where the Loadgroup belongs.''', profiles=[]),
+		CgmesProperty(property_name='SubLoadArea', class_type='SubLoadArea', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The SubLoadArea where the Loadgroup belongs.''', mandatory=True, profiles=[]),
 	)
 	__slots__ = ('SubLoadArea',)
 	def __init__(self, rdfid='', tpe='LoadGroup'):

@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 class Substation(EquipmentContainer):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
 		CgmesProperty(property_name='DCConverterUnit', class_type='DCConverterUnit', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The DC converter unit belonging of the substation.''', profiles=[]),
-		CgmesProperty(property_name='Region', class_type='SubGeographicalRegion', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The SubGeographicalRegion containing the substation.''', profiles=[]),
+		CgmesProperty(property_name='Region', class_type='SubGeographicalRegion', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The SubGeographicalRegion containing the substation.''', mandatory=True, profiles=[]),
 		CgmesProperty(property_name='VoltageLevels', class_type='VoltageLevel', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The voltage levels within this substation.''', profiles=[]),
 	)
 	__slots__ = ('DCConverterUnit', 'Region', 'VoltageLevels')

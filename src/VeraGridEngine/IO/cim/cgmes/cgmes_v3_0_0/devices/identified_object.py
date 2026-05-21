@@ -20,8 +20,8 @@ class IdentifiedObject(Base):
                         "Global uniqueness is easily achieved by using a UUID, as specified in RFC 4122, for the mRID. "
                         "The use of UUID is strongly recommended."
                         "For CIMXML data files in RDF syntax conforming to IEC 61970-552, "
-                        "the mRID is mapped to rdf:ID or rdf:about attributes that identify CIM object elements.", profiles=[]),
-        CgmesProperty(property_name='name', class_type=str, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description="The name is any free human readable and possibly non unique text naming the object.", profiles=[]),
+                        "the mRID is mapped to rdf:ID or rdf:about attributes that identify CIM object elements.", mandatory=True, profiles=[]),
+        CgmesProperty(property_name='name', class_type=str, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description="The name is any free human readable and possibly non unique text naming the object.", mandatory=True, profiles=[]),
         CgmesProperty(property_name='shortName', class_type=str, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description="The attribute is used for an exchange of a human readable short name "
                         "with length of the string 12 characters maximum.", profiles=[]),
     )

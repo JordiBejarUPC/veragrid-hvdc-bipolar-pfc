@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 class RatioTapChangerTable(IdentifiedObject):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
 		CgmesProperty(property_name='RatioTapChanger', class_type='RatioTapChanger', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The ratio tap changer of this tap ratio table.''', profiles=[]),
-		CgmesProperty(property_name='RatioTapChangerTablePoint', class_type='RatioTapChangerTablePoint', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Points of this table.''', profiles=[]),
+		CgmesProperty(property_name='RatioTapChangerTablePoint', class_type='RatioTapChangerTablePoint', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Points of this table.''', mandatory=True, profiles=[]),
 	)
 	__slots__ = ('RatioTapChanger', 'RatioTapChangerTablePoint')
 	def __init__(self, rdfid='', tpe='RatioTapChangerTable'):

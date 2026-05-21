@@ -17,7 +17,7 @@ class DCTopologicalNode(IdentifiedObject):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
 		CgmesProperty(property_name='DCTopologicalIsland', class_type='DCTopologicalIsland', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A DC topological node belongs to a DC topological island.''', profiles=[]),
 		CgmesProperty(property_name='DCTerminals', class_type='DCBaseTerminal', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''See association end TopologicalNode.Terminal.''', profiles=[]),
-		CgmesProperty(property_name='DCEquipmentContainer', class_type='DCEquipmentContainer', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The connectivity node container to which the topological node belongs.''', profiles=[]),
+		CgmesProperty(property_name='DCEquipmentContainer', class_type='DCEquipmentContainer', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The connectivity node container to which the topological node belongs.''', mandatory=True, profiles=[]),
 		CgmesProperty(property_name='DCNodes', class_type='DCNode', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The DC connectivity nodes combined together to form this DC topological node.  May depend on the current state of switches in the network.''', profiles=[]),
 	)
 	__slots__ = ('DCTopologicalIsland', 'DCTerminals', 'DCEquipmentContainer', 'DCNodes')

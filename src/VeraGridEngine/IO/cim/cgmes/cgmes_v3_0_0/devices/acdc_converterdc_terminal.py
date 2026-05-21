@@ -13,10 +13,10 @@ if TYPE_CHECKING:
 
 class ACDCConverterDCTerminal(DCBaseTerminal):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
-		CgmesProperty(property_name='DCConductingEquipment', class_type='ACDCConverter', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A DC converter terminal belong to an DC converter.''', profiles=[]),
+		CgmesProperty(property_name='DCConductingEquipment', class_type='ACDCConverter', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A DC converter terminal belong to an DC converter.''', mandatory=True, profiles=[]),
 		CgmesProperty(property_name='polarity', class_type=DCPolarityKind, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Represents the normal network polarity condition. Depending on the converter configuration the value shall be set as follows:
 - For a monopole with two converter terminals use DCPolarityKind �positive� and �negative�.
-- For a bi-pole or symmetric monopole with three converter terminals use DCPolarityKind �positive�, �middle� and �negative�.''', profiles=[]),
+- For a bi-pole or symmetric monopole with three converter terminals use DCPolarityKind �positive�, �middle� and �negative�.''', mandatory=True, profiles=[]),
 	)
 	__slots__ = ('DCConductingEquipment', 'polarity')
 	def __init__(self, rdfid='', tpe='ACDCConverterDCTerminal'):

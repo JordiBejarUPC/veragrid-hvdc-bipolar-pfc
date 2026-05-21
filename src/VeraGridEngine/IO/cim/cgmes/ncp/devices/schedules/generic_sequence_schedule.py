@@ -21,7 +21,7 @@ class GenericSequenceSchedule(BaseIrregularTimeSeries):
     """
     LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
         CgmesProperty(property_name='EnergyBlockOrder', class_type='EnergyBlockOrder', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.SIS]),
-        CgmesProperty(property_name='SequenceTimePoint', class_type='SequenceTimePoint', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', profiles=[CgmesProfileType.NC, CgmesProfileType.SIS]),
+        CgmesProperty(property_name='SequenceTimePoint', class_type='SequenceTimePoint', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='', mandatory=True, profiles=[CgmesProfileType.NC, CgmesProfileType.SIS]),
     )
     __slots__ = ('EnergyBlockOrder', 'SequenceTimePoint')
 

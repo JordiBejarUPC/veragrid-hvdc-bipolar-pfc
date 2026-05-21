@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 class ConformLoadGroup(LoadGroup):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
-		CgmesProperty(property_name='EnergyConsumers', class_type='ConformLoad', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Conform loads assigned to this ConformLoadGroup.''', profiles=[]),
+		CgmesProperty(property_name='EnergyConsumers', class_type='ConformLoad', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Conform loads assigned to this ConformLoadGroup.''', mandatory=True, profiles=[]),
 	)
 	__slots__ = ('EnergyConsumers',)
 	def __init__(self, rdfid='', tpe='ConformLoadGroup'):

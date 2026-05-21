@@ -17,8 +17,8 @@ if TYPE_CHECKING:
 class DCNode(IdentifiedObject):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
 		CgmesProperty(property_name='DCTerminals', class_type='DCBaseTerminal', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''DC base terminals interconnected with zero impedance at a this DC connectivity node. ''', profiles=[]),
-		CgmesProperty(property_name='DCEquipmentContainer', class_type='DCEquipmentContainer', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The DC container for the DC nodes.''', profiles=[]),
-		CgmesProperty(property_name='DCTopologicalNode', class_type='DCTopologicalNode', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The DC topological node to which this DC connectivity node is assigned.  May depend on the current state of switches in the network.''', profiles=[]),
+		CgmesProperty(property_name='DCEquipmentContainer', class_type='DCEquipmentContainer', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The DC container for the DC nodes.''', mandatory=True, profiles=[]),
+		CgmesProperty(property_name='DCTopologicalNode', class_type='DCTopologicalNode', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The DC topological node to which this DC connectivity node is assigned.  May depend on the current state of switches in the network.''', mandatory=True, profiles=[]),
 	)
 	__slots__ = ('DCTerminals', 'DCEquipmentContainer', 'DCTopologicalNode')
 	def __init__(self, rdfid='', tpe='DCNode'):

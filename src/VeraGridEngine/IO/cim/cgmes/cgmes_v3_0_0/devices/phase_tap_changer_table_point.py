@@ -13,8 +13,8 @@ if TYPE_CHECKING:
 
 class PhaseTapChangerTablePoint(Base):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
-		CgmesProperty(property_name='PhaseTapChangerTable', class_type='PhaseTapChangerTable', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The table of this point.''', profiles=[]),
-		CgmesProperty(property_name='angle', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.deg, description='''Measurement of angle in degrees.''', profiles=[]),
+		CgmesProperty(property_name='PhaseTapChangerTable', class_type='PhaseTapChangerTable', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The table of this point.''', mandatory=True, profiles=[]),
+		CgmesProperty(property_name='angle', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.deg, description='''Measurement of angle in degrees.''', mandatory=True, profiles=[]),
 	)
 	__slots__ = ('PhaseTapChangerTable', 'angle')
 	def __init__(self, rdfid, tpe, resources=list(), class_replacements=dict()):

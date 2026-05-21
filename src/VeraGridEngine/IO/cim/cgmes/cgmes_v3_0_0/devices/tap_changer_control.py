@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 class TapChangerControl(RegulatingControl):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
-		CgmesProperty(property_name='TapChanger', class_type='TapChanger', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The tap changers that participates in this regulating tap control scheme.''', profiles=[]),
+		CgmesProperty(property_name='TapChanger', class_type='TapChanger', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The tap changers that participates in this regulating tap control scheme.''', mandatory=True, profiles=[]),
 	)
 	__slots__ = ('TapChanger',)
 	def __init__(self, rdfid='', tpe='TapChangerControl'):

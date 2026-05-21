@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 class OperationalLimitSet(IdentifiedObject):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
-		CgmesProperty(property_name='Terminal', class_type='ACDCTerminal', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The terminal where the operational limit set apply.''', profiles=[]),
+		CgmesProperty(property_name='Terminal', class_type='ACDCTerminal', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The terminal where the operational limit set apply.''', mandatory=True, profiles=[]),
 		CgmesProperty(property_name='Equipment', class_type='Equipment', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The equipment to which the limit set applies.''', profiles=[]),
 		CgmesProperty(property_name='OperationalLimitValue', class_type='OperationalLimit', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Values of equipment limits.''', profiles=[]),
 	)

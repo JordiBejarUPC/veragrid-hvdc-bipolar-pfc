@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 class Clamp(ConductingEquipment):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
-		CgmesProperty(property_name='ACLineSegment', class_type='ACLineSegment', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The line segment to which the clamp is connected.''', profiles=[]),
+		CgmesProperty(property_name='ACLineSegment', class_type='ACLineSegment', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The line segment to which the clamp is connected.''', mandatory=True, profiles=[]),
 		CgmesProperty(property_name='lengthFromTerminal1', class_type=float, multiplier=UnitMultiplier.k, unit=UnitSymbol.m, description='''Unit of length. It shall be a positive value or zero.''', profiles=[]),
 	)
 	__slots__ = ('ACLineSegment', 'lengthFromTerminal1')

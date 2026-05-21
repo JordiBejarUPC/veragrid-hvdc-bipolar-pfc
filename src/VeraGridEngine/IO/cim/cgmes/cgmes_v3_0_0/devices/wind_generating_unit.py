@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 class WindGeneratingUnit(GeneratingUnit):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
-		CgmesProperty(property_name='windGenUnitType', class_type=WindGenUnitKind, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The kind of wind generating unit.''', profiles=[]),
+		CgmesProperty(property_name='windGenUnitType', class_type=WindGenUnitKind, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The kind of wind generating unit.''', mandatory=True, profiles=[]),
 		CgmesProperty(property_name='WindPowerPlant', class_type='WindPowerPlant', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A wind power plant may have wind generating units.''', profiles=[]),
 	)
 	__slots__ = ('windGenUnitType', 'WindPowerPlant')
