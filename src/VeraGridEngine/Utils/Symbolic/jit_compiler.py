@@ -2296,7 +2296,7 @@ class RMSCompiler(EquationCompiler):
                 d_expr = eq.diff(var, dt=self.dt_var)
                 if not (isinstance(d_expr, Const) and d_expr.value == 0):
                     # here when vectorizing we need to add a triplet for every specific variable corresponding to general variable
-                    # col and row are arrays of the size the number of specific variables
+                    # ºcol and row are arrays of the size the number of specific variables
                     triplets.append((col, row, d_expr))
 
         triplets.sort(key=_get_triplet_sort_key)
