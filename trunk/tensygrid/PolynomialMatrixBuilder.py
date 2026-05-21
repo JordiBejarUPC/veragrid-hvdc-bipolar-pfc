@@ -1867,7 +1867,7 @@ class PolynomialMatrixBuilder:
                 # We take the real part since complex conjugate pairs cancel each other out
                 evolution[i] = np.real(np.sum(mode_coeffs * np.exp(evals * t)))
 
-            plt.plot(time_steps, evolution, label=f"$\Delta$ {var}", linewidth=2)
+            plt.plot(time_steps, evolution, label=f"$\\Delta$ {var}", linewidth=2)
 
         plt.xlabel("Time (s)", fontsize=12)
         plt.ylabel("Deviation from Operating Point ($\\Delta x$)", fontsize=12)
