@@ -19,7 +19,7 @@ class AsynchronousMachine(RotatingMachine):
 		CgmesProperty(property_name='ratedMechanicalPower', class_type=float, multiplier=UnitMultiplier.M, unit=UnitSymbol.W, description='''Product of RMS value of the voltage and the RMS value of the in-phase component of the current.''', mandatory=True, profiles=[CgmesProfileType.SC]),
 		CgmesProperty(property_name='reversible', class_type=bool, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Indicates for converter drive motors if the power can be reversible. Used for short circuit data exchange according to IEC 60909''', mandatory=True, profiles=[CgmesProfileType.SC]),
 		CgmesProperty(property_name='rxLockedRotorRatio', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A floating point number. The range is unspecified and not limited.''', profiles=[CgmesProfileType.SC]),
-		CgmesProperty(property_name='asynchronousMachineType', class_type=AsynchronousMachineKind, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Indicates the type of Asynchronous Machine (motor or generator).''', mandatory=True, profiles=[CgmesProfileType.SSH]),
+		CgmesProperty(property_name='asynchronousMachineType', class_type=AsynchronousMachineKind, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Indicates the type of Asynchronous Machine (motor or generator).''', mandatory=True, profiles=[CgmesProfileType.SSH], default_value=AsynchronousMachineKind.generator),
 	)
 	__slots__ = ('converterFedDrive', 'efficiency', 'iaIrRatio', 'nominalFrequency', 'nominalSpeed', 'polePairNumber', 'ratedMechanicalPower', 'reversible', 'rxLockedRotorRatio', 'asynchronousMachineType')
 	def __init__(self, rdfid='', tpe='AsynchronousMachine'):

@@ -24,8 +24,8 @@ class EnergySource(ConductingEquipment):
 		CgmesProperty(property_name='x', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.ohm, description='''Reactance (imaginary part of impedance), at rated frequency.''', profiles=[CgmesProfileType.EQ]),
 		CgmesProperty(property_name='x0', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.ohm, description='''Reactance (imaginary part of impedance), at rated frequency.''', profiles=[CgmesProfileType.EQ]),
 		CgmesProperty(property_name='xn', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.ohm, description='''Reactance (imaginary part of impedance), at rated frequency.''', profiles=[CgmesProfileType.EQ]),
-		CgmesProperty(property_name='activePower', class_type=float, multiplier=UnitMultiplier.M, unit=UnitSymbol.W, description='''Product of RMS value of the voltage and the RMS value of the in-phase component of the current.''', mandatory=True, profiles=[CgmesProfileType.SSH]),
-		CgmesProperty(property_name='reactivePower', class_type=float, multiplier=UnitMultiplier.M, unit=UnitSymbol.VAr, description='''Product of RMS value of the voltage and the RMS value of the quadrature component of the current.''', mandatory=True, profiles=[CgmesProfileType.SSH]),
+		CgmesProperty(property_name='activePower', class_type=float, multiplier=UnitMultiplier.M, unit=UnitSymbol.W, description='''Product of RMS value of the voltage and the RMS value of the in-phase component of the current.''', mandatory=True, profiles=[CgmesProfileType.SSH], default_value=0.0),
+		CgmesProperty(property_name='reactivePower', class_type=float, multiplier=UnitMultiplier.M, unit=UnitSymbol.VAr, description='''Product of RMS value of the voltage and the RMS value of the quadrature component of the current.''', mandatory=True, profiles=[CgmesProfileType.SSH], default_value=0.0),
 	)
 	__slots__ = ('EnergySchedulingType', 'nominalVoltage', 'r', 'r0', 'rn', 'voltageAngle', 'voltageMagnitude', 'x', 'x0', 'xn', 'activePower', 'reactivePower')
 	def __init__(self, rdfid='', tpe='EnergySource'):
