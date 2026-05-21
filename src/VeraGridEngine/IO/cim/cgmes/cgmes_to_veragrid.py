@@ -899,7 +899,19 @@ def get_cgmes_equipment_active_state(cgmes_elm: CGMES_ASSETS,
     active = bool(in_service)
 
     if use_switch_open:
-        switch_open = get_cgmes_property_value(cgmes_elm=cgmes_elm, property_name="open", fallback=False)
+        # CGMES3 can carry computed topology state in SvSwitch.open.
+        # Fallback chain: SvSwitch.open -> Switch.open -> Switch.normalOpen -> False.
+        switch_open = None
+        sv_switch = getattr(cgmes_elm, "SvSwitch", None)
+        if sv_switch is not None:
+            switch_open = get_cgmes_property_value(cgmes_elm=sv_switch, property_name="open", fallback=None)
+
+        if switch_open is None:
+            switch_open = get_cgmes_property_value(cgmes_elm=cgmes_elm, property_name="open", fallback=None)
+
+        if switch_open is None:
+            switch_open = get_cgmes_property_value(cgmes_elm=cgmes_elm, property_name="normalOpen", fallback=False)
+
         active = active and not bool(switch_open)
 
     return active
@@ -2788,13 +2800,20 @@ def get_gcdev_generators(cgmes_model: CgmesCircuit,
                     snom = max(abs(float(p_value)), abs(float(q_value)), 0.1)
                 qmax = get_cgmes_property_value(cgmes_elm=cgmes_elm, property_name="maxQ", fallback=9999.0)
                 qmin = get_cgmes_property_value(cgmes_elm=cgmes_elm, property_name="minQ", fallback=-9999.0)
+                generator_p = -p_value
+
+                asynchronous_machine_type = get_cgmes_property_value(cgmes_elm=cgmes_elm,
+                                                                     property_name="asynchronousMachineType")
+                if asynchronous_machine_type == cgmes_enums.AsynchronousMachineKind.motor:
+                    # Keep motor-like operation as non-generating even when source sign is inconsistent.
+                    generator_p = -abs(float(generator_p))
 
                 gcdev_elm = gcdev.Generator(idtag=cgmes_elm.uuid,
                                             code=cgmes_elm.description,
                                             name=cgmes_elm.name,
                                             active=get_cgmes_equipment_active_state(cgmes_elm),
                                             Snom=snom,
-                                            P=-p_value,
+                                            P=generator_p,
                                             Pmin=pmin,
                                             Pmax=pmax,
                                             power_factor=pf,
