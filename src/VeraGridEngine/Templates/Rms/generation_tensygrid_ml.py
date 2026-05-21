@@ -371,8 +371,8 @@ def GovernorBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
         K: vfactory.add_const(10.0),  # governor gain (inverse droop)
         Pmax: vfactory.add_const(12.0),  # max mechanical power (pu)
         Pmin: vfactory.add_const(-1.0),  # min mechanical power (pu)
-        Uc: vfactory.add_const(-0.5),  # max valve closing rate (pu/s)
-        Uo: vfactory.add_const(0.5),  # max valve opening rate (pu/s)
+        Uc: vfactory.add_const(-0.05),  # max valve closing rate (pu/s)
+        Uo: vfactory.add_const(0.05),  # max valve opening rate (pu/s)
         T_aux: vfactory.add_const(0.0),
 
     }
@@ -404,7 +404,12 @@ def GovernorBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     x2 = Pm_ref - K * y1 - y2_3
 
     y2 = x2 * (1 / parameters["T3"].value)
-    ml_block1, y2_1 = sym_ml.ml_hard_sat(vfactory, y2, Uc, Uo)
+    # Use MTI hard-sat only for a single generator instance to keep
+    # boolean-combinatorics controlled during validation.
+    if name == "Gen0":
+        ml_block1, y2_1 = sym_ml.mti_hard_sat(vfactory, y2, Uc, Uo, Uc, Uo, name="gov_rate")
+    else:
+        ml_block1, y2_1 = sym_ml.ml_hard_sat(vfactory, y2, Uc, Uo)
 
     # y2_1 = sym.hard_sat(y2, Uc, Uo)
     tf1, y2_2, u_gov1 = tf_to_diffblock_with_output(
@@ -414,7 +419,10 @@ def GovernorBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
         x=y2_1,
         name='gov1',
     )
-    ml_block2, y2_bis = sym_ml.ml_hard_sat(vfactory, y2_2, Pmin, Pmax)
+    if name == "Gen0" and False:
+        ml_block2, y2_bis = sym_ml.mti_hard_sat(vfactory, y2_2, Pmin, Pmax, Pmin, Pmax, name="gov_pow")
+    else:
+        ml_block2, y2_bis = sym_ml.ml_hard_sat(vfactory, y2_2, Pmin, Pmax)
     algebraic_eqs.append(y2_3 - y2_bis)
 
     # ==============================
