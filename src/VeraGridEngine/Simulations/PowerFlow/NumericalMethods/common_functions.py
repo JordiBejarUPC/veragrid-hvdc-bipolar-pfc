@@ -151,12 +151,12 @@ def voltage_q_droop(ut: complex,
     Q = Q_setpoint * S_base - Q_droop * (u_setpoint - u)  # Actual reactive power output [MVAr]
 
     # Reactive power limits
-    if Q > Q_max:
-        Q = Q_max
-    elif Q < Q_min:
-        Q = Q_min
-    else:
-        Q = Q
+    # if Q > Q_max:
+    #     Q = Q_max
+    # elif Q < Q_min:
+    #     Q = Q_min
+    # else:
+    #     Q = Q
 
     return Q / S_base
 
