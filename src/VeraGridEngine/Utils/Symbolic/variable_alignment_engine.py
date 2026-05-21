@@ -15,7 +15,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from VeraGridEngine.Utils.Symbolic.symbolic import Expr, Const, Var, BinOp, UnOp, Func, Func2
-from VeraGridEngine.Utils.Symbolic.symbolic_compare_expressions import (
+from VeraGridEngine.Utils.Symbolic.compare_expressions_structure import (
     canonical,
     structural_hash,
     expand_and_canonicalize,

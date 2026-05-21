@@ -21,7 +21,6 @@ from VeraGridEngine.Utils.Symbolic.symbolic import (
     _to_expr,
 )
 
-
 CommutativeOps = {"+", "*"}
 NonSimplifiableOps = {"+", "-", "*", "/", "**"}
 
@@ -1223,4 +1222,5 @@ __all__ = [
     "expand",
     "expand_and_canonicalize",
     "_hash_expr",
+    "variables_in_corresponding_attributes",
 ]

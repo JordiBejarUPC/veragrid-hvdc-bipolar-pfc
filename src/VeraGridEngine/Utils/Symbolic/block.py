@@ -12,6 +12,8 @@ from typing import List, Dict, Any, Tuple
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, _expr_to_dict, _dict_to_expr, BinOp, UnOp, Func, Func2
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
+from VeraGridEngine.Utils.Symbolic.compare_expressions_structure import equivalent_systems
+from VeraGridEngine.Utils.Symbolic.variable_alignment_engine import align_variables
 
 
 def _new_uid() -> int:
@@ -71,6 +73,7 @@ class Block:
         self.name: str = name
 
         self.uid: int = _new_uid() if uid is None else uid
+        self.tpe_uid: int | None =  None
         self.vars_glob_name2uid: Dict[str, int] = dict()
 
         self.state_vars: List[Var] = list() if state_vars is None else state_vars
@@ -392,6 +395,14 @@ class Block:
         dict1 = self.to_dict()
         dict2 = block2.to_dict()
         return dict1 == dict2
+
+    def get_all_equations_list(self):
+        equations_list: List[Expr] = list()
+        equations_list.extend(self.state_eqs)
+        equations_list.extend(self.algebraic_eqs)
+        equations_list.extend(self.differential_eqs)
+        return equations_list
+
 
     def __eq__(self, other: Block) -> bool:
         x = self.compare(other)
@@ -1065,3 +1076,61 @@ def build_name_to_var_lookup(block: Block) -> Dict[str, Var]:
 
     return lookup
 
+def _get_var_attribute_mapping(block: Block) -> Dict[int, str]:
+    """Build a mapping from variable uid to attribute name for a block."""
+    mapping = {}
+    for var in block.state_vars:
+        mapping[var.uid] = "state_vars"
+    for var in block.algebraic_vars:
+        mapping[var.uid] = "algebraic_vars"
+    for var in block.diff_vars:
+        mapping[var.uid] = "diff_vars"
+    for var in block.reformulated_vars:
+        mapping[var.uid] = "reformulated_vars"
+    for var in block.parameters:
+        mapping[var.uid] = "parameters"
+    for var in block.event_dict:
+        mapping[var.uid] = "event_dict"
+    return mapping
+
+def variables_in_corresponding_attributes(block1: Block, block2: Block, variables_mapping: Dict[int, int]) -> bool:
+    """
+    Check if corresponding variables are located in corresponding attributes of two blocks.
+
+    Two blocks are structurally corresponding if for every pair (uid1, uid2) in variables_mapping:
+    - If the variable with uid1 is in block1.state_vars, the variable with uid2 must be in block2.state_vars
+    - If the variable with uid1 is in block1.algebraic_vars, the variable with uid2 must be in block2.algebraic_vars
+    - If the variable with uid1 is in block1.diff_vars, the variable with uid2 must be in block2.diff_vars
+    - If the variable with uid1 is in block1.reformulated_vars, the variable with uid2 must be in block2.reformulated_vars
+    - If the variable with uid1 is a key in block1.parameters, the variable with uid2 must be a key in block2.parameters
+    - If the variable with uid1 is a key in block1.event_dict, the variable with uid2 must be a key in block2.event_dict
+
+    The order of variables within each attribute does not matter.
+
+    :param block1: First block
+    :param block2: Second block
+    :param variables_mapping: Dict mapping uids from block1 to uids from block2 (output of align_variables)
+    :return: True if all corresponding variables are in corresponding attributes
+    """
+    attr_map1 = _get_var_attribute_mapping(block1)
+    attr_map2 = _get_var_attribute_mapping(block2)
+
+    for uid1, uid2 in variables_mapping.items():
+        attr1 = attr_map1.get(uid1)
+        attr2 = attr_map2.get(uid2)
+        if attr1 != attr2:
+            return False
+
+    return True
+
+def compare_blocks_structurally(block1: Block, block2: Block):
+    block1_compare = block1.copy().unify_blocks()
+    block2_compare = block2.copy().unify_blocks()
+
+    block1_eqs = block1.get_all_equations_list()
+    block2_eqs = block2.get_all_equations_list()
+
+    if equivalent_systems(block1_eqs, block2_eqs):
+        variables_alignment = align_variables(block1_eqs, block2_eqs)
+        if variables_in_corresponding_attributes(block1_compare, block2_compare, variables_alignment):
+            print("blocks are equivalent")
