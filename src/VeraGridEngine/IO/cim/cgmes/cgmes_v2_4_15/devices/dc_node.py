@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 class DCNode(IdentifiedObject):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
 		CgmesProperty(property_name='DCTerminals', class_type='DCBaseTerminal', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''None''', profiles=[]),
-		CgmesProperty(property_name='DCEquipmentContainer', class_type='DCEquipmentContainer', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''None''', profiles=[]),
+		CgmesProperty(property_name='DCEquipmentContainer', class_type='DCEquipmentContainer', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''None''', mandatory=True, profiles=[]),
 		CgmesProperty(property_name='DCTopologicalNode', class_type='DCTopologicalNode', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''See association end TopologicalNode.ConnectivityNodes.''', profiles=[]),
 	)
 	__slots__ = ('DCTerminals', 'DCEquipmentContainer', 'DCTopologicalNode')

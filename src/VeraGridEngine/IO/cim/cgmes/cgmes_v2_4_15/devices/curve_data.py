@@ -13,9 +13,9 @@ if TYPE_CHECKING:
 
 class CurveData(Base):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
-		CgmesProperty(property_name='Curve', class_type='Curve', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The point data values that define this curve.''', profiles=[]),
-		CgmesProperty(property_name='xvalue', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A floating point number. The range is unspecified and not limited.''', profiles=[]),
-		CgmesProperty(property_name='y1value', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A floating point number. The range is unspecified and not limited.''', profiles=[]),
+		CgmesProperty(property_name='Curve', class_type='Curve', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The point data values that define this curve.''', mandatory=True, profiles=[]),
+		CgmesProperty(property_name='xvalue', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A floating point number. The range is unspecified and not limited.''', mandatory=True, profiles=[]),
+		CgmesProperty(property_name='y1value', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A floating point number. The range is unspecified and not limited.''', mandatory=True, profiles=[]),
 		CgmesProperty(property_name='y2value', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A floating point number. The range is unspecified and not limited.''', profiles=[]),
 	)
 	__slots__ = ('Curve', 'xvalue', 'y1value', 'y2value')

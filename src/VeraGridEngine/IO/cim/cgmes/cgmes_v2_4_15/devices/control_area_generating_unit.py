@@ -14,9 +14,9 @@ if TYPE_CHECKING:
 
 class ControlAreaGeneratingUnit(IdentifiedObject):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
-		CgmesProperty(property_name='GeneratingUnit', class_type='GeneratingUnit', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The generating unit specified for this control area.  
-			Note that a control area should include a GeneratingUnit only once.''', profiles=[]),
-		CgmesProperty(property_name='ControlArea', class_type='ControlArea', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The parent control area for the generating unit specifications.''', profiles=[]),
+			CgmesProperty(property_name='GeneratingUnit', class_type='GeneratingUnit', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The generating unit specified for this control area.  
+				Note that a control area should include a GeneratingUnit only once.''', mandatory=True, profiles=[]),
+		CgmesProperty(property_name='ControlArea', class_type='ControlArea', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The parent control area for the generating unit specifications.''', mandatory=True, profiles=[]),
 	)
 	__slots__ = ('GeneratingUnit', 'ControlArea')
 	def __init__(self, rdfid='', tpe='ControlAreaGeneratingUnit'):

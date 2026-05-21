@@ -13,10 +13,10 @@ if TYPE_CHECKING:
 class LoadResponseCharacteristic(IdentifiedObject):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
 		CgmesProperty(property_name='EnergyConsumer', class_type='EnergyConsumer', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The set of loads that have the response characteristics.''', profiles=[]),
-		CgmesProperty(property_name='exponentModel', class_type=bool, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Indicates the exponential voltage dependency model is to be used.   If false, the coefficient model is to be used.
-The exponential voltage dependency model consist of the attributes
-- pVoltageExponent
-- qVoltageExponent.
+			CgmesProperty(property_name='exponentModel', class_type=bool, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Indicates the exponential voltage dependency model is to be used.   If false, the coefficient model is to be used.
+	The exponential voltage dependency model consist of the attributes
+	- pVoltageExponent
+	- qVoltageExponent.
 The coefficient model consist of the attributes
 - pConstantImpedance
 - pConstantCurrent
@@ -24,8 +24,8 @@ The coefficient model consist of the attributes
 - qConstantImpedance
 - qConstantCurrent
 - qConstantPower.
-The sum of pConstantImpedance, pConstantCurrent and pConstantPower shall equal 1.
-The sum of qConstantImpedance, qConstantCurrent and qConstantPower shall equal 1.''', profiles=[]),
+	The sum of pConstantImpedance, pConstantCurrent and pConstantPower shall equal 1.
+	The sum of qConstantImpedance, qConstantCurrent and qConstantPower shall equal 1.''', mandatory=True, profiles=[]),
 		CgmesProperty(property_name='pConstantCurrent', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A floating point number. The range is unspecified and not limited.''', profiles=[]),
 		CgmesProperty(property_name='pConstantImpedance', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A floating point number. The range is unspecified and not limited.''', profiles=[]),
 		CgmesProperty(property_name='pConstantPower', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A floating point number. The range is unspecified and not limited.''', profiles=[]),

@@ -18,13 +18,13 @@ class CsConverter(ACDCConverter):
 		CgmesProperty(property_name='minGamma', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.deg, description='''Measurement of angle in degrees.''', profiles=[]),
 		CgmesProperty(property_name='minIdc', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.A, description='''Electrical current with sign convention: positive flow is out of the conducting equipment into the connectivity node. Can be both AC and DC.''', profiles=[]),
 		CgmesProperty(property_name='ratedIdc', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.A, description='''Electrical current with sign convention: positive flow is out of the conducting equipment into the connectivity node. Can be both AC and DC.''', profiles=[]),
-		CgmesProperty(property_name='alpha', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.deg, description='''Measurement of angle in degrees.''', profiles=[]),
-		CgmesProperty(property_name='gamma', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.deg, description='''Measurement of angle in degrees.''', profiles=[]),
-		CgmesProperty(property_name='operatingMode', class_type=CsOperatingModeKind, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Indicates whether the DC pole is operating as an inverter or as a rectifier. CSC control variable used in power flow.''', profiles=[]),
-		CgmesProperty(property_name='pPccControl', class_type=CsPpccControlKind, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''None''', profiles=[]),
-		CgmesProperty(property_name='targetAlpha', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.deg, description='''Measurement of angle in degrees.''', profiles=[]),
-		CgmesProperty(property_name='targetGamma', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.deg, description='''Measurement of angle in degrees.''', profiles=[]),
-		CgmesProperty(property_name='targetIdc', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.A, description='''Electrical current with sign convention: positive flow is out of the conducting equipment into the connectivity node. Can be both AC and DC.''', profiles=[]),
+		CgmesProperty(property_name='alpha', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.deg, description='''Measurement of angle in degrees.''', mandatory=True, profiles=[]),
+		CgmesProperty(property_name='gamma', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.deg, description='''Measurement of angle in degrees.''', mandatory=True, profiles=[]),
+		CgmesProperty(property_name='operatingMode', class_type=CsOperatingModeKind, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Indicates whether the DC pole is operating as an inverter or as a rectifier. CSC control variable used in power flow.''', mandatory=True, profiles=[]),
+		CgmesProperty(property_name='pPccControl', class_type=CsPpccControlKind, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''None''', mandatory=True, profiles=[]),
+		CgmesProperty(property_name='targetAlpha', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.deg, description='''Measurement of angle in degrees.''', mandatory=True, profiles=[]),
+		CgmesProperty(property_name='targetGamma', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.deg, description='''Measurement of angle in degrees.''', mandatory=True, profiles=[]),
+		CgmesProperty(property_name='targetIdc', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.A, description='''Electrical current with sign convention: positive flow is out of the conducting equipment into the connectivity node. Can be both AC and DC.''', mandatory=True, profiles=[]),
 	)
 	__slots__ = ('maxAlpha', 'maxGamma', 'maxIdc', 'minAlpha', 'minGamma', 'minIdc', 'ratedIdc', 'alpha', 'gamma', 'operatingMode', 'pPccControl', 'targetAlpha', 'targetGamma', 'targetIdc')
 	def __init__(self, rdfid='', tpe='CsConverter'):

@@ -13,9 +13,9 @@ if TYPE_CHECKING:
 
 class SvInjection(Base):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
-		CgmesProperty(property_name='pInjection', class_type=float, multiplier=UnitMultiplier.M, unit=UnitSymbol.W, description='''Product of RMS value of the voltage and the RMS value of the in-phase component of the current.''', profiles=[]),
+		CgmesProperty(property_name='pInjection', class_type=float, multiplier=UnitMultiplier.M, unit=UnitSymbol.W, description='''Product of RMS value of the voltage and the RMS value of the in-phase component of the current.''', mandatory=True, profiles=[]),
 		CgmesProperty(property_name='qInjection', class_type=float, multiplier=UnitMultiplier.M, unit=UnitSymbol.VAr, description='''Product of RMS value of the voltage and the RMS value of the quadrature component of the current.''', profiles=[]),
-		CgmesProperty(property_name='TopologicalNode', class_type='TopologicalNode', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The injection flows state variables associated with the topological node.''', profiles=[]),
+		CgmesProperty(property_name='TopologicalNode', class_type='TopologicalNode', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The injection flows state variables associated with the topological node.''', mandatory=True, profiles=[]),
 	)
 	__slots__ = ('pInjection', 'qInjection', 'TopologicalNode')
 	def __init__(self, rdfid, tpe='SvInjection', resources=list(), class_replacements=dict()):

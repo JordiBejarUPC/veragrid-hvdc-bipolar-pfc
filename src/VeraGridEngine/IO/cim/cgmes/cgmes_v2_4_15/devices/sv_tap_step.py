@@ -12,8 +12,8 @@ if TYPE_CHECKING:
 
 class SvTapStep(Base):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
-		CgmesProperty(property_name='position', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A floating point number. The range is unspecified and not limited.''', profiles=[]),
-		CgmesProperty(property_name='TapChanger', class_type='TapChanger', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The tap changer associated with the tap step state.''', profiles=[]),
+		CgmesProperty(property_name='position', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A floating point number. The range is unspecified and not limited.''', mandatory=True, profiles=[]),
+		CgmesProperty(property_name='TapChanger', class_type='TapChanger', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The tap changer associated with the tap step state.''', mandatory=True, profiles=[]),
 	)
 	__slots__ = ('position', 'TapChanger')
 	def __init__(self, rdfid, tpe='SvTapStep', resources=list(), class_replacements=dict()):

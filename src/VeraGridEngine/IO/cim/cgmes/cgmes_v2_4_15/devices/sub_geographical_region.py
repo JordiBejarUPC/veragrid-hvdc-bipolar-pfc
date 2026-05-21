@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 class SubGeographicalRegion(IdentifiedObject):
     LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
         CgmesProperty(property_name='DCLines', class_type='DCLine', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''None''', profiles=[]),
-        CgmesProperty(property_name='Region', class_type='GeographicalRegion', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The geographical region to which this sub-geographical region is within.''', profiles=[]),
+        CgmesProperty(property_name='Region', class_type='GeographicalRegion', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The geographical region to which this sub-geographical region is within.''', mandatory=True, profiles=[]),
         CgmesProperty(property_name='Lines', class_type='Line', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The lines within the sub-geographical region.''', profiles=[]),
         CgmesProperty(property_name='Substations', class_type='Substation', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The substations in this sub-geographical region.''', profiles=[]),
     )

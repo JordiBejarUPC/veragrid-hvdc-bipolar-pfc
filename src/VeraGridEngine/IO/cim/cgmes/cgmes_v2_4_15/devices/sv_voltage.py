@@ -13,9 +13,9 @@ if TYPE_CHECKING:
 
 class SvVoltage(Base):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
-		CgmesProperty(property_name='angle', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.deg, description='''Measurement of angle in degrees.''', profiles=[]),
-		CgmesProperty(property_name='v', class_type=float, multiplier=UnitMultiplier.k, unit=UnitSymbol.V, description='''Electrical voltage, can be both AC and DC.''', profiles=[]),
-		CgmesProperty(property_name='TopologicalNode', class_type='TopologicalNode', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The state voltage associated with the topological node.''', profiles=[]),
+		CgmesProperty(property_name='angle', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.deg, description='''Measurement of angle in degrees.''', mandatory=True, profiles=[]),
+		CgmesProperty(property_name='v', class_type=float, multiplier=UnitMultiplier.k, unit=UnitSymbol.V, description='''Electrical voltage, can be both AC and DC.''', mandatory=True, profiles=[]),
+		CgmesProperty(property_name='TopologicalNode', class_type='TopologicalNode', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The state voltage associated with the topological node.''', mandatory=True, profiles=[]),
 	)
 	__slots__ = ('angle', 'v', 'TopologicalNode')
 	def __init__(self, rdfid, tpe='SvVoltage', resources=list(), class_replacements=dict()):

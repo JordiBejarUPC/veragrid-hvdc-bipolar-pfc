@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 class ACDCConverterDCTerminal(DCBaseTerminal):
     LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
-        CgmesProperty(property_name='DCConductingEquipment', class_type='ACDCConverter', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''None''', profiles=[]),
+        CgmesProperty(property_name='DCConductingEquipment', class_type='ACDCConverter', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''None''', mandatory=True, profiles=[]),
         CgmesProperty(property_name='polarity', class_type=DCPolarityKind, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Represents the normal network polarity condition.''', profiles=[]),
     )
     __slots__ = ('DCConductingEquipment', 'polarity')

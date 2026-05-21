@@ -15,7 +15,7 @@ class OperationalLimitType(IdentifiedObject):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
 		CgmesProperty(property_name='OperationalLimit', class_type='OperationalLimit', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The operational limits associated with this type of limit.''', profiles=[]),
 		CgmesProperty(property_name='acceptableDuration', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.s, description='''Time, in seconds.''', profiles=[]),
-		CgmesProperty(property_name='limitType', class_type=LimitTypeKind, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Types of limits defined in the ENTSO-E Operational Handbook Policy 3.''', profiles=[]),
+		CgmesProperty(property_name='limitType', class_type=LimitTypeKind, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Types of limits defined in the ENTSO-E Operational Handbook Policy 3.''', mandatory=True, profiles=[]),
 		CgmesProperty(property_name='direction', class_type=OperationalLimitDirectionKind, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The direction of the limit.''', profiles=[]),
 	)
 	__slots__ = ('OperationalLimit', 'acceptableDuration', 'limitType', 'direction')

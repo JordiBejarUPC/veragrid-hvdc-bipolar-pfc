@@ -15,9 +15,9 @@ if TYPE_CHECKING:
 
 class VoltageLevel(EquipmentContainer):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
-		CgmesProperty(property_name='BaseVoltage', class_type='BaseVoltage', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The base voltage used for all equipment within the voltage level.''', profiles=[]),
+		CgmesProperty(property_name='BaseVoltage', class_type='BaseVoltage', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The base voltage used for all equipment within the voltage level.''', mandatory=True, profiles=[]),
 		CgmesProperty(property_name='Bays', class_type='Bay', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The bays within this voltage level.''', profiles=[]),
-		CgmesProperty(property_name='Substation', class_type='Substation', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The substation of the voltage level.''', profiles=[]),
+		CgmesProperty(property_name='Substation', class_type='Substation', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The substation of the voltage level.''', mandatory=True, profiles=[]),
 		CgmesProperty(property_name='highVoltageLimit', class_type=float, multiplier=UnitMultiplier.k, unit=UnitSymbol.V, description='''Electrical voltage, can be both AC and DC.''', profiles=[]),
 		CgmesProperty(property_name='lowVoltageLimit', class_type=float, multiplier=UnitMultiplier.k, unit=UnitSymbol.V, description='''Electrical voltage, can be both AC and DC.''', profiles=[]),
 	)

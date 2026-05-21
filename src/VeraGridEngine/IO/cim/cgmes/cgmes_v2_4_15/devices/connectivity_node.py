@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 class ConnectivityNode(IdentifiedObject):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
 		CgmesProperty(property_name='Terminals', class_type='Terminal', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The connectivity node to which this terminal connects with zero impedance.''', profiles=[]),
-		CgmesProperty(property_name='ConnectivityNodeContainer', class_type='ConnectivityNodeContainer', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Container of this connectivity node.''', profiles=[]),
+		CgmesProperty(property_name='ConnectivityNodeContainer', class_type='ConnectivityNodeContainer', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Container of this connectivity node.''', mandatory=True, profiles=[]),
 		CgmesProperty(property_name='TopologicalNode', class_type='TopologicalNode', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The connectivity nodes combine together to form this topological node.  May depend on the current state of switches in the network.''', profiles=[]),
 	)
 	__slots__ = ('Terminals', 'ConnectivityNodeContainer', 'TopologicalNode')

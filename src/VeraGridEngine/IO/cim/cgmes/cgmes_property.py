@@ -54,7 +54,7 @@ class CgmesProperty(BaseProperty):
         self.out_of_the_standard = out_of_the_standard
         self.profiles = profiles
 
-    def get_dict(self) -> Dict[str, str]:
+    def get_dict(self) -> Dict[str, str | bool]:
         """
         Get dictionary of property values
         :return:

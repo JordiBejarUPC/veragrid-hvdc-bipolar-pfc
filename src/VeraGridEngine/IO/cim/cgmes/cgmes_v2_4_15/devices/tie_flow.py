@@ -13,9 +13,9 @@ if TYPE_CHECKING:
 
 class TieFlow(Base):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
-		CgmesProperty(property_name='Terminal', class_type='Terminal', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The terminal to which this tie flow belongs.''', profiles=[]),
-		CgmesProperty(property_name='ControlArea', class_type='ControlArea', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The control area of the tie flows.''', profiles=[]),
-		CgmesProperty(property_name='positiveFlowIn', class_type=bool, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''True if the flow into the terminal (load convention) is also flow into the control area.  For example, this attribute should be true if using the tie line terminal further away from the control area. For example to represent a tie to a shunt component (like a load or generator) in another area, this is the near end of a branch and this attribute would be specified as false.''', profiles=[]),
+		CgmesProperty(property_name='Terminal', class_type='Terminal', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The terminal to which this tie flow belongs.''', mandatory=True, profiles=[]),
+		CgmesProperty(property_name='ControlArea', class_type='ControlArea', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The control area of the tie flows.''', mandatory=True, profiles=[]),
+		CgmesProperty(property_name='positiveFlowIn', class_type=bool, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''True if the flow into the terminal (load convention) is also flow into the control area.  For example, this attribute should be true if using the tie line terminal further away from the control area. For example to represent a tie to a shunt component (like a load or generator) in another area, this is the near end of a branch and this attribute would be specified as false.''', mandatory=True, profiles=[]),
 	)
 	__slots__ = ('Terminal', 'ControlArea', 'positiveFlowIn')
 	def __init__(self, rdfid, tpe, resources=list(), class_replacements=dict()):

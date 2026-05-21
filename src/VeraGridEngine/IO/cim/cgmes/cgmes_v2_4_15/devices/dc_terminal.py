@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 class DCTerminal(DCBaseTerminal):
     LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
-        CgmesProperty(property_name='DCConductingEquipment', class_type='DCConductingEquipment', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''None''', profiles=[]),
+        CgmesProperty(property_name='DCConductingEquipment', class_type='DCConductingEquipment', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''None''', mandatory=True, profiles=[]),
     )
     __slots__ = ('DCConductingEquipment',)
     def __init__(self, rdfid='', tpe='DCTerminal'):

@@ -14,10 +14,10 @@ if TYPE_CHECKING:
 
 class RatioTapChanger(TapChanger):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
-		CgmesProperty(property_name='tculControlMode', class_type=TransformerControlMode, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Specifies the regulation control mode (voltage or reactive) of the RatioTapChanger.''', profiles=[]),
-		CgmesProperty(property_name='stepVoltageIncrement', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Percentage on a defined base.   For example, specify as 100 to indicate at the defined base.''', profiles=[]),
+		CgmesProperty(property_name='tculControlMode', class_type=TransformerControlMode, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Specifies the regulation control mode (voltage or reactive) of the RatioTapChanger.''', mandatory=True, profiles=[]),
+		CgmesProperty(property_name='stepVoltageIncrement', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Percentage on a defined base.   For example, specify as 100 to indicate at the defined base.''', mandatory=True, profiles=[]),
 		CgmesProperty(property_name='RatioTapChangerTable', class_type='RatioTapChangerTable', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The ratio tap changer of this tap ratio table.''', profiles=[]),
-		CgmesProperty(property_name='TransformerEnd', class_type='TransformerEnd', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Ratio tap changer associated with this transformer end.''', profiles=[]),
+		CgmesProperty(property_name='TransformerEnd', class_type='TransformerEnd', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Ratio tap changer associated with this transformer end.''', mandatory=True, profiles=[]),
 	)
 	__slots__ = ('tculControlMode', 'stepVoltageIncrement', 'RatioTapChangerTable', 'TransformerEnd')
 	def __init__(self, rdfid='', tpe='RatioTapChanger'):

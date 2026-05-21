@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 class DCConverterUnit(DCEquipmentContainer):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
-		CgmesProperty(property_name='operationMode', class_type=DCConverterOperatingModeKind, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''None''', profiles=[]),
+		CgmesProperty(property_name='operationMode', class_type=DCConverterOperatingModeKind, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''None''', mandatory=True, profiles=[]),
 		CgmesProperty(property_name='Substation', class_type='Substation', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''None''', profiles=[]),
 	)
 	__slots__ = ('operationMode', 'Substation')
