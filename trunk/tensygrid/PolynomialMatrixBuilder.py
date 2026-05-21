@@ -92,12 +92,6 @@ def _sort_symbol(sym: sp.Symbol) -> tuple:
     Python sorting algorithms to group all derivatives first (priority 0) and standard variables second
     (priority 1). The inclusion of the string name in the tuple ensures that within those two categories,
     the symbols are sorted alphabetically.
-
-    :param sym: The symbolic variable to be evaluated and categorized.
-    :type sym: sp.Symbol
-    :return: A tuple used for sorting, containing the priority integer (0 if it is a derivative,
-             1 otherwise) and the string name of the symbol.
-    :rtype: tuple
     """
     name: str = sym.name
     if name.startswith('dx') or name.startswith('xp') or name.startswith('d_') or name.startswith('dt_'):
@@ -110,28 +104,6 @@ def _clean_name_fn(n):
     """
     Standardizes the string representation of a symbolic variable name by normalizing
     various time-derivative prefixes into a single canonical format.
-
-    From an algorithmic perspective, different symbolic operations, external libraries,
-    or intermediate parsing steps may generate inconsistent first-derivative prefixes
-    (such as 'dt_1_', 'd_1_', or simply 'd_'). This cleaning step is critical in the
-    broader algorithm because downstream processes—such as state-space formulation,
-    variable mapping, or the previous sorting logic—rely on strict, predictable string
-    matching to correctly identify and manipulate time derivatives.
-
-    The function executes the following sequence:
-    1. Casts the input to a string to guarantee that string manipulation methods are available,
-       allowing it to gracefully handle SymPy symbols or raw strings.
-    2. Explicitly replaces known anomalous first-derivative notations ('dt_1_' and 'd_1_')
-       with the standard 'dt_' prefix.
-    3. Utilizes a regular expression to find word-boundary instances of 'd_' (matching the
-       start of the string) and replaces them with 'dt_'. The word boundary is essential to
-       prevent the accidental replacement of 'd_' if it occurs in the middle or end of a
-       variable's base name.
-
-    :param n: The variable or object whose name requires standardizing.
-    :type n: Any (typically str or sp.Symbol)
-    :return: The cleaned and standardized string name with a unified 'dt_' derivative prefix.
-    :rtype: str
     """
     c = str(n)
     c = c.replace('dt_1_', 'dt_').replace('d_1_', 'dt_')
@@ -174,27 +146,7 @@ def _process_equation_worker(raw_eq, parsing_context, param_map, sym_to_idx_snap
     Worker that combines equation parsing and monomial weight extraction.
     Returns only primitive data (lists/tuples) to avoid SymPy pickling issues
     when used with ProcessPoolExecutor.
-
-    This worker is designed for the second matrix_creation pass, after all
-    symbols (including aux variables) are already in sym_to_idx_snap. If a
-    symbol is not found in the snapshot, it is reported in new_aux_names so
-    the main thread can fall back to sequential processing for that equation.
-
-    Args:
-        raw_eq:               Raw equation string (post-lifting, via str(expr)).
-        parsing_context:      Dict mapping symbol names to SymPy objects.
-        param_map:            Dict mapping parameter names to values (pass {} if
-                              substitution was already done during parsing).
-        sym_to_idx_snap:      Snapshot of sym_to_idx (str -> int). Must be stable.
-        protected_params_snap: List/set of protected parameter name strings.
-
-    Returns:
-        phi_row:       list of (monom_tuple, coeff) pairs for this equation.
-                       monom_tuple = tuple of (var_idx, weight) sorted by var_idx.
-        new_aux_names: list of symbol names missing from sym_to_idx_snap.
-                       Should be empty when called after full symbol extraction.
     """
-
     s = raw_eq if isinstance(raw_eq, str) else str(raw_eq)
     s = s.replace('dt_1_', 'dt_').replace('d_1_', 'dt_')
     s = re.sub(r'\bd_', 'dt_', s)
@@ -446,17 +398,6 @@ class PolynomialMatrixBuilder:
             """
             Extracts and maps base variables to their explicit time-derivative counterparts
             from a list of variable objects.
-
-            From an algorithmic perspective, this function builds a required lookup table
-            (`self._explicit_deriv_map`) linking state variables to their corresponding derivatives.
-            It iterates over the provided list, bypassing raw strings, and inspects objects for
-            `diff_var` or `base_var` properties. By applying `_clean_name_fn` to the extracted names,
-            it guarantees standardized string matching for downstream differential equation assembly.
-
-            :param var_list: A collection of variable objects to inspect for derivative relationships.
-            :type var_list: list
-            :return: Modifies the internal `_explicit_deriv_map` in place.
-            :rtype: None
             """
             if not var_list: return
             for var_obj in var_list:
@@ -466,7 +407,7 @@ class PolynomialMatrixBuilder:
                 try:
                     base_name_mappings = var_obj.name
                 except AttributeError:
-                    continue  # We need a name to map it
+                    continue
 
                 try:
                     diff_var = var_obj.diff_var
@@ -558,6 +499,53 @@ class PolynomialMatrixBuilder:
                 )
             )
 
+        # =====================================================================
+        # TRUE PARAMETER RESOLUTION (Ghost Pole Eliminator)
+        # If VeraGrid forgot to register a constant/parameter (like 'In'),
+        # it looks like a dynamic state. This catches it, looks up its numeric
+        # value in var_factory, and physically substitutes it into the math.
+        # =====================================================================
+        if self.has_problem:
+            allowed_vars = set()
+            try:
+                for v in (problem._state_vars or []): allowed_vars.add(_clean_name_fn(v.name))
+                for v in (problem._algebraic_vars or []): allowed_vars.add(_clean_name_fn(v.name))
+            except AttributeError:
+                try:
+                    for v in problem.state_and_algebraic_vars: allowed_vars.add(_clean_name_fn(v.name))
+                except AttributeError:
+                    pass
+            for s in parsed_predefined:
+                allowed_vars.add(s.name)
+
+            if allowed_vars:
+                v_dict_full = self.op_extraction(problem)
+                subs_map = {}
+
+                all_current_syms = set()
+                for eq in self.eqs + self.ineqs:
+                    all_current_syms.update(eq.free_symbols)
+
+                for sym in all_current_syms:
+                    s_name = sym.name
+                    if s_name not in allowed_vars and not s_name.startswith('dt_') and not s_name.startswith('d_'):
+                        val = None
+                        if s_name in v_dict_full:
+                            val = v_dict_full[s_name]
+                        elif f"{s_name}_aux" in v_dict_full:
+                            val = v_dict_full[f"{s_name}_aux"]
+                        elif re.sub(r'_\d+$', '', s_name) in v_dict_full:
+                            val = v_dict_full[re.sub(r'_\d+$', '', s_name)]
+
+                        if val is not None:
+                            subs_map[sym] = float(val)
+
+                if subs_map:
+                    if self.verbose: print(f"[*] Substituting {len(subs_map)} unregistered constants/parameters...")
+                    self.eqs = [eq.subs(subs_map) for eq in self.eqs]
+                    self.ineqs = [ineq.subs(subs_map) for ineq in self.ineqs]
+        # =====================================================================
+
         # 4. Symbols' inizialization
         self.all_symbols = []
         self.sym_to_idx = {}
@@ -588,6 +576,91 @@ class PolynomialMatrixBuilder:
         self.A: Optional[sparse.csr_matrix] = None
         self.B: Optional[sparse.csr_matrix] = None
         self.EABC: Optional[sparse.csr_matrix] = None
+
+    @staticmethod
+    def op_extraction(problem: Any) -> dict:
+        """
+        Returns the operating point dictionary from a defined VeraGrid problem.
+        This upgraded method parses the VarFactory directly, ensuring intermediate ports
+        and aliases (like 'In', 'Ir', limiters) are preserved for the linearizer.
+        """
+        v_dict: dict = dict()
+
+        def safe_get_value(val):
+            try:
+                return float(val)
+            except:
+                if hasattr(val, 'value') and val.value is not None:
+                    try:
+                        return float(val.value)
+                    except:
+                        pass
+                elif hasattr(val, 'v') and val.v is not None:
+                    try:
+                        return float(val.v)
+                    except:
+                        pass
+            return None
+
+        # 1. BEST METHOD: Extract directly from the dynamic VarFactory.
+        # This captures EVERY variable evaluated during initialization (states, limiters, aliases, etc.)
+        try:
+            vf = getattr(problem, 'var_factory', None)
+            if vf is None and hasattr(problem, 'grid'):
+                vf = getattr(problem.grid, 'var_factory', None)
+
+            if vf is not None and hasattr(vf, 'vars'):
+                for var_obj in vf.vars:
+                    val = safe_get_value(var_obj)
+                    if val is not None:
+                        name = str(var_obj.name) if hasattr(var_obj, 'name') else str(var_obj)
+                        v_dict[name] = val
+        except Exception as e:
+            print(f"[!] Warning: VarFactory extraction failed: {e}")
+
+        # 2. TRADITIONAL FALLBACK: Extract x0 state vector directly
+        try:
+            x0 = problem.get_x0()
+            all_vars = []
+
+            # Safely combine the variable lists directly from the engine's backend
+            if hasattr(problem, '_state_vars') and problem._state_vars is not None:
+                all_vars.extend(problem._state_vars)
+            if hasattr(problem, '_algebraic_vars') and problem._algebraic_vars is not None:
+                all_vars.extend(problem._algebraic_vars)
+
+            # Fallback for older engine structures
+            if not all_vars and hasattr(problem, 'state_and_algebraic_vars'):
+                all_vars = problem.state_and_algebraic_vars
+
+            for i, var_obj in enumerate(all_vars):
+                if i < len(x0):
+                    s_name = str(var_obj.name) if hasattr(var_obj, 'name') else str(var_obj)
+                    if s_name not in v_dict:
+                        v_dict[s_name] = float(x0[i])
+        except Exception as e:
+            pass
+
+        # 3. EXTRACTION FROM THE PARAMETER PATHS
+        if hasattr(problem, '_variable_parameters') and hasattr(problem, '_variable_parameters_values'):
+            names = problem._variable_parameters
+            values = problem._variable_parameters_values
+            if names is not None and values is not None:
+                for name_obj, val_obj in zip(names, values):
+                    s_name = str(name_obj.name) if hasattr(name_obj, 'name') else str(name_obj)
+                    val = safe_get_value(val_obj)
+                    if val is not None:
+                        v_dict[s_name] = val
+
+        # 4. Backup just in case there are also fixed constants
+        if hasattr(problem, '_constant_parameters') and hasattr(problem, '_constant_params'):
+            for n, v in zip(problem._constant_parameters, problem._constant_params):
+                s_name = str(n.name) if hasattr(n, 'name') else str(n)
+                val = safe_get_value(v)
+                if val is not None:
+                    v_dict[s_name] = val
+
+        return v_dict
 
     # ------------------------------------------------------------------
     # Symbol extraction
@@ -1393,7 +1466,6 @@ class PolynomialMatrixBuilder:
                 a_max = np.max(np.abs(a_data)) if len(a_data) > 0 else 0.0
                 e_max = np.max(np.abs(e_data)) if len(e_data) > 0 else 0.0
                 if a_max < 1e-10 and e_max < 1e-10:
-                    #A_patched[i, i] = -1.0
                     patched_rows += 1
 
             A_csc = current_a.tocsc()
@@ -1419,7 +1491,7 @@ class PolynomialMatrixBuilder:
                 k_modes = min(100, n_dims - 2)
                 if k_modes > 0:
                     try:
-                        sparse_res = self.compute_stability_sparse(sigma=2.0, k_modes=k_modes)
+                        sparse_res = self.compute_stability_sparse(sigma=2.0 + 1e-6j, k_modes=k_modes)
                         evals_s, evecs_right_s, evecs_left_s, p_s, stable_s, margin_s = sparse_res
                     except (AttributeError, NotImplementedError) as e:
                         if self.verbose:
@@ -1473,13 +1545,20 @@ class PolynomialMatrixBuilder:
                 p_abs = np.abs(participation_raw)
                 normalization = np.sum(p_abs)
 
-                if normalization > 1e-16:
+                if normalization > 1e-12:
                     participation_matrix[:, m] = p_abs / normalization
                 else:
-                    participation_matrix[:, m] = 0.0
+                    # ALGEBRAIC FALLBACK: If E completely masks out the mode (purely algebraic instability),
+                    # use the raw right eigenvector magnitude to reveal the responsible variables.
+                    v_abs = np.abs(evecs_right[:, m])
+                    v_norm = np.sum(v_abs)
+                    if v_norm > 1e-16:
+                        participation_matrix[:, m] = v_abs / v_norm
+                    else:
+                        participation_matrix[:, m] = 0.0
 
             max_real = float(np.max(np.real(evals)))
-            is_stable = max_real < 1e-6
+            is_stable = max_real < -1e-6
 
             if self.verbose:
                 print(f"  Found {len(evals)} finite eigenvalues (Physical Modes)\n")
@@ -1492,10 +1571,10 @@ class PolynomialMatrixBuilder:
             return None, None, None, None, False, None
 
     def compute_stability_sparse(self, sigma=2.0, k_modes=200):
-        '''
+        """
         Perform stability analysis for large-scale systems using sparse ARPACK.
 
-        This method solves the generalized eigenvalue problem :math:`Av = \\lambda Ev`
+        This method solves the generalized eigenvalue problem Av = λEv
         using the Shift-and-Invert spectral transformation. It computes both right
         and left eigenvectors to derive the Participation Factor matrix, which
         quantifies the influence of state variables on specific system modes.
@@ -1514,16 +1593,16 @@ class PolynomialMatrixBuilder:
         Returns
         -------
         evals : numpy.ndarray
-            Array of found physical eigenvalues (poles) :math:`\\lambda`.
+            Array of found physical eigenvalues (poles) λ.
         V : numpy.ndarray
-            Matrix where each column is a right eigenvector corresponding to `evals`.
+            Matrix where each column is a right eigenvector corresponding to evals.
         W : numpy.ndarray
             Matrix where each column is a matched left eigenvector.
         participation_matrix : numpy.ndarray
-            Matrix of participation factors where entry :math:`P_{ji}` represents
-            the participation of state :math:`j` in mode :math:`i`.
+            Matrix of participation factors where entry P_ji represents
+            the participation of state j in mode i.
         stable : bool
-            Boolean flag indicating system stability (True if all :math:`Re(\\lambda) \\leq 1e-5`).
+            Boolean flag indicating system stability (True if all Re(λ) <= 1e-5).
         margin : float
             The maximum real part among all computed eigenvalues (stability margin).
 
@@ -1534,8 +1613,8 @@ class PolynomialMatrixBuilder:
         - **Mode Matching:** Since ARPACK may return left and right modes in different
           orders, the Hungarian Algorithm (Linear Sum Assignment) is used to align
           them based on eigenvalue proximity.
-        - **Participation Factors:** Calculated as :math:`P_{ji} = \frac{w_{ji} v_{ji}}{w_i^H v_i}`.
-        '''
+        - **Participation Factors:** Calculated as :math:`P_{ji} = \\frac{w_{ji} v_{ji}}{w_i^H v_i}`.
+        """
         print(f"\n[+] Starting sparse ARPACK analysis (Shift-and-Invert, sigma={sigma}, k={k_modes})...")
         start = time.time()
 
@@ -1545,49 +1624,74 @@ class PolynomialMatrixBuilder:
 
         print(f"    State-space dimension: {n_dims}")
 
-        M_shift = A_csr - sigma * E_csr
+        # Guard against invalid operating points triggering NaNs
+        if not np.all(np.isfinite(A_csr.data)):
+            print("    [!] Warning: State-Space 'A' matrix contains NaN values! Cleaning...")
+            A_csr.data = np.nan_to_num(A_csr.data)
+        if not np.all(np.isfinite(E_csr.data)):
+            print("    [!] Warning: State-Space 'E' matrix contains NaN values! Cleaning...")
+            E_csr.data = np.nan_to_num(E_csr.data)
 
-        # Structural regularization (WITHOUT LIL MATRIX)
-        row_norms = np.array(np.abs(M_shift).max(axis=1).todense()).flatten()
-        col_norms = np.array(np.abs(M_shift).max(axis=0).todense()).flatten()
+        # --- ROBUST LU FACTORIZATION WITH SIGMA RETRY ---
+        lu_solver = None
+        sigma_candidates = [sigma, 0.0, 1.0j, -1.0j, 1.0, -1.0]
+        for s_val in sigma_candidates:
+            M_shift = A_csr - s_val * E_csr
 
-        zero_rows = np.where(row_norms < 1e-10)[0]
-        zero_cols = np.where(col_norms < 1e-10)[0]
-        all_zeros = np.unique(np.concatenate((zero_rows, zero_cols)))
+            # Structural patching for M_shift (Using safe CSR/CSC operations over LIL to avoid __abs__ AttributeErrors)
+            M_shift_csr = M_shift.tocsr()
+            M_shift_csc = M_shift.tocsc()
 
-        if len(all_zeros) > 0:
-            print(f"    Patching {len(all_zeros)} empty structural nodes (Zero-RAM Diagonal Addition)...")
-            # Create a diagonal array filled with zeros, and put -1.0 only at empty spots
-            patch_diag = np.zeros(n_dims)
-            patch_diag[all_zeros] = -1.0
+            M_abs_csr = M_shift_csr.copy()
+            M_abs_csr.data = np.abs(M_abs_csr.data)
+            row_sums = np.array(M_abs_csr.sum(axis=1)).flatten()
+            zero_rows = np.where(row_sums < 1e-12)[0]
 
-            # Sparse diagonal matrix
-            D = sparse.diags(patch_diag, format='csr')
+            M_abs_csc = M_shift_csc.copy()
+            M_abs_csc.data = np.abs(M_abs_csc.data)
+            col_sums = np.array(M_abs_csc.sum(axis=0)).flatten()
+            zero_cols = np.where(col_sums < 1e-12)[0]
 
-            # Add directly without mutating sparsity structure manually
-            M_shift = M_shift + D
+            M_shift_patched = M_shift.tolil()
+            for idx in np.unique(np.concatenate((zero_rows, zero_cols))):
+                M_shift_patched[idx, idx] = -1.0  # Patch empty diagonal structure
 
-        print(f"    Factoring (A - {sigma}*E) using SuperLU...")
-        try:
-            lu_solver = splu(M_shift.tocsc())
-        except Exception as e:
-            print(f"    [!] SuperLU factorization error: {e}")
+            M_shift_patched = M_shift_patched.tocsc()  # Convert back to optimized CSC for splu
+
+            try:
+                lu_solver = splu(M_shift_patched)
+                sigma = s_val  # Update sigma to the successful value
+                print(f"    Successfully factored (A - {sigma}*E) using SuperLU.")
+                break
+            except Exception as e:
+                print(f"    [!] SuperLU factorization failed for sigma={s_val}: {e}")
+
+                # Attempt structural regularization for exactly singular blocks (like redundant constraints or isolated subgrids)
+                print(f"    [*] Attempting structural regularization for sigma={s_val}...")
+                try:
+                    # Append a very small, non-interfering term onto the diagonal to cure perfect matrix singularity
+                    reg_matrix = M_shift_patched + sparse.eye(n_dims, format='csc') * 1e-8
+                    lu_solver = splu(reg_matrix)
+                    sigma = s_val
+                    print(f"    Successfully factored with structural regularization.")
+                    break
+                except Exception as e2:
+                    print(f"    [!] Regularized SuperLU failed: {e2}")
+
+        if lu_solver is None:
+            print("    [!!!] All SuperLU factorization attempts failed. Aborting sparse analysis.")
             return [], None, None, None, False, 0.0
 
         def matvec_right(v):
-            y = E_csr.dot(v)
-            return lu_solver.solve(y.real) + 1j * lu_solver.solve(y.imag)
-
-        OP_R = LinearOperator((n_dims, n_dims), matvec=matvec_right, dtype=complex)
-
-        print(f"    Solving right/left modes in parallel...")
+            return lu_solver.solve(E_csr.dot(v))
 
         def matvec_left(v):
-            y = E_csr.T.dot(v)
-            return lu_solver.solve(y.real, trans='T') + 1j * lu_solver.solve(y.imag, trans='T')
+            return lu_solver.solve(E_csr.T.dot(v), trans='T')
 
+        OP_R = LinearOperator((n_dims, n_dims), matvec=matvec_right, dtype=complex)
         OP_L = LinearOperator((n_dims, n_dims), matvec=matvec_left, dtype=complex)
 
+        print(f"    Solving right/left modes in parallel...")
         try:
             with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
                 future_r = executor.submit(eigs, OP_R, k=k_modes, which='LM')
@@ -1618,20 +1722,33 @@ class PolynomialMatrixBuilder:
 
         # --- DAE FORMULA FIX FOR SPARSE MATRICES ---
         E_T = E_csr.T
-        W_conj = np.conj(W)
 
-        # (W^H * E)^T = E^T * conj(W)
-        E_T_W_conj = E_T.dot(W_conj)
+        # W from ARPACK (trans='T') satisfies W^T * A = \lambda W^T * E.
+        # The correct row vector for participation is W^T * E.
+        E_T_W = E_T.dot(W)
 
-        # Element-wise product ensures we map onto the states correctly
-        participation_raw = V * E_T_W_conj
+        # Element-wise product maps participation to physical states: P_ki = V_ki * (W_i^T * E)_k
+        participation_raw = V * E_T_W
 
         # NORMALIZATION FIX: Sum the absolute magnitudes to guarantee 1.0 (100%) distribution limit
         p_abs = np.abs(participation_raw)
         dot_products = np.sum(p_abs, axis=0)
-        dot_products[dot_products < 1e-16] = 1.0  # Prevent div-by-zero
 
+        # ALGEBRAIC FALLBACK: If E completely masks out a mode (dot_product ~ 0),
+        # use the raw right eigenvector magnitude to reveal the responsible variables.
+        for m in range(len(dot_products)):
+            if dot_products[m] < 1e-12:
+                v_abs = np.abs(V[:, m])
+                p_abs[:, m] = v_abs
+                dot_products[m] = np.sum(v_abs)
+
+        dot_products[dot_products < 1e-16] = 1.0  # Prevent div-by-zero
         participation_matrix = p_abs / dot_products
+
+        # Align left eigenvectors with standard definition (W_left^H A = \lambda W_left^H E)
+        # Since W^T A = \lambda W^T E, taking the conjugate yields W^H A = \lambda^* W^H E.
+        # Thus, W_left = np.conj(W) corresponds to the true left eigenvector for \lambda.
+        W_left = np.conj(W)
 
         margin = float(np.max(evals.real)) if len(evals) > 0 else 0.0
         stable = margin <= 1e-5
@@ -1639,7 +1756,7 @@ class PolynomialMatrixBuilder:
         print(f"[+] Sparse ARPACK completed in {time.time() - start:.2f} seconds.")
         print(f"    Found {len(evals)} physical poles with their participation factors.")
 
-        return evals, V, W, participation_matrix, stable, margin
+        return evals, V, W_left, participation_matrix, stable, margin
 
     def get_participation_mapping(self, evals: np.ndarray, participation_matrix: np.ndarray,
                                   threshold: float = 0.02) -> dict:
@@ -1653,29 +1770,38 @@ class PolynomialMatrixBuilder:
         n_modes: int = int(participation_matrix.shape[1])
         n_states: int = int(participation_matrix.shape[0])
 
+        # 1. Reconstruct the mapping of the physical state variables (identical to _split_EABC)
+        idx_vars = []
+        for idx_counter, s in enumerate(self.all_symbols):
+            s_name = s.name
+            is_deriv = s_name.startswith('dx') or s_name.startswith('xp') or s_name.startswith(
+                'd_') or s_name.startswith('dt_')
+            is_input = s_name.startswith('u') and not s_name.startswith('u_')
+
+            if not is_deriv and not is_input:
+                idx_vars.append(idx_counter)
+
         for m in range(n_modes):
             mode_eval: complex = evals[m]
             mode_pfs: list = list()
             all_valid_pfs: list = list()
 
-            # INDEX BUG FIX: We must iterate exactly exactly over n_states which maps identically to self.all_symbols indices.
-            for i in range(n_states):
-                s_name = self.all_symbols[i].name
-                is_deriv = s_name.startswith('dx') or s_name.startswith('xp') or s_name.startswith(
-                    'd_') or s_name.startswith('dt_')
-                is_input = s_name.startswith('u') and not s_name.startswith('u_')
+            # Iterate strictly up to the available physical states
+            for i in range(min(n_states, len(idx_vars))):
+                # Retrieve the EXACT symbol associated with this row in the A/E matrices
+                sym_idx = idx_vars[i]
+                s_name = self.all_symbols[sym_idx].name
 
-                # Only map if it is an actual physical variable or proxy non-derivative
-                if not is_deriv and not is_input:
-                    pf_val = float(abs(participation_matrix[i, m]))
-                    all_valid_pfs.append((s_name, pf_val))
-                    if pf_val >= threshold:
-                        mode_pfs.append((s_name, pf_val))
+                # Since idx_vars inherently filters out derivatives/inputs, we just pull the value
+                pf_val = float(abs(participation_matrix[i, m]))
+                all_valid_pfs.append((s_name, pf_val))
+
+                if pf_val >= threshold:
+                    mode_pfs.append((s_name, pf_val))
 
             mode_pfs.sort(key=lambda x: x[1], reverse=True)
 
-            # If all physical variables were filtered out because their participations were highly dispersed
-            # (e.g. 50 variables at 0.019 PF each), just grab the top 5 largest ones unconditionally.
+            # If participations were highly dispersed, grab the top 5 largest ones unconditionally.
             if not mode_pfs:
                 all_valid_pfs.sort(key=lambda x: x[1], reverse=True)
                 mode_pfs = [x for x in all_valid_pfs[:5] if x[1] > 1e-6]
@@ -1741,10 +1867,10 @@ class PolynomialMatrixBuilder:
                 # We take the real part since complex conjugate pairs cancel each other out
                 evolution[i] = np.real(np.sum(mode_coeffs * np.exp(evals * t)))
 
-            plt.plot(time_steps, evolution, label=f"$\Delta$ {var}", linewidth=2)
+            plt.plot(time_steps, evolution, label=f"$\\Delta$ {var}", linewidth=2)
 
         plt.xlabel("Time (s)", fontsize=12)
-        plt.ylabel("Deviation from Operating Point ($\Delta x$)", fontsize=12)
+        plt.ylabel("Deviation from Operating Point ($\\Delta x$)", fontsize=12)
         plt.title("Linear Dynamic Evolution (Small Signal)", fontsize=14)
         plt.axhline(0, color='black', linewidth=0.8, linestyle='--')
         plt.grid(True, alpha=0.3)
@@ -1752,15 +1878,19 @@ class PolynomialMatrixBuilder:
         plt.tight_layout()
         plt.show()
 
-    def compute_bifurcation_stability(self, pf_map: dict, evals: np.ndarray, evecs: np.ndarray, margin: float = 0.1,
+    def compute_bifurcation_stability(self, pf_map: dict, evals: np.ndarray,
+                                      evecs_right: np.ndarray, evecs_left: np.ndarray,
+                                      E_matrix: sparse.csc_matrix, margin: float = 0.1,
                                       tolerance: float = 1e-3, t_margin: float = 5.0) -> dict:
         """
         Mathematically evaluates if perturbations in critical modes (near bifurcation)
-        decay within a tolerance limit after a time t_margin.
+        decay within a tolerance limit after a time t_margin using bi-orthogonal projection.
 
         :param pf_map: Dictionary returned by `get_participation_mapping`.
         :param evals: 1D array of eigenvalues.
-        :param evecs: 2D matrix of right eigenvectors.
+        :param evecs_right: 2D matrix of right eigenvectors (V).
+        :param evecs_left: 2D matrix of left eigenvectors (W).
+        :param E_matrix: The sparse descriptor mass matrix (E).
         :param margin: Real part threshold to consider a mode as "critical" (near the imaginary axis).
         :param tolerance: Maximum allowed deviation at t = t_margin for the perturbation to be considered decayed.
         :param t_margin: Time in the future (seconds) where the envelope is analytically evaluated.
@@ -1770,7 +1900,6 @@ class PolynomialMatrixBuilder:
         idx_vars = []
         for idx_counter, s in enumerate(self.all_symbols):
             s_name = s.name
-            # Detect derivatives or state variables based on common naming conventions
             is_deriv = any(s_name.startswith(pre) for pre in ['dx', 'xp', 'd_', 'dt_'])
             is_input = s_name.startswith('u') and not s_name.startswith('u_')
 
@@ -1779,8 +1908,16 @@ class PolynomialMatrixBuilder:
 
         var_name_to_ss_idx = {self.all_symbols[sym_idx].name: i for i, sym_idx in enumerate(idx_vars)}
 
-        # 2. Pre-calculate the Moore-Penrose pseudoinverse (costly, done once)
-        v_pinv = np.linalg.pinv(evecs)
+        # 2. Enforce descriptor bi-orthogonal normalization: w_i^H * E * v_i = 1
+        # Clone matrices to avoid modifying external state
+        V = evecs_right.copy()
+        W = evecs_left.copy()
+
+        for i in range(len(evals)):
+            # Calculate scaling factor for the i-th mode
+            scale_factor = W[:, i].conj().T @ E_matrix @ V[:, i]
+            # Normalize the left eigenvector accordingly
+            W[:, i] = W[:, i] / scale_factor.conj()
 
         if self.verbose:
             print(f"\n[ Bifurcation & Stability Analysis | Margin: +/-{margin} | Time: {t_margin}s ]")
@@ -1791,7 +1928,6 @@ class PolynomialMatrixBuilder:
         for ev, participations in pf_map.items():
             # Identify if the eigenvalue is critically close to the imaginary axis (Non-Hyperbolic point)
             if -margin < np.real(ev) <= margin:
-
                 ev_str = f"{ev:.4f}"
                 report[ev_str] = []
 
@@ -1804,31 +1940,36 @@ class PolynomialMatrixBuilder:
                 for var_name, pf in participations:
                     if not str(var_name).startswith("u_"):
 
-                        # Ensure the variable exists in the state-space mapping
                         if var_name not in var_name_to_ss_idx:
                             continue
 
                         var_idx = var_name_to_ss_idx[var_name]
 
-                        # A. Construct initial physical perturbation (Delta x_i(0) = 0.05)
-                        x0 = np.zeros(evecs.shape[0])
-                        x0[var_idx] = 0.05
+                        # A. Construct descriptor initial perturbation profile (E * x0)
+                        # Instead of an independent x0 vector, we extract the column from E.
+                        # If the variable is purely algebraic, its corresponding column in E is zero,
+                        # automatically forcing a consistent initial algebraic response.
+                        E_x0 = E_matrix[:, var_idx].toarray().flatten() * 0.05
 
-                        # B. Project to modal domain: c = pinv(V) * x0
-                        c = v_pinv @ x0
+                        # B. Project to modal domain using bi-orthogonality: c_i = w_i^H * (E * x0)
+                        # This replaces the mathematically incorrect and slow 'np.linalg.pinv(V)'
+                        c = np.zeros(len(evals), dtype=complex)
+                        for i in range(len(evals)):
+                            c[i] = W[:, i].conj().T @ E_x0
 
-                        # C. Calculate EXACT deviation at t = t_margin
-                        # Contribution of all modes to the variable's state at time t
-                        mode_coeffs = c * evecs[var_idx, :]
+                        # C. Calculate EXACT linear deviation at t = t_margin inside the computed manifold
+                        mode_coeffs = c * V[var_idx, :]
                         delta_at_t = np.real(np.sum(mode_coeffs * np.exp(evals * t_margin)))
 
-                        # D. Evaluate bifurcation/stability criterion
+                        # D. Evaluate bifurcation and stability criteria
                         passed = abs(delta_at_t) < tolerance
 
-                        # Programmatic Alert for stability loss
-                        if not passed:
-                            print(
-                                f"Programmatic alert: The system will lose stability due to bifurcation at {var_name}")
+                        # Programmatic Alerts tailored for critical points
+                        if not passed and np.real(ev) < -1e-4:
+                            print(f"Programmatic alert: Poorly damped mode causing slow decay at {var_name}")
+                        elif not passed and abs(np.real(ev)) <= 1e-4:
+                            print(f"Programmatic alert: True bifurcation detected at {var_name}. "
+                                  f"Linear simulation cannot guarantee long-term boundedness.")
 
                         report[ev_str].append({
                             "variable": var_name,
@@ -1838,53 +1979,9 @@ class PolynomialMatrixBuilder:
 
                         if self.verbose:
                             status = "[OK]" if passed else "[DANGER]"
-                            msg = "decays" if passed else "DOES NOT damp"
+                            msg = "decays" if passed else "DOES NOT damp/converge"
                             symbol = "<" if passed else ">="
                             print(f"  {status} Variable {var_name}: Perturbation {msg}. "
                                   f"Delta(t={t_margin}) = {abs(delta_at_t):.6f} {symbol} {tolerance}")
 
         return report
-
-    '''def report(self, eigenvalues=None, is_stable=False, max_real=None, print_matrices=True, save_path=None):
-        """
-        Outputs or exports the internal structural matrices and eigenvalue results
-        for diagnostic inspection and external validation.
-
-        Algorithmically, this function provides observability into the compiled Differential
-        Algebraic Equation (DAE) system. It sequentially extracts and formats the sparse
-        matrices (S, Phi, E, A, B). If eigenvalues are provided, it actively filters for
-        finite values and sorts them by their real parts in descending order, immediately
-        highlighting the most dynamically critical (or unstable) modes. It optionally serializes
-        this system state to a specified file path for persistent logging.
-
-        :param eigenvalues: Array of computed system eigenvalues.
-        :type eigenvalues: np.ndarray | None
-        :param is_stable: Boolean flag indicating if the system is stable.
-        :type is_stable: bool
-        :param max_real: The maximum real part found among the eigenvalues.
-        :type max_real: float | None
-        :param print_matrices: Flag to enable console printing of the matrices.
-        :type print_matrices: bool
-        :param save_path: Absolute or relative file path to save the exported text report.
-        :type save_path: str | None
-        :return: Modifies no state; performs I/O operations.
-        :rtype: None
-        """
-        if print_matrices:
-            for label, mat in [("S", self.S_H), ("Phi", self.Phi_H), ("E", self.E), ("A", self.A), ("B", self.B)]:
-                if mat is not None:
-                    print(f"\n--- {label} Matrix ---")
-                    print(sparse.csc_matrix(mat))
-            if eigenvalues is not None:
-                for ev in sorted(list(eigenvalues[np.isfinite(eigenvalues)]), key=_get_real_part, reverse=True):
-                    print(f"  {ev.real:.6f} + {ev.imag:.6f}j")
-
-        if save_path is not None:
-            import os
-            os.makedirs(os.path.dirname(os.path.abspath(save_path)), exist_ok=True)
-            with open(save_path, "w", encoding="utf-8") as f:
-                for label, mat in [("S Matrix", self.S_H), ("Phi Matrix", self.Phi_H), ("E Matrix", self.E),
-                                   ("A Matrix", self.A)]:
-                    if mat is not None:
-                        f.write(f"\n--- {label} ---\n")
-                        f.write(str(sparse.csc_matrix(mat)) + "\n")'''
