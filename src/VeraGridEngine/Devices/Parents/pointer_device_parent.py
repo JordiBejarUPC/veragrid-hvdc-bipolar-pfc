@@ -132,7 +132,7 @@ class PointerDeviceParent(EditableDevice):
 
     @device.setter
     def device(self, val: InjectionParent | BranchParent | None):
-        if isinstance(val, (InjectionParent, BranchParent)):
+        if isinstance(val, EditableDevice):
             if val is not None:
                 self._tpe = val.device_type
                 self._device_idtag = val.idtag
