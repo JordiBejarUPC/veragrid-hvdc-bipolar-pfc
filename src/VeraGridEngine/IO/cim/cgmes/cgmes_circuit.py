@@ -410,6 +410,28 @@ def find_references(elements_by_type: Dict[str, List[CGMES_ASSETS]],
         recovery_mode=recovery_mode
     )
 
+    def log_reference_not_found(target_element: CGMES_ASSETS,
+                                target_class_name: str,
+                                target_property_name: str,
+                                expected_reference: str) -> None:
+        """
+        Boundary profile objects are often intentionally incomplete.
+        """
+        if target_element.boundary_set:
+            logger.add_warning(msg='Reference not found in boundary context',
+                               device=target_element.rdfid,
+                               device_class=target_class_name,
+                               device_property=target_property_name,
+                               value='Not found',
+                               expected_value=expected_reference)
+        else:
+            logger.add_error(msg='Reference not found',
+                             device=target_element.rdfid,
+                             device_class=target_class_name,
+                             device_property=target_property_name,
+                             value='Not found',
+                             expected_value=expected_reference)
+
     # Resolve only properties that were actually present in the XML.
     # Missing mandatory properties are reported explicitly in a second pass.
     for class_name, elements in elements_by_type.items():
@@ -460,7 +482,7 @@ def find_references(elements_by_type: Dict[str, List[CGMES_ASSETS]],
                                 element.set_declared_property_value(prop_name=property_name,
                                                                     prop_value=enum_val)
 
-                            except TypeError as e:
+                            except (TypeError, ValueError):
                                 logger.add_error(msg='Could not convert Enum',
                                                  device=element.rdfid,
                                                  device_class=class_name,
@@ -518,12 +540,10 @@ def find_references(elements_by_type: Dict[str, List[CGMES_ASSETS]],
                                                                     prop_value=None)
 
                                 if hasattr(element, 'rdfid'):
-                                    logger.add_error(msg='Reference not found',
-                                                     device=element.rdfid,
-                                                     device_class=class_name,
-                                                     device_property=property_name,
-                                                     value='Not found',
-                                                     expected_value=value)
+                                    log_reference_not_found(target_element=element,
+                                                            target_class_name=class_name,
+                                                            target_property_name=property_name,
+                                                            expected_reference=value)
                                     if is_ambiguous:
                                         logger.add_warning(msg='Ambiguous reference during tolerant resolution',
                                                            device=element.rdfid,
@@ -586,12 +606,10 @@ def find_references(elements_by_type: Dict[str, List[CGMES_ASSETS]],
                                                                         prop_value=None)
 
                                     if hasattr(element, 'rdfid'):
-                                        logger.add_error(msg='Reference not found',
-                                                         device=element.rdfid,
-                                                         device_class=class_name,
-                                                         device_property=property_name,
-                                                         value='Not found',
-                                                         expected_value=v)
+                                        log_reference_not_found(target_element=element,
+                                                                target_class_name=class_name,
+                                                                target_property_name=property_name,
+                                                                expected_reference=v)
                                         if is_ambiguous:
                                             logger.add_warning(msg='Ambiguous reference during tolerant resolution',
                                                                device=element.rdfid,
@@ -622,12 +640,20 @@ def find_references(elements_by_type: Dict[str, List[CGMES_ASSETS]],
 
             for property_name, cim_prop in element.declared_properties.items():
                 if cim_prop.mandatory and property_name not in parsed_property_names:
-                    logger.add_error(msg='Required property not provided',
-                                     device=element.rdfid,
-                                     device_class=class_name,
-                                     device_property=property_name,
-                                     value='not provided',
-                                     expected_value=property_name)
+                    if element.boundary_set:
+                        logger.add_info(msg='Required property not provided in boundary context',
+                                        device=element.rdfid,
+                                        device_class=class_name,
+                                        device_property=property_name,
+                                        value='not provided',
+                                        expected_value=property_name)
+                    else:
+                        logger.add_error(msg='Required property not provided',
+                                         device=element.rdfid,
+                                         device_class=class_name,
+                                         device_property=property_name,
+                                         value='not provided',
+                                         expected_value=property_name)
 
     # modify the elements_by_type here adding the elements from the boundary set
     # all_elements_dict was modified in the previous loop
@@ -694,6 +720,111 @@ def convert_data_to_objects(data: Dict[str, Dict[str, Dict[str, str]]],
                         logger=logger,
                         mark_used=True,
                         recovery_mode=cgmes_recovery_mode)
+
+
+def _normalize_cgmes_property_name(raw_property_name: str, class_name: str) -> str:
+    """
+    Normalize malformed incoming CGMES property names to declared slot names.
+
+    :param raw_property_name: Raw property key parsed from XML
+    :param class_name: CIM class name for context
+    :return: Normalized candidate property name
+    """
+    candidate = raw_property_name
+
+    # Some sources leak fully qualified keys like "Class.property".
+    if "." in candidate:
+        candidate = candidate.split(".")[-1]
+
+    # Defensive cleanup for malformed XML-attribute suffixes.
+    if candidate.endswith("-resource"):
+        candidate = candidate[:-9]
+    elif candidate.endswith("-about"):
+        candidate = "rdfId"
+    elif candidate.endswith("-ID"):
+        candidate = "rdfId"
+
+    # Handle odd class-prefixed key forms after partial parser transforms.
+    class_prefix = class_name + "_"
+    if candidate.startswith(class_prefix):
+        candidate = candidate[len(class_prefix):]
+
+    return candidate
+
+
+def prepare_cgmes_object_dictionary(data: Dict[str, Dict[str, Dict[str, str]]],
+                                    class_dict: Dict[str, Callable[..., CGMES_ASSETS]],
+                                    logger: DataLogger) -> None:
+    """
+    Normalize parsed CGMES dictionaries before object conversion.
+
+    Behavior follows the tolerance spirit of pandapower's ``prepare_cim_net``:
+    unknown classes and malformed keys are sanitized early so conversion can
+    focus on declared model content.
+
+    :param data: Parsed CGMES dictionary modified in place
+    :param class_dict: Available CGMES class constructors
+    :param logger: DataLogger
+    :return: Nothing
+    """
+    dropped_classes = 0
+    patched_property_names = 0
+    dropped_properties = 0
+    dropped_objects = 0
+
+    for class_name in list(data.keys()):
+        objects_dict = data.get(class_name, None)
+        class_template = class_dict.get(class_name, None)
+
+        if class_template is None:
+            dropped_classes += 1
+            data.pop(class_name, None)
+            continue
+
+        if not isinstance(objects_dict, dict):
+            dropped_classes += 1
+            data.pop(class_name, None)
+            continue
+
+        probe_object = class_template(rdfid="", tpe=class_name)
+        declared_properties: Set[str] = set(probe_object.declared_properties.keys())
+
+        for rdfid in list(objects_dict.keys()):
+            raw_object_data = objects_dict.get(rdfid, None)
+            if not isinstance(raw_object_data, dict):
+                dropped_objects += 1
+                objects_dict.pop(rdfid, None)
+                continue
+
+            normalized_object_data: Dict[str, str] = dict()
+            for raw_prop_name, raw_prop_value in raw_object_data.items():
+                if raw_prop_name in declared_properties:
+                    normalized_object_data[raw_prop_name] = raw_prop_value
+                    continue
+
+                normalized_prop_name = _normalize_cgmes_property_name(raw_property_name=raw_prop_name,
+                                                                      class_name=class_name)
+
+                # CGMES 2.4.15 vs 3.x occasional alias.
+                if normalized_prop_name == "kind" and "limitType" in declared_properties:
+                    normalized_prop_name = "limitType"
+
+                if normalized_prop_name in declared_properties:
+                    if normalized_prop_name not in normalized_object_data:
+                        normalized_object_data[normalized_prop_name] = raw_prop_value
+                    patched_property_names += 1
+                else:
+                    dropped_properties += 1
+
+            objects_dict[rdfid] = normalized_object_data
+
+    if dropped_classes > 0 or patched_property_names > 0 or dropped_properties > 0 or dropped_objects > 0:
+        logger.add_info(
+            msg="Prepared CGMES dictionary before conversion",
+            device_class="CgmesCircuit",
+            value=f"classes_dropped={dropped_classes}, objects_dropped={dropped_objects}, "
+                  f"properties_patched={patched_property_names}, properties_dropped={dropped_properties}"
+        )
 
 
 def convert_class_data_to_objects(class_name: str,
@@ -896,6 +1027,13 @@ class CgmesCircuit(BaseCircuit):
         # set the data
         self.set_data(data=data_parser.data, boundary_set=data_parser.boundary_set)
         self.emit_progress(25)
+        prepare_cgmes_object_dictionary(data=self.boundary_set,
+                                        class_dict=self.cgmes_assets.class_dict,
+                                        logger=self.logger)
+        prepare_cgmes_object_dictionary(data=self.data,
+                                        class_dict=self.cgmes_assets.class_dict,
+                                        logger=self.logger)
+
         # convert the dictionaries to the internal class model for the boundary set
         # do not mark the boundary set objects as used
         convert_data_to_objects(data=self.boundary_set,
