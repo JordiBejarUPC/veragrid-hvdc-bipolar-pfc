@@ -19,7 +19,7 @@ from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_rms_model
 from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 
-from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod
+from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod, DynamicEventTransitionType
 from VeraGridEngine.Devices.Events.rms_event import RmsEvent
 import VeraGridEngine.api as gce
 
@@ -190,9 +190,10 @@ set_rms_model(device=load, model=load_mdl, var_factory= grid.var_factory)
 ######################################################################################################
 
 Pl0 = find_name_in_block('Pl0', load_mdl)
+
 events_group = RmsEventsGroup(name="simulation1")
 grid.add_rms_events_group(events_group)
-event = RmsEvent(device=load, parameter=Pl0, time=0.1, value=-0.098, group=events_group)
+event = RmsEvent(device=load, parameter=Pl0, time=0.1, value=-0.098, group=events_group, transition_type=DynamicEventTransitionType.Step)
 grid.add_rms_event(event)
 
 gce.save_file(grid, "my_saved_grid.veragrid")

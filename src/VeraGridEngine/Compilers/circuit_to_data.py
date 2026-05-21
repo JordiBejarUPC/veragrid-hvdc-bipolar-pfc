@@ -1077,7 +1077,7 @@ def fill_generator_parent(
 
     if data.active[k]:
         if elm.get_srap_enabled_at(t_idx) and data.p[k] > 0.0:
-            bus_data.srap_availbale_power[i] += data.p[k]
+            bus_data.srap_available_power[i] += data.p[k]
 
         if elm.is_controlled:
             if elm.control_bus is not None:

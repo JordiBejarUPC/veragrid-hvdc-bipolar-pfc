@@ -3937,6 +3937,7 @@ class BlockType(Enum):
     PV_EMT = "PV_EMT"
     BESS_EMT = "BESS_EMT"
     BATTERY_EMT = "BATTERY_EMT"
+    COMPLETE_PSEUDO_VSC_EMT = "COMPLETE_PSEUDO_VSC_EMT"
 
 
     def __str__(self):
@@ -3964,6 +3965,7 @@ class ProceduralGridMethods(Enum):
     """
     SteinerAlone = "Steiner tree"
     SteinerAndOptimization = "Steiner tree + optimization"
+    CatalogueOptimizationOnly = "Catalogue optimization only"
 
     def __str__(self):
         return self.value

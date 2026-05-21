@@ -909,6 +909,8 @@ class Assets:
             obj.ensure_profiles_exist(self.time_profile)
         self._dc_lines.append(obj)
 
+        obj.set_var_factory(self._var_factory)
+
     def delete_dc_line(self, obj: dev.DcLine):
         """
         Delete line
@@ -4673,6 +4675,22 @@ class Assets:
                 capex[i] += investment.CAPEX
 
         return capex
+
+    def restore_investments(self):
+        """
+        Restore investments to the circuit by removing them one by one. This is useful to restore the dependencies of
+        the investments with the devices after a copy or a load.
+        """
+
+        for inv in self.investments:
+
+            if inv.device is not None:
+
+                if hasattr(inv.device, "active"):
+                    inv.device.active = False
+
+                if hasattr(inv.device, "active_prof"):
+                    inv.device.active_prof.fill(False)
 
     # ------------------------------------------------------------------------------------------------------------------
     # Investment
@@ -8827,7 +8845,8 @@ class Assets:
             tem.get_bridge_filter_2level_3ph_emt_template(vf=self._var_factory),
             tem.get_bridge_filter_control_2level_3ph_emt_template(vf=self._var_factory),
             tem.get_dc_load_emt_template(vf=self._var_factory),
-            tem.get_dc_line_emt_template(vf=self._var_factory),
+            # tem.get_dc_line_emt_template(vf=self._var_factory),
+            tem.get_dc_line_with_power_input_emt_template(vf=self._var_factory),
             tem.get_valve_emt_template(vf=self._var_factory),
             tem.get_transformer_emt_template(vf=self._var_factory),
             tem.get_xfmr_emt_template(vf=self._var_factory),

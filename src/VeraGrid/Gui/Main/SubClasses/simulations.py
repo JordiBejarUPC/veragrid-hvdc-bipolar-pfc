@@ -9,7 +9,7 @@ from collections import OrderedDict
 from typing import List, Tuple, Dict, Union
 
 # GUI imports
-from PySide6 import QtGui
+from PySide6 import QtGui, QtCore
 from matplotlib.colors import LinearSegmentedColormap
 
 import VeraGrid.Gui.gui_functions as gf
@@ -56,6 +56,19 @@ class SimulationsMain(TimeEventsMain):
         TimeEventsMain.__init__(self, parent)
 
         self._remote_jobs: Dict[str, RemoteJobDriver] = dict()
+
+        # Snapshot of every Investment in the live circuit at the moment an
+        # Investments-evaluation run finishes. The Variations-panel click handler
+        # uses it to deactivate every investment-touched device first, and then
+        # activate only the investments belonging to the clicked Pareto
+        # combination — matching the convention the optimizer used internally
+        # (an x vector of zeros = every investment off).
+        # WARNING: snapshot semantic only. set_investments_status overwrites each
+        # touched device's active *profile* (per-timestep) on every click. Any
+        # pre-existing time-series active profile on these devices is lost
+        # permanently after the first click. Save the project before exploring
+        # combinations if the original profile shape matters.
+        self._investments_all: List[dev.Investment] = list()
 
         # Power Flow Methods
         self.se_solvers_dict, se_solvers_mdl = gf.enums_to_model(
@@ -698,26 +711,82 @@ class SimulationsMain(TimeEventsMain):
     @staticmethod
     def get_investments_combination_tree_model(drv: sim.InvestmentsEvaluationDriver) -> QtGui.QStandardItemModel:
         """
-        Get the investments combination tree model
-        :param drv:
-        :return:
-        """
-        model = QtGui.QStandardItemModel()
-        model.setHorizontalHeaderLabels(["Combination"] + list(drv.results.f_names))
+        Build the model for the Variations panel after an Investments evaluation.
+        Only Pareto-front combinations are listed.
 
-        for i in range(drv.results.max_eval):
-            idx = np.where(drv.results.x[i, :] != 0)[0]
+        :param drv: InvestmentsEvaluationDriver instance with finalized results
+        :return: QStandardItemModel with one top-level row per Pareto combination
+        """
+        model: QtGui.QStandardItemModel = QtGui.QStandardItemModel()
+        model.setHorizontalHeaderLabels(["Pareto combination"] + list(drv.results.f_names))
+
+        # Iterate only over Pareto-front rows. sorting_indices points back into the
+        # full _x/_f arrays, so drv.results.x[i, :] is still the right way to look
+        # up the x vector. We tag each row with its original index via UserRole so
+        # the click handler can recover the x vector regardless of how Qt later
+        # sorts or filters the panel.
+        for i in drv.results.sorting_indices:
+            idx: np.ndarray = np.where(drv.results.x[i, :] != 0)[0]
             if len(idx):
-                row_items = [QtGui.QStandardItem(f"Combination {i}")] + [
+                label_item: QtGui.QStandardItem = QtGui.QStandardItem(f"Pareto combination {i}")
+                label_item.setData(int(i), QtCore.Qt.ItemDataRole.UserRole)
+                row_items: List[QtGui.QStandardItem] = [label_item] + [
                     QtGui.QStandardItem(f"{fi:.2f}") for fi in drv.results.f[i, :]
                 ]
                 model.appendRow(row_items)
 
-                # Add names as child nodes under this combination
-                names_parent_item = row_items[0]  # Use the first column (Combination) as parent
+                # Investment names go under the combination row as children. Clicks
+                # on a child still trigger combinations_tree_clicked, which walks
+                # back up to the top-level row to recover the combination index.
                 for k in idx:
-                    name_item = QtGui.QStandardItem(drv.results.x_names[k])
-                    names_parent_item.appendRow([name_item])
+                    name_item: QtGui.QStandardItem = QtGui.QStandardItem(drv.results.x_names[k])
+                    label_item.appendRow([name_item])
+            else:
+                # empty combination (no investments active) - skip it
+                pass
+
+        return model
+
+    @staticmethod
+    def get_catalogue_combination_tree_model(
+            drv: sim.CatalogueOptimizationDriver) -> QtGui.QStandardItemModel:
+        """
+        Build the model for the Variations panel after a Catalogue Optimization run.
+        Only Pareto-front combinations are listed (using the deduplicated indices
+        produced by InvestmentsEvaluationResults.finalize). Each combination row
+        is expanded to show one child per decision variable in the form
+        "<branch_name>: <integer index>", so the user can read off which
+        template-pool index was chosen for each branch.
+
+        :param drv: CatalogueOptimizationDriver instance with finalized results
+        :return: QStandardItemModel with one top-level row per Pareto combination
+        """
+        model: QtGui.QStandardItemModel = QtGui.QStandardItemModel()
+        model.setHorizontalHeaderLabels(["Pareto combination"] + list(drv.results.f_names))
+
+        # Iterate over Pareto-front rows only. sorting_indices points back into
+        # the full _x/_f arrays, so drv.results.x[i, :] is the right slice. We
+        # tag each row with its combination index via UserRole so the click
+        # handler can recover the integer x vector independently of any Qt
+        # sorting or filtering applied to the view.
+        for i in drv.results.sorting_indices:
+            x_vec: np.ndarray = drv.results.x[i, :]
+            label_item: QtGui.QStandardItem = QtGui.QStandardItem(f"Pareto combination {i}")
+            label_item.setData(int(i), QtCore.Qt.ItemDataRole.UserRole)
+            row_items: List[QtGui.QStandardItem] = [label_item] + [
+                QtGui.QStandardItem(f"{fi:.2f}") for fi in drv.results.f[i, :]
+            ]
+            model.appendRow(row_items)
+
+            # One child per decision variable: "<branch name>: <integer index>".
+            # Unlike the Investments panel (binary vector, where zeros are
+            # hidden), every catalogue slot has a meaningful non-zero meaning,
+            # so we list all of them — the integer alone tells the user which
+            # template pool index NSGA-3 picked for each branch.
+            for k in range(len(x_vec)):
+                child_text: str = f"{drv.results.x_names[k]}: {int(x_vec[k])}"
+                name_item: QtGui.QStandardItem = QtGui.QStandardItem(child_text)
+                label_item.appendRow([name_item])
 
         return model
 
@@ -747,6 +816,10 @@ class SimulationsMain(TimeEventsMain):
         else:
             if drv.tpe == SimulationTypes.InvestmentsEvaluation_run:
                 model = self.get_investments_combination_tree_model(drv=drv)
+                self.ui.combinationsTreeView.setModel(model)
+
+            elif drv.tpe == SimulationTypes.CatalogueOptimization_run:
+                model = self.get_catalogue_combination_tree_model(drv=drv)
                 self.ui.combinationsTreeView.setModel(model)
 
             elif drv.tpe == SimulationTypes.ShortCircuit_run:
@@ -3123,20 +3196,44 @@ class SimulationsMain(TimeEventsMain):
             QtGui.QGuiApplication.processEvents()
 
             self.update_available_results()
-            self.colour_diagrams()
+
+            # Cache every Investment object in the live grid so the Variations-panel
+            # click handler can deactivate them all before activating just the ones
+            # in the clicked Pareto combination. We snapshot the list itself (not
+            # device states) because per-click semantics are "force every touched
+            # device to inactive, then activate the selected subset" — exactly the
+            # convention the optimizer used. This avoids the bug where capturing
+            # device.active states could leak True flags through the revert path.
+            self._investments_all = list(self.circuit.investments)
+            all_elements_dict, _ = self.circuit.get_all_elements_dict()
 
             # create a schematic diagram for the best Pareto-optimal investment combination
             if driver is not None and len(results.sorting_indices) > 0:
                 best_x = results.x[results.sorting_indices[0], :]
                 inv_list = driver.problem.get_investments_for_combination(x=best_x)
 
-                # work on a copy so the base circuit is not modified
-                invested_grid = self.circuit.copy()
-                invested_grid.set_investments_status(investments_list=inv_list, status=True)
+                # Apply the best Pareto combination directly on self.circuit (no copy).
+                # Reason: the auto-generated diagram below must be bound to self.circuit
+                # so that subsequent clicks in the Variations panel — which mutate
+                # self.circuit — actually update the visible graphics. If we kept the
+                # old self.circuit.copy() pattern, every graphic's api_object would
+                # point to the copy, and clicking a Pareto combination later would
+                # silently change self.circuit while the diagram (still bound to the
+                # untouched copy) showed every branch as dashed forever.
+                # First deactivate every investment-touched device, then activate
+                # only the ones in best_x — same all-off-then-selected convention
+                # the click handler uses, so the auto-generated diagram is
+                # consistent with what a click on the same Pareto row would do.
+                self.circuit.set_investments_status(investments_list=self._investments_all,
+                                                    status=False,
+                                                    all_elements_dict=all_elements_dict)
+                self.circuit.set_investments_status(investments_list=inv_list,
+                                                    status=True,
+                                                    all_elements_dict=all_elements_dict)
 
                 diagram = make_diagram_from_buses(
-                    circuit=invested_grid,
-                    buses=invested_grid.buses,
+                    circuit=self.circuit,
+                    buses=self.circuit.buses,
                     name='Investments evaluation (best Pareto)'
                 )
 
@@ -3150,6 +3247,12 @@ class SimulationsMain(TimeEventsMain):
                 self.add_diagram_widget_and_diagram(diagram_widget=diagram_widget,
                                                     diagram=diagram)
                 self.set_diagrams_list_view()
+            else:
+                # no Pareto results - nothing to apply or auto-display
+                pass
+
+            # apply result-based colouring after the baseline + best-Pareto state is set
+            self.colour_diagrams()
         else:
             self.show_error_toast('Something went wrong, There are no investments evaluation results.')
 
@@ -3435,28 +3538,33 @@ class SimulationsMain(TimeEventsMain):
                     _, pf_results = self.session.power_flow
 
                     if not len(self.circuit.rms_events_groups) == 0:
+                        rms_options = self.get_selected_rms_simulation_options()
+                        if rms_options.simulation_time > 0.0:
 
-                        if pf_results is not None:
+                            if pf_results is not None:
 
-                            self.add_simulation(SimulationTypes.RmsDynamic_run)
+                                self.add_simulation(SimulationTypes.RmsDynamic_run)
 
-                            # self.add_simulation(SimulationTypes.RmsDynamic_run)
-                            self.ui.progress_label.setText('Running rms simulation...')
-                            QtGui.QGuiApplication.processEvents()
-                            self.LOCK()
+                                # self.add_simulation(SimulationTypes.RmsDynamic_run)
+                                self.ui.progress_label.setText('Running rms simulation...')
+                                QtGui.QGuiApplication.processEvents()
+                                self.LOCK()
 
-                            drv = sim.RmsSimulationDriver(grid=self.circuit,
-                                                          options=self.get_selected_rms_simulation_options(),
-                                                          pf_results=pf_results)
+                                drv = sim.RmsSimulationDriver(grid=self.circuit,
+                                                              options=self.get_selected_rms_simulation_options(),
+                                                              pf_results=pf_results)
 
-                            self.session.run(drv,
-                                             post_func=self.post_rms,
-                                             prog_func=self.ui.progressBar.setValue,
-                                             text_func=self.ui.progress_label.setText)
+                                self.session.run(drv,
+                                                 post_func=self.post_rms,
+                                                 prog_func=self.ui.progressBar.setValue,
+                                                 text_func=self.ui.progress_label.setText)
 
+                            else:
+                                info_msg('Run a power flow simulation first.\n'
+                                         'The results are needed to initialize this simulation.')
                         else:
-                            info_msg('Run a power flow simulation first.\n'
-                                     'The results are needed to initialize this simulation.')
+                            info_msg('The simulation time is 0. Change it to a proper time in settings.')
+
 
                     else:
                         info_msg('Add a RMS Events Group even if it is empty.\n'
@@ -3468,10 +3576,11 @@ class SimulationsMain(TimeEventsMain):
         else:
             pass
 
-    def post_rms(self):
+    def post_rms(self) -> None:
         """
+        Finalize the RMS simulation workflow and report only active-group status.
 
-        :return:
+        :return: None.
         """
         _, results = self.session.rms_dynamic_simulation
 
@@ -3481,21 +3590,55 @@ class SimulationsMain(TimeEventsMain):
             self.remove_simulation(SimulationTypes.RmsDynamic_run)
             self.update_available_results()
 
-            # report convergence and initialization
-            indices = [i for i, v in enumerate(results.well_initialized) if not v]
-            if indices:
-                for index in indices:
-                    self.show_warning_toast(f"Simulation bad initialized for {results.rms_events_group_names[index]}:/")
-            else:
-                self.show_info_toast("Simulation well initialized for all simulation groups :)")
+            # Only active event groups are simulated, so the completion report
+            # must ignore inactive groups whose default result flags remain False.
+            active_group_indices: list[int] = list()
+            group_count: int = min(len(self.circuit.rms_events_groups), len(results.rms_events_group_names))
+            group_index: int
+            for group_index in range(group_count):
+                rms_events_group = self.circuit.rms_events_groups[group_index]
+                if rms_events_group.active:
+                    active_group_indices.append(group_index)
+                else:
+                    pass
 
-            indices = [i for i, v in enumerate(results.converged) if not v]
-            if indices:
-                for index in indices:
-                    self.show_warning_toast(
-                        f"Simulation not converged for {results.rms_events_group_names[index]}:/")
+            if len(active_group_indices) > 0:
+                # Report initialization failures only for groups that were part
+                # of the executed simulation batch.
+                bad_initialization_names: list[str] = list()
+                active_index: int
+                group_name: str
+                for active_index in active_group_indices:
+                    group_name = str(results.rms_events_group_names[active_index])
+                    if results.well_initialized[active_index]:
+                        pass
+                    else:
+                        bad_initialization_names.append(group_name)
+
+                if len(bad_initialization_names) > 0:
+                    group_name: str
+                    for group_name in bad_initialization_names:
+                        self.show_warning_toast(f"Simulation bad initialized for {group_name}:/")
+                else:
+                    self.show_info_toast("Simulation well initialized for all active simulation groups :)")
+
+                # Report convergence failures only for groups that were part of
+                # the executed simulation batch.
+                not_converged_names: list[str] = list()
+                for active_index in active_group_indices:
+                    group_name = str(results.rms_events_group_names[active_index])
+                    if results.converged[active_index]:
+                        pass
+                    else:
+                        not_converged_names.append(group_name)
+
+                if len(not_converged_names) > 0:
+                    for group_name in not_converged_names:
+                        self.show_warning_toast(f"Simulation not converged for {group_name}:/")
+                else:
+                    self.show_info_toast("Simulation converged for all active simulation groups :)")
             else:
-                self.show_info_toast("Simulation converged for all simulation groups :)")
+                self.show_info_toast("There are no active RMS event groups to report.")
 
         else:
             warning_msg('There are no rms simulation results.', 'Rms simulation')
@@ -3529,41 +3672,46 @@ class SimulationsMain(TimeEventsMain):
                     _, pf_results = self.session.power_flow
 
                     if not len(self.circuit.emt_events_groups) == 0:
-                        if pf_results_3ph is not None:
+                        emt_options = self.get_selected_emt_simulation_options()
+                        if emt_options.simulation_time > 0.0:
+                            if pf_results_3ph is not None:
 
-                            self.add_simulation(SimulationTypes.EmtDynamic_run)
-                            self.ui.progress_label.setText('Running emt simulation...')
-                            QtGui.QGuiApplication.processEvents()
-                            self.LOCK()
+                                self.add_simulation(SimulationTypes.EmtDynamic_run)
+                                self.ui.progress_label.setText('Running emt simulation...')
+                                QtGui.QGuiApplication.processEvents()
+                                self.LOCK()
 
-                            drv = sim.EmtSimulationDriver(grid=self.circuit,
-                                                          options=self.get_selected_emt_simulation_options(),
-                                                          pf_results_3ph=pf_results_3ph)
+                                drv = sim.EmtSimulationDriver(grid=self.circuit,
+                                                              options=self.get_selected_emt_simulation_options(),
+                                                              pf_results_3ph=pf_results_3ph)
 
-                            self.session.run(drv,
-                                             post_func=self.post_emt,
-                                             prog_func=self.ui.progressBar.setValue,
-                                             text_func=self.ui.progress_label.setText)
+                                self.session.run(drv,
+                                                 post_func=self.post_emt,
+                                                 prog_func=self.ui.progressBar.setValue,
+                                                 text_func=self.ui.progress_label.setText)
 
-                        elif pf_results is not None:
+                            elif pf_results is not None:
 
-                            # self.add_simulation(SimulationTypes.RmsDynamic_run)
-                            self.ui.progress_label.setText('Running emt simulation from balanced power flow results ...')
-                            QtGui.QGuiApplication.processEvents()
-                            self.LOCK()
+                                # self.add_simulation(SimulationTypes.RmsDynamic_run)
+                                self.ui.progress_label.setText('Running emt simulation from balanced power flow results ...')
+                                QtGui.QGuiApplication.processEvents()
+                                self.LOCK()
 
-                            drv = sim.EmtSimulationDriver(grid=self.circuit,
-                                                          options=self.get_selected_emt_simulation_options(),
-                                                          pf_results=pf_results)
+                                drv = sim.EmtSimulationDriver(grid=self.circuit,
+                                                              options=self.get_selected_emt_simulation_options(),
+                                                              pf_results=pf_results)
 
-                            self.session.run(drv,
-                                             post_func=self.post_emt,
-                                             prog_func=self.ui.progressBar.setValue,
-                                             text_func=self.ui.progress_label.setText)
+                                self.session.run(drv,
+                                                 post_func=self.post_emt,
+                                                 prog_func=self.ui.progressBar.setValue,
+                                                 text_func=self.ui.progress_label.setText)
+
+                            else:
+                                info_msg('Run a power flow simulation first.\n'
+                                         'The results are needed to initialize this simulation.')
 
                         else:
-                            info_msg('Run a power flow simulation first.\n'
-                                     'The results are needed to initialize this simulation.')
+                            info_msg('The simulation time is 0. Change it to a proper time in settings.')
 
                     else:
                         info_msg('Add an EMT Events Group even if it is empty.\n'
@@ -3576,10 +3724,11 @@ class SimulationsMain(TimeEventsMain):
         else:
             pass
 
-    def post_emt(self):
+    def post_emt(self) -> None:
         """
+        Finalize the EMT simulation workflow and report only active-group status.
 
-        :return:
+        :return: None.
         """
         _, results = self.session.emt_dynamic_simulation
 
@@ -3589,22 +3738,54 @@ class SimulationsMain(TimeEventsMain):
             self.remove_simulation(SimulationTypes.EmtDynamic_run)
             self.update_available_results()
 
-            # uncomment when convergence and well initialized is reported
-            # # report convergence and initialization
-            # indices = [i for i, v in enumerate(results.well_initialized) if not v]
-            # if indices:
-            #     for index in indices:
-            #         self.show_warning_toast(f"Simulation bad initialized for {results.emt_events_group_names[index]}:/")
-            # else:
-            #     self.show_info_toast("Simulation well initialized for all simulation groups :)")
-            #
-            # indices = [i for i, v in enumerate(results.converged) if not v]
-            # if indices:
-            #     for index in indices:
-            #         self.show_warning_toast(
-            #             f"Simulation not converged for {results.emt_events_group_names[index]}:/")
-            # else:
-            #     self.show_info_toast("Simulation converged for all simulation groups :)")
+            # Only active event groups are simulated, so the completion report
+            # must ignore inactive groups whose default result flags remain False.
+            active_group_indices: list[int] = list()
+            group_count: int = min(len(self.circuit.emt_events_groups), len(results.emt_events_group_names))
+            group_index: int
+            for group_index in range(group_count):
+                emt_events_group = self.circuit.emt_events_groups[group_index]
+                if emt_events_group.active:
+                    active_group_indices.append(group_index)
+                else:
+                    pass
+
+            if len(active_group_indices) > 0:
+                # Report initialization failures only for groups that were part
+                # of the executed simulation batch.
+                bad_initialization_names: list[str] = list()
+                active_index: int
+                group_name: str
+                for active_index in active_group_indices:
+                    group_name = str(results.emt_events_group_names[active_index])
+                    if results.well_initialized[active_index]:
+                        pass
+                    else:
+                        bad_initialization_names.append(group_name)
+
+                if len(bad_initialization_names) > 0:
+                    for group_name in bad_initialization_names:
+                        self.show_warning_toast(f"Simulation bad initialized for {group_name}:/")
+                else:
+                    self.show_info_toast("Simulation well initialized for all active simulation groups :)")
+
+                # Report convergence failures only for groups that were part of
+                # the executed simulation batch.
+                not_converged_names: list[str] = list()
+                for active_index in active_group_indices:
+                    group_name = str(results.emt_events_group_names[active_index])
+                    if results.converged[active_index]:
+                        pass
+                    else:
+                        not_converged_names.append(group_name)
+
+                if len(not_converged_names) > 0:
+                    for group_name in not_converged_names:
+                        self.show_warning_toast(f"Simulation not converged for {group_name}:/")
+                else:
+                    self.show_info_toast("Simulation converged for all active simulation groups :)")
+            else:
+                self.show_info_toast("There are no active EMT event groups to report.")
 
         else:
             warning_msg('There are no emt simulation results.', 'Emt simulation')
@@ -3923,8 +4104,10 @@ class SimulationsMain(TimeEventsMain):
         """
         Post-execution callback for the catalogue optimization driver.
 
-        Mirrors `post_investments_evaluation`: it removes the running-simulation flag, refreshes
-        the available results combo and recolours the diagrams to expose the new results.
+        Mirrors `post_investments_evaluation`: clears the running-simulation flag,
+        refreshes the available-results combo, applies the best Pareto member's
+        templates to the live MultiCircuit so the user lands on a usable grid
+        state, and recolours the diagrams to expose the new results.
 
         :return:
         """
@@ -3938,6 +4121,26 @@ class SimulationsMain(TimeEventsMain):
             QtGui.QGuiApplication.processEvents()
 
             self.update_available_results()
+
+            # Apply the best Pareto member's templates to the live grid so the
+            # diagram immediately reflects the optimizer's top recommendation.
+            # The driver itself reverts state after every evaluation (via the
+            # problem's _restore_baseline), so right now every branch is back
+            # at its pre-evaluation baseline. We re-apply the chosen combo on
+            # top so subsequent clicks in the Variations panel can use the
+            # same restore-then-apply convention without ambiguity about what
+            # state the grid is currently in.
+            if driver is not None and len(results.sorting_indices) > 0:
+                best_x: np.ndarray = results.x[results.sorting_indices[0], :]
+                # Restore baseline first, then apply: matches the click handler
+                # so the auto-displayed state is identical to what clicking the
+                # same Pareto row would produce.
+                driver.problem._restore_baseline()
+                driver.problem._apply_combination(x=best_x)
+            else:
+                # No Pareto results available - leave the grid at baseline.
+                pass
+
             self.colour_diagrams()
         else:
             pass
