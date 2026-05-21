@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Tuple, Union, Any
 import numpy as np
 import pandas as pd
 import VeraGridEngine.IO.cim.cgmes.cgmes_enums as cgmes_enums
@@ -606,6 +606,16 @@ def find_associated_buses(cgmes_elm: CGMES_ASSETS,
     if cgmes_terminals is not None:
         buses = list()
         for cgmes_terminal in cgmes_terminals:
+            if hasattr(cgmes_terminal, "connected"):
+                terminal_connected = get_cgmes_property_value(cgmes_elm=cgmes_terminal,
+                                                              property_name="connected",
+                                                              fallback=True)
+                if not bool(terminal_connected):
+                    continue
+                else:
+                    pass
+            else:
+                pass
             if prefer_connectivity_node or cgmes_version == CGMESVersions.v3_0_0:
                 bus = find_terminal_bus_connectivity_priority(
                     cgmes_terminal=cgmes_terminal,
@@ -885,13 +895,46 @@ def get_cgmes_equipment_active_state(cgmes_elm: CGMES_ASSETS,
     For switches, an element is active only when it is in service and closed.
     For all other equipment, the inService flag is used when available.
     """
-    in_service = getattr(cgmes_elm, "inService", None)
-    active = True if in_service is None else bool(in_service)
+    in_service = get_cgmes_property_value(cgmes_elm=cgmes_elm, property_name="inService", fallback=True)
+    active = bool(in_service)
 
     if use_switch_open:
-        active = active and not bool(getattr(cgmes_elm, "open", False))
+        switch_open = get_cgmes_property_value(cgmes_elm=cgmes_elm, property_name="open", fallback=False)
+        active = active and not bool(switch_open)
 
     return active
+
+
+def get_cgmes_declared_property_default(cgmes_elm: CGMES_ASSETS, property_name: str) -> Any:
+    """
+    Read a design-time default declared in CgmesProperty metadata.
+    """
+    declared_properties = getattr(cgmes_elm, "declared_properties", None)
+    if isinstance(declared_properties, dict):
+        declared_property = declared_properties.get(property_name, None)
+        if declared_property is not None:
+            return getattr(declared_property, "default_value", None)
+        else:
+            return None
+    else:
+        return None
+
+
+def get_cgmes_property_value(cgmes_elm: CGMES_ASSETS, property_name: str, fallback: Any = None) -> Any:
+    """
+    Read one CGMES property, then design-time default, then explicit fallback.
+    """
+    value = getattr(cgmes_elm, property_name, None)
+    if value is not None:
+        return value
+    else:
+        pass
+
+    default_value = get_cgmes_declared_property_default(cgmes_elm=cgmes_elm, property_name=property_name)
+    if default_value is not None:
+        return default_value
+    else:
+        return fallback
 
 
 def parse_contingency_equipment_status(contingent_status: str | None,
@@ -2778,8 +2821,10 @@ def get_gcdev_external_grids(cgmes_model: CgmesCircuit,
                 mode = ExternalGridMode.PQ
                 vm = 1.0
 
-                if hasattr(cgmes_elm, "regulationCapability") and getattr(cgmes_elm, "regulationCapability", False):
-                    regulation_target = getattr(cgmes_elm, "regulationTarget", None)
+                if bool(get_cgmes_property_value(cgmes_elm=cgmes_elm,
+                                                 property_name="regulationCapability",
+                                                 fallback=False)):
+                    regulation_target = get_cgmes_property_value(cgmes_elm=cgmes_elm, property_name="regulationTarget")
                     if regulation_target is not None and calc_node.Vnom > 0.0:
                         vm = float(regulation_target) / float(calc_node.Vnom)
                         vm = sanitize_voltage_setpoint(v_set=vm,
@@ -2794,10 +2839,11 @@ def get_gcdev_external_grids(cgmes_model: CgmesCircuit,
                             device_property="regulationTarget",
                             value=regulation_target,
                             expected_value="finite target and Bus.Vnom > 0")
-                elif getattr(cgmes_elm, "controlEnabled", False):
-                    regulating_control = getattr(cgmes_elm, "RegulatingControl", None)
+                elif bool(get_cgmes_property_value(cgmes_elm=cgmes_elm, property_name="controlEnabled",
+                                                   fallback=False)):
+                    regulating_control = get_cgmes_property_value(cgmes_elm=cgmes_elm, property_name="RegulatingControl")
                     if regulating_control is not None:
-                        target_value = getattr(regulating_control, "targetValue", None)
+                        target_value = get_cgmes_property_value(cgmes_elm=regulating_control, property_name="targetValue")
                         if target_value is not None and calc_node.Vnom > 0.0:
                             vm = float(target_value) / float(calc_node.Vnom)
                             vm = sanitize_voltage_setpoint(v_set=vm,
@@ -2819,8 +2865,11 @@ def get_gcdev_external_grids(cgmes_model: CgmesCircuit,
                             device_class=cgmes_elm.tpe,
                             device_property="RegulatingControl",
                             value='None')
-                elif getattr(cgmes_elm, "referencePriority", 0) == 1:
+                elif get_cgmes_property_value(cgmes_elm=cgmes_elm, property_name="referencePriority", fallback=0) == 1:
                     mode = ExternalGridMode.VD
+
+                p_value = get_cgmes_property_value(cgmes_elm=cgmes_elm, property_name="p", fallback=0.0)
+                q_value = get_cgmes_property_value(cgmes_elm=cgmes_elm, property_name="q", fallback=0.0)
 
                 gcdev_elm = gcdev.ExternalGrid(idtag=cgmes_elm.uuid,
                                                code=cgmes_elm.description,
@@ -2828,8 +2877,8 @@ def get_gcdev_external_grids(cgmes_model: CgmesCircuit,
                                                active=get_cgmes_equipment_active_state(cgmes_elm),
                                                mode=mode,
                                                Vm=vm,
-                                               P=cgmes_elm.p,
-                                               Q=cgmes_elm.q)
+                                               P=p_value,
+                                               Q=q_value)
 
                 gcdev_model.add_external_grid(bus=calc_node, api_obj=gcdev_elm)
             else:
@@ -4396,8 +4445,10 @@ def get_gcdev_switches(cgmes_model: CgmesCircuit,
                     bus_to=calc_node_t,
                     rate=op_rate,
                     rated_current=rated_current,
-                    retained=cgmes_elm.retained,
-                    normal_open=cgmes_elm.normalOpen
+                    retained=bool(get_cgmes_property_value(cgmes_elm=cgmes_elm, property_name="retained",
+                                                           fallback=False)),
+                    normal_open=bool(get_cgmes_property_value(cgmes_elm=cgmes_elm, property_name="normalOpen",
+                                                              fallback=False))
                 )
                 # Keep CGMES "retained" as metadata, but force switches reducible
                 # so VeraGrid always solves topology internally from switch states.
