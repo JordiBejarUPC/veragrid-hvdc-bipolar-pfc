@@ -6,6 +6,7 @@ from __future__ import annotations
 import math
 import numpy as np
 from typing import Dict, List, Set, Tuple, TypeVar
+
 from VeraGridEngine.enumerations import (
     ExternalGridMode,
     SwitchGraphicType,
@@ -28,9 +29,9 @@ TDgsObject = TypeVar("TDgsObject")
 
 
 def _is_element_closed_by_cubicle_switches(
-    element_id: str,
-    cubics_by_objid: Dict[str, List[StaCubic]],
-    switch_by_cubic_id: Dict[str, StaSwitch],
+        element_id: str,
+        cubics_by_objid: Dict[str, List[StaCubic]],
+        switch_by_cubic_id: Dict[str, StaSwitch],
 ) -> bool:
     cbs = cubics_by_objid.get(_ref_id(element_id), [])
     if not cbs:
@@ -51,14 +52,25 @@ def _is_element_closed_by_cubicle_switches(
 
 
 def _get_tr3_winding_closed_states(
-    tr3_id: str,
-    cubics_by_objid: Dict[str, List[StaCubic]],
-    switch_by_cubic_id: Dict[str, StaSwitch],
-    bus_by_term_id: Dict[str, dev.Bus],
-    bus_hv: dev.Bus,
-    bus_mv: dev.Bus,
-    bus_lv: dev.Bus,
+        tr3_id: str,
+        cubics_by_objid: Dict[str, List[StaCubic]],
+        switch_by_cubic_id: Dict[str, StaSwitch],
+        bus_by_term_id: Dict[str, dev.Bus],
+        bus_hv: dev.Bus,
+        bus_mv: dev.Bus,
+        bus_lv: dev.Bus,
 ) -> tuple[bool, bool, bool]:
+    """
+
+    :param tr3_id:
+    :param cubics_by_objid:
+    :param switch_by_cubic_id:
+    :param bus_by_term_id:
+    :param bus_hv:
+    :param bus_mv:
+    :param bus_lv:
+    :return:
+    """
     hv_closed = True
     mv_closed = True
     lv_closed = True
@@ -609,18 +621,25 @@ def _convert_gearth_us_per_cm_to_resistivity_ohm_m(gearth_us_per_cm: float) -> f
     return 1.0 / conductivity_s_per_m
 
 
-def convert_dgs_to_overhead_line_type(
+def convert_dgs_to_overhead_line_type_geometrical_parameters(
         typtow: TypTow,
         typcon_by_id: Dict[str, TypCon],
         wire_by_id: Dict[str, Wire],
         default_frequency_hz: float,
-) -> OverheadLineType:
-    """Convert a PowerFactory TypTow into a VeraGrid OverheadLineType.
+) -> dev.OverheadLineType:
+    """
+    Convert a PowerFactory TypTow into a VeraGrid OverheadLineType.
 
     This conversion builds the wire geometry (positions) and assigns Wire templates.
     It supports multi-circuit towers by defining phases 1..3 for circuit 1,
     4..6 for circuit 2, etc (as required by VeraGrid's OverheadLineType).
+    :param typtow:
+    :param typcon_by_id:
+    :param wire_by_id:
+    :param default_frequency_hz:
+    :return:
     """
+
     tid = _ref_id(typtow.ID)
     if typtow.loc_name is not None and str(typtow.loc_name).strip() != "":
         name = typtow.loc_name
@@ -632,24 +651,26 @@ def convert_dgs_to_overhead_line_type(
         freq = float(typtow.frnom)
     else:
         freq = float(default_frequency_hz)
+
     earth_res = _convert_gearth_us_per_cm_to_resistivity_ohm_m(float(typtow.gearth))
 
     # Determine nominal voltage from referenced conductor types.
     v_candidates: List[float] = list()
     for ptr in typtow.pcond_c:
-        if ptr is None:
-            continue
-        cid = _ref_id(ptr)
-        tc = typcon_by_id.get(cid)
-        if tc is not None:
-            v_candidates.append(float(tc.uline))
+        if ptr is not None:
+            cid = _ref_id(ptr)
+            if cid is not None:
+                tc = typcon_by_id.get(cid, None)
+                if tc is not None:
+                    v_candidates.append(float(tc.uline))
+
     for ptr in typtow.pcond_e:
-        if ptr is None:
-            continue
-        cid = _ref_id(ptr)
-        tc = typcon_by_id.get(cid)
-        if tc is not None:
-            v_candidates.append(float(tc.uline))
+        if ptr is not None:
+            cid = _ref_id(ptr)
+            if cid is not None:
+                tc = typcon_by_id.get(cid, None)
+                if tc is not None:
+                    v_candidates.append(float(tc.uline))
 
     if len(v_candidates) > 0:
         vnom = max(v_candidates)
@@ -666,53 +687,134 @@ def convert_dgs_to_overhead_line_type(
 
     # Earth wires (phase 0)
     for ew_idx, ptr in enumerate(typtow.pcond_e):
-        if ptr is None:
-            continue
-        cid = _ref_id(ptr)
-        wire = wire_by_id.get(cid)
-        tc = typcon_by_id.get(cid)
-        if wire is None or tc is None:
-            continue
-        if ew_idx < len(typtow.xy_e) and len(typtow.xy_e[ew_idx]) >= 2:
-            x0 = float(typtow.xy_e[ew_idx][0])
-            y0 = float(typtow.xy_e[ew_idx][1])
-        else:
-            x0 = 0.0
-            y0 = 0.0
+        if ptr is not None:
+            cid = _ref_id(ptr)
+            if cid is not None:
+                wire = wire_by_id.get(cid, None)
+                tc = typcon_by_id.get(cid, None)
+                if wire is not None and tc is not None:
+                    if ew_idx < len(typtow.xy_e) and len(typtow.xy_e[ew_idx]) >= 2:
+                        x0 = float(typtow.xy_e[ew_idx][0])
+                        y0 = float(typtow.xy_e[ew_idx][1])
+                    else:
+                        x0 = 0.0
+                        y0 = 0.0
 
-        offsets = _bundle_offsets(n_sub=int(tc.ncsub), spacing_m=float(tc.dsubc))
-        for dx, dy in offsets:
-            ohl_type.wires_in_tower.append(WireInTower(wire=wire, xpos=x0 + dx, ypos=y0 + dy, phase=0))
+                    offsets = _bundle_offsets(n_sub=int(tc.ncsub), spacing_m=float(tc.dsubc))
+                    for dx, dy in offsets:
+                        ohl_type.wires_in_tower.append(WireInTower(wire=wire, xpos=x0 + dx, ypos=y0 + dy, phase=0))
+                else:
+                    pass
+            else:
+                pass
+        else:
+            pass
 
     # Phase wires per circuit
     # Expected xy_c row format: [xA, xB, xC, yA, yB, yC]
     for c_idx, ptr in enumerate(typtow.pcond_c):
-        if ptr is None:
-            continue
-        cid = _ref_id(ptr)
-        wire = wire_by_id.get(cid)
-        tc = typcon_by_id.get(cid)
-        if wire is None or tc is None:
-            continue
+        if ptr is not None:
 
-        if c_idx < len(typtow.xy_c) and len(typtow.xy_c[c_idx]) >= 6:
-            row = typtow.xy_c[c_idx]
-            xA, xB, xC = float(row[0]), float(row[1]), float(row[2])
-            yA, yB, yC = float(row[3]), float(row[4]), float(row[5])
+            cid = _ref_id(ptr)
+            if cid is not None:
+                wire = wire_by_id.get(cid, None)
+                tc = typcon_by_id.get(cid, None)
+                if wire is not None and tc is not None:
+                    if c_idx < len(typtow.xy_c) and len(typtow.xy_c[c_idx]) >= 6:
+                        row = typtow.xy_c[c_idx]
+                        xA, xB, xC = float(row[0]), float(row[1]), float(row[2])
+                        yA, yB, yC = float(row[3]), float(row[4]), float(row[5])
+                    else:
+                        xA, xB, xC = 0.0, 0.0, 0.0
+                        yA, yB, yC = 0.0, 0.0, 0.0
+
+                    offsets = _bundle_offsets(n_sub=int(tc.ncsub), spacing_m=float(tc.dsubc))
+
+                    base_phase = 3 * int(c_idx)  # circuit 0 -> 0, circuit 1 -> 3, ...
+                    for dx, dy in offsets:
+                        ohl_type.wires_in_tower.append(
+                            WireInTower(wire=wire, xpos=xA + dx, ypos=yA + dy, phase=base_phase + 1))
+                        ohl_type.wires_in_tower.append(
+                            WireInTower(wire=wire, xpos=xB + dx, ypos=yB + dy, phase=base_phase + 2))
+                        ohl_type.wires_in_tower.append(
+                            WireInTower(wire=wire, xpos=xC + dx, ypos=yC + dy, phase=base_phase + 3))
+                else:
+                    pass
+            else:
+                pass
         else:
-            xA, xB, xC = 0.0, 0.0, 0.0
-            yA, yB, yC = 0.0, 0.0, 0.0
-
-        offsets = _bundle_offsets(n_sub=int(tc.ncsub), spacing_m=float(tc.dsubc))
-
-        base_phase = 3 * int(c_idx)  # circuit 0 -> 0, circuit 1 -> 3, ...
-        for dx, dy in offsets:
-            ohl_type.wires_in_tower.append(WireInTower(wire=wire, xpos=xA + dx, ypos=yA + dy, phase=base_phase + 1))
-            ohl_type.wires_in_tower.append(WireInTower(wire=wire, xpos=xB + dx, ypos=yB + dy, phase=base_phase + 2))
-            ohl_type.wires_in_tower.append(WireInTower(wire=wire, xpos=xC + dx, ypos=yC + dy, phase=base_phase + 3))
+            pass
 
     return ohl_type
 
+
+def convert_dgs_to_overhead_line_type_electrical_parameters(
+        typtow: TypTow,
+        typcon_by_id: Dict[str, TypCon],
+        wire_by_id: Dict[str, Wire],
+        default_frequency_hz: float,
+) -> dev.SequenceLineType:
+    """
+    Convert a PowerFactory TypTow into a VeraGrid OverheadLineType.
+
+    This conversion builds the wire geometry (positions) and assigns Wire templates.
+    It supports multi-circuit towers by defining phases 1..3 for circuit 1,
+    4..6 for circuit 2, etc (as required by VeraGrid's OverheadLineType).
+    :param typtow:
+    :param typcon_by_id:
+    :param wire_by_id:
+    :param default_frequency_hz:
+    :return:
+    """
+
+    tid = _ref_id(typtow.ID)
+    if typtow.loc_name is not None and str(typtow.loc_name).strip() != "":
+        name = typtow.loc_name
+    else:
+        name = f"Tower_{tid}"
+
+    # Frequency / earth parameters
+    if typtow.frnom is not None and float(typtow.frnom) > 0.0:
+        freq = float(typtow.frnom)
+    else:
+        freq = float(default_frequency_hz)
+
+    earth_res = _convert_gearth_us_per_cm_to_resistivity_ohm_m(float(typtow.gearth))
+
+    # Determine nominal voltage from referenced conductor types.
+    v_candidates: List[float] = list()
+    for ptr in typtow.pcond_c:
+        if ptr is not None:
+            cid = _ref_id(ptr)
+            if cid is not None:
+                tc = typcon_by_id.get(cid, None)
+                if tc is not None:
+                    v_candidates.append(float(tc.uline))
+
+    for ptr in typtow.pcond_e:
+        if ptr is not None:
+            cid = _ref_id(ptr)
+            if cid is not None:
+                tc = typcon_by_id.get(cid, None)
+                if tc is not None:
+                    v_candidates.append(float(tc.uline))
+
+    if len(v_candidates) > 0:
+        vnom = max(v_candidates)
+    else:
+        vnom = 0.0
+
+    ohl_type = dev.SequenceLineType(
+        name=name,
+        idtag=tid,
+        Vnom=vnom,
+        R=typtow.R_c1[0][0],
+        R0=typtow.R_c0[0][0],
+        X=typtow.X_c1[0][0],
+        X0=typtow.X_c0[0][0],
+    )
+
+    return ohl_type
 
 def _convert_pf_tr2_connection(code: str) -> WindingType | None:
     """
@@ -836,7 +938,6 @@ def _order_hv_mv_lv(bus_a: dev.Bus, bus_b: dev.Bus, bus_c: dev.Bus, logger: Logg
     vc = float(bus_c.Vnom)
 
     if va == 0.0 or vb == 0.0 or vc == 0.0:
-
         logger.add_warning(
             f"one or more buses have Vnom=0.0",
             device=tr_name,
@@ -1050,8 +1151,8 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
                               name=transformer_name,
                               idtag=transformer_idtag,
                               active=not tr2.outserv and _is_element_closed_by_cubicle_switches(element_id=tr2.ID,
-                                                                                                  cubics_by_objid=cubics_by_objid,
-                                                                                                  switch_by_cubic_id=switch_by_cubic_id),)
+                                                                                                cubics_by_objid=cubics_by_objid,
+                                                                                                switch_by_cubic_id=switch_by_cubic_id), )
 
     trafo.apply_template(obj=template, Sbase=baseMVA, logger=logger)
     trafo.vector_group_number = int(round(float(typtr2_raw.nt2ag))) % 12
@@ -1548,11 +1649,11 @@ def convert_dgs_to_line(
         lne: ElmLne,
         buses: List[dev.Bus],
         stacubic_dict: Dict[str, List[int]],
-        templates_dict: Dict[str, dev.SequenceLineType],
-        overhead_line_type_dict: Dict[str, OverheadLineType],
+        sequence_templates_dict: Dict[str, dev.SequenceLineType],
+        overhead_line_type_dict: Dict[str, dev.OverheadLineType],
         line_type_by_line_id: Dict[str, str],
         line_sections_by_line_id: Dict[str, List[ElmLnesec]],
-        tower_template_by_line_id: Dict[str, OverheadLineType],
+        tower_template_by_line_id: Dict[str, dev.OverheadLineType],
         freq: float,
         baseMVA: float,
         logger: Logger,
@@ -1576,18 +1677,20 @@ def convert_dgs_to_line(
     - This function must not reference the DGS container (dgs_grid). All required mappings are passed in.
     """
 
-
-
     # ------------------------------------------------------------
     # Connectivity via StaCubic.fold_id -> ElmTerm.ID (preferred)
     # ------------------------------------------------------------
     term_ids = get_terminal_ids(element_id=lne.ID, cubics_by_objid=cubics_by_objid)
     if len(term_ids) != 2:
-        bus_ids = stacubic_dict.get(_ref_id(lne.ID), None)
-        if bus_ids is None:
-            raise ValueError(f"No buses for the line {lne.ID}")
-        if len(bus_ids) != 2:
-            raise ValueError(f"Not exactly 2 buses for the line {lne.ID}")
+        ref = _ref_id(lne.ID)
+        if ref is not None:
+            bus_ids = stacubic_dict.get(ref, None)
+            if bus_ids is None:
+                raise ValueError(f"No buses for the line {lne.ID}")
+            if len(bus_ids) != 2:
+                raise ValueError(f"Not exactly 2 buses for the line {lne.ID}")
+        else:
+            pass
 
     bus_from, bus_to = get_branch_buses(
         elm_id=lne.ID,
@@ -1646,7 +1749,7 @@ def convert_dgs_to_line(
                 typ_id = line_type_by_line_id.get(lid, None)
 
     # Tower-derived template (ElmTow -> TypTow). This is used only when typ_id is missing.
-    tower_template: OverheadLineType | None = None
+    tower_template: dev.OverheadLineType | None = None
     if typ_id is None or typ_id == "":
         tower_template = tower_template_by_line_id.get(lne.ID, None)
         if tower_template is None:
@@ -1658,14 +1761,14 @@ def convert_dgs_to_line(
     # Resolve the line template (TypLne or TypTow)
     # ------------------------------------------------------------
     seq_template: dev.SequenceLineType | None = None
-    ohl_template: OverheadLineType | None = None
+    ohl_template: dev.OverheadLineType | None = None
 
     if typ_id is not None and typ_id != "":
-        seq_template = templates_dict.get(typ_id, None)
+        seq_template = sequence_templates_dict.get(typ_id, None)
         if seq_template is None:
             tid = _ref_id(typ_id)
             if tid is not None and tid != "":
-                seq_template = templates_dict.get(tid, None)
+                seq_template = sequence_templates_dict.get(tid, None)
 
         if seq_template is None:
             ohl_template = overhead_line_type_dict.get(typ_id, None)
@@ -1691,7 +1794,7 @@ def convert_dgs_to_line(
 
         ordered_sections = sorted(owned_sections, key=_line_section_index_sort_key)
         for section in ordered_sections:
-            seq_section_template = _resolve_pointer_dict_value(key=section.typ_id, mapping=templates_dict)
+            seq_section_template = _resolve_pointer_dict_value(key=section.typ_id, mapping=sequence_templates_dict)
             ohl_section_template = _resolve_pointer_dict_value(key=section.typ_id, mapping=overhead_line_type_dict)
 
             if seq_section_template is not None:
@@ -1871,7 +1974,7 @@ def convert_dgs_series_capacitor_to_reactance(
     Sr = np.sqrt(3) * Ur * Ir
 
     # Series capacitive reactance [pu]
-    Zbase = Ur**2 / sbase_mva
+    Zbase = Ur ** 2 / sbase_mva
     x = -1 * element.xcap / Zbase
 
     series_reactance = dev.SeriesReactance(
@@ -2062,10 +2165,10 @@ def convert_dgs_ward_equivalent_to_load(elmvac: ElmVac,
 
     name: str = elmvac.loc_name
 
-    constant_p = elmvac.Pload - elmvac.Pgen # Net constant P active power [MW]
-    constant_q = elmvac.Qload - elmvac.Qgen # Net constant Q reactive power [Mvar]
-    constant_g = elmvac.Pzload # Constant Z active power [MW]
-    constant_b = -1 * elmvac.Qzload # Constant Z reactive power [Mvar]
+    constant_p = elmvac.Pload - elmvac.Pgen  # Net constant P active power [MW]
+    constant_q = elmvac.Qload - elmvac.Qgen  # Net constant Q reactive power [Mvar]
+    constant_g = elmvac.Pzload  # Constant Z active power [MW]
+    constant_b = -1 * elmvac.Qzload  # Constant Z reactive power [Mvar]
 
     load = dev.Load(
         name=name,
@@ -2108,13 +2211,13 @@ def convert_dgs_to_load(elmlod: ElmLod,
 
 
 def convert_dgs_staticgen_to_gen(elmgenstat: ElmGenstat,
-                                      stacubic_dict: Dict[str, List[int]],
-                                      buses: List[dev.Bus],
-                                      logger: Logger,
-                                      cubics_by_objid: Dict[str, List[StaCubic]],
-                                      bus_by_term_id: Dict[str, dev.Bus],
-                                      parallel_index: int = 0,
-                                      parallel_count: int = 1) -> Tuple[dev.Bus, dev.Generator]:
+                                 stacubic_dict: Dict[str, List[int]],
+                                 buses: List[dev.Bus],
+                                 logger: Logger,
+                                 cubics_by_objid: Dict[str, List[StaCubic]],
+                                 bus_by_term_id: Dict[str, dev.Bus],
+                                 parallel_index: int = 0,
+                                 parallel_count: int = 1) -> Tuple[dev.Bus, dev.Generator]:
     """
     Convert ElmGenstat to VeraGrid Generator.
     """
@@ -2168,7 +2271,7 @@ def convert_dgs_staticgen_to_battery(elmgenstat: ElmGenstat,
     # Power Factor from P and Q
     P = float(elmgenstat.pgini)
     Q = float(elmgenstat.qgini)
-    pf = np.cos(np.atan(Q/(P + 1e-20)))
+    pf = np.cos(np.atan(Q / (P + 1e-20)))
 
     batttery = dev.Battery(
         name=name,
@@ -2181,6 +2284,7 @@ def convert_dgs_staticgen_to_battery(elmgenstat: ElmGenstat,
     )
 
     return bus, batttery
+
 
 def convert_dgs_to_static_gen(elmgenstat: ElmGenstat,
                               stacubic_dict: Dict[str, List[int]],
@@ -2240,7 +2344,7 @@ def convert_dgs_staticgen_to_vsc(elmgenstat: ElmGenstat,
                      is_dc=True,
                      is_slack=True,
                      xpos=ac_bus.x,
-                     ypos=ac_bus.y - 200,)
+                     ypos=ac_bus.y - 200, )
 
     vsc_name = _get_non_empty_name(elmgenstat.loc_name, f"VSC_{_ref_id(elmgenstat.ID)}")
     vsc_name = _get_parallel_device_name(vsc_name, parallel_index, parallel_count)
@@ -2332,9 +2436,9 @@ def convert_dgs_external_grid_to_generator(elmxnet: ElmXnet,
 
     bustype = str(elmxnet.bustp).strip().upper()
 
-    k = elmxnet.rntxn # R/X ratio
-    Sk = elmxnet.snss # Short-circuit power Sk''
-    c = elmxnet.cmax # Maximum voltage factor
+    k = elmxnet.rntxn  # R/X ratio
+    Sk = elmxnet.snss  # Short-circuit power Sk''
+    c = elmxnet.cmax  # Maximum voltage factor
 
     # Synchronous reactances
     xd = elmxnet.xd
@@ -2346,9 +2450,9 @@ def convert_dgs_external_grid_to_generator(elmxnet: ElmXnet,
     else:
         x = xq
 
-    Snom = x * np.sqrt(1 + k**2) * Sk / c # Nominal Power of the external grid [MVA]
-    r1 = x * k * Sbase / Snom # Positive-sequence equivalent resistance [pu]
-    x1 = x * Sbase / Snom # Positive-sequence equivalent reactance [pu]
+    Snom = x * np.sqrt(1 + k ** 2) * Sk / c  # Nominal Power of the external grid [MVA]
+    r1 = x * k * Sbase / Snom  # Positive-sequence equivalent resistance [pu]
+    x1 = x * Sbase / Snom  # Positive-sequence equivalent reactance [pu]
 
     gen = dev.Generator(
         name=elmxnet.loc_name or f"Gen_{_ref_id(elmxnet.ID)}",
@@ -2525,7 +2629,8 @@ def _extract_shunt_gb(elmshnt: ElmShnt, f: float, logger: Logger) -> Tuple[float
         Rp = elmshnt.rpara
 
         try:
-            Z = ((R + 1j * w * L + 1 / (1j * w * C1)) * Rp) / ((R + 1j * w * L + 1 / (1j * w * C1)) + Rp) + 1 / (1j * w * C2)
+            Z = ((R + 1j * w * L + 1 / (1j * w * C1)) * Rp) / ((R + 1j * w * L + 1 / (1j * w * C1)) + Rp) + 1 / (
+                    1j * w * C2)
             S = d_y * U ** 2 / np.conj(Z)
 
             g_mw = np.real(S) / 1e6
@@ -2670,7 +2775,7 @@ def convert_dgs_to_controllable_shunt_from_elmshnt(elmshnt: ElmShnt,
                                      cubics_by_objid=cubics_by_objid,
                                      bus_by_term_id=bus_by_term_id)
 
-    if elmshnt.i_cont == 1: # Continuous
+    if elmshnt.i_cont == 1:  # Continuous
 
         b_steps, initial_step, bmin, bmax = _build_elmshnt_step_model(elmshnt=elmshnt, logger=logger)
 
@@ -2706,7 +2811,7 @@ def convert_dgs_to_controllable_shunt_from_elmshnt(elmshnt: ElmShnt,
         # Ensure B/G are coherent with the initial step after overriding arrays
         cshunt.step = int(initial_step)
 
-    elif elmshnt.i_cont == 0: # Discrete
+    elif elmshnt.i_cont == 0:  # Discrete
 
         g_mw, b_mvar = _extract_shunt_gb(elmshnt=elmshnt, f=frequency, logger=logger)
 
@@ -2758,7 +2863,7 @@ def convert_dgs_svs_to_vsc(elmsvs: ElmSvs,
 
     control_mode = elmsvs.i_ctrl
 
-    if control_mode == 2: # Reactive Power Control
+    if control_mode == 2:  # Reactive Power Control
 
         control1 = ConverterControlType.Pac
         control1_val = 0.0  # Active power injection of the SVS [MW]
@@ -2771,26 +2876,25 @@ def convert_dgs_svs_to_vsc(elmsvs: ElmSvs,
         ysvs = 0.0  # Fixed admittance based on 1 MVA / Ub^2
         u_setpoint = 1.0  # Voltage Setpoint [pu]
 
-    elif control_mode == 1: # Voltage Control
-        if elmsvs.i_droop == 0: # No droop, just sets the voltage to the given setpoint
+    elif control_mode == 1:  # Voltage Control
+        if elmsvs.i_droop == 0:  # No droop, just sets the voltage to the given setpoint
 
             control1 = ConverterControlType.Pac
             control1_val = 0.0  # Active power injection of the SVS [MW]
 
             control2 = ConverterControlType.Vm_ac
-            control2_val = elmsvs.usetp # Voltage setpoint [pu]
+            control2_val = elmsvs.usetp  # Voltage setpoint [pu]
 
-            ysvs = 0.0 # Fixed admittance based on 1 MVA / Ub^2
+            ysvs = 0.0  # Fixed admittance based on 1 MVA / Ub^2
             rate = max(np.abs(elmsvs.tcrmax), np.abs(elmsvs.qmin))
-            kpd = 0.0 # Droop [%]
+            kpd = 0.0  # Droop [%]
             u_setpoint = 1.0  # Voltage Setpoint [pu]
 
-        else: # Droop Control
+        else:  # Droop Control
 
-            kpd = elmsvs.ddroop # Droop [%]
-            rate = elmsvs.Srated # Rated Power [MVA]
-            u_setpoint = elmsvs.usetp # Voltage Setpoint [pu]
-
+            kpd = elmsvs.ddroop  # Droop [%]
+            rate = elmsvs.Srated  # Rated Power [MVA]
+            u_setpoint = elmsvs.usetp  # Voltage Setpoint [pu]
 
             control1 = ConverterControlType.Pac
             control1_val = 0.0  # Active power injection of the SVS [MW]
@@ -2800,7 +2904,7 @@ def convert_dgs_svs_to_vsc(elmsvs: ElmSvs,
 
             ysvs = 0.0  # Fixed admittance based on 1 MVA / Ub^2
 
-    else: # No Control
+    else:  # No Control
         control1 = ConverterControlType.Pac
         control2 = ConverterControlType.Qac
 
@@ -2840,69 +2944,66 @@ def convert_dgs_svs_to_vsc(elmsvs: ElmSvs,
 
     return dc_bus, vsc
 
-# def convert_dgs_to_controllable_shunt(elmsvs: ElmSvs,
-#                            stacubic_dict: Dict[str, List[int]],
-#                            buses: List[dev.Bus],
-#                            logger: Logger,
-#                            cubics_by_objid: Dict[str, List[StaCubic]],
-#                            bus_by_term_id: Dict[str, dev.Bus]) -> Tuple[dev.Bus, dev.ControllableShunt]:
-#     """
-#     Convert ElmSvs (PowerFactory SVS/SVC) to VeraGrid ControllableShunt.
-#
-#     Notes
-#     -----
-#     - Electrical connectivity is obtained via StaCubic, consistent with other injected devices.
-#     - If the DGS does not provide a voltage setpoint, Vset defaults to 1.0 p.u. (per project convention).
-#     """
-#     name = elmsvs.loc_name or f"ElmSvs_{_ref_id(elmsvs.ID)}"
-#
-#     bus = get_injection_bus(elm_id=elmsvs.ID,
-#                             stacubic_dict=stacubic_dict,
-#                             buses=buses,
-#                             cubics_by_objid=cubics_by_objid,
-#                             bus_by_term_id=bus_by_term_id)
-#
-#     bmin = float(elmsvs.qmin)
-#     bmax = float(elmsvs.qmax)
-#     vset = float(elmsvs.usetp)
-#
-#     # Build a small stepped model for B so the device can represent bmin / 0 / bmax when applicable
-#     if bmin < 0.0 and bmax > 0.0:
-#         b_steps = np.array([bmin, -bmin, bmax], dtype=float)
-#         initial_step = 1
-#     elif bmin == bmax:
-#         b_steps = np.array([bmax], dtype=float)
-#         initial_step = 0
-#     else:
-#         b_steps = np.array([bmin, (bmax - bmin)], dtype=float)
-#         initial_step = 0
-#
-#     cshunt = dev.ControllableShunt(
-#         name=name,
-#         idtag=_ref_id(elmsvs.ID),
-#         number_of_steps=int(len(b_steps)),
-#         step=int(initial_step),
-#         g_per_step=0.0,
-#         b_per_step=0.0,
-#         Bmin=bmin,
-#         Bmax=bmax,
-#         Gmin=0.0,
-#         Gmax=0.0,
-#         active=(elmsvs.outserv == 0),
-#         vset=vset,
-#         control_mode=ShuntControlMode.Continuous,
-#         control_bus=bus
-#     )
-#
-#     # Override step arrays to match the constructed block model
-#     cshunt.b_steps = b_steps
-#     cshunt.g_steps = np.zeros(len(b_steps), dtype=float)
-#     cshunt.active_steps = np.ones(len(b_steps), dtype=int)
-#
-#     # Ensure B/G are coherent with the initial step after overriding arrays
-#     cshunt.step = int(initial_step)
-#
-#     return bus, cshunt
+
+def convert_dgs_to_controllable_shunt_from_svs(elmsvs: ElmSvs,
+                                               stacubic_dict: Dict[str, List[int]],
+                                               buses: List[dev.Bus],
+                                               logger: Logger,
+                                               cubics_by_objid: Dict[str, List[StaCubic]],
+                                               bus_by_term_id: Dict[str, dev.Bus]) -> Tuple[dev.Bus, dev.ControllableShunt]:
+    """
+    Convert ElmSvs (PowerFactory SVS/SVC) to VeraGrid ControllableShunt.
+
+    Notes
+    -----
+    - Electrical connectivity is obtained via StaCubic, consistent with other injected devices.
+    - If the DGS does not provide a voltage setpoint, Vset defaults to 1.0 p.u.
+    """
+    name: str = elmsvs.loc_name or f"ElmSvs_{_ref_id(elmsvs.ID)}"
+
+    bus: dev.Bus = get_injection_bus(elm_id=elmsvs.ID,
+                                     stacubic_dict=stacubic_dict,
+                                     buses=buses,
+                                     cubics_by_objid=cubics_by_objid,
+                                     bus_by_term_id=bus_by_term_id)
+
+    bmin: float = float(elmsvs.qmin)
+    bmax: float = float(elmsvs.qmax)
+    vset: float = float(elmsvs.usetp)
+
+    if bmin < 0.0 and bmax > 0.0:
+        b_steps: np.ndarray = np.array([bmin, -bmin, bmax], dtype=float)
+        initial_step: int = 1
+    elif bmin == bmax:
+        b_steps = np.array([bmax], dtype=float)
+        initial_step = 0
+    else:
+        b_steps = np.array([bmin, (bmax - bmin)], dtype=float)
+        initial_step = 0
+
+    cshunt: dev.ControllableShunt = dev.ControllableShunt(
+        name=name,
+        idtag=_ref_id(elmsvs.ID),
+        number_of_steps=int(len(b_steps)),
+        step=int(initial_step),
+        g_per_step=0.0,
+        b_per_step=0.0,
+        Bmin=bmin,
+        Bmax=bmax,
+        Gmin=0.0,
+        Gmax=0.0,
+        active=(elmsvs.outserv == 0),
+        vset=vset,
+        control_mode=ShuntControlMode.Continuous,
+        control_bus=bus
+    )
+
+    cshunt.b_steps = b_steps
+    cshunt.g_steps = np.zeros(len(b_steps), dtype=float)
+    cshunt.active_steps = np.ones(len(b_steps), dtype=int)
+    cshunt.step = int(initial_step)
+
+    return bus, cshunt
 
 
 def _pf_from_pq(p_mw: float, q_mvar: float, default: float = 0.8) -> float:
@@ -2934,7 +3035,6 @@ def _interpret_pu_limit(value: float,
     # Heuristic: if |value| is small while reference magnitude is clearly in MW/MVAr,
     # then it is very likely a p.u. value and we scale by baseMVA.
     if abs(v) <= 5.0 and baseMVA > 0.0:
-
         logger.add_warning(
             f"Interpreting set point as not in p.u.",
             device=name,
@@ -3115,24 +3215,24 @@ def convert_dgs_to_asm_generator(elmasm: ElmAsm,
                             cubics_by_objid=cubics_by_objid,
                             bus_by_term_id=bus_by_term_id)
 
-    if elmasm.i_mot == 0: # Check that the asynchronous machine is a Generator
+    if elmasm.i_mot == 0:  # Check that the asynchronous machine is a Generator
 
-        if elmasm.idfig == 0: # Also check that it is a Standard Asynchronous Machine
+        if elmasm.idfig == 0:  # Also check that it is a Standard Asynchronous Machine
 
-            if elmasm.bustp == 'AS' and elmasm.pmode == 0: # Finally, check the bus type and the power input mode
+            if elmasm.bustp == 'AS' and elmasm.pmode == 0:  # Finally, check the bus type and the power input mode
 
-                P: float = float(elmasm.pgini) # AG active power P
+                P: float = float(elmasm.pgini)  # AG active power P
 
-                typasmo: TypAsmo | None = typasmo_dict.get(elmasm.typ_id, None) # AG type
+                typasmo: TypAsmo | None = typasmo_dict.get(elmasm.typ_id, None)  # AG type
 
                 if typasmo is not None:
 
-                    Sr = float(typasmo.sgn) * 1e-3 # Rated apparent power [MVA]
-                    Rs = float(typasmo.rstr) # Stator resistance [pu]
-                    Xs = float(typasmo.xstr) # Stator reactance [pu]
-                    Xm = float(typasmo.xm) # Magnetising reactance [pu]
-                    Rr = float(typasmo.rrtrA) # Rotor resistance [pu]
-                    Xr = float(typasmo.xrtrA) # Rotor reactance [pu]
+                    Sr = float(typasmo.sgn) * 1e-3  # Rated apparent power [MVA]
+                    Rs = float(typasmo.rstr)  # Stator resistance [pu]
+                    Xs = float(typasmo.xstr)  # Stator reactance [pu]
+                    Xm = float(typasmo.xm)  # Magnetising reactance [pu]
+                    Rr = float(typasmo.rrtrA)  # Rotor resistance [pu]
+                    Xr = float(typasmo.xrtrA)  # Rotor reactance [pu]
 
                     gen = dev.Generator(name=name,
                                         idtag=generator_idtag,
@@ -3218,15 +3318,19 @@ def convert_dgs_to_asm_generator(elmasm: ElmAsm,
     return bus, gen
 
 
-def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
+def dgs_to_circuit(path: str,
+                   use_vsc_for_injections: bool = False,
+                   use_dynamic_information: bool = False,
+                   logger_: Logger | None = None) -> dev.MultiCircuit:
     """
 
     :param path:
-    :param logger:
+    :param use_vsc_for_injections:
+    :param use_dynamic_information:
+    :param logger_:
     :return:
     """
-    if logger is None:
-        logger = Logger()
+    logger = Logger() if logger_ is None else logger_
 
     dgs_grid = DgsCircuit()
     dgs_grid.parse_dgs(path)
@@ -3252,30 +3356,35 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
         obj_id_raw = cb.obj_id
         obj_id = _ref_id(obj_id_raw)
 
-        lst = stacubic_dict.get(obj_id, None)
-        if lst is None:
-            stacubic_dict[obj_id] = [cb.obj_bus]
-        else:
-            lst.append(cb.obj_bus)
-
-        lst = cubics_by_objid.get(obj_id, None)
-        if lst is None:
-            cubics_by_objid[obj_id] = [cb]
-        else:
-            lst.append(cb)
-
-        if obj_id_raw != obj_id:
-            lst = stacubic_dict.get(obj_id_raw, None)
+        if obj_id is not None and obj_id_raw is not None:
+            lst = stacubic_dict.get(obj_id, None)
             if lst is None:
-                stacubic_dict[obj_id_raw] = [cb.obj_bus]
+                stacubic_dict[obj_id] = [cb.obj_bus]
             else:
                 lst.append(cb.obj_bus)
 
-            lst = cubics_by_objid.get(obj_id_raw, None)
+            lst = cubics_by_objid.get(obj_id, None)
             if lst is None:
-                cubics_by_objid[obj_id_raw] = [cb]
+                cubics_by_objid[obj_id] = [cb]
             else:
                 lst.append(cb)
+
+            if obj_id_raw != obj_id:
+                lst = stacubic_dict.get(obj_id_raw, None)
+                if lst is None:
+                    stacubic_dict[obj_id_raw] = [cb.obj_bus]
+                else:
+                    lst.append(cb.obj_bus)
+
+                lst = cubics_by_objid.get(obj_id_raw, None)
+                if lst is None:
+                    cubics_by_objid[obj_id_raw] = [cb]
+                else:
+                    lst.append(cb)
+            else:
+                pass
+        else:
+            pass
 
     # graphics dictionary
     pos_by_objid: Dict[str, Tuple[float, float]] = dict()
@@ -3463,18 +3572,33 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
         for parallel_index in range(parallel_count):
 
             if elmgenstat.cCategory == 'Wind' and not bool(elmgenstat.outserv):
-                dc_bus, vsc = convert_dgs_staticgen_to_vsc(
-                    elmgenstat=elmgenstat,
-                    stacubic_dict=stacubic_dict,
-                    buses=grid.buses,
-                    logger=logger,
-                    cubics_by_objid=cubics_by_objid,
-                    bus_by_term_id=bus_by_term_id,
-                    parallel_index=parallel_index,
-                    parallel_count=parallel_count
-                )
-                grid.add_bus(dc_bus)
-                grid.add_vsc(vsc)
+
+                if use_vsc_for_injections:
+                    dc_bus, vsc = convert_dgs_staticgen_to_vsc(
+                        elmgenstat=elmgenstat,
+                        stacubic_dict=stacubic_dict,
+                        buses=grid.buses,
+                        logger=logger,
+                        cubics_by_objid=cubics_by_objid,
+                        bus_by_term_id=bus_by_term_id,
+                        parallel_index=parallel_index,
+                        parallel_count=parallel_count
+                    )
+                    grid.add_bus(dc_bus)
+                    grid.add_vsc(vsc)
+                else:
+                    bus, stagen = convert_dgs_to_static_gen(
+                        elmgenstat=elmgenstat,
+                        stacubic_dict=stacubic_dict,
+                        buses=grid.buses,
+                        logger=logger,
+                        cubics_by_objid=cubics_by_objid,
+                        bus_by_term_id=bus_by_term_id,
+                        parallel_index=parallel_index,
+                        parallel_count=parallel_count
+                    )
+
+                    grid.add_static_generator(bus=bus, api_obj=stagen)
 
             elif elmgenstat.cCategory == 'HVDC Terminal':
                 bus, gen = convert_dgs_staticgen_to_gen(
@@ -3515,7 +3639,7 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
                 )
                 grid.add_generator(bus=bus, api_obj=gen)
 
-            else: # Standard Constant Q Static Generator
+            else:  # Standard Constant Q Static Generator
                 bus, stagen = convert_dgs_to_static_gen(
                     elmgenstat=elmgenstat,
                     stacubic_dict=stacubic_dict,
@@ -3586,32 +3710,33 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
 
     # Controllable shunts (SVC/SVS)
     for elmsvs in dgs_grid.elmsvss:
-        dc_bus, vsc = convert_dgs_svs_to_vsc(
-            elmsvs=elmsvs,
-            stacubic_dict=stacubic_dict,
-            buses=grid.buses,
-            logger=logger,
-            cubics_by_objid=cubics_by_objid,
-            bus_by_term_id=bus_by_term_id
-        )
 
-        grid.add_bus(dc_bus)
-        grid.add_vsc(vsc)
+        if use_vsc_for_injections:
+            dc_bus, vsc = convert_dgs_svs_to_vsc(
+                elmsvs=elmsvs,
+                stacubic_dict=stacubic_dict,
+                buses=grid.buses,
+                logger=logger,
+                cubics_by_objid=cubics_by_objid,
+                bus_by_term_id=bus_by_term_id
+            )
 
-        # bus, cshunt = convert_dgs_to_controllable_shunt(
-        #     elmsvs=elmsvs,
-        #     stacubic_dict=stacubic_dict,
-        #     buses=grid.buses,
-        #     logger=logger,
-        #     cubics_by_objid=cubics_by_objid,
-        #     bus_by_term_id=bus_by_term_id
-        # )
+            grid.add_bus(dc_bus)
+            grid.add_vsc(vsc)
+        else:
+            bus, cshunt = convert_dgs_to_controllable_shunt_from_svs(
+                elmsvs=elmsvs,
+                stacubic_dict=stacubic_dict,
+                buses=grid.buses,
+                logger=logger,
+                cubics_by_objid=cubics_by_objid,
+                bus_by_term_id=bus_by_term_id
+            )
 
-        # grid.add_controllable_shunt(bus=bus, api_obj=cshunt)
+            grid.add_controllable_shunt(bus=bus, api_obj=cshunt)
 
     # Loads (LV)
     if len(dgs_grid.elmlodlvs) > 0 or len(dgs_grid.elmlodlvps) > 0:
-
         logger.add_warning(
             f"ElmLodlv/ElmLodlvp found but no P/Q fields available in DGS schema",
             device_class="ElmLodlv/ElmLodlvp",
@@ -3630,34 +3755,53 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
     for typcon in dgs_grid.typcons:
         # Map both raw pointer and ref-id variant
         cid = _ref_id(typcon.ID)
-        if cid is None:
-            continue
-        typcon_raw_dict[cid] = typcon
-        typcon_raw_dict[typcon.ID] = typcon
+        if cid is not None:
+            typcon_raw_dict[cid] = typcon
+            typcon_raw_dict[typcon.ID] = typcon
 
-        wire = convert_dgs_to_wire(typcon=typcon)
-        wire_type_dict[cid] = wire
-        wire_type_dict[typcon.ID] = wire
+            wire = convert_dgs_to_wire(typcon=typcon)
+            wire_type_dict[cid] = wire
+            wire_type_dict[typcon.ID] = wire
 
-        # MultiCircuit stores these templates under Assets (catalogue)
-        grid.wire_types.append(wire)
+            # MultiCircuit stores these templates under Assets (catalogue)
+            grid.wire_types.append(wire)
+        else:
+            pass
 
-    overhead_line_type_dict: Dict[str, OverheadLineType] = dict()
+    overhead_line_type_dict: Dict[str, dev.OverheadLineType] = dict()
     for typtow in dgs_grid.typtows:
         tow_id = _ref_id(typtow.ID)
-        if tow_id is None:
-            continue
+        if tow_id is not None:
+            if typtow.i_mode == 0:
+                # this mode created a proper tower
+                ohl_type = convert_dgs_to_overhead_line_type_geometrical_parameters(
+                    typtow=typtow,
+                    typcon_by_id=typcon_raw_dict,
+                    wire_by_id=wire_type_dict,
+                    default_frequency_hz=frequency,
+                )
+                overhead_line_type_dict[tow_id] = ohl_type
+                overhead_line_type_dict[typtow.ID] = ohl_type
+                grid.overhead_line_types.append(ohl_type)
 
-        ohl_type = convert_dgs_to_overhead_line_type(
-            typtow=typtow,
-            typcon_by_id=typcon_raw_dict,
-            wire_by_id=wire_type_dict,
-            default_frequency_hz=frequency,
-        )
-        overhead_line_type_dict[tow_id] = ohl_type
-        overhead_line_type_dict[typtow.ID] = ohl_type
-
-        grid.overhead_line_types.append(ohl_type)
+            elif typtow.i_mode == 1:
+                # this mode creates a tower with direct impedances
+                ohl_type = convert_dgs_to_overhead_line_type_electrical_parameters(
+                    typtow=typtow,
+                    typcon_by_id=typcon_raw_dict,
+                    wire_by_id=wire_type_dict,
+                    default_frequency_hz=frequency,
+                )
+                typlne_dict[tow_id] = ohl_type
+                typlne_dict[typtow.ID] = ohl_type
+                grid.sequence_line_types.append(ohl_type)
+            else:
+                logger.add_warning("TypTow i_mode not recognized",
+                                   device_class="TypTow",
+                                   device_property="i_mode",
+                                   value=typtow.i_mode)
+        else:
+            pass
 
     # Transformer types
     typtr2_dict: Dict[str, dev.TransformerType] = dict()
@@ -3671,6 +3815,8 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
         if tid is not None:
             typtr2_dict[tid] = tpe
             typtr2_raw_dict[tid] = typtr2
+        else:
+            pass
 
     # Transformer types (3W)
     typtr3_dict: Dict[str, TypTr3] = dict()
@@ -3679,6 +3825,8 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
         tid = _ref_id(typtr3.ID)
         if tid is not None:
             typtr3_dict[tid] = typtr3
+        else:
+            pass
 
     # Series reactance / impedance types (raw DGS objects, used as templates)
     typsind_raw_dict: Dict[str, TypSind] = dict()
@@ -3687,6 +3835,8 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
         tid = _ref_id(typsind.ID)
         if tid is not None:
             typsind_raw_dict[tid] = typsind
+        else:
+            pass
 
     # ------------------------------------------------------------
     # Fallback map: ElmLne.ID -> typ_id from ElmLnesec
@@ -3704,16 +3854,21 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
             rid = _ref_id(elmlne.ID)
             if rid is not None and rid != "":
                 line_ids.add(rid)
+            else:
+                pass
 
     # Folder -> parent pointer map (raw and normalized keys)
     folder_parent: Dict[str, str] = dict()
     for folder in dgs_grid.intfolders:
-        if folder.ID == "":
-            continue
-        folder_parent[folder.ID] = folder.fold_id
-        fid = _ref_id(folder.ID)
-        if fid is not None and fid != "":
-            folder_parent[fid] = folder.fold_id
+        if folder.ID != "":
+            folder_parent[folder.ID] = folder.fold_id
+            fid = _ref_id(folder.ID)
+            if fid is not None and fid != "":
+                folder_parent[fid] = folder.fold_id
+            else:
+                pass
+        else:
+            pass
 
     line_id_by_loc_name: Dict[str, str] = _get_unique_name_mapping(
         lines=dgs_grid.elmlnes,
@@ -3726,68 +3881,75 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
 
     # Resolve each section to its owning line by climbing the folder chain
     for sec in dgs_grid.elmlnesecs:
-        if sec.typ_id == "":
-            continue
+        if sec.typ_id != "":
 
-        owner_line_id = _resolve_line_section_owner_id(
-            section=sec,
-            line_ids=line_ids,
-            folder_parent=folder_parent,
-            line_id_by_loc_name=line_id_by_loc_name,
-            line_id_by_chr_name=line_id_by_chr_name
-        )
-        if owner_line_id == "":
-            logger.add_warning(
-                "Could not resolve owning line for line section.",
-                device=sec.loc_name,
-                device_class="ElmLnesec",
-                value=str(sec.ID)
+            owner_line_id = _resolve_line_section_owner_id(
+                section=sec,
+                line_ids=line_ids,
+                folder_parent=folder_parent,
+                line_id_by_loc_name=line_id_by_loc_name,
+                line_id_by_chr_name=line_id_by_chr_name
             )
-            continue
-        else:
-            pass
+            if owner_line_id != "":
+                typ_id = _ref_id(sec.typ_id) or sec.typ_id
+                line_type_by_line_id[owner_line_id] = typ_id
 
-        typ_id = _ref_id(sec.typ_id) or sec.typ_id
-        line_type_by_line_id[owner_line_id] = typ_id
+                normalized_owner_id = _ref_id(owner_line_id) or owner_line_id
+                line_type_by_line_id[normalized_owner_id] = typ_id
 
-        normalized_owner_id = _ref_id(owner_line_id) or owner_line_id
-        line_type_by_line_id[normalized_owner_id] = typ_id
+                owned_sections = line_sections_by_line_id.get(normalized_owner_id, None)
+                if owned_sections is None:
+                    line_sections_by_line_id[normalized_owner_id] = list()
+                    owned_sections = line_sections_by_line_id[normalized_owner_id]
+                else:
+                    pass
 
-        owned_sections = line_sections_by_line_id.get(normalized_owner_id, None)
-        if owned_sections is None:
-            line_sections_by_line_id[normalized_owner_id] = list()
-            owned_sections = line_sections_by_line_id[normalized_owner_id]
-        else:
-            pass
-        owned_sections.append(sec)
+                owned_sections.append(sec)
+            else:
+                logger.add_warning(
+                    "Could not resolve owning line for line section.",
+                    device=sec.loc_name,
+                    device_class="ElmLnesec",
+                    value=str(sec.ID)
+                )
 
     # ------------------------------------------------------------
     # Tower coupling helper: ElmTow may define the line template (TypTow) instead of ElmLne.typ_id.
     # We build a direct mapping Line.ID -> OverheadLineType so convert_dgs_to_line can proceed
     # even when typ_id is missing, and apply the proper template immediately.
     # ------------------------------------------------------------
-    tower_template_by_line_id: Dict[str, OverheadLineType] = dict()
+    tower_template_by_line_id: Dict[str, dev.OverheadLineType] = dict()
     for elmtow in dgs_grid.elmtows:
-        if len(elmtow.pGeo) == 0:
-            continue
-        geo_ptr = elmtow.pGeo[0]
-        if geo_ptr is None or geo_ptr == "":
-            continue
+        if len(elmtow.pGeo) != 0:
+            geo_ptr = elmtow.pGeo[0]
+            if geo_ptr is not None and geo_ptr != "":
 
-        geo_id = _ref_id(geo_ptr)
-        ohl_type = overhead_line_type_dict.get(geo_id, None)
-        if ohl_type is None:
-            ohl_type = overhead_line_type_dict.get(geo_ptr, None)
-        if ohl_type is None:
-            continue
+                geo_id = _ref_id(geo_ptr)
 
-        for line_ptr in elmtow.plines:
-            if line_ptr is None or line_ptr == "":
-                continue
-            tower_template_by_line_id[line_ptr] = ohl_type
-            lid = _ref_id(line_ptr)
-            if lid is not None and lid != "":
-                tower_template_by_line_id[lid] = ohl_type
+                if geo_id is not  None:
+                    ohl_type = overhead_line_type_dict.get(geo_id, None)
+
+                    if ohl_type is None:
+                        ohl_type = overhead_line_type_dict.get(geo_ptr, None)
+
+                    if ohl_type is not None:
+                        for line_ptr in elmtow.plines:
+                            if line_ptr is not None and line_ptr != "":
+                                tower_template_by_line_id[line_ptr] = ohl_type
+                                lid = _ref_id(line_ptr)
+                                if lid is not None and lid != "":
+                                    tower_template_by_line_id[lid] = ohl_type
+                            else:
+                                pass
+                    else:
+                        pass
+                else:
+                    pass
+            else:
+                pass
+
+        else:
+            pass
 
     # lines
     line_by_dgs_id: Dict[str, List[dev.Line]] = dict()
@@ -3802,7 +3964,6 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
         if len(term_ids) != 2:
             bus_ids: List[int] | None = stacubic_dict.get(_ref_id(elmlne.ID), None)
             if bus_ids is None or len(bus_ids) != 2:
-
                 logger.add_warning(
                     f"not connected to exactly 2 terminals",
                     device=f"{elmlne.loc_name}' (ID={elmlne.ID}) ",
@@ -3815,11 +3976,12 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
 
         parallel_count = _get_parallel_device_count(count=int(elmlne.nlnum))
         for parallel_index in range(parallel_count):
+
             line = convert_dgs_to_line(
                 lne=elmlne,
                 buses=grid.buses,
                 stacubic_dict=stacubic_dict,
-                templates_dict=typlne_dict,
+                sequence_templates_dict=typlne_dict,
                 overhead_line_type_dict=overhead_line_type_dict,
                 line_type_by_line_id=line_type_by_line_id,
                 line_sections_by_line_id=line_sections_by_line_id,
@@ -3866,7 +4028,6 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
 
         geo_ptr = elmtow.pGeo[0]
         if geo_ptr is None:
-
             logger.add_warning(
                 f"pGeo[0] is empty, skipping tower binding",
                 device=f"{elmtow.loc_name}' (ID={elmtow.ID}) ",
@@ -3881,7 +4042,6 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
             ohl_type = overhead_line_type_dict.get(geo_ptr)
 
         if ohl_type is None:
-
             logger.add_warning(
                 f"referenced tower type not found",
                 device=f"{elmtow.loc_name}' (ID={elmtow.ID}) ",
@@ -3901,7 +4061,6 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
                 api_lines = line_by_dgs_id.get(line_ptr, list())
 
             if len(api_lines) == 0:
-
                 logger.add_warning(
                     f"referenced line type not found",
                     device=f"{elmtow.loc_name}' (ID={elmtow.ID}) ",
@@ -3942,7 +4101,6 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
 
         grid.add_series_reactance(sr)
 
-
     # series capacitors
     for elmscap in dgs_grid.elmscaps:
         sr = convert_dgs_series_capacitor_to_reactance(
@@ -3964,7 +4122,6 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
                 sr.group = bg
 
         grid.add_series_reactance(obj=sr)
-
 
     # series reactances / impedances
     for elmsind in dgs_grid.elmsinds:
@@ -3988,7 +4145,6 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
                 sr.group = bg
 
         grid.add_series_reactance(obj=sr)
-
 
     # Transformers 2W
     for elmtr2 in dgs_grid.elmtr2s:
@@ -4025,7 +4181,6 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
         # Skip invalid 3W transformers: missing template reference or not fully connected
         tr3_typ_id: str | None = _ref_id(elmtr3.typ_id)
         if tr3_typ_id is None or tr3_typ_id == "":
-
             logger.add_warning(
                 f"missing typ_id (no TypTr3 reference in DGS)",
                 device=f"{elmtr3.loc_name}' (ID={elmtr3.ID}) ",
@@ -4049,7 +4204,6 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
         if len(term_ids) != 3:
             bus_ids: List[int] | None = stacubic_dict.get(_ref_id(elmtr3.ID), None)
             if bus_ids is None or len(bus_ids) != 3:
-
                 logger.add_warning(
                     f"Not connected to exactly 3 terminals",
                     device=f"{elmtr3.loc_name}' (ID={elmtr3.ID}) ",
@@ -4088,112 +4242,3 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
 
     return grid
 
-
-"""
-Funcion usada antes para los switches a partir de los StaSwitch. Era erronea, deviamos parsearlos a partir de los ElmCoup:
-def convert_dgs_to_switches_by_elements(cubics_by_objid: Dict[str, List[StaCubic]],
-                                        switch_by_cubic_id: Dict[str, StaSwitch],
-                                        bus_by_term_id: Dict[str, dev.Bus],
-                                        tr3_ids: Set[str],
-                                        logger: Logger) -> List[dev.Switch]:
-
-    Create one VeraGrid Switch per 2-terminal element (line/trafo/etc.) when both ends have StaSwitch.
-    This function filters out "internal" PowerFactory switches (closed and without type) unless
-    they belong to a 3-Winding Transformer.
-
-    :param cubics_by_objid: Dictionary mapping Element ID -> List of Cubicles
-    :param switch_by_cubic_id: Dictionary mapping Cubic ID -> Switch Object
-    :param bus_by_term_id: Dictionary mapping Terminal ID -> Bus Object
-    :param tr3_ids: Set of IDs belonging to 3-Winding Transformers (to force visibility)
-    :param logger: Logger object
-    :return: List of VeraGrid Switch objects
-
-    switches: List[dev.Switch] = list()
-
-    for obj_id, cubics in cubics_by_objid.items():
-        obj_id_ref: str | None = _ref_id(obj_id)
-        if obj_id_ref is None or obj_id_ref == "":
-            continue
-
-        # Avoid duplicates because cubics_by_objid may contain both raw and ref keys
-        if obj_id != obj_id_ref:
-            continue
-
-        ends: List[Tuple[dev.Bus, StaSwitch]] = list()
-
-        for cb in cubics:
-            cb_id: str | None = _ref_id(cb.ID)
-            if cb_id is None or cb_id == "":
-                continue
-
-            stasw: StaSwitch | None = switch_by_cubic_id.get(cb_id, None)
-            if stasw is None:
-                continue
-
-            term_id: str | None = _ref_id(cb.fold_id)
-            if term_id is None or term_id == "":
-                continue
-
-            bus: dev.Bus = bus_by_term_id[term_id]
-            ends.append((bus, stasw))
-
-        if len(ends) != 2:
-            continue
-
-        bus_from: dev.Bus = ends[0][0]
-        bus_to: dev.Bus = ends[1][0]
-
-        # Skip degenerate cases
-        if bus_from is bus_to:
-            continue
-
-        sw_a: StaSwitch = ends[0][1]
-        sw_b: StaSwitch = ends[1][1]
-
-        # Physical state
-        is_closed: bool = (int(sw_a.on_off) != 0) and (int(sw_b.on_off) != 0)
-
-        # --- VISIBILITY FILTER ---
-        # 1. Check if switches have a specific Type assigned (Real Device)
-        #    In DGS, an empty type usually means it is a logical connector.
-        has_type_a: bool = (sw_a.typ_id is not None) and (str(sw_a.typ_id).strip() != "")
-        has_type_b: bool = (sw_b.typ_id is not None) and (str(sw_b.typ_id).strip() != "")
-        is_real_device: bool = has_type_a or has_type_b
-
-        # 2. Check if it belongs to a 3-Winding Transformer (User requirement)
-        is_tr3: bool = obj_id_ref in tr3_ids
-
-        # 3. Logic: Show if OPEN or REAL DEVICE or TR3. Hide otherwise.
-        should_render: bool = (not is_closed) or is_real_device or is_tr3
-
-        if not should_render:
-            continue
-        # -------------------------
-
-        # Calculate graphical position (midpoint between buses)
-        mid_x: float = (float(bus_from.x) + float(bus_to.x)) / 2.0
-        mid_y: float = (float(bus_from.y) + float(bus_to.y)) / 2.0
-
-        normal_open: bool = not is_closed
-        graphic_type: SwitchGraphicType = _convert_pf_switch_graphic_type(iuse=sw_a.iUse, ausage=sw_a.aUsage)
-
-        sw = dev.Switch(bus_from=bus_from,
-                        bus_to=bus_to,
-                        name=f"SW_{obj_id_ref}",
-                        idtag=obj_id_ref,
-                        code=sw_a.typ_id,
-                        active=is_closed,
-                        normal_open=normal_open,
-                        retained=False,
-                        rated_current=0.0,
-                        graphic_type=graphic_type,
-                        # x=mid_x,
-                        # y=mid_y
-                        )
-
-        switches.append(sw)
-
-    return switches
-
-"""
-# TODO: There might be an error with 3W trafos impedances

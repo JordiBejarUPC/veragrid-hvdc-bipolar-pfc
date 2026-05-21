@@ -603,7 +603,7 @@ class FileOpen:
 
         elif self.file_type == FileType.DGS:
             if isinstance(self.file_name, str):
-                self.circuit = dgs_to_circuit(self.file_name, logger=self.logger)
+                self.circuit = dgs_to_circuit(self.file_name, logger_=self.logger)
             else:
                 self.logger.add("File name is not a string")
                 return None
