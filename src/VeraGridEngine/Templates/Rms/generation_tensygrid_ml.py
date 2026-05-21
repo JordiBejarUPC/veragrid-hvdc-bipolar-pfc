@@ -17,6 +17,21 @@ import VeraGridEngine.Utils.Symbolic.symbolic as sym
 import VeraGridEngine.Utils.Symbolic.symbolic_ml as sym_ml
 
 
+def _build_hard_sat_block(vfactory: VarFactory, x, xmin, xmax, mode: str = "ml", name: str = ""):
+    sat_mode = mode.lower()
+    if sat_mode == "none":
+        return Block(), x
+    if sat_mode == "normal":
+        y = vfactory.add_var(f"hs_{name}" if name else "hs")
+        blk = Block(algebraic_eqs=[y - sym.hard_sat(x, xmin, xmax)], algebraic_vars=[y])
+        return blk, y
+    if sat_mode == "mti":
+        return sym_ml.mti_hard_sat(vfactory, x, xmin, xmax, xmin, xmax, name=name)
+    if sat_mode == "ml":
+        return sym_ml.ml_hard_sat(vfactory, x, xmin, xmax, name=name)
+    raise ValueError(f"Unsupported hard_sat_type '{mode}'. Use: normal, ml, mti, none")
+
+
 def GenqecBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     """
      generator with quadratic saturation
@@ -302,7 +317,7 @@ def GenqecBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     return templ
 
 
-def GovernorBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
+def GovernorBuild(vfactory: VarFactory, name: str = "", hard_sat_type: str = "ml") -> RmsModelTemplate:
     templ = RmsModelTemplate()
 
     parameters = {
@@ -404,12 +419,7 @@ def GovernorBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     x2 = Pm_ref - K * y1 - y2_3
 
     y2 = x2 * (1 / parameters["T3"].value)
-    # Use MTI hard-sat only for a single generator instance to keep
-    # boolean-combinatorics controlled during validation.
-    if name == "Gen0":
-        ml_block1, y2_1 = sym_ml.mti_hard_sat(vfactory, y2, Uc, Uo, Uc, Uo, name="gov_rate")
-    else:
-        ml_block1, y2_1 = sym_ml.ml_hard_sat(vfactory, y2, Uc, Uo)
+    ml_block1, y2_1 = _build_hard_sat_block(vfactory, y2, Uc, Uo, mode=hard_sat_type, name="gov_rate")
 
     # y2_1 = sym.hard_sat(y2, Uc, Uo)
     tf1, y2_2, u_gov1 = tf_to_diffblock_with_output(
@@ -419,10 +429,7 @@ def GovernorBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
         x=y2_1,
         name='gov1',
     )
-    if name == "Gen0" and False:
-        ml_block2, y2_bis = sym_ml.mti_hard_sat(vfactory, y2_2, Pmin, Pmax, Pmin, Pmax, name="gov_pow")
-    else:
-        ml_block2, y2_bis = sym_ml.ml_hard_sat(vfactory, y2_2, Pmin, Pmax)
+    ml_block2, y2_bis = _build_hard_sat_block(vfactory, y2_2, Pmin, Pmax, mode=hard_sat_type, name="gov_pow")
     algebraic_eqs.append(y2_3 - y2_bis)
 
     # ==============================
@@ -488,7 +495,7 @@ def GovernorBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     return templ
 
 
-def StabilizerBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
+def StabilizerBuild(vfactory: VarFactory, name: str = "", hard_sat_type: str = "ml") -> RmsModelTemplate:
     templ = RmsModelTemplate()
 
     parameters = {
@@ -567,7 +574,7 @@ def StabilizerBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
         name='stabilizer5',
     )
 
-    ml_block, Vpss_sat = sym_ml.ml_hard_sat(vfactory, y5, VPssMinPu, VPssMaxPu)
+    ml_block, Vpss_sat = _build_hard_sat_block(vfactory, y5, VPssMinPu, VPssMaxPu, mode=hard_sat_type, name="pss_sat")
     algebraic_eqs = list()
     algebraic_eqs.append(Vpss_sat - Vpss)
 
@@ -596,7 +603,7 @@ def StabilizerBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     return templ
 
 
-def ExciterBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
+def ExciterBuild(vfactory: VarFactory, name: str = "", hard_sat_type: str = "ml") -> RmsModelTemplate:
     """
 
     :param name: 
@@ -733,7 +740,7 @@ def ExciterBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
         # sat_max = max_const,
         name='exciter4',
     )
-    ml_block2, y6 = sym_ml.ml_hard_sat(vfactory, y4, min_const, max_const, name='exciter_sat')
+    ml_block2, y6 = _build_hard_sat_block(vfactory, y4, min_const, max_const, mode=hard_sat_type, name='exciter_sat')
 
     # exciter submodel
 
@@ -755,7 +762,7 @@ def ExciterBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
 
     Se_threshold = parameters['Ke'].value
 
-    ml_block1, Ve = sym_ml.ml_hard_sat(vfactory, Ve_pre, VeMinPu, VeMaxPu, name='Ve_sat')
+    ml_block1, Ve = _build_hard_sat_block(vfactory, Ve_pre, VeMinPu, VeMaxPu, mode=hard_sat_type, name='Ve_sat')
     ml_block_exp, V_exp = sym_ml.exponential_ml(vfactory, BEx * (Ve - Se_threshold))
     ml_block_hv, V_hv = sym_ml.ml_heaviside(vfactory, Ve - Se_threshold)
     Sx = (V_exp - vfactory.add_const(1)) * V_hv
@@ -1058,7 +1065,10 @@ def OELBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     return templ
 
 
-def get_complete_generator_template(vfactory: VarFactory, name: str = "complete generator rms template", implicit: bool = False) -> RmsModelTemplate:
+def get_complete_generator_template(vfactory: VarFactory,
+                                    name: str = "complete generator rms template",
+                                    implicit: bool = False,
+                                    hard_sat_type: str = "ml") -> RmsModelTemplate:
     """
     
     :return: 
@@ -1069,11 +1079,12 @@ def get_complete_generator_template(vfactory: VarFactory, name: str = "complete 
 
     # generate models
     genqec_mdl = GenqecBuild(vfactory).block
-    exciter_mdl = ExciterBuild(vfactory, name).block
-    governor_mdl = GovernorBuild(vfactory).block
-    stabilizer_mdl = StabilizerBuild(vfactory).block
+    exciter_mdl = ExciterBuild(vfactory, name, hard_sat_type=hard_sat_type).block
+    governor_mdl = GovernorBuild(vfactory, hard_sat_type=hard_sat_type).block
+    stabilizer_mdl = StabilizerBuild(vfactory, hard_sat_type=hard_sat_type).block
 
     # connect models
+    vf = vfactory
     vf.add_connections([genqec_mdl.in_vars[3]], [exciter_mdl.out_vars[0]])
     vf.add_connections([exciter_mdl.in_vars[0]], [genqec_mdl.out_vars[3]])
     vf.add_connections([exciter_mdl.in_vars[1]], [genqec_mdl.in_vars[1]])
