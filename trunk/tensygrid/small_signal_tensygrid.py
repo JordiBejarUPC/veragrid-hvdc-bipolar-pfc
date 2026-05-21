@@ -335,6 +335,10 @@ def solve_problem(problem: Any = None) -> Any:
 
         print("\n[*] Linearizing model with real parameters...")
         builder.linearize(v_dict=v_dict)
+        print(f"Vi_2 at equilibrium: {v_dict.get('Vi_2', 'Missing!')}")
+        print(f"In_aux at equilibrium: {v_dict.get('In_aux', 'Missing!')}")
+        # Also check if there's a base 'In'
+        print(f"In at equilibrium: {v_dict.get('In', 'Missing!')}")
         # 2. If it does not exist, build it from scratch and save it
 
         if USE_CACHED_BUILDER:
@@ -358,7 +362,7 @@ def solve_problem(problem: Any = None) -> Any:
     print("=" * 80)
     print(f"  Found {len(eigenvalues)} finite eigenvalues")
     print(f"  System is stable: {stable}")
-    if -1e-6 < margin < 1e6:
+    if -1e-6 < margin < 1e-6:
         print("Expected bifurcation. Further analysis is needed.")
     print(f"  Stability margin: {margin:.4f}")
     print("=" * 80)

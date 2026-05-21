@@ -92,12 +92,6 @@ def _sort_symbol(sym: sp.Symbol) -> tuple:
     Python sorting algorithms to group all derivatives first (priority 0) and standard variables second
     (priority 1). The inclusion of the string name in the tuple ensures that within those two categories,
     the symbols are sorted alphabetically.
-
-    :param sym: The symbolic variable to be evaluated and categorized.
-    :type sym: sp.Symbol
-    :return: A tuple used for sorting, containing the priority integer (0 if it is a derivative,
-             1 otherwise) and the string name of the symbol.
-    :rtype: tuple
     """
     name: str = sym.name
     if name.startswith('dx') or name.startswith('xp') or name.startswith('d_') or name.startswith('dt_'):
@@ -110,28 +104,6 @@ def _clean_name_fn(n):
     """
     Standardizes the string representation of a symbolic variable name by normalizing
     various time-derivative prefixes into a single canonical format.
-
-    From an algorithmic perspective, different symbolic operations, external libraries,
-    or intermediate parsing steps may generate inconsistent first-derivative prefixes
-    (such as 'dt_1_', 'd_1_', or simply 'd_'). This cleaning step is critical in the
-    broader algorithm because downstream processes—such as state-space formulation,
-    variable mapping, or the previous sorting logic—rely on strict, predictable string
-    matching to correctly identify and manipulate time derivatives.
-
-    The function executes the following sequence:
-    1. Casts the input to a string to guarantee that string manipulation methods are available,
-       allowing it to gracefully handle SymPy symbols or raw strings.
-    2. Explicitly replaces known anomalous first-derivative notations ('dt_1_' and 'd_1_')
-       with the standard 'dt_' prefix.
-    3. Utilizes a regular expression to find word-boundary instances of 'd_' (matching the
-       start of the string) and replaces them with 'dt_'. The word boundary is essential to
-       prevent the accidental replacement of 'd_' if it occurs in the middle or end of a
-       variable's base name.
-
-    :param n: The variable or object whose name requires standardizing.
-    :type n: Any (typically str or sp.Symbol)
-    :return: The cleaned and standardized string name with a unified 'dt_' derivative prefix.
-    :rtype: str
     """
     c = str(n)
     c = c.replace('dt_1_', 'dt_').replace('d_1_', 'dt_')
@@ -174,27 +146,7 @@ def _process_equation_worker(raw_eq, parsing_context, param_map, sym_to_idx_snap
     Worker that combines equation parsing and monomial weight extraction.
     Returns only primitive data (lists/tuples) to avoid SymPy pickling issues
     when used with ProcessPoolExecutor.
-
-    This worker is designed for the second matrix_creation pass, after all
-    symbols (including aux variables) are already in sym_to_idx_snap. If a
-    symbol is not found in the snapshot, it is reported in new_aux_names so
-    the main thread can fall back to sequential processing for that equation.
-
-    Args:
-        raw_eq:               Raw equation string (post-lifting, via str(expr)).
-        parsing_context:      Dict mapping symbol names to SymPy objects.
-        param_map:            Dict mapping parameter names to values (pass {} if
-                              substitution was already done during parsing).
-        sym_to_idx_snap:      Snapshot of sym_to_idx (str -> int). Must be stable.
-        protected_params_snap: List/set of protected parameter name strings.
-
-    Returns:
-        phi_row:       list of (monom_tuple, coeff) pairs for this equation.
-                       monom_tuple = tuple of (var_idx, weight) sorted by var_idx.
-        new_aux_names: list of symbol names missing from sym_to_idx_snap.
-                       Should be empty when called after full symbol extraction.
     """
-
     s = raw_eq if isinstance(raw_eq, str) else str(raw_eq)
     s = s.replace('dt_1_', 'dt_').replace('d_1_', 'dt_')
     s = re.sub(r'\bd_', 'dt_', s)
@@ -446,17 +398,6 @@ class PolynomialMatrixBuilder:
             """
             Extracts and maps base variables to their explicit time-derivative counterparts
             from a list of variable objects.
-
-            From an algorithmic perspective, this function builds a required lookup table
-            (`self._explicit_deriv_map`) linking state variables to their corresponding derivatives.
-            It iterates over the provided list, bypassing raw strings, and inspects objects for
-            `diff_var` or `base_var` properties. By applying `_clean_name_fn` to the extracted names,
-            it guarantees standardized string matching for downstream differential equation assembly.
-
-            :param var_list: A collection of variable objects to inspect for derivative relationships.
-            :type var_list: list
-            :return: Modifies the internal `_explicit_deriv_map` in place.
-            :rtype: None
             """
             if not var_list: return
             for var_obj in var_list:
@@ -466,7 +407,7 @@ class PolynomialMatrixBuilder:
                 try:
                     base_name_mappings = var_obj.name
                 except AttributeError:
-                    continue  # We need a name to map it
+                    continue
 
                 try:
                     diff_var = var_obj.diff_var
@@ -558,6 +499,53 @@ class PolynomialMatrixBuilder:
                 )
             )
 
+        # =====================================================================
+        # TRUE PARAMETER RESOLUTION (Ghost Pole Eliminator)
+        # If VeraGrid forgot to register a constant/parameter (like 'In'),
+        # it looks like a dynamic state. This catches it, looks up its numeric
+        # value in var_factory, and physically substitutes it into the math.
+        # =====================================================================
+        if self.has_problem:
+            allowed_vars = set()
+            try:
+                for v in (problem._state_vars or []): allowed_vars.add(_clean_name_fn(v.name))
+                for v in (problem._algebraic_vars or []): allowed_vars.add(_clean_name_fn(v.name))
+            except AttributeError:
+                try:
+                    for v in problem.state_and_algebraic_vars: allowed_vars.add(_clean_name_fn(v.name))
+                except AttributeError:
+                    pass
+            for s in parsed_predefined:
+                allowed_vars.add(s.name)
+
+            if allowed_vars:
+                v_dict_full = self.op_extraction(problem)
+                subs_map = {}
+
+                all_current_syms = set()
+                for eq in self.eqs + self.ineqs:
+                    all_current_syms.update(eq.free_symbols)
+
+                for sym in all_current_syms:
+                    s_name = sym.name
+                    if s_name not in allowed_vars and not s_name.startswith('dt_') and not s_name.startswith('d_'):
+                        val = None
+                        if s_name in v_dict_full:
+                            val = v_dict_full[s_name]
+                        elif f"{s_name}_aux" in v_dict_full:
+                            val = v_dict_full[f"{s_name}_aux"]
+                        elif re.sub(r'_\d+$', '', s_name) in v_dict_full:
+                            val = v_dict_full[re.sub(r'_\d+$', '', s_name)]
+
+                        if val is not None:
+                            subs_map[sym] = float(val)
+
+                if subs_map:
+                    if self.verbose: print(f"[*] Substituting {len(subs_map)} unregistered constants/parameters...")
+                    self.eqs = [eq.subs(subs_map) for eq in self.eqs]
+                    self.ineqs = [ineq.subs(subs_map) for ineq in self.ineqs]
+        # =====================================================================
+
         # 4. Symbols' inizialization
         self.all_symbols = []
         self.sym_to_idx = {}
@@ -593,6 +581,8 @@ class PolynomialMatrixBuilder:
     def op_extraction(problem: Any) -> dict:
         """
         Returns the operating point dictionary from a defined VeraGrid problem.
+        This upgraded method parses the VarFactory directly, ensuring intermediate ports
+        and aliases (like 'In', 'Ir', limiters) are preserved for the linearizer.
         """
         v_dict: dict = dict()
 
@@ -600,34 +590,69 @@ class PolynomialMatrixBuilder:
             try:
                 return float(val)
             except:
-                if hasattr(val, 'value'):
+                if hasattr(val, 'value') and val.value is not None:
                     try:
                         return float(val.value)
                     except:
                         pass
+                elif hasattr(val, 'v') and val.v is not None:
+                    try:
+                        return float(val.v)
+                    except:
+                        pass
             return None
 
-        # 3. EXTRACT x0 (Equilibrium point)
+        # 1. BEST METHOD: Extract directly from the dynamic VarFactory.
+        # This captures EVERY variable evaluated during initialization (states, limiters, aliases, etc.)
+        try:
+            vf = getattr(problem, 'var_factory', None)
+            if vf is None and hasattr(problem, 'grid'):
+                vf = getattr(problem.grid, 'var_factory', None)
+
+            if vf is not None and hasattr(vf, 'vars'):
+                for var_obj in vf.vars:
+                    val = safe_get_value(var_obj)
+                    if val is not None:
+                        name = str(var_obj.name) if hasattr(var_obj, 'name') else str(var_obj)
+                        v_dict[name] = val
+        except Exception as e:
+            print(f"[!] Warning: VarFactory extraction failed: {e}")
+
+        # 2. TRADITIONAL FALLBACK: Extract x0 state vector directly
         try:
             x0 = problem.get_x0()
-            for i, sym in enumerate(problem.state_and_algebraic_vars):
-                v_dict[str(sym.name)] = float(x0[i])
-        except Exception:
+            all_vars = []
+
+            # Safely combine the variable lists directly from the engine's backend
+            if hasattr(problem, '_state_vars') and problem._state_vars is not None:
+                all_vars.extend(problem._state_vars)
+            if hasattr(problem, '_algebraic_vars') and problem._algebraic_vars is not None:
+                all_vars.extend(problem._algebraic_vars)
+
+            # Fallback for older engine structures
+            if not all_vars and hasattr(problem, 'state_and_algebraic_vars'):
+                all_vars = problem.state_and_algebraic_vars
+
+            for i, var_obj in enumerate(all_vars):
+                if i < len(x0):
+                    s_name = str(var_obj.name) if hasattr(var_obj, 'name') else str(var_obj)
+                    if s_name not in v_dict:
+                        v_dict[s_name] = float(x0[i])
+        except Exception as e:
             pass
 
-        # 4. EXTRACTION FROM THE PHOTO PATHS
+        # 3. EXTRACTION FROM THE PARAMETER PATHS
         if hasattr(problem, '_variable_parameters') and hasattr(problem, '_variable_parameters_values'):
             names = problem._variable_parameters
             values = problem._variable_parameters_values
             if names is not None and values is not None:
-                # If values is a list/array and names contains the symbols
                 for name_obj, val_obj in zip(names, values):
                     s_name = str(name_obj.name) if hasattr(name_obj, 'name') else str(name_obj)
                     val = safe_get_value(val_obj)
                     if val is not None:
                         v_dict[s_name] = val
 
-        # Backup just in case there are also fixed constants
+        # 4. Backup just in case there are also fixed constants
         if hasattr(problem, '_constant_parameters') and hasattr(problem, '_constant_params'):
             for n, v in zip(problem._constant_parameters, problem._constant_params):
                 s_name = str(n.name) if hasattr(n, 'name') else str(n)
@@ -1441,7 +1466,6 @@ class PolynomialMatrixBuilder:
                 a_max = np.max(np.abs(a_data)) if len(a_data) > 0 else 0.0
                 e_max = np.max(np.abs(e_data)) if len(e_data) > 0 else 0.0
                 if a_max < 1e-10 and e_max < 1e-10:
-                    # A_patched[i, i] = -1.0
                     patched_rows += 1
 
             A_csc = current_a.tocsc()
@@ -1521,10 +1545,17 @@ class PolynomialMatrixBuilder:
                 p_abs = np.abs(participation_raw)
                 normalization = np.sum(p_abs)
 
-                if normalization > 1e-16:
+                if normalization > 1e-12:
                     participation_matrix[:, m] = p_abs / normalization
                 else:
-                    participation_matrix[:, m] = 0.0
+                    # ALGEBRAIC FALLBACK: If E completely masks out the mode (purely algebraic instability),
+                    # use the raw right eigenvector magnitude to reveal the responsible variables.
+                    v_abs = np.abs(evecs_right[:, m])
+                    v_norm = np.sum(v_abs)
+                    if v_norm > 1e-16:
+                        participation_matrix[:, m] = v_abs / v_norm
+                    else:
+                        participation_matrix[:, m] = 0.0
 
             max_real = float(np.max(np.real(evals)))
             is_stable = max_real < -1e-6
@@ -1691,20 +1722,33 @@ class PolynomialMatrixBuilder:
 
         # --- DAE FORMULA FIX FOR SPARSE MATRICES ---
         E_T = E_csr.T
-        W_conj = np.conj(W)
 
-        # (W^H * E)^T = E^T * conj(W)
-        E_T_W_conj = E_T.dot(W_conj)
+        # W from ARPACK (trans='T') satisfies W^T * A = \lambda W^T * E.
+        # The correct row vector for participation is W^T * E.
+        E_T_W = E_T.dot(W)
 
-        # Element-wise product ensures we map onto the states correctly
-        participation_raw = V * E_T_W_conj
+        # Element-wise product maps participation to physical states: P_ki = V_ki * (W_i^T * E)_k
+        participation_raw = V * E_T_W
 
         # NORMALIZATION FIX: Sum the absolute magnitudes to guarantee 1.0 (100%) distribution limit
         p_abs = np.abs(participation_raw)
         dot_products = np.sum(p_abs, axis=0)
-        dot_products[dot_products < 1e-16] = 1.0  # Prevent div-by-zero
 
+        # ALGEBRAIC FALLBACK: If E completely masks out a mode (dot_product ~ 0),
+        # use the raw right eigenvector magnitude to reveal the responsible variables.
+        for m in range(len(dot_products)):
+            if dot_products[m] < 1e-12:
+                v_abs = np.abs(V[:, m])
+                p_abs[:, m] = v_abs
+                dot_products[m] = np.sum(v_abs)
+
+        dot_products[dot_products < 1e-16] = 1.0  # Prevent div-by-zero
         participation_matrix = p_abs / dot_products
+
+        # Align left eigenvectors with standard definition (W_left^H A = \lambda W_left^H E)
+        # Since W^T A = \lambda W^T E, taking the conjugate yields W^H A = \lambda^* W^H E.
+        # Thus, W_left = np.conj(W) corresponds to the true left eigenvector for \lambda.
+        W_left = np.conj(W)
 
         margin = float(np.max(evals.real)) if len(evals) > 0 else 0.0
         stable = margin <= 1e-5
@@ -1712,7 +1756,7 @@ class PolynomialMatrixBuilder:
         print(f"[+] Sparse ARPACK completed in {time.time() - start:.2f} seconds.")
         print(f"    Found {len(evals)} physical poles with their participation factors.")
 
-        return evals, V, W, participation_matrix, stable, margin
+        return evals, V, W_left, participation_matrix, stable, margin
 
     def get_participation_mapping(self, evals: np.ndarray, participation_matrix: np.ndarray,
                                   threshold: float = 0.02) -> dict:
@@ -1726,29 +1770,38 @@ class PolynomialMatrixBuilder:
         n_modes: int = int(participation_matrix.shape[1])
         n_states: int = int(participation_matrix.shape[0])
 
+        # 1. Reconstruct the mapping of the physical state variables (identical to _split_EABC)
+        idx_vars = []
+        for idx_counter, s in enumerate(self.all_symbols):
+            s_name = s.name
+            is_deriv = s_name.startswith('dx') or s_name.startswith('xp') or s_name.startswith(
+                'd_') or s_name.startswith('dt_')
+            is_input = s_name.startswith('u') and not s_name.startswith('u_')
+
+            if not is_deriv and not is_input:
+                idx_vars.append(idx_counter)
+
         for m in range(n_modes):
             mode_eval: complex = evals[m]
             mode_pfs: list = list()
             all_valid_pfs: list = list()
 
-            # INDEX BUG FIX: We must iterate exactly exactly over n_states which maps identically to self.all_symbols indices.
-            for i in range(n_states):
-                s_name = self.all_symbols[i].name
-                is_deriv = s_name.startswith('dx') or s_name.startswith('xp') or s_name.startswith(
-                    'd_') or s_name.startswith('dt_')
-                is_input = s_name.startswith('u') and not s_name.startswith('u_')
+            # Iterate strictly up to the available physical states
+            for i in range(min(n_states, len(idx_vars))):
+                # Retrieve the EXACT symbol associated with this row in the A/E matrices
+                sym_idx = idx_vars[i]
+                s_name = self.all_symbols[sym_idx].name
 
-                # Only map if it is an actual physical variable or proxy non-derivative
-                if not is_deriv and not is_input:
-                    pf_val = float(abs(participation_matrix[i, m]))
-                    all_valid_pfs.append((s_name, pf_val))
-                    if pf_val >= threshold:
-                        mode_pfs.append((s_name, pf_val))
+                # Since idx_vars inherently filters out derivatives/inputs, we just pull the value
+                pf_val = float(abs(participation_matrix[i, m]))
+                all_valid_pfs.append((s_name, pf_val))
+
+                if pf_val >= threshold:
+                    mode_pfs.append((s_name, pf_val))
 
             mode_pfs.sort(key=lambda x: x[1], reverse=True)
 
-            # If all physical variables were filtered out because their participations were highly dispersed
-            # (e.g. 50 variables at 0.019 PF each), just grab the top 5 largest ones unconditionally.
+            # If participations were highly dispersed, grab the top 5 largest ones unconditionally.
             if not mode_pfs:
                 all_valid_pfs.sort(key=lambda x: x[1], reverse=True)
                 mode_pfs = [x for x in all_valid_pfs[:5] if x[1] > 1e-6]
@@ -1932,47 +1985,3 @@ class PolynomialMatrixBuilder:
                                   f"Delta(t={t_margin}) = {abs(delta_at_t):.6f} {symbol} {tolerance}")
 
         return report
-
-    '''def report(self, eigenvalues=None, is_stable=False, max_real=None, print_matrices=True, save_path=None):
-        """
-        Outputs or exports the internal structural matrices and eigenvalue results
-        for diagnostic inspection and external validation.
-
-        Algorithmically, this function provides observability into the compiled Differential
-        Algebraic Equation (DAE) system. It sequentially extracts and formats the sparse
-        matrices (S, Phi, E, A, B). If eigenvalues are provided, it actively filters for
-        finite values and sorts them by their real parts in descending order, immediately
-        highlighting the most dynamically critical (or unstable) modes. It optionally serializes
-        this system state to a specified file path for persistent logging.
-
-        :param eigenvalues: Array of computed system eigenvalues.
-        :type eigenvalues: np.ndarray | None
-        :param is_stable: Boolean flag indicating if the system is stable.
-        :type is_stable: bool
-        :param max_real: The maximum real part found among the eigenvalues.
-        :type max_real: float | None
-        :param print_matrices: Flag to enable console printing of the matrices.
-        :type print_matrices: bool
-        :param save_path: Absolute or relative file path to save the exported text report.
-        :type save_path: str | None
-        :return: Modifies no state; performs I/O operations.
-        :rtype: None
-        """
-        if print_matrices:
-            for label, mat in [("S", self.S_H), ("Phi", self.Phi_H), ("E", self.E), ("A", self.A), ("B", self.B)]:
-                if mat is not None:
-                    print(f"\n--- {label} Matrix ---")
-                    print(sparse.csc_matrix(mat))
-            if eigenvalues is not None:
-                for ev in sorted(list(eigenvalues[np.isfinite(eigenvalues)]), key=_get_real_part, reverse=True):
-                    print(f"  {ev.real:.6f} + {ev.imag:.6f}j")
-
-        if save_path is not None:
-            import os
-            os.makedirs(os.path.dirname(os.path.abspath(save_path)), exist_ok=True)
-            with open(save_path, "w", encoding="utf-8") as f:
-                for label, mat in [("S Matrix", self.S_H), ("Phi Matrix", self.Phi_H), ("E Matrix", self.E),
-                                   ("A Matrix", self.A)]:
-                    if mat is not None:
-                        f.write(f"\n--- {label} ---\n")
-                        f.write(str(sparse.csc_matrix(mat)) + "\n")'''
