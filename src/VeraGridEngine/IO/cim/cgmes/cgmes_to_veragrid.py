@@ -2134,8 +2134,9 @@ def get_gcdev_dc_lines(cgmes_model: CgmesCircuit,
 
             if cgmes_elm.length is None:
                 length = 1.0
-                logger.add_error(msg='DCLineSegment length is missing.', device=cgmes_elm.rdfid,
-                                 device_class=str(cgmes_elm.tpe))
+                logger.add_warning(msg='DCLineSegment length is missing; default value used.',
+                                   device=cgmes_elm.rdfid,
+                                   device_class=str(cgmes_elm.tpe))
             else:
                 length = float(cgmes_elm.length)
 
@@ -2936,7 +2937,9 @@ def get_gcdev_ac_lines(cgmes_model: CgmesCircuit,
 
                 if cgmes_elm.length is None:
                     length = 1.0
-                    logger.add_error(msg='Length missing.', device=cgmes_elm.rdfid, device_class=str(cgmes_elm.tpe))
+                    logger.add_warning(msg='ACLineSegment length is missing; default value used.',
+                                       device=cgmes_elm.rdfid,
+                                       device_class=str(cgmes_elm.tpe))
                 else:
                     length = float(cgmes_elm.length)
 
@@ -3038,9 +3041,9 @@ def get_gcdev_ac_lines(cgmes_model: CgmesCircuit,
 
                         if cgmes_elm.length is None:
                             length = 1.0
-                            logger.add_error(msg='Length missing.',
-                                             device=cgmes_elm.rdfid,
-                                             device_class=str(cgmes_elm.tpe))
+                            logger.add_warning(msg='ACLineSegment length is missing; default value used.',
+                                               device=cgmes_elm.rdfid,
+                                               device_class=str(cgmes_elm.tpe))
                         else:
                             length = float(cgmes_elm.length)
 

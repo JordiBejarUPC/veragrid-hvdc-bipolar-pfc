@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from VeraGridEngine.IO.base.units import UnitMultiplier, UnitSymbol
 from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.identified_object import IdentifiedObject
 from VeraGridEngine.IO.cim.cgmes.cgmes_property import CgmesProperty
+from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType
 if TYPE_CHECKING:
 	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.energy_consumer import EnergyConsumer
 
@@ -25,17 +26,17 @@ The coefficient model consist of the attributes
 - qConstantCurrent
 - qConstantPower.
 	The sum of pConstantImpedance, pConstantCurrent and pConstantPower shall equal 1.
-	The sum of qConstantImpedance, qConstantCurrent and qConstantPower shall equal 1.''', mandatory=True, profiles=[]),
-		CgmesProperty(property_name='pConstantCurrent', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A floating point number. The range is unspecified and not limited.''', profiles=[]),
-		CgmesProperty(property_name='pConstantImpedance', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A floating point number. The range is unspecified and not limited.''', profiles=[]),
-		CgmesProperty(property_name='pConstantPower', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A floating point number. The range is unspecified and not limited.''', profiles=[]),
-		CgmesProperty(property_name='pFrequencyExponent', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A floating point number. The range is unspecified and not limited.''', profiles=[]),
-		CgmesProperty(property_name='pVoltageExponent', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A floating point number. The range is unspecified and not limited.''', profiles=[]),
-		CgmesProperty(property_name='qConstantCurrent', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A floating point number. The range is unspecified and not limited.''', profiles=[]),
-		CgmesProperty(property_name='qConstantImpedance', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A floating point number. The range is unspecified and not limited.''', profiles=[]),
-		CgmesProperty(property_name='qConstantPower', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A floating point number. The range is unspecified and not limited.''', profiles=[]),
-		CgmesProperty(property_name='qFrequencyExponent', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A floating point number. The range is unspecified and not limited.''', profiles=[]),
-		CgmesProperty(property_name='qVoltageExponent', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A floating point number. The range is unspecified and not limited.''', profiles=[]),
+	The sum of qConstantImpedance, qConstantCurrent and qConstantPower shall equal 1.''', mandatory=True, profiles=[CgmesProfileType.EQ]),
+		CgmesProperty(property_name='pConstantCurrent', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A floating point number. The range is unspecified and not limited.''', profiles=[CgmesProfileType.EQ]),
+		CgmesProperty(property_name='pConstantImpedance', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A floating point number. The range is unspecified and not limited.''', profiles=[CgmesProfileType.EQ]),
+		CgmesProperty(property_name='pConstantPower', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A floating point number. The range is unspecified and not limited.''', profiles=[CgmesProfileType.EQ]),
+		CgmesProperty(property_name='pFrequencyExponent', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A floating point number. The range is unspecified and not limited.''', profiles=[CgmesProfileType.EQ]),
+		CgmesProperty(property_name='pVoltageExponent', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A floating point number. The range is unspecified and not limited.''', profiles=[CgmesProfileType.EQ]),
+		CgmesProperty(property_name='qConstantCurrent', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A floating point number. The range is unspecified and not limited.''', profiles=[CgmesProfileType.EQ]),
+		CgmesProperty(property_name='qConstantImpedance', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A floating point number. The range is unspecified and not limited.''', profiles=[CgmesProfileType.EQ]),
+		CgmesProperty(property_name='qConstantPower', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A floating point number. The range is unspecified and not limited.''', profiles=[CgmesProfileType.EQ]),
+		CgmesProperty(property_name='qFrequencyExponent', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A floating point number. The range is unspecified and not limited.''', profiles=[CgmesProfileType.EQ]),
+		CgmesProperty(property_name='qVoltageExponent', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A floating point number. The range is unspecified and not limited.''', profiles=[CgmesProfileType.EQ]),
 	)
 	__slots__ = ('EnergyConsumer', 'exponentModel', 'pConstantCurrent', 'pConstantImpedance', 'pConstantPower', 'pFrequencyExponent', 'pVoltageExponent', 'qConstantCurrent', 'qConstantImpedance', 'qConstantPower', 'qFrequencyExponent', 'qVoltageExponent')
 	def __init__(self, rdfid='', tpe='LoadResponseCharacteristic'):

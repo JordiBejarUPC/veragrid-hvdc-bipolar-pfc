@@ -460,7 +460,7 @@ def find_references(elements_by_type: Dict[str, List[CGMES_ASSETS]],
                                 element.set_declared_property_value(prop_name=property_name,
                                                                     prop_value=enum_val)
 
-                            except TypeError as e:
+                            except (TypeError, ValueError):
                                 logger.add_error(msg='Could not convert Enum',
                                                  device=element.rdfid,
                                                  device_class=class_name,
