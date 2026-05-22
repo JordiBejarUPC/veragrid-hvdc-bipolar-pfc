@@ -110,6 +110,47 @@ def _get_var_occurrences(expr: Expr, var_uid: int) -> List[int]:
     return occurrences
 
 
+def _get_all_var_occurrences(expr: Expr) -> Dict[int, List[int]]:
+    """Get occurrences for all variables in expr in a single pass. Returns dict mapping var_uid to list of occurrence indices."""
+    result: Dict[int, List[int]] = {}
+    global_counter = [0]
+    _collect_all_occurrences(expr, result, global_counter)
+    return result
+
+
+def _collect_all_occurrences(expr: Expr, result: Dict[int, List[int]], counter: List[int]) -> None:
+    """Collect occurrence indices for all variables in a single pass."""
+    _collect_occurrences_rec(expr, result, counter)
+
+
+def _collect_occurrences_rec(expr: Expr, result: Dict[int, List[int]], counter: List[int]) -> None:
+    """Recursive helper to collect all variable occurrences."""
+    if isinstance(expr, Var):
+        if expr.uid not in result:
+            result[expr.uid] = []
+        result[expr.uid].append(counter[0])
+        counter[0] += 1
+        return
+    
+    if isinstance(expr, BinOp):
+        _collect_occurrences_rec(expr.left, result, counter)
+        _collect_occurrences_rec(expr.right, result, counter)
+        return
+    
+    if isinstance(expr, UnOp):
+        _collect_occurrences_rec(expr.operand, result, counter)
+        return
+    
+    if isinstance(expr, Func):
+        _collect_occurrences_rec(expr.arg, result, counter)
+        return
+    
+    if isinstance(expr, Func2):
+        _collect_occurrences_rec(expr.arg1, result, counter)
+        _collect_occurrences_rec(expr.arg2, result, counter)
+        return
+
+
 def _collect_occurrences(expr: Expr, var_uid: int, result: List[int]) -> None:
     """Recursively collect occurrence indices."""
     if isinstance(expr, Var):
@@ -136,45 +177,61 @@ def _collect_occurrences(expr: Expr, var_uid: int, result: List[int]) -> None:
         return
 
 
-def _compute_path_signature(
+def _compute_all_path_signatures(
     expr: Expr,
-    var_uid: int,
-    target_occurrence: int,
+    var_occurrences: Dict[int, List[int]],
+) -> Dict[Tuple[int, int], Tuple[str, ...]]:
+    """Compute path signatures for all variable occurrences in a single traversal.
+    Returns dict mapping (var_uid, occurrence_idx) -> path_signature.
+    """
+    result: Dict[Tuple[int, int], Tuple[str, ...]] = {}
+    target_occurrences: Dict[int, int] = {uid: 0 for uid in var_occurrences}
+    _compute_paths_rec(expr, (), 0, var_occurrences, target_occurrences, result)
+    return result
+
+
+def _compute_paths_rec(
+    expr: Expr,
     current_path: Tuple[str, ...],
     current_depth: int,
-) -> Optional[Tuple[str, ...]]:
-    """Compute the path signature for a specific occurrence of a variable."""
+    var_occurrences: Dict[int, List[int]],
+    target_occurrences: Dict[int, int],
+    result: Dict[Tuple[int, int], Tuple[str, ...]],
+) -> None:
+    """Recursive helper to compute all path signatures in one pass."""
     if isinstance(expr, Var):
-        if expr.uid == var_uid:
-            return current_path + ("Var:placeholder",)
-        return None
-
+        uid = expr.uid
+        if uid in var_occurrences:
+            occ_list = var_occurrences[uid]
+            target_idx = target_occurrences[uid]
+            if target_idx < len(occ_list):
+                result[(uid, occ_list[target_idx])] = current_path + ("Var:placeholder",)
+            target_occurrences[uid] += 1
+        return
+    
     if isinstance(expr, BinOp):
         op_path = current_path + (f"BinOp:{expr.op}:left",)
-        left_result = _compute_path_signature(expr.left, var_uid, target_occurrence, op_path, current_depth + 1)
-        if left_result is not None:
-            return left_result
+        _compute_paths_rec(expr.left, op_path, current_depth + 1, var_occurrences, target_occurrences, result)
         op_path = current_path + (f"BinOp:{expr.op}:right",)
-        right_result = _compute_path_signature(expr.right, var_uid, target_occurrence, op_path, current_depth + 1)
-        return right_result
-
+        _compute_paths_rec(expr.right, op_path, current_depth + 1, var_occurrences, target_occurrences, result)
+        return
+    
     if isinstance(expr, UnOp):
         op_path = current_path + (f"UnOp:{expr.op}",)
-        return _compute_path_signature(expr.operand, var_uid, target_occurrence, op_path, current_depth + 1)
-
+        _compute_paths_rec(expr.operand, op_path, current_depth + 1, var_occurrences, target_occurrences, result)
+        return
+    
     if isinstance(expr, Func):
         op_path = current_path + (f"Func:{expr.op}",)
-        return _compute_path_signature(expr.arg, var_uid, target_occurrence, op_path, current_depth + 1)
-
+        _compute_paths_rec(expr.arg, op_path, current_depth + 1, var_occurrences, target_occurrences, result)
+        return
+    
     if isinstance(expr, Func2):
         op_path = current_path + (f"Func2:{expr.name}:left",)
-        left_result = _compute_path_signature(expr.arg1, var_uid, target_occurrence, op_path, current_depth + 1)
-        if left_result is not None:
-            return left_result
+        _compute_paths_rec(expr.arg1, op_path, current_depth + 1, var_occurrences, target_occurrences, result)
         op_path = current_path + (f"Func2:{expr.name}:right",)
-        return _compute_path_signature(expr.arg2, var_uid, target_occurrence, op_path, current_depth + 1)
-
-    return None
+        _compute_paths_rec(expr.arg2, op_path, current_depth + 1, var_occurrences, target_occurrences, result)
+        return
 
 
 def _replace_all_vars_with_placeholder(expr: Expr, target_uid: int, placeholder: Var) -> Expr:
@@ -290,16 +347,19 @@ class VariableAlignmentEngine:
         signature_dict: Dict[int, List[VariableSignature]],
     ) -> None:
         """Extract signatures for all Var nodes in an equation."""
-        all_vars = self._collect_vars_in_expr(eq)
+        all_occurrences = _get_all_var_occurrences(eq)
+        if not all_occurrences:
+            return
+        
         placeholder = Var(name=PLACEHOLDER_NAME)
-
-        for var_uid in all_vars:
-            occurrences = _get_var_occurrences(eq, var_uid)
-
+        all_placeholder_expr = _replace_all_vars_same_placeholder(eq, placeholder)
+        all_placeholder_hash = structural_hash(canonical(all_placeholder_expr))
+        
+        all_paths = _compute_all_path_signatures(eq, all_occurrences)
+        
+        for var_uid, occurrences in all_occurrences.items():
             for occ_idx in occurrences:
-                context_hash = self._compute_context_hash(eq, var_uid, occ_idx, placeholder)
-                path_sig = _compute_path_signature(eq, var_uid, occ_idx, (), 0)
-
+                path_sig = all_paths.get((var_uid, occ_idx))
                 if path_sig is None:
                     continue
 
@@ -307,7 +367,7 @@ class VariableAlignmentEngine:
                 sig = VariableSignature(
                     var_uid=var_uid,
                     occurrence_idx=occ_idx,
-                    context_hash=context_hash,
+                    context_hash=all_placeholder_hash,
                     depth=depth,
                     path_signature=path_sig,
                 )

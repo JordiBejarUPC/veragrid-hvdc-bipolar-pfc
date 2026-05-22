@@ -1155,54 +1155,115 @@ def compare_n_blocks_structurally(blocks: List[Block]) -> Dict[int, List[int]]:
     """
     if len(blocks) == 0:
         return {}
-    
+
     if len(blocks) == 1:
         new_uid = _new_uid()
         return {new_uid: [blocks[0].uid]}
-    
+
     n = len(blocks)
     equivalence_classes = []
     processed = [False] * n
-    
+
     for i in range(n):
-        if processed[i]:
-            continue
-        
-        current_group = [blocks[i].uid]
-        processed[i] = True
-        
-        for j in range(i + 1, n):
-            if processed[j]:
-                continue
-            
-            block_i_copy = blocks[i].copy().unify_blocks()
-            block_j_copy = blocks[j].copy().unify_blocks()
-            
-            block_i_eqs = block_i_copy.get_all_equations_list()
-            block_j_eqs = block_j_copy.get_all_equations_list()
-            
-            if not equivalent_systems(block_i_eqs, block_j_eqs):
-                continue
-            
-            variables_alignment = align_variables(block_i_eqs, block_j_eqs)
-            if not variables_alignment:
-                continue
-            
-            variables_mappings = [variables_alignment]
-            if not variables_in_corresponding_attributes([block_i_copy, block_j_copy], variables_mappings):
-                continue
-            
-            current_group.append(blocks[j].uid)
-            processed[j] = True
-        
-        equivalence_classes.append(current_group)
-    
+        if not processed[i]:
+            current_group = [blocks[i].uid]
+            processed[i] = True
+
+            for j in range(i + 1, n):
+                if not processed[j]:
+
+                    block_i_copy = blocks[i].copy()
+                    block_i_copy.unify_blocks()
+                    block_j_copy = blocks[j].copy()
+                    block_j_copy.unify_blocks()
+
+                    block_i_eqs = block_i_copy.get_all_equations_list()
+                    block_j_eqs = block_j_copy.get_all_equations_list()
+
+                    if equivalent_systems(block_i_eqs, block_j_eqs):
+
+                        variables_alignment = align_variables(block_i_eqs, block_j_eqs)
+                        if variables_alignment:
+
+                            variables_mappings = [variables_alignment]
+                            if variables_in_corresponding_attributes([block_i_copy, block_j_copy], variables_mappings):
+
+                                current_group.append(blocks[j].uid)
+                                processed[j] = True
+
+            equivalence_classes.append(current_group)
+
     result = {}
     for eq_class in equivalence_classes:
         new_uid = _new_uid()
         result[new_uid] = eq_class
-    
+
     return result
+#
+# def compare_n_blocks_structurally(blocks: List[Block]) -> Dict[int, List[int]]:
+#     """
+#     Compare n blocks structurally and group equivalent blocks by their uid.
+#
+#     Two blocks are considered structurally equivalent if:
+#     1. Their unified equation systems are equivalent
+#     2. Variables can be aligned between them
+#     3. Corresponding variables are located in corresponding attributes
+#
+#     :param blocks: List of n blocks to compare
+#     :return: Dict with new uid (uuid.uuid4().int) as keys and lists of equivalent block uids as values
+#     """
+#     if len(blocks) == 0:
+#         return {}
+#
+#     if len(blocks) == 1:
+#         new_uid = _new_uid()
+#         return {new_uid: [blocks[0].uid]}
+#
+#     n = len(blocks)
+#     equivalence_classes = []
+#     processed = [False] * n
+#
+#     for i in range(n):
+#         if processed[i]:
+#             continue
+#
+#         current_group = [blocks[i].uid]
+#         processed[i] = True
+#
+#         for j in range(i + 1, n):
+#             if processed[j]:
+#                 continue
+#
+#             block_i_copy = blocks[i].copy()
+#             block_i_copy.unify_blocks()
+#             block_j_copy = blocks[j].copy()
+#             block_j_copy.unify_blocks()
+#
+#             block_i_eqs = block_i_copy.get_all_equations_list()
+#             block_j_eqs = block_j_copy.get_all_equations_list()
+#
+#             if not equivalent_systems(block_i_eqs, block_j_eqs):
+#                 continue
+#
+#             variables_alignment = align_variables(block_i_eqs, block_j_eqs)
+#             if not variables_alignment:
+#                 continue
+#
+#             variables_mappings = [variables_alignment]
+#             if not variables_in_corresponding_attributes([block_i_copy, block_j_copy], variables_mappings):
+#                 continue
+#
+#             current_group.append(blocks[j].uid)
+#             processed[j] = True
+#
+#         equivalence_classes.append(current_group)
+#
+#     result = {}
+#     for eq_class in equivalence_classes:
+#         new_uid = _new_uid()
+#         result[new_uid] = eq_class
+#
+#     return result
 
 def compare_blocks_structurally(block1: Block, block2: Block) -> bool:
     block1_compare = block1.copy().unify_blocks()

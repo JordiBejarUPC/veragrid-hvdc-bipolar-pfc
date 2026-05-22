@@ -82,7 +82,7 @@ def _sort_exprs(exprs: List[Expr], key_func) -> List[Expr]:
     return sorted(exprs, key=key_func)
 
 
-def canonical(expr: Expr) -> Expr:
+def canonical(expr: Expr, depth: int = 0) -> Expr:
     """
     Transform an expression into canonical form.
     
@@ -96,8 +96,12 @@ def canonical(expr: Expr) -> Expr:
     Does NOT mutate the original expression.
     
     :param expr: Expression to canonicalize
+    :param depth: Current recursion depth for cycle detection
     :return: New canonical expression
     """
+    if depth > 100:
+        return expr
+    
     if isinstance(expr, Const):
         return Const(expr.value)
 
@@ -114,7 +118,7 @@ def canonical(expr: Expr) -> Expr:
         )
 
     if isinstance(expr, UnOp):
-        canonical_operand = canonical(expr.operand)
+        canonical_operand = canonical(expr.operand, depth + 1)
         if expr.op == "-":
             if isinstance(canonical_operand, Const):
                 return Const(-canonical_operand.value)
@@ -124,8 +128,8 @@ def canonical(expr: Expr) -> Expr:
         return UnOp(expr.op, canonical_operand)
 
     if isinstance(expr, BinOp):
-        left = canonical(expr.left)
-        right = canonical(expr.right)
+        left = canonical(expr.left, depth + 1)
+        right = canonical(expr.right, depth + 1)
 
         if expr.op == "+":
             terms = _flatten_assoc(BinOp(left, "+", right), "+")
@@ -216,20 +220,24 @@ def canonical(expr: Expr) -> Expr:
 
 def _build_sum(terms: List[Expr]) -> Expr:
     """Build a canonical sum from a list of terms."""
-    hash_key = lambda e: structural_hash(e)
-    sorted_terms = _sort_exprs(terms, hash_key)
-    result = sorted_terms[0]
-    for t in sorted_terms[1:]:
+    if len(terms) == 0:
+        return Const(0)
+    if len(terms) == 1:
+        return terms[0]
+    result = terms[0]
+    for t in terms[1:]:
         result = BinOp(result, "+", t)
     return result
 
 
 def _build_product(factors: List[Expr]) -> Expr:
     """Build a canonical product from a list of factors."""
-    hash_key = lambda e: structural_hash(e)
-    sorted_factors = _sort_exprs(factors, hash_key)
-    result = sorted_factors[0]
-    for f in sorted_factors[1:]:
+    if len(factors) == 0:
+        return Const(1)
+    if len(factors) == 1:
+        return factors[0]
+    result = factors[0]
+    for f in factors[1:]:
         result = BinOp(result, "*", f)
     return result
 
@@ -794,42 +802,46 @@ def _remove_const_factor(expr: BinOp) -> Expr:
     return expr
 
 
-def _try_expand(expr: Expr) -> Expr:
+def _try_expand(expr: Expr, max_terms: int = 200) -> Expr:
     """
     Try to expand an expression once. Returns the expanded form or the original.
     """
+    if _count_terms(expr) > max_terms:
+        return expr
+    
     if isinstance(expr, BinOp):
-        left_expanded = _try_expand(expr.left)
-        right_expanded = _try_expand(expr.right)
+        left_expanded = _try_expand(expr.left, max_terms)
+        right_expanded = _try_expand(expr.right, max_terms)
         
         new_expr = BinOp(left_expanded, expr.op, right_expanded)
         
-        expanded = _expand_product_sum(new_expr)
-        if expanded is not new_expr:
-            return _combine_like_terms_sum(expanded)
+        if new_expr.op == "*":
+            expanded = _expand_product_sum(new_expr)
+            if expanded is not new_expr:
+                return expanded
         
         if new_expr.op == "**":
             pow_expanded = _expand_power(new_expr)
             if pow_expanded is not new_expr:
-                return _combine_like_terms_sum(pow_expanded)
+                return pow_expanded
         
-        return _combine_like_terms_sum(new_expr)
+        return new_expr
     
     if isinstance(expr, UnOp):
-        operand_expanded = _try_expand(expr.operand)
+        operand_expanded = _try_expand(expr.operand, max_terms)
         if operand_expanded is not expr.operand:
             return UnOp(expr.op, operand_expanded)
         return expr
     
     if isinstance(expr, Func):
-        arg_expanded = _try_expand(expr.arg)
+        arg_expanded = _try_expand(expr.arg, max_terms)
         if arg_expanded is not expr.arg:
             return Func(arg_expanded, expr.op)
         return expr
     
     if isinstance(expr, Func2):
-        arg1_expanded = _try_expand(expr.arg1)
-        arg2_expanded = _try_expand(expr.arg2)
+        arg1_expanded = _try_expand(expr.arg1, max_terms)
+        arg2_expanded = _try_expand(expr.arg2, max_terms)
         if arg1_expanded is not expr.arg1 or arg2_expanded is not expr.arg2:
             return Func2(expr.name, arg1_expanded, arg2_expanded)
         return expr
@@ -837,7 +849,44 @@ def _try_expand(expr: Expr) -> Expr:
     return expr
 
 
-def expand(expr: Expr) -> Expr:
+def _count_terms(e: Expr) -> int:
+    """Quickly estimate term count without full canonicalization."""
+    if isinstance(e, (Const, Var)):
+        return 1
+    if isinstance(e, UnOp):
+        return _count_terms(e.operand)
+    if isinstance(e, Func):
+        return _count_terms(e.arg)
+    if isinstance(e, Func2):
+        return _count_terms(e.arg1) + _count_terms(e.arg2)
+    if isinstance(e, BinOp):
+        if e.op in ("+", "-"):
+            return _count_terms(e.left) + _count_terms(e.right)
+        if e.op == "*":
+            left_terms = _count_terms(e.left)
+            right_terms = _count_terms(e.right)
+            if left_terms > 1 and right_terms > 1:
+                return left_terms * right_terms
+            return left_terms + right_terms
+        return _count_terms(e.left) + _count_terms(e.right)
+    return 1
+
+
+def _expand_once(e: Expr, max_terms: int, depth: int) -> Expr:
+    if depth > 20:
+        return e
+    if _count_terms(e) > max_terms:
+        return e
+    return _try_expand(e, max_terms)
+
+
+def _canonical_once(e: Expr, depth: int) -> Expr:
+    if depth > 50:
+        return e
+    return canonical(e, depth=depth)
+
+
+def expand(expr: Expr, max_terms: int = 200) -> Expr:
     """
     Fully expand an algebraic expression.
     
@@ -846,11 +895,14 @@ def expand(expr: Expr) -> Expr:
     - Power of sum expansion: (a+b)^2 -> a^2 + 2*a*b + b^2
     
     :param expr: Expression to expand
+    :param max_terms: Maximum number of terms before bailing out
     :return: Fully expanded expression
     """
     result = expr
-    for _ in range(20):
-        expanded = _try_expand(result)
+    for _ in range(3):
+        if _count_terms(result) > max_terms:
+            break
+        expanded = _expand_once(result, max_terms, 0)
         if str(expanded) == str(result):
             break
         result = expanded
@@ -858,7 +910,7 @@ def expand(expr: Expr) -> Expr:
     return result
 
 
-def expand_and_canonicalize(expr: Expr) -> Expr:
+def expand_and_canonicalize(expr: Expr, max_terms: int = 500) -> Expr:
     """
     Expand and then canonicalize an expression.
     
@@ -866,17 +918,21 @@ def expand_and_canonicalize(expr: Expr) -> Expr:
     that handles algebraic expansion.
     
     :param expr: Expression to process
+    :param max_terms: Maximum number of terms before bailing out (prevents exponential blowup)
     :return: Expanded and canonicalized expression
     """
-    expanded = expand(expr)
-    result = expanded
-    for _ in range(20):
-        canonicalized = canonical(result)
+    if _count_terms(expr) > max_terms:
+        return expr
+    
+    result = _expand_once(expr, max_terms, 0)
+    
+    for _ in range(3):
+        canonicalized = _canonical_once(result, 0)
         if str(canonicalized) == str(result):
             break
         result = canonicalized
         
-        expanded2 = expand(result)
+        expanded2 = _expand_once(result, max_terms, 0)
         if str(expanded2) == str(result):
             break
         result = expanded2
