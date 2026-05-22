@@ -52,7 +52,6 @@ from VeraGridEngine.Utils.Symbolic.static_parameter_mapping_rms import (
 )
 
 from VeraGridEngine.Utils.procedural_logic import BlockProceduralLogicUpdater
-from VeraGridEngine.Utils.rms_models_types import build_equivalence_classes_dict
 
 def assign_static_parameters(elm:Any, parameter_reference: ParamPowerFlowRefferenceType) -> Const:
     if elm.device_type == DeviceType.LineDevice:
@@ -431,9 +430,6 @@ class RmsProblemDae(RmsProblemTemplate):
         self._n_params = 0
         self._n_event_params = 0
         self._n_diff = 0
-
-        equivalence_dict = build_equivalence_classes_dict(self.grid)
-        print(equivalence_dict)
 
         ######################################## Initialize devices ########################################
 
