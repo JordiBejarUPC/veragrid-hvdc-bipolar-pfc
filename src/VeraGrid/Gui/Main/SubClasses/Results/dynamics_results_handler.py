@@ -15,8 +15,10 @@ from VeraGridEngine.Devices.Events.dynamic_plot import DynamicPlot
 from VeraGridEngine.Devices.Events.dynamic_plot_entry import DynamicPlotEntry
 from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Devices.Events.emt_events_group import EmtEventsGroup
+from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
 from VeraGridEngine.Devices.Parents.dynamic_parent import DynamicDevice
 from VeraGridEngine.Devices.Parents.dynamic_bus_parent import DynamicBusDevice
+from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Simulations.Rms.rms_results import RmsResults
@@ -62,6 +64,48 @@ def _get_device_label(device: ALL_DEV_TYPES) -> str:
     return str(device)
 
 
+def _get_device_bus_label(device: ALL_DEV_TYPES) -> str:
+    """
+    Get the bus-name suffix associated with one device.
+
+    :param device: Device instance stored in the dynamics trees.
+    :return: User-facing bus label for the device, or an empty string when unavailable.
+    """
+    if isinstance(device, BranchParent):
+        bus_names: List[str] = list()
+
+        if device.bus_from is not None:
+            bus_from_name: str = str(device.bus_from.name).strip()
+            if bus_from_name != "":
+                bus_names.append(bus_from_name)
+            else:
+                pass
+        else:
+            pass
+
+        if device.bus_to is not None:
+            bus_to_name: str = str(device.bus_to.name).strip()
+            if bus_to_name != "" and bus_to_name not in bus_names:
+                bus_names.append(bus_to_name)
+            else:
+                pass
+        else:
+            pass
+
+        if len(bus_names) > 0:
+            return " / ".join(bus_names)
+        else:
+            return ""
+    else:
+        if isinstance(device, InjectionParent):
+            return ""
+        else:
+            if isinstance(device, DynamicBusDevice):
+                return ""
+            else:
+                return ""
+
+
 def _get_var_label(variable: Var) -> str:
     """
     Get the label that represents a simulation variable.
@@ -71,6 +115,26 @@ def _get_var_label(variable: Var) -> str:
     """
     # The symbolic variable name is the exact identifier used by the simulation arrays.
     return variable.name
+
+
+def _join_plot_label_parts(parts: Sequence[str]) -> str:
+    """
+    Join non-empty label parts using the plot-tree separator.
+
+    :param parts: Ordered label parts.
+    :return: Joined label without empty trailing segments.
+    """
+    kept_parts: List[str] = list()
+
+    part: str
+    for part in parts:
+        clean_part: str = str(part).strip()
+        if clean_part != "":
+            kept_parts.append(clean_part)
+        else:
+            pass
+
+    return " - ".join(kept_parts)
 
 
 def _append_unique_variables(target: List[Var], seen_uids: Set[int], variables: Sequence[Var]) -> None:
@@ -455,6 +519,7 @@ class DynamicResultSeries:
         "_group_idx",
         "_source_label",
         "_device_label",
+        "_bus_label",
         "_variable_label",
     )
 
@@ -464,12 +529,14 @@ class DynamicResultSeries:
                  group_idx: int,
                  source_label: str,
                  device_label: str,
+                 bus_label: str,
                  variable_label: str) -> None:
         self._key: DynamicResultSeriesKey = key
         self._var: Var = var
         self._group_idx: int = group_idx
         self._source_label: str = source_label
         self._device_label: str = device_label
+        self._bus_label: str = bus_label
         self._variable_label: str = variable_label
 
     def get_key(self) -> DynamicResultSeriesKey:
@@ -506,9 +573,18 @@ class DynamicResultSeries:
 
     def get_plot_label(self, has_multiple_sources: bool) -> str:
         if has_multiple_sources:
-            return self._device_label + " - " + self._variable_label + " - " + self._source_label
+            return _join_plot_label_parts([
+                self._variable_label,
+                self._device_label,
+                self._bus_label,
+                self._source_label,
+            ])
         else:
-            return self._variable_label
+            return _join_plot_label_parts([
+                self._variable_label,
+                self._device_label,
+                self._bus_label,
+            ])
 
 
 class DynamicPlotCandidate:
@@ -526,6 +602,7 @@ class DynamicPlotCandidate:
         "_device_type",
         "_device_idtag",
         "_device_label",
+        "_bus_label",
         "_variable_name",
         "_result_path_kind",
         "_curve_label",
@@ -539,6 +616,7 @@ class DynamicPlotCandidate:
                  device_type: DeviceType,
                  device_idtag: str,
                  device_label: str,
+                 bus_label: str,
                  variable_name: str,
                  result_path_kind: str,
                  curve_label: str,
@@ -549,6 +627,7 @@ class DynamicPlotCandidate:
         self._device_type: DeviceType = device_type
         self._device_idtag: str = device_idtag
         self._device_label: str = device_label
+        self._bus_label: str = bus_label
         self._variable_name: str = variable_name
         self._result_path_kind: str = result_path_kind
         self._curve_label: str = curve_label
@@ -584,7 +663,11 @@ class DynamicPlotCandidate:
         if has_multiple_sources:
             return self._curve_label
         else:
-            return self._variable_name
+            return _join_plot_label_parts([
+                self._variable_name,
+                self._device_label,
+                self._bus_label,
+            ])
 
     def to_payload(self) -> str:
         """
@@ -1428,6 +1511,7 @@ class DynamicsResultsHandler:
             for device, variables in devices_data.items():
                 if isinstance(device, (DynamicDevice, DynamicBusDevice)):
                     device_label: str = _get_device_label(device=device)
+                    bus_label: str = _get_device_bus_label(device=device)
                     variable: Var
                     for variable in variables:
                         result_path_kind: str = self._get_pre_simulation_result_path_kind(device=device, variable=variable)
@@ -1440,9 +1524,15 @@ class DynamicsResultsHandler:
                                 device_type=device_tpe,
                                 device_idtag=str(device.idtag),
                                 device_label=device_label,
+                                bus_label=bus_label,
                                 variable_name=variable.name,
                                 result_path_kind=result_path_kind,
-                                curve_label=device_label + " - " + variable.name + " - " + str(group_asset.name),
+                                curve_label=_join_plot_label_parts([
+                                    variable.name,
+                                    device_label,
+                                    bus_label,
+                                    str(group_asset.name),
+                                ]),
                                 var=variable,
                             )
                             entries: List[DynamicPlotCandidate] = candidates_by_var_uid.get(variable.uid, list())
@@ -2636,6 +2726,7 @@ class DynamicsResultsHandler:
             variables: List[Var]
             for device, variables in devices_data.items():
                 device_label: str = _get_device_label(device=device)
+                bus_label: str = _get_device_bus_label(device=device)
                 device_idtag: str = str(device.idtag)
 
                 variable_index: int
@@ -2665,6 +2756,7 @@ class DynamicsResultsHandler:
                             group_idx=group_idx,
                             source_label=source_label,
                             device_label=device_label,
+                            bus_label=bus_label,
                             variable_label=_get_var_label(variable=variable),
                         )
                         self.series_by_key.setdefault(key, list()).append(series)
