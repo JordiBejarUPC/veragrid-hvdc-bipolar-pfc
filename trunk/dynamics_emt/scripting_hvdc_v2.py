@@ -109,7 +109,7 @@ coupling_inductance_h: float = 30.0e-3
 
 # simulation_time_s: float = 0.5
 # simulation_time_s: float = 0.45
-simulation_time_s: float = 0.8
+simulation_time_s: float = 0.23
 time_step_s: float = 2.0e-5
 q_setpoint_1_mvar: float = 0.0
 q_setpoint_2_mvar: float = 0.0
@@ -344,19 +344,19 @@ events_group = EmtEventsGroup("simulation1")
 grid.add_emt_events_group(events_group)
 
 p_ext_events: list[tuple[float, float]] = [
+    (0.09, idle_power_pu),
+    (0.17, idle_power_pu),
     (0.2, idle_power_pu),
-    (0.35, idle_power_pu),
-    (0.40, idle_power_pu),
 ]
 
 vsc1_reference_events: list[tuple[float, float, Optional[float], DynamicEventTransitionType]] = [
-    (0.2, -transfer_power_pu, None, DynamicEventTransitionType.Step),
-    (0.35, -idle_power_pu, 0.4, DynamicEventTransitionType.Ramp),
+    (0.09, -transfer_power_pu, None, DynamicEventTransitionType.Step),
+    (0.17, -idle_power_pu, 0.2, DynamicEventTransitionType.Ramp),
 ]
 
 vsc2_reference_events: list[tuple[float, float, Optional[float], DynamicEventTransitionType]] = [
-    (0.2, transfer_power_pu, None, DynamicEventTransitionType.Step),
-    (0.35, idle_power_pu, 0.4, DynamicEventTransitionType.Ramp),
+    (0.09, transfer_power_pu, None, DynamicEventTransitionType.Step),
+    (0.17, idle_power_pu, 0.2, DynamicEventTransitionType.Ramp),
 ]
 
 vsc2_control1_var = build_name_to_var_lookup(converter_2_mdl).get("control1_val_vsc2_pseudo_emt")
@@ -416,7 +416,7 @@ emt_options: EmtOptions = EmtOptions(
     time_step=time_step_s,
     simulation_time=simulation_time_s,
     tolerance=1e-6,
-    solver_type=EmtSolverTypes.StructuralCompiled,
+    solver_type=EmtSolverTypes.StructuralAD,
     initialization_method=EmtInitializationMethod.Explicit,
     integration_method=DynamicIntegrationMethod.DaeTrapezoidal,
     verbose=1,
