@@ -1943,6 +1943,33 @@ class CgmesTopologyMode(Enum):
             return s
 
 
+class CgmesBoundaryPlaceholderMode(Enum):
+    """
+    Boundary placeholder creation mode for CGMES conversion.
+    """
+    Always = "Always"
+    KnownBoundaryOnly = "KnownBoundaryOnly"
+    Never = "Never"
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return CgmesBoundaryPlaceholderMode[s]
+        except KeyError:
+            return s
+
+
 class SparseSolver(Enum):
     """
     Sparse solvers to use

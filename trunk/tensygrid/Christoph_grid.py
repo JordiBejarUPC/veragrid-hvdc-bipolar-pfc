@@ -1,6 +1,8 @@
 import numpy as np
 import VeraGridEngine.api as vge
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_rms_model
+import pandas as  pd
+import pickle
 
 # Configuración base extraída de 'global.csv'
 Sbase = 100.0
@@ -101,3 +103,83 @@ if pf_results.converged:
         print(f"    {bus_name}: Vm={abs(v_complex):.4f} pu, Angle={np.angle(v_complex, deg=True):.2f}°")
 else:
     print("  ✗ Power flow failed")
+
+# Define la ruta a tu archivo de Excel
+excel_path = "WSCC_SG_GFOR_GFOL.xlsx"
+
+# 1. Leer las hojas de datos necesarias empleando pandas
+df_pf = pd.read_excel(excel_path, sheet_name="PF")
+df_ac = pd.read_excel(excel_path, sheet_name="AC-NET")
+df_sg = pd.read_excel(excel_path, sheet_name="SG")
+df_vsc = pd.read_excel(excel_path, sheet_name="VSC")
+
+# Hojas que podrían estar vacías (con manejo de excepciones defensivo)
+try:
+    df_dc = pd.read_excel(excel_path, sheet_name="DC-NET")
+    n_hvdc = len(df_dc)
+    hvdc_names = df_dc["number"].astype(str).values if n_hvdc > 0 else np.array([], dtype=str)
+except Exception:
+    n_hvdc = 0
+    hvdc_names = np.array([], dtype=str)
+
+try:
+    df_shunt = pd.read_excel(excel_path, sheet_name="SHUNT")
+    n_sh = len(df_shunt)
+    sh_names = df_shunt["number"].astype(str).values if n_sh > 0 else np.array([], dtype=str)
+except Exception:
+    n_sh = 0
+    sh_names = np.array([], dtype=str)
+
+# Elementos no presentes en el Excel (inicializados a cero)
+n_batt = 0
+batt_names = np.array([], dtype=str)
+
+# 2. Extraer dinámicamente los tamaños y nombres
+bus_names = df_pf["bus"].astype(str).values
+n = len(bus_names)
+
+branch_names = df_ac["number"].astype(str).values
+m = len(branch_names)
+
+gen_names = df_sg["number"].astype(str).values
+n_gen = len(gen_names)
+
+vsc_names = df_vsc["number"].astype(str).values
+n_vsc = len(vsc_names)
+
+# Asignación simple de tipos de barra (puedes adaptarla según tu convención)
+bus_types = np.zeros(n, dtype=int)
+
+# 3. Crear el objeto con las dimensiones y vectores reales de tu red
+resultados = vge.PowerFlowResults(
+    n=n, m=m, n_hvdc=n_hvdc, n_vsc=n_vsc, n_gen=n_gen, n_batt=n_batt, n_sh=n_sh,
+    bus_names=bus_names,
+    branch_names=branch_names,
+    hvdc_names=hvdc_names,
+    vsc_names=vsc_names,
+    gen_names=gen_names,
+    batt_names=batt_names,
+    sh_names=sh_names,
+    bus_types=bus_types
+)
+
+# 4. Inyectar los voltajes complejos calculados (de la pestaña PF)
+theta_rad = np.radians(df_pf["theta"].values)
+resultados.voltage = df_pf["Vm"].values * np.exp(1j * theta_rad)
+
+# 5. Extraer y asignar datos de generación que también venían en las pestañas
+resultados.gen_p = df_sg["P"].values  # Potencia activa del generador síncrono
+resultados.gen_q = df_sg["Q"].values  # Potencia reactiva del generador síncrono
+
+# Opcional: Verificar los dataframes generados por tu propia clase
+print("Resultados por Barra:")
+print(resultados.get_bus_df())
+
+pf_results = resultados
+for bus_name, v_complex in zip(grid.get_bus_names(), resultados.voltage):
+    print(f"    {bus_name}: Vm={abs(v_complex):.4f} pu, Angle={np.angle(v_complex, deg=True):.2f}°")
+
+with open("Christoph_PF.pkl", "wb") as f:
+    pickle.dump(resultados, f)
+
+print("¡Objeto guardado correctamente!")
