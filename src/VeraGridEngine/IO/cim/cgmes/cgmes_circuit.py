@@ -110,6 +110,35 @@ class ReferenceResolutionContext:
         return recovery_result
 
 
+class ReferenceRecoveryMetrics:
+    """
+    Mutable counters for tolerant CGMES recovery operations.
+    """
+    __slots__ = (
+        "recovered_enum_count",
+        "tolerated_enum_failure_count",
+        "deferred_reference_resolved_count",
+        "deferred_reference_unresolved_count",
+    )
+
+    def __init__(self):
+        self.recovered_enum_count: int = 0
+        self.tolerated_enum_failure_count: int = 0
+        self.deferred_reference_resolved_count: int = 0
+        self.deferred_reference_unresolved_count: int = 0
+
+    def total_recovery_events(self) -> int:
+        """
+        Count all recovery events.
+
+        :return: Total number of recovery events.
+        """
+        return (self.recovered_enum_count +
+                self.tolerated_enum_failure_count +
+                self.deferred_reference_resolved_count +
+                self.deferred_reference_unresolved_count)
+
+
 def find_attribute(obj: CGMES_ASSETS,
                    property_name: str,
                    association_inverse_dict: Dict[Tuple[str, str], str]):
@@ -384,13 +413,69 @@ def resolve_reference_token(token: str,
     return result_ambiguous
 
 
+def normalize_enum_token(raw_value: str) -> List[str]:
+    """
+    Build normalized enum token candidates from one raw value.
+
+    :param raw_value: Raw enum token as parsed from CGMES
+    :return: Ordered unique candidate tokens
+    """
+    tokens: List[str] = list()
+    token: str = raw_value.strip()
+    if token == "":
+        return tokens
+    else:
+        pass
+
+    chunks: List[str] = token.split('.')
+    tail: str = chunks[-1]
+    for candidate in [tail, tail.lower(), tail.upper(), tail.capitalize()]:
+        if candidate not in tokens:
+            tokens.append(candidate)
+        else:
+            pass
+    return tokens
+
+
+def log_reference_not_found(logger: DataLogger,
+                            target_element: CGMES_ASSETS,
+                            target_class_name: str,
+                            target_property_name: str,
+                            expected_reference: str) -> None:
+    """
+    Log missing-reference diagnostics with boundary-aware severity.
+
+    :param logger: Logger instance
+    :param target_element: Element where the unresolved reference was found
+    :param target_class_name: Element class name
+    :param target_property_name: Property name holding the unresolved token
+    :param expected_reference: Unresolved token value
+    :return: Nothing
+    """
+    if target_element.boundary_set:
+        logger.add_warning(msg='Reference not found in boundary context',
+                           device=target_element.rdfid,
+                           device_class=target_class_name,
+                           device_property=target_property_name,
+                           value='Not found',
+                           expected_value=expected_reference)
+    else:
+        logger.add_error(msg='Reference not found',
+                         device=target_element.rdfid,
+                         device_class=target_class_name,
+                         device_property=target_property_name,
+                         value='Not found',
+                         expected_value=expected_reference)
+
+
 def find_references(elements_by_type: Dict[str, List[CGMES_ASSETS]],
                     all_objects_dict: Dict[str, CGMES_ASSETS],
                     all_objects_dict_boundary: Union[Dict[str, CGMES_ASSETS], None],
                     association_inverse_dict: Dict[Tuple[str, str], str],
                     logger: DataLogger,
                     mark_used: bool,
-                    recovery_mode: CgmesRecoveryMode = CgmesRecoveryMode.Auto) -> None:
+                    recovery_mode: CgmesRecoveryMode = CgmesRecoveryMode.Auto,
+                    recovery_metrics: Union[ReferenceRecoveryMetrics, None] = None) -> None:
     """
     Replaces the references in the "actual" properties of the objects
     :param elements_by_type: Dictionary of elements by type to fill in (same as all_objects_dict but by categories)
@@ -404,33 +489,13 @@ def find_references(elements_by_type: Dict[str, List[CGMES_ASSETS]],
     :param association_inverse_dict: Containing the name of the attributes which associate with each other.
     """
     added_from_the_boundary_set = list()
+    deferred_reference_queue: List[Tuple[CGMES_ASSETS, str, str, object, bool]] = list()
     reference_context = ReferenceResolutionContext(
         all_objects_dict=all_objects_dict,
         all_objects_dict_boundary=all_objects_dict_boundary,
         recovery_mode=recovery_mode
     )
-
-    def log_reference_not_found(target_element: CGMES_ASSETS,
-                                target_class_name: str,
-                                target_property_name: str,
-                                expected_reference: str) -> None:
-        """
-        Boundary profile objects are often intentionally incomplete.
-        """
-        if target_element.boundary_set:
-            logger.add_warning(msg='Reference not found in boundary context',
-                               device=target_element.rdfid,
-                               device_class=target_class_name,
-                               device_property=target_property_name,
-                               value='Not found',
-                               expected_value=expected_reference)
-        else:
-            logger.add_error(msg='Reference not found',
-                             device=target_element.rdfid,
-                             device_class=target_class_name,
-                             device_property=target_property_name,
-                             value='Not found',
-                             expected_value=expected_reference)
+    enum_recovery_enabled: bool = (recovery_mode != CgmesRecoveryMode.Strict)
 
     # Resolve only properties that were actually present in the XML.
     # Missing mandatory properties are reported explicitly in a second pass.
@@ -475,19 +540,42 @@ def find_references(elements_by_type: Dict[str, List[CGMES_ASSETS]],
                     elif isinstance(cim_prop.class_type, Enum) or isinstance(cim_prop.class_type, EnumMeta):
 
                         if isinstance(value, str):
-                            chunks = value.split('.')
-                            value2 = chunks[-1]
-                            try:
-                                enum_val = cim_prop.class_type(value2)
+                            enum_token_candidates = normalize_enum_token(raw_value=value)
+                            enum_val = None
+                            for enum_token in enum_token_candidates:
+                                try:
+                                    enum_val = cim_prop.class_type(enum_token)
+                                    if enum_token != enum_token_candidates[0]:
+                                        if recovery_metrics is not None:
+                                            recovery_metrics.recovered_enum_count += 1
+                                        logger.add_warning(msg='Recovered enum value using tolerant normalization',
+                                                           device=element.rdfid,
+                                                           device_class=class_name,
+                                                           device_property=property_name,
+                                                           value=value,
+                                                           expected_value=str(cim_prop.class_type))
+                                    break
+                                except (TypeError, ValueError):
+                                    continue
+
+                            if enum_val is not None:
                                 element.set_declared_property_value(prop_name=property_name,
                                                                     prop_value=enum_val)
-
-                            except (TypeError, ValueError):
+                            elif enum_recovery_enabled and len(enum_token_candidates) > 0:
+                                if recovery_metrics is not None:
+                                    recovery_metrics.tolerated_enum_failure_count += 1
+                                logger.add_warning(msg='Could not convert Enum',
+                                                   device=element.rdfid,
+                                                   device_class=class_name,
+                                                   device_property=property_name,
+                                                   value=enum_token_candidates[0] + " (value)",
+                                                   expected_value=str(cim_prop.class_type))
+                            else:
                                 logger.add_error(msg='Could not convert Enum',
                                                  device=element.rdfid,
                                                  device_class=class_name,
                                                  device_property=property_name,
-                                                 value=value2 + " (value)",
+                                                 value=value + " (value)",
                                                  expected_value=str(cim_prop.class_type))
 
                     else:
@@ -539,24 +627,7 @@ def find_references(elements_by_type: Dict[str, List[CGMES_ASSETS]],
                                 element.set_declared_property_value(prop_name=property_name,
                                                                     prop_value=None)
 
-                                if hasattr(element, 'rdfid'):
-                                    log_reference_not_found(target_element=element,
-                                                            target_class_name=class_name,
-                                                            target_property_name=property_name,
-                                                            expected_reference=value)
-                                    if is_ambiguous:
-                                        logger.add_warning(msg='Ambiguous reference during tolerant resolution',
-                                                           device=element.rdfid,
-                                                           device_class=class_name,
-                                                           device_property=property_name,
-                                                           value=value)
-                                else:
-                                    logger.add_error(msg='Reference not found for (debugger error)',
-                                                     device=element.rdfid,
-                                                     device_class=class_name,
-                                                     device_property=property_name,
-                                                     value='Not found',
-                                                     expected_value=value)
+                                deferred_reference_queue.append((element, class_name, property_name, value, is_ambiguous))
                         else:
                             referenced_object_list = set()
                             for v in value:
@@ -605,24 +676,7 @@ def find_references(elements_by_type: Dict[str, List[CGMES_ASSETS]],
                                     element.set_declared_property_value(prop_name=property_name,
                                                                         prop_value=None)
 
-                                    if hasattr(element, 'rdfid'):
-                                        log_reference_not_found(target_element=element,
-                                                                target_class_name=class_name,
-                                                                target_property_name=property_name,
-                                                                expected_reference=v)
-                                        if is_ambiguous:
-                                            logger.add_warning(msg='Ambiguous reference during tolerant resolution',
-                                                               device=element.rdfid,
-                                                               device_class=class_name,
-                                                               device_property=property_name,
-                                                               value=v)
-                                    else:
-                                        logger.add_error(msg='Reference not found for (debugger error)',
-                                                         device=element.rdfid,
-                                                         device_class=class_name,
-                                                         device_property=property_name,
-                                                         value='Not found',
-                                                         expected_value=v)
+                                    deferred_reference_queue.append((element, class_name, property_name, v, is_ambiguous))
                             if len(referenced_object_list) > 1:
                                 element.set_declared_property_value(prop_name=property_name,
                                                                     prop_value=list(referenced_object_list))
@@ -664,6 +718,43 @@ def find_references(elements_by_type: Dict[str, List[CGMES_ASSETS]],
         else:
             elements_by_type[referenced_object.tpe] = [referenced_object]
 
+    if len(deferred_reference_queue) > 0:
+        retry_reference_context = ReferenceResolutionContext(
+            all_objects_dict=all_objects_dict,
+            all_objects_dict_boundary=all_objects_dict_boundary,
+            recovery_mode=recovery_mode
+        )
+
+        for element, class_name, property_name, raw_value, was_ambiguous in deferred_reference_queue:
+            if isinstance(raw_value, str):
+                referenced_object, _, is_ambiguous = retry_reference_context.resolve(token=raw_value)
+                ambiguous_value = was_ambiguous or is_ambiguous
+                if referenced_object is not None:
+                    if recovery_metrics is not None:
+                        recovery_metrics.deferred_reference_resolved_count += 1
+                    element.set_declared_property_value(prop_name=property_name, prop_value=referenced_object)
+                    continue
+                expected_reference = raw_value
+            else:
+                expected_reference = str(raw_value)
+                ambiguous_value = was_ambiguous
+
+                log_reference_not_found(logger=logger,
+                                        target_element=element,
+                                        target_class_name=class_name,
+                                        target_property_name=property_name,
+                                        expected_reference=expected_reference)
+            if ambiguous_value:
+                logger.add_warning(msg='Ambiguous reference during tolerant resolution',
+                                   device=element.rdfid,
+                                   device_class=class_name,
+                                   device_property=property_name,
+                                   value=expected_reference)
+            else:
+                pass
+            if recovery_metrics is not None:
+                recovery_metrics.deferred_reference_unresolved_count += 1
+
 
 def convert_data_to_objects(data: Dict[str, Dict[str, Dict[str, str]]],
                             all_objects_dict: Dict[str, CGMES_ASSETS],
@@ -672,7 +763,8 @@ def convert_data_to_objects(data: Dict[str, Dict[str, Dict[str, str]]],
                             class_dict: Dict[str, CGMES_ASSETS],
                             association_inverse_dict,
                             logger: DataLogger,
-                            cgmes_recovery_mode: CgmesRecoveryMode = CgmesRecoveryMode.Auto) -> None:
+                            cgmes_recovery_mode: CgmesRecoveryMode = CgmesRecoveryMode.Auto,
+                            recovery_metrics: Union[ReferenceRecoveryMetrics, None] = None) -> None:
     """
     Convert CGMES data dictionaries to proper CGMES objects
     :param data: source data to convert
@@ -719,7 +811,8 @@ def convert_data_to_objects(data: Dict[str, Dict[str, Dict[str, str]]],
                         association_inverse_dict=association_inverse_dict,
                         logger=logger,
                         mark_used=True,
-                        recovery_mode=cgmes_recovery_mode)
+                        recovery_mode=cgmes_recovery_mode,
+                        recovery_metrics=recovery_metrics)
 
 
 def _normalize_cgmes_property_name(raw_property_name: str, class_name: str) -> str:
@@ -940,7 +1033,8 @@ class CgmesCircuit(BaseCircuit):
                  text_func: Union[Callable, None] = None,
                  progress_func: Union[Callable, None] = None,
                  logger=DataLogger(),
-                 cgmes_recovery_mode: CgmesRecoveryMode = CgmesRecoveryMode.Auto):
+                 cgmes_recovery_mode: CgmesRecoveryMode = CgmesRecoveryMode.Auto,
+                 cgmes_recovery_event_threshold: Union[int, None] = None):
         """
         CIM circuit constructor
         :param cgmes_version:
@@ -954,6 +1048,7 @@ class CgmesCircuit(BaseCircuit):
         self.cgmes_version: CGMESVersions = cgmes_version
         self.cgmes_map_areas_like_raw = cgmes_map_areas_like_raw
         self.cgmes_recovery_mode: CgmesRecoveryMode = cgmes_recovery_mode
+        self.cgmes_recovery_event_threshold: Union[int, None] = cgmes_recovery_event_threshold
         self.logger: DataLogger = logger
 
         self.text_func = text_func
@@ -1043,12 +1138,14 @@ class CgmesCircuit(BaseCircuit):
                                 class_dict=self.cgmes_assets.class_dict,
                                 association_inverse_dict=self.cgmes_assets.association_inverse_dict,
                                 logger=self.logger,
-                                cgmes_recovery_mode=self.cgmes_recovery_mode)
+                                cgmes_recovery_mode=self.cgmes_recovery_mode,
+                                recovery_metrics=None)
 
         self.emit_progress(33)
         # convert the dictionaries to the internal class model,
         # this marks as used only the boundary set objects that are referenced,
         # this allows to delete_with_dialogue the excess of boundary set objects later
+        recovery_metrics = ReferenceRecoveryMetrics()
         convert_data_to_objects(data=self.data,
                                 all_objects_dict=self.all_objects_dict,
                                 all_objects_dict_boundary=self.all_objects_dict_boundary,
@@ -1056,7 +1153,22 @@ class CgmesCircuit(BaseCircuit):
                                 class_dict=self.cgmes_assets.class_dict,
                                 association_inverse_dict=self.cgmes_assets.association_inverse_dict,
                                 logger=self.logger,
-                                cgmes_recovery_mode=self.cgmes_recovery_mode)
+                                cgmes_recovery_mode=self.cgmes_recovery_mode,
+                                recovery_metrics=recovery_metrics)
+
+        if self.cgmes_recovery_event_threshold is not None:
+            if recovery_metrics.total_recovery_events() > self.cgmes_recovery_event_threshold:
+                self.logger.add_error(
+                    msg="CGMES recovery event threshold exceeded",
+                    device_class="CgmesCircuit",
+                    device_property="cgmes_recovery_event_threshold",
+                    value=recovery_metrics.total_recovery_events(),
+                    expected_value=self.cgmes_recovery_event_threshold
+                )
+            else:
+                pass
+        else:
+            pass
 
         # Assign the data from all_objects_dict to the appropriate lists in the circuit
         self.emit_progress(42)
