@@ -12,7 +12,7 @@ This is the realistic sequence: fault occurs → VSCs trip → fault clears →
 system reaches a new steady state WITHOUT the tripped VSCs.
 """
 import sys
-sys.path.insert(0, '/Users/Josep/Desktop/VeraGrid/src')
+sys.path.insert(0, '/Users/josep/Desktop/VeraGrid/src')
 
 import numpy as np
 import json
@@ -24,9 +24,9 @@ from VeraGridEngine.enumerations import FaultType, MethodShortCircuit, SolverTyp
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions
 from VeraGridEngine.Simulations.ShortCircuitStudies.short_circuit_options import ShortCircuitOptions
 from VeraGridEngine.Simulations.ShortCircuitStudies.short_circuit_driver import ShortCircuitDriver
-from VeraGridEngine.Devices.Aggregation.short_cirtcuit_event import ShortCircuitEvent
+from VeraGridEngine.Devices.Events.short_cirtcuit_event import ShortCircuitEvent
 
-FILEPATH = '/Users/Josep/Desktop/VeraGrid/trunk/flexdis/ieee33_flexdis.veragrid'
+FILEPATH = '/Users/josep/Desktop/VeraGrid/trunk/flexdis/ieee33_flexdis.veragrid'
 FAULT_BUS = 8  # Bus 9
 PF_OPTIONS = PowerFlowOptions(solver_type=SolverType.NR, retry_with_other_methods=False)
 
@@ -52,10 +52,6 @@ def run_analysis(min_ac_v, label):
 
     # --- 2. SC at fault bus ---
     grid2 = gce.open_file(FILEPATH)
-    for bus in grid2.buses:
-        if not bus.is_dc:
-            bus.r_fault = 1e-6
-            bus.x_fault = 1e-6
     for vsc in grid2.vsc_devices:
         vsc.min_ac_voltage = min_ac_v
 
@@ -63,7 +59,8 @@ def run_analysis(min_ac_v, label):
     grid2._short_circuit_events = []
     sc_event = ShortCircuitEvent(
         device=grid2.buses[FAULT_BUS], fault_type=FaultType.LLLG,
-        method=MethodShortCircuit.sequences_vsc, active=True)
+        method=MethodShortCircuit.sequences_vsc, active=True,
+        r_fault=1e-6, x_fault=1e-6)
     grid2.add_short_circuit_event(sc_event)
 
     sc_driver = ShortCircuitDriver(grid=grid2, options=ShortCircuitOptions(),
@@ -149,6 +146,6 @@ for bn in bus_names:
         print(f"  {bn:<12s} {h:.4f}    {pa:.4f}    {pb:.4f}    {pc:.4f}")
 
 # Save
-with open('/Users/Josep/Desktop/VeraGrid/trunk/flexdis/docs/postfault_results.json', 'w') as f:
+with open('/Users/josep/Desktop/VeraGrid/trunk/flexdis/docs/postfault_results.json', 'w') as f:
     json.dump(results, f, indent=2)
 print(f"\nResults saved.")
