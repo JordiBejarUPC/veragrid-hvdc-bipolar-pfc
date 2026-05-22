@@ -122,17 +122,22 @@ class EmtSimulationDriver(DriverTemplate):
 
 
         # create the results
+        # The results container keeps the full declared event-group layout so
+        # downstream code can preserve stable event-group identities. The extra
+        # availability mask records which of those declared groups are actually
+        # simulated in this run, which is the information the plot binder needs.
+        has_event_group_results: np.ndarray = np.array([bool(elm.active) for elm in emt_events_groups], dtype=bool)
         self.results = EmtResults(
             time_array=pd.DatetimeIndex(pd.to_datetime(t * 1e9)),
             emt_events_group_names=emt_events_group_names,
             emt_events_group_idtags=emt_events_group_idtags,
             variables=self.problem.state_and_algebraic_vars(),
             diff_variables=self.problem.get_diff_vars(),
-            has_event_group_results=np.array([bool(elm.active) for elm in emt_events_groups], dtype=bool),
             uid2idx_vars=self.problem.uid2idx_vars,
             uid2idx_diff=self.problem.uid2idx_diff,
             vars_glob_name2uid=self.problem.vars_glob_name2uid,
-            devices_vars_info=self.problem.get_device_vars_dict()
+            devices_vars_info=self.problem.get_device_vars_dict(),
+            has_event_group_results=has_event_group_results,
         )
 
         newton_diag_config = NewtonDiagnosticsConfig(

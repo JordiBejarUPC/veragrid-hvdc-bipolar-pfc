@@ -1652,6 +1652,9 @@ class DynamicsResultsHandler:
         columns for every declared group, so this method prevents unresolved
         plot entries from binding to placeholder arrays.
         """
+        # The results objects now expose an explicit boolean mask so the binder
+        # can decide availability from actual runtime data presence instead of
+        # inferring it from allocated array shape or declared event-group count.
         has_results_flags: Optional[np.ndarray] = None
 
         if type(results) == RmsResults:
@@ -1662,6 +1665,9 @@ class DynamicsResultsHandler:
             else:
                 raise Exception("Unsupported dynamics results type")
 
+        # Out-of-range indexes are treated as unresolved so the broader dynamic
+        # plotting algorithm falls back to the persistent pending entry instead
+        # of guessing a replacement series.
         if group_idx < 0 or group_idx >= len(has_results_flags):
             return False
         else:
@@ -2885,6 +2891,8 @@ class DynamicsResultsHandler:
                 variable_index: int
                 variable: Var
                 for variable_index, variable in enumerate(variables):
+                    result_path: str
+                    component_index: int
                     result_path, component_index = self._resolve_result_path_and_component_index(variable=variable)
                     scoped_result_path: str = result_path + ":" + variable.name
 
@@ -2895,6 +2903,11 @@ class DynamicsResultsHandler:
                         # produced runtime data. Declared-but-unsimulated groups
                         # stay available only as persistent unresolved entries.
                         if self._has_event_group_results(results=self.results, group_idx=group_idx):
+                            # The runtime series is created only when the exact
+                            # event-group column is backed by simulated data.
+                            # This preserves the declared event-group identity
+                            # while preventing placeholder zero columns from
+                            # entering the plottable runtime index.
                             key: DynamicResultSeriesKey = DynamicResultSeriesKey(
                                 simulation_type=self.results.study_results_type,
                                 source_id=self._build_source_id(results=self.results, group_idx=group_idx),
@@ -2917,6 +2930,10 @@ class DynamicsResultsHandler:
                             self.series_by_key.setdefault(key, list()).append(series)
                             self.series_by_var_uid.setdefault(variable.uid, list()).append(series)
                         else:
+                            # Unsimulated groups remain available only through
+                            # the persistent plot-entry assets so the UI can
+                            # keep them visible as pending instead of plotting
+                            # a fabricated numerical curve.
                             pass
 
         self.tree_model = build_dynamics_tree_model(

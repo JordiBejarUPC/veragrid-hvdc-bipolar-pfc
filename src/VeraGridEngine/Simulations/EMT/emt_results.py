@@ -5,7 +5,7 @@
 
 import numpy as np
 from matplotlib import pyplot as plt
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 from VeraGridEngine.Simulations.results_template import ResultsTemplate, ResultsProperty
 from VeraGridEngine.basic_structures import Vec, StrVec,  DateVec, Mat
@@ -53,20 +53,27 @@ class EmtResults(ResultsTemplate):
                  uid2idx_vars: Dict[int, int],
                  uid2idx_diff: Dict[int, int],
                  vars_glob_name2uid: Dict[str, int],
-                 devices_vars_info: Dict[ALL_DEV_TYPES, List[Var]],
-                 has_event_group_results: StrVec | None = None):
+                  devices_vars_info: Dict[ALL_DEV_TYPES, List[Var]],
+                  has_event_group_results: Optional[StrVec] = None):
         """
+        Build the EMT dynamic results container.
 
-        :param emt_events_group_names: names of the EMT groups simulated
-        :param time_array: Array of time steps
-        :param emt_events_group_idtags: Stable idtags of the EMT groups simulated.
-        :param variables: List of all variables (Redundant?)
-        :param diff_variables: List of all derivatives of variables (Redundant?)
+        :param time_array: Ordered simulation time samples.
+        :param emt_events_group_names: Ordered declared EMT event-group names.
+        :param emt_events_group_idtags: Ordered declared EMT event-group idtags.
+        :param variables: Exported EMT state/algebraic variables stored in ``values``.
+        :param diff_variables: Exported EMT differential variables stored in ``diff_values``.
+        :param uid2idx_vars: Mapping from variable uid to the ``values`` column index.
+        :param uid2idx_diff: Mapping from variable uid to the ``diff_values`` column index.
+        :param vars_glob_name2uid: Mapping from global variable label to variable uid.
+        :param devices_vars_info: Device-to-variable mapping used to rebuild the results tree.
         :param has_event_group_results: Boolean mask telling which event-group columns contain actual simulation data.
-        :param uid2idx_vars: Var uid to var index in values variables
-        :param uid2idx_diff: Var uid to var index in values diff vars
-        :param vars_glob_name2uid: dictionary relating var names to uid (WTF?)
-        :param devices_vars_info: dictionary relating the devices with a list of their simulation vars and diffvars
+        :return: None.
+
+        The results arrays are still allocated for every declared event group so
+        the storage layout remains stable across the simulation stack. The extra
+        availability mask is therefore needed to distinguish declared groups
+        from groups that actually produced runtime samples in the current run.
         """
         ResultsTemplate.__init__(
             self,
@@ -107,14 +114,18 @@ class EmtResults(ResultsTemplate):
         self.uid2idx.update(self.uid2idx_vars)
         self.uid2idx.update(self.uid2idx_diff)
         self.vars_glob_name2uid = vars_glob_name2uid
-        not_found_vars = list()
-        not_found_diff_vars = list()
+        not_found_vars: List[Var] = list()
+        not_found_diff_vars: List[Var] = list()
         for var in variables:
             if var.uid not in self.uid2vars_glob_name:
                 not_found_vars.append(var)
+            else:
+                pass
         for diff in diff_variables:
             if diff.uid not in self.uid2vars_glob_name:
                 not_found_diff_vars.append(diff)
+            else:
+                pass
 
         self.variable_array = np.array([self.uid2vars_glob_name[var.uid] for var in variables], dtype=str)
         self.values = np.zeros((self.nt, self.nv, self.ng), dtype=float)

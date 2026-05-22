@@ -49,15 +49,22 @@ class RmsResults(ResultsTemplate):
                  devices_vars_info: Dict[ALL_DEV_TYPES, List[Var]],
                  has_event_group_results: Optional[StrVec] = None):
         """
+        Build the RMS dynamic results container.
 
-        :param rms_events_group_names: names of the RMS groups simulated
-        :param time_array: Array of time steps
-        :param rms_events_group_idtags: Stable idtags of the RMS groups simulated.
-        :param variables: List of all variables (Redundant?)
+        :param time_array: Ordered simulation time samples.
+        :param rms_events_group_names: Ordered declared RMS event-group names.
+        :param rms_events_group_idtags: Ordered declared RMS event-group idtags.
+        :param variables: Exported RMS variables stored in ``values``.
+        :param uid2idx: Mapping from variable uid to the ``values`` column index.
+        :param vars_glob_name2uid: Mapping from global variable label to variable uid.
+        :param devices_vars_info: Device-to-variable mapping used to rebuild the results tree.
         :param has_event_group_results: Boolean mask telling which event-group columns contain actual simulation data.
-        :param uid2idx: Var uid to var index in values
-        :param vars_glob_name2uid: dictionary relating var names to uid (WTF?)
-        :param devices_vars_info: dictionary relating the devices with a list of their simulation vars
+        :return: None.
+
+        The results arrays are still allocated for every declared event group so
+        the storage layout remains stable across the simulation stack. The extra
+        availability mask is therefore needed to distinguish declared groups
+        from groups that actually produced runtime samples in the current run.
         """
         ResultsTemplate.__init__(
             self,

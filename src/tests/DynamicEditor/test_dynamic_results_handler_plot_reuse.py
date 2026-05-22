@@ -109,6 +109,7 @@ def build_rms_results(device_entries: Sequence[Tuple[FakeDynamicDevice, Sequence
     time_array: np.ndarray = np.array([0.0, 1.0], dtype=float)
     group_names: np.ndarray = np.array(["Group 1"], dtype=str)
     group_idtags: np.ndarray = np.array(["rms-group-1"], dtype=str)
+    has_event_group_results: np.ndarray = np.ones(len(group_names), dtype=bool)
     variables: List[Var] = list()
     uid2idx: Dict[int, int] = dict()
     vars_glob_name2uid: Dict[str, int] = dict()
@@ -131,10 +132,10 @@ def build_rms_results(device_entries: Sequence[Tuple[FakeDynamicDevice, Sequence
         rms_events_group_names=group_names,
         rms_events_group_idtags=group_idtags,
         variables=variables,
-        has_event_group_results=np.ones(len(group_names), dtype=bool),
         uid2idx=uid2idx,
         vars_glob_name2uid=vars_glob_name2uid,
         devices_vars_info=devices_vars_info,
+        has_event_group_results=has_event_group_results,
     )
 
     if len(variables) > 0:
@@ -155,6 +156,7 @@ def build_emt_results(device_entries: Sequence[Tuple[FakeDynamicDevice, Sequence
     time_array: np.ndarray = np.array([0.0, 1.0], dtype=float)
     group_names: np.ndarray = np.array(["Group 1"], dtype=str)
     group_idtags: np.ndarray = np.array(["emt-group-1"], dtype=str)
+    has_event_group_results: np.ndarray = np.ones(len(group_names), dtype=bool)
     variables: List[Var] = list()
     uid2idx_vars: Dict[int, int] = dict()
     uid2idx_diff: Dict[int, int] = dict()
@@ -179,11 +181,11 @@ def build_emt_results(device_entries: Sequence[Tuple[FakeDynamicDevice, Sequence
         emt_events_group_idtags=group_idtags,
         variables=variables,
         diff_variables=list(),
-        has_event_group_results=np.ones(len(group_names), dtype=bool),
         uid2idx_vars=uid2idx_vars,
         uid2idx_diff=uid2idx_diff,
         vars_glob_name2uid=vars_glob_name2uid,
         devices_vars_info=devices_vars_info,
+        has_event_group_results=has_event_group_results,
     )
 
     if len(variables) > 0:
@@ -210,10 +212,10 @@ def build_rms_results_with_unexported_device_var(device: FakeDynamicDevice,
         rms_events_group_names=np.array(["Group 1"], dtype=str),
         rms_events_group_idtags=np.array(["rms-group-1"], dtype=str),
         variables=[exported_var],
-        has_event_group_results=np.ones(1, dtype=bool),
         uid2idx={exported_var.uid: 0},
         vars_glob_name2uid={device.idtag + ":" + exported_var.name + ":" + str(exported_var.uid): exported_var.uid},
         devices_vars_info={device: [exported_var, unexported_var]},
+        has_event_group_results=np.ones(1, dtype=bool),
     )
     results.values[:, :, 0] = np.array([[0.0], [1.0]], dtype=float)
     return results
@@ -228,6 +230,9 @@ def build_rms_results_with_groups(device_entries: Sequence[Tuple[FakeDynamicDevi
     :param group_names: Ordered RMS event-group names.
     :return: RMS results object.
     """
+    # The helper intentionally reshapes the single-group fixture into a
+    # multi-group fixture so the binding tests can exercise event-group
+    # restoration logic without running full simulations.
     results: RmsResults = build_rms_results(device_entries=device_entries)
     results.rms_events_group_names = np.array(group_names, dtype=str)
     results.rms_events_group_idtags = np.array(
@@ -564,9 +569,9 @@ def test_dynamic_plot_keeps_unsimulated_rms_event_group_unresolved() -> None:
 
     handler.update_results(results=new_results)
 
-    group = handler.plot_groups.get_group(name="Plot 1")
+    group: object = handler.plot_groups.get_group(name="Plot 1")
     assert group is not None
-    group_entries = group.get_series()
+    group_entries: List[object] = group.get_series()
     assert len(group_entries) == 2
     assert isinstance(group_entries[0], DynamicPlotEntry) is False
     assert isinstance(group_entries[1], DynamicPlotEntry) is True
@@ -617,9 +622,9 @@ def test_dynamic_plot_keeps_unsimulated_emt_event_group_unresolved() -> None:
 
     handler.update_results(results=new_results)
 
-    group = handler.plot_groups.get_group(name="Plot 1")
+    group: object = handler.plot_groups.get_group(name="Plot 1")
     assert group is not None
-    group_entries = group.get_series()
+    group_entries: List[object] = group.get_series()
     assert len(group_entries) == 2
     assert isinstance(group_entries[0], DynamicPlotEntry) is False
     assert isinstance(group_entries[1], DynamicPlotEntry) is True
