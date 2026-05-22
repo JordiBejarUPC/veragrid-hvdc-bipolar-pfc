@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gc
 import math
 import sys
 from pathlib import Path
@@ -57,6 +58,15 @@ def _get_app() -> QtWidgets.QApplication:
         return QtWidgets.QApplication(sys.argv)
     else:
         return app
+
+
+def _collect_pending_resources() -> None:
+    """
+    Flush any leaked resources from earlier tests before this GUI test runs.
+    """
+
+    for generation in (0, 1, 2):
+        gc.collect(generation=generation)
 
 
 def _find_index_by_label(model: QtCore.QAbstractItemModel,
@@ -291,6 +301,7 @@ def test_rms_editor_exposes_basic_block_catalog_under_basic() -> None:
 
 
 def test_library_search_button_and_shortcut_filter_basic_catalog() -> None:
+    _collect_pending_resources()
     editor = _build_editor(DynamicSimulationMode.EMT)
     editor.raise_()
     QTest.qWaitForWindowExposed(editor)

@@ -897,12 +897,13 @@ class RmsProblemPhasor(RmsProblemTemplate):
 
             # m is for variable parameters
             for ep, eq in block_item.event_dict.items():
+                k = len(self._variable_parameters)
                 if ep.uid in self._uid2idx_event_params:
                     raise ValueError(f"Event parameter '{ep.name}' (uid={ep.uid}) is already registered in the system. "
                                    f"Previous device may have created a duplicate event parameter.")
-                self._compiler_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}[{self._n_event_params}]"
-                self._alias_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}_{self._n_event_params}"
-                self._uid2idx_event_params[ep.uid] = self._n_event_params
+                self._compiler_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}[{k}]"
+                self._alias_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}_{k}"
+                self._uid2idx_event_params[ep.uid] = k
                 self._variable_parameters.append(ep)
                 self._event_parameters_eqs.append(eq)
                 self._n_event_params += 1
@@ -996,11 +997,10 @@ class RmsProblemPhasor(RmsProblemTemplate):
         for j, dvar in enumerate(xdot):
             base_var = dvar.base_var
             col_idx = self._uid2idx_vars.get(base_var.uid, None)
-            if col_idx is None:
-                continue
-            E_value[:, col_idx] += E_partial[:, j]
-
-
+            if col_idx is not None:
+                E_value[:, col_idx] += E_partial[:, j]
+            else:    
+                pass
         E_value[:n_states, :n_states] -= np.eye(n_states, dtype=E_value.dtype)
 
         return E_value
@@ -1126,7 +1126,8 @@ class RmsProblemPhasor(RmsProblemTemplate):
 
     def update_variable_params(self, t: float, x_snapshot: Vec | None = None):
         """Update the variable parameters."""
-        self._variable_parameters_values = self._event_params_fn(self._variable_parameters_values, t)
+        self._variable_parameters_values[:self._n_event_params] = self._event_params_fn(self._variable_parameters_values, t)
+
 
     def initialize_fmu_cs_devices(self, x_snapshot: Vec, t: float = 0.0) -> None:
         """

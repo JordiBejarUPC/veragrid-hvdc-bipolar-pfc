@@ -11,6 +11,7 @@ This script creates the phasor problem manually and injects it into the SmallSig
 
 import sys
 from pathlib import Path
+import pickle
 
 project_base = Path(__file__).resolve().parents[2]
 src_path = project_base / "src"
@@ -41,6 +42,7 @@ from phasor_diagnostics import (
     print_bus_current_balance,
 )
 from scipy.optimize import linear_sum_assignment
+from types import MethodType
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_rms_model
 
 # GRID = "Texas 2000 + VSC"
@@ -55,7 +57,14 @@ from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_rms_mod
 """
 grid_folder = project_base / "Grids_and_profiles" / "grids"
 # GRID = "IEEE 118.xlsx"
-GRID = "IEEE 9 Bus.gridcal"
+GRID = "IEEE_9_Christoph.gridcal"
+
+if GRID == "IEEE_9_Christoph.gridcal":
+    CHRISTOPH_COMPARISON = True
+else:
+    CHRISTOPH_COMPARISON = False
+
+
 USE_CACHED_BUILDER = False
 BUILDER_CACHE_FILE = f'trunk/tensygrid/precomputed_builds/{GRID}.pkl'
 
@@ -67,7 +76,7 @@ FULL_GRID_PATH = str(grid_folder / GRID)
 FAST_GRID_PATH = FULL_GRID_PATH
 PRINT_ALL_BUSES = LOGS
 ENABLE_POST_COMPARE_PLOT = LOGS
-RUN_DYNAMIC_STEP = False
+RUN_DYNAMIC_STEP = True
 RUN_CONSISTENCY_CHECK = False
 RUN_PF_LINE_EQ_CHECK = False
 RUN_EXCITER_DIAGNOSTICS = False
@@ -100,16 +109,20 @@ def define_problem_with_path(grid_path):
     """Creates the grid, runs the power flow, and returns the phasor problem."""
     print("\n[1] Creating phasor grid_path...")
     grid = vge.open_file(grid_path)
+    ensure_unique_device_names(grid)
 
     # Build RMS models
     # Things we need to add: buses, branches, generators, transformers, loads, shunts
 
     ## BUSES:
     for bus in grid.buses:
-        busec = vge.initialize_bus_phasor_rms(bus, vf=grid.var_factory)
+        if bus.rms_model.empty():
+            busec = vge.initialize_bus_phasor_rms(bus, vf=grid.var_factory)
 
     ## -GENERATORS
     for igen, gen in enumerate(grid.generators):
+        if not gen.rms_model.empty():
+            continue
         genqec = vge.get_complete_generator_template_phasor(grid.var_factory, name=f"Gen{igen}").block
 
         grid.var_factory.add_connections([genqec.in_vars[0]], [gen.bus.rms_model.out_vars[0]])
@@ -119,6 +132,8 @@ def define_problem_with_path(grid_path):
 
     ## -LINES:
     for line in grid.lines:
+        if not line.rms_model.empty():
+            continue
         lineec = vge.get_line_phasor_rms_template(grid.var_factory, name=line.name).block
         grid.var_factory.add_connections([lineec.in_vars[0]], [line.bus_from.rms_model.out_vars[0]])
         grid.var_factory.add_connections([lineec.in_vars[1]], [line.bus_from.rms_model.out_vars[1]])
@@ -128,6 +143,8 @@ def define_problem_with_path(grid_path):
         set_rms_model(device=line, model=lineec, var_factory=grid.var_factory)
     ## -LOADS:
     for load in grid.loads:
+        if not load.rms_model.empty():
+            continue
         loadec = vge.get_load_phasor_current_rms_template(grid.var_factory, name=load.name).block
         grid.var_factory.add_connections([loadec.in_vars[0]], [load.bus.rms_model.out_vars[0]])
         grid.var_factory.add_connections([loadec.in_vars[1]], [load.bus.rms_model.out_vars[1]])
@@ -135,6 +152,8 @@ def define_problem_with_path(grid_path):
         set_rms_model(device=load, model=loadec, var_factory=grid.var_factory)
     ## -TRANSFORMERS 2w:
     for trafo in grid.transformers2w:
+        if not trafo.rms_model.empty():
+            continue
         trafoec = vge.initialize_trafo_rms(trafo, grid.var_factory, use_phasor_template=True).block
         grid.var_factory.add_connections([trafoec.in_vars[0]], [trafo.bus_from.rms_model.out_vars[0]])
         grid.var_factory.add_connections([trafoec.in_vars[1]], [trafo.bus_from.rms_model.out_vars[1]])
@@ -144,6 +163,8 @@ def define_problem_with_path(grid_path):
         set_rms_model(device=trafo, model=trafoec, var_factory=grid.var_factory)
     ## -SHUNTS (load like):
     for shunt in grid.shunts:
+        if not shunt.rms_model.empty():
+            continue
         shuntec = vge.get_shunt_template(grid.var_factory, name=shunt.name, phasor=True).block
         grid.var_factory.add_connections([shuntec.in_vars[0]], [shunt.bus.rms_model.out_vars[0]])
         grid.var_factory.add_connections([shuntec.in_vars[1]], [shunt.bus.rms_model.out_vars[1]])
@@ -151,6 +172,7 @@ def define_problem_with_path(grid_path):
         set_rms_model(device=shunt, model=shuntec, var_factory=grid.var_factory)
 
     # TRANSFORMERS 3W: Not present in existing grids and not supported
+    sanitize_runtime_parameter_names(grid)
     print("  ✓ Grid with path loaded")
 
     # ===================================================================
@@ -161,6 +183,7 @@ def define_problem_with_path(grid_path):
     # pf_options = vge.PowerFlowOptions(tolerance=1e-13)
     pf_options = vge.PowerFlowOptions(tolerance=1e-5)
     pf_results = vge.power_flow(grid, pf_options)
+
 
     if pf_results.converged:
         print(f"  ✓ Power flow converged")
@@ -174,6 +197,11 @@ def define_problem_with_path(grid_path):
     else:
         print("  ✗ Power flow failed")
         return False
+
+
+    if CHRISTOPH_COMPARISON:
+        with open("Christoph_PF.pkl", "rb") as f:
+            pf_results = pickle.load(f)
 
     if RUN_PF_LINE_EQ_CHECK:
         check_pf_line_equations(grid=grid, pf_results=pf_results)
@@ -213,6 +241,7 @@ def define_problem_with_path(grid_path):
     # ===================================================================
     if RUN_DYNAMIC_STEP:
         print("\n[3.1.1] Running dynamic simulation...")
+        ensure_problem_event_api(phasor_problem)
         dyn_t_end = DYNAMIC_SIM_TIME_FAST if FAST_MODE else DYNAMIC_SIM_TIME_FULL
         solver = BackEulerImplicitIntegration(
             problem=phasor_problem,
@@ -230,6 +259,61 @@ def define_problem_with_path(grid_path):
         )
     return phasor_problem
 
+
+def ensure_problem_event_api(problem):
+    """Provide no-op event API methods expected by BackEulerImplicitIntegration."""
+    if not hasattr(problem, "get_next_forced_event_time"):
+        def _get_next_forced_event_time(self, t_local_prev, t_macro_target):
+            return None
+        problem.get_next_forced_event_time = MethodType(_get_next_forced_event_time, problem)
+
+    if not hasattr(problem, "update"):
+        def _update(self, t, x_snapshot, variable_parameters):
+            return None
+        problem.update = MethodType(_update, problem)
+
+
+def sanitize_runtime_parameter_names(grid):
+    """Avoid name collisions between vars and runtime parameters per device."""
+    def _sanitize_block(block, tag):
+        block.unify_blocks()
+        all_syms = list(block.algebraic_vars) + list(block.state_vars) + list(block.diff_vars)
+        all_syms += list(block.event_dict.keys()) + list(block.mode_dict.keys())
+        seen = {}
+        for k, sym in enumerate(all_syms):
+            nm = str(sym.name)
+            if nm not in seen:
+                seen[nm] = 0
+                continue
+            seen[nm] += 1
+            sym.name = f"{nm}__{tag}_{seen[nm]}_{k}"
+
+    for i, dev in enumerate(grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True)):
+        if not dev.rms_model.empty():
+            _sanitize_block(dev.rms_model, f"br{i}")
+
+    for i, dev in enumerate(grid.get_injection_devices_iter()):
+        if not dev.rms_model.empty():
+            _sanitize_block(dev.rms_model, f"inj{i}")
+
+
+def ensure_unique_device_names(grid):
+    def _rename(devices, prefix):
+        seen = {}
+        for i, dev in enumerate(devices):
+            base = str(dev.name).strip() if getattr(dev, 'name', None) else f"{prefix}_{i}"
+            if base not in seen:
+                seen[base] = 0
+                dev.name = base
+            else:
+                seen[base] += 1
+                dev.name = f"{base}_{seen[base]}"
+
+    _rename(list(grid.generators), "gen")
+    _rename(list(grid.lines), "line")
+    _rename(list(grid.transformers2w), "trafo")
+    _rename(list(grid.loads), "load")
+    _rename(list(grid.shunts), "shunt")
 
 def define_problem():
     """Creates the grid, runs the power flow, and returns the phasor problem."""
@@ -485,7 +569,7 @@ def main():
 
     if not ENABLE_POST_COMPARE_PLOT:
         print("[FAST_MODE] Skipping eigenvalue reference matching and plotting")
-        raise SystemExit(0)
+        return
 
     reference_evs = [complex(x) for x in
                      ["(-20.000000001+0j)", "(-10.000000001+0j)", "(-50.00000013636582+0j)", "(-49.9999998638391+0j)",
