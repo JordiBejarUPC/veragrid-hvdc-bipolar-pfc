@@ -560,6 +560,7 @@ class ResultsMain(SimulationsMain):
             results=None,
             circuit=self.circuit,
             simulation_type=simulation_type,
+            dialog_parent=self,
         )
         self.dynamic_results_handler = handler
 

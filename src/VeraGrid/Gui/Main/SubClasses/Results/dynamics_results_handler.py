@@ -3,13 +3,14 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 import json
-from typing import Dict, List, Sequence, Set, Optional
+from typing import Callable, Dict, List, Sequence, Set, Optional
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
-from PySide6 import QtCore, QtGui
+from PySide6 import QtCore, QtGui, QtWidgets
 
 from VeraGrid.Gui.Icons.icon_associations import device_type_icons
+from VeraGrid.Gui.dynamic_events_editor_dialog import DynamicEventsGroupsDialog
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.Events.dynamic_plot import DynamicPlot
 from VeraGridEngine.Devices.Events.dynamic_plot_entry import DynamicPlotEntry
@@ -24,9 +25,152 @@ from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Simulations.Rms.rms_results import RmsResults
 from VeraGridEngine.Simulations.EMT.emt_results import EmtResults
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
-from VeraGridEngine.enumerations import DeviceType, StudyResultsType, PlotSimulationType
+from VeraGridEngine.enumerations import DeviceType, StudyResultsType, PlotSimulationType, DynamicSimulationMode
 from VeraGridEngine.Simulations.results_table import ResultsTable
 from VeraGrid.Gui.results_model import ResultsModel
+
+
+class DynamicEventsGroupsDialogProvider:
+    """
+    Build event-group creation dialogs for the pre-simulation plot workflow.
+    """
+
+    __slots__ = tuple()
+
+    def create_dialog(self,
+                      mode: DynamicSimulationMode,
+                      parent: QtWidgets.QWidget | None) -> DynamicEventsGroupsDialog:
+        """
+        Create one event-group name dialog.
+
+        :param mode: RMS or EMT mode requested by the caller.
+        :param parent: Optional dialog parent widget.
+        :return: Fresh dialog instance.
+        """
+        # The provider object keeps dialog construction explicit and typed,
+        # which avoids storing function pointers on the handler state.
+        return DynamicEventsGroupsDialog(mode=mode, parent=parent)
+
+
+def _get_dynamic_simulation_mode(simulation_type: PlotSimulationType) -> DynamicSimulationMode:
+    """
+    Convert one plot simulation family into the matching dynamic-event mode.
+
+    :param simulation_type: Plot simulation family used by the handler.
+    :return: Matching dynamic-event mode.
+    """
+    if simulation_type == PlotSimulationType.RMS:
+        return DynamicSimulationMode.RMS
+    else:
+        return DynamicSimulationMode.EMT
+
+
+def _build_events_group_absence_title(simulation_type: PlotSimulationType) -> str:
+    """
+    Build the modal title shown before creating the first event group.
+
+    :param simulation_type: Plot simulation family requested by the user.
+    :return: Informational dialog title.
+    """
+    if simulation_type == PlotSimulationType.RMS:
+        return "No RMS Events Group"
+    else:
+        return "No EMT Events Group"
+
+
+def _build_events_group_absence_message(simulation_type: PlotSimulationType) -> str:
+    """
+    Build the explanatory message shown before the creation dialog opens.
+
+    :param simulation_type: Plot simulation family requested by the user.
+    :return: Informational dialog text.
+    """
+    if simulation_type == PlotSimulationType.RMS:
+        return "No RMS Events Group found, please create one before adding a dynamic plot entry."
+    else:
+        return "No EMT Events Group found, please create one before adding a dynamic plot entry."
+
+
+def _add_rms_events_group_to_circuit(circuit: MultiCircuit, name: str) -> RmsEventsGroup:
+    """
+    Create and store one RMS event group in the circuit.
+
+    :param circuit: Circuit that owns persistent dynamic assets.
+    :param name: User-selected event-group name.
+    :return: Created RMS event-group asset.
+    """
+    created_group: RmsEventsGroup = RmsEventsGroup(idtag=None, name=name)
+    circuit.add_rms_events_group(obj=created_group)
+    return created_group
+
+
+def _add_emt_events_group_to_circuit(circuit: MultiCircuit, name: str) -> EmtEventsGroup:
+    """
+    Create and store one EMT event group in the circuit.
+
+    :param circuit: Circuit that owns persistent dynamic assets.
+    :param name: User-selected event-group name.
+    :return: Created EMT event-group asset.
+    """
+    created_group: EmtEventsGroup = EmtEventsGroup(idtag=None, name=name)
+    circuit.add_emt_events_group(obj=created_group)
+    return created_group
+
+
+def ensure_dynamic_plot_event_group(circuit: MultiCircuit,
+                                    simulation_type: PlotSimulationType,
+                                    parent: QtWidgets.QWidget | None = None,
+                                    dialog_provider: DynamicEventsGroupsDialogProvider | None = None) -> RmsEventsGroup | EmtEventsGroup | None:
+    """
+    Ensure that one RMS/EMT event group exists before creating a plot entry.
+
+    :param circuit: Circuit that owns the event-group collections.
+    :param simulation_type: Simulation family required by the dropped variable.
+    :param parent: Optional parent widget for modal dialogs.
+    :param dialog_provider: Optional dialog provider that builds the name-entry dialog.
+    :return: Existing or newly created event-group asset, or ``None`` when cancelled.
+    """
+    existing_groups: Sequence[RmsEventsGroup] | Sequence[EmtEventsGroup]
+    add_group_function: Callable[[MultiCircuit, str], RmsEventsGroup | EmtEventsGroup]
+
+    if simulation_type == PlotSimulationType.RMS:
+        existing_groups = circuit.rms_events_groups
+        add_group_function = _add_rms_events_group_to_circuit
+    else:
+        existing_groups = circuit.emt_events_groups
+        add_group_function = _add_emt_events_group_to_circuit
+
+    if len(existing_groups) > 0:
+        return existing_groups[0]
+    else:
+        pass
+
+    if parent is not None:
+        QtWidgets.QMessageBox.information(
+            parent,
+            _build_events_group_absence_title(simulation_type=simulation_type),
+            _build_events_group_absence_message(simulation_type=simulation_type),
+        )
+    else:
+        pass
+
+    mode: DynamicSimulationMode = _get_dynamic_simulation_mode(simulation_type=simulation_type)
+    if dialog_provider is None:
+        resolved_dialog_provider: DynamicEventsGroupsDialogProvider = DynamicEventsGroupsDialogProvider()
+    else:
+        resolved_dialog_provider = dialog_provider
+
+    creation_dialog: DynamicEventsGroupsDialog = resolved_dialog_provider.create_dialog(mode=mode, parent=parent)
+
+    dialog_result: int = creation_dialog.exec()
+    if dialog_result == QtWidgets.QDialog.DialogCode.Accepted:
+        group_name: str = creation_dialog.get_name()
+        if group_name != "":
+            return add_group_function(circuit=circuit, name=group_name)
+        else:
+            return None
+    else:
+        return None
 
 
 def _build_tree_item(text: str) -> QtGui.QStandardItem:
@@ -1144,6 +1288,43 @@ class DynamicsPlotsTreeModel(QtGui.QStandardItemModel):
         """
         return QtCore.Qt.DropAction.CopyAction
 
+    def canDropMimeData(self,
+                        data: QtCore.QMimeData,
+                        action: QtCore.Qt.DropAction,
+                        row: int,
+                        column: int,
+                        parent: QtCore.QModelIndex) -> bool:
+        """
+        Check whether one drag payload can be dropped on the requested target.
+
+        :param data: Drag payload.
+        :param action: Requested drop action.
+        :param row: Drop row.
+        :param column: Drop column.
+        :param parent: Drop parent index.
+        :return: ``True`` when the model can resolve a target plot group.
+        """
+        del row
+        del column
+
+        # Qt may offer the drop either on the group row itself or on a child
+        # row underneath that group. Accepting both keeps the GUI behavior
+        # stable across view styles and drop-indicator positions.
+        if action == QtCore.Qt.DropAction.IgnoreAction:
+            return True
+        else:
+            pass
+
+        if data.hasFormat(self._handler.get_drag_mime_type()):
+            resolved_group_name: str | None = self._handler.get_group_name_from_drop_index(index=parent)
+            if resolved_group_name is None:
+                resolved_group_name = self._handler.get_plot_group_name_from_index(index=parent)
+            else:
+                pass
+            return resolved_group_name is not None
+        else:
+            return False
+
     def dropMimeData(self,
                      data: QtCore.QMimeData,
                      action: QtCore.Qt.DropAction,
@@ -1171,6 +1352,10 @@ class DynamicsPlotsTreeModel(QtGui.QStandardItemModel):
                 payload_text: str = payload.decode("utf-8").strip()
                 series_key: DynamicResultSeriesKey | None = DynamicResultSeriesKey.from_payload(payload_text)
                 group_name: str | None = self._handler.get_group_name_from_drop_index(index=parent)
+                if group_name is None:
+                    group_name = self._handler.get_plot_group_name_from_index(index=parent)
+                else:
+                    pass
                 if group_name is not None:
                     if series_key is not None:
                         return self._handler.add_series_to_group(group_name=group_name, series_key=series_key)
@@ -1264,14 +1449,16 @@ class DynamicsResultsHandler:
     then restoring only the entries that still resolve against the new results.
     """
 
-    __slots__ = ("results", "circuit", "plot_simulation_type", "pre_simulation_mode", "tree_data", "tree_model",
-                  "proxy_model", "plots_model", "group_idx", "var_role", "group_name_role", "drag_mime_type",
-                  "plot_groups", "series_by_key", "series_by_var_uid", "source_labels")
+    __slots__ = ("results", "circuit", "dialog_parent", "plot_simulation_type",
+                  "pre_simulation_mode", "tree_data", "tree_model", "proxy_model", "plots_model", "group_idx",
+                  "var_role", "group_name_role", "drag_mime_type", "plot_groups", "series_by_key",
+                  "series_by_var_uid", "source_labels")
 
     def __init__(self,
                  results: RmsResults | EmtResults | None,
                  circuit: MultiCircuit | None = None,
-                 simulation_type: PlotSimulationType | str = PlotSimulationType.RMS):
+                 simulation_type: PlotSimulationType | str = PlotSimulationType.RMS,
+                 dialog_parent: QtWidgets.QWidget | None = None):
         """
         Build the handler from RMS/EMT results data.
 
@@ -1284,6 +1471,7 @@ class DynamicsResultsHandler:
         # pre-simulation workflow where only declarative model metadata exists.
         self.results: RmsResults | EmtResults | None = results
         self.circuit: MultiCircuit | None = circuit
+        self.dialog_parent: QtWidgets.QWidget | None = dialog_parent
         self.pre_simulation_mode: bool = results is None
         if results is not None:
             self.plot_simulation_type: PlotSimulationType = _get_plot_simulation_type_from_results(results=results)
@@ -1513,6 +1701,63 @@ class DynamicsResultsHandler:
         else:
             return list()
 
+    def _build_candidate_with_event_group(self,
+                                          candidate: DynamicPlotCandidate,
+                                          group_asset: RmsEventsGroup | EmtEventsGroup) -> DynamicPlotCandidate:
+        """
+        Rebuild one candidate so it targets the provided event-group asset.
+
+        :param candidate: Candidate produced from the pre-simulation tree metadata.
+        :param group_asset: Existing or newly created event-group asset.
+        :return: Candidate rebound to the selected event group.
+        """
+        # The dragged variable identity stays the same, but the persistent plot
+        # entry must store the canonical group idtag/name from the circuit asset
+        # that will own the future simulation case.
+        updated_candidate: DynamicPlotCandidate = DynamicPlotCandidate(
+            simulation_type=candidate._simulation_type,
+            event_group_idtag=str(group_asset.idtag),
+            event_group_name=str(group_asset.name),
+            device_type=candidate._device_type,
+            device_idtag=candidate._device_idtag,
+            device_label=candidate._device_label,
+            bus_label=candidate._bus_label,
+            variable_name=candidate._variable_name,
+            result_path_kind=candidate._result_path_kind,
+            variable_custom_name=_join_plot_label_parts([
+                candidate._variable_name,
+                candidate._device_label,
+                candidate._bus_label,
+                str(group_asset.name),
+            ]),
+            var=candidate.get_var(),
+        )
+        return updated_candidate
+
+    def _ensure_event_group_for_candidate(self,
+                                          candidate: DynamicPlotCandidate) -> DynamicPlotCandidate | None:
+        """
+        Ensure that one event group exists for a pre-simulation drop candidate.
+
+        :param candidate: Candidate selected from the pre-simulation source tree.
+        :return: Candidate bound to a valid event-group asset, or ``None`` when cancelled.
+        """
+        if self.circuit is not None:
+            group_asset: RmsEventsGroup | EmtEventsGroup | None = ensure_dynamic_plot_event_group(
+                circuit=self.circuit,
+                simulation_type=candidate._simulation_type,
+                parent=self.dialog_parent,
+            )
+            if group_asset is not None:
+                # The pre-simulation source tree must be refreshed after group
+                # creation so every later drag reflects the newly available case.
+                self._refresh_pre_simulation_state()
+                return self._build_candidate_with_event_group(candidate=candidate, group_asset=group_asset)
+            else:
+                return None
+        else:
+            return None
+
     def _get_pre_simulation_result_path_kind(self,
                                              device: DynamicDevice | DynamicBusDevice,
                                              variable: Var) -> str:
@@ -1554,12 +1799,38 @@ class DynamicsResultsHandler:
                     variable: Var
                     for variable in variables:
                         result_path_kind: str = self._get_pre_simulation_result_path_kind(device=device, variable=variable)
-                        group_asset: RmsEventsGroup | EmtEventsGroup
-                        for group_asset in group_assets:
-                            candidate: DynamicPlotCandidate = DynamicPlotCandidate(
+                        entries: List[DynamicPlotCandidate] = candidates_by_var_uid.get(variable.uid, list())
+                        if len(group_assets) > 0:
+                            group_asset: RmsEventsGroup | EmtEventsGroup
+                            for group_asset in group_assets:
+                                candidate: DynamicPlotCandidate = DynamicPlotCandidate(
+                                    simulation_type=self.plot_simulation_type,
+                                    event_group_idtag=str(group_asset.idtag),
+                                    event_group_name=str(group_asset.name),
+                                    device_type=device_tpe,
+                                    device_idtag=str(device.idtag),
+                                    device_label=device_label,
+                                    bus_label=bus_label,
+                                    variable_name=variable.name,
+                                    result_path_kind=result_path_kind,
+                                    variable_custom_name=_join_plot_label_parts([
+                                        variable.name,
+                                        device_label,
+                                        bus_label,
+                                        str(group_asset.name),
+                                    ]),
+                                    var=variable,
+                                )
+                                entries.append(candidate)
+                        else:
+                            # A placeholder candidate keeps the variable draggable
+                            # before any event group exists. The drop path then
+                            # creates the real RMS/EMT event group and rewrites
+                            # this candidate with the canonical group identity.
+                            candidate = DynamicPlotCandidate(
                                 simulation_type=self.plot_simulation_type,
-                                event_group_idtag=str(group_asset.idtag),
-                                event_group_name=str(group_asset.name),
+                                event_group_idtag="",
+                                event_group_name="",
                                 device_type=device_tpe,
                                 device_idtag=str(device.idtag),
                                 device_label=device_label,
@@ -1570,13 +1841,11 @@ class DynamicsResultsHandler:
                                     variable.name,
                                     device_label,
                                     bus_label,
-                                    str(group_asset.name),
                                 ]),
                                 var=variable,
                             )
-                            entries: List[DynamicPlotCandidate] = candidates_by_var_uid.get(variable.uid, list())
                             entries.append(candidate)
-                            candidates_by_var_uid[variable.uid] = entries
+                        candidates_by_var_uid[variable.uid] = entries
                 else:
                     pass
 
@@ -2455,9 +2724,20 @@ class DynamicsResultsHandler:
         """
         group: DynamicsPlotGroup | None = self.plot_groups.get_group(name=group_name)
         if group is not None:
+            prepared_candidate: DynamicPlotCandidate | None = candidate
+            if self.pre_simulation_mode:
+                prepared_candidate = self._ensure_event_group_for_candidate(candidate=candidate)
+            else:
+                pass
+
+            if prepared_candidate is None:
+                return False
+            else:
+                pass
+
             asset_entry: DynamicPlotEntry | None = self._append_asset_entry_for_candidate(
                 group_name=group_name,
-                candidate=candidate,
+                candidate=prepared_candidate,
             )
             if asset_entry is not None:
                 inserted: bool = group.add_var(variable=asset_entry)
