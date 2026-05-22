@@ -98,6 +98,7 @@ class RmsSimulationDriver(DriverTemplate):
             rms_events_group_names=rms_events_group_names,
             rms_events_group_idtags=rms_events_group_idtags,
             variables=problem.state_and_algebraic_vars,
+            has_event_group_results=np.array([bool(elm.active) for elm in rms_events_groups], dtype=bool),
             uid2idx=problem.uid2idx_vars,
             vars_glob_name2uid=problem.vars_glob_name2uid,
             devices_vars_info=problem.get_device_vars_dict()

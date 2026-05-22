@@ -131,6 +131,7 @@ def build_rms_results(device_entries: Sequence[Tuple[FakeDynamicDevice, Sequence
         rms_events_group_names=group_names,
         rms_events_group_idtags=group_idtags,
         variables=variables,
+        has_event_group_results=np.ones(len(group_names), dtype=bool),
         uid2idx=uid2idx,
         vars_glob_name2uid=vars_glob_name2uid,
         devices_vars_info=devices_vars_info,
@@ -178,6 +179,7 @@ def build_emt_results(device_entries: Sequence[Tuple[FakeDynamicDevice, Sequence
         emt_events_group_idtags=group_idtags,
         variables=variables,
         diff_variables=list(),
+        has_event_group_results=np.ones(len(group_names), dtype=bool),
         uid2idx_vars=uid2idx_vars,
         uid2idx_diff=uid2idx_diff,
         vars_glob_name2uid=vars_glob_name2uid,
@@ -208,6 +210,7 @@ def build_rms_results_with_unexported_device_var(device: FakeDynamicDevice,
         rms_events_group_names=np.array(["Group 1"], dtype=str),
         rms_events_group_idtags=np.array(["rms-group-1"], dtype=str),
         variables=[exported_var],
+        has_event_group_results=np.ones(1, dtype=bool),
         uid2idx={exported_var.uid: 0},
         vars_glob_name2uid={device.idtag + ":" + exported_var.name + ":" + str(exported_var.uid): exported_var.uid},
         devices_vars_info={device: [exported_var, unexported_var]},
@@ -232,6 +235,7 @@ def build_rms_results_with_groups(device_entries: Sequence[Tuple[FakeDynamicDevi
         dtype=str,
     )
     results.ng = len(group_names)
+    results.has_event_group_results = np.ones(results.ng, dtype=bool)
     results.well_initialized = np.zeros(results.ng, dtype=bool)
     results.converged = np.zeros(results.ng, dtype=bool)
     results.values = np.zeros((results.nt, results.nv, results.ng), dtype=float)
@@ -530,6 +534,98 @@ def test_dynamic_plot_prunes_missing_event_group_when_only_subset_is_rerun() -> 
 
     assert get_group_var_uids(handler=handler, group_name="Plot 1") == [101]
     assert get_group_series_group_indexes(handler=handler, group_name="Plot 1") == [0]
+
+
+def test_dynamic_plot_keeps_unsimulated_rms_event_group_unresolved() -> None:
+    """
+    Keep the missing RMS event-group curve unresolved when its result column was not simulated.
+    """
+    ensure_qt_application()
+
+    old_results: RmsResults = build_rms_results_with_groups([
+        (make_device(name="DeviceA", idtag="dev-a"), [make_var(name="v_A", uid=1)]),
+    ], group_names=["With event", "Without event"])
+    old_results.has_event_group_results = np.ones(2, dtype=bool)
+
+    new_results: RmsResults = build_rms_results_with_groups([
+        (make_device(name="DeviceA", idtag="dev-a"), [make_var(name="v_A", uid=101)]),
+    ], group_names=["With event", "Without event"])
+    new_results.has_event_group_results = np.array([True, False], dtype=bool)
+    new_results.values[:, :, 1] = 0.0
+
+    circuit: MultiCircuit = MultiCircuit(name="rms-unsimulated-group")
+    handler: DynamicsResultsHandler = DynamicsResultsHandler(results=old_results, circuit=circuit)
+    assert handler.create_plot_group(name="Plot 1") is True
+
+    old_series_list = handler.series_by_var_uid[1]
+    assert len(old_series_list) == 2
+    assert handler.add_series_to_group(group_name="Plot 1", series_key=old_series_list[0].get_key()) is True
+    assert handler.add_series_to_group(group_name="Plot 1", series_key=old_series_list[1].get_key()) is True
+
+    handler.update_results(results=new_results)
+
+    group = handler.plot_groups.get_group(name="Plot 1")
+    assert group is not None
+    group_entries = group.get_series()
+    assert len(group_entries) == 2
+    assert isinstance(group_entries[0], DynamicPlotEntry) is False
+    assert isinstance(group_entries[1], DynamicPlotEntry) is True
+    assert group_entries[0].get_var().uid == 101
+    assert group_entries[1].variable is not None
+    assert group_entries[1].variable.uid == 1
+
+
+def test_dynamic_plot_keeps_unsimulated_emt_event_group_unresolved() -> None:
+    """
+    Keep the missing EMT event-group curve unresolved when its result column was not simulated.
+    """
+    ensure_qt_application()
+
+    old_results: EmtResults = build_emt_results([
+        (make_device(name="DeviceA", idtag="dev-a"), [make_var(name="v_A", uid=1)]),
+    ])
+    old_results.emt_events_group_names = np.array(["With event", "Without event"], dtype=str)
+    old_results.emt_events_group_idtags = np.array(["emt-group-with-event", "emt-group-without-event"], dtype=str)
+    old_results.ng = 2
+    old_results.has_event_group_results = np.ones(2, dtype=bool)
+    old_results.well_initialized = np.zeros(2, dtype=bool)
+    old_results.converged = np.zeros(2, dtype=bool)
+    old_results.values = np.repeat(old_results.values, 2, axis=2)
+    old_results.diff_values = np.zeros((old_results.nt, old_results.ndv, old_results.ng), dtype=float)
+
+    new_results: EmtResults = build_emt_results([
+        (make_device(name="DeviceA", idtag="dev-a"), [make_var(name="v_A", uid=101)]),
+    ])
+    new_results.emt_events_group_names = np.array(["With event", "Without event"], dtype=str)
+    new_results.emt_events_group_idtags = np.array(["emt-group-with-event", "emt-group-without-event"], dtype=str)
+    new_results.ng = 2
+    new_results.has_event_group_results = np.array([True, False], dtype=bool)
+    new_results.well_initialized = np.zeros(2, dtype=bool)
+    new_results.converged = np.zeros(2, dtype=bool)
+    new_results.values = np.repeat(new_results.values, 2, axis=2)
+    new_results.values[:, :, 1] = 0.0
+    new_results.diff_values = np.zeros((new_results.nt, new_results.ndv, new_results.ng), dtype=float)
+
+    circuit: MultiCircuit = MultiCircuit(name="emt-unsimulated-group")
+    handler: DynamicsResultsHandler = DynamicsResultsHandler(results=old_results, circuit=circuit)
+    assert handler.create_plot_group(name="Plot 1") is True
+
+    old_series_list = handler.series_by_var_uid[1]
+    assert len(old_series_list) == 2
+    assert handler.add_series_to_group(group_name="Plot 1", series_key=old_series_list[0].get_key()) is True
+    assert handler.add_series_to_group(group_name="Plot 1", series_key=old_series_list[1].get_key()) is True
+
+    handler.update_results(results=new_results)
+
+    group = handler.plot_groups.get_group(name="Plot 1")
+    assert group is not None
+    group_entries = group.get_series()
+    assert len(group_entries) == 2
+    assert isinstance(group_entries[0], DynamicPlotEntry) is False
+    assert isinstance(group_entries[1], DynamicPlotEntry) is True
+    assert group_entries[0].get_var().uid == 101
+    assert group_entries[1].variable is not None
+    assert group_entries[1].variable.uid == 1
 
 
 def test_dynamic_plot_prunes_event_group_when_label_becomes_ambiguous() -> None:

@@ -28,6 +28,7 @@ class EmtResults(ResultsTemplate):
         "ng",
         "emt_events_group_names",
         "emt_events_group_idtags",
+        "has_event_group_results",
         "well_initialized",
         "converged",
         "variables",
@@ -52,7 +53,8 @@ class EmtResults(ResultsTemplate):
                  uid2idx_vars: Dict[int, int],
                  uid2idx_diff: Dict[int, int],
                  vars_glob_name2uid: Dict[str, int],
-                 devices_vars_info: Dict[ALL_DEV_TYPES, List[Var]]):
+                 devices_vars_info: Dict[ALL_DEV_TYPES, List[Var]],
+                 has_event_group_results: StrVec | None = None):
         """
 
         :param emt_events_group_names: names of the EMT groups simulated
@@ -60,6 +62,7 @@ class EmtResults(ResultsTemplate):
         :param emt_events_group_idtags: Stable idtags of the EMT groups simulated.
         :param variables: List of all variables (Redundant?)
         :param diff_variables: List of all derivatives of variables (Redundant?)
+        :param has_event_group_results: Boolean mask telling which event-group columns contain actual simulation data.
         :param uid2idx_vars: Var uid to var index in values variables
         :param uid2idx_diff: Var uid to var index in values diff vars
         :param vars_glob_name2uid: dictionary relating var names to uid (WTF?)
@@ -81,6 +84,15 @@ class EmtResults(ResultsTemplate):
 
         self.emt_events_group_names = emt_events_group_names
         self.emt_events_group_idtags = emt_events_group_idtags
+
+        # The results arrays are allocated for every declared event group, but
+        # only a subset may have been simulated in the current run. The dynamic
+        # plotting layer must inspect this mask before binding a curve so
+        # placeholder zero columns stay unresolved instead of being plotted.
+        if has_event_group_results is None:
+            self.has_event_group_results = np.ones(self.ng, dtype=bool)
+        else:
+            self.has_event_group_results = np.array(has_event_group_results, dtype=bool)
 
         self.well_initialized = np.zeros(self.ng, dtype=bool)
         self.converged = np.zeros(self.ng, dtype=bool)

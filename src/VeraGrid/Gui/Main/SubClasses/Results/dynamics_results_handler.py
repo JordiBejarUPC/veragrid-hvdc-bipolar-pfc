@@ -3,7 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 import json
-from typing import Dict, List, Sequence, Set
+from typing import Dict, List, Sequence, Set, Optional
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
@@ -1639,6 +1639,34 @@ class DynamicsResultsHandler:
 
         return series_by_payload
 
+    def _has_event_group_results(self, results: RmsResults | EmtResults, group_idx: int) -> bool:
+        """
+        Check whether one event-group column contains actual simulation results.
+
+        :param results: Current RMS or EMT results object.
+        :param group_idx: Event-group index inside the results arrays.
+        :return: ``True`` when the selected event group was simulated.
+
+        Dynamic plots must distinguish declared event groups from event groups
+        that produced runtime data. Drivers still allocate zero-filled result
+        columns for every declared group, so this method prevents unresolved
+        plot entries from binding to placeholder arrays.
+        """
+        has_results_flags: Optional[np.ndarray] = None
+
+        if type(results) == RmsResults:
+            has_results_flags = results.has_event_group_results
+        else:
+            if type(results) == EmtResults:
+                has_results_flags = results.has_event_group_results
+            else:
+                raise Exception("Unsupported dynamics results type")
+
+        if group_idx < 0 or group_idx >= len(has_results_flags):
+            return False
+        else:
+            return bool(has_results_flags[group_idx])
+
     def _bind_asset_entry_to_series(self,
                                     entry: DynamicPlotEntry,
                                     payload_index: Dict[str, List[DynamicResultSeries]],
@@ -2863,30 +2891,33 @@ class DynamicsResultsHandler:
                     group_idx: int
                     source_label: str
                     for group_idx, source_label in enumerate(self.source_labels):
-                        # A distinct series is created per event group so plots
-                        # can mix sources without losing the exact origin of each
-                        # selected variable.
-                        key: DynamicResultSeriesKey = DynamicResultSeriesKey(
-                            simulation_type=self.results.study_results_type,
-                            source_id=self._build_source_id(results=self.results, group_idx=group_idx),
-                            device_type=device_tpe,
-                            device_idtag=device_idtag,
-                            result_path=scoped_result_path,
-                            variable_index=variable_index,
-                            component_index=component_index,
-                        )
-                        series: DynamicResultSeries = DynamicResultSeries(
-                            key=key,
-                            var=variable,
-                            group_idx=group_idx,
-                            source_label=source_label,
-                            device_label=device_label,
-                            bus_label=bus_label,
-                            variable_label=_get_var_label(variable=variable),
-                            variable_custom_name="",
-                        )
-                        self.series_by_key.setdefault(key, list()).append(series)
-                        self.series_by_var_uid.setdefault(variable.uid, list()).append(series)
+                        # A distinct series is created only for event groups that
+                        # produced runtime data. Declared-but-unsimulated groups
+                        # stay available only as persistent unresolved entries.
+                        if self._has_event_group_results(results=self.results, group_idx=group_idx):
+                            key: DynamicResultSeriesKey = DynamicResultSeriesKey(
+                                simulation_type=self.results.study_results_type,
+                                source_id=self._build_source_id(results=self.results, group_idx=group_idx),
+                                device_type=device_tpe,
+                                device_idtag=device_idtag,
+                                result_path=scoped_result_path,
+                                variable_index=variable_index,
+                                component_index=component_index,
+                            )
+                            series: DynamicResultSeries = DynamicResultSeries(
+                                key=key,
+                                var=variable,
+                                group_idx=group_idx,
+                                source_label=source_label,
+                                device_label=device_label,
+                                bus_label=bus_label,
+                                variable_label=_get_var_label(variable=variable),
+                                variable_custom_name="",
+                            )
+                            self.series_by_key.setdefault(key, list()).append(series)
+                            self.series_by_var_uid.setdefault(variable.uid, list()).append(series)
+                        else:
+                            pass
 
         self.tree_model = build_dynamics_tree_model(
             tree_data=self.tree_data,

@@ -128,6 +128,7 @@ class EmtSimulationDriver(DriverTemplate):
             emt_events_group_idtags=emt_events_group_idtags,
             variables=self.problem.state_and_algebraic_vars(),
             diff_variables=self.problem.get_diff_vars(),
+            has_event_group_results=np.array([bool(elm.active) for elm in emt_events_groups], dtype=bool),
             uid2idx_vars=self.problem.uid2idx_vars,
             uid2idx_diff=self.problem.uid2idx_diff,
             vars_glob_name2uid=self.problem.vars_glob_name2uid,
