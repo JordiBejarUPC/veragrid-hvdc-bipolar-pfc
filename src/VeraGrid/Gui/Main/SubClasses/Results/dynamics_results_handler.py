@@ -71,9 +71,13 @@ def _get_device_bus_label(device: ALL_DEV_TYPES) -> str:
     :param device: Device instance stored in the dynamics trees.
     :return: User-facing bus label for the device, or an empty string when unavailable.
     """
+    # Two-terminal devices need an explicit bus suffix because their visible
+    # device label does not already encode both connection endpoints.
     if isinstance(device, BranchParent):
         bus_names: List[str] = list()
 
+        # The first terminal is appended first so the suffix preserves the
+        # physical branch orientation shown elsewhere in the GUI.
         if device.bus_from is not None:
             bus_from_name: str = str(device.bus_from.name).strip()
             if bus_from_name != "":
@@ -83,6 +87,8 @@ def _get_device_bus_label(device: ALL_DEV_TYPES) -> str:
         else:
             pass
 
+        # The second terminal is appended only when it contributes a distinct
+        # visible endpoint, which avoids duplicated labels for degenerate cases.
         if device.bus_to is not None:
             bus_to_name: str = str(device.bus_to.name).strip()
             if bus_to_name != "" and bus_to_name not in bus_names:
@@ -97,6 +103,8 @@ def _get_device_bus_label(device: ALL_DEV_TYPES) -> str:
         else:
             return ""
     else:
+        # Injection devices already include their bus in ``str(device)``, and
+        # bus devices are the bus themselves, so no extra suffix is needed.
         if isinstance(device, InjectionParent):
             return ""
         else:
@@ -124,6 +132,8 @@ def _join_plot_label_parts(parts: Sequence[str]) -> str:
     :param parts: Ordered label parts.
     :return: Joined label without empty trailing segments.
     """
+    # Empty segments are removed first so optional pieces such as the bus suffix
+    # do not leave dangling separators in the final visible label.
     kept_parts: List[str] = list()
 
     part: str
@@ -521,6 +531,7 @@ class DynamicResultSeries:
         "_device_label",
         "_bus_label",
         "_variable_label",
+        "_variable_custom_name",
     )
 
     def __init__(self,
@@ -530,7 +541,8 @@ class DynamicResultSeries:
                  source_label: str,
                  device_label: str,
                  bus_label: str,
-                 variable_label: str) -> None:
+                 variable_label: str,
+                 variable_custom_name: str = "") -> None:
         self._key: DynamicResultSeriesKey = key
         self._var: Var = var
         self._group_idx: int = group_idx
@@ -538,6 +550,7 @@ class DynamicResultSeries:
         self._device_label: str = device_label
         self._bus_label: str = bus_label
         self._variable_label: str = variable_label
+        self._variable_custom_name: str = variable_custom_name
 
     def get_key(self) -> DynamicResultSeriesKey:
         return self._key
@@ -572,6 +585,13 @@ class DynamicResultSeries:
             return self._variable_label
 
     def get_plot_label(self, has_multiple_sources: bool) -> str:
+        # A user-defined name must override the generated label so manual renames
+        # remain stable after rebinding the runtime series to new results objects.
+        if self._variable_custom_name != "":
+            return self._variable_custom_name
+        else:
+            pass
+
         if has_multiple_sources:
             return _join_plot_label_parts([
                 self._variable_label,
@@ -585,6 +605,23 @@ class DynamicResultSeries:
                 self._device_label,
                 self._bus_label,
             ])
+
+    def get_variable_custom_name(self) -> str:
+        """
+        Get the custom visible name shown for this plotted series.
+
+        :return: Custom visible variable name.
+        """
+        return self._variable_custom_name
+
+    def set_variable_custom_name(self, label: str) -> None:
+        """
+        Set the custom visible name shown for this plotted series.
+
+        :param label: Requested visible label.
+        :return: Nothing.
+        """
+        self._variable_custom_name = str(label).strip()
 
 
 class DynamicPlotCandidate:
@@ -605,7 +642,7 @@ class DynamicPlotCandidate:
         "_bus_label",
         "_variable_name",
         "_result_path_kind",
-        "_curve_label",
+        "_variable_custom_name",
         "_var",
     )
 
@@ -619,7 +656,7 @@ class DynamicPlotCandidate:
                  bus_label: str,
                  variable_name: str,
                  result_path_kind: str,
-                 curve_label: str,
+                 variable_custom_name: str,
                  var: Var) -> None:
         self._simulation_type: PlotSimulationType = simulation_type
         self._event_group_idtag: str = event_group_idtag
@@ -630,7 +667,7 @@ class DynamicPlotCandidate:
         self._bus_label: str = bus_label
         self._variable_name: str = variable_name
         self._result_path_kind: str = result_path_kind
-        self._curve_label: str = curve_label
+        self._variable_custom_name: str = variable_custom_name
         self._var: Var = var
 
     def get_var(self) -> Var:
@@ -660,8 +697,10 @@ class DynamicPlotCandidate:
         :param has_multiple_sources: Whether multiple event-group sources exist.
         :return: Plot label.
         """
+        # Pre-simulation candidates already store the fully expanded default name
+        # that must later become the persistent custom visible variable name.
         if has_multiple_sources:
-            return self._curve_label
+            return self._variable_custom_name
         else:
             return _join_plot_label_parts([
                 self._variable_name,
@@ -684,7 +723,7 @@ class DynamicPlotCandidate:
         payload["device_name_hint"] = self._device_label
         payload["variable_name"] = self._variable_name
         payload["result_path_kind"] = self._result_path_kind
-        payload["curve_label"] = self._curve_label
+        payload["variable_custom_name"] = self._variable_custom_name
         return json.dumps(payload, separators=(",", ":"))
 
 
@@ -1527,7 +1566,7 @@ class DynamicsResultsHandler:
                                 bus_label=bus_label,
                                 variable_name=variable.name,
                                 result_path_kind=result_path_kind,
-                                curve_label=_join_plot_label_parts([
+                                variable_custom_name=_join_plot_label_parts([
                                     variable.name,
                                     device_label,
                                     bus_label,
@@ -1666,6 +1705,10 @@ class DynamicsResultsHandler:
                                             signature_index=signature_index,
                                         )
                                         if bound_series is not None and entry.enabled:
+                                            if entry.variable_custom_name != "":
+                                                bound_series.set_variable_custom_name(label=entry.variable_custom_name)
+                                            else:
+                                                pass
                                             group.add_var(variable=bound_series)
                                         else:
                                             # Keep unresolved entries visible in the runtime
@@ -1741,7 +1784,7 @@ class DynamicsResultsHandler:
                     device_name_hint=series.get_device_label(),
                     variable_name=series.get_variable_label(),
                     result_path_kind=str(key._result_path.split(":", 1)[0]),
-                    curve_label=series.get_plot_label(has_multiple_sources=self.has_multiple_sources()),
+                    variable_custom_name=series.get_plot_label(has_multiple_sources=self.has_multiple_sources()),
                     enabled=True,
                     runtime_series_key_payload=payload,
                     name=series.get_variable_label(),
@@ -1801,7 +1844,7 @@ class DynamicsResultsHandler:
                     device_name_hint=candidate._device_label,
                     variable_name=candidate._variable_name,
                     result_path_kind=candidate._result_path_kind,
-                    curve_label=candidate._curve_label,
+                    variable_custom_name=candidate._variable_custom_name,
                     enabled=True,
                     runtime_series_key_payload="",
                     name=candidate._variable_name,
@@ -2029,6 +2072,44 @@ class DynamicsResultsHandler:
         else:
             return None
 
+    def _get_asset_entry_for_series_in_group(self,
+                                             group_name: str,
+                                             series: DynamicResultSeries) -> DynamicPlotEntry | None:
+        """
+        Find the persistent plot entry that backs one runtime series inside one group.
+
+        :param group_name: Owning plot-group name.
+        :param series: Runtime series represented in the plots tree.
+        :return: Matching persistent plot entry, or ``None`` when unavailable.
+        """
+        if self.circuit is not None:
+            plot_asset: DynamicPlot | None = self._find_matching_asset_plot(group_name=group_name)
+            if plot_asset is not None:
+                target_payload: str = series.get_key().to_payload()
+                target_signature: tuple[str, str, str, str, str, str] = self._build_series_binding_signature(series=series)
+
+                entry: DynamicPlotEntry
+                for entry in self.circuit.dynamic_plot_entries:
+                    if entry.plot == plot_asset:
+                        if entry.runtime_series_key_payload == target_payload:
+                            return entry
+                        else:
+                            entry_signature: tuple[str, str, str, str, str, str] = (
+                                self._build_asset_entry_binding_signature(entry=entry)
+                            )
+                            if entry_signature == target_signature:
+                                return entry
+                            else:
+                                pass
+                    else:
+                        pass
+
+                return None
+            else:
+                return None
+        else:
+            return None
+
     def get_plot_var_from_index(self, index: QtCore.QModelIndex) -> Var | None:
         """
         Get the current variable represented by a plots-tree index.
@@ -2069,7 +2150,7 @@ class DynamicsResultsHandler:
                     variable_item.setData(entry, self.var_role)
                     group_item.appendRow(variable_item)
                 elif isinstance(entry, DynamicPlotEntry):
-                    unresolved_label: str = entry.curve_label
+                    unresolved_label: str = entry.variable_custom_name
                     if unresolved_label == "":
                         unresolved_label = entry.variable_name
                     else:
@@ -2204,6 +2285,50 @@ class DynamicsResultsHandler:
                 return True
             else:
                 return False
+        else:
+            return False
+
+    def rename_plot_variable_from_index(self, index: QtCore.QModelIndex, new_name: str) -> bool:
+        """
+        Rename the visible label of one plotted variable.
+
+        :param index: Plots-tree index that points to one variable child.
+        :param new_name: Requested visible label.
+        :return: ``True`` when the rename was applied.
+        """
+        # The rename is normalized once so both runtime and persistent state keep
+        # the exact same visible text without whitespace-only aliases.
+        clean_name: str = new_name.strip()
+        if clean_name != "":
+            series: DynamicResultSeries | None = self.get_plot_series_from_index(index=index)
+            if series is not None:
+                # Runtime series must redirect the rename to their backing
+                # persistent entry so the custom visible name survives reloads.
+                group_name: str | None = self.get_plot_group_name_from_index(index=index)
+                if group_name is not None:
+                    asset_entry: DynamicPlotEntry | None = self._get_asset_entry_for_series_in_group(
+                        group_name=group_name,
+                        series=series,
+                    )
+                    if asset_entry is not None:
+                        asset_entry.variable_custom_name = clean_name
+                        series.set_variable_custom_name(label=clean_name)
+                        self.rebuild_plots_model()
+                        return True
+                    else:
+                        return False
+                else:
+                    return False
+            else:
+                # Unresolved persistent entries are renamed in place because no
+                # runtime series exists yet to mirror the custom visible name.
+                asset_entry: DynamicPlotEntry | None = self.get_plot_asset_entry_from_index(index=index)
+                if asset_entry is not None:
+                    asset_entry.variable_custom_name = clean_name
+                    self.rebuild_plots_model()
+                    return True
+                else:
+                    return False
         else:
             return False
 
@@ -2429,7 +2554,7 @@ class DynamicsResultsHandler:
                     elif isinstance(variable, DynamicPlotEntry):
                         x_values = self.results.time_array if self.results is not None else None
                         y_values = None
-                        label = variable.curve_label
+                        label = variable.variable_custom_name
                     elif isinstance(variable, Var):
                         x_values = self.results.time_array
                         # Legacy raw ``Var`` entries are still tolerated, but
@@ -2758,6 +2883,7 @@ class DynamicsResultsHandler:
                             device_label=device_label,
                             bus_label=bus_label,
                             variable_label=_get_var_label(variable=variable),
+                            variable_custom_name="",
                         )
                         self.series_by_key.setdefault(key, list()).append(series)
                         self.series_by_var_uid.setdefault(variable.uid, list()).append(series)

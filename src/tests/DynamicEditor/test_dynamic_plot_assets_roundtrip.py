@@ -230,7 +230,7 @@ def test_dynamic_plot_asset_roundtrip_preserves_semantic_fields(tmp_path: Path) 
         device_name_hint="Load A",
         variable_name="p_load",
         result_path_kind="values",
-        curve_label="Load A - p_load - RMS Group A",
+        variable_custom_name="Load A - p_load - RMS Group A",
         enabled=True,
         runtime_series_key_payload="payload",
         name="Curve 1",
@@ -264,7 +264,7 @@ def test_dynamic_plot_asset_roundtrip_preserves_semantic_fields(tmp_path: Path) 
     assert loaded_entry.device_name_hint == "Load A"
     assert loaded_entry.variable_name == "p_load"
     assert loaded_entry.result_path_kind == "values"
-    assert loaded_entry.curve_label == "Load A - p_load - RMS Group A"
+    assert loaded_entry.variable_custom_name == "Load A - p_load - RMS Group A"
     assert loaded_entry.enabled is True
     assert loaded_entry.runtime_series_key_payload == "payload"
 
