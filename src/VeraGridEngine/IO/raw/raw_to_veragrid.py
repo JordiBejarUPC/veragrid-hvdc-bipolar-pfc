@@ -9,24 +9,36 @@ from VeraGridEngine.basic_structures import Logger
 import VeraGridEngine.Devices as dev
 from VeraGridEngine.Topology import detect_substations
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
-from VeraGridEngine.IO.raw.devices.branch import RawBranch
-from VeraGridEngine.IO.raw.devices.bus import RawBus
-from VeraGridEngine.IO.raw.devices.facts import RawFACTS
-from VeraGridEngine.IO.raw.devices.generator import RawGenerator
-from VeraGridEngine.IO.raw.devices.load import RawLoad
-from VeraGridEngine.IO.raw.devices.fixed_shunt import RawFixedShunt
-from VeraGridEngine.IO.raw.devices.system_switching_device import RawSystemSwitchingDevice
-from VeraGridEngine.IO.raw.devices.switched_shunt import RawSwitchedShunt
-from VeraGridEngine.IO.raw.devices.transformer import RawTransformer
-from VeraGridEngine.IO.raw.devices.two_terminal_dc_line import RawTwoTerminalDCLine
-from VeraGridEngine.IO.raw.devices.vsc_dc_line import RawVscDCLine
-from VeraGridEngine.IO.raw.devices.psse_circuit import PsseCircuit
+from VeraGridEngine.IO.raw.psse_circuit import PsseCircuit
+from VeraGridEngine.IO.raw.raw_types import (
+    RawBranchLike,
+    RawBusLike,
+    RawFACTSLike,
+    RawFixedShuntLike,
+    RawGeneratorLike,
+    RawLoadLike,
+    RawSwitchedShuntLike,
+    RawSystemSwitchingDeviceLike,
+    RawTransformerLike,
+    RawTwoTerminalDCLineLike,
+    RawVscDCLineLike,
+)
 from VeraGridEngine.enumerations import (
     TapChangerTypes, TapPhaseControl, TapModuleControl, ShuntControlMode, SwitchGraphicType
 )
 
 
-def get_veragrid_bus(psse_bus: RawBus,
+def _get_branch_ratings(psse_elm: RawBranchLike) -> tuple[float, float, float]:
+    if psse_elm.version <= 33:
+        return psse_elm.RATEA, psse_elm.RATEB, psse_elm.RATEC
+    return psse_elm.RATE1, psse_elm.RATE2, psse_elm.RATE3
+
+
+def _get_transformer_winding_ratings(psse_elm: RawTransformerLike, winding_index: int) -> tuple[float, float, float]:
+    return psse_elm.get_winding_rating_triplet(winding_index=winding_index, version=psse_elm.version)
+
+
+def get_veragrid_bus(psse_bus: RawBusLike,
                      area_dict: Dict[int, dev.Area],
                      zone_dict: Dict[int, dev.Zone],
                      logger: Logger) -> Tuple[dev.Bus, Union[dev.Shunt, None]]:
@@ -123,7 +135,7 @@ def get_veragrid_bus(psse_bus: RawBus,
     return bus, sh
 
 
-def get_veragrid_load(psse_load: RawLoad, bus: dev.Bus, logger: Logger) -> dev.Load:
+def get_veragrid_load(psse_load: RawLoadLike, bus: dev.Bus, logger: Logger) -> dev.Load:
     """
     Return VeraGrid Load object
     Returns:
@@ -159,7 +171,7 @@ def get_veragrid_load(psse_load: RawLoad, bus: dev.Bus, logger: Logger) -> dev.L
     return elm
 
 
-def get_veragrid_shunt_fixed(psse_elm: RawFixedShunt, bus: dev.Bus, logger: Logger):
+def get_veragrid_shunt_fixed(psse_elm: RawFixedShuntLike, bus: dev.Bus, logger: Logger):
     """
     Return VeraGrid Shunt object
     Returns:
@@ -188,7 +200,7 @@ def get_veragrid_shunt_fixed(psse_elm: RawFixedShunt, bus: dev.Bus, logger: Logg
 
 
 def get_veragrid_shunt_switched(
-        psse_elm: RawSwitchedShunt,
+        psse_elm: RawSwitchedShuntLike,
         bus: dev.Bus,
         psse_bus_dict: Dict[int, dev.Bus],
         logger: Logger) -> dev.ControllableShunt:
@@ -265,23 +277,26 @@ def get_veragrid_shunt_switched(
     b_list: list[float] = list()
 
     for i in range(1, 9):
-        s = getattr(psse_elm, f"S{i}")
-        n = getattr(psse_elm, f"N{i}")
+        s = psse_elm.get_block_status(i)
+        n = psse_elm.get_block_steps(i)
 
         if s == 1:
             n_list.append(n)
-            b_list.append(getattr(psse_elm, f"B{i}"))
+            b_list.append(psse_elm.get_block_admittance(i))
 
     elm.set_blocks(n_list, b_list)
 
     return elm
 
 
-def get_veragrid_switch(psse_elm: RawSystemSwitchingDevice,
+def get_veragrid_switch(psse_elm: RawSystemSwitchingDeviceLike,
                         psse_bus_dict: Dict[int, dev.Bus],
                         logger: Logger) -> dev.Switch | None:
     """
     Return VeraGrid Switch object
+    :param psse_elm
+    :param psse_bus_dict:
+    :param logger:
     """
     bus_from = psse_bus_dict.get(psse_elm.I, None)
     bus_to = psse_bus_dict.get(psse_elm.J, None)
@@ -304,16 +319,16 @@ def get_veragrid_switch(psse_elm: RawSystemSwitchingDevice,
         name=name,
         code=code,
         x=float(psse_elm.X),
-        rate=float(psse_elm.RATE1),
+        rate=float(_get_branch_ratings(psse_elm)[0]),
         active=bool(psse_elm.STATUS),
-        normal_open=bool(psse_elm.NSTATUS),
+        normal_open=int(psse_elm.NSTATUS) == 0,
         graphic_type=graphic_type,
     )
 
     return elm
 
 
-def get_veragrid_generator(psse_elm: RawGenerator, psse_bus_dict: Dict[int, dev.Bus], logger: Logger) -> dev.Generator:
+def get_veragrid_generator(psse_elm: RawGeneratorLike, psse_bus_dict: Dict[int, dev.Bus], logger: Logger) -> dev.Generator:
     """
 
     :param psse_elm:
@@ -382,7 +397,7 @@ def get_veragrid_generator(psse_elm: RawGenerator, psse_bus_dict: Dict[int, dev.
 
 
 def get_veragrid_transformer(
-        psse_elm: RawTransformer,
+        psse_elm: RawTransformerLike,
         psse_bus_dict: Dict[int, dev.Bus],
         Sbase: float,
         logger: Logger,
@@ -457,12 +472,14 @@ def get_veragrid_transformer(
         else:
             V2 = psse_elm.NOMV2
 
-        contingency_factor = (psse_elm.RATE1_2 / psse_elm.RATE1_1
-                              if psse_elm.RATE1_1 > 0.0 and psse_elm.RATE1_2 > 0.0
+        rate1_1, rate1_2, rate1_3 = _get_transformer_winding_ratings(psse_elm, 1)
+
+        contingency_factor = (rate1_2 / rate1_1
+                              if rate1_1 > 0.0 and rate1_2 > 0.0
                               else 1.0)
 
-        protection_factor = (psse_elm.RATE1_3 / psse_elm.RATE1_1
-                             if psse_elm.RATE1_1 > 0.0 and psse_elm.RATE1_3 > 0.0
+        protection_factor = (rate1_3 / rate1_1
+                             if rate1_1 > 0.0 and rate1_3 > 0.0
                              else 1.4)
 
         r, x, g, b, tap_module, tap_angle = psse_elm.get_2w_pu_impedances(Sbase=Sbase,
@@ -642,7 +659,7 @@ def get_veragrid_transformer(
             x=x,
             g=g,
             b=b,
-            rate=psse_elm.RATE1_1,
+            rate=rate1_1,
             contingency_factor=round(contingency_factor, 6),
             protection_rating_factor=round(protection_factor, 6),
             # regulation_bus=regulation_bus,
@@ -794,6 +811,10 @@ def get_veragrid_transformer(
                                 device=code)
                 V3 = bus_3.Vnom
 
+        rate1_1, _, _ = _get_transformer_winding_ratings(psse_elm, 1)
+        rate2_1, _, _ = _get_transformer_winding_ratings(psse_elm, 2)
+        rate3_1, _, _ = _get_transformer_winding_ratings(psse_elm, 3)
+
         tr3w = dev.Transformer3W(bus1=bus_1,
                                  bus2=bus_2,
                                  bus3=bus_3,
@@ -804,9 +825,9 @@ def get_veragrid_transformer(
                                  active=bool(psse_elm.STAT),
                                  r12=r12, r23=r23, r31=r31,
                                  x12=x12, x23=x23, x31=x31,
-                                 rate12=psse_elm.RATE1_1,
-                                 rate23=psse_elm.RATE2_1,
-                                 rate31=psse_elm.RATE3_1)
+                                 rate12=rate1_1,
+                                 rate23=rate2_1,
+                                 rate31=rate3_1)
 
         # NOTE: These seem to be related to the vector group and not to the power flow tap
         tr3w.winding1.tap_phase = np.deg2rad(psse_elm.ANG1)
@@ -848,7 +869,7 @@ def get_veragrid_transformer(
         raise Exception(str(psse_elm.windings) + ' number of windings!')
 
 
-def get_veragrid_line(psse_elm: RawBranch,
+def get_veragrid_line(psse_elm: RawBranchLike,
                       psse_bus_dict: Dict[int, dev.Bus],
                       Sbase: float,
                       logger: Logger,
@@ -880,12 +901,14 @@ def get_veragrid_line(psse_elm: RawBranch,
     else:
         name = psse_elm.NAME.strip()
 
-    contingency_factor = psse_elm.RATE2 / psse_elm.RATE1 if psse_elm.RATE1 > 0.0 else 1.0
+    rate1, rate2, rate3 = _get_branch_ratings(psse_elm)
+
+    contingency_factor = rate2 / rate1 if rate1 > 0.0 else 1.0
 
     if contingency_factor == 0:
         contingency_factor = 1.0
 
-    protection_factor = psse_elm.RATE3 / psse_elm.RATE1 if psse_elm.RATE1 > 0.0 else 1.4
+    protection_factor = rate3 / rate1 if rate1 > 0.0 else 1.4
 
     if protection_factor == 0:
         protection_factor = 1.4
@@ -898,7 +921,7 @@ def get_veragrid_line(psse_elm: RawBranch,
                       r=psse_elm.R,
                       x=psse_elm.X,
                       b=psse_elm.B,
-                      rate=psse_elm.RATE1,
+                      rate=rate1,
                       contingency_factor=round(contingency_factor, 6),
                       protection_rating_factor=round(protection_factor, 6),
                       active=bool(psse_elm.ST),
@@ -908,7 +931,7 @@ def get_veragrid_line(psse_elm: RawBranch,
     return branch
 
 
-def get_hvdc_from_vscdc(psse_elm: RawVscDCLine,
+def get_hvdc_from_vscdc(psse_elm: RawVscDCLineLike,
                         psse_bus_dict: Dict[int, dev.Bus],
                         Sbase: float,
                         logger: Logger) -> Union[dev.HvdcLine, None]:
@@ -959,7 +982,7 @@ def get_hvdc_from_vscdc(psse_elm: RawVscDCLine,
         return None
 
 
-def get_hvdc_from_twotermdc(psse_elm: RawTwoTerminalDCLine,
+def get_hvdc_from_twotermdc(psse_elm: RawTwoTerminalDCLineLike,
                             psse_bus_dict: Dict[int, dev.Bus],
                             Sbase: float,
                             logger: Logger) -> Union[dev.HvdcLine, None]:
@@ -1021,7 +1044,7 @@ def get_hvdc_from_twotermdc(psse_elm: RawTwoTerminalDCLine,
         return None
 
 
-def get_upfc_from_facts(psse_elm: RawFACTS,
+def get_upfc_from_facts(psse_elm: RawFACTSLike,
                         psse_bus_dict: Dict[int, dev.Bus],
                         Sbase: float,
                         logger: Logger,
@@ -1205,7 +1228,7 @@ def psse_to_veragrid(psse_circuit: PsseCircuit,
     if missing_zones:
         circuit.zones = [v for k, v in zones_dict.items()]
 
-    # check htat the area slack buses actually make sense
+    # check that the area slack buses actually make sense
     for area in psse_circuit.areas:
         if area.ISW not in slack_buses:
             logger.add_error('The area slack bus is not marked as slack', str(area.ISW))

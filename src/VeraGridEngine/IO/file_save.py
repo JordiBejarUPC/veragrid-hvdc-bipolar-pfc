@@ -340,18 +340,19 @@ def save_psse_raw(circuit: MultiCircuit,
     :return:logger with information
     """
     logger = Logger()
-    raw_circuit = veragrid_to_raw(circuit, logger=logger)
-    logger += write_raw(file_name, raw_circuit, version=int(options.raw_version))
+    raw_version = int(options.raw_version)
+    raw_circuit = veragrid_to_raw(circuit, version=raw_version, logger=logger)
+    logger += write_raw(file_name, raw_circuit, version=raw_version)
     return logger
 
 
-def save_psse_rawx(circuit: MultiCircuit, file_name: str) -> Logger:
+def save_psse_rawx(circuit: MultiCircuit, file_name: str, options: FileSavingOptions) -> Logger:
     """
     Save the circuit information in json format
     :return:logger with information
     """
     logger = Logger()
-    raw_circuit = veragrid_to_raw(circuit, logger=logger)
+    raw_circuit = veragrid_to_raw(circuit, version=int(options.raw_version), logger=logger)
     logger += write_rawx(file_name, raw_circuit)
     return logger
 
@@ -523,7 +524,8 @@ class FileSave:
         elif self.options.file_type == FileType.PSSE_rawx:
             logger = save_psse_rawx(
                 circuit=self.circuit,
-                file_name=self.file_name
+                file_name=self.file_name,
+                options=self.options,
             )
 
         elif self.options.file_type == FileType.PSSE_raw:
