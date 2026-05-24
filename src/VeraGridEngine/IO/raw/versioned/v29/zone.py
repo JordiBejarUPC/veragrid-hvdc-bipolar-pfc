@@ -17,7 +17,7 @@ class RawZoneV29(RawZone):
         self.version = version
         if len(data[0]) == 2:
             self.I, self.ZONAME = data[0]
-            self.ZONAME = self.ZONAME.replace("'", "").strip()
+            self.ZONAME = str(self.ZONAME).replace("'", "").strip()
         elif len(data[0]) == 1:
             self.I = data[0]
         else:

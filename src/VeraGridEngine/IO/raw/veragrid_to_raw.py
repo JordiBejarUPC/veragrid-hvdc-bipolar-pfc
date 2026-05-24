@@ -10,19 +10,6 @@ from itertools import groupby
 from scipy.sparse import lil_matrix
 
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
-from VeraGridEngine.IO.raw.versioned.base.area import RawArea as RawAreaBase
-from VeraGridEngine.IO.raw.versioned.base.zone import RawZone as RawZoneBase
-from VeraGridEngine.IO.raw.versioned.base.bus import RawBus as RawBusBase
-from VeraGridEngine.IO.raw.versioned.base.load import RawLoad as RawLoadBase
-from VeraGridEngine.IO.raw.versioned.base.fixed_shunt import RawFixedShunt as RawFixedShuntBase
-from VeraGridEngine.IO.raw.versioned.base.generator import RawGenerator as RawGeneratorBase
-from VeraGridEngine.IO.raw.versioned.base.switched_shunt import RawSwitchedShunt as RawSwitchedShuntBase
-from VeraGridEngine.IO.raw.versioned.base.transformer import RawTransformer as RawTransformerBase
-from VeraGridEngine.IO.raw.versioned.base.branch import RawBranch as RawBranchBase
-from VeraGridEngine.IO.raw.versioned.base.vsc_dc_line import RawVscDCLine as RawVscDCLineBase
-from VeraGridEngine.IO.raw.versioned.base.two_terminal_dc_line import RawTwoTerminalDCLine as RawTwoTerminalDCLineBase
-from VeraGridEngine.IO.raw.versioned.base.facts import RawFACTS as RawFACTSBase
-from VeraGridEngine.IO.raw.versioned.base.system_switching_device import RawSystemSwitchingDevice as RawSystemSwitchingDeviceBase
 from VeraGridEngine.IO.raw.versioned.v29.area import RawAreaV29
 from VeraGridEngine.IO.raw.versioned.v29.zone import RawZoneV29
 from VeraGridEngine.IO.raw.versioned.v29.bus import RawBusV29
@@ -155,10 +142,16 @@ from VeraGridEngine.enumerations import (TapChangerTypes,
                                          TapModuleControl,
                                          SwitchGraphicType,
                                          PsseTopologyExportMode)
-from VeraGridEngine.Topology.topology import find_islands, get_adjacency_matrix
 
 
 def _set_if_registered(raw_obj: RawObject, property_name: str, value) -> None:
+    """
+
+    :param raw_obj:
+    :param property_name:
+    :param value:
+    :return:
+    """
     raw_obj.set_registered_property_value(property_name, value)
 
 
@@ -167,6 +160,15 @@ def _set_branch_ratings(raw_branch: RawObject,
                         rate: float,
                         contingency_factor: float,
                         protection_factor: float) -> None:
+    """
+
+    :param raw_branch:
+    :param version:
+    :param rate:
+    :param contingency_factor:
+    :param protection_factor:
+    :return:
+    """
     rate2 = rate * contingency_factor
     rate3 = rate * protection_factor
     if version <= 33:
@@ -179,12 +181,22 @@ def _set_branch_ratings(raw_branch: RawObject,
         raw_branch.RATE3 = rate3
 
 
-def _set_transformer_winding_ratings(raw_transformer: RawObject,
+def _set_transformer_winding_ratings(raw_transformer: RawTransformerLike,
                                      version: int,
                                      winding_index: int,
                                      rate: float,
                                      contingency_factor: float,
                                      protection_factor: float) -> None:
+    """
+
+    :param raw_transformer:
+    :param version:
+    :param winding_index:
+    :param rate:
+    :param contingency_factor:
+    :param protection_factor:
+    :return:
+    """
     rate2 = rate * contingency_factor
     rate3 = rate * protection_factor
     raw_transformer.set_winding_rating_triplet(winding_index=winding_index,
@@ -192,6 +204,21 @@ def _set_transformer_winding_ratings(raw_transformer: RawObject,
                                                rate_1=rate,
                                                rate_2=rate2,
                                                rate_3=rate3)
+
+
+def _normalize_psse_version(version: int) -> int:
+    """
+    Clamp the requested PSSE RAW version to the supported VeraGrid range.
+
+    :param version: Requested PSSE RAW version.
+    :return: Supported PSSE RAW version.
+    """
+    if version > 36:
+        return 36
+    elif version < 29:
+        return 33
+    else:
+        return version
 
 
 class RawNodeBreakerExportData:
@@ -252,86 +279,25 @@ def get_export_substations(grid: MultiCircuit) -> List[dev.Substation]:
     return substations
 
 
-def get_substation_topology_components(grid: MultiCircuit,
-                                       substation: dev.Substation) -> List[List[dev.Bus]]:
-    """
-    Compute PSSE grouping components for one substation.
-
-    The grouping is intentionally driven only by active switches that already
-    represent explicit internal topology. Earlier RAW revisions do not support
-    nodes, and normal electrical branches must keep the ordinary bus-to-bus
-    relationship intact.
-
-    :param grid: VeraGrid circuit.
-    :param substation: Substation to process.
-    :return: Bus components that collapse into PSSE electrical buses.
-    """
-    buses: List[dev.Bus] = grid.get_substation_buses(substation=substation)
-    if len(buses) == 0:
-        return list()
-    else:
-        pass
-
-    bus_index: Dict[dev.Bus, int] = dict()
-    for index, bus in enumerate(buses):
-        bus_index[bus] = index
-
-    internal_switches: List[dev.Switch] = list()
-    for switch in grid.get_switches():
-        if switch.bus_from is None or switch.bus_to is None:
-            pass
-        elif switch.active and switch.bus_from.substation == substation and switch.bus_to.substation == substation:
-            internal_switches.append(switch)
-        else:
-            pass
-
-    if len(internal_switches) == 0:
-        components: List[List[dev.Bus]] = list()
-        for bus in buses:
-            components.append([bus])
-        return components
-    else:
-        pass
-
-    cf_matrix = lil_matrix((len(internal_switches), len(buses)), dtype=int)
-    ct_matrix = lil_matrix((len(internal_switches), len(buses)), dtype=int)
-    branch_active = np.ones(len(internal_switches), dtype=int)
-    bus_active = np.ones(len(buses), dtype=int)
-
-    for row_index, switch in enumerate(internal_switches):
-        from_index = bus_index[switch.bus_from]
-        to_index = bus_index[switch.bus_to]
-        cf_matrix[row_index, from_index] = 1
-        ct_matrix[row_index, to_index] = 1
-
-    adjacency = get_adjacency_matrix(C_branch_bus_f=cf_matrix.tocsc(),
-                                     C_branch_bus_t=ct_matrix.tocsc(),
-                                     branch_active=branch_active,
-                                     bus_active=bus_active)
-    islands = find_islands(adj=adjacency, active=bus_active)
-
-    components = list()
-    for island in islands:
-        component: List[dev.Bus] = list()
-        for local_index in island:
-            component.append(buses[int(local_index)])
-        components.append(component)
-
-    return components
-
-
 def get_psse_substation(substation: dev.Substation,
                         psse_number: int,
-                        raw_substation_type: type[RawSubstationLike]) -> RawSubstationLike:
+                        version: int,
+                        t_idx: int | None = None) -> RawSubstationLike:
     """
     Convert a VeraGrid substation into a PSSE substation record.
 
     :param substation: VeraGrid substation.
     :param psse_number: PSSE substation number.
-    :param raw_substation_type: Version-specific RAW substation class.
+    :param version: Target PSSE RAW version.
     :return: RAW substation record.
     """
-    psse_substation = raw_substation_type()
+    version = _normalize_psse_version(version=version)
+    if version <= 34:
+        psse_substation: RawSubstationLike = RawSubstationV34()
+    elif version == 35:
+        psse_substation = RawSubstationV35()
+    else:
+        psse_substation = RawSubstationV36()
     psse_substation.IS = psse_number
     psse_substation.NAME = str(substation.name)
     psse_substation.LATI = float(substation.latitude)
@@ -343,21 +309,28 @@ def get_psse_substation(substation: dev.Substation,
 def get_psse_node(bus: dev.Bus,
                   node_number: int,
                   electrical_bus_number: int,
-                  raw_node_type: type[RawNodeLike]) -> RawNodeLike:
+                  version: int,
+                  t_idx: int | None = None) -> RawNodeLike:
     """
     Convert a VeraGrid bus into a PSSE node record.
 
     :param bus: VeraGrid bus.
     :param node_number: Node number within the substation.
     :param electrical_bus_number: Derived PSSE electrical bus number.
-    :param raw_node_type: Version-specific RAW node class.
+    :param version: Target PSSE RAW version.
     :return: RAW node record.
     """
-    psse_node = raw_node_type()
+    version = _normalize_psse_version(version=version)
+    if version <= 34:
+        psse_node: RawNodeLike = RawNodeV34()
+    elif version == 35:
+        psse_node = RawNodeV35()
+    else:
+        psse_node = RawNodeV36()
     psse_node.NI = node_number
     psse_node.NAME = str(bus.name)
     psse_node.I = electrical_bus_number
-    psse_node.STATUS = 1 if bus.active else 0
+    psse_node.STATUS = 1 if bus.get_active_at(t=t_idx) else 0
     psse_node.VM = float(bus.Vm0)
     psse_node.VA = float(np.rad2deg(bus.Va0))
     return psse_node
@@ -367,7 +340,7 @@ def get_psse_substation_switch(switch: dev.Switch,
                                node_breaker_data: RawNodeBreakerExportData,
                                ckt: int,
                                version: int,
-                               raw_switch_type: type[RawSubstationSwitchingDeviceLike]) -> RawSubstationSwitchingDeviceLike:
+                               t_idx: int | None = None) -> RawSubstationSwitchingDeviceLike:
     """
     Convert an internal VeraGrid switch into a PSSE substation switching device.
 
@@ -375,29 +348,72 @@ def get_psse_substation_switch(switch: dev.Switch,
     :param node_breaker_data: Node-breaker export context.
     :param ckt: Switch identifier.
     :param version: PSSE RAW version.
-    :param raw_switch_type: Version-specific substation-switch class.
     :return: RAW substation switching device record.
     """
-    psse_switch = raw_switch_type()
-    substation = switch.bus_from.substation
-    psse_switch.ISUB = node_breaker_data.substation_number_by_substation[substation]
-    psse_switch.NI = node_breaker_data.node_number_by_bus[switch.bus_from]
-    psse_switch.NJ = node_breaker_data.node_number_by_bus[switch.bus_to]
+    version = _normalize_psse_version(version=version)
+    if version <= 34:
+        psse_switch: RawSubstationSwitchingDeviceLike = RawSubstationSwitchingDeviceV34()
+    elif version == 35:
+        psse_switch = RawSubstationSwitchingDeviceV35()
+    else:
+        psse_switch = RawSubstationSwitchingDeviceV36()
+
+    substation: dev.Substation | None = None
+    if switch.bus_from is not None and switch.bus_from.substation is not None:
+        substation = switch.bus_from.substation
+    elif switch.bus_to is not None and switch.bus_to.substation is not None:
+        substation = switch.bus_to.substation
+    else:
+        pass
+
+    substation_number: int = 0
+    if substation is not None:
+        registered_substation_number = node_breaker_data.substation_number_by_substation.get(substation, None)
+        if registered_substation_number is not None:
+            substation_number = registered_substation_number
+        else:
+            pass
+    else:
+        pass
+
+    from_node_number: int = 0
+    if switch.bus_from is not None:
+        registered_from_node_number = node_breaker_data.node_number_by_bus.get(switch.bus_from, None)
+        if registered_from_node_number is not None:
+            from_node_number = registered_from_node_number
+        else:
+            pass
+    else:
+        pass
+
+    to_node_number: int = 0
+    if switch.bus_to is not None:
+        registered_to_node_number = node_breaker_data.node_number_by_bus.get(switch.bus_to, None)
+        if registered_to_node_number is not None:
+            to_node_number = registered_to_node_number
+        else:
+            pass
+    else:
+        pass
+
+    psse_switch.ISUB = substation_number
+    psse_switch.NI = from_node_number
+    psse_switch.NJ = to_node_number
     psse_switch.NAME = str(switch.name)
     psse_switch.TYPE = 3 if switch.graphic_type == SwitchGraphicType.Disconnector else 2
-    psse_switch.STATUS = 1 if switch.active else 0
+    psse_switch.STATUS = 1 if switch.get_active_at(t=t_idx) else 0
     psse_switch.NSTAT = 0 if switch.normal_open else 1
     psse_switch.X = float(switch.X)
     if version == 34:
         psse_switch.CKTID = str(ckt)
-        psse_switch.RATE1 = float(switch.rate)
-        psse_switch.RATE2 = float(switch.rate * switch.contingency_factor)
-        psse_switch.RATE3 = float(switch.rate * switch.protection_rating_factor)
+        psse_switch.RATE1 = float(switch.get_rate_at(t=t_idx))
+        psse_switch.RATE2 = float(switch.get_rate_at(t=t_idx) * switch.get_contingency_factor_at(t=t_idx))
+        psse_switch.RATE3 = float(switch.get_rate_at(t=t_idx) * switch.get_protection_rating_factor_at(t=t_idx))
     elif version == 35:
         psse_switch.CKT = str(ckt)
-        psse_switch.RATE1 = float(switch.rate)
-        psse_switch.RATE2 = float(switch.rate * switch.contingency_factor)
-        psse_switch.RATE3 = float(switch.rate * switch.protection_rating_factor)
+        psse_switch.RATE1 = float(switch.get_rate_at(t=t_idx))
+        psse_switch.RATE2 = float(switch.get_rate_at(t=t_idx) * switch.get_contingency_factor_at(t=t_idx))
+        psse_switch.RATE3 = float(switch.get_rate_at(t=t_idx) * switch.get_protection_rating_factor_at(t=t_idx))
     else:
         psse_switch.CKT = str(ckt)
         psse_switch.RSETNAM = ""
@@ -409,10 +425,11 @@ def append_psse_terminal(node_breaker_data: RawNodeBreakerExportData,
                          bus: dev.Bus,
                          type_code: str,
                          eqid: int | str,
-                         raw_terminal_type: type[RawEquipmentTerminalLike],
+                         version: int,
                          ibus: int,
                          jbus: int = 0,
-                         kbus: int = 0) -> None:
+                         kbus: int = 0,
+                         t_idx: int | None = None) -> None:
     """
     Append one PSSE equipment terminal when the endpoint bus is exported as a node.
 
@@ -420,7 +437,7 @@ def append_psse_terminal(node_breaker_data: RawNodeBreakerExportData,
     :param bus: VeraGrid bus that owns the node.
     :param type_code: PSSE terminal type code.
     :param eqid: Equipment identifier.
-    :param raw_terminal_type: Version-specific terminal class.
+    :param version: Target PSSE RAW version.
     :param ibus: Electrical bus number of the local terminal side.
     :param jbus: Secondary bus number.
     :param kbus: Tertiary bus number.
@@ -431,8 +448,25 @@ def append_psse_terminal(node_breaker_data: RawNodeBreakerExportData,
     else:
         pass
 
-    terminal = raw_terminal_type()
-    terminal.ISUB = node_breaker_data.substation_number_by_substation[bus.substation]
+    version = _normalize_psse_version(version=version)
+    if version <= 34:
+        terminal: RawEquipmentTerminalLike = RawEquipmentTerminalV34()
+    elif version == 35:
+        terminal = RawEquipmentTerminalV35()
+    else:
+        terminal = RawEquipmentTerminalV36()
+
+    substation_number: int = 0
+    if bus.substation is not None:
+        registered_substation_number = node_breaker_data.substation_number_by_substation.get(bus.substation, None)
+        if registered_substation_number is not None:
+            substation_number = registered_substation_number
+        else:
+            pass
+    else:
+        pass
+
+    terminal.ISUB = substation_number
     terminal.IBUS = ibus
     terminal.NI = node_breaker_data.node_number_by_bus[bus]
     terminal.TYPE = type_code
@@ -442,29 +476,61 @@ def append_psse_terminal(node_breaker_data: RawNodeBreakerExportData,
     node_breaker_data.equipment_terminals.append(terminal)
 
 
-def get_area(area: dev.Area, i: int, raw_area_type: type[RawAreaLike] = RawAreaBase) -> RawAreaLike:
+def get_area(area: dev.Area, i: int, version: int) -> RawAreaLike:
     """
 
     :param area:
     :param i:
-    :param raw_area_type:
+    :param version:
     :return:
     """
-    result = raw_area_type()
+    version = _normalize_psse_version(version=version)
+    if version == 29:
+        result: RawAreaLike = RawAreaV29()
+    elif version == 30:
+        result = RawAreaV30()
+    elif version == 31:
+        result = RawAreaV31()
+    elif version == 32:
+        result = RawAreaV32()
+    elif version == 33:
+        result = RawAreaV33()
+    elif version == 34:
+        result = RawAreaV34()
+    elif version == 35:
+        result = RawAreaV35()
+    else:
+        result = RawAreaV36()
     result.ARNAME = area.name
     result.I = i
     return result
 
 
-def get_zone(zone: dev.Zone, i: int, raw_zone_type: type[RawZoneLike] = RawZoneBase) -> RawZoneLike:
+def get_zone(zone: dev.Zone, i: int, version: int) -> RawZoneLike:
     """
 
     :param zone:
     :param i:
-    :param raw_zone_type:
+    :param version:
     :return:
     """
-    result = raw_zone_type()
+    version = _normalize_psse_version(version=version)
+    if version == 29:
+        result: RawZoneLike = RawZoneV29()
+    elif version == 30:
+        result = RawZoneV30()
+    elif version == 31:
+        result = RawZoneV31()
+    elif version == 32:
+        result = RawZoneV32()
+    elif version == 33:
+        result = RawZoneV33()
+    elif version == 34:
+        result = RawZoneV34()
+    elif version == 35:
+        result = RawZoneV35()
+    else:
+        result = RawZoneV36()
     result.ZONAME = zone.name
     result.I = i
     return result
@@ -474,24 +540,41 @@ def get_psse_bus(bus: dev.Bus,
                  area_dict: Dict[dev.Area, int],
                  zones_dict: Dict[dev.Zone, int],
                  suggested_psse_number: int,
-                 raw_bus_type: type[RawBusLike] = RawBusBase) -> RawBusLike:
+                 version: int,
+                 t_idx: int | None = None) -> RawBusLike:
     """
 
     :param bus:
     :param area_dict: 
     :param zones_dict:
     :param suggested_psse_number:
-    :param raw_bus_type:
+    :param version:
     :return:
     """
-    psse_bus = raw_bus_type()
+    version = _normalize_psse_version(version=version)
+    if version == 29:
+        psse_bus: RawBusLike = RawBusV29()
+    elif version == 30:
+        psse_bus = RawBusV30()
+    elif version == 31:
+        psse_bus = RawBusV31()
+    elif version == 32:
+        psse_bus = RawBusV32()
+    elif version == 33:
+        psse_bus = RawBusV33()
+    elif version == 34:
+        psse_bus = RawBusV34()
+    elif version == 35:
+        psse_bus = RawBusV35()
+    else:
+        psse_bus = RawBusV36()
     psse_bus.NAME = str(bus.name)
     psse_bus.BASKV = bus.Vnom
 
     psse_bus.I = suggested_psse_number
 
-    psse_bus.EVLO = bus.Vmin
-    psse_bus.EVHI = bus.Vmax
+    psse_bus.EVLO = bus.get_Vmin_at(t=t_idx)
+    psse_bus.EVHI = bus.get_Vmax_at(t=t_idx)
 
     psse_bus.AREA = area_dict.get(bus.area, 0)
     psse_bus.ZONE = zones_dict.get(bus.zone, 0)
@@ -507,7 +590,7 @@ def get_psse_load(load: dev.Load,
                   bus_dict: Dict[dev.Bus, int],
                   id_number: int,
                   version: int,
-                  raw_load_type: type[RawLoadLike] = RawLoadBase) -> RawLoadLike:
+                  t_idx: int | None = None) -> RawLoadLike:
     """
 
     :param load:
@@ -515,18 +598,34 @@ def get_psse_load(load: dev.Load,
     :param id_number:
     :return:
     """
-    psse_load = raw_load_type()
+    version = _normalize_psse_version(version=version)
+    if version == 29:
+        psse_load: RawLoadLike = RawLoadV29()
+    elif version == 30:
+        psse_load = RawLoadV30()
+    elif version == 31:
+        psse_load = RawLoadV31()
+    elif version == 32:
+        psse_load = RawLoadV32()
+    elif version == 33:
+        psse_load = RawLoadV33()
+    elif version == 34:
+        psse_load = RawLoadV34()
+    elif version == 35:
+        psse_load = RawLoadV35()
+    else:
+        psse_load = RawLoadV36()
 
     psse_load.I = bus_dict[load.bus]
     psse_load.ID = id_number
 
-    psse_load.YP = load.G
-    psse_load.YQ = load.B
-    psse_load.IP = load.Ir
-    psse_load.IQ = -load.Ii
-    psse_load.PL = load.P
-    psse_load.QL = load.Q
-    psse_load.STATUS = 1 if load.active else 0
+    psse_load.YP = load.get_G_at(t=t_idx)
+    psse_load.YQ = load.get_B_at(t=t_idx)
+    psse_load.IP = load.get_Ir_at(t=t_idx)
+    psse_load.IQ = -load.get_Ii_at(t=t_idx)
+    psse_load.PL = load.get_P_at(t=t_idx)
+    psse_load.QL = load.get_Q_at(t=t_idx)
+    psse_load.STATUS = 1 if load.get_active_at(t=t_idx) else 0
     psse_load.SCALE = 1.0 if load.scalable else 0.0
     if version >= 36:
         _set_if_registered(psse_load, "NAME", str(load.name))
@@ -538,7 +637,7 @@ def get_psse_load_from_external_grid(load: dev.ExternalGrid,
                                      bus_dict: Dict[dev.Bus, int],
                                      id_number: int,
                                      version: int,
-                                     raw_load_type: type[RawLoadLike] = RawLoadBase) -> RawLoadLike:
+                                     t_idx: int | None = None) -> RawLoadLike:
     """
 
     :param load:
@@ -546,14 +645,30 @@ def get_psse_load_from_external_grid(load: dev.ExternalGrid,
     :param id_number:
     :return:
     """
-    psse_load = raw_load_type()
+    version = _normalize_psse_version(version=version)
+    if version == 29:
+        psse_load: RawLoadLike = RawLoadV29()
+    elif version == 30:
+        psse_load = RawLoadV30()
+    elif version == 31:
+        psse_load = RawLoadV31()
+    elif version == 32:
+        psse_load = RawLoadV32()
+    elif version == 33:
+        psse_load = RawLoadV33()
+    elif version == 34:
+        psse_load = RawLoadV34()
+    elif version == 35:
+        psse_load = RawLoadV35()
+    else:
+        psse_load = RawLoadV36()
 
     psse_load.I = bus_dict[load.bus]
     psse_load.ID = id_number
 
-    psse_load.PL = load.P
-    psse_load.QL = load.Q
-    psse_load.STATUS = 1 if load.active else 0
+    psse_load.PL = load.get_P_at(t=t_idx)
+    psse_load.QL = load.get_Q_at(t=t_idx)
+    psse_load.STATUS = 1 if load.get_active_at(t=t_idx) else 0
     if version >= 36:
         _set_if_registered(psse_load, "NAME", str(load.name))
 
@@ -564,7 +679,7 @@ def get_psse_fixed_shunt(shunt: dev.Shunt,
                          bus_dict: Dict[dev.Bus, int],
                          id_number: int,
                          version: int,
-                         raw_fixed_shunt_type: type[RawFixedShuntLike] = RawFixedShuntBase) -> RawFixedShuntLike:
+                         t_idx: int | None = None) -> RawFixedShuntLike:
     """
 
     :param shunt:
@@ -572,15 +687,31 @@ def get_psse_fixed_shunt(shunt: dev.Shunt,
     :param id_number:
     :return:
     """
-    psse_shunt = raw_fixed_shunt_type()
+    version = _normalize_psse_version(version=version)
+    if version == 29:
+        psse_shunt: RawFixedShuntLike = RawFixedShuntV29()
+    elif version == 30:
+        psse_shunt = RawFixedShuntV30()
+    elif version == 31:
+        psse_shunt = RawFixedShuntV31()
+    elif version == 32:
+        psse_shunt = RawFixedShuntV32()
+    elif version == 33:
+        psse_shunt = RawFixedShuntV33()
+    elif version == 34:
+        psse_shunt = RawFixedShuntV34()
+    elif version == 35:
+        psse_shunt = RawFixedShuntV35()
+    else:
+        psse_shunt = RawFixedShuntV36()
 
     psse_shunt.I = bus_dict[shunt.bus]
     psse_shunt.ID = id_number
 
-    psse_shunt.GL = shunt.G
-    psse_shunt.BL = shunt.B
+    psse_shunt.GL = shunt.get_G_at(t=t_idx)
+    psse_shunt.BL = shunt.get_B_at(t=t_idx)
 
-    psse_shunt.STATUS = 1 if shunt.active else 0
+    psse_shunt.STATUS = 1 if shunt.get_active_at(t=t_idx) else 0
     if version >= 36:
         _set_if_registered(psse_shunt, "NAME", str(shunt.name))
 
@@ -590,19 +721,35 @@ def get_psse_fixed_shunt(shunt: dev.Shunt,
 def get_psse_switched_shunt(shunt: dev.ControllableShunt,
                             bus_dict: Dict[dev.Bus, int],
                             version: int,
-                            raw_switched_shunt_type: type[RawSwitchedShuntLike] = RawSwitchedShuntBase) -> RawSwitchedShuntLike:
+                            t_idx: int | None = None) -> RawSwitchedShuntLike:
     """
 
     :param shunt:
     :param bus_dict:
     :return:
     """
-    psse_switched_shunt = raw_switched_shunt_type()
+    version = _normalize_psse_version(version=version)
+    if version == 29:
+        psse_switched_shunt: RawSwitchedShuntLike = RawSwitchedShuntV29()
+    elif version == 30:
+        psse_switched_shunt = RawSwitchedShuntV30()
+    elif version == 31:
+        psse_switched_shunt = RawSwitchedShuntV31()
+    elif version == 32:
+        psse_switched_shunt = RawSwitchedShuntV32()
+    elif version == 33:
+        psse_switched_shunt = RawSwitchedShuntV33()
+    elif version == 34:
+        psse_switched_shunt = RawSwitchedShuntV34()
+    elif version == 35:
+        psse_switched_shunt = RawSwitchedShuntV35()
+    else:
+        psse_switched_shunt = RawSwitchedShuntV36()
 
     psse_switched_shunt.I = bus_dict[shunt.bus]
 
-    psse_switched_shunt.BINIT = shunt.B
-    psse_switched_shunt.STAT = int(shunt.active)
+    psse_switched_shunt.BINIT = shunt.get_B_at(t=t_idx)
+    psse_switched_shunt.STAT = int(shunt.get_active_at(t=t_idx))
     if version >= 36:
         _set_if_registered(psse_switched_shunt, "NAME", str(shunt.name))
 
@@ -624,7 +771,7 @@ def get_psse_generator(generator: dev.Generator,
                        bus_dict: Dict[dev.Bus, int],
                        id_number: int,
                        version: int,
-                       raw_generator_type: type[RawGeneratorLike] = RawGeneratorBase) -> RawGeneratorLike:
+                       t_idx: int | None = None) -> RawGeneratorLike:
     """
 
     :param generator:
@@ -632,7 +779,23 @@ def get_psse_generator(generator: dev.Generator,
     :param id_number:
     :return:
     """
-    psse_generator = raw_generator_type()
+    version = _normalize_psse_version(version=version)
+    if version == 29:
+        psse_generator: RawGeneratorLike = RawGeneratorV29()
+    elif version == 30:
+        psse_generator = RawGeneratorV30()
+    elif version == 31:
+        psse_generator = RawGeneratorV31()
+    elif version == 32:
+        psse_generator = RawGeneratorV32()
+    elif version == 33:
+        psse_generator = RawGeneratorV33()
+    elif version == 34:
+        psse_generator = RawGeneratorV34()
+    elif version == 35:
+        psse_generator = RawGeneratorV35()
+    else:
+        psse_generator = RawGeneratorV36()
 
     psse_generator.I = bus_dict[generator.bus]
     psse_generator.ID = id_number
@@ -640,16 +803,16 @@ def get_psse_generator(generator: dev.Generator,
     if generator.control_bus is not None and generator.control_bus != generator.bus:
         psse_generator.IREG = bus_dict.get(generator.control_bus, 0)
 
-    psse_generator.PG = generator.P
-    psse_generator.VS = generator.Vset
-    psse_generator.QB = generator.Qmin
-    psse_generator.QT = generator.Qmax
+    psse_generator.PG = generator.get_P_at(t=t_idx)
+    psse_generator.VS = generator.get_Vset_at(t=t_idx)
+    psse_generator.QB = generator.get_Qmin_at(t=t_idx)
+    psse_generator.QT = generator.get_Qmax_at(t=t_idx)
     psse_generator.MBASE = generator.Snom
-    psse_generator.PT = generator.Pmax
-    psse_generator.PB = generator.Pmin
-    psse_generator.STAT = 1 if generator.active else 0
-    psse_generator.WPF = generator.Pf
-    psse_generator.QG = generator.Q
+    psse_generator.PT = generator.get_Pmax_at(t=t_idx)
+    psse_generator.PB = generator.get_Pmin_at(t=t_idx)
+    psse_generator.STAT = 1 if generator.get_active_at(t=t_idx) else 0
+    psse_generator.WPF = generator.get_Pf_at(t=t_idx)
+    psse_generator.QG = generator.get_Q_at(t=t_idx)
     if version >= 36:
         _set_if_registered(psse_generator, "DROOPNAME", "")
         _set_if_registered(psse_generator, "NAME", str(generator.name))
@@ -661,7 +824,7 @@ def get_psse_transformer2w(transformer: dev.Transformer2W,
                            bus_dict: Dict[dev.Bus, int],
                            ckt: int,
                            version: int,
-                           raw_transformer_type: type[RawTransformerLike] = RawTransformerBase) -> RawTransformerLike:
+                           t_idx: int | None = None) -> RawTransformerLike:
     """
 
     :param transformer:
@@ -669,17 +832,33 @@ def get_psse_transformer2w(transformer: dev.Transformer2W,
     :param ckt:
     :return:
     """
-    psse_transformer = raw_transformer_type()
+    version = _normalize_psse_version(version=version)
+    if version == 29:
+        psse_transformer: RawTransformerLike = RawTransformerV29()
+    elif version == 30:
+        psse_transformer = RawTransformerV30()
+    elif version == 31:
+        psse_transformer = RawTransformerV31()
+    elif version == 32:
+        psse_transformer = RawTransformerV32()
+    elif version == 33:
+        psse_transformer = RawTransformerV33()
+    elif version == 34:
+        psse_transformer = RawTransformerV34()
+    elif version == 35:
+        psse_transformer = RawTransformerV35()
+    else:
+        psse_transformer = RawTransformerV36()
     psse_transformer.windings = 2
 
     psse_transformer.idtag = transformer.idtag
-    psse_transformer.STAT = 1 if transformer.active else 0
+    psse_transformer.STAT = 1 if transformer.get_active_at(t=t_idx) else 0
 
     psse_transformer.SBASE1_2 = transformer.Sn
     _set_transformer_winding_ratings(psse_transformer, version, 1,
-                                     transformer.rate,
-                                     transformer.contingency_factor,
-                                     transformer.protection_rating_factor)
+                                     transformer.get_rate_at(t=t_idx),
+                                     transformer.get_contingency_factor_at(t=t_idx),
+                                     transformer.get_protection_rating_factor_at(t=t_idx))
 
     # i, j, ckt = transformer.code.split("_", 2)
     psse_transformer.I = bus_dict[transformer.bus_from]
@@ -689,7 +868,7 @@ def get_psse_transformer2w(transformer: dev.Transformer2W,
     psse_transformer.CW = 1
     # WINDV1 is the Winding 1 off-nominal turns ratio in pu of Winding1 bus base voltage
     mf, mt = transformer.get_virtual_taps()
-    psse_transformer.WINDV1 = transformer.tap_module * mf / mt
+    psse_transformer.WINDV1 = transformer.get_tap_module_at(t=t_idx) * mf / mt
     psse_transformer.WINDV2 = 1.0
 
     V1, V2, _ = transformer.get_from_to_nominal_voltages()
@@ -712,23 +891,27 @@ def get_psse_transformer2w(transformer: dev.Transformer2W,
     psse_transformer.VMA1 = transformer.tap_changer.get_tap_module_max()
     psse_transformer.VMI1 = transformer.tap_changer.get_tap_module_min()
 
-    psse_transformer.ANG1 = np.rad2deg(transformer.tap_phase)
+    psse_transformer.ANG1 = np.rad2deg(transformer.get_tap_phase_at(t=t_idx))
 
     # Control types
-    if transformer.tap_changer.tc_type == TapChangerTypes.NoRegulation:
+    tap_changer_type = transformer.tap_changer.tc_type
+    tap_module_control_mode = transformer.get_tap_module_control_mode_at(t=t_idx)
+    tap_phase_control_mode = transformer.get_tap_phase_control_mode_at(t=t_idx)
+
+    if tap_changer_type == TapChangerTypes.NoRegulation:
 
         psse_transformer.COD1 = 0
 
-    elif transformer.tap_changer.tc_type == TapChangerTypes.VoltageRegulation:
+    elif tap_changer_type == TapChangerTypes.VoltageRegulation:
 
-        if transformer.tap_module_control_mode == TapModuleControl.fixed:
+        if tap_module_control_mode == TapModuleControl.fixed:
             psse_transformer.COD1 = -1
         else:
             psse_transformer.COD1 = 1
 
-    elif transformer.tap_changer.tc_type == TapChangerTypes.Symmetrical:
+    elif tap_changer_type == TapChangerTypes.Symmetrical:
 
-        if transformer.tap_phase_control_mode == TapPhaseControl.fixed:
+        if tap_phase_control_mode == TapPhaseControl.fixed:
             psse_transformer.COD1 = -3
         else:
             psse_transformer.COD1 = 3
@@ -739,10 +922,10 @@ def get_psse_transformer2w(transformer: dev.Transformer2W,
              number_of_symmetrical_step * transformer.tap_changer.dV / 2
         ))
 
-    elif transformer.tap_changer.tc_type == TapChangerTypes.Asymmetrical:
+    elif tap_changer_type == TapChangerTypes.Asymmetrical:
 
-        if (transformer.tap_module_control_mode == TapModuleControl.fixed or
-                transformer.tap_phase_control_mode == TapPhaseControl.fixed):
+        if (tap_module_control_mode == TapModuleControl.fixed or
+                tap_phase_control_mode == TapPhaseControl.fixed):
             psse_transformer.COD1 = -5
         else:
             psse_transformer.COD1 = 5
@@ -757,14 +940,30 @@ def get_psse_transformer2w(transformer: dev.Transformer2W,
 def get_psse_transformer3w(transformer: dev.Transformer3W,
                            bus_dict: Dict[dev.Bus, int],
                            version: int,
-                           raw_transformer_type: type[RawTransformerLike] = RawTransformerBase) -> RawTransformerLike:
+                           t_idx: int | None = None) -> RawTransformerLike:
     """
 
     :param transformer:
     :param bus_dict:
     :return:
     """
-    psse_transformer = raw_transformer_type()
+    version = _normalize_psse_version(version=version)
+    if version == 29:
+        psse_transformer: RawTransformerLike = RawTransformerV29()
+    elif version == 30:
+        psse_transformer = RawTransformerV30()
+    elif version == 31:
+        psse_transformer = RawTransformerV31()
+    elif version == 32:
+        psse_transformer = RawTransformerV32()
+    elif version == 33:
+        psse_transformer = RawTransformerV33()
+    elif version == 34:
+        psse_transformer = RawTransformerV34()
+    elif version == 35:
+        psse_transformer = RawTransformerV35()
+    else:
+        psse_transformer = RawTransformerV36()
     psse_transformer.windings = 3
 
     psse_transformer.NOMV1 = transformer.V1
@@ -772,7 +971,7 @@ def get_psse_transformer3w(transformer: dev.Transformer3W,
     psse_transformer.NOMV3 = transformer.V3
 
     psse_transformer.idtag = transformer.idtag
-    psse_transformer.STAT = 1 if transformer.active else 0
+    psse_transformer.STAT = 1 if transformer.get_active_at(t=t_idx) else 0
 
     psse_transformer.NAME = transformer.name
     _set_transformer_winding_ratings(psse_transformer, version, 1,
@@ -820,7 +1019,7 @@ def get_psse_branch(branch: dev.Line,
                     bus_dict: Dict[dev.Bus, int],
                     ckt: int,
                     version: int,
-                    raw_branch_type: type[RawBranchLike] = RawBranchBase) -> RawBranchLike:
+                    t_idx: int | None = None) -> RawBranchLike:
     """
 
     :param branch:
@@ -828,7 +1027,23 @@ def get_psse_branch(branch: dev.Line,
     :param ckt:
     :return:
     """
-    psse_branch = raw_branch_type()
+    version = _normalize_psse_version(version=version)
+    if version == 29:
+        psse_branch: RawBranchLike = RawBranchV29()
+    elif version == 30:
+        psse_branch = RawBranchV30()
+    elif version == 31:
+        psse_branch = RawBranchV31()
+    elif version == 32:
+        psse_branch = RawBranchV32()
+    elif version == 33:
+        psse_branch = RawBranchV33()
+    elif version == 34:
+        psse_branch = RawBranchV34()
+    elif version == 35:
+        psse_branch = RawBranchV35()
+    else:
+        psse_branch = RawBranchV36()
 
     # i, j, ckt = line.code.split("_", 2)
 
@@ -841,10 +1056,13 @@ def get_psse_branch(branch: dev.Line,
     psse_branch.R = branch.R
     psse_branch.X = branch.X
     psse_branch.B = branch.B
-    psse_branch.ST = 1 if branch.active else 0
+    psse_branch.ST = 1 if branch.get_active_at(t=t_idx) else 0
     psse_branch.idtag = branch.idtag
     psse_branch.LEN = branch.length
-    _set_branch_ratings(psse_branch, version, branch.rate, branch.contingency_factor, branch.protection_rating_factor)
+    _set_branch_ratings(psse_branch, version,
+                        branch.get_rate_at(t=t_idx),
+                        branch.get_contingency_factor_at(t=t_idx),
+                        branch.get_protection_rating_factor_at(t=t_idx))
 
     return psse_branch
 
@@ -852,14 +1070,30 @@ def get_psse_branch(branch: dev.Line,
 def get_vsc_dc_line(hvdc_line: dev.HvdcLine,
                     bus_dict: Dict[dev.Bus, int],
                     version: int,
-                    raw_vsc_dc_line_type: type[RawVscDCLineLike] = RawVscDCLineBase) -> RawVscDCLineLike:
+                    t_idx: int | None = None) -> RawVscDCLineLike:
     """
 
     :param hvdc_line:
     :param bus_dict:
     :return:
     """
-    psse_vsc_dc_line = raw_vsc_dc_line_type()
+    version = _normalize_psse_version(version=version)
+    if version == 29:
+        psse_vsc_dc_line: RawVscDCLineLike = RawVscDCLineV29()
+    elif version == 30:
+        psse_vsc_dc_line = RawVscDCLineV30()
+    elif version == 31:
+        psse_vsc_dc_line = RawVscDCLineV31()
+    elif version == 32:
+        psse_vsc_dc_line = RawVscDCLineV32()
+    elif version == 33:
+        psse_vsc_dc_line = RawVscDCLineV33()
+    elif version == 34:
+        psse_vsc_dc_line = RawVscDCLineV34()
+    elif version == 35:
+        psse_vsc_dc_line = RawVscDCLineV35()
+    else:
+        psse_vsc_dc_line = RawVscDCLineV36()
     psse_vsc_dc_line.NAME = hvdc_line.name
     psse_vsc_dc_line.MDC = 1
     psse_vsc_dc_line.IBUS1 = bus_dict[hvdc_line.bus_from]
@@ -868,12 +1102,12 @@ def get_vsc_dc_line(hvdc_line: dev.HvdcLine,
     psse_vsc_dc_line.TYPE2 = 2
     psse_vsc_dc_line.MODE1 = 1
     psse_vsc_dc_line.MODE2 = 1
-    psse_vsc_dc_line.ACSET1 = hvdc_line.Vset_f
-    psse_vsc_dc_line.ACSET2 = hvdc_line.Vset_t
-    psse_vsc_dc_line.DCSET1 = hvdc_line.Pset
-    psse_vsc_dc_line.DCSET2 = -hvdc_line.Pset
-    psse_vsc_dc_line.SMAX1 = hvdc_line.rate
-    psse_vsc_dc_line.SMAX2 = hvdc_line.rate
+    psse_vsc_dc_line.ACSET1 = hvdc_line.get_Vset_f_at(t=t_idx)
+    psse_vsc_dc_line.ACSET2 = hvdc_line.get_Vset_t_at(t=t_idx)
+    psse_vsc_dc_line.DCSET1 = hvdc_line.get_Pset_at(t=t_idx)
+    psse_vsc_dc_line.DCSET2 = -hvdc_line.get_Pset_at(t=t_idx)
+    psse_vsc_dc_line.SMAX1 = hvdc_line.get_rate_at(t=t_idx)
+    psse_vsc_dc_line.SMAX2 = hvdc_line.get_rate_at(t=t_idx)
     if version >= 35:
         psse_vsc_dc_line.VSREG1 = psse_vsc_dc_line.IBUS1
         psse_vsc_dc_line.VSREG2 = psse_vsc_dc_line.IBUS2
@@ -894,14 +1128,31 @@ def get_vsc_dc_line(hvdc_line: dev.HvdcLine,
 
 def get_psse_two_terminal_dc_line(hvdc_line: dev.HvdcLine,
                                   bus_dict: Dict[dev.Bus, int],
-                                  raw_two_terminal_dc_line_type: type[RawTwoTerminalDCLineLike] = RawTwoTerminalDCLineBase) -> RawTwoTerminalDCLineLike:
+                                  version: int,
+                                  t_idx: int | None = None) -> RawTwoTerminalDCLineLike:
     """
 
     :param hvdc_line:
     :param bus_dict:
     :return:
     """
-    psse_two_terminal_dc_line = raw_two_terminal_dc_line_type()
+    version = _normalize_psse_version(version=version)
+    if version == 29:
+        psse_two_terminal_dc_line: RawTwoTerminalDCLineLike = RawTwoTerminalDCLineV29()
+    elif version == 30:
+        psse_two_terminal_dc_line = RawTwoTerminalDCLineV30()
+    elif version == 31:
+        psse_two_terminal_dc_line = RawTwoTerminalDCLineV31()
+    elif version == 32:
+        psse_two_terminal_dc_line = RawTwoTerminalDCLineV32()
+    elif version == 33:
+        psse_two_terminal_dc_line = RawTwoTerminalDCLineV33()
+    elif version == 34:
+        psse_two_terminal_dc_line = RawTwoTerminalDCLineV34()
+    elif version == 35:
+        psse_two_terminal_dc_line = RawTwoTerminalDCLineV35()
+    else:
+        psse_two_terminal_dc_line = RawTwoTerminalDCLineV36()
     psse_two_terminal_dc_line.NAME = hvdc_line.name
 
     psse_two_terminal_dc_line.IPR = bus_dict[hvdc_line.bus_from]
@@ -919,14 +1170,30 @@ def get_psse_two_terminal_dc_line(hvdc_line: dev.HvdcLine,
 def get_psse_facts(upfc: dev.UPFC,
                    bus_dict: Dict[dev.Bus, int],
                    version: int,
-                   raw_facts_type: type[RawFACTSLike] = RawFACTSBase) -> RawFACTSLike:
+                   t_idx: int | None = None) -> RawFACTSLike:
     """
 
     :param upfc:
     :param bus_dict:
     :return:
     """
-    psse_facts = raw_facts_type()
+    version = _normalize_psse_version(version=version)
+    if version == 29:
+        psse_facts: RawFACTSLike = RawFACTSV29()
+    elif version == 30:
+        psse_facts = RawFACTSV30()
+    elif version == 31:
+        psse_facts = RawFACTSV31()
+    elif version == 32:
+        psse_facts = RawFACTSV32()
+    elif version == 33:
+        psse_facts = RawFACTSV33()
+    elif version == 34:
+        psse_facts = RawFACTSV34()
+    elif version == 35:
+        psse_facts = RawFACTSV35()
+    else:
+        psse_facts = RawFACTSV36()
     psse_facts.NAME = upfc.name
 
     id_tag = upfc.idtag[:-2] if upfc.idtag.endswith("_1") else upfc.idtag
@@ -939,7 +1206,7 @@ def get_psse_facts(upfc: dev.UPFC,
     psse_facts.VSET = upfc.Vsh
     psse_facts.PDES = upfc.Pfset
     psse_facts.QDES = upfc.Qfset
-    psse_facts.IMX = upfc.rate - 1e-20
+    psse_facts.IMX = upfc.get_rate_at(t=t_idx) - 1e-20
     if version <= 34:
         _set_if_registered(psse_facts, "REMOT", psse_facts.I)
     else:
@@ -953,19 +1220,35 @@ def get_psse_switch(switch: dev.Switch,
                     bus_dict: Dict[dev.Bus, int],
                     ckt: int,
                     version: int,
-                    raw_switch_type: type[RawSystemSwitchingDeviceLike] = RawSystemSwitchingDeviceBase) -> RawSystemSwitchingDeviceLike:
+                    t_idx: int | None = None) -> RawSystemSwitchingDeviceLike:
     """
     Convert VeraGrid Switch to PSSE system switching device.
     """
-    psse_switch = raw_switch_type()
+    version = _normalize_psse_version(version=version)
+    if version == 29:
+        psse_switch: RawSystemSwitchingDeviceLike = RawSystemSwitchingDeviceV29()
+    elif version == 30:
+        psse_switch = RawSystemSwitchingDeviceV30()
+    elif version == 31:
+        psse_switch = RawSystemSwitchingDeviceV31()
+    elif version == 32:
+        psse_switch = RawSystemSwitchingDeviceV32()
+    elif version == 33:
+        psse_switch = RawSystemSwitchingDeviceV33()
+    elif version == 34:
+        psse_switch = RawSystemSwitchingDeviceV34()
+    elif version == 35:
+        psse_switch = RawSystemSwitchingDeviceV35()
+    else:
+        psse_switch = RawSystemSwitchingDeviceV36()
 
     psse_switch.I = bus_dict[switch.bus_from]
     psse_switch.J = bus_dict[switch.bus_to]
     psse_switch.CKT = str(ckt)
     psse_switch.X = switch.X
     if version <= 35:
-        psse_switch.RATE1 = switch.rate
-    psse_switch.STATUS = 1 if switch.active else 0
+        psse_switch.RATE1 = switch.get_rate_at(t=t_idx)
+    psse_switch.STATUS = 1 if switch.get_active_at(t=t_idx) else 0
     psse_switch.NSTATUS = 0 if switch.normal_open else 1
     psse_switch.METERED = 1
     psse_switch.STYPE = 3 if switch.graphic_type == SwitchGraphicType.Disconnector else 2
@@ -1082,7 +1365,8 @@ class RawCounter:
 def veragrid_to_raw(grid: MultiCircuit,
                     version: int,
                     logger: Logger,
-                    topology_mode: PsseTopologyExportMode = PsseTopologyExportMode.BusBranch) -> PsseCircuit:
+                    topology_mode: PsseTopologyExportMode = PsseTopologyExportMode.BusBranch,
+                    t_idx: int | None = None) -> PsseCircuit:
     """
     Convert a VeraGrid circuit into a PSSE RAW circuit.
 
@@ -1090,159 +1374,10 @@ def veragrid_to_raw(grid: MultiCircuit,
     :param version: Target PSSE RAW version.
     :param logger: Logger.
     :param topology_mode: Export topology strategy.
+    :param t_idx: Snapshot selector. ``None`` exports snapshot values, otherwise exports the selected profile step.
     :return: PSSE RAW circuit.
     """
-    if version > 36:
-        version = 36
-    elif version < 29:
-        version = 33
-    else:
-        version = version
-
-    if version == 29:
-        RawAreaT = RawAreaV29
-        RawZoneT = RawZoneV29
-        RawBusT = RawBusV29
-        RawLoadT = RawLoadV29
-        RawGeneratorT = RawGeneratorV29
-        RawFixedShuntT = RawFixedShuntV29
-        RawSwitchedShuntT = RawSwitchedShuntV29
-        RawBranchT = RawBranchV29
-        RawSystemSwitchingDeviceT = RawSystemSwitchingDeviceV29
-        RawTransformerT = RawTransformerV29
-        RawVscDCLineT = RawVscDCLineV29
-        RawTwoTerminalDCLineT = RawTwoTerminalDCLineV29
-        RawFACTST = RawFACTSV29
-        RawSubstationT = None
-        RawNodeT = None
-        RawSubstationSwitchingDeviceT = None
-        RawEquipmentTerminalT = None
-    elif version == 30:
-        RawAreaT = RawAreaV30
-        RawZoneT = RawZoneV30
-        RawBusT = RawBusV30
-        RawLoadT = RawLoadV30
-        RawGeneratorT = RawGeneratorV30
-        RawFixedShuntT = RawFixedShuntV30
-        RawSwitchedShuntT = RawSwitchedShuntV30
-        RawBranchT = RawBranchV30
-        RawSystemSwitchingDeviceT = RawSystemSwitchingDeviceV30
-        RawTransformerT = RawTransformerV30
-        RawVscDCLineT = RawVscDCLineV30
-        RawTwoTerminalDCLineT = RawTwoTerminalDCLineV30
-        RawFACTST = RawFACTSV30
-        RawSubstationT = None
-        RawNodeT = None
-        RawSubstationSwitchingDeviceT = None
-        RawEquipmentTerminalT = None
-    elif version == 31:
-        RawAreaT = RawAreaV31
-        RawZoneT = RawZoneV31
-        RawBusT = RawBusV31
-        RawLoadT = RawLoadV31
-        RawGeneratorT = RawGeneratorV31
-        RawFixedShuntT = RawFixedShuntV31
-        RawSwitchedShuntT = RawSwitchedShuntV31
-        RawBranchT = RawBranchV31
-        RawSystemSwitchingDeviceT = RawSystemSwitchingDeviceV31
-        RawTransformerT = RawTransformerV31
-        RawVscDCLineT = RawVscDCLineV31
-        RawTwoTerminalDCLineT = RawTwoTerminalDCLineV31
-        RawFACTST = RawFACTSV31
-        RawSubstationT = None
-        RawNodeT = None
-        RawSubstationSwitchingDeviceT = None
-        RawEquipmentTerminalT = None
-    elif version == 32:
-        RawAreaT = RawAreaV32
-        RawZoneT = RawZoneV32
-        RawBusT = RawBusV32
-        RawLoadT = RawLoadV32
-        RawGeneratorT = RawGeneratorV32
-        RawFixedShuntT = RawFixedShuntV32
-        RawSwitchedShuntT = RawSwitchedShuntV32
-        RawBranchT = RawBranchV32
-        RawSystemSwitchingDeviceT = RawSystemSwitchingDeviceV32
-        RawTransformerT = RawTransformerV32
-        RawVscDCLineT = RawVscDCLineV32
-        RawTwoTerminalDCLineT = RawTwoTerminalDCLineV32
-        RawFACTST = RawFACTSV32
-        RawSubstationT = None
-        RawNodeT = None
-        RawSubstationSwitchingDeviceT = None
-        RawEquipmentTerminalT = None
-    elif version == 33:
-        RawAreaT = RawAreaV33
-        RawZoneT = RawZoneV33
-        RawBusT = RawBusV33
-        RawLoadT = RawLoadV33
-        RawGeneratorT = RawGeneratorV33
-        RawFixedShuntT = RawFixedShuntV33
-        RawSwitchedShuntT = RawSwitchedShuntV33
-        RawBranchT = RawBranchV33
-        RawSystemSwitchingDeviceT = RawSystemSwitchingDeviceV33
-        RawTransformerT = RawTransformerV33
-        RawVscDCLineT = RawVscDCLineV33
-        RawTwoTerminalDCLineT = RawTwoTerminalDCLineV33
-        RawFACTST = RawFACTSV33
-        RawSubstationT = None
-        RawNodeT = None
-        RawSubstationSwitchingDeviceT = None
-        RawEquipmentTerminalT = None
-    elif version == 34:
-        RawAreaT = RawAreaV34
-        RawZoneT = RawZoneV34
-        RawBusT = RawBusV34
-        RawLoadT = RawLoadV34
-        RawGeneratorT = RawGeneratorV34
-        RawFixedShuntT = RawFixedShuntV34
-        RawSwitchedShuntT = RawSwitchedShuntV34
-        RawBranchT = RawBranchV34
-        RawSystemSwitchingDeviceT = RawSystemSwitchingDeviceV34
-        RawTransformerT = RawTransformerV34
-        RawVscDCLineT = RawVscDCLineV34
-        RawTwoTerminalDCLineT = RawTwoTerminalDCLineV34
-        RawFACTST = RawFACTSV34
-        RawSubstationT = RawSubstationV34
-        RawNodeT = RawNodeV34
-        RawSubstationSwitchingDeviceT = RawSubstationSwitchingDeviceV34
-        RawEquipmentTerminalT = RawEquipmentTerminalV34
-    elif version == 35:
-        RawAreaT = RawAreaV35
-        RawZoneT = RawZoneV35
-        RawBusT = RawBusV35
-        RawLoadT = RawLoadV35
-        RawGeneratorT = RawGeneratorV35
-        RawFixedShuntT = RawFixedShuntV35
-        RawSwitchedShuntT = RawSwitchedShuntV35
-        RawBranchT = RawBranchV35
-        RawSystemSwitchingDeviceT = RawSystemSwitchingDeviceV35
-        RawTransformerT = RawTransformerV35
-        RawVscDCLineT = RawVscDCLineV35
-        RawTwoTerminalDCLineT = RawTwoTerminalDCLineV35
-        RawFACTST = RawFACTSV35
-        RawSubstationT = RawSubstationV35
-        RawNodeT = RawNodeV35
-        RawSubstationSwitchingDeviceT = RawSubstationSwitchingDeviceV35
-        RawEquipmentTerminalT = RawEquipmentTerminalV35
-    else:
-        RawAreaT = RawAreaV36
-        RawZoneT = RawZoneV36
-        RawBusT = RawBusV36
-        RawLoadT = RawLoadV36
-        RawGeneratorT = RawGeneratorV36
-        RawFixedShuntT = RawFixedShuntV36
-        RawSwitchedShuntT = RawSwitchedShuntV36
-        RawBranchT = RawBranchV36
-        RawSystemSwitchingDeviceT = RawSystemSwitchingDeviceV36
-        RawTransformerT = RawTransformerV36
-        RawVscDCLineT = RawVscDCLineV36
-        RawTwoTerminalDCLineT = RawTwoTerminalDCLineV36
-        RawFACTST = RawFACTSV36
-        RawSubstationT = RawSubstationV36
-        RawNodeT = RawNodeV36
-        RawSubstationSwitchingDeviceT = RawSubstationSwitchingDeviceV36
-        RawEquipmentTerminalT = RawEquipmentTerminalV36
+    version = _normalize_psse_version(version=version)
 
     node_breaker_requested: bool = topology_mode == PsseTopologyExportMode.NodeBreaker and version >= 34
     if topology_mode == PsseTopologyExportMode.NodeBreaker and version < 34:
@@ -1258,11 +1393,11 @@ def veragrid_to_raw(grid: MultiCircuit,
     counter = RawCounter(grid=grid)
 
     for i, area in enumerate(grid.areas):
-        psse_circuit.areas.append(get_area(area=area, i=i + 1, raw_area_type=RawAreaT))
+        psse_circuit.areas.append(get_area(area=area, i=i + 1, version=version))
         area_dict[area] = i + 1
 
     for i, zone in enumerate(grid.zones):
-        psse_circuit.zones.append(get_zone(zone=zone, i=i + 1, raw_zone_type=RawZoneT))
+        psse_circuit.zones.append(get_zone(zone=zone, i=i + 1, version=version))
         zones_dict[zone] = i + 1
 
     node_breaker_data: RawNodeBreakerExportData | None = None
@@ -1276,36 +1411,33 @@ def veragrid_to_raw(grid: MultiCircuit,
             node_breaker_data.substations.append(
                 get_psse_substation(substation=substation,
                                     psse_number=substation_number,
-                                    raw_substation_type=RawSubstationT)
+                                    version=version,
+                                    t_idx=t_idx)
             )
 
             substation_buses = grid.get_substation_buses(substation=substation)
             for node_index, bus in enumerate(substation_buses):
+                # Each VeraGrid bus that belongs to a substation becomes one PSS/E
+                # node. We keep the electrical bus mapping one-to-one as well,
+                # because this export mode is only about exposing node ownership.
                 node_breaker_data.node_number_by_bus[bus] = node_index + 1
-
-            components = get_substation_topology_components(grid=grid, substation=substation)
-            for component in components:
-                representative_bus = component[0]
-                psse_number = counter.get_suggested_psse_number(bus=representative_bus, logger=logger)
                 psse_circuit.buses.append(
-                    get_psse_bus(bus=representative_bus,
+                    get_psse_bus(bus=bus,
                                  area_dict=area_dict,
                                  zones_dict=zones_dict,
-                                 suggested_psse_number=psse_number,
-                                 raw_bus_type=RawBusT)
+                                 suggested_psse_number=counter.get_suggested_psse_number(bus=bus, logger=logger),
+                                 version=version,
+                                 t_idx=t_idx)
                 )
-
-                node_breaker_data.bus_number_by_bus[representative_bus] = psse_number
-                for component_bus in component[1:]:
-                    counter.register_psse_number(bus=component_bus, psse_I=psse_number)
-                    node_breaker_data.bus_number_by_bus[component_bus] = psse_number
+                node_breaker_data.bus_number_by_bus[bus] = counter.psse_numbers_dict[bus]
 
             for bus in substation_buses:
                 if bus in node_breaker_data.bus_number_by_bus:
                     raw_node = get_psse_node(bus=bus,
                                              node_number=node_breaker_data.node_number_by_bus[bus],
                                              electrical_bus_number=node_breaker_data.bus_number_by_bus[bus],
-                                             raw_node_type=RawNodeT)
+                                             version=version,
+                                             t_idx=t_idx)
                     raw_node.ISUB = substation_number
                     node_breaker_data.nodes.append(raw_node)
                 else:
@@ -1325,7 +1457,8 @@ def veragrid_to_raw(grid: MultiCircuit,
                              area_dict=area_dict,
                              zones_dict=zones_dict,
                              suggested_psse_number=counter.get_suggested_psse_number(bus=bus, logger=logger),
-                             raw_bus_type=RawBusT)
+                             version=version,
+                             t_idx=t_idx)
             )
 
     if node_breaker_requested and node_breaker_data is not None:
@@ -1339,15 +1472,16 @@ def veragrid_to_raw(grid: MultiCircuit,
                                   bus_dict=counter.psse_numbers_dict,
                                   id_number=counter.get_id(load.bus),
                                   version=version,
-                                  raw_load_type=RawLoadT)
+                                  t_idx=t_idx)
         psse_circuit.loads.append(psse_load)
         if node_breaker_requested and node_breaker_data is not None:
             append_psse_terminal(node_breaker_data=node_breaker_data,
                                  bus=load.bus,
                                  type_code='L',
                                  eqid=psse_load.ID,
-                                 raw_terminal_type=RawEquipmentTerminalT,
-                                 ibus=psse_load.I)
+                                 version=version,
+                                 ibus=psse_load.I,
+                                 t_idx=t_idx)
         else:
             pass
 
@@ -1356,15 +1490,16 @@ def veragrid_to_raw(grid: MultiCircuit,
                                                      bus_dict=counter.psse_numbers_dict,
                                                      id_number=counter.get_id(external_grid.bus),
                                                      version=version,
-                                                     raw_load_type=RawLoadT)
+                                                     t_idx=t_idx)
         psse_circuit.loads.append(psse_load)
         if node_breaker_requested and node_breaker_data is not None:
             append_psse_terminal(node_breaker_data=node_breaker_data,
                                  bus=external_grid.bus,
                                  type_code='L',
                                  eqid=psse_load.ID,
-                                 raw_terminal_type=RawEquipmentTerminalT,
-                                 ibus=psse_load.I)
+                                 version=version,
+                                 ibus=psse_load.I,
+                                 t_idx=t_idx)
         else:
             pass
 
@@ -1373,7 +1508,7 @@ def veragrid_to_raw(grid: MultiCircuit,
                                             bus_dict=counter.psse_numbers_dict,
                                             id_number=counter.get_id(generator.bus),
                                             version=version,
-                                            raw_generator_type=RawGeneratorT)
+                                            t_idx=t_idx)
         if node_breaker_requested and node_breaker_data is not None and version >= 35:
             if generator.control_bus is not None and generator.control_bus in node_breaker_data.node_number_by_bus:
                 psse_generator.NREG = node_breaker_data.node_number_by_bus[generator.control_bus]
@@ -1388,8 +1523,9 @@ def veragrid_to_raw(grid: MultiCircuit,
                                  bus=generator.bus,
                                  type_code='M',
                                  eqid=psse_generator.ID,
-                                 raw_terminal_type=RawEquipmentTerminalT,
-                                 ibus=psse_generator.I)
+                                 version=version,
+                                 ibus=psse_generator.I,
+                                 t_idx=t_idx)
         else:
             pass
 
@@ -1398,15 +1534,16 @@ def veragrid_to_raw(grid: MultiCircuit,
                                           bus_dict=counter.psse_numbers_dict,
                                           id_number=counter.get_id(shunt.bus),
                                           version=version,
-                                          raw_fixed_shunt_type=RawFixedShuntT)
+                                          t_idx=t_idx)
         psse_circuit.fixed_shunts.append(psse_shunt)
         if node_breaker_requested and node_breaker_data is not None:
             append_psse_terminal(node_breaker_data=node_breaker_data,
                                  bus=shunt.bus,
                                  type_code='F',
                                  eqid=psse_shunt.ID,
-                                 raw_terminal_type=RawEquipmentTerminalT,
-                                 ibus=psse_shunt.I)
+                                 version=version,
+                                 ibus=psse_shunt.I,
+                                 t_idx=t_idx)
         else:
             pass
 
@@ -1414,7 +1551,7 @@ def veragrid_to_raw(grid: MultiCircuit,
         psse_shunt = get_psse_switched_shunt(shunt=controllable_shunt,
                                              bus_dict=counter.psse_numbers_dict,
                                              version=version,
-                                             raw_switched_shunt_type=RawSwitchedShuntT)
+                                             t_idx=t_idx)
         if node_breaker_requested and node_breaker_data is not None and version >= 35:
             if controllable_shunt.control_bus is not None and controllable_shunt.control_bus in node_breaker_data.node_number_by_bus:
                 psse_shunt.NREG = node_breaker_data.node_number_by_bus[controllable_shunt.control_bus]
@@ -1430,8 +1567,9 @@ def veragrid_to_raw(grid: MultiCircuit,
                                  bus=controllable_shunt.bus,
                                  type_code='S',
                                  eqid=switched_shunt_eqid,
-                                 raw_terminal_type=RawEquipmentTerminalT,
-                                 ibus=psse_shunt.I)
+                                 version=version,
+                                 ibus=psse_shunt.I,
+                                 t_idx=t_idx)
         else:
             pass
 
@@ -1440,23 +1578,25 @@ def veragrid_to_raw(grid: MultiCircuit,
                                      bus_dict=counter.psse_numbers_dict,
                                      ckt=counter.get_ckt(branch=line),
                                      version=version,
-                                     raw_branch_type=RawBranchT)
+                                     t_idx=t_idx)
         psse_circuit.branches.append(raw_branch)
         if node_breaker_requested and node_breaker_data is not None:
             append_psse_terminal(node_breaker_data=node_breaker_data,
                                  bus=line.bus_from,
                                  type_code='B',
                                  eqid=raw_branch.CKT,
-                                 raw_terminal_type=RawEquipmentTerminalT,
+                                 version=version,
                                  ibus=raw_branch.I,
-                                 jbus=raw_branch.J)
+                                 jbus=raw_branch.J,
+                                 t_idx=t_idx)
             append_psse_terminal(node_breaker_data=node_breaker_data,
                                  bus=line.bus_to,
                                  type_code='B',
                                  eqid=raw_branch.CKT,
-                                 raw_terminal_type=RawEquipmentTerminalT,
+                                 version=version,
                                  ibus=raw_branch.J,
-                                 jbus=raw_branch.I)
+                                 jbus=raw_branch.I,
+                                 t_idx=t_idx)
         else:
             pass
 
@@ -1469,21 +1609,21 @@ def veragrid_to_raw(grid: MultiCircuit,
                                            node_breaker_data=node_breaker_data,
                                            ckt=counter.get_ckt(branch=switch),
                                            version=version,
-                                           raw_switch_type=RawSubstationSwitchingDeviceT)
+                                           t_idx=t_idx)
             )
         else:
             psse_circuit.switches.append(get_psse_switch(switch=switch,
                                                          bus_dict=counter.psse_numbers_dict,
                                                          ckt=counter.get_ckt(branch=switch),
                                                          version=version,
-                                                         raw_switch_type=RawSystemSwitchingDeviceT))
+                                                         t_idx=t_idx))
 
     for transformer in grid.transformers2w:
         psse_transformer = get_psse_transformer2w(transformer=transformer,
                                                   bus_dict=counter.psse_numbers_dict,
                                                   ckt=counter.get_ckt(branch=transformer),
                                                   version=version,
-                                                  raw_transformer_type=RawTransformerT)
+                                                  t_idx=t_idx)
         if node_breaker_requested and node_breaker_data is not None and version >= 35:
             if transformer.regulation_bus is not None and transformer.regulation_bus in node_breaker_data.node_number_by_bus:
                 psse_transformer.CONT1 = counter.psse_numbers_dict[transformer.regulation_bus]
@@ -1499,16 +1639,18 @@ def veragrid_to_raw(grid: MultiCircuit,
                                  bus=transformer.bus_from,
                                  type_code='2',
                                  eqid=psse_transformer.CKT,
-                                 raw_terminal_type=RawEquipmentTerminalT,
+                                 version=version,
                                  ibus=psse_transformer.I,
-                                 jbus=psse_transformer.J)
+                                 jbus=psse_transformer.J,
+                                 t_idx=t_idx)
             append_psse_terminal(node_breaker_data=node_breaker_data,
                                  bus=transformer.bus_to,
                                  type_code='2',
                                  eqid=psse_transformer.CKT,
-                                 raw_terminal_type=RawEquipmentTerminalT,
+                                 version=version,
                                  ibus=psse_transformer.J,
-                                 jbus=psse_transformer.I)
+                                 jbus=psse_transformer.I,
+                                 t_idx=t_idx)
         else:
             pass
 
@@ -1516,76 +1658,84 @@ def veragrid_to_raw(grid: MultiCircuit,
         psse_transformer = get_psse_transformer3w(transformer=transformer,
                                                   bus_dict=counter.psse_numbers_dict,
                                                   version=version,
-                                                  raw_transformer_type=RawTransformerT)
+                                                  t_idx=t_idx)
         psse_circuit.transformers.append(psse_transformer)
         if node_breaker_requested and node_breaker_data is not None:
             append_psse_terminal(node_breaker_data=node_breaker_data,
                                  bus=transformer.bus1,
                                  type_code='3',
                                  eqid=psse_transformer.CKT,
-                                 raw_terminal_type=RawEquipmentTerminalT,
+                                 version=version,
                                  ibus=psse_transformer.I,
                                  jbus=psse_transformer.J,
-                                 kbus=psse_transformer.K)
+                                 kbus=psse_transformer.K,
+                                 t_idx=t_idx)
             append_psse_terminal(node_breaker_data=node_breaker_data,
                                  bus=transformer.bus2,
                                  type_code='3',
                                  eqid=psse_transformer.CKT,
-                                 raw_terminal_type=RawEquipmentTerminalT,
+                                 version=version,
                                  ibus=psse_transformer.J,
                                  jbus=psse_transformer.I,
-                                 kbus=psse_transformer.K)
+                                 kbus=psse_transformer.K,
+                                 t_idx=t_idx)
             append_psse_terminal(node_breaker_data=node_breaker_data,
                                  bus=transformer.bus3,
                                  type_code='3',
                                  eqid=psse_transformer.CKT,
-                                 raw_terminal_type=RawEquipmentTerminalT,
+                                 version=version,
                                  ibus=psse_transformer.K,
                                  jbus=psse_transformer.I,
-                                 kbus=psse_transformer.J)
+                                 kbus=psse_transformer.J,
+                                 t_idx=t_idx)
         else:
             pass
 
     for hvdc_line in grid.hvdc_lines:
-        if abs(hvdc_line.Vset_f - 1.0) > 1e-9 or abs(hvdc_line.Vset_t - 1.0) > 1e-9:
+        if abs(hvdc_line.get_Vset_f_at(t=t_idx) - 1.0) > 1e-9 or abs(hvdc_line.get_Vset_t_at(t=t_idx) - 1.0) > 1e-9:
             raw_vsc = get_vsc_dc_line(hvdc_line,
                                       bus_dict=counter.psse_numbers_dict,
                                       version=version,
-                                      raw_vsc_dc_line_type=RawVscDCLineT)
+                                      t_idx=t_idx)
             psse_circuit.vsc_dc_lines.append(raw_vsc)
             if node_breaker_requested and node_breaker_data is not None:
                 append_psse_terminal(node_breaker_data=node_breaker_data,
                                      bus=hvdc_line.bus_from,
                                      type_code='V',
                                      eqid=raw_vsc.NAME,
-                                     raw_terminal_type=RawEquipmentTerminalT,
-                                     ibus=raw_vsc.IBUS1)
+                                     version=version,
+                                     ibus=raw_vsc.IBUS1,
+                                     t_idx=t_idx)
                 append_psse_terminal(node_breaker_data=node_breaker_data,
                                      bus=hvdc_line.bus_to,
                                      type_code='V',
                                      eqid=raw_vsc.NAME,
-                                     raw_terminal_type=RawEquipmentTerminalT,
-                                     ibus=raw_vsc.IBUS2)
+                                     version=version,
+                                     ibus=raw_vsc.IBUS2,
+                                     t_idx=t_idx)
             else:
                 pass
         else:
             raw_dc = get_psse_two_terminal_dc_line(hvdc_line,
                                                    bus_dict=counter.psse_numbers_dict,
-                                                   raw_two_terminal_dc_line_type=RawTwoTerminalDCLineT)
+                                                   version=version,
+                                                   t_idx=t_idx)
             psse_circuit.two_terminal_dc_lines.append(raw_dc)
             if node_breaker_requested and node_breaker_data is not None:
                 append_psse_terminal(node_breaker_data=node_breaker_data,
                                      bus=hvdc_line.bus_from,
                                      type_code='D',
                                      eqid=raw_dc.NAME,
-                                     raw_terminal_type=RawEquipmentTerminalT,
-                                     ibus=raw_dc.IPR)
+                                     version=version,
+                                     ibus=raw_dc.IPR,
+                                     t_idx=t_idx)
                 append_psse_terminal(node_breaker_data=node_breaker_data,
                                      bus=hvdc_line.bus_to,
                                      type_code='D',
                                      eqid=raw_dc.NAME,
-                                     raw_terminal_type=RawEquipmentTerminalT,
-                                     ibus=raw_dc.IPI)
+                                     version=version,
+                                     ibus=raw_dc.IPI,
+                                     t_idx=t_idx)
             else:
                 pass
 
@@ -1593,7 +1743,7 @@ def veragrid_to_raw(grid: MultiCircuit,
         psse_circuit.facts.append(get_psse_facts(upfc_device,
                                                  bus_dict=counter.psse_numbers_dict,
                                                  version=version,
-                                                 raw_facts_type=RawFACTST))
+                                                 t_idx=t_idx))
 
     if node_breaker_requested and node_breaker_data is not None:
         psse_circuit.equipment_terminals.extend(node_breaker_data.equipment_terminals)

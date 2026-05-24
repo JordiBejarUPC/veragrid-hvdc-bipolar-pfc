@@ -6,6 +6,7 @@
 
 from pathlib import Path
 
+import numpy as np
 import VeraGridEngine.Devices as dev
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.IO.raw.versioned.v34.switched_shunt import RawSwitchedShuntV34
@@ -28,7 +29,8 @@ from VeraGridEngine.IO.raw.versioned.v34.vsc_dc_line import RawVscDCLineV34
 from VeraGridEngine.IO.raw.versioned.v35.vsc_dc_line import RawVscDCLineV35
 from VeraGridEngine.IO.raw.raw_parser_writer import interpret_line, read_and_split, read_raw
 from VeraGridEngine.IO.raw.raw_to_veragrid import psse_to_veragrid
-from VeraGridEngine.IO.raw.veragrid_to_raw import veragrid_to_raw
+from VeraGridEngine.IO.raw.veragrid_to_raw import (RawNodeBreakerExportData, append_psse_terminal,
+                                                   get_psse_substation_switch, veragrid_to_raw)
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.enumerations import PsseTopologyExportMode
 
@@ -318,6 +320,110 @@ def test_psse35_substation_switch_is_imported_between_node_buses(tmp_path: Path)
     assert switches[0].bus_to.code == "101:2"
 
 
+def test_psse35_substation_switch_export_handles_missing_from_substation() -> None:
+    """PSSE substation switch export must not fail when the from-bus substation is missing."""
+
+    substation = dev.Substation(name="SUB1")
+    bus_from = dev.Bus(name="B1", Vnom=110.0, code="101")
+    bus_to = dev.Bus(name="B2", Vnom=110.0, code="102", substation=substation)
+    switch = dev.Switch(bus_from=bus_from, bus_to=bus_to, name="SW12", active=True)
+
+    node_breaker_data = RawNodeBreakerExportData()
+    node_breaker_data.substation_number_by_substation[substation] = 7
+    node_breaker_data.node_number_by_bus[bus_from] = 11
+    node_breaker_data.node_number_by_bus[bus_to] = 12
+
+    psse_switch = get_psse_substation_switch(switch=switch,
+                                             node_breaker_data=node_breaker_data,
+                                             ckt=1,
+                                             version=35)
+
+    assert psse_switch.ISUB == 7
+    assert psse_switch.NI == 11
+    assert psse_switch.NJ == 12
+
+
+def test_psse35_equipment_terminal_export_handles_missing_substation() -> None:
+    """PSSE equipment terminal export must not fail when the bus substation is missing."""
+
+    bus = dev.Bus(name="B1", Vnom=110.0, code="101")
+    node_breaker_data = RawNodeBreakerExportData()
+    node_breaker_data.node_number_by_bus[bus] = 9
+
+    append_psse_terminal(node_breaker_data=node_breaker_data,
+                         bus=bus,
+                         type_code="L",
+                         eqid="1",
+                         version=35,
+                         ibus=101)
+
+    assert len(node_breaker_data.equipment_terminals) == 1
+    assert node_breaker_data.equipment_terminals[0].ISUB == 0
+    assert node_breaker_data.equipment_terminals[0].NI == 9
+
+
+def test_veragrid_to_raw_uses_profile_values_when_t_idx_is_provided() -> None:
+    """RAW export must use profile values when ``t_idx`` is provided."""
+
+    circuit = MultiCircuit()
+
+    bus_1 = dev.Bus(name="B1", Vnom=110.0, code="101", vmin=0.91, vmax=1.09)
+    bus_2 = dev.Bus(name="B2", Vnom=110.0, code="102", vmin=0.92, vmax=1.08)
+    bus_1.Vmin_prof = np.array([0.93, 0.95])
+    bus_1.Vmax_prof = np.array([1.07, 1.05])
+    circuit.add_bus(bus_1)
+    circuit.add_bus(bus_2)
+
+    load = dev.Load(name="LD1", P=10.0, Q=2.0, G=0.1, B=0.2, Ir=0.3, Ii=0.4, active=True)
+    load.P_prof = np.array([11.0, 21.0])
+    load.Q_prof = np.array([3.0, 4.0])
+    load.G_prof = np.array([0.11, 0.22])
+    load.B_prof = np.array([0.21, 0.32])
+    load.Ir_prof = np.array([0.31, 0.42])
+    load.Ii_prof = np.array([0.41, 0.52])
+    load.active_prof = np.array([True, False])
+    circuit.add_load(bus=bus_1, api_obj=load)
+
+    line = dev.Line(bus_from=bus_1, bus_to=bus_2, name="L12", r=0.01, x=0.05, b=0.001, rate=100.0, active=True)
+    line.rate_prof = np.array([110.0, 210.0])
+    line.contingency_factor_prof = np.array([1.1, 1.2])
+    line.protection_rating_factor_prof = np.array([1.3, 1.4])
+    line.active_prof = np.array([True, False])
+    circuit.add_line(line)
+
+    snapshot_export = veragrid_to_raw(grid=circuit, version=35, logger=Logger(), t_idx=None)
+    profile_export = veragrid_to_raw(grid=circuit, version=35, logger=Logger(), t_idx=1)
+
+    assert snapshot_export.buses[0].EVLO == 0.91
+    assert profile_export.buses[0].EVLO == 0.95
+    assert snapshot_export.buses[0].EVHI == 1.09
+    assert profile_export.buses[0].EVHI == 1.05
+
+    assert snapshot_export.loads[0].PL == 10.0
+    assert profile_export.loads[0].PL == 21.0
+    assert snapshot_export.loads[0].QL == 2.0
+    assert profile_export.loads[0].QL == 4.0
+    assert snapshot_export.loads[0].YP == 0.1
+    assert profile_export.loads[0].YP == 0.22
+    assert snapshot_export.loads[0].YQ == 0.2
+    assert profile_export.loads[0].YQ == 0.32
+    assert snapshot_export.loads[0].IP == 0.3
+    assert profile_export.loads[0].IP == 0.42
+    assert snapshot_export.loads[0].IQ == -0.4
+    assert profile_export.loads[0].IQ == -0.52
+    assert snapshot_export.loads[0].STATUS == 1
+    assert profile_export.loads[0].STATUS == 0
+
+    assert snapshot_export.branches[0].RATE1 == 100.0
+    assert profile_export.branches[0].RATE1 == 210.0
+    assert snapshot_export.branches[0].RATE2 == 100.0
+    assert profile_export.branches[0].RATE2 == 252.0
+    assert snapshot_export.branches[0].RATE3 == 140.0
+    assert profile_export.branches[0].RATE3 == 294.0
+    assert snapshot_export.branches[0].ST == 1
+    assert profile_export.branches[0].ST == 0
+
+
 def test_psse35_export_keeps_plain_bus_branch_mode_by_default() -> None:
     """PSSE 35 export must keep the direct bus model unless node-breaker mode is requested."""
 
@@ -346,7 +452,7 @@ def test_psse35_export_keeps_plain_bus_branch_mode_by_default() -> None:
 
 
 def test_psse35_export_node_breaker_mode_maps_substation_buses_to_nodes() -> None:
-    """PSSE 35 node-breaker export must turn substation buses into nodes and keep plain buses as buses."""
+    """PSSE 35 node-breaker export must map each substation bus to its own node."""
 
     circuit = MultiCircuit()
     substation = dev.Substation(name="SUB1")
@@ -373,11 +479,11 @@ def test_psse35_export_node_breaker_mode_maps_substation_buses_to_nodes() -> Non
 
     assert len(psse_circuit.substations) == 1
     assert len(psse_circuit.nodes) == 2
-    assert len(psse_circuit.buses) == 2
+    assert len(psse_circuit.buses) == 3
     assert len(psse_circuit.substation_switching_devices) == 1
     assert len(psse_circuit.switches) == 0
     assert len(psse_circuit.equipment_terminals) == 2
-    assert psse_circuit.nodes[0].I == psse_circuit.nodes[1].I
+    assert psse_circuit.nodes[0].I != psse_circuit.nodes[1].I
     assert psse_circuit.nodes[0].NI != psse_circuit.nodes[1].NI
 
 

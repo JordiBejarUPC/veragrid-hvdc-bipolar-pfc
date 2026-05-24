@@ -22,7 +22,7 @@ class RawAreaV29(RawArea):
             logger.add_warning('Undefined number of Area attributes', value=len(data[0]), expected_value=5)
             self.try_parse(values=data[0])
 
-        self.ARNAME = self.ARNAME.replace("'", "").strip()
+        self.ARNAME = str(self.ARNAME).replace("'", "").strip()
 
     def get_raw_line(self, version):
         return self.format_raw_line(["I", "ISW", "PDES", "PTOL", "ARNAME"])
