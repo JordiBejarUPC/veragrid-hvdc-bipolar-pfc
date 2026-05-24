@@ -11,10 +11,12 @@ class RawNodeV35(RawNodeV34):
 
     def parse(self, data, version, logger: Logger):
         self.version = version
-        if len(data[0]) == 7:
-            self.ISUB, self.NI, self.NAME, self.I, self.STATUS, self.VM, self.VA = data[0]
-        elif len(data[0]) == 6:
+        if len(data[0]) == 6:
             self.NI, self.NAME, self.I, self.STATUS, self.VM, self.VA = data[0]
+        elif len(data[0]) == 4:
+            self.NI, self.NAME, self.I, self.STATUS = data[0]
+            self.VM = 0.0
+            self.VA = 0.0
         else:
             self.try_parse(values=data[0])
 

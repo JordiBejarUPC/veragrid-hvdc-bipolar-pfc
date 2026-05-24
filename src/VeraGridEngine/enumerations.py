@@ -1890,6 +1890,44 @@ class FileType(Enum):
         except KeyError:
             return s
 
+
+class PsseTopologyExportMode(Enum):
+    """
+    Enumeration of PSSE RAW topology export strategies.
+    """
+    BusBranch = "BusBranch"
+    NodeBreaker = "NodeBreaker"
+
+    def __str__(self):
+        """
+        Return the display string of the enumeration.
+
+        :return: Display string.
+        """
+        return self.value
+
+    def __repr__(self):
+        """
+        Return the representation string of the enumeration.
+
+        :return: Representation string.
+        """
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+        Parse a command-line value into the enumeration.
+
+        :param s: Input string.
+        :return: Parsed enumeration or original input.
+        """
+        try:
+            return PsseTopologyExportMode[s]
+        except KeyError:
+            return s
+
+
 class CGMESVersions(Enum):
     """
     Enumeration of logs severities

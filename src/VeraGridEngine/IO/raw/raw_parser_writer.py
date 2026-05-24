@@ -138,6 +138,8 @@ from VeraGridEngine.IO.raw.versioned.v34.multi_section_line import RawMultiLineS
 from VeraGridEngine.IO.raw.versioned.v34.impedance_correction_table import RawImpedanceCorrectionTableV34
 from VeraGridEngine.IO.raw.versioned.v34.substation import RawSubstationV34
 from VeraGridEngine.IO.raw.versioned.v34.node import RawNodeV34
+from VeraGridEngine.IO.raw.versioned.v34.substation_switching_device import RawSubstationSwitchingDeviceV34
+from VeraGridEngine.IO.raw.versioned.v34.equipment_terminal import RawEquipmentTerminalV34
 from VeraGridEngine.IO.raw.versioned.v34.gne_device import RawGneDeviceV34
 from VeraGridEngine.IO.raw.versioned.v35.area import RawAreaV35
 from VeraGridEngine.IO.raw.versioned.v35.zone import RawZoneV35
@@ -159,6 +161,8 @@ from VeraGridEngine.IO.raw.versioned.v35.multi_section_line import RawMultiLineS
 from VeraGridEngine.IO.raw.versioned.v35.impedance_correction_table import RawImpedanceCorrectionTableV35
 from VeraGridEngine.IO.raw.versioned.v35.substation import RawSubstationV35
 from VeraGridEngine.IO.raw.versioned.v35.node import RawNodeV35
+from VeraGridEngine.IO.raw.versioned.v35.substation_switching_device import RawSubstationSwitchingDeviceV35
+from VeraGridEngine.IO.raw.versioned.v35.equipment_terminal import RawEquipmentTerminalV35
 from VeraGridEngine.IO.raw.versioned.v35.gne_device import RawGneDeviceV35
 from VeraGridEngine.IO.raw.versioned.v36.area import RawAreaV36
 from VeraGridEngine.IO.raw.versioned.v36.zone import RawZoneV36
@@ -180,6 +184,8 @@ from VeraGridEngine.IO.raw.versioned.v36.multi_section_line import RawMultiLineS
 from VeraGridEngine.IO.raw.versioned.v36.impedance_correction_table import RawImpedanceCorrectionTableV36
 from VeraGridEngine.IO.raw.versioned.v36.substation import RawSubstationV36
 from VeraGridEngine.IO.raw.versioned.v36.node import RawNodeV36
+from VeraGridEngine.IO.raw.versioned.v36.substation_switching_device import RawSubstationSwitchingDeviceV36
+from VeraGridEngine.IO.raw.versioned.v36.equipment_terminal import RawEquipmentTerminalV36
 from VeraGridEngine.IO.raw.versioned.v36.gne_device import RawGneDeviceV36
 
 SYSTEM_WIDE_SECTION_KEYS: set[str] = {
@@ -434,6 +440,100 @@ def format_lines(data1: List[List[float | int | str]], logger: Logger) -> List[L
     return data
 
 
+def parse_substation_data_group(
+        lines: List[List[float | int | str]],
+        version: int,
+        logger: Logger,
+        grid: PsseCircuit,
+        raw_substation_t,
+        raw_node_t,
+        raw_substation_switching_device_t,
+        raw_equipment_terminal_t) -> None:
+    """
+    Parse the nested PSSE 34+ substation data group.
+
+    The RAW substation section is not a flat list of homogeneous records. Each
+    substation block contains one substation record, a node list terminated by
+    zero, a station-switch list terminated by zero, and an equipment-terminal
+    list terminated by zero.
+
+    :param lines: Flat list of already tokenized RAW records from the section.
+    :param version: PSSE version.
+    :param logger: Logger instance.
+    :param grid: Destination PSSE circuit.
+    :param raw_substation_t: Version-specific substation class.
+    :param raw_node_t: Version-specific node class.
+    :param raw_substation_switching_device_t: Version-specific station-switch class.
+    :param raw_equipment_terminal_t: Version-specific terminal class.
+    :return: None
+    """
+    cursor: int = 0
+    total_lines: int = len(lines)
+
+    # Consume one nested block at a time. The outer zero record terminates the
+    # whole section, while the inner zero records terminate the node, switch,
+    # and terminal subsections of the current substation.
+    while cursor < total_lines:
+        substation_record: List[float | int | str] = lines[cursor]
+        if len(substation_record) == 0:
+            cursor += 1
+        elif substation_record[0] == 0:
+            break
+        else:
+            substation = raw_substation_t()
+            substation.parse([substation_record], version, logger)
+            grid.substations.append(substation)
+            cursor += 1
+
+            while cursor < total_lines:
+                node_record: List[float | int | str] = lines[cursor]
+                if len(node_record) == 0:
+                    cursor += 1
+                elif node_record[0] == 0:
+                    cursor += 1
+                    break
+                else:
+                    node = raw_node_t()
+                    node.ISUB = substation.IS
+                    node.parse([node_record], version, logger)
+                    grid.nodes.append(node)
+                    cursor += 1
+
+            while cursor < total_lines:
+                switch_record: List[float | int | str] = lines[cursor]
+                if len(switch_record) == 0:
+                    cursor += 1
+                elif switch_record[0] == 0:
+                    cursor += 1
+                    break
+                else:
+                    switch = raw_substation_switching_device_t()
+                    switch.ISUB = substation.IS
+                    switch.parse([switch_record], version, logger)
+                    grid.substation_switching_devices.append(switch)
+                    cursor += 1
+
+            while cursor < total_lines:
+                terminal_record: List[float | int | str] = lines[cursor]
+                if len(terminal_record) == 0:
+                    cursor += 1
+                elif terminal_record[0] == 0:
+                    cursor += 1
+                    break
+                else:
+                    terminal = raw_equipment_terminal_t()
+                    terminal.ISUB = substation.IS
+                    terminal.parse([terminal_record], version, logger)
+                    grid.equipment_terminals.append(terminal)
+                    cursor += 1
+
+    if cursor == total_lines and total_lines > 0 and len(lines[-1]) > 0 and lines[-1][0] != 0:
+        logger.add_warning(
+            'Substation data group terminated without the expected zero record',
+            value=str(version)
+        )
+
+
 def read_raw(filename, text_func=None, progress_func=None, logger=Logger()) -> PsseCircuit:
     """
 
@@ -495,6 +595,8 @@ def read_raw(filename, text_func=None, progress_func=None, logger=Logger()) -> P
         RawImpedanceCorrectionTableT = RawImpedanceCorrectionTableV29
         RawSubstationT = RawSubstationV29
         RawNodeT = RawNodeV29
+        RawSubstationSwitchingDeviceT = None
+        RawEquipmentTerminalT = None
         RawGneDeviceT = RawGneDeviceV29
     elif version == 30:
         RawAreaT = RawAreaV30
@@ -517,6 +619,8 @@ def read_raw(filename, text_func=None, progress_func=None, logger=Logger()) -> P
         RawImpedanceCorrectionTableT = RawImpedanceCorrectionTableV30
         RawSubstationT = RawSubstationV30
         RawNodeT = RawNodeV30
+        RawSubstationSwitchingDeviceT = None
+        RawEquipmentTerminalT = None
         RawGneDeviceT = RawGneDeviceV30
     elif version == 31:
         RawAreaT = RawAreaV31
@@ -539,6 +643,8 @@ def read_raw(filename, text_func=None, progress_func=None, logger=Logger()) -> P
         RawImpedanceCorrectionTableT = RawImpedanceCorrectionTableV31
         RawSubstationT = RawSubstationV31
         RawNodeT = RawNodeV31
+        RawSubstationSwitchingDeviceT = None
+        RawEquipmentTerminalT = None
         RawGneDeviceT = RawGneDeviceV31
     elif version == 32:
         RawAreaT = RawAreaV32
@@ -561,6 +667,8 @@ def read_raw(filename, text_func=None, progress_func=None, logger=Logger()) -> P
         RawImpedanceCorrectionTableT = RawImpedanceCorrectionTableV32
         RawSubstationT = RawSubstationV32
         RawNodeT = RawNodeV32
+        RawSubstationSwitchingDeviceT = None
+        RawEquipmentTerminalT = None
         RawGneDeviceT = RawGneDeviceV32
     elif version == 33:
         RawAreaT = RawAreaV33
@@ -583,6 +691,8 @@ def read_raw(filename, text_func=None, progress_func=None, logger=Logger()) -> P
         RawImpedanceCorrectionTableT = RawImpedanceCorrectionTableV33
         RawSubstationT = RawSubstationV33
         RawNodeT = RawNodeV33
+        RawSubstationSwitchingDeviceT = None
+        RawEquipmentTerminalT = None
         RawGneDeviceT = RawGneDeviceV33
     elif version == 34:
         RawAreaT = RawAreaV34
@@ -605,6 +715,8 @@ def read_raw(filename, text_func=None, progress_func=None, logger=Logger()) -> P
         RawImpedanceCorrectionTableT = RawImpedanceCorrectionTableV34
         RawSubstationT = RawSubstationV34
         RawNodeT = RawNodeV34
+        RawSubstationSwitchingDeviceT = RawSubstationSwitchingDeviceV34
+        RawEquipmentTerminalT = RawEquipmentTerminalV34
         RawGneDeviceT = RawGneDeviceV34
     elif version == 35:
         RawAreaT = RawAreaV35
@@ -627,6 +739,8 @@ def read_raw(filename, text_func=None, progress_func=None, logger=Logger()) -> P
         RawImpedanceCorrectionTableT = RawImpedanceCorrectionTableV35
         RawSubstationT = RawSubstationV35
         RawNodeT = RawNodeV35
+        RawSubstationSwitchingDeviceT = RawSubstationSwitchingDeviceV35
+        RawEquipmentTerminalT = RawEquipmentTerminalV35
         RawGneDeviceT = RawGneDeviceV35
     else:
         RawAreaT = RawAreaV36
@@ -649,6 +763,8 @@ def read_raw(filename, text_func=None, progress_func=None, logger=Logger()) -> P
         RawImpedanceCorrectionTableT = RawImpedanceCorrectionTableV36
         RawSubstationT = RawSubstationV36
         RawNodeT = RawNodeV36
+        RawSubstationSwitchingDeviceT = RawSubstationSwitchingDeviceV36
+        RawEquipmentTerminalT = RawEquipmentTerminalV36
         RawGneDeviceT = RawGneDeviceV36
 
     # declare contents:
@@ -689,7 +805,6 @@ def read_raw(filename, text_func=None, progress_func=None, logger=Logger()) -> P
     meta_data['branch'] = [grid.branches, RawBranchT, 1]
     meta_data['nontransformer branch'] = [grid.branches, RawBranchT, 1]
     meta_data['system switching device'] = [grid.switches, RawSystemSwitchingDeviceT, 1]
-    meta_data['substation'] = [grid.substations, RawSubstationT, 1]
     meta_data['transformer'] = [grid.transformers, RawTransformerT, 4]
     meta_data['two-terminal dc'] = [grid.two_terminal_dc_lines, RawTwoTerminalDCLineT, 3]
     meta_data['two-terminal dc line'] = [grid.two_terminal_dc_lines, RawTwoTerminalDCLineT, 3]
@@ -709,7 +824,24 @@ def read_raw(filename, text_func=None, progress_func=None, logger=Logger()) -> P
 
     for key, lines in sections_dict.items():
 
-        if key in meta_data:
+        if key == 'substation':
+            if version >= 34:
+                parse_substation_data_group(
+                    lines=lines,
+                    version=version,
+                    logger=logger,
+                    grid=grid,
+                    raw_substation_t=RawSubstationT,
+                    raw_node_t=RawNodeT,
+                    raw_substation_switching_device_t=RawSubstationSwitchingDeviceT,
+                    raw_equipment_terminal_t=RawEquipmentTerminalT
+                )
+            else:
+                logger.add_warning(
+                    'Substation data group is not defined before PSSE 34 and will be ignored',
+                    key
+                )
+        elif key in meta_data:
 
             # get the parsers for the declared object type
             objects_list, ObjectT, lines_per_object = meta_data[key]
@@ -800,6 +932,60 @@ def read_raw(filename, text_func=None, progress_func=None, logger=Logger()) -> P
     return grid
 
 
+def write_substation_data_group(handle,
+                                psse_model: PsseCircuit,
+                                version: int) -> None:
+    """
+    Write the nested PSSE 34+ substation data group.
+
+    :param handle: Open output handle.
+    :param psse_model: PSSE model to serialize.
+    :param version: Target RAW version.
+    :return: None
+    """
+    nodes_by_substation: Dict[int, List] = dict()
+    switches_by_substation: Dict[int, List] = dict()
+    terminals_by_substation: Dict[int, List] = dict()
+
+    for node in psse_model.nodes:
+        if node.ISUB in nodes_by_substation:
+            nodes_by_substation[node.ISUB].append(node)
+        else:
+            nodes_by_substation[node.ISUB] = [node]
+
+    for switch in psse_model.substation_switching_devices:
+        if switch.ISUB in switches_by_substation:
+            switches_by_substation[switch.ISUB].append(switch)
+        else:
+            switches_by_substation[switch.ISUB] = [switch]
+
+    for terminal in psse_model.equipment_terminals:
+        if terminal.ISUB in terminals_by_substation:
+            terminals_by_substation[terminal.ISUB].append(terminal)
+        else:
+            terminals_by_substation[terminal.ISUB] = [terminal]
+
+    for substation in psse_model.substations:
+        handle.write(substation.get_raw_line(version=version) + "\n")
+
+        substation_nodes = nodes_by_substation.get(substation.IS, list())
+        for node in substation_nodes:
+            handle.write(node.get_raw_line(version=version) + "\n")
+        handle.write("0\n")
+
+        substation_switches = switches_by_substation.get(substation.IS, list())
+        for switch in substation_switches:
+            handle.write(switch.get_raw_line(version=version) + "\n")
+        handle.write("0\n")
+
+        substation_terminals = terminals_by_substation.get(substation.IS, list())
+        for terminal in substation_terminals:
+            handle.write(terminal.get_raw_line(version=version) + "\n")
+        handle.write("0\n")
+
+    handle.write("0\n")
+
+
 def write_raw(file_name: str, psse_model: PsseCircuit, version=33) -> Logger:
     """
     Write PsseCircuit as .raw version 33
@@ -841,7 +1027,7 @@ def write_raw(file_name: str, psse_model: PsseCircuit, version=33) -> Logger:
             comment_map = comment_version_map.get(version)
 
         # IC,SBASE,REV,XFRRAT,NXFRAT,BASFRQ
-        if version == 35:
+        if version >= 35:
             w.write("@!IC,SBASE,REV,XFRRAT,NXFRAT,BASFRQ\n")
         w.write("{},{},{},{},{},{}     / Created with VeraGrid\n".format(psse_model.IC, psse_model.SBASE, version,
                                                                          psse_model.XFRRAT, psse_model.NXFRAT,
@@ -853,7 +1039,7 @@ def write_raw(file_name: str, psse_model: PsseCircuit, version=33) -> Logger:
 
         # comment 2
         w.write("HID:4644MW,TERM:10747MW,EOL:6503MW,FV:0MW,OK\n")
-        if version == 35:
+        if version >= 35:
             w.write("GENERAL, THRSHZ=0.0001, PQBRAK=0.7, BLOWUP=5.0, MaxIsolLvls=4, CAMaxReptSln=20, ChkDupCntLbl=0\n"
                     "GAUSS, ITMX=100, ACCP=1.6, ACCQ=1.6, ACCM=1.0, TOL=0.0001\n"
                     "NEWTON, ITMXN=20, ACCN=1.0, TOLN=0.1, VCTOLQ=0.1, VCTOLV=0.00001, DVLIM=0.99, NDVFCT=0.99\n"
@@ -892,8 +1078,31 @@ def write_raw(file_name: str, psse_model: PsseCircuit, version=33) -> Logger:
                 ("OWNER", psse_model.owners),
                 ("FACTS DEVICE", psse_model.facts),
                 ("SWITCHED SHUNT", psse_model.switched_shunts),
-                ("GNE", psse_model.gne),
                 ("SUBSTATION", psse_model.substations),
+                ("GNE", psse_model.gne),
+            ]
+        elif version == 34:
+            sections = [
+                ("BUS", psse_model.buses),
+                ("LOAD", psse_model.loads),
+                ("FIXED SHUNT", psse_model.fixed_shunts),
+                ("GENERATOR", psse_model.generators),
+                ("BRANCH", psse_model.branches),
+                ("SYSTEM SWITCHING DEVICE", psse_model.switches),
+                ("TRANSFORMER", psse_model.transformers),
+                ("AREA INTERCHANGE", psse_model.areas),
+                ("TWO-TERMINAL DC LINE", psse_model.two_terminal_dc_lines),
+                ("VSC DC LINE", psse_model.vsc_dc_lines),
+                ("IMPEDANCE CORRECTION", None),
+                ("MULTI-TERMINAL DC LINE", None),
+                ("MULTI-SECTION LINE GROUP", psse_model.multi_line_sections),
+                ("ZONE", psse_model.zones),
+                ("INTER-AREA TRANSFER", psse_model.inter_areas),
+                ("OWNER", psse_model.owners),
+                ("FACTS DEVICE", psse_model.facts),
+                ("SWITCHED SHUNT", psse_model.switched_shunts),
+                ("SUBSTATION", psse_model.substations),
+                ("GNE", psse_model.gne),
             ]
         elif version == 33:
             sections = [
@@ -915,7 +1124,6 @@ def write_raw(file_name: str, psse_model: PsseCircuit, version=33) -> Logger:
                 ("FACTS DEVICE", psse_model.facts),
                 ("SWITCHED SHUNT", psse_model.switched_shunts),
                 ("GNE", psse_model.gne),
-                ("SUBSTATION", psse_model.substations),
             ]
         else:
             logger.add_error(msg="Version not supported",
@@ -924,9 +1132,9 @@ def write_raw(file_name: str, psse_model: PsseCircuit, version=33) -> Logger:
 
         prev_section = None
         s_count = 0
-        if version == 35:
+        if version >= 35:
             prev_section = "SYSTEM-WIDE"
-        elif version == 33:
+        elif version == 34 or version == 33:
             prev_section = "BUS"
 
         for section_name, objects_list in sections:
@@ -942,8 +1150,11 @@ def write_raw(file_name: str, psse_model: PsseCircuit, version=33) -> Logger:
                     logger.add_info(msg="Missing comment for section",
                                     value=section_name)
             if objects_list is not None:
-                for obj in objects_list:
-                    w.write(obj.get_raw_line(version=version) + "\n")
+                if section_name == "SUBSTATION":
+                    write_substation_data_group(handle=w, psse_model=psse_model, version=version)
+                else:
+                    for obj in objects_list:
+                        w.write(obj.get_raw_line(version=version) + "\n")
 
             prev_section = section_name
             s_count += 1

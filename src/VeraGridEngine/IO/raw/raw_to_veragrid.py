@@ -13,10 +13,14 @@ from VeraGridEngine.IO.raw.psse_circuit import PsseCircuit
 from VeraGridEngine.IO.raw.raw_types import (
     RawBranchLike,
     RawBusLike,
+    RawEquipmentTerminalLike,
     RawFACTSLike,
     RawFixedShuntLike,
     RawGeneratorLike,
     RawLoadLike,
+    RawNodeLike,
+    RawSubstationLike,
+    RawSubstationSwitchingDeviceLike,
     RawSwitchedShuntLike,
     RawSystemSwitchingDeviceLike,
     RawTransformerLike,
@@ -36,6 +40,283 @@ def _get_branch_ratings(psse_elm: RawBranchLike) -> tuple[float, float, float]:
 
 def _get_transformer_winding_ratings(psse_elm: RawTransformerLike, winding_index: int) -> tuple[float, float, float]:
     return psse_elm.get_winding_rating_triplet(winding_index=winding_index, version=psse_elm.version)
+
+
+def normalize_terminal_identifier(value: int | float | str) -> str:
+    """
+    Normalize a terminal identifier for cross-record matching.
+
+    :param value: Terminal identifier from RAW.
+    :return: Normalized identifier.
+    """
+    text = str(value).replace("'", "").replace('"', "").strip()
+    if text == '':
+        return '1'
+    else:
+        return text
+
+
+def create_substation_objects(
+        psse_substations: List[RawSubstationLike],
+        circuit: MultiCircuit) -> Dict[int, dev.Substation]:
+    """
+    Create VeraGrid substations from the RAW substation records.
+
+    :param psse_substations: PSSE substation records.
+    :param circuit: Destination circuit.
+    :return: Mapping from PSSE substation number to VeraGrid substation.
+    """
+    substation_dict: Dict[int, dev.Substation] = dict()
+    for psse_substation in psse_substations:
+        name = str(psse_substation.NAME).replace("'", "").strip()
+        if name == '':
+            name = f"Substation {psse_substation.IS}"
+        else:
+            name = name
+
+        substation = dev.Substation(
+            name=name,
+            code=str(psse_substation.IS),
+            latitude=float(psse_substation.LATI),
+            longitude=float(psse_substation.LONG)
+        )
+        circuit.add_substation(substation)
+        substation_dict[psse_substation.IS] = substation
+
+    return substation_dict
+
+
+def create_node_breaker_buses(
+        psse_nodes: List[RawNodeLike],
+        raw_bus_by_number: Dict[int, RawBusLike],
+        area_dict: Dict[int, dev.Area],
+        zone_dict: Dict[int, dev.Zone],
+        substation_dict: Dict[int, dev.Substation],
+        circuit: MultiCircuit,
+        logger: Logger) -> tuple[Dict[tuple[int, int], dev.Bus], Dict[tuple[int, int], dev.Bus], Dict[int, dev.Bus], set[int]]:
+    """
+    Create VeraGrid buses for PSSE node-breaker nodes.
+
+    Each PSSE node becomes a VeraGrid bus. The PSSE electrical bus record is kept as
+    metadata for voltage level, area, zone, and solved-state defaults.
+
+    :param psse_nodes: Node records.
+    :param raw_bus_by_number: RAW bus records keyed by bus number.
+    :param area_dict: Area dictionary.
+    :param zone_dict: Zone dictionary.
+    :param substation_dict: Substation dictionary.
+    :param circuit: Destination circuit.
+    :param logger: Logger.
+    :return: Node-bus lookup dictionaries and the set of electrical bus numbers with node-breaker data.
+    """
+    node_bus_by_substation_node: Dict[tuple[int, int], dev.Bus] = dict()
+    node_bus_by_bus_and_node: Dict[tuple[int, int], dev.Bus] = dict()
+    representative_bus_by_number: Dict[int, dev.Bus] = dict()
+    node_breaker_bus_numbers: set[int] = set()
+
+    for psse_node in psse_nodes:
+        raw_bus = raw_bus_by_number.get(psse_node.I, None)
+        substation = substation_dict.get(psse_node.ISUB, None)
+
+        if raw_bus is None:
+            logger.add_error('Node references a bus that does not exist', value=str(psse_node.I))
+        elif substation is None:
+            logger.add_error('Node references a substation that does not exist', value=str(psse_node.ISUB))
+        else:
+            bus, _ = get_veragrid_bus(
+                psse_bus=raw_bus,
+                area_dict=area_dict,
+                zone_dict=zone_dict,
+                logger=logger
+            )
+
+            node_name = str(psse_node.NAME).replace("'", "").strip()
+            if node_name == '':
+                node_name = f"{substation.name}_{psse_node.NI}"
+            else:
+                node_name = node_name
+
+            if psse_node.VM != 0.0 or psse_node.VA != 0.0:
+                vm0 = float(psse_node.VM)
+                va0 = np.deg2rad(float(psse_node.VA))
+            else:
+                vm0 = float(raw_bus.VM)
+                va0 = np.deg2rad(float(raw_bus.VA))
+
+            bus.name = node_name
+            bus.code = f"{psse_node.I}:{psse_node.NI}"
+            bus.substation = substation
+            bus.active = bus.active and bool(psse_node.STATUS)
+            bus.Vm0 = vm0
+            bus.Va0 = va0
+
+            # Only one node bus should carry the slack designation of the reduced
+            # electrical bus. The others are plain PQ nodes until topology reduction.
+            if raw_bus.I in representative_bus_by_number:
+                bus.is_slack = False
+                bus._bus_type = dev.BusMode.PQ_tpe
+
+            circuit.add_bus(bus)
+
+            if substation.area is None:
+                substation.area = area_dict.get(abs(raw_bus.AREA), None)
+            else:
+                substation.area = substation.area
+
+            if substation.zone is None:
+                substation.zone = zone_dict.get(abs(raw_bus.ZONE), None)
+            else:
+                substation.zone = substation.zone
+
+            node_bus_by_substation_node[(psse_node.ISUB, psse_node.NI)] = bus
+            node_bus_by_bus_and_node[(psse_node.I, psse_node.NI)] = bus
+            node_breaker_bus_numbers.add(psse_node.I)
+
+            if psse_node.I not in representative_bus_by_number:
+                representative_bus_by_number[psse_node.I] = bus
+            else:
+                representative_bus_by_number[psse_node.I] = representative_bus_by_number[psse_node.I]
+
+    return node_bus_by_substation_node, node_bus_by_bus_and_node, representative_bus_by_number, node_breaker_bus_numbers
+
+
+def build_terminal_bus_lookup(
+        terminals: List[RawEquipmentTerminalLike],
+        node_bus_by_bus_and_node: Dict[tuple[int, int], dev.Bus],
+        logger: Logger) -> Dict[tuple[str, int, int, int, str], dev.Bus]:
+    """
+    Build a lookup from terminal records to VeraGrid node buses.
+
+    :param terminals: Parsed equipment terminal records.
+    :param node_bus_by_bus_and_node: Node buses keyed by electrical bus and node number.
+    :param logger: Logger.
+    :return: Terminal lookup dictionary.
+    """
+    terminal_bus_lookup: Dict[tuple[str, int, int, int, str], dev.Bus] = dict()
+
+    for terminal in terminals:
+        if terminal.NI > 0:
+            bus = node_bus_by_bus_and_node.get((terminal.IBUS, terminal.NI), None)
+            if bus is None:
+                logger.add_warning(
+                    'Equipment terminal references a node that was not created',
+                    value=f"{terminal.IBUS}:{terminal.NI}"
+                )
+            else:
+                key = (
+                    terminal.TYPE,
+                    terminal.IBUS,
+                    terminal.JBUS,
+                    terminal.KBUS,
+                    normalize_terminal_identifier(terminal.EQID),
+                )
+                terminal_bus_lookup[key] = bus
+        else:
+            pass
+
+    return terminal_bus_lookup
+
+
+def find_terminal_bus(
+        terminal_bus_lookup: Dict[tuple[str, int, int, int, str], dev.Bus],
+        type_code: str,
+        ibus: int,
+        jbus: int,
+        kbus: int,
+        eqid: int | float | str) -> dev.Bus | None:
+    """
+    Resolve a RAW equipment terminal to a VeraGrid node bus.
+
+    :param terminal_bus_lookup: Terminal lookup dictionary.
+    :param type_code: Terminal type code.
+    :param ibus: Primary bus number.
+    :param jbus: Secondary bus number.
+    :param kbus: Tertiary bus number.
+    :param eqid: Equipment identifier.
+    :return: Node bus or ``None``.
+    """
+    normalized_id = normalize_terminal_identifier(eqid)
+    key = (type_code, ibus, jbus, kbus, normalized_id)
+    bus = terminal_bus_lookup.get(key, None)
+
+    if bus is None and type_code == '3':
+        alt_key = (type_code, ibus, kbus, jbus, normalized_id)
+        bus = terminal_bus_lookup.get(alt_key, None)
+    else:
+        bus = bus
+
+    return bus
+
+
+def find_control_node_bus(
+        node_bus_by_bus_and_node: Dict[tuple[int, int], dev.Bus],
+        bus_number: int,
+        node_number: int) -> dev.Bus | None:
+    """
+    Resolve a control target defined by electrical bus and node number.
+
+    :param node_bus_by_bus_and_node: Node buses keyed by electrical bus and node number.
+    :param bus_number: Electrical bus number.
+    :param node_number: Node number.
+    :return: Node bus or ``None``.
+    """
+    if node_number > 0:
+        return node_bus_by_bus_and_node.get((abs(bus_number), abs(node_number)), None)
+    else:
+        return None
+
+
+def create_substation_switch(
+        psse_switch: RawSubstationSwitchingDeviceLike,
+        node_bus_by_substation_node: Dict[tuple[int, int], dev.Bus],
+        logger: Logger) -> dev.Switch | None:
+    """
+    Create a VeraGrid switch from a PSSE substation switching device.
+
+    :param psse_switch: PSSE substation switching device.
+    :param node_bus_by_substation_node: Node buses keyed by substation and node number.
+    :param logger: Logger.
+    :return: VeraGrid switch or ``None``.
+    """
+    bus_from = node_bus_by_substation_node.get((psse_switch.ISUB, psse_switch.NI), None)
+    bus_to = node_bus_by_substation_node.get((psse_switch.ISUB, psse_switch.NJ), None)
+
+    if bus_from is None or bus_to is None:
+        logger.add_error(
+            'Substation switching device references a node that does not exist',
+            value=f"{psse_switch.ISUB}:{psse_switch.NI}->{psse_switch.NJ}"
+        )
+        return None
+
+    if psse_switch.TYPE == 3:
+        graphic_type = SwitchGraphicType.Disconnector
+    else:
+        graphic_type = SwitchGraphicType.CircuitBreaker
+
+    if psse_switch.version == 34:
+        code = str(psse_switch.CKTID).replace("'", "").strip()
+    else:
+        code = str(psse_switch.CKT).replace("'", "").strip()
+
+    name = str(psse_switch.NAME).replace("'", "").strip()
+    if name == '':
+        name = f"{psse_switch.ISUB}_{psse_switch.NI}_{psse_switch.NJ}_{code}"
+    else:
+        name = name
+
+    switch = dev.Switch(
+        bus_from=bus_from,
+        bus_to=bus_to,
+        name=name,
+        code=code,
+        x=float(psse_switch.X),
+        rate=float(psse_switch.RATE1),
+        active=int(psse_switch.STATUS) != 0,
+        normal_open=int(psse_switch.NSTAT) == 0,
+        graphic_type=graphic_type,
+    )
+
+    return switch
 
 
 def get_veragrid_bus(psse_bus: RawBusLike,
@@ -1188,11 +1469,11 @@ def psse_to_veragrid(psse_circuit: PsseCircuit,
 
     area_dict = {val.I: elm for val, elm in zip(psse_circuit.areas, circuit.areas)}
     zones_dict = {val.I: elm for val, elm in zip(psse_circuit.zones, circuit.zones)}
+    raw_bus_by_number: Dict[int, RawBusLike] = {bus.I: bus for bus in psse_circuit.buses}
 
     # scan for missing zones or areas (yes, PSSe is so crappy that can reference areas that do not exist)
     missing_areas = False
     missing_zones = False
-    psse_bus_dict: Dict[int, dev.Bus] = dict()
     slack_buses: List[int] = list()
     for psse_bus in psse_circuit.buses:
 
@@ -1205,28 +1486,58 @@ def psse_to_veragrid(psse_circuit: PsseCircuit,
             zones_dict[abs(psse_bus.ZONE)] = dev.Zone(name='Z' + str(abs(psse_bus.ZONE)))
             missing_zones = True
 
-        bus, bus_shunt = get_veragrid_bus(psse_bus=psse_bus,
-                                          area_dict=area_dict,
-                                          zone_dict=zones_dict,
-                                          logger=logger)
-
-        # bus.ensure_area_objects(circuit)
-
-        if bus._bus_type.value == 3:
+        if int(psse_bus.IDE) == 3:
             slack_buses.append(psse_bus.I)
-
-        circuit.add_bus(bus)
-        psse_bus_dict[psse_bus.I] = bus
-
-        # legacy PSSe buses may have shunts declared within, so add them
-        if bus_shunt is not None:
-            circuit.add_shunt(bus=bus, api_obj=bus_shunt)
+        else:
+            slack_buses = slack_buses
 
     if missing_areas:
         circuit.areas = [v for k, v in area_dict.items()]
 
     if missing_zones:
         circuit.zones = [v for k, v in zones_dict.items()]
+
+    substation_dict = create_substation_objects(psse_circuit.substations, circuit)
+    node_bus_by_substation_node, node_bus_by_bus_and_node, representative_node_bus_by_number, node_breaker_bus_numbers = (
+        create_node_breaker_buses(
+            psse_nodes=psse_circuit.nodes,
+            raw_bus_by_number=raw_bus_by_number,
+            area_dict=area_dict,
+            zone_dict=zones_dict,
+            substation_dict=substation_dict,
+            circuit=circuit,
+            logger=logger
+        )
+    )
+
+    psse_bus_dict: Dict[int, dev.Bus] = dict()
+    for psse_bus in psse_circuit.buses:
+        if psse_bus.I in node_breaker_bus_numbers:
+            representative_node_bus = representative_node_bus_by_number.get(psse_bus.I, None)
+            if representative_node_bus is not None:
+                psse_bus_dict[psse_bus.I] = representative_node_bus
+            else:
+                logger.add_error('Node-breaker bus has no representative node bus', value=str(psse_bus.I))
+        else:
+            bus, bus_shunt = get_veragrid_bus(psse_bus=psse_bus,
+                                              area_dict=area_dict,
+                                              zone_dict=zones_dict,
+                                              logger=logger)
+
+            circuit.add_bus(bus)
+            psse_bus_dict[psse_bus.I] = bus
+
+            # legacy PSSe buses may have shunts declared within, so add them
+            if bus_shunt is not None:
+                circuit.add_shunt(bus=bus, api_obj=bus_shunt)
+            else:
+                bus_shunt = bus_shunt
+
+    terminal_bus_lookup = build_terminal_bus_lookup(
+        terminals=psse_circuit.equipment_terminals,
+        node_bus_by_bus_and_node=node_bus_by_bus_and_node,
+        logger=logger
+    )
 
     # check that the area slack buses actually make sense
     for area in psse_circuit.areas:
@@ -1236,7 +1547,11 @@ def psse_to_veragrid(psse_circuit: PsseCircuit,
     # Go through loads
     for psse_load in psse_circuit.loads:
         if psse_load.I in psse_bus_dict:
-            bus = psse_bus_dict[psse_load.I]
+            terminal_bus = find_terminal_bus(terminal_bus_lookup, 'L', psse_load.I, 0, 0, psse_load.ID)
+            if terminal_bus is not None:
+                bus = terminal_bus
+            else:
+                bus = psse_bus_dict[psse_load.I]
             api_obj = get_veragrid_load(psse_load, bus, logger)
 
             circuit.add_load(bus, api_obj)
@@ -1246,7 +1561,11 @@ def psse_to_veragrid(psse_circuit: PsseCircuit,
     # Go through shunts
     for psse_shunt in psse_circuit.fixed_shunts:
         if psse_shunt.I in psse_bus_dict:
-            bus = psse_bus_dict[psse_shunt.I]
+            terminal_bus = find_terminal_bus(terminal_bus_lookup, 'F', psse_shunt.I, 0, 0, psse_shunt.ID)
+            if terminal_bus is not None:
+                bus = terminal_bus
+            else:
+                bus = psse_bus_dict[psse_shunt.I]
             api_obj = get_veragrid_shunt_fixed(psse_shunt, bus, logger)
             circuit.add_shunt(bus, api_obj)
         else:
@@ -1254,16 +1573,46 @@ def psse_to_veragrid(psse_circuit: PsseCircuit,
 
     for psse_shunt in psse_circuit.switched_shunts:
         if psse_shunt.I in psse_bus_dict:
-            bus = psse_bus_dict[psse_shunt.I]
+            if psse_shunt.version >= 35:
+                terminal_bus = find_terminal_bus(terminal_bus_lookup, 'S', psse_shunt.I, 0, 0, psse_shunt.ID)
+            else:
+                terminal_bus = find_terminal_bus(terminal_bus_lookup, 'S', psse_shunt.I, 0, 0, '1')
+
+            if terminal_bus is not None:
+                bus = terminal_bus
+            else:
+                bus = psse_bus_dict[psse_shunt.I]
             api_obj = get_veragrid_shunt_switched(psse_shunt, bus, psse_bus_dict, logger)
+
+            if psse_shunt.version >= 35 and psse_shunt.NREG > 0:
+                control_bus = find_control_node_bus(node_bus_by_bus_and_node, psse_shunt.SWREG, psse_shunt.NREG)
+                if control_bus is not None:
+                    api_obj.control_bus = control_bus
+                else:
+                    api_obj.control_bus = api_obj.control_bus
+            else:
+                api_obj.control_bus = api_obj.control_bus
             circuit.add_controllable_shunt(bus, api_obj)
         else:
             logger.add_error("Switched shunt bus missing", psse_shunt.I, psse_shunt.I)
 
     # Go through generators
     for psse_gen in psse_circuit.generators:
-        bus = psse_bus_dict[psse_gen.I]
+        terminal_bus = find_terminal_bus(terminal_bus_lookup, 'M', psse_gen.I, 0, 0, psse_gen.ID)
+        if terminal_bus is not None:
+            bus = terminal_bus
+        else:
+            bus = psse_bus_dict[psse_gen.I]
         api_obj = get_veragrid_generator(psse_gen, psse_bus_dict, logger)
+
+        if psse_gen.version >= 35 and psse_gen.NREG > 0:
+            control_bus = find_control_node_bus(node_bus_by_bus_and_node, psse_gen.IREG, psse_gen.NREG)
+            if control_bus is not None:
+                api_obj.control_bus = control_bus
+            else:
+                api_obj.control_bus = api_obj.control_bus
+        else:
+            api_obj.control_bus = api_obj.control_bus
 
         circuit.add_generator(bus, api_obj)
         # api_obj.is_controlled = psse_gen.WMOD == 0 or psse_gen.WMOD == 1
@@ -1284,6 +1633,48 @@ def psse_to_veragrid(psse_circuit: PsseCircuit,
             flatten_virtual_taps=flatten_virtual_taps
         )
 
+        if n_windings == 2:
+            bus_from = find_terminal_bus(terminal_bus_lookup, '2', psse_transformer.I, psse_transformer.J, 0, psse_transformer.CKT)
+            bus_to = find_terminal_bus(terminal_bus_lookup, '2', psse_transformer.J, psse_transformer.I, 0, psse_transformer.CKT)
+
+            if bus_from is not None:
+                transformer.bus_from = bus_from
+            else:
+                transformer.bus_from = transformer.bus_from
+
+            if bus_to is not None:
+                transformer.bus_to = bus_to
+            else:
+                transformer.bus_to = transformer.bus_to
+
+            if psse_transformer.CONT1 > 0 and psse_transformer.NODE1 > 0:
+                control_bus = find_control_node_bus(node_bus_by_bus_and_node, psse_transformer.CONT1, psse_transformer.NODE1)
+                if control_bus is not None:
+                    transformer.regulation_bus = control_bus
+                else:
+                    transformer.regulation_bus = transformer.regulation_bus
+            else:
+                transformer.regulation_bus = transformer.regulation_bus
+        else:
+            bus_1 = find_terminal_bus(terminal_bus_lookup, '3', psse_transformer.I, psse_transformer.J, psse_transformer.K, psse_transformer.CKT)
+            bus_2 = find_terminal_bus(terminal_bus_lookup, '3', psse_transformer.J, psse_transformer.I, psse_transformer.K, psse_transformer.CKT)
+            bus_3 = find_terminal_bus(terminal_bus_lookup, '3', psse_transformer.K, psse_transformer.I, psse_transformer.J, psse_transformer.CKT)
+
+            if bus_1 is not None:
+                transformer.bus1 = bus_1
+            else:
+                transformer.bus1 = transformer.bus1
+
+            if bus_2 is not None:
+                transformer.bus2 = bus_2
+            else:
+                transformer.bus2 = transformer.bus2
+
+            if bus_3 is not None:
+                transformer.bus3 = bus_3
+            else:
+                transformer.bus3 = transformer.bus3
+
         if transformer.idtag not in branches_already_there:
             # Add to the circuit
             if n_windings == 2:
@@ -1302,6 +1693,18 @@ def psse_to_veragrid(psse_circuit: PsseCircuit,
     for psse_branch in psse_circuit.branches:
         # get the object
         branch = get_veragrid_line(psse_branch, psse_bus_dict, psse_circuit.SBASE, logger, use_short_names)
+
+        bus_from = find_terminal_bus(terminal_bus_lookup, 'B', psse_branch.I, psse_branch.J, 0, psse_branch.CKT)
+        bus_to = find_terminal_bus(terminal_bus_lookup, 'B', psse_branch.J, psse_branch.I, 0, psse_branch.CKT)
+        if bus_from is not None:
+            branch.bus_from = bus_from
+        else:
+            branch.bus_from = branch.bus_from
+
+        if bus_to is not None:
+            branch.bus_to = bus_to
+        else:
+            branch.bus_to = branch.bus_to
 
         # detect if this branch is actually a transformer
         if branch.should_this_be_a_transformer(branch_connection_voltage_tolerance, logger=logger):
@@ -1337,12 +1740,37 @@ def psse_to_veragrid(psse_circuit: PsseCircuit,
                 logger.add_warning('The RAW file has a repeated switch device and it is omitted from the model',
                                    switch_key)
 
+    for psse_substation_switch in psse_circuit.substation_switching_devices:
+        switch = create_substation_switch(psse_substation_switch, node_bus_by_substation_node, logger)
+        if switch is not None:
+            switch_key = psse_substation_switch.get_id()
+            if switch_key not in branches_already_there:
+                circuit.add_switch(switch)
+                branches_already_there.add(switch_key)
+            else:
+                logger.add_warning('The RAW file has a repeated substation switch and it is omitted from the model',
+                                   switch_key)
+        else:
+            switch = switch
+
     # Go through hvdc lines
     for psse_branch in psse_circuit.vsc_dc_lines:
         # get the object
         branch = get_hvdc_from_vscdc(psse_branch, psse_bus_dict, psse_circuit.SBASE, logger)
 
         if branch is not None:
+            bus_from = find_terminal_bus(terminal_bus_lookup, 'V', psse_branch.IBUS1, 0, 0, psse_branch.NAME)
+            bus_to = find_terminal_bus(terminal_bus_lookup, 'V', psse_branch.IBUS2, 0, 0, psse_branch.NAME)
+            if bus_from is not None:
+                branch.bus_from = bus_from
+            else:
+                branch.bus_from = branch.bus_from
+
+            if bus_to is not None:
+                branch.bus_to = bus_to
+            else:
+                branch.bus_to = branch.bus_to
+
             if branch.idtag not in branches_already_there:
 
                 # Add to the circuit
@@ -1358,6 +1786,18 @@ def psse_to_veragrid(psse_circuit: PsseCircuit,
         branch = get_hvdc_from_twotermdc(psse_branch, psse_bus_dict, psse_circuit.SBASE, logger)
 
         if branch is not None:
+            bus_from = find_terminal_bus(terminal_bus_lookup, 'D', psse_branch.IPR, 0, 0, psse_branch.NAME)
+            bus_to = find_terminal_bus(terminal_bus_lookup, 'D', psse_branch.IPI, 0, 0, psse_branch.NAME)
+            if bus_from is not None:
+                branch.bus_from = bus_from
+            else:
+                branch.bus_from = branch.bus_from
+
+            if bus_to is not None:
+                branch.bus_to = bus_to
+            else:
+                branch.bus_to = branch.bus_to
+
             if branch.idtag not in branches_already_there:
 
                 # Add to the circuit

@@ -31,7 +31,7 @@ from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.multiverse import MultiVerse
 from VeraGridEngine.Simulations.driver_template import DriverToSave
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
-from VeraGridEngine.enumerations import CGMESVersions, SimulationTypes, FileType
+from VeraGridEngine.enumerations import CGMESVersions, SimulationTypes, FileType, PsseTopologyExportMode
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
 
 
@@ -49,7 +49,8 @@ class FileSavingOptions:
                  cgmes_profiles: Union[None, List[CgmesProfileType]] = None,
                  cgmes_one_file_per_profile: bool = False,
                  cgmes_map_areas_like_raw: bool = False,
-                 raw_version: str = "33"):
+                 raw_version: str = "33",
+                 psse_topology_mode: PsseTopologyExportMode = PsseTopologyExportMode.BusBranch):
         """
         Constructor
         :param cgmes_boundary_set: CGMES boundary set zip file path
@@ -60,6 +61,7 @@ class FileSavingOptions:
         :param cgmes_one_file_per_profile: use one file per profile?
         :param cgmes_map_areas_like_raw: use map areas like raw?
         :param raw_version: Version to use when exporting raw/rawx files
+        :param psse_topology_mode: RAW topology export strategy for PSSE 34+.
         """
 
         self.file_type: FileType | None = file_type
@@ -92,6 +94,7 @@ class FileSavingOptions:
         self.cgmes_map_areas_like_raw = cgmes_map_areas_like_raw
 
         self.raw_version = raw_version
+        self.psse_topology_mode: PsseTopologyExportMode = psse_topology_mode
 
     def get_power_flow_results(self) -> Union[None, PowerFlowResults]:
         """
@@ -341,7 +344,10 @@ def save_psse_raw(circuit: MultiCircuit,
     """
     logger = Logger()
     raw_version = int(options.raw_version)
-    raw_circuit = veragrid_to_raw(circuit, version=raw_version, logger=logger)
+    raw_circuit = veragrid_to_raw(circuit,
+                                  version=raw_version,
+                                  logger=logger,
+                                  topology_mode=options.psse_topology_mode)
     logger += write_raw(file_name, raw_circuit, version=raw_version)
     return logger
 
@@ -352,7 +358,10 @@ def save_psse_rawx(circuit: MultiCircuit, file_name: str, options: FileSavingOpt
     :return:logger with information
     """
     logger = Logger()
-    raw_circuit = veragrid_to_raw(circuit, version=int(options.raw_version), logger=logger)
+    raw_circuit = veragrid_to_raw(circuit,
+                                  version=int(options.raw_version),
+                                  logger=logger,
+                                  topology_mode=options.psse_topology_mode)
     logger += write_rawx(file_name, raw_circuit)
     return logger
 

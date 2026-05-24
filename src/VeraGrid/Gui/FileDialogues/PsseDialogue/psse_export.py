@@ -10,7 +10,7 @@ from VeraGrid.Gui.FileDialogues.PsseDialogue.psse_export_gui import Ui_PsseExpor
 from VeraGrid.Gui.general_dialogues import LogsDialogue
 import VeraGrid.Session.file_handler as filedrv
 from VeraGridEngine.basic_structures import Logger
-from VeraGridEngine.enumerations import FileType
+from VeraGridEngine.enumerations import FileType, PsseTopologyExportMode
 
 if TYPE_CHECKING:
     from VeraGrid.Gui.Main.SubClasses.io import IoMain
@@ -37,7 +37,10 @@ class PsseExportDialogue(QtWidgets.QDialog):
         self.logger = Logger()
         self.logs_dialogue: LogsDialogue | None = None
 
-        self.ui.raw_export_version_comboBox.addItems(["33", "35"])
+        self.ui.raw_export_version_comboBox.addItems(["33", "34", "35", "36"])
+        self.node_breaker_checkbox = QtWidgets.QCheckBox("Map substations to PSS/e nodes (34+ only)")
+        self.node_breaker_checkbox.setChecked(False)
+        self.ui.formLayout.addRow("Topology mapping", self.node_breaker_checkbox)
 
         self.ui.exportButton.clicked.connect(self.export)
 
@@ -47,6 +50,10 @@ class PsseExportDialogue(QtWidgets.QDialog):
         :return:
         """
         raw_version = self.ui.raw_export_version_comboBox.currentText()
+        if self.node_breaker_checkbox.isChecked():
+            topology_mode = PsseTopologyExportMode.NodeBreaker
+        else:
+            topology_mode = PsseTopologyExportMode.BusBranch
 
         # if the global file_name is empty, ask where to save
         fname = os.path.join(self.app.project_directory, self.app.ui.grid_name_line_edit.text())
@@ -79,7 +86,8 @@ class PsseExportDialogue(QtWidgets.QDialog):
                 type_selected=type_selected,
                 options=filedrv.FileSavingOptions(
                     raw_version=raw_version,
-                    file_type=file_type
+                    file_type=file_type,
+                    psse_topology_mode=topology_mode
                 )
             )
 

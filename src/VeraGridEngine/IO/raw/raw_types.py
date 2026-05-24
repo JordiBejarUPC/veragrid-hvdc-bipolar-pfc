@@ -104,6 +104,9 @@ from VeraGridEngine.IO.raw.versioned.v33.system_switching_device import RawSyste
 from VeraGridEngine.IO.raw.versioned.v33.induction_machine import RawInductionMachineV33
 from VeraGridEngine.IO.raw.versioned.v33.inter_area import RawInterAreaV33
 from VeraGridEngine.IO.raw.versioned.v33.owner import RawOwnerV33
+from VeraGridEngine.IO.raw.versioned.v34.node import RawNodeV34
+from VeraGridEngine.IO.raw.versioned.v34.substation_switching_device import RawSubstationSwitchingDeviceV34
+from VeraGridEngine.IO.raw.versioned.v34.equipment_terminal import RawEquipmentTerminalV34
 from VeraGridEngine.IO.raw.versioned.v33.substation import RawSubstationV33
 from VeraGridEngine.IO.raw.versioned.v33.gne_device import RawGneDeviceV33
 from VeraGridEngine.IO.raw.versioned.v33.impedance_correction_table import RawImpedanceCorrectionTableV33
@@ -144,6 +147,9 @@ from VeraGridEngine.IO.raw.versioned.v35.system_switching_device import RawSyste
 from VeraGridEngine.IO.raw.versioned.v35.induction_machine import RawInductionMachineV35
 from VeraGridEngine.IO.raw.versioned.v35.inter_area import RawInterAreaV35
 from VeraGridEngine.IO.raw.versioned.v35.owner import RawOwnerV35
+from VeraGridEngine.IO.raw.versioned.v35.node import RawNodeV35
+from VeraGridEngine.IO.raw.versioned.v35.substation_switching_device import RawSubstationSwitchingDeviceV35
+from VeraGridEngine.IO.raw.versioned.v35.equipment_terminal import RawEquipmentTerminalV35
 from VeraGridEngine.IO.raw.versioned.v35.substation import RawSubstationV35
 from VeraGridEngine.IO.raw.versioned.v35.gne_device import RawGneDeviceV35
 from VeraGridEngine.IO.raw.versioned.v35.impedance_correction_table import RawImpedanceCorrectionTableV35
@@ -164,6 +170,9 @@ from VeraGridEngine.IO.raw.versioned.v36.system_switching_device import RawSyste
 from VeraGridEngine.IO.raw.versioned.v36.induction_machine import RawInductionMachineV36
 from VeraGridEngine.IO.raw.versioned.v36.inter_area import RawInterAreaV36
 from VeraGridEngine.IO.raw.versioned.v36.owner import RawOwnerV36
+from VeraGridEngine.IO.raw.versioned.v36.node import RawNodeV36
+from VeraGridEngine.IO.raw.versioned.v36.substation_switching_device import RawSubstationSwitchingDeviceV36
+from VeraGridEngine.IO.raw.versioned.v36.equipment_terminal import RawEquipmentTerminalV36
 from VeraGridEngine.IO.raw.versioned.v36.substation import RawSubstationV36
 from VeraGridEngine.IO.raw.versioned.v36.gne_device import RawGneDeviceV36
 from VeraGridEngine.IO.raw.versioned.v36.impedance_correction_table import RawImpedanceCorrectionTableV36
@@ -186,6 +195,11 @@ RawInductionMachineLike: TypeAlias = RawInductionMachineV29 | RawInductionMachin
 RawInterAreaLike: TypeAlias = RawInterAreaV29 | RawInterAreaV30 | RawInterAreaV31 | RawInterAreaV32 | RawInterAreaV33 | RawInterAreaV34 | RawInterAreaV35 | RawInterAreaV36
 RawOwnerLike: TypeAlias = RawOwnerV29 | RawOwnerV30 | RawOwnerV31 | RawOwnerV32 | RawOwnerV33 | RawOwnerV34 | RawOwnerV35 | RawOwnerV36
 RawSubstationLike: TypeAlias = RawSubstationV29 | RawSubstationV30 | RawSubstationV31 | RawSubstationV32 | RawSubstationV33 | RawSubstationV34 | RawSubstationV35 | RawSubstationV36
+RawNodeLike: TypeAlias = RawNodeV34 | RawNodeV35 | RawNodeV36
+RawSubstationSwitchingDeviceLike: TypeAlias = (
+    RawSubstationSwitchingDeviceV34 | RawSubstationSwitchingDeviceV35 | RawSubstationSwitchingDeviceV36
+)
+RawEquipmentTerminalLike: TypeAlias = RawEquipmentTerminalV34 | RawEquipmentTerminalV35 | RawEquipmentTerminalV36
 RawGneDeviceLike: TypeAlias = RawGneDeviceV29 | RawGneDeviceV30 | RawGneDeviceV31 | RawGneDeviceV32 | RawGneDeviceV33 | RawGneDeviceV34 | RawGneDeviceV35 | RawGneDeviceV36
 RawImpedanceCorrectionTableLike: TypeAlias = RawImpedanceCorrectionTableV29 | RawImpedanceCorrectionTableV30 | RawImpedanceCorrectionTableV31 | RawImpedanceCorrectionTableV32 | RawImpedanceCorrectionTableV33 | RawImpedanceCorrectionTableV34 | RawImpedanceCorrectionTableV35 | RawImpedanceCorrectionTableV36
 RawMultiLineSectionLike: TypeAlias = RawMultiLineSectionV29 | RawMultiLineSectionV30 | RawMultiLineSectionV31 | RawMultiLineSectionV32 | RawMultiLineSectionV33 | RawMultiLineSectionV34 | RawMultiLineSectionV35 | RawMultiLineSectionV36

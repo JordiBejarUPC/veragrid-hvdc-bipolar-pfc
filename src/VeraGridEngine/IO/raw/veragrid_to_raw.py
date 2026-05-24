@@ -5,7 +5,7 @@
 import math
 
 import numpy as np
-from typing import Dict
+from typing import Dict, List, Set
 from itertools import groupby
 from scipy.sparse import lil_matrix
 
@@ -101,6 +101,10 @@ from VeraGridEngine.IO.raw.versioned.v34.transformer import RawTransformerV34
 from VeraGridEngine.IO.raw.versioned.v34.vsc_dc_line import RawVscDCLineV34
 from VeraGridEngine.IO.raw.versioned.v34.two_terminal_dc_line import RawTwoTerminalDCLineV34
 from VeraGridEngine.IO.raw.versioned.v34.facts import RawFACTSV34
+from VeraGridEngine.IO.raw.versioned.v34.substation import RawSubstationV34
+from VeraGridEngine.IO.raw.versioned.v34.node import RawNodeV34
+from VeraGridEngine.IO.raw.versioned.v34.substation_switching_device import RawSubstationSwitchingDeviceV34
+from VeraGridEngine.IO.raw.versioned.v34.equipment_terminal import RawEquipmentTerminalV34
 from VeraGridEngine.IO.raw.versioned.v35.area import RawAreaV35
 from VeraGridEngine.IO.raw.versioned.v35.zone import RawZoneV35
 from VeraGridEngine.IO.raw.versioned.v35.bus import RawBusV35
@@ -114,6 +118,10 @@ from VeraGridEngine.IO.raw.versioned.v35.transformer import RawTransformerV35
 from VeraGridEngine.IO.raw.versioned.v35.vsc_dc_line import RawVscDCLineV35
 from VeraGridEngine.IO.raw.versioned.v35.two_terminal_dc_line import RawTwoTerminalDCLineV35
 from VeraGridEngine.IO.raw.versioned.v35.facts import RawFACTSV35
+from VeraGridEngine.IO.raw.versioned.v35.substation import RawSubstationV35
+from VeraGridEngine.IO.raw.versioned.v35.node import RawNodeV35
+from VeraGridEngine.IO.raw.versioned.v35.substation_switching_device import RawSubstationSwitchingDeviceV35
+from VeraGridEngine.IO.raw.versioned.v35.equipment_terminal import RawEquipmentTerminalV35
 from VeraGridEngine.IO.raw.versioned.v36.area import RawAreaV36
 from VeraGridEngine.IO.raw.versioned.v36.zone import RawZoneV36
 from VeraGridEngine.IO.raw.versioned.v36.bus import RawBusV36
@@ -127,16 +135,27 @@ from VeraGridEngine.IO.raw.versioned.v36.transformer import RawTransformerV36
 from VeraGridEngine.IO.raw.versioned.v36.vsc_dc_line import RawVscDCLineV36
 from VeraGridEngine.IO.raw.versioned.v36.two_terminal_dc_line import RawTwoTerminalDCLineV36
 from VeraGridEngine.IO.raw.versioned.v36.facts import RawFACTSV36
+from VeraGridEngine.IO.raw.versioned.v36.substation import RawSubstationV36
+from VeraGridEngine.IO.raw.versioned.v36.node import RawNodeV36
+from VeraGridEngine.IO.raw.versioned.v36.substation_switching_device import RawSubstationSwitchingDeviceV36
+from VeraGridEngine.IO.raw.versioned.v36.equipment_terminal import RawEquipmentTerminalV36
 from VeraGridEngine.IO.raw.psse_circuit import PsseCircuit
 from VeraGridEngine.IO.raw.psse_object import RawObject
-from VeraGridEngine.IO.raw.raw_types import RawAreaLike, RawBranchLike, RawBusLike, RawFACTSLike, RawFixedShuntLike, RawGeneratorLike, RawLoadLike, RawSwitchedShuntLike, RawSystemSwitchingDeviceLike, RawTransformerLike, RawTwoTerminalDCLineLike, RawVscDCLineLike, RawZoneLike
+from VeraGridEngine.IO.raw.raw_types import (RawAreaLike, RawBranchLike, RawBusLike, RawEquipmentTerminalLike,
+                                             RawFACTSLike, RawFixedShuntLike, RawGeneratorLike, RawLoadLike,
+                                             RawNodeLike, RawSubstationLike,
+                                             RawSubstationSwitchingDeviceLike, RawSwitchedShuntLike,
+                                             RawSystemSwitchingDeviceLike, RawTransformerLike,
+                                             RawTwoTerminalDCLineLike, RawVscDCLineLike, RawZoneLike)
 import VeraGridEngine.Devices as dev
 from VeraGridEngine.Devices.types import BRANCH_TYPES
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.enumerations import (TapChangerTypes,
                                          TapPhaseControl,
                                          TapModuleControl,
-                                         SwitchGraphicType)
+                                         SwitchGraphicType,
+                                         PsseTopologyExportMode)
+from VeraGridEngine.Topology.topology import find_islands, get_adjacency_matrix
 
 
 def _set_if_registered(raw_obj: RawObject, property_name: str, value) -> None:
@@ -173,6 +192,254 @@ def _set_transformer_winding_ratings(raw_transformer: RawObject,
                                                rate_1=rate,
                                                rate_2=rate2,
                                                rate_3=rate3)
+
+
+class RawNodeBreakerExportData:
+    """
+    Typed storage for the optional PSSE 34+ node-breaker projection.
+    """
+
+    __slots__ = (
+        "bus_number_by_bus",
+        "node_number_by_bus",
+        "substation_number_by_substation",
+        "substations",
+        "nodes",
+        "substation_switching_devices",
+        "equipment_terminals",
+    )
+
+    def __init__(self) -> None:
+        """
+        Initialize the export storage.
+
+        :return: None
+        """
+        self.bus_number_by_bus: Dict[dev.Bus, int] = dict()
+        self.node_number_by_bus: Dict[dev.Bus, int] = dict()
+        self.substation_number_by_substation: Dict[dev.Substation, int] = dict()
+        self.substations: List[RawSubstationLike] = list()
+        self.nodes: List[RawNodeLike] = list()
+        self.substation_switching_devices: List[RawSubstationSwitchingDeviceLike] = list()
+        self.equipment_terminals: List[RawEquipmentTerminalLike] = list()
+
+
+def get_export_substations(grid: MultiCircuit) -> List[dev.Substation]:
+    """
+    Collect the substations that are actually referenced by buses.
+
+    :param grid: VeraGrid circuit.
+    :return: Ordered list of substations to export.
+    """
+    substations: List[dev.Substation] = list()
+    seen_substations: Set[dev.Substation] = set()
+
+    for substation in grid.substations:
+        buses = grid.get_substation_buses(substation=substation)
+        if len(buses) > 0:
+            substations.append(substation)
+            seen_substations.add(substation)
+        else:
+            pass
+
+    for bus in grid.buses:
+        if bus.substation is not None and bus.substation not in seen_substations:
+            substations.append(bus.substation)
+            seen_substations.add(bus.substation)
+        else:
+            pass
+
+    return substations
+
+
+def get_substation_topology_components(grid: MultiCircuit,
+                                       substation: dev.Substation) -> List[List[dev.Bus]]:
+    """
+    Compute PSSE grouping components for one substation.
+
+    The grouping is intentionally driven only by active switches that already
+    represent explicit internal topology. Earlier RAW revisions do not support
+    nodes, and normal electrical branches must keep the ordinary bus-to-bus
+    relationship intact.
+
+    :param grid: VeraGrid circuit.
+    :param substation: Substation to process.
+    :return: Bus components that collapse into PSSE electrical buses.
+    """
+    buses: List[dev.Bus] = grid.get_substation_buses(substation=substation)
+    if len(buses) == 0:
+        return list()
+    else:
+        pass
+
+    bus_index: Dict[dev.Bus, int] = dict()
+    for index, bus in enumerate(buses):
+        bus_index[bus] = index
+
+    internal_switches: List[dev.Switch] = list()
+    for switch in grid.get_switches():
+        if switch.bus_from is None or switch.bus_to is None:
+            pass
+        elif switch.active and switch.bus_from.substation == substation and switch.bus_to.substation == substation:
+            internal_switches.append(switch)
+        else:
+            pass
+
+    if len(internal_switches) == 0:
+        components: List[List[dev.Bus]] = list()
+        for bus in buses:
+            components.append([bus])
+        return components
+    else:
+        pass
+
+    cf_matrix = lil_matrix((len(internal_switches), len(buses)), dtype=int)
+    ct_matrix = lil_matrix((len(internal_switches), len(buses)), dtype=int)
+    branch_active = np.ones(len(internal_switches), dtype=int)
+    bus_active = np.ones(len(buses), dtype=int)
+
+    for row_index, switch in enumerate(internal_switches):
+        from_index = bus_index[switch.bus_from]
+        to_index = bus_index[switch.bus_to]
+        cf_matrix[row_index, from_index] = 1
+        ct_matrix[row_index, to_index] = 1
+
+    adjacency = get_adjacency_matrix(C_branch_bus_f=cf_matrix.tocsc(),
+                                     C_branch_bus_t=ct_matrix.tocsc(),
+                                     branch_active=branch_active,
+                                     bus_active=bus_active)
+    islands = find_islands(adj=adjacency, active=bus_active)
+
+    components = list()
+    for island in islands:
+        component: List[dev.Bus] = list()
+        for local_index in island:
+            component.append(buses[int(local_index)])
+        components.append(component)
+
+    return components
+
+
+def get_psse_substation(substation: dev.Substation,
+                        psse_number: int,
+                        raw_substation_type: type[RawSubstationLike]) -> RawSubstationLike:
+    """
+    Convert a VeraGrid substation into a PSSE substation record.
+
+    :param substation: VeraGrid substation.
+    :param psse_number: PSSE substation number.
+    :param raw_substation_type: Version-specific RAW substation class.
+    :return: RAW substation record.
+    """
+    psse_substation = raw_substation_type()
+    psse_substation.IS = psse_number
+    psse_substation.NAME = str(substation.name)
+    psse_substation.LATI = float(substation.latitude)
+    psse_substation.LONG = float(substation.longitude)
+    psse_substation.SGR = 0.0
+    return psse_substation
+
+
+def get_psse_node(bus: dev.Bus,
+                  node_number: int,
+                  electrical_bus_number: int,
+                  raw_node_type: type[RawNodeLike]) -> RawNodeLike:
+    """
+    Convert a VeraGrid bus into a PSSE node record.
+
+    :param bus: VeraGrid bus.
+    :param node_number: Node number within the substation.
+    :param electrical_bus_number: Derived PSSE electrical bus number.
+    :param raw_node_type: Version-specific RAW node class.
+    :return: RAW node record.
+    """
+    psse_node = raw_node_type()
+    psse_node.NI = node_number
+    psse_node.NAME = str(bus.name)
+    psse_node.I = electrical_bus_number
+    psse_node.STATUS = 1 if bus.active else 0
+    psse_node.VM = float(bus.Vm0)
+    psse_node.VA = float(np.rad2deg(bus.Va0))
+    return psse_node
+
+
+def get_psse_substation_switch(switch: dev.Switch,
+                               node_breaker_data: RawNodeBreakerExportData,
+                               ckt: int,
+                               version: int,
+                               raw_switch_type: type[RawSubstationSwitchingDeviceLike]) -> RawSubstationSwitchingDeviceLike:
+    """
+    Convert an internal VeraGrid switch into a PSSE substation switching device.
+
+    :param switch: VeraGrid switch.
+    :param node_breaker_data: Node-breaker export context.
+    :param ckt: Switch identifier.
+    :param version: PSSE RAW version.
+    :param raw_switch_type: Version-specific substation-switch class.
+    :return: RAW substation switching device record.
+    """
+    psse_switch = raw_switch_type()
+    substation = switch.bus_from.substation
+    psse_switch.ISUB = node_breaker_data.substation_number_by_substation[substation]
+    psse_switch.NI = node_breaker_data.node_number_by_bus[switch.bus_from]
+    psse_switch.NJ = node_breaker_data.node_number_by_bus[switch.bus_to]
+    psse_switch.NAME = str(switch.name)
+    psse_switch.TYPE = 3 if switch.graphic_type == SwitchGraphicType.Disconnector else 2
+    psse_switch.STATUS = 1 if switch.active else 0
+    psse_switch.NSTAT = 0 if switch.normal_open else 1
+    psse_switch.X = float(switch.X)
+    if version == 34:
+        psse_switch.CKTID = str(ckt)
+        psse_switch.RATE1 = float(switch.rate)
+        psse_switch.RATE2 = float(switch.rate * switch.contingency_factor)
+        psse_switch.RATE3 = float(switch.rate * switch.protection_rating_factor)
+    elif version == 35:
+        psse_switch.CKT = str(ckt)
+        psse_switch.RATE1 = float(switch.rate)
+        psse_switch.RATE2 = float(switch.rate * switch.contingency_factor)
+        psse_switch.RATE3 = float(switch.rate * switch.protection_rating_factor)
+    else:
+        psse_switch.CKT = str(ckt)
+        psse_switch.RSETNAM = ""
+
+    return psse_switch
+
+
+def append_psse_terminal(node_breaker_data: RawNodeBreakerExportData,
+                         bus: dev.Bus,
+                         type_code: str,
+                         eqid: int | str,
+                         raw_terminal_type: type[RawEquipmentTerminalLike],
+                         ibus: int,
+                         jbus: int = 0,
+                         kbus: int = 0) -> None:
+    """
+    Append one PSSE equipment terminal when the endpoint bus is exported as a node.
+
+    :param node_breaker_data: Node-breaker export context.
+    :param bus: VeraGrid bus that owns the node.
+    :param type_code: PSSE terminal type code.
+    :param eqid: Equipment identifier.
+    :param raw_terminal_type: Version-specific terminal class.
+    :param ibus: Electrical bus number of the local terminal side.
+    :param jbus: Secondary bus number.
+    :param kbus: Tertiary bus number.
+    :return: None
+    """
+    if bus not in node_breaker_data.node_number_by_bus:
+        return
+    else:
+        pass
+
+    terminal = raw_terminal_type()
+    terminal.ISUB = node_breaker_data.substation_number_by_substation[bus.substation]
+    terminal.IBUS = ibus
+    terminal.NI = node_breaker_data.node_number_by_bus[bus]
+    terminal.TYPE = type_code
+    terminal.JBUS = jbus
+    terminal.KBUS = kbus
+    terminal.EQID = str(eqid)
+    node_breaker_data.equipment_terminals.append(terminal)
 
 
 def get_area(area: dev.Area, i: int, raw_area_type: type[RawAreaLike] = RawAreaBase) -> RawAreaLike:
@@ -724,6 +991,7 @@ class RawCounter:
         self._bus_2_psseI_dict = dict()
         self._bus_dev_count_dict = {bus: 0 for bus in grid.get_buses()}
         self._ckt_counter = lil_matrix((n + 1, n + 1), dtype=int)
+        self._used_psse_numbers: Dict[int, dev.Bus] = dict()
 
         self._max_bus_number = 1
 
@@ -743,11 +1011,11 @@ class RawCounter:
         :return:
         """
         self._max_bus_number = max(self._max_bus_number, psse_I)
-
-        if psse_I in self._bus_2_psseI_dict.keys():
-            print("Repeated PSSe bus!!!")
-
         self._bus_2_psseI_dict[bus] = psse_I
+        if psse_I not in self._used_psse_numbers:
+            self._used_psse_numbers[psse_I] = bus
+        else:
+            pass
 
     def get_next_psse_number(self):
         """
@@ -766,7 +1034,7 @@ class RawCounter:
         try:
             psse_I = int(bus.code)
 
-            if psse_I in self._bus_2_psseI_dict.keys():
+            if psse_I in self._used_psse_numbers:
                 psse_I_pre = psse_I
                 # repeated number, get a new one
                 psse_I = self.get_next_psse_number()
@@ -811,13 +1079,18 @@ class RawCounter:
         return ckt2
 
 
-def veragrid_to_raw(grid: MultiCircuit, version: int, logger: Logger) -> PsseCircuit:
+def veragrid_to_raw(grid: MultiCircuit,
+                    version: int,
+                    logger: Logger,
+                    topology_mode: PsseTopologyExportMode = PsseTopologyExportMode.BusBranch) -> PsseCircuit:
     """
-    Convert MultiCircuit to PSSeCircuit
-    :param grid: MultiCircuit
-    :param version: Target PSSE RAW version
-    :param logger: Logger
-    :return: PsseCircuit
+    Convert a VeraGrid circuit into a PSSE RAW circuit.
+
+    :param grid: VeraGrid circuit.
+    :param version: Target PSSE RAW version.
+    :param logger: Logger.
+    :param topology_mode: Export topology strategy.
+    :return: PSSE RAW circuit.
     """
     if version > 36:
         version = 36
@@ -840,6 +1113,10 @@ def veragrid_to_raw(grid: MultiCircuit, version: int, logger: Logger) -> PsseCir
         RawVscDCLineT = RawVscDCLineV29
         RawTwoTerminalDCLineT = RawTwoTerminalDCLineV29
         RawFACTST = RawFACTSV29
+        RawSubstationT = None
+        RawNodeT = None
+        RawSubstationSwitchingDeviceT = None
+        RawEquipmentTerminalT = None
     elif version == 30:
         RawAreaT = RawAreaV30
         RawZoneT = RawZoneV30
@@ -854,6 +1131,10 @@ def veragrid_to_raw(grid: MultiCircuit, version: int, logger: Logger) -> PsseCir
         RawVscDCLineT = RawVscDCLineV30
         RawTwoTerminalDCLineT = RawTwoTerminalDCLineV30
         RawFACTST = RawFACTSV30
+        RawSubstationT = None
+        RawNodeT = None
+        RawSubstationSwitchingDeviceT = None
+        RawEquipmentTerminalT = None
     elif version == 31:
         RawAreaT = RawAreaV31
         RawZoneT = RawZoneV31
@@ -868,6 +1149,10 @@ def veragrid_to_raw(grid: MultiCircuit, version: int, logger: Logger) -> PsseCir
         RawVscDCLineT = RawVscDCLineV31
         RawTwoTerminalDCLineT = RawTwoTerminalDCLineV31
         RawFACTST = RawFACTSV31
+        RawSubstationT = None
+        RawNodeT = None
+        RawSubstationSwitchingDeviceT = None
+        RawEquipmentTerminalT = None
     elif version == 32:
         RawAreaT = RawAreaV32
         RawZoneT = RawZoneV32
@@ -882,6 +1167,10 @@ def veragrid_to_raw(grid: MultiCircuit, version: int, logger: Logger) -> PsseCir
         RawVscDCLineT = RawVscDCLineV32
         RawTwoTerminalDCLineT = RawTwoTerminalDCLineV32
         RawFACTST = RawFACTSV32
+        RawSubstationT = None
+        RawNodeT = None
+        RawSubstationSwitchingDeviceT = None
+        RawEquipmentTerminalT = None
     elif version == 33:
         RawAreaT = RawAreaV33
         RawZoneT = RawZoneV33
@@ -896,6 +1185,10 @@ def veragrid_to_raw(grid: MultiCircuit, version: int, logger: Logger) -> PsseCir
         RawVscDCLineT = RawVscDCLineV33
         RawTwoTerminalDCLineT = RawTwoTerminalDCLineV33
         RawFACTST = RawFACTSV33
+        RawSubstationT = None
+        RawNodeT = None
+        RawSubstationSwitchingDeviceT = None
+        RawEquipmentTerminalT = None
     elif version == 34:
         RawAreaT = RawAreaV34
         RawZoneT = RawZoneV34
@@ -910,6 +1203,10 @@ def veragrid_to_raw(grid: MultiCircuit, version: int, logger: Logger) -> PsseCir
         RawVscDCLineT = RawVscDCLineV34
         RawTwoTerminalDCLineT = RawTwoTerminalDCLineV34
         RawFACTST = RawFACTSV34
+        RawSubstationT = RawSubstationV34
+        RawNodeT = RawNodeV34
+        RawSubstationSwitchingDeviceT = RawSubstationSwitchingDeviceV34
+        RawEquipmentTerminalT = RawEquipmentTerminalV34
     elif version == 35:
         RawAreaT = RawAreaV35
         RawZoneT = RawZoneV35
@@ -924,6 +1221,10 @@ def veragrid_to_raw(grid: MultiCircuit, version: int, logger: Logger) -> PsseCir
         RawVscDCLineT = RawVscDCLineV35
         RawTwoTerminalDCLineT = RawTwoTerminalDCLineV35
         RawFACTST = RawFACTSV35
+        RawSubstationT = RawSubstationV35
+        RawNodeT = RawNodeV35
+        RawSubstationSwitchingDeviceT = RawSubstationSwitchingDeviceV35
+        RawEquipmentTerminalT = RawEquipmentTerminalV35
     else:
         RawAreaT = RawAreaV36
         RawZoneT = RawZoneV36
@@ -938,14 +1239,22 @@ def veragrid_to_raw(grid: MultiCircuit, version: int, logger: Logger) -> PsseCir
         RawVscDCLineT = RawVscDCLineV36
         RawTwoTerminalDCLineT = RawTwoTerminalDCLineV36
         RawFACTST = RawFACTSV36
+        RawSubstationT = RawSubstationV36
+        RawNodeT = RawNodeV36
+        RawSubstationSwitchingDeviceT = RawSubstationSwitchingDeviceV36
+        RawEquipmentTerminalT = RawEquipmentTerminalV36
+
+    node_breaker_requested: bool = topology_mode == PsseTopologyExportMode.NodeBreaker and version >= 34
+    if topology_mode == PsseTopologyExportMode.NodeBreaker and version < 34:
+        logger.add_info(msg="PSSE node-breaker export ignored because the target RAW version is below 34")
+    else:
+        pass
 
     psse_circuit = PsseCircuit()
     psse_circuit.REV = version
 
-    # create dictionaries
     area_dict: Dict[dev.Area, int] = dict()
     zones_dict: Dict[dev.Zone, int] = dict()
-
     counter = RawCounter(grid=grid)
 
     for i, area in enumerate(grid.areas):
@@ -956,96 +1265,339 @@ def veragrid_to_raw(grid: MultiCircuit, version: int, logger: Logger) -> PsseCir
         psse_circuit.zones.append(get_zone(zone=zone, i=i + 1, raw_zone_type=RawZoneT))
         zones_dict[zone] = i + 1
 
-    for i, bus in enumerate(grid.buses):
-        if not bus.internal:
-            psse_bus = get_psse_bus(bus=bus,
-                                    area_dict=area_dict,
-                                    zones_dict=zones_dict,
-                                    suggested_psse_number=counter.get_suggested_psse_number(bus=bus, logger=logger),
-                                    raw_bus_type=RawBusT)
-            psse_circuit.buses.append(psse_bus)
+    node_breaker_data: RawNodeBreakerExportData | None = None
+    if node_breaker_requested:
+        node_breaker_data = RawNodeBreakerExportData()
+        export_substations = get_export_substations(grid=grid)
+
+        for substation_index, substation in enumerate(export_substations):
+            substation_number = substation_index + 1
+            node_breaker_data.substation_number_by_substation[substation] = substation_number
+            node_breaker_data.substations.append(
+                get_psse_substation(substation=substation,
+                                    psse_number=substation_number,
+                                    raw_substation_type=RawSubstationT)
+            )
+
+            substation_buses = grid.get_substation_buses(substation=substation)
+            for node_index, bus in enumerate(substation_buses):
+                node_breaker_data.node_number_by_bus[bus] = node_index + 1
+
+            components = get_substation_topology_components(grid=grid, substation=substation)
+            for component in components:
+                representative_bus = component[0]
+                psse_number = counter.get_suggested_psse_number(bus=representative_bus, logger=logger)
+                psse_circuit.buses.append(
+                    get_psse_bus(bus=representative_bus,
+                                 area_dict=area_dict,
+                                 zones_dict=zones_dict,
+                                 suggested_psse_number=psse_number,
+                                 raw_bus_type=RawBusT)
+                )
+
+                node_breaker_data.bus_number_by_bus[representative_bus] = psse_number
+                for component_bus in component[1:]:
+                    counter.register_psse_number(bus=component_bus, psse_I=psse_number)
+                    node_breaker_data.bus_number_by_bus[component_bus] = psse_number
+
+            for bus in substation_buses:
+                if bus in node_breaker_data.bus_number_by_bus:
+                    raw_node = get_psse_node(bus=bus,
+                                             node_number=node_breaker_data.node_number_by_bus[bus],
+                                             electrical_bus_number=node_breaker_data.bus_number_by_bus[bus],
+                                             raw_node_type=RawNodeT)
+                    raw_node.ISUB = substation_number
+                    node_breaker_data.nodes.append(raw_node)
+                else:
+                    logger.add_error(msg="Substation bus missing from node-breaker grouping",
+                                     device=bus.name)
+    else:
+        pass
+
+    for bus in grid.buses:
+        if bus.internal:
+            logger.add_info(msg="Internal bus skipped at RAW export", device=bus.name)
+        elif node_breaker_requested and bus.substation is not None:
+            pass
         else:
-            logger.add_info(msg="Internal bus skipped at RAW export",
-                            device=bus.name)
+            psse_circuit.buses.append(
+                get_psse_bus(bus=bus,
+                             area_dict=area_dict,
+                             zones_dict=zones_dict,
+                             suggested_psse_number=counter.get_suggested_psse_number(bus=bus, logger=logger),
+                             raw_bus_type=RawBusT)
+            )
+
+    if node_breaker_requested and node_breaker_data is not None:
+        psse_circuit.substations.extend(node_breaker_data.substations)
+        psse_circuit.nodes.extend(node_breaker_data.nodes)
+    else:
+        pass
 
     for load in grid.loads:
-        psse_circuit.loads.append(get_psse_load(load=load,
-                                                bus_dict=counter.psse_numbers_dict,
-                                                id_number=counter.get_id(load.bus),
-                                                version=version,
-                                                raw_load_type=RawLoadT))
+        psse_load = get_psse_load(load=load,
+                                  bus_dict=counter.psse_numbers_dict,
+                                  id_number=counter.get_id(load.bus),
+                                  version=version,
+                                  raw_load_type=RawLoadT)
+        psse_circuit.loads.append(psse_load)
+        if node_breaker_requested and node_breaker_data is not None:
+            append_psse_terminal(node_breaker_data=node_breaker_data,
+                                 bus=load.bus,
+                                 type_code='L',
+                                 eqid=psse_load.ID,
+                                 raw_terminal_type=RawEquipmentTerminalT,
+                                 ibus=psse_load.I)
+        else:
+            pass
 
-    for load in grid.external_grids:
-        psse_circuit.loads.append(get_psse_load_from_external_grid(load=load,
-                                                                   bus_dict=counter.psse_numbers_dict,
-                                                                   id_number=counter.get_id(load.bus),
-                                                                   version=version,
-                                                                   raw_load_type=RawLoadT))
+    for external_grid in grid.external_grids:
+        psse_load = get_psse_load_from_external_grid(load=external_grid,
+                                                     bus_dict=counter.psse_numbers_dict,
+                                                     id_number=counter.get_id(external_grid.bus),
+                                                     version=version,
+                                                     raw_load_type=RawLoadT)
+        psse_circuit.loads.append(psse_load)
+        if node_breaker_requested and node_breaker_data is not None:
+            append_psse_terminal(node_breaker_data=node_breaker_data,
+                                 bus=external_grid.bus,
+                                 type_code='L',
+                                 eqid=psse_load.ID,
+                                 raw_terminal_type=RawEquipmentTerminalT,
+                                 ibus=psse_load.I)
+        else:
+            pass
 
     for generator in grid.generators:
-        psse_circuit.generators.append(get_psse_generator(generator=generator,
-                                                          bus_dict=counter.psse_numbers_dict,
-                                                          id_number=counter.get_id(generator.bus),
-                                                          version=version,
-                                                          raw_generator_type=RawGeneratorT))
+        psse_generator = get_psse_generator(generator=generator,
+                                            bus_dict=counter.psse_numbers_dict,
+                                            id_number=counter.get_id(generator.bus),
+                                            version=version,
+                                            raw_generator_type=RawGeneratorT)
+        if node_breaker_requested and node_breaker_data is not None and version >= 35:
+            if generator.control_bus is not None and generator.control_bus in node_breaker_data.node_number_by_bus:
+                psse_generator.NREG = node_breaker_data.node_number_by_bus[generator.control_bus]
+            else:
+                pass
+        else:
+            pass
+
+        psse_circuit.generators.append(psse_generator)
+        if node_breaker_requested and node_breaker_data is not None:
+            append_psse_terminal(node_breaker_data=node_breaker_data,
+                                 bus=generator.bus,
+                                 type_code='M',
+                                 eqid=psse_generator.ID,
+                                 raw_terminal_type=RawEquipmentTerminalT,
+                                 ibus=psse_generator.I)
+        else:
+            pass
 
     for shunt in grid.shunts:
-        psse_circuit.fixed_shunts.append(get_psse_fixed_shunt(shunt=shunt,
-                                                              bus_dict=counter.psse_numbers_dict,
-                                                              id_number=counter.get_id(shunt.bus),
-                                                              version=version,
-                                                              raw_fixed_shunt_type=RawFixedShuntT))
+        psse_shunt = get_psse_fixed_shunt(shunt=shunt,
+                                          bus_dict=counter.psse_numbers_dict,
+                                          id_number=counter.get_id(shunt.bus),
+                                          version=version,
+                                          raw_fixed_shunt_type=RawFixedShuntT)
+        psse_circuit.fixed_shunts.append(psse_shunt)
+        if node_breaker_requested and node_breaker_data is not None:
+            append_psse_terminal(node_breaker_data=node_breaker_data,
+                                 bus=shunt.bus,
+                                 type_code='F',
+                                 eqid=psse_shunt.ID,
+                                 raw_terminal_type=RawEquipmentTerminalT,
+                                 ibus=psse_shunt.I)
+        else:
+            pass
 
     for controllable_shunt in grid.controllable_shunts:
-        psse_circuit.switched_shunts.append(get_psse_switched_shunt(shunt=controllable_shunt,
-                                                                    bus_dict=counter.psse_numbers_dict,
-                                                                    version=version,
-                                                                    raw_switched_shunt_type=RawSwitchedShuntT))
+        psse_shunt = get_psse_switched_shunt(shunt=controllable_shunt,
+                                             bus_dict=counter.psse_numbers_dict,
+                                             version=version,
+                                             raw_switched_shunt_type=RawSwitchedShuntT)
+        if node_breaker_requested and node_breaker_data is not None and version >= 35:
+            if controllable_shunt.control_bus is not None and controllable_shunt.control_bus in node_breaker_data.node_number_by_bus:
+                psse_shunt.NREG = node_breaker_data.node_number_by_bus[controllable_shunt.control_bus]
+            else:
+                pass
+        else:
+            pass
+
+        psse_circuit.switched_shunts.append(psse_shunt)
+        if node_breaker_requested and node_breaker_data is not None:
+            switched_shunt_eqid = psse_shunt.ID if version >= 35 else "1"
+            append_psse_terminal(node_breaker_data=node_breaker_data,
+                                 bus=controllable_shunt.bus,
+                                 type_code='S',
+                                 eqid=switched_shunt_eqid,
+                                 raw_terminal_type=RawEquipmentTerminalT,
+                                 ibus=psse_shunt.I)
+        else:
+            pass
 
     for line in grid.lines:
-        psse_circuit.branches.append(get_psse_branch(branch=line,
-                                                     bus_dict=counter.psse_numbers_dict,
-                                                     ckt=counter.get_ckt(branch=line),
-                                                     version=version,
-                                                     raw_branch_type=RawBranchT))
+        raw_branch = get_psse_branch(branch=line,
+                                     bus_dict=counter.psse_numbers_dict,
+                                     ckt=counter.get_ckt(branch=line),
+                                     version=version,
+                                     raw_branch_type=RawBranchT)
+        psse_circuit.branches.append(raw_branch)
+        if node_breaker_requested and node_breaker_data is not None:
+            append_psse_terminal(node_breaker_data=node_breaker_data,
+                                 bus=line.bus_from,
+                                 type_code='B',
+                                 eqid=raw_branch.CKT,
+                                 raw_terminal_type=RawEquipmentTerminalT,
+                                 ibus=raw_branch.I,
+                                 jbus=raw_branch.J)
+            append_psse_terminal(node_breaker_data=node_breaker_data,
+                                 bus=line.bus_to,
+                                 type_code='B',
+                                 eqid=raw_branch.CKT,
+                                 raw_terminal_type=RawEquipmentTerminalT,
+                                 ibus=raw_branch.J,
+                                 jbus=raw_branch.I)
+        else:
+            pass
 
     for switch in grid.get_switches():
-        psse_circuit.switches.append(get_psse_switch(switch=switch,
-                                                     bus_dict=counter.psse_numbers_dict,
-                                                     ckt=counter.get_ckt(branch=switch),
-                                                     version=version,
-                                                     raw_switch_type=RawSystemSwitchingDeviceT))
+        if (node_breaker_requested and node_breaker_data is not None and switch.bus_from is not None and
+                switch.bus_to is not None and switch.bus_from.substation is not None and
+                switch.bus_from.substation == switch.bus_to.substation):
+            psse_circuit.substation_switching_devices.append(
+                get_psse_substation_switch(switch=switch,
+                                           node_breaker_data=node_breaker_data,
+                                           ckt=counter.get_ckt(branch=switch),
+                                           version=version,
+                                           raw_switch_type=RawSubstationSwitchingDeviceT)
+            )
+        else:
+            psse_circuit.switches.append(get_psse_switch(switch=switch,
+                                                         bus_dict=counter.psse_numbers_dict,
+                                                         ckt=counter.get_ckt(branch=switch),
+                                                         version=version,
+                                                         raw_switch_type=RawSystemSwitchingDeviceT))
 
     for transformer in grid.transformers2w:
-        psse_circuit.transformers.append(get_psse_transformer2w(transformer=transformer,
-                                                                bus_dict=counter.psse_numbers_dict,
-                                                                ckt=counter.get_ckt(branch=transformer),
-                                                                version=version,
-                                                                raw_transformer_type=RawTransformerT))
+        psse_transformer = get_psse_transformer2w(transformer=transformer,
+                                                  bus_dict=counter.psse_numbers_dict,
+                                                  ckt=counter.get_ckt(branch=transformer),
+                                                  version=version,
+                                                  raw_transformer_type=RawTransformerT)
+        if node_breaker_requested and node_breaker_data is not None and version >= 35:
+            if transformer.regulation_bus is not None and transformer.regulation_bus in node_breaker_data.node_number_by_bus:
+                psse_transformer.CONT1 = counter.psse_numbers_dict[transformer.regulation_bus]
+                psse_transformer.NODE1 = node_breaker_data.node_number_by_bus[transformer.regulation_bus]
+            else:
+                pass
+        else:
+            pass
+
+        psse_circuit.transformers.append(psse_transformer)
+        if node_breaker_requested and node_breaker_data is not None:
+            append_psse_terminal(node_breaker_data=node_breaker_data,
+                                 bus=transformer.bus_from,
+                                 type_code='2',
+                                 eqid=psse_transformer.CKT,
+                                 raw_terminal_type=RawEquipmentTerminalT,
+                                 ibus=psse_transformer.I,
+                                 jbus=psse_transformer.J)
+            append_psse_terminal(node_breaker_data=node_breaker_data,
+                                 bus=transformer.bus_to,
+                                 type_code='2',
+                                 eqid=psse_transformer.CKT,
+                                 raw_terminal_type=RawEquipmentTerminalT,
+                                 ibus=psse_transformer.J,
+                                 jbus=psse_transformer.I)
+        else:
+            pass
 
     for transformer in grid.transformers3w:
-        psse_circuit.transformers.append(get_psse_transformer3w(transformer=transformer,
-                                                                bus_dict=counter.psse_numbers_dict,
-                                                                version=version,
-                                                                raw_transformer_type=RawTransformerT))
+        psse_transformer = get_psse_transformer3w(transformer=transformer,
+                                                  bus_dict=counter.psse_numbers_dict,
+                                                  version=version,
+                                                  raw_transformer_type=RawTransformerT)
+        psse_circuit.transformers.append(psse_transformer)
+        if node_breaker_requested and node_breaker_data is not None:
+            append_psse_terminal(node_breaker_data=node_breaker_data,
+                                 bus=transformer.bus1,
+                                 type_code='3',
+                                 eqid=psse_transformer.CKT,
+                                 raw_terminal_type=RawEquipmentTerminalT,
+                                 ibus=psse_transformer.I,
+                                 jbus=psse_transformer.J,
+                                 kbus=psse_transformer.K)
+            append_psse_terminal(node_breaker_data=node_breaker_data,
+                                 bus=transformer.bus2,
+                                 type_code='3',
+                                 eqid=psse_transformer.CKT,
+                                 raw_terminal_type=RawEquipmentTerminalT,
+                                 ibus=psse_transformer.J,
+                                 jbus=psse_transformer.I,
+                                 kbus=psse_transformer.K)
+            append_psse_terminal(node_breaker_data=node_breaker_data,
+                                 bus=transformer.bus3,
+                                 type_code='3',
+                                 eqid=psse_transformer.CKT,
+                                 raw_terminal_type=RawEquipmentTerminalT,
+                                 ibus=psse_transformer.K,
+                                 jbus=psse_transformer.I,
+                                 kbus=psse_transformer.J)
+        else:
+            pass
 
     for hvdc_line in grid.hvdc_lines:
         if abs(hvdc_line.Vset_f - 1.0) > 1e-9 or abs(hvdc_line.Vset_t - 1.0) > 1e-9:
-            psse_circuit.vsc_dc_lines.append(get_vsc_dc_line(hvdc_line,
-                                                             bus_dict=counter.psse_numbers_dict,
-                                                             version=version,
-                                                             raw_vsc_dc_line_type=RawVscDCLineT))
+            raw_vsc = get_vsc_dc_line(hvdc_line,
+                                      bus_dict=counter.psse_numbers_dict,
+                                      version=version,
+                                      raw_vsc_dc_line_type=RawVscDCLineT)
+            psse_circuit.vsc_dc_lines.append(raw_vsc)
+            if node_breaker_requested and node_breaker_data is not None:
+                append_psse_terminal(node_breaker_data=node_breaker_data,
+                                     bus=hvdc_line.bus_from,
+                                     type_code='V',
+                                     eqid=raw_vsc.NAME,
+                                     raw_terminal_type=RawEquipmentTerminalT,
+                                     ibus=raw_vsc.IBUS1)
+                append_psse_terminal(node_breaker_data=node_breaker_data,
+                                     bus=hvdc_line.bus_to,
+                                     type_code='V',
+                                     eqid=raw_vsc.NAME,
+                                     raw_terminal_type=RawEquipmentTerminalT,
+                                     ibus=raw_vsc.IBUS2)
+            else:
+                pass
         else:
-            psse_circuit.two_terminal_dc_lines.append(get_psse_two_terminal_dc_line(
-                hvdc_line,
-                bus_dict=counter.psse_numbers_dict,
-                raw_two_terminal_dc_line_type=RawTwoTerminalDCLineT
-            ))
+            raw_dc = get_psse_two_terminal_dc_line(hvdc_line,
+                                                   bus_dict=counter.psse_numbers_dict,
+                                                   raw_two_terminal_dc_line_type=RawTwoTerminalDCLineT)
+            psse_circuit.two_terminal_dc_lines.append(raw_dc)
+            if node_breaker_requested and node_breaker_data is not None:
+                append_psse_terminal(node_breaker_data=node_breaker_data,
+                                     bus=hvdc_line.bus_from,
+                                     type_code='D',
+                                     eqid=raw_dc.NAME,
+                                     raw_terminal_type=RawEquipmentTerminalT,
+                                     ibus=raw_dc.IPR)
+                append_psse_terminal(node_breaker_data=node_breaker_data,
+                                     bus=hvdc_line.bus_to,
+                                     type_code='D',
+                                     eqid=raw_dc.NAME,
+                                     raw_terminal_type=RawEquipmentTerminalT,
+                                     ibus=raw_dc.IPI)
+            else:
+                pass
 
     for upfc_device in grid.upfc_devices:
         psse_circuit.facts.append(get_psse_facts(upfc_device,
                                                  bus_dict=counter.psse_numbers_dict,
                                                  version=version,
                                                  raw_facts_type=RawFACTST))
+
+    if node_breaker_requested and node_breaker_data is not None:
+        psse_circuit.equipment_terminals.extend(node_breaker_data.equipment_terminals)
+    else:
+        pass
 
     return psse_circuit

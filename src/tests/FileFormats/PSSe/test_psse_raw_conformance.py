@@ -27,8 +27,10 @@ from VeraGridEngine.IO.raw.versioned.v35.transformer import RawTransformerV35
 from VeraGridEngine.IO.raw.versioned.v34.vsc_dc_line import RawVscDCLineV34
 from VeraGridEngine.IO.raw.versioned.v35.vsc_dc_line import RawVscDCLineV35
 from VeraGridEngine.IO.raw.raw_parser_writer import interpret_line, read_and_split, read_raw
+from VeraGridEngine.IO.raw.raw_to_veragrid import psse_to_veragrid
 from VeraGridEngine.IO.raw.veragrid_to_raw import veragrid_to_raw
 from VeraGridEngine.basic_structures import Logger
+from VeraGridEngine.enumerations import PsseTopologyExportMode
 
 
 def test_read_raw_keeps_psse35_system_wide_records_out_of_bus_section(tmp_path: Path) -> None:
@@ -235,6 +237,148 @@ def test_system_switching_device_writer_uses_psse36_rating_set_name() -> None:
     assert len(raw_values) == 10
     assert raw_values[4] == "BREAKER_01"
     assert raw_values[5:10] == [1, 1, 2, 3, "SW1"]
+
+
+def test_psse35_substation_block_maps_load_to_node_bus(tmp_path: Path) -> None:
+    """PSSE 35 substation terminals must attach loads to the imported node bus."""
+
+    raw_text: str = "\n".join(
+        [
+            "0,100.0,35,0,0,60.0",
+            "Node breaker case",
+            "Node breaker case 2",
+            "GENERAL, THRSHZ=0.0001",
+            "0 / END OF SYSTEM-WIDE DATA, BEGIN BUS DATA",
+            "101,'BUS101',230.0,1,1,1,1,1.0,0.0,1.1,0.9,1.1,0.9",
+            "0 / END OF BUS DATA, BEGIN LOAD DATA",
+            "101,'1',1,1,1,10.0,2.0,0.0,0.0,0.0,0.0,1,1,0,0,0,'',''",
+            "0 / END OF LOAD DATA, BEGIN SUBSTATION DATA",
+            "1,'SUB1',0.0,0.0,0.1",
+            "1,'NODE1',101,1,1.0,0.0",
+            "0",
+            "0",
+            "101,1,'L','1'",
+            "0",
+            "0",
+            "0 / END OF SUBSTATION DATA",
+            "Q",
+        ]
+    )
+    raw_path: Path = tmp_path / "psse35_node_load.raw"
+    raw_path.write_text(raw_text, encoding="utf-8")
+
+    psse_circuit = read_raw(str(raw_path), logger=Logger())
+    circuit = psse_to_veragrid(psse_circuit, logger=Logger())
+
+    assert len(psse_circuit.substations) == 1
+    assert len(psse_circuit.nodes) == 1
+    assert len(psse_circuit.equipment_terminals) == 1
+    assert len(circuit.substations) == 1
+    assert len(circuit.buses) == 1
+    assert len(circuit.loads) == 1
+    assert circuit.loads[0].bus == circuit.buses[0]
+    assert circuit.buses[0].code == "101:1"
+
+
+def test_psse35_substation_switch_is_imported_between_node_buses(tmp_path: Path) -> None:
+    """PSSE 35 substation switching devices must become VeraGrid switches between node buses."""
+
+    raw_text: str = "\n".join(
+        [
+            "0,100.0,35,0,0,60.0",
+            "Node breaker switch case",
+            "Node breaker switch case 2",
+            "GENERAL, THRSHZ=0.0001",
+            "0 / END OF SYSTEM-WIDE DATA, BEGIN BUS DATA",
+            "101,'BUS101',230.0,1,1,1,1,1.0,0.0,1.1,0.9,1.1,0.9",
+            "0 / END OF BUS DATA, BEGIN SUBSTATION DATA",
+            "1,'SUB1',0.0,0.0,0.1",
+            "1,'NODE1',101,1,1.0,0.0",
+            "2,'NODE2',101,1,1.0,0.0",
+            "0",
+            "1,2,'1','BRK_12',2,1,1,0.0001,0.0,0.0,0.0",
+            "0",
+            "0",
+            "0",
+            "0 / END OF SUBSTATION DATA",
+            "Q",
+        ]
+    )
+    raw_path: Path = tmp_path / "psse35_node_switch.raw"
+    raw_path.write_text(raw_text, encoding="utf-8")
+
+    psse_circuit = read_raw(str(raw_path), logger=Logger())
+    circuit = psse_to_veragrid(psse_circuit, logger=Logger())
+    switches = circuit.get_switches()
+
+    assert len(psse_circuit.substation_switching_devices) == 1
+    assert len(circuit.buses) == 2
+    assert len(switches) == 1
+    assert switches[0].bus_from.code == "101:1"
+    assert switches[0].bus_to.code == "101:2"
+
+
+def test_psse35_export_keeps_plain_bus_branch_mode_by_default() -> None:
+    """PSSE 35 export must keep the direct bus model unless node-breaker mode is requested."""
+
+    circuit = MultiCircuit()
+    substation = dev.Substation(name="SUB1")
+    circuit.add_substation(substation)
+
+    bus_1 = dev.Bus(name="B1", Vnom=110.0, code="101", substation=substation)
+    bus_2 = dev.Bus(name="B2", Vnom=110.0, code="102", substation=substation)
+    circuit.add_bus(bus_1)
+    circuit.add_bus(bus_2)
+
+    switch = dev.Switch(bus_from=bus_1, bus_to=bus_2, name="SW12", active=True)
+    circuit.add_switch(switch)
+
+    psse_circuit = veragrid_to_raw(circuit,
+                                   version=35,
+                                   logger=Logger(),
+                                   topology_mode=PsseTopologyExportMode.BusBranch)
+
+    assert len(psse_circuit.buses) == 2
+    assert len(psse_circuit.substations) == 0
+    assert len(psse_circuit.nodes) == 0
+    assert len(psse_circuit.substation_switching_devices) == 0
+    assert len(psse_circuit.switches) == 1
+
+
+def test_psse35_export_node_breaker_mode_maps_substation_buses_to_nodes() -> None:
+    """PSSE 35 node-breaker export must turn substation buses into nodes and keep plain buses as buses."""
+
+    circuit = MultiCircuit()
+    substation = dev.Substation(name="SUB1")
+    circuit.add_substation(substation)
+
+    bus_1 = dev.Bus(name="B1", Vnom=110.0, code="101", substation=substation)
+    bus_2 = dev.Bus(name="B2", Vnom=110.0, code="102", substation=substation)
+    bus_3 = dev.Bus(name="B3", Vnom=110.0, code="103")
+    circuit.add_bus(bus_1)
+    circuit.add_bus(bus_2)
+    circuit.add_bus(bus_3)
+
+    switch = dev.Switch(bus_from=bus_1, bus_to=bus_2, name="SW12", active=True)
+    line = dev.Line(bus_from=bus_2, bus_to=bus_3, name="L23", r=0.01, x=0.05, b=0.0, rate=100.0)
+    load = dev.Load(name="LD2", P=10.0, Q=2.0)
+    circuit.add_switch(switch)
+    circuit.add_line(line)
+    circuit.add_load(bus=bus_2, api_obj=load)
+
+    psse_circuit = veragrid_to_raw(circuit,
+                                   version=35,
+                                   logger=Logger(),
+                                   topology_mode=PsseTopologyExportMode.NodeBreaker)
+
+    assert len(psse_circuit.substations) == 1
+    assert len(psse_circuit.nodes) == 2
+    assert len(psse_circuit.buses) == 2
+    assert len(psse_circuit.substation_switching_devices) == 1
+    assert len(psse_circuit.switches) == 0
+    assert len(psse_circuit.equipment_terminals) == 2
+    assert psse_circuit.nodes[0].I == psse_circuit.nodes[1].I
+    assert psse_circuit.nodes[0].NI != psse_circuit.nodes[1].NI
 
 
 def test_psse36_load_fixed_shunt_and_generator_include_new_name_fields() -> None:
