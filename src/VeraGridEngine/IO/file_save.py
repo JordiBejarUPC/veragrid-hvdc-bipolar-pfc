@@ -24,6 +24,7 @@ from VeraGridEngine.IO.dgs.veragrid_to_dgs import circuit_to_dgs
 from VeraGridEngine.IO.matpower.veragrid_to_matpower import write_matpower_case_file
 from VeraGridEngine.IO.raw.raw_parser_writer import write_raw
 from VeraGridEngine.IO.raw.veragrid_to_raw import veragrid_to_raw
+from VeraGridEngine.IO.ucte.veragrid_to_ucte import write_ucte
 from VeraGridEngine.IO.cim.cim16.cim_parser import CIMExport
 from VeraGridEngine.IO.cim.cgmes.cgmes_circuit import CgmesCircuit
 from VeraGridEngine.IO.veragrid.zip_interface import save_veragrid_data_to_zip, save_veragrid_multiverse_data_to_zip
@@ -37,7 +38,7 @@ from VeraGridEngine.Simulations.driver_template import DriverToSave
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
 from VeraGridEngine.enumerations import (CGMESVersions, SimulationTypes, FileType,
                                          PsseTopologyExportMode, PsseExportMode, DgsExportMode,
-                                         MatpowerExportMode, CgmesExportMode)
+                                         MatpowerExportMode, UcteExportMode, CgmesExportMode)
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
 
 
@@ -60,6 +61,7 @@ class FileSavingOptions:
                  psse_export_mode: PsseExportMode = PsseExportMode.SingleFile,
                  dgs_export_mode: DgsExportMode = DgsExportMode.SingleFile,
                  matpower_export_mode: MatpowerExportMode = MatpowerExportMode.SingleFile,
+                 ucte_export_mode: UcteExportMode = UcteExportMode.SingleFile,
                  cgmes_export_mode: CgmesExportMode = CgmesExportMode.SingleFile,
                  t_idx: int | None = None):
         """
@@ -78,6 +80,7 @@ class FileSavingOptions:
         :param psse_export_mode: PSSE single-file or batch-zip export strategy.
         :param dgs_export_mode: DGS single-file or batch-zip export strategy.
         :param matpower_export_mode: MATPOWER single-file or batch-zip export strategy.
+        :param ucte_export_mode: UCTE single-file or batch-zip export strategy.
         :param cgmes_export_mode: CGMES single-file or batch-zip export strategy.
         :param t_idx: Optional time index used by file formats that support snapshot/profile exports.
         :return: None.
@@ -117,6 +120,7 @@ class FileSavingOptions:
         self.psse_export_mode: PsseExportMode = psse_export_mode
         self.dgs_export_mode: DgsExportMode = dgs_export_mode
         self.matpower_export_mode: MatpowerExportMode = matpower_export_mode
+        self.ucte_export_mode: UcteExportMode = ucte_export_mode
         self.cgmes_export_mode: CgmesExportMode = cgmes_export_mode
         self.t_idx: int | None = t_idx
 
@@ -985,6 +989,124 @@ def save_matpower(circuit: MultiCircuit,
                                         t_idx=options.t_idx)
 
 
+def compose_ucte_batch_file_name(base_name: str,
+                                 t_idx: int,
+                                 time_label: str) -> str:
+    """
+    Compose one deterministic file name for a UCTE batch-export member.
+
+    :param base_name: Base archive name without extension.
+    :param t_idx: Time index of the exported profile point.
+    :param time_label: Human-readable time label.
+    :return: Sanitized internal file name.
+    """
+    safe_time_label: str = re.sub(r"[^0-9A-Za-z._-]+", "_", time_label).strip("_")
+
+    if safe_time_label == "":
+        safe_time_label = "time"
+    else:
+        pass
+
+    return f"{base_name}_t{t_idx:05d}_{safe_time_label}.uct"
+
+
+def save_ucte_batch_zip(circuit: MultiCircuit,
+                        file_name: str,
+                        text_func=None,
+                        progress_func=None) -> Logger:
+    """
+    Export every time-series point into one ZIP archive with one UCTE file per step.
+
+    :param circuit: Circuit to export.
+    :param file_name: Target ZIP path.
+    :param text_func: Optional progress-text callback.
+    :param progress_func: Optional progress-value callback.
+    :return: Logger with export messages.
+    """
+    logger: Logger = Logger()
+
+    if not circuit.has_time_series:
+        logger.add_error(msg="UCTE batch export requires time-series data.")
+        return logger
+    else:
+        pass
+
+    total_steps: int = circuit.get_time_number()
+    if total_steps <= 0:
+        logger.add_error(msg="UCTE batch export requires at least one time-series point.")
+        return logger
+    else:
+        pass
+
+    _, zip_extension = os.path.splitext(file_name)
+    if zip_extension.lower() == ".zip":
+        zip_file_name: str = file_name
+    else:
+        zip_file_name = file_name + ".zip"
+
+    archive_base_name: str = os.path.splitext(os.path.basename(zip_file_name))[0]
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_file_name: str = os.path.join(temp_dir, "ucte_batch_export.uct")
+
+        with zipfile.ZipFile(zip_file_name, "w", zipfile.ZIP_DEFLATED) as zip_ptr:
+            t_idx: int
+            for t_idx in range(total_steps):
+                if text_func is not None:
+                    text_func(f"Exporting UCTE profile [{t_idx}] {circuit.time_profile[t_idx]}...")
+                else:
+                    pass
+
+                if progress_func is not None:
+                    progress_value: float = (100.0 * float(t_idx)) / float(total_steps)
+                    progress_func(progress_value)
+                else:
+                    pass
+
+                time_label: str = str(circuit.time_profile[t_idx])
+                internal_file_name: str = compose_ucte_batch_file_name(base_name=archive_base_name,
+                                                                       t_idx=t_idx,
+                                                                       time_label=time_label)
+                write_ucte(file_name=temp_file_name,
+                           circuit=circuit,
+                           t_idx=t_idx,
+                           logger=logger)
+                zip_ptr.write(temp_file_name, arcname=internal_file_name)
+
+    if progress_func is not None:
+        progress_func(100.0)
+    else:
+        pass
+
+    return logger
+
+
+def save_ucte(circuit: MultiCircuit,
+              file_name: str,
+              options: FileSavingOptions,
+              text_func=None,
+              progress_func=None) -> Logger:
+    """
+    Save the circuit information in UCTE format.
+
+    :param circuit: Circuit to export.
+    :param file_name: Target file path.
+    :param options: Export options, including the optional profile selector.
+    :param text_func: Optional progress-text callback.
+    :param progress_func: Optional progress-value callback.
+    :return: Logger with export messages.
+    """
+    if options.ucte_export_mode == UcteExportMode.BatchZip:
+        return save_ucte_batch_zip(circuit=circuit,
+                                   file_name=file_name,
+                                   text_func=text_func,
+                                   progress_func=progress_func)
+    else:
+        return write_ucte(file_name=file_name,
+                          circuit=circuit,
+                          t_idx=options.t_idx)
+
+
 class FileSave:
     """
     FileSave
@@ -1131,6 +1253,15 @@ class FileSave:
 
         elif self.options.file_type == FileType.Matpower:
             logger = save_matpower(
+                circuit=self.circuit,
+                file_name=self.file_name,
+                options=self.options,
+                text_func=self.text_func,
+                progress_func=self.progress_func,
+            )
+
+        elif self.options.file_type == FileType.UCTE:
+            logger = save_ucte(
                 circuit=self.circuit,
                 file_name=self.file_name,
                 options=self.options,

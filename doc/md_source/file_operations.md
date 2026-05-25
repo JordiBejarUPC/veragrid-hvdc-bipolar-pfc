@@ -20,8 +20,8 @@ VeraGrid supports a great deal of file formats.
 | CGMES 3.0          |✅    | ✅     |
 | raw/rawx (PSS/e)   |✅    | ✅     |
 | dgs (PowerFactory) |✅    | ✅     |
-| ucte (UCTE)        |✅    |       |
-| m (Matpower)       |✅    |       |
+| ucte (UCTE)        |✅    | ✅     |
+| m (Matpower)       |✅    | ✅     |
 | p (PandaPower)*    |✅    |       |
 | nc (PyPSA)*        |✅    |       |
 | epc (PSLF)         |✅    |       |

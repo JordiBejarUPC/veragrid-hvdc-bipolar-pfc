@@ -25,7 +25,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox, QComb
     QSpacerItem, QSpinBox, QSplitter, QTabWidget,
     QTableView, QTextEdit, QToolBar, QToolBox,
     QTreeView, QVBoxLayout, QWidget)
-from VeraGrid.Gui.Icons.icons_rc import *
+import icons_rc
 
 class Ui_mainWindow(object):
     def setupUi(self, mainWindow):
@@ -644,6 +644,8 @@ class Ui_mainWindow(object):
         icon86 = QIcon()
         icon86.addFile(u":/Icons/icons/matpower.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         self.actionMATPOWER.setIcon(icon86)
+        self.actionUCTE = QAction(mainWindow)
+        self.actionUCTE.setObjectName(u"actionUCTE")
         self.actionCGMES = QAction(mainWindow)
         self.actionCGMES.setObjectName(u"actionCGMES")
         icon87 = QIcon()
@@ -5394,6 +5396,7 @@ class Ui_mainWindow(object):
         self.menuExport_grid.addAction(self.actionPSS_e_Raw_Rawx)
         self.menuExport_grid.addAction(self.actionPower_Factory_DGS)
         self.menuExport_grid.addAction(self.actionMATPOWER)
+        self.menuExport_grid.addAction(self.actionUCTE)
         self.menuExport_grid.addAction(self.actionCIM)
         self.menuExport_grid.addAction(self.actionCGMES)
         self.menuExport_grid.addAction(self.actionPower_Grid_Models)
@@ -5922,6 +5925,7 @@ class Ui_mainWindow(object):
         self.actionPSS_e_Raw_Rawx.setText(QCoreApplication.translate("mainWindow", u"PSS/e Raw / Rawx", None))
         self.actionPower_Factory_DGS.setText(QCoreApplication.translate("mainWindow", u"Power Factory DGS", None))
         self.actionMATPOWER.setText(QCoreApplication.translate("mainWindow", u"Matpower", None))
+        self.actionUCTE.setText(QCoreApplication.translate("mainWindow", u"UCTE", None))
         self.actionCGMES.setText(QCoreApplication.translate("mainWindow", u"CGMES", None))
         self.actionPower_Grid_Models.setText(QCoreApplication.translate("mainWindow", u"Power Grid Models", None))
         self.actionCIM.setText(QCoreApplication.translate("mainWindow", u"CIM", None))

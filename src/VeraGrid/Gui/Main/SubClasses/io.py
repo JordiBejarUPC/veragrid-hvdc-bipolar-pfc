@@ -24,6 +24,7 @@ from VeraGrid.Gui.FileDialogues.CGMESDialogue.cgmes_import import CgmesImportDia
 from VeraGrid.Gui.FileDialogues.DgsDialogue.dgs_export import DgsExportDialogue
 from VeraGrid.Gui.FileDialogues.DgsDialogue.dgs_import import DgsImportDialogue
 from VeraGrid.Gui.FileDialogues.MatpowerDialogue.matpower_export import MatpowerExportDialogue
+from VeraGrid.Gui.FileDialogues.UcteDialogue.ucte_export import UcteExportDialogue
 from VeraGrid.Gui.Main.SubClasses.Model.scenarios import ScenariosMain
 from VeraGrid.Gui.FileDialogues.CGMESDialogue.cgmes_export import CgmesExportDialogue
 from VeraGrid.Gui.FileDialogues.PsseDialogue.psse_export import PsseExportDialogue
@@ -63,7 +64,7 @@ class IoMain(ScenariosMain):
         self.accepted_extensions = ['.veragrid', '.dveragrid',
                                     '.gridcal', '.dgridcal',
                                     '.xlsx', '.xls', '.sqlite', '.gch5',
-                                    '.dgs', '.m', '.matpower', '.raw', '.RAW', '.json', '.uct',
+                                    '.dgs', '.m', '.matpower', '.raw', '.RAW', '.json', '.uct', '.ucte',
                                     '.iidm', '.xiidm', '.xiidm.bz2',
                                     '.ejson2', '.ejson3', '.p', '.nc', '.hdf5',
                                     '.xml', '.rawx', '.zip', '.dpx', '.pwf', '.epc', '.EPC',
@@ -74,6 +75,7 @@ class IoMain(ScenariosMain):
         self.psse_export_dialogue: PsseExportDialogue | None = None
         self.dgs_export_dialogue: DgsExportDialogue | None = None
         self.matpower_export_dialogue: MatpowerExportDialogue | None = None
+        self.ucte_export_dialogue: UcteExportDialogue | None = None
 
         # actions
         self.ui.actionNew_project.triggered.connect(self.new_project)
@@ -95,6 +97,7 @@ class IoMain(ScenariosMain):
         self.ui.actionPSS_e_Raw_Rawx.triggered.connect(self.export_psse)
         self.ui.actionPower_Factory_DGS.triggered.connect(self.export_power_factory)
         self.ui.actionMATPOWER.triggered.connect(self.export_matpower)
+        self.ui.actionUCTE.triggered.connect(self.export_ucte)
         self.ui.actionCIM.triggered.connect(self.export_cim)
         self.ui.actionCGMES.triggered.connect(self.export_cgmes)
         self.ui.actionPower_Grid_Models.triggered.connect(self.export_power_grid_models)
@@ -1206,6 +1209,15 @@ class IoMain(ScenariosMain):
         """
         self.matpower_export_dialogue = MatpowerExportDialogue(app=self)
         self.matpower_export_dialogue.show()
+
+    def export_ucte(self) -> None:
+        """
+        Open the UCTE export dialogue.
+
+        :return: None.
+        """
+        self.ucte_export_dialogue = UcteExportDialogue(app=self)
+        self.ucte_export_dialogue.show()
 
     def export_cim(self) -> None:
         """
