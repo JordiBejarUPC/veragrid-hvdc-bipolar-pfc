@@ -175,15 +175,57 @@ class CgmesExportDialogue(QtWidgets.QDialog):
         :return: None.
         """
         cgmes_version: CGMESVersions = self.cgmes_version_dict[self.ui.cgmes_version_comboBox.currentText()]
+        available_profiles: dict[str, list[str]] = get_available_cgmes_profiles(cgmes_version=cgmes_version)
 
         self.cgmes_profiles_dict = {
             key: CgmesProfileType(key)
-            for key, value in get_available_cgmes_profiles(cgmes_version=cgmes_version).items()
+            for key, value in available_profiles.items()
         }
 
-        self.ui.cgmes_profiles_listView.setModel(gf.get_list_model(list(self.cgmes_profiles_dict.keys()),
-                                                                   checks=True,
-                                                                   check_value=True))
+        profile_names: list[str] = list(self.cgmes_profiles_dict.keys())
+        profile_checks: list[bool] = self.get_default_profile_check_state(profile_names=profile_names)
+        self.ui.cgmes_profiles_listView.setModel(gf.get_chck_list_model(profile_names, profile_checks))
+
+    @staticmethod
+    def get_default_checked_profile_names() -> set[str]:
+        """
+        Get the CGMES profiles that shall remain checked by default.
+
+        The dialogue previously defaulted to the classic/core export set plus
+        ``CO``. The newer NCP profiles are now visible, but they stay unchecked
+        by default because the exporter does not yet synthesize those datasets
+        from a plain VeraGrid model.
+
+        :return: Set of profile names checked by default.
+        """
+        return {
+            "EQ",
+            "EQ_BD",
+            "OP",
+            "SC",
+            "SSH",
+            "TP",
+            "TP_BD",
+            "SV",
+            "GL",
+            "CO",
+        }
+
+    def get_default_profile_check_state(self, profile_names: list[str]) -> list[bool]:
+        """
+        Build the default checked state for the current profile list.
+
+        :param profile_names: Profile names displayed in the dialogue.
+        :return: Boolean check-state list aligned with ``profile_names``.
+        """
+        default_checked_names: set[str] = self.get_default_checked_profile_names()
+        check_state: list[bool] = list()
+
+        profile_name: str
+        for profile_name in profile_names:
+            check_state.append(profile_name in default_checked_names)
+
+        return check_state
 
     def select_cgmes_boundary_set(self) -> None:
         """
