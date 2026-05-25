@@ -494,6 +494,60 @@ CGMES export is the richest VeraGrid exporter, but it still requires explicit as
 - newer NCP profile types can be exposed in the export registry, but the default time-series export strategy is still mainly repeated steady-state packages unless the model already contains the corresponding schedule objects;
 - missing terminals, missing base voltages, missing regions or missing power-flow results for requested SV export are logged as export problems.
 
+#### Supported profiles
+
+VeraGrid does not expose every possible CGMES profile for every version.
+The exporter exposes the following profile registries today.
+
+CGMES 2.4.15 exportable profiles:
+
+| Profile | Meaning |
+|---------|---------|
+| `EQ`    | Equipment model. Core network assets such as buses, lines, transformers, generators and shunts. |
+| `SSH`   | Steady-state hypothesis. Operating-state values and settings applied to the equipment model. |
+| `TP`    | Topology. Connectivity and topological-node structure used for the exported network state. |
+| `SV`    | State variables. Solved operating-point results, typically produced from power-flow results. |
+| `GL`    | Geographical location. Substation, line and asset location metadata when available. |
+
+CGMES 3.0.0 exportable profiles:
+
+| Profile | Meaning |
+|---------|---------|
+| `EQ`    | Equipment. The core electrical asset model. |
+| `EQ_BD` | Equipment boundary. Boundary equipment references used to define the external modeling boundary. |
+| `OP`    | Operation. Operational metadata associated with the network model. |
+| `SC`    | Short circuit. Short-circuit-oriented equipment data. |
+| `SSH`   | Steady-state hypothesis. The operating-state values applied to the equipment model. |
+| `TP`    | Topology. Network connectivity and topological-node structure. |
+| `TP_BD` | Topology boundary. Boundary topology references associated with the external perimeter. |
+| `SV`    | State variables. Solved state values such as bus voltages and branch flows. |
+| `GL`    | Geographical location. Asset location metadata. |
+| `CO`    | Contingency. Contingency definitions used in security-oriented studies. |
+| `AE`    | Assessed element. Elements referenced by assessment or security-analysis processes. |
+| `SSI`   | Steady-state instruction. Baseline operational instructions for a steady-state context. |
+| `PS`    | Power schedule. Time-varying active and reactive setpoint scheduling semantics. |
+| `AVS`   | Availability schedule. Time-varying equipment availability. |
+| `RA`    | Remedial action. Remedial-action definitions. |
+| `RAS`   | Remedial action schedule. Scheduled activation or timing for remedial actions. |
+| `ER`    | Equipment reliability. Reliability-oriented equipment information. |
+| `SHS`   | Steady-state hypothesis schedule. Time-varying steady-state hypothesis values. |
+| `SIS`   | State instruction schedule. Scheduled state instructions over time. |
+| `OR`    | Object registry. Registry-style cross-reference information for identified objects. |
+| `SAR`   | Security analysis result. Result-oriented profile for security-analysis outputs. |
+| `IAM`   | Impact assessment matrix. Impact relationships used by advanced security/remedial-action workflows. |
+
+In practical VeraGrid usage, these profiles fall into three broad groups:
+
+- core network exchange profiles: `EQ`, `EQ_BD`, `TP`, `TP_BD`, `SSH`, `SV`, `GL`, `OP`, `SC`;
+- classic steady-state export profiles: usually `EQ + TP + SSH`, with `SV` added when solved results are available;
+- newer NCP and schedule-oriented profiles: `SSI`, `PS`, `AVS`, `RA`, `RAS`, `ER`, `SHS`, `SIS`, `CO`, `AE`, `SAR`, `IAM`, `OR`.
+
+There is one important modeling caveat:
+
+- a profile being selectable does not automatically mean VeraGrid synthesizes rich content for it from any arbitrary grid;
+- the classic steady-state profiles are the most mature for general-purpose export;
+- many of the newer NCP-style profiles are most useful when the model already contains the corresponding schedule, instruction or assessment semantics.
+
 The main loss mechanisms are usually not in the core steady-state network itself, but in the boundary between:
 
 - what exists in VeraGrid as a working electrical model;
