@@ -4,6 +4,9 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 import os
+import re
+import tempfile
+import zipfile
 from datetime import datetime
 from typing import Union, List, Any, Dict
 
@@ -31,13 +34,14 @@ from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.multiverse import MultiVerse
 from VeraGridEngine.Simulations.driver_template import DriverToSave
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
-from VeraGridEngine.enumerations import CGMESVersions, SimulationTypes, FileType, PsseTopologyExportMode
+from VeraGridEngine.enumerations import (CGMESVersions, SimulationTypes, FileType,
+                                         PsseTopologyExportMode, PsseExportMode)
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
 
 
 class FileSavingOptions:
     """
-    This class is to store the extra stuff that needs to be passed to save more complex files
+    Store the extra data required by the richer file-export paths.
     """
 
     def __init__(self,
@@ -50,18 +54,25 @@ class FileSavingOptions:
                  cgmes_one_file_per_profile: bool = False,
                  cgmes_map_areas_like_raw: bool = False,
                  raw_version: str = "33",
-                 psse_topology_mode: PsseTopologyExportMode = PsseTopologyExportMode.BusBranch):
+                 psse_topology_mode: PsseTopologyExportMode = PsseTopologyExportMode.BusBranch,
+                 psse_export_mode: PsseExportMode = PsseExportMode.SingleFile,
+                 t_idx: int | None = None):
         """
-        Constructor
-        :param cgmes_boundary_set: CGMES boundary set zip file path
-        :param sessions_data: List of sessions_data
-        :param dictionary_of_json_files: Dictionary of json files
-        :param cgmes_version: Version to use with CGMES
-        :param cgmes_profiles: CGMES profile list to export
-        :param cgmes_one_file_per_profile: use one file per profile?
-        :param cgmes_map_areas_like_raw: use map areas like raw?
-        :param raw_version: Version to use when exporting raw/rawx files
+        Build one file-save options container.
+
+        :param file_type: Explicit file type override.
+        :param sessions_data: Session payloads to persist with VeraGrid files.
+        :param dictionary_of_json_files: Extra JSON payloads to embed.
+        :param cgmes_boundary_set: CGMES boundary set zip file path.
+        :param cgmes_version: CGMES export version.
+        :param cgmes_profiles: CGMES profile list to export.
+        :param cgmes_one_file_per_profile: Export one CGMES file per profile when ``True``.
+        :param cgmes_map_areas_like_raw: Reuse RAW-like area mapping for CGMES.
+        :param raw_version: Version to use when exporting RAW/RAWX files.
         :param psse_topology_mode: RAW topology export strategy for PSSE 34+.
+        :param psse_export_mode: PSSE single-file or batch-zip export strategy.
+        :param t_idx: Optional time index used by file formats that support snapshot/profile exports.
+        :return: None.
         """
 
         self.file_type: FileType | None = file_type
@@ -95,6 +106,8 @@ class FileSavingOptions:
 
         self.raw_version = raw_version
         self.psse_topology_mode: PsseTopologyExportMode = psse_topology_mode
+        self.psse_export_mode: PsseExportMode = psse_export_mode
+        self.t_idx: int | None = t_idx
 
     def get_power_flow_results(self) -> Union[None, PowerFlowResults]:
         """
@@ -337,32 +350,185 @@ def save_veragrid_h5(circuit: MultiCircuit,
 
 def save_psse_raw(circuit: MultiCircuit,
                   file_name: str,
-                  options: FileSavingOptions) -> Logger:
+                  options: FileSavingOptions,
+                  text_func=None,
+                  progress_func=None) -> Logger:
     """
-    Save the circuit information in json format
-    :return:logger with information
+    Save the circuit information in PSSE RAW format.
+
+    :param circuit: Circuit to export.
+    :param file_name: Target file path.
+    :param options: Export options, including the optional profile selector.
+    :param text_func: Optional progress-text callback.
+    :param progress_func: Optional progress-value callback.
+    :return: Logger with export messages.
     """
-    logger = Logger()
-    raw_version = int(options.raw_version)
-    raw_circuit = veragrid_to_raw(circuit,
-                                  version=raw_version,
-                                  logger=logger,
-                                  topology_mode=options.psse_topology_mode)
-    logger += write_raw(file_name, raw_circuit, version=raw_version)
-    return logger
+    if options.psse_export_mode == PsseExportMode.BatchZip:
+        return save_psse_batch_zip(circuit=circuit,
+                                   file_name=file_name,
+                                   options=options,
+                                   text_func=text_func,
+                                   progress_func=progress_func)
+    else:
+        logger = Logger()
+        raw_version: int = int(options.raw_version)
+
+        # Forward the selected time index so the RAW writer exports either the
+        # snapshot state or one explicit time-series point.
+        raw_circuit = veragrid_to_raw(circuit,
+                                      version=raw_version,
+                                      logger=logger,
+                                      topology_mode=options.psse_topology_mode,
+                                      t_idx=options.t_idx)
+        logger += write_raw(file_name, raw_circuit, version=raw_version)
+        return logger
 
 
-def save_psse_rawx(circuit: MultiCircuit, file_name: str, options: FileSavingOptions) -> Logger:
+def save_psse_rawx(circuit: MultiCircuit,
+                   file_name: str,
+                   options: FileSavingOptions,
+                   text_func=None,
+                   progress_func=None) -> Logger:
     """
-    Save the circuit information in json format
-    :return:logger with information
+    Save the circuit information in PSSE RAWX format.
+
+    :param circuit: Circuit to export.
+    :param file_name: Target file path.
+    :param options: Export options, including the optional profile selector.
+    :param text_func: Optional progress-text callback.
+    :param progress_func: Optional progress-value callback.
+    :return: Logger with export messages.
+    """
+    if options.psse_export_mode == PsseExportMode.BatchZip:
+        return save_psse_batch_zip(circuit=circuit,
+                                   file_name=file_name,
+                                   options=options,
+                                   text_func=text_func,
+                                   progress_func=progress_func)
+    else:
+        logger = Logger()
+
+        # RAWX shares the same intermediate RAW circuit, so the time selector
+        # must be forwarded here as well.
+        raw_circuit = veragrid_to_raw(circuit,
+                                      version=int(options.raw_version),
+                                      logger=logger,
+                                      topology_mode=options.psse_topology_mode,
+                                      t_idx=options.t_idx)
+        logger += write_rawx(file_name, raw_circuit)
+        return logger
+
+
+def compose_psse_batch_file_name(base_name: str,
+                                 t_idx: int,
+                                 time_label: str,
+                                 extension: str) -> str:
+    """
+    Compose one deterministic file name for a PSSE batch export member.
+
+    :param base_name: Base archive name without extension.
+    :param t_idx: Time index of the exported profile point.
+    :param time_label: Human-readable time label.
+    :param extension: PSSE file extension, including the leading dot.
+    :return: Sanitized internal file name.
+    """
+    safe_time_label: str = re.sub(r"[^0-9A-Za-z._-]+", "_", time_label).strip("_")
+
+    if safe_time_label == "":
+        safe_time_label = "time"
+    else:
+        pass
+
+    return f"{base_name}_t{t_idx:05d}_{safe_time_label}{extension}"
+
+
+def save_psse_batch_zip(circuit: MultiCircuit,
+                        file_name: str,
+                        options: FileSavingOptions,
+                        text_func=None,
+                        progress_func=None) -> Logger:
+    """
+    Export every time-series point into one ZIP archive with one PSSE file per step.
+
+    :param circuit: Circuit to export.
+    :param file_name: Target ZIP path.
+    :param options: Export options, including version, topology and internal PSSE format.
+    :param text_func: Optional progress-text callback.
+    :param progress_func: Optional progress-value callback.
+    :return: Logger with export messages.
     """
     logger = Logger()
-    raw_circuit = veragrid_to_raw(circuit,
-                                  version=int(options.raw_version),
-                                  logger=logger,
-                                  topology_mode=options.psse_topology_mode)
-    logger += write_rawx(file_name, raw_circuit)
+
+    if not circuit.has_time_series:
+        logger.add_error(msg="PSS/e batch export requires time-series data.")
+        return logger
+    else:
+        pass
+
+    total_steps: int = circuit.get_time_number()
+    if total_steps <= 0:
+        logger.add_error(msg="PSS/e batch export requires at least one time-series point.")
+        return logger
+    else:
+        pass
+
+    raw_version: int = int(options.raw_version)
+    zip_extension: str
+    _, zip_extension = os.path.splitext(file_name)
+    if zip_extension.lower() == ".zip":
+        zip_file_name: str = file_name
+    else:
+        zip_file_name = file_name + ".zip"
+
+    if options.file_type == FileType.PSSE_rawx:
+        internal_extension: str = ".rawx"
+    else:
+        internal_extension = ".raw"
+
+    archive_base_name: str = os.path.splitext(os.path.basename(zip_file_name))[0]
+
+    # Reuse one temporary file path for every time step. Each generated file is
+    # zipped immediately afterwards, so only one export artifact exists on disk
+    # at a time while the worker thread runs.
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_file_name: str = os.path.join(temp_dir, "psse_batch_export" + internal_extension)
+
+        with zipfile.ZipFile(zip_file_name, "w", zipfile.ZIP_DEFLATED) as zip_ptr:
+            for t_idx in range(total_steps):
+                if text_func is not None:
+                    text_func(f"Exporting PSS/e profile [{t_idx}] {circuit.time_profile[t_idx]}...")
+                else:
+                    pass
+
+                if progress_func is not None:
+                    progress_value: float = (100.0 * float(t_idx)) / float(total_steps)
+                    progress_func(progress_value)
+                else:
+                    pass
+
+                raw_circuit = veragrid_to_raw(circuit,
+                                              version=raw_version,
+                                              logger=logger,
+                                              topology_mode=options.psse_topology_mode,
+                                              t_idx=t_idx)
+
+                if options.file_type == FileType.PSSE_rawx:
+                    logger += write_rawx(temp_file_name, raw_circuit)
+                else:
+                    logger += write_raw(temp_file_name, raw_circuit, version=raw_version)
+
+                time_label: str = str(circuit.time_profile[t_idx])
+                internal_file_name: str = compose_psse_batch_file_name(base_name=archive_base_name,
+                                                                       t_idx=t_idx,
+                                                                       time_label=time_label,
+                                                                       extension=internal_extension)
+                zip_ptr.write(temp_file_name, arcname=internal_file_name)
+
+    if progress_func is not None:
+        progress_func(100.0)
+    else:
+        pass
+
     return logger
 
 
@@ -535,6 +701,8 @@ class FileSave:
                 circuit=self.circuit,
                 file_name=self.file_name,
                 options=self.options,
+                text_func=self.text_func,
+                progress_func=self.progress_func,
             )
 
         elif self.options.file_type == FileType.PSSE_raw:
@@ -543,6 +711,8 @@ class FileSave:
                 circuit=self.circuit,
                 file_name=self.file_name,
                 options=self.options,
+                text_func=self.text_func,
+                progress_func=self.progress_func,
             )
 
         elif self.options.file_type == FileType.PGM:

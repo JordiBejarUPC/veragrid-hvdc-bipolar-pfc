@@ -1328,10 +1328,10 @@ class RawCounter:
 
         except ValueError:
             psse_I = self.get_next_psse_number()
-            logger.add_error("Invalid PSSe number stored in bus.code",
-                             device=bus.name,
-                             value=str(bus.code),
-                             expected_value=psse_I)
+            logger.add_warning("Invalid PSSe number stored in bus.code",
+                               device=bus.name,
+                               value=str(bus.code),
+                               expected_value=psse_I)
 
         self.register_psse_number(bus, psse_I)
 
