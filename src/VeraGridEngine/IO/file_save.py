@@ -35,7 +35,7 @@ from VeraGridEngine.Devices.multiverse import MultiVerse
 from VeraGridEngine.Simulations.driver_template import DriverToSave
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
 from VeraGridEngine.enumerations import (CGMESVersions, SimulationTypes, FileType,
-                                         PsseTopologyExportMode, PsseExportMode)
+                                         PsseTopologyExportMode, PsseExportMode, DgsExportMode)
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
 
 
@@ -56,6 +56,7 @@ class FileSavingOptions:
                  raw_version: str = "33",
                  psse_topology_mode: PsseTopologyExportMode = PsseTopologyExportMode.BusBranch,
                  psse_export_mode: PsseExportMode = PsseExportMode.SingleFile,
+                 dgs_export_mode: DgsExportMode = DgsExportMode.SingleFile,
                  t_idx: int | None = None):
         """
         Build one file-save options container.
@@ -71,6 +72,7 @@ class FileSavingOptions:
         :param raw_version: Version to use when exporting RAW/RAWX files.
         :param psse_topology_mode: RAW topology export strategy for PSSE 34+.
         :param psse_export_mode: PSSE single-file or batch-zip export strategy.
+        :param dgs_export_mode: DGS single-file or batch-zip export strategy.
         :param t_idx: Optional time index used by file formats that support snapshot/profile exports.
         :return: None.
         """
@@ -107,6 +109,7 @@ class FileSavingOptions:
         self.raw_version = raw_version
         self.psse_topology_mode: PsseTopologyExportMode = psse_topology_mode
         self.psse_export_mode: PsseExportMode = psse_export_mode
+        self.dgs_export_mode: DgsExportMode = dgs_export_mode
         self.t_idx: int | None = t_idx
 
     def get_power_flow_results(self) -> Union[None, PowerFlowResults]:
@@ -575,15 +578,127 @@ def save_pgm(circuit: MultiCircuit, file_name: str) -> Logger:
     return logger
 
 
-def save_dgs(circuit: MultiCircuit, file_name: str) -> Logger:
+def compose_dgs_batch_file_name(base_name: str,
+                                t_idx: int,
+                                time_label: str) -> str:
     """
+    Compose one deterministic file name for a DGS batch-export member.
 
-    :return:
+    :param base_name: Base archive name without extension.
+    :param t_idx: Time index of the exported profile point.
+    :param time_label: Human-readable time label.
+    :return: Sanitized internal file name.
+    """
+    safe_time_label: str = re.sub(r"[^0-9A-Za-z._-]+", "_", time_label).strip("_")
+
+    if safe_time_label == "":
+        safe_time_label = "time"
+    else:
+        pass
+
+    return f"{base_name}_t{t_idx:05d}_{safe_time_label}.dgs"
+
+
+def save_dgs_batch_zip(circuit: MultiCircuit,
+                       file_name: str,
+                       text_func=None,
+                       progress_func=None) -> Logger:
+    """
+    Export every time-series point into one ZIP archive with one DGS file per step.
+
+    :param circuit: Circuit to export.
+    :param file_name: Target ZIP path.
+    :param text_func: Optional progress-text callback.
+    :param progress_func: Optional progress-value callback.
+    :return: Logger with export messages.
     """
     logger = Logger()
-    dgs = circuit_to_dgs(grid=circuit)
-    dgs.write_dgs(path=file_name)
+
+    if not circuit.has_time_series:
+        logger.add_error(msg="DGS batch export requires time-series data.")
+        return logger
+    else:
+        pass
+
+    total_steps: int = circuit.get_time_number()
+    if total_steps <= 0:
+        logger.add_error(msg="DGS batch export requires at least one time-series point.")
+        return logger
+    else:
+        pass
+
+    _, zip_extension = os.path.splitext(file_name)
+    if zip_extension.lower() == ".zip":
+        zip_file_name: str = file_name
+    else:
+        zip_file_name = file_name + ".zip"
+
+    archive_base_name: str = os.path.splitext(os.path.basename(zip_file_name))[0]
+
+    # Reuse one temporary file path for every time step. Each generated file is
+    # zipped immediately afterwards, so only one export artifact exists on disk
+    # at a time while the worker thread runs.
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_file_name: str = os.path.join(temp_dir, "dgs_batch_export.dgs")
+
+        with zipfile.ZipFile(zip_file_name, "w", zipfile.ZIP_DEFLATED) as zip_ptr:
+            for t_idx in range(total_steps):
+                if text_func is not None:
+                    text_func(f"Exporting DGS profile [{t_idx}] {circuit.time_profile[t_idx]}...")
+                else:
+                    pass
+
+                if progress_func is not None:
+                    progress_value: float = (100.0 * float(t_idx)) / float(total_steps)
+                    progress_func(progress_value)
+                else:
+                    pass
+
+                dgs = circuit_to_dgs(grid=circuit, t_idx=t_idx)
+                dgs.write_dgs(path=temp_file_name)
+
+                time_label: str = str(circuit.time_profile[t_idx])
+                internal_file_name: str = compose_dgs_batch_file_name(base_name=archive_base_name,
+                                                                      t_idx=t_idx,
+                                                                      time_label=time_label)
+                zip_ptr.write(temp_file_name, arcname=internal_file_name)
+
+    if progress_func is not None:
+        progress_func(100.0)
+    else:
+        pass
+
     return logger
+
+
+def save_dgs(circuit: MultiCircuit,
+             file_name: str,
+             options: FileSavingOptions,
+             text_func=None,
+             progress_func=None) -> Logger:
+    """
+    Save the circuit information in DGS format.
+
+    :param circuit: Circuit to export.
+    :param file_name: Target file path.
+    :param options: Export options, including the optional profile selector.
+    :param text_func: Optional progress-text callback.
+    :param progress_func: Optional progress-value callback.
+    :return: Logger with export messages.
+    """
+    if options.dgs_export_mode == DgsExportMode.BatchZip:
+        return save_dgs_batch_zip(circuit=circuit,
+                                  file_name=file_name,
+                                  text_func=text_func,
+                                  progress_func=progress_func)
+    else:
+        logger = Logger()
+
+        # Forward the selected time index so the DGS writer exports either the
+        # snapshot state or one explicit time-series point.
+        dgs = circuit_to_dgs(grid=circuit, t_idx=options.t_idx)
+        dgs.write_dgs(path=file_name)
+        return logger
 
 
 class FileSave:
@@ -725,6 +840,9 @@ class FileSave:
             logger = save_dgs(
                 circuit=self.circuit,
                 file_name=self.file_name,
+                options=self.options,
+                text_func=self.text_func,
+                progress_func=self.progress_func,
             )
 
         else:

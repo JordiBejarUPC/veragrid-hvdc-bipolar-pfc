@@ -21,6 +21,7 @@ from VeraGrid.Gui.messages import yes_no_question, error_msg, warning_msg, info_
 from VeraGrid.Gui.GridGenerator.grid_generator_dialogue import GridGeneratorGUI
 from VeraGrid.Gui.FileDialogues.RosetaExplorer.RosetaExplorer import RosetaExplorerGUI
 from VeraGrid.Gui.FileDialogues.CGMESDialogue.cgmes_import import CgmesImportDialogue
+from VeraGrid.Gui.FileDialogues.DgsDialogue.dgs_export import DgsExportDialogue
 from VeraGrid.Gui.FileDialogues.DgsDialogue.dgs_import import DgsImportDialogue
 from VeraGrid.Gui.Main.SubClasses.Model.scenarios import ScenariosMain
 from VeraGrid.Gui.FileDialogues.CGMESDialogue.cgmes_export import CgmesExportDialogue
@@ -70,6 +71,7 @@ class IoMain(ScenariosMain):
         # window pointers
         self.cgmes_dialogue: CgmesExportDialogue | None = None
         self.psse_export_dialogue: PsseExportDialogue | None = None
+        self.dgs_export_dialogue: DgsExportDialogue | None = None
 
         # actions
         self.ui.actionNew_project.triggered.connect(self.new_project)
@@ -1186,36 +1188,12 @@ class IoMain(ScenariosMain):
 
     def export_power_factory(self) -> None:
         """
-        Export the current circuit to one PowerFactory DGS file.
+        Open the DGS export dialogue.
 
         :return: None.
         """
-        # if the global file_name is empty, ask where to save
-        fname = os.path.join(self.project_directory, self.ui.grid_name_line_edit.text())
-
-        files_types = "Power Factory (*.dgs)"
-        filename, type_selected = QtWidgets.QFileDialog.getSaveFileName(self,
-                                                                        'Export to Power Factory',
-                                                                        fname,
-                                                                        files_types)
-
-        if filename != '':
-
-            # if the user did not enter the extension, add it automatically
-            name, file_extension = os.path.splitext(filename)
-
-            if file_extension == '':
-                filename = name + '.dgs'
-
-            # we were able to compose the file correctly, now save it
-            self.file_name = filename
-            self.save_file_now(
-                filename=self.file_name,
-                type_selected=type_selected,
-                options=FileSavingOptions(
-                    file_type=FileType.DGS
-                )
-            )
+        self.dgs_export_dialogue = DgsExportDialogue(app=self)
+        self.dgs_export_dialogue.show()
 
     def export_cim(self) -> None:
         """
