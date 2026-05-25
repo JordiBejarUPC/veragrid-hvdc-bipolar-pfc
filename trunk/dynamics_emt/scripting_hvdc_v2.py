@@ -157,8 +157,8 @@ m_max_default_pu: float = 0.97
 # vdc_ki_default: float = 45.0
 # vdc_kp_default: float = 2.0
 # vdc_ki_default: float = 30.0
-vdc_kp_default: float = 2.2
-vdc_ki_default: float = 22.0
+vdc_kp_default: float = 1.0
+vdc_ki_default: float = 10.0
 
 # tau_meas_default_s: float = 0.002
 # tau_meas_default_s: float = 0.001
@@ -242,11 +242,9 @@ converter_1: gce.VSC = gce.VSC(
     bus_from=bus_dc_1,
     bus_to=bus_grid_1,
     rate=sbase_mva,
-    # control1=ConverterControlType.Vm_dc,
-    control1=ConverterControlType.Pdc,
+    control1=ConverterControlType.Vm_dc,
     control2=ConverterControlType.Qac,
-    # control1_val=1.0,
-    control1_val=-idle_power_pu,
+    control1_val=1.0,
     control2_val=q_setpoint_1_pu,
 )
 converter_2: gce.VSC = gce.VSC(
@@ -282,8 +280,7 @@ converter_2_mdl: Block = get_full_pseudo_emt_converter(vf=grid.var_factory, name
 dc_line_mdl: Block = get_dc_line_with_power_input_emt_template(vf=grid.var_factory, name="hvdc_line_power_input_emt").block
 
 for converter_mdl, suffix, control1_type, control1_value, q_setpoint_pu in [
-    # (converter_1_mdl, "vsc1_pseudo_emt", ConverterControlType.Vm_dc, 1.0, q_setpoint_1_pu),
-    (converter_1_mdl, "vsc1_pseudo_emt", ConverterControlType.Pdc, -idle_power_pu, q_setpoint_1_pu),
+    (converter_1_mdl, "vsc1_pseudo_emt", ConverterControlType.Vm_dc, 1.0, q_setpoint_1_pu),
     (converter_2_mdl, "vsc2_pseudo_emt", ConverterControlType.Pdc, idle_power_pu, q_setpoint_2_pu),
 ]:
     converter_mdl.set_parameter_in_model(var_name=f"sbase_{suffix}", new_value=converter_model_sbase_pu)
@@ -349,10 +346,7 @@ p_ext_events: list[tuple[float, float]] = [
     (0.2, idle_power_pu),
 ]
 
-vsc1_reference_events: list[tuple[float, float, Optional[float], DynamicEventTransitionType]] = [
-    (0.09, -transfer_power_pu, None, DynamicEventTransitionType.Step),
-    (0.17, -idle_power_pu, 0.2, DynamicEventTransitionType.Ramp),
-]
+vsc1_reference_events: list[tuple[float, float, Optional[float], DynamicEventTransitionType]] = []
 
 vsc2_reference_events: list[tuple[float, float, Optional[float], DynamicEventTransitionType]] = [
     (0.09, transfer_power_pu, None, DynamicEventTransitionType.Step),
@@ -360,27 +354,13 @@ vsc2_reference_events: list[tuple[float, float, Optional[float], DynamicEventTra
 ]
 
 vsc2_control1_var = build_name_to_var_lookup(converter_2_mdl).get("control1_val_vsc2_pseudo_emt")
-vsc1_control1_var = build_name_to_var_lookup(converter_1_mdl).get("control1_val_vsc1_pseudo_emt")
 if vsc2_control1_var is None:
     raise RuntimeError("Could not resolve event parameter 'control1_val_vsc2_pseudo_emt'.")
-if vsc1_control1_var is None:
-    raise RuntimeError("Could not resolve event parameter 'control1_val_vsc1_pseudo_emt'.")
 
 #  ramp event
 grid.add_emt_event(EmtEvent(device=dc_line, parameter=p_ext_var, time=p_ext_events[0][0], value=p_ext_events[0][1], group=events_group))
 grid.add_emt_event(EmtEvent(device=dc_line, parameter=p_ext_var, time=p_ext_events[1][0], value=p_ext_events[1][1], group=events_group))
 grid.add_emt_event(EmtEvent(device=dc_line, parameter=p_ext_var, time=p_ext_events[2][0], value=p_ext_events[2][1], group=events_group))
-for event_time_s, event_value, end_time_s, transition_type in vsc1_reference_events:
-    grid.add_emt_event(EmtEvent(
-        device=converter_1,
-        parameter=vsc1_control1_var,
-        time=event_time_s,
-        end_time=end_time_s,
-        value=event_value,
-        group=events_group,
-        transition_type=transition_type,
-    ))
-
 for event_time_s, event_value, end_time_s, transition_type in vsc2_reference_events:
     grid.add_emt_event(EmtEvent(
         device=converter_2,
@@ -487,9 +467,45 @@ i_vsc2_b: np.ndarray = get_signal(problem, converter_2_mdl, "i_B_vsc2_pseudo_emt
 i_vsc2_c: np.ndarray = get_signal(problem, converter_2_mdl, "i_C_vsc2_pseudo_emt", trajectory)
 p_vsc1: np.ndarray = get_signal(problem, converter_1_mdl, "P_vsc1_pseudo_emt", trajectory)
 p_vsc2: np.ndarray = get_signal(problem, converter_2_mdl, "P_vsc2_pseudo_emt", trajectory)
+q_vsc1: np.ndarray = get_signal(problem, converter_1_mdl, "Q_vsc1_pseudo_emt", trajectory)
+q_vsc2: np.ndarray = get_signal(problem, converter_2_mdl, "Q_vsc2_pseudo_emt", trajectory)
+i_dc_conv_vsc1: np.ndarray = get_signal(problem, converter_1_mdl, "i_dc_conv_vsc1_pseudo_emt", trajectory)
+i_dc_conv_vsc2: np.ndarray = get_signal(problem, converter_2_mdl, "i_dc_conv_vsc2_pseudo_emt", trajectory)
+i_d_vsc1: np.ndarray = get_signal(problem, converter_1_mdl, "i_d_vsc1_pseudo_emt", trajectory)
+i_q_vsc1: np.ndarray = get_signal(problem, converter_1_mdl, "i_q_vsc1_pseudo_emt", trajectory)
+i_d_ref_vsc1: np.ndarray = get_signal(problem, converter_1_mdl, "i_d_ref_vsc1_pseudo_emt", trajectory)
+i_q_ref_vsc1: np.ndarray = get_signal(problem, converter_1_mdl, "i_q_ref_vsc1_pseudo_emt", trajectory)
+i_d_ref_u_vsc1: np.ndarray = get_signal(problem, converter_1_mdl, "i_d_ref_u_vsc1_pseudo_emt", trajectory)
+i_q_ref_u_vsc1: np.ndarray = get_signal(problem, converter_1_mdl, "i_q_ref_u_vsc1_pseudo_emt", trajectory)
+i_d_ff_vsc1: np.ndarray = get_signal(problem, converter_1_mdl, "i_d_ff_vsc1_pseudo_emt", trajectory)
+i_q_ff_vsc1: np.ndarray = get_signal(problem, converter_1_mdl, "i_q_ff_vsc1_pseudo_emt", trajectory)
+p_f_vsc1: np.ndarray = get_signal(problem, converter_1_mdl, "P_f_vsc1_pseudo_emt", trajectory)
+q_f_vsc1: np.ndarray = get_signal(problem, converter_1_mdl, "Q_f_vsc1_pseudo_emt", trajectory)
+v_cmd_d_u_vsc1: np.ndarray = get_signal(problem, converter_1_mdl, "v_cmd_d_u_vsc1_pseudo_emt", trajectory)
+v_cmd_q_u_vsc1: np.ndarray = get_signal(problem, converter_1_mdl, "v_cmd_q_u_vsc1_pseudo_emt", trajectory)
+v_cmd_d_vsc1: np.ndarray = get_signal(problem, converter_1_mdl, "v_cmd_d_vsc1_pseudo_emt", trajectory)
+v_cmd_q_vsc1: np.ndarray = get_signal(problem, converter_1_mdl, "v_cmd_q_vsc1_pseudo_emt", trajectory)
+v_lim_vsc1: np.ndarray = get_signal(problem, converter_1_mdl, "v_lim_vsc1_pseudo_emt", trajectory)
+k_v_conv_vsc1: np.ndarray = get_signal(problem, converter_1_mdl, "k_v_conv_vsc1_pseudo_emt", trajectory)
+i_d_vsc2: np.ndarray = get_signal(problem, converter_2_mdl, "i_d_vsc2_pseudo_emt", trajectory)
+i_q_vsc2: np.ndarray = get_signal(problem, converter_2_mdl, "i_q_vsc2_pseudo_emt", trajectory)
+i_d_ref_vsc2: np.ndarray = get_signal(problem, converter_2_mdl, "i_d_ref_vsc2_pseudo_emt", trajectory)
+i_q_ref_vsc2: np.ndarray = get_signal(problem, converter_2_mdl, "i_q_ref_vsc2_pseudo_emt", trajectory)
+i_d_ref_u_vsc2: np.ndarray = get_signal(problem, converter_2_mdl, "i_d_ref_u_vsc2_pseudo_emt", trajectory)
+i_q_ref_u_vsc2: np.ndarray = get_signal(problem, converter_2_mdl, "i_q_ref_u_vsc2_pseudo_emt", trajectory)
+i_d_ff_vsc2: np.ndarray = get_signal(problem, converter_2_mdl, "i_d_ff_vsc2_pseudo_emt", trajectory)
+i_q_ff_vsc2: np.ndarray = get_signal(problem, converter_2_mdl, "i_q_ff_vsc2_pseudo_emt", trajectory)
+p_f_vsc2: np.ndarray = get_signal(problem, converter_2_mdl, "P_f_vsc2_pseudo_emt", trajectory)
+q_f_vsc2: np.ndarray = get_signal(problem, converter_2_mdl, "Q_f_vsc2_pseudo_emt", trajectory)
+v_cmd_d_u_vsc2: np.ndarray = get_signal(problem, converter_2_mdl, "v_cmd_d_u_vsc2_pseudo_emt", trajectory)
+v_cmd_q_u_vsc2: np.ndarray = get_signal(problem, converter_2_mdl, "v_cmd_q_u_vsc2_pseudo_emt", trajectory)
+v_cmd_d_vsc2: np.ndarray = get_signal(problem, converter_2_mdl, "v_cmd_d_vsc2_pseudo_emt", trajectory)
+v_cmd_q_vsc2: np.ndarray = get_signal(problem, converter_2_mdl, "v_cmd_q_vsc2_pseudo_emt", trajectory)
+v_lim_vsc2: np.ndarray = get_signal(problem, converter_2_mdl, "v_lim_vsc2_pseudo_emt", trajectory)
+k_v_conv_vsc2: np.ndarray = get_signal(problem, converter_2_mdl, "k_v_conv_vsc2_pseudo_emt", trajectory)
 vsc1_pdc_ref_trace_pu: np.ndarray = get_event_reference_trace(
     time_s=time_s,
-    initial_value=-idle_power_pu,
+    initial_value=1.0,
     events=vsc1_reference_events,
 )
 vsc2_pdc_ref_trace_pu: np.ndarray = get_event_reference_trace(
@@ -571,4 +587,104 @@ axes[3, 1].grid(True)
 axes[3, 1].legend(loc="upper right")
 
 figure.tight_layout()
+
+diag_figure, diag_axes = plt.subplots(5, 2, figsize=(16, 18), sharex=True)
+
+diag_axes[0, 0].plot(time_s, i_d_vsc1, label="i_d")
+diag_axes[0, 0].plot(time_s, i_d_ref_u_vsc1, "--", label="i_d_ref_u")
+diag_axes[0, 0].plot(time_s, i_d_ref_vsc1, ":", label="i_d_ref")
+diag_axes[0, 0].plot(time_s, i_d_ff_vsc1, label="i_d_ff")
+diag_axes[0, 0].set_ylabel("Current [pu]")
+diag_axes[0, 0].set_title("VSC1 d-axis currents")
+diag_axes[0, 0].grid(True)
+diag_axes[0, 0].legend(loc="upper right")
+
+diag_axes[0, 1].plot(time_s, i_d_vsc2, label="i_d")
+diag_axes[0, 1].plot(time_s, i_d_ref_u_vsc2, "--", label="i_d_ref_u")
+diag_axes[0, 1].plot(time_s, i_d_ref_vsc2, ":", label="i_d_ref")
+diag_axes[0, 1].plot(time_s, i_d_ff_vsc2, label="i_d_ff")
+diag_axes[0, 1].set_ylabel("Current [pu]")
+diag_axes[0, 1].set_title("VSC2 d-axis currents")
+diag_axes[0, 1].grid(True)
+diag_axes[0, 1].legend(loc="upper right")
+
+diag_axes[1, 0].plot(time_s, i_q_vsc1, label="i_q")
+diag_axes[1, 0].plot(time_s, i_q_ref_u_vsc1, "--", label="i_q_ref_u")
+diag_axes[1, 0].plot(time_s, i_q_ref_vsc1, ":", label="i_q_ref")
+diag_axes[1, 0].plot(time_s, i_q_ff_vsc1, label="i_q_ff")
+diag_axes[1, 0].set_ylabel("Current [pu]")
+diag_axes[1, 0].set_title("VSC1 q-axis currents")
+diag_axes[1, 0].grid(True)
+diag_axes[1, 0].legend(loc="upper right")
+
+diag_axes[1, 1].plot(time_s, i_q_vsc2, label="i_q")
+diag_axes[1, 1].plot(time_s, i_q_ref_u_vsc2, "--", label="i_q_ref_u")
+diag_axes[1, 1].plot(time_s, i_q_ref_vsc2, ":", label="i_q_ref")
+diag_axes[1, 1].plot(time_s, i_q_ff_vsc2, label="i_q_ff")
+diag_axes[1, 1].set_ylabel("Current [pu]")
+diag_axes[1, 1].set_title("VSC2 q-axis currents")
+diag_axes[1, 1].grid(True)
+diag_axes[1, 1].legend(loc="upper right")
+
+diag_axes[2, 0].plot(time_s, p_vsc1, label="P")
+diag_axes[2, 0].plot(time_s, p_f_vsc1, "--", label="P_f")
+diag_axes[2, 0].plot(time_s, q_vsc1, label="Q")
+diag_axes[2, 0].plot(time_s, q_f_vsc1, "--", label="Q_f")
+diag_axes[2, 0].plot(time_s, vsc1_pdc_ref_trace_pu, ":", label="control1 ref")
+diag_axes[2, 0].set_ylabel("Power [pu]")
+diag_axes[2, 0].set_title("VSC1 power channels")
+diag_axes[2, 0].grid(True)
+diag_axes[2, 0].legend(loc="upper right")
+
+diag_axes[2, 1].plot(time_s, p_vsc2, label="P")
+diag_axes[2, 1].plot(time_s, p_f_vsc2, "--", label="P_f")
+diag_axes[2, 1].plot(time_s, q_vsc2, label="Q")
+diag_axes[2, 1].plot(time_s, q_f_vsc2, "--", label="Q_f")
+diag_axes[2, 1].plot(time_s, vsc2_pdc_ref_trace_pu, ":", label="control1 ref")
+diag_axes[2, 1].set_ylabel("Power [pu]")
+diag_axes[2, 1].set_title("VSC2 power channels")
+diag_axes[2, 1].grid(True)
+diag_axes[2, 1].legend(loc="upper right")
+
+diag_axes[3, 0].plot(time_s, v_cmd_d_u_vsc1, label="v_cmd_d_u")
+diag_axes[3, 0].plot(time_s, v_cmd_d_vsc1, "--", label="v_cmd_d")
+diag_axes[3, 0].plot(time_s, v_cmd_q_u_vsc1, label="v_cmd_q_u")
+diag_axes[3, 0].plot(time_s, v_cmd_q_vsc1, "--", label="v_cmd_q")
+diag_axes[3, 0].plot(time_s, v_lim_vsc1, ":", label="v_lim")
+diag_axes[3, 0].plot(time_s, -v_lim_vsc1, ":", color="tab:gray")
+diag_axes[3, 0].set_ylabel("Voltage [pu]")
+diag_axes[3, 0].set_title("VSC1 inner-loop voltage commands")
+diag_axes[3, 0].grid(True)
+diag_axes[3, 0].legend(loc="upper right")
+
+diag_axes[3, 1].plot(time_s, v_cmd_d_u_vsc2, label="v_cmd_d_u")
+diag_axes[3, 1].plot(time_s, v_cmd_d_vsc2, "--", label="v_cmd_d")
+diag_axes[3, 1].plot(time_s, v_cmd_q_u_vsc2, label="v_cmd_q_u")
+diag_axes[3, 1].plot(time_s, v_cmd_q_vsc2, "--", label="v_cmd_q")
+diag_axes[3, 1].plot(time_s, v_lim_vsc2, ":", label="v_lim")
+diag_axes[3, 1].plot(time_s, -v_lim_vsc2, ":", color="tab:gray")
+diag_axes[3, 1].set_ylabel("Voltage [pu]")
+diag_axes[3, 1].set_title("VSC2 inner-loop voltage commands")
+diag_axes[3, 1].grid(True)
+diag_axes[3, 1].legend(loc="upper right")
+
+diag_axes[4, 0].plot(time_s, i_dc_conv_vsc1, label="i_dc_conv")
+diag_axes[4, 0].plot(time_s, v_dc_1, label="v_dc")
+diag_axes[4, 0].plot(time_s, k_v_conv_vsc1, label="k_v_conv")
+diag_axes[4, 0].set_xlabel("Time [s]")
+diag_axes[4, 0].set_ylabel("Mixed")
+diag_axes[4, 0].set_title("VSC1 DC-side diagnostics")
+diag_axes[4, 0].grid(True)
+diag_axes[4, 0].legend(loc="upper right")
+
+diag_axes[4, 1].plot(time_s, i_dc_conv_vsc2, label="i_dc_conv")
+diag_axes[4, 1].plot(time_s, v_dc_2, label="v_dc")
+diag_axes[4, 1].plot(time_s, k_v_conv_vsc2, label="k_v_conv")
+diag_axes[4, 1].set_xlabel("Time [s]")
+diag_axes[4, 1].set_ylabel("Mixed")
+diag_axes[4, 1].set_title("VSC2 DC-side diagnostics")
+diag_axes[4, 1].grid(True)
+diag_axes[4, 1].legend(loc="upper right")
+
+diag_figure.tight_layout()
 plt.show()
