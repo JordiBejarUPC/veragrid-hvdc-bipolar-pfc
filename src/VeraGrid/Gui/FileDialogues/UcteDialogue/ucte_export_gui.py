@@ -18,9 +18,7 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
 from PySide6.QtWidgets import (QApplication, QComboBox, QDialog, QFormLayout,
     QFrame, QLabel, QPushButton, QSizePolicy,
     QSlider, QSpacerItem, QVBoxLayout, QWidget)
-import icons_rc
-import icons_rc
-import icons_rc
+from VeraGrid.Gui.Icons.icons_rc import *
 
 class Ui_UcteExportDialog(object):
     def setupUi(self, UcteExportDialog):
