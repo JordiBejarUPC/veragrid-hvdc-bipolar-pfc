@@ -27,36 +27,13 @@ from VeraGridEngine.Simulations.Rms.rms_results import RmsResults
 from VeraGridEngine.Simulations.EMT.emt_results import EmtResults
 from VeraGridEngine.Utils.Symbolic.symbolic import Const
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
-from VeraGridEngine.enumerations import DeviceType, StudyResultsType, PlotSimulationType, DynamicSimulationMode, DynamicPlotEntryKind
+from VeraGridEngine.enumerations import (DeviceType, StudyResultsType, PlotSimulationType,
+                                         DynamicSimulationMode, DynamicPlotEntryKind, TreeStateNodeKind, DynamicEntrySection )
 from VeraGridEngine.Simulations.results_table import ResultsTable
 from VeraGrid.Gui.results_model import ResultsModel
 
 
-class DynamicEntrySection:
-    """
-    Stable source-tree section labels used for dynamic entries.
-    """
 
-    __slots__ = tuple()
-
-    VARIABLES: str = "Variables"
-    PARAMETERS: str = "Parameters"
-
-
-class TreeStateNodeKind(Enum):
-    """
-    Stable semantic node kinds used to preserve tree-view state.
-    """
-
-    ROOT = "root"
-    DEVICE_TYPE = "device_type"
-    DEVICE = "device"
-    SECTION = "section"
-    VARIABLE = "variable"
-    PARAMETER = "parameter"
-    SOURCE = "source"
-    PLOT_GROUP = "plot_group"
-    PLOT_ENTRY = "plot_entry"
 
 
 class TreeStateSnapshot:
@@ -175,7 +152,7 @@ def _get_dynamic_simulation_mode(simulation_type: PlotSimulationType) -> Dynamic
     """
     if simulation_type == PlotSimulationType.RMS:
         return DynamicSimulationMode.RMS
-    else:
+    elif simulation_type == PlotSimulationType.EMT:
         return DynamicSimulationMode.EMT
 
 
