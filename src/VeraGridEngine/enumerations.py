@@ -2917,6 +2917,7 @@ class RmsProblemTypes(Enum):
     Tensygrid       = "Tensygrid"
     PowerBalance    = "RmsProblemDae"
     CurrentBalance  = "RmsProblemPhasor"
+    Multilinear     = "RmsProblemMultilinear"
 
     def __str__(self) -> str:
         return str(self.value)
