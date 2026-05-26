@@ -11,6 +11,7 @@ Subpackages
    VeraGridEngine.IO.cim
    VeraGridEngine.IO.dgs
    VeraGridEngine.IO.epc
+   VeraGridEngine.IO.fmu
    VeraGridEngine.IO.iidm
    VeraGridEngine.IO.matpower
    VeraGridEngine.IO.others
@@ -21,10 +22,18 @@ Subpackages
 Submodules
 ----------
 
-VeraGridEngine.IO.file\_handler module
---------------------------------------
+VeraGridEngine.IO.file\_open module
+-----------------------------------
 
-.. automodule:: VeraGridEngine.IO.file_handler
+.. automodule:: VeraGridEngine.IO.file_open
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+VeraGridEngine.IO.file\_save module
+-----------------------------------
+
+.. automodule:: VeraGridEngine.IO.file_save
    :members:
    :show-inheritance:
    :undoc-members:
