@@ -3850,6 +3850,23 @@ class PlotSimulationType(Enum):
         """
         return self.value
 
+
+class DynamicPlotEntryKind(Enum):
+    """
+    Semantic kind of one persistent dynamic plot entry.
+    """
+
+    VARIABLE = "VARIABLE"
+    PARAMETER = "PARAMETER"
+
+    def __str__(self) -> str:
+        """
+        Return the persistent label used by dynamic plot entries.
+
+        :return: Persistent entry-kind label.
+        """
+        return self.value
+
 class BlockScopeMode(Enum):
     """
     Block extraction scope modes for DGS block parsing.

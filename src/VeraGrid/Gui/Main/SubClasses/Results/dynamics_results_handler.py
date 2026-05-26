@@ -3,14 +3,15 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 import json
-from typing import Callable, Dict, List, Sequence, Set, Optional
+from enum import Enum
+from typing import Any, Dict, List, Sequence, Set, Optional
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from VeraGrid.Gui.Icons.icon_associations import device_type_icons
-from VeraGrid.Gui.dynamic_events_editor_dialog import DynamicEventsGroupsDialog
+from VeraGrid.Gui.dynamic_events_editor_dialog import create_dynamic_events_group_with_dialog
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.Events.dynamic_plot import DynamicPlot
 from VeraGridEngine.Devices.Events.dynamic_plot_entry import DynamicPlotEntry
@@ -24,32 +25,145 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Simulations.Rms.rms_results import RmsResults
 from VeraGridEngine.Simulations.EMT.emt_results import EmtResults
+from VeraGridEngine.Utils.Symbolic.symbolic import Const
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
-from VeraGridEngine.enumerations import DeviceType, StudyResultsType, PlotSimulationType, DynamicSimulationMode
+from VeraGridEngine.enumerations import DeviceType, StudyResultsType, PlotSimulationType, DynamicSimulationMode, DynamicPlotEntryKind
 from VeraGridEngine.Simulations.results_table import ResultsTable
 from VeraGrid.Gui.results_model import ResultsModel
 
 
-class DynamicEventsGroupsDialogProvider:
+class DynamicEntrySection:
     """
-    Build event-group creation dialogs for the pre-simulation plot workflow.
+    Stable source-tree section labels used for dynamic entries.
     """
 
     __slots__ = tuple()
 
-    def create_dialog(self,
-                      mode: DynamicSimulationMode,
-                      parent: QtWidgets.QWidget | None) -> DynamicEventsGroupsDialog:
-        """
-        Create one event-group name dialog.
+    VARIABLES: str = "Variables"
+    PARAMETERS: str = "Parameters"
 
-        :param mode: RMS or EMT mode requested by the caller.
-        :param parent: Optional dialog parent widget.
-        :return: Fresh dialog instance.
+
+class TreeStateNodeKind(Enum):
+    """
+    Stable semantic node kinds used to preserve tree-view state.
+    """
+
+    ROOT = "root"
+    DEVICE_TYPE = "device_type"
+    DEVICE = "device"
+    SECTION = "section"
+    VARIABLE = "variable"
+    PARAMETER = "parameter"
+    SOURCE = "source"
+    PLOT_GROUP = "plot_group"
+    PLOT_ENTRY = "plot_entry"
+
+
+class TreeStateSnapshot:
+    """
+    Expansion and selection state captured from one tree view.
+    """
+
+    __slots__ = ("_expanded_keys", "_current_key")
+
+    def __init__(self, expanded_keys: Set[str], current_key: str | None) -> None:
         """
-        # The provider object keeps dialog construction explicit and typed,
-        # which avoids storing function pointers on the handler state.
-        return DynamicEventsGroupsDialog(mode=mode, parent=parent)
+        Build one tree-state snapshot.
+
+        :param expanded_keys: Semantic keys of expanded nodes.
+        :param current_key: Semantic key of the current item.
+        :return: None.
+        """
+        self._expanded_keys: Set[str] = set(expanded_keys)
+        self._current_key: str | None = current_key
+
+    def get_expanded_keys(self) -> Set[str]:
+        """
+        Get the semantic keys of expanded nodes.
+
+        :return: Expanded semantic keys.
+        """
+        return set(self._expanded_keys)
+
+    def get_current_key(self) -> str | None:
+        """
+        Get the semantic key of the current item.
+
+        :return: Current semantic key, or ``None``.
+        """
+        return self._current_key
+
+
+class DynamicPlotParameter:
+    """
+    Semantic identity of one plottable dynamic model parameter.
+    """
+
+    __slots__ = ("_display_name", "_canonical_name")
+
+    def __init__(self, display_name: str, canonical_name: str) -> None:
+        """
+        Build one dynamic plot parameter descriptor.
+
+        :param display_name: Parameter name shown to the user.
+        :param canonical_name: Canonical symbolic parameter name used for resolution.
+        :return: None.
+        """
+        self._display_name: str = str(display_name)
+        self._canonical_name: str = str(canonical_name)
+
+    def get_display_name(self) -> str:
+        """
+        Get the user-facing parameter name.
+
+        :return: Display name.
+        """
+        return self._display_name
+
+    def get_canonical_name(self) -> str:
+        """
+        Get the canonical symbolic parameter name.
+
+        :return: Canonical name.
+        """
+        return self._canonical_name
+
+
+class DynamicDeviceEntryCollection:
+    """
+    Ordered dynamic entries exposed for one device in the source tree.
+    """
+
+    __slots__ = ("_variables", "_parameters")
+
+    def __init__(self,
+                 variables: List[Var],
+                 parameters: List[DynamicPlotParameter]) -> None:
+        """
+        Build one device entry collection.
+
+        :param variables: Ordered dynamic variables for one device.
+        :param parameters: Ordered model parameters for one device.
+        :return: None.
+        """
+        self._variables: List[Var] = list(variables)
+        self._parameters: List[DynamicPlotParameter] = list(parameters)
+
+    def get_variables(self) -> List[Var]:
+        """
+        Get the ordered dynamic variables.
+
+        :return: Copy of the variable list.
+        """
+        return list(self._variables)
+
+    def get_parameters(self) -> List[DynamicPlotParameter]:
+        """
+        Get the ordered model parameters.
+
+        :return: Copy of the parameter list.
+        """
+        return list(self._parameters)
 
 
 def _get_dynamic_simulation_mode(simulation_type: PlotSimulationType) -> DynamicSimulationMode:
@@ -65,20 +179,7 @@ def _get_dynamic_simulation_mode(simulation_type: PlotSimulationType) -> Dynamic
         return DynamicSimulationMode.EMT
 
 
-def _build_events_group_absence_title(simulation_type: PlotSimulationType) -> str:
-    """
-    Build the modal title shown before creating the first event group.
-
-    :param simulation_type: Plot simulation family requested by the user.
-    :return: Informational dialog title.
-    """
-    if simulation_type == PlotSimulationType.RMS:
-        return "No RMS Events Group"
-    else:
-        return "No EMT Events Group"
-
-
-def _build_events_group_absence_message(simulation_type: PlotSimulationType) -> str:
+def _build_pre_simulation_missing_group_message(simulation_type: PlotSimulationType) -> str:
     """
     Build the explanatory message shown before the creation dialog opens.
 
@@ -91,84 +192,49 @@ def _build_events_group_absence_message(simulation_type: PlotSimulationType) -> 
         return "No EMT Events Group found, please create one before adding a dynamic plot entry."
 
 
-def _add_rms_events_group_to_circuit(circuit: MultiCircuit, name: str) -> RmsEventsGroup:
-    """
-    Create and store one RMS event group in the circuit.
-
-    :param circuit: Circuit that owns persistent dynamic assets.
-    :param name: User-selected event-group name.
-    :return: Created RMS event-group asset.
-    """
-    created_group: RmsEventsGroup = RmsEventsGroup(idtag=None, name=name)
-    circuit.add_rms_events_group(obj=created_group)
-    return created_group
-
-
-def _add_emt_events_group_to_circuit(circuit: MultiCircuit, name: str) -> EmtEventsGroup:
-    """
-    Create and store one EMT event group in the circuit.
-
-    :param circuit: Circuit that owns persistent dynamic assets.
-    :param name: User-selected event-group name.
-    :return: Created EMT event-group asset.
-    """
-    created_group: EmtEventsGroup = EmtEventsGroup(idtag=None, name=name)
-    circuit.add_emt_events_group(obj=created_group)
-    return created_group
-
-
 def ensure_dynamic_plot_event_group(circuit: MultiCircuit,
                                     simulation_type: PlotSimulationType,
-                                    parent: QtWidgets.QWidget | None = None,
-                                    dialog_provider: DynamicEventsGroupsDialogProvider | None = None) -> RmsEventsGroup | EmtEventsGroup | None:
+                                    parent: QtWidgets.QWidget | None = None) -> RmsEventsGroup | EmtEventsGroup | None:
     """
     Ensure that one RMS/EMT event group exists before creating a plot entry.
 
     :param circuit: Circuit that owns the event-group collections.
     :param simulation_type: Simulation family required by the dropped variable.
     :param parent: Optional parent widget for modal dialogs.
-    :param dialog_provider: Optional dialog provider that builds the name-entry dialog.
     :return: Existing or newly created event-group asset, or ``None`` when cancelled.
     """
     existing_groups: Sequence[RmsEventsGroup] | Sequence[EmtEventsGroup]
-    add_group_function: Callable[[MultiCircuit, str], RmsEventsGroup | EmtEventsGroup]
 
     if simulation_type == PlotSimulationType.RMS:
         existing_groups = circuit.rms_events_groups
-        add_group_function = _add_rms_events_group_to_circuit
     else:
         existing_groups = circuit.emt_events_groups
-        add_group_function = _add_emt_events_group_to_circuit
 
     if len(existing_groups) > 0:
         return existing_groups[0]
     else:
         pass
 
-    if parent is not None:
-        QtWidgets.QMessageBox.information(
-            parent,
-            _build_events_group_absence_title(simulation_type=simulation_type),
-            _build_events_group_absence_message(simulation_type=simulation_type),
-        )
-    else:
-        pass
-
     mode: DynamicSimulationMode = _get_dynamic_simulation_mode(simulation_type=simulation_type)
-    if dialog_provider is None:
-        resolved_dialog_provider: DynamicEventsGroupsDialogProvider = DynamicEventsGroupsDialogProvider()
+    missing_group_message: str = _build_pre_simulation_missing_group_message(simulation_type=simulation_type)
+    created_group_message_title: str
+    created_group_message_body_prefix: str = "New group name"
+
+    if simulation_type == PlotSimulationType.RMS:
+        created_group_message_title = "RMS group Created"
     else:
-        resolved_dialog_provider = dialog_provider
+        created_group_message_title = "EMT group Created"
 
-    creation_dialog: DynamicEventsGroupsDialog = resolved_dialog_provider.create_dialog(mode=mode, parent=parent)
-
-    dialog_result: int = creation_dialog.exec()
-    if dialog_result == QtWidgets.QDialog.DialogCode.Accepted:
-        group_name: str = creation_dialog.get_name()
-        if group_name != "":
-            return add_group_function(circuit=circuit, name=group_name)
-        else:
-            return None
+    created_group: RmsEventsGroup | EmtEventsGroup | None = create_dynamic_events_group_with_dialog(
+        circuit=circuit,
+        mode=mode,
+        parent=parent,
+        missing_group_message=missing_group_message,
+        created_group_message_title=created_group_message_title,
+        created_group_message_body_prefix=created_group_message_body_prefix,
+    )
+    if created_group is not None:
+        return created_group
     else:
         return None
 
@@ -184,6 +250,310 @@ def _build_tree_item(text: str) -> QtGui.QStandardItem:
     item: QtGui.QStandardItem = QtGui.QStandardItem(text)
     item.setEditable(False)
     return item
+
+
+def _escape_tree_key_part(part: str) -> str:
+    """
+    Escape one semantic tree-key component.
+
+    :param part: Raw semantic component.
+    :return: Escaped component.
+    """
+    escaped_part: str = str(part).replace("\\", "\\\\")
+    escaped_part = escaped_part.replace("/", "\\/")
+    return escaped_part
+
+
+def _build_tree_state_key(node_kind: TreeStateNodeKind, parts: Sequence[str]) -> str:
+    """
+    Build one stable semantic tree-node key.
+
+    :param node_kind: Semantic node kind.
+    :param parts: Ordered semantic path parts.
+    :return: Serialized semantic key.
+    """
+    escaped_parts: List[str] = list()
+    part: str
+    for part in parts:
+        escaped_parts.append(_escape_tree_key_part(part=part))
+
+    return str(node_kind.value) + ":" + "/".join(escaped_parts)
+
+
+def _build_parameter_plot_entry_label(entry: DynamicPlotEntry) -> str:
+    """
+    Build the visible label for one parameter plot entry.
+
+    :param entry: Persistent parameter plot entry.
+    :return: Visible label.
+    """
+    label: str = entry.variable_custom_name
+    if label == "":
+        label = entry.variable_name
+    else:
+        pass
+
+    if label == "":
+        label = entry.name
+    else:
+        pass
+
+    if label == "":
+        label = "Unresolved curve"
+    else:
+        pass
+
+    return label
+
+
+def _build_unresolved_plot_entry_label(entry: DynamicPlotEntry) -> str:
+    """
+    Build the visible unresolved label for one persistent plot entry.
+
+    :param entry: Persistent plot entry.
+    :return: Visible unresolved label.
+    """
+    label: str = entry.variable_custom_name
+    if label == "":
+        label = entry.variable_name
+    else:
+        pass
+
+    if label == "":
+        label = entry.name
+    else:
+        pass
+
+    if label == "":
+        label = "Unresolved curve"
+    else:
+        pass
+
+    return label
+
+
+def _build_parameter_candidate_custom_name(parameter: DynamicPlotParameter,
+                                           device_label: str,
+                                           bus_label: str,
+                                           source_label: str) -> str:
+    """
+    Build the default visible label for one parameter candidate.
+
+    :param parameter: Parameter descriptor.
+    :param device_label: Visible device label.
+    :param bus_label: Visible bus label suffix.
+    :param source_label: Visible event-group label, or an empty string.
+    :return: Joined visible label.
+    """
+    return _join_plot_label_parts([
+        parameter.get_display_name(),
+        device_label,
+        bus_label,
+        source_label,
+    ])
+
+
+def _build_runtime_parameter_candidate(simulation_type: PlotSimulationType,
+                                       device_tpe: DeviceType,
+                                       device_idtag: str,
+                                       device_label: str,
+                                       bus_label: str,
+                                       parameter: DynamicPlotParameter,
+                                       event_group_idtag: str,
+                                       event_group_name: str) -> DynamicPlotCandidate:
+    """
+    Build one runtime parameter candidate from resolved results metadata.
+
+    :param simulation_type: RMS or EMT plot family.
+    :param device_tpe: Device type that owns the parameter.
+    :param device_idtag: Stable device identifier.
+    :param device_label: Visible device label.
+    :param bus_label: Visible bus label suffix.
+    :param parameter: Parameter descriptor.
+    :param event_group_idtag: Stable event-group identifier.
+    :param event_group_name: Visible event-group name.
+    :return: Runtime parameter candidate.
+    """
+    return DynamicPlotCandidate(
+        simulation_type=simulation_type,
+        entry_kind=DynamicPlotEntryKind.PARAMETER,
+        event_group_idtag=event_group_idtag,
+        event_group_name=event_group_name,
+        device_type=device_tpe,
+        device_idtag=device_idtag,
+        device_label=device_label,
+        bus_label=bus_label,
+        variable_name=parameter.get_canonical_name(),
+        result_path_kind="parameter",
+        variable_custom_name=_build_parameter_candidate_custom_name(
+            parameter=parameter,
+            device_label=device_label,
+            bus_label=bus_label,
+            source_label=event_group_name,
+        ),
+        var=None,
+        parameter=parameter,
+    )
+
+
+def _capture_tree_view_state(view: QtWidgets.QTreeView, model: QtGui.QStandardItemModel, key_role: int) -> TreeStateSnapshot:
+    """
+    Capture expansion and current-item state from one tree view.
+
+    :param view: Tree view whose state should be captured.
+    :param model: Source model currently installed in the view.
+    :param key_role: Qt item-data role storing semantic keys.
+    :return: Captured tree-view state.
+    """
+    expanded_keys: Set[str] = set()
+    current_key: str | None = None
+
+    current_index: QtCore.QModelIndex = view.currentIndex()
+    if current_index.isValid():
+        current_item: QtGui.QStandardItem | None = model.itemFromIndex(current_index)
+        if current_item is not None:
+            current_key_data: object = current_item.data(key_role)
+            if isinstance(current_key_data, str):
+                current_key = current_key_data
+            else:
+                current_key = None
+        else:
+            current_key = None
+    else:
+        current_key = None
+
+    row_count: int = model.rowCount()
+    root_row: int
+    for root_row in range(row_count):
+        root_index: QtCore.QModelIndex = model.index(root_row, 0)
+        _capture_tree_view_state_recursive(
+            view=view,
+            model=model,
+            key_role=key_role,
+            index=root_index,
+            expanded_keys=expanded_keys,
+        )
+
+    return TreeStateSnapshot(expanded_keys=expanded_keys, current_key=current_key)
+
+
+def _capture_tree_view_state_recursive(view: QtWidgets.QTreeView,
+                                       model: QtGui.QStandardItemModel,
+                                       key_role: int,
+                                       index: QtCore.QModelIndex,
+                                       expanded_keys: Set[str]) -> None:
+    """
+    Recursively capture expanded nodes from one tree branch.
+
+    :param view: Tree view being inspected.
+    :param model: Source model backing the view.
+    :param key_role: Qt item-data role storing semantic keys.
+    :param index: Current branch index.
+    :param expanded_keys: Mutable target set of expanded semantic keys.
+    :return: None.
+    """
+    if index.isValid():
+        item: QtGui.QStandardItem | None = model.itemFromIndex(index)
+        if item is not None:
+            key_data: object = item.data(key_role)
+            if view.isExpanded(index):
+                if isinstance(key_data, str):
+                    expanded_keys.add(key_data)
+                else:
+                    pass
+            else:
+                pass
+
+            child_row_count: int = item.rowCount()
+            child_row: int
+            for child_row in range(child_row_count):
+                child_index: QtCore.QModelIndex = item.child(child_row, 0).index()
+                _capture_tree_view_state_recursive(
+                    view=view,
+                    model=model,
+                    key_role=key_role,
+                    index=child_index,
+                    expanded_keys=expanded_keys,
+                )
+        else:
+            pass
+    else:
+        pass
+
+
+def _restore_tree_view_state(view: QtWidgets.QTreeView,
+                             model: QtGui.QStandardItemModel,
+                             key_role: int,
+                             snapshot: TreeStateSnapshot) -> None:
+    """
+    Restore one previously captured tree-view state.
+
+    :param view: Tree view whose state should be restored.
+    :param model: Source model currently installed in the view.
+    :param key_role: Qt item-data role storing semantic keys.
+    :param snapshot: Captured tree-view state.
+    :return: None.
+    """
+    index_by_key: Dict[str, QtCore.QModelIndex] = dict()
+    row_count: int = model.rowCount()
+    root_row: int
+    for root_row in range(row_count):
+        root_index: QtCore.QModelIndex = model.index(root_row, 0)
+        _index_tree_view_state_keys(model=model, key_role=key_role, index=root_index, index_by_key=index_by_key)
+
+    expanded_key: str
+    for expanded_key in snapshot.get_expanded_keys():
+        expanded_index: QtCore.QModelIndex | None = index_by_key.get(expanded_key, None)
+        if expanded_index is not None:
+            view.setExpanded(expanded_index, True)
+        else:
+            pass
+
+    current_key: str | None = snapshot.get_current_key()
+    if current_key is not None:
+        current_index: QtCore.QModelIndex | None = index_by_key.get(current_key, None)
+        if current_index is not None:
+            view.setCurrentIndex(current_index)
+        else:
+            pass
+    else:
+        pass
+
+
+def _index_tree_view_state_keys(model: QtGui.QStandardItemModel,
+                                key_role: int,
+                                index: QtCore.QModelIndex,
+                                index_by_key: Dict[str, QtCore.QModelIndex]) -> None:
+    """
+    Build the semantic-key to index lookup for one tree model.
+
+    :param model: Tree model being indexed.
+    :param key_role: Qt item-data role storing semantic keys.
+    :param index: Current branch index.
+    :param index_by_key: Mutable key-to-index lookup.
+    :return: None.
+    """
+    if index.isValid():
+        item: QtGui.QStandardItem | None = model.itemFromIndex(index)
+        if item is not None:
+            key_data: object = item.data(key_role)
+            if isinstance(key_data, str):
+                index_by_key[key_data] = index
+            else:
+                pass
+
+            child_row_count: int = item.rowCount()
+            child_row: int
+            for child_row in range(child_row_count):
+                child_index: QtCore.QModelIndex = item.child(child_row, 0).index()
+                _index_tree_view_state_keys(model=model,
+                                            key_role=key_role,
+                                            index=child_index,
+                                            index_by_key=index_by_key)
+        else:
+            pass
+    else:
+        pass
 
 
 def _get_device_type_label(device_tpe: DeviceType) -> str:
@@ -206,6 +576,19 @@ def _get_device_label(device: ALL_DEV_TYPES) -> str:
     """
     # Engine devices expose the correct GUI name through their string representation.
     return str(device)
+
+
+def _get_device_state_id(device: ALL_DEV_TYPES) -> str:
+    """
+    Get a stable semantic identifier for one tree device node.
+
+    :param device: Device instance stored in the dynamics trees.
+    :return: Stable device identifier for tree-state keys.
+    """
+    if isinstance(device, (DynamicDevice, DynamicBusDevice)):
+        return str(device.idtag)
+    else:
+        return str(device)
 
 
 def _get_device_bus_label(device: ALL_DEV_TYPES) -> str:
@@ -289,6 +672,103 @@ def _join_plot_label_parts(parts: Sequence[str]) -> str:
             pass
 
     return " - ".join(kept_parts)
+
+
+def _normalize_parameter_name(name: str) -> str:
+    """
+    Normalize one parameter name for tolerant matching.
+
+    :param name: Raw parameter name.
+    :return: Normalized parameter name.
+
+    Some dynamic templates expose semantically identical parameters through
+    slightly different symbolic names depending on the template family or the
+    wrapper block. Normalizing the name allows the parameter plot resolver to
+    match those aliases without changing the visible user-facing label.
+    """
+    normalized_name: str = str(name).strip().lower()
+    normalized_name = normalized_name.replace("_", "")
+    return normalized_name
+
+
+def _parameter_name_matches(candidate_name: str, requested_name: str) -> bool:
+    """
+    Compare two parameter names using VeraGrid parameter alias rules.
+
+    :param candidate_name: Name found in the live model block.
+    :param requested_name: Name requested by the plot entry.
+    :return: ``True`` when both names identify the same parameter.
+
+    Dynamic parameter labels may differ between visible GUI aliases and the
+    symbolic names kept inside templates. The resolver therefore accepts either
+    direct normalized equality or the legacy display alias derived from the
+    canonical symbolic name.
+    """
+    normalized_candidate_name: str = _normalize_parameter_name(candidate_name)
+    normalized_requested_name: str = _normalize_parameter_name(requested_name)
+    if normalized_candidate_name == normalized_requested_name:
+        return True
+    else:
+        alias_name: str = _build_parameter_alias_name(candidate_name)
+        normalized_alias_name: str = _normalize_parameter_name(alias_name)
+        if normalized_alias_name == normalized_requested_name:
+            return True
+        else:
+            # Some parameter entries still carry the visible source-tree label in
+            # ``variable_custom_name`` while older fixtures or fallback paths may
+            # store the canonical name in ``variable_name``. A final prefix match
+            # keeps semantically identical simple names such as ``omega`` and
+            # ``omega_ref`` aligned without introducing uid-based identity.
+            if normalized_requested_name.startswith(normalized_candidate_name):
+                return True
+            else:
+                if normalized_candidate_name.startswith(normalized_requested_name):
+                    return True
+                else:
+                    return False
+
+
+def _build_parameter_alias_name(parameter_name: str) -> str:
+    """
+    Build one user-facing parameter alias from a canonical symbolic name.
+
+    :param parameter_name: Canonical symbolic parameter name.
+    :return: Display alias used in the tree when a legacy UI alias exists.
+
+    Some VeraGrid dynamic models historically expose load power-reference
+    parameters with ``I`` inserted after the leading ``P``/``Q`` in the GUI.
+    The plotting system keeps that visible label for continuity while storing
+    the canonical symbolic name separately for later resolution.
+    """
+    clean_parameter_name: str = str(parameter_name)
+    if clean_parameter_name == "Pl0":
+        return "PI0"
+    else:
+        if clean_parameter_name == "Ql0":
+            return "QI0"
+        else:
+            return clean_parameter_name
+
+
+def _build_parameter_canonical_name_from_display(parameter_name: str) -> str:
+    """
+    Build one canonical symbolic parameter name from a display alias.
+
+    :param parameter_name: User-facing parameter name.
+    :return: Canonical symbolic parameter name candidate.
+
+    This helper reverses the small set of legacy GUI aliases so entries loaded
+    from older projects or created through display labels still resolve against
+    the symbolic names stored inside model blocks and exported results maps.
+    """
+    clean_parameter_name: str = str(parameter_name)
+    if clean_parameter_name == "PI0":
+        return "Pl0"
+    else:
+        if clean_parameter_name == "QI0":
+            return "Ql0"
+        else:
+            return clean_parameter_name
 
 
 def _append_unique_variables(target: List[Var], seen_uids: Set[int], variables: Sequence[Var]) -> None:
@@ -406,6 +886,73 @@ def collect_dynamic_model_plot_variables(model: Block,
     return ordered_variables
 
 
+def collect_dynamic_model_plot_parameters(model: Block) -> List[DynamicPlotParameter]:
+    """
+    Collect plottable parameters from one dynamic-model block hierarchy.
+
+    :param model: Assigned dynamic model block.
+    :return: Ordered plottable parameters without duplicated names.
+
+    Parameters can be surfaced through ``api_obj_mapping`` or ``event_dict``.
+    The UI must merge both sources while preserving deterministic order and
+    without duplicating a parameter that appears in both structures.
+    """
+    ordered_parameters: List[DynamicPlotParameter] = list()
+    seen_parameter_names: Set[str] = set()
+    block_item: Block
+
+    # ``api_obj_mapping`` values are the symbolic parameters tied to API-side
+    # properties, so they are listed first to preserve the model's natural order.
+    for block_item in model.get_all_blocks():
+        mapped_parameter: Var | None
+        for mapped_parameter in block_item.api_obj_mapping.values():
+            if isinstance(mapped_parameter, Var):
+                parameter_name: str = str(mapped_parameter.name)
+                if parameter_name not in seen_parameter_names:
+                    seen_parameter_names.add(parameter_name)
+                    ordered_parameters.append(DynamicPlotParameter(
+                        display_name=_build_parameter_alias_name(parameter_name),
+                        canonical_name=parameter_name,
+                    ))
+                else:
+                    pass
+            else:
+                pass
+
+    # Some templates expose plottable static parameters directly in the block
+    # parameter dictionary without mirroring them through ``api_obj_mapping``.
+    # Those parameters must still appear in the source tree and plot workflow.
+    for block_item in model.get_all_blocks():
+        direct_parameter: Var
+        for direct_parameter in block_item.parameters.keys():
+            parameter_name = str(direct_parameter.name)
+            if parameter_name not in seen_parameter_names:
+                seen_parameter_names.add(parameter_name)
+                ordered_parameters.append(DynamicPlotParameter(
+                    display_name=_build_parameter_alias_name(parameter_name),
+                    canonical_name=parameter_name,
+                ))
+            else:
+                pass
+
+    # ``event_dict`` keys identify parameters that can change due to events.
+    # These are appended only when they were not already exposed by the API map.
+    for block_item in model.get_all_blocks():
+        event_parameter: Var
+        for event_parameter in block_item.event_dict.keys():
+            parameter_name = str(event_parameter.name)
+            if parameter_name not in seen_parameter_names:
+                seen_parameter_names.add(parameter_name)
+                ordered_parameters.append(DynamicPlotParameter(
+                    display_name=_build_parameter_alias_name(parameter_name),
+                    canonical_name=parameter_name,
+                ))
+            else:
+                pass
+
+    return ordered_parameters
+
+
 def _collect_dynamic_model_diff_var_uids(model: Block) -> Set[int]:
     """
     Collect all differential-variable uids declared by one block hierarchy.
@@ -456,7 +1003,7 @@ def _get_plot_simulation_type_from_results(results: RmsResults | EmtResults) -> 
             raise ValueError("Unsupported dynamics results type")
 
 def build_pre_simulation_dynamic_tree_data(circuit: MultiCircuit,
-                                           simulation_type: PlotSimulationType | str) -> Dict[DeviceType, Dict[ALL_DEV_TYPES, List[Var]]]:
+                                           simulation_type: PlotSimulationType | str) -> Dict[DeviceType, Dict[ALL_DEV_TYPES, DynamicDeviceEntryCollection]]:
     """
     Build the pre-simulation dynamic variable tree from configured model blocks.
 
@@ -474,7 +1021,7 @@ def build_pre_simulation_dynamic_tree_data(circuit: MultiCircuit,
     else:
         resolved_simulation_type = _parse_plot_simulation_type(simulation_type=str(simulation_type))
 
-    tree_data: Dict[DeviceType, Dict[ALL_DEV_TYPES, List[Var]]] = dict()
+    tree_data: Dict[DeviceType, Dict[ALL_DEV_TYPES, DynamicDeviceEntryCollection]] = dict()
 
     device: ALL_DEV_TYPES
     for device in circuit.get_all_elements_iter():
@@ -486,14 +1033,16 @@ def build_pre_simulation_dynamic_tree_data(circuit: MultiCircuit,
 
         if include_device:
             variables: List[Var] = list()
+            parameters: List[DynamicPlotParameter] = list()
 
             model_block: Block = _get_pre_simulation_block(device=device, simulation_type=resolved_simulation_type)
             variables.extend(collect_dynamic_model_plot_variables(model=model_block,
                                                                   simulation_type=resolved_simulation_type))
+            parameters.extend(collect_dynamic_model_plot_parameters(model=model_block))
 
-            if len(variables) > 0:
-                devices_by_type: Dict[ALL_DEV_TYPES, List[Var]] = tree_data.get(device.device_type, dict())
-                devices_by_type[device] = list(variables)
+            if len(variables) > 0 or len(parameters) > 0:
+                devices_by_type: Dict[ALL_DEV_TYPES, DynamicDeviceEntryCollection] = tree_data.get(device.device_type, dict())
+                devices_by_type[device] = DynamicDeviceEntryCollection(variables=variables, parameters=parameters)
                 tree_data[device.device_type] = devices_by_type
             else:
                 pass
@@ -546,6 +1095,98 @@ def _get_pre_simulation_block(device: DynamicDevice | DynamicBusDevice,
                     return device.emt_model
         else:
             raise ValueError("Unsupported pre-simulation plot family")
+
+
+def _get_runtime_parameter_scalar_from_block(model: Block,
+                                             parameter_name: str) -> float | None:
+    """
+    Resolve one scalar parameter value from a dynamic-model block hierarchy.
+
+    :param model: Dynamic model block hierarchy.
+    :param parameter_name: Parameter name requested by the plot entry.
+    :return: Scalar parameter value, or ``None`` when unavailable.
+
+    The first implementation supports static scalar parameters only. A later
+    extension can reconstruct event-dependent parameter evolution without
+    changing the broader plotting workflow.
+    """
+    requested_parameter_name: str = _normalize_parameter_name(parameter_name)
+
+    block_item: Block
+    for block_item in model.get_all_blocks():
+        mapped_parameter: Var | None
+        for mapped_parameter in block_item.api_obj_mapping.values():
+            if isinstance(mapped_parameter, Var):
+                if _parameter_name_matches(candidate_name=str(mapped_parameter.name), requested_name=parameter_name):
+                    mapped_value: object = block_item.parameters.get(mapped_parameter, None)
+                    if isinstance(mapped_value, (int, float, np.integer, np.floating)):
+                        return float(mapped_value)
+                    else:
+                        return None
+                else:
+                    pass
+            else:
+                pass
+
+        direct_parameter: Var
+        for direct_parameter in block_item.parameters.keys():
+            if _parameter_name_matches(candidate_name=str(direct_parameter.name), requested_name=parameter_name):
+                direct_value: object = block_item.parameters.get(direct_parameter, None)
+                if isinstance(direct_value, (int, float, np.integer, np.floating)):
+                    return float(direct_value)
+                else:
+                    if isinstance(direct_value, Const):
+                        if isinstance(direct_value.value, (int, float, np.integer, np.floating)):
+                            return float(direct_value.value)
+                        else:
+                            return None
+                    else:
+                        return None
+            else:
+                pass
+
+        # Event parameters often carry the live scalar value directly in
+        # ``event_dict`` as a ``Const``. This path is required for models such
+        # as RMS loads where the parameter is not mirrored into ``parameters``.
+        event_parameter: Var
+        for event_parameter in block_item.event_dict.keys():
+            if _parameter_name_matches(candidate_name=str(event_parameter.name), requested_name=parameter_name):
+                event_value: object = block_item.event_dict.get(event_parameter, None)
+                if isinstance(event_value, Const):
+                    if isinstance(event_value.value, (int, float, np.integer, np.floating)):
+                        return float(event_value.value)
+                    else:
+                        init_value: object = block_item.init_eqs.get(event_parameter, None)
+                        if isinstance(init_value, Const):
+                            if isinstance(init_value.value, (int, float, np.integer, np.floating)):
+                                return float(init_value.value)
+                            else:
+                                return None
+                        else:
+                            return None
+                else:
+                    if isinstance(event_value, (int, float, np.integer, np.floating)):
+                        return float(event_value)
+                    else:
+                        return None
+            else:
+                pass
+
+        init_parameter: Var
+        for init_parameter in block_item.init_eqs.keys():
+            if _parameter_name_matches(candidate_name=str(init_parameter.name), requested_name=parameter_name):
+                init_value = block_item.init_eqs.get(init_parameter, None)
+                if isinstance(init_value, Const):
+                    if isinstance(init_value.value, (int, float, np.integer, np.floating)):
+                        return float(init_value.value)
+                    else:
+                        return None
+                else:
+                    return None
+            else:
+                pass
+
+    return None
 
 
 class DynamicResultSeriesKey:
@@ -778,6 +1419,7 @@ class DynamicPlotCandidate:
 
     __slots__ = (
         "_simulation_type",
+        "_entry_kind",
         "_event_group_idtag",
         "_event_group_name",
         "_device_type",
@@ -788,10 +1430,12 @@ class DynamicPlotCandidate:
         "_result_path_kind",
         "_variable_custom_name",
         "_var",
+        "_parameter",
     )
 
     def __init__(self,
                  simulation_type: PlotSimulationType,
+                 entry_kind: DynamicPlotEntryKind,
                  event_group_idtag: str,
                  event_group_name: str,
                  device_type: DeviceType,
@@ -801,8 +1445,10 @@ class DynamicPlotCandidate:
                  variable_name: str,
                  result_path_kind: str,
                  variable_custom_name: str,
-                 var: Var) -> None:
+                 var: Var | None,
+                 parameter: DynamicPlotParameter | None) -> None:
         self._simulation_type: PlotSimulationType = simulation_type
+        self._entry_kind: DynamicPlotEntryKind = entry_kind
         self._event_group_idtag: str = event_group_idtag
         self._event_group_name: str = event_group_name
         self._device_type: DeviceType = device_type
@@ -812,15 +1458,32 @@ class DynamicPlotCandidate:
         self._variable_name: str = variable_name
         self._result_path_kind: str = result_path_kind
         self._variable_custom_name: str = variable_custom_name
-        self._var: Var = var
+        self._var: Var | None = var
+        self._parameter: DynamicPlotParameter | None = parameter
 
-    def get_var(self) -> Var:
+    def get_var(self) -> Var | None:
         """
         Get the symbolic variable shown in the source tree.
 
         :return: Symbolic variable.
         """
         return self._var
+
+    def get_parameter(self) -> DynamicPlotParameter | None:
+        """
+        Get the parameter shown in the source tree.
+
+        :return: Parameter descriptor, or ``None``.
+        """
+        return self._parameter
+
+    def get_entry_kind(self) -> DynamicPlotEntryKind:
+        """
+        Get the semantic kind of this candidate.
+
+        :return: Entry kind.
+        """
+        return self._entry_kind
 
     def get_tree_leaf_label(self, has_multiple_sources: bool) -> str:
         """
@@ -860,6 +1523,7 @@ class DynamicPlotCandidate:
         """
         payload: Dict[str, str] = dict()
         payload["simulation_type"] = self._simulation_type.value
+        payload["entry_kind"] = self._entry_kind.value
         payload["event_group_idtag"] = self._event_group_idtag
         payload["event_group_name"] = self._event_group_name
         payload["curve_device_type"] = self._device_type.value
@@ -1149,9 +1813,9 @@ class DynamicsDeviceTreeModel(QtGui.QStandardItemModel):
     Source tree model that exports dragged variables.
     """
 
-    __slots__ = ("_var_role", "_mime_type")
+    __slots__ = ("_var_role", "_mime_type", "_state_key_role")
 
-    def __init__(self, var_role: int, mime_type: str):
+    def __init__(self, var_role: int, mime_type: str, state_key_role: int):
         """
         Build the source dynamics tree model.
 
@@ -1161,6 +1825,7 @@ class DynamicsDeviceTreeModel(QtGui.QStandardItemModel):
         QtGui.QStandardItemModel.__init__(self)
         self._var_role: int = var_role
         self._mime_type: str = mime_type
+        self._state_key_role: int = state_key_role
 
     def flags(self, index: QtCore.QModelIndex) -> QtCore.Qt.ItemFlag:
         """
@@ -1371,18 +2036,21 @@ class DynamicsPlotsTreeModel(QtGui.QStandardItemModel):
                 return False
 
 
-def build_dynamics_tree_model(tree_data: Dict[DeviceType, Dict[ALL_DEV_TYPES, List[Var]]],
+def build_dynamics_tree_model(tree_data: Dict[DeviceType, Dict[ALL_DEV_TYPES, DynamicDeviceEntryCollection]],
                               var_role: int,
                               mime_type: str,
+                              state_key_role: int,
                               series_by_var_uid: Dict[int, List[DynamicResultSeries | DynamicPlotCandidate]],
+                              candidates_by_parameter_name: Dict[str, List[DynamicPlotCandidate]],
                               has_multiple_sources: bool) -> DynamicsDeviceTreeModel:
     """
     Build the source tree-view model for RMS/EMT dynamics results.
 
-    :param tree_data: Hierarchical RMS results tree grouped by device type and device.
+    :param tree_data: Hierarchical dynamics tree grouped by device type and device.
     :param var_role: Qt item-data role used to store the ``Var`` instance in leaf nodes.
     :param mime_type: Mime type exported when dragging a variable.
-    :param series_by_var_uid: Source-specific dynamic selectors grouped by current variable uid.
+    :param series_by_var_uid: Source-specific selectors grouped by current variable uid.
+    :param candidates_by_parameter_name: Source-specific parameter selectors grouped by parameter name.
     :param has_multiple_sources: ``True`` when multiple event-group sources must be shown.
     :return: Source tree model ready to be assigned to a QTreeView.
 
@@ -1392,31 +2060,64 @@ def build_dynamics_tree_model(tree_data: Dict[DeviceType, Dict[ALL_DEV_TYPES, Li
     selected by the user.
     """
     # The source model owns the full device hierarchy and the drag payload for variable leaves.
-    model: DynamicsDeviceTreeModel = DynamicsDeviceTreeModel(var_role=var_role, mime_type=mime_type)
+    model: DynamicsDeviceTreeModel = DynamicsDeviceTreeModel(var_role=var_role,
+                                                             mime_type=mime_type,
+                                                             state_key_role=state_key_role)
     model.setHorizontalHeaderLabels(["Dynamics results"])
 
     # The invisible root is Qt's insertion point for first-level tree nodes.
     root_item: QtGui.QStandardItem = model.invisibleRootItem()
 
     device_tpe: DeviceType
-    devices_data: Dict[ALL_DEV_TYPES, List[Var]]
+    devices_data: Dict[ALL_DEV_TYPES, DynamicDeviceEntryCollection]
     for device_tpe, devices_data in tree_data.items():
         # The first level groups all devices by their type so the tree remains navigable.
         device_type_item: QtGui.QStandardItem = _build_tree_item(text=_get_device_type_label(device_tpe=device_tpe))
+        device_type_item.setData(
+            _build_tree_state_key(node_kind=TreeStateNodeKind.DEVICE_TYPE,
+                                  parts=[str(device_tpe.value)]),
+            state_key_role,
+        )
         _set_item_icon(item=device_type_item, icon_key=_get_device_type_label(device_tpe=device_tpe))
         root_item.appendRow(device_type_item)
 
         device: ALL_DEV_TYPES
-        variables: List[Var]
-        for device, variables in devices_data.items():
+        entry_collection: DynamicDeviceEntryCollection
+        for device, entry_collection in devices_data.items():
             # The second level groups the variables that belong to one physical device.
             device_item: QtGui.QStandardItem = _build_tree_item(text=_get_device_label(device=device))
+            device_state_id: str = _get_device_state_id(device=device)
+            device_item.setData(
+                _build_tree_state_key(node_kind=TreeStateNodeKind.DEVICE,
+                                      parts=[str(device_tpe.value), device_state_id]),
+                state_key_role,
+            )
             device_type_item.appendRow(device_item)
 
+            variables_section_item: QtGui.QStandardItem = _build_tree_item(text=DynamicEntrySection.VARIABLES)
+            parameters_section_item: QtGui.QStandardItem = _build_tree_item(text=DynamicEntrySection.PARAMETERS)
+            variables_section_item.setData(
+                _build_tree_state_key(node_kind=TreeStateNodeKind.SECTION,
+                                      parts=[str(device_tpe.value), device_state_id, DynamicEntrySection.VARIABLES]),
+                state_key_role,
+            )
+            parameters_section_item.setData(
+                _build_tree_state_key(node_kind=TreeStateNodeKind.SECTION,
+                                      parts=[str(device_tpe.value), device_state_id, DynamicEntrySection.PARAMETERS]),
+                state_key_role,
+            )
+            device_item.appendRow(variables_section_item)
+            device_item.appendRow(parameters_section_item)
+
             variable: Var
-            for variable in variables:
+            for variable in entry_collection.get_variables():
                 variable_item: QtGui.QStandardItem = _build_tree_item(text=_get_var_label(variable=variable))
-                device_item.appendRow(variable_item)
+                variable_item.setData(
+                    _build_tree_state_key(node_kind=TreeStateNodeKind.VARIABLE,
+                                          parts=[str(device_tpe.value), device_state_id, variable.name]),
+                    state_key_role,
+                )
+                variables_section_item.appendRow(variable_item)
 
                 series_list: List[DynamicResultSeries | DynamicPlotCandidate] = series_by_var_uid.get(variable.uid, list())
                 if has_multiple_sources:
@@ -1425,10 +2126,48 @@ def build_dynamics_tree_model(tree_data: Dict[DeviceType, Dict[ALL_DEV_TYPES, Li
                         source_item: QtGui.QStandardItem = _build_tree_item(
                             text=series.get_tree_leaf_label(has_multiple_sources=True)
                         )
+                        source_item.setData(
+                            _build_tree_state_key(node_kind=TreeStateNodeKind.SOURCE,
+                                                  parts=[str(device_tpe.value),
+                                                         device_state_id,
+                                                         variable.name,
+                                                         series.get_tree_leaf_label(has_multiple_sources=True)]),
+                            state_key_role,
+                        )
                         source_item.setData(series, var_role)
                         variable_item.appendRow(source_item)
                 elif len(series_list) > 0:
                     variable_item.setData(series_list[0], var_role)
+                else:
+                    pass
+
+            parameter: DynamicPlotParameter
+            for parameter in entry_collection.get_parameters():
+                parameter_item: QtGui.QStandardItem = _build_tree_item(text=parameter.get_display_name())
+                parameter_item.setData(
+                    _build_tree_state_key(node_kind=TreeStateNodeKind.PARAMETER,
+                                          parts=[str(device_tpe.value), device_state_id, parameter.get_canonical_name()]),
+                    state_key_role,
+                )
+                parameters_section_item.appendRow(parameter_item)
+
+                parameter_candidate_list: List[DynamicPlotCandidate] = candidates_by_parameter_name.get(parameter.get_display_name(), list())
+                if has_multiple_sources:
+                        parameter_candidate: DynamicPlotCandidate
+                        for parameter_candidate in parameter_candidate_list:
+                            source_item = _build_tree_item(text=parameter_candidate.get_tree_leaf_label(has_multiple_sources=True))
+                            source_item.setData(
+                                _build_tree_state_key(node_kind=TreeStateNodeKind.SOURCE,
+                                                      parts=[str(device_tpe.value),
+                                                             device_state_id,
+                                                             parameter.get_canonical_name(),
+                                                             parameter_candidate.get_tree_leaf_label(has_multiple_sources=True)]),
+                                state_key_role,
+                            )
+                            source_item.setData(parameter_candidate, var_role)
+                            parameter_item.appendRow(source_item)
+                elif len(parameter_candidate_list) > 0:
+                    parameter_item.setData(parameter_candidate_list[0], var_role)
                 else:
                     pass
 
@@ -1451,8 +2190,8 @@ class DynamicsResultsHandler:
 
     __slots__ = ("results", "circuit", "dialog_parent", "plot_simulation_type",
                   "pre_simulation_mode", "tree_data", "tree_model", "proxy_model", "plots_model", "group_idx",
-                  "var_role", "group_name_role", "drag_mime_type", "plot_groups", "series_by_key",
-                  "series_by_var_uid", "source_labels")
+                  "var_role", "group_name_role", "tree_state_role", "drag_mime_type", "plot_groups", "series_by_key",
+                  "series_by_var_uid", "candidates_by_parameter_name", "source_labels")
 
     def __init__(self,
                  results: RmsResults | EmtResults | None,
@@ -1484,13 +2223,15 @@ class DynamicsResultsHandler:
         # These roles are instance-owned so the handler carries all Qt metadata instead of relying on globals.
         self.var_role: int = int(QtCore.Qt.ItemDataRole.UserRole) + 300
         self.group_name_role: int = int(QtCore.Qt.ItemDataRole.UserRole) + 301
+        self.tree_state_role: int = int(QtCore.Qt.ItemDataRole.UserRole) + 302
         self.drag_mime_type: str = "application/x-veragrid-dynamics-var"
 
         self.group_idx: Dict[str, int] = dict()
-        self.tree_data: Dict[DeviceType, Dict[ALL_DEV_TYPES, List[Var]]] = dict()
+        self.tree_data: Dict[DeviceType, Dict[ALL_DEV_TYPES, DynamicDeviceEntryCollection]] = dict()
         self.tree_model: DynamicsDeviceTreeModel | None = None
         self.series_by_key: Dict[DynamicResultSeriesKey, List[DynamicResultSeries]] = dict()
         self.series_by_var_uid: Dict[int, List[DynamicResultSeries | DynamicPlotCandidate]] = dict()
+        self.candidates_by_parameter_name: Dict[str, List[DynamicPlotCandidate]] = dict()
         self.source_labels: List[str] = list()
 
         # The proxy model owns the reversible filtering state used by the device tree view.
@@ -1531,6 +2272,14 @@ class DynamicsResultsHandler:
         """
         return self.drag_mime_type
 
+    def get_tree_state_role(self) -> int:
+        """
+        Get the Qt role used to store semantic tree-state keys.
+
+        :return: Item-data role for tree-state semantic keys.
+        """
+        return self.tree_state_role
+
     def get_view_model(self) -> QtCore.QSortFilterProxyModel:
         """
         Get the proxy model used by the dynamics device tree view.
@@ -1546,6 +2295,57 @@ class DynamicsResultsHandler:
         :return: Plot-groups tree model.
         """
         return self.plots_model
+
+    def capture_plots_tree_state(self, view: QtWidgets.QTreeView | None) -> TreeStateSnapshot | None:
+        """
+        Capture the current plots-tree state from one attached tree view.
+
+        :param view: Tree view currently showing the plots model.
+        :return: Captured tree state, or ``None``.
+        """
+        if view is not None:
+            return _capture_tree_view_state(view=view, model=self.plots_model, key_role=self.tree_state_role)
+        else:
+            return None
+
+    def restore_plots_tree_state(self,
+                                 view: QtWidgets.QTreeView | None,
+                                 snapshot: TreeStateSnapshot | None) -> None:
+        """
+        Restore one captured plots-tree state into an attached tree view.
+
+        :param view: Tree view currently showing the plots model.
+        :param snapshot: Captured tree state.
+        :return: None.
+        """
+        if view is not None:
+            if snapshot is not None:
+                _restore_tree_view_state(view=view,
+                                         model=self.plots_model,
+                                         key_role=self.tree_state_role,
+                                         snapshot=snapshot)
+            else:
+                pass
+        else:
+            pass
+
+    def _find_attached_plots_tree_view(self) -> QtWidgets.QTreeView | None:
+        """
+        Find the currently attached tree view that shows the plots model.
+
+        :return: Attached plots tree view, or ``None``.
+        """
+        if self.dialog_parent is not None:
+            attached_views: List[QtWidgets.QTreeView] = self.dialog_parent.findChildren(QtWidgets.QTreeView)
+            attached_view: QtWidgets.QTreeView
+            for attached_view in attached_views:
+                if attached_view.model() is self.plots_model:
+                    return attached_view
+                else:
+                    pass
+            return None
+        else:
+            return None
 
     def _asset_plot_matches_handler_family(self, plot_asset: DynamicPlot) -> bool:
         """
@@ -1716,6 +2516,7 @@ class DynamicsResultsHandler:
         # that will own the future simulation case.
         updated_candidate: DynamicPlotCandidate = DynamicPlotCandidate(
             simulation_type=candidate._simulation_type,
+            entry_kind=candidate.get_entry_kind(),
             event_group_idtag=str(group_asset.idtag),
             event_group_name=str(group_asset.name),
             device_type=candidate._device_type,
@@ -1731,6 +2532,7 @@ class DynamicsResultsHandler:
                 str(group_asset.name),
             ]),
             var=candidate.get_var(),
+            parameter=candidate.get_parameter(),
         )
         return updated_candidate
 
@@ -1749,9 +2551,10 @@ class DynamicsResultsHandler:
                 parent=self.dialog_parent,
             )
             if group_asset is not None:
-                # The pre-simulation source tree must be refreshed after group
-                # creation so every later drag reflects the newly available case.
-                self._refresh_pre_simulation_state()
+                # Rebuilding the full pre-simulation source tree here collapses
+                # the user's current tree expansion during the drag workflow.
+                # The dropped candidate only needs the canonical event-group
+                # identity, so the full source-tree refresh is deferred.
                 return self._build_candidate_with_event_group(candidate=candidate, group_asset=group_asset)
             else:
                 return None
@@ -1778,26 +2581,27 @@ class DynamicsResultsHandler:
         else:
             return "values"
 
-    def _build_pre_simulation_candidate_index(self) -> Dict[int, List[DynamicPlotCandidate]]:
+    def _build_pre_simulation_candidate_index(self) -> tuple[Dict[int, List[DynamicPlotCandidate]], Dict[str, List[DynamicPlotCandidate]]]:
         """
         Build the draggable candidate index for the pre-simulation source tree.
 
-        :return: Dictionary mapping variable uid to candidate leaves.
+        :return: Pair of candidate indexes grouped by variable uid and parameter name.
         """
         candidates_by_var_uid: Dict[int, List[DynamicPlotCandidate]] = dict()
+        candidates_by_parameter_name: Dict[str, List[DynamicPlotCandidate]] = dict()
         group_assets: Sequence[RmsEventsGroup | EmtEventsGroup] = self._get_pre_simulation_group_assets()
 
         device_tpe: DeviceType
-        devices_data: Dict[ALL_DEV_TYPES, List[Var]]
+        devices_data: Dict[ALL_DEV_TYPES, DynamicDeviceEntryCollection]
         for device_tpe, devices_data in self.tree_data.items():
             device: ALL_DEV_TYPES
-            variables: List[Var]
-            for device, variables in devices_data.items():
+            entry_collection: DynamicDeviceEntryCollection
+            for device, entry_collection in devices_data.items():
                 if isinstance(device, (DynamicDevice, DynamicBusDevice)):
                     device_label: str = _get_device_label(device=device)
                     bus_label: str = _get_device_bus_label(device=device)
                     variable: Var
-                    for variable in variables:
+                    for variable in entry_collection.get_variables():
                         result_path_kind: str = self._get_pre_simulation_result_path_kind(device=device, variable=variable)
                         entries: List[DynamicPlotCandidate] = candidates_by_var_uid.get(variable.uid, list())
                         if len(group_assets) > 0:
@@ -1805,6 +2609,7 @@ class DynamicsResultsHandler:
                             for group_asset in group_assets:
                                 candidate: DynamicPlotCandidate = DynamicPlotCandidate(
                                     simulation_type=self.plot_simulation_type,
+                                    entry_kind=DynamicPlotEntryKind.VARIABLE,
                                     event_group_idtag=str(group_asset.idtag),
                                     event_group_name=str(group_asset.name),
                                     device_type=device_tpe,
@@ -1820,6 +2625,7 @@ class DynamicsResultsHandler:
                                         str(group_asset.name),
                                     ]),
                                     var=variable,
+                                    parameter=None,
                                 )
                                 entries.append(candidate)
                         else:
@@ -1829,6 +2635,7 @@ class DynamicsResultsHandler:
                             # this candidate with the canonical group identity.
                             candidate = DynamicPlotCandidate(
                                 simulation_type=self.plot_simulation_type,
+                                entry_kind=DynamicPlotEntryKind.VARIABLE,
                                 event_group_idtag="",
                                 event_group_name="",
                                 device_type=device_tpe,
@@ -1843,13 +2650,89 @@ class DynamicsResultsHandler:
                                     bus_label,
                                 ]),
                                 var=variable,
+                                parameter=None,
                             )
                             entries.append(candidate)
                         candidates_by_var_uid[variable.uid] = entries
+
+                    parameter: DynamicPlotParameter
+                    for parameter in entry_collection.get_parameters():
+                        parameter_entries: List[DynamicPlotCandidate] = candidates_by_parameter_name.get(parameter.get_display_name(), list())
+                        if len(group_assets) > 0:
+                            group_asset = None
+                            for group_asset in group_assets:
+                                parameter_candidate: DynamicPlotCandidate = _build_runtime_parameter_candidate(
+                                    simulation_type=self.plot_simulation_type,
+                                    device_tpe=device_tpe,
+                                    device_idtag=str(device.idtag),
+                                    device_label=device_label,
+                                    bus_label=bus_label,
+                                    parameter=parameter,
+                                    event_group_idtag=str(group_asset.idtag),
+                                    event_group_name=str(group_asset.name),
+                                )
+                                parameter_entries.append(parameter_candidate)
+                        else:
+                            parameter_candidate = _build_runtime_parameter_candidate(
+                                simulation_type=self.plot_simulation_type,
+                                device_tpe=device_tpe,
+                                device_idtag=str(device.idtag),
+                                device_label=device_label,
+                                bus_label=bus_label,
+                                parameter=parameter,
+                                event_group_idtag="",
+                                event_group_name="",
+                            )
+                            parameter_entries.append(parameter_candidate)
+                        candidates_by_parameter_name[parameter.get_display_name()] = parameter_entries
                 else:
                     pass
 
-        return candidates_by_var_uid
+        return candidates_by_var_uid, candidates_by_parameter_name
+
+    def _build_runtime_parameter_candidate_index(self) -> Dict[str, List[DynamicPlotCandidate]]:
+        """
+        Build the draggable runtime parameter-candidate index from live results metadata.
+
+        :return: Parameter candidates grouped by display name.
+        """
+        candidates_by_parameter_name: Dict[str, List[DynamicPlotCandidate]] = dict()
+
+        device_tpe: DeviceType
+        devices_data: Dict[ALL_DEV_TYPES, DynamicDeviceEntryCollection]
+        for device_tpe, devices_data in self.tree_data.items():
+            device: ALL_DEV_TYPES
+            entry_collection: DynamicDeviceEntryCollection
+            for device, entry_collection in devices_data.items():
+                device_label: str = _get_device_label(device=device)
+                bus_label: str = _get_device_bus_label(device=device)
+                device_idtag: str = str(device.idtag)
+
+                parameter: DynamicPlotParameter
+                for parameter in entry_collection.get_parameters():
+                    parameter_entries: List[DynamicPlotCandidate] = candidates_by_parameter_name.get(
+                        parameter.get_display_name(),
+                        list(),
+                    )
+
+                    group_idx: int
+                    source_label: str
+                    for group_idx, source_label in enumerate(self.source_labels):
+                        parameter_candidate: DynamicPlotCandidate = _build_runtime_parameter_candidate(
+                            simulation_type=self.plot_simulation_type,
+                            device_tpe=device_tpe,
+                            device_idtag=device_idtag,
+                            device_label=device_label,
+                            bus_label=bus_label,
+                            parameter=parameter,
+                            event_group_idtag=str(self._get_group_idtags(results=self.results)[group_idx]),
+                            event_group_name=str(source_label),
+                        )
+                        parameter_entries.append(parameter_candidate)
+
+                    candidates_by_parameter_name[parameter.get_display_name()] = parameter_entries
+
+        return candidates_by_parameter_name
 
     def _refresh_pre_simulation_state(self) -> None:
         """
@@ -1874,17 +2757,23 @@ class DynamicsResultsHandler:
 
         self.series_by_key = dict()
         self.series_by_var_uid = dict()
-        pre_simulation_candidates: Dict[int, List[DynamicPlotCandidate]] = self._build_pre_simulation_candidate_index()
+        self.candidates_by_parameter_name = dict()
+        pre_simulation_candidates: tuple[Dict[int, List[DynamicPlotCandidate]], Dict[str, List[DynamicPlotCandidate]]] = self._build_pre_simulation_candidate_index()
+        candidates_by_var_uid: Dict[int, List[DynamicPlotCandidate]] = pre_simulation_candidates[0]
+        candidates_by_parameter_name: Dict[str, List[DynamicPlotCandidate]] = pre_simulation_candidates[1]
         var_uid: int
         candidate_list: List[DynamicPlotCandidate]
-        for var_uid, candidate_list in pre_simulation_candidates.items():
+        for var_uid, candidate_list in candidates_by_var_uid.items():
             self.series_by_var_uid[var_uid] = list(candidate_list)
+        self.candidates_by_parameter_name = candidates_by_parameter_name
 
         self.tree_model = build_dynamics_tree_model(
             tree_data=self.tree_data,
             var_role=self.var_role,
             mime_type=self.drag_mime_type,
+            state_key_role=self.tree_state_role,
             series_by_var_uid=self.series_by_var_uid,
+            candidates_by_parameter_name=self.candidates_by_parameter_name,
             has_multiple_sources=self.has_multiple_sources(),
         )
         self.proxy_model.setSourceModel(self.tree_model)
@@ -2002,21 +2891,24 @@ class DynamicsResultsHandler:
                             for entry in self.circuit.dynamic_plot_entries:
                                 if entry.plot == plot_asset:
                                     if self.results is not None:
-                                        bound_series: DynamicResultSeries | None = self._bind_asset_entry_to_series(
-                                            entry=entry,
-                                            payload_index=payload_index,
-                                            signature_index=signature_index,
-                                        )
-                                        if bound_series is not None and entry.enabled:
-                                            if entry.variable_custom_name != "":
-                                                bound_series.set_variable_custom_name(label=entry.variable_custom_name)
+                                        if entry.entry_kind == DynamicPlotEntryKind.VARIABLE:
+                                            bound_series: DynamicResultSeries | None = self._bind_asset_entry_to_series(
+                                                entry=entry,
+                                                payload_index=payload_index,
+                                                signature_index=signature_index,
+                                            )
+                                            if bound_series is not None and entry.enabled:
+                                                if entry.variable_custom_name != "":
+                                                    bound_series.set_variable_custom_name(label=entry.variable_custom_name)
+                                                else:
+                                                    pass
+                                                group.add_var(variable=bound_series)
                                             else:
-                                                pass
-                                            group.add_var(variable=bound_series)
+                                                # Keep unresolved entries visible in the runtime
+                                                # projection so the user can inspect or delete them
+                                                # without losing the persistent definition.
+                                                group.add_var(variable=entry)
                                         else:
-                                            # Keep unresolved entries visible in the runtime
-                                            # projection so the user can inspect or delete them
-                                            # without losing the persistent definition.
                                             group.add_var(variable=entry)
                                     else:
                                         group.add_var(variable=entry)
@@ -2140,6 +3032,7 @@ class DynamicsResultsHandler:
                     group=legacy_group,
                     device=None,
                     simulation_type=candidate._simulation_type,
+                    entry_kind=candidate.get_entry_kind(),
                     event_group_idtag=candidate._event_group_idtag,
                     event_group_name=candidate._event_group_name,
                     curve_device_type=candidate._device_type,
@@ -2297,6 +3190,15 @@ class DynamicsResultsHandler:
                 else:
                     pass
 
+        parameter_candidate_list: List[DynamicPlotCandidate]
+        for parameter_candidate_list in self.candidates_by_parameter_name.values():
+            parameter_candidate: DynamicPlotCandidate
+            for parameter_candidate in parameter_candidate_list:
+                if parameter_candidate.to_payload() == payload:
+                    return parameter_candidate
+                else:
+                    pass
+
         return None
 
     def get_plot_group_name_from_index(self, index: QtCore.QModelIndex) -> str | None:
@@ -2432,6 +3334,12 @@ class DynamicsResultsHandler:
 
         :return: Nothing.
         """
+        # The plots model rebuild happens for many user actions. Capturing the
+        # attached tree-view state here keeps every caller small and ensures the
+        # Dynamic Plots tree remains expanded across drag/drop and CRUD updates.
+        attached_view: QtWidgets.QTreeView | None = self._find_attached_plots_tree_view()
+        tree_state_snapshot: TreeStateSnapshot | None = self.capture_plots_tree_state(view=attached_view)
+
         # The Qt model is treated as a projection of the handler state so every CRUD operation remains explicit.
         self.plots_model.clear()
         self.plots_model.setHorizontalHeaderLabels(["Dynamic plots"])
@@ -2441,6 +3349,10 @@ class DynamicsResultsHandler:
         for group in self.plot_groups.get_groups():
             group_item: QtGui.QStandardItem = _build_tree_item(text=group.get_name())
             group_item.setData(group.get_name(), self.group_name_role)
+            group_item.setData(
+                _build_tree_state_key(node_kind=TreeStateNodeKind.PLOT_GROUP, parts=[group.get_name()]),
+                self.tree_state_role,
+            )
             _set_item_icon(item=group_item, icon_key="Dynamic")
             root_item.appendRow(group_item)
 
@@ -2451,45 +3363,86 @@ class DynamicsResultsHandler:
                         text=entry.get_plot_label(has_multiple_sources=self.has_multiple_sources())
                     )
                     variable_item.setData(entry, self.var_role)
+                    variable_item.setData(
+                        _build_tree_state_key(node_kind=TreeStateNodeKind.PLOT_ENTRY,
+                                              parts=[group.get_name(), entry.get_key().to_payload()]),
+                        self.tree_state_role,
+                    )
                     group_item.appendRow(variable_item)
                 elif isinstance(entry, DynamicPlotEntry):
-                    unresolved_label: str = entry.variable_custom_name
-                    if unresolved_label == "":
-                        unresolved_label = entry.variable_name
-                    else:
-                        pass
+                    if entry.entry_kind == DynamicPlotEntryKind.PARAMETER:
+                        parameter_plot_data: tuple[np.ndarray, np.ndarray] | None = self._get_parameter_plot_data(entry=entry)
+                        if parameter_plot_data is not None:
+                            resolved_label: str = _build_parameter_plot_entry_label(entry=entry)
 
-                    if unresolved_label == "":
-                        unresolved_label = entry.name
-                    else:
-                        pass
+                            variable_item = _build_tree_item(text=resolved_label)
+                            variable_item.setData(entry, self.var_role)
+                            variable_item.setData(
+                                _build_tree_state_key(node_kind=TreeStateNodeKind.PLOT_ENTRY,
+                                                      parts=[group.get_name(), str(entry.idtag)]),
+                                self.tree_state_role,
+                            )
+                            variable_item.setToolTip("Persistent dynamic parameter entry resolved against current results")
+                            group_item.appendRow(variable_item)
+                        else:
+                            unresolved_label: str = _build_unresolved_plot_entry_label(entry=entry)
 
-                    if unresolved_label == "":
-                        unresolved_label = "Unresolved curve"
-                    else:
-                        pass
+                            unresolved_suffix: str = " [pending]"
+                            if self.results is not None:
+                                unresolved_suffix = " [missing]"
+                            else:
+                                pass
 
-                    unresolved_suffix: str = " [pending]"
-                    if self.results is not None:
-                        unresolved_suffix = " [missing]"
+                            variable_item = _build_tree_item(text=unresolved_label + unresolved_suffix)
+                            variable_item.setData(entry, self.var_role)
+                            variable_item.setData(
+                                _build_tree_state_key(node_kind=TreeStateNodeKind.PLOT_ENTRY,
+                                                      parts=[group.get_name(), str(entry.idtag)]),
+                                self.tree_state_role,
+                            )
+                            if unresolved_suffix == " [missing]":
+                                variable_item.setForeground(QtGui.QBrush(QtGui.QColor("#d67b7b")))
+                                variable_item.setToolTip("Persistent dynamic parameter entry could not be resolved in the current results")
+                            else:
+                                variable_item.setForeground(QtGui.QBrush(QtGui.QColor("#a0a0a0")))
+                                variable_item.setToolTip("Persistent dynamic parameter entry waiting for simulation results")
+                            group_item.appendRow(variable_item)
                     else:
-                        pass
+                        unresolved_label = _build_unresolved_plot_entry_label(entry=entry)
 
-                    variable_item = _build_tree_item(text=unresolved_label + unresolved_suffix)
-                    variable_item.setData(entry, self.var_role)
-                    if unresolved_suffix == " [missing]":
-                        variable_item.setForeground(QtGui.QBrush(QtGui.QColor("#d67b7b")))
-                        variable_item.setToolTip("Persistent dynamic plot entry not found in the current results")
-                    else:
-                        variable_item.setForeground(QtGui.QBrush(QtGui.QColor("#a0a0a0")))
-                        variable_item.setToolTip("Persistent dynamic plot entry waiting for simulation results")
-                    group_item.appendRow(variable_item)
+                        unresolved_suffix = " [pending]"
+                        if self.results is not None:
+                            unresolved_suffix = " [missing]"
+                        else:
+                            pass
+
+                        variable_item = _build_tree_item(text=unresolved_label + unresolved_suffix)
+                        variable_item.setData(entry, self.var_role)
+                        variable_item.setData(
+                            _build_tree_state_key(node_kind=TreeStateNodeKind.PLOT_ENTRY,
+                                                  parts=[group.get_name(), str(entry.idtag)]),
+                            self.tree_state_role,
+                        )
+                        if unresolved_suffix == " [missing]":
+                            variable_item.setForeground(QtGui.QBrush(QtGui.QColor("#d67b7b")))
+                            variable_item.setToolTip("Persistent dynamic plot entry not found in the current results")
+                        else:
+                            variable_item.setForeground(QtGui.QBrush(QtGui.QColor("#a0a0a0")))
+                            variable_item.setToolTip("Persistent dynamic plot entry waiting for simulation results")
+                        group_item.appendRow(variable_item)
                 elif isinstance(entry, Var):
                     variable_item = _build_tree_item(text=_get_var_label(variable=entry))
                     variable_item.setData(entry, self.var_role)
+                    variable_item.setData(
+                        _build_tree_state_key(node_kind=TreeStateNodeKind.PLOT_ENTRY,
+                                              parts=[group.get_name(), "legacy-var:" + str(entry.uid)]),
+                        self.tree_state_role,
+                    )
                     group_item.appendRow(variable_item)
                 else:
                     pass
+
+        self.restore_plots_tree_state(view=attached_view, snapshot=tree_state_snapshot)
 
     def _build_next_group_name(self) -> str:
         """
@@ -2866,9 +3819,22 @@ class DynamicsResultsHandler:
                         x_values, y_values = self._get_series_plot_data(series=variable)
                         label: str = variable.get_plot_label(has_multiple_sources=self.has_multiple_sources())
                     elif isinstance(variable, DynamicPlotEntry):
-                        x_values = self.results.time_array if self.results is not None else None
-                        y_values = None
                         label = variable.variable_custom_name
+                        if label == "":
+                            label = variable.variable_name
+                        else:
+                            pass
+
+                        if variable.entry_kind == DynamicPlotEntryKind.PARAMETER:
+                            parameter_plot_data: tuple[np.ndarray, np.ndarray] | None = self._get_parameter_plot_data(entry=variable)
+                            if parameter_plot_data is not None:
+                                x_values, y_values = parameter_plot_data
+                            else:
+                                x_values = self.results.time_array if self.results is not None else None
+                                y_values = None
+                        else:
+                            x_values = self.results.time_array if self.results is not None else None
+                            y_values = None
                     elif isinstance(variable, Var):
                         x_values = self.results.time_array
                         # Legacy raw ``Var`` entries are still tolerated, but
@@ -2919,7 +3885,10 @@ class DynamicsResultsHandler:
         else:
             unresolved_entry: DynamicPlotEntry | None = self.get_plot_asset_entry_from_index(index=index)
             if unresolved_entry is not None:
-                return False
+                if unresolved_entry.entry_kind == DynamicPlotEntryKind.PARAMETER:
+                    return self.plot_parameter_entry(entry=unresolved_entry)
+                else:
+                    return False
             else:
                 plot_group_name: str | None = self.get_plot_group_name_from_index(index=index)
                 if plot_group_name is not None:
@@ -2951,12 +3920,16 @@ class DynamicsResultsHandler:
             variables: List[DynamicResultSeries | Var] = plot_group.get_series()
             if len(variables) > 0:
                 compatible_series: List[DynamicResultSeries] = list()
+                compatible_parameter_entries: List[DynamicPlotEntry] = list()
                 variable: DynamicResultSeries | DynamicPlotEntry | Var
                 for variable in variables:
                     if isinstance(variable, DynamicResultSeries):
                         compatible_series.append(variable)
                     elif isinstance(variable, DynamicPlotEntry):
-                        pass
+                        if variable.entry_kind == DynamicPlotEntryKind.PARAMETER:
+                            compatible_parameter_entries.append(variable)
+                        else:
+                            pass
                     else:
                         series_list: List[DynamicResultSeries] = self.series_by_var_uid.get(variable.uid, list())
                         if len(series_list) == 1:
@@ -2964,7 +3937,7 @@ class DynamicsResultsHandler:
                         else:
                             pass
 
-                if len(compatible_series) == 0:
+                if len(compatible_series) == 0 and len(compatible_parameter_entries) == 0:
                     return None
 
                 # The table index must reuse the same elapsed-seconds axis as the
@@ -2980,13 +3953,32 @@ class DynamicsResultsHandler:
                     else:
                         pass
 
-                data: np.ndarray = np.empty((len(first_time), len(compatible_series)), dtype=float)
+                total_column_count: int = len(compatible_series) + len(compatible_parameter_entries)
+                data: np.ndarray = np.empty((len(first_time), total_column_count), dtype=float)
                 columns: List[str] = list()
 
                 for idx, series in enumerate(compatible_series):
                     _, y_values = self._get_series_plot_data(series=series)
                     data[:, idx] = y_values
                     columns.append(series.get_plot_label(has_multiple_sources=self.has_multiple_sources()))
+
+                parameter_index: int
+                parameter_entry: DynamicPlotEntry
+                for parameter_index, parameter_entry in enumerate(compatible_parameter_entries):
+                    parameter_plot_data: tuple[np.ndarray, np.ndarray] | None = self._get_parameter_plot_data(entry=parameter_entry)
+                    if parameter_plot_data is not None:
+                        parameter_time, parameter_values = parameter_plot_data
+                        if np.array_equal(parameter_time, first_time):
+                            column_index: int = len(compatible_series) + parameter_index
+                            data[:, column_index] = parameter_values
+                            if parameter_entry.variable_custom_name != "":
+                                columns.append(parameter_entry.variable_custom_name)
+                            else:
+                                columns.append(parameter_entry.variable_name)
+                        else:
+                            return None
+                    else:
+                        return None
 
                 table = ResultsTable(
                     data=data,
@@ -3101,24 +4093,25 @@ class DynamicsResultsHandler:
             else:
                 raise Exception("Unsupported dynamics results type")
 
-    def _build_exported_results_tree_data(self) -> Dict[DeviceType, Dict[ALL_DEV_TYPES, List[Var]]]:
+    def _build_exported_results_tree_data(self) -> Dict[DeviceType, Dict[ALL_DEV_TYPES, DynamicDeviceEntryCollection]]:
         """
         Build the runtime device tree using only variables exported by the results.
 
         :return: Filtered device tree grouped by device type and device.
         """
         raw_tree_data: Dict[DeviceType, Dict[ALL_DEV_TYPES, List[Var]]] = self.results.get_devices_dict_tree()
-        filtered_tree_data: Dict[DeviceType, Dict[ALL_DEV_TYPES, List[Var]]] = dict()
+        filtered_tree_data: Dict[DeviceType, Dict[ALL_DEV_TYPES, DynamicDeviceEntryCollection]] = dict()
 
         device_tpe: DeviceType
         devices_data: Dict[ALL_DEV_TYPES, List[Var]]
         for device_tpe, devices_data in raw_tree_data.items():
-            filtered_devices: Dict[ALL_DEV_TYPES, List[Var]] = dict()
+            filtered_devices: Dict[ALL_DEV_TYPES, DynamicDeviceEntryCollection] = dict()
 
             device: ALL_DEV_TYPES
             variables: List[Var]
             for device, variables in devices_data.items():
                 exported_variables: List[Var] = list()
+                parameters: List[DynamicPlotParameter] = list()
 
                 variable: Var
                 for variable in variables:
@@ -3128,7 +4121,16 @@ class DynamicsResultsHandler:
                         pass
 
                 if len(exported_variables) > 0:
-                    filtered_devices[device] = exported_variables
+                    if isinstance(device, (DynamicDevice, DynamicBusDevice)):
+                        model_block: Block = _get_pre_simulation_block(device=device, simulation_type=self.plot_simulation_type)
+                        parameters = collect_dynamic_model_plot_parameters(model=model_block)
+                    else:
+                        parameters = list()
+
+                    filtered_devices[device] = DynamicDeviceEntryCollection(
+                        variables=exported_variables,
+                        parameters=parameters,
+                    )
                 else:
                     pass
 
@@ -3157,20 +4159,21 @@ class DynamicsResultsHandler:
         self.tree_data = self._build_exported_results_tree_data()
         self.series_by_key = dict()
         self.series_by_var_uid = dict()
+        self.candidates_by_parameter_name = dict()
 
         device_tpe: DeviceType
-        devices_data: Dict[ALL_DEV_TYPES, List[Var]]
+        devices_data: Dict[ALL_DEV_TYPES, DynamicDeviceEntryCollection]
         for device_tpe, devices_data in self.tree_data.items():
             device: ALL_DEV_TYPES
-            variables: List[Var]
-            for device, variables in devices_data.items():
+            entry_collection: DynamicDeviceEntryCollection
+            for device, entry_collection in devices_data.items():
                 device_label: str = _get_device_label(device=device)
                 bus_label: str = _get_device_bus_label(device=device)
                 device_idtag: str = str(device.idtag)
 
                 variable_index: int
                 variable: Var
-                for variable_index, variable in enumerate(variables):
+                for variable_index, variable in enumerate(entry_collection.get_variables()):
                     result_path: str
                     component_index: int
                     result_path, component_index = self._resolve_result_path_and_component_index(variable=variable)
@@ -3216,11 +4219,19 @@ class DynamicsResultsHandler:
                             # a fabricated numerical curve.
                             pass
 
+        # Runtime parameter leaves do not have a numeric series array behind
+        # them, but they still need a drag payload and a double-click plotting
+        # identity. This candidate index supplies that parameter-specific
+        # semantic payload for the live post-simulation tree.
+        self.candidates_by_parameter_name = self._build_runtime_parameter_candidate_index()
+
         self.tree_model = build_dynamics_tree_model(
             tree_data=self.tree_data,
             var_role=self.var_role,
             mime_type=self.drag_mime_type,
+            state_key_role=self.tree_state_role,
             series_by_var_uid=self.series_by_var_uid,
+            candidates_by_parameter_name=self.candidates_by_parameter_name,
             has_multiple_sources=self.has_multiple_sources(),
         )
         self.proxy_model.setSourceModel(self.tree_model)
@@ -3240,6 +4251,190 @@ class DynamicsResultsHandler:
             return candidate_series[0]
         else:
             return None
+
+    def _get_device_by_entry(self, entry: DynamicPlotEntry) -> ALL_DEV_TYPES | None:
+        """
+        Resolve the device referenced by one persistent plot entry.
+
+        :param entry: Persistent dynamic plot entry.
+        :return: Matching circuit device, or ``None``.
+        """
+        if self.circuit is not None:
+            device: ALL_DEV_TYPES
+            for device in self.circuit.get_all_elements_iter():
+                if str(device.idtag) == entry.device_idtag:
+                    return device
+                else:
+                    pass
+            return None
+        else:
+            return None
+
+    def _get_parameter_plot_data(self, entry: DynamicPlotEntry) -> tuple[np.ndarray, np.ndarray] | None:
+        """
+        Resolve plotting arrays for one persistent parameter entry.
+
+        :param entry: Persistent parameter plot entry.
+        :return: Plot arrays, or ``None`` when the parameter cannot be resolved.
+        """
+        if self.results is not None and self.circuit is not None:
+            # Parameter plotting is meaningful only after a simulation produced a
+            # time axis. Without that axis the GUI must keep the entry pending
+            # instead of fabricating a zero-valued or unit-length trace.
+            if len(self.results.time_array) == 0:
+                return None
+            else:
+                pass
+
+            canonical_parameter_name: str = _build_parameter_canonical_name_from_display(entry.variable_name)
+            event_group_index: int | None = None
+            group_idtags: Sequence[str] = self._get_group_idtags(results=self.results)
+            group_names: Sequence[str] = self._get_group_names(results=self.results)
+            idx: int
+            for idx in range(len(group_idtags)):
+                matches_idtag: bool = str(group_idtags[idx]) == entry.event_group_idtag and entry.event_group_idtag != ""
+                matches_name: bool = str(group_names[idx]) == entry.event_group_name and entry.event_group_name != ""
+                if matches_idtag or matches_name:
+                    event_group_index = idx
+                else:
+                    pass
+
+            if event_group_index is not None:
+                if self._has_event_group_results(results=self.results, group_idx=event_group_index):
+                    # RMS and EMT currently export parameter snapshots through the
+                    # per-event-group ``parameter_value_maps`` structure. When a
+                    # snapshot exists, plotting expands that scalar onto the real
+                    # simulation time axis so the parameter becomes a constant
+                    # trace without pretending to be a normal state variable.
+                    exported_parameter_value: float | None = self.results.get_parameter_value(
+                        group_idx=event_group_index,
+                        device_idtag=entry.device_idtag,
+                        parameter_name=canonical_parameter_name,
+                    )
+                    if exported_parameter_value is not None:
+                        x_values: np.ndarray = _build_relative_time_axis(time_array=self.results.time_array)
+                        y_values: np.ndarray = np.empty(len(x_values), dtype=float)
+                        y_values[:] = float(exported_parameter_value)
+                        return x_values, y_values
+                    else:
+                        pass
+                else:
+                    # Declared-but-unsimulated event groups intentionally stay
+                    # unresolved because their result column would otherwise look
+                    # like a valid constant trace even though no simulation ran.
+                    return None
+            else:
+                pass
+
+            device: ALL_DEV_TYPES | None = self._get_device_by_entry(entry=entry)
+            if isinstance(device, (DynamicDevice, DynamicBusDevice)):
+                # Some parameters are static model constants and therefore do not
+                # appear in the exported per-group snapshot map. In that case the
+                # live model block still carries the scalar value and the plot can
+                # reuse it over the actual simulation time axis.
+                model_block: Block = _get_pre_simulation_block(device=device, simulation_type=entry.simulation_type)
+                parameter_value: float | None = _get_runtime_parameter_scalar_from_block(
+                    model=model_block,
+                    parameter_name=canonical_parameter_name,
+                )
+                if parameter_value is not None:
+                    x_values = _build_relative_time_axis(time_array=self.results.time_array)
+                    y_values = np.empty(len(x_values), dtype=float)
+                    y_values[:] = parameter_value
+                    return x_values, y_values
+                else:
+                    return None
+            else:
+                return None
+        else:
+            return None
+
+    def plot_parameter_entry(self, entry: DynamicPlotEntry) -> bool:
+        """
+        Plot one persistent parameter entry when its value can be resolved.
+
+        :param entry: Persistent parameter plot entry.
+        :return: ``True`` when the parameter was resolved and plotted.
+        """
+        parameter_plot_data: tuple[np.ndarray, np.ndarray] | None = self._get_parameter_plot_data(entry=entry)
+        if parameter_plot_data is not None:
+            x_values: np.ndarray = parameter_plot_data[0]
+            y_values: np.ndarray = parameter_plot_data[1]
+            label: str = _build_parameter_plot_entry_label(entry=entry)
+
+            figure = plt.figure(figsize=(12, 8))
+            axis = figure.add_subplot(111)
+            axis.plot(x_values, y_values, label=label)
+            axis.set_title(entry.variable_name)
+            axis.set_xlabel("Time [s]")
+            axis.legend()
+            plt.show()
+            return True
+        else:
+            return False
+
+    def get_parameter_entry_from_index(self, index: QtCore.QModelIndex) -> DynamicPlotEntry | None:
+        """
+        Build one transient parameter entry from a source-tree parameter node.
+
+        :param index: Source-model index coming from the dynamics device tree.
+        :return: Synthetic parameter entry, or ``None``.
+        """
+        candidate: DynamicPlotCandidate | None = self.get_candidate_from_index(index=index)
+        if candidate is not None:
+            if candidate.get_entry_kind() == DynamicPlotEntryKind.PARAMETER:
+                synthetic_entry: DynamicPlotEntry = DynamicPlotEntry(
+                    variable=None,
+                    plot=None,
+                    group=None,
+                    device=None,
+                    simulation_type=candidate._simulation_type,
+                    entry_kind=DynamicPlotEntryKind.PARAMETER,
+                    event_group_idtag=candidate._event_group_idtag,
+                    event_group_name=candidate._event_group_name,
+                    curve_device_type=candidate._device_type,
+                    device_idtag=candidate._device_idtag,
+                    device_name_hint=candidate._device_label,
+                    variable_name=candidate._variable_name,
+                    result_path_kind=candidate._result_path_kind,
+                    variable_custom_name=candidate._variable_custom_name,
+                    enabled=True,
+                    runtime_series_key_payload="",
+                    name=candidate._variable_name,
+                )
+                return synthetic_entry
+            else:
+                return None
+        else:
+            return None
+
+    def plot_parameter_candidate(self, candidate: DynamicPlotCandidate) -> bool:
+        """
+        Plot one parameter candidate directly from the source tree.
+
+        :param candidate: Source-tree parameter candidate.
+        :return: ``True`` when the parameter was resolved and plotted.
+        """
+        synthetic_entry: DynamicPlotEntry = DynamicPlotEntry(
+            variable=None,
+            plot=None,
+            group=None,
+            device=None,
+            simulation_type=candidate._simulation_type,
+            entry_kind=DynamicPlotEntryKind.PARAMETER,
+            event_group_idtag=candidate._event_group_idtag,
+            event_group_name=candidate._event_group_name,
+            curve_device_type=candidate._device_type,
+            device_idtag=candidate._device_idtag,
+            device_name_hint=candidate._device_label,
+            variable_name=candidate._variable_name,
+            result_path_kind=candidate._result_path_kind,
+            variable_custom_name=candidate._variable_custom_name,
+            enabled=True,
+            runtime_series_key_payload="",
+            name=candidate._variable_name,
+        )
+        return self.plot_parameter_entry(entry=synthetic_entry)
 
     def _get_series_plot_data(self, series: DynamicResultSeries) -> tuple[np.ndarray, np.ndarray]:
         """
@@ -3486,21 +4681,22 @@ class DynamicsResultsHandler:
         signature_by_uid: Dict[int, tuple[str, str, str]] = dict()
 
         device_tpe: DeviceType
-        devices_data: Dict[ALL_DEV_TYPES, List[Var]]
+        devices_data: Dict[ALL_DEV_TYPES, DynamicDeviceEntryCollection]
         for device_tpe, devices_data in self.tree_data.items():
             # The device type is not part of the requested matching rule.
             # It is still iterated because the result tree is grouped by device type.
             del device_tpe
 
             device: ALL_DEV_TYPES
-            variables: List[Var]
-            for device, variables in devices_data.items():
+            entry_collection: DynamicDeviceEntryCollection
+            for device, entry_collection in devices_data.items():
                 # The legacy signature supplements the stable device idtag with the
                 # visible device name. This avoids matching a different visible
                 # device after a rename, but it also means renames can prevent
                 # legacy entries from being restored.
                 device_idtag: str = str(device.idtag)
                 device_name: str = str(device.name)
+                variables: List[Var] = entry_collection.get_variables()
 
                 variable: Var
                 for variable in variables:
@@ -3523,15 +4719,16 @@ class DynamicsResultsHandler:
         variable_by_signature: Dict[tuple[str, str, str], List[DynamicResultSeries]] = dict()
 
         device_tpe: DeviceType
-        devices_data: Dict[ALL_DEV_TYPES, List[Var]]
+        devices_data: Dict[ALL_DEV_TYPES, DynamicDeviceEntryCollection]
         for device_tpe, devices_data in self.tree_data.items():
             del device_tpe
 
             device: ALL_DEV_TYPES
-            variables: List[Var]
-            for device, variables in devices_data.items():
+            entry_collection: DynamicDeviceEntryCollection
+            for device, entry_collection in devices_data.items():
                 device_idtag: str = str(device.idtag)
                 device_name: str = str(device.name)
+                variables: List[Var] = entry_collection.get_variables()
 
                 variable: Var
                 for variable in variables:

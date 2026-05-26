@@ -9,7 +9,7 @@ from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, GCPro
 from VeraGridEngine.Devices.Events.dynamic_plot import DynamicPlot
 from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
-from VeraGridEngine.enumerations import DeviceType, SubObjectType, PrpCat, PlotSimulationType
+from VeraGridEngine.enumerations import DeviceType, SubObjectType, PrpCat, PlotSimulationType, DynamicPlotEntryKind
 
 
 class DynamicPlotEntry(EditableDevice):
@@ -32,6 +32,7 @@ class DynamicPlotEntry(EditableDevice):
         'group',
         'device',
         '_simulation_type',
+        '_entry_kind',
         '_event_group_idtag',
         '_event_group_name',
         '_curve_device_type',
@@ -71,6 +72,13 @@ class DynamicPlotEntry(EditableDevice):
             units='',
             tpe=PlotSimulationType,
             definition='Simulation family for this persistent curve reference.',
+            cat=[PrpCat.RMS, PrpCat.EMT],
+        ),
+        GCProp(
+            prop_name='entry_kind',
+            units='',
+            tpe=DynamicPlotEntryKind,
+            definition='Whether this persistent entry references a dynamic variable or a model parameter.',
             cat=[PrpCat.RMS, PrpCat.EMT],
         ),
         GCProp(
@@ -151,6 +159,7 @@ class DynamicPlotEntry(EditableDevice):
                   group: RmsEventsGroup = None,
                   device: Any = None,
                   simulation_type: PlotSimulationType = PlotSimulationType.RMS,
+                  entry_kind: DynamicPlotEntryKind = DynamicPlotEntryKind.VARIABLE,
                   event_group_idtag: str = "",
                   event_group_name: str = "",
                   curve_device_type: DeviceType = DeviceType.NoDevice,
@@ -173,6 +182,7 @@ class DynamicPlotEntry(EditableDevice):
         :param group: Legacy RMS event-group hint.
         :param device: Optional legacy device hint.
         :param simulation_type: Simulation family identifier.
+        :param entry_kind: Semantic entry kind.
         :param event_group_idtag: Stable event-group identifier.
         :param event_group_name: Visible event-group name.
         :param curve_device_type: Device type that owns the curve.
@@ -202,7 +212,9 @@ class DynamicPlotEntry(EditableDevice):
         self.group: RmsEventsGroup = group
         self.plot: DynamicPlot = plot
         self._simulation_type: PlotSimulationType = PlotSimulationType.RMS
+        self._entry_kind: DynamicPlotEntryKind = DynamicPlotEntryKind.VARIABLE
         self.simulation_type = simulation_type
+        self.entry_kind = entry_kind
         self._event_group_idtag: str = str(event_group_idtag)
         self._event_group_name: str = str(event_group_name)
         self._curve_device_type: DeviceType = (
@@ -256,6 +268,28 @@ class DynamicPlotEntry(EditableDevice):
         :return: None.
         """
         self._event_group_idtag = str(val)
+
+    @property
+    def entry_kind(self) -> DynamicPlotEntryKind:
+        """
+        Get the semantic kind of this persistent plot entry.
+
+        :return: Entry kind.
+        """
+        return self._entry_kind
+
+    @entry_kind.setter
+    def entry_kind(self, val: DynamicPlotEntryKind) -> None:
+        """
+        Set the semantic kind of this persistent plot entry.
+
+        :param val: Entry kind.
+        :return: None.
+        """
+        if isinstance(val, DynamicPlotEntryKind):
+            self._entry_kind = val
+        else:
+            raise ValueError("Unsupported dynamic plot entry kind")
 
     @property
     def event_group_name(self) -> str:
