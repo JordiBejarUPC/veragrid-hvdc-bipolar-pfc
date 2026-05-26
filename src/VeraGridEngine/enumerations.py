@@ -1890,6 +1890,229 @@ class FileType(Enum):
         except KeyError:
             return s
 
+
+class PsseTopologyExportMode(Enum):
+    """
+    Enumeration of PSSE RAW topology export strategies.
+    """
+    BusBranch = "BusBranch"
+    NodeBreaker = "NodeBreaker"
+
+    def __str__(self):
+        """
+        Return the display string of the enumeration.
+
+        :return: Display string.
+        """
+        return self.value
+
+    def __repr__(self):
+        """
+        Return the representation string of the enumeration.
+
+        :return: Representation string.
+        """
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+        Parse a command-line value into the enumeration.
+
+        :param s: Input string.
+        :return: Parsed enumeration or original input.
+        """
+        try:
+            return PsseTopologyExportMode[s]
+        except KeyError:
+            return s
+
+
+class PsseExportMode(Enum):
+    """
+    Enumeration of PSSE export output strategies.
+    """
+    SingleFile = "Single file"
+    BatchZip = "Batch zip package"
+
+    def __str__(self):
+        """
+        Return the display string of the enumeration.
+
+        :return: Display string.
+        """
+        return self.value
+
+    def __repr__(self):
+        """
+        Return the representation string of the enumeration.
+
+        :return: Representation string.
+        """
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+        Parse a command-line value into the enumeration.
+
+        :param s: Input string.
+        :return: Parsed enumeration or original input.
+        """
+        try:
+            return PsseExportMode[s]
+        except KeyError:
+            return s
+
+
+class DgsExportMode(Enum):
+    """
+    Enumeration of DGS export output strategies.
+    """
+    SingleFile = "Single file"
+    BatchZip = "Batch zip package"
+
+    def __str__(self):
+        """
+        Return the display string of the enumeration.
+
+        :return: Display string.
+        """
+        return self.value
+
+    def __repr__(self):
+        """
+        Return the representation string of the enumeration.
+
+        :return: Representation string.
+        """
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+        Parse a command-line value into the enumeration.
+
+        :param s: Input string.
+        :return: Parsed enumeration or original input.
+        """
+        try:
+            return DgsExportMode[s]
+        except KeyError:
+            return s
+
+
+class MatpowerExportMode(Enum):
+    """
+    Enumeration of MATPOWER export output strategies.
+    """
+    SingleFile = "Single file"
+    BatchZip = "Batch zip package"
+
+    def __str__(self):
+        """
+        Return the display string of the enumeration.
+
+        :return: Display string.
+        """
+        return self.value
+
+    def __repr__(self):
+        """
+        Return the representation string of the enumeration.
+
+        :return: Representation string.
+        """
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+        Parse a command-line value into the enumeration.
+
+        :param s: Input string.
+        :return: Parsed enumeration or original input.
+        """
+        try:
+            return MatpowerExportMode[s]
+        except KeyError:
+            return s
+
+
+class UcteExportMode(Enum):
+    """
+    Enumeration of UCTE export output strategies.
+    """
+    SingleFile = "Single file"
+    BatchZip = "Batch zip package"
+
+    def __str__(self):
+        """
+        Return the display string of the enumeration.
+
+        :return: Display string.
+        """
+        return self.value
+
+    def __repr__(self):
+        """
+        Return the representation string of the enumeration.
+
+        :return: Representation string.
+        """
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+        Parse a command-line value into the enumeration.
+
+        :param s: Input string.
+        :return: Parsed enumeration or original input.
+        """
+        try:
+            return UcteExportMode[s]
+        except KeyError:
+            return s
+
+
+class CgmesExportMode(Enum):
+    """
+    Enumeration of CGMES export output strategies.
+    """
+    SingleFile = "Single file"
+    BatchZip = "Batch zip package"
+
+    def __str__(self):
+        """
+        Return the display string of the enumeration.
+
+        :return: Display string.
+        """
+        return self.value
+
+    def __repr__(self):
+        """
+        Return the representation string of the enumeration.
+
+        :return: Representation string.
+        """
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+        Parse a command-line value into the enumeration.
+
+        :param s: Input string.
+        :return: Parsed enumeration or original input.
+        """
+        try:
+            return CgmesExportMode[s]
+        except KeyError:
+            return s
+
+
 class CGMESVersions(Enum):
     """
     Enumeration of logs severities
@@ -1939,6 +2162,33 @@ class CgmesTopologyMode(Enum):
         """
         try:
             return CgmesTopologyMode[s]
+        except KeyError:
+            return s
+
+
+class CgmesBoundaryPlaceholderMode(Enum):
+    """
+    Boundary placeholder creation mode for CGMES conversion.
+    """
+    Always = "Always"
+    KnownBoundaryOnly = "KnownBoundaryOnly"
+    Never = "Never"
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return CgmesBoundaryPlaceholderMode[s]
         except KeyError:
             return s
 
@@ -3824,6 +4074,9 @@ class PlotSimulationType(Enum):
         """
         return self.value
 
+
+
+
 class BlockScopeMode(Enum):
     """
     Block extraction scope modes for DGS block parsing.
@@ -4047,3 +4300,44 @@ class EmtInitializationStatus(Enum):
             return EmtInitializationStatus[s]
         except KeyError:
             return s
+
+class DynamicPlotEntryKind(Enum):
+    """
+    Semantic kind of one persistent dynamic plot entry.
+    """
+
+    VARIABLE = "VARIABLE"
+    PARAMETER = "PARAMETER"
+
+    def __str__(self) -> str:
+        """
+        Return the persistent label used by dynamic plot entries.
+
+        :return: Persistent entry-kind label.
+        """
+        return self.value
+
+class DynamicEntrySection:
+    """
+    Stable source-tree section labels used for dynamic entries.
+    """
+
+    __slots__ = tuple()
+
+    VARIABLES: str = "Variables"
+    PARAMETERS: str = "Parameters"
+
+class TreeStateNodeKind(Enum):
+    """
+    Stable semantic node kinds used to preserve tree-view state.
+    """
+
+    ROOT = "root"
+    DEVICE_TYPE = "device_type"
+    DEVICE = "device"
+    SECTION = "section"
+    VARIABLE = "variable"
+    PARAMETER = "parameter"
+    SOURCE = "source"
+    PLOT_GROUP = "plot_group"
+    PLOT_ENTRY = "plot_entry"

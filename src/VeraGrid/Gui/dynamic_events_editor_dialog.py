@@ -15,6 +15,64 @@ from VeraGridEngine.Devices.Events.emt_events_group import EmtEventsGroup
 from VeraGridEngine.enumerations import DynamicEventTransitionType, DynamicSimulationMode
 
 
+def create_dynamic_events_group_with_dialog(circuit: MultiCircuit,
+                                            mode: DynamicSimulationMode,
+                                            parent: QtWidgets.QWidget | None,
+                                            missing_group_message: str,
+                                            created_group_message_title: str,
+                                            created_group_message_body_prefix: str) -> RmsEventsGroup | EmtEventsGroup | None:
+    """
+    Create one RMS/EMT events group through the shared modal workflow.
+
+    :param circuit: Circuit that owns the canonical event-group collections.
+    :param mode: Dynamic simulation family that determines the group type.
+    :param parent: Optional parent widget for the modal dialogs.
+    :param missing_group_message: Informational text shown before opening the name dialog.
+    :param created_group_message_title: Title shown after the group is created.
+    :param created_group_message_body_prefix: Prefix used in the created-group confirmation body.
+    :return: Created group asset, or ``None`` when the user cancels.
+    """
+    dialog_title: str
+
+    # The first modal explains why the broader workflow cannot proceed without
+    # at least one event-group asset. Reusing this flow keeps event creation
+    # semantics identical across the GUI.
+    if mode == DynamicSimulationMode.RMS:
+        dialog_title = "No RMS Events Group"
+    else:
+        dialog_title = "No EMT Events Group"
+
+    if parent is not None:
+        QtWidgets.QMessageBox.information(parent, dialog_title, missing_group_message)
+    else:
+        pass
+
+    # The canonical name-entry dialog ensures that every workflow creates the
+    # same persisted asset shape and requires the same explicit user choice.
+    dialog: DynamicEventsGroupsDialog = DynamicEventsGroupsDialog(parent=parent, mode=mode)
+    dialog_result: int = dialog.exec()
+    if dialog_result == QtWidgets.QDialog.DialogCode.Accepted:
+        group_name: str = dialog.get_name()
+        if mode == DynamicSimulationMode.RMS:
+            created_group: RmsEventsGroup | EmtEventsGroup = RmsEventsGroup(idtag=None, name=group_name)
+            circuit.add_rms_events_group(created_group)
+        else:
+            created_group = EmtEventsGroup(idtag=None, name=group_name)
+            circuit.add_emt_events_group(created_group)
+
+        if parent is not None:
+            QtWidgets.QMessageBox.information(
+                parent,
+                created_group_message_title,
+                f"{created_group_message_body_prefix}: {group_name}"
+            )
+        else:
+            pass
+        return created_group
+    else:
+        return None
+
+
 class EventRow:
     """Encapsulates a row in the RMS/EMT event table."""
 
@@ -608,42 +666,37 @@ class DynamicEventDialogue(QtWidgets.QDialog):
             row.row = i
 
     def create_event_group(self):
-        """Open dialog to create a new RMS/EMT events group."""
+        """
+        Open the shared RMS/EMT events-group creation workflow.
 
-        dialog = DynamicEventsGroupsDialog(parent=self,
-                                           mode=self.mode)
+        :return: None.
+        """
+        missing_group_message: str
+        created_group_message_title: str
+        created_group_message_body_prefix: str = "New group name"
 
-        if dialog.exec():
-            name = dialog.get_name()
+        if self.mode == DynamicSimulationMode.RMS:
+            missing_group_message = "No RMS Events Group found, please create one before adding an event."
+            created_group_message_title = "RMS group Created"
+        else:
+            missing_group_message = "No EMT Events Group found, please create one before adding an event."
+            created_group_message_title = "EMT group Created"
 
-            # create and add new Rms Events Group
-            if self.mode == DynamicSimulationMode.RMS:
-                new_group = RmsEventsGroup(idtag=None, name=name)
-                self.circuit.add_rms_events_group(new_group)
-                # update event rows
-                for row in self.rows:
-                    row.add_group(new_group)
+        new_group: RmsEventsGroup | EmtEventsGroup | None = create_dynamic_events_group_with_dialog(
+            circuit=self.circuit,
+            mode=self.mode,
+            parent=self,
+            missing_group_message=missing_group_message,
+            created_group_message_title=created_group_message_title,
+            created_group_message_body_prefix=created_group_message_body_prefix,
+        )
 
-                QtWidgets.QMessageBox.information(
-                    self,
-                    "RMS group Created",
-                    f"New group name: {name}"
-                )
-
-            # create and add new Emt Events Group
-            elif self.mode == DynamicSimulationMode.EMT:
-                new_group = EmtEventsGroup(idtag=None, name=name)
-                self.circuit.add_emt_events_group(new_group)
-
-                # update event rows
-                for row in self.rows:
-                    row.add_group(new_group)
-
-                QtWidgets.QMessageBox.information(
-                    self,
-                    "EMT group Created",
-                    f"New group name: {name}"
-                )
+        if new_group is not None:
+            row: EventRow
+            for row in self.rows:
+                row.add_group(new_group)
+        else:
+            pass
 
     def open_switch_sequence_dialog(self) -> None:
         """

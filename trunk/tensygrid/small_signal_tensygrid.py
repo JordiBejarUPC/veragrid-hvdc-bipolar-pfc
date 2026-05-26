@@ -11,6 +11,7 @@ This script creates the phasor problem manually and injects it into the SmallSig
 
 import sys
 from pathlib import Path
+import pickle
 
 project_base = Path(__file__).resolve().parents[2]
 src_path = project_base / "src"
@@ -70,7 +71,14 @@ from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_rms_mod
 """
 grid_folder = project_base / "Grids_and_profiles" / "grids"
 # GRID = "IEEE 118.xlsx"
-GRID = "IEEE 9 Bus.gridcal"
+GRID = "IEEE_9_Christoph.gridcal"
+
+if GRID == "IEEE_9_Christoph.gridcal":
+    CHRISTOPH_COMPARISON = True
+else:
+    CHRISTOPH_COMPARISON = False
+
+
 USE_CACHED_BUILDER = False
 BUILDER_CACHE_FILE = f'trunk/tensygrid/precomputed_builds/{GRID}.pkl'
 
@@ -190,6 +198,7 @@ def define_problem_with_path(grid_path):
     pf_options = vge.PowerFlowOptions(tolerance=1e-5)
     pf_results = vge.power_flow(grid, pf_options)
 
+
     if pf_results.converged:
         print(f"  ✓ Power flow converged")
         if PRINT_ALL_BUSES:
@@ -202,6 +211,11 @@ def define_problem_with_path(grid_path):
     else:
         print("  ✗ Power flow failed")
         return False
+
+
+    if CHRISTOPH_COMPARISON:
+        with open("Christoph_PF.pkl", "rb") as f:
+            pf_results = pickle.load(f)
 
     if RUN_PF_LINE_EQ_CHECK:
         check_pf_line_equations(grid=grid, pf_results=pf_results)

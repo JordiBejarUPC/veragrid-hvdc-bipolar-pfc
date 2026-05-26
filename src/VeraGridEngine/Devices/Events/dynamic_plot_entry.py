@@ -9,7 +9,7 @@ from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, GCPro
 from VeraGridEngine.Devices.Events.dynamic_plot import DynamicPlot
 from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
-from VeraGridEngine.enumerations import DeviceType, SubObjectType, PrpCat, PlotSimulationType
+from VeraGridEngine.enumerations import DeviceType, SubObjectType, PrpCat, PlotSimulationType, DynamicPlotEntryKind
 
 
 class DynamicPlotEntry(EditableDevice):
@@ -32,6 +32,7 @@ class DynamicPlotEntry(EditableDevice):
         'group',
         'device',
         '_simulation_type',
+        '_entry_kind',
         '_event_group_idtag',
         '_event_group_name',
         '_curve_device_type',
@@ -39,7 +40,7 @@ class DynamicPlotEntry(EditableDevice):
         '_device_name_hint',
         '_variable_name',
         '_result_path_kind',
-        '_curve_label',
+        '_variable_custom_name',
         '_enabled',
         '_runtime_series_key_payload',
     )
@@ -71,6 +72,13 @@ class DynamicPlotEntry(EditableDevice):
             units='',
             tpe=PlotSimulationType,
             definition='Simulation family for this persistent curve reference.',
+            cat=[PrpCat.RMS, PrpCat.EMT],
+        ),
+        GCProp(
+            prop_name='entry_kind',
+            units='',
+            tpe=DynamicPlotEntryKind,
+            definition='Whether this persistent entry references a dynamic variable or a model parameter.',
             cat=[PrpCat.RMS, PrpCat.EMT],
         ),
         GCProp(
@@ -123,10 +131,10 @@ class DynamicPlotEntry(EditableDevice):
             cat=[PrpCat.RMS, PrpCat.EMT],
         ),
         GCProp(
-            prop_name='curve_label',
+            prop_name='variable_custom_name',
             units='',
             tpe=str,
-            definition='Optional display label remembered for this curve.',
+            definition='Optional custom visible name remembered for this variable.',
             cat=[PrpCat.RMS, PrpCat.EMT],
         ),
         GCProp(
@@ -151,6 +159,7 @@ class DynamicPlotEntry(EditableDevice):
                   group: RmsEventsGroup = None,
                   device: Any = None,
                   simulation_type: PlotSimulationType = PlotSimulationType.RMS,
+                  entry_kind: DynamicPlotEntryKind = DynamicPlotEntryKind.VARIABLE,
                   event_group_idtag: str = "",
                   event_group_name: str = "",
                   curve_device_type: DeviceType = DeviceType.NoDevice,
@@ -158,11 +167,11 @@ class DynamicPlotEntry(EditableDevice):
                   device_name_hint: str = "",
                   variable_name: str = "",
                   result_path_kind: str = "",
-                  curve_label: str = "",
+                  variable_custom_name: str = "",
                   enabled: bool = True,
                   runtime_series_key_payload: str = "",
                   idtag: Union[str, None] = None,
-                  name="RmsEvent",
+                  name: str = "RmsEvent",
                   code='',
                   comment: str = ""):
         """
@@ -173,6 +182,7 @@ class DynamicPlotEntry(EditableDevice):
         :param group: Legacy RMS event-group hint.
         :param device: Optional legacy device hint.
         :param simulation_type: Simulation family identifier.
+        :param entry_kind: Semantic entry kind.
         :param event_group_idtag: Stable event-group identifier.
         :param event_group_name: Visible event-group name.
         :param curve_device_type: Device type that owns the curve.
@@ -180,7 +190,7 @@ class DynamicPlotEntry(EditableDevice):
         :param device_name_hint: Visible device-name hint.
         :param variable_name: Variable name selected by the user.
         :param result_path_kind: Result namespace such as ``values`` or ``diff_values``.
-        :param curve_label: Optional remembered display label.
+        :param variable_custom_name: Optional remembered custom visible variable name.
         :param enabled: ``True`` when the curve is enabled.
         :param runtime_series_key_payload: Optional cached runtime exact-match payload.
         :param idtag: Persistent entry identifier.
@@ -202,7 +212,9 @@ class DynamicPlotEntry(EditableDevice):
         self.group: RmsEventsGroup = group
         self.plot: DynamicPlot = plot
         self._simulation_type: PlotSimulationType = PlotSimulationType.RMS
+        self._entry_kind: DynamicPlotEntryKind = DynamicPlotEntryKind.VARIABLE
         self.simulation_type = simulation_type
+        self.entry_kind = entry_kind
         self._event_group_idtag: str = str(event_group_idtag)
         self._event_group_name: str = str(event_group_name)
         self._curve_device_type: DeviceType = (
@@ -212,7 +224,7 @@ class DynamicPlotEntry(EditableDevice):
         self._device_name_hint: str = str(device_name_hint)
         self._variable_name: str = str(variable_name)
         self._result_path_kind: str = str(result_path_kind)
-        self._curve_label: str = str(curve_label)
+        self._variable_custom_name: str = str(variable_custom_name)
         self._enabled: bool = bool(enabled)
         self._runtime_series_key_payload: str = str(runtime_series_key_payload)
 
@@ -256,6 +268,28 @@ class DynamicPlotEntry(EditableDevice):
         :return: None.
         """
         self._event_group_idtag = str(val)
+
+    @property
+    def entry_kind(self) -> DynamicPlotEntryKind:
+        """
+        Get the semantic kind of this persistent plot entry.
+
+        :return: Entry kind.
+        """
+        return self._entry_kind
+
+    @entry_kind.setter
+    def entry_kind(self, val: DynamicPlotEntryKind) -> None:
+        """
+        Set the semantic kind of this persistent plot entry.
+
+        :param val: Entry kind.
+        :return: None.
+        """
+        if isinstance(val, DynamicPlotEntryKind):
+            self._entry_kind = val
+        else:
+            raise ValueError("Unsupported dynamic plot entry kind")
 
     @property
     def event_group_name(self) -> str:
@@ -375,23 +409,23 @@ class DynamicPlotEntry(EditableDevice):
         self._result_path_kind = str(val)
 
     @property
-    def curve_label(self) -> str:
+    def variable_custom_name(self) -> str:
         """
-        Get the remembered display label.
+        Get the remembered custom visible variable name.
 
-        :return: Curve display label.
+        :return: Custom visible variable name.
         """
-        return self._curve_label
+        return self._variable_custom_name
 
-    @curve_label.setter
-    def curve_label(self, val: str) -> None:
+    @variable_custom_name.setter
+    def variable_custom_name(self, val: str) -> None:
         """
-        Set the remembered display label.
+        Set the remembered custom visible variable name.
 
-        :param val: Curve display label.
+        :param val: Custom visible variable name.
         :return: None.
         """
-        self._curve_label = str(val)
+        self._variable_custom_name = str(val)
 
     @property
     def enabled(self) -> bool:

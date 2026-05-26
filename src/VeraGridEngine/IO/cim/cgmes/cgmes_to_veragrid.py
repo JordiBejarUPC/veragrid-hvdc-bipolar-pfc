@@ -9,7 +9,8 @@ import numpy as np
 import pandas as pd
 import VeraGridEngine.IO.cim.cgmes.cgmes_enums as cgmes_enums
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
-from VeraGridEngine.enumerations import (CGMESVersions, CgmesTopologyMode, ConverterControlType, ExternalGridMode,
+from VeraGridEngine.enumerations import (CGMESVersions, CgmesTopologyMode, CgmesBoundaryPlaceholderMode,
+                                         ConverterControlType, ExternalGridMode,
                                          ContingencyOperationTypes)
 import VeraGridEngine.Devices as gcdev
 import VeraGridEngine.IO.cim.cgmes.cgmes_assets.cgmes_2_4_15_assets as cgmes24
@@ -673,6 +674,117 @@ def normalize_terminal_bus_mappings(calc_nodes: List[gcdev.Bus],
         return unique_calc_nodes, unique_calc_nodes, True
 
     return calc_nodes, unique_calc_nodes, False
+
+
+def validate_terminal_cardinality_consistency(cgmes_model: CgmesCircuit,
+                                              device_to_terminal_dict: Dict[str, List[CGMES_TERMINAL]],
+                                              bus_dict: Dict[str, gcdev.Bus],
+                                              logger: DataLogger) -> None:
+    """
+    Validate terminal cardinality consistency for equipment converted to VeraGrid.
+
+    The check is non-fatal and logs diagnostics before conversion starts.
+
+    :param cgmes_model: CGMES model.
+    :param device_to_terminal_dict: Conducting equipment UUID -> terminals.
+    :param bus_dict: VeraGrid buses.
+    :param logger: Logger.
+    :return: Nothing.
+    """
+    expected_terminal_counts: Dict[str, int] = dict()
+    expected_terminal_counts["Load"] = 1
+    expected_terminal_counts["ConformLoad"] = 1
+    expected_terminal_counts["NonConformLoad"] = 1
+    expected_terminal_counts["EnergyConsumer"] = 1
+    expected_terminal_counts["EquivalentInjection"] = 1
+    expected_terminal_counts["ExternalNetworkInjection"] = 1
+    expected_terminal_counts["EnergySource"] = 1
+    expected_terminal_counts["SynchronousMachine"] = 1
+    expected_terminal_counts["AsynchronousMachine"] = 1
+    expected_terminal_counts["LinearShuntCompensator"] = 1
+    expected_terminal_counts["NonlinearShuntCompensator"] = 1
+    expected_terminal_counts["StaticVarCompensator"] = 1
+    expected_terminal_counts["EquivalentShunt"] = 1
+    expected_terminal_counts["ACLineSegment"] = 2
+    expected_terminal_counts["SeriesCompensator"] = 2
+    expected_terminal_counts["Switch"] = 2
+    expected_terminal_counts["Breaker"] = 2
+    expected_terminal_counts["Disconnector"] = 2
+    expected_terminal_counts["LoadBreakSwitch"] = 2
+    expected_terminal_counts["PowerTransformer"] = 2
+
+    topological_node_tpe = cgmes_model.cgmes_assets.class_dict.get("TopologicalNode")
+    dc_topological_node_tpe = cgmes_model.cgmes_assets.class_dict.get("DCTopologicalNode")
+
+    for equipment_uuid, equipment_terminals in device_to_terminal_dict.items():
+        if len(equipment_terminals) == 0:
+            continue
+        else:
+            pass
+        first_terminal: CGMES_TERMINAL = equipment_terminals[0]
+        equipment = first_terminal.ConductingEquipment
+        if equipment is None:
+            continue
+        else:
+            pass
+
+        expected_count = expected_terminal_counts.get(equipment.tpe, None)
+        if expected_count is None:
+            continue
+        else:
+            pass
+
+        calc_nodes = find_associated_buses(
+            cgmes_elm=equipment,
+            device_to_terminal_dict=device_to_terminal_dict,
+            bus_dict=bus_dict,
+            TopologicalNode_tpe=topological_node_tpe,
+            DCTopologicalNode_tpe=dc_topological_node_tpe,
+            logger=logger,
+            cgmes_version=cgmes_model.cgmes_version
+        )
+        _, unique_calc_nodes, collapsed_terminals = normalize_terminal_bus_mappings(
+            calc_nodes=calc_nodes,
+            expected_count=expected_count
+        )
+        if collapsed_terminals:
+            logger.add_warning(
+                msg='Collapsed repeated terminals in consistency pre-check',
+                device=equipment.rdfid,
+                device_class=equipment.tpe,
+                device_property="number of associated terminals",
+                value=str(len(calc_nodes)),
+                expected_value=str(expected_count)
+            )
+        else:
+            pass
+
+        if len(calc_nodes) == expected_count:
+            pass
+        elif len(unique_calc_nodes) == expected_count and len(calc_nodes) > expected_count:
+            pass
+        else:
+            logger.add_error(
+                msg='Terminal cardinality mismatch before conversion',
+                device=equipment.rdfid,
+                device_class=equipment.tpe,
+                device_property="number of associated terminals",
+                value=str(len(calc_nodes)),
+                expected_value=str(expected_count)
+            )
+
+
+def build_boundary_uuid_index(cgmes_model: CgmesCircuit) -> set[str]:
+    """
+    Build boundary object UUID index for placeholder policy checks.
+
+    :param cgmes_model: CGMES model.
+    :return: Set of boundary object UUIDs.
+    """
+    boundary_uuid_index: set[str] = set()
+    for _, boundary_object in cgmes_model.all_objects_dict_boundary.items():
+        boundary_uuid_index.add(boundary_object.uuid)
+    return boundary_uuid_index
 
 
 def get_preferred_terminal_node_uuid(cgmes_terminal: CGMES_TERMINAL,
@@ -2965,7 +3077,9 @@ def get_gcdev_ac_lines(cgmes_model: CgmesCircuit,
                        bus_dict: Dict[str, gcdev.Bus],
                        device_to_terminal_dict: Dict[str, List[CGMES_TERMINAL]],
                        logger: DataLogger,
-                       Sbase: float) -> None:
+                       Sbase: float,
+                       boundary_placeholder_mode: CgmesBoundaryPlaceholderMode = CgmesBoundaryPlaceholderMode.Always,
+                       boundary_uuid_index: set[str] | None = None) -> None:
     """
     Convert the CGMES ac lines to gcdev
     :param cgmes_model: CgmesCircuit
@@ -3129,63 +3243,92 @@ def get_gcdev_ac_lines(cgmes_model: CgmesCircuit,
                             pass
 
                     if len(cgmes_terminals) > 0:
-                        calc_node_t = ensure_dangling_boundary_bus_and_external_grid(
-                            cgmes_line=cgmes_elm,
-                            gcdev_model=gcdev_model,
-                            bus_dict=bus_dict,
-                            mapped_internal_bus=calc_node_f,
+                        missing_node_uuid: str | None = find_missing_terminal_node_uuid(
                             cgmes_terminals=cgmes_terminals,
-                            prefer_connectivity_node=(cgmes_model.cgmes_version == CGMESVersions.v3_0_0),
-                            logger=logger
+                            bus_dict=bus_dict,
+                            prefer_connectivity_node=(cgmes_model.cgmes_version == CGMESVersions.v3_0_0)
                         )
-
-                        r, x, g, b, r0, x0, g0, b0 = get_pu_values_ac_line_segment(
-                            ac_line_segment=cgmes_elm,
-                            logger=logger,
-                            Sbase=Sbase
-                        )
-
-                        normal_rate_mva = patl_dict.get(cgmes_elm.uuid, 9999.0)
-                        cont_rate_mva = tatl_900_dict.get(cgmes_elm.uuid, 9999.0)
-                        if cont_rate_mva != 9999.0:
-                            cont_factor = cont_rate_mva / normal_rate_mva if normal_rate_mva != 0.0 else 1.0
+                        allow_placeholder_creation: bool = False
+                        if boundary_placeholder_mode == CgmesBoundaryPlaceholderMode.Always:
+                            allow_placeholder_creation = True
+                        elif boundary_placeholder_mode == CgmesBoundaryPlaceholderMode.KnownBoundaryOnly:
+                            if missing_node_uuid is not None and boundary_uuid_index is not None:
+                                if missing_node_uuid in boundary_uuid_index:
+                                    allow_placeholder_creation = True
+                                else:
+                                    allow_placeholder_creation = False
+                            else:
+                                allow_placeholder_creation = False
                         else:
-                            cont_factor = 1.0
+                            allow_placeholder_creation = False
 
-                        prot_rate_mva = tatl_60_dict.get(cgmes_elm.uuid, 9999.0)
-                        if prot_rate_mva != 9999.0:
-                            prot_factor = prot_rate_mva / normal_rate_mva if normal_rate_mva != 0.0 else 1.4
+                        if not allow_placeholder_creation:
+                            logger.add_error(
+                                msg='Dangling ACLineSegment placeholder creation blocked by boundary policy',
+                                device=cgmes_elm.rdfid,
+                                device_class=cgmes_elm.tpe,
+                                device_property="number of associated terminals",
+                                value=str(len(calc_nodes)),
+                                expected_value="2"
+                            )
                         else:
-                            prot_factor = 1.4
+                            calc_node_t = ensure_dangling_boundary_bus_and_external_grid(
+                                cgmes_line=cgmes_elm,
+                                gcdev_model=gcdev_model,
+                                bus_dict=bus_dict,
+                                mapped_internal_bus=calc_node_f,
+                                cgmes_terminals=cgmes_terminals,
+                                prefer_connectivity_node=(cgmes_model.cgmes_version == CGMESVersions.v3_0_0),
+                                logger=logger
+                            )
 
-                        if cgmes_elm.length is None:
-                            length = 1.0
-                            logger.add_warning(msg='ACLineSegment length is missing; default value used.',
-                                               device=cgmes_elm.rdfid,
-                                               device_class=str(cgmes_elm.tpe))
-                        else:
-                            length = float(cgmes_elm.length)
+                            r, x, g, b, r0, x0, g0, b0 = get_pu_values_ac_line_segment(
+                                ac_line_segment=cgmes_elm,
+                                logger=logger,
+                                Sbase=Sbase
+                            )
 
-                        gcdev_elm = gcdev.Line(
-                            idtag=cgmes_elm.uuid,
-                            code=cgmes_elm.description,
-                            name=cgmes_elm.name,
-                            active=get_cgmes_equipment_active_state(cgmes_elm),
-                            bus_from=calc_node_f,
-                            bus_to=calc_node_t,
-                            r=r,
-                            x=x,
-                            b=b,
-                            r0=r0,
-                            x0=x0,
-                            b0=b0,
-                            rate=normal_rate_mva,
-                            contingency_factor=cont_factor,
-                            protection_rating_factor=prot_factor,
-                            length=length,
-                        )
+                            normal_rate_mva = patl_dict.get(cgmes_elm.uuid, 9999.0)
+                            cont_rate_mva = tatl_900_dict.get(cgmes_elm.uuid, 9999.0)
+                            if cont_rate_mva != 9999.0:
+                                cont_factor = cont_rate_mva / normal_rate_mva if normal_rate_mva != 0.0 else 1.0
+                            else:
+                                cont_factor = 1.0
 
-                        gcdev_model.add_line(gcdev_elm, logger=logger)
+                            prot_rate_mva = tatl_60_dict.get(cgmes_elm.uuid, 9999.0)
+                            if prot_rate_mva != 9999.0:
+                                prot_factor = prot_rate_mva / normal_rate_mva if normal_rate_mva != 0.0 else 1.4
+                            else:
+                                prot_factor = 1.4
+
+                            if cgmes_elm.length is None:
+                                length = 1.0
+                                logger.add_warning(msg='ACLineSegment length is missing; default value used.',
+                                                   device=cgmes_elm.rdfid,
+                                                   device_class=str(cgmes_elm.tpe))
+                            else:
+                                length = float(cgmes_elm.length)
+
+                            gcdev_elm = gcdev.Line(
+                                idtag=cgmes_elm.uuid,
+                                code=cgmes_elm.description,
+                                name=cgmes_elm.name,
+                                active=get_cgmes_equipment_active_state(cgmes_elm),
+                                bus_from=calc_node_f,
+                                bus_to=calc_node_t,
+                                r=r,
+                                x=x,
+                                b=b,
+                                r0=r0,
+                                x0=x0,
+                                b0=b0,
+                                rate=normal_rate_mva,
+                                contingency_factor=cont_factor,
+                                protection_rating_factor=prot_factor,
+                                length=length,
+                            )
+
+                            gcdev_model.add_line(gcdev_elm, logger=logger)
                     else:
                         logger.add_error(msg='No CGMES terminals available for dangling ACLineSegment',
                                          device=cgmes_elm.rdfid,
@@ -4890,7 +5033,9 @@ def cgmes_to_veragrid(cgmes_model: CgmesCircuit,
                       map_dc_to_hvdc_line: bool,
                       logger: DataLogger,
                       cgmes_topology_mode: CgmesTopologyMode = CgmesTopologyMode.Auto,
-                      create_busbar_section_for_every_connectivity_node: bool = False) -> MultiCircuit:
+                      create_busbar_section_for_every_connectivity_node: bool = False,
+                      boundary_placeholder_mode: CgmesBoundaryPlaceholderMode = CgmesBoundaryPlaceholderMode.Always
+                      ) -> MultiCircuit:
     """
     Convert CGMES model to gcdev
 
@@ -4948,6 +5093,17 @@ def cgmes_to_veragrid(cgmes_model: CgmesCircuit,
 
     if fatal_error:
         return gc_model
+    else:
+        pass
+
+    validate_terminal_cardinality_consistency(
+        cgmes_model=cgmes_model,
+        device_to_terminal_dict=device_to_terminal_dict,
+        bus_dict=bus_dict,
+        logger=logger
+    )
+
+    boundary_uuid_index: set[str] = build_boundary_uuid_index(cgmes_model=cgmes_model)
 
     # cn_dict = get_gcdev_connectivity_nodes(cgmes_model=cgmes_model,
     #                                        gcdev_model=gc_model,
@@ -4990,7 +5146,9 @@ def cgmes_to_veragrid(cgmes_model: CgmesCircuit,
                        bus_dict=bus_dict,
                        device_to_terminal_dict=device_to_terminal_dict,
                        logger=logger,
-                       Sbase=Sbase)
+                       Sbase=Sbase,
+                       boundary_placeholder_mode=boundary_placeholder_mode,
+                       boundary_uuid_index=boundary_uuid_index)
 
     get_gcdev_series_compensators(cgmes_model=cgmes_model,
                                   gcdev_model=gc_model,

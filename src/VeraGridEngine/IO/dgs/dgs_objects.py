@@ -1176,19 +1176,23 @@ class ElmSubstat(DGSElement):
     element_type = 'ElmSubstat'
     properties_list = [
         DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
-        DgsProperty('loc_name', 'a', 'DGS field loc_name (a)', py_name='loc_name'),
+        DgsProperty('OP', 'a:1', 'Operation flag', py_name='OP'),
+        DgsProperty('loc_name', 'a:80', 'DGS field loc_name (a)', py_name='loc_name'),
         DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
         DgsProperty('Unom', 'r', 'DGS field Unom (r)', py_name='Unom'),
         DgsProperty('pRA', 'p', 'DGS field pRA (p)', py_name='pRA'),
         DgsProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
-        DgsProperty('sShort', 'a:6', 'DGS field sShort (a:6)', py_name='sShort'),
-        DgsProperty('sType', 'a:80', 'DGS field sType (a:80)', py_name='sType'),
-        DgsProperty('GPSlat', 'r', 'DGS field GPSlat (r)', py_name='GPSlat'),
-        DgsProperty('GPSlon', 'r', 'DGS field GPSlon (r)', py_name='GPSlon'),
+        DgsProperty('sShort', 'a:24', 'DGS field sShort (a:6)', py_name='sShort'),
+        DgsProperty('sType', 'a:160', 'DGS field sType (a:80)', py_name='sType'),
+        DgsProperty('GPSlat', 'r', 'Latitude / Northing in deg', py_name='GPSlat'),
+        DgsProperty('GPSlon', 'r', 'Longitude / Easting in deg', py_name='GPSlon'),
+        DgsProperty('cpArea', 'p', 'Default Area in ElmArea', py_name='cpArea'),
+        DgsProperty('cpZone', 'p', 'Default Zone in ElmZone', py_name='cpZone'),
     ]
 
     def __init__(self) -> None:
         self.ID: str = ""
+        self.OP: str = ""
         self.loc_name: str = ""
         self.fold_id: str = ""
         self.Unom: float = 0.0
@@ -1198,6 +1202,8 @@ class ElmSubstat(DGSElement):
         self.sType: str = ""
         self.GPSlat: float = 0.0
         self.GPSlon: float = 0.0
+        self.cpArea: str = ""
+        self.cpZone: str = ""
 
 
 class ElmSym(DGSElement):
@@ -1473,6 +1479,219 @@ class ElmTr3(DGSElement):
         self.mTaps_2_7: float = 0.0
         self.iMeasTap: int = 0
 
+class ElmTr4(DGSElement):
+    element_type = 'ElmTr4'
+    properties_list = [
+        DgsProperty('ID', 'a:40', 'Unique identifier for DGS file', py_name='ID'),
+        DgsProperty('OP', 'a:1', 'Operation flag', py_name='OP'),
+        DgsProperty('loc_name', 'a:80', 'Name', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'In Folder', py_name='fold_id'),
+        DgsProperty('typ_id', 'p', 'Type in TypTr4', py_name='typ_id'),
+        DgsProperty('outserv', 'i', 'Out of Service', py_name='outserv'),
+
+        DgsProperty('ictrlside', 'i', 'Controlled Side', py_name='ictrlside'),
+        DgsProperty('ntrcn', 'i', 'Control Node Number', py_name='ntrcn'),
+        DgsProperty('usetp', 'r', 'Voltage Setpoint in p.u.', py_name='usetp'),
+        DgsProperty('usp_low', 'r', 'Lower Voltage Setpoint Limit in p.u.', py_name='usp_low'),
+        DgsProperty('usp_up', 'r', 'Upper Voltage Setpoint Limit in p.u.', py_name='usp_up'),
+        DgsProperty('chr_name', 'a:40', 'Characteristic Name', py_name='chr_name'),
+        DgsProperty('for_name', 'a:100', 'Foreign Key', py_name='for_name'),
+
+        DgsProperty('Inom_l3', 'r', 'Nominal Current LV3 in kA', py_name='Inom_l3'),
+        DgsProperty('Inom_l2', 'r', 'Nominal Current LV2 in kA', py_name='Inom_l2'),
+        DgsProperty('Inom_l1', 'r', 'Nominal Current LV1 in kA', py_name='Inom_l1'),
+        DgsProperty('Inom_h0', 'r', 'Nominal Current HV in kA', py_name='Inom_h0'),
+
+        DgsProperty('Snom_l3', 'r', 'Nominal Power LV3 in MVA', py_name='Snom_l3'),
+        DgsProperty('Snom_l2', 'r', 'Nominal Power LV2 in MVA', py_name='Snom_l2'),
+        DgsProperty('Snom_l1', 'r', 'Nominal Power LV1 in MVA', py_name='Snom_l1'),
+        DgsProperty('Snom_h0', 'r', 'Nominal Power HV in MVA', py_name='Snom_h0'),
+
+        DgsProperty('Snom_l3_a', 'r', 'Actual Nominal Power LV3 in MVA', py_name='Snom_l3_a'),
+        DgsProperty('Snom_l2_a', 'r', 'Actual Nominal Power LV2 in MVA', py_name='Snom_l2_a'),
+        DgsProperty('Snom_l1_a', 'r', 'Actual Nominal Power LV1 in MVA', py_name='Snom_l1_a'),
+        DgsProperty('Snom_h0_a', 'r', 'Actual Nominal Power HV in MVA', py_name='Snom_h0_a'),
+
+        DgsProperty('xSbasepu_lv3', 'r', 'Positive Sequence Reactance LV3 in p.u.', py_name='xSbasepu_lv3'),
+        DgsProperty('xSbasepu_lv2', 'r', 'Positive Sequence Reactance LV2 in p.u.', py_name='xSbasepu_lv2'),
+        DgsProperty('xSbasepu_lv1', 'r', 'Positive Sequence Reactance LV1 in p.u.', py_name='xSbasepu_lv1'),
+        DgsProperty('xSbasepu_hv0', 'r', 'Positive Sequence Reactance HV in p.u.', py_name='xSbasepu_hv0'),
+
+        DgsProperty('rSbasepu_lv3', 'r', 'Positive Sequence Resistance LV3 in p.u.', py_name='rSbasepu_lv3'),
+        DgsProperty('rSbasepu_lv2', 'r', 'Positive Sequence Resistance LV2 in p.u.', py_name='rSbasepu_lv2'),
+        DgsProperty('rSbasepu_lv1', 'r', 'Positive Sequence Resistance LV1 in p.u.', py_name='rSbasepu_lv1'),
+        DgsProperty('rSbasepu_hv0', 'r', 'Positive Sequence Resistance HV in p.u.', py_name='rSbasepu_hv0'),
+
+        DgsProperty('xSbasepu_l2l3', 'r', 'Positive Sequence Reactance LV2-LV3 in p.u.', py_name='xSbasepu_l2l3'),
+        DgsProperty('xSbasepu_l1l3', 'r', 'Positive Sequence Reactance LV1-LV3 in p.u.', py_name='xSbasepu_l1l3'),
+        DgsProperty('xSbasepu_l1l2', 'r', 'Positive Sequence Reactance LV1-LV2 in p.u.', py_name='xSbasepu_l1l2'),
+        DgsProperty('xSbasepu_h0l3', 'r', 'Positive Sequence Reactance HV-LV3 in p.u.', py_name='xSbasepu_h0l3'),
+        DgsProperty('xSbasepu_h0l2', 'r', 'Positive Sequence Reactance HV-LV2 in p.u.', py_name='xSbasepu_h0l2'),
+        DgsProperty('xSbasepu_h0l1', 'r', 'Positive Sequence Reactance HV-LV1 in p.u.', py_name='xSbasepu_h0l1'),
+
+        DgsProperty('rSbasepu_l2l3', 'r', 'Positive Sequence Resistance LV2-LV3 in p.u.', py_name='rSbasepu_l2l3'),
+        DgsProperty('rSbasepu_l1l3', 'r', 'Positive Sequence Resistance LV1-LV3 in p.u.', py_name='rSbasepu_l1l3'),
+        DgsProperty('rSbasepu_l1l2', 'r', 'Positive Sequence Resistance LV1-LV2 in p.u.', py_name='rSbasepu_l1l2'),
+        DgsProperty('rSbasepu_h0l3', 'r', 'Positive Sequence Resistance HV-LV3 in p.u.', py_name='rSbasepu_h0l3'),
+        DgsProperty('rSbasepu_h0l2', 'r', 'Positive Sequence Resistance HV-LV2 in p.u.', py_name='rSbasepu_h0l2'),
+        DgsProperty('rSbasepu_h0l1', 'r', 'Positive Sequence Resistance HV-LV1 in p.u.', py_name='rSbasepu_h0l1'),
+
+        DgsProperty('x0Sbasepu_lv3', 'r', 'Zero Sequence Reactance LV3 in p.u.', py_name='x0Sbasepu_lv3'),
+        DgsProperty('x0Sbasepu_lv2', 'r', 'Zero Sequence Reactance LV2 in p.u.', py_name='x0Sbasepu_lv2'),
+        DgsProperty('x0Sbasepu_lv1', 'r', 'Zero Sequence Reactance LV1 in p.u.', py_name='x0Sbasepu_lv1'),
+        DgsProperty('x0Sbasepu_hv0', 'r', 'Zero Sequence Reactance HV in p.u.', py_name='x0Sbasepu_hv0'),
+
+        DgsProperty('r0Sbasepu_lv3', 'r', 'Zero Sequence Resistance LV3 in p.u.', py_name='r0Sbasepu_lv3'),
+        DgsProperty('r0Sbasepu_lv2', 'r', 'Zero Sequence Resistance LV2 in p.u.', py_name='r0Sbasepu_lv2'),
+        DgsProperty('r0Sbasepu_lv1', 'r', 'Zero Sequence Resistance LV1 in p.u.', py_name='r0Sbasepu_lv1'),
+        DgsProperty('r0Sbasepu_hv0', 'r', 'Zero Sequence Resistance HV in p.u.', py_name='r0Sbasepu_hv0'),
+
+        DgsProperty('bSbasepu', 'r', 'Magnetizing Susceptance in p.u.', py_name='bSbasepu'),
+
+        DgsProperty('pT_lv3', 'a', 'Tap Position LV3', py_name='pT_lv3'),
+        DgsProperty('pT_lv2', 'a', 'Tap Position LV2', py_name='pT_lv2'),
+        DgsProperty('pT_lv1', 'a', 'Tap Position LV1', py_name='pT_lv1'),
+        DgsProperty('pT_hv0', 'a', 'Tap Position HV', py_name='pT_hv0'),
+
+        DgsProperty('i_tapini_lv3', 'i', 'Initial Tap Position LV3', py_name='i_tapini_lv3'),
+        DgsProperty('i_tapini_lv2', 'i', 'Initial Tap Position LV2', py_name='i_tapini_lv2'),
+        DgsProperty('i_tapini_lv1', 'i', 'Initial Tap Position LV1', py_name='i_tapini_lv1'),
+        DgsProperty('i_tapini_hv0', 'i', 'Initial Tap Position HV', py_name='i_tapini_hv0'),
+
+        DgsProperty('busl3', 'p', 'LV3 Terminal in ElmTerm', py_name='busl3'),
+        DgsProperty('busl2', 'p', 'LV2 Terminal in ElmTerm', py_name='busl2'),
+        DgsProperty('busl1', 'p', 'LV1 Terminal in ElmTerm', py_name='busl1'),
+        DgsProperty('bush0', 'p', 'HV Terminal in ElmTerm', py_name='bush0'),
+
+        DgsProperty('cpSubstat', 'p', 'Substation in ElmSubstat', py_name='cpSubstat'),
+        DgsProperty('cpArea', 'p', 'Area in ElmArea', py_name='cpArea'),
+        DgsProperty('cpZone', 'p', 'Zone in ElmZone', py_name='cpZone'),
+        DgsProperty('cpGrid', 'p', 'Grid Reference', py_name='cpGrid'),
+
+        DgsProperty('GPSlon', 'r', 'Longitude / Easting in deg', py_name='GPSlon'),
+        DgsProperty('GPSlat', 'r', 'Latitude / Northing in deg', py_name='GPSlat'),
+
+        DgsProperty('maxload', 'r', 'Maximum Loading in percent', py_name='maxload'),
+        DgsProperty('ratfac_l3', 'r', 'Rating Factor LV3', py_name='ratfac_l3'),
+        DgsProperty('ratfac_l2', 'r', 'Rating Factor LV2', py_name='ratfac_l2'),
+        DgsProperty('ratfac_l1', 'r', 'Rating Factor LV1', py_name='ratfac_l1'),
+        DgsProperty('ratfac_h0', 'r', 'Rating Factor HV', py_name='ratfac_h0'),
+
+        DgsProperty('desc:0', 'a', 'Description Line 0', py_name='desc_0'),
+        DgsProperty('desc:1', 'a', 'Description Line 1', py_name='desc_1'),
+        DgsProperty('desc:2', 'a', 'Description Line 2', py_name='desc_2'),
+        DgsProperty('desc:3', 'a', 'Description Line 3', py_name='desc_3'),
+
+        DgsProperty('commissionDate', 'a:21', 'Commissioning Date', py_name='commissionDate'),
+        DgsProperty('sernum', 'a:40', 'Serial Number', py_name='sernum'),
+        DgsProperty('dat_src', 'a:6', 'Data Source', py_name='dat_src'),
+    ]
+
+    def __init__(self) -> None:
+        self.ID: str = ""
+        self.OP: str = ""
+        self.loc_name: str = ""
+        self.fold_id: str = ""
+        self.typ_id: str = ""
+        self.outserv: int = 0
+
+        self.ictrlside: int = 0
+        self.ntrcn: int = 0
+        self.usetp: float = 0.0
+        self.usp_low: float = 0.0
+        self.usp_up: float = 0.0
+        self.chr_name: str = ""
+        self.for_name: str = ""
+
+        self.Inom_l3: float = 0.0
+        self.Inom_l2: float = 0.0
+        self.Inom_l1: float = 0.0
+        self.Inom_h0: float = 0.0
+
+        self.Snom_l3: float = 0.0
+        self.Snom_l2: float = 0.0
+        self.Snom_l1: float = 0.0
+        self.Snom_h0: float = 0.0
+
+        self.Snom_l3_a: float = 0.0
+        self.Snom_l2_a: float = 0.0
+        self.Snom_l1_a: float = 0.0
+        self.Snom_h0_a: float = 0.0
+
+        self.xSbasepu_lv3: float = 0.0
+        self.xSbasepu_lv2: float = 0.0
+        self.xSbasepu_lv1: float = 0.0
+        self.xSbasepu_hv0: float = 0.0
+
+        self.rSbasepu_lv3: float = 0.0
+        self.rSbasepu_lv2: float = 0.0
+        self.rSbasepu_lv1: float = 0.0
+        self.rSbasepu_hv0: float = 0.0
+
+        self.xSbasepu_l2l3: float = 0.0
+        self.xSbasepu_l1l3: float = 0.0
+        self.xSbasepu_l1l2: float = 0.0
+        self.xSbasepu_h0l3: float = 0.0
+        self.xSbasepu_h0l2: float = 0.0
+        self.xSbasepu_h0l1: float = 0.0
+
+        self.rSbasepu_l2l3: float = 0.0
+        self.rSbasepu_l1l3: float = 0.0
+        self.rSbasepu_l1l2: float = 0.0
+        self.rSbasepu_h0l3: float = 0.0
+        self.rSbasepu_h0l2: float = 0.0
+        self.rSbasepu_h0l1: float = 0.0
+
+        self.x0Sbasepu_lv3: float = 0.0
+        self.x0Sbasepu_lv2: float = 0.0
+        self.x0Sbasepu_lv1: float = 0.0
+        self.x0Sbasepu_hv0: float = 0.0
+
+        self.r0Sbasepu_lv3: float = 0.0
+        self.r0Sbasepu_lv2: float = 0.0
+        self.r0Sbasepu_lv1: float = 0.0
+        self.r0Sbasepu_hv0: float = 0.0
+
+        self.bSbasepu: float = 0.0
+
+        self.pT_lv3: str = ""
+        self.pT_lv2: str = ""
+        self.pT_lv1: str = ""
+        self.pT_hv0: str = ""
+
+        self.i_tapini_lv3: int = 0
+        self.i_tapini_lv2: int = 0
+        self.i_tapini_lv1: int = 0
+        self.i_tapini_hv0: int = 0
+
+        self.busl3: str = ""
+        self.busl2: str = ""
+        self.busl1: str = ""
+        self.bush0: str = ""
+
+        self.cpSubstat: str = ""
+        self.cpArea: str = ""
+        self.cpZone: str = ""
+        self.cpGrid: str = ""
+
+        self.GPSlon: float = 0.0
+        self.GPSlat: float = 0.0
+
+        self.maxload: float = 0.0
+        self.ratfac_l3: float = 0.0
+        self.ratfac_l2: float = 0.0
+        self.ratfac_l1: float = 0.0
+        self.ratfac_h0: float = 0.0
+
+        self.desc_0: str = ""
+        self.desc_1: str = ""
+        self.desc_2: str = ""
+        self.desc_3: str = ""
+
+        self.commissionDate: str = ""
+        self.sernum: str = ""
+        self.dat_src: str = ""
+
 
 class ElmXnet(DGSElement):
     element_type = 'ElmXnet'
@@ -1548,6 +1767,26 @@ class ElmZone(DGSElement):
         self.fold_id: str = ""
         self.icolor: int = 0
         self.curscale: float = 0.0
+
+
+class ElmArea(DGSElement):
+    element_type = 'ElmArea'
+    properties_list = [
+        DgsProperty('ID', 'a:40', 'DGS field FID (a:40)', py_name='ID'),
+        DgsProperty('OP', 'a:1', 'DGS field OP (a:1)', py_name='OP'),
+        DgsProperty('loc_name', 'a:80', 'DGS field loc_name (a:80)', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+        DgsProperty('icolor', 'i', 'DGS field icolor (i)', py_name='icolor'),
+        DgsProperty('for_name', 'a:100', 'DGS field for_name (a:100)', py_name='for_name'),
+    ]
+
+    def __init__(self) -> None:
+        self.ID: str = ""
+        self.OP: str = ""
+        self.loc_name: str = ""
+        self.fold_id: str = ""
+        self.icolor: int = 0
+        self.for_name: str = ""
 
 
 class General(DGSElement):
@@ -2489,6 +2728,304 @@ class TypTr3(DGSElement):
         self.itapos: int = 0
         self.i3loc: int = 0
 
+class TypTr4(DGSElement):
+    element_type = 'TypTr4'
+    properties_list = [
+        DgsProperty('ID', 'a:40', 'Unique identifier for DGS file', py_name='ID'),
+        DgsProperty('OP', 'a:1', 'Operation flag', py_name='OP'),
+        DgsProperty('loc_name', 'a:80', 'Name', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'In Folder', py_name='fold_id'),
+
+        DgsProperty('pfe', 'r', 'Iron Losses in kW', py_name='pfe'),
+        DgsProperty('chr_name', 'a:40', 'Characteristic Name', py_name='chr_name'),
+        DgsProperty('for_name', 'a:100', 'Foreign Key', py_name='for_name'),
+        DgsProperty('dat_src', 'a:6', 'Data Source', py_name='dat_src'),
+
+        DgsProperty('trcon_h0', 'a:4', 'Vector Group HV Winding', py_name='trcon_h0'),
+        DgsProperty('trcon_l1', 'a:4', 'Vector Group LV1 Winding', py_name='trcon_l1'),
+        DgsProperty('trcon_l2', 'a:4', 'Vector Group LV2 Winding', py_name='trcon_l2'),
+        DgsProperty('trcon_l3', 'a:4', 'Vector Group LV3 Winding', py_name='trcon_l3'),
+        DgsProperty('vecgrp', 'a', 'Vector Group', py_name='vecgrp'),
+
+        DgsProperty('ansiclass', 'a:10', 'ANSI Class', py_name='ansiclass'),
+        DgsProperty('manuf', 'a:40', 'Manufacturer', py_name='manuf'),
+        DgsProperty('appr_modby', 'a:80', 'Approved / Modified By', py_name='appr_modby'),
+        DgsProperty('appr_modif', 'l', 'Approval Modification Timestamp', py_name='appr_modif'),
+
+        DgsProperty('sn_h0', 'r', 'Rated Power HV in MVA', py_name='sn_h0'),
+        DgsProperty('sn_l1', 'r', 'Rated Power LV1 in MVA', py_name='sn_l1'),
+        DgsProperty('sn_l2', 'r', 'Rated Power LV2 in MVA', py_name='sn_l2'),
+        DgsProperty('sn_l3', 'r', 'Rated Power LV3 in MVA', py_name='sn_l3'),
+
+        DgsProperty('un_h0', 'r', 'Rated Voltage HV in kV', py_name='un_h0'),
+        DgsProperty('un_l1', 'r', 'Rated Voltage LV1 in kV', py_name='un_l1'),
+        DgsProperty('un_l2', 'r', 'Rated Voltage LV2 in kV', py_name='un_l2'),
+        DgsProperty('un_l3', 'r', 'Rated Voltage LV3 in kV', py_name='un_l3'),
+
+        DgsProperty('uk_h0l1', 'r', 'Short-Circuit Voltage HV-LV1 in percent', py_name='uk_h0l1'),
+        DgsProperty('uk_h0l2', 'r', 'Short-Circuit Voltage HV-LV2 in percent', py_name='uk_h0l2'),
+        DgsProperty('uk_h0l3', 'r', 'Short-Circuit Voltage HV-LV3 in percent', py_name='uk_h0l3'),
+        DgsProperty('uk_l1l2', 'r', 'Short-Circuit Voltage LV1-LV2 in percent', py_name='uk_l1l2'),
+        DgsProperty('uk_l1l3', 'r', 'Short-Circuit Voltage LV1-LV3 in percent', py_name='uk_l1l3'),
+        DgsProperty('uk_l2l3', 'r', 'Short-Circuit Voltage LV2-LV3 in percent', py_name='uk_l2l3'),
+
+        DgsProperty('pcu_h0l1', 'r', 'Copper Losses HV-LV1 in kW', py_name='pcu_h0l1'),
+        DgsProperty('pcu_h0l2', 'r', 'Copper Losses HV-LV2 in kW', py_name='pcu_h0l2'),
+        DgsProperty('pcu_h0l3', 'r', 'Copper Losses HV-LV3 in kW', py_name='pcu_h0l3'),
+        DgsProperty('pcu_l1l2', 'r', 'Copper Losses LV1-LV2 in kW', py_name='pcu_l1l2'),
+        DgsProperty('pcu_l1l3', 'r', 'Copper Losses LV1-LV3 in kW', py_name='pcu_l1l3'),
+        DgsProperty('pcu_l2l3', 'r', 'Copper Losses LV2-LV3 in kW', py_name='pcu_l2l3'),
+
+        DgsProperty('uk_h0', 'r', 'Short-Circuit Voltage HV in percent', py_name='uk_h0'),
+        DgsProperty('uk_l1', 'r', 'Short-Circuit Voltage LV1 in percent', py_name='uk_l1'),
+        DgsProperty('uk_l2', 'r', 'Short-Circuit Voltage LV2 in percent', py_name='uk_l2'),
+        DgsProperty('uk_l3', 'r', 'Short-Circuit Voltage LV3 in percent', py_name='uk_l3'),
+
+        DgsProperty('pcu_h0', 'r', 'Copper Losses HV in kW', py_name='pcu_h0'),
+        DgsProperty('pcu_l1', 'r', 'Copper Losses LV1 in kW', py_name='pcu_l1'),
+        DgsProperty('pcu_l2', 'r', 'Copper Losses LV2 in kW', py_name='pcu_l2'),
+        DgsProperty('pcu_l3', 'r', 'Copper Losses LV3 in kW', py_name='pcu_l3'),
+
+        DgsProperty('curmag', 'r', 'No-Load Current in percent', py_name='curmag'),
+        DgsProperty('cur0mag', 'r', 'Zero Sequence No-Load Current in percent', py_name='cur0mag'),
+
+        DgsProperty('ntapmin_h0', 'i', 'Minimum Tap Position HV', py_name='ntapmin_h0'),
+        DgsProperty('ntapmin_l1', 'i', 'Minimum Tap Position LV1', py_name='ntapmin_l1'),
+        DgsProperty('ntapmin_l2', 'i', 'Minimum Tap Position LV2', py_name='ntapmin_l2'),
+        DgsProperty('ntapmin_l3', 'i', 'Minimum Tap Position LV3', py_name='ntapmin_l3'),
+
+        DgsProperty('ntapmax_h0', 'i', 'Maximum Tap Position HV', py_name='ntapmax_h0'),
+        DgsProperty('ntapmax_l1', 'i', 'Maximum Tap Position LV1', py_name='ntapmax_l1'),
+        DgsProperty('ntapmax_l2', 'i', 'Maximum Tap Position LV2', py_name='ntapmax_l2'),
+        DgsProperty('ntapmax_l3', 'i', 'Maximum Tap Position LV3', py_name='ntapmax_l3'),
+
+        DgsProperty('ntapneu_h0', 'i', 'Neutral Tap Position HV', py_name='ntapneu_h0'),
+        DgsProperty('ntapneu_l1', 'i', 'Neutral Tap Position LV1', py_name='ntapneu_l1'),
+        DgsProperty('ntapneu_l2', 'i', 'Neutral Tap Position LV2', py_name='ntapneu_l2'),
+        DgsProperty('ntapneu_l3', 'i', 'Neutral Tap Position LV3', py_name='ntapneu_l3'),
+
+        DgsProperty('dutap_h0', 'r', 'Tap Step HV in percent', py_name='dutap_h0'),
+        DgsProperty('dutap_l1', 'r', 'Tap Step LV1 in percent', py_name='dutap_l1'),
+        DgsProperty('dutap_l2', 'r', 'Tap Step LV2 in percent', py_name='dutap_l2'),
+        DgsProperty('dutap_l3', 'r', 'Tap Step LV3 in percent', py_name='dutap_l3'),
+
+        DgsProperty('phitr_h0', 'r', 'Phase Shift HV in deg', py_name='phitr_h0'),
+        DgsProperty('phitr_l1', 'r', 'Phase Shift LV1 in deg', py_name='phitr_l1'),
+        DgsProperty('phitr_l2', 'r', 'Phase Shift LV2 in deg', py_name='phitr_l2'),
+        DgsProperty('phitr_l3', 'r', 'Phase Shift LV3 in deg', py_name='phitr_l3'),
+
+        DgsProperty('oltc_h0', 'i', 'OLTC Available HV', py_name='oltc_h0'),
+        DgsProperty('oltc_l1', 'i', 'OLTC Available LV1', py_name='oltc_l1'),
+        DgsProperty('oltc_l2', 'i', 'OLTC Available LV2', py_name='oltc_l2'),
+        DgsProperty('oltc_l3', 'i', 'OLTC Available LV3', py_name='oltc_l3'),
+
+        DgsProperty('uk0_h0l1', 'r', 'Zero Sequence Short-Circuit Voltage HV-LV1 in percent', py_name='uk0_h0l1'),
+        DgsProperty('uk0_h0l2', 'r', 'Zero Sequence Short-Circuit Voltage HV-LV2 in percent', py_name='uk0_h0l2'),
+        DgsProperty('uk0_h0l3', 'r', 'Zero Sequence Short-Circuit Voltage HV-LV3 in percent', py_name='uk0_h0l3'),
+        DgsProperty('uk0_l1l2', 'r', 'Zero Sequence Short-Circuit Voltage LV1-LV2 in percent', py_name='uk0_l1l2'),
+        DgsProperty('uk0_l1l3', 'r', 'Zero Sequence Short-Circuit Voltage LV1-LV3 in percent', py_name='uk0_l1l3'),
+        DgsProperty('uk0_l2l3', 'r', 'Zero Sequence Short-Circuit Voltage LV2-LV3 in percent', py_name='uk0_l2l3'),
+
+        DgsProperty('ukr0_h0l1', 'r', 'Zero Sequence Resistive Short-Circuit Voltage HV-LV1 in percent', py_name='ukr0_h0l1'),
+        DgsProperty('ukr0_h0l2', 'r', 'Zero Sequence Resistive Short-Circuit Voltage HV-LV2 in percent', py_name='ukr0_h0l2'),
+        DgsProperty('ukr0_h0l3', 'r', 'Zero Sequence Resistive Short-Circuit Voltage HV-LV3 in percent', py_name='ukr0_h0l3'),
+        DgsProperty('ukr0_l1l2', 'r', 'Zero Sequence Resistive Short-Circuit Voltage LV1-LV2 in percent', py_name='ukr0_l1l2'),
+        DgsProperty('ukr0_l1l3', 'r', 'Zero Sequence Resistive Short-Circuit Voltage LV1-LV3 in percent', py_name='ukr0_l1l3'),
+        DgsProperty('ukr0_l2l3', 'r', 'Zero Sequence Resistive Short-Circuit Voltage LV2-LV3 in percent', py_name='ukr0_l2l3'),
+
+        DgsProperty('ukr_h0l1', 'r', 'Resistive Short-Circuit Voltage HV-LV1 in percent', py_name='ukr_h0l1'),
+        DgsProperty('ukr_h0l2', 'r', 'Resistive Short-Circuit Voltage HV-LV2 in percent', py_name='ukr_h0l2'),
+        DgsProperty('ukr_h0l3', 'r', 'Resistive Short-Circuit Voltage HV-LV3 in percent', py_name='ukr_h0l3'),
+        DgsProperty('ukr_l1l2', 'r', 'Resistive Short-Circuit Voltage LV1-LV2 in percent', py_name='ukr_l1l2'),
+        DgsProperty('ukr_l1l3', 'r', 'Resistive Short-Circuit Voltage LV1-LV3 in percent', py_name='ukr_l1l3'),
+        DgsProperty('ukr_l2l3', 'r', 'Resistive Short-Circuit Voltage LV2-LV3 in percent', py_name='ukr_l2l3'),
+
+        DgsProperty('xtor_h0l1', 'r', 'X/R Ratio HV-LV1', py_name='xtor_h0l1'),
+        DgsProperty('xtor_h0l2', 'r', 'X/R Ratio HV-LV2', py_name='xtor_h0l2'),
+        DgsProperty('xtor_h0l3', 'r', 'X/R Ratio HV-LV3', py_name='xtor_h0l3'),
+        DgsProperty('xtor_l1l2', 'r', 'X/R Ratio LV1-LV2', py_name='xtor_l1l2'),
+        DgsProperty('xtor_l1l3', 'r', 'X/R Ratio LV1-LV3', py_name='xtor_l1l3'),
+        DgsProperty('xtor_l2l3', 'r', 'X/R Ratio LV2-LV3', py_name='xtor_l2l3'),
+
+        DgsProperty('r1pu_h0l1', 'r', 'Positive Sequence Resistance HV-LV1 in p.u.', py_name='r1pu_h0l1'),
+        DgsProperty('r1pu_h0l2', 'r', 'Positive Sequence Resistance HV-LV2 in p.u.', py_name='r1pu_h0l2'),
+        DgsProperty('r1pu_h0l3', 'r', 'Positive Sequence Resistance HV-LV3 in p.u.', py_name='r1pu_h0l3'),
+        DgsProperty('r1pu_l1l2', 'r', 'Positive Sequence Resistance LV1-LV2 in p.u.', py_name='r1pu_l1l2'),
+        DgsProperty('r1pu_l1l3', 'r', 'Positive Sequence Resistance LV1-LV3 in p.u.', py_name='r1pu_l1l3'),
+        DgsProperty('r1pu_l2l3', 'r', 'Positive Sequence Resistance LV2-LV3 in p.u.', py_name='r1pu_l2l3'),
+
+        DgsProperty('x1pu_h0l1', 'r', 'Positive Sequence Reactance HV-LV1 in p.u.', py_name='x1pu_h0l1'),
+        DgsProperty('x1pu_h0l2', 'r', 'Positive Sequence Reactance HV-LV2 in p.u.', py_name='x1pu_h0l2'),
+        DgsProperty('x1pu_h0l3', 'r', 'Positive Sequence Reactance HV-LV3 in p.u.', py_name='x1pu_h0l3'),
+        DgsProperty('x1pu_l1l2', 'r', 'Positive Sequence Reactance LV1-LV2 in p.u.', py_name='x1pu_l1l2'),
+        DgsProperty('x1pu_l1l3', 'r', 'Positive Sequence Reactance LV1-LV3 in p.u.', py_name='x1pu_l1l3'),
+        DgsProperty('x1pu_l2l3', 'r', 'Positive Sequence Reactance LV2-LV3 in p.u.', py_name='x1pu_l2l3'),
+
+        DgsProperty('r0pu_h0', 'r', 'Zero Sequence Resistance HV in p.u.', py_name='r0pu_h0'),
+        DgsProperty('r0pu_l1', 'r', 'Zero Sequence Resistance LV1 in p.u.', py_name='r0pu_l1'),
+        DgsProperty('r0pu_l2', 'r', 'Zero Sequence Resistance LV2 in p.u.', py_name='r0pu_l2'),
+        DgsProperty('r0pu_l3', 'r', 'Zero Sequence Resistance LV3 in p.u.', py_name='r0pu_l3'),
+
+        DgsProperty('x0pu_h0', 'r', 'Zero Sequence Reactance HV in p.u.', py_name='x0pu_h0'),
+        DgsProperty('x0pu_l1', 'r', 'Zero Sequence Reactance LV1 in p.u.', py_name='x0pu_l1'),
+        DgsProperty('x0pu_l2', 'r', 'Zero Sequence Reactance LV2 in p.u.', py_name='x0pu_l2'),
+        DgsProperty('x0pu_l3', 'r', 'Zero Sequence Reactance LV3 in p.u.', py_name='x0pu_l3'),
+
+        DgsProperty('bm1', 'r', 'Positive Sequence Magnetizing Susceptance in p.u.', py_name='bm1'),
+        DgsProperty('gm1', 'r', 'Positive Sequence Magnetizing Conductance in p.u.', py_name='gm1'),
+
+        DgsProperty('desc:0', 'a', 'Description Line 0', py_name='desc_0'),
+        DgsProperty('doc_id', 'p', 'Document Reference', py_name='doc_id'),
+    ]
+
+    def __init__(self) -> None:
+        self.ID: str = ""
+        self.OP: str = ""
+        self.loc_name: str = ""
+        self.fold_id: str = ""
+
+        self.pfe: float = 0.0
+        self.chr_name: str = ""
+        self.for_name: str = ""
+        self.dat_src: str = ""
+
+        self.trcon_h0: str = ""
+        self.trcon_l1: str = ""
+        self.trcon_l2: str = ""
+        self.trcon_l3: str = ""
+        self.vecgrp: str = ""
+
+        self.ansiclass: str = ""
+        self.manuf: str = ""
+        self.appr_modby: str = ""
+        self.appr_modif: int = 0
+
+        self.sn_h0: float = 0.0
+        self.sn_l1: float = 0.0
+        self.sn_l2: float = 0.0
+        self.sn_l3: float = 0.0
+
+        self.un_h0: float = 0.0
+        self.un_l1: float = 0.0
+        self.un_l2: float = 0.0
+        self.un_l3: float = 0.0
+
+        self.uk_h0l1: float = 0.0
+        self.uk_h0l2: float = 0.0
+        self.uk_h0l3: float = 0.0
+        self.uk_l1l2: float = 0.0
+        self.uk_l1l3: float = 0.0
+        self.uk_l2l3: float = 0.0
+
+        self.pcu_h0l1: float = 0.0
+        self.pcu_h0l2: float = 0.0
+        self.pcu_h0l3: float = 0.0
+        self.pcu_l1l2: float = 0.0
+        self.pcu_l1l3: float = 0.0
+        self.pcu_l2l3: float = 0.0
+
+        self.uk_h0: float = 0.0
+        self.uk_l1: float = 0.0
+        self.uk_l2: float = 0.0
+        self.uk_l3: float = 0.0
+
+        self.pcu_h0: float = 0.0
+        self.pcu_l1: float = 0.0
+        self.pcu_l2: float = 0.0
+        self.pcu_l3: float = 0.0
+
+        self.curmag: float = 0.0
+        self.cur0mag: float = 0.0
+
+        self.ntapmin_h0: int = 0
+        self.ntapmin_l1: int = 0
+        self.ntapmin_l2: int = 0
+        self.ntapmin_l3: int = 0
+
+        self.ntapmax_h0: int = 0
+        self.ntapmax_l1: int = 0
+        self.ntapmax_l2: int = 0
+        self.ntapmax_l3: int = 0
+
+        self.ntapneu_h0: int = 0
+        self.ntapneu_l1: int = 0
+        self.ntapneu_l2: int = 0
+        self.ntapneu_l3: int = 0
+
+        self.dutap_h0: float = 0.0
+        self.dutap_l1: float = 0.0
+        self.dutap_l2: float = 0.0
+        self.dutap_l3: float = 0.0
+
+        self.phitr_h0: float = 0.0
+        self.phitr_l1: float = 0.0
+        self.phitr_l2: float = 0.0
+        self.phitr_l3: float = 0.0
+
+        self.oltc_h0: int = 0
+        self.oltc_l1: int = 0
+        self.oltc_l2: int = 0
+        self.oltc_l3: int = 0
+
+        self.uk0_h0l1: float = 0.0
+        self.uk0_h0l2: float = 0.0
+        self.uk0_h0l3: float = 0.0
+        self.uk0_l1l2: float = 0.0
+        self.uk0_l1l3: float = 0.0
+        self.uk0_l2l3: float = 0.0
+
+        self.ukr0_h0l1: float = 0.0
+        self.ukr0_h0l2: float = 0.0
+        self.ukr0_h0l3: float = 0.0
+        self.ukr0_l1l2: float = 0.0
+        self.ukr0_l1l3: float = 0.0
+        self.ukr0_l2l3: float = 0.0
+
+        self.ukr_h0l1: float = 0.0
+        self.ukr_h0l2: float = 0.0
+        self.ukr_h0l3: float = 0.0
+        self.ukr_l1l2: float = 0.0
+        self.ukr_l1l3: float = 0.0
+        self.ukr_l2l3: float = 0.0
+
+        self.xtor_h0l1: float = 0.0
+        self.xtor_h0l2: float = 0.0
+        self.xtor_h0l3: float = 0.0
+        self.xtor_l1l2: float = 0.0
+        self.xtor_l1l3: float = 0.0
+        self.xtor_l2l3: float = 0.0
+
+        self.r1pu_h0l1: float = 0.0
+        self.r1pu_h0l2: float = 0.0
+        self.r1pu_h0l3: float = 0.0
+        self.r1pu_l1l2: float = 0.0
+        self.r1pu_l1l3: float = 0.0
+        self.r1pu_l2l3: float = 0.0
+
+        self.x1pu_h0l1: float = 0.0
+        self.x1pu_h0l2: float = 0.0
+        self.x1pu_h0l3: float = 0.0
+        self.x1pu_l1l2: float = 0.0
+        self.x1pu_l1l3: float = 0.0
+        self.x1pu_l2l3: float = 0.0
+
+        self.r0pu_h0: float = 0.0
+        self.r0pu_l1: float = 0.0
+        self.r0pu_l2: float = 0.0
+        self.r0pu_l3: float = 0.0
+
+        self.x0pu_h0: float = 0.0
+        self.x0pu_l1: float = 0.0
+        self.x0pu_l2: float = 0.0
+        self.x0pu_l3: float = 0.0
+
+        self.bm1: float = 0.0
+        self.gm1: float = 0.0
+
+        self.desc_0: str = ""
+        self.doc_id: str = ""
+
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Overhead line modelling (PowerFactory: conductor / tower / line coupling)
@@ -2762,9 +3299,8 @@ class TypTow(DGSElement):
 
     element_type = 'TypTow'
 
-    # Keep the schema minimal and parse the dynamic arrays/matrices manually in parse_line.
     properties_list = [
-        DgsProperty(name='ID', dgs_type='a:40', description='Unique identifier for DGS file', py_name='ID'),
+        DgsProperty(name='FID', dgs_type='a:40', description='Unique identifier for DGS file', py_name='ID'),
         DgsProperty(name='OP', dgs_type='a:1', description='Operation', py_name='OP'),
         DgsProperty(name='loc_name', dgs_type='a:80', description='Name', py_name='loc_name'),
         DgsProperty(name='fold_id', dgs_type='p', description='In Folder', py_name='fold_id'),
@@ -2772,6 +3308,87 @@ class TypTow(DGSElement):
         DgsProperty(name='nlear', dgs_type='i', description='Number of Earth Wires', py_name='nlear'),
         DgsProperty(name='nlcir', dgs_type='i', description='Number of Line Circuits', py_name='nlcir'),
         DgsProperty(name='gearth', dgs_type='r', description='Earth conductivity in uS/cm', py_name='gearth'),
+        DgsProperty(name='i_mode', dgs_type='i', description='Tower model mode code', py_name='i_mode'),
+        DgsProperty(name='pcond_e:SIZEROW', dgs_type='i', description='Earth conductor vector size', py_name='pcond_e_SIZEROW'),
+        DgsProperty(name='pcond_e:0', dgs_type='p', description='Earth conductor pointer 0', py_name='pcond_e_0'),
+        DgsProperty(name='pcond_e:1', dgs_type='p', description='Earth conductor pointer 1', py_name='pcond_e_1'),
+        DgsProperty(name='nphas:SIZEROW', dgs_type='i', description='Phase-count vector size', py_name='nphas_SIZEROW'),
+        DgsProperty(name='nphas:0', dgs_type='r', description='Phase count value 0', py_name='nphas_0'),
+        DgsProperty(name='nphas:1', dgs_type='r', description='Phase count value 1', py_name='nphas_1'),
+        DgsProperty(name='ktrto:SIZEROW', dgs_type='i', description='Transposition vector size', py_name='ktrto_SIZEROW'),
+        DgsProperty(name='ktrto:0', dgs_type='r', description='Transposition value 0', py_name='ktrto_0'),
+        DgsProperty(name='ktrto:1', dgs_type='r', description='Transposition value 1', py_name='ktrto_1'),
+        DgsProperty(name='pcond_c:SIZEROW', dgs_type='i', description='Circuit conductor vector size', py_name='pcond_c_SIZEROW'),
+        DgsProperty(name='pcond_c:0', dgs_type='p', description='Circuit conductor pointer 0', py_name='pcond_c_0'),
+        DgsProperty(name='pcond_c:1', dgs_type='p', description='Circuit conductor pointer 1', py_name='pcond_c_1'),
+        DgsProperty(name='xy_e:SIZEROW', dgs_type='i', description='Earth coordinate matrix rows', py_name='xy_e_SIZEROW'),
+        DgsProperty(name='xy_e:SIZECOL', dgs_type='i', description='Earth coordinate matrix columns', py_name='xy_e_SIZECOL'),
+        DgsProperty(name='xy_e:0:0', dgs_type='r', description='Earth coordinate [0,0]', py_name='xy_e_0_0'),
+        DgsProperty(name='xy_e:0:1', dgs_type='r', description='Earth coordinate [0,1]', py_name='xy_e_0_1'),
+        DgsProperty(name='xy_e:1:0', dgs_type='r', description='Earth coordinate [1,0]', py_name='xy_e_1_0'),
+        DgsProperty(name='xy_e:1:1', dgs_type='r', description='Earth coordinate [1,1]', py_name='xy_e_1_1'),
+        DgsProperty(name='xy_c:SIZEROW', dgs_type='i', description='Circuit coordinate matrix rows', py_name='xy_c_SIZEROW'),
+        DgsProperty(name='xy_c:SIZECOL', dgs_type='i', description='Circuit coordinate matrix columns', py_name='xy_c_SIZECOL'),
+        DgsProperty(name='xy_c:0:0', dgs_type='r', description='Circuit coordinate [0,0]', py_name='xy_c_0_0'),
+        DgsProperty(name='xy_c:0:1', dgs_type='r', description='Circuit coordinate [0,1]', py_name='xy_c_0_1'),
+        DgsProperty(name='xy_c:0:2', dgs_type='r', description='Circuit coordinate [0,2]', py_name='xy_c_0_2'),
+        DgsProperty(name='xy_c:0:3', dgs_type='r', description='Circuit coordinate [0,3]', py_name='xy_c_0_3'),
+        DgsProperty(name='xy_c:0:4', dgs_type='r', description='Circuit coordinate [0,4]', py_name='xy_c_0_4'),
+        DgsProperty(name='xy_c:0:5', dgs_type='r', description='Circuit coordinate [0,5]', py_name='xy_c_0_5'),
+        DgsProperty(name='xy_c:1:0', dgs_type='r', description='Circuit coordinate [1,0]', py_name='xy_c_1_0'),
+        DgsProperty(name='xy_c:1:1', dgs_type='r', description='Circuit coordinate [1,1]', py_name='xy_c_1_1'),
+        DgsProperty(name='xy_c:1:2', dgs_type='r', description='Circuit coordinate [1,2]', py_name='xy_c_1_2'),
+        DgsProperty(name='xy_c:1:3', dgs_type='r', description='Circuit coordinate [1,3]', py_name='xy_c_1_3'),
+        DgsProperty(name='xy_c:1:4', dgs_type='r', description='Circuit coordinate [1,4]', py_name='xy_c_1_4'),
+        DgsProperty(name='xy_c:1:5', dgs_type='r', description='Circuit coordinate [1,5]', py_name='xy_c_1_5'),
+        DgsProperty(name='R_c0:SIZEROW', dgs_type='i', description='R_c0 matrix rows', py_name='R_c0_SIZEROW'),
+        DgsProperty(name='R_c0:SIZECOL', dgs_type='i', description='R_c0 matrix cols', py_name='R_c0_SIZECOL'),
+        DgsProperty(name='R_c0:0:0', dgs_type='r', description='R_c0 [0,0]', py_name='R_c0_0_0'),
+        DgsProperty(name='R_c0:0:1', dgs_type='r', description='R_c0 [0,1]', py_name='R_c0_0_1'),
+        DgsProperty(name='R_c0:1:0', dgs_type='r', description='R_c0 [1,0]', py_name='R_c0_1_0'),
+        DgsProperty(name='R_c0:1:1', dgs_type='r', description='R_c0 [1,1]', py_name='R_c0_1_1'),
+        DgsProperty(name='X_c0:SIZEROW', dgs_type='i', description='X_c0 matrix rows', py_name='X_c0_SIZEROW'),
+        DgsProperty(name='X_c0:SIZECOL', dgs_type='i', description='X_c0 matrix cols', py_name='X_c0_SIZECOL'),
+        DgsProperty(name='X_c0:0:0', dgs_type='r', description='X_c0 [0,0]', py_name='X_c0_0_0'),
+        DgsProperty(name='X_c0:0:1', dgs_type='r', description='X_c0 [0,1]', py_name='X_c0_0_1'),
+        DgsProperty(name='X_c0:1:0', dgs_type='r', description='X_c0 [1,0]', py_name='X_c0_1_0'),
+        DgsProperty(name='X_c0:1:1', dgs_type='r', description='X_c0 [1,1]', py_name='X_c0_1_1'),
+        DgsProperty(name='R_c1:SIZEROW', dgs_type='i', description='R_c1 matrix rows', py_name='R_c1_SIZEROW'),
+        DgsProperty(name='R_c1:SIZECOL', dgs_type='i', description='R_c1 matrix cols', py_name='R_c1_SIZECOL'),
+        DgsProperty(name='R_c1:0:0', dgs_type='r', description='R_c1 [0,0]', py_name='R_c1_0_0'),
+        DgsProperty(name='R_c1:0:1', dgs_type='r', description='R_c1 [0,1]', py_name='R_c1_0_1'),
+        DgsProperty(name='R_c1:1:0', dgs_type='r', description='R_c1 [1,0]', py_name='R_c1_1_0'),
+        DgsProperty(name='R_c1:1:1', dgs_type='r', description='R_c1 [1,1]', py_name='R_c1_1_1'),
+        DgsProperty(name='X_c1:SIZEROW', dgs_type='i', description='X_c1 matrix rows', py_name='X_c1_SIZEROW'),
+        DgsProperty(name='X_c1:SIZECOL', dgs_type='i', description='X_c1 matrix cols', py_name='X_c1_SIZECOL'),
+        DgsProperty(name='X_c1:0:0', dgs_type='r', description='X_c1 [0,0]', py_name='X_c1_0_0'),
+        DgsProperty(name='X_c1:0:1', dgs_type='r', description='X_c1 [0,1]', py_name='X_c1_0_1'),
+        DgsProperty(name='X_c1:1:0', dgs_type='r', description='X_c1 [1,0]', py_name='X_c1_1_0'),
+        DgsProperty(name='X_c1:1:1', dgs_type='r', description='X_c1 [1,1]', py_name='X_c1_1_1'),
+        DgsProperty(name='B_c0:SIZEROW', dgs_type='i', description='B_c0 matrix rows', py_name='B_c0_SIZEROW'),
+        DgsProperty(name='B_c0:SIZECOL', dgs_type='i', description='B_c0 matrix cols', py_name='B_c0_SIZECOL'),
+        DgsProperty(name='B_c0:0:0', dgs_type='r', description='B_c0 [0,0]', py_name='B_c0_0_0'),
+        DgsProperty(name='B_c0:0:1', dgs_type='r', description='B_c0 [0,1]', py_name='B_c0_0_1'),
+        DgsProperty(name='B_c0:1:0', dgs_type='r', description='B_c0 [1,0]', py_name='B_c0_1_0'),
+        DgsProperty(name='B_c0:1:1', dgs_type='r', description='B_c0 [1,1]', py_name='B_c0_1_1'),
+        DgsProperty(name='B_c1:SIZEROW', dgs_type='i', description='B_c1 matrix rows', py_name='B_c1_SIZEROW'),
+        DgsProperty(name='B_c1:SIZECOL', dgs_type='i', description='B_c1 matrix cols', py_name='B_c1_SIZECOL'),
+        DgsProperty(name='B_c1:0:0', dgs_type='r', description='B_c1 [0,0]', py_name='B_c1_0_0'),
+        DgsProperty(name='B_c1:0:1', dgs_type='r', description='B_c1 [0,1]', py_name='B_c1_0_1'),
+        DgsProperty(name='B_c1:1:0', dgs_type='r', description='B_c1 [1,0]', py_name='B_c1_1_0'),
+        DgsProperty(name='B_c1:1:1', dgs_type='r', description='B_c1 [1,1]', py_name='B_c1_1_1'),
+        DgsProperty(name='G_c0:SIZEROW', dgs_type='i', description='G_c0 matrix rows', py_name='G_c0_SIZEROW'),
+        DgsProperty(name='G_c0:SIZECOL', dgs_type='i', description='G_c0 matrix cols', py_name='G_c0_SIZECOL'),
+        DgsProperty(name='G_c0:0:0', dgs_type='r', description='G_c0 [0,0]', py_name='G_c0_0_0'),
+        DgsProperty(name='G_c0:0:1', dgs_type='r', description='G_c0 [0,1]', py_name='G_c0_0_1'),
+        DgsProperty(name='G_c0:1:0', dgs_type='r', description='G_c0 [1,0]', py_name='G_c0_1_0'),
+        DgsProperty(name='G_c0:1:1', dgs_type='r', description='G_c0 [1,1]', py_name='G_c0_1_1'),
+        DgsProperty(name='G_c1:SIZEROW', dgs_type='i', description='G_c1 matrix rows', py_name='G_c1_SIZEROW'),
+        DgsProperty(name='G_c1:SIZECOL', dgs_type='i', description='G_c1 matrix cols', py_name='G_c1_SIZECOL'),
+        DgsProperty(name='G_c1:0:0', dgs_type='r', description='G_c1 [0,0]', py_name='G_c1_0_0'),
+        DgsProperty(name='G_c1:0:1', dgs_type='r', description='G_c1 [0,1]', py_name='G_c1_0_1'),
+        DgsProperty(name='G_c1:1:0', dgs_type='r', description='G_c1 [1,0]', py_name='G_c1_1_0'),
+        DgsProperty(name='G_c1:1:1', dgs_type='r', description='G_c1 [1,1]', py_name='G_c1_1_1'),
     ]
 
     def __init__(self):
@@ -2784,14 +3401,47 @@ class TypTow(DGSElement):
         self.nlear: int = 0
         self.nlcir: int = 1
         self.gearth: float = 0.0
+        self.i_mode: int = 0
 
         # Dynamic fields (variable-size vectors/matrices)
+        self.pcond_e_SIZEROW: int = 0
         self.pcond_e: List[str | None] = list()
+        self.nphas_SIZEROW: int = 0
         self.pcond_c: List[str | None] = list()
+        self.pcond_c_SIZEROW: int = 0
         self.nphas: List[float] = list()
+        self.ktrto_SIZEROW: int = 0
         self.ktrto: List[float] = list()
+        self.xy_e_SIZEROW: int = 0
+        self.xy_e_SIZECOL: int = 0
         self.xy_e: List[List[float]] = list()  # Each row: [x, y]
+        self.xy_c_SIZEROW: int = 0
+        self.xy_c_SIZECOL: int = 0
         self.xy_c: List[List[float]] = list()  # Each row: [xA, xB, xC, yA, yB, yC]
+        self.R_c0_SIZEROW: int = 0
+        self.R_c0_SIZECOL: int = 0
+        self.R_c0: List[List[float]] = list()
+        self.X_c0_SIZEROW: int = 0
+        self.X_c0_SIZECOL: int = 0
+        self.X_c0: List[List[float]] = list()
+        self.R_c1_SIZEROW: int = 0
+        self.R_c1_SIZECOL: int = 0
+        self.R_c1: List[List[float]] = list()
+        self.X_c1_SIZEROW: int = 0
+        self.X_c1_SIZECOL: int = 0
+        self.X_c1: List[List[float]] = list()
+        self.B_c0_SIZEROW: int = 0
+        self.B_c0_SIZECOL: int = 0
+        self.B_c0: List[List[float]] = list()
+        self.B_c1_SIZEROW: int = 0
+        self.B_c1_SIZECOL: int = 0
+        self.B_c1: List[List[float]] = list()
+        self.G_c0_SIZEROW: int = 0
+        self.G_c0_SIZECOL: int = 0
+        self.G_c0: List[List[float]] = list()
+        self.G_c1_SIZEROW: int = 0
+        self.G_c1_SIZECOL: int = 0
+        self.G_c1: List[List[float]] = list()
 
     @classmethod
     def parse_line(cls, line: str, header_map: dict[str, int]):
@@ -2802,8 +3452,8 @@ class TypTow(DGSElement):
         # Parse the scalar fields via the base schema
         for prop in cls.properties_list:
             idx = header_map.get(prop.name)
-            if idx is None and prop.name == 'ID':
-                idx = header_map.get('FID')
+            if idx is None and prop.name == 'FID':
+                idx = header_map.get('ID')
 
             if idx is not None and 0 <= idx < len(parts):
                 raw = parts[idx]
@@ -2814,6 +3464,7 @@ class TypTow(DGSElement):
         # Conductor types for earth wires
         raw_n = _dgs_get(parts, header_map, 'pcond_e:SIZEROW')
         n = int(float(raw_n.replace(',', '.'))) if raw_n is not None and raw_n.strip() != '' else 0
+        obj.pcond_e_SIZEROW = n
         obj.pcond_e = list()
         for i in range(n):
             raw_ptr = _dgs_get(parts, header_map, f'pcond_e:{i}')
@@ -2823,6 +3474,7 @@ class TypTow(DGSElement):
         # Num. of phases per circuit (often 3)
         raw_nphas = _dgs_get(parts, header_map, 'nphas:SIZEROW')
         nphas_n = int(float(raw_nphas.replace(',', '.'))) if raw_nphas is not None and raw_nphas.strip() != '' else 0
+        obj.nphas_SIZEROW = nphas_n
         obj.nphas = list()
         for i in range(nphas_n):
             raw_v = _dgs_get(parts, header_map, f'nphas:{i}')
@@ -2832,6 +3484,7 @@ class TypTow(DGSElement):
         # Transposition flags per circuit
         raw_ktrto = _dgs_get(parts, header_map, 'ktrto:SIZEROW')
         ktrto_n = int(float(raw_ktrto.replace(',', '.'))) if raw_ktrto is not None and raw_ktrto.strip() != '' else 0
+        obj.ktrto_SIZEROW = ktrto_n
         obj.ktrto = list()
         for i in range(ktrto_n):
             raw_v = _dgs_get(parts, header_map, f'ktrto:{i}')
@@ -2841,6 +3494,7 @@ class TypTow(DGSElement):
         # Conductor types for line circuits
         raw_pc = _dgs_get(parts, header_map, 'pcond_c:SIZEROW')
         pc_n = int(float(raw_pc.replace(',', '.'))) if raw_pc is not None and raw_pc.strip() != '' else 0
+        obj.pcond_c_SIZEROW = pc_n
         obj.pcond_c = list()
         for i in range(pc_n):
             raw_ptr = _dgs_get(parts, header_map, f'pcond_c:{i}')
@@ -2852,6 +3506,8 @@ class TypTow(DGSElement):
         xy_e_rows = int(float(raw_xy_e_rows.replace(',', '.'))) if raw_xy_e_rows is not None and raw_xy_e_rows.strip() != '' else 0
         raw_xy_e_cols = _dgs_get(parts, header_map, 'xy_e:SIZECOL')
         xy_e_cols = int(float(raw_xy_e_cols.replace(',', '.'))) if raw_xy_e_cols is not None and raw_xy_e_cols.strip() != '' else 0
+        obj.xy_e_SIZEROW = xy_e_rows
+        obj.xy_e_SIZECOL = xy_e_cols
 
         obj.xy_e = list()
         for r in range(xy_e_rows):
@@ -2868,6 +3524,8 @@ class TypTow(DGSElement):
         xy_c_rows = int(float(raw_xy_c_rows.replace(',', '.'))) if raw_xy_c_rows is not None and raw_xy_c_rows.strip() != '' else 0
         raw_xy_c_cols = _dgs_get(parts, header_map, 'xy_c:SIZECOL')
         xy_c_cols = int(float(raw_xy_c_cols.replace(',', '.'))) if raw_xy_c_cols is not None and raw_xy_c_cols.strip() != '' else 0
+        obj.xy_c_SIZEROW = xy_c_rows
+        obj.xy_c_SIZECOL = xy_c_cols
 
         obj.xy_c = list()
         for r in range(xy_c_rows):
@@ -2877,6 +3535,126 @@ class TypTow(DGSElement):
                 raw_v = raw_v.strip() if raw_v is not None else ''
                 row.append(float(raw_v.replace(',', '.')) if raw_v != '' and raw_v != '*' else 0.0)
             obj.xy_c.append(row)
+
+        raw_R_c0_rows = _dgs_get(parts, header_map, 'R_c0:SIZEROW')
+        R_c0_rows = int(float(raw_R_c0_rows.replace(',', '.'))) if raw_R_c0_rows is not None and raw_R_c0_rows.strip() != '' else 0
+        raw_R_c0_cols = _dgs_get(parts, header_map, 'R_c0:SIZECOL')
+        R_c0_cols = int(float(raw_R_c0_cols.replace(',', '.'))) if raw_R_c0_cols is not None and raw_R_c0_cols.strip() != '' else 0
+        obj.R_c0_SIZEROW = R_c0_rows
+        obj.R_c0_SIZECOL = R_c0_cols
+        obj.R_c0 = list()
+        for r in range(R_c0_rows):
+            row = list()
+            for c in range(R_c0_cols):
+                raw_v = _dgs_get(parts, header_map, f'R_c0:{r}:{c}')
+                raw_v = raw_v.strip() if raw_v is not None else ''
+                row.append(float(raw_v.replace(',', '.')) if raw_v != '' and raw_v != '*' else 0.0)
+            obj.R_c0.append(row)
+
+        raw_X_c0_rows = _dgs_get(parts, header_map, 'X_c0:SIZEROW')
+        X_c0_rows = int(float(raw_X_c0_rows.replace(',', '.'))) if raw_X_c0_rows is not None and raw_X_c0_rows.strip() != '' else 0
+        raw_X_c0_cols = _dgs_get(parts, header_map, 'X_c0:SIZECOL')
+        X_c0_cols = int(float(raw_X_c0_cols.replace(',', '.'))) if raw_X_c0_cols is not None and raw_X_c0_cols.strip() != '' else 0
+        obj.X_c0_SIZEROW = X_c0_rows
+        obj.X_c0_SIZECOL = X_c0_cols
+        obj.X_c0 = list()
+        for r in range(X_c0_rows):
+            row = list()
+            for c in range(X_c0_cols):
+                raw_v = _dgs_get(parts, header_map, f'X_c0:{r}:{c}')
+                raw_v = raw_v.strip() if raw_v is not None else ''
+                row.append(float(raw_v.replace(',', '.')) if raw_v != '' and raw_v != '*' else 0.0)
+            obj.X_c0.append(row)
+
+        raw_R_c1_rows = _dgs_get(parts, header_map, 'R_c1:SIZEROW')
+        R_c1_rows = int(float(raw_R_c1_rows.replace(',', '.'))) if raw_R_c1_rows is not None and raw_R_c1_rows.strip() != '' else 0
+        raw_R_c1_cols = _dgs_get(parts, header_map, 'R_c1:SIZECOL')
+        R_c1_cols = int(float(raw_R_c1_cols.replace(',', '.'))) if raw_R_c1_cols is not None and raw_R_c1_cols.strip() != '' else 0
+        obj.R_c1_SIZEROW = R_c1_rows
+        obj.R_c1_SIZECOL = R_c1_cols
+        obj.R_c1 = list()
+        for r in range(R_c1_rows):
+            row = list()
+            for c in range(R_c1_cols):
+                raw_v = _dgs_get(parts, header_map, f'R_c1:{r}:{c}')
+                raw_v = raw_v.strip() if raw_v is not None else ''
+                row.append(float(raw_v.replace(',', '.')) if raw_v != '' and raw_v != '*' else 0.0)
+            obj.R_c1.append(row)
+
+        raw_X_c1_rows = _dgs_get(parts, header_map, 'X_c1:SIZEROW')
+        X_c1_rows = int(float(raw_X_c1_rows.replace(',', '.'))) if raw_X_c1_rows is not None and raw_X_c1_rows.strip() != '' else 0
+        raw_X_c1_cols = _dgs_get(parts, header_map, 'X_c1:SIZECOL')
+        X_c1_cols = int(float(raw_X_c1_cols.replace(',', '.'))) if raw_X_c1_cols is not None and raw_X_c1_cols.strip() != '' else 0
+        obj.X_c1_SIZEROW = X_c1_rows
+        obj.X_c1_SIZECOL = X_c1_cols
+        obj.X_c1 = list()
+        for r in range(X_c1_rows):
+            row = list()
+            for c in range(X_c1_cols):
+                raw_v = _dgs_get(parts, header_map, f'X_c1:{r}:{c}')
+                raw_v = raw_v.strip() if raw_v is not None else ''
+                row.append(float(raw_v.replace(',', '.')) if raw_v != '' and raw_v != '*' else 0.0)
+            obj.X_c1.append(row)
+
+        raw_B_c0_rows = _dgs_get(parts, header_map, 'B_c0:SIZEROW')
+        B_c0_rows = int(float(raw_B_c0_rows.replace(',', '.'))) if raw_B_c0_rows is not None and raw_B_c0_rows.strip() != '' else 0
+        raw_B_c0_cols = _dgs_get(parts, header_map, 'B_c0:SIZECOL')
+        B_c0_cols = int(float(raw_B_c0_cols.replace(',', '.'))) if raw_B_c0_cols is not None and raw_B_c0_cols.strip() != '' else 0
+        obj.B_c0_SIZEROW = B_c0_rows
+        obj.B_c0_SIZECOL = B_c0_cols
+        obj.B_c0 = list()
+        for r in range(B_c0_rows):
+            row = list()
+            for c in range(B_c0_cols):
+                raw_v = _dgs_get(parts, header_map, f'B_c0:{r}:{c}')
+                raw_v = raw_v.strip() if raw_v is not None else ''
+                row.append(float(raw_v.replace(',', '.')) if raw_v != '' and raw_v != '*' else 0.0)
+            obj.B_c0.append(row)
+
+        raw_B_c1_rows = _dgs_get(parts, header_map, 'B_c1:SIZEROW')
+        B_c1_rows = int(float(raw_B_c1_rows.replace(',', '.'))) if raw_B_c1_rows is not None and raw_B_c1_rows.strip() != '' else 0
+        raw_B_c1_cols = _dgs_get(parts, header_map, 'B_c1:SIZECOL')
+        B_c1_cols = int(float(raw_B_c1_cols.replace(',', '.'))) if raw_B_c1_cols is not None and raw_B_c1_cols.strip() != '' else 0
+        obj.B_c1_SIZEROW = B_c1_rows
+        obj.B_c1_SIZECOL = B_c1_cols
+        obj.B_c1 = list()
+        for r in range(B_c1_rows):
+            row = list()
+            for c in range(B_c1_cols):
+                raw_v = _dgs_get(parts, header_map, f'B_c1:{r}:{c}')
+                raw_v = raw_v.strip() if raw_v is not None else ''
+                row.append(float(raw_v.replace(',', '.')) if raw_v != '' and raw_v != '*' else 0.0)
+            obj.B_c1.append(row)
+
+        raw_G_c0_rows = _dgs_get(parts, header_map, 'G_c0:SIZEROW')
+        G_c0_rows = int(float(raw_G_c0_rows.replace(',', '.'))) if raw_G_c0_rows is not None and raw_G_c0_rows.strip() != '' else 0
+        raw_G_c0_cols = _dgs_get(parts, header_map, 'G_c0:SIZECOL')
+        G_c0_cols = int(float(raw_G_c0_cols.replace(',', '.'))) if raw_G_c0_cols is not None and raw_G_c0_cols.strip() != '' else 0
+        obj.G_c0_SIZEROW = G_c0_rows
+        obj.G_c0_SIZECOL = G_c0_cols
+        obj.G_c0 = list()
+        for r in range(G_c0_rows):
+            row = list()
+            for c in range(G_c0_cols):
+                raw_v = _dgs_get(parts, header_map, f'G_c0:{r}:{c}')
+                raw_v = raw_v.strip() if raw_v is not None else ''
+                row.append(float(raw_v.replace(',', '.')) if raw_v != '' and raw_v != '*' else 0.0)
+            obj.G_c0.append(row)
+
+        raw_G_c1_rows = _dgs_get(parts, header_map, 'G_c1:SIZEROW')
+        G_c1_rows = int(float(raw_G_c1_rows.replace(',', '.'))) if raw_G_c1_rows is not None and raw_G_c1_rows.strip() != '' else 0
+        raw_G_c1_cols = _dgs_get(parts, header_map, 'G_c1:SIZECOL')
+        G_c1_cols = int(float(raw_G_c1_cols.replace(',', '.'))) if raw_G_c1_cols is not None and raw_G_c1_cols.strip() != '' else 0
+        obj.G_c1_SIZEROW = G_c1_rows
+        obj.G_c1_SIZECOL = G_c1_cols
+        obj.G_c1 = list()
+        for r in range(G_c1_rows):
+            row = list()
+            for c in range(G_c1_cols):
+                raw_v = _dgs_get(parts, header_map, f'G_c1:{r}:{c}')
+                raw_v = raw_v.strip() if raw_v is not None else ''
+                row.append(float(raw_v.replace(',', '.')) if raw_v != '' and raw_v != '*' else 0.0)
+            obj.G_c1.append(row)
 
         return obj
 
