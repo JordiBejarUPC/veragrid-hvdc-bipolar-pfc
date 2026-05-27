@@ -9,7 +9,8 @@ from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, GCPro
 from VeraGridEngine.Devices.Events.dynamic_plot import DynamicPlot
 from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
-from VeraGridEngine.enumerations import DeviceType, SubObjectType, PrpCat, PlotSimulationType, DynamicPlotEntryKind
+from VeraGridEngine.enumerations import (DeviceType, SubObjectType, PrpCat, PlotSimulationType,
+                                         DynamicPlotEntryKind, DynamicPlotEntryRole)
 
 
 class DynamicPlotEntry(EditableDevice):
@@ -33,6 +34,7 @@ class DynamicPlotEntry(EditableDevice):
         'device',
         '_simulation_type',
         '_entry_kind',
+        '_role',
         '_event_group_idtag',
         '_event_group_name',
         '_curve_device_type',
@@ -79,6 +81,13 @@ class DynamicPlotEntry(EditableDevice):
             units='',
             tpe=DynamicPlotEntryKind,
             definition='Whether this persistent entry references a dynamic variable or a model parameter.',
+            cat=[PrpCat.RMS, PrpCat.EMT],
+        ),
+        GCProp(
+            prop_name='role',
+            units='',
+            tpe=DynamicPlotEntryRole,
+            definition='Role played by this persistent entry inside the owning dynamic plot.',
             cat=[PrpCat.RMS, PrpCat.EMT],
         ),
         GCProp(
@@ -160,6 +169,7 @@ class DynamicPlotEntry(EditableDevice):
                   device: Any = None,
                   simulation_type: PlotSimulationType = PlotSimulationType.RMS,
                   entry_kind: DynamicPlotEntryKind = DynamicPlotEntryKind.VARIABLE,
+                  role: DynamicPlotEntryRole = DynamicPlotEntryRole.CURVE,
                   event_group_idtag: str = "",
                   event_group_name: str = "",
                   curve_device_type: DeviceType = DeviceType.NoDevice,
@@ -183,6 +193,7 @@ class DynamicPlotEntry(EditableDevice):
         :param device: Optional legacy device hint.
         :param simulation_type: Simulation family identifier.
         :param entry_kind: Semantic entry kind.
+        :param role: Semantic role within the owning plot.
         :param event_group_idtag: Stable event-group identifier.
         :param event_group_name: Visible event-group name.
         :param curve_device_type: Device type that owns the curve.
@@ -213,8 +224,10 @@ class DynamicPlotEntry(EditableDevice):
         self.plot: DynamicPlot = plot
         self._simulation_type: PlotSimulationType = PlotSimulationType.RMS
         self._entry_kind: DynamicPlotEntryKind = DynamicPlotEntryKind.VARIABLE
+        self._role: DynamicPlotEntryRole = DynamicPlotEntryRole.CURVE
         self.simulation_type = simulation_type
         self.entry_kind = entry_kind
+        self.role = role
         self._event_group_idtag: str = str(event_group_idtag)
         self._event_group_name: str = str(event_group_name)
         self._curve_device_type: DeviceType = (
@@ -290,6 +303,28 @@ class DynamicPlotEntry(EditableDevice):
             self._entry_kind = val
         else:
             raise ValueError("Unsupported dynamic plot entry kind")
+
+    @property
+    def role(self) -> DynamicPlotEntryRole:
+        """
+        Get the semantic role of this persistent plot entry.
+
+        :return: Entry role.
+        """
+        return self._role
+
+    @role.setter
+    def role(self, val: DynamicPlotEntryRole) -> None:
+        """
+        Set the semantic role of this persistent plot entry.
+
+        :param val: Entry role.
+        :return: None.
+        """
+        if isinstance(val, DynamicPlotEntryRole):
+            self._role = val
+        else:
+            raise ValueError("Unsupported dynamic plot entry role")
 
     @property
     def event_group_name(self) -> str:

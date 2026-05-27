@@ -8,9 +8,7 @@ from matplotlib import pyplot as plt
 from typing import Union, Dict
 
 from VeraGrid.Gui.Main.SubClasses.Results.dynamics_results_handler import (
-    DynamicsResultsHandler,
-    PlotSimulationType,
-)
+    DynamicsResultsHandler)
 from VeraGrid.Gui.table_view_header_wrap import HeaderViewWithWordWrap
 import VeraGrid.Gui.gui_functions as gf
 from VeraGrid.Gui.messages import error_msg, warning_msg, yes_no_question
@@ -19,7 +17,7 @@ from VeraGrid.Gui.results_model import ResultsModel
 from VeraGrid.Gui.general_dialogues import fill_tree_from_logs
 import VeraGridEngine.Utils.Filtering as flt
 from VeraGridEngine.basic_structures import Logger
-from VeraGridEngine.enumerations import ResultTypes, SimulationTypes, PlotSimulationType, DynamicPlotEntryKind
+from VeraGridEngine.enumerations import ResultTypes, SimulationTypes, PlotSimulationType, DynamicPlotEntryKind, DynamicPlotMode
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.Simulations.Rms.rms_results import RmsResults
 from VeraGridEngine.Simulations.EMT.emt_results import EmtResults
@@ -502,15 +500,17 @@ class ResultsMain(SimulationsMain):
         :param last: Last inserted row.
         :return: Nothing.
         """
-        del parent
-        del first
-        del last
+
 
         # A row insertion already happened inside the existing model. Rebuilding
         # the views here would destroy the exact expansion state we are trying to
         # preserve. The only required post-insert action is to keep the target
         # parent visible so the newly dropped entry remains in view.
         self._expand_plot_drop_parent(parent=parent)
+
+        del parent
+        del first
+        del last
 
     def add_dynamic_plot_group(self) -> None:
         """
@@ -520,12 +520,35 @@ class ResultsMain(SimulationsMain):
         """
         if self.dynamic_results_handler is not None:
             suggested_name: str = self.dynamic_results_handler.get_next_group_name()
-            group_name, accepted = QtWidgets.QInputDialog.getText(self,
-                                                                  "New dynamic plot",
-                                                                  "Plot name",
-                                                                  text=suggested_name)
+            dialog: QtWidgets.QDialog = QtWidgets.QDialog(self)
+            dialog.setWindowTitle("New dynamic plot")
+            layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(dialog)
+            name_label: QtWidgets.QLabel = QtWidgets.QLabel("Plot name", dialog)
+            name_edit: QtWidgets.QLineEdit = QtWidgets.QLineEdit(dialog)
+            mode_label: QtWidgets.QLabel = QtWidgets.QLabel("Plot mode", dialog)
+            mode_combo: QtWidgets.QComboBox = QtWidgets.QComboBox(dialog)
+            buttons: QtWidgets.QDialogButtonBox = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.StandardButton.Ok | QtWidgets.QDialogButtonBox.StandardButton.Cancel,
+                                                                              dialog)
+            name_edit.setText(suggested_name)
+            mode_combo.addItem("Time Series (Y vs Time)", DynamicPlotMode.TIME_SERIES)
+            mode_combo.addItem("X-Y Plot (Y vs X)", DynamicPlotMode.XY)
+            buttons.accepted.connect(dialog.accept)
+            buttons.rejected.connect(dialog.reject)
+            layout.addWidget(name_label)
+            layout.addWidget(name_edit)
+            layout.addWidget(mode_label)
+            layout.addWidget(mode_combo)
+            layout.addWidget(buttons)
+            accepted: bool = dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted
             if accepted:
-                created: bool = self.dynamic_results_handler.create_plot_group(name=group_name)
+                group_name: str = name_edit.text()
+                selected_mode_data: object = mode_combo.currentData()
+                selected_mode: DynamicPlotMode = DynamicPlotMode.TIME_SERIES
+                if isinstance(selected_mode_data, DynamicPlotMode):
+                    selected_mode = selected_mode_data
+                else:
+                    pass
+                created: bool = self.dynamic_results_handler.create_plot_group(name=group_name, mode=selected_mode)
                 if created:
                     self.ui.dynamicsPlotsTreeView.expandAll()
                 else:
@@ -614,6 +637,7 @@ class ResultsMain(SimulationsMain):
 
         if handler is None:
             handler = DynamicsResultsHandler(results=results, circuit=self.circuit)
+            handler.dialog_parent = self
             self.dynamic_results_handlers[study_name] = handler
             handler.get_plots_model().rowsInserted.connect(self.expand_dynamic_plots_tree)
             return handler
@@ -622,6 +646,7 @@ class ResultsMain(SimulationsMain):
             # Reusing the handler preserves the user's dynamic plot groups across
             # repeated runs of the same study while replacing only the result-backed Vars.
             handler.circuit = self.circuit
+            handler.dialog_parent = self
             handler.update_results(results=results)
             return handler
 
@@ -629,6 +654,7 @@ class ResultsMain(SimulationsMain):
             # RMS and EMT handlers cannot be mixed because their result containers use
             # different event-group fields and value-array layouts.
             handler = DynamicsResultsHandler(results=results, circuit=self.circuit)
+            handler.dialog_parent = self
             self.dynamic_results_handlers[study_name] = handler
             handler.get_plots_model().rowsInserted.connect(self.expand_dynamic_plots_tree)
             return handler

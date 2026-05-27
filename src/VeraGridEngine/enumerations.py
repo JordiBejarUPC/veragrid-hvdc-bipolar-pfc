@@ -4074,6 +4074,41 @@ class PlotSimulationType(Enum):
         return self.value
 
 
+class DynamicPlotMode(Enum):
+    """
+    Plotting mode used by persistent dynamic plot definitions.
+    """
+
+    TIME_SERIES = "TIME_SERIES"
+    XY = "XY"
+
+    def __str__(self) -> str:
+        """
+        Return the persistent label used by dynamic plot assets.
+
+        :return: Persistent plotting-mode label.
+        """
+        return self.value
+
+
+class DynamicPlotEntryRole(Enum):
+    """
+    Semantic role played by one persistent dynamic plot entry.
+    """
+
+    CURVE = "CURVE"
+    X_AXIS = "X_AXIS"
+    Y_AXIS = "Y_AXIS"
+
+    def __str__(self) -> str:
+        """
+        Return the persistent label used by dynamic plot entries.
+
+        :return: Persistent entry-role label.
+        """
+        return self.value
+
+
 
 
 class BlockScopeMode(Enum):
