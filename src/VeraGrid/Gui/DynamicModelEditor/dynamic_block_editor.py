@@ -194,7 +194,6 @@ JMARTI_MODAL_OPTION_KEYS: tuple[str, ...] = (
     "passivity_maximum_hres_gain_tolerance",
 )
 
-
 def set_modal_template_metadata(block: Block, kind: str, config: Dict[str, Any]) -> None:
     """
     Persist the modal-builder metadata on one block.
@@ -4279,6 +4278,18 @@ class BlockItem(QGraphicsRectItem):
         else:
             return super().itemChange(change, value)
 
+class ProtectedConnectionBlockItem(BlockItem):
+    """
+    Graphics item for required editor connection-interface blocks.
+
+    These blocks represent the device/network contract and must stay present in
+    the canvas, so the scene should treat them as non-removable even though they
+    are still serialized with the standard connection block types.
+    """
+
+    pass
+
+
 
 class GraphicsView(QGraphicsView):
     """
@@ -4567,9 +4578,12 @@ class DiagramScene(QGraphicsScene):
                 else:
                     pass
 
-                remove_action: QAction = QAction("Remove", menu)
-                remove_action.triggered.connect(self.remove_context_item)
-                menu.addAction(remove_action)
+                if not isinstance(item, ProtectedConnectionBlockItem):
+                    remove_action: QAction = QAction("Remove", menu)
+                    remove_action.triggered.connect(self.remove_context_item)
+                    menu.addAction(remove_action)
+                else:
+                    pass
 
                 color_action: QAction = QAction("Change Color", menu)
                 color_action.triggered.connect(self.recolor_context_item)
@@ -7530,7 +7544,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
         count: int = self.block_counters.get(block_type, 0) + 1
         item_name: str = f"{var.name}"
-        block_item: BlockItem = BlockItem(var_factory=self.var_factory, name=item_name)
+        block_item: ProtectedConnectionBlockItem = ProtectedConnectionBlockItem(var_factory=self.var_factory, name=item_name)
         block_model: Block = Block()
 
         if block_type == BlockType.INPUT_CONN:
@@ -11786,7 +11800,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             if block_model is not None:
 
                 if block_type == BlockType.INPUT_CONN or block_type == BlockType.OUTPUT_CONN:
-                    block_item: BlockItem = BlockItem(var_factory=self.var_factory, name=node.name)
+                    block_item: ProtectedConnectionBlockItem = ProtectedConnectionBlockItem(
+                        var_factory=self.var_factory,
+                        name=node.name,
+                    )
                     block_item.set_subsystem(block_model)
                     block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
                     block_item.build_item()
