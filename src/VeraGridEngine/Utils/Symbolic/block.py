@@ -1199,7 +1199,7 @@ def _get_pair_index(i: int, j: int, n: int) -> int:
             idx += 1
     return -1
 
-def compare_n_blocks_structurally(blocks: List[Block]) -> Dict[int, List[int]]:
+def compare_n_blocks_structurally(blocks: List[Block]) -> Tuple[Dict[int, List[int]], Dict[int, List[int]]]:
     """
     Compare n blocks structurally and group equivalent blocks by their uid.
 
@@ -1209,23 +1209,27 @@ def compare_n_blocks_structurally(blocks: List[Block]) -> Dict[int, List[int]]:
     3. Corresponding variables are located in corresponding attributes
 
     :param blocks: List of n blocks to compare
-    :return: Dict with new uid (uuid.uuid4().int) as keys and lists of equivalent block uids as values
+    :return: Tuple of:
+        - Dict with new uid (uuid.uuid4().int) as keys and lists of equivalent block uids as values
+        - Dict with variable uid as keys and lists of equivalent variable uids as values
     """
     if len(blocks) == 0:
-        return {}
+        return {}, {}
 
     if len(blocks) == 1:
         new_uid = _new_uid()
-        return {new_uid: [blocks[0].uid]}
+        return {new_uid: [blocks[0].uid]}, {}
 
     n = len(blocks)
     equivalence_classes = []
+    equivalence_alignments = []
     processed = [False] * n
 
     for i in range(n):
         if not processed[i]:
             current_group = [blocks[i].uid]
             processed[i] = True
+            current_alignments = {}
 
             for j in range(i + 1, n):
                 if not processed[j]:
@@ -1248,15 +1252,28 @@ def compare_n_blocks_structurally(blocks: List[Block]) -> Dict[int, List[int]]:
 
                                 current_group.append(blocks[j].uid)
                                 processed[j] = True
+                                current_alignments[j] = variables_alignment
 
             equivalence_classes.append(current_group)
+            equivalence_alignments.append((i, current_alignments))
 
-    result = {}
+    model_result = {}
     for eq_class in equivalence_classes:
         new_uid = _new_uid()
-        result[new_uid] = eq_class
+        model_result[new_uid] = eq_class
 
-    return result
+    var_result = {}
+    for ref_idx, alignments in equivalence_alignments:
+        if not alignments:
+            continue
+        first_alignment = next(iter(alignments.values()))
+        for ref_var_uid in first_alignment:
+            equivalent_uids = []
+            for alignment in alignments.values():
+                equivalent_uids.append(alignment[ref_var_uid])
+            var_result[ref_var_uid] = equivalent_uids
+
+    return model_result, var_result
 #
 # def compare_n_blocks_structurally(blocks: List[Block]) -> Dict[int, List[int]]:
 #     """
