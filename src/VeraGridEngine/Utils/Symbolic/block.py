@@ -1217,8 +1217,7 @@ def compare_n_blocks_structurally(blocks: List[Block]) -> Tuple[Dict[int, List[i
         return {}, {}
 
     if len(blocks) == 1:
-        new_uid = _new_uid()
-        return {new_uid: [blocks[0].uid]}, {}
+        return {blocks[0].uid: []}, {}
 
     n = len(blocks)
     equivalence_classes = []
@@ -1259,8 +1258,7 @@ def compare_n_blocks_structurally(blocks: List[Block]) -> Tuple[Dict[int, List[i
 
     model_result = {}
     for eq_class in equivalence_classes:
-        new_uid = _new_uid()
-        model_result[new_uid] = eq_class
+        model_result[eq_class[0]] = eq_class[1:]
 
     var_result = {}
     for ref_idx, alignments in equivalence_alignments:

@@ -112,8 +112,12 @@ gen0 = gce.Generator(name="Gen0", P=10, vset=1.0, Snom=900,
 gen2 = gce.Generator(name="Gen2", P=10, vset=1.0, Snom=900,
                      x1=0.86138701, r1=0.3, freq=50.0
                      )
+gen21 = gce.Generator(name="Gen21", P=10, vset=1.0, Snom=900,
+                     x1=0.86138701, r1=0.3, freq=50.0
+                     )
 grid.add_generator(bus=bus0, api_obj=gen0)
 grid.add_generator(bus=bus2, api_obj=gen2)
+grid.add_generator(bus=bus2, api_obj=gen21)
 
 ######################################################################################################
 # Build Rms models
@@ -123,6 +127,7 @@ grid.add_generator(bus=bus2, api_obj=gen2)
 # generator
 genqec0_mdl = get_complete_generator_template_rms(grid.var_factory).block
 genqec2_mdl = get_complete_generator_template_rms(grid.var_factory).block
+genqec21_mdl = get_complete_generator_template_rms(grid.var_factory).block
 
 # line
 line0_mdl = get_line_rms_template(grid.var_factory).block
@@ -141,6 +146,7 @@ load_mdl = get_load_rms_template(grid.var_factory).block
 
 set_rms_model(device=gen0, model=genqec0_mdl, var_factory= grid.var_factory)
 set_rms_model(device=gen2, model=genqec2_mdl, var_factory= grid.var_factory)
+set_rms_model(device=gen21, model=genqec21_mdl, var_factory= grid.var_factory)
 
 set_rms_model(device=line0, model=line0_mdl, var_factory= grid.var_factory)
 set_rms_model(device=line1, model=line1_mdl, var_factory= grid.var_factory)
