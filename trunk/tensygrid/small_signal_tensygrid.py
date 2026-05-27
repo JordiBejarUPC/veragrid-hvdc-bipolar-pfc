@@ -26,7 +26,21 @@ import time, pickle, os
 import multiprocessing as mp
 from typing import Tuple, Any, List
 import numpy as np
-from memory_profiler import profile, LineProfiler, show_results
+try:
+    from memory_profiler import profile, LineProfiler, show_results
+except ModuleNotFoundError:
+    def profile(func):
+        return func
+
+    class LineProfiler:
+        def add_function(self, func):
+            return None
+
+        def __call__(self, func):
+            return func
+
+    def show_results(lp):
+        return None
 # from cryptography.x509 import name
 from PolynomialMatrixBuilder import PolynomialMatrixBuilder
 from matplotlib import pyplot as plt
