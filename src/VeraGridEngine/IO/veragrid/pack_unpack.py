@@ -1958,6 +1958,29 @@ def parse_veragrid_data(data: VERAGRID_FILE_TYPE,
                 ypos = df['ypos'].values[i]
                 phase = df['phase'].values[i]
                 tower.add_wire_relationship(wire=wire, xpos=xpos, ypos=ypos, phase=phase)
+    else:
+        pass
+
+    # Recompute all overhead line templates after restoring the wire-to-tower
+    # relationships. The .veragrid file stores the tower geometry and wire
+    # references, but the electrical matrices are derived data and must be
+    # rebuilt so simulations can consume a complete template state.
+    overhead_line_types_dict: Dict[str, dev.OverheadLineType] | None = elements_dict_by_type.get(
+        DeviceType.OverheadLineTypeDevice,
+        None,
+    )
+
+    if overhead_line_types_dict is not None:
+        overhead_line_types: List[dev.OverheadLineType] = list(overhead_line_types_dict.values())
+        overhead_line_type: dev.OverheadLineType
+
+        for overhead_line_type in overhead_line_types:
+            # The compute step reconstructs the NABC impedance/admittance
+            # matrices from the restored tower geometry. EMT and unbalanced
+            # algorithms depend on these matrices being present after load.
+            overhead_line_type.compute()
+    else:
+        pass
 
     # create diagrams --------------------------------------------------------------------------------------------------
     if text_func is not None:
