@@ -786,21 +786,6 @@ def _get_dynamic_simulation_mode(simulation_type: PlotSimulationType) -> Dynamic
     else:
         raise ValueError(f"Unsupported plot simulation type: {simulation_type}")
 
-
-
-def _build_pre_simulation_missing_group_message(simulation_type: PlotSimulationType) -> str:
-    """
-    Build the explanatory message shown before the creation dialog opens.
-
-    :param simulation_type: Plot simulation family requested by the user.
-    :return: Informational dialog text.
-    """
-    if simulation_type == PlotSimulationType.RMS:
-        return "No RMS Events Group found, please create one before adding a dynamic plot entry."
-    else:
-        return "No EMT Events Group found, please create one before adding a dynamic plot entry."
-
-
 def ensure_dynamic_plot_event_group(circuit: MultiCircuit,
                                     simulation_type: PlotSimulationType,
                                     parent: QtWidgets.QWidget | None = None) -> RmsEventsGroup | EmtEventsGroup | None:
@@ -825,13 +810,18 @@ def ensure_dynamic_plot_event_group(circuit: MultiCircuit,
         pass
 
     mode: DynamicSimulationMode = _get_dynamic_simulation_mode(simulation_type=simulation_type)
-    missing_group_message: str = _build_pre_simulation_missing_group_message(simulation_type=simulation_type)
-    created_group_message_title: str
+    missing_group_message: str = ""
+    if simulation_type == PlotSimulationType.RMS:
+        missing_group_message = "No RMS Events Group found, please create one before adding a dynamic plot entry."
+    elif simulation_type == PlotSimulationType.EMT:
+        missing_group_message = "No EMT Events Group found, please create one before adding a dynamic plot entry."
+
+    created_group_message_title: str = ""
     created_group_message_body_prefix: str = "New group name"
 
     if simulation_type == PlotSimulationType.RMS:
         created_group_message_title = "RMS group Created"
-    else:
+    elif  simulation_type == PlotSimulationType.EMT:
         created_group_message_title = "EMT group Created"
 
     created_group: RmsEventsGroup | EmtEventsGroup | None = create_dynamic_events_group_with_dialog(
