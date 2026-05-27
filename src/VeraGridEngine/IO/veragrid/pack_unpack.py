@@ -1063,7 +1063,7 @@ def parse_object_type_from_dataframe(
                         # the property of the file exists, parse it
                         if isinstance(gc_prop.tpe, DeviceType):
 
-                            # we must look for the refference in elements_dict
+                            # we must look for the reference in elements_dict
                             collection = elements_dict_by_type.get(gc_prop.tpe, None)
 
                             if collection is not None:
@@ -1672,11 +1672,14 @@ def handle_legacy_jsons(model_data: Dict[str, List],
 def parse_veragrid_data(data: VERAGRID_FILE_TYPE,
                         previous_circuit: Union[MultiCircuit, None] = None,
                         project_directory: str | Path | None = None,
+                        refine_pointers: bool = True,
                         text_func: Union[Callable, None] = None,
                         progress_func: Union[Callable, None] = None,
                         logger: Logger = Logger()) -> MultiCircuit:
     """
     Interpret data
+    :param project_directory: file project directory
+    :param refine_pointers: Refine (and possibly delete) the pointer objects such as investments and contingencies?
     :param data: dictionary of data frames and other information
     :param previous_circuit: Optional previous VeraGrid circuit. This is relevant in case of loading grid increments
     :param text_func: text callback function
@@ -2013,7 +2016,8 @@ def parse_veragrid_data(data: VERAGRID_FILE_TYPE,
 
     # search contingencies, investments and remedial actions pointed devices
     # and remove those that point nowhere
-    circuit.refine_pointer_objects(logger=logger)
+    if refine_pointers:
+        circuit.refine_pointer_objects(logger=logger)
 
     if circuit.has_time_series:
         circuit.ensure_profiles_exist()
@@ -2077,6 +2081,7 @@ def parse_multiverse_data(data: dict[str, VERAGRID_FILE_TYPE],
     #   scenario, never against the raw delta payload.
     node_metadata = get_multiverse_node_metadata(metadata)
     ordered_records = order_multiverse_records(metadata)
+    all_elements_dict = dict()
 
     for record in ordered_records:
         node_id = int(record["node_id"])
@@ -2094,9 +2099,15 @@ def parse_multiverse_data(data: dict[str, VERAGRID_FILE_TYPE],
 
         grid = parse_veragrid_data(data=model_without_diagrams,
                                    previous_circuit=previous_circuit,
+                                   refine_pointers=False,
                                    text_func=text_func,
                                    progress_func=progress_func,
                                    logger=logger)
+
+        # we create a dictionary of all the elements in all the scenarios such that finding pointers doesn't fail later
+        d, ok = grid.get_all_elements_dict(logger=logger)
+        all_elements_dict.update(d)
+
         grid.idtag = circuit_idtag
         diffs_dict[circuit_idtag] = grid
 
@@ -2107,6 +2118,10 @@ def parse_multiverse_data(data: dict[str, VERAGRID_FILE_TYPE],
             composed.merge_circuit(grid)
             composed.name = grid.name
             composed_by_node_id[node_id] = composed
+
+    # Refine pointer in all grids
+    for idtag, grid in diffs_dict.items():
+        grid.refine_pointer_objects(logger=logger, all_elements_dict=all_elements_dict)
 
     mv.parse_json(diffs_dict, metadata)
 
