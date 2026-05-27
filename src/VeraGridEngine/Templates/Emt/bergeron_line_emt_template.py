@@ -83,6 +83,26 @@ def _build_line_parameter_matrices_from_template_or_balanced_data(line: Any,
     else:
         pass
 
+    # if line.ys is not None and line.ysh is not None:
+    #     vbase_volt: float = float(line.bus_from.Vnom) * 1e3
+    #     sbase_va: float = float(sbase) * 1e6
+    #     zbase_ohm: float = (vbase_volt * vbase_volt) / sbase_va
+    #     ybase_siemens: float = 1.0 / zbase_ohm
+    #
+    #     # The template stores Carson matrices per km. Bergeron uses per-meter and
+    #     # then converts them to per-unit before forming the total line matrices.
+    #     z_phys_m: np.ndarray = np.asarray(line.ys.values, dtype=np.complex128) / 1e3
+    #     y_phys_m: np.ndarray = np.asarray(line.ysh.values, dtype=np.complex128) / 1e3
+    #     z_pu_m: np.ndarray = z_phys_m / zbase_ohm
+    #     y_pu_m: np.ndarray = y_phys_m / ybase_siemens
+    #
+    #     r_full: np.ndarray = np.real(z_pu_m) * float(line.length)
+    #     l_full: np.ndarray = (np.imag(z_pu_m) / w) * float(line.length)
+    #     c_full: np.ndarray = (np.imag(y_pu_m) / w) * float(line.length)
+    #     return r_full, l_full, c_full
+
+
+
     # Without a detailed template we rebuild one symmetric 3-phase equivalent from
     # the sequence branch data. This mirrors the balanced-to-phase reconstruction
     # already used elsewhere for EMT line fitting.
