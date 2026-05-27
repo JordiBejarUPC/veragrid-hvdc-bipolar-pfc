@@ -2288,15 +2288,11 @@ class RMSCompiler(EquationCompiler):
         wrt_map = {v.uid: (i, v) for i, v in enumerate(wrt_vars)}
         triplets: List[Tuple[int, int, Expr]] = list()
 
-        # Only differentiate variables that appear in the equation AST.
-        # here when vectorizing, only general variables and general equations
         for row, eq in enumerate(eqs):
             for uid in _collect_candidate_wrt_uids(eq, wrt_map):
                 col, var = wrt_map[uid]
                 d_expr = eq.diff(var, dt=self.dt_var)
                 if not (isinstance(d_expr, Const) and d_expr.value == 0):
-                    # here when vectorizing we need to add a triplet for every specific variable corresponding to general variable
-                    # ºcol and row are arrays of the size the number of specific variables
                     triplets.append((col, row, d_expr))
 
         triplets.sort(key=_get_triplet_sort_key)
