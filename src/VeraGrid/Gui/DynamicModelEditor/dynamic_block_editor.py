@@ -9456,8 +9456,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self.main_block.out_vars.append(Pf)
             self.main_block.out_vars.append(Qf)
 
-            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.P: Pf})
-            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Q: Qf})
+            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Pf: Pf})
+            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Qf: Qf})
 
             Pt = self.var_factory.add_var('net_conn_Pt', VarPowerFlowRefferenceType.P, True)
             Qt = self.var_factory.add_var('net_conn_Qt', VarPowerFlowRefferenceType.Q, True)
@@ -9465,8 +9465,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self.main_block.out_vars.append(Pt)
             self.main_block.out_vars.append(Qt)
 
-            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.P: Pt})
-            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Q: Qt})
+            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Pt: Pt})
+            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Qt: Qt})
 
         elif isinstance(self.api_object, InjectionParent):
 
@@ -9756,10 +9756,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.Vmt, f"Vm_{safe_bus_to}"))
         specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.Vat, f"Va_{safe_bus_to}"))
 
-        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.Pf, f"net_conn_P_{safe_bus_from}"))
-        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.Qf, f"net_conn_Q_{safe_bus_from}"))
-        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.Pt, f"net_conn_P_{safe_bus_to}"))
-        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.Qt, f"net_conn_Q_{safe_bus_to}"))
+        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.Pf, f"net_conn_Pf_{safe_bus_from}"))
+        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.Qf, f"net_conn_Qf_{safe_bus_from}"))
+        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.Pt, f"net_conn_Pt_{safe_bus_to}"))
+        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.Qt, f"net_conn_Qt_{safe_bus_to}"))
 
         return specs
 
