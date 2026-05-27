@@ -62,3 +62,10 @@ def test_delete_selected_db_table_objects_updates_all_open_diagrams(tmp_path: Pa
     Verify deleting a DB-selected object propagates through every open diagram widget.
     """
     _run_gui_scenario(tmp_path=tmp_path, scenario="delete_db_object")
+
+
+def test_activate_scenario_does_not_create_schematic_when_scenario_has_no_diagrams(tmp_path: Path) -> None:
+    """
+    Verify activating a scenario with no stored diagrams leaves the GUI diagram-free.
+    """
+    _run_gui_scenario(tmp_path=tmp_path, scenario="activate_scenario_without_diagrams")

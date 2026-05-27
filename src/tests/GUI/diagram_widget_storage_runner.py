@@ -12,6 +12,7 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import (
     SchematicWidget,
     generate_schematic_diagram,
 )
+from VeraGrid.Gui.Main.SubClasses.io import IoMain
 from VeraGrid.Gui.Main.SubClasses.Model.data_base import DataBaseTableMain
 from VeraGrid.Gui.object_proxy_model import ObjectModelFilterProxy
 from VeraGridEngine.enumerations import DeviceType
@@ -185,6 +186,60 @@ def _scenario_delete_db_object(tmp_path: Path) -> None:
     assert all(widget.diagram.query_point(line_to_delete) is None for widget in gui.diagram_widgets_list)
 
 
+def _scenario_activate_scenario_without_diagrams() -> None:
+    """
+    Run the scenario-activation regression where no schematic should be auto-created.
+    """
+    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+    _unused_app = app
+
+    gui = IoMain()
+    gui.hide()
+    gui.new_project_now(create_default_diagrams=False)
+
+    base_grid = vge.MultiCircuit(name="base-scenario")
+    bus_from = base_grid.add_bus(vge.Bus(name="B1", Vnom=10.0, is_slack=True))
+    bus_to = base_grid.add_bus(vge.Bus(name="B2", Vnom=10.0))
+    base_grid.add_line(vge.Line(name="L12", bus_from=bus_from, bus_to=bus_to, r=0.1, x=0.2, rate=100.0))
+
+    gui.circuit = base_grid
+    gui.reload_diagrams_for_active_scenario()
+
+    assert len(gui.circuit.diagrams) == 0
+    assert len(gui.diagram_widgets_list) == 0
+    assert gui.ui.diagramsListView.model() is None
+
+    root = gui.multiverse.root_nodes[0]
+    child = gui.multiverse.create_node(
+        data=vge.MultiCircuit(name="child"),
+        parent_id=root.node_id,
+        position=root.child_count(),
+    )
+    gui.scenario_tree_model.refresh_data()
+
+    child_index = gui.scenario_tree_model.index_for_node(child)
+    assert child_index.isValid()
+
+    gui.ui.multiverseTreeView.setCurrentIndex(child_index)
+    gui.ui.multiverseTreeView.selectionModel().select(
+        child_index,
+        QtCore.QItemSelectionModel.SelectionFlag.ClearAndSelect
+        | QtCore.QItemSelectionModel.SelectionFlag.Rows,
+    )
+    QtWidgets.QApplication.processEvents()
+
+    gui.set_as_current_scenario()
+    QtWidgets.QApplication.processEvents()
+
+    assert gui.multiverse.current_node is child
+    assert gui.circuit.name == "child"
+    assert gui.circuit.get_bus_number() == 2
+    assert gui.circuit.get_branch_number(add_hvdc=False, add_vsc=False, add_switch=True) == 1
+    assert len(gui.circuit.diagrams) == 0
+    assert len(gui.diagram_widgets_list) == 0
+    assert gui.ui.diagramsListView.model() is None
+
+
 def main() -> None:
     """
     Dispatch one regression scenario in an isolated child process.
@@ -203,6 +258,8 @@ def main() -> None:
         _scenario_remove_non_active_diagram(tmp_path=tmp_path)
     elif scenario == "delete_db_object":
         _scenario_delete_db_object(tmp_path=tmp_path)
+    elif scenario == "activate_scenario_without_diagrams":
+        _scenario_activate_scenario_without_diagrams()
     else:
         raise ValueError(f"Unknown scenario: {scenario}")
 
