@@ -326,12 +326,17 @@ class RmsProblemDae(RmsProblemTemplate):
         self._algebraic_vars: List[Var] = list()
         self._algebraic_eqs: List[Expr] = list()
 
+        # for vectorization, we need to compute blocks separately and also balance equations
+        self._balance_equations: List[Expr] = list()
+
         # for vectorization, a dict of [equivalence class uid, list of expressions], every item corresponds to a type of model
         # when precessing the first model op a type the dictionaries will be filled.
         self._algebraic_eqs_equiv_class_dict: Dict[int, List[Expr]] = dict()
         self._algebraic_vars_equiv_class_dict: Dict[int, List[Var]] = dict()
         self._state_eqs_equiv_class_dict: Dict[int, List[Expr]] = dict()
         self._state_vars_equiv_class_dict: Dict[int, List[Var]] = dict()
+        self._parameters_equiv_class_dict: Dict[int, List[Const]] = dict()
+        self._variable_parameters_equiv_class_dict: Dict[int, List[Expr]] = dict()
 
         # when vectorizing this will be a list of lists
         self._state_vars: List[Var] = list()
@@ -364,6 +369,8 @@ class RmsProblemDae(RmsProblemTemplate):
         self._mode_runtime_expression_by_uid: Dict[int, Expr | Const] = dict()
         self._mode_runtime_initialized_uids: Set[int] = set()
         self._procedural_logic_updater: BlockProceduralLogicUpdater | None = None
+
+        self._rhs_by_types: Dict[int, Callable[[Vec, Vec, Vec, Vec], Vec]] = dict()
 
         # function pointers
         self._derivative_fn: SymbolicDerivative | None = None
@@ -457,7 +464,9 @@ class RmsProblemDae(RmsProblemTemplate):
 
             bus_dict[elm] = bus_num
 
+            # when vectorizing, it will not be needed ########################
             self.add_variables_to_compilation_dicts(elm, elm.rms_model)
+            ##################################################################
 
             # add init values from powerflow to initial guess
             if elm.is_dc:
@@ -490,7 +499,7 @@ class RmsProblemDae(RmsProblemTemplate):
                                                             logger=None)
 
                 Vmf, Vaf = get_bus_rms_algebraic_vars(elm.bus_from.rms_model)
-                Vmt, Vat = get_bus_rms_algebraic_vars(elm.bus_to.rms_model)
+
 
                 self.add_variables_to_compilation_dicts(elm, elm.rms_model)
                 register_rms_fmu_cs_device(self, elm, elm.rms_model)
@@ -1011,6 +1020,9 @@ class RmsProblemDae(RmsProblemTemplate):
                     else:
                         self._algebraic_eqs.append(Q[i])
                         self._algebraic_eqs.append(P[i])
+                        # vectorization
+                        self._balance_equations.append(Q[i])
+                        self._balance_equations.append(P[i])
 
         # We define the parameter dt and delta
         self._dt = Var(name='dt')
@@ -1035,6 +1047,8 @@ class RmsProblemDae(RmsProblemTemplate):
         self._alias_names_dict[self._delta.uid] = f"{self.VARIABLE_PARAMS_NAME}_{self._n_event_params}"
         self._uid2idx_event_params[self._delta.uid] = self._n_event_params
         self._n_event_params += 1
+
+
 
         self._runtime_all_eqs_source0 = list(self._runtime_all_eqs_source)
 
@@ -1291,6 +1305,10 @@ class RmsProblemDae(RmsProblemTemplate):
         timings["Event parameters"] = _toc(t0)
 
         t0 = _tic()
+        # here we compile equations for every different type of model
+
+
+
         self._rhs_algeb_fn = rms_compiler.compile_rhs(self._algebraic_eqs, "rhs_algeb")
         timings["RHS algebraic"] = _toc(t0)
 
@@ -1801,13 +1819,11 @@ class RmsProblemDae(RmsProblemTemplate):
             if v.uid in self._uid2idx_vars:
                 raise ValueError(f"State variable '{v.name}' (uid={v.uid}) is already registered in the system. "
                                  f"Previous device may have created a duplicate variable.")
-            # here we have to check if an equivalent variable of v has already been registered in compiler_names_dict
-            # if not:
-            self._compiler_names_dict_vect[mdl.uid][v.uid] =  f"{self.VARS_NAME}[{self._n_vars}]"
-            self._alias_names_dict_vect[mdl.uid][v.uid] = f"{self.VARS_NAME}_{self._n_vars}"
-            self._state_vars_equiv_class_dict[mdl.uid] = list()
-            self._state_vars_equiv_class_dict[mdl.uid].append(v)
-            # if yes: do nothing and continue
+            if v.uid in self.variable_equivalence_dict.keys():
+                self._compiler_names_dict_vect[mdl.uid][v.uid] =  f"{self.VARS_NAME}[{self._n_vars}]"
+                self._alias_names_dict_vect[mdl.uid][v.uid] = f"{self.VARS_NAME}_{self._n_vars}"
+                self._state_vars_equiv_class_dict[mdl.uid] = list()
+                self._state_vars_equiv_class_dict[mdl.uid].append(v)
 
             self._compiler_names_dict[v.uid] = f"{self.VARS_NAME}[{self._n_vars}]"
             self._alias_names_dict[v.uid] = f"{self.VARS_NAME}_{self._n_vars}"
@@ -1823,13 +1839,13 @@ class RmsProblemDae(RmsProblemTemplate):
             if v.uid in self._uid2idx_vars:
                 raise ValueError(f"Algebraic variable '{v.name}' (uid={v.uid}) is already registered in the system. "
                                  f"Previous device may have created a duplicate variable.")
-            # here we have to check if an equivalent variable of v has already been registered in compiler_names_dict
-            # if not:
-            self._compiler_names_dict_vect[mdl.uid][v.uid] = f"{self.VARS_NAME}[{self._n_vars}]"
-            self._alias_names_dict_vect[mdl.uid][v.uid] = f"{self.VARS_NAME}_{self._n_vars}"
-            self._algebraic_vars_equiv_class_dict[mdl.uid] = list()
-            self._algebraic_vars_equiv_class_dict[mdl.uid].append(v)
-            # if yes: do nothing
+
+            if v.uid in self.variable_equivalence_dict.keys():
+                self._compiler_names_dict_vect[mdl.uid][v.uid] = f"{self.VARS_NAME}[{self._n_vars}]"
+                self._alias_names_dict_vect[mdl.uid][v.uid] = f"{self.VARS_NAME}_{self._n_vars}"
+                self._algebraic_vars_equiv_class_dict[mdl.uid] = list()
+                self._algebraic_vars_equiv_class_dict[mdl.uid].append(v)
+
 
             self._compiler_names_dict[v.uid] = f"{self.VARS_NAME}[{self._n_vars}]"
             self._alias_names_dict[v.uid] = f"{self.VARS_NAME}_{self._n_vars}"
@@ -1845,11 +1861,9 @@ class RmsProblemDae(RmsProblemTemplate):
             if ep.uid in self._uid2idx_params:
                 raise ValueError(f"Parameter '{ep.name}' (uid={ep.uid}) is already registered in the system. "
                                  f"Previous device may have created a duplicate parameter.")
-            # here we have to check if an equivalent variable of v has already been registered in compiler_names_dict
-            # if not:
-            self._compiler_names_dict_vect[mdl.uid][ep.uid] = f"{self.CONSTANT_PARAMS_NAME}[{self._n_params}]"
-            self._alias_names_dict_vect[mdl.uid][ep.uid] = f"{self.CONSTANT_PARAMS_NAME}_{self._n_params}"
-            # if yes: do nothing
+            if ep.uid in self.variable_equivalence_dict.keys():
+                self._compiler_names_dict_vect[mdl.uid][ep.uid] = f"{self.CONSTANT_PARAMS_NAME}[{self._n_params}]"
+                self._alias_names_dict_vect[mdl.uid][ep.uid] = f"{self.CONSTANT_PARAMS_NAME}_{self._n_params}"
 
             self._compiler_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}[{self._n_params}]"
             self._alias_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}_{self._n_params}"
@@ -1871,14 +1885,12 @@ class RmsProblemDae(RmsProblemTemplate):
             if ep.uid in self._uid2idx_event_params:
                 raise ValueError(f"Event parameter '{ep.name}' (uid={ep.uid}) is already registered in the system. "
                                  f"Previous device may have created a duplicate event parameter.")
-            # here we have to check if an equivalent variable of v has already been registered in compiler_names_dict
-            # if not:
-            self._compiler_names_dict_vect[mdl.uid][ep.uid] = f"{self.VARIABLE_PARAMS_NAME}[{self._n_event_params}]"
-            self._alias_names_dict_vect[mdl.uid][ep.uid] = f"{self.VARIABLE_PARAMS_NAME}_{self._n_event_params}"
-            # if yes: do nothing
+            if ep.uid in self.variable_equivalence_dict.keys():
+                self._compiler_names_dict_vect[mdl.uid][ep.uid] = f"{self.VARIABLE_PARAMS_NAME}[{self._n_event_params}]"
+                self._alias_names_dict_vect[mdl.uid][ep.uid] = f"{self.VARIABLE_PARAMS_NAME}_{self._n_event_params}"
+
             self._compiler_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}[{self._n_event_params}]"
             self._alias_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}_{self._n_event_params}"
-            # if yes: do nothing
             self._uid2idx_event_params[ep.uid] = self._n_event_params
 
             effective_eq: Expr | Const = eq
@@ -1894,6 +1906,8 @@ class RmsProblemDae(RmsProblemTemplate):
             self._variable_parameters.append(ep)
             self._event_parameters_eqs0.append(effective_eq)
             self._runtime_all_parameters_source.append(ep)
+
+
             runtime_expression: Expr | Const = effective_eq if runtime_eq is None else runtime_eq
 
             if runtime_eq is None and ep.uid in self._discrete_event_parameter_uids:
@@ -1919,10 +1933,9 @@ class RmsProblemDae(RmsProblemTemplate):
             if v.uid in self._uid2idx_diff:
                 raise ValueError(f"Differential variable '{v.name}' (uid={v.uid}) is already registered in the system. "
                                  f"Previous device may have created a duplicate differential variable.")
-            # here we have to check if an equivalent variable of v has already been registered in compiler_names_dict
-            # if not:
-            self._compiler_names_dict_vect[mdl.uid][v.uid] = f"{self.DIFF_NAME}[{self._n_diff}]"
-            self._alias_names_dict_vect[mdl.uid][v.uid] = f"{self.DIFF_NAME}_{self._n_diff}"
+            if v.uid in self.variable_equivalence_dict.keys():
+                self._compiler_names_dict_vect[mdl.uid][v.uid] = f"{self.DIFF_NAME}[{self._n_diff}]"
+                self._alias_names_dict_vect[mdl.uid][v.uid] = f"{self.DIFF_NAME}_{self._n_diff}"
 
             self._compiler_names_dict[v.uid] = f"{self.DIFF_NAME}[{self._n_diff}]"
             self._alias_names_dict[v.uid] = f"{self.DIFF_NAME}_{self._n_diff}"
@@ -1932,11 +1945,13 @@ class RmsProblemDae(RmsProblemTemplate):
             self.add_device_var(dev=elm, var=v)
             self._diff_vars.append(v)
             self._n_diff += 1
-        # here we have to check if and equivalent model has been processed, if not:
-        self._state_eqs_equiv_class_dict[mdl.uid] = list()
-        self._state_eqs_equiv_class_dict[mdl.uid].extend(mdl.state_eqs)
-        self._algebraic_eqs_equiv_class_dict[mdl.uid] = list()
-        self._algebraic_eqs_equiv_class_dict[mdl.uid].extend(mdl.algebraic_eqs)
+
+
+        if mdl.uid in self.equivalence_dict.keys():
+            self._state_eqs_equiv_class_dict[mdl.uid] = list()
+            self._state_eqs_equiv_class_dict[mdl.uid].extend(mdl.state_eqs)
+            self._algebraic_eqs_equiv_class_dict[mdl.uid] = list()
+            self._algebraic_eqs_equiv_class_dict[mdl.uid].extend(mdl.algebraic_eqs)
 
         # we add bus variables for vectorization
         Vm, Va = get_bus_rms_algebraic_vars(elm.bus.rms_model)
@@ -2289,6 +2304,21 @@ class RmsProblemDae(RmsProblemTemplate):
             raise ValueError("_derivative_fn is None")
 
         return self._derivative_fn(x, xn, dx, h)
+
+    ########### vectorized functions ##########################
+
+    def rhs_state_vec(self, x: Vec, dx: Vec) -> Vec:
+
+        # here we need to iterate through equivalence_dict and build rhs for every model and then
+        # fill the complete rhs
+        # complete_rhs = np.seros(len(self.state_vars??)
+
+        for model_type in self._rhs_by_types:
+            # construct vectors for model from x, self._variables_parameters_values, self.constant_params
+            # calculate rhs for the model with self._rhs_by_types[model_type]
+            # fill complete_rhs
+
+        return complete_rhs
 
     def rhs_state(self, x: Vec, dx: Vec) -> Vec:
 
