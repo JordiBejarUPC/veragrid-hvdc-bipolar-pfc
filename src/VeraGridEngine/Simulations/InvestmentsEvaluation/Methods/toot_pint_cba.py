@@ -65,7 +65,7 @@ from typing import Callable
 
 import numpy as np
 
-from VeraGridEngine.basic_structures import IntVec, StrVec, Vec, Logger
+from VeraGridEngine.basic_structures import IntVec, IntMat, StrVec, Vec, Mat, Logger
 
 
 def get_reference_combination(lb: Vec | IntVec) -> IntVec:
@@ -224,6 +224,182 @@ def get_sorted_project_indices(scores: Vec, capex_values: Vec) -> IntVec:
     """
     indices: IntVec = np.arange(len(scores), dtype=int)
     return np.lexsort((indices, capex_values, -scores)).astype(int)
+
+
+def get_toot_pint_seed_population(obj_func: Callable,
+                                  n_var: int,
+                                  lb: Vec | IntVec,
+                                  ub: Vec | IntVec,
+                                  n_obj: int,
+                                  objective_names: StrVec,
+                                  variable_names: StrVec,
+                                  pop_size: int,
+                                  report_text: Callable | None = None,
+                                  logger: Logger | None = None,
+                                  record_results: bool = False) -> tuple[IntMat, Mat]:
+    """
+    Build an optional NSGA3 warm-start population from the direct PINT and TOOT evaluations.
+
+    The returned arrays are plain NumPy matrices so they can be passed to :func:`NSGA_3` without introducing a
+    dependency between the CBA helper and the evolutionary wrapper.
+
+    :param obj_func: Objective function with signature ``obj_func(x=..., record_results=...)``.
+    :type obj_func: Callable
+    :param n_var: Number of decision variables.
+    :type n_var: int
+    :param lb: Lower bound vector.
+    :type lb: Vec | IntVec
+    :param ub: Upper bound vector.
+    :type ub: Vec | IntVec
+    :param n_obj: Number of objectives.
+    :type n_obj: int
+    :param objective_names: Objective names of the active problem.
+    :type objective_names: StrVec
+    :param variable_names: Variable names of the active problem.
+    :type variable_names: StrVec
+    :param pop_size: Requested warm-start population size.
+    :type pop_size: int
+    :param report_text: Optional progress text callback.
+    :type report_text: Callable | None
+    :param logger: Optional logger.
+    :type logger: Logger | None
+    :param record_results: Record the evaluated seed points in the results object.
+    :type record_results: bool
+    :return: Seed decision vectors and aligned objective vectors.
+    :rtype: tuple[IntMat, Mat]
+    """
+    if pop_size > 0:
+        pass
+    else:
+        return np.zeros((0, n_var), dtype=int), np.zeros((0, n_obj), dtype=float)
+
+    reference_combination: IntVec = get_reference_combination(lb=lb)
+    target_combination: IntVec = get_target_combination(n_var=n_var, lb=lb, ub=ub)
+    baseline_objectives: Vec = obj_func(x=reference_combination.copy(), record_results=record_results)
+    target_objectives: Vec = obj_func(x=target_combination.copy(), record_results=record_results)
+
+    if len(baseline_objectives) == n_obj:
+        pass
+    else:
+        raise ValueError("The baseline objective vector size does not match n_obj")
+
+    capex_idx: int = get_capex_objective_index(objective_names=objective_names)
+    objective_scale: Vec = get_objective_scale(baseline=baseline_objectives, target=target_objectives)
+    project_scores: Vec = np.zeros(n_var, dtype=float)
+    project_capex: Vec = np.zeros(n_var, dtype=float)
+    pint_combinations: IntMat = np.zeros((n_var, n_var), dtype=int)
+    pint_objectives: Mat = np.zeros((n_var, n_obj), dtype=float)
+    toot_combinations: IntMat = np.zeros((n_var, n_var), dtype=int)
+    toot_objectives: Mat = np.zeros((n_var, n_obj), dtype=float)
+
+    for idx in range(n_var):
+        if report_text is None:
+            pass
+        else:
+            report_text(f"Evaluating project {idx} with PINT/TOOT warm-start logic...")
+
+        activation_value: int = get_candidate_activation_value(ub=ub, idx=idx)
+        pint_combination: IntVec = reference_combination.copy()
+        pint_combination[idx] = activation_value
+        pint_combinations[idx, :] = pint_combination
+
+        # PINT gives the single-project "project in" combinations used for the hybrid warm-start.
+        pint_objective_vector: Vec = obj_func(x=pint_combination.copy(), record_results=record_results)
+        pint_objectives[idx, :] = pint_objective_vector
+        pint_delta: Vec = baseline_objectives - pint_objective_vector
+
+        toot_combination: IntVec = target_combination.copy()
+        toot_combination[idx] = reference_combination[idx]
+        toot_combinations[idx, :] = toot_combination
+
+        # TOOT gives complementary "take one out" combinations that broaden the first NSGA3 generation.
+        toot_objective_vector: Vec = obj_func(x=toot_combination.copy(), record_results=record_results)
+        toot_objectives[idx, :] = toot_objective_vector
+        toot_delta: Vec = toot_objective_vector - target_objectives
+
+        if capex_idx > -1:
+            pint_capex: float = float(pint_objective_vector[capex_idx] - baseline_objectives[capex_idx])
+            toot_capex: float = float(target_objectives[capex_idx] - toot_objective_vector[capex_idx])
+            project_capex[idx] = pint_capex
+        else:
+            pint_capex = 0.0
+            toot_capex = 0.0
+            project_capex[idx] = 0.0
+
+        pint_score: float = get_normalized_cba_score(delta_objectives=pint_delta,
+                                                     capex_delta=pint_capex,
+                                                     capex_idx=capex_idx,
+                                                     scale=objective_scale)
+        toot_score: float = get_normalized_cba_score(delta_objectives=toot_delta,
+                                                     capex_delta=toot_capex,
+                                                     capex_idx=capex_idx,
+                                                     scale=objective_scale)
+        project_scores[idx] = 0.5 * (pint_score + toot_score)
+
+        if logger is None:
+            pass
+        else:
+            logger.add_info(msg="PINT/TOOT NSGA3 warm-start score",
+                            device=str(variable_names[idx]),
+                            value=f"{project_scores[idx]:.6f}",
+                            expected_value=f"PINT {pint_score:.6f} / TOOT {toot_score:.6f}")
+
+    sorted_indices: IntVec = get_sorted_project_indices(scores=project_scores,
+                                                        capex_values=project_capex)
+    candidate_population: IntMat = np.zeros((2 * n_var + 2, n_var), dtype=int)
+    candidate_objectives: Mat = np.zeros((2 * n_var + 2, n_obj), dtype=float)
+    candidate_count: int = 0
+    candidate_population[candidate_count, :] = reference_combination
+    candidate_objectives[candidate_count, :] = baseline_objectives
+    candidate_count += 1
+
+    for project_idx in sorted_indices:
+        project_pos: int = int(project_idx)
+        candidate_population[candidate_count, :] = pint_combinations[project_pos, :]
+        candidate_objectives[candidate_count, :] = pint_objectives[project_pos, :]
+        candidate_count += 1
+        candidate_population[candidate_count, :] = toot_combinations[project_pos, :]
+        candidate_objectives[candidate_count, :] = toot_objectives[project_pos, :]
+        candidate_count += 1
+
+    candidate_population[candidate_count, :] = target_combination
+    candidate_objectives[candidate_count, :] = target_objectives
+    candidate_count += 1
+
+    unique_population_rows: list[IntVec] = list()
+    unique_objective_rows: list[Vec] = list()
+    row_idx: int
+
+    for row_idx in range(candidate_count):
+        current_row: IntVec = candidate_population[row_idx, :]
+        is_duplicate: bool = False
+        existing_row: IntVec
+
+        for existing_row in unique_population_rows:
+            if np.array_equal(existing_row, current_row):
+                is_duplicate = True
+            else:
+                pass
+
+        if is_duplicate:
+            pass
+        else:
+            unique_population_rows.append(current_row.copy())
+            unique_objective_rows.append(candidate_objectives[row_idx, :].copy())
+
+        if len(unique_population_rows) < pop_size:
+            pass
+        else:
+            break
+
+    if len(unique_population_rows) > 0:
+        seed_population: IntMat = np.asarray(unique_population_rows, dtype=int)
+        seed_objectives: Mat = np.asarray(unique_objective_rows, dtype=float)
+    else:
+        seed_population = np.zeros((0, n_var), dtype=int)
+        seed_objectives = np.zeros((0, n_obj), dtype=float)
+
+    return seed_population, seed_objectives
 
 
 def TOOT_PINT_CBA(obj_func: Callable,

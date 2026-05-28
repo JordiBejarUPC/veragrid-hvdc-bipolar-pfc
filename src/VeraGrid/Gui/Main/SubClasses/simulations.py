@@ -218,6 +218,7 @@ class SimulationsMain(TimeEventsMain):
         (self.investment_evaluation_method_dict,
          investment_evaluation_method_mdl) = gf.enums_to_model(
             [InvestmentEvaluationMethod.CBA_PINT_TOOT,
+             InvestmentEvaluationMethod.PINT_TOOT_NSGA3,
              InvestmentEvaluationMethod.NSGA3,
              InvestmentEvaluationMethod.MVRSM,
              InvestmentEvaluationMethod.MixedVariableGA, ]

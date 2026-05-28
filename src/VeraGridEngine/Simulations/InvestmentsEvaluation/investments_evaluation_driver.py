@@ -16,10 +16,13 @@ from VeraGridEngine.Simulations.InvestmentsEvaluation.investments_evaluation_opt
 from VeraGridEngine.Simulations.InvestmentsEvaluation.Methods.NSGA_3 import NSGA_3
 from VeraGridEngine.Simulations.InvestmentsEvaluation.Methods.mixed_variable_NSGA_2 import NSGA_2
 from VeraGridEngine.Simulations.InvestmentsEvaluation.Methods.random_eval import random_trial
-from VeraGridEngine.Simulations.InvestmentsEvaluation.Methods.toot_pint_cba import TOOT_PINT_CBA
+from VeraGridEngine.Simulations.InvestmentsEvaluation.Methods.toot_pint_cba import (
+    TOOT_PINT_CBA,
+    get_toot_pint_seed_population,
+)
 from VeraGridEngine.Simulations.InvestmentsEvaluation.Problems.black_box_problem_template import BlackBoxProblemTemplate
 from VeraGridEngine.enumerations import InvestmentEvaluationMethod, SimulationTypes
-from VeraGridEngine.basic_structures import IntVec, Vec
+from VeraGridEngine.basic_structures import IntVec, IntMat, Vec, Mat
 
 
 class InvestmentsEvaluationDriver(DriverTemplate):
@@ -100,9 +103,9 @@ class InvestmentsEvaluationDriver(DriverTemplate):
 
         if record_results:
             self.results.add(x_vec=x, f_vec=objectives)
-
-        # Report the progress
-        self.report_progress2(self.results.current_evaluation, self.results.max_eval)
+            self.report_progress2(self.results.current_evaluation, self.results.max_eval)
+        else:
+            pass
 
         return objectives
 
@@ -235,6 +238,57 @@ class InvestmentsEvaluationDriver(DriverTemplate):
 
         self.results.set_best_combination(combination=X[:, 0])
 
+    def optimized_evaluation_pint_toot_nsga3(self) -> None:
+        """
+        Run an NSGA3 search warm-started with the direct PINT and TOOT evaluations.
+        """
+        self.report_text("Evaluating investments with PINT/TOOT-seeded NSGA3...")
+        dim: int = self.problem.n_vars()
+        pop_size: int = int(round(dim))
+        n_obj: int = len(self.problem.get_objectives_names())
+
+        # Record the evaluated warm-start points first and then leave the remaining budget to NSGA3 itself.
+        self.initialize(max_iter=self.options.max_eval + 2 * dim + 2)
+
+        seed_population: IntMat
+        seed_objectives: Mat
+        seed_population, seed_objectives = get_toot_pint_seed_population(
+            obj_func=self.objective_function,
+            n_var=dim,
+            lb=self.problem.x_min,
+            ub=self.problem.x_max,
+            n_obj=n_obj,
+            objective_names=self.problem.get_objectives_names(),
+            variable_names=self.problem.get_vars_names(),
+            pop_size=pop_size,
+            report_text=self.report_text,
+            logger=self.logger,
+            record_results=True,
+        )
+
+        # Find the largest number of reference partitions compatible with the selected population size.
+        n_partitions: int = 1
+        while comb(n_partitions + 1 + n_obj - 1, n_obj - 1) <= pop_size:
+            n_partitions += 1
+
+        X, obj_values = NSGA_3(
+            obj_func=self.objective_function,
+            n_partitions=n_partitions,
+            n_var=dim,
+            lb=self.problem.x_min,
+            ub=self.problem.x_max,
+            n_obj=n_obj,
+            max_evals=self.options.max_eval,
+            pop_size=pop_size,
+            crossover_prob=0.8,
+            mutation_probability=0.1,
+            eta=30,
+            initial_population=seed_population,
+            initial_objectives=seed_objectives,
+        )
+
+        self.results.set_best_combination(combination=X[:, 0])
+
     def randomized_evaluation(self) -> None:
         """
         Run purely random evaluations, without any optimization
@@ -314,6 +368,9 @@ class InvestmentsEvaluationDriver(DriverTemplate):
 
         elif self.options.solver == InvestmentEvaluationMethod.NSGA3:
             self.optimized_evaluation_nsga3()
+
+        elif self.options.solver == InvestmentEvaluationMethod.PINT_TOOT_NSGA3:
+            self.optimized_evaluation_pint_toot_nsga3()
 
         elif self.options.solver == InvestmentEvaluationMethod.Random:
             self.randomized_evaluation()
