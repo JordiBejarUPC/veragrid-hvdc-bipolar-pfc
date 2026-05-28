@@ -3489,7 +3489,7 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
                 )
                 grid.add_generator(bus=bus, api_obj=gen)
 
-            elif elmgenstat.cCategory == 'Storage':
+            elif elmgenstat.cCategory == 'Storage' and elmgenstat.av_mode == 'constq':
                 bus, battery = convert_dgs_staticgen_to_battery(
                     elmgenstat=elmgenstat,
                     stacubic_dict=stacubic_dict,
@@ -3501,6 +3501,20 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
                     parallel_count=parallel_count
                 )
                 grid.add_battery(bus=bus, api_obj=battery)
+
+            elif elmgenstat.cCategory == 'Storage' and elmgenstat.av_mode == 'vdroop':
+                dc_bus, vsc = convert_dgs_staticgen_to_vsc(
+                    elmgenstat=elmgenstat,
+                    stacubic_dict=stacubic_dict,
+                    buses=grid.buses,
+                    logger=logger,
+                    cubics_by_objid=cubics_by_objid,
+                    bus_by_term_id=bus_by_term_id,
+                    parallel_index=parallel_index,
+                    parallel_count=parallel_count
+                )
+                grid.add_bus(dc_bus)
+                grid.add_vsc(vsc)
 
             elif elmgenstat.av_mode == 'constv':
                 bus, gen = convert_dgs_staticgen_to_gen(
