@@ -1426,6 +1426,7 @@ class EmtProblemDae(EmtProblemTemplate):
                          glob_time=glob_time,
                          progress_signal=progress_signal,
                          progress_text=progress_text)
+
         self._rebuild_results_var_name_lookup()
         template_init_s: float = _toc(t_phase_start)
         t_phase_start = _tic()
@@ -3099,6 +3100,8 @@ class EmtProblemDae(EmtProblemTemplate):
 
             mdl: Block = self._process_device_model(br, sys_block)
 
+            mdl.unify_blocks()
+
             is_bergeron, is_jmarti = _is_history_runtime_line_block_name(mdl.name)
 
             is_vsc: bool = br.device_type == DeviceType.VscDevice
@@ -3364,6 +3367,9 @@ class EmtProblemDae(EmtProblemTemplate):
 
         for injection_index, inj in enumerate(injection_devices):
             mdl: Block = self._process_device_model(inj, sys_block)
+
+            mdl.unify_blocks()
+
             b: int = bus_dict[inj.bus]
 
             assign_static_api_object_mapping_for_device(
@@ -7322,6 +7328,7 @@ class EmtProblemDae(EmtProblemTemplate):
         dev_key: str = str(dev.idtag)
         mdl: Block | None = self._working_emt_models.get(dev_key, None)
 
+
         if mdl is None:
             mdl = copy.deepcopy(dev.emt_model)
             if mdl.children:
@@ -7343,6 +7350,8 @@ class EmtProblemDae(EmtProblemTemplate):
             self._working_emt_models[dev_key] = mdl
         else:
             pass
+
+        mdl.unify_blocks()
 
         return mdl
 
