@@ -23,6 +23,34 @@ def _new_uid() -> int:
     """
     return uuid.uuid4().int
 
+def set_parameter(blk: Block, var_name: str, new_value: float):
+
+    for var, expr in blk.event_dict.items():
+        if var.name == var_name:
+            if isinstance(expr, Const):
+                expr.value = new_value
+            else:
+                blk.event_dict[var] = Const(new_value)
+
+
+    for var, expr in blk.mode_dict.items():
+        if var.name == var_name:
+            if isinstance(expr, Const):
+                expr.value = new_value
+            else:
+                blk.mode_dict[var] = Const(new_value)
+
+
+    # check parameters dict
+    for var, const in blk.parameters.items():
+        if var.name == var_name:
+            if isinstance(const, Const):
+                const.value = new_value
+            else:
+                blk.parameters[var] = Const(new_value)
+
+
+
 
 class Block:
     """
@@ -432,6 +460,8 @@ class Block:
     #
     #     self.parameters[self.api_obj_mapping[ref]] = val
 
+
+
     def set_parameter_in_model(self, var_name: str, new_value: float):
         """
         updates parameter value given a name and a value
@@ -440,37 +470,12 @@ class Block:
         :param new_value:
         :return:
         """
-        found = 0
 
-        for var, expr in self.event_dict.items():
-            if var.name == var_name:
-                if isinstance(expr, Const):
-                    expr.value = new_value
-                else:
-                    self.event_dict[var] = Const(new_value)
-                found += 1
+        set_parameter(self, var_name, new_value)
+        if self.children:
+            for child in self.children:
+                child.set_parameter_in_model(var_name, new_value)
 
-        for var, expr in self.mode_dict.items():
-            if var.name == var_name:
-                if isinstance(expr, Const):
-                    expr.value = new_value
-                else:
-                    self.mode_dict[var] = Const(new_value)
-                found += 1
-
-        # check parameters dict
-        for var, const in self.parameters.items():
-            if var.name == var_name:
-                if isinstance(const, Const):
-                    const.value = new_value
-                else:
-                    self.parameters[var] = Const(new_value)
-                found += 1
-        if found == 0:
-            raise ValueError(f"Parameter {var_name} not found in model")
-        elif found > 1:
-            raise ValueError(
-                f"Could not set value because several parameters with name {var_name} where found in the model")
 
     def check_empty(self) -> bool:
         """
