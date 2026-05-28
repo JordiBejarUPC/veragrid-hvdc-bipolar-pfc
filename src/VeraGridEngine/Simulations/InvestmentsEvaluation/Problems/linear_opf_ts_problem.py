@@ -196,21 +196,45 @@ def restore_device_states(states: Dict[str, Tuple[EditableDevice, bool, BoolVec]
             active_profile.set(active_profile_array)
 
 
-def get_objective_vector(results: OptimalPowerFlowTimeSeriesResults) -> Vec:
+def get_objective_vector(results: OptimalPowerFlowTimeSeriesResults,
+                         capex: float) -> Vec:
     """
     Aggregate the linear OPF results into the investment objective vector.
 
     :param results: Time-series OPF results.
     :type results: OptimalPowerFlowTimeSeriesResults
+    :param capex: Total CAPEX of the selected investment groups.
+    :type capex: float
     :return: Objective vector.
     :rtype: Vec
     """
-    average_nodal_price: float = float(np.mean(results.bus_shadow_prices))
+    nodal_price_per_time: Vec = np.mean(results.bus_shadow_prices, axis=1)
+    served_load_per_time: Vec = np.sum(results.load_power, axis=1)
+    shedding_mask = results.load_shedding > 0.0
+
+    if np.any(shedding_mask):
+        shedding_price = np.divide(results.load_shedding_cost,
+                                   results.load_shedding,
+                                   out=np.zeros_like(results.load_shedding_cost, dtype=float),
+                                   where=shedding_mask)
+        price_cap: float = float(np.max(shedding_price))
+        nodal_price_per_time = np.clip(nodal_price_per_time, a_min=None, a_max=price_cap)
+    else:
+        pass
+
+    if np.sum(served_load_per_time) > 0.0:
+        average_nodal_price: float = float(np.average(nodal_price_per_time, weights=served_load_per_time))
+    else:
+        average_nodal_price = float(np.mean(nodal_price_per_time))
+
+    opex: float = float(np.sum(results.system_total_energy_cost))
     load_shedding: float = float(np.sum(results.load_shedding))
     generation_shedding: float = float(np.sum(results.generator_shedding))
     fuel_usage: float = float(np.sum(results.system_fuel))
 
     return np.array([average_nodal_price,
+                     capex,
+                     opex,
                      load_shedding,
                      generation_shedding,
                      fuel_usage], dtype=float)
@@ -227,6 +251,7 @@ class TimeSeriesLinearOptimalPowerFlowInvestmentProblem(BlackBoxProblemTemplate)
         "clustering_results",
         "engine",
         "years_starts_indices",
+        "inv_group_capex",
         "all_elements_dict",
     )
 
@@ -252,8 +277,8 @@ class TimeSeriesLinearOptimalPowerFlowInvestmentProblem(BlackBoxProblemTemplate)
         """
         super().__init__(grid=grid,
                          x_dim=len(grid.investments_groups),
-                         plot_x_idx=0,
-                         plot_y_idx=1)
+                         plot_x_idx=1,
+                         plot_y_idx=0)
 
         # The GUI provides the OPF options, but this problem always runs the linear formulation.
         self.opf_options: OptimalPowerFlowOptions = clone_linear_opf_options(opf_options=opf_options)
@@ -266,6 +291,7 @@ class TimeSeriesLinearOptimalPowerFlowInvestmentProblem(BlackBoxProblemTemplate)
             index=self.grid.time_profile[self.time_indices]
         )
         self.x_max *= len(self.years_starts_indices)
+        self.inv_group_capex = self.grid.get_capex_by_investment_group()
 
         # The device lookup is reused at every evaluation to avoid repeated scans of the grid.
         self.all_elements_dict, dict_ok = self.grid.get_all_elements_dict()
@@ -282,7 +308,7 @@ class TimeSeriesLinearOptimalPowerFlowInvestmentProblem(BlackBoxProblemTemplate)
         :return: Objective vector length.
         :rtype: int
         """
-        return 4
+        return 6
 
     def n_vars(self) -> int:
         """
@@ -301,6 +327,8 @@ class TimeSeriesLinearOptimalPowerFlowInvestmentProblem(BlackBoxProblemTemplate)
         :rtype: StrVec
         """
         return np.array(["Average nodal price",
+                         "CAPEX",
+                         "OPEX",
                          "Load shedding",
                          "Generation shedding",
                          "Fuel usage"])
@@ -326,7 +354,9 @@ class TimeSeriesLinearOptimalPowerFlowInvestmentProblem(BlackBoxProblemTemplate)
         x_int: IntVec = np.array(x, dtype=int)
         x_min: IntVec = np.array(self.x_min, dtype=int)
         x_max: IntVec = np.array(self.x_max, dtype=int)
-        penalty: Vec = np.full(4, 1e12, dtype=float)
+        x_bin: Vec = x_int.astype(bool).astype(float)
+        capex: float = float(np.sum(self.inv_group_capex * x_bin))
+        penalty: Vec = np.full(6, 1e12, dtype=float)
 
         # The optimizer may propose out-of-range values, so the vector is corrected before touching the grid.
         correct_x(x=x_int, lb=x_min, ub=x_max)
@@ -350,7 +380,7 @@ class TimeSeriesLinearOptimalPowerFlowInvestmentProblem(BlackBoxProblemTemplate)
             driver.run()
 
             if np.all(driver.results.converged):
-                return get_objective_vector(results=driver.results)
+                return get_objective_vector(results=driver.results, capex=capex)
             else:
                 return penalty
         except Exception as err:
