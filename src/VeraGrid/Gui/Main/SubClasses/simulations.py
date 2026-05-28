@@ -243,6 +243,7 @@ class SimulationsMain(TimeEventsMain):
          investment_evaluation_objfunc_mdl) = gf.enums_to_model(
             [InvestmentsEvaluationObjectives.PowerFlow,
              InvestmentsEvaluationObjectives.TimeSeriesPowerFlow,
+             InvestmentsEvaluationObjectives.LinearOptimalPowerFlowTimeSeries,
              InvestmentsEvaluationObjectives.GenerationAdequacy,
              InvestmentsEvaluationObjectives.SimpleDispatch]
         )
@@ -3257,6 +3258,20 @@ class SimulationsMain(TimeEventsMain):
                             ),
                             engine=self.get_preferred_engine()
                         )
+
+                    elif obj_fn_tpe == InvestmentsEvaluationObjectives.LinearOptimalPowerFlowTimeSeries:
+
+                        if self.circuit.has_time_series:
+                            problem = sim.TimeSeriesLinearOptimalPowerFlowInvestmentProblem(
+                                grid=self.circuit,
+                                opf_options=self.get_opf_options(),
+                                time_indices=self.get_time_indices(),
+                                clustering_results=self.get_clustering_results(),
+                                engine=self.get_preferred_engine()
+                            )
+                        else:
+                            self.show_warning_toast('Linear OPF investment studies need time data...')
+                            return
 
                     elif obj_fn_tpe == InvestmentsEvaluationObjectives.GenerationAdequacy:
 
