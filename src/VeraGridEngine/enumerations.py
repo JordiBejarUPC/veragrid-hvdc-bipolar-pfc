@@ -210,7 +210,7 @@ class InvestmentEvaluationMethod(Enum):
     """
     Investment evaluation methods
     """
-    Independent = "Independent"
+    CBA_PINT_TOOT = "CBA PINT-TOOT"
     Hyperopt = "Hyperopt"
     MVRSM = "MVRSM"
     NSGA3 = "NSGA3"

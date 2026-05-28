@@ -16,6 +16,7 @@ from VeraGridEngine.Simulations.InvestmentsEvaluation.investments_evaluation_opt
 from VeraGridEngine.Simulations.InvestmentsEvaluation.Methods.NSGA_3 import NSGA_3
 from VeraGridEngine.Simulations.InvestmentsEvaluation.Methods.mixed_variable_NSGA_2 import NSGA_2
 from VeraGridEngine.Simulations.InvestmentsEvaluation.Methods.random_eval import random_trial
+from VeraGridEngine.Simulations.InvestmentsEvaluation.Methods.toot_pint_cba import TOOT_PINT_CBA
 from VeraGridEngine.Simulations.InvestmentsEvaluation.Problems.black_box_problem_template import BlackBoxProblemTemplate
 from VeraGridEngine.enumerations import InvestmentEvaluationMethod, SimulationTypes
 from VeraGridEngine.basic_structures import IntVec, Vec
@@ -137,36 +138,29 @@ class InvestmentsEvaluationDriver(DriverTemplate):
 
     def independent_evaluation(self) -> None:
         """
-        Sort investments in order and then evaluate cumulative combinations of increasingly expensive investments
+        Evaluate projects with a CBA-like reference/PINT/TOOT ranking and then build a cumulative portfolio.
         """
+        self.report_text("Evaluating investments with a CBA-like independent sequence...")
+        dim: int = self.problem.n_vars()
+        n_cumulative_evaluations: int = dim - 1 if dim > 0 else 0
 
-        self.initialize(max_iter=(self.problem.n_vars() + 1) * 2)
+        # The displayed metrics must come from the active problem, so the results object is initialized with the
+        # problem objective names and every stored evaluation comes from self.objective_function().
+        self.initialize(max_iter=1 + dim + n_cumulative_evaluations)
 
-        # Add baseline evaluation
-        self.objective_function(x=np.zeros(self.problem.n_vars(), dtype=int))
-        results_with_combinations = self.evaluate_individual_investments()
+        best_combination: IntVec = TOOT_PINT_CBA(
+            obj_func=self.objective_function,
+            n_var=dim,
+            lb=self.problem.x_min,
+            ub=self.problem.x_max,
+            n_obj=len(self.problem.get_objectives_names()),
+            objective_names=self.problem.get_objectives_names(),
+            variable_names=self.problem.get_vars_names(),
+            report_text=self.report_text,
+            logger=self.logger,
+        )
 
-        # Sort the results in ascending financial score
-        sorted_results_with_combinations = sorted(results_with_combinations, key=lambda x: x[0][4])
-
-        dim = len(self.grid.investments_groups)
-        cumulative_combination = np.zeros(dim, dtype=int)
-        cumulative_combinations = []
-
-        # Cumulative combinations
-
-        for results, combination in sorted_results_with_combinations:
-            cumulative_combination += combination
-            # print(f"Combination: {combination}, Results: {results}, Cumulative Combination: {cumulative_combination}")
-            cumulative_combinations.append(cumulative_combination.copy())
-
-        st = timeit.default_timer()
-        # Evaluate each cumulative combination
-        for cumulative_combination in cumulative_combinations:
-            self.report_text(f"Evaluating cumulative combination: {cumulative_combination}")
-            self.objective_function(x=cumulative_combination, record_results=True)
-        et = timeit.default_timer()
-        print(f"Time taken to evaluate cumulative combinations: {et - st}")
+        self.results.set_best_combination(combination=best_combination)
 
     def optimized_evaluation_mvrsm_pareto(self) -> None:
         """
@@ -312,7 +306,7 @@ class InvestmentsEvaluationDriver(DriverTemplate):
         self.logger.add_info(msg="Solver", value=f"{self.options.solver.value}")
         self.logger.add_info(msg="Max evaluations", value=f"{self.options.max_eval}")
 
-        if self.options.solver == InvestmentEvaluationMethod.Independent:
+        if self.options.solver == InvestmentEvaluationMethod.CBA_PINT_TOOT:
             self.independent_evaluation()
 
         elif self.options.solver == InvestmentEvaluationMethod.MVRSM:
