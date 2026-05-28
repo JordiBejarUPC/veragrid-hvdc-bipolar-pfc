@@ -196,6 +196,53 @@ def restore_device_states(states: Dict[str, Tuple[EditableDevice, bool, BoolVec]
             active_profile.set(active_profile_array)
 
 
+def force_investment_candidates_off(investments_by_group: Dict[int, List[Investment]],
+                                    all_elements_dict: Dict[str, EditableDevice],
+                                    logger) -> None:
+    """
+    Force activation-type investment candidates to be off before the optimization starts.
+
+    :param investments_by_group: Investments grouped by decision-variable index.
+    :type investments_by_group: Dict[int, List[Investment]]
+    :param all_elements_dict: Dictionary of all grid devices.
+    :type all_elements_dict: Dict[str, EditableDevice]
+    :param logger: Problem logger.
+    :type logger: any
+    :return: None
+    :rtype: None
+    """
+    processed_devices: set[str] = set()
+
+    for group_index, investments in investments_by_group.items():
+        for investment in investments:
+            if investment.status:
+                if investment.device_idtag not in processed_devices:
+                    device = all_elements_dict.get(investment.device_idtag, None)
+
+                    if device is None:
+                        logger.add_warning("Investment device not found",
+                                           device=investment.device_idtag)
+                    else:
+                        active_profile = device.get_profile("active")
+                        device.active = False
+
+                        if active_profile is None:
+                            logger.add_info(msg="Forced investment candidate off",
+                                            device=investment.name,
+                                            device_class="Investment")
+                        else:
+                            active_profile.fill(False)
+                            logger.add_info(msg="Forced investment candidate off",
+                                            device=investment.name,
+                                            device_class="Investment")
+
+                        processed_devices.add(investment.device_idtag)
+                else:
+                    pass
+            else:
+                pass
+
+
 def get_objective_vector(results: OptimalPowerFlowTimeSeriesResults,
                          capex: float) -> Vec:
     """
@@ -300,6 +347,11 @@ class TimeSeriesLinearOptimalPowerFlowInvestmentProblem(BlackBoxProblemTemplate)
             pass
         else:
             self.logger.add_warning("Some investment devices are missing from the grid element dictionary")
+
+        # Candidate assets that are activated by the investments must start disabled in the baseline case.
+        force_investment_candidates_off(investments_by_group=self.investments_by_group,
+                                        all_elements_dict=self.all_elements_dict,
+                                        logger=self.logger)
 
     def n_objectives(self) -> int:
         """
