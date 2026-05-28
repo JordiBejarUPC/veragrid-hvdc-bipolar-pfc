@@ -1363,9 +1363,7 @@ class EmtProblemDae(EmtProblemTemplate):
 
         # for init_explicit
         self._models_with_init_eqs: List[Block] = []
-        self._models_with_diff_init_eqs: List[Block] = []
         self._models_with_init_eqs_seen: Set[int] = set()
-        self._models_with_diff_init_eqs_seen: Set[int] = set()
 
         sys_block = Block(children=[], in_vars=[])
         glob_time = Var(self.TIME_NAME)
@@ -1468,11 +1466,12 @@ class EmtProblemDae(EmtProblemTemplate):
         self._seed_all_switched_vsc_models()
         self._seed_all_switch_models()
         self.init_guess.update(self._temp_post_init_guess)
-        for diff_uid, diff_value in self._temp_post_diff_init_guess.items():
-            if diff_uid in self.diff_init_guess:
-                pass
-            else:
-                self.diff_init_guess[diff_uid] = float(diff_value)
+        self.diff_init_guess.update(self._temp_post_diff_init_guess)
+        # for diff_uid, diff_value in self._temp_post_diff_init_guess.items():
+        #     if diff_uid in self.diff_init_guess:
+        #         pass
+        #     else:
+        #         self.diff_init_guess[diff_uid] = float(diff_value)
         native_init_s: float = _toc(t_phase_start)
         t_phase_start = _tic()
 
@@ -1597,19 +1596,20 @@ class EmtProblemDae(EmtProblemTemplate):
         # Every nested block is inspected because the GUI may wrap the actual
         # device model inside non-physical container blocks.
         for block in blocks:
-            init_eqs: Any = block.init_eqs
+            init_eqs: Dict[Var, Expr] = block.init_eqs
+            diff_init_eqs: Dict[Var, Expr] = block.diff_init_eqs
 
             if init_eqs is None or len(init_eqs) == 0:
-                pass
+                if diff_init_eqs is None or len(diff_init_eqs) == 0:
+                    pass
             else:
-                mid: int = id(block)
 
                 # The seen-set keeps the explicit-init schedule stable even if
                 # the same working model is visited from multiple build paths.
-                if mid in self._models_with_init_eqs_seen:
+                if block.uid in self._models_with_init_eqs_seen:
                     pass
                 else:
-                    self._models_with_init_eqs_seen.add(mid)
+                    self._models_with_init_eqs_seen.add(block.uid)
                     self._models_with_init_eqs.append(block)
 
     def get_build_report(self) -> Dict[str, float]:
@@ -1621,38 +1621,6 @@ class EmtProblemDae(EmtProblemTemplate):
         """
         return dict(self.build_report)
 
-    def _register_diff_init_model(self, mdl: Block) -> None:
-        """
-        Register every block in one hierarchy that defines diff-init equations.
-
-        Wrapper EMT roots may keep differential explicit-initialization metadata
-        in nested child blocks. This routine traverses the full hierarchy so the
-        later explicit-init stage executes every unique contributing block.
-
-        :param mdl: Root block to inspect.
-        :return: None
-        """
-        blocks: List[Block] = _collect_block_hierarchy(mdl)
-        block: Block
-
-        # The traversal mirrors the normal explicit-init registration path so
-        # both algebraic and differential init metadata follow the same policy.
-        for block in blocks:
-            diff_init_eqs: Any = block.diff_init_eqs
-
-            if diff_init_eqs is None or len(diff_init_eqs) == 0:
-                pass
-            else:
-                mid: int = id(block)
-
-                # Duplicate registrations are ignored so execution order remains
-                # deterministic when wrappers reference the same child block.
-                if mid in self._models_with_diff_init_eqs_seen:
-                    pass
-                else:
-                    self._models_with_diff_init_eqs_seen.add(mid)
-                    self._models_with_diff_init_eqs.append(block)
-
     def _run_explicit_initialization(self)-> None:
         """
         Run explicit initialization for every block that defines initialization equations.
@@ -1663,7 +1631,7 @@ class EmtProblemDae(EmtProblemTemplate):
         :return: None
         """
 
-        if len(self._models_with_init_eqs) == 0 and len(self._models_with_diff_init_eqs) == 0:
+        if len(self._models_with_init_eqs) == 0 :
             return
 
         # sys_vars dict (uid -> Var), size = n_vars
@@ -1680,11 +1648,10 @@ class EmtProblemDae(EmtProblemTemplate):
 
         seen_blocks: set[int] = set()
 
-        for mdl in chain(self._models_with_init_eqs, self._models_with_diff_init_eqs):
-            mdl_id = id(mdl)
+        for mdl in self._models_with_init_eqs:
 
-            if mdl_id not in seen_blocks:
-                seen_blocks.add(mdl_id)
+            if mdl.uid not in seen_blocks:
+                seen_blocks.add(mdl.uid)
 
                 try:
                     params_array: np.ndarray = np.asarray(
@@ -1710,6 +1677,7 @@ class EmtProblemDae(EmtProblemTemplate):
                         compile_single_equation=compile_single_equation,
                         verbose=bool(self.options.verbose > 0),
                     )
+
 
                     for event_var in mdl.event_dict.keys():
                         event_idx: int | None = self.uid2idx_event_params.get(event_var.uid, None)
@@ -2851,7 +2819,7 @@ class EmtProblemDae(EmtProblemTemplate):
             sys_block.add(mdl)
 
             self._register_init_model(mdl)
-            self._register_diff_init_model(mdl)
+            # self._register_diff_init_model(mdl)
 
             self._registered_working_emt_models.add(dev_key)
 
