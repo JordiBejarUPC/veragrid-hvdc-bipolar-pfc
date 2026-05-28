@@ -1711,7 +1711,6 @@ class EmtProblemDae(EmtProblemTemplate):
                         verbose=bool(self.options.verbose > 0),
                     )
 
-
                     for event_var in mdl.event_dict.keys():
                         event_idx: int | None = self.uid2idx_event_params.get(event_var.uid, None)
 
@@ -2583,7 +2582,11 @@ class EmtProblemDae(EmtProblemTemplate):
 
         for br in self.grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
             br_emt_model = self._working_emt_models.get(str(br.idtag), br.emt_model)
-            validate_line_phase_layout(branch=br, mdl=br_emt_model, logger=self.logger)
+
+            if br.device_type == DeviceType.LineDevice:
+                validate_line_phase_layout(branch=br, mdl=br_emt_model, logger=self.logger)
+            else:
+                pass
 
             if br_emt_model is not None:
                 br_bus_from = br.bus_from
