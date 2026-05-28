@@ -1097,7 +1097,7 @@ def _get_expected_pi_line_terminal_refs(ph_mask: List[bool]) -> List[VarPowerFlo
     return ordered_refs
 
 
-def _normalize_pi_line_phase_layout(branch: Any, mdl: Block, logger: Logger) -> Block:
+def validate_line_phase_layout(branch: Any, mdl: Block, logger: Logger):
     """
     Validate that a pi-line EMT block matches the physical branch phase layout.
 
@@ -1111,20 +1111,7 @@ def _normalize_pi_line_phase_layout(branch: Any, mdl: Block, logger: Logger) -> 
     :param branch: Grid branch device.
     :param mdl: EMT block associated with the branch.
     :param logger: Shared system logger used to report invalid topology states.
-    :return: Original block after validation.
     """
-    api_obj_mapping: Any = mdl.api_obj_mapping
-
-    # Only standard pi-line templates expose the resistance entry used below.
-    # Non-dict mappings or blocks without that API slot are outside this
-    # validation path, so they are preserved unchanged.
-    if not isinstance(api_obj_mapping, dict):
-        return mdl
-    else:
-        if ParamPowerFlowRefferenceType.Rnn not in api_obj_mapping:
-            return mdl
-        else:
-            pass
 
     # The branch admittance mask is the physical topology source of truth, so it
     # defines which symbolic terminal voltage references must exist on the block.
@@ -1172,7 +1159,7 @@ def _normalize_pi_line_phase_layout(branch: Any, mdl: Block, logger: Logger) -> 
     else:
         pass
 
-    return mdl
+
 
 class EmtInjectionSeedStore:
     """
@@ -1395,7 +1382,6 @@ class EmtProblemDae(EmtProblemTemplate):
         t_phase_start: float = t_build
         cache_stats_before: Dict[str, float] = get_compiled_functions_cache_stats()
 
-        self._validate_emt_models_exist()
         validate_models_s: float = _toc(t_phase_start)
         t_phase_start = _tic()
 
@@ -1725,7 +1711,6 @@ class EmtProblemDae(EmtProblemTemplate):
                         verbose=bool(self.options.verbose > 0),
                     )
 
-
                     for event_var in mdl.event_dict.keys():
                         event_idx: int | None = self.uid2idx_event_params.get(event_var.uid, None)
 
@@ -1768,34 +1753,6 @@ class EmtProblemDae(EmtProblemTemplate):
         """
         return
 
-    def _validate_emt_models_exist(self) -> None:
-        """
-        Validate that all devices have their emt_model properly assigned before building.
-
-        This check prevents cryptic KeyError exceptions during _build_structure_and_collect
-        when a device's emt_model is empty (not initialized via set_emt_model).
-
-        :raises EmtTopologyError: If any device is missing its emt_model.
-        """
-        missing_models: List[Tuple[str, str, str]] = []
-
-        for br in self.grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
-            if br.emt_model.empty():
-                missing_models.append((br.name, "branch", f"bus_from={br.bus_from.name}, bus_to={br.bus_to.name}"))
-
-        for inj in self.grid.get_injection_devices_iter():
-            if inj.emt_model.empty():
-                inj_bus_name: str = str(inj.bus.name)
-                inj_type: str = str(inj.device_type.value)
-
-                missing_models.append((inj.name, inj_type, f"bus={inj_bus_name}"))
-
-        if missing_models:
-            errors = []
-            for dev_name, dev_type, details in missing_models:
-                errors.append(f"  - Device '{dev_name}' ({dev_type}) {details} has no emt_model assigned (emt_model is empty)")
-            error_msg = "TopologyError: Some devices are missing their emt_model. Assign EMT models before creating EmtProblemDae:\n" + "\n".join(errors)
-            raise EmtTopologyError(error_msg)
 
     def _validate_dynamic_emt_interfaces(self) -> None:
         """
@@ -2626,6 +2583,11 @@ class EmtProblemDae(EmtProblemTemplate):
         for br in self.grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
             br_emt_model = self._working_emt_models.get(str(br.idtag), br.emt_model)
 
+            if br.device_type == DeviceType.LineDevice:
+                validate_line_phase_layout(branch=br, mdl=br_emt_model, logger=self.logger)
+            else:
+                pass
+
             if br_emt_model is not None:
                 br_bus_from = br.bus_from
                 br_bus_to = br.bus_to
@@ -2770,7 +2732,7 @@ class EmtProblemDae(EmtProblemTemplate):
         else:
             pass
 
-    def _process_device_model(self, dev: Any, sys_block: Block) -> Block:
+    def _process_device_model(self, dev: Any, mdl:Block, sys_block: Block) -> Block:
         """
         Register a device EMT model into the global system block.
 
@@ -2780,10 +2742,10 @@ class EmtProblemDae(EmtProblemTemplate):
         restored on the device root before the block is added to the global system.
 
         :param dev: Device object from the grid.
+        :param mdl: Device block
         :param sys_block: Main DAE system block.
         :return: Unified device block.
         """
-        mdl: Block = self._get_or_create_working_emt_model(dev)
         resolved_external_mapping: Dict[Any, Var]
 
         # Wrapper roots may not own the PF-parameter mapping directly, so the
@@ -3095,12 +3057,11 @@ class EmtProblemDae(EmtProblemTemplate):
             f: int = bus_dict[br.bus_from]
             t: int = bus_dict[br.bus_to]
             br_working_mdl: Block = self._get_or_create_working_emt_model(br)
-            br_working_mdl = _normalize_pi_line_phase_layout(branch=br, mdl=br_working_mdl, logger=self.logger)
-            self._working_emt_models[str(br.idtag)] = br_working_mdl
+            # self._working_emt_models[str(br.idtag)] = br_working_mdl
 
-            mdl: Block = self._process_device_model(br, sys_block)
+            mdl: Block = self._process_device_model(dev=br, mdl=br_working_mdl, sys_block=sys_block)
 
-            mdl.unify_blocks()
+
 
             is_bergeron, is_jmarti = _is_history_runtime_line_block_name(mdl.name)
 
@@ -3366,9 +3327,10 @@ class EmtProblemDae(EmtProblemTemplate):
                 seed_store = None
 
         for injection_index, inj in enumerate(injection_devices):
-            mdl: Block = self._process_device_model(inj, sys_block)
+            inj_working_mdl: Block = self._get_or_create_working_emt_model(inj)
+            mdl: Block = self._process_device_model(dev=inj, mdl=inj_working_mdl, sys_block= sys_block)
 
-            mdl.unify_blocks()
+
 
             b: int = bus_dict[inj.bus]
 
@@ -3465,7 +3427,8 @@ class EmtProblemDae(EmtProblemTemplate):
                 pass
 
         for bus_idx, bus in enumerate(grid.buses):
-            mdl: Block = self._process_device_model(bus, sys_block)
+            bus_working_mdl: Block = self._get_or_create_working_emt_model(bus)
+            mdl: Block = self._process_device_model(dev=bus, mdl=bus_working_mdl, sys_block= sys_block)
 
             if self.power_flow_results_3ph is not None:
                 self._try_set_bus_pf_init(
@@ -7351,7 +7314,6 @@ class EmtProblemDae(EmtProblemTemplate):
         else:
             pass
 
-        mdl.unify_blocks()
 
         return mdl
 
