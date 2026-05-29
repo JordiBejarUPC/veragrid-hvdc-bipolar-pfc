@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 import json
 from enum import Enum
-from typing import Dict, List, Sequence, Set, Optional
+from typing import Dict, List, Sequence, Set, Optional, Protocol, Union
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
@@ -35,6 +35,29 @@ from VeraGridEngine.enumerations import (DeviceType, StudyResultsType, PlotSimul
                                          DynamicEventTransitionType)
 from VeraGridEngine.Simulations.results_table import ResultsTable
 from VeraGrid.Gui.results_model import ResultsModel
+
+
+class _GenericDynamicsPlotsDropHandler(Protocol):
+    def get_group_name_role(self) -> int:
+        ...
+
+    def get_drag_mime_type(self) -> str:
+        ...
+
+    def get_tree_state_role(self) -> int:
+        ...
+
+    def get_group_name_from_drop_index(self, index: QtCore.QModelIndex) -> str | None:
+        ...
+
+    def add_series_to_group(self, group_name: str, series_key: "DynamicResultSeriesKey") -> bool:
+        ...
+
+    def get_candidate_from_payload(self, payload: str) -> "DynamicPlotCandidate | None":
+        ...
+
+    def add_candidate_to_group(self, group_name: str, candidate: "DynamicPlotCandidate") -> bool:
+        ...
 
 
 class DynamicResultSeriesKey:
@@ -2377,14 +2400,14 @@ class DynamicsPlotsTreeModel(QtGui.QStandardItemModel):
 
     __slots__ = ("_handler",)
 
-    def __init__(self, handler: "DynamicsResultsHandler"):
+    def __init__(self, handler: Union["DynamicsResultsHandler", _GenericDynamicsPlotsDropHandler]):
         """
         Build the plots tree model.
 
         :param handler: Dynamics-results handler that owns the plot-group state.
         """
         QtGui.QStandardItemModel.__init__(self)
-        self._handler: DynamicsResultsHandler = handler
+        self._handler: Union["DynamicsResultsHandler", _GenericDynamicsPlotsDropHandler] = handler
 
     def flags(self, index: QtCore.QModelIndex) -> QtCore.Qt.ItemFlag:
         """
@@ -2465,9 +2488,8 @@ class DynamicsPlotsTreeModel(QtGui.QStandardItemModel):
             if isinstance(self._handler, DynamicsResultsHandler):
                 resolved_drop_group_name: str | None = self._handler.get_plot_group_name_from_index(index=parent)
             else:
-                # Fallback handlers expose a dedicated drop-target resolver, so
-                # keep the target-group lookup explicit at the actual drop site.
-                resolved_drop_group_name = self._handler.get_plot_group_name_from_index(index=parent)
+                # Fallback handlers expose their own drop-index resolver.
+                resolved_drop_group_name = self._handler.get_group_name_from_drop_index(index=parent)
             if resolved_drop_group_name is not None:
                 return True
             else:
@@ -2504,9 +2526,7 @@ class DynamicsPlotsTreeModel(QtGui.QStandardItemModel):
                 if isinstance(self._handler, DynamicsResultsHandler):
                     group_name: str | None = self._handler.get_plot_group_name_from_index(index=parent)
                 else:
-                    # Resolve the target group directly here so the drop path no
-                    # longer depends on a one-line forwarding wrapper.
-                    group_name = self._handler.get_plot_group_name_from_index(index=parent)
+                    group_name = self._handler.get_group_name_from_drop_index(index=parent)
                 if group_name is not None:
                     if series_key is not None:
                         if isinstance(self._handler, DynamicsResultsHandler):

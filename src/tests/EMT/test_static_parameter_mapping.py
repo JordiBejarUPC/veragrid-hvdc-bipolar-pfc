@@ -104,7 +104,7 @@ def test_load_subset_mapping_assigns_only_requested_keys() -> None:
     block: Block = _make_block(
         dict({
             ParamPowerFlowReferenceType.device_active: _make_var("active"),
-            ParamPowerFlowReferenceType.load_pa_pu: _make_var("pa"),
+            ParamPowerFlowReferenceType.Pl0_A: _make_var("pa"),
         })
     )
 
@@ -112,7 +112,7 @@ def test_load_subset_mapping_assigns_only_requested_keys() -> None:
 
     assert len(block.parameters) == 2
     assert np.isclose(_const_value(block, ParamPowerFlowReferenceType.device_active), 0.0)
-    assert np.isclose(_const_value(block, ParamPowerFlowReferenceType.load_pa_pu), 0.3)
+    assert np.isclose(_const_value(block, ParamPowerFlowReferenceType.Pl0_A), 0.3)
 
 
 def test_external_grid_enum_mapping_is_explicit() -> None:
@@ -174,8 +174,8 @@ def test_balanced_load_values_are_distributed_to_phase_keys() -> None:
 
     block: Block = _make_block(
         dict({
-            ParamPowerFlowReferenceType.load_pa_pu: _make_var("pa"),
-            ParamPowerFlowReferenceType.load_qb_pu: _make_var("qb"),
+            ParamPowerFlowReferenceType.Pl0_A: _make_var("pa"),
+            ParamPowerFlowReferenceType.Ql0_B: _make_var("qb"),
             ParamPowerFlowReferenceType.load_gc_pu: _make_var("gc"),
             ParamPowerFlowReferenceType.load_ba_pu: _make_var("ba"),
             ParamPowerFlowReferenceType.load_irb_pu: _make_var("irb"),
@@ -187,8 +187,8 @@ def test_balanced_load_values_are_distributed_to_phase_keys() -> None:
 
     assign_static_api_object_mapping_for_device(grid=grid, device=load, mdl=block, logger=None)
 
-    assert np.isclose(_const_value(block, ParamPowerFlowReferenceType.load_pa_pu), 0.1)
-    assert np.isclose(_const_value(block, ParamPowerFlowReferenceType.load_qb_pu), 1.0 / 30.0)
+    assert np.isclose(_const_value(block, ParamPowerFlowReferenceType.Pl0_A), 0.1)
+    assert np.isclose(_const_value(block, ParamPowerFlowReferenceType.Ql0_B), 1.0 / 30.0)
     assert np.isclose(_const_value(block, ParamPowerFlowReferenceType.load_gc_pu), 1.0 / 15.0)
     assert np.isclose(_const_value(block, ParamPowerFlowReferenceType.load_ba_pu), 1.0 / 45.0)
     assert np.isclose(_const_value(block, ParamPowerFlowReferenceType.load_irb_pu), 2.0 / 45.0)
@@ -362,7 +362,7 @@ def test_transformer_direct_static_keys_receive_only_direct_values() -> None:
             ParamPowerFlowReferenceType.transformer_open_circuit_loss_kw: _make_var("pfe"),
             ParamPowerFlowReferenceType.transformer_short_circuit_voltage_pct: _make_var("vsc"),
             ParamPowerFlowReferenceType.transformer_short_circuit_loss_kw: _make_var("pcu"),
-            ParamPowerFlowReferenceType.transformer_tap_module: _make_var("tap_module"),
+            ParamPowerFlowReferenceType.tap_module: _make_var("tap_module"),
             ParamPowerFlowReferenceType.transformer_nominal_voltage_ratio: _make_var("nominal_ratio"),
             ParamPowerFlowReferenceType.transformer_total_voltage_ratio: _make_var("total_ratio"),
             ParamPowerFlowReferenceType.transformer_from_connection_aa: _make_var("faa"),
@@ -378,7 +378,7 @@ def test_transformer_direct_static_keys_receive_only_direct_values() -> None:
     assert np.isclose(_const_value(block, ParamPowerFlowReferenceType.transformer_open_circuit_loss_kw), 30.0)
     assert np.isclose(_const_value(block, ParamPowerFlowReferenceType.transformer_short_circuit_voltage_pct), 8.0)
     assert np.isclose(_const_value(block, ParamPowerFlowReferenceType.transformer_short_circuit_loss_kw), 120.0)
-    assert np.isclose(_const_value(block, ParamPowerFlowReferenceType.transformer_tap_module), 1.05)
+    assert np.isclose(_const_value(block, ParamPowerFlowReferenceType.tap_module), 1.05)
     assert np.isclose(_const_value(block, ParamPowerFlowReferenceType.transformer_nominal_voltage_ratio), 110.0 / 20.0)
     assert np.isclose(_const_value(block, ParamPowerFlowReferenceType.transformer_total_voltage_ratio), (110.0 / 20.0) * 1.05)
     assert np.isclose(_const_value(block, ParamPowerFlowReferenceType.transformer_from_connection_aa), 1.0)
@@ -471,7 +471,7 @@ def test_transformer_direct_and_derived_keys_receive_both_sets() -> None:
 
     block: Block = _make_block(
         dict({
-            ParamPowerFlowReferenceType.transformer_tap_module: _make_var("tap_module"),
+            ParamPowerFlowReferenceType.tap_module: _make_var("tap_module"),
             ParamPowerFlowReferenceType.transformer_total_voltage_ratio: _make_var("total_ratio"),
             ParamPowerFlowReferenceType.transformer_winding1_resistance_pu: _make_var("r1"),
             ParamPowerFlowReferenceType.transformer_mutual_inductance_pu_s: _make_var("m"),
@@ -485,7 +485,7 @@ def test_transformer_direct_and_derived_keys_receive_both_sets() -> None:
     magnetizing_l_primary: float = 1000.0 / omega
     mutual_inductance: float = magnetizing_l_primary / total_ratio
 
-    assert np.isclose(_const_value(block, ParamPowerFlowReferenceType.transformer_tap_module), 1.1)
+    assert np.isclose(_const_value(block, ParamPowerFlowReferenceType.tap_module), 1.1)
     assert np.isclose(_const_value(block, ParamPowerFlowReferenceType.transformer_total_voltage_ratio), total_ratio)
     assert np.isclose(_const_value(block, ParamPowerFlowReferenceType.transformer_winding1_resistance_pu), 0.01)
     assert np.isclose(_const_value(block, ParamPowerFlowReferenceType.transformer_mutual_inductance_pu_s), mutual_inductance)
@@ -516,7 +516,7 @@ def test_transformer_ratio_key_semantics_are_not_ambiguous() -> None:
     block: Block = _make_block(
         dict({
             ParamPowerFlowReferenceType.transformer_tap_ratio: _make_var("tap_ratio_legacy"),
-            ParamPowerFlowReferenceType.transformer_tap_module: _make_var("tap_module"),
+            ParamPowerFlowReferenceType.tap_module: _make_var("tap_module"),
             ParamPowerFlowReferenceType.transformer_nominal_voltage_ratio: _make_var("nominal_ratio"),
             ParamPowerFlowReferenceType.transformer_total_voltage_ratio: _make_var("total_ratio"),
         })
@@ -525,7 +525,7 @@ def test_transformer_ratio_key_semantics_are_not_ambiguous() -> None:
     assign_static_api_object_mapping_for_device(grid=grid, device=transformer, mdl=block, logger=None)
 
     assert np.isclose(_const_value(block, ParamPowerFlowReferenceType.transformer_tap_ratio), 1.1)
-    assert np.isclose(_const_value(block, ParamPowerFlowReferenceType.transformer_tap_module), 1.1)
+    assert np.isclose(_const_value(block, ParamPowerFlowReferenceType.tap_module), 1.1)
     assert np.isclose(_const_value(block, ParamPowerFlowReferenceType.transformer_nominal_voltage_ratio), 5.5)
     assert np.isclose(_const_value(block, ParamPowerFlowReferenceType.transformer_total_voltage_ratio), 6.05)
 
