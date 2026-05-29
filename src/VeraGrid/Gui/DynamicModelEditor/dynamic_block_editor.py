@@ -29,7 +29,9 @@ from VeraGridEngine.Devices.Branches.sequence_line_type import SequenceLineType
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGridEngine.Devices.Branches.transformer_type import TransformerType
 from VeraGridEngine.Devices.Branches.underground_line_type import UndergroundLineType
+from VeraGridEngine.Devices.Injections.controllable_shunt import ControllableShunt
 from VeraGridEngine.Devices.Injections.load import Load
+from VeraGridEngine.Devices.Injections.shunt import Shunt
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType, \
     DynamicSimulationMode, ShuntConnectionType, WindingType
@@ -7029,12 +7031,12 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             set_modal_template_metadata(block_model, kind="transformer_topology_emt",
                                         config=dict(topology_config, block_type=block_type.name))
 
+            # The dynamic editor must not overwrite the static transformer
+            # winding connection stored by the network object. The dynamic block
+            # keeps its own modal configuration and must follow the static device
+            # contract during template assignment.
             if isinstance(self.api_object, BranchParent):
-                try:
-                    self.api_object.conn_f = topology_config["conn_f"]
-                    self.api_object.conn_t = topology_config["conn_t"]
-                except Exception:
-                    pass
+                pass
             else:
                 pass
 
@@ -7058,11 +7060,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                         config=dict(load_config, block_type=block_type.name))
             self._annotate_internal_grounding_link_blocks(block_model)
 
+            # The dynamic editor must not overwrite the static load connection.
             if isinstance(self.api_object, InjectionParent):
-                try:
-                    self.api_object.conn = load_config["connection_type"]
-                except Exception:
-                    pass
+                pass
             else:
                 pass
 
@@ -7145,11 +7145,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             set_modal_template_metadata(block_model, kind="rlc_combo_emt", config=dict(rlc_config))
             self._annotate_internal_grounding_link_blocks(block_model)
 
+            # The dynamic editor must not overwrite the static injection
+            # connection. The EMT block stores its own symbolic topology.
             if isinstance(self.api_object, InjectionParent):
-                try:
-                    self.api_object.conn = rlc_config["connection_type"]
-                except Exception:
-                    pass
+                pass
             else:
                 pass
 
@@ -7175,11 +7174,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                         config=dict(shunt_config, block_type=block_type.name))
             self._annotate_internal_grounding_link_blocks(block_model)
 
+            # The dynamic editor must not overwrite the static injection
+            # connection. The EMT block stores its own symbolic topology.
             if isinstance(self.api_object, InjectionParent):
-                try:
-                    self.api_object.conn = shunt_config["connection_type"]
-                except Exception:
-                    pass
+                pass
             else:
                 pass
 
@@ -7202,11 +7200,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                         config=dict(load_config, block_type=block_type.name))
             self._annotate_internal_grounding_link_blocks(block_model)
 
+            # The dynamic editor must not overwrite the static load connection.
             if isinstance(self.api_object, InjectionParent):
-                try:
-                    self.api_object.conn = load_config["connection_type"]
-                except Exception:
-                    pass
+                pass
             else:
                 pass
 
@@ -7292,12 +7288,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             set_modal_template_metadata(block_model, kind="transformer_topology_emt",
                                         config=dict(topology_config, block_type=block_type.name))
 
+            # The dynamic editor must not overwrite the static transformer
+            # winding connection stored by the network object.
             if isinstance(self.api_object, BranchParent):
-                try:
-                    self.api_object.conn_f = topology_config["conn_f"]
-                    self.api_object.conn_t = topology_config["conn_t"]
-                except Exception:
-                    pass
+                pass
             else:
                 pass
 
@@ -7746,11 +7740,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         set_modal_template_metadata(block_model, kind="rlc_combo_emt", config=dict(rlc_config))
         self._annotate_internal_grounding_link_blocks(block_model)
 
+        # The dynamic editor must not overwrite the static injection
+        # connection. The EMT block stores its own symbolic topology.
         if isinstance(self.api_object, InjectionParent):
-            try:
-                self.api_object.conn = rlc_config["connection_type"]
-            except Exception:
-                pass
+            pass
         else:
             pass
 
@@ -7871,11 +7864,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         set_modal_template_metadata(block_model, kind="shunt_component_emt", config=dict(shunt_config, block_type=block_type.name))
         self._annotate_internal_grounding_link_blocks(block_model)
 
+        # The dynamic editor must not overwrite the static injection
+        # connection. The EMT block stores its own symbolic topology.
         if isinstance(self.api_object, InjectionParent):
-            try:
-                self.api_object.conn = shunt_config["connection_type"]
-            except Exception:
-                pass
+            pass
         else:
             pass
 
@@ -7938,11 +7930,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         set_modal_template_metadata(block_model, kind="load_topology_emt", config=dict(load_config, block_type=block_type.name))
         self._annotate_internal_grounding_link_blocks(block_model)
 
+        # The dynamic editor must not overwrite the static load connection.
         if isinstance(self.api_object, InjectionParent):
-            try:
-                self.api_object.conn = load_config["connection_type"]
-            except Exception:
-                pass
+            pass
         else:
             pass
 
@@ -8125,12 +8115,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         set_modal_template_metadata(block_model, kind="transformer_topology_emt", config=dict(topology_config, block_type=block_type.name))
 
+        # The dynamic editor must not overwrite the static transformer winding
+        # connection stored by the network object.
         if isinstance(self.api_object, BranchParent):
-            try:
-                self.api_object.conn_f = topology_config["conn_f"]
-                self.api_object.conn_t = topology_config["conn_t"]
-            except Exception:
-                pass
+            pass
         else:
             pass
 
@@ -8186,9 +8174,32 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return: Configured dialog instance.
         """
         nominal_voltage_kv, base_power_mva, base_frequency_hz = self._get_rlc_combo_base_values()
+        static_connection_type: ShuntConnectionType | None = None
+        force_static_connection: bool = False
+
+        if isinstance(self.api_object, (Load, Shunt, ControllableShunt)):
+            static_connection_type = self.api_object.conn
+            force_static_connection = True
+        elif isinstance(self.api_object, InjectionParent):
+            static_connection_type = self.api_object.conn
+        else:
+            pass
+
+        resolved_config: Dict[str, Any] | None = None
+        if initial_config is not None:
+            resolved_config = dict(initial_config)
+        else:
+            resolved_config = dict()
+
+        if force_static_connection and static_connection_type is not None:
+            resolved_config["connection_type"] = static_connection_type
+        else:
+            pass
+
         return RlcComboEmtDialog(
             self,
-            initial_config=initial_config,
+            initial_config=resolved_config,
+            static_connection_type=static_connection_type if force_static_connection else None,
             nominal_voltage_kv=nominal_voltage_kv,
             base_power_mva=base_power_mva,
             base_frequency_hz=base_frequency_hz,
@@ -8282,6 +8293,16 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         component_kind: str | None = _get_shunt_component_kind(block_type)
         nominal_voltage_kv, base_power_mva, base_frequency_hz = self._get_rlc_combo_base_values()
         allow_static_load_values: bool = isinstance(self.api_object, Load)
+        static_connection_type: ShuntConnectionType | None = None
+        force_static_connection: bool = False
+
+        if isinstance(self.api_object, (Load, Shunt, ControllableShunt)):
+            static_connection_type = self.api_object.conn
+            force_static_connection = True
+        elif isinstance(self.api_object, InjectionParent):
+            static_connection_type = self.api_object.conn
+        else:
+            pass
 
         if component_kind is None:
             raise ValueError(f"Unsupported simple EMT shunt block type '{block_type.name}'")
@@ -8293,6 +8314,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             parent=self,
             initial_config=initial_config,
             allow_static_load_values=allow_static_load_values,
+            static_connection_type=static_connection_type if force_static_connection else None,
             nominal_voltage_kv=nominal_voltage_kv,
             base_power_mva=base_power_mva,
             base_frequency_hz=base_frequency_hz,
@@ -8324,6 +8346,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return: Configured dialog instance.
         """
         resolved_config: Dict[str, Any]
+        force_static_connection: bool = False
         if initial_config is not None:
             resolved_config = dict(initial_config)
         else:
@@ -8337,10 +8360,27 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     "conn_t": WindingType.GroundedStar,
                 })
 
+        static_from_connection: WindingType | None = None
+        static_to_connection: WindingType | None = None
+        auto_config = self._resolve_transformer_topology_configuration()
+        if auto_config is not None:
+            static_from_connection = auto_config.get("conn_f", None)
+            static_to_connection = auto_config.get("conn_t", None)
+            if isinstance(self.api_object, (Transformer2W, TransformerType)):
+                resolved_config["conn_f"] = static_from_connection
+                resolved_config["conn_t"] = static_to_connection
+                force_static_connection = True
+            else:
+                pass
+        else:
+            pass
+
         return TransformerTopologyEmtDialog(
             title=self._get_transformer_topology_dialog_title(block_type),
             parent=self,
             initial_config=resolved_config,
+            static_from_connection=static_from_connection if force_static_connection else None,
+            static_to_connection=static_to_connection if force_static_connection else None,
         )
 
     @staticmethod
@@ -8368,10 +8408,29 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param initial_config: Optional persisted modal configuration.
         :return: Configured dialog instance.
         """
+        resolved_config: Dict[str, Any] | None = None
+        static_connection_type: ShuntConnectionType | None = None
+        force_static_connection: bool = False
+
+        if initial_config is not None:
+            resolved_config = dict(initial_config)
+        else:
+            resolved_config = dict()
+
+        if isinstance(self.api_object, Load):
+            static_connection_type = self.api_object.conn
+            resolved_config["connection_type"] = static_connection_type
+            force_static_connection = True
+        elif isinstance(self.api_object, InjectionParent):
+            static_connection_type = self.api_object.conn
+        else:
+            pass
+
         return LoadTopologyEmtDialog(
             title=self._get_load_topology_dialog_title(block_type),
             parent=self,
-            initial_config=initial_config,
+            initial_config=resolved_config,
+            static_connection_type=static_connection_type if force_static_connection else None,
         )
 
     @staticmethod
@@ -11684,11 +11743,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
+        # The dynamic editor must not overwrite the static injection
+        # connection. The EMT block stores its own symbolic topology.
         if isinstance(self.api_object, InjectionParent):
-            try:
-                self.api_object.conn = rlc_config["connection_type"]
-            except Exception:
-                pass
+            pass
         else:
             pass
 
@@ -11841,11 +11899,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         self._annotate_internal_grounding_link_blocks(new_block)
 
+        # The dynamic editor must not overwrite the static load connection.
         if isinstance(self.api_object, InjectionParent):
-            try:
-                self.api_object.conn = load_config["connection_type"]
-            except Exception:
-                pass
+            pass
         else:
             pass
 
@@ -11884,12 +11940,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
+        # The dynamic editor must not overwrite the static transformer winding
+        # connection stored by the network object.
         if isinstance(self.api_object, BranchParent):
-            try:
-                self.api_object.conn_f = topology_config["conn_f"]
-                self.api_object.conn_t = topology_config["conn_t"]
-            except Exception:
-                pass
+            pass
         else:
             pass
 
@@ -11938,11 +11992,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
+        # The dynamic editor must not overwrite the static injection
+        # connection. The EMT block stores its own symbolic topology.
         if isinstance(self.api_object, InjectionParent):
-            try:
-                self.api_object.conn = shunt_config["connection_type"]
-            except Exception:
-                pass
+            pass
         else:
             pass
 
