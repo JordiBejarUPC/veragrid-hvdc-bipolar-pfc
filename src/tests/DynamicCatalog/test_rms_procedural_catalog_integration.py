@@ -148,6 +148,9 @@ def test_rms_update_variable_params_applies_catalog_procedural_logic() -> None:
     problem._constant_params = np.zeros(0, dtype=float)
     problem._variable_parameters_values = np.array([1.0, 0.0], dtype=float)
     problem._event_params_fn = _passthrough_event_params
+    problem._runtime_continuous_eqs = list()
+    problem._runtime_mode_slice = slice(0, 0)
+    problem._continuous_runtime_events = dict()
     problem._scheduled_mode_events = dict()
     problem._mode_event_cursor = dict()
     problem._block_boundary_updater = build_boundary_updater_from_block(problem)
