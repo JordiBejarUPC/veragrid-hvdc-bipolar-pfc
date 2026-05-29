@@ -3577,8 +3577,8 @@ class ParamPowerFlowReferenceType(Enum):
     dt = "dt"  # time step for dynamic simulations
     
     # Branch / load parameters
-    g = "g"  # Branch resistance in per unit
-    b = "b"  # Branch reactance in per unit
+    g = "g"  # Branch conductance in per unit
+    b = "b"  # Branch susceptance in per unit
     bsh = "bsh"  # Branch shunt susceptance in per unit
     gFe = "gFe"  # Branch magnetizing conductance in per unit
     vtap_f = "vtap_f"  # Virtual tap at from-side

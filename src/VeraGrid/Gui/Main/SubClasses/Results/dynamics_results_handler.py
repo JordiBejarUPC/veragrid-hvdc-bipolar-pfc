@@ -775,20 +775,6 @@ class DynamicDeviceEntryCollection:
         return list(self._parameters)
 
 
-def _get_dynamic_simulation_mode(simulation_type: PlotSimulationType) -> DynamicSimulationMode:
-    """
-    Convert one plot simulation family into the matching dynamic-event mode.
-
-    :param simulation_type: Plot simulation family used by the handler.
-    :return: Matching dynamic-event mode.
-    """
-    if simulation_type == PlotSimulationType.RMS:
-        return DynamicSimulationMode.RMS
-    elif simulation_type == PlotSimulationType.EMT:
-        return DynamicSimulationMode.EMT
-    else:
-        raise ValueError(f"Unsupported plot simulation type: {simulation_type}")
-
 def ensure_dynamic_plot_event_group(circuit: MultiCircuit,
                                     simulation_type: PlotSimulationType,
                                     parent: QtWidgets.QWidget | None = None) -> RmsEventsGroup | EmtEventsGroup | None:
@@ -812,7 +798,16 @@ def ensure_dynamic_plot_event_group(circuit: MultiCircuit,
     else:
         pass
 
-    mode: DynamicSimulationMode = _get_dynamic_simulation_mode(simulation_type=simulation_type)
+    # The event-group creation dialog expects the dynamic simulation mode, so
+    # convert the plot-family enum here where the dialog invocation happens.
+    mode: DynamicSimulationMode
+    if simulation_type == PlotSimulationType.RMS:
+        mode = DynamicSimulationMode.RMS
+    elif simulation_type == PlotSimulationType.EMT:
+        mode = DynamicSimulationMode.EMT
+    else:
+        raise ValueError(f"Unsupported plot simulation type: {simulation_type}")
+
     missing_group_message: str = ""
     if simulation_type == PlotSimulationType.RMS:
         missing_group_message = "No RMS Events Group found, please create one before adding a dynamic plot entry."
@@ -973,27 +968,6 @@ def _build_xy_slot_label(role: DynamicPlotEntryRole,
             return role_prefix + entry_label
 
 
-def _build_parameter_candidate_custom_name(parameter: DynamicPlotParameter,
-                                           device_label: str,
-                                           bus_label: str,
-                                           source_label: str) -> str:
-    """
-    Build the default visible label for one parameter candidate.
-
-    :param parameter: Parameter descriptor.
-    :param device_label: Visible device label.
-    :param bus_label: Visible bus label suffix.
-    :param source_label: Visible event-group label, or an empty string.
-    :return: Joined visible label.
-    """
-    return _join_plot_label_parts([
-        parameter.get_display_name(),
-        device_label,
-        bus_label,
-        source_label,
-    ])
-
-
 def _build_runtime_parameter_candidate(simulation_type: PlotSimulationType,
                                        device_tpe: DeviceType,
                                        device_idtag: str,
@@ -1015,6 +989,16 @@ def _build_runtime_parameter_candidate(simulation_type: PlotSimulationType,
     :param event_group_name: Visible event-group name.
     :return: Runtime parameter candidate.
     """
+    # The default custom label must carry the parameter, device, bus, and
+    # event-group source so pre-simulation candidates remain uniquely
+    # identifiable after they are persisted into plot entries.
+    variable_custom_name: str = _join_plot_label_parts([
+        parameter.get_display_name(),
+        device_label,
+        bus_label,
+        event_group_name,
+    ])
+
     return DynamicPlotCandidate(
         simulation_type=simulation_type,
         entry_kind=DynamicPlotEntryKind.PARAMETER,
@@ -1026,12 +1010,7 @@ def _build_runtime_parameter_candidate(simulation_type: PlotSimulationType,
         bus_label=bus_label,
         variable_name=parameter.get_canonical_name(),
         result_path_kind="parameter",
-        variable_custom_name=_build_parameter_candidate_custom_name(
-            parameter=parameter,
-            device_label=device_label,
-            bus_label=bus_label,
-            source_label=event_group_name,
-        ),
+        variable_custom_name=variable_custom_name,
         var=None,
         parameter=parameter,
     )
@@ -2486,7 +2465,9 @@ class DynamicsPlotsTreeModel(QtGui.QStandardItemModel):
             if isinstance(self._handler, DynamicsResultsHandler):
                 resolved_drop_group_name: str | None = self._handler.get_plot_group_name_from_index(index=parent)
             else:
-                resolved_drop_group_name = self._handler.get_group_name_from_drop_index(index=parent)
+                # Fallback handlers expose a dedicated drop-target resolver, so
+                # keep the target-group lookup explicit at the actual drop site.
+                resolved_drop_group_name = self._handler.get_plot_group_name_from_index(index=parent)
             if resolved_drop_group_name is not None:
                 return True
             else:
@@ -2523,7 +2504,9 @@ class DynamicsPlotsTreeModel(QtGui.QStandardItemModel):
                 if isinstance(self._handler, DynamicsResultsHandler):
                     group_name: str | None = self._handler.get_plot_group_name_from_index(index=parent)
                 else:
-                    group_name = self._handler.get_group_name_from_drop_index(index=parent)
+                    # Resolve the target group directly here so the drop path no
+                    # longer depends on a one-line forwarding wrapper.
+                    group_name = self._handler.get_plot_group_name_from_index(index=parent)
                 if group_name is not None:
                     if series_key is not None:
                         if isinstance(self._handler, DynamicsResultsHandler):
@@ -3937,15 +3920,6 @@ class DynamicsResultsHandler:
                 return None
         else:
             return None
-
-    def get_group_name_from_drop_index(self, index: QtCore.QModelIndex) -> str | None:
-        """
-        Resolve the plot-group name targeted by a drop operation.
-
-        :param index: Drop target index.
-        :return: Group name, or ``None`` when the drop target is invalid.
-        """
-        return self.get_plot_group_name_from_index(index=index)
 
     def get_plot_series_from_index(self, index: QtCore.QModelIndex) -> DynamicResultSeries | None:
         """

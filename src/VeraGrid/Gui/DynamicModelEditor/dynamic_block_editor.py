@@ -253,82 +253,6 @@ def _is_load_topology_block_type(block_type: BlockType) -> bool:
     return block_type in {BlockType.EXP_LOAD_EMT, BlockType.ZIP_LOAD_EMT}
 
 
-def _is_source_emt_block_type(block_type: BlockType) -> bool:
-    """
-    Return whether one block type uses the EMT source modal.
-
-    :param block_type: Candidate block type.
-    :return: Boolean state.
-    """
-    return block_type in {
-        BlockType.VOLTAGE_SOURCE_EMT,
-        BlockType.CURRENT_SOURCE_EMT,
-        BlockType.CONTROLLED_VOLTAGE_SOURCE_EMT,
-        BlockType.CONTROLLED_CURRENT_SOURCE_EMT,
-    }
-
-
-def _is_dc_source_emt_block_type(block_type: BlockType) -> bool:
-    """
-    Return whether one block type uses the EMT DC source modal.
-
-    :param block_type: Candidate block type.
-    :return: Boolean state.
-    """
-    return block_type in {
-        BlockType.DC_VOLTAGE_SOURCE_EMT,
-        BlockType.DC_CURRENT_SOURCE_EMT,
-        BlockType.CONTROLLED_DC_VOLTAGE_SOURCE_EMT,
-        BlockType.CONTROLLED_DC_CURRENT_SOURCE_EMT,
-    }
-
-
-def _is_balanced_source_emt_block_type(block_type: BlockType) -> bool:
-    """
-    Return whether one block type uses the balanced EMT source modal.
-
-    :param block_type: Candidate block type.
-    :return: Boolean state.
-    """
-    return block_type in {
-        BlockType.BALANCED_3PH_VOLTAGE_SOURCE_EMT,
-        BlockType.BALANCED_3PH_CURRENT_SOURCE_EMT,
-        BlockType.CONTROLLED_BALANCED_3PH_VOLTAGE_SOURCE_EMT,
-        BlockType.CONTROLLED_BALANCED_3PH_CURRENT_SOURCE_EMT,
-    }
-
-
-def _is_arbitrary_source_emt_block_type(block_type: BlockType) -> bool:
-    """
-    Return whether one block type uses the arbitrary-waveform EMT source modal.
-
-    :param block_type: Candidate block type.
-    :return: Boolean state.
-    """
-    return block_type in {
-        BlockType.ARBITRARY_WAVEFORM_VOLTAGE_SOURCE_EMT,
-        BlockType.ARBITRARY_WAVEFORM_CURRENT_SOURCE_EMT,
-    }
-
-
-def _is_transient_source_emt_block_type(block_type: BlockType) -> bool:
-    """
-    Return whether one block type uses the transient EMT source modal.
-
-    :param block_type: Candidate block type.
-    :return: Boolean state.
-    """
-    return block_type in {
-        BlockType.STEP_VOLTAGE_SOURCE_EMT,
-        BlockType.STEP_CURRENT_SOURCE_EMT,
-        BlockType.RAMP_VOLTAGE_SOURCE_EMT,
-        BlockType.RAMP_CURRENT_SOURCE_EMT,
-        BlockType.DOUBLE_EXPONENTIAL_CURRENT_SOURCE_EMT,
-        BlockType.HEIDLER_CURRENT_SOURCE_EMT,
-        BlockType.CIGRE_SURGE_CURRENT_SOURCE_EMT,
-    }
-
-
 def get_modal_template_metadata(block: Block | None) -> tuple[str | None, Dict[str, Any] | None]:
     """
     Return the modal-builder metadata stored on one block.
@@ -1128,61 +1052,6 @@ def _initialize_editor_assigned_rms_bus_model(bus: Bus, var_factory: VarFactory)
         pass
 
 
-def _build_editor_assigned_emt_bus_mask(bus: Bus,
-                                        api_object: Any,
-                                        editor_interface_refs: set[VarPowerFlowReferenceType]) -> list[bool] | None:
-    """
-    Build the EMT AC phase mask implied by the current editor interface.
-
-    The algorithm uses the edited root-interface references as the source of
-    truth because those references reflect which ports the user kept before
-    pressing apply. The bus argument is then matched against the edited device
-    so the correct side-specific mask can be extracted.
-
-    :param bus: Connected bus that may need an EMT shell.
-    :param api_object: Edited concrete device that owns the interface.
-    :param editor_interface_refs: References that still exist in the editor.
-    :return: Phase mask ordered as ``[N, A, B, C]`` when the interface can be mapped to the bus, else ``None``.
-    """
-    mask: list[bool] | None = None
-
-    # Injection devices expose one bus interface, so the edited references map
-    # directly to that single connected bus.
-    if isinstance(api_object, InjectionParent):
-        if api_object.bus is bus:
-            mask = list([False, False, False, False])
-            mask[0] = VarPowerFlowReferenceType.v_N in editor_interface_refs or VarPowerFlowReferenceType.i_N in editor_interface_refs
-            mask[1] = VarPowerFlowReferenceType.v_A in editor_interface_refs or VarPowerFlowReferenceType.i_A in editor_interface_refs
-            mask[2] = VarPowerFlowReferenceType.v_B in editor_interface_refs or VarPowerFlowReferenceType.i_B in editor_interface_refs
-            mask[3] = VarPowerFlowReferenceType.v_C in editor_interface_refs or VarPowerFlowReferenceType.i_C in editor_interface_refs
-        else:
-            mask = None
-    else:
-        # Branch devices expose two side-specific interfaces, so the edited bus
-        # must first be matched against the from or to side before the mask is
-        # evaluated from the remaining references.
-        if isinstance(api_object, BranchParent):
-            if api_object.bus_from is bus:
-                mask = list([False, False, False, False])
-                mask[0] = VarPowerFlowReferenceType.vf_N in editor_interface_refs or VarPowerFlowReferenceType.if_N in editor_interface_refs
-                mask[1] = VarPowerFlowReferenceType.vf_A in editor_interface_refs or VarPowerFlowReferenceType.if_A in editor_interface_refs
-                mask[2] = VarPowerFlowReferenceType.vf_B in editor_interface_refs or VarPowerFlowReferenceType.if_B in editor_interface_refs
-                mask[3] = VarPowerFlowReferenceType.vf_C in editor_interface_refs or VarPowerFlowReferenceType.if_C in editor_interface_refs
-            else:
-                if api_object.bus_to is bus:
-                    mask = list([False, False, False, False])
-                    mask[0] = VarPowerFlowReferenceType.vt_N in editor_interface_refs or VarPowerFlowReferenceType.it_N in editor_interface_refs
-                    mask[1] = VarPowerFlowReferenceType.vt_A in editor_interface_refs or VarPowerFlowReferenceType.it_A in editor_interface_refs
-                    mask[2] = VarPowerFlowReferenceType.vt_B in editor_interface_refs or VarPowerFlowReferenceType.it_B in editor_interface_refs
-                    mask[3] = VarPowerFlowReferenceType.vt_C in editor_interface_refs or VarPowerFlowReferenceType.it_C in editor_interface_refs
-                else:
-                    mask = None
-        else:
-            mask = None
-
-    return mask
-
-
 def _initialize_editor_assigned_emt_bus_model(bus: Bus,
                                               api_object: Any,
                                               circuit: MultiCircuit | None,
@@ -1202,9 +1071,53 @@ def _initialize_editor_assigned_emt_bus_model(bus: Bus,
         # Editor-driven assignments must preserve the phase ports that the user
         # kept in the GUI instead of falling back to a hardcoded AC shell.
         if editor_interface_refs is not None:
-            mask: list[bool] | None = _build_editor_assigned_emt_bus_mask(bus=bus,
-                                                                          api_object=api_object,
-                                                                          editor_interface_refs=editor_interface_refs)
+            mask: list[bool] | None = None
+
+            # Injection devices expose one bus interface, so the edited
+            # references map directly to that single connected bus.
+            if isinstance(api_object, InjectionParent):
+                if api_object.bus is bus:
+                    mask = list([False, False, False, False])
+                    mask[0] = (VarPowerFlowReferenceType.v_N in editor_interface_refs
+                               or VarPowerFlowReferenceType.i_N in editor_interface_refs)
+                    mask[1] = (VarPowerFlowReferenceType.v_A in editor_interface_refs
+                               or VarPowerFlowReferenceType.i_A in editor_interface_refs)
+                    mask[2] = (VarPowerFlowReferenceType.v_B in editor_interface_refs
+                               or VarPowerFlowReferenceType.i_B in editor_interface_refs)
+                    mask[3] = (VarPowerFlowReferenceType.v_C in editor_interface_refs
+                               or VarPowerFlowReferenceType.i_C in editor_interface_refs)
+                else:
+                    mask = None
+            else:
+                # Branch devices expose two side-specific interfaces, so the
+                # edited bus must first be matched against the from or to side
+                # before the mask is evaluated from the remaining references.
+                if isinstance(api_object, BranchParent):
+                    if api_object.bus_from is bus:
+                        mask = list([False, False, False, False])
+                        mask[0] = (VarPowerFlowReferenceType.vf_N in editor_interface_refs
+                                   or VarPowerFlowReferenceType.if_N in editor_interface_refs)
+                        mask[1] = (VarPowerFlowReferenceType.vf_A in editor_interface_refs
+                                   or VarPowerFlowReferenceType.if_A in editor_interface_refs)
+                        mask[2] = (VarPowerFlowReferenceType.vf_B in editor_interface_refs
+                                   or VarPowerFlowReferenceType.if_B in editor_interface_refs)
+                        mask[3] = (VarPowerFlowReferenceType.vf_C in editor_interface_refs
+                                   or VarPowerFlowReferenceType.if_C in editor_interface_refs)
+                    else:
+                        if api_object.bus_to is bus:
+                            mask = list([False, False, False, False])
+                            mask[0] = (VarPowerFlowReferenceType.vt_N in editor_interface_refs
+                                       or VarPowerFlowReferenceType.it_N in editor_interface_refs)
+                            mask[1] = (VarPowerFlowReferenceType.vt_A in editor_interface_refs
+                                       or VarPowerFlowReferenceType.it_A in editor_interface_refs)
+                            mask[2] = (VarPowerFlowReferenceType.vt_B in editor_interface_refs
+                                       or VarPowerFlowReferenceType.it_B in editor_interface_refs)
+                            mask[3] = (VarPowerFlowReferenceType.vt_C in editor_interface_refs
+                                       or VarPowerFlowReferenceType.it_C in editor_interface_refs)
+                        else:
+                            mask = None
+                else:
+                    mask = None
         else:
             mask = None
 
@@ -1400,34 +1313,6 @@ def add_variable_to_block(block: Block,
         block.mode_dict[var] = Const(parameter_value, name=var.name)
     else:
         raise ValueError(f"Unknown var_type {var_type}")
-
-
-def build_block_tree(block: Block):
-    root = Node(block.name)
-
-    state_vars_node = Node("State Vars")
-    for v in block.state_vars:
-        state_vars_node.add_child(Node(v.name, v))
-
-    alg_vars_node = Node("Algebraic Vars")
-    for v in block.algebraic_vars:
-        alg_vars_node.add_child(Node(v.name, v))
-
-    state_eq_node = Node("State Equations")
-    for eq in block.state_eqs:
-        state_eq_node.add_child(Node(symbolic_to_string(eq), eq))
-
-    alg_eq_node = Node("Algebraic Equations")
-    for eq in block.algebraic_eqs:
-        alg_eq_node.add_child(Node(symbolic_to_string(eq), eq))
-
-    root.add_child(state_vars_node)
-    root.add_child(alg_vars_node)
-    root.add_child(state_eq_node)
-    root.add_child(alg_eq_node)
-
-    return root
-
 
 class Node:
     def __init__(self, name, data=None, parent=None):
@@ -9094,15 +8979,44 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 return self.create_jmarti_line_emt_block_item(x_pos=x_pos, y_pos=y_pos)
             elif payload == BlockType.INDUCTION_MOTOR_EMT:
                 return self.create_induction_motor_emt_block_item(x_pos=x_pos, y_pos=y_pos)
-            elif _is_source_emt_block_type(payload):
+            # Source EMT blocks share the same creation dialog, so the payload
+            # is first classified by its concrete source family before building
+            # the corresponding editor block.
+            elif payload in {
+                BlockType.VOLTAGE_SOURCE_EMT,
+                BlockType.CURRENT_SOURCE_EMT,
+                BlockType.CONTROLLED_VOLTAGE_SOURCE_EMT,
+                BlockType.CONTROLLED_CURRENT_SOURCE_EMT,
+            }:
                 return self.create_source_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
-            elif _is_dc_source_emt_block_type(payload):
+            elif payload in {
+                BlockType.DC_VOLTAGE_SOURCE_EMT,
+                BlockType.DC_CURRENT_SOURCE_EMT,
+                BlockType.CONTROLLED_DC_VOLTAGE_SOURCE_EMT,
+                BlockType.CONTROLLED_DC_CURRENT_SOURCE_EMT,
+            }:
                 return self.create_dc_source_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
-            elif _is_balanced_source_emt_block_type(payload):
+            elif payload in {
+                BlockType.BALANCED_3PH_VOLTAGE_SOURCE_EMT,
+                BlockType.BALANCED_3PH_CURRENT_SOURCE_EMT,
+                BlockType.CONTROLLED_BALANCED_3PH_VOLTAGE_SOURCE_EMT,
+                BlockType.CONTROLLED_BALANCED_3PH_CURRENT_SOURCE_EMT,
+            }:
                 return self.create_balanced_source_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
-            elif _is_arbitrary_source_emt_block_type(payload):
+            elif payload in {
+                BlockType.ARBITRARY_WAVEFORM_VOLTAGE_SOURCE_EMT,
+                BlockType.ARBITRARY_WAVEFORM_CURRENT_SOURCE_EMT,
+            }:
                 return self.create_arbitrary_source_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
-            elif _is_transient_source_emt_block_type(payload):
+            elif payload in {
+                BlockType.STEP_VOLTAGE_SOURCE_EMT,
+                BlockType.STEP_CURRENT_SOURCE_EMT,
+                BlockType.RAMP_VOLTAGE_SOURCE_EMT,
+                BlockType.RAMP_CURRENT_SOURCE_EMT,
+                BlockType.DOUBLE_EXPONENTIAL_CURRENT_SOURCE_EMT,
+                BlockType.HEIDLER_CURRENT_SOURCE_EMT,
+                BlockType.CIGRE_SURGE_CURRENT_SOURCE_EMT,
+            }:
                 return self.create_transient_source_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
             else:
                 return self.create_emt_wizard_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
