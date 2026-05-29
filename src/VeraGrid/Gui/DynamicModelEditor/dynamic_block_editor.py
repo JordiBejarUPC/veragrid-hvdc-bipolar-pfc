@@ -8175,11 +8175,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
         nominal_voltage_kv, base_power_mva, base_frequency_hz = self._get_rlc_combo_base_values()
         static_connection_type: ShuntConnectionType | None = None
-        force_static_connection: bool = False
+        allow_static_device_values: bool = False
 
         if isinstance(self.api_object, (Load, Shunt, ControllableShunt)):
             static_connection_type = self.api_object.conn
-            force_static_connection = True
+            allow_static_device_values = True
         elif isinstance(self.api_object, InjectionParent):
             static_connection_type = self.api_object.conn
         else:
@@ -8191,15 +8191,16 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             resolved_config = dict()
 
-        if force_static_connection and static_connection_type is not None:
-            resolved_config["connection_type"] = static_connection_type
+        if "use_static_device_values" not in resolved_config and "use_static_load_values" in resolved_config:
+            resolved_config["use_static_device_values"] = resolved_config["use_static_load_values"]
         else:
             pass
 
         return RlcComboEmtDialog(
             self,
             initial_config=resolved_config,
-            static_connection_type=static_connection_type if force_static_connection else None,
+            allow_static_device_values=allow_static_device_values,
+            static_connection_type=static_connection_type,
             nominal_voltage_kv=nominal_voltage_kv,
             base_power_mva=base_power_mva,
             base_frequency_hz=base_frequency_hz,
@@ -8292,13 +8293,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
         component_kind: str | None = _get_shunt_component_kind(block_type)
         nominal_voltage_kv, base_power_mva, base_frequency_hz = self._get_rlc_combo_base_values()
-        allow_static_load_values: bool = isinstance(self.api_object, Load)
+        allow_static_device_values: bool = isinstance(self.api_object, (Load, Shunt, ControllableShunt))
         static_connection_type: ShuntConnectionType | None = None
-        force_static_connection: bool = False
 
         if isinstance(self.api_object, (Load, Shunt, ControllableShunt)):
             static_connection_type = self.api_object.conn
-            force_static_connection = True
         elif isinstance(self.api_object, InjectionParent):
             static_connection_type = self.api_object.conn
         else:
@@ -8313,8 +8312,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             component_kind=component_kind,
             parent=self,
             initial_config=initial_config,
-            allow_static_load_values=allow_static_load_values,
-            static_connection_type=static_connection_type if force_static_connection else None,
+            allow_static_device_values=allow_static_device_values,
+            static_connection_type=static_connection_type,
             nominal_voltage_kv=nominal_voltage_kv,
             base_power_mva=base_power_mva,
             base_frequency_hz=base_frequency_hz,
@@ -8410,7 +8409,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
         resolved_config: Dict[str, Any] | None = None
         static_connection_type: ShuntConnectionType | None = None
-        force_static_connection: bool = False
+        allow_static_device_values: bool = False
 
         if initial_config is not None:
             resolved_config = dict(initial_config)
@@ -8419,8 +8418,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         if isinstance(self.api_object, Load):
             static_connection_type = self.api_object.conn
-            resolved_config["connection_type"] = static_connection_type
-            force_static_connection = True
+            allow_static_device_values = True
         elif isinstance(self.api_object, InjectionParent):
             static_connection_type = self.api_object.conn
         else:
@@ -8430,7 +8428,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             title=self._get_load_topology_dialog_title(block_type),
             parent=self,
             initial_config=resolved_config,
-            static_connection_type=static_connection_type if force_static_connection else None,
+            allow_static_device_values=allow_static_device_values,
+            static_connection_type=static_connection_type,
         )
 
     @staticmethod
@@ -8639,7 +8638,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param modal_config: Raw modal configuration.
         :return: Template-builder keyword arguments.
         """
-        use_static_load_values: bool = bool(modal_config.get("use_static_load_values", False))
+        use_static_load_values: bool = bool(modal_config.get("use_static_device_values", modal_config.get("use_static_load_values", False)))
 
         # Static-value mode must expose load-derived P/Q mappings to the EMT
         # block, so the direct R/L/C values are left unresolved on purpose.
