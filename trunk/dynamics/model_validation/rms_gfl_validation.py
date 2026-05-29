@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'sr
 import numpy as np
 import matplotlib.pyplot as plt
 import VeraGridEngine.api as vge
-from VeraGridEngine.enumerations import ConverterControlType, VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import ConverterControlType, VarPowerFlowReferenceType
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import SolverType
 from VeraGridEngine.Templates.Rms.vsc_gfl_dclinked import build_vsc_rms
@@ -372,8 +372,8 @@ def initialize_grid2_rms_models(grid2, pf_results):
 
         if vsc.bus_to.rms_model.empty():
             initialize_bus_rms(vsc.bus_to, vf)
-        vm_vsc = vsc.rms_model.external_mapping[VarPowerFlowRefferenceType.Vm]
-        bus_vm = vsc.bus_to.rms_model.external_mapping[VarPowerFlowRefferenceType.Vm]
+        vm_vsc = vsc.rms_model.external_mapping[VarPowerFlowReferenceType.Vm]
+        bus_vm = vsc.bus_to.rms_model.external_mapping[VarPowerFlowReferenceType.Vm]
         grid.var_factory.add_connections([vm_vsc], [bus_vm])
         print("    ✓ VSC RMS model assigned")
 
@@ -401,15 +401,15 @@ def initialize_grid2_rms_models(grid2, pf_results):
         if trafo.bus_to.rms_model.empty():
             initialize_bus_rms(trafo.bus_to, vf)
 
-        vm_f = trafo.rms_model.external_mapping[VarPowerFlowRefferenceType.Vmf]
-        va_f = trafo.rms_model.external_mapping[VarPowerFlowRefferenceType.Vaf]
-        vm_t = trafo.rms_model.external_mapping[VarPowerFlowRefferenceType.Vmt]
-        va_t = trafo.rms_model.external_mapping[VarPowerFlowRefferenceType.Vat]
+        vm_f = trafo.rms_model.external_mapping[VarPowerFlowReferenceType.Vmf]
+        va_f = trafo.rms_model.external_mapping[VarPowerFlowReferenceType.Vaf]
+        vm_t = trafo.rms_model.external_mapping[VarPowerFlowReferenceType.Vmt]
+        va_t = trafo.rms_model.external_mapping[VarPowerFlowReferenceType.Vat]
 
-        bus_vm_f = trafo.bus_from.rms_model.external_mapping[VarPowerFlowRefferenceType.Vm]
-        bus_va_f = trafo.bus_from.rms_model.external_mapping[VarPowerFlowRefferenceType.Va]
-        bus_vm_t = trafo.bus_to.rms_model.external_mapping[VarPowerFlowRefferenceType.Vm]
-        bus_va_t = trafo.bus_to.rms_model.external_mapping[VarPowerFlowRefferenceType.Va]
+        bus_vm_f = trafo.bus_from.rms_model.external_mapping[VarPowerFlowReferenceType.Vm]
+        bus_va_f = trafo.bus_from.rms_model.external_mapping[VarPowerFlowReferenceType.Va]
+        bus_vm_t = trafo.bus_to.rms_model.external_mapping[VarPowerFlowReferenceType.Vm]
+        bus_va_t = trafo.bus_to.rms_model.external_mapping[VarPowerFlowReferenceType.Va]
 
         grid.var_factory.add_connections([vm_f, va_f, vm_t, va_t], [bus_vm_f, bus_va_f, bus_vm_t, bus_va_t])
 
@@ -418,7 +418,7 @@ def initialize_grid2_rms_models(grid2, pf_results):
         if trafo in branch_list:
             branch_idx = branch_list.index(trafo)
             qt_pf = pf_results.St[branch_idx].imag / grid2.Sbase
-            qt_var = trafo.rms_model.external_mapping[VarPowerFlowRefferenceType.Qt]
+            qt_var = trafo.rms_model.external_mapping[VarPowerFlowReferenceType.Qt]
             trafo.rms_model.init_eqs[qt_var] = vf.add_const(float(qt_pf))
 
             q_ref_var = find_name_in_block('Q_ref', trafo.rms_model)
@@ -437,7 +437,7 @@ def initialize_grid2_rms_models(grid2, pf_results):
             print(f"  Initializing DC Generator '{gen.name}' at DC bus '{bus.name}' with DCPVSourceAveraged...")
             if bus.rms_model.empty():
                 initialize_bus_rms(bus, vf)
-            vdc = bus.rms_model.external_mapping[VarPowerFlowRefferenceType.Vdc]
+            vdc = bus.rms_model.external_mapping[VarPowerFlowReferenceType.Vdc]
             gen.rms_model = DCPVSourceAveraged(vfactory=vf, Vdc=vdc, name=gen.name).block
 
             vdc0 = float(np.abs(pf_results.voltage[list(grid2.buses).index(bus)]))
@@ -494,7 +494,7 @@ def initialize_grid2_rms_models(grid2, pf_results):
         trafo = grid2.transformers2w[0]
         if hasattr(vsc.bus_from, 'rms_model') and vsc.bus_from.rms_model is not None:
             if hasattr(trafo.rms_model, 'in_vars') and len(trafo.rms_model.in_vars) > 0:
-                vdc_trafo = trafo.rms_model.external_mapping[VarPowerFlowRefferenceType.Vdc]
+                vdc_trafo = trafo.rms_model.external_mapping[VarPowerFlowReferenceType.Vdc]
                 vdc_bus = vsc.bus_from.rms_model.out_vars[0]
                 grid.var_factory.add_connections([vdc_trafo], [vdc_bus])
                 print("  ✓ Connected transformer to DC bus")

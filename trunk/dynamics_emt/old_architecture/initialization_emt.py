@@ -24,7 +24,7 @@ from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_basic_formulation_3ph import lookup_from_mask
 from VeraGridEngine.Devices.Substation.bus import Bus
 import VeraGridEngine.Devices as dev
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import VarPowerFlowReferenceType
 
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
@@ -442,8 +442,8 @@ def init_explicit_regions(grid: MultiCircuit,
 
                 # fi trampilla ---------------------------------------------------
 
-                init_guess[mdl.external_mapping[VarPowerFlowRefferenceType.P].uid] = P
-                init_guess[mdl.external_mapping[VarPowerFlowRefferenceType.Q].uid] = Q
+                init_guess[mdl.external_mapping[VarPowerFlowReferenceType.P].uid] = P
+                init_guess[mdl.external_mapping[VarPowerFlowReferenceType.Q].uid] = Q
 
                 print(f"initial P = {P}")
                 print(f"initial Q = {Q}")
@@ -460,9 +460,9 @@ def init_explicit_regions(grid: MultiCircuit,
                 i_b = np.sqrt(2) * Ib_rms * np.cos(Ib_angle)
                 i_c = np.sqrt(2) * Ic_rms * np.cos(Ic_angle)
 
-                init_guess[mdl.external_mapping[VarPowerFlowRefferenceType.Ia].uid] = i_a
-                init_guess[mdl.external_mapping[VarPowerFlowRefferenceType.Ib].uid] = i_b
-                init_guess[mdl.external_mapping[VarPowerFlowRefferenceType.Ic].uid] = i_c
+                init_guess[mdl.external_mapping[VarPowerFlowReferenceType.Ia].uid] = i_a
+                init_guess[mdl.external_mapping[VarPowerFlowReferenceType.Ib].uid] = i_b
+                init_guess[mdl.external_mapping[VarPowerFlowReferenceType.Ic].uid] = i_c
 
                 print(f"initial i_a = {i_a}")
                 print(f"initial i_b = {i_b}")
@@ -476,7 +476,7 @@ def init_explicit_regions(grid: MultiCircuit,
                 # --------------------------------
                 theta = 0.0
                 # --------------------------------
-                init_guess[mdl.external_mapping[VarPowerFlowRefferenceType.theta].uid] = theta
+                init_guess[mdl.external_mapping[VarPowerFlowReferenceType.theta].uid] = theta
 
                 # print(f"sanity check!")
                 # print(f"va*ia+vb*ib+vc*ic = {va0 * i_a + vb0 * i_b + vc0 * i_c}")

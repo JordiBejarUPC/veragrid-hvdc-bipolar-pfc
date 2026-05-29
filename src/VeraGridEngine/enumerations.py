@@ -3419,9 +3419,9 @@ class BusReductionMethod(Enum):
             return s
 
 
-class VarPowerFlowRefferenceType(Enum):
+class VarPowerFlowReferenceType(Enum):
     """
-    VarPowerFlowRefferenceType
+    VarPowerFlowReferenceType
     """
     NOTHING = "nothing"
     Vm = "Vm"  # Bus voltage module in p.u.
@@ -3563,14 +3563,14 @@ class VarPowerFlowRefferenceType(Enum):
         :return:
         """
         try:
-            return VarPowerFlowRefferenceType[s]
+            return VarPowerFlowReferenceType[s]
         except KeyError:
             return s
 
 
-class ParamPowerFlowRefferenceType(Enum):
+class ParamPowerFlowReferenceType(Enum):
     """
-    ParamPowerFlowRefferenceType
+    ParamPowerFlowReferenceType
     """
     NOTHING = "nothing"
     #General
@@ -3921,7 +3921,7 @@ class ParamPowerFlowRefferenceType(Enum):
         :return:
         """
         try:
-            return ParamPowerFlowRefferenceType[s]
+            return ParamPowerFlowReferenceType[s]
         except KeyError:
             return s
 

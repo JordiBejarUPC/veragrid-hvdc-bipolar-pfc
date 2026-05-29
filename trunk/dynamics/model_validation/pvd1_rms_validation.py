@@ -18,7 +18,7 @@ from VeraGridEngine.Templates.Rms.pvd1_rms_template import get_pvd1_complete_rms
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_rms_model
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import VarPowerFlowReferenceType
 from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Devices.Events.rms_event import RmsEvent
 from VeraGridEngine.Simulations.Rms.rms_problem_factory import build_rms_problem
@@ -37,8 +37,8 @@ def find_name_in_block(name: str, block: Block):
 
 
 def build_constant_pq_generator_model(vf, name: str) -> Block:
-    vm = vf.add_var(f"Vm_{name}", VarPowerFlowRefferenceType.Vm)
-    va = vf.add_var(f"Va_{name}", VarPowerFlowRefferenceType.Va)
+    vm = vf.add_var(f"Vm_{name}", VarPowerFlowReferenceType.Vm)
+    va = vf.add_var(f"Va_{name}", VarPowerFlowReferenceType.Va)
     p = vf.add_var(f"P_{name}")
     q = vf.add_var(f"Q_{name}")
     p0 = vf.add_var(f"P0_{name}")
@@ -51,10 +51,10 @@ def build_constant_pq_generator_model(vf, name: str) -> Block:
         init_eqs={p0: p, q0: q},
         event_dict={p0: vf.add_const(None), q0: vf.add_const(None)},
         external_mapping={
-            VarPowerFlowRefferenceType.Vm: vm,
-            VarPowerFlowRefferenceType.Va: va,
-            VarPowerFlowRefferenceType.P: p,
-            VarPowerFlowRefferenceType.Q: q,
+            VarPowerFlowReferenceType.Vm: vm,
+            VarPowerFlowReferenceType.Va: va,
+            VarPowerFlowReferenceType.P: p,
+            VarPowerFlowReferenceType.Q: q,
         },
         out_vars=[p, q],
     )

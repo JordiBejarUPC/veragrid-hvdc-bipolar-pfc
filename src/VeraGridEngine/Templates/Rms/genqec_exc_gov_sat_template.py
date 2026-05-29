@@ -7,7 +7,7 @@ import numpy as np
 import math
 
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
-from VeraGridEngine.enumerations import DeviceType, ParamPowerFlowRefferenceType, VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import DeviceType, ParamPowerFlowReferenceType, VarPowerFlowReferenceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import (Block, find_name_in_block )
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
@@ -31,8 +31,8 @@ def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec_rms_template") -> R
     # Tm: mechanical torque (from governor)
     # Vf: excitation voltage (from exciter)
 
-    inputs = [vfactory.add_var("Vm_" + name, reference=VarPowerFlowRefferenceType.Vm),
-              vfactory.add_var("Va_" + name, reference=VarPowerFlowRefferenceType.Va),
+    inputs = [vfactory.add_var("Vm_" + name, reference=VarPowerFlowReferenceType.Vm),
+              vfactory.add_var("Va_" + name, reference=VarPowerFlowReferenceType.Va),
               vfactory.add_var("Tm_" + name, shared_reference="tm_reference"),
               vfactory.add_var("Vf_" + name, shared_reference="vf_reference")]
 
@@ -51,8 +51,8 @@ def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec_rms_template") -> R
     Psiq_prime = vfactory.add_var("Psiq_prime" + name)  # transient voltage d-axis
 
     # Algebraic variables
-    Pg = vfactory.add_var('Pg' + name, reference=VarPowerFlowRefferenceType.P)
-    Qg = vfactory.add_var('Qg' + name, reference=VarPowerFlowRefferenceType.Q)
+    Pg = vfactory.add_var('Pg' + name, reference=VarPowerFlowReferenceType.P)
+    Qg = vfactory.add_var('Qg' + name, reference=VarPowerFlowReferenceType.Q)
     Id = vfactory.add_var("Id" + name)
     Iq = vfactory.add_var("Iq" + name)
     Vd = vfactory.add_var("Vd" + name)
@@ -264,10 +264,10 @@ def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec_rms_template") -> R
             # We initialize some specific parameters:
         },
         external_mapping={
-            VarPowerFlowRefferenceType.P: Pg,
-            VarPowerFlowRefferenceType.Q: Qg,
-            VarPowerFlowRefferenceType.Vm: inputs[0],
-            VarPowerFlowRefferenceType.Va: inputs[1],
+            VarPowerFlowReferenceType.P: Pg,
+            VarPowerFlowReferenceType.Q: Qg,
+            VarPowerFlowReferenceType.Vm: inputs[0],
+            VarPowerFlowReferenceType.Va: inputs[1],
         },
 
         api_obj_mapping={  },
@@ -454,19 +454,19 @@ def get_governor_rms(vfactory: VarFactory, name: str = "Governor") -> RmsModelTe
         },
         api_obj_mapping={
             # Gains and limits
-            ParamPowerFlowRefferenceType.K: K,  # governor gain (inverse droop)
-            ParamPowerFlowRefferenceType.Pmax: Pmax,  # max mechanical power (pu)
-            ParamPowerFlowRefferenceType.Pmin: Pmin,  # min mechanical power (pu)
-            ParamPowerFlowRefferenceType.Uc: Uc,  # max valve closing rate (pu/s)
-            ParamPowerFlowRefferenceType.Uo: Uo,  # max valve opening rate (pu/s)
-            ParamPowerFlowRefferenceType.T_aux: T_aux,
+            ParamPowerFlowReferenceType.K: K,  # governor gain (inverse droop)
+            ParamPowerFlowReferenceType.Pmax: Pmax,  # max mechanical power (pu)
+            ParamPowerFlowReferenceType.Pmin: Pmin,  # min mechanical power (pu)
+            ParamPowerFlowReferenceType.Uc: Uc,  # max valve closing rate (pu/s)
+            ParamPowerFlowReferenceType.Uo: Uo,  # max valve opening rate (pu/s)
+            ParamPowerFlowReferenceType.T_aux: T_aux,
 
             # Control
-            ParamPowerFlowRefferenceType.Kp: Kp,
-            ParamPowerFlowRefferenceType.Ki: Ki,
-            ParamPowerFlowRefferenceType.omega_ref: omega_ref,
-            ParamPowerFlowRefferenceType.p0: p0,
-            ParamPowerFlowRefferenceType.P0: P0,
+            ParamPowerFlowReferenceType.Kp: Kp,
+            ParamPowerFlowReferenceType.Ki: Ki,
+            ParamPowerFlowReferenceType.omega_ref: omega_ref,
+            ParamPowerFlowReferenceType.p0: p0,
+            ParamPowerFlowReferenceType.P0: P0,
         }
 
     )
@@ -617,7 +617,7 @@ def get_exciter_rms(vfactory: VarFactory, name: str = "exciter") -> RmsModelTemp
     # Va: measured stator voltage (from generator) (pu)
     # Vpss: output from power system stabilizer (pu)
 
-    inputs = [vfactory.add_var("IRPu_", shared_reference="irpu_reference"), vfactory.add_var("Vm_", reference=VarPowerFlowRefferenceType.Vm), vfactory.add_var("Vpss_", shared_reference="vpss_reference")]
+    inputs = [vfactory.add_var("IRPu_", shared_reference="irpu_reference"), vfactory.add_var("Vm_", reference=VarPowerFlowReferenceType.Vm), vfactory.add_var("Vpss_", shared_reference="vpss_reference")]
 
     algebraic_vars = []
 
@@ -1090,10 +1090,10 @@ def get_complete_generator_template_rms(vfactory: VarFactory, name="complete_gen
     # templ.block = to_implicit(templ.block, vfactory=vfactory)
     # templ.block.unify_blocks()
     templ.block.external_mapping = {
-        VarPowerFlowRefferenceType.Vm: genqec_mdl.in_vars[0],
-        VarPowerFlowRefferenceType.Va: genqec_mdl.in_vars[1],
-        VarPowerFlowRefferenceType.P: genqec_mdl.out_vars[0],
-        VarPowerFlowRefferenceType.Q: genqec_mdl.out_vars[1],
+        VarPowerFlowReferenceType.Vm: genqec_mdl.in_vars[0],
+        VarPowerFlowReferenceType.Va: genqec_mdl.in_vars[1],
+        VarPowerFlowReferenceType.P: genqec_mdl.out_vars[0],
+        VarPowerFlowReferenceType.Q: genqec_mdl.out_vars[1],
     }
 
     templ.block.in_vars = [genqec_mdl.in_vars[0], genqec_mdl.in_vars[1]]

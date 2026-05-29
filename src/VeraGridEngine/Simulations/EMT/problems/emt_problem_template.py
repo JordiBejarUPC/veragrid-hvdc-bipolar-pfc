@@ -12,7 +12,7 @@ from VeraGridEngine.Utils.Symbolic.symbolic import Const, Expr, Var, hard_sat, h
 from VeraGridEngine.basic_structures import Vec
 from VeraGridEngine.Simulations.driver_template import DummySignal
 from VeraGridEngine.Devices.Events.emt_events_group import EmtEventsGroup
-from VeraGridEngine.enumerations import DynamicEventTransitionType, VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import DynamicEventTransitionType, VarPowerFlowReferenceType
 
 
 def _get_diff_var_sort_key(diff_var: Var) -> int:
@@ -936,7 +936,7 @@ class EmtProblemTemplate(ABC):
         """
         return self._vars_glob_name2uid
 
-    # def set_init_guess(self, mdl: Block, reference_powerflow: VarPowerFlowRefferenceType, val: float) -> None:
+    # def set_init_guess(self, mdl: Block, reference_powerflow: VarPowerFlowReferenceType, val: float) -> None:
     #     """
     #     Set the initialization guess associated with a model external mapping.
     #

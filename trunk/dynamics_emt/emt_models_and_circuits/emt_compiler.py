@@ -15,7 +15,7 @@ from VeraGridEngine.basic_structures import Logger, Mat, BoolVec
 from VeraGridEngine.Utils.Symbolic.symbolic import piecewise
 from VeraGridEngine.enumerations import EmtLineTypes
 from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_basic_formulation_3ph import lookup_from_mask
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import VarPowerFlowReferenceType
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
 from VeraGridEngine.Utils.Symbolic.block import Block
@@ -342,8 +342,8 @@ def compile_emt(grid: MultiCircuit,
             P = np.real(S)  # p.u.
             Q = np.imag(S)  # p.u.
 
-            dta.add_guess(bus_idx, VarPowerFlowRefferenceType.P, float(P))
-            dta.add_guess(bus_idx, VarPowerFlowRefferenceType.Q, float(Q))
+            dta.add_guess(bus_idx, VarPowerFlowReferenceType.P, float(P))
+            dta.add_guess(bus_idx, VarPowerFlowReferenceType.Q, float(Q))
 
             print(f"initial P = {P}")
             print(f"initial Q = {Q}")
@@ -360,9 +360,9 @@ def compile_emt(grid: MultiCircuit,
             i_b = np.sqrt(2) * Ib_rms * np.cos(Ib_angle)
             i_c = np.sqrt(2) * Ic_rms * np.cos(Ic_angle)
 
-            dta.add_guess(bus_idx, VarPowerFlowRefferenceType.Ia, i_a)
-            dta.add_guess(bus_idx, VarPowerFlowRefferenceType.Ib, i_b)
-            dta.add_guess(bus_idx, VarPowerFlowRefferenceType.Ic, i_c)
+            dta.add_guess(bus_idx, VarPowerFlowReferenceType.Ia, i_a)
+            dta.add_guess(bus_idx, VarPowerFlowReferenceType.Ib, i_b)
+            dta.add_guess(bus_idx, VarPowerFlowReferenceType.Ic, i_c)
 
             if emt_options.verbose > 0:
                 print(f"initial i_a = {i_a}")
@@ -378,7 +378,7 @@ def compile_emt(grid: MultiCircuit,
             # --------------------------------
             # theta = 0.0
             # --------------------------------
-            dta.add_guess(bus_idx, VarPowerFlowRefferenceType.theta, theta)
+            dta.add_guess(bus_idx, VarPowerFlowReferenceType.theta, theta)
 
             if emt_options.verbose > 0:
                 print(f"sanity check!")

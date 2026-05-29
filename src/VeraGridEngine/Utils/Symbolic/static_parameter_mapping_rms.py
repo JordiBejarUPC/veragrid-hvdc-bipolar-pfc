@@ -38,291 +38,291 @@ from VeraGridEngine.enumerations import (
     ConverterControlType,
     DeviceType,
     ExternalGridMode,
-    ParamPowerFlowRefferenceType,
+    ParamPowerFlowReferenceType,
     ShuntConnectionType,
     ShuntControlMode,
     WindingType,
 )
 
-devices_static_params_mapping: Dict[DeviceType, List[ParamPowerFlowRefferenceType]] = {
+devices_static_params_mapping: Dict[DeviceType, List[ParamPowerFlowReferenceType]] = {
     DeviceType.LoadDevice: [
-        ParamPowerFlowRefferenceType.device_active,
-        ParamPowerFlowRefferenceType.injection_connection_type,
-        ParamPowerFlowRefferenceType.load_p_pu,
-        ParamPowerFlowRefferenceType.load_q_pu,
-        ParamPowerFlowRefferenceType.load_pa_pu,
-        ParamPowerFlowRefferenceType.load_pb_pu,
-        ParamPowerFlowRefferenceType.load_pc_pu,
-        ParamPowerFlowRefferenceType.load_qa_pu,
-        ParamPowerFlowRefferenceType.load_qb_pu,
-        ParamPowerFlowRefferenceType.load_qc_pu,
-        ParamPowerFlowRefferenceType.load_g_pu,
-        ParamPowerFlowRefferenceType.load_b_pu,
-        ParamPowerFlowRefferenceType.load_ga_pu,
-        ParamPowerFlowRefferenceType.load_gb_pu,
-        ParamPowerFlowRefferenceType.load_gc_pu,
-        ParamPowerFlowRefferenceType.load_ba_pu,
-        ParamPowerFlowRefferenceType.load_bb_pu,
-        ParamPowerFlowRefferenceType.load_bc_pu,
-        ParamPowerFlowRefferenceType.load_ir_pu,
-        ParamPowerFlowRefferenceType.load_ii_pu,
-        ParamPowerFlowRefferenceType.load_ira_pu,
-        ParamPowerFlowRefferenceType.load_irb_pu,
-        ParamPowerFlowRefferenceType.load_irc_pu,
-        ParamPowerFlowRefferenceType.load_iia_pu,
-        ParamPowerFlowRefferenceType.load_iib_pu,
-        ParamPowerFlowRefferenceType.load_iic_pu,
-        ParamPowerFlowRefferenceType.load_contract_power_pu,
-        ParamPowerFlowRefferenceType.Pl0,
-        ParamPowerFlowRefferenceType.g,
-        ParamPowerFlowRefferenceType.Pl0_A,
-        ParamPowerFlowRefferenceType.Pl0_B,
-        ParamPowerFlowRefferenceType.Pl0_C,
-        ParamPowerFlowRefferenceType.Ql0_A,
-        ParamPowerFlowRefferenceType.Ql0_B,
-        ParamPowerFlowRefferenceType.Ql0_C,
-        ParamPowerFlowRefferenceType.omega_base,
+        ParamPowerFlowReferenceType.device_active,
+        ParamPowerFlowReferenceType.injection_connection_type,
+        ParamPowerFlowReferenceType.load_p_pu,
+        ParamPowerFlowReferenceType.load_q_pu,
+        ParamPowerFlowReferenceType.load_pa_pu,
+        ParamPowerFlowReferenceType.load_pb_pu,
+        ParamPowerFlowReferenceType.load_pc_pu,
+        ParamPowerFlowReferenceType.load_qa_pu,
+        ParamPowerFlowReferenceType.load_qb_pu,
+        ParamPowerFlowReferenceType.load_qc_pu,
+        ParamPowerFlowReferenceType.load_g_pu,
+        ParamPowerFlowReferenceType.load_b_pu,
+        ParamPowerFlowReferenceType.load_ga_pu,
+        ParamPowerFlowReferenceType.load_gb_pu,
+        ParamPowerFlowReferenceType.load_gc_pu,
+        ParamPowerFlowReferenceType.load_ba_pu,
+        ParamPowerFlowReferenceType.load_bb_pu,
+        ParamPowerFlowReferenceType.load_bc_pu,
+        ParamPowerFlowReferenceType.load_ir_pu,
+        ParamPowerFlowReferenceType.load_ii_pu,
+        ParamPowerFlowReferenceType.load_ira_pu,
+        ParamPowerFlowReferenceType.load_irb_pu,
+        ParamPowerFlowReferenceType.load_irc_pu,
+        ParamPowerFlowReferenceType.load_iia_pu,
+        ParamPowerFlowReferenceType.load_iib_pu,
+        ParamPowerFlowReferenceType.load_iic_pu,
+        ParamPowerFlowReferenceType.load_contract_power_pu,
+        ParamPowerFlowReferenceType.Pl0,
+        ParamPowerFlowReferenceType.g,
+        ParamPowerFlowReferenceType.Pl0_A,
+        ParamPowerFlowReferenceType.Pl0_B,
+        ParamPowerFlowReferenceType.Pl0_C,
+        ParamPowerFlowReferenceType.Ql0_A,
+        ParamPowerFlowReferenceType.Ql0_B,
+        ParamPowerFlowReferenceType.Ql0_C,
+        ParamPowerFlowReferenceType.omega_base,
     ],
     DeviceType.StaticGeneratorDevice: [
-        ParamPowerFlowRefferenceType.device_active,
-        ParamPowerFlowRefferenceType.injection_connection_type,
-        ParamPowerFlowRefferenceType.load_p_pu,
-        ParamPowerFlowRefferenceType.load_q_pu,
-        ParamPowerFlowRefferenceType.load_pa_pu,
-        ParamPowerFlowRefferenceType.load_pb_pu,
-        ParamPowerFlowRefferenceType.load_pc_pu,
-        ParamPowerFlowRefferenceType.load_qa_pu,
-        ParamPowerFlowRefferenceType.load_qb_pu,
-        ParamPowerFlowRefferenceType.load_qc_pu,
-        ParamPowerFlowRefferenceType.Pl0_A,
-        ParamPowerFlowRefferenceType.Pl0_B,
-        ParamPowerFlowRefferenceType.Pl0_C,
-        ParamPowerFlowRefferenceType.Ql0_A,
-        ParamPowerFlowRefferenceType.Ql0_B,
-        ParamPowerFlowRefferenceType.Ql0_C,
-        ParamPowerFlowRefferenceType.omega_base,
-        ParamPowerFlowRefferenceType.static_generator_snom_mva,
+        ParamPowerFlowReferenceType.device_active,
+        ParamPowerFlowReferenceType.injection_connection_type,
+        ParamPowerFlowReferenceType.load_p_pu,
+        ParamPowerFlowReferenceType.load_q_pu,
+        ParamPowerFlowReferenceType.load_pa_pu,
+        ParamPowerFlowReferenceType.load_pb_pu,
+        ParamPowerFlowReferenceType.load_pc_pu,
+        ParamPowerFlowReferenceType.load_qa_pu,
+        ParamPowerFlowReferenceType.load_qb_pu,
+        ParamPowerFlowReferenceType.load_qc_pu,
+        ParamPowerFlowReferenceType.Pl0_A,
+        ParamPowerFlowReferenceType.Pl0_B,
+        ParamPowerFlowReferenceType.Pl0_C,
+        ParamPowerFlowReferenceType.Ql0_A,
+        ParamPowerFlowReferenceType.Ql0_B,
+        ParamPowerFlowReferenceType.Ql0_C,
+        ParamPowerFlowReferenceType.omega_base,
+        ParamPowerFlowReferenceType.static_generator_snom_mva,
     ],
     DeviceType.ExternalGridDevice: [
-        ParamPowerFlowRefferenceType.device_active,
-        ParamPowerFlowRefferenceType.injection_connection_type,
-        ParamPowerFlowRefferenceType.load_p_pu,
-        ParamPowerFlowRefferenceType.load_pa_pu,
-        ParamPowerFlowRefferenceType.load_pb_pu,
-        ParamPowerFlowRefferenceType.load_pc_pu,
-        ParamPowerFlowRefferenceType.load_qa_pu,
-        ParamPowerFlowRefferenceType.load_qb_pu,
-        ParamPowerFlowRefferenceType.load_qc_pu,
-        ParamPowerFlowRefferenceType.omega_base,
-        ParamPowerFlowRefferenceType.load_q_pu,
-        ParamPowerFlowRefferenceType.external_grid_vm_pu,
-        ParamPowerFlowRefferenceType.external_grid_va_rad,
-        ParamPowerFlowRefferenceType.external_grid_mode_code,
+        ParamPowerFlowReferenceType.device_active,
+        ParamPowerFlowReferenceType.injection_connection_type,
+        ParamPowerFlowReferenceType.load_p_pu,
+        ParamPowerFlowReferenceType.load_pa_pu,
+        ParamPowerFlowReferenceType.load_pb_pu,
+        ParamPowerFlowReferenceType.load_pc_pu,
+        ParamPowerFlowReferenceType.load_qa_pu,
+        ParamPowerFlowReferenceType.load_qb_pu,
+        ParamPowerFlowReferenceType.load_qc_pu,
+        ParamPowerFlowReferenceType.omega_base,
+        ParamPowerFlowReferenceType.load_q_pu,
+        ParamPowerFlowReferenceType.external_grid_vm_pu,
+        ParamPowerFlowReferenceType.external_grid_va_rad,
+        ParamPowerFlowReferenceType.external_grid_mode_code,
     ],
     DeviceType.ShuntDevice: [
-        ParamPowerFlowRefferenceType.device_active,
-        ParamPowerFlowRefferenceType.injection_connection_type,
-        ParamPowerFlowRefferenceType.shunt_g_pu,
-        ParamPowerFlowRefferenceType.shunt_b_pu,
-        ParamPowerFlowRefferenceType.shunt_g0_pu,
-        ParamPowerFlowRefferenceType.shunt_b0_pu,
-        ParamPowerFlowRefferenceType.shunt_ga_pu,
-        ParamPowerFlowRefferenceType.shunt_gb_pu,
-        ParamPowerFlowRefferenceType.shunt_gc_pu,
-        ParamPowerFlowRefferenceType.shunt_ba_pu,
-        ParamPowerFlowRefferenceType.shunt_bb_pu,
-        ParamPowerFlowRefferenceType.shunt_bc_pu,
+        ParamPowerFlowReferenceType.device_active,
+        ParamPowerFlowReferenceType.injection_connection_type,
+        ParamPowerFlowReferenceType.shunt_g_pu,
+        ParamPowerFlowReferenceType.shunt_b_pu,
+        ParamPowerFlowReferenceType.shunt_g0_pu,
+        ParamPowerFlowReferenceType.shunt_b0_pu,
+        ParamPowerFlowReferenceType.shunt_ga_pu,
+        ParamPowerFlowReferenceType.shunt_gb_pu,
+        ParamPowerFlowReferenceType.shunt_gc_pu,
+        ParamPowerFlowReferenceType.shunt_ba_pu,
+        ParamPowerFlowReferenceType.shunt_bb_pu,
+        ParamPowerFlowReferenceType.shunt_bc_pu,
     ],
     DeviceType.ControllableShuntDevice: [
-        ParamPowerFlowRefferenceType.device_active,
-        ParamPowerFlowRefferenceType.injection_connection_type,
-        ParamPowerFlowRefferenceType.shunt_g_pu,
-        ParamPowerFlowRefferenceType.shunt_b_pu,
-        ParamPowerFlowRefferenceType.shunt_g0_pu,
-        ParamPowerFlowRefferenceType.shunt_b0_pu,
-        ParamPowerFlowRefferenceType.shunt_ga_pu,
-        ParamPowerFlowRefferenceType.shunt_gb_pu,
-        ParamPowerFlowRefferenceType.shunt_gc_pu,
-        ParamPowerFlowRefferenceType.shunt_ba_pu,
-        ParamPowerFlowRefferenceType.shunt_bb_pu,
-        ParamPowerFlowRefferenceType.shunt_bc_pu,
-        ParamPowerFlowRefferenceType.controllable_shunt_step,
-        ParamPowerFlowRefferenceType.controllable_shunt_vset_pu,
-        ParamPowerFlowRefferenceType.controllable_shunt_vmin_pu,
-        ParamPowerFlowRefferenceType.controllable_shunt_vmax_pu,
-        ParamPowerFlowRefferenceType.controllable_shunt_gmin_pu,
-        ParamPowerFlowRefferenceType.controllable_shunt_gmax_pu,
-        ParamPowerFlowRefferenceType.controllable_shunt_bmin_pu,
-        ParamPowerFlowRefferenceType.controllable_shunt_bmax_pu,
-        ParamPowerFlowRefferenceType.controllable_shunt_control_mode_code,
+        ParamPowerFlowReferenceType.device_active,
+        ParamPowerFlowReferenceType.injection_connection_type,
+        ParamPowerFlowReferenceType.shunt_g_pu,
+        ParamPowerFlowReferenceType.shunt_b_pu,
+        ParamPowerFlowReferenceType.shunt_g0_pu,
+        ParamPowerFlowReferenceType.shunt_b0_pu,
+        ParamPowerFlowReferenceType.shunt_ga_pu,
+        ParamPowerFlowReferenceType.shunt_gb_pu,
+        ParamPowerFlowReferenceType.shunt_gc_pu,
+        ParamPowerFlowReferenceType.shunt_ba_pu,
+        ParamPowerFlowReferenceType.shunt_bb_pu,
+        ParamPowerFlowReferenceType.shunt_bc_pu,
+        ParamPowerFlowReferenceType.controllable_shunt_step,
+        ParamPowerFlowReferenceType.controllable_shunt_vset_pu,
+        ParamPowerFlowReferenceType.controllable_shunt_vmin_pu,
+        ParamPowerFlowReferenceType.controllable_shunt_vmax_pu,
+        ParamPowerFlowReferenceType.controllable_shunt_gmin_pu,
+        ParamPowerFlowReferenceType.controllable_shunt_gmax_pu,
+        ParamPowerFlowReferenceType.controllable_shunt_bmin_pu,
+        ParamPowerFlowReferenceType.controllable_shunt_bmax_pu,
+        ParamPowerFlowReferenceType.controllable_shunt_control_mode_code,
     ],
     DeviceType.CurrentInjectionDevice: [
-        ParamPowerFlowRefferenceType.device_active,
-        ParamPowerFlowRefferenceType.injection_connection_type,
-        ParamPowerFlowRefferenceType.current_injection_ir_pu,
-        ParamPowerFlowRefferenceType.current_injection_ii_pu,
-        ParamPowerFlowRefferenceType.current_injection_ira_pu,
-        ParamPowerFlowRefferenceType.current_injection_irb_pu,
-        ParamPowerFlowRefferenceType.current_injection_irc_pu,
-        ParamPowerFlowRefferenceType.current_injection_iia_pu,
-        ParamPowerFlowRefferenceType.current_injection_iib_pu,
-        ParamPowerFlowRefferenceType.current_injection_iic_pu,
+        ParamPowerFlowReferenceType.device_active,
+        ParamPowerFlowReferenceType.injection_connection_type,
+        ParamPowerFlowReferenceType.current_injection_ir_pu,
+        ParamPowerFlowReferenceType.current_injection_ii_pu,
+        ParamPowerFlowReferenceType.current_injection_ira_pu,
+        ParamPowerFlowReferenceType.current_injection_irb_pu,
+        ParamPowerFlowReferenceType.current_injection_irc_pu,
+        ParamPowerFlowReferenceType.current_injection_iia_pu,
+        ParamPowerFlowReferenceType.current_injection_iib_pu,
+        ParamPowerFlowReferenceType.current_injection_iic_pu,
     ],
     DeviceType.GeneratorDevice: [
-        ParamPowerFlowRefferenceType.device_active,
-        ParamPowerFlowRefferenceType.injection_connection_type,
-        ParamPowerFlowRefferenceType.omega_base,
-        ParamPowerFlowRefferenceType.fn,
-        ParamPowerFlowRefferenceType.ws,
-        ParamPowerFlowRefferenceType.R1,
-        ParamPowerFlowRefferenceType.X1,
-        ParamPowerFlowRefferenceType.X0,
-        ParamPowerFlowRefferenceType.generator_p_pu,
-        ParamPowerFlowRefferenceType.generator_q_pu,
-        ParamPowerFlowRefferenceType.generator_pmin_pu,
-        ParamPowerFlowRefferenceType.generator_pmax_pu,
-        ParamPowerFlowRefferenceType.generator_qmin_pu,
-        ParamPowerFlowRefferenceType.generator_qmax_pu,
-        ParamPowerFlowRefferenceType.generator_power_factor,
-        ParamPowerFlowRefferenceType.generator_vset_pu,
-        ParamPowerFlowRefferenceType.generator_snom_mva,
-        ParamPowerFlowRefferenceType.generator_r0_pu,
-        ParamPowerFlowRefferenceType.generator_r2_pu,
-        ParamPowerFlowRefferenceType.generator_x2_pu,
-        ParamPowerFlowRefferenceType.generator_is_controlled,
-        ParamPowerFlowRefferenceType.generator_enabled_dispatch,
-        ParamPowerFlowRefferenceType.generator_must_run,
-        ParamPowerFlowRefferenceType.generator_use_reactive_power_curve,
-        ParamPowerFlowRefferenceType.generator_device_sbase_mva,
-        ParamPowerFlowRefferenceType.freq,
+        ParamPowerFlowReferenceType.device_active,
+        ParamPowerFlowReferenceType.injection_connection_type,
+        ParamPowerFlowReferenceType.omega_base,
+        ParamPowerFlowReferenceType.fn,
+        ParamPowerFlowReferenceType.ws,
+        ParamPowerFlowReferenceType.R1,
+        ParamPowerFlowReferenceType.X1,
+        ParamPowerFlowReferenceType.X0,
+        ParamPowerFlowReferenceType.generator_p_pu,
+        ParamPowerFlowReferenceType.generator_q_pu,
+        ParamPowerFlowReferenceType.generator_pmin_pu,
+        ParamPowerFlowReferenceType.generator_pmax_pu,
+        ParamPowerFlowReferenceType.generator_qmin_pu,
+        ParamPowerFlowReferenceType.generator_qmax_pu,
+        ParamPowerFlowReferenceType.generator_power_factor,
+        ParamPowerFlowReferenceType.generator_vset_pu,
+        ParamPowerFlowReferenceType.generator_snom_mva,
+        ParamPowerFlowReferenceType.generator_r0_pu,
+        ParamPowerFlowReferenceType.generator_r2_pu,
+        ParamPowerFlowReferenceType.generator_x2_pu,
+        ParamPowerFlowReferenceType.generator_is_controlled,
+        ParamPowerFlowReferenceType.generator_enabled_dispatch,
+        ParamPowerFlowReferenceType.generator_must_run,
+        ParamPowerFlowReferenceType.generator_use_reactive_power_curve,
+        ParamPowerFlowReferenceType.generator_device_sbase_mva,
+        ParamPowerFlowReferenceType.freq,
     ],
     DeviceType.BatteryDevice: [
-        ParamPowerFlowRefferenceType.device_active,
-        ParamPowerFlowRefferenceType.injection_connection_type,
-        ParamPowerFlowRefferenceType.omega_base,
-        ParamPowerFlowRefferenceType.fn,
-        ParamPowerFlowRefferenceType.ws,
-        ParamPowerFlowRefferenceType.R1,
-        ParamPowerFlowRefferenceType.X1,
-        ParamPowerFlowRefferenceType.X0,
-        ParamPowerFlowRefferenceType.generator_p_pu,
-        ParamPowerFlowRefferenceType.generator_q_pu,
-        ParamPowerFlowRefferenceType.generator_pmin_pu,
-        ParamPowerFlowRefferenceType.generator_pmax_pu,
-        ParamPowerFlowRefferenceType.generator_qmin_pu,
-        ParamPowerFlowRefferenceType.generator_qmax_pu,
-        ParamPowerFlowRefferenceType.generator_power_factor,
-        ParamPowerFlowRefferenceType.generator_vset_pu,
-        ParamPowerFlowRefferenceType.generator_snom_mva,
-        ParamPowerFlowRefferenceType.generator_r0_pu,
-        ParamPowerFlowRefferenceType.generator_r2_pu,
-        ParamPowerFlowRefferenceType.generator_x2_pu,
-        ParamPowerFlowRefferenceType.generator_is_controlled,
-        ParamPowerFlowRefferenceType.generator_enabled_dispatch,
-        ParamPowerFlowRefferenceType.generator_must_run,
-        ParamPowerFlowRefferenceType.generator_use_reactive_power_curve,
-        ParamPowerFlowRefferenceType.generator_device_sbase_mva,
-        ParamPowerFlowRefferenceType.freq,
-        ParamPowerFlowRefferenceType.battery_enom_mwh,
-        ParamPowerFlowRefferenceType.battery_soc_0_pu,
-        ParamPowerFlowRefferenceType.battery_max_soc_pu,
-        ParamPowerFlowRefferenceType.battery_min_soc_pu,
-        ParamPowerFlowRefferenceType.battery_charge_efficiency_pu,
-        ParamPowerFlowRefferenceType.battery_discharge_efficiency_pu,
-        ParamPowerFlowRefferenceType.battery_charge_per_cycle_pu,
-        ParamPowerFlowRefferenceType.battery_discharge_per_cycle_pu,
+        ParamPowerFlowReferenceType.device_active,
+        ParamPowerFlowReferenceType.injection_connection_type,
+        ParamPowerFlowReferenceType.omega_base,
+        ParamPowerFlowReferenceType.fn,
+        ParamPowerFlowReferenceType.ws,
+        ParamPowerFlowReferenceType.R1,
+        ParamPowerFlowReferenceType.X1,
+        ParamPowerFlowReferenceType.X0,
+        ParamPowerFlowReferenceType.generator_p_pu,
+        ParamPowerFlowReferenceType.generator_q_pu,
+        ParamPowerFlowReferenceType.generator_pmin_pu,
+        ParamPowerFlowReferenceType.generator_pmax_pu,
+        ParamPowerFlowReferenceType.generator_qmin_pu,
+        ParamPowerFlowReferenceType.generator_qmax_pu,
+        ParamPowerFlowReferenceType.generator_power_factor,
+        ParamPowerFlowReferenceType.generator_vset_pu,
+        ParamPowerFlowReferenceType.generator_snom_mva,
+        ParamPowerFlowReferenceType.generator_r0_pu,
+        ParamPowerFlowReferenceType.generator_r2_pu,
+        ParamPowerFlowReferenceType.generator_x2_pu,
+        ParamPowerFlowReferenceType.generator_is_controlled,
+        ParamPowerFlowReferenceType.generator_enabled_dispatch,
+        ParamPowerFlowReferenceType.generator_must_run,
+        ParamPowerFlowReferenceType.generator_use_reactive_power_curve,
+        ParamPowerFlowReferenceType.generator_device_sbase_mva,
+        ParamPowerFlowReferenceType.freq,
+        ParamPowerFlowReferenceType.battery_enom_mwh,
+        ParamPowerFlowReferenceType.battery_soc_0_pu,
+        ParamPowerFlowReferenceType.battery_max_soc_pu,
+        ParamPowerFlowReferenceType.battery_min_soc_pu,
+        ParamPowerFlowReferenceType.battery_charge_efficiency_pu,
+        ParamPowerFlowReferenceType.battery_discharge_efficiency_pu,
+        ParamPowerFlowReferenceType.battery_charge_per_cycle_pu,
+        ParamPowerFlowReferenceType.battery_discharge_per_cycle_pu,
     ],
     DeviceType.VscDevice: [
-        ParamPowerFlowRefferenceType.device_active,
-        ParamPowerFlowRefferenceType.branch_rate_mva,
-        ParamPowerFlowRefferenceType.branch_temp_base_deg_c,
-        ParamPowerFlowRefferenceType.branch_temp_oper_deg_c,
-        ParamPowerFlowRefferenceType.branch_alpha_per_deg_c,
-        ParamPowerFlowRefferenceType.Sbase,
-        ParamPowerFlowRefferenceType.omega_base,
-        ParamPowerFlowRefferenceType.converter_control_mode_1,
-        ParamPowerFlowRefferenceType.converter_control_mode_2,
-        ParamPowerFlowRefferenceType.converter_control_target_1,
-        ParamPowerFlowRefferenceType.converter_control_target_2,
-        ParamPowerFlowRefferenceType.alpha1,
-        ParamPowerFlowRefferenceType.alpha2,
-        ParamPowerFlowRefferenceType.alpha3,
-        ParamPowerFlowRefferenceType.vsc_kdp_pu,
-        ParamPowerFlowRefferenceType.vsc_min_ac_voltage_pu,
+        ParamPowerFlowReferenceType.device_active,
+        ParamPowerFlowReferenceType.branch_rate_mva,
+        ParamPowerFlowReferenceType.branch_temp_base_deg_c,
+        ParamPowerFlowReferenceType.branch_temp_oper_deg_c,
+        ParamPowerFlowReferenceType.branch_alpha_per_deg_c,
+        ParamPowerFlowReferenceType.Sbase,
+        ParamPowerFlowReferenceType.omega_base,
+        ParamPowerFlowReferenceType.converter_control_mode_1,
+        ParamPowerFlowReferenceType.converter_control_mode_2,
+        ParamPowerFlowReferenceType.converter_control_target_1,
+        ParamPowerFlowReferenceType.converter_control_target_2,
+        ParamPowerFlowReferenceType.alpha1,
+        ParamPowerFlowReferenceType.alpha2,
+        ParamPowerFlowReferenceType.alpha3,
+        ParamPowerFlowReferenceType.vsc_kdp_pu,
+        ParamPowerFlowReferenceType.vsc_min_ac_voltage_pu,
     ],
     DeviceType.DCLineDevice: [
-        ParamPowerFlowRefferenceType.device_active,
-        ParamPowerFlowRefferenceType.branch_rate_mva,
-        ParamPowerFlowRefferenceType.branch_temp_base_deg_c,
-        ParamPowerFlowRefferenceType.branch_temp_oper_deg_c,
-        ParamPowerFlowRefferenceType.branch_alpha_per_deg_c,
-        ParamPowerFlowRefferenceType.g,
-        ParamPowerFlowRefferenceType.b,
-        ParamPowerFlowRefferenceType.bsh,
-        ParamPowerFlowRefferenceType.dc_line_r_pu,
-        ParamPowerFlowRefferenceType.dc_line_length_km,
+        ParamPowerFlowReferenceType.device_active,
+        ParamPowerFlowReferenceType.branch_rate_mva,
+        ParamPowerFlowReferenceType.branch_temp_base_deg_c,
+        ParamPowerFlowReferenceType.branch_temp_oper_deg_c,
+        ParamPowerFlowReferenceType.branch_alpha_per_deg_c,
+        ParamPowerFlowReferenceType.g,
+        ParamPowerFlowReferenceType.b,
+        ParamPowerFlowReferenceType.bsh,
+        ParamPowerFlowReferenceType.dc_line_r_pu,
+        ParamPowerFlowReferenceType.dc_line_length_km,
     ],
     DeviceType.Transformer2WDevice: [
-        ParamPowerFlowRefferenceType.device_active,
-        ParamPowerFlowRefferenceType.branch_rate_mva,
-        ParamPowerFlowRefferenceType.branch_temp_base_deg_c,
-        ParamPowerFlowRefferenceType.branch_temp_oper_deg_c,
-        ParamPowerFlowRefferenceType.branch_alpha_per_deg_c,
-        ParamPowerFlowRefferenceType.omega_base,
-        ParamPowerFlowRefferenceType.transformer_rated_power_mva,
-        ParamPowerFlowRefferenceType.transformer_winding1_rated_voltage_ll_kv,
-        ParamPowerFlowRefferenceType.transformer_winding2_rated_voltage_ll_kv,
-        ParamPowerFlowRefferenceType.transformer_connection_clock,
-        ParamPowerFlowRefferenceType.transformer_open_circuit_current_pct,
-        ParamPowerFlowRefferenceType.transformer_open_circuit_loss_kw,
-        ParamPowerFlowRefferenceType.transformer_short_circuit_voltage_pct,
-        ParamPowerFlowRefferenceType.transformer_short_circuit_resistance_pct,
-        ParamPowerFlowRefferenceType.transformer_short_circuit_loss_kw,
-        ParamPowerFlowRefferenceType.transformer_tap_module,
-        ParamPowerFlowRefferenceType.transformer_nominal_voltage_ratio,
-        ParamPowerFlowRefferenceType.transformer_total_voltage_ratio,
-        ParamPowerFlowRefferenceType.transformer_tap_ratio,
-        ParamPowerFlowRefferenceType.transformer_winding1_resistance_pu,
-        ParamPowerFlowRefferenceType.transformer_winding2_resistance_pu,
-        ParamPowerFlowRefferenceType.transformer_winding1_inductance_pu_s,
-        ParamPowerFlowRefferenceType.transformer_winding2_inductance_pu_s,
-        ParamPowerFlowRefferenceType.transformer_mutual_inductance_pu_s,
-        ParamPowerFlowRefferenceType.transformer_magnetizing_conductance_pu,
+        ParamPowerFlowReferenceType.device_active,
+        ParamPowerFlowReferenceType.branch_rate_mva,
+        ParamPowerFlowReferenceType.branch_temp_base_deg_c,
+        ParamPowerFlowReferenceType.branch_temp_oper_deg_c,
+        ParamPowerFlowReferenceType.branch_alpha_per_deg_c,
+        ParamPowerFlowReferenceType.omega_base,
+        ParamPowerFlowReferenceType.transformer_rated_power_mva,
+        ParamPowerFlowReferenceType.transformer_winding1_rated_voltage_ll_kv,
+        ParamPowerFlowReferenceType.transformer_winding2_rated_voltage_ll_kv,
+        ParamPowerFlowReferenceType.transformer_connection_clock,
+        ParamPowerFlowReferenceType.transformer_open_circuit_current_pct,
+        ParamPowerFlowReferenceType.transformer_open_circuit_loss_kw,
+        ParamPowerFlowReferenceType.transformer_short_circuit_voltage_pct,
+        ParamPowerFlowReferenceType.transformer_short_circuit_resistance_pct,
+        ParamPowerFlowReferenceType.transformer_short_circuit_loss_kw,
+        ParamPowerFlowReferenceType.transformer_tap_module,
+        ParamPowerFlowReferenceType.transformer_nominal_voltage_ratio,
+        ParamPowerFlowReferenceType.transformer_total_voltage_ratio,
+        ParamPowerFlowReferenceType.transformer_tap_ratio,
+        ParamPowerFlowReferenceType.transformer_winding1_resistance_pu,
+        ParamPowerFlowReferenceType.transformer_winding2_resistance_pu,
+        ParamPowerFlowReferenceType.transformer_winding1_inductance_pu_s,
+        ParamPowerFlowReferenceType.transformer_winding2_inductance_pu_s,
+        ParamPowerFlowReferenceType.transformer_mutual_inductance_pu_s,
+        ParamPowerFlowReferenceType.transformer_magnetizing_conductance_pu,
     ],
     DeviceType.WindingDevice: [
-        ParamPowerFlowRefferenceType.device_active,
-        ParamPowerFlowRefferenceType.branch_rate_mva,
-        ParamPowerFlowRefferenceType.branch_temp_base_deg_c,
-        ParamPowerFlowRefferenceType.branch_temp_oper_deg_c,
-        ParamPowerFlowRefferenceType.branch_alpha_per_deg_c,
-        ParamPowerFlowRefferenceType.omega_base,
-        ParamPowerFlowRefferenceType.transformer_rated_power_mva,
-        ParamPowerFlowRefferenceType.transformer_winding1_rated_voltage_ll_kv,
-        ParamPowerFlowRefferenceType.transformer_winding2_rated_voltage_ll_kv,
-        ParamPowerFlowRefferenceType.transformer_connection_clock,
-        ParamPowerFlowRefferenceType.transformer_open_circuit_current_pct,
-        ParamPowerFlowRefferenceType.transformer_open_circuit_loss_kw,
-        ParamPowerFlowRefferenceType.transformer_short_circuit_voltage_pct,
-        ParamPowerFlowRefferenceType.transformer_short_circuit_resistance_pct,
-        ParamPowerFlowRefferenceType.transformer_short_circuit_loss_kw,
-        ParamPowerFlowRefferenceType.transformer_tap_module,
-        ParamPowerFlowRefferenceType.transformer_nominal_voltage_ratio,
-        ParamPowerFlowRefferenceType.transformer_total_voltage_ratio,
-        ParamPowerFlowRefferenceType.transformer_tap_ratio,
-        ParamPowerFlowRefferenceType.transformer_winding1_resistance_pu,
-        ParamPowerFlowRefferenceType.transformer_winding2_resistance_pu,
-        ParamPowerFlowRefferenceType.transformer_winding1_inductance_pu_s,
-        ParamPowerFlowRefferenceType.transformer_winding2_inductance_pu_s,
-        ParamPowerFlowRefferenceType.transformer_mutual_inductance_pu_s,
-        ParamPowerFlowRefferenceType.transformer_magnetizing_conductance_pu,
+        ParamPowerFlowReferenceType.device_active,
+        ParamPowerFlowReferenceType.branch_rate_mva,
+        ParamPowerFlowReferenceType.branch_temp_base_deg_c,
+        ParamPowerFlowReferenceType.branch_temp_oper_deg_c,
+        ParamPowerFlowReferenceType.branch_alpha_per_deg_c,
+        ParamPowerFlowReferenceType.omega_base,
+        ParamPowerFlowReferenceType.transformer_rated_power_mva,
+        ParamPowerFlowReferenceType.transformer_winding1_rated_voltage_ll_kv,
+        ParamPowerFlowReferenceType.transformer_winding2_rated_voltage_ll_kv,
+        ParamPowerFlowReferenceType.transformer_connection_clock,
+        ParamPowerFlowReferenceType.transformer_open_circuit_current_pct,
+        ParamPowerFlowReferenceType.transformer_open_circuit_loss_kw,
+        ParamPowerFlowReferenceType.transformer_short_circuit_voltage_pct,
+        ParamPowerFlowReferenceType.transformer_short_circuit_resistance_pct,
+        ParamPowerFlowReferenceType.transformer_short_circuit_loss_kw,
+        ParamPowerFlowReferenceType.transformer_tap_module,
+        ParamPowerFlowReferenceType.transformer_nominal_voltage_ratio,
+        ParamPowerFlowReferenceType.transformer_total_voltage_ratio,
+        ParamPowerFlowReferenceType.transformer_tap_ratio,
+        ParamPowerFlowReferenceType.transformer_winding1_resistance_pu,
+        ParamPowerFlowReferenceType.transformer_winding2_resistance_pu,
+        ParamPowerFlowReferenceType.transformer_winding1_inductance_pu_s,
+        ParamPowerFlowReferenceType.transformer_winding2_inductance_pu_s,
+        ParamPowerFlowReferenceType.transformer_mutual_inductance_pu_s,
+        ParamPowerFlowReferenceType.transformer_magnetizing_conductance_pu,
     ],
     DeviceType.LineDevice: [
-        ParamPowerFlowRefferenceType.device_active,
-        ParamPowerFlowRefferenceType.branch_rate_mva,
-        ParamPowerFlowRefferenceType.branch_temp_base_deg_c,
-        ParamPowerFlowRefferenceType.branch_temp_oper_deg_c,
-        ParamPowerFlowRefferenceType.branch_alpha_per_deg_c,
-        ParamPowerFlowRefferenceType.line_length_km,
+        ParamPowerFlowReferenceType.device_active,
+        ParamPowerFlowReferenceType.branch_rate_mva,
+        ParamPowerFlowReferenceType.branch_temp_base_deg_c,
+        ParamPowerFlowReferenceType.branch_temp_oper_deg_c,
+        ParamPowerFlowReferenceType.branch_alpha_per_deg_c,
+        ParamPowerFlowReferenceType.line_length_km,
     ],
     DeviceType.HVDCLineDevice: [],
     DeviceType.SeriesReactanceDevice: [],
@@ -367,7 +367,7 @@ def add_static_mapping_warning(
 
 def assign_api_mapping_value_if_present(
         mdl: Block,
-        key: ParamPowerFlowRefferenceType,
+        key: ParamPowerFlowReferenceType,
         value: Any,
         logger: Logger | None,
         device_name: str,
@@ -425,7 +425,7 @@ def assign_api_mapping_value_if_present(
 
 def api_mapping_has_any_key(
         mdl: Block,
-        keys: List[ParamPowerFlowRefferenceType],
+        keys: List[ParamPowerFlowReferenceType],
 ) -> bool:
     """
     Return whether the block exposes at least one of the provided static keys.
@@ -441,7 +441,7 @@ def api_mapping_has_any_key(
         key_index: int = 0
 
         while key_index < len(keys):
-            key: ParamPowerFlowRefferenceType = keys[key_index]
+            key: ParamPowerFlowReferenceType = keys[key_index]
 
             if key in api_obj_mapping:
                 # Do not break the loop: keeping the loop explicit avoids control
@@ -1095,54 +1095,54 @@ def xfmr_phase_permutation_matrix(clock: int) -> np.ndarray:
 
 
 
-def get_transformer_from_connection_keys() -> List[List[ParamPowerFlowRefferenceType]]:
+def get_transformer_from_connection_keys() -> List[List[ParamPowerFlowReferenceType]]:
     """
     Return 3x3 from-side transformer connection mapping keys.
 
     :return: Matrix of from-side API-object keys.
     """
-    keys: List[List[ParamPowerFlowRefferenceType]] = list([
+    keys: List[List[ParamPowerFlowReferenceType]] = list([
         list([
-            ParamPowerFlowRefferenceType.transformer_from_connection_aa,
-            ParamPowerFlowRefferenceType.transformer_from_connection_ab,
-            ParamPowerFlowRefferenceType.transformer_from_connection_ac,
+            ParamPowerFlowReferenceType.transformer_from_connection_aa,
+            ParamPowerFlowReferenceType.transformer_from_connection_ab,
+            ParamPowerFlowReferenceType.transformer_from_connection_ac,
         ]),
         list([
-            ParamPowerFlowRefferenceType.transformer_from_connection_ba,
-            ParamPowerFlowRefferenceType.transformer_from_connection_bb,
-            ParamPowerFlowRefferenceType.transformer_from_connection_bc,
+            ParamPowerFlowReferenceType.transformer_from_connection_ba,
+            ParamPowerFlowReferenceType.transformer_from_connection_bb,
+            ParamPowerFlowReferenceType.transformer_from_connection_bc,
         ]),
         list([
-            ParamPowerFlowRefferenceType.transformer_from_connection_ca,
-            ParamPowerFlowRefferenceType.transformer_from_connection_cb,
-            ParamPowerFlowRefferenceType.transformer_from_connection_cc,
+            ParamPowerFlowReferenceType.transformer_from_connection_ca,
+            ParamPowerFlowReferenceType.transformer_from_connection_cb,
+            ParamPowerFlowReferenceType.transformer_from_connection_cc,
         ]),
     ])
 
     return keys
 
 
-def get_transformer_to_connection_keys() -> List[List[ParamPowerFlowRefferenceType]]:
+def get_transformer_to_connection_keys() -> List[List[ParamPowerFlowReferenceType]]:
     """
     Return 3x3 to-side transformer connection mapping keys.
 
     :return: Matrix of to-side API-object keys.
     """
-    keys: List[List[ParamPowerFlowRefferenceType]] = list([
+    keys: List[List[ParamPowerFlowReferenceType]] = list([
         list([
-            ParamPowerFlowRefferenceType.transformer_to_connection_aa,
-            ParamPowerFlowRefferenceType.transformer_to_connection_ab,
-            ParamPowerFlowRefferenceType.transformer_to_connection_ac,
+            ParamPowerFlowReferenceType.transformer_to_connection_aa,
+            ParamPowerFlowReferenceType.transformer_to_connection_ab,
+            ParamPowerFlowReferenceType.transformer_to_connection_ac,
         ]),
         list([
-            ParamPowerFlowRefferenceType.transformer_to_connection_ba,
-            ParamPowerFlowRefferenceType.transformer_to_connection_bb,
-            ParamPowerFlowRefferenceType.transformer_to_connection_bc,
+            ParamPowerFlowReferenceType.transformer_to_connection_ba,
+            ParamPowerFlowReferenceType.transformer_to_connection_bb,
+            ParamPowerFlowReferenceType.transformer_to_connection_bc,
         ]),
         list([
-            ParamPowerFlowRefferenceType.transformer_to_connection_ca,
-            ParamPowerFlowRefferenceType.transformer_to_connection_cb,
-            ParamPowerFlowRefferenceType.transformer_to_connection_cc,
+            ParamPowerFlowReferenceType.transformer_to_connection_ca,
+            ParamPowerFlowReferenceType.transformer_to_connection_cb,
+            ParamPowerFlowReferenceType.transformer_to_connection_cc,
         ]),
     ])
 
@@ -1152,7 +1152,7 @@ def get_transformer_to_connection_keys() -> List[List[ParamPowerFlowRefferenceTy
 def assign_3x3_static_matrix(
         mdl: Block,
         matrix: np.ndarray,
-        keys: List[List[ParamPowerFlowRefferenceType]],
+        keys: List[List[ParamPowerFlowReferenceType]],
         logger: Logger | None,
         device_name: str,
         problem_mapping: Dict[Var, Const],
@@ -1187,19 +1187,19 @@ def assign_3x3_static_matrix(
         row_index += 1
 
 
-def get_transformer_equivalent_circuit_derived_keys() -> List[ParamPowerFlowRefferenceType]:
+def get_transformer_equivalent_circuit_derived_keys() -> List[ParamPowerFlowReferenceType]:
     """
     Return transformer equivalent-circuit derived-value keys.
 
     :return: Derived equivalent-circuit API-object keys.
     """
-    keys: List[ParamPowerFlowRefferenceType] = list([
-        ParamPowerFlowRefferenceType.transformer_winding1_resistance_pu,
-        ParamPowerFlowRefferenceType.transformer_winding2_resistance_pu,
-        ParamPowerFlowRefferenceType.transformer_winding1_inductance_pu_s,
-        ParamPowerFlowRefferenceType.transformer_winding2_inductance_pu_s,
-        ParamPowerFlowRefferenceType.transformer_mutual_inductance_pu_s,
-        ParamPowerFlowRefferenceType.transformer_magnetizing_conductance_pu,
+    keys: List[ParamPowerFlowReferenceType] = list([
+        ParamPowerFlowReferenceType.transformer_winding1_resistance_pu,
+        ParamPowerFlowReferenceType.transformer_winding2_resistance_pu,
+        ParamPowerFlowReferenceType.transformer_winding1_inductance_pu_s,
+        ParamPowerFlowReferenceType.transformer_winding2_inductance_pu_s,
+        ParamPowerFlowReferenceType.transformer_mutual_inductance_pu_s,
+        ParamPowerFlowReferenceType.transformer_magnetizing_conductance_pu,
     ])
 
     return keys
@@ -1262,108 +1262,108 @@ def compute_transformer_equivalent_circuit_values(
     return r1_value, r2_value, l1_value, l2_value, mutual_inductance, g_core
 
 
-def get_line_r_keys() -> List[List[ParamPowerFlowRefferenceType]]:
+def get_line_r_keys() -> List[List[ParamPowerFlowReferenceType]]:
     """
     Return the fixed 4x4 NABC resistance mapping keys.
 
     :return: Matrix of resistance API-object keys.
     """
-    keys: List[List[ParamPowerFlowRefferenceType]] = list([
+    keys: List[List[ParamPowerFlowReferenceType]] = list([
         list([
-            ParamPowerFlowRefferenceType.Rnn,
-            ParamPowerFlowRefferenceType.Rna,
-            ParamPowerFlowRefferenceType.Rnb,
-            ParamPowerFlowRefferenceType.Rnc,
+            ParamPowerFlowReferenceType.Rnn,
+            ParamPowerFlowReferenceType.Rna,
+            ParamPowerFlowReferenceType.Rnb,
+            ParamPowerFlowReferenceType.Rnc,
         ]),
         list([
-            ParamPowerFlowRefferenceType.Ran,
-            ParamPowerFlowRefferenceType.Raa,
-            ParamPowerFlowRefferenceType.Rab,
-            ParamPowerFlowRefferenceType.Rac,
+            ParamPowerFlowReferenceType.Ran,
+            ParamPowerFlowReferenceType.Raa,
+            ParamPowerFlowReferenceType.Rab,
+            ParamPowerFlowReferenceType.Rac,
         ]),
         list([
-            ParamPowerFlowRefferenceType.Rbn,
-            ParamPowerFlowRefferenceType.Rba,
-            ParamPowerFlowRefferenceType.Rbb,
-            ParamPowerFlowRefferenceType.Rbc,
+            ParamPowerFlowReferenceType.Rbn,
+            ParamPowerFlowReferenceType.Rba,
+            ParamPowerFlowReferenceType.Rbb,
+            ParamPowerFlowReferenceType.Rbc,
         ]),
         list([
-            ParamPowerFlowRefferenceType.Rcn,
-            ParamPowerFlowRefferenceType.Rca,
-            ParamPowerFlowRefferenceType.Rcb,
-            ParamPowerFlowRefferenceType.Rcc,
+            ParamPowerFlowReferenceType.Rcn,
+            ParamPowerFlowReferenceType.Rca,
+            ParamPowerFlowReferenceType.Rcb,
+            ParamPowerFlowReferenceType.Rcc,
         ]),
     ])
 
     return keys
 
 
-def get_line_linv_keys() -> List[List[ParamPowerFlowRefferenceType]]:
+def get_line_linv_keys() -> List[List[ParamPowerFlowReferenceType]]:
     """
     Return the fixed 4x4 NABC inverse-inductance mapping keys.
 
     :return: Matrix of inverse-inductance API-object keys.
     """
-    keys: List[List[ParamPowerFlowRefferenceType]] = list([
+    keys: List[List[ParamPowerFlowReferenceType]] = list([
         list([
-            ParamPowerFlowRefferenceType.Linv_nn,
-            ParamPowerFlowRefferenceType.Linv_na,
-            ParamPowerFlowRefferenceType.Linv_nb,
-            ParamPowerFlowRefferenceType.Linv_nc,
+            ParamPowerFlowReferenceType.Linv_nn,
+            ParamPowerFlowReferenceType.Linv_na,
+            ParamPowerFlowReferenceType.Linv_nb,
+            ParamPowerFlowReferenceType.Linv_nc,
         ]),
         list([
-            ParamPowerFlowRefferenceType.Linv_an,
-            ParamPowerFlowRefferenceType.Linv_aa,
-            ParamPowerFlowRefferenceType.Linv_ab,
-            ParamPowerFlowRefferenceType.Linv_ac,
+            ParamPowerFlowReferenceType.Linv_an,
+            ParamPowerFlowReferenceType.Linv_aa,
+            ParamPowerFlowReferenceType.Linv_ab,
+            ParamPowerFlowReferenceType.Linv_ac,
         ]),
         list([
-            ParamPowerFlowRefferenceType.Linv_bn,
-            ParamPowerFlowRefferenceType.Linv_ba,
-            ParamPowerFlowRefferenceType.Linv_bb,
-            ParamPowerFlowRefferenceType.Linv_bc,
+            ParamPowerFlowReferenceType.Linv_bn,
+            ParamPowerFlowReferenceType.Linv_ba,
+            ParamPowerFlowReferenceType.Linv_bb,
+            ParamPowerFlowReferenceType.Linv_bc,
         ]),
         list([
-            ParamPowerFlowRefferenceType.Linv_cn,
-            ParamPowerFlowRefferenceType.Linv_ca,
-            ParamPowerFlowRefferenceType.Linv_cb,
-            ParamPowerFlowRefferenceType.Linv_cc,
+            ParamPowerFlowReferenceType.Linv_cn,
+            ParamPowerFlowReferenceType.Linv_ca,
+            ParamPowerFlowReferenceType.Linv_cb,
+            ParamPowerFlowReferenceType.Linv_cc,
         ]),
     ])
 
     return keys
 
 
-def get_line_c_keys() -> List[List[ParamPowerFlowRefferenceType]]:
+def get_line_c_keys() -> List[List[ParamPowerFlowReferenceType]]:
     """
     Return the fixed 4x4 NABC capacitance mapping keys.
 
     :return: Matrix of capacitance API-object keys.
     """
-    keys: List[List[ParamPowerFlowRefferenceType]] = list([
+    keys: List[List[ParamPowerFlowReferenceType]] = list([
         list([
-            ParamPowerFlowRefferenceType.Cnn,
-            ParamPowerFlowRefferenceType.Cna,
-            ParamPowerFlowRefferenceType.Cnb,
-            ParamPowerFlowRefferenceType.Cnc,
+            ParamPowerFlowReferenceType.Cnn,
+            ParamPowerFlowReferenceType.Cna,
+            ParamPowerFlowReferenceType.Cnb,
+            ParamPowerFlowReferenceType.Cnc,
         ]),
         list([
-            ParamPowerFlowRefferenceType.Can,
-            ParamPowerFlowRefferenceType.Caa,
-            ParamPowerFlowRefferenceType.Cab,
-            ParamPowerFlowRefferenceType.Cac,
+            ParamPowerFlowReferenceType.Can,
+            ParamPowerFlowReferenceType.Caa,
+            ParamPowerFlowReferenceType.Cab,
+            ParamPowerFlowReferenceType.Cac,
         ]),
         list([
-            ParamPowerFlowRefferenceType.Cbn,
-            ParamPowerFlowRefferenceType.Cba,
-            ParamPowerFlowRefferenceType.Cbb,
-            ParamPowerFlowRefferenceType.Cbc,
+            ParamPowerFlowReferenceType.Cbn,
+            ParamPowerFlowReferenceType.Cba,
+            ParamPowerFlowReferenceType.Cbb,
+            ParamPowerFlowReferenceType.Cbc,
         ]),
         list([
-            ParamPowerFlowRefferenceType.Ccn,
-            ParamPowerFlowRefferenceType.Cca,
-            ParamPowerFlowRefferenceType.Ccb,
-            ParamPowerFlowRefferenceType.Ccc,
+            ParamPowerFlowReferenceType.Ccn,
+            ParamPowerFlowReferenceType.Cca,
+            ParamPowerFlowReferenceType.Ccb,
+            ParamPowerFlowReferenceType.Ccc,
         ]),
     ])
 
@@ -1371,15 +1371,15 @@ def get_line_c_keys() -> List[List[ParamPowerFlowRefferenceType]]:
 
 
 def flatten_matrix_keys(
-        matrix_keys: List[List[ParamPowerFlowRefferenceType]],
-) -> List[ParamPowerFlowRefferenceType]:
+        matrix_keys: List[List[ParamPowerFlowReferenceType]],
+) -> List[ParamPowerFlowReferenceType]:
     """
     Flatten a matrix of API-object enum keys.
 
     :param matrix_keys: Matrix of API-object keys.
     :return: Flat list of keys.
     """
-    flat_keys: List[ParamPowerFlowRefferenceType] = list()
+    flat_keys: List[ParamPowerFlowReferenceType] = list()
     row_index: int = 0
 
     while row_index < len(matrix_keys):
@@ -1394,14 +1394,14 @@ def flatten_matrix_keys(
     return flat_keys
 
 
-def get_all_line_matrix_keys() -> List[ParamPowerFlowRefferenceType]:
+def get_all_line_matrix_keys() -> List[ParamPowerFlowReferenceType]:
     """
     Return every line R, Linv and C API-object key.
 
     :return: Flat list of all line matrix mapping keys.
     """
-    all_keys: List[ParamPowerFlowRefferenceType] = list()
-    key_matrices: List[List[List[ParamPowerFlowRefferenceType]]] = list([
+    all_keys: List[ParamPowerFlowReferenceType] = list()
+    key_matrices: List[List[List[ParamPowerFlowReferenceType]]] = list([
         get_line_r_keys(),
         get_line_linv_keys(),
         get_line_c_keys(),
@@ -1409,7 +1409,7 @@ def get_all_line_matrix_keys() -> List[ParamPowerFlowRefferenceType]:
     matrix_index: int = 0
 
     while matrix_index < len(key_matrices):
-        flat_keys: List[ParamPowerFlowRefferenceType] = flatten_matrix_keys(key_matrices[matrix_index])
+        flat_keys: List[ParamPowerFlowReferenceType] = flatten_matrix_keys(key_matrices[matrix_index])
         key_index: int = 0
 
         while key_index < len(flat_keys):
@@ -1643,7 +1643,7 @@ def assign_common_injection_static_api_mapping(
 
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.device_active,
+        key=ParamPowerFlowReferenceType.device_active,
         value= 1.0 if bool(device.active) else 0.0,
         logger=logger,
         device_name=device_name,
@@ -1652,7 +1652,7 @@ def assign_common_injection_static_api_mapping(
 
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.injection_connection_type,
+        key=ParamPowerFlowReferenceType.injection_connection_type,
         value=shunt_connection_code(device.conn),
         logger=logger,
         device_name=device_name,
@@ -1679,7 +1679,7 @@ def assign_common_branch_static_api_mapping(
 
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.device_active,
+        key=ParamPowerFlowReferenceType.device_active,
         value= 1.0 if bool(device.active) else 0.0,
         logger=logger,
         device_name=device_name,
@@ -1687,7 +1687,7 @@ def assign_common_branch_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.branch_rate_mva,
+        key=ParamPowerFlowReferenceType.branch_rate_mva,
         value=float(device.rate),
         logger=logger,
         device_name=device_name,
@@ -1695,7 +1695,7 @@ def assign_common_branch_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.branch_temp_base_deg_c,
+        key=ParamPowerFlowReferenceType.branch_temp_base_deg_c,
         value=float(device.temp_base),
         logger=logger,
         device_name=device_name,
@@ -1703,7 +1703,7 @@ def assign_common_branch_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.branch_temp_oper_deg_c,
+        key=ParamPowerFlowReferenceType.branch_temp_oper_deg_c,
         value=float(device.temp_oper),
         logger=logger,
         device_name=device_name,
@@ -1711,7 +1711,7 @@ def assign_common_branch_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.branch_alpha_per_deg_c,
+        key=ParamPowerFlowReferenceType.branch_alpha_per_deg_c,
         value=float(device.alpha),
         logger=logger,
         device_name=device_name,
@@ -1762,7 +1762,7 @@ def assign_load_static_api_mapping(
     # ``grid.Sbase``.
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.load_p_pu,
+        key=ParamPowerFlowReferenceType.load_p_pu,
         value=float(load.P) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
@@ -1770,7 +1770,7 @@ def assign_load_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.load_q_pu,
+        key=ParamPowerFlowReferenceType.load_q_pu,
         value=float(load.Q) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
@@ -1778,7 +1778,7 @@ def assign_load_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.load_pa_pu,
+        key=ParamPowerFlowReferenceType.load_pa_pu,
         value=float(phase_p_pu_abc[0]),
         logger=logger,
         device_name=device_name,
@@ -1786,7 +1786,7 @@ def assign_load_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.load_pb_pu,
+        key=ParamPowerFlowReferenceType.load_pb_pu,
         value=float(phase_p_pu_abc[1]),
         logger=logger,
         device_name=device_name,
@@ -1794,7 +1794,7 @@ def assign_load_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.load_pc_pu,
+        key=ParamPowerFlowReferenceType.load_pc_pu,
         value=float(phase_p_pu_abc[2]),
         logger=logger,
         device_name=device_name,
@@ -1802,7 +1802,7 @@ def assign_load_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.load_qa_pu,
+        key=ParamPowerFlowReferenceType.load_qa_pu,
         value=float(phase_q_pu_abc[0]),
         logger=logger,
         device_name=device_name,
@@ -1810,7 +1810,7 @@ def assign_load_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.load_qb_pu,
+        key=ParamPowerFlowReferenceType.load_qb_pu,
         value=float(phase_q_pu_abc[1]),
         logger=logger,
         device_name=device_name,
@@ -1818,7 +1818,7 @@ def assign_load_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.load_qc_pu,
+        key=ParamPowerFlowReferenceType.load_qc_pu,
         value=float(phase_q_pu_abc[2]),
         logger=logger,
         device_name=device_name,
@@ -1826,7 +1826,7 @@ def assign_load_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.load_g_pu,
+        key=ParamPowerFlowReferenceType.load_g_pu,
         value=float(load.G) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
@@ -1834,7 +1834,7 @@ def assign_load_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.load_b_pu,
+        key=ParamPowerFlowReferenceType.load_b_pu,
         value=float(load.B) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
@@ -1842,7 +1842,7 @@ def assign_load_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.load_ga_pu,
+        key=ParamPowerFlowReferenceType.load_ga_pu,
         value=float(phase_g_pu_abc[0]),
         logger=logger,
         device_name=device_name,
@@ -1850,7 +1850,7 @@ def assign_load_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.load_gb_pu,
+        key=ParamPowerFlowReferenceType.load_gb_pu,
         value=float(phase_g_pu_abc[1]),
         logger=logger,
         device_name=device_name,
@@ -1858,7 +1858,7 @@ def assign_load_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.load_gc_pu,
+        key=ParamPowerFlowReferenceType.load_gc_pu,
         value=float(phase_g_pu_abc[2]),
         logger=logger,
         device_name=device_name,
@@ -1866,7 +1866,7 @@ def assign_load_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.load_ba_pu,
+        key=ParamPowerFlowReferenceType.load_ba_pu,
         value=float(phase_b_pu_abc[0]),
         logger=logger,
         device_name=device_name,
@@ -1874,7 +1874,7 @@ def assign_load_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.load_bb_pu,
+        key=ParamPowerFlowReferenceType.load_bb_pu,
         value=float(phase_b_pu_abc[1]),
         logger=logger,
         device_name=device_name,
@@ -1882,7 +1882,7 @@ def assign_load_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.load_bc_pu,
+        key=ParamPowerFlowReferenceType.load_bc_pu,
         value=float(phase_b_pu_abc[2]),
         logger=logger,
         device_name=device_name,
@@ -1890,7 +1890,7 @@ def assign_load_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.load_ir_pu,
+        key=ParamPowerFlowReferenceType.load_ir_pu,
         value=float(load.Ir) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
@@ -1898,7 +1898,7 @@ def assign_load_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.load_ii_pu,
+        key=ParamPowerFlowReferenceType.load_ii_pu,
         value=float(load.Ii) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
@@ -1906,7 +1906,7 @@ def assign_load_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.load_ira_pu,
+        key=ParamPowerFlowReferenceType.load_ira_pu,
         value=float(phase_ir_pu_abc[0]),
         logger=logger,
         device_name=device_name,
@@ -1914,7 +1914,7 @@ def assign_load_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.load_irb_pu,
+        key=ParamPowerFlowReferenceType.load_irb_pu,
         value=float(phase_ir_pu_abc[1]),
         logger=logger,
         device_name=device_name,
@@ -1922,7 +1922,7 @@ def assign_load_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.load_irc_pu,
+        key=ParamPowerFlowReferenceType.load_irc_pu,
         value=float(phase_ir_pu_abc[2]),
         logger=logger,
         device_name=device_name,
@@ -1930,7 +1930,7 @@ def assign_load_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.load_iia_pu,
+        key=ParamPowerFlowReferenceType.load_iia_pu,
         value=float(phase_ii_pu_abc[0]),
         logger=logger,
         device_name=device_name,
@@ -1938,7 +1938,7 @@ def assign_load_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.load_iib_pu,
+        key=ParamPowerFlowReferenceType.load_iib_pu,
         value=float(phase_ii_pu_abc[1]),
         logger=logger,
         device_name=device_name,
@@ -1946,7 +1946,7 @@ def assign_load_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.load_iic_pu,
+        key=ParamPowerFlowReferenceType.load_iic_pu,
         value=float(phase_ii_pu_abc[2]),
         logger=logger,
         device_name=device_name,
@@ -1954,7 +1954,7 @@ def assign_load_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.load_contract_power_pu,
+        key=ParamPowerFlowReferenceType.load_contract_power_pu,
         value=float(load._contract_power) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
@@ -1976,7 +1976,7 @@ def assign_load_static_api_mapping(
 
         assign_api_mapping_value_if_present(
             mdl=mdl,
-            key=ParamPowerFlowRefferenceType.Pl0,
+            key=ParamPowerFlowReferenceType.Pl0,
             value=dc_p_value,
             logger=logger,
             device_name=device_name,
@@ -1984,7 +1984,7 @@ def assign_load_static_api_mapping(
         )
         assign_api_mapping_value_if_present(
             mdl=mdl,
-            key=ParamPowerFlowRefferenceType.g,
+            key=ParamPowerFlowReferenceType.g,
             value=dc_g_value,
             logger=logger,
             device_name=device_name,
@@ -1995,15 +1995,15 @@ def assign_load_static_api_mapping(
         p_values: np.ndarray = phase_p_pu_abc
         q_values: np.ndarray = phase_q_pu_abc
 
-        p_keys: List[ParamPowerFlowRefferenceType] = list([
-            ParamPowerFlowRefferenceType.Pl0_A,
-            ParamPowerFlowRefferenceType.Pl0_B,
-            ParamPowerFlowRefferenceType.Pl0_C,
+        p_keys: List[ParamPowerFlowReferenceType] = list([
+            ParamPowerFlowReferenceType.Pl0_A,
+            ParamPowerFlowReferenceType.Pl0_B,
+            ParamPowerFlowReferenceType.Pl0_C,
         ])
-        q_keys: List[ParamPowerFlowRefferenceType] = list([
-            ParamPowerFlowRefferenceType.Ql0_A,
-            ParamPowerFlowRefferenceType.Ql0_B,
-            ParamPowerFlowRefferenceType.Ql0_C,
+        q_keys: List[ParamPowerFlowReferenceType] = list([
+            ParamPowerFlowReferenceType.Ql0_A,
+            ParamPowerFlowReferenceType.Ql0_B,
+            ParamPowerFlowReferenceType.Ql0_C,
         ])
 
         phase_index: int = 0
@@ -2028,7 +2028,7 @@ def assign_load_static_api_mapping(
 
         assign_api_mapping_value_if_present(
             mdl=mdl,
-            key=ParamPowerFlowRefferenceType.omega_base,
+            key=ParamPowerFlowReferenceType.omega_base,
             value=omega_base,
             logger=logger,
             device_name=device_name,
@@ -2069,7 +2069,7 @@ def assign_static_generator_static_api_mapping(
 
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.load_p_pu,
+        key=ParamPowerFlowReferenceType.load_p_pu,
         value=float(static_generator.P) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
@@ -2077,7 +2077,7 @@ def assign_static_generator_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.load_q_pu,
+        key=ParamPowerFlowReferenceType.load_q_pu,
         value=float(static_generator.Q) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
@@ -2085,7 +2085,7 @@ def assign_static_generator_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.load_pa_pu,
+        key=ParamPowerFlowReferenceType.load_pa_pu,
         value=float(phase_p_pu_abc[0]),
         logger=logger,
         device_name=device_name,
@@ -2093,7 +2093,7 @@ def assign_static_generator_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.load_pb_pu,
+        key=ParamPowerFlowReferenceType.load_pb_pu,
         value=float(phase_p_pu_abc[1]),
         logger=logger,
         device_name=device_name,
@@ -2101,7 +2101,7 @@ def assign_static_generator_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.load_pc_pu,
+        key=ParamPowerFlowReferenceType.load_pc_pu,
         value=float(phase_p_pu_abc[2]),
         logger=logger,
         device_name=device_name,
@@ -2109,7 +2109,7 @@ def assign_static_generator_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.load_qa_pu,
+        key=ParamPowerFlowReferenceType.load_qa_pu,
         value=float(phase_q_pu_abc[0]),
         logger=logger,
         device_name=device_name,
@@ -2117,7 +2117,7 @@ def assign_static_generator_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.load_qb_pu,
+        key=ParamPowerFlowReferenceType.load_qb_pu,
         value=float(phase_q_pu_abc[1]),
         logger=logger,
         device_name=device_name,
@@ -2125,7 +2125,7 @@ def assign_static_generator_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.load_qc_pu,
+        key=ParamPowerFlowReferenceType.load_qc_pu,
         value=float(phase_q_pu_abc[2]),
         logger=logger,
         device_name=device_name,
@@ -2133,7 +2133,7 @@ def assign_static_generator_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.Pl0_A,
+        key=ParamPowerFlowReferenceType.Pl0_A,
         value=float(phase_p_pu_abc[0]),
         logger=logger,
         device_name=device_name,
@@ -2141,7 +2141,7 @@ def assign_static_generator_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.Pl0_B,
+        key=ParamPowerFlowReferenceType.Pl0_B,
         value=float(phase_p_pu_abc[1]),
         logger=logger,
         device_name=device_name,
@@ -2149,7 +2149,7 @@ def assign_static_generator_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.Pl0_C,
+        key=ParamPowerFlowReferenceType.Pl0_C,
         value=float(phase_p_pu_abc[2]),
         logger=logger,
         device_name=device_name,
@@ -2157,7 +2157,7 @@ def assign_static_generator_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.Ql0_A,
+        key=ParamPowerFlowReferenceType.Ql0_A,
         value=float(phase_q_pu_abc[0]),
         logger=logger,
         device_name=device_name,
@@ -2165,7 +2165,7 @@ def assign_static_generator_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.Ql0_B,
+        key=ParamPowerFlowReferenceType.Ql0_B,
         value=float(phase_q_pu_abc[1]),
         logger=logger,
         device_name=device_name,
@@ -2173,7 +2173,7 @@ def assign_static_generator_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.Ql0_C,
+        key=ParamPowerFlowReferenceType.Ql0_C,
         value=float(phase_q_pu_abc[2]),
         logger=logger,
         device_name=device_name,
@@ -2181,7 +2181,7 @@ def assign_static_generator_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.omega_base,
+        key=ParamPowerFlowReferenceType.omega_base,
         value=omega_base,
         logger=logger,
         device_name=device_name,
@@ -2189,7 +2189,7 @@ def assign_static_generator_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.static_generator_snom_mva,
+        key=ParamPowerFlowReferenceType.static_generator_snom_mva,
         value=float(static_generator.Snom),
         logger=logger,
         device_name=device_name,
@@ -2230,7 +2230,7 @@ def assign_external_grid_static_api_mapping(
 
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.load_p_pu,
+        key=ParamPowerFlowReferenceType.load_p_pu,
         value=float(external_grid.P) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
@@ -2238,7 +2238,7 @@ def assign_external_grid_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.load_pa_pu,
+        key=ParamPowerFlowReferenceType.load_pa_pu,
         value=float(phase_p_pu_abc[0]),
         logger=logger,
         device_name=device_name,
@@ -2246,7 +2246,7 @@ def assign_external_grid_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.load_pb_pu,
+        key=ParamPowerFlowReferenceType.load_pb_pu,
         value=float(phase_p_pu_abc[1]),
         logger=logger,
         device_name=device_name,
@@ -2254,7 +2254,7 @@ def assign_external_grid_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.load_pc_pu,
+        key=ParamPowerFlowReferenceType.load_pc_pu,
         value=float(phase_p_pu_abc[2]),
         logger=logger,
         device_name=device_name,
@@ -2262,7 +2262,7 @@ def assign_external_grid_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.load_qa_pu,
+        key=ParamPowerFlowReferenceType.load_qa_pu,
         value=float(phase_q_pu_abc[0]),
         logger=logger,
         device_name=device_name,
@@ -2270,7 +2270,7 @@ def assign_external_grid_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.load_qb_pu,
+        key=ParamPowerFlowReferenceType.load_qb_pu,
         value=float(phase_q_pu_abc[1]),
         logger=logger,
         device_name=device_name,
@@ -2278,7 +2278,7 @@ def assign_external_grid_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.load_qc_pu,
+        key=ParamPowerFlowReferenceType.load_qc_pu,
         value=float(phase_q_pu_abc[2]),
         logger=logger,
         device_name=device_name,
@@ -2286,7 +2286,7 @@ def assign_external_grid_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.omega_base,
+        key=ParamPowerFlowReferenceType.omega_base,
         value=omega_base,
         logger=logger,
         device_name=device_name,
@@ -2294,7 +2294,7 @@ def assign_external_grid_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.load_q_pu,
+        key=ParamPowerFlowReferenceType.load_q_pu,
         value=float(external_grid.Q) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
@@ -2302,7 +2302,7 @@ def assign_external_grid_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.external_grid_vm_pu,
+        key=ParamPowerFlowReferenceType.external_grid_vm_pu,
         value=float(external_grid.Vm),
         logger=logger,
         device_name=device_name,
@@ -2310,7 +2310,7 @@ def assign_external_grid_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.external_grid_va_rad,
+        key=ParamPowerFlowReferenceType.external_grid_va_rad,
         value=float(external_grid.Va),
         logger=logger,
         device_name=device_name,
@@ -2318,7 +2318,7 @@ def assign_external_grid_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.external_grid_mode_code,
+        key=ParamPowerFlowReferenceType.external_grid_mode_code,
         value=external_grid_mode_code(external_grid.mode),
         logger=logger,
         device_name=device_name,
@@ -2357,61 +2357,61 @@ def assign_shunt_static_api_mapping(
     )
 
     assign_api_mapping_value_if_present(mdl=mdl,
-                                        key=ParamPowerFlowRefferenceType.shunt_g_pu,
+                                        key=ParamPowerFlowReferenceType.shunt_g_pu,
                                         value=float(shunt.G) / float(grid.Sbase),
                                         logger=logger,
                                         device_name=device_name
                                         )
     assign_api_mapping_value_if_present(mdl=mdl,
-                                        key=ParamPowerFlowRefferenceType.shunt_b_pu,
+                                        key=ParamPowerFlowReferenceType.shunt_b_pu,
                                         value=float(shunt.B) / float(grid.Sbase),
                                         logger=logger,
                                         device_name=device_name
                                         )
     assign_api_mapping_value_if_present(mdl=mdl,
-                                        key=ParamPowerFlowRefferenceType.shunt_g0_pu,
+                                        key=ParamPowerFlowReferenceType.shunt_g0_pu,
                                         value=float(shunt.G0) / float(grid.Sbase),
                                         logger=logger,
                                         device_name=device_name
                                         )
     assign_api_mapping_value_if_present(mdl=mdl,
-                                        key=ParamPowerFlowRefferenceType.shunt_b0_pu,
+                                        key=ParamPowerFlowReferenceType.shunt_b0_pu,
                                         value=float(shunt.B0) / float(grid.Sbase),
                                         logger=logger,
                                         device_name=device_name
                                         )
     assign_api_mapping_value_if_present(mdl=mdl,
-                                        key=ParamPowerFlowRefferenceType.shunt_ga_pu,
+                                        key=ParamPowerFlowReferenceType.shunt_ga_pu,
                                         value=float(phase_g_pu_abc[0]),
                                         logger=logger,
                                         device_name=device_name
                                         )
     assign_api_mapping_value_if_present(mdl=mdl,
-                                        key=ParamPowerFlowRefferenceType.shunt_gb_pu,
+                                        key=ParamPowerFlowReferenceType.shunt_gb_pu,
                                         value=float(phase_g_pu_abc[1]),
                                         logger=logger,
                                         device_name=device_name
                                         )
     assign_api_mapping_value_if_present(mdl=mdl,
-                                        key=ParamPowerFlowRefferenceType.shunt_gc_pu,
+                                        key=ParamPowerFlowReferenceType.shunt_gc_pu,
                                         value=float(phase_g_pu_abc[2]),
                                         logger=logger,
                                         device_name=device_name
                                         )
     assign_api_mapping_value_if_present(mdl=mdl,
-                                        key=ParamPowerFlowRefferenceType.shunt_ba_pu,
+                                        key=ParamPowerFlowReferenceType.shunt_ba_pu,
                                         value=float(phase_b_pu_abc[0]),
                                         logger=logger,
                                         device_name=device_name
                                         )
     assign_api_mapping_value_if_present(mdl=mdl,
-                                        key=ParamPowerFlowRefferenceType.shunt_bb_pu,
+                                        key=ParamPowerFlowReferenceType.shunt_bb_pu,
                                         value=float(phase_b_pu_abc[1]),
                                         logger=logger,
                                         device_name=device_name
                                         )
     assign_api_mapping_value_if_present(mdl=mdl,
-                                        key=ParamPowerFlowRefferenceType.shunt_bc_pu,
+                                        key=ParamPowerFlowReferenceType.shunt_bc_pu,
                                         value=float(phase_b_pu_abc[2]),
                                         logger=logger,
                                         device_name=device_name
@@ -2443,7 +2443,7 @@ def assign_controllable_shunt_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.controllable_shunt_step,
+        key=ParamPowerFlowReferenceType.controllable_shunt_step,
         value=float(controllable_shunt.step),
         logger=logger,
         device_name=device_name,
@@ -2451,7 +2451,7 @@ def assign_controllable_shunt_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.controllable_shunt_vset_pu,
+        key=ParamPowerFlowReferenceType.controllable_shunt_vset_pu,
         value=float(controllable_shunt.Vset),
         logger=logger,
         device_name=device_name,
@@ -2459,7 +2459,7 @@ def assign_controllable_shunt_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.controllable_shunt_vmin_pu,
+        key=ParamPowerFlowReferenceType.controllable_shunt_vmin_pu,
         value=float(controllable_shunt.Vmin),
         logger=logger,
         device_name=device_name,
@@ -2467,7 +2467,7 @@ def assign_controllable_shunt_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.controllable_shunt_vmax_pu,
+        key=ParamPowerFlowReferenceType.controllable_shunt_vmax_pu,
         value=float(controllable_shunt.Vmax),
         logger=logger,
         device_name=device_name,
@@ -2475,7 +2475,7 @@ def assign_controllable_shunt_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.controllable_shunt_gmin_pu,
+        key=ParamPowerFlowReferenceType.controllable_shunt_gmin_pu,
         value=float(controllable_shunt.Gmin) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
@@ -2483,7 +2483,7 @@ def assign_controllable_shunt_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.controllable_shunt_gmax_pu,
+        key=ParamPowerFlowReferenceType.controllable_shunt_gmax_pu,
         value=float(controllable_shunt.Gmax) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
@@ -2491,7 +2491,7 @@ def assign_controllable_shunt_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.controllable_shunt_bmin_pu,
+        key=ParamPowerFlowReferenceType.controllable_shunt_bmin_pu,
         value=float(controllable_shunt.Bmin) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
@@ -2499,7 +2499,7 @@ def assign_controllable_shunt_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.controllable_shunt_bmax_pu,
+        key=ParamPowerFlowReferenceType.controllable_shunt_bmax_pu,
         value=float(controllable_shunt.Bmax) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
@@ -2507,7 +2507,7 @@ def assign_controllable_shunt_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.controllable_shunt_control_mode_code,
+        key=ParamPowerFlowReferenceType.controllable_shunt_control_mode_code,
         value=controllable_shunt_mode_code(controllable_shunt.control_mode),
         logger=logger,
         device_name=device_name,
@@ -2549,49 +2549,49 @@ def assign_current_injection_static_api_mapping(
     )
 
     assign_api_mapping_value_if_present(mdl=mdl,
-                                        key=ParamPowerFlowRefferenceType.current_injection_ir_pu,
+                                        key=ParamPowerFlowReferenceType.current_injection_ir_pu,
                                         value=float(current_injection.Ir) / float(grid.Sbase),
                                         logger=logger,
                                         device_name=device_name
                                         )
     assign_api_mapping_value_if_present(mdl=mdl,
-                                        key=ParamPowerFlowRefferenceType.current_injection_ii_pu,
+                                        key=ParamPowerFlowReferenceType.current_injection_ii_pu,
                                         value=float(current_injection.Ii) / float(grid.Sbase),
                                         logger=logger,
                                         device_name=device_name
                                         )
     assign_api_mapping_value_if_present(mdl=mdl,
-                                        key=ParamPowerFlowRefferenceType.current_injection_ira_pu,
+                                        key=ParamPowerFlowReferenceType.current_injection_ira_pu,
                                         value=float(phase_ir_pu_abc[0]),
                                         logger=logger,
                                         device_name=device_name
                                         )
     assign_api_mapping_value_if_present(mdl=mdl,
-                                        key=ParamPowerFlowRefferenceType.current_injection_irb_pu,
+                                        key=ParamPowerFlowReferenceType.current_injection_irb_pu,
                                         value=float(phase_ir_pu_abc[1]),
                                         logger=logger,
                                         device_name=device_name
                                         )
     assign_api_mapping_value_if_present(mdl=mdl,
-                                        key=ParamPowerFlowRefferenceType.current_injection_irc_pu,
+                                        key=ParamPowerFlowReferenceType.current_injection_irc_pu,
                                         value=float(phase_ir_pu_abc[2]),
                                         logger=logger,
                                         device_name=device_name
                                         )
     assign_api_mapping_value_if_present(mdl=mdl,
-                                        key=ParamPowerFlowRefferenceType.current_injection_iia_pu,
+                                        key=ParamPowerFlowReferenceType.current_injection_iia_pu,
                                         value=float(phase_ii_pu_abc[0]),
                                         logger=logger,
                                         device_name=device_name
                                         )
     assign_api_mapping_value_if_present(mdl=mdl,
-                                        key=ParamPowerFlowRefferenceType.current_injection_iib_pu,
+                                        key=ParamPowerFlowReferenceType.current_injection_iib_pu,
                                         value=float(phase_ii_pu_abc[1]),
                                         logger=logger,
                                         device_name=device_name
                                         )
     assign_api_mapping_value_if_present(mdl=mdl,
-                                        key=ParamPowerFlowRefferenceType.current_injection_iic_pu,
+                                        key=ParamPowerFlowReferenceType.current_injection_iic_pu,
                                         value=float(phase_ii_pu_abc[2]),
                                         logger=logger,
                                         device_name=device_name
@@ -2628,7 +2628,7 @@ def assign_generator_static_api_mapping(
     # PF-derived sharing targets are intentionally handled outside this module.
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.omega_base,
+        key=ParamPowerFlowReferenceType.omega_base,
         value=omega_base,
         logger=logger,
         device_name=device_name,
@@ -2636,7 +2636,7 @@ def assign_generator_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.fn,
+        key=ParamPowerFlowReferenceType.fn,
         value=float(grid.fBase),
         logger=logger,
         device_name=device_name,
@@ -2644,7 +2644,7 @@ def assign_generator_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.ws,
+        key=ParamPowerFlowReferenceType.ws,
         value=omega_base,
         logger=logger,
         device_name=device_name,
@@ -2652,7 +2652,7 @@ def assign_generator_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.R1,
+        key=ParamPowerFlowReferenceType.R1,
         value=float(generator.R1),
         logger=logger,
         device_name=device_name,
@@ -2660,7 +2660,7 @@ def assign_generator_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.X1,
+        key=ParamPowerFlowReferenceType.X1,
         value=float(generator.X1),
         logger=logger,
         device_name=device_name,
@@ -2668,7 +2668,7 @@ def assign_generator_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.X0,
+        key=ParamPowerFlowReferenceType.X0,
         value=float(generator.X0),
         logger=logger,
         device_name=device_name,
@@ -2676,7 +2676,7 @@ def assign_generator_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.generator_p_pu,
+        key=ParamPowerFlowReferenceType.generator_p_pu,
         value=float(generator.P) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
@@ -2684,7 +2684,7 @@ def assign_generator_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.generator_q_pu,
+        key=ParamPowerFlowReferenceType.generator_q_pu,
         value=float(generator.Q) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
@@ -2692,7 +2692,7 @@ def assign_generator_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.generator_pmin_pu,
+        key=ParamPowerFlowReferenceType.generator_pmin_pu,
         value=float(generator.Pmin) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
@@ -2700,7 +2700,7 @@ def assign_generator_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.generator_pmax_pu,
+        key=ParamPowerFlowReferenceType.generator_pmax_pu,
         value=float(generator.Pmax) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
@@ -2708,7 +2708,7 @@ def assign_generator_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.generator_qmin_pu,
+        key=ParamPowerFlowReferenceType.generator_qmin_pu,
         value=float(generator.Qmin) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
@@ -2716,7 +2716,7 @@ def assign_generator_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.generator_qmax_pu,
+        key=ParamPowerFlowReferenceType.generator_qmax_pu,
         value=float(generator.Qmax) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
@@ -2724,7 +2724,7 @@ def assign_generator_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.generator_power_factor,
+        key=ParamPowerFlowReferenceType.generator_power_factor,
         value=float(generator.Pf),
         logger=logger,
         device_name=device_name,
@@ -2732,7 +2732,7 @@ def assign_generator_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.generator_vset_pu,
+        key=ParamPowerFlowReferenceType.generator_vset_pu,
         value=float(generator.Vset),
         logger=logger,
         device_name=device_name,
@@ -2740,7 +2740,7 @@ def assign_generator_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.generator_snom_mva,
+        key=ParamPowerFlowReferenceType.generator_snom_mva,
         value=float(generator.Snom),
         logger=logger,
         device_name=device_name,
@@ -2748,7 +2748,7 @@ def assign_generator_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.generator_r0_pu,
+        key=ParamPowerFlowReferenceType.generator_r0_pu,
         value=float(generator.R0),
         logger=logger,
         device_name=device_name,
@@ -2756,7 +2756,7 @@ def assign_generator_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.generator_r2_pu,
+        key=ParamPowerFlowReferenceType.generator_r2_pu,
         value=float(generator.R2),
         logger=logger,
         device_name=device_name,
@@ -2764,7 +2764,7 @@ def assign_generator_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.generator_x2_pu,
+        key=ParamPowerFlowReferenceType.generator_x2_pu,
         value=float(generator.X2),
         logger=logger,
         device_name=device_name,
@@ -2772,7 +2772,7 @@ def assign_generator_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.generator_is_controlled,
+        key=ParamPowerFlowReferenceType.generator_is_controlled,
         value=1.0 if bool(generator.is_controlled) else 0.0,
         logger=logger,
         device_name=device_name,
@@ -2780,7 +2780,7 @@ def assign_generator_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.generator_enabled_dispatch,
+        key=ParamPowerFlowReferenceType.generator_enabled_dispatch,
         value=1.0 if bool(generator.enabled_dispatch) else 0.0,
         logger=logger,
         device_name=device_name,
@@ -2788,7 +2788,7 @@ def assign_generator_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.generator_must_run,
+        key=ParamPowerFlowReferenceType.generator_must_run,
         value=1.0 if bool(generator.must_run) else 0.0,
         logger=logger,
         device_name=device_name,
@@ -2796,7 +2796,7 @@ def assign_generator_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.generator_use_reactive_power_curve,
+        key=ParamPowerFlowReferenceType.generator_use_reactive_power_curve,
         value=1.0 if bool(generator.use_reactive_power_curve) else 0.0,
         logger=logger,
         device_name=device_name,
@@ -2804,7 +2804,7 @@ def assign_generator_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.generator_device_sbase_mva,
+        key=ParamPowerFlowReferenceType.generator_device_sbase_mva,
         value=float(generator.Sbase),
         logger=logger,
         device_name=device_name,
@@ -2812,7 +2812,7 @@ def assign_generator_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.freq,
+        key=ParamPowerFlowReferenceType.freq,
         value=float(generator.freq),
         logger=logger,
         device_name=device_name,
@@ -2846,7 +2846,7 @@ def assign_battery_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.battery_enom_mwh,
+        key=ParamPowerFlowReferenceType.battery_enom_mwh,
         value=float(battery.Enom),
         logger=logger,
         device_name=device_name,
@@ -2854,7 +2854,7 @@ def assign_battery_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.battery_soc_0_pu,
+        key=ParamPowerFlowReferenceType.battery_soc_0_pu,
         value=float(battery.soc_0),
         logger=logger,
         device_name=device_name,
@@ -2862,7 +2862,7 @@ def assign_battery_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.battery_max_soc_pu,
+        key=ParamPowerFlowReferenceType.battery_max_soc_pu,
         value=float(battery.max_soc),
         logger=logger,
         device_name=device_name,
@@ -2870,7 +2870,7 @@ def assign_battery_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.battery_min_soc_pu,
+        key=ParamPowerFlowReferenceType.battery_min_soc_pu,
         value=float(battery.min_soc),
         logger=logger,
         device_name=device_name,
@@ -2878,7 +2878,7 @@ def assign_battery_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.battery_charge_efficiency_pu,
+        key=ParamPowerFlowReferenceType.battery_charge_efficiency_pu,
         value=float(battery.charge_efficiency),
         logger=logger,
         device_name=device_name,
@@ -2886,7 +2886,7 @@ def assign_battery_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.battery_discharge_efficiency_pu,
+        key=ParamPowerFlowReferenceType.battery_discharge_efficiency_pu,
         value=float(battery.discharge_efficiency),
         logger=logger,
         device_name=device_name,
@@ -2894,7 +2894,7 @@ def assign_battery_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.battery_charge_per_cycle_pu,
+        key=ParamPowerFlowReferenceType.battery_charge_per_cycle_pu,
         value=float(battery.charge_per_cycle),
         logger=logger,
         device_name=device_name,
@@ -2902,7 +2902,7 @@ def assign_battery_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.battery_discharge_per_cycle_pu,
+        key=ParamPowerFlowReferenceType.battery_discharge_per_cycle_pu,
         value=float(battery.discharge_per_cycle),
         logger=logger,
         device_name=device_name,
@@ -2942,7 +2942,7 @@ def assign_vsc_static_api_mapping(
 
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.alpha1,
+        key=ParamPowerFlowReferenceType.alpha1,
         value=float(vsc.alpha1),
         logger=logger,
         device_name=device_name,
@@ -2951,7 +2951,7 @@ def assign_vsc_static_api_mapping(
 
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.alpha2,
+        key=ParamPowerFlowReferenceType.alpha2,
         value=float(vsc.alpha2),
         logger=logger,
         device_name=device_name,
@@ -2960,7 +2960,7 @@ def assign_vsc_static_api_mapping(
 
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.alpha3,
+        key=ParamPowerFlowReferenceType.alpha3,
         value=float(vsc.alpha3),
         logger=logger,
         device_name=device_name,
@@ -2970,7 +2970,7 @@ def assign_vsc_static_api_mapping(
 
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.Sbase,
+        key=ParamPowerFlowReferenceType.Sbase,
         value=float(grid.Sbase),
         logger=logger,
         device_name=device_name,
@@ -2978,7 +2978,7 @@ def assign_vsc_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.omega_base,
+        key=ParamPowerFlowReferenceType.omega_base,
         value=omega_base,
         logger=logger,
         device_name=device_name,
@@ -2986,7 +2986,7 @@ def assign_vsc_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.converter_control_mode_1,
+        key=ParamPowerFlowReferenceType.converter_control_mode_1,
         value=converter_control_code(vsc.control1),
         logger=logger,
         device_name=device_name,
@@ -2994,7 +2994,7 @@ def assign_vsc_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.converter_control_mode_2,
+        key=ParamPowerFlowReferenceType.converter_control_mode_2,
         value=converter_control_code(vsc.control2),
         logger=logger,
         device_name=device_name,
@@ -3002,7 +3002,7 @@ def assign_vsc_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.converter_control_target_1,
+        key=ParamPowerFlowReferenceType.converter_control_target_1,
         value=float(vsc.control1_val),
         logger=logger,
         device_name=device_name,
@@ -3010,7 +3010,7 @@ def assign_vsc_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.converter_control_target_2,
+        key=ParamPowerFlowReferenceType.converter_control_target_2,
         value=float(vsc.control2_val),
         logger=logger,
         device_name=device_name,
@@ -3018,7 +3018,7 @@ def assign_vsc_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.alpha1,
+        key=ParamPowerFlowReferenceType.alpha1,
         value=float(vsc.alpha1),
         logger=logger,
         device_name=device_name,
@@ -3026,7 +3026,7 @@ def assign_vsc_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.alpha2,
+        key=ParamPowerFlowReferenceType.alpha2,
         value=float(vsc.alpha2),
         logger=logger,
         device_name=device_name,
@@ -3034,7 +3034,7 @@ def assign_vsc_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.alpha3,
+        key=ParamPowerFlowReferenceType.alpha3,
         value=float(vsc.alpha3),
         logger=logger,
         device_name=device_name,
@@ -3042,7 +3042,7 @@ def assign_vsc_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.vsc_kdp_pu,
+        key=ParamPowerFlowReferenceType.vsc_kdp_pu,
         value=float(vsc.control1_val_droop),
         logger=logger,
         device_name=device_name,
@@ -3050,7 +3050,7 @@ def assign_vsc_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.vsc_min_ac_voltage_pu,
+        key=ParamPowerFlowReferenceType.vsc_min_ac_voltage_pu,
         value=float(vsc.min_ac_voltage),
         logger=logger,
         device_name=device_name,
@@ -3086,7 +3086,7 @@ def assign_dc_line_static_api_mapping(
 
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.g,
+        key=ParamPowerFlowReferenceType.g,
         value=conductance_value,
         logger=logger,
         device_name=device_name,
@@ -3094,7 +3094,7 @@ def assign_dc_line_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.b,
+        key=ParamPowerFlowReferenceType.b,
         value=0.0,
         logger=logger,
         device_name=device_name,
@@ -3102,7 +3102,7 @@ def assign_dc_line_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.bsh,
+        key=ParamPowerFlowReferenceType.bsh,
         value=0.0,
         logger=logger,
         device_name=device_name,
@@ -3110,7 +3110,7 @@ def assign_dc_line_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.dc_line_r_pu,
+        key=ParamPowerFlowReferenceType.dc_line_r_pu,
         value=resistance_value,
         logger=logger,
         device_name=device_name,
@@ -3118,7 +3118,7 @@ def assign_dc_line_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.dc_line_length_km,
+        key=ParamPowerFlowReferenceType.dc_line_length_km,
         value=float(dc_line.length),
         logger=logger,
         device_name=device_name,
@@ -3154,7 +3154,7 @@ def assign_transformer2w_static_api_mapping(
 
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.g,
+        key=ParamPowerFlowReferenceType.g,
         value=float(transformer.R / (transformer.R ** 2 + transformer.X ** 2)),
         logger=logger,
         device_name=transformer.name,
@@ -3163,7 +3163,7 @@ def assign_transformer2w_static_api_mapping(
 
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.b,
+        key=ParamPowerFlowReferenceType.b,
         value=float(float(-transformer.X / (transformer.R ** 2 + transformer.X ** 2))),
         logger=logger,
         device_name=transformer.name,
@@ -3172,7 +3172,7 @@ def assign_transformer2w_static_api_mapping(
 
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.bsh,
+        key=ParamPowerFlowReferenceType.bsh,
         value=float(transformer.B),
         logger=logger,
         device_name=transformer.name,
@@ -3181,7 +3181,7 @@ def assign_transformer2w_static_api_mapping(
 
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.gFe,
+        key=ParamPowerFlowReferenceType.gFe,
         value=float(transformer.G),
         logger=logger,
         device_name=transformer.name,
@@ -3190,7 +3190,7 @@ def assign_transformer2w_static_api_mapping(
 
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.vtap_f,
+        key=ParamPowerFlowReferenceType.vtap_f,
         value=float(vtap_f),
         logger=logger,
         device_name=transformer.name,
@@ -3199,7 +3199,7 @@ def assign_transformer2w_static_api_mapping(
 
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.vtap_t,
+        key=ParamPowerFlowReferenceType.vtap_t,
         value=float(vtap_t),
         logger=logger,
         device_name=transformer.name,
@@ -3208,7 +3208,7 @@ def assign_transformer2w_static_api_mapping(
 
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.transformer_tap_module,
+        key=ParamPowerFlowReferenceType.transformer_tap_module,
         value=float(transformer.tap_module),
         logger=logger,
         device_name=transformer.name,
@@ -3217,7 +3217,7 @@ def assign_transformer2w_static_api_mapping(
 
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.transformer_tap_ratio,
+        key=ParamPowerFlowReferenceType.transformer_tap_ratio,
         value=float(transformer.tap_phase),
         logger=logger,
         device_name=transformer.name,
@@ -3286,7 +3286,7 @@ def assign_transformer2w_static_api_mapping(
 
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.omega_base,
+        key=ParamPowerFlowReferenceType.omega_base,
         value=omega_base,
         logger=logger,
         device_name=device_name,
@@ -3294,7 +3294,7 @@ def assign_transformer2w_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.transformer_rated_power_mva,
+        key=ParamPowerFlowReferenceType.transformer_rated_power_mva,
         value=sn_value,
         logger=logger,
         device_name=device_name,
@@ -3302,7 +3302,7 @@ def assign_transformer2w_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.transformer_winding1_rated_voltage_ll_kv,
+        key=ParamPowerFlowReferenceType.transformer_winding1_rated_voltage_ll_kv,
         value=hv_nominal_kv,
         logger=logger,
         device_name=device_name,
@@ -3310,7 +3310,7 @@ def assign_transformer2w_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.transformer_winding2_rated_voltage_ll_kv,
+        key=ParamPowerFlowReferenceType.transformer_winding2_rated_voltage_ll_kv,
         value=lv_nominal_kv,
         logger=logger,
         device_name=device_name,
@@ -3318,7 +3318,7 @@ def assign_transformer2w_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.transformer_connection_clock,
+        key=ParamPowerFlowReferenceType.transformer_connection_clock,
         value=float(transformer.vector_group_number),
         logger=logger,
         device_name=device_name,
@@ -3326,7 +3326,7 @@ def assign_transformer2w_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.transformer_open_circuit_current_pct,
+        key=ParamPowerFlowReferenceType.transformer_open_circuit_current_pct,
         value=i0_pct_value,
         logger=logger,
         device_name=device_name,
@@ -3334,7 +3334,7 @@ def assign_transformer2w_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.transformer_open_circuit_loss_kw,
+        key=ParamPowerFlowReferenceType.transformer_open_circuit_loss_kw,
         value=pfe_kw_value,
         logger=logger,
         device_name=device_name,
@@ -3342,7 +3342,7 @@ def assign_transformer2w_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.transformer_short_circuit_voltage_pct,
+        key=ParamPowerFlowReferenceType.transformer_short_circuit_voltage_pct,
         value=vsc_pct_value,
         logger=logger,
         device_name=device_name,
@@ -3350,7 +3350,7 @@ def assign_transformer2w_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.transformer_short_circuit_resistance_pct,
+        key=ParamPowerFlowReferenceType.transformer_short_circuit_resistance_pct,
         value=short_circuit_resistance_pct,
         logger=logger,
         device_name=device_name,
@@ -3358,7 +3358,7 @@ def assign_transformer2w_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.transformer_short_circuit_loss_kw,
+        key=ParamPowerFlowReferenceType.transformer_short_circuit_loss_kw,
         value=pcu_kw_value,
         logger=logger,
         device_name=device_name,
@@ -3366,7 +3366,7 @@ def assign_transformer2w_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.transformer_tap_module,
+        key=ParamPowerFlowReferenceType.transformer_tap_module,
         value=tap_module_value,
         logger=logger,
         device_name=device_name,
@@ -3374,7 +3374,7 @@ def assign_transformer2w_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.transformer_nominal_voltage_ratio,
+        key=ParamPowerFlowReferenceType.transformer_nominal_voltage_ratio,
         value=nominal_voltage_ratio,
         logger=logger,
         device_name=device_name,
@@ -3382,7 +3382,7 @@ def assign_transformer2w_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.transformer_total_voltage_ratio,
+        key=ParamPowerFlowReferenceType.transformer_total_voltage_ratio,
         value=total_voltage_ratio,
         logger=logger,
         device_name=device_name,
@@ -3393,7 +3393,7 @@ def assign_transformer2w_static_api_mapping(
     # module so that existing direct EMT templates keep their historical meaning.
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.transformer_tap_ratio,
+        key=ParamPowerFlowReferenceType.transformer_tap_ratio,
         value=tap_module_value,
         logger=logger,
         device_name=device_name,
@@ -3443,7 +3443,7 @@ def assign_transformer2w_static_api_mapping(
             else:
                 assign_api_mapping_value_if_present(
                     mdl=mdl,
-                    key=ParamPowerFlowRefferenceType.transformer_winding1_resistance_pu,
+                    key=ParamPowerFlowReferenceType.transformer_winding1_resistance_pu,
                     value=r1_value,
                     logger=logger,
                     device_name=device_name,
@@ -3451,7 +3451,7 @@ def assign_transformer2w_static_api_mapping(
                 )
                 assign_api_mapping_value_if_present(
                     mdl=mdl,
-                    key=ParamPowerFlowRefferenceType.transformer_winding2_resistance_pu,
+                    key=ParamPowerFlowReferenceType.transformer_winding2_resistance_pu,
                     value=r2_value,
                     logger=logger,
                     device_name=device_name,
@@ -3459,7 +3459,7 @@ def assign_transformer2w_static_api_mapping(
                 )
                 assign_api_mapping_value_if_present(
                     mdl=mdl,
-                    key=ParamPowerFlowRefferenceType.transformer_winding1_inductance_pu_s,
+                    key=ParamPowerFlowReferenceType.transformer_winding1_inductance_pu_s,
                     value=l1_value,
                     logger=logger,
                     device_name=device_name,
@@ -3467,7 +3467,7 @@ def assign_transformer2w_static_api_mapping(
                 )
                 assign_api_mapping_value_if_present(
                     mdl=mdl,
-                    key=ParamPowerFlowRefferenceType.transformer_winding2_inductance_pu_s,
+                    key=ParamPowerFlowReferenceType.transformer_winding2_inductance_pu_s,
                     value=l2_value,
                     logger=logger,
                     device_name=device_name,
@@ -3475,7 +3475,7 @@ def assign_transformer2w_static_api_mapping(
                 )
                 assign_api_mapping_value_if_present(
                     mdl=mdl,
-                    key=ParamPowerFlowRefferenceType.transformer_mutual_inductance_pu_s,
+                    key=ParamPowerFlowReferenceType.transformer_mutual_inductance_pu_s,
                     value=mutual_inductance,
                     logger=logger,
                     device_name=device_name,
@@ -3483,7 +3483,7 @@ def assign_transformer2w_static_api_mapping(
                 )
                 assign_api_mapping_value_if_present(
                     mdl=mdl,
-                    key=ParamPowerFlowRefferenceType.transformer_magnetizing_conductance_pu,
+                    key=ParamPowerFlowReferenceType.transformer_magnetizing_conductance_pu,
                     value=g_core,
                     logger=logger,
                     device_name=device_name,
@@ -3540,7 +3540,7 @@ def assign_line_static_api_mapping(
 
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.g,
+        key=ParamPowerFlowReferenceType.g,
         value=float(line.R / (line.R ** 2 + line.X ** 2)),
         logger=logger,
         device_name=device_name,
@@ -3549,7 +3549,7 @@ def assign_line_static_api_mapping(
 
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.b,
+        key=ParamPowerFlowReferenceType.b,
         value=float(float(-line.X / (line.R ** 2 + line.X ** 2))),
         logger=logger,
         device_name=device_name,
@@ -3558,7 +3558,7 @@ def assign_line_static_api_mapping(
 
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.bsh,
+        key=ParamPowerFlowReferenceType.bsh,
         value=float(line.B),
         logger=logger,
         device_name=device_name,
@@ -3567,7 +3567,7 @@ def assign_line_static_api_mapping(
 
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.r,
+        key=ParamPowerFlowReferenceType.r,
         value=float(line.R),
         logger=logger,
         device_name=device_name,
@@ -3576,7 +3576,7 @@ def assign_line_static_api_mapping(
 
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.l,
+        key=ParamPowerFlowReferenceType.l,
         value=float(line.X),
         logger=logger,
         device_name=device_name,
@@ -3585,7 +3585,7 @@ def assign_line_static_api_mapping(
 
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.line_length_km,
+        key=ParamPowerFlowReferenceType.line_length_km,
         value=float(line.length),
         logger=logger,
         device_name=device_name,
@@ -3642,9 +3642,9 @@ def assign_line_static_api_mapping(
                     device_property="line_inductance_matrix",
                 )
             else:
-                r_keys: List[List[ParamPowerFlowRefferenceType]] = get_line_r_keys()
-                linv_keys: List[List[ParamPowerFlowRefferenceType]] = get_line_linv_keys()
-                c_keys: List[List[ParamPowerFlowRefferenceType]] = get_line_c_keys()
+                r_keys: List[List[ParamPowerFlowReferenceType]] = get_line_r_keys()
+                linv_keys: List[List[ParamPowerFlowReferenceType]] = get_line_linv_keys()
+                c_keys: List[List[ParamPowerFlowReferenceType]] = get_line_c_keys()
 
                 # First zero every exposed slot of the fixed NABC map. This is
                 # important for templates that expose inactive neutral/phase keys.
@@ -3823,7 +3823,7 @@ def assign_switch_static_api_mapping(
     # assignment path must populate the constant-parameter mapping.
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.g,
+        key=ParamPowerFlowReferenceType.g,
         value=conductance_value,
         logger=logger,
         device_name=device_name,

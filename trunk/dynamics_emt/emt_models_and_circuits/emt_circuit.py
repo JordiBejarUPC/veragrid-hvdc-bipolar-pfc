@@ -13,7 +13,7 @@ from trunk.dynamics_emt.emt_models_and_circuits.emt_line import EmtLine
 from trunk.dynamics_emt.emt_models_and_circuits.emt_load import EmtLoad
 from trunk.dynamics_emt.emt_models_and_circuits.emt_generator import EmtGenerator
 from trunk.dynamics_emt.emt_models_and_circuits.emt_solver_properties import EmtSolverProperties
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import VarPowerFlowReferenceType
 
 
 class EmtCircuit:
@@ -64,7 +64,7 @@ class EmtCircuit:
 
         self._emt_vec: List[EmtSolverProperties | None] = [None] * self.n_bus
 
-    def add_guess(self, bus_idx: int, tpe: VarPowerFlowRefferenceType, val: float):
+    def add_guess(self, bus_idx: int, tpe: VarPowerFlowReferenceType, val: float):
         """
         Add init guess
         :param bus_idx:
