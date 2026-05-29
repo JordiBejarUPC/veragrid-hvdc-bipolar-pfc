@@ -414,7 +414,7 @@ class InvestmentsEvaluationDriver(DriverTemplate):
 
         self.tic()
 
-        if self.options.solver == InvestmentEvaluationMethod.Independent:
+        if self.options.solver == InvestmentEvaluationMethod.CBA_PINT_TOOT:
             self.independent_evaluation()
 
         elif self.options.solver == InvestmentEvaluationMethod.Hyperopt:

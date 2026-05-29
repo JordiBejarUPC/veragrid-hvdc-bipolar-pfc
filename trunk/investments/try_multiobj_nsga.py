@@ -28,7 +28,7 @@ if __name__ == "__main__":
     #                                            max_eval=1 * len(grid.investments),
     #                                            pf_options=pf_options)
 
-    options = sim.InvestmentsEvaluationOptions(solver=InvestmentEvaluationMethod.Independent,
+    options = sim.InvestmentsEvaluationOptions(solver=InvestmentEvaluationMethod.CBA_PINT_TOOT,
                                                max_eval=1 * len(grid.investments),
                                                pf_options=pf_options)
 
