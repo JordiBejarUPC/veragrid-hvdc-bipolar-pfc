@@ -134,12 +134,15 @@ def get_pi_line_emt_template(vf: VarFactory,
         for j in range(4):
             var_r = vf.add_var(f"R{phases[i]}{phases[j]}_{name}")
             templ.block.api_obj_mapping[r_enums[i][j]] = var_r
+            templ.block.parameters[var_r] = vf.add_const(0.0)
 
             var_l = vf.add_var(f"Linv_{phases[i]}{phases[j]}_{name}")
             templ.block.api_obj_mapping[linv_enums[i][j]] = var_l
+            templ.block.parameters[var_l] = vf.add_const(0.0)
 
             var_c = vf.add_var(f"C{phases[i]}{phases[j]}_{name}")
             templ.block.api_obj_mapping[c_enums[i][j]] = var_c
+            templ.block.parameters[var_c] = vf.add_const(0.0)
 
     # -----------------------------
     # Reduce the full mapped matrices using the physical line phase mask.

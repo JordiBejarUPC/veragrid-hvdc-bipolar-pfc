@@ -14,6 +14,8 @@ from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProb
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlowDriver3Ph
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
+from VeraGridEngine.Templates.Emt.line_matrix_conversion import build_physical_line_matrices_from_stored_admittances
+from VeraGridEngine.Utils.Symbolic.static_parameter_mapping_rms import build_line_static_matrices
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_emt_template
 from VeraGridEngine.Templates.Emt.load_zip_emt_template import get_load_ZIP_emt_template
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
@@ -553,6 +555,104 @@ def test_auto_initialization_is_not_worse_than_explicit_on_real_case() -> None:
     assert auto_res <= explicit_res + 1.0e-8
     assert auto_problem.initialization_report is not None
     assert auto_problem.initialization_report.status in {EmtInitializationStatus.RESOLVED, EmtInitializationStatus.FAILED}
+
+
+def test_pi_line_matrix_parameters_receive_compiler_names() -> None:
+    """
+    Ensure pi-line static matrix parameters are visible to EMT compilation.
+
+    The pi-line state equations reference API-mapped matrix symbols such as
+    ``Linv_aa_Pi``. Those symbols must be present in the constant-parameter map
+    before the native initializer compiles the state right-hand side expressions.
+
+    :return: None.
+    """
+    problem, context = build_two_bus_real_emt_case(
+        zip_load=False,
+        initialization_method=EmtInitializationMethod.Auto,
+    )
+    compiler_names_dict = problem.get_compiler_names_dict()
+    line_block = context.get_grid().lines[0].emt_model
+    parameter_name: str = "Linv_aa_Pi"
+    found_uid: int | None = None
+
+    for parameter in line_block.parameters.keys():
+        if parameter.name == parameter_name:
+            found_uid = parameter.uid
+        else:
+            pass
+
+    assert found_uid is not None
+    assert found_uid in compiler_names_dict
+
+
+def test_real_pi_line_problem_uses_template_equivalent_static_matrix_values() -> None:
+    """
+    Ensure the real EMT pi-line build keeps the historical overhead-line values.
+
+    This test compares the constant parameters that reach the full EMT problem
+    against the original template-based line-matrix formulas used before the
+    persisted ``line.ys`` and ``line.ysh`` reconstruction refactor.
+
+    :return: None.
+    """
+    problem, context = build_two_bus_real_emt_case(
+        zip_load=False,
+        initialization_method=EmtInitializationMethod.Auto,
+    )
+    line = context.get_grid().lines[0]
+    line_template = line.template
+    assert bool(line.ys.phN) is False
+    assert bool(line.ys.phA) is True
+    assert bool(line.ys.phB) is True
+    assert bool(line.ys.phC) is True
+    assert line.ys.values.shape == (4, 4)
+    assert line.ysh.values.shape == (4, 4)
+    compiler_names_dict = problem.get_compiler_names_dict()
+    r_full_actual, l_full_actual, c_full_actual = build_line_static_matrices(context.get_grid(), line)
+    constant_parameters = problem.get_constant_parameters()
+    constant_parameter_values = problem.get_parameters_values()
+    constant_by_name: Dict[str, float] = dict()
+    parameter_index: int = 0
+
+    while parameter_index < len(constant_parameters):
+        constant_by_name[constant_parameters[parameter_index].name] = float(constant_parameter_values[parameter_index].value)
+        parameter_index += 1
+
+    assert "Linv_aa_Pi" in constant_by_name
+    assert "Caa_Pi" in constant_by_name
+    assert any(name == "cprms[0]" for name in compiler_names_dict.values())
+
+    omega: float = 2.0 * np.pi * float(context.get_grid().fBase)
+    voltage_base: float = float(line.bus_from.Vnom) * 1.0e3
+    sbase_va: float = float(context.get_grid().Sbase) * 1.0e6
+    zbase: float = (voltage_base * voltage_base) / sbase_va
+    ybase: float = 1.0 / zbase
+    z_phys_total: np.ndarray = line_template.z_nabc * float(line.length)
+    y_phys_total: np.ndarray = line_template.y_nabc * float(line.length)
+    z_phys_recovered, y_phys_recovered = build_physical_line_matrices_from_stored_admittances(
+        line=line,
+        sbase_mva=float(context.get_grid().Sbase),
+    )
+    assert z_phys_recovered is not None
+    assert y_phys_recovered is not None
+    assert np.isclose(float(np.imag(z_phys_recovered[1, 1])), float(np.imag(z_phys_total[0, 0])))
+    assert np.isclose(float(np.imag(z_phys_recovered[2, 2])), float(np.imag(z_phys_total[1, 1])))
+    assert np.isclose(float(np.imag(z_phys_recovered[3, 3])), float(np.imag(z_phys_total[2, 2])))
+    assert np.isclose(float(np.imag(y_phys_recovered[1, 1])), float(np.imag(y_phys_total[0, 0])))
+    assert np.isclose(float(np.imag(y_phys_recovered[2, 2])), float(np.imag(y_phys_total[1, 1])))
+    assert np.isclose(float(np.imag(y_phys_recovered[3, 3])), float(np.imag(y_phys_total[2, 2])))
+    z_pu: np.ndarray = z_phys_total / zbase
+    y_pu: np.ndarray = y_phys_total / ybase
+    l_expected: np.ndarray = np.imag(z_pu) / omega
+    c_expected: np.ndarray = (np.imag(y_pu) / omega) / 2.0
+    linv_expected: np.ndarray = np.linalg.inv(l_expected)
+
+    assert np.isclose(float(l_full_actual[0, 0]), float(l_expected[0, 0]))
+    assert np.isclose(float(c_full_actual[0, 0]), float(c_expected[0, 0]))
+
+    assert np.isclose(constant_by_name["Linv_aa_Pi"], float(linv_expected[0, 0]))
+    assert np.isclose(constant_by_name["Caa_Pi"], float(c_expected[0, 0]))
 
 
 if __name__ == "__main__":

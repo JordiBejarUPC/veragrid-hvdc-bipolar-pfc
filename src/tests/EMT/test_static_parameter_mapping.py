@@ -10,6 +10,8 @@ import numpy as np
 
 from VeraGridEngine.Devices.Branches.dc_line import DcLine
 from VeraGridEngine.Devices.Branches.line import Line
+from VeraGridEngine.Devices.Branches.overhead_line_type import OverheadLineType
+from VeraGridEngine.Devices.Branches.wire import Wire
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGridEngine.Devices.Branches.vsc import VSC
 from VeraGridEngine.Devices.Injections.external_grid import ExternalGrid
@@ -588,6 +590,53 @@ def test_uncoupled_line_mapping_uses_direct_reactance_when_historical_slot_is_ze
 
     assert np.isclose(_const_value(block, ParamPowerFlowReferenceType.Linv_aa), omega / 0.2)
     assert np.isclose(_const_value(block, ParamPowerFlowReferenceType.Caa), 0.0)
+
+
+def test_overhead_line_mapping_matches_original_template_based_values() -> None:
+    """Overhead pi-line mapping must match the original template-based matrices."""
+    grid: SimpleNamespace = _make_grid(sbase=2.0, fbase=50.0)
+    bus_from: Bus = Bus(name="from", Vnom=10.0)
+    bus_to: Bus = Bus(name="to", Vnom=10.0)
+    line: Line = Line(name="line", bus_from=bus_from, bus_to=bus_to, length=10.0)
+
+    tower: OverheadLineType = OverheadLineType(name="Tower", Vnom=10.0)
+    wire: Wire = Wire(
+        name="Panther 30/7 ACSR",
+        diameter=21.0,
+        diameter_internal=9.0,
+        is_tube=True,
+        r=0.1363,
+        max_current=1,
+    )
+    tower.add_wire_relationship(wire=wire, xpos=-12.65, ypos=27.5, phase=1)
+    tower.add_wire_relationship(wire=wire, xpos=0.0, ypos=27.5, phase=2)
+    tower.add_wire_relationship(wire=wire, xpos=12.65, ypos=27.5, phase=3)
+    tower.compute()
+    line.apply_template(tower, grid.Sbase, grid.fBase)
+
+    block: Block = _make_block(
+        dict({
+            ParamPowerFlowReferenceType.Linv_aa: _make_var("laa"),
+            ParamPowerFlowReferenceType.Caa: _make_var("caa"),
+        })
+    )
+    assign_static_api_object_mapping_for_device(grid=grid, device=line, mdl=block, logger=None)
+
+    omega: float = 2.0 * np.pi * float(grid.fBase)
+    voltage_base: float = float(bus_from.Vnom) * 1.0e3
+    sbase_va: float = float(grid.Sbase) * 1.0e6
+    zbase: float = (voltage_base * voltage_base) / sbase_va
+    ybase: float = 1.0 / zbase
+    z_phys_total: np.ndarray = tower.z_nabc * float(line.length)
+    y_phys_total: np.ndarray = tower.y_nabc * float(line.length)
+    z_pu: np.ndarray = z_phys_total / zbase
+    y_pu: np.ndarray = y_phys_total / ybase
+    l_expected: np.ndarray = np.imag(z_pu) / omega
+    c_expected: np.ndarray = (np.imag(y_pu) / omega) / 2.0
+    linv_expected: np.ndarray = np.linalg.inv(l_expected)
+
+    assert np.isclose(_const_value(block, ParamPowerFlowReferenceType.Linv_aa), float(linv_expected[0, 0]))
+    assert np.isclose(_const_value(block, ParamPowerFlowReferenceType.Caa), float(c_expected[0, 0]))
 
 
 def test_shunt_phase_keys_fall_back_to_balanced_totals() -> None:

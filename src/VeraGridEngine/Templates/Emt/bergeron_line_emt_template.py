@@ -69,10 +69,15 @@ def _build_line_parameter_matrices_from_template_or_balanced_data(line: Any,
         zbase_ohm: float = (vbase_volt * vbase_volt) / sbase_va
         ybase_siemens: float = 1.0 / zbase_ohm
 
-        # The template stores Carson matrices per km. Bergeron uses per-meter and
-        # then converts them to per-unit before forming the total line matrices.
+        # Bergeron travelling-wave dynamics are highly sensitive to the exact
+        # per-length ``Z`` and ``Y`` matrices. The original template matrices are
+        # already stored in the precise physical form expected by this model, and
+        # the delay calculation in ``line.get_tau()`` still uses that same source.
+        # Keeping Bergeron on the template path therefore preserves one internally
+        # consistent representation for ``R/L/C`` and ``tau``.
         z_phys_m: np.ndarray = np.asarray(line.template.z_nabc, dtype=np.complex128) / 1e3
         y_phys_m: np.ndarray = np.asarray(line.template.y_nabc, dtype=np.complex128) / 1e3
+
         z_pu_m: np.ndarray = z_phys_m / zbase_ohm
         y_pu_m: np.ndarray = y_phys_m / ybase_siemens
 

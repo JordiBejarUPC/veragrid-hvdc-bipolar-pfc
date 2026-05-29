@@ -549,6 +549,58 @@ def _collect_api_obj_mapping_from_block(mdl: Block) -> Dict[ParamPowerFlowRefere
 
     return mapping
 
+
+def _realign_static_parameter_mapping_with_unified_block(
+        sys_block: Block,
+        static_parameter_values_mapping: Dict[Var, Const],
+) -> None:
+    """
+    Rebind static parameter values to the vars present in the unified root block.
+
+    EMT compilation uses the final flattened ``sys_block`` equations. Static
+    parameters are collected earlier while device models may still live in wrapper
+    hierarchies. After unification and deduplication, the final equation graph can
+    reference var instances that share the same UID but are not the same Python
+    object as the ones used as keys in the pre-collected static mapping. This
+    helper rebuilds the dictionary on top of the vars that actually belong to the
+    unified block so compiler-name generation stays aligned with the final system.
+
+    :param sys_block: Unified EMT root block.
+    :param static_parameter_values_mapping: Static parameter mapping to realign.
+    :return: None.
+    """
+    uid_to_parameter_var: Dict[int, Var] = dict()
+    parameter_var: Var
+
+    for parameter_var, parameter_value in sys_block.parameters.items():
+        if parameter_var not in static_parameter_values_mapping:
+            static_parameter_values_mapping[parameter_var] = parameter_value
+        else:
+            pass
+
+    for parameter_var in sys_block.parameters.keys():
+        uid_to_parameter_var[parameter_var.uid] = parameter_var
+
+    if len(uid_to_parameter_var) == 0:
+        return
+    else:
+        pass
+
+    updated_mapping: Dict[Var, Const] = dict()
+    original_parameter_var: Var
+    parameter_value: Const
+
+    for original_parameter_var, parameter_value in static_parameter_values_mapping.items():
+        unified_parameter_var: Var | None = uid_to_parameter_var.get(original_parameter_var.uid, None)
+
+        if unified_parameter_var is None:
+            updated_mapping[original_parameter_var] = parameter_value
+        else:
+            updated_mapping[unified_parameter_var] = parameter_value
+
+    static_parameter_values_mapping.clear()
+    static_parameter_values_mapping.update(updated_mapping)
+
 def _build_device_idtag_lookup(devices: List[Any]) -> Dict[str, int]:
     """
     Build one idtag-to-index lookup table.
@@ -1309,6 +1361,16 @@ class EmtProblemDae(EmtProblemTemplate):
 
         sys_block.unify_blocks()
         _deduplicate_block_entities(sys_block)
+        # The EMT problem compiles the unified root block, so the static-parameter
+        # table must be realigned with the final flattened symbolic graph before
+        # compiler names are generated. Wrapper, GUI and cloned workflows can keep
+        # API-mapped parameter vars only in child blocks during collection, and the
+        # subsequent unification step can then leave the pre-collected parameter map
+        # out of sync with the actual vars referenced by the final equations.
+        _realign_static_parameter_mapping_with_unified_block(
+            sys_block=sys_block,
+            static_parameter_values_mapping=static_parameter_values_mapping,
+        )
         unify_blocks_s: float = _toc(t_phase_start)
         t_phase_start = _tic()
 

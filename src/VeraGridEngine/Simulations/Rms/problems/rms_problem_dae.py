@@ -1925,8 +1925,18 @@ class RmsProblemDae(RmsProblemTemplate):
 
         for ep, const in mdl.parameters.items():
             if ep.uid in self._uid2idx_params:
-                raise ValueError(f"Parameter '{ep.name}' (uid={ep.uid}) is already registered in the system. "
-                                 f"Previous device may have created a duplicate parameter.")
+                # Nested RMS block hierarchies can legally expose the same symbolic
+                # parameter multiple times while sharing one UID. In that case the
+                # parameter must be registered only once in the global problem and
+                # later occurrences should only refresh the already stored value.
+                existing_parameter_index: int = self._uid2idx_params[ep.uid]
+
+                if ep in self._static_parameters_values_mapping:
+                    self._parameters_values[existing_parameter_index] = self._static_parameters_values_mapping[ep]
+                else:
+                    pass
+
+                continue
 
             self._compiler_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}[{self._n_params}]"
             self._alias_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}_{self._n_params}"

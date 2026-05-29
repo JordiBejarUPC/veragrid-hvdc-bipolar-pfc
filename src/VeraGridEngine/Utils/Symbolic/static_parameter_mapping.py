@@ -31,6 +31,7 @@ from VeraGridEngine.Devices.Branches.overhead_line_type import OverheadLineType
 from VeraGridEngine.Devices import MultiCircuit
 from VeraGridEngine.Devices.Branches.dc_line import DcLine
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
+from VeraGridEngine.Templates.Emt.line_matrix_conversion import build_physical_line_matrices_from_stored_admittances
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Const
 from VeraGridEngine.basic_structures import Logger
@@ -1575,7 +1576,7 @@ def build_line_static_matrices(
     ybase: float = 1.0 / zbase
     line_template: Any = line.template
 
-    if type(line_template)== OverheadLineType:
+    if isinstance(line_template, OverheadLineType):
         r_full: np.ndarray
         l_full: np.ndarray
         c_full: np.ndarray
@@ -1583,10 +1584,23 @@ def build_line_static_matrices(
             line=line,
             omega_base=omega_base,
         )
-        # Tower/template matrices are physical line matrices. They are first
-        # length-scaled and then converted to the system EMT per-unit base.
-        z_phys: np.ndarray = line_template.z_nabc * float(line.length)
-        y_phys: np.ndarray = line_template.y_nabc * float(line.length)
+        # Persisted line objects already store the total branch matrices after the
+        # template application. EMT should therefore rebuild physical matrices
+        # from the stored branch data instead of reading the original template.
+        z_phys: np.ndarray | None
+        y_phys: np.ndarray | None
+        z_phys, y_phys = build_physical_line_matrices_from_stored_admittances(
+            line=line,
+            sbase_mva=float(grid.Sbase),
+        )
+
+        if z_phys is None or y_phys is None:
+            # Some legacy objects may still miss the stored matrices. In that case
+            # the original template Carson matrices remain a safe fallback path.
+            z_phys = line_template.z_nabc * float(line.length)
+            y_phys = line_template.y_nabc * float(line.length)
+        else:
+            pass
 
         z_pu: np.ndarray = z_phys / zbase
         y_pu: np.ndarray = y_phys / ybase
@@ -1606,7 +1620,23 @@ def build_line_static_matrices(
             omega_base=omega_base,
         )
 
-    return r_full, l_full, c_full
+    active_indices: List[int] = get_line_active_global_indices(line)
+    matrix_size: int = int(r_full.shape[0])
+
+    if matrix_size == len(active_indices):
+        return r_full, l_full, c_full
+    else:
+        pass
+
+    if matrix_size == 4:
+        reduced_selector: np.ndarray = np.array(active_indices, dtype=int)
+        r_reduced: np.ndarray = r_full[np.ix_(reduced_selector, reduced_selector)]
+        l_reduced: np.ndarray = l_full[np.ix_(reduced_selector, reduced_selector)]
+        c_reduced: np.ndarray = c_full[np.ix_(reduced_selector, reduced_selector)]
+        return r_reduced, l_reduced, c_reduced
+    else:
+        return r_full, l_full, c_full
+
 
 
 def validate_line_static_matrices(
