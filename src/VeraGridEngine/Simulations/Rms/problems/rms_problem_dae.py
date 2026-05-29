@@ -53,11 +53,6 @@ from VeraGridEngine.Utils.Symbolic.static_parameter_mapping_rms import (
 
 from VeraGridEngine.Utils.procedural_logic import BlockProceduralLogicUpdater
 
-def assign_static_parameters(elm:Any, parameter_reference: ParamPowerFlowRefferenceType) -> Const:
-    if elm.device_type == DeviceType.LineDevice:
-        return assign_line_static_parameters(elm, parameter_reference)
-    else:
-        raise ValueError(f"Not possible to assign static values to {elm.device_type}")
 
 def assign_line_static_parameters(elm: Any, parameter_reference: ParamPowerFlowRefferenceType) -> Const:
     if parameter_reference == ParamPowerFlowRefferenceType.g:
@@ -181,6 +176,141 @@ def _build_ramp_runtime_expr(time_var: Var,
     # the intended linear ramp on the open interval and the final hold after the
     # ramp end.
     return start_expr + progress_expr * (Const(float(final_value)) - start_expr)
+
+
+def _get_rms_event_time_sort_key(evt: RmsEvent) -> tuple[float, float]:
+    """
+    Build the chronological sort key for one RMS event.
+
+    :param evt: RMS event.
+    :return: Tuple containing start and end times.
+
+    Multi-event runtime replay must apply events in deterministic time order.
+    Sorting by start time first and end time second keeps the replay stable for
+    any combination of step and ramp events.
+    """
+    end_time_value: float
+    if evt.end_time is not None:
+        end_time_value = float(evt.end_time)
+    else:
+        end_time_value = float(evt.time)
+
+    return float(evt.time), end_time_value
+
+
+def _evaluate_rms_runtime_parameter_value_from_events(base_value: float,
+                                                      event_list: List[RmsEvent],
+                                                      t_curr: float) -> float:
+    """
+    Evaluate one RMS runtime parameter by replaying its events procedurally.
+
+    :param base_value: Baseline parameter value before any event happens.
+    :param event_list: Ordered RMS events affecting the parameter.
+    :param t_curr: Current simulation time.
+    :return: Runtime parameter value.
+
+    The symbolic nested ``piecewise`` composition is fragile when several events
+    act on the same continuous parameter. Procedural replay is linear in the
+    number of events and naturally supports any number and combination of step
+    and ramp transitions.
+    """
+    current_value: float = float(base_value)
+    event_item: RmsEvent
+
+    for event_item in event_list:
+        if event_item.transition_type == DynamicEventTransitionType.Step:
+            if _is_rms_time_strictly_after_event(t_curr=t_curr, event_time=float(event_item.time)):
+                current_value = float(event_item.value)
+            else:
+                pass
+        else:
+            if event_item.transition_type == DynamicEventTransitionType.Ramp:
+                start_time: float = float(event_item.time)
+                end_time: float | None = event_item.end_time
+                ramp_start_value: float = float(current_value)
+
+                if end_time is not None:
+                    resolved_end_time: float = float(end_time)
+                    if resolved_end_time > start_time:
+                        if _is_rms_time_strictly_after_event(t_curr=t_curr, event_time=start_time):
+                            if t_curr >= resolved_end_time:
+                                current_value = float(event_item.value)
+                            else:
+                                ramp_progress: float = (float(t_curr) - start_time) / (resolved_end_time - start_time)
+                                if ramp_progress < 0.0:
+                                    ramp_progress = 0.0
+                                else:
+                                    if ramp_progress > 1.0:
+                                        ramp_progress = 1.0
+                                    else:
+                                        pass
+
+                                current_value = ramp_start_value + ramp_progress * (float(event_item.value) - ramp_start_value)
+                        else:
+                            pass
+                    else:
+                        if _is_rms_time_strictly_after_event(t_curr=t_curr, event_time=start_time):
+                            current_value = float(event_item.value)
+                        else:
+                            pass
+                else:
+                    if _is_rms_time_strictly_after_event(t_curr=t_curr, event_time=start_time):
+                        current_value = float(event_item.value)
+                    else:
+                        pass
+            else:
+                if _is_rms_time_strictly_after_event(t_curr=t_curr, event_time=float(event_item.time)):
+                    current_value = float(event_item.value)
+                else:
+                    pass
+
+    return current_value
+
+
+def _build_runtime_expression_from_single_rms_event(time_var: Var,
+                                                    base_expression: Expr | Const,
+                                                    event_item: RmsEvent) -> Expr | Const:
+    """
+    Build the legacy symbolic runtime expression for one RMS event.
+
+    :param time_var: Global simulation time variable.
+    :param base_expression: Baseline runtime expression before the event.
+    :param event_item: Single RMS event affecting the parameter.
+    :return: Runtime expression including the event.
+
+    The historical RMS references were generated with a symbolic event path for
+    single continuous events. Preserving that exact path keeps the legacy CSV
+    tests stable while the procedural replay path is reserved for true
+    multi-event combinations that are fragile under nested symbolic composition.
+    """
+    transition_tpe: DynamicEventTransitionType = event_item.transition_type
+
+    if transition_tpe == DynamicEventTransitionType.Ramp:
+        end_time_raw: float | None = event_item.end_time
+        if end_time_raw is not None:
+            end_time: float = float(end_time_raw)
+            start_time: float = float(event_item.time)
+            if end_time > start_time:
+                return _build_ramp_runtime_expr(time_var=time_var,
+                                                start_time=start_time,
+                                                end_time=end_time,
+                                                before_expr=base_expression,
+                                                final_value=float(event_item.value))
+            else:
+                return piecewise(time_var=time_var,
+                                 t_events=np.asarray([float(event_item.time)], dtype=np.float64),
+                                 new_values=np.asarray([float(event_item.value)], dtype=np.float64),
+                                 default_value=base_expression)
+        else:
+            return piecewise(time_var=time_var,
+                             t_events=np.asarray([float(event_item.time)], dtype=np.float64),
+                             new_values=np.asarray([float(event_item.value)], dtype=np.float64),
+                             default_value=base_expression)
+    else:
+        return piecewise(time_var=time_var,
+                         t_events=np.asarray([float(event_item.time)], dtype=np.float64),
+                         new_values=np.asarray([float(event_item.value)], dtype=np.float64),
+                         default_value=base_expression)
 
 
 def _is_rms_event_routed_to_scheduled_mode(
@@ -347,6 +477,7 @@ class RmsProblemDae(RmsProblemTemplate):
         self._runtime_mode_slice: slice = slice(0, 0)
         self._continuous_event_parameter_uids: Set[int] = set()
         self._discrete_event_parameter_uids: Set[int] = set()
+        self._continuous_runtime_events: Dict[int, List[RmsEvent]] = dict()
         self._scheduled_mode_events: Dict[int, List[Tuple[float, float, bool]]] = dict()
         self._mode_event_cursor: Dict[int, int] = dict()
         self._active_events_group: RmsEventsGroup | None = None
@@ -1081,7 +1212,7 @@ class RmsProblemDae(RmsProblemTemplate):
         active_runtime_eqs: List[Expr | Const] = list(self._runtime_all_eqs_source0)
 
         if self._continuous_event_parameter_uids:
-            collect_continuous_events: Dict[int, List[dict[str, Any]]] = {
+            collect_continuous_events: Dict[int, List[RmsEvent]] = {
                 uid: list()
                 for uid in self._continuous_event_parameter_uids
             }
@@ -1134,96 +1265,50 @@ class RmsProblemDae(RmsProblemTemplate):
                             )
                         else:
                             if parameter_uid in collect_continuous_events:
-                                collect_continuous_events[parameter_uid].append(
-                                    dict({
-                                        # Historical RMS ``event_dict`` step events were evaluated through the
-                                        # symbolic runtime parameter path at the event time itself. Restoring that
-                                        # exact activation time preserves the legacy ``Pl0`` trajectories while the
-                                        # ramp branch below continues to use the dedicated continuous interpolation
-                                        # logic introduced for ramp support.
-                                        "time": float(rms_evt.time),
-                                        "value": float(rms_evt.value),
-                                        "end_time": None,
-                                        "transition_type": DynamicEventTransitionType.Step,
-                                    })
-                                )
+                                collect_continuous_events[parameter_uid].append(rms_evt)
                             else:
                                 pass
                     else:
                         if parameter_uid in collect_continuous_events:
-                            collect_continuous_events[parameter_uid].append(
-                                dict({
-                                    "time": float(rms_evt.time),
-                                    "value": float(rms_evt.value),
-                                    "end_time": None if rms_evt.end_time is None else float(rms_evt.end_time),
-                                    "transition_type": transition_tpe,
-                                })
-                            )
+                            collect_continuous_events[parameter_uid].append(rms_evt)
                         else:
                             pass
 
-        for parameter_uid, event_specs in collect_continuous_events.items():
-            if len(event_specs) == 0:
+        self._continuous_runtime_events = dict()
+
+        for parameter_uid, event_list in collect_continuous_events.items():
+            if len(event_list) == 0:
                 pass
             else:
-                parameter_index: int | None = None
-                runtime_parameter: Var
 
-                # The continuous-event replacement must target the exact runtime
-                # parameter slot inside ``_runtime_all_parameters_source``. Using
-                # the broader event-parameter index map can hit a different slot
-                # once extra runtime parameters such as ``dt`` and ``delta`` are
-                # appended later in the RMS setup.
-                for runtime_parameter_index, runtime_parameter in enumerate(self._runtime_all_parameters_source):
-                    if runtime_parameter.uid == parameter_uid:
-                        parameter_index = runtime_parameter_index
-                        break
+                sorted_events: List[RmsEvent] = sorted(event_list, key=_get_rms_event_time_sort_key)
+
+                if len(sorted_events) == 1:
+                    parameter_index: int | None = None
+                    runtime_parameter: Var
+
+                    # The single-event path keeps the historical symbolic RMS
+                    # behavior so existing CSV references remain valid. Only true
+                    # multi-event combinations are diverted to the procedural
+                    # replay path introduced to avoid fragile nested expressions.
+                    for runtime_parameter_index, runtime_parameter in enumerate(self._runtime_all_parameters_source):
+                        if runtime_parameter.uid == parameter_uid:
+                            parameter_index = runtime_parameter_index
+                            break
+                        else:
+                            pass
+
+                    if parameter_index is not None:
+                        active_expr: Expr | Const = active_runtime_eqs[parameter_index]
+                        active_runtime_eqs[parameter_index] = _build_runtime_expression_from_single_rms_event(
+                            time_var=self._glob_time,
+                            base_expression=active_expr,
+                            event_item=sorted_events[0],
+                        )
                     else:
                         pass
-
-                if parameter_index is None:
-                    active_expr = Const(0.0)
                 else:
-                    active_expr = active_runtime_eqs[parameter_index]
-                sorted_specs: List[dict[str, Any]] = sorted(event_specs, key=lambda event_spec: float(event_spec["time"]))
-                event_spec: dict[str, Any]
-
-                for event_spec in sorted_specs:
-                    transition_tpe: DynamicEventTransitionType = event_spec["transition_type"]
-
-                    if transition_tpe == DynamicEventTransitionType.Ramp:
-                        start_time: float = float(event_spec["time"])
-                        end_time_raw: Any = event_spec["end_time"]
-
-                        if end_time_raw is not None:
-                            end_time: float = float(end_time_raw)
-
-                            if end_time > start_time:
-                                active_expr = _build_ramp_runtime_expr(time_var=self._glob_time,
-                                                                      start_time=start_time,
-                                                                      end_time=end_time,
-                                                                      before_expr=active_expr,
-                                                                      final_value=float(event_spec["value"]))
-                            else:
-                                active_expr = piecewise(time_var=self._glob_time,
-                                                        t_events=np.asarray([float(event_spec["time"])], dtype=np.float64),
-                                                        new_values=np.asarray([float(event_spec["value"])], dtype=np.float64),
-                                                        default_value=active_expr)
-                        else:
-                            active_expr = piecewise(time_var=self._glob_time,
-                                                    t_events=np.asarray([float(event_spec["time"])], dtype=np.float64),
-                                                    new_values=np.asarray([float(event_spec["value"])], dtype=np.float64),
-                                                    default_value=active_expr)
-                    else:
-                        active_expr = piecewise(time_var=self._glob_time,
-                                                t_events=np.asarray([float(event_spec["time"])], dtype=np.float64),
-                                                new_values=np.asarray([float(event_spec["value"])], dtype=np.float64),
-                                                default_value=active_expr)
-
-                if parameter_index is None:
-                    pass
-                else:
-                    active_runtime_eqs[parameter_index] = active_expr
+                    self._continuous_runtime_events[parameter_uid] = sorted_events
 
         self._runtime_all_eqs_source = active_runtime_eqs
         self._scheduled_mode_events = scheduled_mode_events
@@ -1669,43 +1754,47 @@ class RmsProblemDae(RmsProblemTemplate):
         :param t: Simulation time.
         :return: Updated runtime parameter vector.
         """
-        runtime_continuous_eqs: List[Expr | Const]
-        runtime_mode_slice: slice
+        runtime_continuous_eqs: List[Expr | Const] = self._runtime_continuous_eqs
+        runtime_mode_slice: slice = self._runtime_mode_slice
 
-        if "_runtime_continuous_eqs" in self.__dict__:
-            runtime_continuous_eqs = self._runtime_continuous_eqs
-        else:
-            if self._event_params_fn is None:
-                return ev_param
-            else:
-                updated = self._event_params_fn(ev_param, t)
-                updated = self._event_params_fn(updated, t)
-                return updated
-
-        n_continuous = len(runtime_continuous_eqs)
-
-        if n_continuous == 0 or self._event_params_fn is None:
+        if len(runtime_continuous_eqs) == 0 or self._event_params_fn is None:
             return ev_param
-
-        if "_runtime_mode_slice" in self.__dict__:
-            runtime_mode_slice = self._runtime_mode_slice
         else:
-            runtime_mode_slice = slice(0, 0)
+            pass
 
-        mode_snapshot: Optional[Vec]= None
+        mode_snapshot: Optional[Vec] = None
         if runtime_mode_slice.start != runtime_mode_slice.stop:
             mode_snapshot = ev_param[runtime_mode_slice].copy()
+        else:
+            pass
 
-        updated = self._event_params_fn(ev_param, t)
+        # The symbolic event-parameter function still evaluates the baseline
+        # runtime expressions. Continuous multi-event parameters are then replayed
+        # procedurally below so arbitrary event combinations do not build fragile
+        # nested symbolic piecewise trees.
+        updated: Vec = self._event_params_fn(ev_param, t)
         updated = self._event_params_fn(updated, t)
 
-        if runtime_mode_slice.start == runtime_mode_slice.stop:
-            return updated
-        else:
-            assert mode_snapshot is not None
+        if mode_snapshot is not None:
             updated[runtime_mode_slice] = mode_snapshot
+        else:
+            pass
 
-            return updated
+        parameter_uid: int
+        event_list: List[RmsEvent]
+        for parameter_uid, event_list in self._continuous_runtime_events.items():
+            runtime_idx: Optional[int] = self._uid2idx_event_params.get(parameter_uid, None)
+            if runtime_idx is not None:
+                base_value: float = float(updated[runtime_idx])
+                updated[runtime_idx] = _evaluate_rms_runtime_parameter_value_from_events(
+                    base_value=base_value,
+                    event_list=event_list,
+                    t_curr=float(t),
+                )
+            else:
+                pass
+
+        return updated
 
     def update_variable_params(self,
                                t: float,
