@@ -9,9 +9,9 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..',
 from matplotlib import pyplot as plt
 
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae_vectorized import RmsProblemDae
+from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae_vectorized import RmsProblemDaeVec
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
-from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
+from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx_vectorized import BackEulerImplicitIntegrationVec
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
@@ -40,7 +40,7 @@ def find_name_in_block(name: str, block: Block):
             return res
 
 
-def evaluate_rms_runtime_parameter_trace(problem: RmsProblemDae,
+def evaluate_rms_runtime_parameter_trace(problem: RmsProblemDaeVec,
                                          parameter,
                                          time_values: np.ndarray) -> np.ndarray:
     """
@@ -226,7 +226,7 @@ options = RmsOptions(time_step=0.001,
 ######################################################################################################
 
 
-problem = RmsProblemDae(grid=grid,
+problem = RmsProblemDaeVec(grid=grid,
                         options=options,
                         pf_results=res)
 
@@ -234,7 +234,7 @@ problem.set_events_group(events_group)
 problem.reset_boundary_update_state(0.0)
 
 
-solver = BackEulerImplicitIntegration(
+solver = BackEulerImplicitIntegrationVec(
     problem=problem,
     t0=0,
     t_end=options.simulation_time,
@@ -264,20 +264,20 @@ xlim = options.simulation_time
 # The complete generator model stores the machine variables with the
 # ``Genqec_rms_template`` suffix because they come from the nested generator
 # block. We therefore query the real exposed variable names here.
-omega = find_name_in_block("omegaGenqec_rms_template", genqec_mdl)
-Pg = genqec_mdl.out_vars[0]
-Qg = genqec_mdl.out_vars[1]
-Ir = find_name_in_block("IRPuGenqec_rms_template", genqec_mdl)
-Efd = find_name_in_block("Vf", genqec_mdl)
-Te = find_name_in_block("TeGenqec_rms_template", genqec_mdl)
-Vm = genqec_mdl.in_vars[0]
+omega = find_name_in_block("omegaGenqec_rms_template", genqec0_mdl)
+Pg = genqec0_mdl.out_vars[0]
+Qg = genqec0_mdl.out_vars[1]
+Ir = find_name_in_block("IRPuGenqec_rms_template", genqec0_mdl)
+Efd = find_name_in_block("Vf", genqec0_mdl)
+Te = find_name_in_block("TeGenqec_rms_template", genqec0_mdl)
+Vm = genqec0_mdl.in_vars[0]
 
-u_gov1 = find_name_in_block("u_gov1", genqec_mdl)
-y_subexciter = find_name_in_block("y_subexciter1", genqec_mdl)
-y_exciter1 = find_name_in_block("y_exciter1", genqec_mdl)
-y_exciter4 = find_name_in_block("y_exciter4", genqec_mdl)
-Efe = find_name_in_block("Efe", genqec_mdl)
-delta = find_name_in_block("deltaGenqec_rms_template", genqec_mdl)
+u_gov1 = find_name_in_block("u_gov1", genqec0_mdl)
+y_subexciter = find_name_in_block("y_subexciter1", genqec0_mdl)
+y_exciter1 = find_name_in_block("y_exciter1", genqec0_mdl)
+y_exciter4 = find_name_in_block("y_exciter4", genqec0_mdl)
+Efe = find_name_in_block("Efe", genqec0_mdl)
+delta = find_name_in_block("deltaGenqec_rms_template", genqec0_mdl)
 
 
 
@@ -299,13 +299,13 @@ plt.tight_layout()
 plt.show()
 
 
-Eq_prime = find_name_in_block("Eq_primeGenqec_rms_template", genqec_mdl)
-Ed_prime = find_name_in_block("Ed_primeGenqec_rms_template", genqec_mdl)
-Psiq_prime = find_name_in_block("Psiq_primeGenqec_rms_template", genqec_mdl)
-Psid_prime = find_name_in_block("Psid_primeGenqec_rms_template", genqec_mdl)
+Eq_prime = find_name_in_block("Eq_primeGenqec_rms_template", genqec0_mdl)
+Ed_prime = find_name_in_block("Ed_primeGenqec_rms_template", genqec0_mdl)
+Psiq_prime = find_name_in_block("Psiq_primeGenqec_rms_template", genqec0_mdl)
+Psid_prime = find_name_in_block("Psid_primeGenqec_rms_template", genqec0_mdl)
 
-Ed1 = find_name_in_block("Ed1Genqec_rms_template", genqec_mdl)
-Eq1 = find_name_in_block("Eq1Genqec_rms_template", genqec_mdl)
+Ed1 = find_name_in_block("Ed1Genqec_rms_template", genqec0_mdl)
+Eq1 = find_name_in_block("Eq1Genqec_rms_template", genqec0_mdl)
 
 # Generator state variables
 plt.plot(t, y[:, problem.get_var_idx(Eq_prime)], label="Eq_prime (pu)")
