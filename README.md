@@ -10,6 +10,7 @@ product of cutting-edge research.
 ![VeraGrid_banner.png](pics/VeraGrid_banner.png)[](![Ver(pics/VeraGrid_banner.png))
 ![VeraGrid](pics/VeraGrid_yt.png)
 
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/13016/badge)](https://www.bestpractices.dev/projects/13016)
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/75e794c9bcfd49bda1721b9ba8f6c790)](https://app.codacy.com/app/SanPen/VeraGrid?utm_source=github.com&utm_medium=referral&utm_content=SanPen/VeraGrid&utm_campaign=Badge_Grade_Dashboard)
 [![Documentation Status](https://readthedocs.org/projects/veragrid/badge/?version=latest)](https://veragrid.readthedocs.io/en/latest/?badge=latest) [![Build Status](https://travis-ci.org/SanPen/VeraGrid.svg?branch=master)](https://travis-ci.org/SanPen/VeraGrid)
 [![DOI](https://www.zenodo.org/badge/49583206.svg)](https://www.zenodo.org/badge/latestdoi/49583206)

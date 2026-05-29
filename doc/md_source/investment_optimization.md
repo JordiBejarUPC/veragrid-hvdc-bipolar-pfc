@@ -74,6 +74,248 @@ df_pareto_points = drv.results.mdl(result_type=gce.ResultTypes.InvestmentsPareto
 df_all = drv.results.mdl(result_type=gce.ResultTypes.InvestmentsReportResults).to_df()
 ```
 
+## TOOT/PINT CBA Sequence
+
+Besides population-based search methods such as NSGA-3, the investments framework also provides a
+deterministic independent ranking sequence inspired by the ENTSO-e CBA workflow. The implementation
+lives in:
+
+`src/VeraGridEngine/Simulations/InvestmentsEvaluation/Methods/toot_pint_cba.py`
+
+and is exposed as the library-style function:
+
+```python
+TOOT_PINT_CBA(
+    obj_func=...,
+    n_var=...,
+    lb=...,
+    ub=...,
+    n_obj=...,
+    objective_names=...,
+    variable_names=...,
+    report_text=...,
+    logger=...,
+)
+```
+
+The call is intentionally similar to the NSGA-3 helper: the method receives an objective callback plus
+the problem dimensions and bounds, and it returns the best-ranked combination according to the CBA
+sequence. This keeps the method reusable and avoids coupling it to the driver class.
+
+### Reference, PINT and TOOT
+
+The sequence is built from three types of evaluations:
+
+- **Reference case**: the baseline combination, taken from the lower bound vector of the problem.
+- **PINT case**: a candidate project is added to the reference case and evaluated.
+- **TOOT case**: a target combination containing all projects is built from the upper bound vector, and then one project is removed and evaluated.
+
+For each candidate project, the method computes:
+
+- the marginal improvement of the PINT case with respect to the reference case,
+- the marginal degradation of the TOOT case with respect to the target case,
+- a normalized scalar ranking score based on the project benefits and its CAPEX contribution.
+
+That scalar score is used only to rank the projects. It is **not** used as a displayed objective.
+
+### Why the displayed objectives remain correct
+
+The independent CBA sequence still relies on the active problem callback for every stored evaluation:
+
+- the reference case is evaluated through the problem objective function,
+- every PINT case is evaluated through the problem objective function,
+- every cumulative ranked portfolio is evaluated through the problem objective function.
+
+As a consequence:
+
+- the objective names shown in the GUI come from `problem.get_objectives_names()`,
+- the objective values shown in the tables and Pareto plots are the exact values returned by the problem,
+- the CBA score is only an internal ranking quantity written to the logger.
+
+This is particularly important for custom problems, such as the time-series linear OPF investment problem,
+where the visible objectives may be, for example, average nodal price, CAPEX, OPEX, load shedding,
+generation shedding and fuel usage.
+
+### Sequence output
+
+Once the projects are ranked, the method evaluates a cumulative build-out sequence:
+
+1. the reference combination,
+2. one PINT evaluation for each candidate,
+3. the cumulative combinations obtained by adding projects in ranked order.
+
+The best combination reported back to the driver is the first-ranked project added to the reference
+combination. The results object itself still stores the full objective vectors of the evaluations
+performed by the active problem.
+
+## Search Alternatives
+
+The investments framework supports several ways of exploring the candidate space. In practice, the two
+main optimization-oriented alternatives are the NSGA family and MVRSM.
+
+### NSGA-based search
+
+The NSGA-based route is the most direct multi-objective alternative. In the current implementation the
+main helper is `NSGA_3`, which is called with the problem objective callback and the problem bounds:
+
+```python
+X, obj_values = NSGA_3(
+    obj_func=self.objective_function,
+    n_partitions=n_partitions,
+    n_var=dim,
+    lb=self.problem.x_min,
+    ub=self.problem.x_max,
+    n_obj=len(ret),
+    max_evals=self.options.max_eval,
+    pop_size=pop_size,
+    crossover_prob=0.8,
+    mutation_probability=0.1,
+    eta=30,
+)
+```
+
+This family of methods is useful when:
+
+- the user wants a Pareto front directly,
+- several objectives must be kept visible instead of being collapsed into a single score,
+- the decision space is discrete but still broad enough that cumulative one-by-one rankings are too restrictive.
+
+Conceptually, the NSGA workflow evolves a population of candidate combinations. At each generation, the
+population is ranked according to Pareto dominance and diversity criteria, so the search tends to preserve
+solutions that represent different trade-offs among the objectives.
+
+For the investments module this means:
+
+- the problem objective function is treated as a black box,
+- each candidate combination is evaluated exactly through the active problem,
+- the final displayed metrics are simply the objective vectors returned by that problem.
+
+### MVRSM
+
+MVRSM is the surrogate-based alternative already integrated in the investments driver. Strictly speaking,
+it is not an evolutionary algorithm in the same sense as NSGA, because it does not evolve a population by
+selection and crossover. Instead, it builds and updates a surrogate model of the expensive black-box
+objective function and uses that model to guide the search.
+
+This route is useful when:
+
+- each objective evaluation is expensive,
+- the number of possible combinations is too large for exhaustive inspection,
+- a user wants a faster guided search without evaluating a very large population explicitly.
+
+In the investments workflow the role of MVRSM is:
+
+- evaluate some initial combinations,
+- fit a surrogate that approximates the objective response,
+- use that surrogate to propose promising new combinations,
+- keep updating the surrogate with real evaluations from the active problem.
+
+The practical trade-off against NSGA is simple:
+
+- **NSGA** is usually easier to interpret as a Pareto-search mechanism.
+- **MVRSM** is usually more attractive when evaluation cost dominates and a model-guided search is preferred.
+
+## Available Problems
+
+The search method is only one half of the setup. The other half is the problem definition, which determines:
+
+- what the decision vector means,
+- what simulation is executed for each candidate combination,
+- what objective vector is returned and shown in the results.
+
+The engine currently exposes the following investment problem types.
+
+### `PowerFlowInvestmentProblem`
+
+This is the snapshot power-flow problem.
+
+- Decision variables are binary.
+- Each investment group is either inactive or active.
+- The evaluation runs a standard power flow.
+- The objectives are technical and economic scores derived from losses, overloads, voltage penalties and CAPEX/OPEX-style terms.
+
+This problem is appropriate for:
+
+- single-state studies,
+- quick technical screening of candidate reinforcements,
+- situations where time-series behavior is not required.
+
+### `TimeSeriesPowerFlowInvestmentProblem`
+
+This is the time-series version of the power-flow problem.
+
+- Decision variables are binary.
+- Each investment group is either inactive or active for the full study horizon.
+- The evaluation runs a time-series power flow.
+- The objective vector contains the time-series technical and economic performance indicators defined by the problem.
+
+This problem is appropriate for:
+
+- operational studies over multiple hours,
+- cases where the benefit of an investment depends on chronology,
+- power-flow-driven Pareto exploration.
+
+### `AdequacyInvestmentProblem`
+
+This is the adequacy-oriented problem.
+
+- Decision variables are integer year-of-entry values.
+- `0` means “not invested”.
+- `1..N` means “project enters service in year `N` of the selected horizon”.
+- The evaluation runs either Monte Carlo adequacy or the simple dispatch path, depending on configuration.
+
+The objective vector depends on configuration, but it is built around adequacy quantities such as:
+
+- LOLE,
+- CAPEX,
+- unitary electricity cost,
+- curtailment,
+- optional firm-capacity penalty.
+
+This problem is appropriate for:
+
+- generation adequacy studies,
+- expansion timing questions,
+- year-of-entry optimization rather than only binary inclusion.
+
+### `TimeSeriesLinearOptimalPowerFlowInvestmentProblem`
+
+This is the time-series linear OPF investment problem introduced for nodal-price and dispatch economics studies.
+
+- Decision variables are integer year-of-entry values, following the adequacy-style encoding.
+- External `OptimalPowerFlowOptions` are provided by the caller, but the problem forces the linear OPF formulation.
+- Candidate assets are forced off in the baseline state and then activated from the chosen entry year onward.
+- Each evaluation runs a time-series linear OPF.
+
+The objective vector currently contains:
+
+- average nodal price,
+- CAPEX,
+- OPEX,
+- load shedding,
+- generation shedding,
+- fuel usage.
+
+This problem is appropriate for:
+
+- market- or dispatch-oriented transmission and generation candidate studies,
+- nodal-price-sensitive investment screening,
+- time-dependent investment timing studies with operational dispatch metrics.
+
+### Relationship between problem and displayed metrics
+
+The displayed metrics in the investments results always come from the active problem. This is true for:
+
+- NSGA-based runs,
+- MVRSM runs,
+- random exploration,
+- TOOT/PINT CBA ranking sequences.
+
+Therefore, choosing a different problem changes both:
+
+- the electrical simulation used during each evaluation,
+- the meaning and names of the objectives shown in the reports and Pareto views.
+
 ## Theory Pt.1
 
 ### Formulation
