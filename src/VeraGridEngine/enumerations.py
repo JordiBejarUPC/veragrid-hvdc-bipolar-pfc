@@ -3673,8 +3673,6 @@ class ParamPowerFlowReferenceType(Enum):
     transformer_short_circuit_resistance_pct = "transformer_short_circuit_resistance_pct"
     transformer_short_circuit_loss_kw = "transformer_short_circuit_loss_kw"
     transformer_tap_ratio = "transformer_tap_ratio"
-    transformer_tap_module = "transformer_tap_module"
-    transformer_tap_phase = "transformer_tap_phase"
     transformer_nominal_voltage_ratio = "transformer_nominal_voltage_ratio"
     transformer_total_voltage_ratio = "transformer_total_voltage_ratio"
     transformer_terminal_capacitance_pu_s = "transformer_terminal_capacitance_pu_s"
@@ -3801,14 +3799,6 @@ class ParamPowerFlowReferenceType(Enum):
     branch_alpha_per_deg_c = "branch_alpha_per_deg_c"
 
     # Load static parameters in p.u. on grid Sbase unless noted otherwise
-    load_p_pu = "load_p_pu"
-    load_q_pu = "load_q_pu"
-    load_pa_pu = "load_pa_pu"
-    load_pb_pu = "load_pb_pu"
-    load_pc_pu = "load_pc_pu"
-    load_qa_pu = "load_qa_pu"
-    load_qb_pu = "load_qb_pu"
-    load_qc_pu = "load_qc_pu"
     load_g_pu = "load_g_pu"
     load_b_pu = "load_b_pu"
     load_ga_pu = "load_ga_pu"
@@ -3830,8 +3820,6 @@ class ParamPowerFlowReferenceType(Enum):
     # Generator static parameters
     generator_p_pu = "generator_p_pu"
     generator_q_pu = "generator_q_pu"
-    generator_pmin_pu = "generator_pmin_pu"
-    generator_pmax_pu = "generator_pmax_pu"
     generator_qmin_pu = "generator_qmin_pu"
     generator_qmax_pu = "generator_qmax_pu"
     generator_power_factor = "generator_power_factor"
