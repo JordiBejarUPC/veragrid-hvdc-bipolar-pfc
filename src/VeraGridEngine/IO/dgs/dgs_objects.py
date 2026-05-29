@@ -1293,6 +1293,7 @@ class ElmTerm(DGSElement):
         DgsProperty('uknom', 'r', 'Nominal Voltage Line-Line in kV', py_name='uknom'),
         DgsProperty('chr_name', 'a:20', 'Characteristic Name', py_name='chr_name'),
         DgsProperty('outserv', 'i', 'Out of Service', py_name='outserv'),
+        DgsProperty('cpArea', 'p', 'Area in ElmArea', py_name='cpArea'),
         DgsProperty('cpZone', 'p', 'Zone in ElmZone', py_name='cpZone'),
         DgsProperty('phtech', 'i', 'Phase Technology Code', py_name='phtech'),
         DgsProperty('for_name', 'a:50', 'Foreign Key', py_name='for_name'),
@@ -1325,6 +1326,7 @@ class ElmTerm(DGSElement):
         self.vtarget: float = 0.0
         self.m_u: float = 0.0
         self.m_phiu: float = 0.0
+        self.cpArea: str = ""
         self.cpZone: str = ""
 
 

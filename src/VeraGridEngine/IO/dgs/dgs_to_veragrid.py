@@ -4304,6 +4304,25 @@ def _add_elmzone_zones(dgs_grid: DgsCircuit, grid: dev.MultiCircuit) -> Dict[str
     return zone_by_id
 
 
+def _add_elmarea_areas(dgs_grid: DgsCircuit, grid: dev.MultiCircuit) -> Dict[str, dev.Area]:
+    """
+    Add elmarea areas.
+
+    :param dgs_grid: dgs_grid parameter.
+    :param grid: grid parameter.
+    :return: Function result.
+    """
+    area_by_id: Dict[str, dev.Area] = dict()
+    for elmarea in dgs_grid.elmareas:
+        aid = _ref_id(elmarea.ID)
+        area_name: str = elmarea.loc_name if elmarea.loc_name != "" else f"Area_{aid}"
+        area = dev.Area(name=area_name, idtag=aid, code="", latitude=0.0, longitude=0.0)
+        grid.add_area(area)
+        if aid is not None:
+            area_by_id[aid] = area
+    return area_by_id
+
+
 def _add_elmbranch_groups(dgs_grid: DgsCircuit, grid: dev.MultiCircuit) -> Dict[str, dev.BranchGroup]:
     """
     Add elmbranch groups.
@@ -4363,6 +4382,27 @@ def _assign_elmterm_zone_references(dgs_grid: DgsCircuit,
             zone = zone_by_id.get(zid, None)
             if bus is not None:
                 bus.zone = zone
+
+
+def _assign_elmterm_area_references(dgs_grid: DgsCircuit,
+                                    bus_by_term_id: Dict[str, dev.Bus],
+                                    area_by_id: Dict[str, dev.Area]) -> None:
+    """
+    Assign elmterm area references.
+
+    :param dgs_grid: dgs_grid parameter.
+    :param bus_by_term_id: bus_by_term_id parameter.
+    :param area_by_id: area_by_id parameter.
+    :return: Function result.
+    """
+    for elmterm in dgs_grid.elmterms:
+        tid = _ref_id(elmterm.ID)
+        aid = _ref_id(elmterm.cpArea)
+        if tid is not None and aid is not None and aid != "":
+            bus = bus_by_term_id.get(tid, None)
+            area = area_by_id.get(aid, None)
+            if bus is not None:
+                bus.area = area
 
 
 def _build_typsym_dict(dgs_grid: DgsCircuit) -> Dict[str, TypSym]:
@@ -4549,6 +4589,23 @@ def _build_typtr3_dict(dgs_grid: DgsCircuit) -> Dict[str, TypTr3]:
         else:
             pass
     return typtr3_dict
+
+def _build_typtr4_dict(dgs_grid: DgsCircuit) -> Dict[str, TypTr4]:
+    """
+    Build typtr4 dict.
+
+    :param dgs_grid: dgs_grid parameter.
+    :return: Function result.
+    """
+    typtr4_dict: Dict[str, TypTr4] = dict()
+    for typtr4 in dgs_grid.typtr4s:
+        typtr4_dict[typtr4.ID] = typtr4
+        tid = _ref_id(typtr4.ID)
+        if tid is not None:
+            typtr4_dict[tid] = typtr4
+        else:
+            pass
+    return typtr4_dict
 
 
 def _build_typsind_dict(dgs_grid: DgsCircuit) -> Dict[str, TypSind]:
@@ -4880,9 +4937,11 @@ def dgs_to_circuit(path: str,
     stacubic_dict, cubics_by_objid = _build_stacubic_mappings(stacubics=dgs_grid.stacubics)
 
     pos_by_objid: Dict[str, Tuple[float, float]] = _build_graphics_positions(intgrfs=dgs_grid.intgrfs)
+    area_by_id: Dict[str, dev.Area] = _add_elmarea_areas(dgs_grid=dgs_grid, grid=grid)
     zone_by_id: Dict[str, dev.Zone] = _add_elmzone_zones(dgs_grid=dgs_grid, grid=grid)
     branch_group_by_id: Dict[str, dev.BranchGroup] = _add_elmbranch_groups(dgs_grid=dgs_grid, grid=grid)
     bus_by_term_id: Dict[str, dev.Bus] = _add_elmterm_buses(dgs_grid=dgs_grid, grid=grid, pos_by_objid=pos_by_objid)
+    _assign_elmterm_area_references(dgs_grid=dgs_grid, bus_by_term_id=bus_by_term_id, area_by_id=area_by_id)
     _assign_elmterm_zone_references(dgs_grid=dgs_grid, bus_by_term_id=bus_by_term_id, zone_by_id=zone_by_id)
 
     typsym_dict: Dict[str, TypSym] = _build_typsym_dict(dgs_grid=dgs_grid)
@@ -4994,6 +5053,7 @@ def dgs_to_circuit(path: str,
     )
     typtr2_dict, typtr2_raw_dict = _build_typtr2_templates(dgs_grid=dgs_grid, grid=grid)
     typtr3_dict: Dict[str, TypTr3] = _build_typtr3_dict(dgs_grid=dgs_grid)
+    typtr4_dict: Dict[str, TypTr4] = _build_typtr4_dict(dgs_grid=dgs_grid)
     typsind_raw_dict: Dict[str, TypSind] = _build_typsind_dict(dgs_grid=dgs_grid)
 
     # ------------------------------------------------------------
