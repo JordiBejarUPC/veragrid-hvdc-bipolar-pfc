@@ -64,7 +64,7 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
                 zonal_grouping=self.options.opf_options.zonal_grouping,
                 skip_generation_limits=self.options.skip_generation_limits,
                 consider_contingencies=self.options.consider_contingencies,
-                contingency_groups_used=self.grid.contingency_groups,
+                contingency_groups_used=self.grid.get_contingency_groups_active(),
                 lodf_threshold=self.options.lin_options.lodf_threshold,
                 bus_a1_idx=self.options.sending_bus_idx,
                 bus_a2_idx=self.options.receiving_bus_idx,
@@ -77,7 +77,8 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
                 progress_text=self.report_text,
                 progress_func=self.report_progress,
                 verbose=self.options.opf_options.verbose,
-                robust=self.options.opf_options.robust
+                robust=self.options.opf_options.robust,
+                mip_framework=self.options.opf_options.mip_framework
             )
         else:
             opf_vars, model = run_linear_ntc_opf(
@@ -87,7 +88,7 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
                 zonal_grouping=self.options.opf_options.zonal_grouping,
                 skip_generation_limits=self.options.skip_generation_limits,
                 consider_contingencies=self.options.consider_contingencies,
-                contingency_groups_used=self.grid.contingency_groups,
+                contingency_groups_used=self.grid.get_contingency_groups_active(),
                 lodf_threshold=self.options.lin_options.lodf_threshold,
                 bus_a1_idx=self.options.sending_bus_idx,
                 bus_a2_idx=self.options.receiving_bus_idx,

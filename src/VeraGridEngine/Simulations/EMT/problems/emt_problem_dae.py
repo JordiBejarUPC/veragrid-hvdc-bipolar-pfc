@@ -5046,22 +5046,30 @@ class EmtProblemDae(EmtProblemTemplate):
         }
 
         omega_base: float = 2.0 * np.pi * self.grid.fBase
+        # ``I_ph = conj(S/V)`` already yields the branch-convention current
+        # from bus into branch. The EMT KCL also uses branch
+        # convention for VSC branches (``I_kcl -= i_branch``), so the
+        # seeded value is taken directly without any sign flip, just like
+        # with other branches
         for ph in ["N", "A", "B", "C"]:
             V_ph = phase_voltage_dict[ph]
             I_ph = phase_current_dict[ph]
             S_ph = phase_power_dict[ph]
+
+            # Store it once and reuse
+            i_branch_init: float = float(np.sqrt(2.0) * np.imag(I_ph))
 
             self.set_if_exists(mdl=mdl,
                                key=ac_voltage_keys[ph],
                                value=float(np.sqrt(2.0) * np.imag(V_ph)))
             self.set_if_exists(mdl=mdl,
                                key=ac_current_keys[ph],
-                               value=float(np.sqrt(2.0) * np.imag(I_ph)))
+                               value=i_branch_init)
 
             if ac_is_from:
                 self.set_if_exists(mdl=mdl,
                                    key=if_keys[ph],
-                                   value=float(np.sqrt(2.0) * np.imag(I_ph)))
+                                   value=i_branch_init)
                 self.set_if_exists(mdl=mdl,
                                    key=it_keys[ph],
                                    value=0.0)
@@ -5073,7 +5081,7 @@ class EmtProblemDae(EmtProblemTemplate):
                                    value=0.0)
                 self.set_if_exists(mdl=mdl,
                                    key=it_keys[ph],
-                                   value=float(np.sqrt(2.0) * np.imag(I_ph)))
+                                   value=i_branch_init)
                 self.set_external_param(mdl, d_vf_keys[ph], 0.0)
                 self.set_external_param(mdl, d_vt_keys[ph], omega_base * np.sqrt(2.0) * np.real(V_ph))
 
@@ -5248,22 +5256,27 @@ class EmtProblemDae(EmtProblemTemplate):
         }
 
         omega_base: float = 2.0 * np.pi * self.grid.fBase
+
         for ph in ["N", "A", "B", "C"]:
             V_ph = phase_voltage_dict[ph]
             I_ph = phase_current_dict[ph]
             S_ph = phase_power_dict[ph]
+
+            # ``I_ph = conj(S/V)`` is already in branch convention
+            # Hence no sign change needed
+            i_branch_init: float = float(np.sqrt(2.0) * np.imag(I_ph))
 
             self.set_if_exists(mdl=mdl,
                                key=ac_voltage_keys[ph],
                                value=float(np.sqrt(2.0) * np.imag(V_ph)))
             self.set_if_exists(mdl=mdl,
                                key=ac_current_keys[ph],
-                               value=float(np.sqrt(2.0) * np.imag(I_ph)))
+                               value=i_branch_init)
 
             if ac_is_from:
                 self.set_if_exists(mdl=mdl,
                                    key=if_keys[ph],
-                                   value=float(np.sqrt(2.0) * np.imag(I_ph)))
+                                   value=i_branch_init)
                 self.set_if_exists(mdl=mdl,
                                    key=it_keys[ph],
                                    value=0.0)
@@ -5275,7 +5288,7 @@ class EmtProblemDae(EmtProblemTemplate):
                                    value=0.0)
                 self.set_if_exists(mdl=mdl,
                                    key=it_keys[ph],
-                                   value=float(np.sqrt(2.0) * np.imag(I_ph)))
+                                   value=i_branch_init)
                 self.set_external_param(mdl, d_vf_keys[ph], 0.0)
                 self.set_external_param(mdl, d_vt_keys[ph], omega_base * np.sqrt(2.0) * np.real(V_ph))
 
