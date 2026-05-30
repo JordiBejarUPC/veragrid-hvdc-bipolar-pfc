@@ -42,7 +42,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOpti
 from VeraGridEngine.Templates.Emt.dc_source_emt_template import get_dc_voltage_source_emt_template
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_emt_template
 from VeraGridEngine.Templates.Emt.bergeron_line_emt_template import get_bergeron_line_emt_template
-from VeraGridEngine.Templates.Emt.vsc_gfm_emt import VscGfmEmtBuild
+from VeraGridEngine.Templates.Emt.vsc_gfm_emt import get_gfm_emt_template
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
@@ -321,7 +321,7 @@ def _build_dc_fed_gfm_island() -> tuple:
     # but finite ``X_s`` is required to keep the state equation for
     # ``di/dt`` well-posed; 1.0e-4 pu is small enough that the GFM
     # behaves as an ideal voltage source compared to the 0.1 pu filter.
-    vsc_template = VscGfmEmtBuild(vf=grid.var_factory, name="GFM_VSC")
+    vsc_template = get_gfm_emt_template(vf=grid.var_factory, name="GFM_VSC")
     R_s_var = _find_name_in_block("R_s_GFM_VSC", vsc_template.block)
     X_s_var = _find_name_in_block("X_s_GFM_VSC", vsc_template.block)
     assert R_s_var is not None and X_s_var is not None

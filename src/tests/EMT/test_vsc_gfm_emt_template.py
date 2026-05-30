@@ -9,7 +9,7 @@ import numpy as np
 
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
-from VeraGridEngine.Templates.Emt.vsc_gfm_emt import VscGfmEmtBuild
+from VeraGridEngine.Templates.Emt.vsc_gfm_emt import get_gfm_emt_template
 from VeraGridEngine.Utils.Symbolic.block import find_name_in_block
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType
@@ -131,7 +131,7 @@ def test_vsc_gfm_emt_template_exposes_expected_structure() -> None:
     :return: None.
     """
     vf: VarFactory = VarFactory()
-    templ = VscGfmEmtBuild(vf=vf, name="G1")
+    templ = get_gfm_emt_template(vf=vf, name="G1")
 
     assert templ.tpe == DeviceType.VscDevice
     assert [var.name for var in templ.block.in_vars] == [
@@ -177,7 +177,7 @@ def test_vsc_gfm_emt_template_can_be_loaded_into_generic_problem() -> None:
     :return: None.
     """
     vf: VarFactory = VarFactory()
-    templ = VscGfmEmtBuild(vf=vf, name="VSC")
+    templ = get_gfm_emt_template(vf=vf, name="VSC")
     static_parameter_values_mapping: Dict[Var, Const] = dict()
     problem = GenericEmtProblem(
         sys_block=templ.block,
@@ -199,7 +199,7 @@ def test_vsc_gfm_emt_template_init_residual_is_small() -> None:
     :return: None.
     """
     vf: VarFactory = VarFactory()
-    templ = VscGfmEmtBuild(vf=vf, name="G1")
+    templ = get_gfm_emt_template(vf=vf, name="G1")
     bindings: Dict[str, float] = _build_pf_consistent_bindings(name="G1")
 
     for idx, eq in enumerate(templ.block.algebraic_eqs):

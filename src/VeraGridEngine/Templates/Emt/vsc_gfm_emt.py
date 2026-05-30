@@ -18,7 +18,7 @@ from VeraGridEngine.Utils.Symbolic import symbolic as sym
 from VeraGridEngine.Utils.Symbolic.block import Block
 
 
-def VscGfmEmtBuild(vf: VarFactory, name: str = "emt_gfm") -> EmtModelTemplate:
+def get_gfm_emt_template(vf: VarFactory, name: str = "VSC_GridForming") -> EmtModelTemplate:
     """
     Build a three-phase EMT grid-forming VSC.
 
