@@ -136,6 +136,7 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
         self.results.alpha = opf_vars.branch_vars.alpha[0, :]
         self.results.monitor_logic = opf_vars.branch_vars.monitor_logic[0, :]
         self.results.contingency_flows_list = opf_vars.branch_vars.contingency_flow_data
+        self.results.strict_formulation = self.options.strict_formulation
 
         self.results.hvdc_Pf = opf_vars.hvdc_vars.flows[0, :]
         self.results.hvdc_loading = opf_vars.hvdc_vars.loading[0, :]

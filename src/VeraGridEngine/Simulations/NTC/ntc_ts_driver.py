@@ -73,6 +73,7 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
             time_indices=self.time_indices,
             clustering_results=self.clustering_results,
         )
+        self.results.strict_formulation = self.options.strict_formulation
 
         for t_idx, t in enumerate(self.time_indices):
 
