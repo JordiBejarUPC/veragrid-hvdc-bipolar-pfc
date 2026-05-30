@@ -118,7 +118,7 @@ class LoadStepBoundaryUpdater(BoundaryUpdateWrapper):
         # The new load level is written before the problem update so the accepted EMT step
         # solves the correct algebraic operating point for that time interval.
         params[self._param_full_idx] = applied_value_pu
-        self._problem.update(float(t), x, params)
+        self._problem.emt_boundary_update(float(t), x, params)
 
         if self._record_count < len(self._record_time_s):
             self._record_time_s[self._record_count] = float(t)

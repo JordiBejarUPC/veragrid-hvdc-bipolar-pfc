@@ -29,7 +29,9 @@ from VeraGridEngine.Devices.Branches.sequence_line_type import SequenceLineType
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGridEngine.Devices.Branches.transformer_type import TransformerType
 from VeraGridEngine.Devices.Branches.underground_line_type import UndergroundLineType
+from VeraGridEngine.Devices.Injections.controllable_shunt import ControllableShunt
 from VeraGridEngine.Devices.Injections.load import Load
+from VeraGridEngine.Devices.Injections.shunt import Shunt
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType, \
     DynamicSimulationMode, ShuntConnectionType, WindingType
@@ -193,7 +195,6 @@ JMARTI_MODAL_OPTION_KEYS: tuple[str, ...] = (
     "passivity_minimum_real_yc_tolerance",
     "passivity_maximum_hres_gain_tolerance",
 )
-
 
 def set_modal_template_metadata(block: Block, kind: str, config: Dict[str, Any]) -> None:
     """
@@ -4279,6 +4280,18 @@ class BlockItem(QGraphicsRectItem):
         else:
             return super().itemChange(change, value)
 
+class ProtectedConnectionBlockItem(BlockItem):
+    """
+    Graphics item for required editor connection-interface blocks.
+
+    These blocks represent the device/network contract and must stay present in
+    the canvas, so the scene should treat them as non-removable even though they
+    are still serialized with the standard connection block types.
+    """
+
+    pass
+
+
 
 class GraphicsView(QGraphicsView):
     """
@@ -4567,9 +4580,12 @@ class DiagramScene(QGraphicsScene):
                 else:
                     pass
 
-                remove_action: QAction = QAction("Remove", menu)
-                remove_action.triggered.connect(self.remove_context_item)
-                menu.addAction(remove_action)
+                if not isinstance(item, ProtectedConnectionBlockItem):
+                    remove_action: QAction = QAction("Remove", menu)
+                    remove_action.triggered.connect(self.remove_context_item)
+                    menu.addAction(remove_action)
+                else:
+                    pass
 
                 color_action: QAction = QAction("Change Color", menu)
                 color_action.triggered.connect(self.recolor_context_item)
@@ -7015,12 +7031,12 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             set_modal_template_metadata(block_model, kind="transformer_topology_emt",
                                         config=dict(topology_config, block_type=block_type.name))
 
+            # The dynamic editor must not overwrite the static transformer
+            # winding connection stored by the network object. The dynamic block
+            # keeps its own modal configuration and must follow the static device
+            # contract during template assignment.
             if isinstance(self.api_object, BranchParent):
-                try:
-                    self.api_object.conn_f = topology_config["conn_f"]
-                    self.api_object.conn_t = topology_config["conn_t"]
-                except Exception:
-                    pass
+                pass
             else:
                 pass
 
@@ -7044,11 +7060,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                         config=dict(load_config, block_type=block_type.name))
             self._annotate_internal_grounding_link_blocks(block_model)
 
+            # The dynamic editor must not overwrite the static load connection.
             if isinstance(self.api_object, InjectionParent):
-                try:
-                    self.api_object.conn = load_config["connection_type"]
-                except Exception:
-                    pass
+                pass
             else:
                 pass
 
@@ -7130,13 +7144,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             block_model = get_shunt_rlc_combo_emt_template(vf=self.var_factory, name=item_name, **template_kwargs).block
             set_modal_template_metadata(block_model, kind="rlc_combo_emt", config=dict(rlc_config))
             self._annotate_internal_grounding_link_blocks(block_model)
-            self._sync_rlc_combo_load_base_values(template_kwargs)
 
+            # The dynamic editor must not overwrite the static injection
+            # connection. The EMT block stores its own symbolic topology.
             if isinstance(self.api_object, InjectionParent):
-                try:
-                    self.api_object.conn = rlc_config["connection_type"]
-                except Exception:
-                    pass
+                pass
             else:
                 pass
 
@@ -7161,13 +7173,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             set_modal_template_metadata(block_model, kind="shunt_component_emt",
                                         config=dict(shunt_config, block_type=block_type.name))
             self._annotate_internal_grounding_link_blocks(block_model)
-            self._sync_rlc_combo_load_base_values(template_kwargs)
 
+            # The dynamic editor must not overwrite the static injection
+            # connection. The EMT block stores its own symbolic topology.
             if isinstance(self.api_object, InjectionParent):
-                try:
-                    self.api_object.conn = shunt_config["connection_type"]
-                except Exception:
-                    pass
+                pass
             else:
                 pass
 
@@ -7190,11 +7200,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                         config=dict(load_config, block_type=block_type.name))
             self._annotate_internal_grounding_link_blocks(block_model)
 
+            # The dynamic editor must not overwrite the static load connection.
             if isinstance(self.api_object, InjectionParent):
-                try:
-                    self.api_object.conn = load_config["connection_type"]
-                except Exception:
-                    pass
+                pass
             else:
                 pass
 
@@ -7280,12 +7288,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             set_modal_template_metadata(block_model, kind="transformer_topology_emt",
                                         config=dict(topology_config, block_type=block_type.name))
 
+            # The dynamic editor must not overwrite the static transformer
+            # winding connection stored by the network object.
             if isinstance(self.api_object, BranchParent):
-                try:
-                    self.api_object.conn_f = topology_config["conn_f"]
-                    self.api_object.conn_t = topology_config["conn_t"]
-                except Exception:
-                    pass
+                pass
             else:
                 pass
 
@@ -7455,7 +7461,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return:
         """
         item_name: str = f"{block_model.name}"
-        # block_item: BlockItem = BlockItem(var_factory=self.var_factory, name=item_name)
 
         if block_model is not None:
             item = GenericBlockItem(
@@ -7530,7 +7535,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
         count: int = self.block_counters.get(block_type, 0) + 1
         item_name: str = f"{var.name}"
-        block_item: BlockItem = BlockItem(var_factory=self.var_factory, name=item_name)
+        block_item: ProtectedConnectionBlockItem = ProtectedConnectionBlockItem(var_factory=self.var_factory, name=item_name)
         block_model: Block = Block()
 
         if block_type == BlockType.INPUT_CONN:
@@ -7734,13 +7739,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         set_modal_template_metadata(block_model, kind="rlc_combo_emt", config=dict(rlc_config))
         self._annotate_internal_grounding_link_blocks(block_model)
-        self._sync_rlc_combo_load_base_values(template_kwargs)
 
+        # The dynamic editor must not overwrite the static injection
+        # connection. The EMT block stores its own symbolic topology.
         if isinstance(self.api_object, InjectionParent):
-            try:
-                self.api_object.conn = rlc_config["connection_type"]
-            except Exception:
-                pass
+            pass
         else:
             pass
 
@@ -7860,13 +7863,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         set_modal_template_metadata(block_model, kind="shunt_component_emt", config=dict(shunt_config, block_type=block_type.name))
         self._annotate_internal_grounding_link_blocks(block_model)
-        self._sync_rlc_combo_load_base_values(template_kwargs)
 
+        # The dynamic editor must not overwrite the static injection
+        # connection. The EMT block stores its own symbolic topology.
         if isinstance(self.api_object, InjectionParent):
-            try:
-                self.api_object.conn = shunt_config["connection_type"]
-            except Exception:
-                pass
+            pass
         else:
             pass
 
@@ -7929,11 +7930,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         set_modal_template_metadata(block_model, kind="load_topology_emt", config=dict(load_config, block_type=block_type.name))
         self._annotate_internal_grounding_link_blocks(block_model)
 
+        # The dynamic editor must not overwrite the static load connection.
         if isinstance(self.api_object, InjectionParent):
-            try:
-                self.api_object.conn = load_config["connection_type"]
-            except Exception:
-                pass
+            pass
         else:
             pass
 
@@ -8116,12 +8115,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         set_modal_template_metadata(block_model, kind="transformer_topology_emt", config=dict(topology_config, block_type=block_type.name))
 
+        # The dynamic editor must not overwrite the static transformer winding
+        # connection stored by the network object.
         if isinstance(self.api_object, BranchParent):
-            try:
-                self.api_object.conn_f = topology_config["conn_f"]
-                self.api_object.conn_t = topology_config["conn_t"]
-            except Exception:
-                pass
+            pass
         else:
             pass
 
@@ -8177,9 +8174,32 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return: Configured dialog instance.
         """
         nominal_voltage_kv, base_power_mva, base_frequency_hz = self._get_rlc_combo_base_values()
+        static_connection_type: ShuntConnectionType | None = None
+        force_static_connection: bool = False
+
+        if isinstance(self.api_object, (Load, Shunt, ControllableShunt)):
+            static_connection_type = self.api_object.conn
+            force_static_connection = True
+        elif isinstance(self.api_object, InjectionParent):
+            static_connection_type = self.api_object.conn
+        else:
+            pass
+
+        resolved_config: Dict[str, Any] | None = None
+        if initial_config is not None:
+            resolved_config = dict(initial_config)
+        else:
+            resolved_config = dict()
+
+        if force_static_connection and static_connection_type is not None:
+            resolved_config["connection_type"] = static_connection_type
+        else:
+            pass
+
         return RlcComboEmtDialog(
             self,
-            initial_config=initial_config,
+            initial_config=resolved_config,
+            static_connection_type=static_connection_type if force_static_connection else None,
             nominal_voltage_kv=nominal_voltage_kv,
             base_power_mva=base_power_mva,
             base_frequency_hz=base_frequency_hz,
@@ -8272,6 +8292,17 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
         component_kind: str | None = _get_shunt_component_kind(block_type)
         nominal_voltage_kv, base_power_mva, base_frequency_hz = self._get_rlc_combo_base_values()
+        allow_static_load_values: bool = isinstance(self.api_object, Load)
+        static_connection_type: ShuntConnectionType | None = None
+        force_static_connection: bool = False
+
+        if isinstance(self.api_object, (Load, Shunt, ControllableShunt)):
+            static_connection_type = self.api_object.conn
+            force_static_connection = True
+        elif isinstance(self.api_object, InjectionParent):
+            static_connection_type = self.api_object.conn
+        else:
+            pass
 
         if component_kind is None:
             raise ValueError(f"Unsupported simple EMT shunt block type '{block_type.name}'")
@@ -8282,6 +8313,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             component_kind=component_kind,
             parent=self,
             initial_config=initial_config,
+            allow_static_load_values=allow_static_load_values,
+            static_connection_type=static_connection_type if force_static_connection else None,
             nominal_voltage_kv=nominal_voltage_kv,
             base_power_mva=base_power_mva,
             base_frequency_hz=base_frequency_hz,
@@ -8313,6 +8346,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return: Configured dialog instance.
         """
         resolved_config: Dict[str, Any]
+        force_static_connection: bool = False
         if initial_config is not None:
             resolved_config = dict(initial_config)
         else:
@@ -8326,10 +8360,27 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     "conn_t": WindingType.GroundedStar,
                 })
 
+        static_from_connection: WindingType | None = None
+        static_to_connection: WindingType | None = None
+        auto_config = self._resolve_transformer_topology_configuration()
+        if auto_config is not None:
+            static_from_connection = auto_config.get("conn_f", None)
+            static_to_connection = auto_config.get("conn_t", None)
+            if isinstance(self.api_object, (Transformer2W, TransformerType)):
+                resolved_config["conn_f"] = static_from_connection
+                resolved_config["conn_t"] = static_to_connection
+                force_static_connection = True
+            else:
+                pass
+        else:
+            pass
+
         return TransformerTopologyEmtDialog(
             title=self._get_transformer_topology_dialog_title(block_type),
             parent=self,
             initial_config=resolved_config,
+            static_from_connection=static_from_connection if force_static_connection else None,
+            static_to_connection=static_to_connection if force_static_connection else None,
         )
 
     @staticmethod
@@ -8357,10 +8408,29 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param initial_config: Optional persisted modal configuration.
         :return: Configured dialog instance.
         """
+        resolved_config: Dict[str, Any] | None = None
+        static_connection_type: ShuntConnectionType | None = None
+        force_static_connection: bool = False
+
+        if initial_config is not None:
+            resolved_config = dict(initial_config)
+        else:
+            resolved_config = dict()
+
+        if isinstance(self.api_object, Load):
+            static_connection_type = self.api_object.conn
+            resolved_config["connection_type"] = static_connection_type
+            force_static_connection = True
+        elif isinstance(self.api_object, InjectionParent):
+            static_connection_type = self.api_object.conn
+        else:
+            pass
+
         return LoadTopologyEmtDialog(
             title=self._get_load_topology_dialog_title(block_type),
             parent=self,
-            initial_config=initial_config,
+            initial_config=resolved_config,
+            static_connection_type=static_connection_type if force_static_connection else None,
         )
 
     @staticmethod
@@ -8569,7 +8639,23 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param modal_config: Raw modal configuration.
         :return: Template-builder keyword arguments.
         """
-        template_kwargs: Dict[str, Any] = dict(self._build_rlc_direct_values_from_modal_config(modal_config))
+        use_static_load_values: bool = bool(modal_config.get("use_static_load_values", False))
+
+        # Static-value mode must expose load-derived P/Q mappings to the EMT
+        # block, so the direct R/L/C values are left unresolved on purpose.
+        if use_static_load_values:
+            template_kwargs = dict({
+                "solid_connection": False,
+                "include_r": False,
+                "include_l": False,
+                "include_c": False,
+                "direct_r_value": None,
+                "direct_l_value": None,
+                "direct_c_value": None,
+            })
+        else:
+            template_kwargs = dict(self._build_rlc_direct_values_from_modal_config(modal_config))
+
         if "solid_connection" in template_kwargs:
             del template_kwargs["solid_connection"]
         else:
@@ -8580,14 +8666,26 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             template_kwargs["include_r"] = True
             template_kwargs["include_l"] = False
             template_kwargs["include_c"] = False
+            if use_static_load_values:
+                template_kwargs["direct_r_value"] = None
+            else:
+                pass
         elif component_kind == "L":
             template_kwargs["include_r"] = False
             template_kwargs["include_l"] = True
             template_kwargs["include_c"] = False
+            if use_static_load_values:
+                template_kwargs["direct_l_value"] = None
+            else:
+                pass
         elif component_kind == "C":
             template_kwargs["include_r"] = False
             template_kwargs["include_l"] = False
             template_kwargs["include_c"] = True
+            if use_static_load_values:
+                template_kwargs["direct_c_value"] = None
+            else:
+                pass
         else:
             raise ValueError(f"Unsupported simple EMT shunt block type '{block_type.name}'")
 
@@ -8765,112 +8863,20 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
     def _sync_rlc_combo_load_base_values(self, template_kwargs: Dict[str, Any]) -> None:
         """
-        Sync one real load API object with the equivalent RLC snapshot powers.
+        Preserve the legacy hook without mutating static objects.
 
-        The combined EMT template now stores physical R/L/C values directly so it
-        can work standalone. When the editor is attached to a real load, we also
-        refresh the load snapshot powers so the power-flow-based EMT initialization
-        stays aligned with the same electrical values.
+        The dynamic editor must not write EMT-derived values back into the static
+        network model. This hook therefore remains as a no-op so existing call
+        sites can keep their workflow shape while shunt parameters are now owned
+        either by ``api_obj_mapping`` or by ``event_dict`` inside the EMT block.
 
         :param template_kwargs: Resolved EMT template arguments.
         :return: None.
         """
-        if isinstance(self.api_object, Load):
-            load: Load = self.api_object
-        else:
-            return
-
-        if load.bus is None or load.bus.is_dc:
-            return
+        if len(template_kwargs) >= 0:
+            pass
         else:
             pass
-
-        nominal_voltage_kv: float = float(load.bus.Vnom)
-        phase_voltage_kv: float = nominal_voltage_kv / math.sqrt(3.0)
-        phase_voltage_sq: float = phase_voltage_kv * phase_voltage_kv
-        line_voltage_sq: float = nominal_voltage_kv * nominal_voltage_kv
-        angular_frequency: float = 2.0 * math.pi * self._get_rlc_combo_base_frequency_hz()
-        direct_r_value: float | None = template_kwargs.get("direct_r_value", None)
-        direct_l_value: float | None = template_kwargs.get("direct_l_value", None)
-        direct_c_value: float | None = template_kwargs.get("direct_c_value", None)
-        connection_type = template_kwargs.get("connection_type", ShuntConnectionType.GroundedStar)
-        phase_enabled: List[bool] = list([
-            bool(template_kwargs.get("phA", True)),
-            bool(template_kwargs.get("phB", True)),
-            bool(template_kwargs.get("phC", True)),
-        ])
-        active_powers: List[float] = list([0.0, 0.0, 0.0])
-        reactive_powers: List[float] = list([0.0, 0.0, 0.0])
-        idx: int
-
-        if connection_type == ShuntConnectionType.Delta:
-            branch_specs: list[tuple[int, int, int]] = list()
-            if phase_enabled[0] and phase_enabled[1]:
-                branch_specs.append((0, 0, 1))
-            else:
-                pass
-
-            if phase_enabled[1] and phase_enabled[2]:
-                branch_specs.append((1, 1, 2))
-            else:
-                pass
-
-            if phase_enabled[2] and phase_enabled[0]:
-                branch_specs.append((2, 2, 0))
-            else:
-                pass
-
-            for idx, _phase_from, _phase_to in branch_specs:
-                if direct_r_value is not None:
-                    active_powers[idx] = active_powers[idx] + line_voltage_sq / direct_r_value
-                else:
-                    pass
-
-                if direct_l_value is not None:
-                    reactive_powers[idx] = reactive_powers[idx] + line_voltage_sq / (angular_frequency * direct_l_value)
-                else:
-                    pass
-
-                if direct_c_value is not None:
-                    reactive_powers[idx] = reactive_powers[idx] + line_voltage_sq * angular_frequency * direct_c_value
-                else:
-                    pass
-        else:
-            for idx in range(3):
-                if phase_enabled[idx]:
-                    if direct_r_value is not None:
-                        active_powers[idx] = active_powers[idx] + phase_voltage_sq / direct_r_value
-                    else:
-                        pass
-
-                    if direct_l_value is not None:
-                        reactive_powers[idx] = reactive_powers[idx] + phase_voltage_sq / (angular_frequency * direct_l_value)
-                    else:
-                        pass
-
-                    if direct_c_value is not None:
-                        reactive_powers[idx] = reactive_powers[idx] + phase_voltage_sq * angular_frequency * direct_c_value
-                    else:
-                        pass
-                else:
-                    pass
-
-        load.Pa = active_powers[0]
-        load.Pb = active_powers[1]
-        load.Pc = active_powers[2]
-        load.Qa = reactive_powers[0]
-        load.Qb = reactive_powers[1]
-        load.Qc = reactive_powers[2]
-        load.P = sum(active_powers)
-        load.Q = sum(reactive_powers)
-        load.Pa_prof.default_value = load.Pa
-        load.Pb_prof.default_value = load.Pb
-        load.Pc_prof.default_value = load.Pc
-        load.Qa_prof.default_value = load.Qa
-        load.Qb_prof.default_value = load.Qb
-        load.Qc_prof.default_value = load.Qc
-        load.P_prof.default_value = load.P
-        load.Q_prof.default_value = load.Q
 
     def create_inverse_lookup_array_linear_descriptor_item(self,
                                                            descriptor: BasicBlockTemplateDescriptor,
@@ -9442,8 +9448,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self.main_block.out_vars.append(Pf)
             self.main_block.out_vars.append(Qf)
 
-            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.P: Pf})
-            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Q: Qf})
+            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Pf: Pf})
+            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Qf: Qf})
 
             Pt = self.var_factory.add_var('net_conn_Pt', VarPowerFlowRefferenceType.P, True)
             Qt = self.var_factory.add_var('net_conn_Qt', VarPowerFlowRefferenceType.Q, True)
@@ -9451,8 +9457,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self.main_block.out_vars.append(Pt)
             self.main_block.out_vars.append(Qt)
 
-            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.P: Pt})
-            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Q: Qt})
+            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Pt: Pt})
+            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Qt: Qt})
 
         elif isinstance(self.api_object, InjectionParent):
 
@@ -9742,10 +9748,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.Vmt, f"Vm_{safe_bus_to}"))
         specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.Vat, f"Va_{safe_bus_to}"))
 
-        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.Pf, f"net_conn_P_{safe_bus_from}"))
-        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.Qf, f"net_conn_Q_{safe_bus_from}"))
-        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.Pt, f"net_conn_P_{safe_bus_to}"))
-        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.Qt, f"net_conn_Q_{safe_bus_to}"))
+        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.Pf, f"net_conn_Pf_{safe_bus_from}"))
+        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.Qf, f"net_conn_Qf_{safe_bus_from}"))
+        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.Pt, f"net_conn_Pt_{safe_bus_to}"))
+        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.Qt, f"net_conn_Qt_{safe_bus_to}"))
 
         return specs
 
@@ -9803,10 +9809,21 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             # An AC injection starts with the complete editable phase set.
             # The user can remove phases, and the apply step will rebuild
             # the connected bus EMT shell from the remaining ports.
-            specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.v_N, f"v_N_{safe_bus_name}"))
-            specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.v_A, f"v_A_{safe_bus_name}"))
-            specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.v_B, f"v_B_{safe_bus_name}"))
-            specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.v_C, f"v_C_{safe_bus_name}"))
+            specs.append(ConnectionVarSpec("input",
+                                           VarPowerFlowRefferenceType.v_N,
+                                           f"v_N_{safe_bus_name}"))
+
+            specs.append(ConnectionVarSpec("input",
+                                           VarPowerFlowRefferenceType.v_A,
+                                           f"v_A_{safe_bus_name}"))
+
+            specs.append(ConnectionVarSpec("input",
+                                           VarPowerFlowRefferenceType.v_B,
+                                           f"v_B_{safe_bus_name}"))
+
+            specs.append(ConnectionVarSpec("input",
+                                           VarPowerFlowRefferenceType.v_C,
+                                           f"v_C_{safe_bus_name}"))
 
             specs.append(ConnectionVarSpec(
                 "output",
@@ -9974,6 +9991,359 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         return refs
 
+    def _is_interface_block_port_connected(self, item: ProtectedConnectionBlockItem) -> bool:
+        """
+        Return whether one protected editor interface block owns a live wire.
+
+        The protected interface blocks are always present in EMT mode, so the
+        algorithm cannot use block existence anymore to infer whether one phase
+        participates in the model. The only valid signal is whether the block's
+        single public port currently owns at least one connection item.
+
+        :param item: Protected connection-interface block.
+        :return: ``True`` when the visible interface port is wired.
+        """
+        node_data: Any | None = None
+        is_connected: bool = False
+        port_item: PortItem | None = None
+
+        if item.subsys is not None:
+            node_data = self.diagram.node_data.get(item.subsys.uid, None)
+        else:
+            node_data = None
+
+        if node_data is not None:
+            if node_data.tpe == BlockType.INPUT_CONN.name:
+                if len(item.outputs) > 0:
+                    port_item = item.outputs[0]
+                else:
+                    port_item = None
+            else:
+                if node_data.tpe == BlockType.OUTPUT_CONN.name:
+                    if len(item.inputs) > 0:
+                        port_item = item.inputs[0]
+                    else:
+                        port_item = None
+                else:
+                    port_item = None
+        else:
+            port_item = None
+
+        if port_item is not None:
+            if port_item.connections is not None:
+                if len(port_item.connections) > 0:
+                    is_connected = True
+                else:
+                    is_connected = False
+            else:
+                is_connected = False
+        else:
+            is_connected = False
+
+        return is_connected
+
+    def _get_connected_root_interface_refs(self) -> set[VarPowerFlowRefferenceType]:
+        """
+        Return the root interface references backed by live editor connections.
+
+        EMT interface blocks are now protected from deletion, so all candidate
+        phase blocks always exist on the canvas. To rebuild the EMT bus shells
+        correctly, the algorithm must inspect which interface ports are actually
+        wired into the model and use only those references as active phases.
+
+        :return: Connected root-interface references.
+        """
+        refs: set[VarPowerFlowRefferenceType] = set()
+        scene_item: QGraphicsItem
+        protected_item: ProtectedConnectionBlockItem
+        node_data: Any | None = None
+        reference_var: Var | None = None
+
+        for scene_item in self.scene.items():
+            if isinstance(scene_item, ProtectedConnectionBlockItem):
+                protected_item = scene_item
+                if protected_item.subsys is not None:
+                    node_data = self.diagram.node_data.get(protected_item.subsys.uid, None)
+                else:
+                    node_data = None
+
+                if node_data is not None:
+                    if self._is_interface_block_port_connected(protected_item):
+                        if node_data.tpe == BlockType.INPUT_CONN.name:
+                            if len(protected_item.subsys.out_vars) > 0:
+                                reference_var = protected_item.subsys.out_vars[0]
+                            else:
+                                reference_var = None
+                        else:
+                            if node_data.tpe == BlockType.OUTPUT_CONN.name:
+                                if len(protected_item.subsys.in_vars) > 0:
+                                    reference_var = protected_item.subsys.in_vars[0]
+                                else:
+                                    reference_var = None
+                            else:
+                                reference_var = None
+
+                        if reference_var is not None:
+                            if reference_var.ref is not None:
+                                refs.add(reference_var.ref)
+                            else:
+                                pass
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    pass
+            else:
+                pass
+
+        return refs
+
+    def _show_inconsistent_emt_phase_modal(self, phase_labels: list[str]) -> None:
+        """
+        Show one warning modal describing incomplete EMT phase pairs.
+
+        A phase with only voltage or only current connected cannot be assembled
+        into a valid network interface. The user must fix the mismatch before the
+        EMT bus shell and DAE are rebuilt.
+
+        :param phase_labels: Human-readable phase labels that are inconsistent.
+        :return: None.
+        """
+        phase_text: str = ", ".join(phase_labels)
+
+        QtWidgets.QMessageBox.warning(
+            self,
+            "Inconsistent EMT interface",
+            (
+                "The dynamic model is inconsistent because some EMT phases have only voltage or only current "
+                f"connected: {phase_text}.\n\n"
+                "Connect both V and I for each active phase, or disconnect both sides of the phase."
+            ),
+        )
+
+    def _prune_disconnected_emt_root_interface(self) -> None:
+        """
+        Remove disconnected EMT root-interface references before saving the model.
+
+        The protected connection-interface blocks always exist on the canvas, but
+        the persisted device model must only expose the EMT references that are
+        actually wired into the user model. Otherwise the simulation builder sees
+        stale external mappings that no longer match the rebuilt EMT bus shells.
+
+        :return: None.
+        """
+        connected_refs: set[VarPowerFlowRefferenceType] = self._get_connected_root_interface_refs()
+        kept_in_vars: list[Var] = list()
+        kept_out_vars: list[Var] = list()
+        var: Var
+        mapping_key: VarPowerFlowRefferenceType
+        mapped_var: Var | None
+        mapping_keys_to_remove: list[VarPowerFlowRefferenceType] = list()
+
+        # Keep only input variables whose EMT reference is still wired in the
+        # editor. Non-interface variables or RMS/DC references are left intact.
+        for var in self.main_block.in_vars:
+            if self._is_emt_interface_reference(var.ref):
+                if var.ref in connected_refs:
+                    kept_in_vars.append(var)
+                else:
+                    pass
+            else:
+                kept_in_vars.append(var)
+
+        # Keep only output variables whose EMT reference is still wired in the
+        # editor. This synchronizes the saved block interface with the bus mask.
+        for var in self.main_block.out_vars:
+            if self._is_emt_interface_reference(var.ref):
+                if var.ref in connected_refs:
+                    kept_out_vars.append(var)
+                else:
+                    pass
+            else:
+                kept_out_vars.append(var)
+
+        self.main_block.in_vars = kept_in_vars
+        self.main_block.out_vars = kept_out_vars
+
+        # Remove stale external mappings that still reference disconnected EMT
+        # ports. The simulation validator reads this mapping directly.
+        for mapping_key, mapped_var in self.main_block.external_mapping.items():
+            if self._is_emt_interface_reference(mapping_key):
+                if mapping_key in connected_refs:
+                    pass
+                else:
+                    mapping_keys_to_remove.append(mapping_key)
+            else:
+                pass
+
+        for mapping_key in mapping_keys_to_remove:
+            del self.main_block.external_mapping[mapping_key]
+
+    def _is_emt_interface_reference(self, reference: VarPowerFlowRefferenceType | None) -> bool:
+        """
+        Return whether one reference belongs to the EMT AC editor interface.
+
+        The pruning step must only touch EMT phase-interface variables. Other
+        references, such as RMS quantities, DC quantities, parameters, or user
+        internals, must remain untouched when the editor applies the model.
+
+        :param reference: Reference carried by one root-interface variable.
+        :return: ``True`` when the reference is one EMT AC interface key.
+        """
+        emt_interface_refs: set[VarPowerFlowRefferenceType] = set()
+        is_interface_reference: bool = False
+
+        emt_interface_refs.add(VarPowerFlowRefferenceType.v_N)
+        emt_interface_refs.add(VarPowerFlowRefferenceType.v_A)
+        emt_interface_refs.add(VarPowerFlowRefferenceType.v_B)
+        emt_interface_refs.add(VarPowerFlowRefferenceType.v_C)
+        emt_interface_refs.add(VarPowerFlowRefferenceType.i_N)
+        emt_interface_refs.add(VarPowerFlowRefferenceType.i_A)
+        emt_interface_refs.add(VarPowerFlowRefferenceType.i_B)
+        emt_interface_refs.add(VarPowerFlowRefferenceType.i_C)
+        emt_interface_refs.add(VarPowerFlowRefferenceType.vf_N)
+        emt_interface_refs.add(VarPowerFlowRefferenceType.vf_A)
+        emt_interface_refs.add(VarPowerFlowRefferenceType.vf_B)
+        emt_interface_refs.add(VarPowerFlowRefferenceType.vf_C)
+        emt_interface_refs.add(VarPowerFlowRefferenceType.if_N)
+        emt_interface_refs.add(VarPowerFlowRefferenceType.if_A)
+        emt_interface_refs.add(VarPowerFlowRefferenceType.if_B)
+        emt_interface_refs.add(VarPowerFlowRefferenceType.if_C)
+        emt_interface_refs.add(VarPowerFlowRefferenceType.vt_N)
+        emt_interface_refs.add(VarPowerFlowRefferenceType.vt_A)
+        emt_interface_refs.add(VarPowerFlowRefferenceType.vt_B)
+        emt_interface_refs.add(VarPowerFlowRefferenceType.vt_C)
+        emt_interface_refs.add(VarPowerFlowRefferenceType.it_N)
+        emt_interface_refs.add(VarPowerFlowRefferenceType.it_A)
+        emt_interface_refs.add(VarPowerFlowRefferenceType.it_B)
+        emt_interface_refs.add(VarPowerFlowRefferenceType.it_C)
+
+        if reference is not None:
+            if reference in emt_interface_refs:
+                is_interface_reference = True
+            else:
+                is_interface_reference = False
+        else:
+            is_interface_reference = False
+
+        return is_interface_reference
+
+    def _build_connected_emt_injection_bus_mask(self) -> list[bool] | None:
+        """
+        Build the EMT injection bus mask from actual editor connectivity.
+
+        The algorithm checks each phase pair explicitly. A phase is kept only
+        when both the voltage and current interface blocks are connected. If only
+        one side is connected, the model is inconsistent and the rebuild must
+        stop so the user can resolve the mismatch.
+
+        :return: Connected EMT mask, or ``None`` when one phase pair is inconsistent.
+        """
+        refs: set[VarPowerFlowRefferenceType] = self._get_connected_root_interface_refs()
+        mask: list[bool] = list([False, False, False, False])
+        inconsistent_phase_labels: list[str] = list()
+        neutral_voltage_connected: bool = VarPowerFlowRefferenceType.v_N in refs
+        neutral_current_connected: bool = VarPowerFlowRefferenceType.i_N in refs
+        phase_a_voltage_connected: bool = VarPowerFlowRefferenceType.v_A in refs
+        phase_a_current_connected: bool = VarPowerFlowRefferenceType.i_A in refs
+        phase_b_voltage_connected: bool = VarPowerFlowRefferenceType.v_B in refs
+        phase_b_current_connected: bool = VarPowerFlowRefferenceType.i_B in refs
+        phase_c_voltage_connected: bool = VarPowerFlowRefferenceType.v_C in refs
+        phase_c_current_connected: bool = VarPowerFlowRefferenceType.i_C in refs
+
+        if neutral_voltage_connected == neutral_current_connected:
+            mask[0]: bool = neutral_voltage_connected and neutral_current_connected
+        else:
+            inconsistent_phase_labels.append("N")
+
+        if phase_a_voltage_connected == phase_a_current_connected:
+            mask[1]: bool = phase_a_voltage_connected and phase_a_current_connected
+        else:
+            inconsistent_phase_labels.append("A")
+
+        if phase_b_voltage_connected == phase_b_current_connected:
+            mask[2]: bool = phase_b_voltage_connected and phase_b_current_connected
+        else:
+            inconsistent_phase_labels.append("B")
+
+        if phase_c_voltage_connected == phase_c_current_connected:
+            mask[3]: bool = phase_c_voltage_connected and phase_c_current_connected
+        else:
+            inconsistent_phase_labels.append("C")
+
+        if len(inconsistent_phase_labels) > 0:
+            self._show_inconsistent_emt_phase_modal(inconsistent_phase_labels)
+            return None
+        else:
+            return mask
+
+    def _build_connected_emt_branch_bus_mask(self, side: str) -> list[bool] | None:
+        """
+        Build one EMT branch-side mask from actual editor connectivity.
+
+        The branch editor exposes two independent side interfaces. Each side must
+        therefore validate its voltage/current phase pairs independently before
+        the matching bus shell can be rebuilt.
+
+        :param side: Branch side identifier. Expected values are ``from`` and ``to``.
+        :return: Connected EMT mask for the requested side, or ``None`` on inconsistency.
+        """
+        refs: set[VarPowerFlowRefferenceType] = self._get_connected_root_interface_refs()
+        mask: list[bool] = list([False, False, False, False])
+        inconsistent_phase_labels: list[str] = list()
+        side_label: str = ""
+
+        if side == "from":
+            side_label = "from"
+            neutral_voltage_connected: bool = VarPowerFlowRefferenceType.vf_N in refs
+            neutral_current_connected: bool = VarPowerFlowRefferenceType.if_N in refs
+            phase_a_voltage_connected: bool = VarPowerFlowRefferenceType.vf_A in refs
+            phase_a_current_connected: bool = VarPowerFlowRefferenceType.if_A in refs
+            phase_b_voltage_connected: bool = VarPowerFlowRefferenceType.vf_B in refs
+            phase_b_current_connected: bool = VarPowerFlowRefferenceType.if_B in refs
+            phase_c_voltage_connected: bool = VarPowerFlowRefferenceType.vf_C in refs
+            phase_c_current_connected: bool = VarPowerFlowRefferenceType.if_C in refs
+        else:
+            if side == "to":
+                side_label = "to"
+                neutral_voltage_connected = VarPowerFlowRefferenceType.vt_N in refs
+                neutral_current_connected = VarPowerFlowRefferenceType.it_N in refs
+                phase_a_voltage_connected = VarPowerFlowRefferenceType.vt_A in refs
+                phase_a_current_connected = VarPowerFlowRefferenceType.it_A in refs
+                phase_b_voltage_connected = VarPowerFlowRefferenceType.vt_B in refs
+                phase_b_current_connected = VarPowerFlowRefferenceType.it_B in refs
+                phase_c_voltage_connected = VarPowerFlowRefferenceType.vt_C in refs
+                phase_c_current_connected = VarPowerFlowRefferenceType.it_C in refs
+            else:
+                return None
+
+        if neutral_voltage_connected == neutral_current_connected:
+            mask[0]: bool = neutral_voltage_connected and neutral_current_connected
+        else:
+            inconsistent_phase_labels.append(f"{side_label}:N")
+
+        if phase_a_voltage_connected == phase_a_current_connected:
+            mask[1]: bool = phase_a_voltage_connected and phase_a_current_connected
+        else:
+            inconsistent_phase_labels.append(f"{side_label}:A")
+
+        if phase_b_voltage_connected == phase_b_current_connected:
+            mask[2]: bool = phase_b_voltage_connected and phase_b_current_connected
+        else:
+            inconsistent_phase_labels.append(f"{side_label}:B")
+
+        if phase_c_voltage_connected == phase_c_current_connected:
+            mask[3]: bool = phase_c_voltage_connected and phase_c_current_connected
+        else:
+            inconsistent_phase_labels.append(f"{side_label}:C")
+
+        if len(inconsistent_phase_labels) > 0:
+            self._show_inconsistent_emt_phase_modal(inconsistent_phase_labels)
+            return None
+        else:
+            return mask
+
     def _rebuild_emt_bus_model_from_editor_mask(self, bus: Bus, mask: list[bool]) -> bool:
         """
         Rebuild one EMT bus shell from the phases kept by the editor user.
@@ -10030,8 +10400,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         :return: ``True`` when all required bus EMT models were synchronised.
         """
-        refs: set[VarPowerFlowRefferenceType] = self._get_current_root_interface_refs()
         success: bool = True
+        mask: list[bool] | None = None
+        mask_from: list[bool] | None = None
+        mask_to: list[bool] | None = None
 
         if isinstance(self.api_object, InjectionParent):
             if self.api_object.bus.is_dc:
@@ -10040,11 +10412,14 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     mask=list([False, False, False, False]),
                 )
             else:
-                mask: list[bool] = build_emt_injection_bus_mask_from_refs(refs)
-                success = self._rebuild_emt_bus_model_from_editor_mask(
-                    bus=self.api_object.bus,
-                    mask=mask,
-                )
+                mask = self._build_connected_emt_injection_bus_mask()
+                if mask is not None:
+                    success = self._rebuild_emt_bus_model_from_editor_mask(
+                        bus=self.api_object.bus,
+                        mask=mask,
+                    )
+                else:
+                    success = False
 
         elif isinstance(self.api_object, BranchParent):
             if self.api_object.bus_from.is_dc:
@@ -10053,11 +10428,14 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     mask=list([False, False, False, False]),
                 )
             else:
-                mask_from: list[bool] = build_emt_branch_bus_mask_from_refs(refs=refs, side="from")
-                success_from = self._rebuild_emt_bus_model_from_editor_mask(
-                    bus=self.api_object.bus_from,
-                    mask=mask_from,
-                )
+                mask_from = self._build_connected_emt_branch_bus_mask(side="from")
+                if mask_from is not None:
+                    success_from = self._rebuild_emt_bus_model_from_editor_mask(
+                        bus=self.api_object.bus_from,
+                        mask=mask_from,
+                    )
+                else:
+                    success_from = False
 
             if self.api_object.bus_to.is_dc:
                 success_to: bool = self._rebuild_emt_bus_model_from_editor_mask(
@@ -10065,11 +10443,14 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     mask=list([False, False, False, False]),
                 )
             else:
-                mask_to: list[bool] = build_emt_branch_bus_mask_from_refs(refs=refs, side="to")
-                success_to = self._rebuild_emt_bus_model_from_editor_mask(
-                    bus=self.api_object.bus_to,
-                    mask=mask_to,
-                )
+                mask_to = self._build_connected_emt_branch_bus_mask(side="to")
+                if mask_to is not None:
+                    success_to = self._rebuild_emt_bus_model_from_editor_mask(
+                        bus=self.api_object.bus_to,
+                        mask=mask_to,
+                    )
+                else:
+                    success_to = False
 
             success = success_from and success_to
 
@@ -11362,17 +11743,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
+        # The dynamic editor must not overwrite the static injection
+        # connection. The EMT block stores its own symbolic topology.
         if isinstance(self.api_object, InjectionParent):
-            try:
-                self.api_object.conn = rlc_config["connection_type"]
-            except Exception:
-                pass
+            pass
         else:
             pass
 
         new_block = get_shunt_rlc_combo_emt_template(vf=self.var_factory, name=item.subsys.name, **template_kwargs).block
         self._annotate_internal_grounding_link_blocks(new_block)
-        self._sync_rlc_combo_load_base_values(template_kwargs)
         self._replace_scene_block_from_template(item, new_block, "rlc_combo_emt", dict(rlc_config))
 
     def _modify_induction_motor_emt_block(self, item: BlockItem | GenericBlockItem, modal_config: Dict[str, Any]) -> None:
@@ -11520,11 +11899,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         self._annotate_internal_grounding_link_blocks(new_block)
 
+        # The dynamic editor must not overwrite the static load connection.
         if isinstance(self.api_object, InjectionParent):
-            try:
-                self.api_object.conn = load_config["connection_type"]
-            except Exception:
-                pass
+            pass
         else:
             pass
 
@@ -11563,12 +11940,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
+        # The dynamic editor must not overwrite the static transformer winding
+        # connection stored by the network object.
         if isinstance(self.api_object, BranchParent):
-            try:
-                self.api_object.conn_f = topology_config["conn_f"]
-                self.api_object.conn_t = topology_config["conn_t"]
-            except Exception:
-                pass
+            pass
         else:
             pass
 
@@ -11617,17 +11992,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
+        # The dynamic editor must not overwrite the static injection
+        # connection. The EMT block stores its own symbolic topology.
         if isinstance(self.api_object, InjectionParent):
-            try:
-                self.api_object.conn = shunt_config["connection_type"]
-            except Exception:
-                pass
+            pass
         else:
             pass
 
         new_block = get_shunt_rlc_combo_emt_template(vf=self.var_factory, name=item.subsys.name, **template_kwargs).block
         self._annotate_internal_grounding_link_blocks(new_block)
-        self._sync_rlc_combo_load_base_values(template_kwargs)
         self._replace_scene_block_from_template(
             item,
             new_block,
@@ -11718,6 +12091,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             # has actually kept in the editor.
             bus_models_synchronised: bool = self._sync_emt_bus_models_from_current_interface()
             if bus_models_synchronised:
+                # Persist only the EMT interface refs that are still wired into
+                # the edited model so the saved device contract matches the
+                # rebuilt terminal bus shells seen by the simulation builder.
+                self._prune_disconnected_emt_root_interface()
                 copy_block_state(source_block=self.main_block, target_block=self.original_block)
                 self.has_unapplied_changes = False
                 self.changes_applied = True
@@ -11786,7 +12163,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             if block_model is not None:
 
                 if block_type == BlockType.INPUT_CONN or block_type == BlockType.OUTPUT_CONN:
-                    block_item: BlockItem = BlockItem(var_factory=self.var_factory, name=node.name)
+                    block_item: ProtectedConnectionBlockItem = ProtectedConnectionBlockItem(
+                        var_factory=self.var_factory,
+                        name=node.name,
+                    )
                     block_item.set_subsystem(block_model)
                     block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
                     block_item.build_item()
