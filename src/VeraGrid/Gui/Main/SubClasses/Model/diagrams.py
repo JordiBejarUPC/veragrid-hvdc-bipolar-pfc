@@ -1829,6 +1829,33 @@ class DiagramsMain(CompiledArraysMain):
         mdl = DiagramsModel(self.diagram_widgets_list)
         self.ui.diagramsListView.setModel(mdl)
 
+    @staticmethod
+    def _validate_diagram_widget_entry(diagram_widget: object) -> DIAGRAM_WIDGETS:
+        """
+        Ensure the diagram widgets list only stores GUI widgets.
+
+        :param diagram_widget: candidate list entry
+        :return: validated widget
+        """
+        if isinstance(diagram_widget, (SchematicWidget, GridMapWidget)):
+            return diagram_widget
+        else:
+            raise TypeError(
+                "diagram_widgets_list only accepts SchematicWidget or GridMapWidget entries, "
+                f"got {type(diagram_widget).__name__}"
+            )
+
+    def _append_diagram_widget(self, diagram_widget: object) -> DIAGRAM_WIDGETS:
+        """
+        Append a validated diagram widget to the tracked widgets list.
+
+        :param diagram_widget: candidate list entry
+        :return: validated widget
+        """
+        widget = self._validate_diagram_widget_entry(diagram_widget=diagram_widget)
+        self.diagram_widgets_list.append(widget)
+        return widget
+
     def _create_widget_from_diagram(self, diagram: dev.SchematicDiagram | dev.MapDiagram) -> ALL_EDITORS:
         """
         Create a diagram widget from a stored diagram object.
@@ -1863,7 +1890,7 @@ class DiagramsMain(CompiledArraysMain):
 
     def _ensure_diagram_widget_at_index(self, index: int) -> ALL_EDITORS_NONE:
         """
-        Materialize and cache a diagram widget if the entry is still deferred.
+        Return the diagram widget stored at the requested index.
 
         :param index: diagram row index
         :return: diagram widget or None
@@ -1876,19 +1903,6 @@ class DiagramsMain(CompiledArraysMain):
         entry = self.diagram_widgets_list[index]
         if isinstance(entry, (SchematicWidget, GridMapWidget)):
             return entry
-        elif isinstance(entry, (dev.SchematicDiagram, dev.MapDiagram)):
-            widget = self._create_widget_from_diagram(diagram=entry)
-            self.diagram_widgets_list[index] = widget
-
-            mdl = self.ui.diagramsListView.model()
-            if mdl is not None:
-                idx = mdl.index(index, 0)
-                mdl.dataChanged.emit(idx, idx, [QtCore.Qt.ItemDataRole.DisplayRole,
-                                                QtCore.Qt.ItemDataRole.DecorationRole])
-            else:
-                pass
-
-            return widget
         else:
             return None
 
@@ -2106,6 +2120,7 @@ class DiagramsMain(CompiledArraysMain):
                         time_index=self.get_diagram_slider_index()
                     )
 
+                    diagram_widget.center_nodes()
                     self.add_diagram_widget_and_diagram(diagram_widget=diagram_widget,
                                                         diagram=diagram)
                     self.set_diagrams_list_view()
@@ -2137,6 +2152,7 @@ class DiagramsMain(CompiledArraysMain):
                 time_index=self.get_diagram_slider_index()
             )
 
+            diagram_widget.center_nodes()
             self.add_diagram_widget_and_diagram(diagram_widget=diagram_widget, diagram=diagram)
             self.set_diagrams_list_view()
             self.show_info_toast(f"{diagram.name} added")
@@ -2166,6 +2182,7 @@ class DiagramsMain(CompiledArraysMain):
                 time_index=self.get_diagram_slider_index()
             )
 
+            diagram_widget.center_nodes()
             self.add_diagram_widget_and_diagram(diagram_widget=diagram_widget,
                                                 diagram=diagram)
             self.set_diagrams_list_view()
@@ -2217,12 +2234,8 @@ class DiagramsMain(CompiledArraysMain):
         self.diagram_widgets_list.clear()
         self.remove_all_diagram_widgets()
 
-        for i, diagram in enumerate(self.circuit.diagrams):
-            if i == 0:
-                self.diagram_widgets_list.append(self._create_widget_from_diagram(diagram=diagram))
-            else:
-                # Defer heavy widget instantiation until the user selects the diagram.
-                self.diagram_widgets_list.append(diagram)
+        for diagram in self.circuit.diagrams:
+            self._append_diagram_widget(self._create_widget_from_diagram(diagram=diagram))
 
         self.set_diagrams_list_view()
 
@@ -2319,7 +2332,7 @@ class DiagramsMain(CompiledArraysMain):
         self.show_info_toast(f"{diagram.name} added")
 
     def add_diagram_widget_and_diagram(self,
-                                       diagram_widget: ALL_EDITORS,
+                                       diagram_widget: DIAGRAM_WIDGETS,
                                        diagram: Union[dev.SchematicDiagram, dev.MapDiagram]):
         """
         Add diagram widget, it also adds the diagram to the circuit for later
@@ -2328,7 +2341,7 @@ class DiagramsMain(CompiledArraysMain):
         """
 
         # add the widget pointer
-        self.diagram_widgets_list.append(diagram_widget)
+        self._append_diagram_widget(diagram_widget)
 
         # add the diagram to the circuit
         self.circuit.add_diagram(diagram)
@@ -2613,8 +2626,9 @@ class DiagramsMain(CompiledArraysMain):
             if diagram is not None:
                 if isinstance(diagram, SchematicWidget):
 
-                    if yes_no_question("All nodes in the current diagram will be positioned to a 2D plane projection "
-                                       "of their latitude and longitude. "
+                    if yes_no_question("All buses will be positioned to a 2D plane projection of their "
+                                       "latitude and longitude. This updates the current diagram and the "
+                                       "stored bus x, y, so diagrams created afterwards use the new positions. "
                                        "Are you sure of this?"):
                         diagram.fill_xy_from_lat_lon(destructive=True)
                         diagram.center_nodes()
@@ -2884,13 +2898,23 @@ class DiagramsMain(CompiledArraysMain):
                 if rms_events_dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
 
                     events_data = rms_events_dialog.get_data()
-                    events_list = []
+                    events_list = list()
                     for i, event in enumerate(events_data["parameters"]):
+                        transition_type = events_data["transition_types"][i]
+                        end_time = events_data["end_times"][i]
+
+                        if transition_type == DynamicEventTransitionType.Ramp and end_time is None:
+                            end_time = float(events_data["target_times"][i])
+                        else:
+                            pass
+
                         events_list.append(dev.RmsEvent(device=target_device,
-                                                        parameter=events_data["parameters"][i],
-                                                        time=float(events_data["target_times"][i]),
-                                                        value=float(events_data["values"][i]),
-                                                        group=events_data["groups"][i]))
+                                                         parameter=events_data["parameters"][i],
+                                                         time=float(events_data["target_times"][i]),
+                                                         end_time=None if end_time is None else float(end_time),
+                                                         value=float(events_data["values"][i]),
+                                                         group=events_data["groups"][i],
+                                                         transition_type=transition_type))
 
                     for event in events_list:
                         self.circuit.add_rms_event(event)
@@ -3313,8 +3337,6 @@ class DiagramsMain(CompiledArraysMain):
             if diagram != caller:
                 if isinstance(diagram, (SchematicWidget, GridMapWidget)):
                     diagram.delete_element_utility_function(device=api_obj, propagate=False)
-                elif isinstance(diagram, (dev.SchematicDiagram, dev.MapDiagram)):
-                    diagram.delete_device(device=api_obj)
                 else:
                     pass
 
@@ -3406,7 +3428,12 @@ class DiagramsMain(CompiledArraysMain):
 
     def combinations_tree_clicked(self):
         """
-        On combinations tree click
+        On combinations tree click. Dispatches by the active study type:
+        - ShortCircuit: re-colours the diagram for the clicked short-circuit case.
+        - InvestmentsEvaluation: applies the clicked Pareto combination to the
+          live MultiCircuit (sticky behaviour) and refreshes the diagram.
+        - CatalogueOptimization: applies the clicked Pareto combination's
+          templates to the live MultiCircuit and refreshes the diagram.
         """
         indices = self.ui.combinationsTreeView.selectedIndexes()
 
@@ -3438,9 +3465,204 @@ class DiagramsMain(CompiledArraysMain):
                                       max_bus_width=max_bus_width,
                                       sc_index=sel_idx)
 
+                elif current_study == sim.InvestmentsEvaluationDriver.tpe.value:
+                    # delegate to the dedicated handler so this dispatcher stays small
+                    self.apply_investments_combination(clicked_index=indices[0])
+
+                elif current_study == sim.CatalogueOptimizationDriver.tpe.value:
+                    # delegate to the dedicated catalogue handler
+                    self.apply_catalogue_combination(clicked_index=indices[0])
+
+                else:
+                    # the active study has no per-combination behaviour - nothing to do
+                    pass
+            else:
+                # no study selected or invalid row - nothing to dispatch
+                pass
+
         else:
             #  no indices selected
             pass
+
+    def apply_investments_combination(self, clicked_index: QtCore.QModelIndex) -> None:
+        """
+        Apply the Pareto combination tagged on the clicked tree item to the live
+        MultiCircuit and refresh the active diagram.
+
+        The clicked index may be either a top-level combination row or one of its
+        investment-name children; we walk up to the top-level item to recover the
+        combination index that was stamped via Qt.UserRole when the model was built.
+
+        Behaviour is sticky: every click first deactivates every investment-touched
+        device in the live grid, then activates only the investments belonging to
+        the clicked combination. This matches the convention the optimizer used
+        for each evaluation (an x of all zeros = every investment off), so the
+        diagram exactly reproduces the state the optimizer scored for that combo
+        and a click on a different row cleanly replaces the previous selection.
+
+        WARNING: every click overwrites the active *profile* (time-series) of
+        each touched device via set_investments_status. Any pre-existing
+        time-series active profile is lost permanently after the first click and
+        cannot be recovered. Tell users to save the project before exploring
+        combinations if their grid has a meaningful active profile.
+
+        :param clicked_index: QModelIndex of the row (or child row) the user clicked
+        """
+        # walk up to the top-level row, since the tree shows investment names as
+        # children of each combination row and clicks may land on a child item
+        top_index: QtCore.QModelIndex = clicked_index
+        while top_index.parent().isValid():
+            top_index = top_index.parent()
+
+        # the original combination index was stamped on column 0 at model-build
+        # time; read it from the column-0 sibling so we get the tagged item even
+        # if the user clicked a different column of the same row
+        column_zero_index: QtCore.QModelIndex = top_index.sibling(top_index.row(), 0)
+        user_data = column_zero_index.data(QtCore.Qt.ItemDataRole.UserRole)
+
+        if user_data is None:
+            # row was not tagged with a combination index (defensive guard)
+            return None
+        else:
+            i: int = int(user_data)
+
+        driver, results = self.session.investments_evaluation
+        if driver is None or results is None:
+            # results were cleared between panel build and click
+            self.show_warning_toast("Investments evaluation results are no longer available")
+            return None
+        else:
+            pass
+
+        # build the list of Investment objects activated by this combination
+        x_vec: np.ndarray = results.x[i, :]
+        inv_list = driver.problem.get_investments_for_combination(x=x_vec)
+
+        # Force a clean baseline before applying the combo: deactivate every
+        # device touched by any investment in the grid. Without this step,
+        # branches that were switched on by a previous click would stay on,
+        # compounding selections instead of replacing them. We use the cached
+        # _investments_all list (snapshot at evaluation finish) rather than the
+        # current self.circuit.investments so the deactivation set is stable
+        # across clicks and identical to what post_investments_evaluation
+        # used when seeding the diagram.
+        all_elements_dict, _ = self.circuit.get_all_elements_dict()
+        self.circuit.set_investments_status(investments_list=self._investments_all,
+                                            status=False,
+                                            all_elements_dict=all_elements_dict)
+
+        # apply the selected combination on top of the now-deactivated state
+        self.circuit.set_investments_status(investments_list=inv_list,
+                                            status=True,
+                                            all_elements_dict=all_elements_dict)
+
+        # Refresh active/inactive pen styles on every open schematic so toggled
+        # branches go from dashed (inactive) to solid (active) and vice versa.
+        # This is separate from result-based colouring done by colour_diagrams() —
+        # the dashed/solid pen style is set by recolour_mode(), which reads
+        # api_object.active. colour_diagrams() only paints results-based colours
+        # and does not refresh active-state styling on its own.
+        for diagram_widget in self.diagram_widgets_list:
+            if isinstance(diagram_widget, SchematicWidget):
+                diagram_widget.recolour_mode()
+            else:
+                # map widgets and other diagram types do not encode active state
+                # via dashed/solid pen styling, so they have nothing to refresh
+                pass
+
+        # re-apply result-based colouring on top of the active-state styling
+        self.colour_diagrams()
+        self.show_info_toast(f"Applied Pareto combination {i}: "
+                             f"{len(inv_list)} investments active")
+        return None
+
+    def apply_catalogue_combination(self, clicked_index: QtCore.QModelIndex) -> None:
+        """
+        Apply the Pareto combination tagged on the clicked tree item to the live
+        MultiCircuit by swapping each selected branch's electrical parameters to
+        those of the chosen template, then refresh the diagrams.
+
+        The clicked index may be either a top-level combination row or one of
+        its decision-variable children; we walk up to the top-level item to
+        recover the combination index that was stamped via Qt.UserRole when
+        the model was built.
+
+        Behaviour is sticky: every click first restores every problem-tracked
+        branch to its baseline state captured at problem-construction time
+        (in CatalogueOptimizationProblem.snapshots), then applies the templates
+        for the selected combination's x vector. This matches the convention
+        the optimizer used per evaluation, so the diagram exactly reproduces
+        the state NSGA-3 scored for that combination, and a click on a
+        different row cleanly replaces the previous selection.
+
+        WARNING: every click overwrites each branch's electrical parameters
+        (R, X, B, rate, ...) and template pointers via apply_template. If the
+        user has unsaved manual edits to those branches, they will be lost
+        after the first click. Tell users to save the project before exploring
+        combinations.
+
+        :param clicked_index: QModelIndex of the row (or child row) the user clicked
+        """
+        # Walk up to the top-level row, since the tree shows decision-variable
+        # entries as children of each combination row and clicks may land on
+        # a child item.
+        top_index: QtCore.QModelIndex = clicked_index
+        while top_index.parent().isValid():
+            top_index = top_index.parent()
+
+        # The combination index was stamped on column 0 at model-build time;
+        # read it from the column-0 sibling so we get the tagged item even if
+        # the user clicked a different column of the same row.
+        column_zero_index: QtCore.QModelIndex = top_index.sibling(top_index.row(), 0)
+        user_data = column_zero_index.data(QtCore.Qt.ItemDataRole.UserRole)
+
+        if user_data is None:
+            # row was not tagged with a combination index (defensive guard)
+            return None
+        else:
+            i: int = int(user_data)
+
+        driver, results = self.session.catalogue_optimization
+        if driver is None or results is None:
+            # results were cleared between panel build and click
+            self.show_warning_toast("Catalogue optimization results are no longer available")
+            return None
+        else:
+            pass
+
+        # Recover the integer x vector for this Pareto member.
+        x_vec: np.ndarray = results.x[i, :]
+
+        # Force a clean baseline before applying the combo: revert every branch
+        # tracked by the problem to its pre-evaluation snapshot. Without this
+        # step, parameter changes from a previous click would compound, and a
+        # branch whose chosen template differs between two combos would end
+        # up with the most recently-applied template both times.
+        driver.problem._restore_baseline()
+
+        # Apply the templates for the selected combination on top of the
+        # restored baseline. _apply_combination performs branch.apply_template
+        # for every decision slot using x_vec[i] as the pool index.
+        driver.problem._apply_combination(x=x_vec)
+
+        # Refresh active/inactive pen styles on every open schematic. Catalogue
+        # optimization does not toggle device.active itself, but apply_template
+        # may indirectly affect rendering (rate-based widths, etc.), so we run
+        # the same recolour pass we use for Investments to keep the diagrams
+        # consistent with the live state.
+        for diagram_widget in self.diagram_widgets_list:
+            if isinstance(diagram_widget, SchematicWidget):
+                diagram_widget.recolour_mode()
+            else:
+                # non-schematic widgets do not encode branch state via pen
+                # styling, so they have nothing to refresh here
+                pass
+
+        # Re-apply result-based colouring on top of the refreshed pen styling.
+        self.colour_diagrams()
+        self.show_info_toast(f"Applied catalogue combination {i}: "
+                             f"{len(x_vec)} branches updated")
+        return None
 
     def reset_diagram_coordinates(self):
         """

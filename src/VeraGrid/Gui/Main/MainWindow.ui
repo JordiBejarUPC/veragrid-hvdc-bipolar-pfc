@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1198</width>
-    <height>742</height>
+    <width>1235</width>
+    <height>766</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -283,7 +283,7 @@
                             <x>0</x>
                             <y>0</y>
                             <width>396</width>
-                            <height>298</height>
+                            <height>322</height>
                            </rect>
                           </property>
                           <attribute name="icon">
@@ -349,7 +349,7 @@
                            <rect>
                             <x>0</x>
                             <y>0</y>
-                            <width>252</width>
+                            <width>262</width>
                             <height>362</height>
                            </rect>
                           </property>
@@ -744,7 +744,7 @@
                            <rect>
                             <x>0</x>
                             <y>0</y>
-                            <width>171</width>
+                            <width>174</width>
                             <height>240</height>
                            </rect>
                           </property>
@@ -895,7 +895,7 @@
                            <rect>
                             <x>0</x>
                             <y>0</y>
-                            <width>122</width>
+                            <width>124</width>
                             <height>244</height>
                            </rect>
                           </property>
@@ -3004,19 +3004,6 @@
                     <number>0</number>
                    </property>
                    <item>
-                    <widget class="QComboBox" name="eventsGroupComboBox">
-                     <property name="minimumSize">
-                      <size>
-                       <width>140</width>
-                       <height>0</height>
-                      </size>
-                     </property>
-                     <property name="toolTip">
-                      <string>Select the events group to view</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
                     <widget class="QLineEdit" name="search_dynamic_objects_lineEdit">
                      <property name="maximumSize">
                       <size>
@@ -3040,6 +3027,26 @@
                      <property name="icon">
                       <iconset resource="../Icons/icons.qrc">
                        <normaloff>:/Icons/icons/magnifying_glass.png</normaloff>:/Icons/icons/magnifying_glass.png</iconset>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="prepareRmsDynamicPlotsButton">
+                     <property name="toolTip">
+                      <string>Open the RMS pre-simulation dynamic plot editor</string>
+                     </property>
+                     <property name="text">
+                      <string>RMS plots</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="prepareEmtDynamicPlotsButton">
+                     <property name="toolTip">
+                      <string>Open the EMT pre-simulation dynamic plot editor</string>
+                     </property>
+                     <property name="text">
+                      <string>EMT plots</string>
                      </property>
                     </widget>
                    </item>
@@ -10907,7 +10914,7 @@ QProgressBar::chunk{
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1198</width>
+     <width>1235</width>
      <height>23</height>
     </rect>
    </property>
@@ -10926,13 +10933,16 @@ QProgressBar::chunk{
      </property>
      <addaction name="actionPSS_e_Raw_Rawx"/>
      <addaction name="actionPower_Factory_DGS"/>
+     <addaction name="actionMATPOWER"/>
      <addaction name="actionCIM"/>
      <addaction name="actionCGMES"/>
+     <addaction name="actionUCTE"/>
      <addaction name="actionPower_Grid_Models"/>
      <addaction name="actionH5"/>
      <addaction name="actionJSON"/>
      <addaction name="actionMicrosoft_Excel"/>
      <addaction name="actionSQLite"/>
+     <addaction name="actionExportVeragridScenario"/>
     </widget>
     <widget class="QMenu" name="menuExport_data">
      <property name="title">
@@ -11003,6 +11013,8 @@ QProgressBar::chunk{
     <addaction name="actionContingency_analysis"/>
     <addaction name="actionRun_Dynamic_RMS_Simulation"/>
     <addaction name="actionRun_Small_Signal_RMS_Simulation"/>
+    <addaction name="actionRun_Dynamic_EMT_Simulation"/>
+    <addaction name="actionRun_Small_Signal_EMT_Simulation"/>
     <addaction name="separator"/>
     <addaction name="actionOPF"/>
     <addaction name="actionNodal_capacity"/>
@@ -11017,6 +11029,7 @@ QProgressBar::chunk{
     <addaction name="actionFind_node_groups"/>
     <addaction name="actionPower_flow_Stochastic"/>
     <addaction name="actionInvestments_evaluation"/>
+    <addaction name="actionCatalogue_element_optimization"/>
     <addaction name="actionReliability"/>
     <addaction name="actionBlackout_cascade"/>
     <addaction name="separator"/>
@@ -11041,7 +11054,7 @@ QProgressBar::chunk{
     <addaction name="actionSet_model_x_y_based_on_lat_lon"/>
     <addaction name="actionGrid_reduction"/>
     <addaction name="actionProcedural_grid_expansion"/>
-    <addaction name="actionCatalogue_element_optimization"/>
+    <addaction name="actionRestore_investments"/>
     <addaction name="actionre_index_time"/>
     <addaction name="actionScale"/>
     <addaction name="separator"/>
@@ -12598,6 +12611,21 @@ QProgressBar::chunk{
     <enum>QAction::MenuRole::TextHeuristicRole</enum>
    </property>
   </action>
+  <action name="actionPrepare_RMS_Dynamic_Plots">
+   <property name="icon">
+    <iconset resource="../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/dyn.png</normaloff>:/Icons/icons/dyn.png</iconset>
+   </property>
+   <property name="text">
+    <string>Prepare RMS dynamic plots</string>
+   </property>
+   <property name="toolTip">
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Prepare RMS dynamic plots&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Open the RMS dynamic plot editor before running the simulation&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::MenuRole::TextHeuristicRole</enum>
+   </property>
+  </action>
   <action name="actionRun_Small_Signal_RMS_Simulation">
    <property name="icon">
     <iconset resource="../Icons/icons.qrc">
@@ -12689,6 +12717,24 @@ QProgressBar::chunk{
    </property>
    <property name="text">
     <string>Power Factory DGS</string>
+   </property>
+  </action>
+  <action name="actionMATPOWER">
+   <property name="icon">
+    <iconset resource="../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/matpower.png</normaloff>:/Icons/icons/matpower.png</iconset>
+   </property>
+   <property name="text">
+    <string>Matpower</string>
+   </property>
+  </action>
+  <action name="actionUCTE">
+   <property name="icon">
+    <iconset resource="../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/cgmes.png</normaloff>:/Icons/icons/cgmes.png</iconset>
+   </property>
+   <property name="text">
+    <string>UCTE</string>
    </property>
   </action>
   <action name="actionCGMES">
@@ -12856,6 +12902,21 @@ QProgressBar::chunk{
     <enum>QAction::MenuRole::TextHeuristicRole</enum>
    </property>
   </action>
+  <action name="actionPrepare_EMT_Dynamic_Plots">
+   <property name="icon">
+    <iconset resource="../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/dyn_emt.png</normaloff>:/Icons/icons/dyn_emt.png</iconset>
+   </property>
+   <property name="text">
+    <string>Prepare EMT dynamic plots</string>
+   </property>
+   <property name="toolTip">
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Prepare EMT dynamic plots&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Open the EMT dynamic plot editor before running the simulation&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::MenuRole::TextHeuristicRole</enum>
+   </property>
+  </action>
   <action name="actionRun_Small_Signal_EMT_Simulation">
    <property name="icon">
     <iconset resource="../Icons/icons.qrc">
@@ -12936,6 +12997,27 @@ QProgressBar::chunk{
    </property>
    <property name="text">
     <string>Set model (x,y) based on (lat, lon)</string>
+   </property>
+  </action>
+  <action name="actionRestore_investments">
+   <property name="icon">
+    <iconset resource="../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/data.png</normaloff>:/Icons/icons/data.png</iconset>
+   </property>
+   <property name="text">
+    <string>Restore investments</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::MenuRole::NoRole</enum>
+   </property>
+  </action>
+  <action name="actionExportVeragridScenario">
+   <property name="icon">
+    <iconset resource="../Icons/icons.qrc">
+     <normaloff>:/Program icon/icons/VeraGrid_icon.png</normaloff>:/Program icon/icons/VeraGrid_icon.png</iconset>
+   </property>
+   <property name="text">
+    <string>Veragrid Scenario</string>
    </property>
   </action>
  </widget>

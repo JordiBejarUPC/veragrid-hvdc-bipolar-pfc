@@ -84,8 +84,8 @@ def setup_rms_models(grid: gce.MultiCircuit) -> None:
 
     for gen in grid.get_generators():
         gen_mdl = get_genrow1_rms_template(grid.var_factory, name=f"Gen_{gen.name}").block
-        gen_mdl.connect([gen_mdl.in_vars[0]], [gen.bus.rms_model.out_vars[0]])
-        gen_mdl.connect([gen_mdl.in_vars[1]], [gen.bus.rms_model.out_vars[1]])
+        grid.var_factory.add_connections([gen_mdl.in_vars[0]], [gen.bus.rms_model.out_vars[0]])
+        grid.var_factory.add_connections([gen_mdl.in_vars[1]], [gen.bus.rms_model.out_vars[1]])
         gen_mdl.unify_blocks()
 
         wrapper = Block(children=[gen_mdl])
@@ -101,16 +101,16 @@ def setup_rms_models(grid: gce.MultiCircuit) -> None:
         for var, const in load_mdl.event_dict.items():
             if var.name == "V0" and const.value is None:
                 const.value = 1.0
-        load_mdl.connect([load_mdl.in_vars[0]], [load.bus.rms_model.out_vars[0]])
+        grid.var_factory.add_connections([load_mdl.in_vars[0]], [load.bus.rms_model.out_vars[0]])
         load_mdl.unify_blocks()
         load.rms_model = load_mdl
 
     for line in grid.lines:
         line_mdl = get_line_rms_template(grid.var_factory, name=f"Line_{line.name}").block
-        line_mdl.connect([line_mdl.in_vars[0]], [line.bus_from.rms_model.out_vars[0]])
-        line_mdl.connect([line_mdl.in_vars[1]], [line.bus_from.rms_model.out_vars[1]])
-        line_mdl.connect([line_mdl.in_vars[2]], [line.bus_to.rms_model.out_vars[0]])
-        line_mdl.connect([line_mdl.in_vars[3]], [line.bus_to.rms_model.out_vars[1]])
+        grid.var_factory.add_connections([line_mdl.in_vars[0]], [line.bus_from.rms_model.out_vars[0]])
+        grid.var_factory.add_connections([line_mdl.in_vars[1]], [line.bus_from.rms_model.out_vars[1]])
+        grid.var_factory.add_connections([line_mdl.in_vars[2]], [line.bus_to.rms_model.out_vars[0]])
+        grid.var_factory.add_connections([line_mdl.in_vars[3]], [line.bus_to.rms_model.out_vars[1]])
         line_mdl.unify_blocks()
         line.rms_model = line_mdl
 

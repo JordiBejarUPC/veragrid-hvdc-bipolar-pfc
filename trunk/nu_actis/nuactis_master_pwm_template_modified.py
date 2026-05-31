@@ -547,7 +547,7 @@ def build_trafo_master_block(vfactory: VarFactory, name: str = "") -> RmsModelTe
     dt_id = vfactory.add_diff_var("dt_id" + suffix, base_var=i_d)
     dt_iq = vfactory.add_diff_var("dt_iq" + suffix, base_var=i_q)
 
-    modulator.connect([pmd_mod, pmq_mod], [pmd, pmq])
+    grid.var_factory.add_connections([pmd_mod, pmq_mod], [pmd, pmq])
 
     block = Block(
         algebraic_eqs=[

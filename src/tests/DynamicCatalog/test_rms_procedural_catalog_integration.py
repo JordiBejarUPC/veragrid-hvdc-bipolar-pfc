@@ -65,7 +65,7 @@ def _build_procedural_catalog_load_rms_template(vf: VarFactory,
     enable_mode = next(iter(enable_block.mode_dict.keys()))
     enable_block.event_dict[enable_param] = vf.add_const(1.0, name="Enable")
     enable_block.mode_dict[enable_mode] = vf.add_const(1.0, name="Enable mode")
-    enable_block.connect([enable_block.in_vars[0]], [p_ref])
+    vf.add_connections([enable_block.in_vars[0]], [p_ref])
     enable_block.init_eqs[enable_block.out_vars[0]] = p_ref
 
     template.block = Block(
@@ -100,18 +100,45 @@ def _build_procedural_catalog_load_rms_template(vf: VarFactory,
 
 
 def test_rms_update_variable_params_applies_catalog_procedural_logic() -> None:
-    descriptor = get_basic_block_catalog_descriptor_by_key()["enable_signal_fixed"]
-    template = load_basic_block_catalog_template(descriptor, VarFactory())
-    problem = RmsProblemDae.__new__(RmsProblemDae)
-    runtime_parameters = list(template.block.event_dict.keys()) + list(template.block.mode_dict.keys())
-    ordered_vars = list()
+    """
+    Verify that procedural catalog logic updates runtime parameters on a minimal RMS problem fixture.
 
-    for candidate in template.block.in_vars + template.block.out_vars + template.block.algebraic_vars + template.block.state_vars:
-        if candidate.uid not in {var.uid for var in ordered_vars}:
-            ordered_vars.append(candidate)
-        else:
-            pass
+    The test intentionally builds the problem instance through ``__new__`` so it can isolate
+    ``update_variable_params`` without running the full constructor. Because that bypasses the
+    normal object initialization path, the test must explicitly seed every instance attribute that
+    the method relies on, including the scheduled-mode event containers.
 
+    :return: None.
+    """
+
+    descriptor: object = get_basic_block_catalog_descriptor_by_key()["enable_signal_fixed"]
+    template: object = load_basic_block_catalog_template(descriptor, VarFactory())
+    problem: RmsProblemDae = RmsProblemDae.__new__(RmsProblemDae)
+    runtime_parameters: list[Var] = list(template.block.event_dict.keys())
+    runtime_parameters.extend(list(template.block.mode_dict.keys()))
+    ordered_vars: list[Var] = list()
+    variable_groups: list[list[Var]] = list()
+
+    variable_groups.append(template.block.in_vars)
+    variable_groups.append(template.block.out_vars)
+    variable_groups.append(template.block.algebraic_vars)
+    variable_groups.append(template.block.state_vars)
+
+    # Build a stable flat variable ordering that matches the synthetic runtime state vector used by
+    # the boundary updater. The deduplication is required because a block variable can appear in
+    # multiple structural collections.
+    candidate_group: list[Var]
+    for candidate_group in variable_groups:
+        candidate: Var
+        for candidate in candidate_group:
+            if candidate.uid not in {var.uid for var in ordered_vars}:
+                ordered_vars.append(candidate)
+            else:
+                pass
+
+    # Seed the minimum state required by ``update_variable_params``. The test bypasses ``__init__``,
+    # so every attribute consumed by the method must be initialized explicitly to preserve the class
+    # invariants expected by production code.
     problem.sys_block = template.block
     problem._glob_time = Var("glob_time")
     problem._uid2idx_vars = {var.uid: idx for idx, var in enumerate(ordered_vars)}
@@ -121,6 +148,8 @@ def test_rms_update_variable_params_applies_catalog_procedural_logic() -> None:
     problem._constant_params = np.zeros(0, dtype=float)
     problem._variable_parameters_values = np.array([1.0, 0.0], dtype=float)
     problem._event_params_fn = _passthrough_event_params
+    problem._scheduled_mode_events = dict()
+    problem._mode_event_cursor = dict()
     problem._block_boundary_updater = build_boundary_updater_from_block(problem)
 
     RmsProblemDae.update_variable_params(problem, t=0.0, x_snapshot=np.zeros(len(ordered_vars), dtype=float))
@@ -161,24 +190,17 @@ def test_rms_catalog_procedural_logic_changes_load_output_during_real_simulation
         freq=50.0,
     )
 
-    genqec_mdl = get_complete_generator_template_rms(grid.var_factory).block
+    genqec_template = get_complete_generator_template_rms(grid.var_factory)
     line_mdl = get_line_rms_template(grid.var_factory).block
     load_mdl, enable_param, enable_mode, p_out = _build_procedural_catalog_load_rms_template(grid.var_factory)
 
-    genqec_mdl.connect([genqec_mdl.in_vars[0]], [bus0.rms_model.out_vars[0]])
-    genqec_mdl.connect([genqec_mdl.in_vars[1]], [bus0.rms_model.out_vars[1]])
-    line_mdl.connect([line_mdl.in_vars[0]], [bus0.rms_model.out_vars[0]])
-    line_mdl.connect([line_mdl.in_vars[1]], [bus0.rms_model.out_vars[1]])
-    line_mdl.connect([line_mdl.in_vars[2]], [bus1.rms_model.out_vars[0]])
-    line_mdl.connect([line_mdl.in_vars[3]], [bus1.rms_model.out_vars[1]])
-
-    big_gen = Block(children=[genqec_mdl])
-    big_gen.external_mapping.update({VarPowerFlowRefferenceType.P: genqec_mdl.out_vars[0]})
-    big_gen.external_mapping.update({VarPowerFlowRefferenceType.Q: genqec_mdl.out_vars[1]})
+    grid.var_factory.add_connections([line_mdl.in_vars[0]], [bus0.rms_model.out_vars[0]])
+    grid.var_factory.add_connections([line_mdl.in_vars[1]], [bus0.rms_model.out_vars[1]])
+    grid.var_factory.add_connections([line_mdl.in_vars[2]], [bus1.rms_model.out_vars[0]])
+    grid.var_factory.add_connections([line_mdl.in_vars[3]], [bus1.rms_model.out_vars[1]])
 
     line0.rms_model = line_mdl
     load.rms_model = load_mdl.block
-    gen0.rms_model = big_gen
 
     events_group = RmsEventsGroup("catalog-procedural-rms")
     disable_event = RmsEvent(device=load, parameter=enable_param, time=0.05, value=0.0, group=events_group)
@@ -187,6 +209,7 @@ def test_rms_catalog_procedural_logic_changes_load_output_during_real_simulation
     grid.add_line(line0)
     grid.add_load(bus=bus1, api_obj=load)
     grid.add_generator(bus=bus0, api_obj=gen0)
+    gen0.rms_template = genqec_template
 
     options = gce.PowerFlowOptions(
         solver_type=gce.SolverType.NR,

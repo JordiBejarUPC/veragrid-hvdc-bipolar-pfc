@@ -248,31 +248,12 @@ def run_dense_small_signal_stability(problem: RmsProblemTemplate,
     if differential_vars == 0:
         # Scipy returns w such that w^TA = lambda w^H. We must conjugate it to W^TA = lambda W^T.
         A_bal, A_orig = compute_state_matrix(problem=problem, x=x, dx=dx)
+        A_bal += sp.eye(A_bal.shape[0]) * 1e-10
         eig_results = list(la.eig(A_bal, left=True, right=True))
     else:
-        h = problem.get_dt_value()
-        h = 1e9
         E_matrix = problem.get_E_matrix(x, dx)
-
-        nx = problem.get_states_number()
-        ny = problem.get_algebraic_var_number()
-        if nx == 0:
-            fx = sp.csr_matrix((0, 0))
-            fy = sp.csr_matrix((0, ny))
-            gx = sp.csr_matrix((ny, 0))
-        else:
-            fx = problem.get_j11(x, dx, h)
-            fy = problem.get_j12(x, dx, h)
-            gx = problem.get_j21(x, dx, h)
-        gy = problem.get_j22(x, dx, h)
-
-        # 1. BUILD THE ENHANCED JACOBIAN (Sparse)
-        J_top = sp.hstack([fx, fy])
-        J_bot = sp.hstack([gx, gy])
-        A_matrix = sp.vstack([J_top, J_bot])
-
-        # Debug: Check A_matrix row 70 for large values
-        A_dense = A_matrix.toarray()
+        A_dense = np.asarray(problem.get_static_state_matrix(x, dx), dtype=float)
+        #A_dense += np.eye(A_dense.shape[0]) * 1e-10
         A_orig = A_dense.copy()
         # Convert to dense for eig
         eig_results = list(la.eig(A_dense, -E_matrix, left=True, right=True))
@@ -318,20 +299,9 @@ def run_sparse_small_signal_stability(problem: RmsProblemTemplate,
     """
 
     t0: float = time.perf_counter()
-    h: float = problem.get_dt_value()
-
-    # Obtain sparse submatrices
-    fx = problem.get_j11(x, dx, h)
-    fy = problem.get_j12(x, dx, h)
-    gx = problem.get_j21(x, dx, h)
-    gy = problem.get_j22(x, dx, h)
-
-    n_states: int = fx.shape[0]
-
-    # 1. BUILD THE ENHANCED JACOBIAN (Sparse)
-    J_top = sp.hstack([fx, fy])
-    J_bot = sp.hstack([gx, gy])
-    J_aug = sp.vstack([J_top, J_bot], format='csc')
+    A_static = np.asarray(problem.get_static_state_matrix(x, dx), dtype=float)
+    J_aug = sp.csc_matrix(A_static)
+    n_states: int = problem.get_states_number()
 
     # 2. SUPER-LU FACTORIZATION OF THE ENTIRE SYSTEM
     J_aug_lu = spla.splu(J_aug)
@@ -343,7 +313,7 @@ def run_sparse_small_signal_stability(problem: RmsProblemTemplate,
                                                  J_aug_lu=J_aug_lu)
     else:
         # 3. CREATE THE SHIFT-AND-INVERT OPERATOR (A^-1 * E * v)
-        E = problem.get_E_matrix()
+        E = problem.get_E_matrix(x, dx)
         n_states = problem.get_diff_var_number()
         op_methods = SparseGeneralizedShiftInvertMethods(
             n_states=n_states,
@@ -599,7 +569,7 @@ class SmallSignalStabilityRmsDriver(DriverTemplate):
             pass
 
         n = self.problem.get_states_number()
-        if self.k >= n - 1:
+        if self.k >= n - 1 or self.k == 0:
             (eigenvalues,
              participation_factors,
              damping_ratios,

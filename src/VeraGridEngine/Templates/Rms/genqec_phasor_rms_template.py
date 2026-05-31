@@ -361,7 +361,9 @@ def get_genqec_phasor(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     return templ
 
 
-def get_complete_generator_template_phasor(vfactory: VarFactory, name="complete generator phasor rms template") -> RmsModelTemplate:
+def get_complete_generator_template_phasor(vfactory: VarFactory,
+                                           name="complete generator phasor rms template",
+                                           hard_sat_type: str = "ml") -> RmsModelTemplate:
     """
     Complete generator template with governor, exciter, and stabilizer for phasor-based RMS simulation.
     
@@ -385,10 +387,10 @@ def get_complete_generator_template_phasor(vfactory: VarFactory, name="complete 
     templ.name = name
 
     # Generate models from generation_tensygrid_ml.py
-    genqec_mdl = GenqecBuild(vfactory=vfactory, name=name).block
-    governor_mdl = GovernorBuild(vfactory=vfactory, name=name).block
-    stabilizer_mdl = StabilizerBuild(vfactory=vfactory, name=name).block
-    exciter_mdl = ExciterBuild(vfactory=vfactory, name=name).block
+    genqec_mdl = GenqecBuild(vfactory=vfactory, name=name, hard_sat_type=hard_sat_type).block
+    governor_mdl = GovernorBuild(vfactory=vfactory, name=name, hard_sat_type=hard_sat_type).block
+    stabilizer_mdl = StabilizerBuild(vfactory=vfactory, name=name, hard_sat_type=hard_sat_type).block
+    exciter_mdl = ExciterBuild(vfactory=vfactory, name=name, hard_sat_type=hard_sat_type).block
 
     # Create Vm calculation block: Vm = sqrt(Vr^2 + Vi^2)
     # This computes the voltage magnitude from phasor components for the exciter
@@ -404,7 +406,7 @@ def get_complete_generator_template_phasor(vfactory: VarFactory, name="complete 
         algebraic_eqs=[
             Vr_aux - Vr_input,
             Vi_aux - Vi_input,
-            Vm_calc*Vm_calc_aux - (Vr_input * Vr_input + Vi_input * Vi_input),
+            Vm_calc*Vm_calc_aux - (Vr_input * Vr_aux + Vi_input * Vi_aux),
             Vm_calc -Vm_calc_aux],
         algebraic_vars=[Vm_calc, Vm_calc_aux, Vr_aux, Vi_aux],
         out_vars=[Vm_calc],
@@ -420,17 +422,17 @@ def get_complete_generator_template_phasor(vfactory: VarFactory, name="complete 
     # Connect models
     # genqec inputs: [Vr, Vi, Tm, Vf]
     # genqec outputs: [Pg, Qg, omega, IRPu, Te]
-    genqec_mdl.connect([genqec_mdl.in_vars[3]], [exciter_mdl.out_vars[0]])  # Vf from exciter
-    exciter_mdl.connect([exciter_mdl.in_vars[0]], [genqec_mdl.out_vars[3]])  # IRPu to exciter
-    exciter_mdl.connect([exciter_mdl.in_vars[1]], [vm_calc_block.out_vars[0]])  # Vm from calculation block
-    exciter_mdl.connect([exciter_mdl.in_vars[2]], [stabilizer_mdl.out_vars[0]])  # Vpss to exciter
+    vfactory.add_connections([genqec_mdl.in_vars[3]], [exciter_mdl.out_vars[0]])  # Vf from exciter
+    vfactory.add_connections([exciter_mdl.in_vars[0]], [genqec_mdl.out_vars[3]])  # IRPu to exciter
+    vfactory.add_connections([exciter_mdl.in_vars[1]], [vm_calc_block.out_vars[0]])  # Vm from calculation block
+    vfactory.add_connections([exciter_mdl.in_vars[2]], [stabilizer_mdl.out_vars[0]])  # Vpss to exciter
 
-    stabilizer_mdl.connect([stabilizer_mdl.in_vars[0]], [genqec_mdl.out_vars[2]])  # omega to stabilizer
+    vfactory.add_connections([stabilizer_mdl.in_vars[0]], [genqec_mdl.out_vars[2]])  # omega to stabilizer
 
-    genqec_mdl.connect([genqec_mdl.in_vars[2]], [governor_mdl.out_vars[0]])  # Tm from governor
+    vfactory.add_connections([genqec_mdl.in_vars[2]], [governor_mdl.out_vars[0]])  # Tm from governor
 
-    governor_mdl.connect([governor_mdl.in_vars[0]], [genqec_mdl.out_vars[2]])  # omega to governor
-    governor_mdl.connect([governor_mdl.in_vars[1]], [genqec_mdl.out_vars[4]])  # Te to governor
+    vfactory.add_connections([governor_mdl.in_vars[0]], [genqec_mdl.out_vars[2]])  # omega to governor
+    vfactory.add_connections([governor_mdl.in_vars[1]], [genqec_mdl.out_vars[4]])  # Te to governor
 
     # Convert generator P/Q outputs to injected Ir/Ii for current-balance formulations
     Pg_out = genqec_mdl.out_vars[0]

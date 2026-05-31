@@ -5,6 +5,7 @@
 
 import numpy as np
 import pandas as pd
+from typing import Dict
 
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.driver_template import DriverTemplate
@@ -18,9 +19,31 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowRes
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonDiagnosticsConfig
 from VeraGridEngine.IO.fmu.importer.emt_boundary import build_emt_boundary_updater
 from VeraGridEngine.basic_structures import Vec, StrVec
-from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 
 from VeraGridEngine.enumerations import EngineType, SimulationTypes
+
+
+def _collect_emt_group_parameter_values(problem: EmtProblemDae) -> Dict[str, float]:
+    """
+    Export one event-group parameter snapshot from the EMT problem.
+
+    :param problem: Solved EMT problem instance.
+    :return: Parameter scalar map keyed by ``device_idtag:param_name``.
+    """
+    parameter_values: Dict[str, float] = dict()
+    event_parameter_count: int = len(problem.get_variable_parameters())
+    parameter_index: int
+
+    for parameter_index in range(event_parameter_count):
+        parameter_var = problem.get_variable_parameters()[parameter_index]
+        device_idtag: str | None = problem._event_parameter_device_idtags.get(parameter_var.uid, None)
+        if device_idtag is not None:
+            parameter_key: str = str(device_idtag) + ":" + str(parameter_var.name)
+            parameter_values[parameter_key] = float(problem._event_params_values[parameter_index])
+        else:
+            pass
+
+    return parameter_values
 
 
 class EmtSimulationDriver(DriverTemplate):
@@ -102,6 +125,7 @@ class EmtSimulationDriver(DriverTemplate):
         #     emt_events_groups = self.grid.emt_events_groups
 
         emt_events_group_names: StrVec = np.array([elm.name for elm in emt_events_groups])
+        emt_events_group_idtags: StrVec = np.array([str(elm.idtag) for elm in emt_events_groups])
 
         steps = int(np.ceil((self.options.simulation_time - 0) / self.options.time_step))
         t: Vec = np.arange(steps + 1) * self.options.time_step
@@ -122,15 +146,23 @@ class EmtSimulationDriver(DriverTemplate):
 
 
         # create the results
+        # The results container keeps the full declared event-group layout so
+        # downstream code can preserve stable event-group identities. The extra
+        # availability mask records which of those declared groups are actually
+        # simulated in this run, which is the information the plot binder needs.
+        has_event_group_results: np.ndarray = np.array([bool(elm.active) for elm in emt_events_groups], dtype=bool)
         self.results = EmtResults(
             time_array=pd.DatetimeIndex(pd.to_datetime(t * 1e9)),
             emt_events_group_names=emt_events_group_names,
+            emt_events_group_idtags=emt_events_group_idtags,
             variables=self.problem.state_and_algebraic_vars(),
             diff_variables=self.problem.get_diff_vars(),
             uid2idx_vars=self.problem.uid2idx_vars,
             uid2idx_diff=self.problem.uid2idx_diff,
             vars_glob_name2uid=self.problem.vars_glob_name2uid,
-            devices_vars_info=self.problem.get_device_vars_dict()
+            devices_vars_info=self.problem.get_device_vars_dict(),
+            parameter_value_maps=[dict() for _ in range(len(emt_events_groups))],
+            has_event_group_results=has_event_group_results,
         )
 
         newton_diag_config = NewtonDiagnosticsConfig(
@@ -152,53 +184,65 @@ class EmtSimulationDriver(DriverTemplate):
 
         for group_idx, emt_events_group in enumerate(emt_events_groups):
 
-            self.report_text("Simulating EMT event group " + emt_events_group.name)
+            if emt_events_group.active:
 
-            self.progress_signal.emit(11)
+                self.report_text("Simulating EMT event group " + emt_events_group.name)
 
-            self.report_text("Simulating EMT event group " + emt_events_group.name)
-            problem.set_events_group(emt_events_group=emt_events_group)
+                self.progress_signal.emit(11)
 
-            self.report_text(
-                f"Simulating EMT event group  {emt_events_group.name} with "
-                f"{self.options.integration_method.value}"
-            )
+                self.report_text("Simulating EMT event group " + emt_events_group.name)
+                problem.set_events_group(emt_events_group=emt_events_group)
 
-            solver = build_emt_solver(
-                options=self.options,
-                problem=problem,
-                t0=0.0,
-                t_end=self.options.simulation_time,
-                h=self.options.time_step,
-                method=self.options.integration_method,
-                newton_diag_config=newton_diag_config,
-            )
-
-            boundary_updater = build_emt_boundary_updater(problem)
-            # t, y, dy = solver.simulate(boundary_updater=boundary_updater)
-            #uncomment when convergence and well initialized is reported
-            t, y, dy, well_initialized, converged = solver.simulate(boundary_updater=boundary_updater)
-
-            if converged and well_initialized:
-                print(f"Event group {emt_events_group} successfully simulated.")
                 self.report_text(
-                    f"Event group {emt_events_group} successfully simulated.")
+                    f"Simulating EMT event group  {emt_events_group.name} with "
+                    f"{self.options.integration_method.value}"
+                )
+
+                solver = build_emt_solver(
+                    options=self.options,
+                    problem=problem,
+                    t0=0.0,
+                    t_end=self.options.simulation_time,
+                    h=self.options.time_step,
+                    method=self.options.integration_method,
+                    newton_diag_config=newton_diag_config,
+                )
+
+                boundary_updater = build_emt_boundary_updater(problem)
+                # t, y, dy = solver.simulate(boundary_updater=boundary_updater)
+                #uncomment when convergence and well initialized is reported
+                t, y, dy, well_initialized, converged = solver.simulate(boundary_updater=boundary_updater)
+
+                if converged and well_initialized:
+                    print(f"Event group {emt_events_group} successfully simulated.")
+                    self.report_text(
+                        f"Event group {emt_events_group} successfully simulated.")
+                else:
+                    print(
+                        f"Event group {emt_events_group} finished with EMT Newton failures "
+                        f"(well_initialized={well_initialized}, converged={converged})."
+                    )
+                    self.report_text(
+                        f"Event group {emt_events_group} finished with EMT Newton failures "
+                        f"(well_initialized={well_initialized}, converged={converged})."
+                    )
+
+                print(f"results = {y}")
+                print(f"converged ={converged}")
+                print(f"well_initialized ={well_initialized}")
+
+                # Persist the solver status in the shared results object so the
+                # GUI post-processing stage reports the actual simulation
+                # outcome instead of the default False placeholders.
+                self.results.converged[group_idx] = converged
+                self.results.well_initialized[group_idx] = well_initialized
+                self.results.values[:, :, group_idx] = y
+                self.results.diff_values[:, :, group_idx] = dy
+                self.results.parameter_value_maps[group_idx] = _collect_emt_group_parameter_values(problem=problem)
+
+                self.progress_signal.emit(90)
+
             else:
-                print(
-                    f"Event group {emt_events_group} finished with EMT Newton failures "
-                    f"(well_initialized={well_initialized}, converged={converged})."
-                )
-                self.report_text(
-                    f"Event group {emt_events_group} finished with EMT Newton failures "
-                    f"(well_initialized={well_initialized}, converged={converged})."
-                )
-
-            print(f"results = {y}")
-
-            self.results.values[:, :, group_idx] = y
-            self.results.diff_values[:, :, group_idx] = dy
-
-            self.progress_signal.emit(90)
+                self.report_text( emt_events_group.name + "skipped")
 
         self.progress_signal.emit(100)
-

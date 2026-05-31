@@ -405,8 +405,8 @@ class CatalogueElementsSelectionDialogue(QtWidgets.QDialog):
             args=(self._circuit.var_factory,),
             name='Thevenin generator',
             voltage_text='', power_text='',
-            unique_key='emt:get_generator_thevenin_rl_emt_template',
-            function_ptr=tem.get_generator_thevenin_rl_emt_template)
+            unique_key='emt:get_generator_thevenin_rl_emt_template_with_ref',
+            function_ptr=tem.get_generator_thevenin_rl_emt_template_with_ref)
         )
         actions.append(CatalogueAction(
             kind=CatalogueActionKind.AddEmtTemplate,
@@ -470,8 +470,16 @@ class CatalogueElementsSelectionDialogue(QtWidgets.QDialog):
             name='DC line',
             voltage_text='', power_text='',
             unique_key='emt:get_dc_line_emt_template',
-            function_ptr=tem.get_dc_line_emt_template)
+            function_ptr=tem.get_dc_line_with_power_input_emt_template)
         )
+        # actions.append(CatalogueAction(
+        #     kind=CatalogueActionKind.AddEmtTemplate,
+        #     args=(self._circuit.var_factory,),
+        #     name='DC line',
+        #     voltage_text='', power_text='',
+        #     unique_key='emt:get_dc_line_emt_template',
+        #     function_ptr=tem.get_dc_line_emt_template)
+        # )
         # actions.append(CatalogueAction(
         #     kind=CatalogueActionKind.AddEmtTemplate,
         #     args=(self._circuit.var_factory,),
@@ -592,6 +600,14 @@ class CatalogueElementsSelectionDialogue(QtWidgets.QDialog):
             voltage_text='', power_text='',
             unique_key='emt:get_pv_avm_boost_grid_following_emt_template:abc',
             function_ptr=tem.get_pv_avm_boost_grid_following_emt_template)
+        )
+        actions.append(CatalogueAction(
+            kind=CatalogueActionKind.AddEmtTemplate,
+            args=(self._circuit.var_factory,),
+            name='VSC Grid-Forming (GFM)',
+            voltage_text='', power_text='',
+            unique_key='emt:get_gfm_emt_template',
+            function_ptr=tem.get_gfm_emt_template)
         )
         return actions
 

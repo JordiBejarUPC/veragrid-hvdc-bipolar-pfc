@@ -40,7 +40,7 @@ from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.Emt.converter_emt_template import get_emt_ideal_converter
 from VeraGridEngine.Templates.Emt.dc_line_emt_template import get_dc_line_emt_template
 from VeraGridEngine.Templates.Emt.dc_load_emt_template import get_dc_load_emt_template
-from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
+from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template_with_ref
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
@@ -118,7 +118,7 @@ class LoadStepBoundaryUpdater(BoundaryUpdateWrapper):
         # The new load level is written before the problem update so the accepted EMT step
         # solves the correct algebraic operating point for that time interval.
         params[self._param_full_idx] = applied_value_pu
-        self._problem.update(float(t), x, params)
+        self._problem.emt_boundary_update(float(t), x, params)
 
         if self._record_count < len(self._record_time_s):
             self._record_time_s[self._record_count] = float(t)
@@ -273,7 +273,7 @@ def assign_emt_models(grid: gce.MultiCircuit, generator: Generator, vsc: VSC, dc
         get_bus_emt_template(grid=grid, bus=bus)
 
     # The device templates are then attached to the existing static grid objects used by EmtProblemDae.
-    generator_model = get_generator_thevenin_rl_emt_template(vf=grid.var_factory).block
+    generator_model = get_generator_thevenin_rl_emt_template_with_ref(vf=grid.var_factory).block
     vsc_model = get_emt_ideal_converter(vf=grid.var_factory, name=vsc.name).block
     dc_line_model = get_dc_line_emt_template(vf=grid.var_factory, name=dc_line.name).block
     dc_load_model = get_dc_load_emt_template(vf=grid.var_factory, name='dc_load_emt').block

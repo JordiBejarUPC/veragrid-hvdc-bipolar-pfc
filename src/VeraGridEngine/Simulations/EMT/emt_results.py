@@ -5,7 +5,7 @@
 
 import numpy as np
 from matplotlib import pyplot as plt
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 from VeraGridEngine.Simulations.results_template import ResultsTemplate, ResultsProperty
 from VeraGridEngine.basic_structures import Vec, StrVec,  DateVec, Mat
@@ -18,6 +18,7 @@ class EmtResults(ResultsTemplate):
 
     LOCAL_RESULTS_DECLARATIONS = (
         ResultsProperty(name='values', tpe=Vec, old_names=list(), expandable=False),
+        ResultsProperty(name='emt_events_group_idtags', tpe=StrVec, old_names=list(), expandable=False),
     )
 
     __slots__ = (
@@ -26,12 +27,15 @@ class EmtResults(ResultsTemplate):
         "ndv",
         "ng",
         "emt_events_group_names",
+        "emt_events_group_idtags",
+        "has_event_group_results",
         "well_initialized",
         "converged",
         "variables",
         "diff_variables",
         "uid2vars_glob_name",
         "devices_vars_info",
+        "parameter_value_maps",
         "uid2idx_vars",
         "uid2idx_diff",
         "uid2idx",
@@ -44,22 +48,35 @@ class EmtResults(ResultsTemplate):
     def __init__(self,
                  time_array: DateVec,
                  emt_events_group_names: StrVec,
+                 emt_events_group_idtags: StrVec,
                  variables: List[Var],
                  diff_variables: List[Var],
                  uid2idx_vars: Dict[int, int],
                  uid2idx_diff: Dict[int, int],
                  vars_glob_name2uid: Dict[str, int],
-                 devices_vars_info: Dict[ALL_DEV_TYPES, List[Var]]):
+                 devices_vars_info: Dict[ALL_DEV_TYPES, List[Var]],
+                 parameter_value_maps: Optional[List[Dict[str, float]]] = None,
+                 has_event_group_results: Optional[StrVec] = None):
         """
+        Build the EMT dynamic results container.
 
-        :param emt_events_group_names: names of the EMT groups simulated
-        :param time_array: Array of time steps
-        :param variables: List of all variables (Redundant?)
-        :param diff_variables: List of all derivatives of variables (Redundant?)
-        :param uid2idx_vars: Var uid to var index in values variables
-        :param uid2idx_diff: Var uid to var index in values diff vars
-        :param vars_glob_name2uid: dictionary relating var names to uid (WTF?)
-        :param devices_vars_info: dictionary relating the devices with a list of their simulation vars and diffvars
+        :param time_array: Ordered simulation time samples.
+        :param emt_events_group_names: Ordered declared EMT event-group names.
+        :param emt_events_group_idtags: Ordered declared EMT event-group idtags.
+        :param variables: Exported EMT state/algebraic variables stored in ``values``.
+        :param diff_variables: Exported EMT differential variables stored in ``diff_values``.
+        :param uid2idx_vars: Mapping from variable uid to the ``values`` column index.
+        :param uid2idx_diff: Mapping from variable uid to the ``diff_values`` column index.
+        :param vars_glob_name2uid: Mapping from global variable label to variable uid.
+        :param devices_vars_info: Device-to-variable mapping used to rebuild the results tree.
+        :param parameter_value_maps: Per-event-group parameter scalar maps exported for GUI plotting.
+        :param has_event_group_results: Boolean mask telling which event-group columns contain actual simulation data.
+        :return: None.
+
+        The results arrays are still allocated for every declared event group so
+        the storage layout remains stable across the simulation stack. The extra
+        availability mask is therefore needed to distinguish declared groups
+        from groups that actually produced runtime samples in the current run.
         """
         ResultsTemplate.__init__(
             self,
@@ -76,6 +93,16 @@ class EmtResults(ResultsTemplate):
         self.ng = len(emt_events_group_names)
 
         self.emt_events_group_names = emt_events_group_names
+        self.emt_events_group_idtags = emt_events_group_idtags
+
+        # The results arrays are allocated for every declared event group, but
+        # only a subset may have been simulated in the current run. The dynamic
+        # plotting layer must inspect this mask before binding a curve so
+        # placeholder zero columns stay unresolved instead of being plotted.
+        if has_event_group_results is None:
+            self.has_event_group_results = np.ones(self.ng, dtype=bool)
+        else:
+            self.has_event_group_results = np.array(has_event_group_results, dtype=bool)
 
         self.well_initialized = np.zeros(self.ng, dtype=bool)
         self.converged = np.zeros(self.ng, dtype=bool)
@@ -84,20 +111,31 @@ class EmtResults(ResultsTemplate):
         self.diff_variables = diff_variables
         self.uid2vars_glob_name = {uid: name for name, uid in vars_glob_name2uid.items()}
         self.devices_vars_info: Dict[ALL_DEV_TYPES, List[Var]] = devices_vars_info
+        if parameter_value_maps is None:
+            self.parameter_value_maps: List[Dict[str, float]] = list()
+            group_index: int
+            for group_index in range(self.ng):
+                self.parameter_value_maps.append(dict())
+        else:
+            self.parameter_value_maps = list(parameter_value_maps)
         self.uid2idx_vars: Dict[int, int] = uid2idx_vars
         self.uid2idx_diff: Dict[int, int] = uid2idx_diff
         self.uid2idx: Dict[int, int] = dict()
         self.uid2idx.update(self.uid2idx_vars)
         self.uid2idx.update(self.uid2idx_diff)
         self.vars_glob_name2uid = vars_glob_name2uid
-        not_found_vars = list()
-        not_found_diff_vars = list()
+        not_found_vars: List[Var] = list()
+        not_found_diff_vars: List[Var] = list()
         for var in variables:
             if var.uid not in self.uid2vars_glob_name:
                 not_found_vars.append(var)
+            else:
+                pass
         for diff in diff_variables:
             if diff.uid not in self.uid2vars_glob_name:
                 not_found_diff_vars.append(diff)
+            else:
+                pass
 
         self.variable_array = np.array([self.uid2vars_glob_name[var.uid] for var in variables], dtype=str)
         self.values = np.zeros((self.nt, self.nv, self.ng), dtype=float)
@@ -122,11 +160,30 @@ class EmtResults(ResultsTemplate):
         else:
             raise ValueError(f"Variable with uid {uid} not found in vars either diff_vars list.")
 
+    def get_parameter_value(self, group_idx: int, device_idtag: str, parameter_name: str) -> float | None:
+        """
+        Get one exported parameter value for one event group.
+
+        :param group_idx: Event-group index.
+        :param device_idtag: Stable device identifier.
+        :param parameter_name: Canonical symbolic parameter name.
+        :return: Parameter scalar value, or ``None``.
+        """
+        if group_idx >= 0 and group_idx < len(self.parameter_value_maps):
+            parameter_key: str = str(device_idtag) + ":" + str(parameter_name)
+            return self.parameter_value_maps[group_idx].get(parameter_key, None)
+        else:
+            return None
+
 
     def get_devices_dict_tree(self) -> Dict[DeviceType, Dict[ALL_DEV_TYPES, List[Var]]]:
         """
+        Build the device-variable tree consumed by the dynamic results handler.
 
-        :return:
+        :return: Nested mapping ``{device_type: {device: [variables]}}``.
+
+        The handler preserves this structure when building the GUI tree of
+        available dynamic variables.
         """
         tree: Dict[DeviceType, Dict[ALL_DEV_TYPES, List[Var]]] = dict()
 
@@ -184,5 +241,4 @@ class EmtResults(ResultsTemplate):
                 data[:, i] = self.diff_values[:, idx, group_idx]
 
         return data
-
 

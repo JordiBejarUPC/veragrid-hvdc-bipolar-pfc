@@ -17,14 +17,14 @@ from VeraGridEngine.Templates.Emt.generator_emt_type_template import (get_simple
                                                                       get_complete_generator_template_emt)
 from VeraGridEngine.Templates.Emt.load_exponential_emt_template import get_exponential_load_emt
 from VeraGridEngine.Templates.Emt.load_zip_emt_template import get_load_ZIP_emt_template
-from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
+from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template_with_ref
 from VeraGridEngine.Templates.Emt.converter_emt_template import get_emt_ideal_converter, get_full_pseudo_emt_converter
 from VeraGridEngine.Templates.Emt.converter_switched_emt_template import get_switched_emt_converter
 from VeraGridEngine.Templates.Emt.bridge_2level_3ph_emt_template import get_bridge_2level_3ph_emt_template
 from VeraGridEngine.Templates.Emt.bridge_filter_2level_3ph_emt_template import get_bridge_filter_2level_3ph_emt_template
 from VeraGridEngine.Templates.Emt.bridge_filter_control_2level_3ph_emt_template import get_bridge_filter_control_2level_3ph_emt_template
 from VeraGridEngine.Templates.Emt.dc_load_emt_template import get_dc_load_emt_template
-from VeraGridEngine.Templates.Emt.dc_line_emt_template import get_dc_line_emt_template
+from VeraGridEngine.Templates.Emt.dc_line_emt_template import get_dc_line_emt_template, get_dc_line_with_power_input_emt_template
 from VeraGridEngine.Templates.Emt.dc_source_emt_template import get_controlled_dc_current_source_emt_template
 from VeraGridEngine.Templates.Emt.dc_source_emt_template import get_controlled_dc_voltage_source_emt_template
 from VeraGridEngine.Templates.Emt.dc_source_emt_template import get_dc_current_source_emt_template
@@ -61,4 +61,5 @@ from VeraGridEngine.Templates.Emt.bess_avm_emt_template import get_bess_avm_grid
 from VeraGridEngine.Templates.Emt.pv_emt_template import (get_pv_grid_following_emt_template,
                                                           get_pv_avm_grid_following_emt_template,
                                                           get_pv_avm_boost_grid_following_emt_template)
+from VeraGridEngine.Templates.Emt.vsc_gfm_emt import get_gfm_emt_template
 

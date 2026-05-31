@@ -141,29 +141,29 @@ pv_cell_block = PVCellBuild(grid.var_factory).block
 dc_source = DCVoltageSource(grid.var_factory, bus3.emt_model.out_vars[0]).block
 
 # Connect generator to bus1 (three-phase voltages)
-genrow_mdl1.connect([genrow_mdl1.in_vars[0]], [bus1.emt_model.out_vars[0]])  # v_A
-genrow_mdl1.connect([genrow_mdl1.in_vars[1]], [bus1.emt_model.out_vars[1]])  # v_B
-genrow_mdl1.connect([genrow_mdl1.in_vars[2]], [bus1.emt_model.out_vars[2]])  # v_C
+grid.var_factory.add_connections([genrow_mdl1.in_vars[0]], [bus1.emt_model.out_vars[0]])  # v_A
+grid.var_factory.add_connections([genrow_mdl1.in_vars[1]], [bus1.emt_model.out_vars[1]])  # v_B
+grid.var_factory.add_connections([genrow_mdl1.in_vars[2]], [bus1.emt_model.out_vars[2]])  # v_C
 
 # Connect load to bus2 (three-phase voltages)
-load_mdl.connect([load_mdl.in_vars[0]], [bus2.emt_model.out_vars[0]])  # v_A
-load_mdl.connect([load_mdl.in_vars[1]], [bus2.emt_model.out_vars[1]])  # v_B
-load_mdl.connect([load_mdl.in_vars[2]], [bus2.emt_model.out_vars[2]])  # v_C
+grid.var_factory.add_connections([load_mdl.in_vars[0]], [bus2.emt_model.out_vars[0]])  # v_A
+grid.var_factory.add_connections([load_mdl.in_vars[1]], [bus2.emt_model.out_vars[1]])  # v_B
+grid.var_factory.add_connections([load_mdl.in_vars[2]], [bus2.emt_model.out_vars[2]])  # v_C
 
 # Connect line12 between bus1 and bus2 (three-phase voltages)
-line12_mdl.connect([line12_mdl.in_vars[0]], [bus1.emt_model.out_vars[0]])  # v_A from
-line12_mdl.connect([line12_mdl.in_vars[1]], [bus1.emt_model.out_vars[1]])  # v_B from
-line12_mdl.connect([line12_mdl.in_vars[2]], [bus1.emt_model.out_vars[2]])  # v_C from
+grid.var_factory.add_connections([line12_mdl.in_vars[0]], [bus1.emt_model.out_vars[0]])  # v_A from
+grid.var_factory.add_connections([line12_mdl.in_vars[1]], [bus1.emt_model.out_vars[1]])  # v_B from
+grid.var_factory.add_connections([line12_mdl.in_vars[2]], [bus1.emt_model.out_vars[2]])  # v_C from
 
-line12_mdl.connect([line12_mdl.in_vars[3]], [bus2.emt_model.out_vars[0]])  # v_A to
-line12_mdl.connect([line12_mdl.in_vars[4]], [bus2.emt_model.out_vars[1]])  # v_B to
-line12_mdl.connect([line12_mdl.in_vars[5]], [bus2.emt_model.out_vars[2]])  # v_C to
+grid.var_factory.add_connections([line12_mdl.in_vars[3]], [bus2.emt_model.out_vars[0]])  # v_A to
+grid.var_factory.add_connections([line12_mdl.in_vars[4]], [bus2.emt_model.out_vars[1]])  # v_B to
+grid.var_factory.add_connections([line12_mdl.in_vars[5]], [bus2.emt_model.out_vars[2]])  # v_C to
 
 # Updated connections for new VSC EMT model with 4 inputs: [Va, Vb, Vc, Vdc]
-vsc_mdl.connect([vsc_mdl.in_vars[0]], [bus2.emt_model.out_vars[0]])  # Va
-vsc_mdl.connect([vsc_mdl.in_vars[1]], [bus2.emt_model.out_vars[1]])  # Vb
-vsc_mdl.connect([vsc_mdl.in_vars[2]], [bus2.emt_model.out_vars[2]])  # Vc
-vsc_mdl.connect([vsc_mdl.in_vars[3]], [bus3.emt_model.out_vars[0]])  # Vdc
+grid.var_factory.add_connections([vsc_mdl.in_vars[0]], [bus2.emt_model.out_vars[0]])  # Va
+grid.var_factory.add_connections([vsc_mdl.in_vars[1]], [bus2.emt_model.out_vars[1]])  # Vb
+grid.var_factory.add_connections([vsc_mdl.in_vars[2]], [bus2.emt_model.out_vars[2]])  # Vc
+grid.var_factory.add_connections([vsc_mdl.in_vars[3]], [bus3.emt_model.out_vars[0]])  # Vdc
 
 # external mapping
 big_gen1 = Block(children=[genrow_mdl1])

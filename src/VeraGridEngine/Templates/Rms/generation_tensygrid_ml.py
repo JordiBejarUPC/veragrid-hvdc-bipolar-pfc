@@ -17,7 +17,91 @@ import VeraGridEngine.Utils.Symbolic.symbolic as sym
 import VeraGridEngine.Utils.Symbolic.symbolic_ml as sym_ml
 
 
-def GenqecBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
+def _build_hard_sat_block(vfactory: VarFactory, x, xmin, xmax, mode: str = "ml", name: str = ""):
+    sat_mode = mode.lower()
+    if sat_mode == "none":
+        return Block(), x
+    if sat_mode == "normal":
+        y = vfactory.add_var(f"hs_{name}" if name else "hs")
+        blk = Block(
+            algebraic_eqs=[y - sym.hard_sat(x, xmin, xmax)],
+            algebraic_vars=[y],
+            init_eqs={y: sym.hard_sat(x, xmin, xmax)},
+        )
+        return blk, y
+    if sat_mode == "mti":
+        return sym_ml.mti_hard_sat(vfactory, x, xmin, xmax, xmin, xmax, name=name)
+    if sat_mode == "ml":
+        return sym_ml.ml_hard_sat(vfactory, x, xmin, xmax)
+    raise ValueError(f"Unsupported hard_sat_type '{mode}'. Use: normal, ml, mti, none")
+
+
+def _build_trig_transform_block(vfactory: VarFactory, x, mode: str = "ml"):
+    if mode.lower() == "ml":
+        return sym_ml.trig_transform(vfactory, x)
+    u_cos = vfactory.add_var("u_cos")
+    u_sin = vfactory.add_var("u_sin")
+    blk = Block(
+        algebraic_eqs=[u_cos - sym.cos(x), u_sin - sym.sin(x)],
+        algebraic_vars=[u_cos, u_sin],
+        init_eqs={u_cos: sym.cos(x), u_sin: sym.sin(x)},
+    )
+    return blk, u_cos, u_sin
+
+
+def _build_positive_part_block(vfactory: VarFactory, x, mode: str = "ml", name: str = ""):
+    if mode.lower() == "ml":
+        return sym_ml.ml_positive_part(vfactory, x, name=name)
+    x_plus = vfactory.add_var(f"x_plus_{name}" if name else "x_plus")
+    x_minus = vfactory.add_var(f"x_minus_{name}" if name else "x_minus")
+    blk = Block(
+        algebraic_eqs=[x_plus - sym.max(x, vfactory.add_const(0.0)), x_minus - sym.max(-x, vfactory.add_const(0.0))],
+        algebraic_vars=[x_plus, x_minus],
+        init_eqs={
+            x_plus: sym.max(x, vfactory.add_const(0.0)),
+            x_minus: sym.max(-x, vfactory.add_const(0.0)),
+        },
+    )
+    return blk, x_plus, x_minus
+
+
+def _build_exponential_block(vfactory: VarFactory, x, mode: str = "ml"):
+    if mode.lower() == "ml":
+        return sym_ml.exponential_ml(vfactory, x)
+    y = vfactory.add_var("exp_y")
+    blk = Block(
+        algebraic_eqs=[y - sym.exp(x)],
+        algebraic_vars=[y],
+        init_eqs={y: sym.exp(x)},
+    )
+    return blk, y
+
+
+def _build_heaviside_block(vfactory: VarFactory, x, mode: str = "ml"):
+    if mode.lower() == "ml":
+        return sym_ml.ml_heaviside(vfactory, x)
+    y = vfactory.add_var("hv_y")
+    blk = Block(
+        algebraic_eqs=[y - sym.heaviside(x)],
+        algebraic_vars=[y],
+        init_eqs={y: sym.heaviside(x)},
+    )
+    return blk, y
+
+
+def _build_f_exc_block(vfactory: VarFactory, x, mode: str = "ml"):
+    if mode.lower() == "ml":
+        return sym_ml.ml_f_exc(vfactory, x)
+    y = vfactory.add_var("f_exc_y")
+    blk = Block(
+        algebraic_eqs=[y - sym.f_exc(x)],
+        algebraic_vars=[y],
+        init_eqs={y: sym.f_exc(x)},
+    )
+    return blk, y
+
+
+def GenqecBuild(vfactory: VarFactory, name: str = "", hard_sat_type: str = "ml") -> RmsModelTemplate:
     """
      generator with quadratic saturation
     """
@@ -174,10 +258,10 @@ def GenqecBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     Id_sat = vfactory.add_var('Id_sat')
 
     # we call trig_transform to get cos(Vm-delta) and siN(Vm-delta)
-    ml_trig_block, u_cos, u_sin = sym_ml.trig_transform(vfactory, inputs[1] - delta)
+    ml_trig_block, u_cos, u_sin = _build_trig_transform_block(vfactory, inputs[1] - delta, mode=hard_sat_type)
 
     # We call ml_postive_part to ge (Psi_ag-B)^+ := max(Psi_ag-B, 0)
-    ml_positive_part, Psi_plus, Psi_minus = sym_ml.ml_positive_part(vfactory, Psi_ag - B, name='Psi_plus')
+    ml_positive_part, Psi_plus, Psi_minus = _build_positive_part_block(vfactory, Psi_ag - B, mode=hard_sat_type, name='Psi_plus')
 
     templ.block = Block(
         state_eqs=[
@@ -302,7 +386,7 @@ def GenqecBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     return templ
 
 
-def GovernorBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
+def GovernorBuild(vfactory: VarFactory, name: str = "", hard_sat_type: str = "ml") -> RmsModelTemplate:
     templ = RmsModelTemplate()
 
     parameters = {
@@ -371,8 +455,8 @@ def GovernorBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
         K: vfactory.add_const(10.0),  # governor gain (inverse droop)
         Pmax: vfactory.add_const(12.0),  # max mechanical power (pu)
         Pmin: vfactory.add_const(-1.0),  # min mechanical power (pu)
-        Uc: vfactory.add_const(-0.5),  # max valve closing rate (pu/s)
-        Uo: vfactory.add_const(0.5),  # max valve opening rate (pu/s)
+        Uc: vfactory.add_const(-0.05),  # max valve closing rate (pu/s)
+        Uo: vfactory.add_const(0.05),  # max valve opening rate (pu/s)
         T_aux: vfactory.add_const(0.0),
 
     }
@@ -404,7 +488,12 @@ def GovernorBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     x2 = Pm_ref - K * y1 - y2_3
 
     y2 = x2 * (1 / parameters["T3"].value)
-    ml_block1, y2_1 = sym_ml.ml_hard_sat(vfactory, y2, Uc, Uo)
+    # Keep previous Gen0 behavior to avoid boolean-combinatorics blow-up in
+    # legacy phasor small-signal workflows.
+    if hard_sat_type.lower() == "ml":
+        ml_block1, y2_1 = _build_hard_sat_block(vfactory, y2, Uc, Uo, mode=hard_sat_type, name="gov_rate")
+    else:
+        ml_block1, y2_1 = _build_hard_sat_block(vfactory, y2, Uc, Uo, mode=hard_sat_type, name="gov_rate")
 
     # y2_1 = sym.hard_sat(y2, Uc, Uo)
     tf1, y2_2, u_gov1 = tf_to_diffblock_with_output(
@@ -414,7 +503,7 @@ def GovernorBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
         x=y2_1,
         name='gov1',
     )
-    ml_block2, y2_bis = sym_ml.ml_hard_sat(vfactory, y2_2, Pmin, Pmax)
+    ml_block2, y2_bis = _build_hard_sat_block(vfactory, y2_2, Pmin, Pmax, mode=hard_sat_type, name="gov_pow")
     algebraic_eqs.append(y2_3 - y2_bis)
 
     # ==============================
@@ -480,7 +569,7 @@ def GovernorBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     return templ
 
 
-def StabilizerBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
+def StabilizerBuild(vfactory: VarFactory, name: str = "", hard_sat_type: str = "ml") -> RmsModelTemplate:
     templ = RmsModelTemplate()
 
     parameters = {
@@ -559,7 +648,7 @@ def StabilizerBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
         name='stabilizer5',
     )
 
-    ml_block, Vpss_sat = sym_ml.ml_hard_sat(vfactory, y5, VPssMinPu, VPssMaxPu)
+    ml_block, Vpss_sat = _build_hard_sat_block(vfactory, y5, VPssMinPu, VPssMaxPu, mode=hard_sat_type, name="pss_sat")
     algebraic_eqs = list()
     algebraic_eqs.append(Vpss_sat - Vpss)
 
@@ -588,7 +677,7 @@ def StabilizerBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     return templ
 
 
-def ExciterBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
+def ExciterBuild(vfactory: VarFactory, name: str = "", hard_sat_type: str = "ml") -> RmsModelTemplate:
     """
 
     :param name: 
@@ -725,7 +814,7 @@ def ExciterBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
         # sat_max = max_const,
         name='exciter4',
     )
-    ml_block2, y6 = sym_ml.ml_hard_sat(vfactory, y4, min_const, max_const, name='exciter_sat')
+    ml_block2, y6 = _build_hard_sat_block(vfactory, y4, min_const, max_const, mode=hard_sat_type, name='exciter_sat')
 
     # exciter submodel
 
@@ -747,9 +836,9 @@ def ExciterBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
 
     Se_threshold = parameters['Ke'].value
 
-    ml_block1, Ve = sym_ml.ml_hard_sat(vfactory, Ve_pre, VeMinPu, VeMaxPu, name='Ve_sat')
-    ml_block_exp, V_exp = sym_ml.exponential_ml(vfactory, BEx * (Ve - Se_threshold))
-    ml_block_hv, V_hv = sym_ml.ml_heaviside(vfactory, Ve - Se_threshold)
+    ml_block1, Ve = _build_hard_sat_block(vfactory, Ve_pre, VeMinPu, VeMaxPu, mode=hard_sat_type, name='Ve_sat')
+    ml_block_exp, V_exp = _build_exponential_block(vfactory, BEx * (Ve - Se_threshold), mode=hard_sat_type)
+    ml_block_hv, V_hv = _build_heaviside_block(vfactory, Ve - Se_threshold, mode=hard_sat_type)
     Sx = (V_exp - vfactory.add_const(1)) * V_hv
     aux_expr = parameters['Ke'].value * Ve + AEx * Ve * Sx
     algebraic_eqs_submodel.append(u_aux - aux_expr)
@@ -757,7 +846,7 @@ def ExciterBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
 
     f_input = vfactory.add_var('f_input')
     f_output = vfactory.add_var('f_output')
-    ml_block3, f_output_res = sym_ml.ml_f_exc(vfactory, f_input)
+    ml_block3, f_output_res = _build_f_exc_block(vfactory, f_input, mode=hard_sat_type)
     algebraic_vars_submodel.append(f_input)
     algebraic_vars_submodel.append(f_output)
     algebraic_eqs_submodel.append(f_input * Ve - inputs[0] * parameters["Kc"].value)
@@ -1050,7 +1139,10 @@ def OELBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     return templ
 
 
-def get_complete_generator_template(vfactory: VarFactory, name: str = "complete generator rms template", implicit: bool = False) -> RmsModelTemplate:
+def get_complete_generator_template(vfactory: VarFactory,
+                                    name: str = "complete generator rms template",
+                                    implicit: bool = False,
+                                    hard_sat_type: str = "ml") -> RmsModelTemplate:
     """
     
     :return: 
@@ -1060,25 +1152,26 @@ def get_complete_generator_template(vfactory: VarFactory, name: str = "complete 
     templ.name = name
 
     # generate models
-    genqec_mdl = GenqecBuild(vfactory).block
-    exciter_mdl = ExciterBuild(vfactory, name).block
-    governor_mdl = GovernorBuild(vfactory).block
-    stabilizer_mdl = StabilizerBuild(vfactory).block
+    genqec_mdl = GenqecBuild(vfactory, hard_sat_type=hard_sat_type).block
+    exciter_mdl = ExciterBuild(vfactory, name, hard_sat_type=hard_sat_type).block
+    governor_mdl = GovernorBuild(vfactory, hard_sat_type=hard_sat_type).block
+    stabilizer_mdl = StabilizerBuild(vfactory, hard_sat_type=hard_sat_type).block
 
     # connect models
-    genqec_mdl.connect([genqec_mdl.in_vars[3]], [exciter_mdl.out_vars[0]])
-    exciter_mdl.connect([exciter_mdl.in_vars[0]], [genqec_mdl.out_vars[3]])
-    exciter_mdl.connect([exciter_mdl.in_vars[1]], [genqec_mdl.in_vars[1]])
+    vf = vfactory
+    vf.add_connections([genqec_mdl.in_vars[3]], [exciter_mdl.out_vars[0]])
+    vf.add_connections([exciter_mdl.in_vars[0]], [genqec_mdl.out_vars[3]])
+    vf.add_connections([exciter_mdl.in_vars[1]], [genqec_mdl.in_vars[1]])
 
-    stabilizer_mdl.connect([stabilizer_mdl.in_vars[0]], [genqec_mdl.out_vars[2]])
+    vf.add_connections([stabilizer_mdl.in_vars[0]], [genqec_mdl.out_vars[2]])
 
-    exciter_mdl.connect([exciter_mdl.in_vars[2]], [stabilizer_mdl.out_vars[0]])
+    vf.add_connections([exciter_mdl.in_vars[2]], [stabilizer_mdl.out_vars[0]])
 
-    genqec_mdl.connect([genqec_mdl.in_vars[2]], [governor_mdl.out_vars[0]])
+    vf.add_connections([genqec_mdl.in_vars[2]], [governor_mdl.out_vars[0]])
 
-    governor_mdl.connect([governor_mdl.in_vars[0]], [genqec_mdl.out_vars[2]])
+    vf.add_connections([governor_mdl.in_vars[0]], [genqec_mdl.out_vars[2]])
 
-    governor_mdl.connect([governor_mdl.in_vars[1]], [genqec_mdl.out_vars[4]])
+    vf.add_connections([governor_mdl.in_vars[1]], [genqec_mdl.out_vars[4]])
 
     templ.block.children.append(genqec_mdl)
     templ.block.children.append(governor_mdl)

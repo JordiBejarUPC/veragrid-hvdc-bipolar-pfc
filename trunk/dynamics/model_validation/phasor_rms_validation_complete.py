@@ -128,8 +128,8 @@ def test_phasor_validation():
     
     # For phasor grid, use current-based load model
     load_mdl_phasor = get_load_phasor_current_rms_template(grid_phasor.var_factory).block
-    load_mdl_phasor.connect([load_mdl_phasor.in_vars[0]], [bus1_phasor.rms_model.out_vars[0]])
-    load_mdl_phasor.connect([load_mdl_phasor.in_vars[1]], [bus1_phasor.rms_model.out_vars[1]])
+    grid_phasor.var_factory.add_connections([load_mdl_phasor.in_vars[0]], [bus1_phasor.rms_model.out_vars[0]])
+    grid_phasor.var_factory.add_connections([load_mdl_phasor.in_vars[1]], [bus1_phasor.rms_model.out_vars[1]])
     # Current values will be set after power flow
     set_rms_model(device=load_phasor, model=load_mdl_phasor, var_factory=grid_phasor.var_factory)
     
@@ -138,8 +138,8 @@ def test_phasor_validation():
     # Use set_rms_model for proper current balance accumulation
     set_rms_model(device=line_phasor, model=line_phasor_mdl, var_factory=grid_phasor.var_factory)
 
-    genqec_phasor.connect([genqec_phasor.in_vars[0]], [bus0_phasor.rms_model.out_vars[0]])
-    genqec_phasor.connect([genqec_phasor.in_vars[1]], [bus0_phasor.rms_model.out_vars[1]])
+    grid_phasor.var_factory.add_connections([genqec_phasor.in_vars[0]], [bus0_phasor.rms_model.out_vars[0]])
+    grid_phasor.var_factory.add_connections([genqec_phasor.in_vars[1]], [bus0_phasor.rms_model.out_vars[1]])
     set_rms_model(device=gen_phasor, model=genqec_phasor, var_factory=grid_phasor.var_factory)
     # Note: line and load models attached via set_rms_model for proper current balance
     

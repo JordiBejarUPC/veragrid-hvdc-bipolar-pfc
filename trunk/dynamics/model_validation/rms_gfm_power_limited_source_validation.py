@@ -49,7 +49,7 @@ def initialize_grid2_rms_models_power_limited_gfm(grid2, pf_results):
         bus_vm_ac = vsc.bus_to.rms_model.external_mapping[VarPowerFlowRefferenceType.Vm]
         bus_va_ac = vsc.bus_to.rms_model.external_mapping[VarPowerFlowRefferenceType.Va]
         bus_vdc = vsc.bus_from.rms_model.external_mapping[VarPowerFlowRefferenceType.Vdc]
-        vsc.rms_model.connect([vm_ac, va_ac, vdc], [bus_vm_ac, bus_va_ac, bus_vdc])
+        grid.var_factory.add_connections([vm_ac, va_ac, vdc], [bus_vm_ac, bus_va_ac, bus_vdc])
 
         vsc_idx = list(grid2.vsc_devices).index(vsc)
         if vsc_idx < len(pf_results.St_vsc):

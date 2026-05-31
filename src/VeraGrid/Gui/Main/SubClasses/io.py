@@ -15,11 +15,16 @@ from VeraGrid.Gui.GridMerge.grid_diff import GridDiffDialogue
 from VeraGrid.Gui.GridMerge.grid_merge import GridMergeDialogue
 from VeraGrid.plugins import install_plugin, get_plugin_info
 from VeraGrid.Gui.FileDialogues.CoordinatesInput.coordinates_dialogue import CoordinatesInputGUI
-from VeraGrid.Gui.general_dialogues import LogsDialogue, CustomQuestionDialogue, FileTypeSelector, CgmesOptionsSelector
+from VeraGrid.Gui.general_dialogues import LogsDialogue, CustomQuestionDialogue, FileTypeSelector
 from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
 from VeraGrid.Gui.messages import yes_no_question, error_msg, warning_msg, info_msg
 from VeraGrid.Gui.GridGenerator.grid_generator_dialogue import GridGeneratorGUI
 from VeraGrid.Gui.FileDialogues.RosetaExplorer.RosetaExplorer import RosetaExplorerGUI
+from VeraGrid.Gui.FileDialogues.CGMESDialogue.cgmes_import import CgmesImportDialogue
+from VeraGrid.Gui.FileDialogues.DgsDialogue.dgs_export import DgsExportDialogue
+from VeraGrid.Gui.FileDialogues.DgsDialogue.dgs_import import DgsImportDialogue
+from VeraGrid.Gui.FileDialogues.MatpowerDialogue.matpower_export import MatpowerExportDialogue
+from VeraGrid.Gui.FileDialogues.UcteDialogue.ucte_export import UcteExportDialogue
 from VeraGrid.Gui.Main.SubClasses.Model.scenarios import ScenariosMain
 from VeraGrid.Gui.FileDialogues.CGMESDialogue.cgmes_export import CgmesExportDialogue
 from VeraGrid.Gui.FileDialogues.PsseDialogue.psse_export import PsseExportDialogue
@@ -59,7 +64,7 @@ class IoMain(ScenariosMain):
         self.accepted_extensions = ['.veragrid', '.dveragrid',
                                     '.gridcal', '.dgridcal',
                                     '.xlsx', '.xls', '.sqlite', '.gch5',
-                                    '.dgs', '.m', '.matpower', '.raw', '.RAW', '.json', '.uct',
+                                    '.dgs', '.m', '.matpower', '.raw', '.RAW', '.json', '.uct', '.ucte',
                                     '.iidm', '.xiidm', '.xiidm.bz2',
                                     '.ejson2', '.ejson3', '.p', '.nc', '.hdf5',
                                     '.xml', '.rawx', '.zip', '.dpx', '.pwf', '.epc', '.EPC',
@@ -68,6 +73,9 @@ class IoMain(ScenariosMain):
         # window pointers
         self.cgmes_dialogue: CgmesExportDialogue | None = None
         self.psse_export_dialogue: PsseExportDialogue | None = None
+        self.dgs_export_dialogue: DgsExportDialogue | None = None
+        self.matpower_export_dialogue: MatpowerExportDialogue | None = None
+        self.ucte_export_dialogue: UcteExportDialogue | None = None
 
         # actions
         self.ui.actionNew_project.triggered.connect(self.new_project)
@@ -88,6 +96,8 @@ class IoMain(ScenariosMain):
 
         self.ui.actionPSS_e_Raw_Rawx.triggered.connect(self.export_psse)
         self.ui.actionPower_Factory_DGS.triggered.connect(self.export_power_factory)
+        self.ui.actionMATPOWER.triggered.connect(self.export_matpower)
+        self.ui.actionUCTE.triggered.connect(self.export_ucte)
         self.ui.actionCIM.triggered.connect(self.export_cim)
         self.ui.actionCGMES.triggered.connect(self.export_cgmes)
         self.ui.actionPower_Grid_Models.triggered.connect(self.export_power_grid_models)
@@ -95,10 +105,23 @@ class IoMain(ScenariosMain):
         self.ui.actionH5.triggered.connect(self.export_h5)
         self.ui.actionMicrosoft_Excel.triggered.connect(self.export_excel)
         self.ui.actionSQLite.triggered.connect(self.export_sqlite)
+        self.ui.actionExportVeragridScenario.triggered.connect(self.export_veragrid_scenario)
 
         # Buttons
         self.ui.exportSimulationDataButton.clicked.connect(self.export_simulation_data)
         self.ui.loadResultFromDiskButton.clicked.connect(self.load_results_driver)
+
+    def check_extension(self, path: str) -> bool:
+        """
+        Check the accepted extensions
+        :param path:
+        :return:
+        """
+        for ext in self.accepted_extensions:
+            if path.endswith(ext):
+                return True
+
+        return False
 
     def refresh_catalogue_dependent_views(self) -> None:
         """
@@ -159,7 +182,7 @@ class IoMain(ScenariosMain):
                     file_name = event.toLocalFile()
                     # name, file_extension = os.path.splitext(file_name)
                     file_extension = ''.join(pathlib.Path(file_name).suffixes)
-                    if file_extension.lower() in self.accepted_extensions:
+                    if self.check_extension(file_name):
                         file_names.append(file_name)
 
                         if file_name.endswith('.dgridcal') or file_name.endswith('.dveragrid'):
@@ -360,14 +383,19 @@ class IoMain(ScenariosMain):
                 options.file_type = self.file_selector.file_type
 
                 if options.file_type == FileType.CGMES:
-                    self.cgmes_selector = CgmesOptionsSelector()
-                    self.cgmes_selector.exec()
-                    options.cgmes_version = self.cgmes_selector.version
+                    self.cgmes_import_dialogue = CgmesImportDialogue(app=self, options=options)
+                    self.cgmes_import_dialogue.exec()
 
             elif options.file_type == FileType.PSSE_raw or options.file_type == FileType.PSSE_rawx:
                 self.psse_import_dialogue = PsseImportDialogue(app=self, options=options)
                 self.psse_import_dialogue.exec()
                 # NOTE: options will be modified inside
+            elif options.file_type == FileType.CGMES:
+                self.cgmes_import_dialogue = CgmesImportDialogue(app=self, options=options)
+                self.cgmes_import_dialogue.exec()
+            elif options.file_type == FileType.DGS:
+                self.dgs_import_dialogue = DgsImportDialogue(app=self, options=options)
+                self.dgs_import_dialogue.exec()
 
             # create thread
             self.open_file_thread_object = filedrv.FileOpenThread(
@@ -469,6 +497,8 @@ class IoMain(ScenariosMain):
 
                 # clear the results
                 self.clear_results()
+                self.dynamic_results_handlers = dict()
+                self.clear_dynamic_results_view()
 
                 self.ui.grid_name_line_edit.setText(self.circuit.name)
 
@@ -1165,36 +1195,30 @@ class IoMain(ScenariosMain):
 
     def export_power_factory(self) -> None:
         """
-        Export the current circuit to one PowerFactory DGS file.
+        Open the DGS export dialogue.
 
         :return: None.
         """
-        # if the global file_name is empty, ask where to save
-        fname = os.path.join(self.project_directory, self.ui.grid_name_line_edit.text())
+        self.dgs_export_dialogue = DgsExportDialogue(app=self)
+        self.dgs_export_dialogue.show()
 
-        files_types = "Power Factory (*.dgs)"
-        filename, type_selected = QtWidgets.QFileDialog.getSaveFileName(self,
-                                                                        'Export to Power Factory',
-                                                                        fname,
-                                                                        files_types)
+    def export_matpower(self) -> None:
+        """
+        Open the MATPOWER export dialogue.
 
-        if filename != '':
+        :return: None.
+        """
+        self.matpower_export_dialogue = MatpowerExportDialogue(app=self)
+        self.matpower_export_dialogue.show()
 
-            # if the user did not enter the extension, add it automatically
-            name, file_extension = os.path.splitext(filename)
+    def export_ucte(self) -> None:
+        """
+        Open the UCTE export dialogue.
 
-            if file_extension == '':
-                filename = name + '.dgs'
-
-            # we were able to compose the file correctly, now save it
-            self.file_name = filename
-            self.save_file_now(
-                filename=self.file_name,
-                type_selected=type_selected,
-                options=FileSavingOptions(
-                    file_type=FileType.DGS
-                )
-            )
+        :return: None.
+        """
+        self.ucte_export_dialogue = UcteExportDialogue(app=self)
+        self.ucte_export_dialogue.show()
 
     def export_cim(self) -> None:
         """
@@ -1404,5 +1428,36 @@ class IoMain(ScenariosMain):
                 type_selected=type_selected,
                 options=FileSavingOptions(
                     file_type=FileType.VeraGrid_sqlite
+                )
+            )
+
+    def export_veragrid_scenario(self):
+        """
+        Export the current veragrid Scenario to a non-multiverse file
+        """
+        # if the global file_name is empty, ask where to save
+        fname = os.path.join(self.project_directory, self.ui.grid_name_line_edit.text())
+
+        files_types = "VeraGrid (*.veragrid)"
+        filename, type_selected = QtWidgets.QFileDialog.getSaveFileName(self,
+                                                                        'Export VeraGrid scenario',
+                                                                        fname,
+                                                                        files_types)
+
+        if filename != '':
+
+            # if the user did not enter the extension, add it automatically
+            name, file_extension = os.path.splitext(filename)
+
+            if file_extension == '':
+                filename = name + '.veragrid'
+
+            # we were able to compose the file correctly, now save it
+            self.file_name = filename
+            self.save_file_now(
+                filename=self.file_name,
+                type_selected=type_selected,
+                options=FileSavingOptions(
+                    file_type=FileType.VeraGridScenario
                 )
             )

@@ -869,8 +869,8 @@ class LinearMultiContingency:
         self.mlodf_factors: sp.csc_matrix = mlodf_factors
 
         # MLODF[k, βδ] x PTDF[βδ, i] + PTDF[k, i]
-        if not isinstance(compensated_ptdf_factors, sp.csc_matrix):
-            print()
+        # if not isinstance(compensated_ptdf_factors, sp.csc_matrix):
+        #     print()
         self.compensated_ptdf_factors: sp.csc_matrix = compensated_ptdf_factors
 
         # percentage to decrease an injection, used to compute ΔP
@@ -1285,19 +1285,29 @@ class LinearAnalysisTs:
     def __init__(self, grid: MultiCircuit,
                  distributed_slack: bool = False,
                  correct_values: bool = False,
-                 time_indices: IntVec | None = None):
+                 time_indices: IntVec | None = None,
+                 contingency_groups_used: List[ContingencyGroup] | None = None,
+                 ptdf_threshold: float = 1e-4,
+                 lodf_threshold: float = 1e-4,
+                 compute_multi_contingencies: bool = True):
         """
         Constructor
         :param grid: MultiCircuit instance
         :param distributed_slack: boolean to distribute slack
         :param correct_values: boolean to fix out layer values
         :param time_indices: Array of time indices
+        :param contingency_groups_used: list of contingency groups to use (all the grid's if None)
+        :param ptdf_threshold: threshold for PTDF's to be converted to sparse
+        :param lodf_threshold: threshold for LODF's to be converted to sparse
+        :param compute_multi_contingencies: also pre-compute the LinearMultiContingencies
         """
 
         if not grid.has_time_series:
             raise Exception("The grid does not have any time series :(")
 
         self.time_indices = grid.get_all_time_indices() if time_indices is None else time_indices
+
+        self._inverse_time_index = {t: i for i, t in enumerate(self.time_indices)}
 
         # get the states matrix
         mat: IntMat = grid.get_branch_active_time_array()[self.time_indices, :]
@@ -1306,13 +1316,34 @@ class LinearAnalysisTs:
         self.groups, self.mapping = find_different_states(mat)
 
         self._linear_analysis: Dict[int, LinearAnalysis] = dict()
+        self._linear_multi_contingencies: Dict[int, LinearMultiContingencies] = dict()
 
         # compile the linear analysis for the different time steps
         for t_idx, list_of_represented_time_steps in self.groups.items():
+            # Compile the snapshot
             nc = compile_numerical_circuit_at(circuit=grid, t_idx=t_idx)
-            self._linear_analysis[t_idx] = LinearAnalysis(nc=nc,
-                                                          distributed_slack=distributed_slack,
-                                                          correct_values=correct_values)
+
+            # Linear analysis (PTDF & LODF)
+            lin = LinearAnalysis(nc=nc,
+                                 distributed_slack=distributed_slack,
+                                 correct_values=correct_values)
+
+            self._linear_analysis[t_idx] = lin
+
+            if compute_multi_contingencies:
+                linear_multiple_contingencies = LinearMultiContingencies(
+                    grid=grid,
+                    contingency_groups_used=contingency_groups_used
+                    if contingency_groups_used is not None
+                    else grid.contingency_groups
+                )
+                linear_multiple_contingencies.compute(
+                    lin=lin,
+                    ptdf_threshold=ptdf_threshold,
+                    lodf_threshold=lodf_threshold
+                )
+
+                self._linear_multi_contingencies[t_idx] = linear_multiple_contingencies
 
         self.nbr = grid.get_branch_number()
         self.nbus = grid.get_bus_number()
@@ -1321,14 +1352,34 @@ class LinearAnalysisTs:
     def get_linear_analysis_at(self, t_idx: int) -> LinearAnalysis:
         """
 
-        :param t_idx:
+        :param t_idx: time index in the general schema
         :return:
         """
-        # get the base index
-        t_i = self.mapping[t_idx]
+        # get the base index (i.e. when clustering)
+        it = self._inverse_time_index[t_idx]
+
+        # get the mapped reduced index
+        t_i = self.mapping[it]
 
         # get the linear analysis
         lin: LinearAnalysis = self._linear_analysis[t_i]
+
+        return lin
+
+    def get_multiple_contingencies_at(self, t_idx: int) -> LinearMultiContingencies:
+        """
+
+        :param t_idx:
+        :return:
+        """
+        # get the base index (i.e. when clustering)
+        it = self._inverse_time_index[t_idx]
+
+        # get the mapped reduced index
+        t_i = self.mapping[it]
+
+        # get the linear analysis
+        lin: LinearMultiContingencies = self._linear_multi_contingencies[t_i]
 
         return lin
 

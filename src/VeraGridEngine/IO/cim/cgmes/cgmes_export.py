@@ -5,52 +5,111 @@
 
 import zipfile
 from io import BytesIO
+from datetime import datetime, timezone
+from uuid import uuid4
 from rdflib import OWL
 from rdflib.graph import Graph
 from rdflib.namespace import RDF, RDFS
-from typing import List
+from typing import Dict, List
 
+import xml.etree.ElementTree as Et
+import xml.dom.minidom
+from enum import Enum
 import json
 import os
+
 from VeraGridEngine.IO.cim.cgmes.cgmes_circuit import CgmesCircuit
 from VeraGridEngine.IO.cim.cgmes.rdfs_serializations import RDFS_serialization_2_4_15, RDFS_serialization_3_0_0
 from VeraGridEngine.IO.cim.cgmes.rdfs_infos import RDFS_INFO_2_4_15, RDFS_INFO_3_0_0
 from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType
 from VeraGridEngine.enumerations import CGMESVersions
-import xml.etree.ElementTree as Et
-import xml.dom.minidom
-from enum import Enum
 
 
-def get_available_cgmes_profiles(cgmes_version: CGMESVersions):
+def get_cgmes_v2_4_15_profiles() -> Dict[str, List[str]]:
+    """
+    Build the exportable CGMES 2.4.15 profile registry.
+
+    :return: Mapping from profile keyword to the list of profile URIs that
+        shall be written into ``md:Model.profile``.
+    :rtype: Dict[str, List[str]]
+    """
+    return {
+        "EQ": ["http://entsoe.eu/CIM/EquipmentCore/3/1",
+               "http://entsoe.eu/CIM/EquipmentShortCircuit/3/1",
+               "http://entsoe.eu/CIM/EquipmentOperation/3/1"],
+        "SSH": ["http://entsoe.eu/CIM/SteadyStateHypothesis/1/1"],
+        "TP": ["http://entsoe.eu/CIM/Topology/4/1"],
+        "SV": ["http://entsoe.eu/CIM/StateVariables/4/1"],
+        "GL": ["http://entsoe.eu/CIM/GeographicalLocation/2/1"]
+    }
+
+
+def get_cgmes_v3_0_0_profiles() -> Dict[str, List[str]]:
+    """
+    Build the exportable CGMES 3.0.0 profile registry.
+
+    The recent NCP additions extend the classic CGMES core profiles with the
+    standalone Network Code profile documents that have dedicated
+    ``ap.cim4.eu`` URIs.
+
+    :return: Mapping from profile keyword to the list of profile URIs that
+        shall be written into ``md:Model.profile``.
+    :rtype: Dict[str, List[str]]
+    """
+    return {
+        "EQ": ["http://iec.ch/TC57/ns/CIM/CoreEquipment-EU/3.0"],
+        "EQ_BD": ["http://iec.ch/TC57/ns/CIM/EquipmentBoundary-EU/3.0"],
+        "OP": ["http://iec.ch/TC57/ns/CIM/Operation-EU/3.0"],
+        "SC": ["http://iec.ch/TC57/ns/CIM/ShortCircuit-EU/3.0"],
+        "SSH": ["http://iec.ch/TC57/ns/CIM/SteadyStateHypothesis-EU/3.0"],
+        "TP": ["http://iec.ch/TC57/ns/CIM/Topology-EU/3.0"],
+        "TP_BD": ["http://iec.ch/TC57/ns/CIM/TopologyBoundary-EU/3.0"],
+        "SV": ["http://iec.ch/TC57/ns/CIM/StateVariables-EU/3.0"],
+        "GL": ["http://iec.ch/TC57/ns/CIM/GeographicalLocation-EU/3.0"],
+        "CO": ["https://ap.cim4.eu/Contingency/2.3"],
+        "AE": ["https://ap.cim4.eu/AssessedElement/2.4"],
+        "SSI": ["https://ap.cim4.eu/SteadyStateInstruction/2.4"],
+        "PS": ["https://ap.cim4.eu/PowerSchedule/2.4"],
+        "AVS": ["https://ap.cim4.eu/AvailabilitySchedule/2.3"],
+        "RA": ["https://ap.cim4.eu/RemedialAction/2.4"],
+        "RAS": ["https://ap.cim4.eu/RemedialActionSchedule/2.4"],
+        "ER": ["https://ap.cim4.eu/EquipmentReliability/2.4"],
+        "SHS": ["https://ap.cim4.eu/SteadyStateHypothesisSchedule/1.1"],
+        "SIS": ["https://ap.cim4.eu/StateInstructionSchedule/2.4"],
+        "OR": ["https://ap.cim4.eu/ObjectRegistry/2.2"],
+        "SAR": ["https://ap.cim4.eu/SecurityAnalysisResult/2.5"],
+        "IAM": ["https://ap.cim4.eu/ImpactAssessmentMatrix/2.4"]
+    }
+
+
+def get_available_cgmes_profiles(cgmes_version: CGMESVersions) -> Dict[str, List[str]]:
+    """
+    Get the exportable profile registry for one CGMES version.
+
+    :param cgmes_version: CGMES version requested by the exporter or GUI.
+    :return: Mapping from profile keyword to the list of profile URIs that
+        identify that exported profile.
+    :rtype: Dict[str, List[str]]
+    """
     if cgmes_version == CGMESVersions.v2_4_15:
-        return {
-            "EQ": ["http://entsoe.eu/CIM/EquipmentCore/3/1",
-                   "http://entsoe.eu/CIM/EquipmentShortCircuit/3/1",
-                   "http://entsoe.eu/CIM/EquipmentOperation/3/1"],
-            "SSH": ["http://entsoe.eu/CIM/SteadyStateHypothesis/1/1"],
-            "TP": ["http://entsoe.eu/CIM/Topology/4/1"],
-            "SV": ["http://entsoe.eu/CIM/StateVariables/4/1"],
-            "GL": ["http://entsoe.eu/CIM/GeographicalLocation/2/1"]
-        }
+        return get_cgmes_v2_4_15_profiles()
     elif cgmes_version == CGMESVersions.v3_0_0:
-        return {
-            "EQ": ["http://iec.ch/TC57/ns/CIM/CoreEquipment-EU/3.0"],
-            "OP": ["http://iec.ch/TC57/ns/CIM/Operation-EU/3.0"],
-            "SC": ["http://iec.ch/TC57/ns/CIM/ShortCircuit-EU/3.0"],
-            "SSH": ["http://iec.ch/TC57/ns/CIM/SteadyStateHypothesis-EU/3.0"],
-            "TP": ["http://iec.ch/TC57/ns/CIM/Topology-EU/3.0"],
-            "SV": ["http://iec.ch/TC57/ns/CIM/StateVariables-EU/3.0"],
-            "GL": ["http://iec.ch/TC57/ns/CIM/GeographicalLocation-EU/3.0"],
-            "CO": ["https://ap.cim4.eu/Contingency/2.3"]
-        }
+        return get_cgmes_v3_0_0_profiles()
     else:
-        print(f"CGMES Version not suported {cgmes_version.value}")
+        print(f"CGMES Version not supported {cgmes_version.value}")
         return dict()
 
 
 class CimExporter:
-    def __init__(self, cgmes_circuit: CgmesCircuit, profiles_to_export: List[CgmesProfileType], one_file_per_profile: bool):
+    def __init__(self, cgmes_circuit: CgmesCircuit,
+                 profiles_to_export: List[CgmesProfileType],
+                 one_file_per_profile: bool):
+        """
+
+        :param cgmes_circuit:
+        :param profiles_to_export:
+        :param one_file_per_profile:
+        """
         self.cgmes_circuit = cgmes_circuit
 
         self.profiles_to_export = profiles_to_export
@@ -275,7 +334,7 @@ class CimExporter:
         return False
 
     def generate_full_model_elements(self, profile):
-        full_model_elements = []
+        full_model_elements = list()
         filter_props = {"scenarioTime": "str",
                         "created": "str",
                         "version": "str",
@@ -286,41 +345,122 @@ class CimExporter:
                         "Supersedes": "str",
                         "description": "str"}
 
+        selected_instance = None
         for instance in self.cgmes_circuit.cgmes_assets.FullModel_list:
             instance_profiles = getattr(instance, "profile", None)
             if self.is_in_profile(instance_profiles=instance_profiles, model_profile=profile):
-                element = Et.Element("md:FullModel", {"rdf:about": "urn:uuid:" + instance.rdfid})
-                for attr_name in filter_props.keys():
-                    attr_value = getattr(instance, attr_name, None)
-                    if attr_name not in filter_props or attr_value is None:
-                        continue
+                selected_instance = instance
+                break
+            else:
+                pass
+        if selected_instance is None:
+            if len(self.cgmes_circuit.cgmes_assets.FullModel_list) > 0:
+                selected_instance = self.cgmes_circuit.cgmes_assets.FullModel_list[0]
+            else:
+                selected_instance = None
+        else:
+            pass
+
+        full_model_rdfid = str(uuid4())
+        if selected_instance is not None:
+            full_model_rdfid = selected_instance.rdfid
+        else:
+            pass
+        element = Et.Element("md:FullModel", {"rdf:about": "urn:uuid:" + full_model_rdfid})
+
+        for attr_name in filter_props.keys():
+            child = Et.Element(f"md:Model.{attr_name}")
+            attr_value = None
+            if selected_instance is not None:
+                attr_value = getattr(selected_instance, attr_name, None)
+            else:
+                attr_value = None
+
+            if attr_name == "profile":
+                target_profile_uris = self.profile_uris.get(profile, list())
+                for target_profile_uri in target_profile_uris:
                     child = Et.Element(f"md:Model.{attr_name}")
-                    if filter_props.get(attr_name) == "Association":
-                        if isinstance(attr_value, list):
-                            for v in attr_value:
-                                if v is not None:
-                                    child = Et.Element(f"md:Model.{attr_name}")
-                                    child.attrib = {"rdf:resource": "urn:uuid:" + v}
-                                    element.append(child)
-                                else:
-                                    pass
-                            continue
-                        else:
-                            if attr_value is not None:
-                                child.attrib = {"rdf:resource": "urn:uuid:" + attr_value}
-                            else:
-                                continue
-                    else:
-                        if isinstance(attr_value, list):
-                            for v in attr_value:
-                                child = Et.Element(f"md:Model.{attr_name}")
-                                child.text = str(v)
-                                element.append(child)
-                            continue
-                        else:
-                            child.text = str(attr_value)
+                    child.text = str(target_profile_uri)
                     element.append(child)
-                full_model_elements.append(element)
+                continue
+            else:
+                pass
+
+            if attr_name == "created":
+                if attr_value is None:
+                    attr_value = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+                else:
+                    pass
+            elif attr_name == "scenarioTime":
+                if attr_value is None:
+                    attr_value = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+                else:
+                    pass
+            elif attr_name == "version":
+                if attr_value is None:
+                    attr_value = "1"
+                elif isinstance(attr_value, int):
+                    attr_value = str(attr_value)
+                else:
+                    attr_value_str = str(attr_value)
+                    if attr_value_str.isdigit():
+                        attr_value = attr_value_str
+                    else:
+                        self.cgmes_circuit.logger.add_warning(
+                            msg="Coerced non-numeric FullModel.version during export",
+                            device=full_model_rdfid,
+                            device_class="FullModel",
+                            device_property="version",
+                            value=attr_value_str,
+                            expected_value="numeric string"
+                        )
+                        attr_value = "1"
+            else:
+                pass
+
+            if attr_value is None:
+                if attr_name in ["description", "Supersedes", "longDependentOnPF"]:
+                    child.text = ""
+                    element.append(child)
+                else:
+                    pass
+                continue
+            else:
+                pass
+
+            if filter_props.get(attr_name) == "Association":
+                if isinstance(attr_value, list):
+                    for v in attr_value:
+                        if v is None:
+                            pass
+                        else:
+                            token = str(v)
+                            if token.startswith("urn:uuid:"):
+                                resource_value = token
+                            else:
+                                resource_value = "urn:uuid:" + token
+                            child = Et.Element(f"md:Model.{attr_name}")
+                            child.attrib = {"rdf:resource": resource_value}
+                            element.append(child)
+                    continue
+                else:
+                    token = str(attr_value)
+                    if token.startswith("urn:uuid:"):
+                        child.attrib = {"rdf:resource": token}
+                    else:
+                        child.attrib = {"rdf:resource": "urn:uuid:" + token}
+                    element.append(child)
+            else:
+                if isinstance(attr_value, list):
+                    for v in attr_value:
+                        child = Et.Element(f"md:Model.{attr_name}")
+                        child.text = str(v)
+                        element.append(child)
+                    continue
+                else:
+                    child.text = str(attr_value)
+                    element.append(child)
+        full_model_elements.append(element)
         return full_model_elements
 
     @staticmethod

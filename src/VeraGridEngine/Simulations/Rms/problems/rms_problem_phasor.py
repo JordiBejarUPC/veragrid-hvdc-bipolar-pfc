@@ -853,72 +853,76 @@ class RmsProblemPhasor(RmsProblemTemplate):
         :rtype: None
         """
 
-        # i is for variables
-        for v in mdl.state_vars:
-            if v.uid in self._uid2idx_vars:
-                raise ValueError(f"State variable '{v.name}' (uid={v.uid}) is already registered in the system. "
-                               f"Previous device may have created a duplicate variable.")
-            self._compiler_names_dict[v.uid] = f"{self.VARS_NAME}[{self._n_vars}]"
-            self._alias_names_dict[v.uid] = f"{self.VARS_NAME}_{self._n_vars}"
-            self._uid2idx_vars[v.uid] = self._n_vars
-            self._register_global_var_name(name_key=v.name + elm.name, uid=v.uid, block=mdl)
-            self.add_device_var(dev=elm, var=v)
-            self.sys_vars[v.uid] = v
-            self._state_vars.append(v)
-            self._n_vars += 1
+        block_item: Block
+        for block_item in mdl.get_all_blocks():
+            # i is for variables
+            for v in block_item.state_vars:
+                if v.uid in self._uid2idx_vars:
+                    raise ValueError(f"State variable '{v.name}' (uid={v.uid}) is already registered in the system. "
+                                   f"Previous device may have created a duplicate variable.")
+                self._compiler_names_dict[v.uid] = f"{self.VARS_NAME}[{self._n_vars}]"
+                self._alias_names_dict[v.uid] = f"{self.VARS_NAME}_{self._n_vars}"
+                self._uid2idx_vars[v.uid] = self._n_vars
+                self._register_global_var_name(name_key=v.name + elm.name, uid=v.uid, block=block_item)
+                self.add_device_var(dev=elm, var=v)
+                self.sys_vars[v.uid] = v
+                self._state_vars.append(v)
+                self._n_vars += 1
 
-        for v in mdl.algebraic_vars:
-            if v.uid in self._uid2idx_vars:
-                raise ValueError(f"Algebraic variable '{v.name}' (uid={v.uid}) is already registered in the system. "
-                               f"Previous device may have created a duplicate variable.")
-            self._compiler_names_dict[v.uid] = f"{self.VARS_NAME}[{self._n_vars}]"
-            self._alias_names_dict[v.uid] = f"{self.VARS_NAME}_{self._n_vars}"
-            self._uid2idx_vars[v.uid] = self._n_vars
-            self._register_global_var_name(name_key=v.name + elm.name, uid=v.uid, block=mdl)
-            self.add_device_var(dev=elm, var=v)
-            self.sys_vars[v.uid] = v
-            self._algebraic_vars.append(v)
-            self._n_vars += 1
+            for v in block_item.algebraic_vars:
+                if v.uid in self._uid2idx_vars:
+                    raise ValueError(f"Algebraic variable '{v.name}' (uid={v.uid}) is already registered in the system. "
+                                   f"Previous device may have created a duplicate variable.")
+                self._compiler_names_dict[v.uid] = f"{self.VARS_NAME}[{self._n_vars}]"
+                self._alias_names_dict[v.uid] = f"{self.VARS_NAME}_{self._n_vars}"
+                self._uid2idx_vars[v.uid] = self._n_vars
+                self._register_global_var_name(name_key=v.name + elm.name, uid=v.uid, block=block_item)
+                self.add_device_var(dev=elm, var=v)
+                self.sys_vars[v.uid] = v
+                self._algebraic_vars.append(v)
+                self._n_vars += 1
 
-        # j is for parameters
-        for ep, const in mdl.parameters.items():
-            if ep.uid in self._uid2idx_params:
-                raise ValueError(f"Parameter '{ep.name}' (uid={ep.uid}) is already registered in the system. "
-                               f"Previous device may have created a duplicate parameter.")
-            self._compiler_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}[{self._n_params}]"
-            self._alias_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}_{self._n_params}"
-            self._uid2idx_params[ep.uid] = self._n_params
-            self._constant_parameters.append(ep)
-            self._parameters_values.append(const)
-            self._n_params += 1
+            # j is for parameters
+            ep: Var
+            for ep, const in block_item.parameters.items():
+                if ep.uid in self._uid2idx_params:
+                    raise ValueError(f"Parameter '{ep.name}' (uid={ep.uid}) is already registered in the system. "
+                                   f"Previous device may have created a duplicate parameter.")
+                self._compiler_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}[{self._n_params}]"
+                self._alias_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}_{self._n_params}"
+                self._uid2idx_params[ep.uid] = self._n_params
+                self._constant_parameters.append(ep)
+                self._parameters_values.append(const)
+                self._n_params += 1
 
-        # m is for variable parameters
-        for ep, eq in mdl.event_dict.items():
-            if ep.uid in self._uid2idx_event_params:
-                raise ValueError(f"Event parameter '{ep.name}' (uid={ep.uid}) is already registered in the system. "
-                               f"Previous device may have created a duplicate event parameter.")
-            self._compiler_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}[{self._n_event_params}]"
-            self._alias_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}_{self._n_event_params}"
-            self._uid2idx_event_params[ep.uid] = self._n_event_params
-            self._variable_parameters.append(ep)
-            self._event_parameters_eqs.append(eq)
-            self._n_event_params += 1
+            # m is for variable parameters
+            for ep, eq in block_item.event_dict.items():
+                k = len(self._variable_parameters)
+                if ep.uid in self._uid2idx_event_params:
+                    raise ValueError(f"Event parameter '{ep.name}' (uid={ep.uid}) is already registered in the system. "
+                                   f"Previous device may have created a duplicate event parameter.")
+                self._compiler_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}[{k}]"
+                self._alias_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}_{k}"
+                self._uid2idx_event_params[ep.uid] = k
+                self._variable_parameters.append(ep)
+                self._event_parameters_eqs.append(eq)
+                self._n_event_params += 1
 
-        # l is for differential vars
-        for v in mdl.diff_vars:
-            if v.uid in self._uid2idx_diff:
-                raise ValueError(f"Differential variable '{v.name}' (uid={v.uid}) is already registered in the system. "
-                               f"Previous device may have created a duplicate differential variable.")
-            self._compiler_names_dict[v.uid] = f"{self.DIFF_NAME}[{self._n_diff}]"
-            self._alias_names_dict[v.uid] = f"{self.DIFF_NAME}_{self._n_diff}"
-            self._uid2idx_diff[v.uid] = self._n_diff
-            self._register_global_var_name(name_key=v.name + elm.name, uid=v.uid, block=mdl)
-            self.add_device_var(dev=elm, var=v)
-            self._diff_vars.append(v)
-            self._n_diff += 1
+            # l is for differential vars
+            for v in block_item.diff_vars:
+                if v.uid in self._uid2idx_diff:
+                    raise ValueError(f"Differential variable '{v.name}' (uid={v.uid}) is already registered in the system. "
+                                   f"Previous device may have created a duplicate differential variable.")
+                self._compiler_names_dict[v.uid] = f"{self.DIFF_NAME}[{self._n_diff}]"
+                self._alias_names_dict[v.uid] = f"{self.DIFF_NAME}_{self._n_diff}"
+                self._uid2idx_diff[v.uid] = self._n_diff
+                self._register_global_var_name(name_key=v.name + elm.name, uid=v.uid, block=block_item)
+                self.add_device_var(dev=elm, var=v)
+                self._diff_vars.append(v)
+                self._n_diff += 1
 
-        self._state_eqs.extend(mdl.state_eqs)
-        self._algebraic_eqs.extend(mdl.algebraic_eqs)
+            self._state_eqs.extend(block_item.state_eqs)
+            self._algebraic_eqs.extend(block_item.algebraic_eqs)
 
         if self.progress_signal is not None:
             self.progress_signal.emit(20)
@@ -974,7 +978,6 @@ class RmsProblemPhasor(RmsProblemTemplate):
         )
 
         n_states = self.get_states_number()
-        n_diff   = self.get_diff_var_number()
         vp = self._variable_parameters_values
         cp = self._constant_params
 
@@ -987,20 +990,34 @@ class RmsProblemPhasor(RmsProblemTemplate):
         for i in range(min(20, len(nz[0]))):
             row, col = nz[0][i], nz[1][i]
             print(f"  E_partial[{row},{col}] = {E_partial[row,col]}")
+    
         
-        # Debug: show equation 70
-        print(f"\nDEBUG: Equation 70:")
-        print(f"  {all_eqs[70]}")
-        print(f"\nDEBUG: Diff vars involved in row 70:")
-        for col in range(E_partial.shape[1]):
-            if abs(E_partial[70, col]) > 1e-10:
-                print(f"  diff_var[{col}] = {xdot[col]}, value = {E_partial[70, col]}")
-        
-        E_value[:, :n_diff] = E_partial
+        # Map each d(eq)/d(diff_var_j) column to the column of the diff_var base
+        # variable in the global [state_vars + algebraic_vars] ordering.
+        for j, dvar in enumerate(xdot):
+            base_var = dvar.base_var
+            col_idx = self._uid2idx_vars.get(base_var.uid, None)
+            if col_idx is not None:
+                E_value[:, col_idx] += E_partial[:, j]
+            else:    
+                pass
         E_value[:n_states, :n_states] -= np.eye(n_states, dtype=E_value.dtype)
 
         return E_value
+    
+    def get_static_state_matrix(self, x:Vec, dx:Vec):
+        nx = self.get_states_number()
+        ny = self.get_algebraic_var_number()
 
+        if nx == 0:
+            gy = self.get_j22(x, dx, 1e15).toarray()
+            return gy
+
+        fx = self.get_j11(x, dx, 1e10).toarray()
+        fy = self.get_j12(x, dx, 1e10).toarray()
+        gx = self.get_j21(x, dx, 1e10).toarray()
+        gy = self.get_j22(x, dx, 1e15).toarray()
+        return np.block([[fx, fy], [gx, gy]])
 
     def get_device_vars_dict(self) -> Dict[ALL_DEV_TYPES, List[Var]]:
         """Get dictionary of device variables."""
@@ -1034,14 +1051,10 @@ class RmsProblemPhasor(RmsProblemTemplate):
             block_tag = f"::{block.name}#{block.uid}"
 
         disambiguated_key = f"{name_key}{block_tag}"
-        if disambiguated_key == name_key:
+
+        if disambiguated_key == name_key or disambiguated_key in self._vars_glob_name2uid:
             disambiguated_key = f"{name_key} [{uid}]"
 
-        if disambiguated_key in self._vars_glob_name2uid and self._vars_glob_name2uid[disambiguated_key] != uid:
-            raise ValueError(
-                f"Global variable name collision for '{name_key}' and fallback '{disambiguated_key}': "
-                f"existing uid={self._vars_glob_name2uid[disambiguated_key]}, new uid={uid}."
-            )
         self._vars_glob_name2uid[disambiguated_key] = uid
 
     @property
@@ -1100,9 +1113,27 @@ class RmsProblemPhasor(RmsProblemTemplate):
                 x[i] = val
         return x
 
-    def update_variable_params(self, t: float, x_snapshot: Vec | None = None):
+    def get_next_forced_event_time(self, t_prev: float, t_target: float):
+        """Phasor RMS currently has no forced sub-step events."""
+        return None
+
+    def update_variable_params(self,
+                               t: float,
+                               x_snapshot: Vec | None = None,
+                               scheduled_t: float | None = None):
         """Update the variable parameters."""
-        self._variable_parameters_values = self._event_params_fn(self._variable_parameters_values, t)
+        self._variable_parameters_values[:self._n_event_params] = self._event_params_fn(self._variable_parameters_values, t)
+
+    def reset_boundary_update_state(self, t0: float = 0.0) -> None:
+        """Reset runtime event-parameter state to the initial simulation time."""
+        variable_parameters_init = np.ones(self.get_variable_parameter_number())
+        self._variable_parameters_values = self._event_params_fn(variable_parameters_init, float(t0))
+        self._variable_parameters_values = self._event_params_fn(self._variable_parameters_values, float(t0))
+
+    def update(self, t: float, x: Vec, params: Vec) -> None:
+        """Store runtime event parameters for the current Newton step."""
+        self._variable_parameters_values[:] = params[:len(self._variable_parameters)]
+
 
     def initialize_fmu_cs_devices(self, x_snapshot: Vec, t: float = 0.0) -> None:
         """

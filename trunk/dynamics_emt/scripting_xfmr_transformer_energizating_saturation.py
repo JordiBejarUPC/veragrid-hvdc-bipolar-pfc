@@ -39,7 +39,7 @@ from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDa
 from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import StructuralCompiledSolver
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import (
-    get_generator_thevenin_rl_emt_template,
+    get_generator_thevenin_rl_emt_template_with_ref,
 )
 from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_emt_template
@@ -485,7 +485,7 @@ def build_grid_and_run(event_time: float) -> dict[str, Any]:
         get_bus_emt_template(grid, bus)
 
     xfmr_mdl = get_xfmr_emt_template(vf=grid.var_factory, name="xfmr_sat_test").block
-    gen_mdl = get_generator_thevenin_rl_emt_template(vf=grid.var_factory, name="gen_sat_test").block
+    gen_mdl = get_generator_thevenin_rl_emt_template_with_ref(vf=grid.var_factory, name="gen_sat_test").block
     load_mdl = get_shunt_r_emt_template(vf=grid.var_factory, phA=True, phB=True, phC=True).block
 
     set_emt_model(device=xfmr, model=xfmr_mdl, var_factory=grid.var_factory)

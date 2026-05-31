@@ -142,6 +142,21 @@ class Comparison:
     def __repr__(self) -> str:
         return f"Comparison(lhs={self.lhs!r}, op={self.op!r}, rhs={self.rhs!r})"
 
+    def subs(self, mapping: Dict[Any, "Expr"]) -> "Comparison":
+        rhs_expr: Expr = _to_expr(self.rhs)
+        return Comparison(self.lhs.subs(mapping), self.op, rhs_expr.subs(mapping))
+
+    def to_residual(self) -> "Expr":
+        rhs_expr: Expr = _to_expr(self.rhs)
+        if self.op in (CmpOp.LE, CmpOp.LT):
+            return self.lhs - rhs_expr
+        elif self.op in (CmpOp.GE, CmpOp.GT):
+            return rhs_expr - self.lhs
+        elif self.op == CmpOp.EQ:
+            return self.lhs - rhs_expr
+        else:
+            raise ValueError(f"operator not supported {self.op}")
+
 
 class Expr:
     """
@@ -417,12 +432,13 @@ class Var(Expr):
     Any variable
     """
 
-    __slots__ = ("name", "_ref", "_network_conn", "_shared_ref", "uid", "diff_var", "base_var", "_origin_var")
+    __slots__ = ("name", "_ref", "_network_conn", "_shared_ref", "uid", "non_mutable_uid", "diff_var", "base_var", "_origin_var")
 
     def __init__(self, name: str,
                  reference: VarPowerFlowRefferenceType | None = None,
                  network_conn: bool = False,
                  shared_reference: SharedVarReferenceType | None = None,
+                 non_mutable_uid: int | None = None,
                  uid: int | None = None,
                  diff_var: Var | None = None,
                  base_var: Var | None = None):
@@ -437,10 +453,12 @@ class Var(Expr):
         :param diff_var:
         """
         super().__init__(uid=uid)
+        self.non_mutable_uid: int = _new_uid() if uid is None else uid
         self.name: str = name
         self._ref: VarPowerFlowRefferenceType | None = reference
         self._network_conn: bool = network_conn
         self._shared_ref: SharedVarReferenceType | None = shared_reference
+
         self.diff_var = diff_var
         self.base_var: Var | None = base_var  # assign reference to base var
         self._origin_var: Var | None = None
@@ -464,6 +482,7 @@ class Var(Expr):
                 print("")
 
             result.uid = self.uid
+            result.non_mutable_uid = self.non_mutable_uid
             result.name = self.name
             result._shared_ref = self._shared_ref
             result._ref = self._ref
@@ -1718,7 +1737,7 @@ class Func2(Expr):
 # -----------------------------------------------------------------------------
 
 
-def _expr_to_dict(expr: Expr) -> Dict[str, Any]:
+def _expr_to_dict(expr: Expr | Comparison) -> Dict[str, Any]:
     """
     Serialise any `Expr` tree into a plain Python dictionary that’s
     JSON-friendly.  Each node type becomes a small dict that records:
@@ -1793,13 +1812,21 @@ def _expr_to_dict(expr: Expr) -> Dict[str, Any]:
             "uid": expr.uid,
         }
 
+    if isinstance(expr, Comparison):
+        return {
+            "type": "Comparison",
+            "lhs": _expr_to_dict(expr.lhs),
+            "op": expr.op.value,
+            "rhs": _expr_to_dict(_to_expr(expr.rhs)),
+        }
+
     # ------------------------------------------------------------------
     # Anything else is an API bug
     # ------------------------------------------------------------------
     raise TypeError(f"Unsupported Expr subclass: {type(expr).__name__}")
 
 
-def _dict_to_expr(data: Dict[str, Any]) -> Expr | Var | Const:
+def _dict_to_expr(data: Dict[str, Any]) -> Expr | Var | Const | Comparison:
     """
     De-Serialize expression from dictionary
     :param data:
@@ -1841,6 +1868,26 @@ def _dict_to_expr(data: Dict[str, Any]) -> Expr | Var | Const:
 
     elif t == "Func2":
         obj = Func2(data["name"], _dict_to_expr(data["arg1"]), _dict_to_expr(data["arg2"]))
+    elif t == "Comparison":
+        lhs_expr = _dict_to_expr(data["lhs"])
+        rhs_expr = _dict_to_expr(data["rhs"])
+        if not isinstance(lhs_expr, Expr) or not isinstance(rhs_expr, Expr):
+            raise TypeError("Comparison serialization expects symbolic Expr operands")
+
+        op_value = data["op"]
+        if op_value == CmpOp.LE.value:
+            op = CmpOp.LE
+        elif op_value == CmpOp.GE.value:
+            op = CmpOp.GE
+        elif op_value == CmpOp.LT.value:
+            op = CmpOp.LT
+        elif op_value == CmpOp.GT.value:
+            op = CmpOp.GT
+        elif op_value == CmpOp.EQ.value:
+            op = CmpOp.EQ
+        else:
+            raise ValueError(f"Unknown comparison operator '{op_value}'")
+        return Comparison(lhs_expr, op, rhs_expr)
 
     else:
         raise ValueError(f"Unknown type '{t}' in deserialisation")

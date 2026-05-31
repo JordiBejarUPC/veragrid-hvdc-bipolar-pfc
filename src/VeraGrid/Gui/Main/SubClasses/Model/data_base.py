@@ -115,6 +115,7 @@ class DataBaseTableMain(DiagramsMain):
         self.ui.actionGrid_reduction.triggered.connect(self.grid_reduction_from_schematic_selection)
         self.ui.actionSubstation_wizard.triggered.connect(self.add_substation_with_wizard)
         self.ui.actionSet_model_x_y_based_on_lat_lon.triggered.connect(self.set_model_x_y_based_on_lat_lon)
+        self.ui.actionRestore_investments.triggered.connect(self.restore_investments)
 
         # tree click
         self.ui.dataStructuresTreeView.clicked.connect(self.view_objects_data)
@@ -178,7 +179,8 @@ class DataBaseTableMain(DiagramsMain):
             parent=self.ui.dataStructureTableView,
             editable=True,
             dictionary_of_lists=dictionary_of_lists,
-            properties_filter=filter_prop
+            properties_filter=filter_prop,
+            error_msg_ptr=self.show_error_toast
         )
 
         return mdl
@@ -899,7 +901,7 @@ class DataBaseTableMain(DiagramsMain):
 
             elif elm_type == DeviceType.EmtModelTemplateDevice.value:
 
-                name = f'EMT template {len(self.circuit.rms_events)}'
+                name = f'EMT template {len(self.circuit.emt_models)}'
                 obj = dev.EmtModelTemplate(name=name)
                 self.circuit.add_emt_model(obj)
 
@@ -931,13 +933,13 @@ class DataBaseTableMain(DiagramsMain):
 
             elif elm_type == DeviceType.EmtEventDevice.value:
 
-                name = f'EMT event {len(self.circuit.rms_events)}'
+                name = f'EMT event {len(self.circuit.emt_events)}'
                 obj = dev.EmtEvent(name=name)
                 self.circuit.add_emt_event(obj)
 
             elif elm_type == DeviceType.EmtEventsGroupDevice.value:
 
-                name = f'EMT event group {len(self.circuit.rms_events_groups)}'
+                name = f'EMT event group {len(self.circuit.emt_events_groups)}'
                 obj = dev.EmtEventsGroup(name=name)
                 self.circuit.add_emt_events_group(obj)
 
@@ -1667,3 +1669,28 @@ class DataBaseTableMain(DiagramsMain):
                 self.show_logs(logger=logger, name="set (x,y) from (lat, lon)")
             else:
                 self.show_info_toast("x, y changed!")
+
+    def restore_investments(self):
+        """
+        Restore investments to the circuit
+        :return:
+        """
+        ok = yes_no_question(text="This action will restore the circuit to the state before the last investment "
+                                  "modification. Do you want to proceed?",
+                             title="Restore investments")
+
+        if ok:
+            self.circuit.restore_investments()
+            for diagram_widget in self.diagram_widgets_list:
+                if isinstance(diagram_widget, SchematicWidget):
+                    diagram_widget.recolour_mode()
+                else:
+                    # map widgets and other diagram types do not encode active state
+                    # via dashed/solid pen styling, so they have nothing to refresh
+                    pass
+
+            # re-apply result-based colouring on top of the active-state styling
+            self.colour_diagrams()
+            self.show_info_toast("Investments restored!")
+
+        return None

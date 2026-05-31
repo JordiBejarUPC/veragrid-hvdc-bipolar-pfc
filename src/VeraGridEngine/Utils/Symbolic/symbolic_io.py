@@ -7,13 +7,14 @@ from __future__ import annotations
 import copy
 from typing import Dict, Any, List
 
-from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
+from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory, Connection
+from VeraGridEngine.Utils.Symbolic import SharedVarReferenceType
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, BinOp, UnOp, Func, Func2
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
 
 
-def symbolic_objects_to_dict(obj_dict: Dict[int, Var | Const | Var]) -> List[Dict[str, Any]]:
+def symbolic_objects_to_dict(obj_dict: Dict[int | str, Var | Const | Var | SharedVarReferenceType]) -> List[Dict[str, Any]]:
     """
     Save the list of all unique vars, diffvars and const
     :param obj_dict: Dictionary storing the unique objects
@@ -47,6 +48,7 @@ def symbolic_objects_to_dict(obj_dict: Dict[int, Var | Const | Var]) -> List[Dic
                         "type": "DiffVar",
                         "name": expr.name,
                         "uid": expr.uid,
+                        "non_mutable_uid": expr.non_mutable_uid,
                         "base_var": expr.base_var.uid,
                         "shared_ref": {"name": shared.name if shared is not None else None,
                                 "uid": shared.uid if shared is not None else None},
@@ -57,6 +59,7 @@ def symbolic_objects_to_dict(obj_dict: Dict[int, Var | Const | Var]) -> List[Dic
                         "type": "DiffVar",
                         "name": expr.name,
                         "uid": expr.uid,
+                        "non_mutable_uid": expr.non_mutable_uid,
                         "base_var": expr.base_var.uid,
                         "shared_ref": {"name": shared.name if shared is not None else None,
                                 "uid": shared.uid if shared is not None else None},
@@ -71,6 +74,7 @@ def symbolic_objects_to_dict(obj_dict: Dict[int, Var | Const | Var]) -> List[Dic
                     lst.append({"type": "Var",
                                 "name": expr.name,
                                 "uid": expr.uid,
+                                "non_mutable_uid": expr.non_mutable_uid,
                                 "base_var": None,
                                 "shared_ref": {"name": shared.name if shared is not None else None,
                                                 "uid": shared.uid if shared is not None else None},
@@ -80,16 +84,41 @@ def symbolic_objects_to_dict(obj_dict: Dict[int, Var | Const | Var]) -> List[Dic
                     lst.append({"type": "Var",
                                 "name": expr.name,
                                 "uid": expr.uid,
+                                "non_mutable_uid": expr.non_mutable_uid,
                                 "base_var": None,
                                 "shared_ref": {"name": shared.name if shared is not None else None,
                                                 "uid": shared.uid if shared is not None else None},
                                 "ref": expr.ref.value if expr.ref is not None else None,
                                 })
 
+        if isinstance(expr, SharedVarReferenceType):
+            lst.append({"type": "share_reference",
+                        "name": expr.name,
+                        "uid": expr.uid})
+
+        if isinstance(expr, Connection):
+            lst.append({"type": "Connection",
+                        "non_mutable_uid": expr.non_mutable_uid,
+                        "name": expr.name,
+                        "uid": expr.uid})
 
 
     return lst
 
+def connections_to_dict(obj_dict: Dict[int, List[Connection]]) -> Dict[int, List[Any]]:
+
+
+    conn_dict: Dict[int, List[Any]] = dict()
+
+    for uuid, connections_list in obj_dict.items():
+        conn_list: List[Any] = list()
+        for connection in connections_list:
+            conn_list.append({"type": "Connection",
+                        "non_mutable_uid": connection.non_mutable_uid,
+                        "name": connection.name,
+                        "uid": connection.uid})
+        conn_dict[uuid] = conn_list
+    return conn_dict
 
 def expr_to_dict(expr: Expr,
                  const_dict: Dict[int, Const],
@@ -182,6 +211,21 @@ def expr_to_dict(expr: Expr,
             "uid": expr.uid,
         }
 
+    elif isinstance(expr, Func2):
+        return {
+            "type": "Func2",
+            "name": expr.name,
+            "arg1": expr_to_dict(expr=expr.arg1,
+                                  const_dict=const_dict,
+                                  var_dict=var_dict,
+                                  diff_var_dict=diff_var_dict),
+            "arg2": expr_to_dict(expr=expr.arg2,
+                                  const_dict=const_dict,
+                                  var_dict=var_dict,
+                                  diff_var_dict=diff_var_dict),
+            "uid": expr.uid,
+        }
+
     else:
         raise TypeError(f"Unsupported Expr subclass: {type(expr).__name__}")
 
@@ -213,7 +257,7 @@ def expr_list_to_list(lst: List[Expr],
 def parse_expr(data: Dict[str, Any],
                const_dict: Dict[int, Const],
                var_dict: Dict[int, Var],
-               diff_var_dict: Dict[int, Var]) -> Const | Var | Var | UnOp | BinOp | Func:
+               diff_var_dict: Dict[int, Var]) -> Const | Var | UnOp | BinOp | Func | Func2:
     """
     De-Serialize expression from dictionary
     :param data: Some dictionary containing the expression
@@ -262,6 +306,18 @@ def parse_expr(data: Dict[str, Any],
 
         obj = Func(arg=arg, op=data["op"], uid=data["uid"])
 
+    elif t == "Func2":
+        arg1: Const | Var | UnOp | BinOp | Func | Func2 = parse_expr(data=data["arg1"],
+                                                                      const_dict=const_dict,
+                                                                      var_dict=var_dict,
+                                                                      diff_var_dict=diff_var_dict)
+        arg2: Const | Var | UnOp | BinOp | Func | Func2 = parse_expr(data=data["arg2"],
+                                                                      const_dict=const_dict,
+                                                                      var_dict=var_dict,
+                                                                      diff_var_dict=diff_var_dict)
+
+        obj = Func2(name=data["name"], arg1=arg1, arg2=arg2, uid=data["uid"])
+
     else:
         raise ValueError(f"Unknown type '{t}' in symbolic deserialization")
 
@@ -271,7 +327,7 @@ def parse_expr(data: Dict[str, Any],
 def parse_expr_list(lst: List[Dict[str, Any]],
                     const_dict: Dict[int, Const],
                     var_dict: Dict[int, Var],
-                    diff_var_dict: Dict[int, Var]) -> List[Const | Var | Var | UnOp | BinOp | Func]:
+                    diff_var_dict: Dict[int, Var]) -> List[Const | Var | UnOp | BinOp | Func | Func2]:
     """
 
     :param lst:
@@ -325,6 +381,22 @@ class BlockSaver:
         :return:
         """
         return symbolic_objects_to_dict(self.var_factory.get_diff_var_dict())
+
+    def get_shared_references_to_save(self) -> List[Dict[str, Any]]:
+        """
+
+        :return:
+        :rtype:
+        """
+        return symbolic_objects_to_dict(self.var_factory.get_references_dict())
+
+    def get_connections_to_save(self) -> Dict[int, List[Any]]:
+        """
+
+        :return:
+        :rtype:
+        """
+        return connections_to_dict(self.var_factory.get_connections_dict())
 
     def get_blocks(self) -> Dict[int, Dict[str, Any]]:
         return self.blocks
@@ -544,6 +616,53 @@ class BlockParser:
         self.var_factory = var_factory
         self.block_dict: Dict[int, Block] = dict()
 
+    def _get_var_by_non_mutable_uid(self, non_mutable_uid: int) -> Var:
+        """
+        Recover one algebraic variable using its stable non-mutable UID.
+
+        The symbolic connection system intentionally aliases connected
+        variables by rewriting their runtime ``uid`` values. That aliasing is
+        required by the solver, but block interfaces such as ``in_vars`` and
+        ``out_vars`` must still be reconstructed with the original variable
+        objects so metadata like ``ref`` keeps the semantic meaning assigned by
+        the template author. Looking up ports by the mutable ``uid`` after
+        replaying saved connections can therefore return a different connected
+        variable, such as a bus variable replacing a branch terminal variable.
+
+        :param non_mutable_uid: Stable symbolic variable identity.
+        :return: Matching algebraic variable.
+        :raises KeyError: If the variable is not present in the factory.
+        """
+        var_obj: Var | None = self.var_factory.get_vars_dict().get(non_mutable_uid, None)
+        if var_obj is not None:
+            return var_obj
+        else:
+            raise KeyError(f"Var with non_mutable_uid {non_mutable_uid} was not found in VarFactory")
+
+    def _find_var_or_diff_var_by_non_mutable_uid(self, non_mutable_uid: int) -> Var | None:
+        """
+        Recover one symbolic variable or differential variable by stable identity.
+
+        External mappings expose semantic power-flow references to specific
+        symbolic variables. Saved connection replay may alias runtime ``uid``
+        values across connected variables, so rebuilding external mappings by
+        mutable ``uid`` can return a different connected variable and lose the
+        original semantic role. This helper resolves the mapping through the
+        stable dictionary keys used by the variable factory instead.
+
+        :param non_mutable_uid: Stable symbolic identity stored in the file.
+        :return: Matching variable or ``None`` when the mapping is unresolved.
+        """
+        var_obj: Var | None = self.var_factory.get_vars_dict().get(non_mutable_uid, None)
+        if var_obj is not None:
+            return var_obj
+        else:
+            diff_var_obj: Var | None = self.var_factory.get_diff_var_dict().get(non_mutable_uid, None)
+            if diff_var_obj is not None:
+                return diff_var_obj
+            else:
+                return None
+
     def parse_consts(self, data: List[Dict[str, Any]]):
         """
 
@@ -567,6 +686,26 @@ class BlockParser:
         :return:
         """
         self.var_factory.parse_diff_var_dict(data_list=data)
+
+    def parse_references(self, data: List[Dict[str, Any]]):
+        """
+
+        :param data:
+        :type data:
+        :return:
+        :rtype:
+        """
+        self.var_factory.parse_references_dict(datalist=data)
+
+    def parse_connections(self, data: Dict[int, List[Any]]):
+        """
+
+        :param data:
+        :type data:
+        :return:
+        :rtype:
+        """
+        self.var_factory.parse_connections_dict(datalist=data)
 
     def parse_block(self,
                     blocks_data: Dict[int, Dict[str, Any]],
@@ -606,9 +745,16 @@ class BlockParser:
                                            var_dict=self.var_factory.get_vars_dict(),
                                            diff_var_dict=self.var_factory.get_diff_var_dict())
 
-        in_vars = [self.var_factory.get_var(v_uid) for v_uid in data["in_vars"]]
+        # Rebuild interface variables using the stable non-mutable UID stored
+        # in the factory keys. This preserves the original port object and its
+        # semantic reference even when runtime connections have aliased the
+        # mutable ``uid`` to another connected variable.
+        in_vars = [self._get_var_by_non_mutable_uid(v_uid) for v_uid in data["in_vars"]]
 
-        out_vars = [self.var_factory.get_var(v_uid) for v_uid in data["out_vars"]]
+        # Apply the same stable lookup to outputs for consistency with inputs
+        # and to avoid replacing exported branch variables with connected bus
+        # variables after deserialization.
+        out_vars = [self._get_var_by_non_mutable_uid(v_uid) for v_uid in data["out_vars"]]
 
         children = [self.parse_block(blocks_data, child_uid) for child_uid in data["children"]]
 
@@ -641,7 +787,10 @@ class BlockParser:
         external_mapping: Dict[VarPowerFlowRefferenceType, Var|None] = dict()
         for key_str, var_uid in data["external_mapping"].items():
             key = VarPowerFlowRefferenceType(key_str)
-            var_in_varfactory = self.var_factory.find_var_or_diff_var(var_uid)
+            # Rebuild PF-exposed mappings using the stable symbolic identity.
+            # This preserves the original variable object selected by the
+            # template even when runtime connections have aliased mutable UIDs.
+            var_in_varfactory = self._find_var_or_diff_var_by_non_mutable_uid(var_uid)
             if var_in_varfactory is not None:
                 external_mapping[key] = var_in_varfactory
             else:

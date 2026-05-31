@@ -516,6 +516,21 @@ def _is_zero(s: str) -> bool:
 def _is_one(s: str) -> bool:
     return s in ["1.0", "1", "1.00"]
 
+
+def _stable_digest(payload: str, length: int | None = None) -> str:
+    """
+    Return a deterministic SHA-256 digest for cache keys and generated-module names.
+
+    :param payload: Deterministic payload string.
+    :type payload: str
+    :param length: Optional prefix length to keep.
+    :type length: int | None
+    :return: Hex digest string.
+    :rtype: str
+    """
+    digest = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+    return digest if length is None else digest[:length]
+
 def _compile_to_file(full_source: str, func_name: str) -> Callable:
     """
     Writes source code to a file in __pycache_jit__ and imports it.
@@ -533,7 +548,7 @@ def _compile_to_file(full_source: str, func_name: str) -> Callable:
     if cache_dir not in sys.path:
         sys.path.append(cache_dir)
 
-    content_hash = hashlib.md5(full_content.encode('utf-8')).hexdigest()[:16]
+    content_hash = _stable_digest(full_content, length=16)
     mod_name = f"{func_name}_{content_hash}"
     filename = f"{mod_name}.py"
     filepath = os.path.join(cache_dir, filename)
@@ -563,7 +578,7 @@ def _build_codegen_cache_key(payload: str) -> str:
     :rtype: str
     """
     cache_version: str = "jit-codegen-v1"
-    return hashlib.md5((cache_version + "|" + payload).encode("utf-8")).hexdigest()
+    return _stable_digest(cache_version + "|" + payload)
 
 
 def _fingerprint_codegen_var(node: Var,
@@ -961,7 +976,7 @@ class SubexpressionAnalyzer:
 
     def hash_expr(self, node: Expr) -> str:
         canonical = self._expr_to_canonical_string(node)
-        return hashlib.md5(canonical.encode()).hexdigest()[:12]
+        return _stable_digest(canonical, length=12)
 
     def _expr_to_canonical_string(self, node: Expr) -> str:
         if id(node) in self.memo_canonical:
@@ -2288,7 +2303,6 @@ class RMSCompiler(EquationCompiler):
         wrt_map = {v.uid: (i, v) for i, v in enumerate(wrt_vars)}
         triplets: List[Tuple[int, int, Expr]] = list()
 
-        # Only differentiate variables that appear in the equation AST.
         for row, eq in enumerate(eqs):
             for uid in _collect_candidate_wrt_uids(eq, wrt_map):
                 col, var = wrt_map[uid]
@@ -2324,6 +2338,8 @@ class RMSCompiler(EquationCompiler):
         lines.append("    vars = vrs")
         for i, expr in enumerate(d_exprs):
             expr_str = expression2numba(expr, self.compiler_names_dict)
+            # in case of vectorization
+            # lines.append(f"    data_out[{i}] = {expr_str}")
             lines.append(f"    data_out[{i}] = {expr_str}")
 
         filler_fn = _compile_to_file("\n".join(lines), f"{func_name}_filler")
@@ -2356,14 +2372,21 @@ class RMSCompiler(EquationCompiler):
         lines: List[str] = list()
         lines.append(f"def {func_name}({EVENT_PARAMS_NAME}, {TIME_NAME}, out):")
 
-        final_names_dict = self.compiler_names_dict.copy()
+        final_names_dict: Dict[int, str] = self.compiler_names_dict.copy()
         for uid, count in used_vars_count.items():
             if count > 1:
                 final_names_dict[uid] = alias_names_dict[uid]
                 lines.append(f"    {alias_names_dict[uid]} = {self.compiler_names_dict[uid]}")
+            else:
+                pass
 
         for i, eq in enumerate(eqs):
-            expr_str = expression2numba(eq, self.compiler_names_dict)
+            # Event-parameter expressions may reuse the same runtime variable many
+            # times, especially for piecewise ramps built from time-dependent
+            # expressions. The compiled expression must therefore use the alias-
+            # aware name map prepared above, otherwise the generated code can
+            # evaluate a simplified step-like path instead of the intended ramp.
+            expr_str = expression2numba(eq, final_names_dict)
             lines.append(f"    out[{i}] = {expr_str}")
 
         raw_fn = _compile_to_file("\n".join(lines), func_name)

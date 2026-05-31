@@ -124,22 +124,22 @@ else:
     raise ValueError(f"Unknown load type: {load_type}")
 genrow_mdl1 = (get_complete_generator_template_rms(grid.var_factory).block)
 
-genrow_mdl1.connect([genrow_mdl1.in_vars[0]], [bus1.rms_model.out_vars[0]])
-genrow_mdl1.connect([genrow_mdl1.in_vars[1]], [bus1.rms_model.out_vars[1]])
+grid.var_factory.add_connections([genrow_mdl1.in_vars[0]], [bus1.rms_model.out_vars[0]])
+grid.var_factory.add_connections([genrow_mdl1.in_vars[1]], [bus1.rms_model.out_vars[1]])
 
-load_mdl.connect([load_mdl.in_vars[0]], [bus3.rms_model.out_vars[0]])
+grid.var_factory.add_connections([load_mdl.in_vars[0]], [bus3.rms_model.out_vars[0]])
 
-line12_mdl.connect([line12_mdl.in_vars[0]], [bus1.rms_model.out_vars[0]])
-line12_mdl.connect([line12_mdl.in_vars[1]], [bus1.rms_model.out_vars[1]])
+grid.var_factory.add_connections([line12_mdl.in_vars[0]], [bus1.rms_model.out_vars[0]])
+grid.var_factory.add_connections([line12_mdl.in_vars[1]], [bus1.rms_model.out_vars[1]])
 
-line12_mdl.connect([line12_mdl.in_vars[2]], [bus2.rms_model.out_vars[0]])
-line12_mdl.connect([line12_mdl.in_vars[3]], [bus2.rms_model.out_vars[1]])
+grid.var_factory.add_connections([line12_mdl.in_vars[2]], [bus2.rms_model.out_vars[0]])
+grid.var_factory.add_connections([line12_mdl.in_vars[3]], [bus2.rms_model.out_vars[1]])
 
-trafo_mdl.connect([trafo_mdl.in_vars[0]], [bus2.rms_model.out_vars[0]])
-trafo_mdl.connect([trafo_mdl.in_vars[1]], [bus2.rms_model.out_vars[1]])
+grid.var_factory.add_connections([trafo_mdl.in_vars[0]], [bus2.rms_model.out_vars[0]])
+grid.var_factory.add_connections([trafo_mdl.in_vars[1]], [bus2.rms_model.out_vars[1]])
 
-trafo_mdl.connect([trafo_mdl.in_vars[2]], [bus3.rms_model.out_vars[0]])
-trafo_mdl.connect([trafo_mdl.in_vars[3]], [bus3.rms_model.out_vars[1]])
+grid.var_factory.add_connections([trafo_mdl.in_vars[2]], [bus3.rms_model.out_vars[0]])
+grid.var_factory.add_connections([trafo_mdl.in_vars[3]], [bus3.rms_model.out_vars[1]])
 
 
 # external mapping

@@ -1526,6 +1526,9 @@ def build_line_static_matrices(
         )
         # Tower/template matrices are physical line matrices. They are first
         # length-scaled and then converted to the system EMT per-unit base.
+
+        # z_phys: np.ndarray = line.ys.values * float(line.length)
+        # y_phys: np.ndarray = line.ysh.values * float(line.length)
         z_phys: np.ndarray = line_template.z_nabc * float(line.length)
         y_phys: np.ndarray = line_template.y_nabc * float(line.length)
 
@@ -2939,6 +2942,34 @@ def assign_vsc_static_api_mapping(
 
     assign_api_mapping_value_if_present(
         mdl=mdl,
+        key=ParamPowerFlowRefferenceType.alpha1,
+        value=float(vsc.alpha1),
+        logger=logger,
+        device_name=device_name,
+        problem_mapping=problem_mapping,
+    )
+
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowRefferenceType.alpha2,
+        value=float(vsc.alpha2),
+        logger=logger,
+        device_name=device_name,
+        problem_mapping=problem_mapping,
+    )
+
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowRefferenceType.alpha3,
+        value=float(vsc.alpha3),
+        logger=logger,
+        device_name=device_name,
+        problem_mapping=problem_mapping,
+    )
+
+
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
         key=ParamPowerFlowRefferenceType.Sbase,
         value=float(grid.Sbase),
         logger=logger,
@@ -3012,7 +3043,7 @@ def assign_vsc_static_api_mapping(
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowRefferenceType.vsc_kdp_pu,
-        value=float(vsc.control1_droop),
+        value=float(vsc.control1_val_droop),
         logger=logger,
         device_name=device_name,
         problem_mapping=problem_mapping,

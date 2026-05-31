@@ -22,9 +22,10 @@ from VeraGridEngine.enumerations import (DeviceType, PrpCat, TimeFrame, BuildSta
                                          WindingType, MethodShortCircuit, PhasesShortCircuit, ShuntConnectionType,
                                          BusGraphicType, SwitchGraphicType, DynamicIntegrationMethod, OpfDispatchMode,
                                          EmtLineTypes, EmtProblemTypes, EmtInitializationMethod,
-                                         SmallSignalEmtBuildTypes, FmuTemplateDomain,
+                                         SmallSignalEmtBuildTypes, FmuTemplateDomain, DynamicPlotMode,
                                          EraSvdSolverType, ShuntControlMode, RmsProblemTypes, FmuTemplateDomain,
-                                         FmuTemplateMode, RmsInitializationMethod, EmtSolverTypes)
+                                         FmuTemplateMode, RmsInitializationMethod, EmtSolverTypes, PlotSimulationType,
+                                         DynamicEventTransitionType, DynamicPlotEntryKind, DynamicPlotEntryRole)
 # types that can be assigned to a VeraGrid property
 GCPROP_TYPES = Union[
     Type[int],
@@ -78,6 +79,11 @@ GCPROP_TYPES = Union[
     Type[EraSvdSolverType],
     Type[FmuTemplateDomain],
     Type[FmuTemplateMode],
+    Type[PlotSimulationType],
+    Type[DynamicEventTransitionType],
+    Type[DynamicPlotMode],
+    Type[DynamicPlotEntryKind],
+    Type[DynamicPlotEntryRole],
 ]
 
 
@@ -1202,6 +1208,7 @@ class EditableDevice(metaclass=EditableDeviceMeta):
 
         # Create a new instance of the object
         tpe = self.__class__
+        new_obj: EditableDevice
 
         try:
             new_obj = tpe(name=self.name,
@@ -1211,7 +1218,7 @@ class EditableDevice(metaclass=EditableDeviceMeta):
             new_obj.disable_auto_updates()
 
         except TypeError:
-            new_obj = tpe()
+            new_obj: EditableDevice = tpe()
             new_obj.disable_auto_updates()
 
         # deep-copy each property
