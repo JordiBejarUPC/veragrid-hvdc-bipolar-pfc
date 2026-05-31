@@ -83,6 +83,10 @@ def get_gfm_emt_template(vf: VarFactory, name: str = "VSC_GridForming") -> EmtMo
     e_C = vf.add_var(name=f"e_C_{name}")
     Pe = vf.add_var(name=f"Pe_{name}")
     Qe = vf.add_var(name=f"Qe_{name}")
+    # DC-side current injection (branch ``if_dc`` terminal). It closes the DC
+    # bus KCL when the VSC is connected to a real DC bus (e.g. through the GUI
+    # branch connector). Defined by the lossless power balance below.
+    i_dc = vf.add_var(name=f"i_dc_{name}", reference=VarPowerFlowRefferenceType.Idc)
 
     # Static parameters and droop / control set-points.
     omega_base = vf.add_var(name=f"omega_base_{name}")
@@ -203,10 +207,14 @@ def get_gfm_emt_template(vf: VarFactory, name: str = "VSC_GridForming") -> EmtMo
         e_C - Epk * sym.sin(theta + two_pi_over_3),
         Pe - Pe_expr,
         Qe - Qe_expr,
+        # Lossless DC power balance (same convention as get_emt_ideal_converter):
+        # the DC bus supplies the active power the converter delivers to the AC
+        # side, so v_dc * i_dc + Pe = 0  ->  i_dc = -Pe / v_dc.
+        i_dc * v_dc + Pe,
     ]
     algebraic_vars: List[Any] = [
         e_A, e_B, e_C,
-        Pe, Qe,
+        Pe, Qe, i_dc,
     ]
 
     templ.block = Block(
@@ -215,7 +223,7 @@ def get_gfm_emt_template(vf: VarFactory, name: str = "VSC_GridForming") -> EmtMo
         algebraic_eqs=algebraic_eqs,
         algebraic_vars=algebraic_vars,
         in_vars=inputs,
-        out_vars=[i_A, i_B, i_C],
+        out_vars=[i_A, i_B, i_C, i_dc],
     )
 
     templ.block.diff_vars = [d_i_A, d_i_B, d_i_C, d_theta, d_omega, d_Epk]
@@ -231,6 +239,7 @@ def get_gfm_emt_template(vf: VarFactory, name: str = "VSC_GridForming") -> EmtMo
         VarPowerFlowRefferenceType.i_B: i_B,
         VarPowerFlowRefferenceType.i_C: i_C,
         VarPowerFlowRefferenceType.Vdc: v_dc,
+        VarPowerFlowRefferenceType.Idc: i_dc,
         VarPowerFlowRefferenceType.Qf: Qf,
         VarPowerFlowRefferenceType.Vpk: Vpk_ref,
         VarPowerFlowRefferenceType.phi_v: phi_v_ref,

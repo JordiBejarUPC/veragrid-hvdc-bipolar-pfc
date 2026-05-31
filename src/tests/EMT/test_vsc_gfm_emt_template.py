@@ -101,6 +101,7 @@ def _build_pf_consistent_bindings(name: str) -> Dict[str, float]:
         f"e_C_{name}": e_C,
         f"Pe_{name}": Pe,
         f"Qe_{name}": Qe,
+        f"i_dc_{name}": -Pe / v_dc,
         f"omega_{name}": 1.0,
         f"Epk_{name}": Epk_init,
         f"omega_base_{name}": omega_base,
@@ -144,6 +145,7 @@ def test_vsc_gfm_emt_template_exposes_expected_structure() -> None:
         "i_A_G1",
         "i_B_G1",
         "i_C_G1",
+        "i_dc_G1",
     ]
     assert [var.name for var in templ.block.state_vars] == [
         "i_A_G1",
@@ -159,6 +161,7 @@ def test_vsc_gfm_emt_template_exposes_expected_structure() -> None:
         "e_C_G1",
         "Pe_G1",
         "Qe_G1",
+        "i_dc_G1",
     ]
     assert [var.name for var in templ.block.algebraic_vars] == expected_algebraic
 
