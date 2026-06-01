@@ -14,15 +14,27 @@ if SRC_DIR not in sys.path:
     sys.path.insert(0, SRC_DIR)
 
 import VeraGridEngine.api as gce
+from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_genqec_rms
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_rms_model
+from VeraGridEngine.Utils.Symbolic import Const
+from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 
 
 def build_grid() -> gce.MultiCircuit:
+    def block_counts(block) -> tuple[int, int]:
+        n_eq = len(getattr(block, "state_eqs", [])) + len(getattr(block, "algebraic_eqs", []))
+        n_var = len(getattr(block, "state_vars", [])) + len(getattr(block, "algebraic_vars", []))
+        for child in getattr(block, "children", []):
+            c_eq, c_var = block_counts(child)
+            n_eq += c_eq
+            n_var += c_var
+        return n_eq, n_var
+
     grid = gce.MultiCircuit(Sbase=100.0, fbase=50.0)
 
     bus0 = gce.Bus(name="Bus0", Vnom=10.0, is_slack=True)
@@ -62,29 +74,57 @@ def build_grid() -> gce.MultiCircuit:
     if load.rms_model.empty():
         set_rms_model(device=load, model=get_load_rms_template(grid.var_factory, name=load.name).block, var_factory=grid.var_factory)
     if gen.rms_model.empty():
-        # Generator only (no governor/exciter/stabilizer wrapper).
-        # Seed open controller inputs with init guesses.
+        # GENQEC with minimal AVR stub.
         gen_block = get_genqec_rms(grid.var_factory, name=gen.name).block
         tm_in = gen_block.in_vars[2]
-        vf_in = gen_block.in_vars[3]
+        gen_block.event_dict[tm_in] = grid.var_factory.add_const(None)
 
-        if not any(v.uid == tm_in.uid for v in gen_block.algebraic_vars):
-            gen_block.algebraic_vars.append(tm_in)
-        if not any(v.uid == vf_in.uid for v in gen_block.algebraic_vars):
-            gen_block.algebraic_vars.append(vf_in)
+        vm_avr = grid.var_factory.add_var(f"Vm_avr_{gen.name}")
+        x_avr = grid.var_factory.add_var(f"x_avr_{gen.name}", shared_reference="vf_reference")
+        k_avr = grid.var_factory.add_var(f"Kavr_{gen.name}")
+        t_avr = grid.var_factory.add_var(f"Tavr_{gen.name}")
+        vref_avr = grid.var_factory.add_var(f"Vref_avr_{gen.name}")
 
-        # Standalone generator-only simplification:
-        # remove the IRPu algebraic closure row/var to avoid redundant excitation constraints.
-        if gen_block.algebraic_vars:
-            irpu_var = gen_block.algebraic_vars[-1]
-            if getattr(irpu_var, "name", "").startswith("IRPu"):
-                gen_block.algebraic_vars.pop(-1)
-                if gen_block.algebraic_eqs:
-                    gen_block.algebraic_eqs.pop(-1)
+        avr_block = Block(
+            state_eqs=[(k_avr * (vref_avr - vm_avr) - x_avr) / (t_avr + grid.var_factory.add_const(1e-6))],
+            state_vars=[x_avr],
+            algebraic_eqs=[],
+            algebraic_vars=[],
+            in_vars=[vm_avr],
+            out_vars=[x_avr],
+            event_dict={
+                k_avr: grid.var_factory.add_const(20.0),
+                t_avr: grid.var_factory.add_const(0.05),
+                vref_avr: grid.var_factory.add_const(1.05),
+            },
+            init_eqs={
+                x_avr: grid.var_factory.add_const(0.1),
+            },
+            name=f"avr_stub_{gen.name}",
+        )
 
-        gen_block.init_eqs[tm_in] = grid.var_factory.add_const(1.0)
-        gen_block.init_eqs[vf_in] = grid.var_factory.add_const(0.1)
-        set_rms_model(device=gen, model=gen_block, var_factory=grid.var_factory)
+        # Explicitly drive generator Vf input from AVR output.
+        grid.var_factory.add_connection(gen_block.in_vars[3], avr_block.out_vars[0])
+        grid.var_factory.add_connection(avr_block.in_vars[0], gen_block.in_vars[0])
+
+        combined = Block(name=f"gen_with_avr_{gen.name}")
+        combined.children.append(gen_block)
+        combined.children.append(avr_block)
+        combined.algebraic_eqs = []
+        combined.algebraic_vars = []
+        combined.external_mapping = {
+            VarPowerFlowRefferenceType.P: gen_block.out_vars[0],
+            VarPowerFlowRefferenceType.Q: gen_block.out_vars[1],
+            VarPowerFlowRefferenceType.Vm: gen_block.in_vars[0],
+            VarPowerFlowRefferenceType.Va: gen_block.in_vars[1],
+        }
+        combined.in_vars = [gen_block.in_vars[0], gen_block.in_vars[1]]
+        combined.out_vars = [gen_block.out_vars[0], gen_block.out_vars[1]]
+        combined.unify_blocks()
+        n_eq, n_var = block_counts(combined)
+        print(f"Combined block structural count: eqs={n_eq}, vars={n_var}")
+
+        set_rms_model(device=gen, model=combined, var_factory=grid.var_factory)
 
     group = gce.RmsEventsGroup(name="BaseCase")
     grid.add_rms_events_group(group)

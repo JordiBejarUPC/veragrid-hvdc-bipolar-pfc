@@ -39,8 +39,8 @@ def get_load_phasor_current_rms_template(vfactory: VarFactory, name:str = '') ->
     Ql0 = vfactory.add_var("Ql0")
 
     # Current injection variables solved from terminal voltage and P/Q
-    Ir = vfactory.add_var("Ir")
-    Ii = vfactory.add_var("Ii")
+    Ir = vfactory.add_var("Ir_" + name)
+    Ii = vfactory.add_var("Ii_" + name)
     vr_aux = vfactory.add_var("vr_aux")
     vi_aux = vfactory.add_var("vi_aux")
 
