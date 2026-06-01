@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import os
 import sys
+import pickle
+import hashlib
 from pathlib import Path
 
 from matplotlib import pyplot as plt
@@ -238,6 +240,10 @@ def build_problems(grid_filename: str) -> tuple[vge.RmsProblemMultilinear, vge.R
     return problem_ml, problem_ph
 
 
+def _hash_operating_point(x: np.ndarray) -> str:
+    return hashlib.sha256(x.tobytes()).hexdigest()
+
+
 def main() -> None:
     grid_filename = sys.argv[1] if len(sys.argv) > 1 else "IEEE 9 Bus.gridcal"
     problem_ml, problem_ph = build_problems(grid_filename=grid_filename)
@@ -267,6 +273,21 @@ def main() -> None:
     print(f"  matches={matches} ml_only={ml_only} ph_only={ph_only} mean_err={mean_err:.3e}")
     _print_unmatched(ml_unmatched, ph_unmatched, n_show=8)
     _plot_eigen_comparison(fin_drv_ml, fin_drv_ph)
+
+    results = {
+        'grid_name': grid_filename,
+        'stable': stable_ml,
+        'margin': margin_ml,
+        'matches': matches,
+        'op_hash': _hash_operating_point(x),
+    }
+    
+    output_dir = Path('precomputed_builds')
+    output_dir.mkdir(exist_ok=True)
+    output_path = output_dir / f"{Path(grid_filename).stem}_{results['op_hash'][:6]}.tensygrid"
+    with open(output_path, 'wb') as f:
+        pickle.dump(results, f)
+    print(f"Results saved to {output_path}")
 
 
 if __name__ == "__main__":
