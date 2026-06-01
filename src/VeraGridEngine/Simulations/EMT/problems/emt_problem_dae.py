@@ -33,6 +33,8 @@ from VeraGridEngine.enumerations import (
     ParamPowerFlowReferenceType,
     DeviceType,
     DynamicEventTransitionType,
+    EmtInitializationMethod,
+    EmtInitializationStatus,
     EmtLineTypes,
     WindingType,
 )
@@ -1432,11 +1434,32 @@ class EmtProblemDae(EmtProblemTemplate):
         if self.progress_signal is not None:
             self.progress_signal.emit(5)
 
-        # 2) explicit init guesses initialization
-        self._run_explicit_initialization()
+        # 2) Initialization stage selection.
+        # Explicit initialization is the lightweight symbolic seed stage that
+        # resolves device-provided init equations directly. The broader EMT
+        # workflow may either stop here, use it as a seed for the reduced
+        # native consistency solve, or skip it entirely when the user
+        # requests a pure pseudo-transient initialization path driven only by
+        # the power-flow seeded variables.
+        if self.options.initialization_method == EmtInitializationMethod.PseudoTransient:
+            pass
+        else:
+            self._run_explicit_initialization()
         explicit_init_s: float = _toc(t_phase_start)
         t_phase_start = _tic()
-        self.initialization_report = run_emt_native_initialization(problem=self, options=self.options)
+
+        # 3) Native initialization stage selection.
+        # The native stage builds and solves the reduced consistency system only
+        # for workflows that require it. Pure Explicit stops after the symbolic
+        # seeding stage, while the other methods use the native initialization
+        # dispatcher to execute their requested algorithm from the current seed.
+        if self.options.initialization_method == EmtInitializationMethod.Explicit:
+            self.initialization_report = EmtInitializationReport(method_requested=EmtInitializationMethod.Explicit)
+            self.initialization_report.status = EmtInitializationStatus.RESOLVED
+            self.initialization_report.method_used = EmtInitializationMethod.Explicit
+            self.initialization_report.message = "Explicit initialization completed."
+        else:
+            self.initialization_report = run_emt_native_initialization(problem=self, options=self.options)
         self._seed_all_switched_vsc_models()
         self._seed_all_switch_models()
         self.init_guess.update(self._temp_post_init_guess)
