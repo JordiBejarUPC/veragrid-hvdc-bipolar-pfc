@@ -21,9 +21,49 @@ PRECOMPUTED_DIR = TENSYGRID_DIR / "precomputed_builds"
 SCRIPT_PATH = TENSYGRID_DIR / "small_signal_multilinear.py"
 CONTINGENCY_SCRIPT_PATH = TENSYGRID_DIR / "run_contingency.py"
 
-VENV_PYTHON = PROJECT_ROOT / "venv" / "bin" / "python3"
-if not VENV_PYTHON.exists():
-    VENV_PYTHON = Path(sys.executable)
+
+def _find_venv_python() -> Path:
+    """Find the venv Python executable, searching several candidate locations.
+
+    Handles Windows (Scripts/python.exe) and Unix (bin/python3 or bin/python),
+    and tolerates the venv being one directory above or below PROJECT_ROOT.
+    Falls back to the current interpreter if nothing is found.
+    """
+    # Candidate venv root directories (the repo root, one level up, one level down)
+    search_roots = [
+        PROJECT_ROOT,
+        PROJECT_ROOT.parent,
+        PROJECT_ROOT / "venv",   # venv directly as a subfolder named venv
+    ]
+    # Also add every direct child dir of PROJECT_ROOT named *venv*
+    try:
+        for child in PROJECT_ROOT.iterdir():
+            if child.is_dir() and "venv" in child.name.lower():
+                search_roots.append(child)
+    except Exception:
+        pass
+
+    # Relative paths inside a venv root that point to the interpreter
+    candidates_rel = [
+        Path("venv") / "Scripts" / "python.exe",   # Windows
+        Path("venv") / "bin" / "python3",           # Linux / macOS
+        Path("venv") / "bin" / "python",            # fallback
+        Path("Scripts") / "python.exe",             # if root IS the venv
+        Path("bin") / "python3",
+        Path("bin") / "python",
+    ]
+
+    for root in search_roots:
+        for rel in candidates_rel:
+            candidate = root / rel
+            if candidate.exists():
+                return candidate
+
+    # Last resort: use the interpreter that is running this script
+    return Path(sys.executable)
+
+
+VENV_PYTHON = _find_venv_python()
 
 _running_process: Optional[subprocess.Popen] = None
 _current_grid: Optional[str] = None
