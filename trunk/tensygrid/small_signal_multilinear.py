@@ -157,7 +157,7 @@ def _plot_eigen_comparison(ml_eigs: np.ndarray, ph_eigs: np.ndarray) -> None:
     ax.grid(True, alpha=0.3)
     ax.legend(loc="best")
     plt.tight_layout()
-    plt.show()
+    #plt.show()
 
 
 def build_problems(grid_filename: str) -> tuple[vge.RmsProblemMultilinear, vge.RmsProblemPhasor, vge.PowerFlowResults, vge.RmsOptions, vge.RmsOptions]:
@@ -250,7 +250,9 @@ def run_small_signal_from_driver(problem, pf_results: vge.PowerFlowResults, rms_
     driver.problem = problem
     driver.k = problem.get_states_number()
     driver.run()
-    return driver.results.eigenvalues
+    state_var_names = [str(v.name) if hasattr(v, 'name') else f"state_{i}" 
+                       for i, v in enumerate(problem.state_and_algebraic_vars)]
+    return driver.results.eigenvalues, driver.results.participation_factors, state_var_names
 
 
 def _hash_operating_point(x: np.ndarray) -> str:
@@ -262,12 +264,12 @@ def main() -> None:
     problem_ml, problem_ph, pf_results, rms_options_ml, rms_options_ph = build_problems(grid_filename=grid_filename)
     x = problem_ml.get_x0()
 
-    eig_driver_ml = run_small_signal_from_driver(problem=problem_ml,
-                                                 pf_results=pf_results,
-                                                 rms_options=rms_options_ml)
-    eig_driver_ph = run_small_signal_from_driver(problem=problem_ph,
-                                                 pf_results=pf_results,
-                                                 rms_options=rms_options_ph)
+    eig_driver_ml, pf_ml, state_var_names_ml = run_small_signal_from_driver(problem=problem_ml,
+                                                  pf_results=pf_results,
+                                                  rms_options=rms_options_ml)
+    eig_driver_ph, pf_ph, state_var_names_ph = run_small_signal_from_driver(problem=problem_ph,
+                                                  pf_results=pf_results,
+                                                  rms_options=rms_options_ph)
 
     fin_drv_ml = eig_driver_ml[np.isfinite(eig_driver_ml) & (np.abs(eig_driver_ml) < 1e6)]
     fin_drv_ph = eig_driver_ph[np.isfinite(eig_driver_ph) & (np.abs(eig_driver_ph) < 1e6)]
@@ -287,12 +289,88 @@ def main() -> None:
     _print_unmatched(ml_unmatched, ph_unmatched, n_show=8)
     _plot_eigen_comparison(fin_drv_ml, fin_drv_ph)
 
+    eigenvalues_list = [
+        {'re': float(np.real(ev)), 'im': float(np.imag(ev))}
+        for ev in fin_drv_ml
+    ]
+
+    def _damping(re: float, im: float) -> float:
+        mag = np.sqrt(re * re + im * im)
+        return -re / mag if mag > 1e-12 else 0.0
+
+    def _freq_hz(im: float) -> float:
+        return abs(im) / (2 * np.pi)
+
+    critical_modes = []
+    for i, ev in enumerate(fin_drv_ml):
+        re, im = float(np.real(ev)), float(np.imag(ev))
+        if abs(im) > 0.1:
+            damping = float(_damping(re, im))
+            
+            participation = {}
+            if pf_ml is not None and i < len(pf_ml):
+                pf_row = pf_ml[i]
+                if state_var_names_ml is not None and len(state_var_names_ml) > 0:
+                    for j, var_name in enumerate(state_var_names_ml):
+                        if j < len(pf_row):
+                            participation[str(var_name)] = float(pf_row[j])
+                else:
+                    for j, val in enumerate(pf_row):
+                        participation[f"state_{j}"] = float(val)
+            
+            top_participation = dict(sorted(participation.items(), key=lambda x: abs(x[1]), reverse=True)[:5])
+            
+            critical_modes.append({
+                'mode': i,
+                're': re,
+                'im': im,
+                'damping': damping,
+                'freq_hz': float(_freq_hz(im)),
+                'critical': bool(abs(damping) < 0.05),
+                'participation_factors': top_participation,
+            })
+    critical_modes.sort(key=lambda m: m['damping'])
+
+    bus_voltages = []
+    voltages = pf_results.voltage
+    bus_names = pf_results.bus_names
+    bus_types = pf_results.bus_types
+    
+    for i, bus in enumerate(problem_ml.grid.buses):
+        v_complex = voltages[i] if i < len(voltages) else 1.0 + 0j
+        vm = float(abs(v_complex))
+        theta = float(np.angle(v_complex))
+        bus_type = str(bus_types[i]) if i < len(bus_types) else 'Unknown'
+        bus_name = str(bus_names[i]) if i < len(bus_names) else str(bus.name)
+        
+        bus_voltages.append({
+            'id': bus.idtag if hasattr(bus, 'idtag') else str(i),
+            'name': bus_name,
+            'type': bus_type,
+            'vm_pu': round(vm, 4),
+            'theta_deg': round(float(np.degrees(theta)), 2),
+        })
+
+    grid_info = {
+        'n_buses': len(list(problem_ml.grid.buses)),
+        'n_generators': len(list(problem_ml.grid.generators)),
+        'n_lines': len(list(problem_ml.grid.lines)),
+        'n_loads': len(list(problem_ml.grid.loads)),
+        'n_transformers': len(list(problem_ml.grid.transformers2w)),
+    }
+
     results = {
         'grid_name': grid_filename,
         'stable': stable_ml,
         'margin': margin_ml,
         'matches': matches,
         'op_hash': _hash_operating_point(x),
+        'eigenvalues': eigenvalues_list,
+        'critical_modes': critical_modes[:10],
+        'bus_voltages': bus_voltages,
+        'grid_info': grid_info,
+        'n_eigenvalues': len(fin_drv_ml),
+        'n_state_vars': len(x),
     }
     
     output_dir = Path('precomputed_builds')
