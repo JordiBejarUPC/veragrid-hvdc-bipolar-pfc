@@ -1163,7 +1163,11 @@ class RmsProblemMultilinear(RmsProblemPhasor):
         residual = self.Phi @ varphi
         return np.asarray(residual, dtype=float).reshape(-1)
     
-    def linearize_multilinear(self, x: np.ndarray | None = None) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def linearize_multilinear(
+        self,
+        x: np.ndarray | None = None,
+        sparse_output: bool = False,
+    ) -> tuple[np.ndarray | sparse.csc_matrix, np.ndarray | sparse.csc_matrix, np.ndarray | sparse.csc_matrix]:
         """
         Linearize using multilinear matrices S/Phi and return (E, A, EABC).
         """
@@ -1184,7 +1188,7 @@ class RmsProblemMultilinear(RmsProblemPhasor):
         v[:n_state_alg] = x_vec
 
         F = self._compute_jacobian_sparse_from_S(S, v)
-        EABC = (Phi @ F.T).toarray()
+        EABC_sparse = (Phi @ F.T).tocsc()
 
         all_vars = self._ml_all_vars_sa
         idx_vars = self._ml_idx_vars
@@ -1192,19 +1196,24 @@ class RmsProblemMultilinear(RmsProblemPhasor):
         idx_vars_ordered = [idx for idx, _ in ordered_pairs]
         vars_ordered = [v for _, v in ordered_pairs]
 
-        n_eq = EABC.shape[0]
+        n_eq = EABC_sparse.shape[0]
         cols_to_take = len(idx_vars_ordered)
         dim = max(n_eq, cols_to_take)
 
-        A = EABC[:, idx_vars_ordered[:cols_to_take]].copy()
-        if A.shape[0] != dim or A.shape[1] != dim:
-            A_pad = np.zeros((dim, dim), dtype=float)
-            A_pad[:A.shape[0], :A.shape[1]] = A
-            A = A_pad
+        A_sparse = EABC_sparse[:, idx_vars_ordered[:cols_to_take]].tocsc()
+        if A_sparse.shape[0] != dim or A_sparse.shape[1] != dim:
+            if A_sparse.shape[1] < dim:
+                right_pad = sparse.csc_matrix((A_sparse.shape[0], dim - A_sparse.shape[1]), dtype=float)
+                A_sparse = sparse.hstack([A_sparse, right_pad], format="csc")
+            if A_sparse.shape[0] < dim:
+                bottom_pad = sparse.csc_matrix((dim - A_sparse.shape[0], dim), dtype=float)
+                A_sparse = sparse.vstack([A_sparse, bottom_pad], format="csc")
 
         # Build descriptor E with explicit projection matrix using the same
         # diff->base convention as get_E_matrix.
-        P = np.zeros((EABC.shape[1], cols_to_take), dtype=float)
+        p_row: list[int] = []
+        p_col: list[int] = []
+        p_val: list[float] = []
         uid_to_basis_idx = self._ml_uid_to_basis_idx
         for dvar in self._diff_vars:
             base_var = dvar.base_var
@@ -1216,19 +1225,35 @@ class RmsProblemMultilinear(RmsProblemPhasor):
             deriv_idx = uid_to_basis_idx.get(dvar.uid)
             if deriv_idx is None:
                 continue
-            P[deriv_idx, dest_col] += 1.0
+            p_row.append(deriv_idx)
+            p_col.append(dest_col)
+            p_val.append(1.0)
 
-        E = EABC @ P
+        P = sparse.csc_matrix((p_val, (p_row, p_col)), shape=(EABC_sparse.shape[1], cols_to_take), dtype=float)
+
+        E_sparse = (EABC_sparse @ P).tocsc()
 
         n_states = len(self._state_vars)
-        E[:n_states, :n_states] -= np.eye(n_states, dtype=E.dtype)
+        if n_states > 0:
+            diag_rows = np.arange(n_states, dtype=np.int64)
+            I_state = sparse.csc_matrix((np.ones(n_states, dtype=float), (diag_rows, diag_rows)), shape=(dim, dim))
+        else:
+            I_state = sparse.csc_matrix((dim, dim), dtype=float)
 
-        if E.shape[0] != dim or E.shape[1] != dim:
-            E_pad = np.zeros((dim, dim), dtype=float)
-            E_pad[:E.shape[0], :E.shape[1]] = E
-            E = E_pad
+        if E_sparse.shape[0] != dim or E_sparse.shape[1] != dim:
+            if E_sparse.shape[1] < dim:
+                right_pad = sparse.csc_matrix((E_sparse.shape[0], dim - E_sparse.shape[1]), dtype=float)
+                E_sparse = sparse.hstack([E_sparse, right_pad], format="csc")
+            if E_sparse.shape[0] < dim:
+                bottom_pad = sparse.csc_matrix((dim - E_sparse.shape[0], dim), dtype=float)
+                E_sparse = sparse.vstack([E_sparse, bottom_pad], format="csc")
 
-        return E, A, EABC
+        E_sparse = E_sparse - I_state
+
+        if sparse_output:
+            return E_sparse, A_sparse, EABC_sparse
+
+        return E_sparse.toarray(), A_sparse.toarray(), EABC_sparse.toarray()
 
     def get_E_matrix(self, x: np.ndarray, dx: np.ndarray):
         E, _, _ = self.linearize_multilinear(x=np.asarray(x, dtype=float))
@@ -1303,5 +1328,4 @@ class RmsProblemMultilinear(RmsProblemPhasor):
                     f_val.append(val)
 
         return sparse.csc_matrix((f_val, (f_row, f_col)), shape=(n_vars, n_mon))
-
 
