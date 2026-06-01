@@ -11,7 +11,7 @@ import os
 # Ensure the library can be found
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src')))
 
-from VeraGridEngine import VarPowerFlowRefferenceType
+from VeraGridEngine import VarPowerFlowReferenceType
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
 from VeraGridEngine.Templates.Rms.load_zip_template import ZIPLoadBuild
@@ -236,8 +236,8 @@ grid.var_factory.add_connections([line12_mdl.in_vars[3]], [bus2.rms_model.out_va
 
 # external mapping
 big_gen1 = Block(children=[genrow_mdl1])
-big_gen1.external_mapping.update({VarPowerFlowRefferenceType.P: genrow_mdl1.out_vars[0]})
-big_gen1.external_mapping.update({VarPowerFlowRefferenceType.Q: genrow_mdl1.out_vars[1]})
+big_gen1.external_mapping.update({VarPowerFlowReferenceType.P: genrow_mdl1.out_vars[0]})
+big_gen1.external_mapping.update({VarPowerFlowReferenceType.Q: genrow_mdl1.out_vars[1]})
 
 # attach rms models to Veragrid objects
 line12.rms_model = line12_mdl
@@ -346,9 +346,9 @@ exit()
         #     }
         # )
         # block.external_mapping = {
-        #     VarPowerFlowRefferenceType.Pf: Pf,
-        #     VarPowerFlowRefferenceType.Pt: Pt,
-        #     VarPowerFlowRefferenceType.Qf: Qf,
-        #     VarPowerFlowRefferenceType.Qt: Qt,
+        #     VarPowerFlowReferenceType.Pf: Pf,
+        #     VarPowerFlowReferenceType.Pt: Pt,
+        #     VarPowerFlowReferenceType.Qf: Qf,
+        #     VarPowerFlowReferenceType.Qt: Qt,
         # }
     

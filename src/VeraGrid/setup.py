@@ -67,13 +67,12 @@ package_data = {'VeraGrid': ['*.md',
                             'data/VeraGrid.ico'],
                 }
 
-dependencies = ['setuptools>=41.0.1',
-                'wheel>=0.37.2',
-                "PySide6>=6.8.0",  # 5.14 breaks the UI generation for development, 6.7.0 breaks all
-                "pytest>=7.2",
-                "websockets",
+dependencies = ["PySide6>=6.8.0",  # 5.14 breaks the UI generation for development, 6.7.0 breaks all
+                "requests>=2.33.0",
+                "urllib3>=2.7.0",
+                "websockets>=9.1",
                 "opencv-python>=4.10.0.84",
-                "packaging",
+                "packaging>=25.0",
                 "VeraGridEngine==" + __VeraGrid_VERSION__,  # the VeraGridEngine version must be exactly the same
                 ]
 

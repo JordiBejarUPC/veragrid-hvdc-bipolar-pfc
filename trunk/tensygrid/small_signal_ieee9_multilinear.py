@@ -5,7 +5,10 @@
 
 from __future__ import annotations
 
+import cProfile
+import io
 import os
+import pstats
 import sys
 from pathlib import Path
 
@@ -18,7 +21,7 @@ if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
 
 import VeraGridEngine.api as vge
-from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_driver import run_dense_small_signal_stability
+from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_rms_model
 
 
@@ -145,24 +148,241 @@ def _print_unmatched(ref_unmatched: list[tuple[complex, float]],
         print(f"    ev={ev.real:+.9e}{ev.imag:+.9e}j  nearest={dist:.3e}")
 
 
-def _plot_eigen_comparison(ml_eigs: np.ndarray, ph_eigs: np.ndarray) -> None:
+def _plot_eigen_comparison(ml_eigs: np.ndarray, ph_eigs: np.ndarray, grid_label: str) -> None:
     fig, ax = plt.subplots(figsize=(9, 6))
     ax.scatter(np.real(ml_eigs), np.imag(ml_eigs), s=40, alpha=0.7, c="tab:blue", label="ML driver")
     ax.scatter(np.real(ph_eigs), np.imag(ph_eigs), s=40, alpha=0.7, c="tab:orange", marker="x", label="Phasor driver")
     ax.axvline(x=0.0, color="k", linestyle="--", linewidth=1)
     ax.set_xlabel("Real Part")
     ax.set_ylabel("Imaginary Part")
-    ax.set_title("IEEE9 Eigenvalue Map (ML vs Phasor)")
+    ax.set_title(f"{grid_label} Eigenvalue Map (ML vs Phasor)")
     ax.grid(True, alpha=0.3)
     ax.legend(loc="best")
     plt.tight_layout()
     plt.show()
 
 
-def build_problems(grid_filename: str) -> tuple[vge.RmsProblemMultilinear, vge.RmsProblemPhasor]:
+def _seed_problem_init_guess_from_vector(problem, x_vec: np.ndarray) -> None:
+    for uid, idx in problem.uid2idx_vars.items():
+        if idx < len(x_vec):
+            problem.init_guess[uid] = float(x_vec[idx])
+
+
+def _debug_kcl_uid_trace(problem, marker: str = "Irg_Gen9") -> None:
+    eqs_attr = getattr(problem, "get_algebraic_eqs", None)
+    eqs = eqs_attr() if callable(eqs_attr) else eqs_attr
+    if eqs is None:
+        eqs = getattr(problem, "_algebraic_eqs", [])
+    x0 = problem.get_x0()
+    print(f"\nKCL UID trace (marker={marker})")
+    for i, eq in enumerate(eqs):
+        eq_text = str(eq)
+        if marker not in eq_text:
+            continue
+        print(f"eq_idx={i} eq={eq_text}")
+        vars_in_eq = eq.get_vars()
+        shown = set()
+        for v in vars_in_eq:
+            if v.uid in shown:
+                continue
+            shown.add(v.uid)
+            idx = problem.uid2idx_vars.get(v.uid, None)
+            x0_val = float(x0[idx]) if idx is not None and idx < len(x0) else float("nan")
+            init_val = problem.init_guess.get(v.uid, None)
+            print(f"  var={v.name} uid={v.uid} idx={idx} x0={x0_val:+.9e} init={init_val}")
+
+
+def _debug_bus38_kcl_from_pf_seed(problem) -> None:
+    state_vars_attr = getattr(problem, "get_state_vars", None)
+    alg_vars_attr = getattr(problem, "get_algebraic_vars", None)
+    state_vars = state_vars_attr() if callable(state_vars_attr) else getattr(problem, "_state_vars", [])
+    alg_vars = alg_vars_attr() if callable(alg_vars_attr) else getattr(problem, "_algebraic_vars", [])
+    all_vars = list(state_vars) + list(alg_vars)
+    name_to_uid = {str(v.name): v.uid for v in all_vars}
+    x0 = problem.get_x0()
+
+    def _lookup_uid_by_prefix(prefix: str) -> int:
+        for n, uid in name_to_uid.items():
+            if n == prefix or n.startswith(prefix + "__"):
+                return uid
+        raise KeyError(prefix)
+
+    def val(name: str) -> float:
+        uid = _lookup_uid_by_prefix(name)
+        idx = problem.uid2idx_vars[uid]
+        return float(x0[idx])
+
+    irt1 = val("Irt_branch 1")
+    irt16 = val("Irt_branch 16")
+    irf1 = val("Irf_branch 1")
+    irf16 = val("Irf_branch 16")
+    iit1 = val("Iit_branch 1")
+    iit16 = val("Iit_branch 16")
+    iif1 = val("Iif_branch 1")
+    iif16 = val("Iif_branch 16")
+    irg = val("Irg_Gen9")
+    iig = val("Iig_Gen9")
+    irl = val("Ir_Load1@bus 38")
+    iil = val("Ii_Load1@bus 38")
+
+    kcl_r_using_t = -irt1 - irt16 + irg + irl
+    kcl_i_using_t = -iit1 - iit16 + iig + iil
+    kcl_r_using_f = -irf1 - irf16 + irg + irl
+    kcl_i_using_f = -iif1 - iif16 + iig + iil
+
+    print("\nBus 38 KCL check from PF-seeded x0")
+    print(f"  using to-side vars : R={kcl_r_using_t:+.9e} I={kcl_i_using_t:+.9e}")
+    print(f"  using from-side vars: R={kcl_r_using_f:+.9e} I={kcl_i_using_f:+.9e}")
+    print("  terms (to-side):")
+    print(f"    Irt1={irt1:+.9e} Irt16={irt16:+.9e} Irg9={irg:+.9e} IrLoad38={irl:+.9e}")
+    print(f"    Iit1={iit1:+.9e} Iit16={iit16:+.9e} Iig9={iig:+.9e} IiLoad38={iil:+.9e}")
+
+
+def _debug_bus38_power_balance(problem) -> None:
+    eqs_attr = getattr(problem, "get_algebraic_eqs", None)
+    eqs = eqs_attr() if callable(eqs_attr) else eqs_attr
+    if eqs is None:
+        eqs = getattr(problem, "_algebraic_eqs", [])
+    x0 = problem.get_x0()
+
+    def get_val_by_uid(uid: int) -> float:
+        idx = problem.uid2idx_vars[uid]
+        return float(x0[idx])
+
+    eq_r = None
+    eq_i = None
+    for eq in eqs:
+        txt = str(eq)
+        if "Irg_Gen9" in txt and "Ir_Load1@bus 38" in txt and "Irt_branch" in txt:
+            eq_r = eq
+        if "Iig_Gen9" in txt and "Ii_Load1@bus 38" in txt and "Iit_branch" in txt:
+            eq_i = eq
+
+    if eq_r is None or eq_i is None:
+        print("\nBus 38 power-balance debug skipped: could not locate KCL equations")
+        return
+
+    vars_r = {str(v.name): get_val_by_uid(v.uid) for v in eq_r.get_vars()}
+    vars_i = {str(v.name): get_val_by_uid(v.uid) for v in eq_i.get_vars()}
+
+    vr = None
+    vi = None
+    state_vars = getattr(problem, "_state_vars", [])
+    alg_vars = getattr(problem, "_algebraic_vars", [])
+    for v in list(state_vars) + list(alg_vars):
+        n = str(v.name)
+        if n == "Vr":
+            vr = get_val_by_uid(v.uid)
+        if n == "Vi":
+            vi = get_val_by_uid(v.uid)
+    if vr is None or vi is None:
+        print("\nBus 38 power-balance debug skipped: could not find Vr/Vi")
+        return
+
+    ir_mis = -vars_r["Irt_branch 1"] - vars_r["Irt_branch 16"] + vars_r["Irg_Gen9"] + vars_r["Ir_Load1@bus 38"]
+    ii_mis = -vars_i["Iit_branch 1"] - vars_i["Iit_branch 16"] + vars_i["Iig_Gen9"] + vars_i["Ii_Load1@bus 38"]
+
+    v = complex(vr, vi)
+    i_mis = complex(ir_mis, ii_mis)
+    s_mis = v * np.conj(i_mis)
+
+    print("\nBus 38 power-balance check from KCL mismatch")
+    print(f"  V38={vr:+.9e}{vi:+.9e}j")
+    print(f"  I_mismatch={ir_mis:+.9e}{ii_mis:+.9e}j")
+    print(f"  S_mismatch=V*conj(I_mismatch)={s_mis.real:+.9e}{s_mis.imag:+.9e}j")
+
+
+def _print_participation_summary(problem, eigenvalues: np.ndarray, participation_factors: np.ndarray, label: str, n_show: int = 8) -> None:
+    if participation_factors is None or participation_factors.size == 0:
+        print(f"{label} participation factors: unavailable")
+        return
+    state_vars = list(getattr(problem, "_state_vars", []))
+    alg_vars = list(getattr(problem, "_algebraic_vars", []))
+    all_dyn_vars = state_vars + alg_vars
+    finite_idx = np.where(np.isfinite(eigenvalues) & (np.abs(eigenvalues) < 1e6))[0]
+    unstable = [i for i in finite_idx if float(np.real(eigenvalues[i])) > 0.0]
+    stable_or_marginal = [i for i in finite_idx if float(np.real(eigenvalues[i])) <= 0.0]
+    ordered_idx = unstable + stable_or_marginal
+    print(f"{label} dominant participation (top {min(n_show, len(finite_idx))} finite modes)")
+    for i in ordered_idx[:n_show]:
+        if i >= participation_factors.shape[1] or participation_factors.shape[0] == 0:
+            continue
+        pf = np.abs(participation_factors[:, i])
+        k = int(np.argmax(pf))
+        if k < len(state_vars):
+            name = f"state:{state_vars[k]}"
+        elif k < len(all_dyn_vars):
+            name = f"alg:{all_dyn_vars[k]}"
+        else:
+            name = f"var[{k}]"
+        status = "UNSTABLE" if float(np.real(eigenvalues[i])) > 0.0 else "stable/marginal"
+        print(f"  mode={i + 1} ev={eigenvalues[i].real:+.6e}{eigenvalues[i].imag:+.6e}j {status} dominant={name} PF={pf[k]:.3e}")
+
+
+def _apply_bus38_kcl_q_correction(problem) -> None:
+    eqs_attr = getattr(problem, "get_algebraic_eqs", None)
+    eqs = eqs_attr() if callable(eqs_attr) else eqs_attr
+    if eqs is None:
+        eqs = getattr(problem, "_algebraic_eqs", [])
+    x0 = problem.get_x0()
+
+    def get_val_by_uid(uid: int) -> float:
+        idx = problem.uid2idx_vars[uid]
+        return float(x0[idx])
+
+    eq_r = None
+    eq_i = None
+    for eq in eqs:
+        txt = str(eq)
+        if "Irg_Gen9" in txt and "Ir_Load1@bus 38" in txt and "Irt_branch" in txt:
+            eq_r = eq
+        if "Iig_Gen9" in txt and "Ii_Load1@bus 38" in txt and "Iit_branch" in txt:
+            eq_i = eq
+
+    if eq_r is None or eq_i is None:
+        print("Bus 38 KCL correction skipped: equations not found")
+        return
+
+    vars_r = {str(v.name): v for v in eq_r.get_vars()}
+    vars_i = {str(v.name): v for v in eq_i.get_vars()}
+
+    ir_mis = (
+        -get_val_by_uid(vars_r["Irt_branch 1"].uid)
+        -get_val_by_uid(vars_r["Irt_branch 16"].uid)
+        +get_val_by_uid(vars_r["Irg_Gen9"].uid)
+        +get_val_by_uid(vars_r["Ir_Load1@bus 38"].uid)
+    )
+    ii_mis = (
+        -get_val_by_uid(vars_i["Iit_branch 1"].uid)
+        -get_val_by_uid(vars_i["Iit_branch 16"].uid)
+        +get_val_by_uid(vars_i["Iig_Gen9"].uid)
+        +get_val_by_uid(vars_i["Ii_Load1@bus 38"].uid)
+    )
+
+    ir_load_var = vars_r["Ir_Load1@bus 38"]
+    ii_load_var = vars_i["Ii_Load1@bus 38"]
+    ir_old = problem.init_guess.get(ir_load_var.uid, get_val_by_uid(ir_load_var.uid))
+    ii_old = problem.init_guess.get(ii_load_var.uid, get_val_by_uid(ii_load_var.uid))
+
+    # Apply current correction from KCL mismatch (this corresponds to pure Q correction at bus 38 in this case)
+    problem.init_guess[ir_load_var.uid] = float(ir_old - ir_mis)
+    problem.init_guess[ii_load_var.uid] = float(ii_old - ii_mis)
+    print("Applied bus 38 KCL/Q correction to load current init:")
+    print(f"  Ir_Load1@bus 38: {ir_old:+.9e} -> {problem.init_guess[ir_load_var.uid]:+.9e}")
+    print(f"  Ii_Load1@bus 38: {ii_old:+.9e} -> {problem.init_guess[ii_load_var.uid]:+.9e}")
+
+
+def build_problems(grid_filename: str) -> tuple[vge.RmsProblemMultilinear, vge.RmsProblemPhasor, vge.PowerFlowResults, vge.RmsOptions, vge.RmsOptions]:
     grid_path = project_base / "Grids_and_profiles" / "grids" / grid_filename
     grid = vge.open_file(str(grid_path))
     ensure_unique_device_names(grid)
+    sanitize_runtime_parameter_names(grid)
+
+    for load in grid.loads:
+        if getattr(load, "bus", None) is not None and getattr(load.bus, "name", "") == "bus 38":
+            if hasattr(load, "Q"):
+                print(f"Temporarily zeroing Q at {load.bus.name}: Q={load.Q}")
+                load.Q = 0.0
 
     for bus in grid.buses:
         if bus.rms_model.empty():
@@ -235,38 +455,139 @@ def build_problems(grid_filename: str) -> tuple[vge.RmsProblemMultilinear, vge.R
     )
     problem_ml = vge.RmsProblemMultilinear(grid=grid, options=rms_options_ml, pf_results=pf_results)
     problem_ph = vge.RmsProblemPhasor(grid=grid, options=rms_options_ph, pf_results=pf_results)
-    return problem_ml, problem_ph
+    return problem_ml, problem_ph, pf_results, rms_options_ml, rms_options_ph
 
 
-def main() -> None:
-    grid_filename = sys.argv[1] if len(sys.argv) > 1 else "IEEE 9 Bus.gridcal"
-    problem_ml, problem_ph = build_problems(grid_filename=grid_filename)
+def run_small_signal_from_driver(problem, pf_results: vge.PowerFlowResults, rms_options: vge.RmsOptions):
+    ss_options = vge.RmsSmallSignalStabilityOptions(ss_assessment_time=0, verbose=0)
+    ss_options.k = 50
+    driver = vge.SmallSignalStabilityRmsDriver(
+        grid=vge.MultiCircuit(Sbase=problem.grid.Sbase),
+        rms_options=rms_options,
+        sss_options=ss_options,
+        pf_results=pf_results,
+    )
+    driver.problem = problem
+    driver.k = problem.get_states_number()
+    driver.run()
+    return driver.results.eigenvalues, driver.results.participation_factors
+
+def run_cpn_tests(problem_ml: vge.RmsProblemMultilinear) -> None:
+    rank = 150
+    max_iter = 20
+    tol = 1e-3
+
+    profiler = cProfile.Profile()
+    profiler.enable()
+    cp_tensor = problem_ml.fit_cptensor_from_s_phi(
+        rank=rank,
+        max_iter=max_iter,
+        tol=tol,
+        random_state=0,
+        verbose=True,
+    )
+    profiler.disable()
+
+    out_dir = Path(__file__).resolve().parent
+    profile_pstats_path = out_dir / "cpn_fit_profile.pstats"
+    profile_txt_path = out_dir / "cpn_fit_profile.txt"
+
+    stats_stream = io.StringIO()
+    stats = pstats.Stats(profiler, stream=stats_stream).strip_dirs().sort_stats("cumulative")
+    stats.print_stats(30)
+    stats.dump_stats(str(profile_pstats_path))
+    profile_txt_path.write_text(stats_stream.getvalue(), encoding="utf-8")
+
+    print("CPN fit profiler (top 30 cumulative):")
+    print(stats_stream.getvalue())
+    print(f"Saved profiler stats: {profile_pstats_path}")
+    print(f"Saved profiler text : {profile_txt_path}")
+
+    approximator = getattr(problem_ml, "_last_cpn_approximator", None)
+    diagnostics = getattr(approximator, "diagnostics", None)
+    if diagnostics is not None:
+        print("CPN fit diagnostics:")
+        print(f"  rank={rank} max_iter={max_iter} tol={tol:.1e}")
+        print(f"  converged={diagnostics.converged} iterations={diagnostics.iterations}")
+        if diagnostics.relative_changes:
+            print(f"  final_relative_change={diagnostics.relative_changes[-1]:.6e}")
+
     x = problem_ml.get_x0()
     dx = np.zeros(problem_ml.get_diff_var_number())
+    x_eval = np.concatenate([x, dx])
+    f_exact = problem_ml.exact_residual_from_s_phi(x=x_eval)
+    f_cpn = problem_ml.evaluate_residual_from_cptensor(x=x_eval, cp_tensor=cp_tensor)
+    err = f_cpn - f_exact
+    abs_err = float(np.linalg.norm(err))
+    rel_err = abs_err / max(float(np.linalg.norm(f_exact)), 1e-12)
 
-    eig_ml, stable_ml, margin_ml = problem_ml.compute_stability_multilinear(x=x)
-    eig_driver_ml, _, _, _, _, _ = run_dense_small_signal_stability(problem=problem_ml, x=x, dx=dx, verbose=0)
+    print("CPN test:")
+    print(f"  exact_norm={np.linalg.norm(f_exact):.6e}")
+    print(f"  cpn_norm={np.linalg.norm(f_cpn):.6e}")
+    print(f"  abs_err={abs_err:.6e}")
+    print(f"  rel_err={rel_err:.6e}")
 
-    x_ph = problem_ph.get_x0()
-    dx_ph = np.zeros(problem_ph.get_diff_var_number())
-    eig_driver_ph, _, _, _, _, _ = run_dense_small_signal_stability(problem=problem_ph, x=x_ph, dx=dx_ph, verbose=0)
+    rng = np.random.default_rng(0)
+    scales = [1e-4, 1e-3, 1e-2]
+    print("CPN random-x checks:")
+    for scale in scales:
+        x_rand = x_eval + scale * rng.standard_normal(x_eval.shape[0])
+        f_exact_rand = problem_ml.exact_residual_from_s_phi(x=x_rand)
+        f_cpn_rand = problem_ml.evaluate_residual_from_cptensor(x=x_rand, cp_tensor=cp_tensor)
+        err_rand = f_cpn_rand - f_exact_rand
+        abs_err_rand = float(np.linalg.norm(err_rand))
+        rel_err_rand = abs_err_rand / max(float(np.linalg.norm(f_exact_rand)), 1e-12)
+        print(f"  scale={scale:.0e} exact_norm={np.linalg.norm(f_exact_rand):.6e} cpn_norm={np.linalg.norm(f_cpn_rand):.6e} abs_err={abs_err_rand:.6e} rel_err={rel_err_rand:.6e}")
+    return
 
-    fin_ml = eig_ml[np.isfinite(eig_ml) & (np.abs(eig_ml) < 1e6)]
+def main() -> None:
+    grid_filename = sys.argv[1] if len(sys.argv) > 1 else "IEEE39.gridcal"
+    problem_ml, problem_ph, pf_results, rms_options_ml, rms_options_ph = build_problems(grid_filename=grid_filename)
+
+    print("Running phasor warm-start micro-step...")
+    _debug_kcl_uid_trace(problem_ph, marker="Irg_Gen9")
+    _debug_bus38_power_balance(problem_ph)
+    _apply_bus38_kcl_q_correction(problem_ph)
+    problem_ph.reset_boundary_update_state(0.0)
+    warm_solver = BackEulerImplicitIntegration(
+        problem=problem_ph,
+        t0=0.0,
+        t_end=2e-4,
+        h=1e-4,
+        max_iter=300,
+    )
+    t_warm, y_warm, warm_well_initialized, warm_converged = warm_solver.simulate()
+    print(f"  warm_converged={bool(warm_converged)} warm_well_initialized={bool(warm_well_initialized)}")
+    if warm_converged and y_warm is not None and y_warm.shape[0] > 0:
+        _seed_problem_init_guess_from_vector(problem_ph, y_warm[-1, :])
+
+    eig_driver_ml, pf_driver_ml = run_small_signal_from_driver(problem=problem_ml,
+                                                                pf_results=pf_results,
+                                                                rms_options=rms_options_ml)
+    eig_driver_ph, pf_driver_ph = run_small_signal_from_driver(problem=problem_ph,
+                                                                pf_results=pf_results,
+                                                                rms_options=rms_options_ph)
+
+    #run_cpn_tests(problem_ml)
     fin_drv_ml = eig_driver_ml[np.isfinite(eig_driver_ml) & (np.abs(eig_driver_ml) < 1e6)]
     fin_drv_ph = eig_driver_ph[np.isfinite(eig_driver_ph) & (np.abs(eig_driver_ph) < 1e6)]
+
+    stable_ml = bool(np.all(np.real(fin_drv_ml) <= 0.0)) if len(fin_drv_ml) > 0 else False
+    margin_ml = float(np.max(np.real(fin_drv_ml))) if len(fin_drv_ml) > 0 else float("nan")
 
     matches, ml_only, ph_only, mean_err = _compare_eigen_sets(fin_drv_ml, fin_drv_ph, tol=1e-6)
     ml_unmatched, ph_unmatched = _compute_unmatched(fin_drv_ml, fin_drv_ph, tol=1e-6)
 
     print(f"{grid_filename} small-signal (RmsProblemMultilinear)")
-    print(f"  modes_ml={len(fin_ml)} stable_ml={stable_ml} margin_ml={margin_ml:.6e}")
-    print(f"  modes_driver_ml={len(fin_drv_ml)}")
+    print(f"  modes_driver_ml={len(fin_drv_ml)} stable_ml={stable_ml} margin_ml={margin_ml:.6e}")
     print(f"{grid_filename} small-signal (RmsProblemPhasor via driver)")
     print(f"  modes_driver_ph={len(fin_drv_ph)}")
     print("Driver eigen comparison (ML vs Phasor)")
     print(f"  matches={matches} ml_only={ml_only} ph_only={ph_only} mean_err={mean_err:.3e}")
+    _print_participation_summary(problem_ml, eig_driver_ml, pf_driver_ml, label="ML driver")
+    _print_participation_summary(problem_ph, eig_driver_ph, pf_driver_ph, label="Phasor driver")
     _print_unmatched(ml_unmatched, ph_unmatched, n_show=8)
-    _plot_eigen_comparison(fin_drv_ml, fin_drv_ph)
+    _plot_eigen_comparison(fin_drv_ml, fin_drv_ph, grid_filename)
 
 
 if __name__ == "__main__":

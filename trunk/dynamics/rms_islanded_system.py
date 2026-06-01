@@ -17,7 +17,7 @@ from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, RmsInitializationMethod
+from VeraGridEngine.enumerations import VarPowerFlowReferenceType, DynamicIntegrationMethod, RmsInitializationMethod
 from VeraGridEngine.Devices.Aggregation import RmsEvent
 import VeraGridEngine.api as gce
 
@@ -151,11 +151,11 @@ grid.var_factory.add_connections([load1_mdl.in_vars[1]], [bus1.rms_model.out_var
 big_gen0 = Block(children=[genqec0_mdl])
 big_gen1 = Block(children=[genqec1_mdl])
 
-big_gen0.external_mapping.update({VarPowerFlowRefferenceType.P: genqec0_mdl.out_vars[0]})
-big_gen0.external_mapping.update({VarPowerFlowRefferenceType.Q: genqec0_mdl.out_vars[1]})
+big_gen0.external_mapping.update({VarPowerFlowReferenceType.P: genqec0_mdl.out_vars[0]})
+big_gen0.external_mapping.update({VarPowerFlowReferenceType.Q: genqec0_mdl.out_vars[1]})
 
-big_gen1.external_mapping.update({VarPowerFlowRefferenceType.P: genqec1_mdl.out_vars[0]})
-big_gen1.external_mapping.update({VarPowerFlowRefferenceType.Q: genqec1_mdl.out_vars[1]})
+big_gen1.external_mapping.update({VarPowerFlowReferenceType.P: genqec1_mdl.out_vars[0]})
+big_gen1.external_mapping.update({VarPowerFlowReferenceType.Q: genqec1_mdl.out_vars[1]})
 
 # add models to dyn_host
 line0_dynhost.model = line0_mdl

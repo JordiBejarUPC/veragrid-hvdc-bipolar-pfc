@@ -35,7 +35,7 @@ from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_emt_t
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template_with_ref
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
-from VeraGridEngine.enumerations import DynamicEventTransitionType, DynamicIntegrationMethod, EmtInitializationMethod, EmtLineTypes, EmtSolverTypes, ShuntConnectionType, SolverType, VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import DynamicEventTransitionType, DynamicIntegrationMethod, EmtInitializationMethod, EmtLineTypes, EmtSolverTypes, ShuntConnectionType, SolverType, VarPowerFlowReferenceType
 
 
 class JMartiLineCaseResult:
@@ -643,11 +643,11 @@ def run_demo_line_case(model_tpe: EmtLineTypes) -> JMartiLineCaseResult:
         verbose=False,
     )
     time_vector, state_history, _diff_history, _converged, _diag = solver.simulate(boundary_updater=problem)
-    load_v_a_index = problem.get_var_idx(load_bus.emt_model.external_mapping[VarPowerFlowRefferenceType.v_A])
-    load_i_a_index = problem.get_var_idx(load.emt_model.external_mapping[VarPowerFlowRefferenceType.i_A])
+    load_v_a_index = problem.get_var_idx(load_bus.emt_model.external_mapping[VarPowerFlowReferenceType.v_A])
+    load_i_a_index = problem.get_var_idx(load.emt_model.external_mapping[VarPowerFlowReferenceType.i_A])
 
-    if VarPowerFlowRefferenceType.if_A in line.emt_model.external_mapping:
-        line_if_a_var = line.emt_model.external_mapping[VarPowerFlowRefferenceType.if_A]
+    if VarPowerFlowReferenceType.if_A in line.emt_model.external_mapping:
+        line_if_a_var = line.emt_model.external_mapping[VarPowerFlowReferenceType.if_A]
     else:
         line_if_a_var = None
 

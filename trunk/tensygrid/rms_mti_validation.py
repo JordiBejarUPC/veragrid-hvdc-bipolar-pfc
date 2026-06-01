@@ -28,8 +28,8 @@ from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_rms_model
 from VeraGridEngine.enumerations import (
-    VarPowerFlowRefferenceType,
-    ParamPowerFlowRefferenceType,
+    VarPowerFlowReferenceType,
+    ParamPowerFlowReferenceType,
     RmsInitializationMethod,
 )
 
@@ -172,7 +172,7 @@ def add_proper_runtime_event(grid: vge.MultiCircuit) -> tuple[RmsEventsGroup, ob
     if len(target.rms_model.event_dict) == 0:
         raise RuntimeError("Selected load model has no runtime event parameters.")
 
-    event_param = target.rms_model.api_obj_mapping.get(ParamPowerFlowRefferenceType.Pl0, None)
+    event_param = target.rms_model.api_obj_mapping.get(ParamPowerFlowReferenceType.Pl0, None)
     if event_param is None or event_param not in target.rms_model.event_dict:
         raise RuntimeError("Could not find load Pl0 runtime parameter in event_dict.")
     base_expr = target.rms_model.event_dict[event_param]
@@ -245,9 +245,9 @@ def plot_results(
         var = problem.sys_vars[uid]
         if not hasattr(var, "ref"):
             continue
-        if var.ref == VarPowerFlowRefferenceType.Vr:
+        if var.ref == VarPowerFlowReferenceType.Vr:
             vr_entries.append((idx, str(var.name)))
-        elif var.ref == VarPowerFlowRefferenceType.Vi:
+        elif var.ref == VarPowerFlowReferenceType.Vi:
             vi_entries.append((idx, str(var.name)))
 
     vr_entries.sort(key=lambda x: x[0])
@@ -482,9 +482,9 @@ def run_validation() -> None:
         var = problem.sys_vars[uid]
         if not hasattr(var, "ref"):
             continue
-        if var.ref == VarPowerFlowRefferenceType.Vr:
+        if var.ref == VarPowerFlowReferenceType.Vr:
             vr_entries.append((idx, str(var.name)))
-        elif var.ref == VarPowerFlowRefferenceType.Vi:
+        elif var.ref == VarPowerFlowReferenceType.Vi:
             vi_entries.append((idx, str(var.name)))
     vr_entries.sort(key=lambda x: x[0])
     vi_entries.sort(key=lambda x: x[0])

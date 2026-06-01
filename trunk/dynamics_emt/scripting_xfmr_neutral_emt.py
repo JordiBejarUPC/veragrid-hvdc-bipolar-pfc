@@ -17,7 +17,7 @@ from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_te
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template_with_ref
 from VeraGridEngine.Templates.Emt.xfmr_emt_template import get_xfmr_emt_template
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
-from VeraGridEngine.enumerations import DynamicIntegrationMethod, EmtInitializationMethod, EmtSolverTypes, ShuntConnectionType, SolverType, VarPowerFlowRefferenceType, WindingType
+from VeraGridEngine.enumerations import DynamicIntegrationMethod, EmtInitializationMethod, EmtSolverTypes, ShuntConnectionType, SolverType, VarPowerFlowReferenceType, WindingType
 from trunk.dynamics_emt.support.emt_plot_exports import get_plot_results_directory
 
 import VeraGridEngine.api as gce
@@ -239,10 +239,10 @@ def run_xfmr_neutral_case(enable_plots: bool = True) -> Dict[str, object]:
     i_load_a = np.conj(s_load_a / v_load_an) if abs(v_load_an) > 1.0e-12 else 0.0 + 0.0j
     i_load_n = -i_load_a
 
-    xfmr_it_n_var = xfmr.emt_model.external_mapping[VarPowerFlowRefferenceType.it_N]
-    load_i_n_var = load.emt_model.external_mapping[VarPowerFlowRefferenceType.i_N]
-    xfmr_it_a_var = xfmr.emt_model.external_mapping[VarPowerFlowRefferenceType.it_A]
-    load_i_a_var = load.emt_model.external_mapping[VarPowerFlowRefferenceType.i_A]
+    xfmr_it_n_var = xfmr.emt_model.external_mapping[VarPowerFlowReferenceType.it_N]
+    load_i_n_var = load.emt_model.external_mapping[VarPowerFlowReferenceType.i_N]
+    xfmr_it_a_var = xfmr.emt_model.external_mapping[VarPowerFlowReferenceType.it_A]
+    load_i_a_var = load.emt_model.external_mapping[VarPowerFlowReferenceType.i_A]
     bus_mid_v_n = _inst(vt_n_mid)
     bus_load_v_n = _inst(vt_n_load)
     xfmr_it_n = _inst(i_tn)

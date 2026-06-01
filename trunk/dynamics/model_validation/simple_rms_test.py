@@ -24,7 +24,7 @@ from VeraGridEngine.Templates.Rms.genrow_rms_template import get_genrow_rms_temp
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
-from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod, VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod, VarPowerFlowReferenceType
 from VeraGridEngine.Utils.Symbolic import Block
 
 
@@ -104,8 +104,8 @@ def setup_rms_models_expanded(grid):
         genrow_mdl.unify_blocks()
         
         big_gen = Block(children=[genrow_mdl])
-        big_gen.external_mapping.update({VarPowerFlowRefferenceType.P: genrow_mdl.out_vars[0]})
-        big_gen.external_mapping.update({VarPowerFlowRefferenceType.Q: genrow_mdl.out_vars[1]})
+        big_gen.external_mapping.update({VarPowerFlowReferenceType.P: genrow_mdl.out_vars[0]})
+        big_gen.external_mapping.update({VarPowerFlowReferenceType.Q: genrow_mdl.out_vars[1]})
         big_gen.unify_blocks()
         
         gen.rms_model = big_gen

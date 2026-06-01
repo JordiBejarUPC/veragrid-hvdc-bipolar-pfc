@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 import numpy as np
 import VeraGridEngine.api as vge
-from VeraGridEngine.enumerations import DynamicIntegrationMethod, VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import DynamicIntegrationMethod, VarPowerFlowReferenceType
 from VeraGridEngine.Templates.Rms.vsc_gfm import VscGfmBuild
 from VeraGridEngine.Templates.Rms.dc_voltage_source import DCPowerLimitedSource
 from VeraGridEngine.Templates.Rms.transformer_rms_template import initialize_trafo_rms
@@ -42,13 +42,13 @@ def initialize_grid2_rms_models_power_limited_gfm(grid2, pf_results):
         print(f"  Initializing VSC '{vsc.name}' with VscGfmBuild...")
         vsc.rms_model = VscGfmBuild(vfactory=vf, name=vsc.name).block
 
-        vm_ac = vsc.rms_model.external_mapping[VarPowerFlowRefferenceType.Vmt]
-        va_ac = vsc.rms_model.external_mapping[VarPowerFlowRefferenceType.Vat]
-        vdc = vsc.rms_model.external_mapping[VarPowerFlowRefferenceType.Vdc]
+        vm_ac = vsc.rms_model.external_mapping[VarPowerFlowReferenceType.Vmt]
+        va_ac = vsc.rms_model.external_mapping[VarPowerFlowReferenceType.Vat]
+        vdc = vsc.rms_model.external_mapping[VarPowerFlowReferenceType.Vdc]
 
-        bus_vm_ac = vsc.bus_to.rms_model.external_mapping[VarPowerFlowRefferenceType.Vm]
-        bus_va_ac = vsc.bus_to.rms_model.external_mapping[VarPowerFlowRefferenceType.Va]
-        bus_vdc = vsc.bus_from.rms_model.external_mapping[VarPowerFlowRefferenceType.Vdc]
+        bus_vm_ac = vsc.bus_to.rms_model.external_mapping[VarPowerFlowReferenceType.Vm]
+        bus_va_ac = vsc.bus_to.rms_model.external_mapping[VarPowerFlowReferenceType.Va]
+        bus_vdc = vsc.bus_from.rms_model.external_mapping[VarPowerFlowReferenceType.Vdc]
         grid.var_factory.add_connections([vm_ac, va_ac, vdc], [bus_vm_ac, bus_va_ac, bus_vdc])
 
         vsc_idx = list(grid2.vsc_devices).index(vsc)
@@ -81,7 +81,7 @@ def initialize_grid2_rms_models_power_limited_gfm(grid2, pf_results):
         bus = gen.bus
         if bus.is_dc:
             print(f"  Initializing DC Generator '{gen.name}' at DC bus '{bus.name}' with DCPowerLimitedSource...")
-            vdc = bus.rms_model.external_mapping[VarPowerFlowRefferenceType.Vdc]
+            vdc = bus.rms_model.external_mapping[VarPowerFlowReferenceType.Vdc]
             gen.rms_model = DCPowerLimitedSource(vfactory=vf, Vdc=vdc, name=gen.name).block
 
             c_var = base.find_name_in_block('C', gen.rms_model)

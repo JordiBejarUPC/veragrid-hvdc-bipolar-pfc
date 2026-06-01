@@ -13,7 +13,7 @@ from VeraGridEngine.enumerations import (
     ConverterControlType,
     DeviceType,
     ExternalGridMode,
-    ParamPowerFlowRefferenceType,
+    ParamPowerFlowReferenceType,
     ShuntConnectionType,
     ShuntControlMode,
     WindingType,

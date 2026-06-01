@@ -210,7 +210,8 @@ class InvestmentEvaluationMethod(Enum):
     """
     Investment evaluation methods
     """
-    Independent = "Independent"
+    CBA_PINT_TOOT = "CBA PINT-TOOT"
+    PINT_TOOT_NSGA3 = "PINT-TOOT NSGA3"
     Hyperopt = "Hyperopt"
     MVRSM = "MVRSM"
     NSGA3 = "NSGA3"
@@ -1778,8 +1779,7 @@ class InvestmentsEvaluationObjectives(Enum):
     """
     PowerFlow = 'PowerFlow'
     TimeSeriesPowerFlow = 'TimeSeriesPowerFlow'
-    # OptimalPowerFlow = 'OptimalPowerFlow'
-    # TimeSeriesOptimalPowerFlow = 'TimeSeriesOptimalPowerFlow'
+    LinearOptimalPowerFlowTimeSeries = 'Linear OPF time series'
     GenerationAdequacy = "Adequacy"
     SimpleDispatch = "Simple dispatch"
     FromPlugin = 'From Plugin'
@@ -3419,9 +3419,9 @@ class BusReductionMethod(Enum):
             return s
 
 
-class VarPowerFlowRefferenceType(Enum):
+class VarPowerFlowReferenceType(Enum):
     """
-    VarPowerFlowRefferenceType
+    VarPowerFlowReferenceType
     """
     NOTHING = "nothing"
     Vm = "Vm"  # Bus voltage module in p.u.
@@ -3563,22 +3563,22 @@ class VarPowerFlowRefferenceType(Enum):
         :return:
         """
         try:
-            return VarPowerFlowRefferenceType[s]
+            return VarPowerFlowReferenceType[s]
         except KeyError:
             return s
 
 
-class ParamPowerFlowRefferenceType(Enum):
+class ParamPowerFlowReferenceType(Enum):
     """
-    ParamPowerFlowRefferenceType
+    ParamPowerFlowReferenceType
     """
     NOTHING = "nothing"
     #General
     dt = "dt"  # time step for dynamic simulations
     
     # Branch / load parameters
-    g = "g"  # Branch resistance in per unit
-    b = "b"  # Branch reactance in per unit
+    g = "g"  # Branch conductance in per unit
+    b = "b"  # Branch susceptance in per unit
     bsh = "bsh"  # Branch shunt susceptance in per unit
     gFe = "gFe"  # Branch magnetizing conductance in per unit
     vtap_f = "vtap_f"  # Virtual tap at from-side
@@ -3673,8 +3673,6 @@ class ParamPowerFlowRefferenceType(Enum):
     transformer_short_circuit_resistance_pct = "transformer_short_circuit_resistance_pct"
     transformer_short_circuit_loss_kw = "transformer_short_circuit_loss_kw"
     transformer_tap_ratio = "transformer_tap_ratio"
-    transformer_tap_module = "transformer_tap_module"
-    transformer_tap_phase = "transformer_tap_phase"
     transformer_nominal_voltage_ratio = "transformer_nominal_voltage_ratio"
     transformer_total_voltage_ratio = "transformer_total_voltage_ratio"
     transformer_terminal_capacitance_pu_s = "transformer_terminal_capacitance_pu_s"
@@ -3801,14 +3799,6 @@ class ParamPowerFlowRefferenceType(Enum):
     branch_alpha_per_deg_c = "branch_alpha_per_deg_c"
 
     # Load static parameters in p.u. on grid Sbase unless noted otherwise
-    load_p_pu = "load_p_pu"
-    load_q_pu = "load_q_pu"
-    load_pa_pu = "load_pa_pu"
-    load_pb_pu = "load_pb_pu"
-    load_pc_pu = "load_pc_pu"
-    load_qa_pu = "load_qa_pu"
-    load_qb_pu = "load_qb_pu"
-    load_qc_pu = "load_qc_pu"
     load_g_pu = "load_g_pu"
     load_b_pu = "load_b_pu"
     load_ga_pu = "load_ga_pu"
@@ -3830,8 +3820,6 @@ class ParamPowerFlowRefferenceType(Enum):
     # Generator static parameters
     generator_p_pu = "generator_p_pu"
     generator_q_pu = "generator_q_pu"
-    generator_pmin_pu = "generator_pmin_pu"
-    generator_pmax_pu = "generator_pmax_pu"
     generator_qmin_pu = "generator_qmin_pu"
     generator_qmax_pu = "generator_qmax_pu"
     generator_power_factor = "generator_power_factor"
@@ -3921,7 +3909,7 @@ class ParamPowerFlowRefferenceType(Enum):
         :return:
         """
         try:
-            return ParamPowerFlowRefferenceType[s]
+            return ParamPowerFlowReferenceType[s]
         except KeyError:
             return s
 
