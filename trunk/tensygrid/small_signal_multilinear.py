@@ -20,7 +20,6 @@ if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
 
 import VeraGridEngine.api as vge
-from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_driver import run_dense_small_signal_stability
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_rms_model
 
 
@@ -161,7 +160,7 @@ def _plot_eigen_comparison(ml_eigs: np.ndarray, ph_eigs: np.ndarray) -> None:
     plt.show()
 
 
-def build_problems(grid_filename: str) -> tuple[vge.RmsProblemMultilinear, vge.RmsProblemPhasor]:
+def build_problems(grid_filename: str) -> tuple[vge.RmsProblemMultilinear, vge.RmsProblemPhasor, vge.PowerFlowResults, vge.RmsOptions, vge.RmsOptions]:
     grid_path = project_base / "Grids_and_profiles" / "grids" / grid_filename
     grid = vge.open_file(str(grid_path))
     ensure_unique_device_names(grid)
@@ -237,7 +236,21 @@ def build_problems(grid_filename: str) -> tuple[vge.RmsProblemMultilinear, vge.R
     )
     problem_ml = vge.RmsProblemMultilinear(grid=grid, options=rms_options_ml, pf_results=pf_results)
     problem_ph = vge.RmsProblemPhasor(grid=grid, options=rms_options_ph, pf_results=pf_results)
-    return problem_ml, problem_ph
+    return problem_ml, problem_ph, pf_results, rms_options_ml, rms_options_ph
+
+
+def run_small_signal_from_driver(problem, pf_results: vge.PowerFlowResults, rms_options: vge.RmsOptions):
+    ss_options = vge.RmsSmallSignalStabilityOptions(ss_assessment_time=0, verbose=0)
+    driver = vge.SmallSignalStabilityRmsDriver(
+        grid=vge.MultiCircuit(Sbase=problem.grid.Sbase),
+        rms_options=rms_options,
+        sss_options=ss_options,
+        pf_results=pf_results,
+    )
+    driver.problem = problem
+    driver.k = problem.get_states_number()
+    driver.run()
+    return driver.results.eigenvalues
 
 
 def _hash_operating_point(x: np.ndarray) -> str:
@@ -246,27 +259,27 @@ def _hash_operating_point(x: np.ndarray) -> str:
 
 def main() -> None:
     grid_filename = sys.argv[1] if len(sys.argv) > 1 else "IEEE 9 Bus.gridcal"
-    problem_ml, problem_ph = build_problems(grid_filename=grid_filename)
+    problem_ml, problem_ph, pf_results, rms_options_ml, rms_options_ph = build_problems(grid_filename=grid_filename)
     x = problem_ml.get_x0()
-    dx = np.zeros(problem_ml.get_diff_var_number())
 
-    eig_ml, stable_ml, margin_ml = problem_ml.compute_stability_multilinear(x=x)
-    eig_driver_ml, _, _, _, _, _ = run_dense_small_signal_stability(problem=problem_ml, x=x, dx=dx, verbose=0)
+    eig_driver_ml = run_small_signal_from_driver(problem=problem_ml,
+                                                 pf_results=pf_results,
+                                                 rms_options=rms_options_ml)
+    eig_driver_ph = run_small_signal_from_driver(problem=problem_ph,
+                                                 pf_results=pf_results,
+                                                 rms_options=rms_options_ph)
 
-    x_ph = problem_ph.get_x0()
-    dx_ph = np.zeros(problem_ph.get_diff_var_number())
-    eig_driver_ph, _, _, _, _, _ = run_dense_small_signal_stability(problem=problem_ph, x=x_ph, dx=dx_ph, verbose=0)
-
-    fin_ml = eig_ml[np.isfinite(eig_ml) & (np.abs(eig_ml) < 1e6)]
     fin_drv_ml = eig_driver_ml[np.isfinite(eig_driver_ml) & (np.abs(eig_driver_ml) < 1e6)]
     fin_drv_ph = eig_driver_ph[np.isfinite(eig_driver_ph) & (np.abs(eig_driver_ph) < 1e6)]
+
+    stable_ml = bool(np.all(np.real(fin_drv_ml) <= 0.0)) if len(fin_drv_ml) > 0 else False
+    margin_ml = float(np.max(np.real(fin_drv_ml))) if len(fin_drv_ml) > 0 else float("nan")
 
     matches, ml_only, ph_only, mean_err = _compare_eigen_sets(fin_drv_ml, fin_drv_ph, tol=1e-6)
     ml_unmatched, ph_unmatched = _compute_unmatched(fin_drv_ml, fin_drv_ph, tol=1e-6)
 
     print(f"{grid_filename} small-signal (RmsProblemMultilinear)")
-    print(f"  modes_ml={len(fin_ml)} stable_ml={stable_ml} margin_ml={margin_ml:.6e}")
-    print(f"  modes_driver_ml={len(fin_drv_ml)}")
+    print(f"  modes_driver_ml={len(fin_drv_ml)} stable_ml={stable_ml} margin_ml={margin_ml:.6e}")
     print(f"{grid_filename} small-signal (RmsProblemPhasor via driver)")
     print(f"  modes_driver_ph={len(fin_drv_ph)}")
     print("Driver eigen comparison (ML vs Phasor)")
