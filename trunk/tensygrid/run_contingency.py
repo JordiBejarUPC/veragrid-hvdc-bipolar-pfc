@@ -36,32 +36,36 @@ def main():
     args = parser.parse_args()
     
     try:
-        # Carregar la xarxa
-        problem_ml, problem_ph, pf_results, rms_options_ml, rms_options_ph = build_problems(
-            grid_filename=args.grid
-        )
-        
+        # Carregar la xarxa des de disc
+        grid_path = project_base / "Grids_and_profiles" / "grids" / args.grid
+        grid = vge.open_file(str(grid_path))
+
         # Extreure l'índex de l'element
         element_idx = int(args.element.split("_")[1])
-        
-        # Desactivar l'element especificat
+
+        # Desactivar l'element ABANS de construir el problema RMS
+        # (si es desactiva després, el model ja ha estat construït i el càlcul no canvia)
         if args.type == "generator":
-            gens = list(problem_ml.grid.generators)
-            if element_idx < len(gens):
-                gens[element_idx].active = False
+            gens = list(grid.generators)
+            if element_idx >= len(gens):
+                raise ValueError(f"Generator index {element_idx} out of range ({len(gens)} generators)")
+            gens[element_idx].active = False
         elif args.type == "line":
-            lines = list(problem_ml.grid.lines)
-            if element_idx < len(lines):
-                lines[element_idx].active = False
+            lines = list(grid.lines)
+            if element_idx >= len(lines):
+                raise ValueError(f"Line index {element_idx} out of range ({len(lines)} lines)")
+            lines[element_idx].active = False
         elif args.type == "load":
-            loads = list(problem_ml.grid.loads)
-            if element_idx < len(loads):
-                loads[element_idx].active = False
-        
-        # Recalcular power flow
-        pf_results = vge.power_flow(problem_ml.grid, vge.PowerFlowOptions(tolerance=1e-5))
-        if not pf_results.converged:
-            raise RuntimeError("Power flow did not converge after contingency")
+            loads = list(grid.loads)
+            if element_idx >= len(loads):
+                raise ValueError(f"Load index {element_idx} out of range ({len(loads)} loads)")
+            loads[element_idx].active = False
+
+        # Construir el problema RMS amb la grid ja modificada (element desactivat)
+        problem_ml, problem_ph, pf_results, rms_options_ml, rms_options_ph = build_problems(
+            grid_filename=args.grid,
+            grid=grid,
+        )
         
         # Calcular eigenvalues (desempaquetar correctament la tupla de 3)
         eig_driver_ml, pf_ml, state_var_names_ml = run_small_signal_from_driver(

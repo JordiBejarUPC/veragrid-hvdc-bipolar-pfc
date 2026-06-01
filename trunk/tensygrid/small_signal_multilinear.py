@@ -160,9 +160,21 @@ def _plot_eigen_comparison(ml_eigs: np.ndarray, ph_eigs: np.ndarray) -> None:
     #plt.show()
 
 
-def build_problems(grid_filename: str) -> tuple[vge.RmsProblemMultilinear, vge.RmsProblemPhasor, vge.PowerFlowResults, vge.RmsOptions, vge.RmsOptions]:
-    grid_path = project_base / "Grids_and_profiles" / "grids" / grid_filename
-    grid = vge.open_file(str(grid_path))
+def build_problems(grid_filename: str, grid=None) -> tuple[vge.RmsProblemMultilinear, vge.RmsProblemPhasor, vge.PowerFlowResults, vge.RmsOptions, vge.RmsOptions]:
+    """Build RMS problems for small-signal analysis.
+
+    Parameters
+    ----------
+    grid_filename:
+        Name of the grid file (used to locate the file when *grid* is None).
+    grid:
+        Optional pre-loaded (and pre-modified) grid object.  When provided the
+        file is **not** re-read from disk, so any element already deactivated on
+        the object will be excluded from the RMS model construction.
+    """
+    if grid is None:
+        grid_path = project_base / "Grids_and_profiles" / "grids" / grid_filename
+        grid = vge.open_file(str(grid_path))
     ensure_unique_device_names(grid)
 
     for bus in grid.buses:
@@ -170,6 +182,8 @@ def build_problems(grid_filename: str) -> tuple[vge.RmsProblemMultilinear, vge.R
             vge.initialize_bus_phasor_rms(bus, vf=grid.var_factory)
 
     for igen, gen in enumerate(grid.generators):
+        if not gen.active:
+            continue
         if not gen.rms_model.empty():
             continue
         gen_mdl = vge.get_complete_generator_template_phasor(grid.var_factory, name=f"Gen{igen}").block
@@ -179,6 +193,8 @@ def build_problems(grid_filename: str) -> tuple[vge.RmsProblemMultilinear, vge.R
         set_rms_model(device=gen, model=gen_mdl, var_factory=grid.var_factory)
 
     for line in grid.lines:
+        if not line.active:
+            continue
         if not line.rms_model.empty():
             continue
         line_mdl = vge.get_line_phasor_rms_template(grid.var_factory, name=line.name).block
@@ -190,6 +206,8 @@ def build_problems(grid_filename: str) -> tuple[vge.RmsProblemMultilinear, vge.R
         set_rms_model(device=line, model=line_mdl, var_factory=grid.var_factory)
 
     for load in grid.loads:
+        if not load.active:
+            continue
         if not load.rms_model.empty():
             continue
         load_mdl = vge.get_load_phasor_current_rms_template(grid.var_factory, name=load.name).block
@@ -198,6 +216,8 @@ def build_problems(grid_filename: str) -> tuple[vge.RmsProblemMultilinear, vge.R
         set_rms_model(device=load, model=load_mdl, var_factory=grid.var_factory)
 
     for trafo in grid.transformers2w:
+        if not trafo.active:
+            continue
         if not trafo.rms_model.empty():
             continue
         trafo_mdl = vge.initialize_trafo_rms(trafo, grid.var_factory, use_phasor_template=True).block
@@ -209,6 +229,8 @@ def build_problems(grid_filename: str) -> tuple[vge.RmsProblemMultilinear, vge.R
         set_rms_model(device=trafo, model=trafo_mdl, var_factory=grid.var_factory)
 
     for shunt in grid.shunts:
+        if not shunt.active:
+            continue
         if not shunt.rms_model.empty():
             continue
         shunt_mdl = vge.get_shunt_template(grid.var_factory, name=shunt.name, phasor=True).block

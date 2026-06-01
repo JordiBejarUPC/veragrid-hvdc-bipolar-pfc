@@ -206,6 +206,45 @@ async def get_status():
     return result
 
 
+@app.post("/api/cancel")
+async def cancel_simulation():
+    global _running_process, _current_grid
+
+    if _running_process is None or _running_process.poll() is not None:
+        raise HTTPException(status_code=404, detail="No simulation running")
+
+    _running_process.terminate()
+    try:
+        _running_process.wait(timeout=5)
+    except Exception:
+        _running_process.kill()
+
+    grid = _current_grid
+    _running_process = None
+    _current_grid = None
+    return {"status": "cancelled", "grid": grid}
+
+
+@app.post("/api/cancel-contingency")
+async def cancel_contingency():
+    global _contingency_process, _contingency_info
+
+    if _contingency_process is None or _contingency_process.poll() is not None:
+        raise HTTPException(status_code=404, detail="No contingency running")
+
+    _contingency_process.terminate()
+    try:
+        _contingency_process.wait(timeout=5)
+    except Exception:
+        _contingency_process.kill()
+
+    info = _contingency_info
+    _contingency_process = None
+    _contingency_info = None
+    return {"status": "cancelled", "info": info}
+
+
+
 @app.delete("/api/results/{filename}")
 async def delete_result(filename: str):
     filepath = PRECOMPUTED_DIR / filename

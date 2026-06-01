@@ -6,15 +6,16 @@
 <title>TenSyGrid — Stability Monitor</title>
 <style>
 :root {
-  --bg: #ffffff;
-  --panel: #f8fafc;
+  --bg: #f1f5f9;
+  --panel: #ffffff;
   --border: #e2e8f0;
-  --text: #1e293b;
+  --text: #0f172a;
   --muted: #64748b;
   --green: #10b981;
   --yellow: #f59e0b;
   --red: #ef4444;
   --blue: #3b82f6;
+  --blue-dark: #2563eb;
 }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -28,56 +29,60 @@ header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 32px;
-  border-bottom: 2px solid var(--border);
+  padding: 0 32px;
+  height: 60px;
+  border-bottom: 1px solid var(--border);
   background: var(--panel);
   flex-wrap: wrap;
   gap: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
-header h1 { font-size: 20px; font-weight: 700; }
-header .meta { color: var(--muted); font-size: 14px; }
+header h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+header .meta { color: var(--muted); font-size: 13px; }
 .tabs {
   display: flex;
-  border-bottom: 2px solid var(--border);
+  border-bottom: 1px solid var(--border);
   background: var(--panel);
   padding: 0 32px;
-  gap: 4px;
+  gap: 2px;
   overflow-x: auto;
 }
 .tab {
-  padding: 14px 24px;
+  padding: 14px 20px;
   cursor: pointer;
   border-bottom: 3px solid transparent;
   font-weight: 600;
-  font-size: 15px;
+  font-size: 14px;
   white-space: nowrap;
-  transition: all 0.2s;
+  transition: all 0.15s;
+  color: var(--muted);
 }
-.tab:hover { background: rgba(59,130,246,0.05); }
+.tab:hover { color: var(--text); background: rgba(59,130,246,0.04); }
 .tab.active { border-bottom-color: var(--blue); color: var(--blue); }
-.content { padding: 32px; max-width: 1600px; margin: 0 auto; }
+.content { padding: 28px 32px; max-width: 1600px; margin: 0 auto; }
 .tab-content { display: none; }
 .tab-content.active { display: block; }
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-.grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
 @media (max-width: 900px) {
   .grid-2, .grid-3 { grid-template-columns: 1fr; }
-  header { padding: 12px 16px; }
+  header { padding: 0 16px; }
   .tabs { padding: 0 16px; }
   .content { padding: 16px; }
 }
 .card {
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 24px;
-  margin-bottom: 24px;
+  border-radius: 10px;
+  padding: 22px 24px;
+  margin-bottom: 20px;
   position: relative;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
 .card-title {
-  font-size: 13px;
+  font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 1.2px;
   color: var(--muted);
   margin-bottom: 16px;
   font-weight: 700;
@@ -87,28 +92,28 @@ header .meta { color: var(--muted); font-size: 14px; }
   align-items: center;
   justify-content: center;
   gap: 16px;
-  padding: 32px;
-  background: white;
+  padding: 24px;
+  background: var(--bg);
   border-radius: 8px;
-  border: 2px solid var(--border);
+  border: 1px solid var(--border);
 }
 .semaphore-light {
   width: 80px;
   height: 80px;
   border-radius: 50%;
   border: 4px solid var(--border);
-  opacity: 0.2;
+  opacity: 0.15;
   transition: all 0.3s;
 }
 .semaphore-light.active {
   opacity: 1;
-  box-shadow: 0 0 30px currentColor;
+  box-shadow: 0 0 24px currentColor;
 }
 .semaphore-light.green { background: var(--green); color: var(--green); }
 .semaphore-light.yellow { background: var(--yellow); color: var(--yellow); }
 .semaphore-light.red { background: var(--red); color: var(--red); }
 .status-text {
-  font-size: 32px;
+  font-size: 28px;
   font-weight: 800;
   letter-spacing: 2px;
 }
@@ -117,177 +122,191 @@ header .meta { color: var(--muted); font-size: 14px; }
 .status-text.unstable { color: var(--red); }
 .metric {
   text-align: center;
-  padding: 16px;
+  padding: 14px 8px;
+  background: var(--bg);
+  border-radius: 8px;
+  border: 1px solid var(--border);
 }
 .metric-value {
-  font-size: 36px;
+  font-size: 30px;
   font-weight: 700;
   line-height: 1;
 }
 .metric-label {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--muted);
   text-transform: uppercase;
-  letter-spacing: 1px;
-  margin-top: 8px;
+  letter-spacing: 0.8px;
+  margin-top: 6px;
 }
 table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: 13.5px;
 }
 th {
   text-align: left;
-  padding: 12px;
+  padding: 10px 12px;
   border-bottom: 2px solid var(--border);
   color: var(--muted);
   font-weight: 700;
-  font-size: 12px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  background: var(--bg);
 }
+th:first-child { border-radius: 6px 0 0 0; }
+th:last-child { border-radius: 0 6px 0 0; }
 td {
-  padding: 12px;
+  padding: 10px 12px;
   border-bottom: 1px solid var(--border);
 }
+tr:last-child td { border-bottom: none; }
 tr:hover { background: rgba(59,130,246,0.03); }
 .badge {
   display: inline-block;
-  padding: 4px 12px;
-  border-radius: 4px;
-  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
-.badge.green { background: rgba(16,185,129,0.15); color: var(--green); }
-.badge.yellow { background: rgba(245,158,11,0.15); color: var(--yellow); }
-.badge.red { background: rgba(239,68,68,0.15); color: var(--red); }
-.badge.blue { background: rgba(59,130,246,0.15); color: var(--blue); }
+.badge.green { background: rgba(16,185,129,0.12); color: #059669; }
+.badge.yellow { background: rgba(245,158,11,0.12); color: #d97706; }
+.badge.red { background: rgba(239,68,68,0.12); color: #dc2626; }
+.badge.blue { background: rgba(59,130,246,0.12); color: var(--blue); }
 canvas {
   width: 100%;
-  background: white;
+  background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 8px;
 }
 .forecast-chart { height: 300px; }
 .rms-chart { height: 250px; }
 .legend {
   display: flex;
-  gap: 24px;
-  margin-top: 16px;
+  gap: 20px;
+  margin-top: 14px;
   flex-wrap: wrap;
 }
 .legend-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 13px;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--muted);
 }
 .legend-dot {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   border: 3px solid;
 }
 .tooltip {
   position: absolute;
-  background: white;
-  border: 2px solid var(--border);
-  border-radius: 6px;
-  padding: 12px;
-  font-size: 13px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 12px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
   pointer-events: none;
   z-index: 100;
-  max-width: 250px;
+  max-width: 220px;
 }
-.tooltip-title { font-weight: 700; margin-bottom: 4px; }
+.tooltip-title { font-weight: 700; margin-bottom: 4px; font-size: 13px; }
 .tooltip-row { color: var(--muted); margin-top: 2px; }
 
 .selector-panel {
-  background: white;
-  border: 2px solid var(--border);
+  background: var(--bg);
+  border: 1px solid var(--border);
   border-radius: 8px;
-  padding: 24px;
+  padding: 20px;
 }
 .selector-row {
   display: flex;
-  gap: 16px;
+  gap: 12px;
   align-items: center;
   flex-wrap: wrap;
 }
 .selector-row select {
   flex: 1;
-  min-width: 200px;
-  padding: 12px 16px;
+  min-width: 180px;
+  padding: 10px 14px;
   font-size: 14px;
   border: 1px solid var(--border);
-  border-radius: 6px;
-  background: white;
+  border-radius: 7px;
+  background: var(--panel);
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s;
 }
+.selector-row select:focus { border-color: var(--blue); }
 .btn {
-  padding: 12px 24px;
+  padding: 10px 22px;
   font-size: 14px;
   font-weight: 600;
   border: none;
-  border-radius: 6px;
+  border-radius: 7px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s;
+  white-space: nowrap;
 }
 .btn-primary {
   background: var(--blue);
   color: white;
 }
-.btn-primary:hover { opacity: 0.9; }
+.btn-primary:hover { background: var(--blue-dark); }
 .btn-primary:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 .btn-danger {
   background: var(--red);
   color: white;
 }
-.btn-danger:hover { opacity: 0.9; }
+.btn-danger:hover { opacity: 0.88; }
 .btn-sm {
   padding: 6px 12px;
   font-size: 12px;
 }
 
 .results-list {
-  max-height: 400px;
+  max-height: 420px;
   overflow-y: auto;
 }
 .result-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px;
+  padding: 14px 16px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 8px;
   margin-bottom: 8px;
-  background: white;
+  background: var(--panel);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s;
 }
 .result-item:hover {
   border-color: var(--blue);
-  background: rgba(59,130,246,0.02);
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.08);
 }
 .result-item.selected {
   border-color: var(--blue);
-  background: rgba(59,130,246,0.05);
+  background: rgba(59,130,246,0.04);
 }
 .result-info {
   flex: 1;
 }
 .result-name {
   font-weight: 600;
-  font-size: 15px;
+  font-size: 14px;
 }
 .result-meta {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--muted);
-  margin-top: 4px;
+  margin-top: 3px;
 }
 .result-actions {
   display: flex;
@@ -298,36 +317,36 @@ canvas {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 16px;
-  border-radius: 6px;
+  padding: 7px 14px;
+  border-radius: 20px;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 13px;
 }
 .status-indicator.running {
-  background: rgba(59,130,246,0.15);
+  background: rgba(59,130,246,0.1);
   color: var(--blue);
 }
 .status-indicator.idle {
-  background: rgba(100,116,139,0.15);
+  background: rgba(100,116,139,0.1);
   color: var(--muted);
 }
 .status-indicator.completed {
-  background: rgba(16,185,129,0.15);
+  background: rgba(16,185,129,0.1);
   color: var(--green);
 }
 .status-indicator.failed {
-  background: rgba(239,68,68,0.15);
+  background: rgba(239,68,68,0.1);
   color: var(--red);
 }
 
 .spinner {
   display: inline-block;
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   border: 2px solid currentColor;
   border-right-color: transparent;
   border-radius: 50%;
-  animation: spin 1s linear infinite;
+  animation: spin 0.8s linear infinite;
 }
 @keyframes spin {
   to { transform: rotate(360deg); }
@@ -339,29 +358,32 @@ canvas {
   color: var(--muted);
 }
 .empty-state-icon {
-  font-size: 48px;
-  margin-bottom: 16px;
-  opacity: 0.5;
+  font-size: 44px;
+  margin-bottom: 14px;
+  opacity: 0.4;
 }
 .empty-state-text {
   font-size: 16px;
-  margin-bottom: 8px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--text);
 }
 .empty-state-hint {
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .log-output {
-  background: #1e293b;
-  color: #e2e8f0;
+  background: #0f172a;
+  color: #94a3b8;
   padding: 16px;
-  border-radius: 6px;
+  border-radius: 8px;
   font-family: 'Monaco', 'Menlo', monospace;
   font-size: 12px;
   max-height: 300px;
   overflow-y: auto;
   white-space: pre-wrap;
   word-break: break-all;
+  line-height: 1.7;
 }
 </style>
 </head>
@@ -395,6 +417,7 @@ canvas {
             <option value="">Loading grids...</option>
           </select>
           <button id="run-btn" class="btn btn-primary" onclick="runSimulation()">Run Simulation</button>
+          <button id="cancel-btn" class="btn btn-danger" onclick="cancelSimulation()" style="display:none">Stop</button>
         </div>
         <div style="margin-top:16px">
           <span id="sim-status" class="status-indicator idle">
@@ -511,21 +534,15 @@ canvas {
         </div>
       </div>
 
-      <div class="grid-2">
-        <div class="card">
-          <div class="card-title">Harmonic Analysis — Frequency Spectrum</div>
-          <canvas id="harmonic-stem-canvas" style="height:250px"></canvas>
-        </div>
-        <div class="card">
-          <div class="card-title">Damping vs Frequency</div>
-          <canvas id="damping-freq-canvas" style="height:250px"></canvas>
-        </div>
+      <div class="card">
+        <div class="card-title">Damping vs Frequency <span style="font-size:10px;color:var(--muted);font-weight:400;text-transform:none">· scroll to zoom</span></div>
+        <canvas id="damping-freq-canvas" style="height:320px"></canvas>
       </div>
 
       <div class="card">
         <div class="card-title">All Eigenvalues</div>
         <table>
-          <thead><tr><th>#</th><th>Re(λ)</th><th>Im(λ)</th><th>ζ</th><th>f (Hz)</th><th>Status</th></tr></thead>
+          <thead><tr><th>#</th><th>Re(λ)</th><th>Im(λ)</th><th>ζ</th><th>f (Hz)</th></tr></thead>
           <tbody id="eig-body"></tbody>
         </table>
       </div>
@@ -545,7 +562,7 @@ canvas {
       <div class="card">
         <div class="card-title">Critical Modes (lowest damping)</div>
         <table>
-          <thead><tr><th>Mode</th><th>Re(λ)</th><th>Im(λ)</th><th>ζ</th><th>f (Hz)</th><th>Status</th><th>Participation Factors</th></tr></thead>
+          <thead><tr><th>Mode</th><th>Re(λ)</th><th>Im(λ)</th><th>ζ</th><th>f (Hz)</th><th>Participation Factors</th></tr></thead>
           <tbody id="modes-body"></tbody>
         </table>
       </div>
@@ -595,6 +612,7 @@ canvas {
               <option value="">-- Select element --</option>
             </select>
             <button id="run-contingency-btn" class="btn btn-primary" onclick="runContingency()">Simulate Contingency</button>
+            <button id="cancel-contingency-btn" class="btn btn-danger" onclick="cancelContingency()" style="display:none">Stop</button>
           </div>
           <div id="contingency-status" class="status-indicator idle">
             <span>Ready</span>
@@ -602,14 +620,19 @@ canvas {
         </div>
       </div>
 
-      <div id="contingency-results" style="display:none">
+      <!-- Before panel: shown as soon as a precomputed result is loaded -->
+      <div id="contingency-before-panel" style="display:none">
         <div class="grid-2">
           <div class="card">
-            <div class="card-title">Before Contingency</div>
+            <div class="card-title">Base Case (Precomputed)
+              <span id="before-grid-label" style="font-size:12px;font-weight:400;color:var(--muted);margin-left:8px"></span>
+            </div>
             <div id="before-status" style="text-align:center;padding:20px"></div>
           </div>
-          <div class="card">
-            <div class="card-title">After Contingency</div>
+          <div class="card" id="after-contingency-card" style="display:none">
+            <div class="card-title">After Contingency
+              <span id="after-element-label" style="font-size:12px;font-weight:400;color:var(--muted);margin-left:8px"></span>
+            </div>
             <div id="after-status" style="text-align:center;padding:20px"></div>
           </div>
         </div>
@@ -618,17 +641,17 @@ canvas {
           <div class="card-title">Eigenvalue Comparison</div>
           <div class="grid-2">
             <div>
-              <h4 style="margin-bottom:12px;color:var(--muted)">Before</h4>
+              <h4 style="margin-bottom:12px;color:var(--muted)">Base Case</h4>
               <canvas id="eig-canvas-before" style="height:250px;background:white;border:1px solid var(--border);border-radius:6px"></canvas>
             </div>
             <div>
-              <h4 style="margin-bottom:12px;color:var(--muted)">After</h4>
+              <h4 style="margin-bottom:12px;color:var(--muted)">After Contingency</h4>
               <canvas id="eig-canvas-after" style="height:250px;background:white;border:1px solid var(--border);border-radius:6px"></canvas>
             </div>
           </div>
         </div>
 
-        <div class="card">
+        <div class="card" id="contingency-recommendations-card" style="display:none">
           <div class="card-title">Recommendations</div>
           <div id="contingency-recommendations"></div>
         </div>
@@ -642,7 +665,6 @@ const COLORS = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06
 let currentData = null;
 let eigZoom = { level: 1 };
 let eigZoomFull = { level: 1 };
-let harmonicZoom = { level: 1 };
 let dampingZoom = { level: 1 };
 
 document.querySelectorAll('.tab').forEach(tab => {
@@ -657,7 +679,6 @@ document.querySelectorAll('.tab').forEach(tab => {
           renderEigenvalues(currentData.eigenvalues || [], 'eig-canvas', eigZoom);
         } else if (tab.dataset.tab === 'eigenvalues') {
           renderEigenvalues(currentData.eigenvalues || [], 'eig-canvas-full', eigZoomFull);
-          renderHarmonicStem(currentData.eigenvalues || [], harmonicZoom.level);
           renderDampingFreq(currentData.eigenvalues || [], dampingZoom.level);
         } else if (tab.dataset.tab === 'contingencies') {
           loadContingencyElements();
@@ -760,9 +781,11 @@ async function runSimulation() {
   }
   
   const btn = document.getElementById('run-btn');
+  const cancelBtn = document.getElementById('cancel-btn');
   const statusEl = document.getElementById('sim-status');
   
   btn.disabled = true;
+  cancelBtn.style.display = 'inline-flex';
   statusEl.className = 'status-indicator running';
   statusEl.innerHTML = '<span class="spinner"></span><span>Running simulation...</span>';
   
@@ -786,11 +809,28 @@ async function runSimulation() {
     statusEl.className = 'status-indicator failed';
     statusEl.innerHTML = '<span>Failed: ' + e.message + '</span>';
     btn.disabled = false;
+    cancelBtn.style.display = 'none';
   }
+}
+
+async function cancelSimulation() {
+  try {
+    await fetch('/api/cancel', { method: 'POST' });
+  } catch (e) {
+    console.error('Cancel error:', e);
+  }
+  const btn = document.getElementById('run-btn');
+  const cancelBtn = document.getElementById('cancel-btn');
+  const statusEl = document.getElementById('sim-status');
+  btn.disabled = false;
+  cancelBtn.style.display = 'none';
+  statusEl.className = 'status-indicator idle';
+  statusEl.innerHTML = '<span>Cancelled</span>';
 }
 
 async function pollStatus() {
   const btn = document.getElementById('run-btn');
+  const cancelBtn = document.getElementById('cancel-btn');
   const statusEl = document.getElementById('sim-status');
   const logOutput = document.getElementById('log-output');
   
@@ -804,6 +844,7 @@ async function pollStatus() {
       statusEl.className = 'status-indicator completed';
       statusEl.innerHTML = '<span>Completed</span>';
       btn.disabled = false;
+      cancelBtn.style.display = 'none';
       
       if (status.stdout) {
         logOutput.textContent += '\n' + status.stdout;
@@ -821,6 +862,7 @@ async function pollStatus() {
       statusEl.className = 'status-indicator failed';
       statusEl.innerHTML = '<span>Failed</span>';
       btn.disabled = false;
+      cancelBtn.style.display = 'none';
       
       if (status.stderr) {
         logOutput.textContent += '\nERROR:\n' + status.stderr;
@@ -923,7 +965,6 @@ function displayResults(data) {
 function renderAllCharts(data) {
   renderEigenvalues(data.eigenvalues || [], 'eig-canvas', eigZoom);
   renderEigenvalues(data.eigenvalues || [], 'eig-canvas-full', eigZoomFull);
-  renderHarmonicStem(data.eigenvalues || [], harmonicZoom.level);
   renderDampingFreq(data.eigenvalues || [], dampingZoom.level);
   renderEigenvalueTable(data.eigenvalues || []);
 }
@@ -1035,84 +1076,6 @@ function renderEigenvalues(eigs, canvasId, zoomState) {
   canvas._eigData = { eigs, cx, cy, sx, sy };
 }
 
-function renderHarmonicStem(eigs, zoomLevel = 1) {
-  const canvas = document.getElementById('harmonic-stem-canvas');
-  const rect = canvas.getBoundingClientRect();
-  canvas.width = rect.width * 2;
-  canvas.height = rect.height * 2;
-  const ctx = canvas.getContext('2d');
-  ctx.scale(2, 2);
-  const W = rect.width, H = rect.height;
-  ctx.clearRect(0, 0, W, H);
-  
-  const modes = eigs.filter(e => Math.abs(e.im) > 0.1).map(e => ({
-    freq: Math.abs(e.im) / (2 * Math.PI),
-    re: e.re,
-    im: e.im
-  }));
-  
-  if (modes.length === 0) return;
-  
-  const freqMax = Math.max(10, ...modes.map(m => m.freq)) * 1.1 / zoomLevel;
-  const reMax = Math.max(5, ...modes.map(m => Math.abs(m.re))) * 1.2 / zoomLevel;
-  
-  const ox = 55, oy = 25;
-  const plotW = W - 70, plotH = H - 50;
-  const sx = plotW / freqMax;
-  const sy = plotH / (2 * reMax);
-  const cy = oy + plotH / 2;
-  
-  ctx.strokeStyle = '#cbd5e1';
-  ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(ox, oy); ctx.lineTo(ox, H - 25); ctx.lineTo(W - 15, H - 25); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(ox, cy); ctx.lineTo(W - 15, cy); ctx.stroke();
-  
-  ctx.fillStyle = '#64748b';
-  ctx.font = '10px sans-serif';
-  const freqStep = Math.ceil(freqMax / 8);
-  for (let f = 0; f <= freqMax; f += freqStep) {
-    const x = ox + f * sx;
-    ctx.beginPath(); ctx.moveTo(x, H - 25); ctx.lineTo(x, H - 20); ctx.stroke();
-    ctx.fillText(f.toFixed(0), x - 5, H - 8);
-  }
-  const reStep = Math.ceil(reMax / 4);
-  for (let r = -Math.floor(reMax); r <= Math.floor(reMax); r += reStep) {
-    const y = cy - r * sy;
-    ctx.beginPath(); ctx.moveTo(ox - 3, y); ctx.lineTo(ox, y); ctx.stroke();
-    ctx.fillText(r.toString(), 5, y + 3);
-  }
-  
-  ctx.font = '11px sans-serif';
-  ctx.fillText('Re(λ)', 5, oy + 10);
-  ctx.fillText('Frequency (Hz)', W / 2 - 30, H - 1);
-  
-  ctx.strokeStyle = 'rgba(239,68,68,0.4)';
-  ctx.setLineDash([4, 4]);
-  ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.moveTo(ox, cy); ctx.lineTo(W - 15, cy); ctx.stroke();
-  ctx.setLineDash([]);
-  
-  modes.forEach(m => {
-    const x = ox + m.freq * sx;
-    const y = cy - m.re * sy;
-    const unstable = m.re > 0.001;
-    
-    ctx.strokeStyle = unstable ? '#ef4444' : '#3b82f6';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(x, cy);
-    ctx.lineTo(x, y);
-    ctx.stroke();
-    
-    ctx.fillStyle = unstable ? '#ef4444' : '#3b82f6';
-    ctx.beginPath();
-    ctx.arc(x, y, 4, 0, Math.PI * 2);
-    ctx.fill();
-  });
-  
-  canvas._stemData = { modes, ox, oy, sx, sy, cy };
-}
-
 function renderDampingFreq(eigs, zoomLevel = 1) {
   const canvas = document.getElementById('damping-freq-canvas');
   const rect = canvas.getBoundingClientRect();
@@ -1220,16 +1183,14 @@ function renderEigenvalueTable(eigs) {
     const freq = _freqHz(e.im);
     const unstable = e.re > 0.001;
     const critical = Math.abs(damping) < 0.05;
-    const badge = unstable ? '<span class="badge red">UNSTABLE</span>' :
-                  critical ? '<span class="badge yellow">CRITICAL</span>' :
-                  '<span class="badge green">OK</span>';
-    return `<tr>
+    const rowStyle = unstable ? 'background:rgba(239,68,68,0.05)' : critical ? 'background:rgba(245,158,11,0.05)' : '';
+    const dampColor = unstable ? 'color:var(--red);font-weight:700' : critical ? 'color:var(--yellow);font-weight:700' : '';
+    return `<tr style="${rowStyle}">
       <td>${i + 1}</td>
-      <td>${e.re.toFixed(2)}</td>
-      <td>${e.im.toFixed(2)}</td>
-      <td>${damping.toFixed(4)}</td>
-      <td>${freq.toFixed(2)}</td>
-      <td>${badge}</td>
+      <td>${e.re.toFixed(4)}</td>
+      <td>${e.im.toFixed(4)}</td>
+      <td style="${dampColor}">${damping.toFixed(4)}</td>
+      <td>${freq.toFixed(3)}</td>
     </tr>`;
   }).join('');
 }
@@ -1237,41 +1198,44 @@ function renderEigenvalueTable(eigs) {
 function renderModes(modes) {
   const tbody = document.getElementById('modes-body');
   if (modes.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted)">No oscillatory modes found</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted)">No oscillatory modes found</td></tr>';
     return;
   }
   tbody.innerHTML = modes.map((m, idx) => {
-    const badge = m.critical ? '<span class="badge red">CRITICAL</span>' : '<span class="badge green">OK</span>';
+    const unstable = m.re > 0.001;
+    const critical = m.damping >= 0 && m.damping < 0.05;
+    const rowStyle = unstable ? 'background:rgba(239,68,68,0.05)' : critical ? 'background:rgba(245,158,11,0.05)' : '';
+    const dampColor = unstable ? 'color:var(--red);font-weight:700' : critical ? 'color:var(--yellow);font-weight:700' : '';
     const pf = m.participation_factors || {};
     const pfEntries = Object.entries(pf);
     const hasParticipation = pfEntries.length > 0;
     
     const pfRowsHtml = hasParticipation 
       ? `<tr class="pf-row" id="pf-row-${idx}" style="display:none">
-           <td colspan="7" style="padding:0">
+           <td colspan="6" style="padding:0">
              <div style="padding:16px 24px 16px 60px;background:#f8fafc;border-left:4px solid var(--blue)">
-               <div style="font-size:14px;font-weight:600;color:var(--muted);margin-bottom:10px;text-transform:uppercase">
+               <div style="font-size:13px;font-weight:700;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px">
                  Participation Factors
                </div>
-               <table style="font-size:15px;width:100%">
+               <table style="font-size:14px;width:100%">
                  <thead>
                    <tr>
-                     <th style="padding:8px 16px;font-size:13px">State Variable</th>
-                     <th style="padding:8px 16px;font-size:13px">Value</th>
-                     <th style="padding:8px 16px;font-size:13px">Magnitude</th>
+                     <th style="padding:6px 16px;font-size:12px">State Variable</th>
+                     <th style="padding:6px 16px;font-size:12px">Value</th>
+                     <th style="padding:6px 16px;font-size:12px">Magnitude</th>
                    </tr>
                  </thead>
                  <tbody>
                    ${pfEntries.map(([k,v]) => `
                      <tr>
-                       <td style="padding:8px 16px;font-family:monospace;font-size:15px">${k}</td>
-                       <td style="padding:8px 16px;font-size:15px">${v.toFixed(4)}</td>
-                       <td style="padding:8px 16px">
+                       <td style="padding:6px 16px;font-family:monospace;font-size:13px">${k}</td>
+                       <td style="padding:6px 16px">${v.toFixed(4)}</td>
+                       <td style="padding:6px 16px">
                          <div style="display:flex;align-items:center;gap:10px">
-                           <div style="width:200px;height:10px;background:#e2e8f0;border-radius:4px;overflow:hidden">
-                             <div style="width:${Math.abs(v) * 100}%;height:100%;background:var(--blue)"></div>
+                           <div style="width:160px;height:8px;background:#e2e8f0;border-radius:4px;overflow:hidden">
+                             <div style="width:${Math.abs(v) * 100}%;height:100%;background:var(--blue);border-radius:4px"></div>
                            </div>
-                           <span style="font-size:13px;color:var(--muted)">${(Math.abs(v) * 100).toFixed(1)}%</span>
+                           <span style="font-size:12px;color:var(--muted);min-width:36px">${(Math.abs(v) * 100).toFixed(1)}%</span>
                          </div>
                        </td>
                      </tr>
@@ -1284,16 +1248,15 @@ function renderModes(modes) {
       : '';
     
     const expandIcon = hasParticipation 
-      ? `<span class="expand-icon" id="expand-icon-${idx}" style="cursor:pointer;display:inline-block;width:20px;transition:transform 0.2s">▶</span>`
+      ? `<span class="expand-icon" id="expand-icon-${idx}" style="cursor:pointer;display:inline-block;width:20px;transition:transform 0.2s;color:var(--blue)">▶</span>`
       : '<span style="display:inline-block;width:20px"></span>';
     
-    return `<tr class="mode-row" ${hasParticipation ? `onclick="toggleParticipationFactors(${idx})" style="cursor:pointer"` : ''}>
+    return `<tr class="mode-row" style="${rowStyle}${hasParticipation ? ';cursor:pointer' : ''}" ${hasParticipation ? `onclick="toggleParticipationFactors(${idx})"` : ''}>
       <td>${expandIcon}${m.mode}</td>
-      <td>${m.re.toFixed(2)}</td>
-      <td>${m.im.toFixed(2)}</td>
-      <td>${m.damping.toFixed(4)}</td>
-      <td>${m.freq_hz.toFixed(2)}</td>
-      <td>${badge}</td>
+      <td>${m.re.toFixed(4)}</td>
+      <td>${m.im.toFixed(4)}</td>
+      <td style="${dampColor}">${m.damping.toFixed(4)}</td>
+      <td>${m.freq_hz.toFixed(3)}</td>
       <td>${hasParticipation ? '<span style="color:var(--muted);font-size:12px">Click to expand</span>' : '<span style="color:var(--muted)">N/A</span>'}</td>
     </tr>${pfRowsHtml}`;
   }).join('');
@@ -1406,12 +1369,26 @@ function loadContingencyElements() {
   
   typeSelect.onchange = () => updateElementList();
   updateElementList();
+
+  // Show base case (precomputed) result immediately
+  contingencyBeforeData = currentData;
+  document.getElementById('contingency-before-panel').style.display = 'block';
+  document.getElementById('before-grid-label').textContent = currentData.grid_name || '';
+  document.getElementById('before-status').innerHTML = renderStatusCard(currentData);
+  setTimeout(() => {
+    renderEigenvalues(currentData.eigenvalues || [], 'eig-canvas-before', { level: 1 });
+  }, 50);
 }
 
 function updateElementList() {
   const type = document.getElementById('contingency-type').value;
   const elementSelect = document.getElementById('contingency-element');
   
+  // Hide After panel when element selection changes
+  document.getElementById('after-contingency-card').style.display = 'none';
+  document.getElementById('contingency-recommendations-card').style.display = 'none';
+  document.getElementById('after-element-label').textContent = '';
+
   let elements = [];
   if (type === 'generator') {
     const n = currentData.grid_info?.n_generators || 0;
@@ -1449,9 +1426,11 @@ async function runContingency() {
   }
   
   const btn = document.getElementById('run-contingency-btn');
+  const cancelBtn = document.getElementById('cancel-contingency-btn');
   const statusEl = document.getElementById('contingency-status');
   
   btn.disabled = true;
+  cancelBtn.style.display = 'inline-flex';
   statusEl.className = 'status-indicator running';
   statusEl.innerHTML = '<span class="spinner"></span><span>Starting contingency simulation...</span>';
   
@@ -1479,11 +1458,28 @@ async function runContingency() {
     statusEl.className = 'status-indicator failed';
     statusEl.innerHTML = '<span>Failed: ' + e.message + '</span>';
     btn.disabled = false;
+    cancelBtn.style.display = 'none';
   }
+}
+
+async function cancelContingency() {
+  try {
+    await fetch('/api/cancel-contingency', { method: 'POST' });
+  } catch (e) {
+    console.error('Cancel contingency error:', e);
+  }
+  const btn = document.getElementById('run-contingency-btn');
+  const cancelBtn = document.getElementById('cancel-contingency-btn');
+  const statusEl = document.getElementById('contingency-status');
+  btn.disabled = false;
+  cancelBtn.style.display = 'none';
+  statusEl.className = 'status-indicator idle';
+  statusEl.innerHTML = '<span>Cancelled</span>';
 }
 
 async function pollContingencyStatus() {
   const btn = document.getElementById('run-contingency-btn');
+  const cancelBtn = document.getElementById('cancel-contingency-btn');
   const statusEl = document.getElementById('contingency-status');
   
   try {
@@ -1496,14 +1492,15 @@ async function pollContingencyStatus() {
     } else if (status.status === 'completed') {
       contingencyAfterData = status.data;
       displayContingencyResults();
-      
       statusEl.className = 'status-indicator completed';
       statusEl.innerHTML = '<span>Completed</span>';
       btn.disabled = false;
+      cancelBtn.style.display = 'none';
     } else if (status.status === 'failed') {
       statusEl.className = 'status-indicator failed';
       statusEl.innerHTML = '<span>Failed: ' + (status.stderr || 'Unknown error') + '</span>';
       btn.disabled = false;
+      cancelBtn.style.display = 'none';
     }
   } catch (e) {
     console.error('Error polling contingency status:', e);
@@ -1512,24 +1509,30 @@ async function pollContingencyStatus() {
 }
 
 function displayContingencyResults() {
-  document.getElementById('contingency-results').style.display = 'block';
-  
   const before = contingencyBeforeData;
   const after = contingencyAfterData;
-  
-  const beforeStatus = document.getElementById('before-status');
-  const afterStatus = document.getElementById('after-status');
-  
-  beforeStatus.innerHTML = renderStatusCard(before);
-  afterStatus.innerHTML = renderStatusCard(after);
-  
+
+  // Update Before panel (already visible, but refresh in case currentData changed)
+  document.getElementById('before-status').innerHTML = renderStatusCard(before);
+
+  // Show After panel
+  const afterCard = document.getElementById('after-contingency-card');
+  afterCard.style.display = 'block';
+  const type = document.getElementById('contingency-type').value;
+  const element = document.getElementById('contingency-element').value;
+  document.getElementById('after-element-label').textContent = `${type} ${element}`;
+  document.getElementById('after-status').innerHTML = renderStatusCard(after);
+
+  // Render eigenvalue canvases
   setTimeout(() => {
     renderEigenvalues(before.eigenvalues || [], 'eig-canvas-before', { level: 1 });
     renderEigenvalues(after.eigenvalues || [], 'eig-canvas-after', { level: 1 });
   }, 50);
-  
-  const recsDiv = document.getElementById('contingency-recommendations');
-  recsDiv.innerHTML = generateRecommendations(before, after);
+
+  // Show recommendations
+  const recsCard = document.getElementById('contingency-recommendations-card');
+  recsCard.style.display = 'block';
+  document.getElementById('contingency-recommendations').innerHTML = generateRecommendations(before, after);
 }
 
 function renderStatusCard(data) {
@@ -1674,53 +1677,6 @@ function generateRecommendations(before, after) {
   return html;
 }
 
-const harmonicCanvas = document.getElementById('harmonic-stem-canvas');
-const harmonicTooltip = document.createElement('div');
-harmonicTooltip.className = 'tooltip';
-harmonicTooltip.style.display = 'none';
-harmonicCanvas.parentElement.appendChild(harmonicTooltip);
-
-harmonicCanvas.addEventListener('mousemove', (e) => {
-  if (!harmonicCanvas._stemData) return;
-  const canvasRect = harmonicCanvas.getBoundingClientRect();
-  const cardRect = harmonicCanvas.parentElement.getBoundingClientRect();
-  const x = e.clientX - canvasRect.left;
-  const y = e.clientY - canvasRect.top;
-  const { modes, ox, sx, sy, cy } = harmonicCanvas._stemData;
-
-  let closest = null;
-  let minDist = 20;
-  modes.forEach(m => {
-    const mx = ox + m.freq * sx;
-    const my = cy - m.re * sy;
-    const dist = Math.sqrt((x - mx) ** 2 + (y - my) ** 2);
-    if (dist < minDist) { minDist = dist; closest = m; }
-  });
-
-  if (closest) {
-    harmonicTooltip.innerHTML = `
-      <div class="tooltip-title">Harmonic Mode</div>
-      <div class="tooltip-row">Frequency: ${closest.freq.toFixed(2)} Hz</div>
-      <div class="tooltip-row">Re(λ): ${closest.re.toFixed(2)}</div>
-      <div class="tooltip-row">Im(λ): ${closest.im.toFixed(2)}</div>
-    `;
-    harmonicTooltip.style.left = (e.clientX - cardRect.left + 15) + 'px';
-    harmonicTooltip.style.top = (e.clientY - cardRect.top + 15) + 'px';
-    harmonicTooltip.style.display = 'block';
-  } else {
-    harmonicTooltip.style.display = 'none';
-  }
-});
-harmonicCanvas.addEventListener('mouseleave', () => { harmonicTooltip.style.display = 'none'; });
-harmonicCanvas.addEventListener('wheel', (e) => {
-  e.preventDefault();
-  const factor = e.deltaY > 0 ? 0.9 : 1.1;
-  harmonicZoom.level = Math.max(0.5, Math.min(5, harmonicZoom.level * factor));
-  if (currentData) {
-    renderHarmonicStem(currentData.eigenvalues || [], harmonicZoom.level);
-  }
-});
-
 const dampCanvas = document.getElementById('damping-freq-canvas');
 const dampTooltip = document.createElement('div');
 dampTooltip.className = 'tooltip';
@@ -1771,6 +1727,46 @@ dampCanvas.addEventListener('wheel', (e) => {
 
 loadGrids();
 loadResults();
+
+// On page load, check if a simulation or contingency was already running
+// (e.g. after a page refresh) and resume the UI state accordingly.
+async function checkInitialState() {
+  try {
+    const [simRes, contRes] = await Promise.all([
+      fetch('/api/status'),
+      fetch('/api/contingency-status'),
+    ]);
+    const simStatus = await simRes.json();
+    const contStatus = await contRes.json();
+
+    if (simStatus.status === 'running') {
+      const btn = document.getElementById('run-btn');
+      const cancelBtn = document.getElementById('cancel-btn');
+      const statusEl = document.getElementById('sim-status');
+      btn.disabled = true;
+      cancelBtn.style.display = 'inline-flex';
+      statusEl.className = 'status-indicator running';
+      statusEl.innerHTML = `<span class="spinner"></span><span>Running — ${simStatus.grid || ''}</span>`;
+      document.getElementById('log-card').style.display = 'block';
+      document.getElementById('log-output').textContent = 'Simulation in progress (resumed after page reload)...\n';
+      pollStatus();
+    }
+
+    if (contStatus.status === 'running') {
+      const btn = document.getElementById('run-contingency-btn');
+      const cancelBtn = document.getElementById('cancel-contingency-btn');
+      const statusEl = document.getElementById('contingency-status');
+      btn.disabled = true;
+      cancelBtn.style.display = 'inline-flex';
+      statusEl.className = 'status-indicator running';
+      statusEl.innerHTML = `<span class="spinner"></span><span>Running — ${contStatus.info || ''}</span>`;
+      pollContingencyStatus();
+    }
+  } catch (e) {
+    console.error('Error checking initial state:', e);
+  }
+}
+checkInitialState();
 </script>
 </body>
 </html>
