@@ -452,64 +452,68 @@ canvas {
       </div>
     </div>
     <div id="results-content" style="display:none">
-      <div class="card">
-        <div class="card-title">Complex Plane — Eigenvalues <span style="font-size:10px;color:var(--muted);font-weight:400;text-transform:none">· scroll to zoom</span></div>
-        <canvas id="eig-canvas" class="forecast-chart"></canvas>
-        <div class="legend">
-          <div class="legend-item"><div class="legend-dot" style="border-color:var(--blue)"></div>Stable</div>
-          <div class="legend-item"><div class="legend-dot" style="border-color:var(--red)"></div>Unstable</div>
-          <div class="legend-item" style="color:var(--muted)">— ζ = 0.05, 0.1, 0.2</div>
-        </div>
-      </div>
+      <div style="display:grid;grid-template-columns:1fr 2fr;gap:20px;align-items:start">
 
-      <div style="display:grid;grid-template-columns:1fr 2fr;gap:24px">
+        <!-- Left column: semaphore + grid info + key metrics -->
         <div>
           <div class="card">
             <div class="card-title">System Status</div>
-            <div class="semaphore" style="padding:16px">
-              <div id="light-green" class="semaphore-light green" style="width:50px;height:50px"></div>
-              <div id="light-yellow" class="semaphore-light yellow" style="width:50px;height:50px"></div>
-              <div id="light-red" class="semaphore-light red" style="width:50px;height:50px"></div>
+            <div class="semaphore">
+              <div id="light-green" class="semaphore-light green"></div>
+              <div id="light-yellow" class="semaphore-light yellow"></div>
+              <div id="light-red" class="semaphore-light red"></div>
             </div>
-            <div style="text-align:center;margin-top:12px">
-              <div id="status-text" class="status-text stable" style="font-size:24px">—</div>
+            <div style="text-align:center;margin-top:16px">
+              <div id="status-text" class="status-text stable">—</div>
             </div>
           </div>
 
           <div class="card">
             <div class="card-title">Grid Information</div>
-            <div id="grid-info-container" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"></div>
+            <div id="grid-info-container" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div>
           </div>
 
           <div class="card">
             <div class="card-title">Key Metrics</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-              <div class="metric" style="padding:8px">
-                <div id="margin-value" class="metric-value" style="color:var(--green);font-size:24px">—</div>
-                <div class="metric-label" style="font-size:10px">Stability Margin</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div class="metric">
+                <div id="margin-value" class="metric-value" style="color:var(--green)">—</div>
+                <div class="metric-label">Stability Margin</div>
               </div>
-              <div class="metric" style="padding:8px">
-                <div id="n-critical" class="metric-value" style="color:var(--green);font-size:24px">—</div>
-                <div class="metric-label" style="font-size:10px">Critical Modes</div>
+              <div class="metric">
+                <div id="n-critical" class="metric-value" style="color:var(--green)">—</div>
+                <div class="metric-label">Critical Modes</div>
               </div>
-              <div class="metric" style="padding:8px">
-                <div id="n-eigs" class="metric-value" style="font-size:24px">—</div>
-                <div class="metric-label" style="font-size:10px">Eigenvalues</div>
+              <div class="metric">
+                <div id="n-eigs" class="metric-value">—</div>
+                <div class="metric-label">Eigenvalues</div>
               </div>
-              <div class="metric" style="padding:8px">
-                <div id="n-states" class="metric-value" style="font-size:24px">—</div>
-                <div class="metric-label" style="font-size:10px">State Variables</div>
+              <div class="metric">
+                <div id="n-states" class="metric-value">—</div>
+                <div class="metric-label">State Variables</div>
               </div>
             </div>
           </div>
         </div>
 
+        <!-- Right two-thirds: eigenvalue plot + stability assessment -->
         <div>
           <div class="card">
+            <div class="card-title">Complex Plane — Eigenvalues <span style="font-size:10px;color:var(--muted);font-weight:400;text-transform:none">· scroll to zoom</span></div>
+            <canvas id="eig-canvas" style="height:380px"></canvas>
+            <div class="legend">
+              <div class="legend-item"><div class="legend-dot" style="border-color:var(--blue)"></div>Stable</div>
+              <div class="legend-item"><div class="legend-dot" style="border-color:var(--red)"></div>Unstable</div>
+              <div class="legend-item" style="color:var(--muted)">— ζ = 0.05, 0.1, 0.2</div>
+            </div>
+          </div>
+
+          <div class="card">
             <div class="card-title">Stability Assessment</div>
-            <div id="stability-assessment" style="padding:12px"></div>
+            <div id="stability-assessment" style="padding:4px"></div>
           </div>
         </div>
+
       </div>
     </div>
   </div>
@@ -599,10 +603,12 @@ canvas {
       </div>
     </div>
     <div id="contingencies-content" style="display:none">
+
+      <!-- Selector panel -->
       <div class="card">
         <div class="card-title">Contingency Analysis</div>
         <div class="selector-panel">
-          <div class="selector-row" style="margin-bottom:16px">
+          <div class="selector-row" style="margin-bottom:14px">
             <select id="contingency-type" style="flex:0.3">
               <option value="generator">Generator</option>
               <option value="line">Line</option>
@@ -620,35 +626,34 @@ canvas {
         </div>
       </div>
 
-      <!-- Before panel: shown as soon as a precomputed result is loaded -->
+      <!-- Results: shown after tab opens with precomputed data -->
       <div id="contingency-before-panel" style="display:none">
         <div class="grid-2">
+
+          <!-- Base Case card -->
           <div class="card">
-            <div class="card-title">Base Case (Precomputed)
-              <span id="before-grid-label" style="font-size:12px;font-weight:400;color:var(--muted);margin-left:8px"></span>
+            <div class="card-title">Base Case
+              <span id="before-grid-label" style="font-size:11px;font-weight:400;color:var(--muted);margin-left:6px"></span>
             </div>
-            <div id="before-status" style="text-align:center;padding:20px"></div>
+            <div id="before-status"></div>
+            <div style="margin-top:16px">
+              <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Eigenvalues</div>
+              <canvas id="eig-canvas-before" style="height:280px"></canvas>
+            </div>
           </div>
+
+          <!-- After Contingency card -->
           <div class="card" id="after-contingency-card" style="display:none">
             <div class="card-title">After Contingency
-              <span id="after-element-label" style="font-size:12px;font-weight:400;color:var(--muted);margin-left:8px"></span>
+              <span id="after-element-label" style="font-size:11px;font-weight:400;color:var(--muted);margin-left:6px"></span>
             </div>
-            <div id="after-status" style="text-align:center;padding:20px"></div>
+            <div id="after-status"></div>
+            <div style="margin-top:16px">
+              <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Eigenvalues</div>
+              <canvas id="eig-canvas-after" style="height:280px"></canvas>
+            </div>
           </div>
-        </div>
 
-        <div class="card">
-          <div class="card-title">Eigenvalue Comparison</div>
-          <div class="grid-2">
-            <div>
-              <h4 style="margin-bottom:12px;color:var(--muted)">Base Case</h4>
-              <canvas id="eig-canvas-before" style="height:250px;background:white;border:1px solid var(--border);border-radius:6px"></canvas>
-            </div>
-            <div>
-              <h4 style="margin-bottom:12px;color:var(--muted)">After Contingency</h4>
-              <canvas id="eig-canvas-after" style="height:250px;background:white;border:1px solid var(--border);border-radius:6px"></canvas>
-            </div>
-          </div>
         </div>
 
         <div class="card" id="contingency-recommendations-card" style="display:none">
@@ -656,6 +661,7 @@ canvas {
           <div id="contingency-recommendations"></div>
         </div>
       </div>
+
     </div>
   </div>
 </div>
@@ -913,11 +919,11 @@ function displayResults(data) {
   const infoContainer = document.getElementById('grid-info-container');
   const info = data.grid_info || {};
   infoContainer.innerHTML = `
-    <div class="metric" style="padding:8px"><div class="metric-value" style="font-size:24px">⚡ ${info.n_buses || 0}</div><div class="metric-label" style="font-size:10px">Buses</div></div>
-    <div class="metric" style="padding:8px"><div class="metric-value" style="font-size:24px">⚙️ ${info.n_generators || 0}</div><div class="metric-label" style="font-size:10px">Generators</div></div>
-    <div class="metric" style="padding:8px"><div class="metric-value" style="font-size:24px">🔗 ${info.n_lines || 0}</div><div class="metric-label" style="font-size:10px">Lines</div></div>
-    <div class="metric" style="padding:8px"><div class="metric-value" style="font-size:24px">💡 ${info.n_loads || 0}</div><div class="metric-label" style="font-size:10px">Loads</div></div>
-    <div class="metric" style="padding:8px"><div class="metric-value" style="font-size:24px">🔄 ${info.n_transformers || 0}</div><div class="metric-label" style="font-size:10px">Transformers</div></div>
+    <div class="metric"><div class="metric-value">⚡ ${info.n_buses || 0}</div><div class="metric-label">Buses</div></div>
+    <div class="metric"><div class="metric-value">⚙️ ${info.n_generators || 0}</div><div class="metric-label">Generators</div></div>
+    <div class="metric"><div class="metric-value">🔗 ${info.n_lines || 0}</div><div class="metric-label">Lines</div></div>
+    <div class="metric"><div class="metric-value">💡 ${info.n_loads || 0}</div><div class="metric-label">Loads</div></div>
+    <div class="metric"><div class="metric-value">🔄 ${info.n_transformers || 0}</div><div class="metric-label">Transformers</div></div>
   `;
   
   const assessmentDiv = document.getElementById('stability-assessment');
@@ -1536,29 +1542,39 @@ function displayContingencyResults() {
 }
 
 function renderStatusCard(data) {
-  const statusColor = data.status === 'STABLE' ? 'var(--green)' : 
+  const statusColor = data.status === 'STABLE' ? 'var(--green)' :
                       data.status === 'MARGINAL' ? 'var(--yellow)' : 'var(--red)';
-  const statusBadge = data.status === 'STABLE' ? 'green' : 
+  const statusBadge = data.status === 'STABLE' ? 'green' :
                       data.status === 'MARGINAL' ? 'yellow' : 'red';
-  
+  const unstableCount = (data.eigenvalues || []).filter(e => e.re > 0.001).length;
+  const criticalCount = (data.critical_modes || []).filter(m => m.critical).length;
+
   return `
-    <div class="semaphore" style="padding:16px;margin-bottom:16px">
-      <div class="semaphore-light green ${data.status === 'STABLE' ? 'active' : ''}" style="width:40px;height:40px"></div>
-      <div class="semaphore-light yellow ${data.status === 'MARGINAL' ? 'active' : ''}" style="width:40px;height:40px"></div>
-      <div class="semaphore-light red ${data.status === 'UNSTABLE' ? 'active' : ''}" style="width:40px;height:40px"></div>
+    <div class="semaphore" style="margin-bottom:16px">
+      <div class="semaphore-light green ${data.status === 'STABLE' ? 'active' : ''}"></div>
+      <div class="semaphore-light yellow ${data.status === 'MARGINAL' ? 'active' : ''}"></div>
+      <div class="semaphore-light red ${data.status === 'UNSTABLE' ? 'active' : ''}"></div>
     </div>
-    <div style="margin-bottom:12px">
-      <span class="badge ${statusBadge}">${data.status}</span>
+    <div style="text-align:center;margin-bottom:16px">
+      <span class="badge ${statusBadge}" style="font-size:14px;padding:6px 16px">${data.status}</span>
     </div>
-    <div style="color:${statusColor};font-size:24px;font-weight:700;margin-bottom:8px">
-      ${data.margin.toExponential(3)}
-    </div>
-    <div style="color:var(--muted);font-size:13px">
-      Stability Margin
-    </div>
-    <div style="margin-top:12px;font-size:14px">
-      <strong>${data.n_eigenvalues}</strong> eigenvalues<br>
-      <strong>${(data.eigenvalues || []).filter(e => e.re > 0.001).length}</strong> unstable modes
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="metric">
+        <div class="metric-value" style="color:${statusColor};font-size:22px">${data.margin.toExponential(2)}</div>
+        <div class="metric-label">Margin</div>
+      </div>
+      <div class="metric">
+        <div class="metric-value" style="font-size:22px">${data.n_eigenvalues}</div>
+        <div class="metric-label">Eigenvalues</div>
+      </div>
+      <div class="metric">
+        <div class="metric-value" style="color:${unstableCount > 0 ? 'var(--red)' : 'var(--green)'};font-size:22px">${unstableCount}</div>
+        <div class="metric-label">Unstable</div>
+      </div>
+      <div class="metric">
+        <div class="metric-value" style="color:${criticalCount > 0 ? 'var(--yellow)' : 'var(--green)'};font-size:22px">${criticalCount}</div>
+        <div class="metric-label">Critical</div>
+      </div>
     </div>
   `;
 }
