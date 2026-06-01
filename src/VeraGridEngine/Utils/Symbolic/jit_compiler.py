@@ -2426,3 +2426,211 @@ class RMSCompiler(EquationCompiler):
 
         raw_fn = _compile_to_file("\n".join(lines), func_name)
         return DerivativeFunctionWrapper(raw_fn=raw_fn, diff_var_count=len(self.diff_vars))
+
+
+class RMSCompilerVec(EquationCompiler):
+    """
+    O(N) compiler for RMS (Root Mean Square) Continuous-Time Simulations.
+
+    This compiler generates highly optimized Right-Hand Side (RHS) vectors and
+    Sparse Jacobian matrices using a structural analysis approach. By leveraging
+    the official `expression2numba` translator, it ensures 100% mathematical
+    consistency with legacy systems while drastically reducing symbolic evaluation
+    and compilation times.
+    """
+    __slots__ = ['dt_var', 'compiler_names_dict', 'diff_vars', 'v_params']
+
+    def __init__(self,
+                 variables: List[Var],
+                 diff_vars: List[Var],
+                 v_params: List[Var],
+                 c_params: List[Var],
+                 dt_var: Var,
+                 compiler_names_dict: Dict[int, str]) -> None:
+        """
+        Initializes the RMS Compiler with the system's mathematical components.
+
+        Args:
+            variables (List[Var]): State and algebraic variables of the system.
+            diff_vars (List[Var]): Differential variables (dx/dt).
+            v_params (List[Var]): Variable (event-driven) parameters.
+            c_params (List[Var]): Constant parameters.
+            dt_var (Var): The symbolic variable representing the integration time step.
+            compiler_names_dict (Dict[int, str]): Dictionary mapping variable UIDs to
+                                                  their executable string representations.
+        """
+        super().__init__(variables=variables, parameters=c_params, method=DynamicIntegrationMethod.DaeBackEuler)
+        self.dt_var = dt_var
+        self.compiler_names_dict = compiler_names_dict
+        self.diff_vars = diff_vars
+        self.v_params = v_params
+        self.compiler_names_dict[dt_var.uid] = 'h'
+
+    def compile_rhs(self, equations: List[Expr], func_name: str) -> Callable[[Vec, Vec, Vec, Vec], Vec]:
+        """
+        Compiles the residual equations (RHS) into a fast, executable JIT function.
+
+        Args:
+            equations (List[Expr]): The list of symbolic expressions to evaluate.
+            func_name (str): The desired name for the compiled target function.
+
+        Returns:
+            Callable: An executable function computing the RHS residuals.
+        """
+        # Keep legacy signature (`vrs`) while also exposing `vars` alias,
+        # so equations compiled with either naming convention work.
+
+        lines: List[str] = list()
+        lines.append(f"def {func_name}(vrs, diff, vprms, cprms):")
+        lines.append("    vars = vrs")
+        lines.append("    n_models = vars.shape[1]")
+        lines.append(f"    out = np.zeros(({len(equations)}, n_models), dtype=np.float64)")
+
+        for i, eq in enumerate(equations):
+            expr_str = expression2numba(eq, self.compiler_names_dict)
+            lines.append(f"    out[{i}, :] = {expr_str}")
+
+        lines.append("    return out")
+
+        return _compile_to_file("\n".join(lines), func_name)
+
+    def compile_sparse_jacobian(self, eqs: List[Expr],
+                                wrt_vars: List[Var],
+                                func_name: str) -> Callable[[Vec, Vec, Vec, Vec, float], sp.csc_matrix]:
+        """
+        Compiles a sparse Jacobian evaluator using an O(N) structural extraction algorithm.
+
+        Args:
+            eqs (List[Expr]): The list of symbolic equations (F or G).
+            wrt_vars (List[Var]): The variables to differentiate with respect to (x or y).
+            func_name (str): The desired name for the compiled target function.
+
+        Returns:
+            Callable: A function that populates and returns a scipy.sparse.csc_matrix.
+        """
+        wrt_map = {v.uid: (i, v) for i, v in enumerate(wrt_vars)}
+        triplets: List[Tuple[int, int, Expr]] = list()
+
+        for row, eq in enumerate(eqs):
+            for uid in _collect_candidate_wrt_uids(eq, wrt_map):
+                col, var = wrt_map[uid]
+                d_expr = eq.diff(var, dt=self.dt_var)
+                if not (isinstance(d_expr, Const) and d_expr.value == 0):
+                    triplets.append((col, row, d_expr))
+
+        triplets.sort(key=_get_triplet_sort_key)
+
+        # Handle edge case: Empty Jacobian matrix (no dependencies found)
+        if not triplets:
+            J_empty = sp.csc_matrix((len(eqs), len(wrt_vars)))
+            return EmptySparseJacobianEvaluator(J_empty)
+        # Extract sorted coordinates and corresponding symbolic derivatives
+        cols_sorted = [t[0] for t in triplets]
+        rows_sorted = [t[1] for t in triplets]
+        d_exprs = [t[2] for t in triplets]
+
+        # Precompute CSC (Compressed Sparse Column) pointer arrays
+        nnz = len(cols_sorted)
+        indices = np.fromiter(rows_sorted, dtype=np.int32, count=nnz)
+        indptr = np.zeros(len(wrt_vars) + 1, dtype=np.int32)
+        for c in cols_sorted:
+            indptr[c + 1] += 1
+        np.cumsum(indptr, out=indptr)
+
+        # Initialize the sparse matrix template
+        J_template = sp.csc_matrix((np.zeros(nnz), indices, indptr), shape=(len(eqs), len(wrt_vars)))
+
+        # The Jacobian receives 'h' in its signature for solver compatibility,
+        # even though 'expression2numba' internally resolves 'dt' via vprms[...]
+        lines = [f"def {func_name}_filler(vrs, diff, vprms, cprms, h, data_out):"]
+        lines.append("    vars = vrs")
+        for i, expr in enumerate(d_exprs):
+            expr_str = expression2numba(expr, self.compiler_names_dict)
+            # in case of vectorization
+            # lines.append(f"    data_out[{i}] = {expr_str}")
+            lines.append(f"    data_out[{i}] = {expr_str}")
+
+        filler_fn = _compile_to_file("\n".join(lines), f"{func_name}_filler")
+
+        return SparseJacobianEvaluatorWrapper(filler_fn=filler_fn, matrix=J_template)
+
+    def compile_event_params_fn(self, eqs: List[Expr], alias_names_dict: Dict[int, str],
+                                EVENT_PARAMS_NAME: str, TIME_NAME: str,
+                                func_name: str = "event_params_fn") -> Callable[[Vec, float, Vec], Vec]:
+        """
+        Compiles event parameters equations into a fast, executable JIT function.
+
+        This is the equivalent of SymbolicParamsVector.
+
+        Args:
+            eqs (List[Expr]): The list of symbolic expressions for event parameters.
+            alias_names_dict (Dict[int, str]): Dictionary mapping var UIDs to alias names.
+            EVENT_PARAMS_NAME (str): Name of the event parameters array (e.g., "vprms").
+            TIME_NAME (str): Name of the time variable (e.g., "glob_time").
+            func_name (str): The desired name for the compiled target function.
+
+        Returns:
+            Callable: An executable function with signature (event_params, time, out) -> out.
+        """
+        used_vars_count = defaultdict(int)
+        for eq in eqs:
+            for var in get_expression_vars(eq):
+                used_vars_count[var.uid] += 1
+
+        lines: List[str] = list()
+        lines.append(f"def {func_name}({EVENT_PARAMS_NAME}, {TIME_NAME}, out):")
+
+        final_names_dict: Dict[int, str] = self.compiler_names_dict.copy()
+        for uid, count in used_vars_count.items():
+            if count > 1:
+                final_names_dict[uid] = alias_names_dict[uid]
+                lines.append(f"    {alias_names_dict[uid]} = {self.compiler_names_dict[uid]}")
+            else:
+                pass
+
+        for i, eq in enumerate(eqs):
+            # Event-parameter expressions may reuse the same runtime variable many
+            # times, especially for piecewise ramps built from time-dependent
+            # expressions. The compiled expression must therefore use the alias-
+            # aware name map prepared above, otherwise the generated code can
+            # evaluate a simplified step-like path instead of the intended ramp.
+            expr_str = expression2numba(eq, final_names_dict)
+            lines.append(f"    out[{i}] = {expr_str}")
+
+        raw_fn = _compile_to_file("\n".join(lines), func_name)
+        return EventParameterFunctionWrapper(raw_fn=raw_fn, equation_count=len(eqs))
+
+    def compile_derivative_fn(self, uid2idx_vars: Dict[int, int],
+                              func_name: str = "derivative_fn") -> Callable[[Vec, Vec, Vec, float, Vec], Vec]:
+        """
+        Compiles the derivative evaluation function for differential variables.
+
+        This is the equivalent of SymbolicDerivative.
+
+        Args:
+            uid2idx_vars (Dict[int, int]): Dictionary mapping var UIDs to their indices.
+            func_name (str): The desired name for the compiled target function.
+
+        Returns:
+            Callable: An executable function with signature (vrs, lagvars, lagdx, h, out) -> out.
+        """
+        lines: List[str] = list()
+        lines.append(f"def {func_name}(vrs, lagvars, lagdx, h, out):")
+
+        uid2dx_expression = {}
+        for i, diff_var in enumerate(self.diff_vars):
+            base_var_uid = diff_var.base_var.uid
+            uid = diff_var.uid
+            if diff_var.diff_order == 1:
+                j = uid2idx_vars[base_var_uid]
+                rhs = f" (vrs[{j}] - lagvars[{j}]) / h"
+            else:
+                dx_expression = uid2dx_expression[diff_var.base_var.uid]
+                rhs = f" ({dx_expression} - lagdx[{i}]) / h"
+            lines.append(f"    out[{i}] = {rhs}")
+            uid2dx_expression[uid] = rhs
+
+        lines.append("    return out")
+
+        raw_fn = _compile_to_file("\n".join(lines), func_name)
+        return DerivativeFunctionWrapper(raw_fn=raw_fn, diff_var_count=len(self.diff_vars))

@@ -30,7 +30,7 @@ from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Devices.Events.rms_event import RmsEvent
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
-from VeraGridEngine.Utils.Symbolic.jit_compiler import RMSCompiler
+from VeraGridEngine.Utils.Symbolic.jit_compiler import RMSCompiler, RMSCompilerVec
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import get_bus_rms_algebraic_vars
 from VeraGridEngine.Utils.procedural_logic import build_boundary_updater_from_block
 from VeraGridEngine.IO.fmu.importer.experimental_cs import (
@@ -278,6 +278,10 @@ def setQ(Q: ObjVec, Q_used: BoolVec, k: int, val: object):
         Q[k] += val
 
 
+def get_all_uids_from_block_composition_dict(block_composition_dict: Dict[int, List[int]]) -> List[int]:
+    return [uid for uids in block_composition_dict.values() for uid in uids]
+
+
 class RmsProblemDaeVec(RmsProblemTemplate):
     """
     DAE (Differential-Algebraic Equation) class to store and manage.
@@ -386,10 +390,10 @@ class RmsProblemDaeVec(RmsProblemTemplate):
         self._rhs_algeb_fn_by_types: Dict[int, Callable[[Vec, Vec, Vec, Vec], Vec]] = dict()
         self._rhs_algeb_energy_balance_fn: Callable[[Vec, Vec, Vec, Vec], Vec] | None = None
 
-        self._j11_fn_by_types: Dict[int,Callable[[Vec, Vec, Vec, Vec, float], sp.csc_matrix]] | None = None
-        self._j12_fn_by_types: Dict[int,Callable[[Vec, Vec, Vec, Vec, float], sp.csc_matrix]] | None = None
-        self._j21_fn_by_types: Dict[int,Callable[[Vec, Vec, Vec, Vec, float], sp.csc_matrix]] | None = None
-        self._j22_fn_by_types: Dict[int,Callable[[Vec, Vec, Vec, Vec, float], sp.csc_matrix]] | None = None
+        self._j11_fn_by_types: Dict[int,Callable[[Vec, Vec, Vec, Vec, float], sp.csc_matrix]] = dict()
+        self._j12_fn_by_types: Dict[int,Callable[[Vec, Vec, Vec, Vec, float], sp.csc_matrix]] = dict()
+        self._j21_fn_by_types: Dict[int,Callable[[Vec, Vec, Vec, Vec, float], sp.csc_matrix]] = dict()
+        self._j22_fn_by_types: Dict[int,Callable[[Vec, Vec, Vec, Vec, float], sp.csc_matrix]] = dict()
         # function pointers
         self._derivative_fn: SymbolicDerivative | None = None
         self._event_params_fn: SymbolicParamsVector | None = None
@@ -483,7 +487,7 @@ class RmsProblemDaeVec(RmsProblemTemplate):
         self._n_event_params = 0
         self._n_diff = 0
 
-        self.equivalence_dict, self.variable_equivalence_dict = build_equivalence_classes_dict(self.grid)
+        self.equivalence_dict, self.variables_equivalence_dict, self.block_composition_dict = build_equivalence_classes_dict(self.grid)
 
         ######################################## Initialize devices ########################################
 
@@ -1311,7 +1315,7 @@ class RmsProblemDaeVec(RmsProblemTemplate):
         timings = dict()
         # print("Compiling RMS using JIT Native Compiler...")
         t0 = _tic()
-        rms_compiler = RMSCompiler(
+        rms_compiler_all_models = RMSCompiler(
             variables=self._state_algeb_vars,
             diff_vars=self._diff_vars,
             v_params=self._variable_parameters,
@@ -1322,11 +1326,11 @@ class RmsProblemDaeVec(RmsProblemTemplate):
         timings["Compiler Setup"] = _toc(t0)
 
         t0 = _tic()
-        self._derivative_fn = rms_compiler.compile_derivative_fn(self._uid2idx_vars)
+        self._derivative_fn = rms_compiler_all_models.compile_derivative_fn(self._uid2idx_vars)
         timings["SymbolicDerivative"] = _toc(t0)
 
         t0 = _tic()
-        self._event_params_fn = rms_compiler.compile_event_params_fn(
+        self._event_params_fn = rms_compiler_all_models.compile_event_params_fn(
             eqs=self._event_parameters_eqs,
             alias_names_dict=self._alias_names_dict,
             EVENT_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
@@ -1337,87 +1341,87 @@ class RmsProblemDaeVec(RmsProblemTemplate):
         t0 = _tic()
         # here we iterate throurgh equivalence_dict and fill the self._rhs_by_types
         for model_type in self.equivalence_dict.keys():
+            if  self._algebraic_eqs_equiv_class_dict[model_type] or self._state_eqs_equiv_class_dict[model_type]:
 
-            rms_compiler = RMSCompiler(
-                variables=self._state_vars_equiv_class_dict[model_type] + self._algebraic_vars_equiv_class_dict[model_type],
-                diff_vars=self._diff_vars_equiv_class_dict[model_type],
-                v_params=self._variable_parameters_equiv_class_dict[model_type],
-                c_params=self._constant_parameters_equiv_class_dict[model_type],
-                dt_var=self._dt,
-                compiler_names_dict=self._compiler_names_dict_vect[model_type]
-            )
+                rms_compiler = RMSCompilerVec(
+                    variables=self._state_vars_equiv_class_dict[model_type] + self._algebraic_vars_equiv_class_dict[model_type],
+                    diff_vars=self._diff_vars_equiv_class_dict[model_type],
+                    v_params=self._variable_parameters_equiv_class_dict[model_type],
+                    c_params=self._constant_parameters_equiv_class_dict[model_type],
+                    dt_var=self._dt,
+                    compiler_names_dict=self._compiler_names_dict_vect[model_type]
+                )
 
-            rhs_algeb_fn = rms_compiler.compile_rhs(self._algebraic_eqs_equiv_class_dict[model_type], "rhs_algeb_" + str(model_type))
-            if len(self._state_eqs_equiv_class_dict[model_type]) != 0:
-                t0 = _tic()
-                rhs_state_fn = rms_compiler.compile_rhs(self._state_eqs_equiv_class_dict[model_type], "rhs_state_" + str(model_type))
-                timings["RHS state"] = _toc(t0)
+                rhs_algeb_fn = rms_compiler.compile_rhs(self._algebraic_eqs_equiv_class_dict[model_type], "rhs_algeb_" + str(model_type))
+                if len(self._state_eqs_equiv_class_dict[model_type]) != 0:
+                    t0 = _tic()
+                    rhs_state_fn = rms_compiler.compile_rhs(self._state_eqs_equiv_class_dict[model_type], "rhs_state_" + str(model_type))
+                    timings["RHS state"] = _toc(t0)
 
-                t0 = _tic()
-                j11_fn = rms_compiler.compile_sparse_jacobian(self._state_eqs_equiv_class_dict[model_type], self._state_vars_equiv_class_dict[model_type], "j11_" + str(model_type))
-                timings["J11 (dF/dx)"] = _toc(t0)
+                    t0 = _tic()
+                    j11_fn = rms_compiler.compile_sparse_jacobian(self._state_eqs_equiv_class_dict[model_type], self._state_vars_equiv_class_dict[model_type], "j11_" + str(model_type))
+                    timings["J11 (dF/dx)"] = _toc(t0)
 
-                t0 = _tic()
-                j12_fn = rms_compiler.compile_sparse_jacobian(self._state_eqs_equiv_class_dict[model_type], self._algebraic_vars_equiv_class_dict[model_type], "j12_" + str(model_type))
-                timings["J12 (dF/dy)"] = _toc(t0)
+                    t0 = _tic()
+                    j12_fn = rms_compiler.compile_sparse_jacobian(self._state_eqs_equiv_class_dict[model_type], self._algebraic_vars_equiv_class_dict[model_type], "j12_" + str(model_type))
+                    timings["J12 (dF/dy)"] = _toc(t0)
 
-                t0 = _tic()
-                j21_fn = rms_compiler.compile_sparse_jacobian(self._algebraic_eqs_equiv_class_dict[model_type], self._state_vars_equiv_class_dict[model_type], "j21_" + str(model_type))
-                timings["J21 (dG/dx)"] = _toc(t0)
+                    t0 = _tic()
+                    j21_fn = rms_compiler.compile_sparse_jacobian(self._algebraic_eqs_equiv_class_dict[model_type], self._state_vars_equiv_class_dict[model_type], "j21_" + str(model_type))
+                    timings["J21 (dG/dx)"] = _toc(t0)
 
-                t0 = _tic()
-                j22_fn = rms_compiler.compile_sparse_jacobian(self._algebraic_eqs_equiv_class_dict[model_type], self._algebraic_vars_equiv_class_dict[model_type], "j22_" + str(model_type))
-                timings["J22 (dG/dy)"] = _toc(t0)
+                    t0 = _tic()
+                    j22_fn = rms_compiler.compile_sparse_jacobian(self._algebraic_eqs_equiv_class_dict[model_type], self._algebraic_vars_equiv_class_dict[model_type], "j22_" + str(model_type))
+                    timings["J22 (dG/dy)"] = _toc(t0)
 
-            else:
-                t0 = _tic()
-                j22_fn = rms_compiler.compile_sparse_jacobian(self._algebraic_eqs, self._algebraic_vars, "j22_" + str(model_type))
-                timings["J22 only (no states)"] = _toc(t0)
+                else:
+                    t0 = _tic()
+                    j22_fn = rms_compiler.compile_sparse_jacobian(self._algebraic_eqs_equiv_class_dict[model_type], self._algebraic_vars_equiv_class_dict[model_type], "j22_" + str(model_type))
+                    timings["J22 only (no states)"] = _toc(t0)
 
-                rhs_state_fn = None
-                j11_fn = None
-                j12_fn = None
-                j21_fn = None
-                j22_fn = None
+                    rhs_state_fn = None
+                    j11_fn = None
+                    j12_fn = None
+                    j21_fn = None
 
-            self._rhs_state_fn_by_types[model_type] = rhs_state_fn
-            self._rhs_algeb_fn_by_types[model_type] = rhs_algeb_fn
+                self._rhs_state_fn_by_types[model_type] = rhs_state_fn
+                self._rhs_algeb_fn_by_types[model_type] = rhs_algeb_fn
 
-            self._j11_fn_by_types[model_type] = j11_fn
-            self._j12_fn_by_types[model_type] = j12_fn
-            self._j21_fn_by_types[model_type] = j21_fn
-            self._j22_fn_by_types[model_type] = j22_fn
+                self._j11_fn_by_types[model_type] = j11_fn
+                self._j12_fn_by_types[model_type] = j12_fn
+                self._j21_fn_by_types[model_type] = j21_fn
+                self._j22_fn_by_types[model_type] = j22_fn
 
-        self._rhs_algeb_energy_balance_fn = rms_compiler.compile_rhs(self._balance_equations, "rhs_algeb_balance")
+        self._rhs_algeb_energy_balance_fn = rms_compiler_all_models.compile_rhs(self._balance_equations, "rhs_algeb_balance")
 
-        self._rhs_algeb_fn = rms_compiler.compile_rhs(self._algebraic_eqs, "rhs_algeb")
+        self._rhs_algeb_fn = rms_compiler_all_models.compile_rhs(self._algebraic_eqs, "rhs_algeb")
         timings["RHS algebraic"] = _toc(t0)
 
 
         if len(self._state_eqs) != 0:
             t0 = _tic()
-            self._rhs_state_fn = rms_compiler.compile_rhs(self._state_eqs, "rhs_state")
+            self._rhs_state_fn = rms_compiler_all_models.compile_rhs(self._state_eqs, "rhs_state")
             timings["RHS state"] = _toc(t0)
 
             t0 = _tic()
-            self._j11_fn = rms_compiler.compile_sparse_jacobian(self._state_eqs, self._state_vars, "j11")
+            self._j11_fn = rms_compiler_all_models.compile_sparse_jacobian(self._state_eqs, self._state_vars, "j11")
             timings["J11 (dF/dx)"] = _toc(t0)
 
             t0 = _tic()
-            self._j12_fn = rms_compiler.compile_sparse_jacobian(self._state_eqs, self._algebraic_vars, "j12")
+            self._j12_fn = rms_compiler_all_models.compile_sparse_jacobian(self._state_eqs, self._algebraic_vars, "j12")
             timings["J12 (dF/dy)"] = _toc(t0)
 
             t0 = _tic()
-            self._j21_fn = rms_compiler.compile_sparse_jacobian(self._algebraic_eqs, self._state_vars, "j21")
+            self._j21_fn = rms_compiler_all_models.compile_sparse_jacobian(self._algebraic_eqs, self._state_vars, "j21")
             timings["J21 (dG/dx)"] = _toc(t0)
 
             t0 = _tic()
-            self._j22_fn = rms_compiler.compile_sparse_jacobian(self._algebraic_eqs, self._algebraic_vars, "j22")
+            self._j22_fn = rms_compiler_all_models.compile_sparse_jacobian(self._algebraic_eqs, self._algebraic_vars, "j22")
             timings["J22 (dG/dy)"] = _toc(t0)
 
         else:
             t0 = _tic()
-            self._j22_fn = rms_compiler.compile_sparse_jacobian(self._algebraic_eqs, self._algebraic_vars, "j22")
+            self._j22_fn = rms_compiler_all_models.compile_sparse_jacobian(self._algebraic_eqs, self._algebraic_vars, "j22")
             timings["J22 only (no states)"] = _toc(t0)
 
         if self.options.verbose > 0:
@@ -1879,7 +1883,7 @@ class RmsProblemDaeVec(RmsProblemTemplate):
         self._variable_parameters_values[:] = params[: len(self._variable_parameters)]
 
     def add_variables_to_compilation_dicts(self, elm: ALL_DEV_TYPES, mdl: Block):
-
+        # only for blocks representing a block type and their children
         self.add_block_variables_to_compilation_dicts(elm, mdl)
         for child in mdl.children:
             self.add_variables_to_compilation_dicts(elm, child)
@@ -1896,7 +1900,7 @@ class RmsProblemDaeVec(RmsProblemTemplate):
         :rtype: None
         """
 
-        if mdl.uid in self.equivalence_dict.keys() and mdl.uid not in self._compiler_names_dict_vect:
+        if mdl.uid in self.equivalence_dict.keys():
             self._compiler_names_dict_vect[mdl.uid] = dict()
             self._alias_names_dict_vect[mdl.uid] = dict()
             self._uid2idx_vars_vec[mdl.uid] = dict()
@@ -1906,30 +1910,77 @@ class RmsProblemDaeVec(RmsProblemTemplate):
             self._input_matrices_by_model[mdl.uid] = [np.zeros(1), np.zeros(1), np.zeros(1), np.zeros(1)]
             self._state_vars_equiv_class_dict[mdl.uid] = list()
             self._algebraic_vars_equiv_class_dict[mdl.uid] = list()
+            self._diff_vars_equiv_class_dict[mdl.uid] = list()
             self._constant_parameters_equiv_class_dict[mdl.uid] = list()
             self._variable_parameters_equiv_class_dict[mdl.uid] = list()
+            self._state_eqs_equiv_class_dict[mdl.uid] = list()
+            self._algebraic_eqs_equiv_class_dict[mdl.uid] = list()
+
+            # we add bus variables for vectorization
+            class_idx = self._class_n_vars.get(mdl.uid, 0)
+            if elm in self.grid.get_branches_iter():
+                Vmf, Vaf = get_bus_rms_algebraic_vars(elm.bus_from.rms_model)
+                self._compiler_names_dict_vect[mdl.uid][Vmf.uid] = f"{self.VARS_NAME}[{class_idx}]"
+                self._alias_names_dict_vect[mdl.uid][Vmf.uid] = f"{self.VARS_NAME}_{class_idx}"
+                self._uid2idx_vars_vec[mdl.uid][Vmf.uid] = class_idx
+                self._algebraic_vars_equiv_class_dict[mdl.uid].append(Vmf)
+                self._class_n_vars[mdl.uid] = class_idx + 1
+
+                class_idx = self._class_n_vars.get(mdl.uid, 0)
+                self._compiler_names_dict_vect[mdl.uid][Vaf.uid] = f"{self.VARS_NAME}[{class_idx}]"
+                self._alias_names_dict_vect[mdl.uid][Vaf.uid] =f"{self.VARS_NAME}_{class_idx}"
+                self._uid2idx_vars_vec[mdl.uid][Vaf.uid] = class_idx
+                self._algebraic_vars_equiv_class_dict[mdl.uid].append(Vaf)
+                self._class_n_vars[mdl.uid] = class_idx + 1
+
+                class_idx = self._class_n_vars.get(mdl.uid, 0)
+                Vmt, Vat = get_bus_rms_algebraic_vars(elm.bus_to.rms_model)
+                self._compiler_names_dict_vect[mdl.uid][Vmt.uid] = f"{self.VARS_NAME}[{class_idx}]"
+                self._alias_names_dict_vect[mdl.uid][Vmt.uid] = f"{self.VARS_NAME}_{class_idx}"
+                self._uid2idx_vars_vec[mdl.uid][Vmt.uid] = class_idx
+                self._algebraic_vars_equiv_class_dict[mdl.uid].append(Vmt)
+                self._class_n_vars[mdl.uid] = class_idx + 1
+
+                class_idx = self._class_n_vars.get(mdl.uid, 0)
+                self._compiler_names_dict_vect[mdl.uid][Vat.uid] = f"{self.VARS_NAME}[{class_idx}]"
+                self._alias_names_dict_vect[mdl.uid][Vat.uid] = f"{self.VARS_NAME}_{class_idx}"
+                self._uid2idx_vars_vec[mdl.uid][Vat.uid] = class_idx
+                self._algebraic_vars_equiv_class_dict[mdl.uid].append(Vat)
+                self._class_n_vars[mdl.uid] = class_idx + 1
+
+            if elm in self.grid.get_injection_devices_iter():
+                Vm, Va = get_bus_rms_algebraic_vars(elm.bus.rms_model)
+                class_idx = self._class_n_vars.get(mdl.uid, 0)
+                self._compiler_names_dict_vect[mdl.uid][Vm.uid] =f"{self.VARS_NAME}[{class_idx}]"
+                self._alias_names_dict_vect[mdl.uid][Vm.uid] = f"{self.VARS_NAME}_{class_idx}"
+                self._uid2idx_vars_vec[mdl.uid][Vm.uid] = class_idx
+                self._algebraic_vars_equiv_class_dict[mdl.uid].append(Vm)
+                self._class_n_vars[mdl.uid] = class_idx + 1
+
+                class_idx = self._class_n_vars.get(mdl.uid, 0)
+                self._compiler_names_dict_vect[mdl.uid][Va.uid] = f"{self.VARS_NAME}[{class_idx}]"
+                self._alias_names_dict_vect[mdl.uid][Va.uid] = f"{self.VARS_NAME}_{class_idx}"
+                self._uid2idx_vars_vec[mdl.uid][Va.uid] = class_idx
+                self._algebraic_vars_equiv_class_dict[mdl.uid].append(Va)
+                self._class_n_vars[mdl.uid] = class_idx + 1
+
+
+        equiv_class_uid = next((uid for uid, list_uid in self.block_composition_dict.items() if mdl.uid in list_uid), None)
 
         # i is for variables
         for v in mdl.state_vars:
             if v.uid in self._uid2idx_vars:
                 raise ValueError(f"State variable '{v.name}' (uid={v.uid}) is already registered in the system. "
                                  f"Previous device may have created a duplicate variable.")
-            if v.uid in self.variable_equivalence_dict.keys():
-                if mdl.uid not in self._compiler_names_dict_vect:
-                    self._compiler_names_dict_vect[mdl.uid] = dict()
-                    self._alias_names_dict_vect[mdl.uid] = dict()
-                    self._uid2idx_vars_vec[mdl.uid] = dict()
-                    self._uid2idx_params_vec[mdl.uid] = dict()
-                    self._uid2idx_event_params_vec[mdl.uid] = dict()
-                    self._uid2idx_diff_vec[mdl.uid] = dict()
-                    self._input_matrices_by_model[mdl.uid] = [np.zeros(1), np.zeros(1), np.zeros(1), np.zeros(1)]
-                    self._state_vars_equiv_class_dict[mdl.uid] = list()
-                class_idx = self._class_n_vars.get(mdl.uid, 0)
-                self._compiler_names_dict_vect[mdl.uid][v.uid] = f"{self.VARS_NAME}[{class_idx}]"
-                self._alias_names_dict_vect[mdl.uid][v.uid] = f"{self.VARS_NAME}_{class_idx}"
-                self._uid2idx_vars_vec[mdl.uid][v.uid] = class_idx
-                self._class_n_vars[mdl.uid] = class_idx + 1
-                self._state_vars_equiv_class_dict[mdl.uid].append(v)
+            if equiv_class_uid:
+
+                class_idx = self._class_n_vars.get(equiv_class_uid, 0)
+                self._compiler_names_dict_vect[equiv_class_uid][v.uid] = f"{self.VARS_NAME}[{class_idx}]"
+                self._alias_names_dict_vect[equiv_class_uid][v.uid] = f"{self.VARS_NAME}_{class_idx}"
+                self._uid2idx_vars_vec[equiv_class_uid][v.uid] = class_idx
+                self._state_vars_equiv_class_dict[equiv_class_uid].append(v)
+                self._class_n_vars[equiv_class_uid] = class_idx + 1
+
 
             self._compiler_names_dict[v.uid] = f"{self.VARS_NAME}[{self._n_vars}]"
             self._alias_names_dict[v.uid] = f"{self.VARS_NAME}_{self._n_vars}"
@@ -1945,23 +1996,15 @@ class RmsProblemDaeVec(RmsProblemTemplate):
                 raise ValueError(f"Algebraic variable '{v.name}' (uid={v.uid}) is already registered in the system. "
                                  f"Previous device may have created a duplicate variable.")
 
-            if v.uid in self.variable_equivalence_dict.keys():
-                if mdl.uid not in self._compiler_names_dict_vect:
-                    self._compiler_names_dict_vect[mdl.uid] = dict()
-                    self._alias_names_dict_vect[mdl.uid] = dict()
-                    self._uid2idx_vars_vec[mdl.uid] = dict()
-                    self._uid2idx_params_vec[mdl.uid] = dict()
-                    self._uid2idx_event_params_vec[mdl.uid] = dict()
-                    self._uid2idx_diff_vec[mdl.uid] = dict()
-                    self._input_matrices_by_model[mdl.uid] = [np.zeros(1), np.zeros(1), np.zeros(1), np.zeros(1)]
-                class_idx = self._class_n_vars.get(mdl.uid, 0)
-                self._compiler_names_dict_vect[mdl.uid][v.uid] = f"{self.VARS_NAME}[{class_idx}]"
-                self._alias_names_dict_vect[mdl.uid][v.uid] = f"{self.VARS_NAME}_{class_idx}"
-                self._uid2idx_vars_vec[mdl.uid][v.uid] = class_idx
-                self._class_n_vars[mdl.uid] = class_idx + 1
-                if mdl.uid not in self._algebraic_vars_equiv_class_dict:
-                    self._algebraic_vars_equiv_class_dict[mdl.uid] = list()
-                self._algebraic_vars_equiv_class_dict[mdl.uid].append(v)
+            if equiv_class_uid:
+
+                class_idx = self._class_n_vars.get(equiv_class_uid, 0)
+                self._compiler_names_dict_vect[equiv_class_uid][v.uid] = f"{self.VARS_NAME}[{class_idx}]"
+                self._alias_names_dict_vect[equiv_class_uid][v.uid] = f"{self.VARS_NAME}_{class_idx}"
+                self._uid2idx_vars_vec[equiv_class_uid][v.uid] = class_idx
+                self._algebraic_vars_equiv_class_dict[equiv_class_uid].append(v)
+                self._class_n_vars[equiv_class_uid] = class_idx + 1
+
 
 
             self._compiler_names_dict[v.uid] = f"{self.VARS_NAME}[{self._n_vars}]"
@@ -1978,22 +2021,15 @@ class RmsProblemDaeVec(RmsProblemTemplate):
             if ep.uid in self._uid2idx_params:
                 raise ValueError(f"Parameter '{ep.name}' (uid={ep.uid}) is already registered in the system. "
                                  f"Previous device may have created a duplicate parameter.")
-            if ep.uid in self.variable_equivalence_dict.keys():
-                if mdl.uid not in self._compiler_names_dict_vect:
-                    self._compiler_names_dict_vect[mdl.uid] = dict()
-                    self._alias_names_dict_vect[mdl.uid] = dict()
-                    self._uid2idx_vars_vec[mdl.uid] = dict()
-                    self._uid2idx_params_vec[mdl.uid] = dict()
-                    self._uid2idx_event_params_vec[mdl.uid] = dict()
-                    self._uid2idx_diff_vec[mdl.uid] = dict()
-                    self._input_matrices_by_model[mdl.uid] = [np.zeros(1), np.zeros(1), np.zeros(1), np.zeros(1)]
-                    self._constant_parameters_equiv_class_dict[mdl.uid] = list()
-                class_idx = self._class_n_params.get(mdl.uid, 0)
-                self._compiler_names_dict_vect[mdl.uid][ep.uid] = f"{self.CONSTANT_PARAMS_NAME}[{class_idx}]"
-                self._alias_names_dict_vect[mdl.uid][ep.uid] = f"{self.CONSTANT_PARAMS_NAME}_{class_idx}"
-                self._uid2idx_params_vec[mdl.uid][ep.uid] = class_idx
-                self._class_n_params[mdl.uid] = class_idx + 1
-                self._constant_parameters_equiv_class_dict[mdl.uid].append(ep)
+            if equiv_class_uid:
+
+                class_idx = self._class_n_params.get(equiv_class_uid, 0)
+                self._compiler_names_dict_vect[equiv_class_uid][ep.uid] = f"{self.CONSTANT_PARAMS_NAME}[{class_idx}]"
+                self._alias_names_dict_vect[equiv_class_uid][ep.uid] = f"{self.CONSTANT_PARAMS_NAME}_{class_idx}"
+                self._uid2idx_params_vec[equiv_class_uid][ep.uid] = class_idx
+                self._constant_parameters_equiv_class_dict[equiv_class_uid].append(ep)
+                self._class_n_params[equiv_class_uid] = class_idx + 1
+
 
             self._compiler_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}[{self._n_params}]"
             self._alias_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}_{self._n_params}"
@@ -2015,22 +2051,15 @@ class RmsProblemDaeVec(RmsProblemTemplate):
             if ep.uid in self._uid2idx_event_params:
                 raise ValueError(f"Event parameter '{ep.name}' (uid={ep.uid}) is already registered in the system. "
                                  f"Previous device may have created a duplicate event parameter.")
-            if ep.uid in self.variable_equivalence_dict.keys():
-                if mdl.uid not in self._compiler_names_dict_vect:
-                    self._compiler_names_dict_vect[mdl.uid] = dict()
-                    self._alias_names_dict_vect[mdl.uid] = dict()
-                    self._uid2idx_vars_vec[mdl.uid] = dict()
-                    self._uid2idx_params_vec[mdl.uid] = dict()
-                    self._uid2idx_event_params_vec[mdl.uid] = dict()
-                    self._uid2idx_diff_vec[mdl.uid] = dict()
-                    self._input_matrices_by_model[mdl.uid] = [np.zeros(1), np.zeros(1), np.zeros(1), np.zeros(1)]
-                    self._variable_parameters_equiv_class_dict[mdl.uid] = list()
-                class_idx = self._class_n_event_params.get(mdl.uid, 0)
-                self._compiler_names_dict_vect[mdl.uid][ep.uid] = f"{self.VARIABLE_PARAMS_NAME}[{class_idx}]"
-                self._alias_names_dict_vect[mdl.uid][ep.uid] = f"{self.VARIABLE_PARAMS_NAME}_{class_idx}"
-                self._uid2idx_event_params_vec[mdl.uid][ep.uid] = class_idx
-                self._class_n_event_params[mdl.uid] = class_idx + 1
-                self._variable_parameters_equiv_class_dict[mdl.uid].append(ep)
+            if equiv_class_uid:
+
+                class_idx = self._class_n_event_params.get(equiv_class_uid, 0)
+                self._compiler_names_dict_vect[equiv_class_uid][ep.uid] = f"{self.VARIABLE_PARAMS_NAME}[{class_idx}]"
+                self._alias_names_dict_vect[equiv_class_uid][ep.uid] = f"{self.VARIABLE_PARAMS_NAME}_{class_idx}"
+                self._uid2idx_event_params_vec[equiv_class_uid][ep.uid] = class_idx
+                self._variable_parameters_equiv_class_dict[equiv_class_uid].append(ep)
+                self._class_n_event_params[equiv_class_uid] = class_idx + 1
+
             self._compiler_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}[{self._n_event_params}]"
             self._alias_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}_{self._n_event_params}"
             self._uid2idx_event_params[ep.uid] = self._n_event_params
@@ -2075,26 +2104,18 @@ class RmsProblemDaeVec(RmsProblemTemplate):
             if v.uid in self._uid2idx_diff:
                 raise ValueError(f"Differential variable '{v.name}' (uid={v.uid}) is already registered in the system. "
                                  f"Previous device may have created a duplicate differential variable.")
-            if v.uid in self.variable_equivalence_dict.keys():
-                if mdl.uid not in self._compiler_names_dict_vect:
-                    self._compiler_names_dict_vect[mdl.uid] = dict()
-                    self._alias_names_dict_vect[mdl.uid] = dict()
-                    self._uid2idx_vars_vec[mdl.uid] = dict()
-                    self._uid2idx_params_vec[mdl.uid] = dict()
-                    self._uid2idx_event_params_vec[mdl.uid] = dict()
-                    self._uid2idx_diff_vec[mdl.uid] = dict()
-                    self._input_matrices_by_model[mdl.uid] = [np.zeros(1), np.zeros(1), np.zeros(1), np.zeros(1)]
-                class_idx = self._class_n_diff.get(mdl.uid, 0)
-                self._compiler_names_dict_vect[mdl.uid][v.uid] = f"{self.DIFF_NAME}[{class_idx}]"
-                self._alias_names_dict_vect[mdl.uid][v.uid] = f"{self.DIFF_NAME}_{class_idx}"
-                self._uid2idx_diff_vec[mdl.uid][v.uid] = class_idx
-                self._class_n_diff[mdl.uid] = class_idx + 1
-                if mdl.uid not in self._diff_vars_equiv_class_dict:
-                    self._diff_vars_equiv_class_dict[mdl.uid] = list()
-                self._diff_vars_equiv_class_dict[mdl.uid].append(v)
+            if equiv_class_uid:
+
+                class_idx = self._class_n_diff.get(equiv_class_uid, 0)
+                self._compiler_names_dict_vect[equiv_class_uid][v.uid] = f"{self.DIFF_NAME}[{class_idx}]"
+                self._alias_names_dict_vect[equiv_class_uid][v.uid] = f"{self.DIFF_NAME}_{class_idx}"
+                self._uid2idx_diff_vec[equiv_class_uid][v.uid] = class_idx
+                self._diff_vars_equiv_class_dict[equiv_class_uid].append(v)
+                self._class_n_diff[equiv_class_uid] = class_idx + 1
+
+
             self._compiler_names_dict[v.uid] = f"{self.DIFF_NAME}[{self._n_diff}]"
             self._alias_names_dict[v.uid] = f"{self.DIFF_NAME}_{self._n_diff}"
-            # if yes: do nothing
             self._uid2idx_diff[v.uid] = self._n_diff
             self._register_global_var_name(name_key=v.name + elm.name, uid=v.uid, block=mdl)
             self.add_device_var(dev=elm, var=v)
@@ -2102,26 +2123,11 @@ class RmsProblemDaeVec(RmsProblemTemplate):
             self._n_diff += 1
 
 
-        if mdl.uid in self.equivalence_dict.keys():
-            self._state_eqs_equiv_class_dict[mdl.uid] = list()
-            self._state_eqs_equiv_class_dict[mdl.uid].extend(mdl.state_eqs)
-            self._algebraic_eqs_equiv_class_dict[mdl.uid] = list()
-            self._algebraic_eqs_equiv_class_dict[mdl.uid].extend(mdl.algebraic_eqs)
+        if equiv_class_uid:
 
-            # we add bus variables for vectorization
-            if elm in self.grid.get_branches_iter():
-                Vmf, Vaf = get_bus_rms_algebraic_vars(elm.bus_from.rms_model)
-                self._compiler_names_dict_vect[mdl.uid][Vmf.uid] = f"{self.VARS_BUS_VMF_NAME}"
-                self._alias_names_dict_vect[mdl.uid][Vaf.uid] = f"{self.VARS_BUS_VAF_NAME}"
+            self._state_eqs_equiv_class_dict[equiv_class_uid].extend(mdl.state_eqs)
+            self._algebraic_eqs_equiv_class_dict[equiv_class_uid].extend(mdl.algebraic_eqs)
 
-                Vmt, Vat = get_bus_rms_algebraic_vars(elm.bus_to.rms_model)
-                self._compiler_names_dict_vect[mdl.uid][Vmt.uid] = f"{self.VARS_BUS_VMT_NAME}"
-                self._alias_names_dict_vect[mdl.uid][Vat.uid] = f"{self.VARS_BUS_VAT_NAME}"
-
-            if elm in self.grid.get_injection_devices_iter():
-                Vm, Va = get_bus_rms_algebraic_vars(elm.bus.rms_model)
-                self._compiler_names_dict_vect[mdl.uid][Vm.uid] = f"{self.VARS_BUS_VM_NAME}"
-                self._alias_names_dict_vect[mdl.uid][Va.uid] = f"{self.VARS_BUS_VA_NAME}"
 
         self._model_state_eq_start_idx[mdl.uid] = len(self._state_eqs)
         self._state_eqs.extend(mdl.state_eqs)
@@ -2475,40 +2481,46 @@ class RmsProblemDaeVec(RmsProblemTemplate):
     ########### vectorized functions ##########################
     def update_input_matrices_by_model(self, x: Vec, dx: Vec):
         for model_type in self._rhs_state_fn_by_types.keys():
+            var_equiv_lists = self.variables_equivalence_dict.get(model_type, [])
+            var_equiv = {}
+            for eq_list in var_equiv_lists:
+                for uid in eq_list:
+                    var_equiv[uid] = eq_list
+
             # build x_variables
             x_variables =  np.empty((len(self._uid2idx_vars_vec[model_type]), len(self.equivalence_dict[model_type])+1))
             for var_uid in self._uid2idx_vars_vec[model_type]:
-                x_var = np.zeros(len(self.variable_equivalence_dict[var_uid])+1)
-                x_var[0] = x[self._uid2idx_vars[var_uid]]
-                for i, uid in enumerate(self.variable_equivalence_dict[var_uid]):
-                    x_var[i+1] = x[self._uid2idx_vars[uid]]
+                eq_list = var_equiv.get(var_uid, [var_uid])
+                x_var = np.zeros(len(eq_list))
+                for i, uid in enumerate(eq_list):
+                    x_var[i] = x[self._uid2idx_vars[uid]]
                 x_variables[self._uid2idx_vars_vec[model_type][var_uid]] = x_var
 
             # build dx_variables
             dx_variables =  np.empty((len(self._uid2idx_diff_vec[model_type]), len(self.equivalence_dict[model_type])+1))
             for var_uid in self._uid2idx_diff_vec[model_type]:
-                dx_var = np.zeros(len(self.variable_equivalence_dict[var_uid])+1)
-                dx_var[0] = dx[self._uid2idx_diff[var_uid]]
-                for i, uid in enumerate(self.variable_equivalence_dict[var_uid]):
-                    dx_var[i+1] = dx[self._uid2idx_diff[uid]]
+                eq_list = var_equiv.get(var_uid, [var_uid])
+                dx_var = np.zeros(len(eq_list))
+                for i, uid in enumerate(eq_list):
+                    dx_var[i] = dx[self._uid2idx_diff[uid]]
                 dx_variables[self._uid2idx_diff_vec[model_type][var_uid]] = dx_var
 
             # build v_params (variable/event parameters)
             vp_params =  np.empty((len(self._uid2idx_event_params_vec[model_type]), len(self.equivalence_dict[model_type])+1))
             for vp_uid in self._uid2idx_event_params_vec[model_type]:
-                vp_var = np.zeros(len(self.variable_equivalence_dict[vp_uid])+1)
-                vp_var[0] = self._variable_parameters_values[self._uid2idx_event_params[vp_uid]]
-                for i, uid in enumerate(self.variable_equivalence_dict[vp_uid]):
-                    vp_var[i+1] = self._variable_parameters_values[self._uid2idx_event_params[uid]]
+                eq_list = var_equiv.get(vp_uid, [vp_uid])
+                vp_var = np.zeros(len(eq_list))
+                for i, uid in enumerate(eq_list):
+                    vp_var[i] = self._variable_parameters_values[self._uid2idx_event_params[uid]]
                 vp_params[self._uid2idx_event_params_vec[model_type][vp_uid]] = vp_var
 
             # build c_params (constant parameters)
             cp_params =  np.empty((len(self._uid2idx_params_vec[model_type]), len(self.equivalence_dict[model_type])+1))
             for cp_uid in self._uid2idx_params_vec[model_type]:
-                cp_var = np.zeros(len(self.variable_equivalence_dict[cp_uid])+1)
-                cp_var[0] = self._constant_params[self._uid2idx_params[cp_uid]]
-                for i, uid in enumerate(self.variable_equivalence_dict[cp_uid]):
-                    cp_var[i+1] = self._constant_params[self._uid2idx_params[uid]]
+                eq_list = var_equiv.get(cp_uid, [cp_uid])
+                cp_var = np.zeros(len(eq_list))
+                for i, uid in enumerate(eq_list):
+                    cp_var[i] = self._constant_params[self._uid2idx_params[uid]]
                 cp_params[self._uid2idx_params_vec[model_type][cp_uid]] = cp_var
 
             self._input_matrices_by_model[model_type][0] = x_variables
@@ -2525,16 +2537,19 @@ class RmsProblemDaeVec(RmsProblemTemplate):
         complete_rhs_state = np.zeros(len(self._state_eqs))
         for model_type in self._rhs_state_fn_by_types.keys():
             rhs_state_fn = self._rhs_state_fn_by_types[model_type]
-            rhs_state = rhs_state_fn(self._input_matrices_by_model[model_type][0],
-                                     self._input_matrices_by_model[model_type][1],
-                                     self._input_matrices_by_model[model_type][2],
-                                     self._input_matrices_by_model[model_type][3])
-            # fill complete_rhs_state
-            model_uids = [model_type] + self.equivalence_dict.get(model_type, [])
-            n_eqs = rhs_state.shape[0]
-            for inst_idx, uid in enumerate(model_uids):
-                start = self._model_state_eq_start_idx[uid]
-                complete_rhs_state[start:start + n_eqs] = rhs_state[:, inst_idx]
+            if rhs_state_fn is not None:
+                rhs_state = rhs_state_fn(self._input_matrices_by_model[model_type][0],
+                                         self._input_matrices_by_model[model_type][1],
+                                         self._input_matrices_by_model[model_type][2],
+                                         self._input_matrices_by_model[model_type][3])
+                if rhs_state.ndim == 1:
+                    rhs_state = rhs_state.reshape(-1, 1)
+                # fill complete_rhs_state
+                model_uids = [model_type] + self.equivalence_dict.get(model_type, [])
+                n_eqs = rhs_state.shape[0]
+                for inst_idx, uid in enumerate(model_uids):
+                    start = self._model_state_eq_start_idx[uid]
+                    complete_rhs_state[start:start + n_eqs] = rhs_state[:, inst_idx]
 
         return complete_rhs_state
 
@@ -2550,6 +2565,8 @@ class RmsProblemDaeVec(RmsProblemTemplate):
                                      self._input_matrices_by_model[model_type][1],
                                      self._input_matrices_by_model[model_type][2],
                                      self._input_matrices_by_model[model_type][3])
+            if rhs_algeb.ndim == 1:
+                rhs_algeb = rhs_algeb.reshape(-1, 1)
             # fill complete_rhs_algeb
             model_uids = [model_type] + self.equivalence_dict.get(model_type, [])
             n_eqs = rhs_algeb.shape[0]

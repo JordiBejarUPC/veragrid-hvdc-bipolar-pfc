@@ -1154,6 +1154,8 @@ def _get_var_attribute_mapping(block: Block) -> Dict[int, str]:
         mapping[var.uid] = "parameters"
     for var in block.event_dict:
         mapping[var.uid] = "event_dict"
+    for var in block.in_vars:
+        mapping[var.uid] = "in_vars"
     return mapping
 
 def variables_in_corresponding_attributes(blocks: List[Block], variables_mappings: List[Dict[int, int]]) -> bool:

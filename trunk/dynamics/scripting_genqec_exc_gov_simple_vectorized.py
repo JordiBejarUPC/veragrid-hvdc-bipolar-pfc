@@ -14,6 +14,7 @@ from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx_vectorized import BackEulerImplicitIntegrationVec
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
+from VeraGridEngine.Templates.Rms.genrow_rms_template import get_genrow_rms_template
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_rms_model
@@ -156,12 +157,12 @@ set_rms_model(device=load, model=load_mdl, var_factory= grid.var_factory)
 ######################################################################################################
 # Add event
 ######################################################################################################
-Pl0 = find_name_in_block("Pl0", load_mdl)
+# Pl0 = find_name_in_block("Pl0", load_mdl)
 events_group = RmsEventsGroup("simulation1")
-grid.add_rms_events_group(events_group)
-# event = RmsEvent(device=load, parameter=Pl0, time=0.1,  value=-0.06, group=events_group, transition_type=DynamicEventTransitionType.Step)
-event = RmsEvent(device=load, parameter=Pl0, time=0.1, end_time = 0.2, value=-0.06, group=events_group, transition_type=DynamicEventTransitionType.Ramp)
-grid.add_rms_event(event)
+# grid.add_rms_events_group(events_group)
+# # event = RmsEvent(device=load, parameter=Pl0, time=0.1,  value=-0.06, group=events_group, transition_type=DynamicEventTransitionType.Step)
+# event = RmsEvent(device=load, parameter=Pl0, time=0.1, end_time = 0.2, value=-0.06, group=events_group, transition_type=DynamicEventTransitionType.Ramp)
+# grid.add_rms_event(event)
 
 
 
