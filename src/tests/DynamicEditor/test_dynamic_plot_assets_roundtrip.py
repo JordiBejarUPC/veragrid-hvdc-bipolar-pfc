@@ -10,6 +10,7 @@ from VeraGrid.Gui.Main.SubClasses.Results.dynamics_results_handler import (
     DynamicsResultsHandler,
     DynamicPlotCandidate,
     DynamicPlotParameter,
+    DynamicResultSeries,
     collect_dynamic_model_plot_parameters,
     ensure_dynamic_plot_event_group,
 )
@@ -28,7 +29,9 @@ from VeraGridEngine.Simulations.Rms.rms_results import RmsResults
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import connect_bus_variables_emt, connect_bus_variables_rms
-from VeraGridEngine.enumerations import DeviceType, FileType, PlotSimulationType, DynamicSimulationMode, DynamicPlotEntryKind, ParamPowerFlowRefferenceType
+from VeraGridEngine.enumerations import (DeviceType, FileType, PlotSimulationType, DynamicSimulationMode,
+                                         DynamicPlotEntryKind, ParamPowerFlowReferenceType,
+                                         DynamicPlotMode, DynamicPlotEntryRole)
 
 
 def ensure_qt_application() -> QtWidgets.QApplication:
@@ -61,7 +64,7 @@ def build_pre_simulation_rms_circuit() -> MultiCircuit:
         state_vars=[omega_var],
         algebraic_vars=[efd_var],
         parameters={omega_var: Const(1.05)},
-        api_obj_mapping={ParamPowerFlowRefferenceType.omega_ref: omega_var},
+        api_obj_mapping={ParamPowerFlowReferenceType.omega_ref: omega_var},
         event_dict={efd_var: Const(0.9)},
     )
     circuit.set_elements_list_by_type(device_type=DeviceType.GeneratorDevice, devices=[generator])
@@ -125,7 +128,7 @@ def build_parameter_collection_block() -> Block:
     event_only_parameter: Var = Var(name="event_only_parameter", uid=803)
     block: Block = Block(
         parameters={api_parameter: Const(1.0), duplicate_parameter: Const(2.0), event_only_parameter: Const(3.0)},
-        api_obj_mapping={ParamPowerFlowRefferenceType.K: api_parameter, ParamPowerFlowRefferenceType.Kp: duplicate_parameter},
+        api_obj_mapping={ParamPowerFlowReferenceType.K: api_parameter, ParamPowerFlowReferenceType.Kp: duplicate_parameter},
         event_dict={duplicate_parameter: Const(4.0), event_only_parameter: Const(5.0)},
     )
     return block
@@ -587,6 +590,92 @@ def test_pre_simulation_created_asset_binds_after_results_exist() -> None:
     assert results_handler.get_plots_model() is not None
     assert isinstance(restored_entries[0], DynamicPlotEntry)
     assert restored_entries[0].variable_name == "omega_ref"
+
+
+def test_pre_simulation_xy_plot_rebinds_roles_after_results_exist() -> None:
+    """
+    Verify that pre-simulation XY plot slots remain populated after RMS results exist.
+
+    :return: None.
+    """
+    ensure_qt_application()
+    circuit: MultiCircuit = build_pre_simulation_rms_circuit()
+    handler: DynamicsResultsHandler = DynamicsResultsHandler(results=None, circuit=circuit, simulation_type="RMS")
+    assert handler.create_plot_group(name="Plot XY", mode=DynamicPlotMode.XY) is True
+
+    omega_candidate: DynamicPlotCandidate = handler.series_by_var_uid[1][0]
+    efd_candidate: DynamicPlotCandidate = handler.series_by_var_uid[2][0]
+    assert handler.add_candidate_to_group_with_role(group_name="Plot XY",
+                                                    candidate=omega_candidate,
+                                                    role=DynamicPlotEntryRole.X_AXIS) is True
+    assert handler.add_candidate_to_group_with_role(group_name="Plot XY",
+                                                    candidate=efd_candidate,
+                                                    role=DynamicPlotEntryRole.Y_AXIS) is True
+
+    generator: Generator = circuit.get_elements_by_type(device_type=DeviceType.GeneratorDevice)[0]
+    results: RmsResults = build_rms_results_from_generator(generator=generator, variable_name="omega_ref", variable_uid=101)
+    extra_variable: Var = Var(name="efd", uid=102)
+    results.variables.append(extra_variable)
+    results.uid2idx[102] = 1
+    results.vars_glob_name2uid[str(generator.idtag) + ":efd:102"] = 102
+    results.devices_vars_info[generator] = [results.variables[0], extra_variable]
+    expanded_values: np.ndarray = np.zeros((results.nt, 2, results.ng), dtype=float)
+    expanded_values[:, 0, :] = results.values[:, 0, :]
+    expanded_values[:, 1, :] = np.array([[2.0], [3.0]], dtype=float)
+    results.values = expanded_values
+    results.nv = 2
+
+    results_handler: DynamicsResultsHandler = DynamicsResultsHandler(results=results, circuit=circuit)
+    assert len(circuit.dynamic_plot_entries) == 2
+    assert circuit.dynamic_plot_entries[0].role == DynamicPlotEntryRole.X_AXIS
+    assert circuit.dynamic_plot_entries[1].role == DynamicPlotEntryRole.Y_AXIS
+    group = results_handler.plot_groups.get_group(name="Plot XY")
+    assert group is not None
+    assert group.get_mode() == DynamicPlotMode.XY
+    x_entry = group.get_entry_for_role(role=DynamicPlotEntryRole.X_AXIS)
+    y_entry = group.get_entry_for_role(role=DynamicPlotEntryRole.Y_AXIS)
+    assert isinstance(x_entry, DynamicResultSeries) or isinstance(x_entry, DynamicPlotEntry)
+    assert isinstance(y_entry, DynamicResultSeries) or isinstance(y_entry, DynamicPlotEntry)
+    assert x_entry is not None
+    assert y_entry is not None
+
+
+def test_post_simulation_xy_plot_accepts_runtime_series_assignment() -> None:
+    """
+    Verify that a post-simulation XY plot accepts runtime series assignment into X and Y slots.
+
+    :return: None.
+    """
+    ensure_qt_application()
+    circuit: MultiCircuit = build_pre_simulation_rms_circuit()
+    generator: Generator = circuit.get_elements_by_type(device_type=DeviceType.GeneratorDevice)[0]
+    results: RmsResults = build_rms_results_from_generator(generator=generator, variable_name="omega_ref", variable_uid=101)
+    extra_variable: Var = Var(name="efd", uid=102)
+    results.variables.append(extra_variable)
+    results.uid2idx[102] = 1
+    results.vars_glob_name2uid[str(generator.idtag) + ":efd:102"] = 102
+    results.devices_vars_info[generator] = [results.variables[0], extra_variable]
+    expanded_values: np.ndarray = np.zeros((results.nt, 2, results.ng), dtype=float)
+    expanded_values[:, 0, :] = results.values[:, 0, :]
+    expanded_values[:, 1, :] = np.array([[2.0], [3.0]], dtype=float)
+    results.values = expanded_values
+    results.nv = 2
+
+    handler: DynamicsResultsHandler = DynamicsResultsHandler(results=results, circuit=circuit)
+    assert handler.create_plot_group(name="Plot XY", mode=DynamicPlotMode.XY) is True
+    omega_series: DynamicResultSeries = handler.series_by_var_uid[101][0]
+    efd_series: DynamicResultSeries = handler.series_by_var_uid[102][0]
+    assert handler.add_series_to_group_with_role(group_name="Plot XY",
+                                                 series_key=omega_series.get_key(),
+                                                 role=DynamicPlotEntryRole.X_AXIS) is True
+    assert handler.add_series_to_group_with_role(group_name="Plot XY",
+                                                 series_key=efd_series.get_key(),
+                                                 role=DynamicPlotEntryRole.Y_AXIS) is True
+
+    group = handler.plot_groups.get_group(name="Plot XY")
+    assert group is not None
+    assert isinstance(group.get_entry_for_role(role=DynamicPlotEntryRole.X_AXIS), DynamicResultSeries)
+    assert isinstance(group.get_entry_for_role(role=DynamicPlotEntryRole.Y_AXIS), DynamicResultSeries)
 
 
 def test_pre_simulation_handler_discovers_editor_style_rms_variables() -> None:

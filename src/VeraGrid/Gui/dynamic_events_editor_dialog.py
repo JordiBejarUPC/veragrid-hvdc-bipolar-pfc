@@ -7,6 +7,8 @@ from typing import List, Dict, Set
 
 from PySide6 import QtWidgets, QtCore
 
+from VeraGrid.Gui.messages import info_msg
+
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
@@ -45,6 +47,7 @@ def create_dynamic_events_group_with_dialog(circuit: MultiCircuit,
     if parent is not None:
         QtWidgets.QMessageBox.information(parent, dialog_title, missing_group_message)
     else:
+        info_msg(missing_group_message)
         pass
 
     # The canonical name-entry dialog ensures that every workflow creates the

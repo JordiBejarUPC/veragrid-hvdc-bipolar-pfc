@@ -23,7 +23,7 @@ from VeraGridEngine.Templates.Rms.line_rms_template import get_dc_line_rms_templ
 from VeraGridEngine.Templates.Rms.voltage_source_template import VoltageSourceBuild
 from VeraGridEngine.Templates.Rms.vsc_gfl_dclinked import build_vsc_rms
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_rms_model
-from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod, ConverterControlType, VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod, ConverterControlType, VarPowerFlowReferenceType
 from VeraGridEngine.Devices.Events.rms_event import RmsEvent
 import VeraGridEngine.api as gce
 
@@ -309,10 +309,10 @@ def print_current_frame_sanity(trafo, problem, y_values, sample_idx: int = -1):
     id_ctrl = get_var_value_at(id_var, problem, y_values, sample_idx)
     iq_ctrl = get_var_value_at(iq_var, problem, y_values, sample_idx)
 
-    vmt = trafo.rms_model.external_mapping.get(VarPowerFlowRefferenceType.Vmt, None)
-    vat = trafo.rms_model.external_mapping.get(VarPowerFlowRefferenceType.Vat, None)
-    pt = trafo.rms_model.external_mapping.get(VarPowerFlowRefferenceType.Pt, None)
-    qt = trafo.rms_model.external_mapping.get(VarPowerFlowRefferenceType.Qt, None)
+    vmt = trafo.rms_model.external_mapping.get(VarPowerFlowReferenceType.Vmt, None)
+    vat = trafo.rms_model.external_mapping.get(VarPowerFlowReferenceType.Vat, None)
+    pt = trafo.rms_model.external_mapping.get(VarPowerFlowReferenceType.Pt, None)
+    qt = trafo.rms_model.external_mapping.get(VarPowerFlowReferenceType.Qt, None)
 
     vm_t = get_var_value_at(vmt, problem, y_values, sample_idx)
     va_t = get_var_value_at(vat, problem, y_values, sample_idx)
@@ -464,10 +464,10 @@ vsc_master.rms_model = vsc_master_mdl
 vsc_slave.rms_model = vsc_slave_mdl
 
 # Connect DC line to DC buses
-dc_vm_f = dc_line.rms_model.external_mapping[VarPowerFlowRefferenceType.Vmf]
-dc_vm_t = dc_line.rms_model.external_mapping[VarPowerFlowRefferenceType.Vmt]
-bus3_vdc = bus3.rms_model.external_mapping[VarPowerFlowRefferenceType.Vdc]
-bus4_vdc = bus4.rms_model.external_mapping[VarPowerFlowRefferenceType.Vdc]
+dc_vm_f = dc_line.rms_model.external_mapping[VarPowerFlowReferenceType.Vmf]
+dc_vm_t = dc_line.rms_model.external_mapping[VarPowerFlowReferenceType.Vmt]
+bus3_vdc = bus3.rms_model.external_mapping[VarPowerFlowReferenceType.Vdc]
+bus4_vdc = bus4.rms_model.external_mapping[VarPowerFlowReferenceType.Vdc]
 grid.var_factory.add_connections([dc_vm_f, dc_vm_t], [bus3_vdc, bus4_vdc])
 
 # Connect master/slave trafo-control models to buses
@@ -488,9 +488,9 @@ connect_rms_vsc_to_buses(
 
 # Connect standalone VSC DC/link model to trafo-control outputs
 for vsc_dev, trafo_model in [(vsc_master, trafoA.rms_model), (vsc_slave, trafoB.rms_model)]:
-    im_trafo = trafo_model.external_mapping[VarPowerFlowRefferenceType.Im]
-    pf_trafo = trafo_model.external_mapping[VarPowerFlowRefferenceType.Pf]
-    vmf_trafo = trafo_model.external_mapping[VarPowerFlowRefferenceType.Vmf]
+    im_trafo = trafo_model.external_mapping[VarPowerFlowReferenceType.Im]
+    pf_trafo = trafo_model.external_mapping[VarPowerFlowReferenceType.Pf]
+    vmf_trafo = trafo_model.external_mapping[VarPowerFlowReferenceType.Vmf]
 
     if len(vsc_dev.rms_model.in_vars) >= 2:
         grid.var_factory.add_connections(
@@ -612,10 +612,10 @@ for trafo in [trafoA, trafoB]:
     print_control_blocks_outputs(trafo=trafo, problem=problem, y_values=y_plot, sample_idx=-1)
     print_current_frame_sanity(trafo=trafo, problem=problem, y_values=y_plot, sample_idx=-1)
 
-bus1_vm = bus1.rms_model.external_mapping[VarPowerFlowRefferenceType.Vm]
-bus6_vm = bus6.rms_model.external_mapping[VarPowerFlowRefferenceType.Vm]
-genA_p = genA_mdl.external_mapping[VarPowerFlowRefferenceType.P]
-genB_p = genB_mdl.external_mapping[VarPowerFlowRefferenceType.P]
+bus1_vm = bus1.rms_model.external_mapping[VarPowerFlowReferenceType.Vm]
+bus6_vm = bus6.rms_model.external_mapping[VarPowerFlowReferenceType.Vm]
+genA_p = genA_mdl.external_mapping[VarPowerFlowReferenceType.P]
+genB_p = genB_mdl.external_mapping[VarPowerFlowReferenceType.P]
 
 plt.figure(figsize=(10, 7))
 

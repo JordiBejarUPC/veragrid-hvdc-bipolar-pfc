@@ -24,7 +24,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_options import SolverType
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Devices.Events.rms_event import RmsEvent
-from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod, VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod, VarPowerFlowReferenceType
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
@@ -86,9 +86,9 @@ def patch_missing_vm_va_init_deps(model: Block, vm0: float, va0: float) -> int:
     vm_names = {"Vm"}
     va_names = {"Va"}
     for v in model.in_vars:
-        if v.ref == VarPowerFlowRefferenceType.Vm:
+        if v.ref == VarPowerFlowReferenceType.Vm:
             vm_names.add(v.name)
-        elif v.ref == VarPowerFlowRefferenceType.Va:
+        elif v.ref == VarPowerFlowReferenceType.Va:
             va_names.add(v.name)
 
     patched_eqs = 0
@@ -106,8 +106,8 @@ def build_gfm_current_injection_model(
     vf: vge.VarFactory,
     name: str,
 ) -> Block:
-    vm = vf.add_var(f"Vm_{name}", VarPowerFlowRefferenceType.Vm)
-    va = vf.add_var(f"Va_{name}", VarPowerFlowRefferenceType.Va)
+    vm = vf.add_var(f"Vm_{name}", VarPowerFlowReferenceType.Vm)
+    va = vf.add_var(f"Va_{name}", VarPowerFlowReferenceType.Va)
     vdc = vf.add_var(f"Vdc_{name}")
 
     ir = vf.add_var(f"Ir_{name}")
@@ -118,14 +118,14 @@ def build_gfm_current_injection_model(
     vsc_block = VscGfmBuild(vfactory=vf, name=f"{name}_gfm").block
     pv_block = DCSimpleSourceAveraged(vfactory=vf, Vdc=vdc, name=f"{name}_pv").block
 
-    vm_vsc = vsc_block.external_mapping[VarPowerFlowRefferenceType.Vmt]
-    va_vsc = vsc_block.external_mapping[VarPowerFlowRefferenceType.Vat]
-    vdc_vsc = vsc_block.external_mapping[VarPowerFlowRefferenceType.Vdc]
-    pf_vsc = vsc_block.external_mapping[VarPowerFlowRefferenceType.Pf]
-    pt_vsc = vsc_block.external_mapping[VarPowerFlowRefferenceType.Pt]
-    qt_vsc = vsc_block.external_mapping[VarPowerFlowRefferenceType.Qt]
+    vm_vsc = vsc_block.external_mapping[VarPowerFlowReferenceType.Vmt]
+    va_vsc = vsc_block.external_mapping[VarPowerFlowReferenceType.Vat]
+    vdc_vsc = vsc_block.external_mapping[VarPowerFlowReferenceType.Vdc]
+    pf_vsc = vsc_block.external_mapping[VarPowerFlowReferenceType.Pf]
+    pt_vsc = vsc_block.external_mapping[VarPowerFlowReferenceType.Pt]
+    qt_vsc = vsc_block.external_mapping[VarPowerFlowReferenceType.Qt]
 
-    pdc = pv_block.external_mapping[VarPowerFlowRefferenceType.P]
+    pdc = pv_block.external_mapping[VarPowerFlowReferenceType.P]
 
     vsc_block.connect([vm_vsc, va_vsc, vdc_vsc], [vm, va, vdc])
 
@@ -146,15 +146,15 @@ def build_gfm_current_injection_model(
         in_vars=[vm, va],
         out_vars=[p, q, ir, ii, vdc],
         external_mapping={
-            VarPowerFlowRefferenceType.Vm: vm,
-            VarPowerFlowRefferenceType.Va: va,
-            VarPowerFlowRefferenceType.P: p,
-            VarPowerFlowRefferenceType.Q: q,
+            VarPowerFlowReferenceType.Vm: vm,
+            VarPowerFlowReferenceType.Va: va,
+            VarPowerFlowReferenceType.P: p,
+            VarPowerFlowReferenceType.Q: q,
         },
     )
     model.unify_blocks()
-    model.external_mapping[VarPowerFlowRefferenceType.P] = p
-    model.external_mapping[VarPowerFlowRefferenceType.Q] = q
+    model.external_mapping[VarPowerFlowReferenceType.P] = p
+    model.external_mapping[VarPowerFlowReferenceType.Q] = q
 
     pt_var = find_name_in_block("Pt_vsc", model)
     qt_var = find_name_in_block("Qt_vsc", model)

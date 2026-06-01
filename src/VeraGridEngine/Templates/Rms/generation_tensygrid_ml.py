@@ -7,7 +7,7 @@ from typing import List
 import numpy as np
 import math
 
-from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import DeviceType, VarPowerFlowReferenceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import (Block, find_name_in_block)
 from VeraGridEngine.Utils.Symbolic.block_helpers import tf_to_block, tf_to_diffblock_with_output, \
@@ -371,10 +371,10 @@ def GenqecBuild(vfactory: VarFactory, name: str = "", hard_sat_type: str = "ml")
             # We initialize some specific parameters:
         },
         # external_mapping={
-        #     VarPowerFlowRefferenceType.P: Pg,
-        #     VarPowerFlowRefferenceType.Q: Qg,
-        #     VarPowerFlowRefferenceType.Vm: inputs[0],
-        #     VarPowerFlowRefferenceType.Va: inputs[1],
+        #     VarPowerFlowReferenceType.P: Pg,
+        #     VarPowerFlowReferenceType.Q: Qg,
+        #     VarPowerFlowReferenceType.Vm: inputs[0],
+        #     VarPowerFlowReferenceType.Va: inputs[1],
         # },
         out_vars=[Pg, Qg, omega, IRPu, Te],
         in_vars=inputs,
@@ -1186,10 +1186,10 @@ def get_complete_generator_template(vfactory: VarFactory,
     if implicit:
         templ.block = to_implicit(templ.block, vfactory=vfactory)
     templ.block.external_mapping = {
-        VarPowerFlowRefferenceType.Vm: genqec_mdl.in_vars[0],
-        VarPowerFlowRefferenceType.Va: genqec_mdl.in_vars[1],
-        VarPowerFlowRefferenceType.P: genqec_mdl.out_vars[0],
-        VarPowerFlowRefferenceType.Q: genqec_mdl.out_vars[1],
+        VarPowerFlowReferenceType.Vm: genqec_mdl.in_vars[0],
+        VarPowerFlowReferenceType.Va: genqec_mdl.in_vars[1],
+        VarPowerFlowReferenceType.P: genqec_mdl.out_vars[0],
+        VarPowerFlowReferenceType.Q: genqec_mdl.out_vars[1],
     }
 
     templ.block.in_vars = [genqec_mdl.in_vars[0], genqec_mdl.in_vars[1]]

@@ -23,7 +23,7 @@ from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImpl
 from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod
 from VeraGridEngine.Devices.Aggregation import RmsEvent
 from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import VarPowerFlowReferenceType
 import VeraGridEngine.api as gce
 
 ###########################################################################################################################
@@ -113,8 +113,8 @@ grid.var_factory.add_connections([load_mdl.in_vars[1]], [bus1.rms_model.out_vars
 
 # external mapping
 big_gen1 = Block(children=[genqec1_mdl])
-big_gen1.external_mapping.update({VarPowerFlowRefferenceType.P: genqec1_mdl.out_vars[0]})
-big_gen1.external_mapping.update({VarPowerFlowRefferenceType.Q: genqec1_mdl.out_vars[1]})
+big_gen1.external_mapping.update({VarPowerFlowReferenceType.P: genqec1_mdl.out_vars[0]})
+big_gen1.external_mapping.update({VarPowerFlowReferenceType.Q: genqec1_mdl.out_vars[1]})
 
 # attach rms models to Veragrid objects
 line0.rms_model = line0_mdl

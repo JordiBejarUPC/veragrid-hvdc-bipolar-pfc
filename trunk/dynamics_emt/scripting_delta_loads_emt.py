@@ -16,7 +16,7 @@ from VeraGridEngine.Templates.Emt.load_zip_emt_template import get_load_ZIP_emt_
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template_with_ref
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
-from VeraGridEngine.enumerations import DynamicIntegrationMethod, EmtInitializationMethod, EmtSolverTypes, ShuntConnectionType, SolverType, VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import DynamicIntegrationMethod, EmtInitializationMethod, EmtSolverTypes, ShuntConnectionType, SolverType, VarPowerFlowReferenceType
 from trunk.dynamics_emt.support.emt_plot_exports import get_plot_results_directory
 
 import VeraGridEngine.api as gce
@@ -152,12 +152,12 @@ def _collect_delta_reference(problem: EmtProblemDae, load: gce.Load, pf_res_3ph)
 
     bus_model = load.bus.emt_model
     load_model = load.emt_model
-    seed_v_a = float(x0[problem.get_var_idx(bus_model.external_mapping[VarPowerFlowRefferenceType.v_A])])
-    seed_v_b = float(x0[problem.get_var_idx(bus_model.external_mapping[VarPowerFlowRefferenceType.v_B])])
-    seed_v_c = float(x0[problem.get_var_idx(bus_model.external_mapping[VarPowerFlowRefferenceType.v_C])])
-    seed_i_a = float(x0[problem.get_var_idx(load_model.external_mapping[VarPowerFlowRefferenceType.i_A])])
-    seed_i_b = float(x0[problem.get_var_idx(load_model.external_mapping[VarPowerFlowRefferenceType.i_B])])
-    seed_i_c = float(x0[problem.get_var_idx(load_model.external_mapping[VarPowerFlowRefferenceType.i_C])])
+    seed_v_a = float(x0[problem.get_var_idx(bus_model.external_mapping[VarPowerFlowReferenceType.v_A])])
+    seed_v_b = float(x0[problem.get_var_idx(bus_model.external_mapping[VarPowerFlowReferenceType.v_B])])
+    seed_v_c = float(x0[problem.get_var_idx(bus_model.external_mapping[VarPowerFlowReferenceType.v_C])])
+    seed_i_a = float(x0[problem.get_var_idx(load_model.external_mapping[VarPowerFlowReferenceType.i_A])])
+    seed_i_b = float(x0[problem.get_var_idx(load_model.external_mapping[VarPowerFlowReferenceType.i_B])])
+    seed_i_c = float(x0[problem.get_var_idx(load_model.external_mapping[VarPowerFlowReferenceType.i_C])])
     seed_v_ab = float((seed_v_a - seed_v_b) / np.sqrt(3.0))
     seed_v_bc = float((seed_v_b - seed_v_c) / np.sqrt(3.0))
     seed_v_ca = float((seed_v_c - seed_v_a) / np.sqrt(3.0))

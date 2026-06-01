@@ -38,8 +38,9 @@ gen1_rms_model.unify_blocks()
 gen2_rms_model = get_pvd1_dc_mppt_rms_template(grid.var_factory).block
 gen2_rms_model.unify_blocks()
 
-equivalence_classes = compare_n_blocks_structurally([gen1_rms_model, gen2_rms_model])
-print(equivalence_classes)
+equivalence_classes, variable_equivalence_classes = compare_n_blocks_structurally([gen1_rms_model, gen2_rms_model])
+print("Model equivalence classes:", equivalence_classes)
+print("Variable equivalence classes:", variable_equivalence_classes)
 
 
 

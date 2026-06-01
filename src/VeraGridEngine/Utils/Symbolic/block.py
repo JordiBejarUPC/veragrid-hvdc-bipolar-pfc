@@ -11,7 +11,7 @@ from typing import List, Dict, Any, Tuple
 
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, _expr_to_dict, _dict_to_expr, BinOp, UnOp, Func, Func2, Comparison
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
+from VeraGridEngine.enumerations import VarPowerFlowReferenceType, ParamPowerFlowReferenceType
 from VeraGridEngine.Utils.Symbolic.compare_expressions_structure import equivalent_systems
 from VeraGridEngine.Utils.Symbolic.variable_alignment_engine import align_variables
 
@@ -22,6 +22,34 @@ def _new_uid() -> int:
     :return: UUIDv4 in integer format
     """
     return uuid.uuid4().int
+
+def set_parameter(blk: Block, var_name: str, new_value: float):
+
+    for var, expr in blk.event_dict.items():
+        if var.name == var_name:
+            if isinstance(expr, Const):
+                expr.value = new_value
+            else:
+                blk.event_dict[var] = Const(new_value)
+
+
+    for var, expr in blk.mode_dict.items():
+        if var.name == var_name:
+            if isinstance(expr, Const):
+                expr.value = new_value
+            else:
+                blk.mode_dict[var] = Const(new_value)
+
+
+    # check parameters dict
+    for var, const in blk.parameters.items():
+        if var.name == var_name:
+            if isinstance(const, Const):
+                const.value = new_value
+            else:
+                blk.parameters[var] = Const(new_value)
+
+
 
 
 class Block:
@@ -50,8 +78,8 @@ class Block:
                  mode_dict: Dict[Var, Expr] | None = None,
                  boolean_guards: Dict[Var, Expr | Comparison] | None = None,
                  procedural_logic: List[Any] | None = None,
-                 external_mapping: Dict[VarPowerFlowRefferenceType, Var] | None = None,
-                 api_obj_mapping: Dict[ParamPowerFlowRefferenceType, Var] | None = None,
+                 external_mapping: Dict[VarPowerFlowReferenceType, Var] | None = None,
+                 api_obj_mapping: Dict[ParamPowerFlowReferenceType, Var] | None = None,
                  name: str = "",
                  uid: int | None = None):
         """
@@ -102,11 +130,11 @@ class Block:
         self.parameters: Dict[Var, Const] = dict() if parameters is None else parameters
 
         self.discrete_eqs: Dict[Var, Expr] = dict() if discrete_eqs is None else discrete_eqs
-        self.external_mapping: Dict[VarPowerFlowRefferenceType, Var | None] = (dict()
+        self.external_mapping: Dict[VarPowerFlowReferenceType, Var | None] = (dict()
                                                                                if external_mapping is None
                                                                                else external_mapping)
 
-        self.api_obj_mapping: Dict[ParamPowerFlowRefferenceType, Var] = (dict()
+        self.api_obj_mapping: Dict[ParamPowerFlowReferenceType, Var] = (dict()
                                                                          if api_obj_mapping is None
                                                                          else api_obj_mapping)
         # initialization
@@ -302,11 +330,11 @@ class Block:
             },
             procedural_logic=Block._procedural_logic_from_dict(data.get("procedural_logic", [])),
             external_mapping={
-                VarPowerFlowRefferenceType(k): (_dict_to_expr(v) if v is not None else None)
+                VarPowerFlowReferenceType(k): (_dict_to_expr(v) if v is not None else None)
                 for k, v in data["external_mapping"].items()
             },
             api_obj_mapping={
-                ParamPowerFlowRefferenceType(k): (_dict_to_expr(v) if v is not None else None)
+                ParamPowerFlowReferenceType(k): (_dict_to_expr(v) if v is not None else None)
                 for k, v in data["api_obj_mapping"].items()
             },
             name=data["name"],
@@ -428,9 +456,11 @@ class Block:
         x = self.compare(other)
         return x
 
-    # def set_const(self, ref: ParamPowerFlowRefferenceType, val: Const):
+    # def set_const(self, ref: ParamPowerFlowReferenceType, val: Const):
     #
     #     self.parameters[self.api_obj_mapping[ref]] = val
+
+
 
     def set_parameter_in_model(self, var_name: str, new_value: float):
         """
@@ -440,37 +470,12 @@ class Block:
         :param new_value:
         :return:
         """
-        found = 0
 
-        for var, expr in self.event_dict.items():
-            if var.name == var_name:
-                if isinstance(expr, Const):
-                    expr.value = new_value
-                else:
-                    self.event_dict[var] = Const(new_value)
-                found += 1
+        set_parameter(self, var_name, new_value)
+        if self.children:
+            for child in self.children:
+                child.set_parameter_in_model(var_name, new_value)
 
-        for var, expr in self.mode_dict.items():
-            if var.name == var_name:
-                if isinstance(expr, Const):
-                    expr.value = new_value
-                else:
-                    self.mode_dict[var] = Const(new_value)
-                found += 1
-
-        # check parameters dict
-        for var, const in self.parameters.items():
-            if var.name == var_name:
-                if isinstance(const, Const):
-                    const.value = new_value
-                else:
-                    self.parameters[var] = Const(new_value)
-                found += 1
-        if found == 0:
-            raise ValueError(f"Parameter {var_name} not found in model")
-        elif found > 1:
-            raise ValueError(
-                f"Could not set value because several parameters with name {var_name} where found in the model")
 
     def check_empty(self) -> bool:
         """
@@ -522,10 +527,10 @@ class Block:
 
         return False
 
-    def E(self, d: VarPowerFlowRefferenceType) -> Var:
+    def E(self, d: VarPowerFlowReferenceType) -> Var:
         """
 
-        returns the value of the external mapping corresponding to the VarPowerFlowRefferenceType
+        returns the value of the external mapping corresponding to the VarPowerFlowReferenceType
 
         :param d:
         :return:
@@ -835,14 +840,14 @@ class Block:
         event_dict_new: Dict[Var, Expr] = dict()
         mode_dict_new: Dict[Var, Expr] = dict()
         boolean_guards_new: Dict[Var, Expr | Comparison] = dict()
-        external_mapping_new: Dict[VarPowerFlowRefferenceType, Var | None] = dict()
+        external_mapping_new: Dict[VarPowerFlowReferenceType, Var | None] = dict()
         procedural_var_mapping: Dict[Expr | str, Expr] = dict()
         i: int
         eq: Expr
         var: Var
         expr: Expr
         new_var: Var | None
-        var_pf_ref: VarPowerFlowRefferenceType
+        var_pf_ref: VarPowerFlowReferenceType
         mdl_var: Var | None
 
         for old_var, replacement_var in var_mapping.items():
@@ -1199,7 +1204,7 @@ def _get_pair_index(i: int, j: int, n: int) -> int:
             idx += 1
     return -1
 
-def compare_n_blocks_structurally(blocks: List[Block]) -> Dict[int, List[int]]:
+def compare_n_blocks_structurally(blocks: List[Block]) -> Tuple[Dict[int, List[int]], Dict[int, List[int]]]:
     """
     Compare n blocks structurally and group equivalent blocks by their uid.
 
@@ -1209,23 +1214,26 @@ def compare_n_blocks_structurally(blocks: List[Block]) -> Dict[int, List[int]]:
     3. Corresponding variables are located in corresponding attributes
 
     :param blocks: List of n blocks to compare
-    :return: Dict with new uid (uuid.uuid4().int) as keys and lists of equivalent block uids as values
+    :return: Tuple of:
+        - Dict with new uid (uuid.uuid4().int) as keys and lists of equivalent block uids as values
+        - Dict with variable uid as keys and lists of equivalent variable uids as values
     """
     if len(blocks) == 0:
-        return {}
+        return {}, {}
 
     if len(blocks) == 1:
-        new_uid = _new_uid()
-        return {new_uid: [blocks[0].uid]}
+        return {blocks[0].uid: []}, {}
 
     n = len(blocks)
     equivalence_classes = []
+    equivalence_alignments = []
     processed = [False] * n
 
     for i in range(n):
         if not processed[i]:
             current_group = [blocks[i].uid]
             processed[i] = True
+            current_alignments = {}
 
             for j in range(i + 1, n):
                 if not processed[j]:
@@ -1248,15 +1256,27 @@ def compare_n_blocks_structurally(blocks: List[Block]) -> Dict[int, List[int]]:
 
                                 current_group.append(blocks[j].uid)
                                 processed[j] = True
+                                current_alignments[j] = variables_alignment
 
             equivalence_classes.append(current_group)
+            equivalence_alignments.append((i, current_alignments))
 
-    result = {}
+    model_result = {}
     for eq_class in equivalence_classes:
-        new_uid = _new_uid()
-        result[new_uid] = eq_class
+        model_result[eq_class[0]] = eq_class[1:]
 
-    return result
+    var_result = {}
+    for ref_idx, alignments in equivalence_alignments:
+        if not alignments:
+            continue
+        first_alignment = next(iter(alignments.values()))
+        for ref_var_uid in first_alignment:
+            equivalent_uids = []
+            for alignment in alignments.values():
+                equivalent_uids.append(alignment[ref_var_uid])
+            var_result[ref_var_uid] = equivalent_uids
+
+    return model_result, var_result
 #
 # def compare_n_blocks_structurally(blocks: List[Block]) -> Dict[int, List[int]]:
 #     """

@@ -2598,7 +2598,7 @@ class MultiCircuit(Assets):
                             device=elm.idtag,
                             device_class=elm.device_type.value)
 
-        # pass 3: count how many times a group is refferenced
+        # pass 3: count how many times a group is referenced
         group_counter: IntVec = np.zeros(len(self._contingency_groups), dtype=int)
         group_dict = {elm: i for i, elm in enumerate(self._contingency_groups)}
         for elm in self._contingencies:

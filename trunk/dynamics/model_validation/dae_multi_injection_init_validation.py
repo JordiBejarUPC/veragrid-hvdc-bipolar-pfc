@@ -33,7 +33,7 @@ from VeraGridEngine.Templates.Rms.genrow1_rms_template import get_genrow1_rms_te
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
-from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod, VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod, VarPowerFlowReferenceType
 from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 
 
@@ -89,8 +89,8 @@ def setup_rms_models(grid: gce.MultiCircuit) -> None:
         gen_mdl.unify_blocks()
 
         wrapper = Block(children=[gen_mdl])
-        wrapper.external_mapping.update({VarPowerFlowRefferenceType.P: gen_mdl.out_vars[0]})
-        wrapper.external_mapping.update({VarPowerFlowRefferenceType.Q: gen_mdl.out_vars[1]})
+        wrapper.external_mapping.update({VarPowerFlowReferenceType.P: gen_mdl.out_vars[0]})
+        wrapper.external_mapping.update({VarPowerFlowReferenceType.Q: gen_mdl.out_vars[1]})
         wrapper.unify_blocks()
         gen.rms_model = wrapper
 

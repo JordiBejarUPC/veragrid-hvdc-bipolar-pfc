@@ -10,7 +10,7 @@ from typing import List, Optional, Tuple
 import numpy as np
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.enumerations import ParamPowerFlowRefferenceType
+from VeraGridEngine.enumerations import ParamPowerFlowReferenceType
 from VeraGridEngine.basic_structures import Vec
 from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr, BinOp, CmpOp, Comparison, heaviside, hard_sat, expression2numba, get_expression_vars)
 
@@ -686,7 +686,7 @@ def discrete_control_block(
             m:hard_sat(m + inc * tick, m_min, m_max),
             m_last: m,
         },
-        api_obj_mapping={dt: ParamPowerFlowRefferenceType.dt}
+        api_obj_mapping={dt: ParamPowerFlowReferenceType.dt}
     )
     return block, m
 
