@@ -559,11 +559,11 @@ def main() -> None:
 
     out_dir = project_base / "trunk" / "tensygrid" / "debug_matrices"
     os.makedirs(out_dir, exist_ok=True)
-    sparse.save_npz(str(out_dir / "S_multilinear.npz"), s_ml)
-    sparse.save_npz(str(out_dir / "Phi_multilinear.npz"), phi_ml)
-    sparse.save_npz(str(out_dir / "S_polybuilder.npz"), s_pb)
-    sparse.save_npz(str(out_dir / "Phi_polybuilder.npz"), phi_pb)
-    print(f"  Saved matrices to: {out_dir}")
+    #sparse.save_npz(str(out_dir / "S_multilinear.npz"), s_ml)
+    #sparse.save_npz(str(out_dir / "Phi_multilinear.npz"), phi_ml)
+    #sparse.save_npz(str(out_dir / "S_polybuilder.npz"), s_pb)
+    #sparse.save_npz(str(out_dir / "Phi_polybuilder.npz"), phi_pb)
+    #print(f"  Saved matrices to: {out_dir}")
 
 
 if __name__ == "__main__":

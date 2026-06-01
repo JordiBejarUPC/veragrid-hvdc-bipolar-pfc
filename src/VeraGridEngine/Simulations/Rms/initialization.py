@@ -1009,7 +1009,7 @@ def init_pseudo_transient(mdl: Block,
 
     # Variable names to keep fixed over pseudo-transient iterations.
     # UIDs are resolved from the *final local problem* ordering below.
-    fix_references =  True
+    fix_references =  False
     if fix_references:
         fixed_ref_names = {"Pm_ref", "Pref", "P_ref", "UsRefPu", "Vref", "V_ref", "U_ref"}
     else:
@@ -1085,11 +1085,11 @@ def init_pseudo_transient(mdl: Block,
     solver = PseudoTransient(
         problem=problem,
         h=1.0,
-        dtau0=1e-0,
-        dtau_max=1e2,
+        dtau0=1e-2,
+        dtau_max=1e5,
         dtau_min=1e-6,
         tol=tol,
-        max_iter=1000,
+        max_iter=2000,
         verbose=verbose,
         reference_error_tol=-1,
         fixed_var_uids=fixed_ref_uids,
