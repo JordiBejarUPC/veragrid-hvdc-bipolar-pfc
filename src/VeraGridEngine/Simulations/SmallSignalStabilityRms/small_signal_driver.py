@@ -114,6 +114,43 @@ def compute_participation_factors(v: np.ndarray,
     return PF_norm
 
 
+def compute_participation_factors_generalized(v: np.ndarray,
+                                              w: np.ndarray,
+                                              E: Union[np.ndarray, sp.spmatrix]) -> np.ndarray:
+    """
+    Participation factors for generalized eigenproblems A x = lambda E x.
+    Normalization uses w^T E v = 1 per mode.
+    """
+    v_c = v.astype(np.complex128, copy=False)
+    w_c = w.astype(np.complex128, copy=False).copy()
+
+    if sp.issparse(E):
+        Ev = E @ v_c
+        Etw = E.T @ w_c
+    else:
+        E_arr = np.asarray(E, dtype=np.complex128)
+        Ev = E_arr @ v_c
+        Etw = E_arr.T @ w_c
+
+    k = v_c.shape[1]
+    for i in range(k):
+        norm_factor = np.vdot(w_c[:, i], Ev[:, i])
+        if np.abs(norm_factor) > 1e-15:
+            w_c[:, i] /= norm_factor
+        else:
+            pass
+
+    PF = np.abs(v_c * Etw)
+    col_sum = np.sum(PF, axis=0)
+    PF_norm = PF.copy()
+    for i in range(PF.shape[1]):
+        if col_sum[i] > 1e-15:
+            PF_norm[:, i] /= col_sum[i]
+        else:
+            pass
+    return PF_norm.astype(np.float64, copy=False)
+
+
 def select_eigs_without_conjugates(eigenvalues: Vec) -> Vec:
     """
     Select oscillatory modes. Conjugate modes appear only once in the selection.
@@ -253,7 +290,7 @@ def run_dense_small_signal_stability(problem: RmsProblemTemplate,
     else:
         E_matrix = problem.get_E_matrix(x, dx)
         A_dense = np.asarray(problem.get_static_state_matrix(x, dx), dtype=float)
-        #A_dense += np.eye(A_dense.shape[0]) * 1e-10
+        A_dense += np.eye(A_dense.shape[0]) * 1e-7
         A_orig = A_dense.copy()
         # Convert to dense for eig
         eig_results = list(la.eig(A_dense, -E_matrix, left=True, right=True))
@@ -268,7 +305,10 @@ def run_dense_small_signal_stability(problem: RmsProblemTemplate,
     v = v.astype(np.complex128, copy=False)
     w = w.astype(np.complex128, copy=False)
 
-    participation_factors = compute_participation_factors(v=v, w=w)
+    if differential_vars == 0:
+        participation_factors = compute_participation_factors(v=v, w=w)
+    else:
+        participation_factors = compute_participation_factors_generalized(v=v, w=w, E=E_matrix)
 
     eig_no_conjugates = select_eigs_without_conjugates(eigenvalues)
     damping_ratios, conjugate_freq = compute_damping_ratios_and_frequencies(eigenvalues, eig_no_conjugates)
@@ -382,7 +422,10 @@ def run_sparse_small_signal_stability(problem: RmsProblemTemplate,
     # Ensure eigenvectors are complex (scipy may return float64 for real eigenvalues)
     v_valid = v_valid.astype(np.complex128, copy=False)
     w_valid = w_valid.astype(np.complex128, copy=False)
-    participation_factors = compute_participation_factors(v=v_valid, w=w_valid)
+    if problem.get_diff_var_number() == 0:
+        participation_factors = compute_participation_factors(v=v_valid, w=w_valid)
+    else:
+        participation_factors = compute_participation_factors_generalized(v=v_valid, w=w_valid, E=E)
 
     eig_no_conjugates = select_eigs_without_conjugates(eigenvalues)
     damping_ratios, conjugate_freq = compute_damping_ratios_and_frequencies(eigenvalues, eig_no_conjugates)

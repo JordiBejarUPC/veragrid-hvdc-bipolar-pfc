@@ -453,8 +453,8 @@ def GovernorBuild(vfactory: VarFactory, name: str = "", hard_sat_type: str = "ml
         omega_ref: vfactory.add_const(1),
         # Governor parameters
         K: vfactory.add_const(10.0),  # governor gain (inverse droop)
-        Pmax: vfactory.add_const(12.0),  # max mechanical power (pu)
-        Pmin: vfactory.add_const(-1.0),  # min mechanical power (pu)
+        Pmax: vfactory.add_const(200.0),  # max mechanical power (pu)
+        Pmin: vfactory.add_const(-200.0),  # min mechanical power (pu)
         Uc: vfactory.add_const(-0.05),  # max valve closing rate (pu/s)
         Uo: vfactory.add_const(0.05),  # max valve opening rate (pu/s)
         T_aux: vfactory.add_const(0.0),
@@ -759,16 +759,16 @@ def ExciterBuild(vfactory: VarFactory, name: str = "", hard_sat_type: str = "ml"
         BEz: vfactory.add_const(1.5),  # saturation exponential coefficient
         Se_threshold: vfactory.add_const(1.0),  # saturation threshold
         EfeMaxPu: vfactory.add_const(25.0),  # max exciter field voltage (pu)
-        EfeMinPu: vfactory.add_const(-25.0),  # min exciter field voltage (pu)
+        EfeMinPu: vfactory.add_const(-50.0),  # min exciter field voltage (pu)
 
         # Time constants
         TolLi: vfactory.add_const(0.05),  # limiter crossing tolerance (fraction)
 
         # Limits
         VaMaxPu: vfactory.add_const(10.0),  # AVR output max (pu)
-        VaMinPu: vfactory.add_const(-35.0),  # AVR output min (pu)
-        VeMinPu: vfactory.add_const(-35.0),  # min exciter output voltage (pu)
-        VfeMaxPu: vfactory.add_const(10.0),  # max exciter field current signal (pu)
+        VaMinPu: vfactory.add_const(-55.0),  # AVR output min (pu)
+        VeMinPu: vfactory.add_const(-55.0),  # min exciter output voltage (pu)
+        VfeMaxPu: vfactory.add_const(20.0),  # max exciter field current signal (pu)
 
         # Exciter submodel parameters
         AEx: vfactory.add_const(0.05),  # saturation gain
@@ -803,7 +803,9 @@ def ExciterBuild(vfactory: VarFactory, name: str = "", hard_sat_type: str = "ml"
         name='exciter3',
     )
     min_const = max(events_dict[VaMinPu].value, events_dict[EfeMinPu].value)
+    min_const = -1e5
     max_const = min(events_dict[VaMaxPu].value, events_dict[EfeMaxPu].value)
+    max_const = 1e5
     # TODO: Try with AnitWindup
     tf4, y4 = tf_to_block(
         vfactory,
@@ -829,8 +831,8 @@ def ExciterBuild(vfactory: VarFactory, name: str = "", hard_sat_type: str = "ml"
         num=np.array([1]),
         den=np.array([0, parameters["tE"].value]),
         x=error1,
-        # sat_min= VeMinPu,
-        # sat_max= VeMaxPu,
+        #sat_min= VeMinPu,
+        #sat_max= VeMaxPu,
         name='subexciter1',
     )
 
@@ -873,6 +875,7 @@ def ExciterBuild(vfactory: VarFactory, name: str = "", hard_sat_type: str = "ml"
     Ve_sat = sym.hard_sat(y_subexciter1, VeMinPu, VeMaxPu)
     Ve_expr = sym.hard_sat(y_subexciter1, VeMinPu, VeMaxPu)
     aux_expr = parameters['Ke'].value * Ve_expr + AEx * Ve_expr * Sx
+    efe_init = sym.hard_sat(inputs[0] * parameters["Kd"].value + u_aux, min_const, max_const)
     templ.block = Block(
         children=[tf1, tf2, tf3, tf4, exciter_submodel, linking_block, ml_block_exp, ml_block_hv, ml_block1, ml_block2, ml_block3],
         out_vars=[Vf],
@@ -889,12 +892,14 @@ def ExciterBuild(vfactory: VarFactory, name: str = "", hard_sat_type: str = "ml"
                     sym.exp(BEx * (Ve_pre - Se_threshold)) - vfactory.add_const(1)) * sym.heaviside(
                 Ve_pre - Se_threshold)),
             u_aux: aux_expr,
+            #Efe: efe_init,
             Efe: (inputs[0] * parameters["Kd"].value + u_aux),
             y1: inputs[1],
             y2: vfactory.add_const(0.0),
             y3: -y1 + UsRefPu,
             u_exciter3: y3,
             y4: y3 * parameters["Ka"].value,
+            #y4: efe_init,
             u_subexciter1: Efe - (inputs[0] * parameters["Kd"].value + u_aux),
             f_input: parameters['Kc'].value * inputs[0] / y_subexciter1,
             f_output: sym.f_exc(f_input),
