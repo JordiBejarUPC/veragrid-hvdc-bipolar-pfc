@@ -20,8 +20,8 @@ if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
 
 import VeraGridEngine.api as vge
-from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_driver import run_dense_small_signal_stability
-from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_rms_model
+#from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_driver import run_dense_small_signal_stability
+#from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_rms_model
 
 
 def ensure_unique_device_names(grid) -> None:
@@ -158,7 +158,7 @@ def _plot_eigen_comparison(ml_eigs: np.ndarray, ph_eigs: np.ndarray) -> None:
     ax.grid(True, alpha=0.3)
     ax.legend(loc="best")
     plt.tight_layout()
-    plt.show()
+    #plt.show()
 
 
 def build_problems(grid_filename: str) -> tuple[vge.RmsProblemMultilinear, vge.RmsProblemPhasor]:
@@ -177,7 +177,7 @@ def build_problems(grid_filename: str) -> tuple[vge.RmsProblemMultilinear, vge.R
         grid.var_factory.add_connections([gen_mdl.in_vars[0]], [gen.bus.rms_model.out_vars[0]])
         grid.var_factory.add_connections([gen_mdl.in_vars[1]], [gen.bus.rms_model.out_vars[1]])
         gen_mdl = vge.to_implicit(gen_mdl, grid.var_factory)
-        set_rms_model(device=gen, model=gen_mdl, var_factory=grid.var_factory)
+        vge.set_rms_model(device=gen, model=gen_mdl, var_factory=grid.var_factory)
 
     for line in grid.lines:
         if not line.rms_model.empty():
@@ -188,7 +188,7 @@ def build_problems(grid_filename: str) -> tuple[vge.RmsProblemMultilinear, vge.R
         grid.var_factory.add_connections([line_mdl.in_vars[2]], [line.bus_to.rms_model.out_vars[0]])
         grid.var_factory.add_connections([line_mdl.in_vars[3]], [line.bus_to.rms_model.out_vars[1]])
         line_mdl = vge.to_implicit(line_mdl, grid.var_factory)
-        set_rms_model(device=line, model=line_mdl, var_factory=grid.var_factory)
+        vge.set_rms_model(device=line, model=line_mdl, var_factory=grid.var_factory)
 
     for load in grid.loads:
         if not load.rms_model.empty():
@@ -196,7 +196,7 @@ def build_problems(grid_filename: str) -> tuple[vge.RmsProblemMultilinear, vge.R
         load_mdl = vge.get_load_phasor_current_rms_template(grid.var_factory, name=load.name).block
         grid.var_factory.add_connections([load_mdl.in_vars[0]], [load.bus.rms_model.out_vars[0]])
         grid.var_factory.add_connections([load_mdl.in_vars[1]], [load.bus.rms_model.out_vars[1]])
-        set_rms_model(device=load, model=load_mdl, var_factory=grid.var_factory)
+        vge.set_rms_model(device=load, model=load_mdl, var_factory=grid.var_factory)
 
     for trafo in grid.transformers2w:
         if not trafo.rms_model.empty():
@@ -207,7 +207,7 @@ def build_problems(grid_filename: str) -> tuple[vge.RmsProblemMultilinear, vge.R
         grid.var_factory.add_connections([trafo_mdl.in_vars[2]], [trafo.bus_to.rms_model.out_vars[0]])
         grid.var_factory.add_connections([trafo_mdl.in_vars[3]], [trafo.bus_to.rms_model.out_vars[1]])
         trafo_mdl = vge.to_implicit(trafo_mdl, grid.var_factory)
-        set_rms_model(device=trafo, model=trafo_mdl, var_factory=grid.var_factory)
+        vge.set_rms_model(device=trafo, model=trafo_mdl, var_factory=grid.var_factory)
 
     for shunt in grid.shunts:
         if not shunt.rms_model.empty():
@@ -216,7 +216,7 @@ def build_problems(grid_filename: str) -> tuple[vge.RmsProblemMultilinear, vge.R
         grid.var_factory.add_connections([shunt_mdl.in_vars[0]], [shunt.bus.rms_model.out_vars[0]])
         grid.var_factory.add_connections([shunt_mdl.in_vars[1]], [shunt.bus.rms_model.out_vars[1]])
         shunt_mdl = vge.to_implicit(shunt_mdl, grid.var_factory)
-        set_rms_model(device=shunt, model=shunt_mdl, var_factory=grid.var_factory)
+        vge.set_rms_model(device=shunt, model=shunt_mdl, var_factory=grid.var_factory)
 
     pf_results = vge.power_flow(grid, vge.PowerFlowOptions(tolerance=1e-5))
     if not pf_results.converged:
@@ -279,6 +279,7 @@ def main() -> None:
         'stable': stable_ml,
         'margin': margin_ml,
         'matches': matches,
+        'problem_ml': problem_ml,
         'op_hash': _hash_operating_point(x),
     }
     
