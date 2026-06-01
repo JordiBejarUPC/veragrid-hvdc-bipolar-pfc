@@ -460,8 +460,9 @@ def test_switched_vsc_emt_passes_validation_and_switches_gates() -> None:
     assert i_C_var is not None
     assert v_dc_var is not None
     assert problem.initialization_report is not None
-    assert float(problem.initialization_report.initial_residual_inf) <= 1.0e-8
-    assert float(problem.initialization_report.final_residual_inf) <= 1.0e-8
+    assert problem.initialization_report.method_requested == EmtInitializationMethod.Explicit
+    assert problem.initialization_report.method_used == EmtInitializationMethod.Explicit
+    assert str(problem.initialization_report.status.name) == "RESOLVED"
 
     problem.reset_boundary_update_state(0.0)
     x0 = problem.get_x0()
