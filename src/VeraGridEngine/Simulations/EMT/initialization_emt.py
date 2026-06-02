@@ -683,7 +683,6 @@ def _build_persistent_initialization_cache_key(
         str(int(options.init_dense_threshold)),
         str(bool(options.init_newton_backtracking)),
         str(bool(options.init_allow_state_equilibrium)),
-        str(bool(options.init_pseudo_transient_enable)),
         f"{float(options.init_ptc_dtau0):.12g}",
         f"{float(options.init_ptc_dtau_min):.12g}",
         f"{float(options.init_ptc_dtau_max):.12g}",
@@ -2536,7 +2535,7 @@ def run_emt_native_initialization(problem: EmtProblemTemplate, options: EmtOptio
             report.final_residual_inf = report.initial_residual_inf
         else:
             use_newton: bool = method_requested in {EmtInitializationMethod.Auto, EmtInitializationMethod.ConsistentNewton}
-            use_ptc: bool = method_requested in {EmtInitializationMethod.Auto, EmtInitializationMethod.PseudoTransient} or bool(options.init_pseudo_transient_enable)
+            use_ptc: bool = method_requested in {EmtInitializationMethod.Auto, EmtInitializationMethod.PseudoTransient}
 
             converged: bool = False
             if use_newton:
