@@ -420,7 +420,7 @@ def assign_api_mapping_value_if_present(
             # The target does not need to pre-exist in mdl.parameters.
             resolved_value: Const = value if isinstance(value, Const) else Const(float(value))
             problem_mapping[target] = resolved_value
-            mdl.parameters[target] = resolved_value
+            # mdl.parameters[target] = resolved_value
             assigned = True
 
     return assigned

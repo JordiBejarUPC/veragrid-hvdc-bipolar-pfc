@@ -5180,7 +5180,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             # here we add the connection variables to the main block
             if self.main_editor:
                 self.add_connection_vars()
-                self.add_api_obj_mapping()
+                # self.add_api_obj_mapping()
             self.add_connection_items()
         self.rebuild_scene_from_diagram()
 

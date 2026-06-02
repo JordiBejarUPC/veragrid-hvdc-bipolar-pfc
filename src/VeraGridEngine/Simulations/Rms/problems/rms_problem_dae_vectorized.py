@@ -350,6 +350,12 @@ class RmsProblemDaeVec(RmsProblemTemplate):
         # imput matrices by model for vectorization
         self._input_matrices_by_model: Dict[int, List[Vec]] = dict()
 
+        # precomputed gather indices for vectorized input assembly
+        self._x_gather_idx: Dict[int, np.ndarray] = dict()
+        self._dx_gather_idx: Dict[int, np.ndarray] = dict()
+        self._vp_gather_idx: Dict[int, np.ndarray] = dict()
+        self._cp_gather_idx: Dict[int, np.ndarray] = dict()
+
         # mapping from model uid → global start index of its state equations
         self._model_state_eq_start_idx: Dict[int, int] = dict()
         self._model_algebraic_eq_start_idx: Dict[int, int] = dict()
@@ -1004,7 +1010,7 @@ class RmsProblemDaeVec(RmsProblemTemplate):
                     raise ValueError("Not implemented initialization method")
 
                 self.sys_block.add(elm.rms_model)
-
+        print("yeeeha")
         total_init_explicit_time += time.perf_counter() - t0
         print(f"\nTotal time explicit initialization: {total_init_explicit_time:.6f} seconds")
         if self.progress_signal is not None:
@@ -1429,6 +1435,8 @@ class RmsProblemDaeVec(RmsProblemTemplate):
             for k, v in timings.items():
                 print(f"  {k:30s}: {v:8.4f} s")
             print(f"\nTotal JIT compile time: {sum(timings.values()):.4f} s")
+
+        self._precompute_gather_indices()
 
         variable_parameters_init = np.ones(self.get_variable_parameter_number())
 
@@ -2480,54 +2488,63 @@ class RmsProblemDaeVec(RmsProblemTemplate):
         return self._derivative_fn(x, xn, dx, h)
 
     ########### vectorized functions ##########################
-    def update_input_matrices_by_model(self, x: Vec, dx: Vec):
+
+    def _precompute_gather_indices(self) -> None:
         for model_type in self._rhs_state_fn_by_types.keys():
             var_equiv_lists = self.variables_equivalence_dict.get(model_type, [])
-            var_equiv = {}
+            var_equiv: Dict[int, List[int]] = {}
             for eq_list in var_equiv_lists:
                 for uid in eq_list:
                     var_equiv[uid] = eq_list
 
-            # build x_variables
-            x_variables =  np.empty((len(self._uid2idx_vars_vec[model_type]), len(self.equivalence_dict[model_type])+1))
-            for var_uid in self._uid2idx_vars_vec[model_type]:
-                eq_list = var_equiv.get(var_uid, [var_uid])
-                x_var = np.zeros(len(eq_list))
-                for i, uid in enumerate(eq_list):
-                    x_var[i] = x[self._uid2idx_vars[uid]]
-                x_variables[self._uid2idx_vars_vec[model_type][var_uid]] = x_var
+            n_inst = len(self.equivalence_dict.get(model_type, [])) + 1
 
-            # build dx_variables
-            dx_variables =  np.empty((len(self._uid2idx_diff_vec[model_type]), len(self.equivalence_dict[model_type])+1))
-            for var_uid in self._uid2idx_diff_vec[model_type]:
-                eq_list = var_equiv.get(var_uid, [var_uid])
-                dx_var = np.zeros(len(eq_list))
-                for i, uid in enumerate(eq_list):
-                    dx_var[i] = dx[self._uid2idx_diff[uid]]
-                dx_variables[self._uid2idx_diff_vec[model_type][var_uid]] = dx_var
+            # x variables
+            n_vars = len(self._uid2idx_vars_vec.get(model_type, {}))
+            if n_vars:
+                idx_x = np.zeros((n_vars, n_inst), dtype=np.intp)
+                for var_uid, var_pos in self._uid2idx_vars_vec[model_type].items():
+                    eq_list = var_equiv.get(var_uid, [var_uid])
+                    for i, uid in enumerate(eq_list):
+                        idx_x[var_pos, i] = self._uid2idx_vars[uid]
+                self._x_gather_idx[model_type] = idx_x
 
-            # build v_params (variable/event parameters)
-            vp_params =  np.empty((len(self._uid2idx_event_params_vec[model_type]), len(self.equivalence_dict[model_type])+1))
-            for vp_uid in self._uid2idx_event_params_vec[model_type]:
-                eq_list = var_equiv.get(vp_uid, [vp_uid])
-                vp_var = np.zeros(len(eq_list))
-                for i, uid in enumerate(eq_list):
-                    vp_var[i] = self._variable_parameters_values[self._uid2idx_event_params[uid]]
-                vp_params[self._uid2idx_event_params_vec[model_type][vp_uid]] = vp_var
+            # dx variables
+            n_dx = len(self._uid2idx_diff_vec.get(model_type, {}))
+            if n_dx:
+                idx_dx = np.zeros((n_dx, n_inst), dtype=np.intp)
+                for var_uid, var_pos in self._uid2idx_diff_vec[model_type].items():
+                    eq_list = var_equiv.get(var_uid, [var_uid])
+                    for i, uid in enumerate(eq_list):
+                        idx_dx[var_pos, i] = self._uid2idx_diff[uid]
+                self._dx_gather_idx[model_type] = idx_dx
 
-            # build c_params (constant parameters)
-            cp_params =  np.empty((len(self._uid2idx_params_vec[model_type]), len(self.equivalence_dict[model_type])+1))
-            for cp_uid in self._uid2idx_params_vec[model_type]:
-                eq_list = var_equiv.get(cp_uid, [cp_uid])
-                cp_var = np.zeros(len(eq_list))
-                for i, uid in enumerate(eq_list):
-                    cp_var[i] = self._constant_params[self._uid2idx_params[uid]]
-                cp_params[self._uid2idx_params_vec[model_type][cp_uid]] = cp_var
+            # vp params
+            n_vp = len(self._uid2idx_event_params_vec.get(model_type, {}))
+            if n_vp:
+                idx_vp = np.zeros((n_vp, n_inst), dtype=np.intp)
+                for vp_uid, vp_pos in self._uid2idx_event_params_vec[model_type].items():
+                    eq_list = var_equiv.get(vp_uid, [vp_uid])
+                    for i, uid in enumerate(eq_list):
+                        idx_vp[vp_pos, i] = self._uid2idx_event_params[uid]
+                self._vp_gather_idx[model_type] = idx_vp
 
-            self._input_matrices_by_model[model_type][0] = x_variables
-            self._input_matrices_by_model[model_type][1] = dx_variables
-            self._input_matrices_by_model[model_type][2] = vp_params
-            self._input_matrices_by_model[model_type][3] = cp_params
+            # cp params
+            n_cp = len(self._uid2idx_params_vec.get(model_type, {}))
+            if n_cp:
+                idx_cp = np.zeros((n_cp, n_inst), dtype=np.intp)
+                for cp_uid, cp_pos in self._uid2idx_params_vec[model_type].items():
+                    eq_list = var_equiv.get(cp_uid, [cp_uid])
+                    for i, uid in enumerate(eq_list):
+                        idx_cp[cp_pos, i] = self._uid2idx_params[uid]
+                self._cp_gather_idx[model_type] = idx_cp
+
+    def update_input_matrices_by_model(self, x: Vec, dx: Vec):
+        for model_type in self._rhs_state_fn_by_types.keys():
+            self._input_matrices_by_model[model_type][0] = x[self._x_gather_idx[model_type]]
+            self._input_matrices_by_model[model_type][1] = dx[self._dx_gather_idx[model_type]]
+            self._input_matrices_by_model[model_type][2] = self._variable_parameters_values[self._vp_gather_idx[model_type]]
+            self._input_matrices_by_model[model_type][3] = self._constant_params[self._cp_gather_idx[model_type]]
 
 
 
