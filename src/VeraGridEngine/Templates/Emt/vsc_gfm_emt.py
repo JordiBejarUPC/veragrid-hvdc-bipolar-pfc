@@ -11,8 +11,8 @@ from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.enumerations import (
     DeviceType,
-    ParamPowerFlowRefferenceType,
-    VarPowerFlowRefferenceType,
+    ParamPowerFlowReferenceType,
+    VarPowerFlowReferenceType,
 )
 from VeraGridEngine.Utils.Symbolic import symbolic as sym
 from VeraGridEngine.Utils.Symbolic.block import Block
