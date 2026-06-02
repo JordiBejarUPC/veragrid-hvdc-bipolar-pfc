@@ -37,10 +37,10 @@ def get_line_phasor_rms_template(vfactory: VarFactory, name="Line_phasor_rms_tem
                          vfactory.add_var("Vit_" + name, VarPowerFlowReferenceType.Vit)]
 
     # Outputs: currents (for current balance formulation)
-    Irf = vfactory.add_var("Irf")
-    Iif = vfactory.add_var("Iif")
-    Irt = vfactory.add_var("Irt")
-    Iit = vfactory.add_var("Iit")
+    Irf = vfactory.add_var("Irf_" + name)
+    Iif = vfactory.add_var("Iif_" + name)
+    Irt = vfactory.add_var("Irt_" + name)
+    Iit = vfactory.add_var("Iit_" + name)
 
     # Parameters: line admittance
     g = vfactory.add_var("g")

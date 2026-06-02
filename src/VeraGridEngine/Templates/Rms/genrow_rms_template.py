@@ -133,6 +133,6 @@ def get_genrow_rms_template(vfactory: VarFactory, name="Genrow rms template") ->
     }
 
     templ.block.in_vars = inputs
-    templ.block.out_vars = [P_g, Q_g]
+    templ.block.out_vars = [P_g, Q_g, tm0, vf, omega_ref]
 
     return templ
