@@ -170,8 +170,7 @@ def voltage_pdc_droop(ut: complex,
                       droop: float,
                       P_min: float,
                       P_max: float,
-                      S_base: float
-                      ):
+                      S_base: float):
     """
     Find the actual DC power output for converters controlled with a voltage droop.
 

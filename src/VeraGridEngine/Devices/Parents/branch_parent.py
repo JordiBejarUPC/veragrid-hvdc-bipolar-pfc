@@ -95,7 +95,6 @@ class BranchParent(DynamicDevice):
             units="MVA",
             tpe=float,
             definition='Design thermal rating power that is not modified for operational reasons or otherwise',
-            profile_name="rate_prof",
             cat=[PrpCat.TP, PrpCat.PF],
         ),
         GCProp(
