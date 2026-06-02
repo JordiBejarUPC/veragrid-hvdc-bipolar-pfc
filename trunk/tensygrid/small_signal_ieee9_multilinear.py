@@ -458,9 +458,17 @@ def build_problems(grid_filename: str) -> tuple[vge.RmsProblemMultilinear, vge.R
     return problem_ml, problem_ph, pf_results, rms_options_ml, rms_options_ph
 
 
-def run_small_signal_from_driver(problem, pf_results: vge.PowerFlowResults, rms_options: vge.RmsOptions):
-    ss_options = vge.RmsSmallSignalStabilityOptions(ss_assessment_time=0, verbose=0)
-    ss_options.k = 50
+def run_small_signal_from_driver(
+    problem,
+    pf_results: vge.PowerFlowResults,
+    rms_options: vge.RmsOptions,
+    k: int | None = None,
+    verbose: int = 0,
+):
+    ss_options = vge.RmsSmallSignalStabilityOptions(ss_assessment_time=0, verbose=verbose)
+    n_modes = problem.get_states_number() + problem.get_diff_var_number()
+    k_eff = int(n_modes*0.9)
+    ss_options.k = k_eff
     driver = vge.SmallSignalStabilityRmsDriver(
         grid=vge.MultiCircuit(Sbase=problem.grid.Sbase),
         rms_options=rms_options,
@@ -468,7 +476,7 @@ def run_small_signal_from_driver(problem, pf_results: vge.PowerFlowResults, rms_
         pf_results=pf_results,
     )
     driver.problem = problem
-    driver.k = problem.get_states_number()
+    driver.k = k_eff
     driver.run()
     return driver.results.eigenvalues, driver.results.participation_factors
 
