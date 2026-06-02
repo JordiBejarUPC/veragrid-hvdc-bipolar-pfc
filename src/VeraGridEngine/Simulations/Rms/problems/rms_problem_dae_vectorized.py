@@ -498,9 +498,8 @@ class RmsProblemDaeVec(RmsProblemTemplate):
 
             bus_dict[elm] = bus_num
 
-            # when vectorizing, it will not be needed ########################
+
             self.add_variables_to_compilation_dicts(elm, elm.rms_model)
-            ##################################################################
 
             # add init values from powerflow to initial guess
             if elm.is_dc:
@@ -1883,7 +1882,7 @@ class RmsProblemDaeVec(RmsProblemTemplate):
         self._variable_parameters_values[:] = params[: len(self._variable_parameters)]
 
     def add_variables_to_compilation_dicts(self, elm: ALL_DEV_TYPES, mdl: Block):
-        # only for blocks representing a block type and their children
+
         self.add_block_variables_to_compilation_dicts(elm, mdl)
         for child in mdl.children:
             self.add_variables_to_compilation_dicts(elm, child)
@@ -2018,6 +2017,8 @@ class RmsProblemDaeVec(RmsProblemTemplate):
             self._n_vars += 1
 
         for ep, const in mdl.parameters.items():
+            if ep.name == "g":
+                print("")
             if ep.uid in self._uid2idx_params:
                 raise ValueError(f"Parameter '{ep.name}' (uid={ep.uid}) is already registered in the system. "
                                  f"Previous device may have created a duplicate parameter.")

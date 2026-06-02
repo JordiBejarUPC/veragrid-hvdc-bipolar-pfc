@@ -17,6 +17,7 @@ from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImpl
 from VeraGridEngine.enumerations import EngineType, SimulationTypes, DynamicIntegrationMethod
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults
 from VeraGridEngine.basic_structures import Vec, StrVec
+from VeraGridEngine.enumerations import RmsProblemTypes
 
 
 def _collect_rms_group_parameter_values(problem: RmsProblemDae) -> Dict[str, float]:
@@ -111,6 +112,8 @@ class RmsSimulationDriver(DriverTemplate):
 
         rms_events_group_names: StrVec = np.array([elm.name for elm in rms_events_groups])
         rms_events_group_idtags: StrVec = np.array([str(elm.idtag) for elm in rms_events_groups])
+
+        # self.options.problem_type = RmsProblemTypes.PowerBalanceVectorized
 
         problem = build_rms_problem(
             grid=self.grid,
