@@ -7,6 +7,7 @@ from typing import Dict, List
 import time
 import numpy as np
 import pandas as pd
+import scipy.sparse as sp
 
 from VeraGridEngine.enumerations import ParamPowerFlowReferenceType
 from VeraGridEngine.Devices import MultiCircuit
@@ -982,14 +983,8 @@ class RmsProblemPhasor(RmsProblemTemplate):
         cp = self._constant_params
 
         n_vars = self._n_vars
-        E_value = np.zeros((n_vars, n_vars))
-        E_partial = E_call(x, dx, vp, cp, h=0).toarray()
-        print(f"DEBUG: E_partial shape: {E_partial.shape}")
-        print(f"DEBUG: E_partial sample values (non-zero):")
-        nz = np.nonzero(E_partial)
-        for i in range(min(20, len(nz[0]))):
-            row, col = nz[0][i], nz[1][i]
-            print(f"  E_partial[{row},{col}] = {E_partial[row,col]}")
+        E_value = sp.lil_matrix((n_vars, n_vars), dtype=np.float64)
+        E_partial = E_call(x, dx, vp, cp, h=0).tocsc()
     
         
         # Map each d(eq)/d(diff_var_j) column to the column of the diff_var base
@@ -1001,23 +996,21 @@ class RmsProblemPhasor(RmsProblemTemplate):
                 E_value[:, col_idx] += E_partial[:, j]
             else:    
                 pass
-        E_value[:n_states, :n_states] -= np.eye(n_states, dtype=E_value.dtype)
+        E_value[:n_states, :n_states] -= sp.eye(n_states, dtype=E_value.dtype, format="lil")
 
-        return E_value
+        return E_value.tocsc()
     
     def get_static_state_matrix(self, x:Vec, dx:Vec):
         nx = self.get_states_number()
-        ny = self.get_algebraic_var_number()
 
         if nx == 0:
-            gy = self.get_j22(x, dx, 1e15).toarray()
-            return gy
+            return self.get_j22(x, dx, 1e15).tocsc()
 
-        fx = self.get_j11(x, dx, 1e10).toarray()
-        fy = self.get_j12(x, dx, 1e10).toarray()
-        gx = self.get_j21(x, dx, 1e10).toarray()
-        gy = self.get_j22(x, dx, 1e15).toarray()
-        return np.block([[fx, fy], [gx, gy]])
+        fx = self.get_j11(x, dx, 1e10).tocsc()
+        fy = self.get_j12(x, dx, 1e10).tocsc()
+        gx = self.get_j21(x, dx, 1e10).tocsc()
+        gy = self.get_j22(x, dx, 1e15).tocsc()
+        return sp.bmat([[fx, fy], [gx, gy]], format="csc")
 
     def get_device_vars_dict(self) -> Dict[ALL_DEV_TYPES, List[Var]]:
         """Get dictionary of device variables."""
