@@ -12,7 +12,7 @@ from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProb
 from VeraGridEngine.Templates.Emt.vsc_gfm_emt import get_gfm_emt_template
 from VeraGridEngine.Utils.Symbolic.block import find_name_in_block
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var
-from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import DeviceType, VarPowerFlowReferenceType
 
 
 class GenericEmtProblem(EmtProblemTemplate):
@@ -168,8 +168,8 @@ def test_vsc_gfm_emt_template_exposes_expected_structure() -> None:
     for net_var in ["v_A_G1", "v_B_G1", "v_C_G1", "i_A_G1", "i_B_G1", "i_C_G1", "v_dc_G1"]:
         assert find_name_in_block(net_var, templ.block) is not None
 
-    assert templ.block.external_mapping[VarPowerFlowRefferenceType.Vdc].name == "v_dc_G1"
-    assert templ.block.external_mapping[VarPowerFlowRefferenceType.Qf].name == "Qf_G1"
+    assert templ.block.external_mapping[VarPowerFlowReferenceType.Vdc].name == "v_dc_G1"
+    assert templ.block.external_mapping[VarPowerFlowReferenceType.Qf].name == "Qf_G1"
 
 
 def test_vsc_gfm_emt_template_can_be_loaded_into_generic_problem() -> None:

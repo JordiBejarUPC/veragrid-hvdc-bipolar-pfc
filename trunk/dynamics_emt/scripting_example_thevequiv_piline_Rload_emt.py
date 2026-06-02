@@ -184,8 +184,8 @@ set_emt_model(device=load, model=load_mdl, var_factory= grid.var_factory)
 # # external mapping
 # # big_gen1 = Block(children=[gen_mdl])
 # #
-# # big_gen1.external_mapping.update({VarPowerFlowRefferenceType.P: gen_mdl.out_vars[0]})
-# # big_gen1.external_mapping.update({VarPowerFlowRefferenceType.Q: gen_mdl.out_vars[1]})
+# # big_gen1.external_mapping.update({VarPowerFlowReferenceType.P: gen_mdl.out_vars[0]})
+# # big_gen1.external_mapping.update({VarPowerFlowReferenceType.Q: gen_mdl.out_vars[1]})
 #
 # # attach emt models to Veragrid objects
 # line0.emt_model= line_mdl
