@@ -1090,8 +1090,8 @@ class UnOp(Expr):
 # Functional nodes
 # ----------------------------------------------------------------------------------------------------------------------
 @nb.njit
-def heaviside_num(x: float) -> float:
-    return 0.0 if x <= 0 else 1.0
+def heaviside_num(x):
+    return (x > 0) * 1.0
 
 
 def get_namespace() -> Dict[str, Any]:
