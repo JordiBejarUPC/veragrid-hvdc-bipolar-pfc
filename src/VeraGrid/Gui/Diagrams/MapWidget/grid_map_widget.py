@@ -1885,7 +1885,10 @@ class GridMapWidget(BaseDiagramWidget):
             self.gui.show_error_toast("There are no time series, so nothing to plot :/")
 
     def transform_waypoint_to_substation(self):
+        """
 
+        :return:
+        """
         selected_lineloc = self.get_selected_line_locations_tuple()
 
         if len(selected_lineloc) != 1:
@@ -1903,7 +1906,7 @@ class GridMapWidget(BaseDiagramWidget):
 
             splitting_index = None
 
-            line_graphic = selected_lineloc[0][1].line_container
+            line_graphic: MapAcLine = selected_lineloc[0][1].line_container
             line = line_graphic.api_object
 
             selected_waypoint = selected_lineloc[0][0]
@@ -2402,13 +2405,11 @@ class GridMapWidget(BaseDiagramWidget):
 
         # Add distance from last waypoint to insertion point
         lat1, lon1 = waypoints[closest_segment_idx]
-        # lat2, lon2 = closest_point
         lat2, lon2 = new_waypoint1
         length1 += haversine_distance(lat1, lon1, lat2, lon2)
 
         # Calculate length of second segment (from insertion point to original end)
         # First, add distance from insertion point to next waypoint
-        # lat1, lon1 = closest_point
         lat1, lon1 = new_waypoint2
         lat2, lon2 = waypoints[closest_segment_idx + 1]
         length2 = haversine_distance(lat1, lon1, lat2, lon2)
@@ -2472,12 +2473,10 @@ class GridMapWidget(BaseDiagramWidget):
             line2.apply_template(line_api.template, Sbase=self.circuit.Sbase, freq=self.circuit.fBase)
 
         # Copy other properties from the original line
-        if hasattr(line_api, 'color'):
-            line1.color = line_api.color
+        line1.color = line_api.color
 
         # Copy other properties from the original line
-        if hasattr(line_api, 'color'):
-            line2.color = line_api.color
+        line2.color = line_api.color
 
         # Preserve waypoints for line 1 (from start to insertion point)
         # Add all waypoints from the original line up to the closest segment
