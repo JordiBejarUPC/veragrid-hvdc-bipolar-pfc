@@ -395,3 +395,8 @@ class InvestmentsEvaluationDriver(DriverTemplate):
 
         self.toc()
         self.report_done()
+
+    def cancel(self):
+        self.__cancel__ = True
+
+        self.report_done("Cancelled!")
