@@ -1162,7 +1162,7 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
         pass
 
     if int(tr2.ntrcn) != 0:
-        trafo.tap_module_control_mode = TapModuleControl.Vm
+        # trafo.tap_module_control_mode = TapModuleControl.Vm
         if float(tr2.usetp) > 0.0:
             trafo.vset = float(tr2.usetp)
         else:
