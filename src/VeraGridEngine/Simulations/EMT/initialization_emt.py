@@ -1898,9 +1898,10 @@ def _collect_reduced_initialization_problem(
     :return: Tuple ``(unknown_vars, residual_eqs, state_unknown_mask)`` or ``None``.
     :rtype: Tuple[List[Var], List[Expr], np.ndarray] | None
     """
-    unknown_vars: List[Var] = list()
-    residual_eqs: List[Expr] = list()
-    state_unknown_flags: List[float] = list()
+    state_unknown_vars: List[Var] = list()
+    state_residual_eqs: List[Expr] = list()
+    algebraic_unknown_vars: List[Var] = list()
+    algebraic_residual_eqs: List[Expr] = list()
     state_eq_lookup: Dict[int, Expr] = _build_state_equation_lookup(problem)
     init_eq_lookup: Dict[Var, Expr] = problem.sys_block.init_eqs
     algebraic_vars: List[Var] = problem.get_algebraic_vars()
@@ -1909,24 +1910,26 @@ def _collect_reduced_initialization_problem(
 
     while alg_idx < len(algebraic_vars):
         algebraic_var: Var = algebraic_vars[alg_idx]
-        unknown_vars.append(algebraic_var)
-        residual_eqs.append(algebraic_eqs[alg_idx])
-        state_unknown_flags.append(0.0)
+        algebraic_unknown_vars.append(algebraic_var)
+        algebraic_residual_eqs.append(algebraic_eqs[alg_idx])
         alg_idx += 1
 
     for state_var in problem.get_state_vars():
         if state_var.uid in problem.init_guess:
             state_var = state_var
         else:
-            unknown_vars.append(state_var)
-            state_unknown_flags.append(1.0)
+            state_unknown_vars.append(state_var)
 
             if state_var in init_eq_lookup:
-                residual_eqs.append(state_var - init_eq_lookup[state_var])
+                state_residual_eqs.append(state_var - init_eq_lookup[state_var])
             elif allow_state_equilibrium and state_var.uid in state_eq_lookup:
-                residual_eqs.append(state_eq_lookup[state_var.uid])
+                state_residual_eqs.append(state_eq_lookup[state_var.uid])
             else:
-                residual_eqs.append(state_var)
+                state_residual_eqs.append(state_var)
+
+    unknown_vars: List[Var] = state_unknown_vars + algebraic_unknown_vars
+    residual_eqs: List[Expr] = state_residual_eqs + algebraic_residual_eqs
+    state_unknown_flags: List[float] = [1.0] * len(state_unknown_vars) + [0.0] * len(algebraic_unknown_vars)
 
     if len(unknown_vars) == 0:
         return None
@@ -1978,6 +1981,92 @@ def _evaluate_initialization_jacobian(
     """
     _unused = problem
     return reduced_system.jacobian_fn(x, dx, runtime_params, constant_params, 1.0).tocsc(copy=True)
+
+
+def _evaluate_reduced_pseudo_transient_residual(
+        reduced_system: ReducedInitializationSystem,
+        problem: EmtProblemTemplate,
+        x: np.ndarray,
+        x_prev_reduced: np.ndarray,
+        dx: np.ndarray,
+        runtime_params: np.ndarray,
+        constant_params: np.ndarray,
+        dtau: float,
+) -> np.ndarray:
+    """
+    Evaluate the reduced EMT pseudo-transient residual.
+
+    State rows use a backward-Euler pseudo-time term while algebraic rows keep the
+    original reduced steady-state residual.
+
+    :param reduced_system: Reduced initialization system.
+    :param problem: EMT problem being initialized.
+    :param x: Full EMT variable vector at the current reduced iterate.
+    :param x_prev_reduced: Previous reduced iterate used as the pseudo-time reference.
+    :param dx: Full EMT differential vector.
+    :param runtime_params: Runtime-parameter vector.
+    :param constant_params: Constant-parameter vector.
+    :param dtau: Pseudo-time step.
+    :return: Reduced pseudo-transient residual vector.
+    """
+    # Start from the steady-state reduced residual because the EMT initialization
+    # problem is defined in those equilibrium equations already.
+    residual: np.ndarray = _evaluate_initialization_residual(
+        reduced_system=reduced_system,
+        problem=problem,
+        x=x,
+        dx=dx,
+        runtime_params=runtime_params,
+        constant_params=constant_params,
+    )
+    # Recover the current reduced iterate so the state rows can add the
+    # backward-Euler pseudo-time difference against the previous iterate.
+    reduced_x: np.ndarray = _extract_unknown_vector(problem, reduced_system.unknown_vars, x)
+    state_mask: np.ndarray = np.asarray(reduced_system.state_unknown_mask, dtype=np.float64)
+    dtau_eff: float = float(max(dtau, 1.0e-30))
+    residual = residual.copy()
+    # Only unresolved state rows receive the pseudo-time term. Algebraic rows stay
+    # unchanged so they continue to enforce the original consistency equations.
+    residual += state_mask * ((reduced_x - x_prev_reduced) / dtau_eff)
+    return residual
+
+
+def _evaluate_reduced_pseudo_transient_jacobian(
+        reduced_system: ReducedInitializationSystem,
+        problem: EmtProblemTemplate,
+        x: np.ndarray,
+        dx: np.ndarray,
+        runtime_params: np.ndarray,
+        constant_params: np.ndarray,
+        dtau: float,
+) -> sp.csc_matrix:
+    """
+    Evaluate the Jacobian of the reduced EMT pseudo-transient residual.
+
+    :param reduced_system: Reduced initialization system.
+    :param problem: EMT problem being initialized.
+    :param x: Full EMT variable vector at the current reduced iterate.
+    :param dx: Full EMT differential vector.
+    :param runtime_params: Runtime-parameter vector.
+    :param constant_params: Constant-parameter vector.
+    :param dtau: Pseudo-time step.
+    :return: Reduced pseudo-transient Jacobian matrix in CSC format.
+    """
+    # Reuse the steady-state Jacobian because it already differentiates the reduced
+    # EMT equilibrium equations with respect to the reduced unknown ordering.
+    jacobian: sp.csc_matrix = _evaluate_initialization_jacobian(
+        reduced_system=reduced_system,
+        problem=problem,
+        x=x,
+        dx=dx,
+        runtime_params=runtime_params,
+        constant_params=constant_params,
+    )
+    state_mask: np.ndarray = np.asarray(reduced_system.state_unknown_mask, dtype=np.float64)
+    dtau_eff: float = float(max(dtau, 1.0e-30))
+    # The backward-Euler pseudo-time term contributes only on state rows, so the
+    # Jacobian adds a diagonal 1/dtau term only for reduced state unknowns.
+    return (jacobian + sp.diags(state_mask / dtau_eff, format="csc")).tocsc(copy=True)
 
 
 def _max_abs_value(values: np.ndarray) -> float:
@@ -2129,19 +2218,32 @@ def _run_reduced_pseudo_transient_initialization(
     :param report: Initialization report updated in place.
     :return: True if pseudo-transient converged.
     """
+    # The reduced vector stores only unresolved EMT unknowns. The pseudo-transient
+    # loop advances those unknowns while the full EMT storage remains authoritative.
     reduced_x: np.ndarray = _extract_unknown_vector(problem, reduced_system.unknown_vars, x)
     dtau: float = float(options.init_ptc_dtau0)
     dtau_min: float = float(options.init_ptc_dtau_min)
     dtau_max: float = float(options.init_ptc_dtau_max)
     max_iter: int = int(options.init_ptc_max_iter)
     tol: float = float(options.init_newton_tol)
-    identity_mask: np.ndarray = np.ones(len(reduced_system.unknown_vars), dtype=np.float64)
-    mass_matrix: sp.csc_matrix = sp.diags(identity_mask / max(dtau, dtau_min), format="csc")
+    # The previous reduced iterate supplies the pseudo-time reference for state rows.
+    x_prev_reduced: np.ndarray = reduced_x.copy()
 
     iter_idx: int = 0
     while iter_idx < max_iter:
+        # Scatter first so all residual and Jacobian evaluations see one consistent
+        # full EMT state assembled from the current reduced iterate.
         _scatter_unknown_vector(problem, reduced_system.unknown_vars, x, reduced_x)
-        residual: np.ndarray = _evaluate_initialization_residual(reduced_system, problem, x, dx, runtime_params, constant_params)
+        residual: np.ndarray = _evaluate_reduced_pseudo_transient_residual(
+            reduced_system=reduced_system,
+            problem=problem,
+            x=x,
+            x_prev_reduced=x_prev_reduced,
+            dx=dx,
+            runtime_params=runtime_params,
+            constant_params=constant_params,
+            dtau=dtau,
+        )
         res_norm: float = _max_abs_value(residual)
         report.final_residual_inf = res_norm
 
@@ -2151,30 +2253,52 @@ def _run_reduced_pseudo_transient_initialization(
         else:
             report.final_residual_inf = report.final_residual_inf
 
-        jacobian: sp.csc_matrix = _evaluate_initialization_jacobian(reduced_system, problem, x, dx, runtime_params, constant_params)
-        mass_matrix = sp.diags(identity_mask / max(dtau, dtau_min), format="csc")
-        linear_matrix: sp.csc_matrix = (jacobian + mass_matrix).tocsc()
+        # Build the Jacobian of the pseudo-transient residual, not just the original
+        # steady-state residual, so the Newton-like correction matches the algorithm.
+        linear_matrix: sp.csc_matrix = _evaluate_reduced_pseudo_transient_jacobian(
+            reduced_system=reduced_system,
+            problem=problem,
+            x=x,
+            dx=dx,
+            runtime_params=runtime_params,
+            constant_params=constant_params,
+            dtau=max(dtau, dtau_min),
+        )
 
         delta: np.ndarray = _solve_reduced_linear_system(linear_matrix, -residual, int(options.init_dense_threshold))
 
         if np.all(np.isfinite(delta)):
+            # Form one trial iterate and accept it only when the pseudo-transient
+            # residual decreases. This keeps the continuation monotone enough for
+            # the small initialization problems solved here.
             trial_reduced_x: np.ndarray = reduced_x + delta
             _scatter_unknown_vector(problem, reduced_system.unknown_vars, x, trial_reduced_x)
-            trial_residual: np.ndarray = _evaluate_initialization_residual(reduced_system, problem, x, dx, runtime_params, constant_params)
+            trial_residual: np.ndarray = _evaluate_reduced_pseudo_transient_residual(
+                reduced_system=reduced_system,
+                problem=problem,
+                x=x,
+                x_prev_reduced=x_prev_reduced,
+                dx=dx,
+                runtime_params=runtime_params,
+                constant_params=constant_params,
+                dtau=max(dtau, dtau_min),
+            )
             trial_norm: float = _max_abs_value(trial_residual)
 
             if trial_norm < res_norm:
+                # Once a step is accepted, the old iterate becomes the new pseudo-time
+                # reference and dtau is expanded to accelerate convergence.
+                x_prev_reduced = reduced_x.copy()
                 reduced_x = trial_reduced_x
                 dtau = min(dtau_max, dtau * 2.0)
             else:
+                # Rejected steps shrink dtau so the next pseudo-time correction is
+                # more damped and therefore more likely to be accepted.
                 dtau = max(dtau_min, dtau * 0.5)
         else:
-            delta = _solve_reduced_linear_system(linear_matrix, -residual, int(options.init_dense_threshold))
-            if np.all(np.isfinite(delta)):
-                reduced_x = reduced_x + delta
-                dtau = min(dtau_max, dtau * 2.0)
-            else:
-                dtau = max(dtau_min, dtau * 0.5)
+            # Non-finite linear corrections indicate an unusable local model, so the
+            # next attempt must reduce dtau instead of updating the iterate.
+            dtau = max(dtau_min, dtau * 0.5)
 
         iter_idx += 1
 
@@ -2562,17 +2686,7 @@ def run_emt_native_initialization(problem: EmtProblemTemplate, options: EmtOptio
                 report.status = InitializationStatus.RESOLVED
             elif use_ptc:
                 phase_t0 = time.perf_counter()
-                # converged = _run_reduced_pseudo_transient_initialization(
-                #     reduced_system=reduced_system,
-                #     problem=problem,
-                #     x=x,
-                #     dx=dx,
-                #     runtime_params=runtime_params,
-                #     constant_params=constant_params,
-                #     options=options,
-                #     report=report,
-                # )
-                converged = _run_pseudo_transient_initialization(
+                converged = _run_reduced_pseudo_transient_initialization(
                     reduced_system=reduced_system,
                     problem=problem,
                     x=x,
@@ -2582,6 +2696,16 @@ def run_emt_native_initialization(problem: EmtProblemTemplate, options: EmtOptio
                     options=options,
                     report=report,
                 )
+                # converged = _run_pseudo_transient_initialization(
+                #     reduced_system=reduced_system,
+                #     problem=problem,
+                #     x=x,
+                #     dx=dx,
+                #     runtime_params=runtime_params,
+                #     constant_params=constant_params,
+                #     options=options,
+                #     report=report,
+                # )
                 report.pseudo_transient_elapsed_s += float(time.perf_counter() - phase_t0)
                 if converged:
                     converged = converged

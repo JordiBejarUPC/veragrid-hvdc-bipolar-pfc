@@ -574,14 +574,23 @@ def _realign_static_parameter_mapping_with_unified_block(
     uid_to_parameter_var: Dict[int, Var] = dict()
     parameter_var: Var
 
-    for parameter_var, parameter_value in sys_block.parameters.items():
-        if parameter_var not in static_parameter_values_mapping:
-            static_parameter_values_mapping[parameter_var] = parameter_value
-        else:
-            pass
+    # Some custom EMT templates keep parameter variables only in nested blocks.
+    # After block unification the final compiled equations may still reference
+    # those vars by UID even when the root ``sys_block.parameters`` dictionary is
+    # not the original object that first held them. Walk the full hierarchy to
+    # realign every constant parameter against the vars that survive in the
+    # unified graph.
+    all_blocks: List[Block] = sys_block.get_all_blocks()
+    block_obj: Block
+    parameter_value: Const
 
-    for parameter_var in sys_block.parameters.keys():
-        uid_to_parameter_var[parameter_var.uid] = parameter_var
+    for block_obj in all_blocks:
+        for parameter_var, parameter_value in block_obj.parameters.items():
+            if parameter_var not in static_parameter_values_mapping:
+                static_parameter_values_mapping[parameter_var] = parameter_value
+            else:
+                pass
+            uid_to_parameter_var[parameter_var.uid] = parameter_var
 
     if len(uid_to_parameter_var) == 0:
         return
