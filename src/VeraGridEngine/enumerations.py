@@ -3449,6 +3449,7 @@ class VarPowerFlowReferenceType(Enum):
     If_vsc = "If_vsc"
     It_vsc = "It_vsc"
 
+
     # Phasor current references for RMS formulation
     Ir = "Ir"  # Real part of bus injection current
     Ii = "Ii"  # Imaginary part of bus injection current

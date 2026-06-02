@@ -2,11 +2,9 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-import cProfile
-import pstats
+
 import numpy as np
-from time import perf_counter
-from typing import Any, cast
+
 
 import sys
 import os
@@ -23,6 +21,7 @@ if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
 
 import matplotlib.pyplot as plt
+from typing import Any, Dict, List, Tuple, cast
 
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
 
@@ -31,11 +30,8 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlowDriver3Ph
+from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
 
-
-from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
-from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_emt_template
-from VeraGridEngine.Templates.Emt.generator_emt_type_template import get_complete_generator_template_emt
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 
 from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbolicSolver
@@ -46,7 +42,10 @@ from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import St
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
 
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonTraceCollector
-from VeraGridEngine.enumerations import DynamicIntegrationMethod, EmtSolverTypes, ShuntConnectionType
+from VeraGridEngine.enumerations import (BranchImpedanceMode, DynamicIntegrationMethod, EmtInitializationMethod,
+                                         EmtSolverTypes, ShuntConnectionType, SolverType)
+from trunk.GridsForLoads_dynamic.gridsforloads_converter_template import (get_trafo_grid_connection_G4L,
+                                                                          get_complete_load_template_G4L)
 import VeraGridEngine.api as gce
 
 def find_name_in_block(name: str, block: Block):
@@ -64,53 +63,40 @@ def find_name_in_block(name: str, block: Block):
 # Build grid
 ######################################################################################################
 
+U       = 33000 / 1000 # V -> kV
+Sb      = 2000000 / 1000000 # VA -> MVA
+omega   = 2 * np.pi * 50.0
+Vdc_ref = 1200 / 1000 # V -> kV
 
-grid = gce.MultiCircuit(Sbase=2.0, fbase=50.0)
+grid = gce.MultiCircuit(Sbase=Sb, fbase=50.0)
 
 # Buses
-vnom = 10 #kV
-bus0 = gce.Bus(name="Bus0", Vnom=vnom, is_slack=True)
-bus1 = gce.Bus(name="Bus1", Vnom=vnom)
+bus0 = gce.Bus(name="Bus0", Vnom=U, is_slack=True)
+bus1 = gce.Bus(name="Bus1", Vnom=U)
 
 grid.add_bus(bus0)
 grid.add_bus(bus1)
 
 # Lines
-line0 = gce.Line(name="line0", bus_from=bus0, bus_to=bus1, length=10, rate=900.0)
-
-
-# physical configuration (Overhead line tower)
-# TODO: change to almost ideal line (no losses)
-tower = gce.OverheadLineType(name="Tower", Vnom=vnom)
-wire = gce.Wire(name="Panther 30/7 ACSR",
-                diameter=21.0,
-                diameter_internal=9.0,
-                is_tube=True,
-                r=0.1363,
-                max_current=1)
-tower.add_wire_relationship(wire=wire, xpos=-12.65, ypos=27.5, phase=1)
-tower.add_wire_relationship(wire=wire, xpos=0.0, ypos=27.5, phase=2)
-tower.add_wire_relationship(wire=wire, xpos=12.65, ypos=27.5, phase=3)
-
-tower.compute()
-
-# Apply line physics
-line0.apply_template(tower, grid.Sbase, grid.fBase)
+Zbase = U*U/Sb
+L_trf = Zbase/(10*omega)
+R_trf = (Zbase/10)*0.1
+C_f  = 1 / (15*U*U/(Sb*omega))
+X = omega * L_trf
+B =1 / (omega * C_f)
+line0 = gce.Line(name="line0", bus_from=bus0, bus_to=bus1, r=R_trf, x= X, b=B , rate=900.0)
 
 # load
-# P=1.0
-# Q= 0.999999
-R_ph = 100 #ohm
-v_ph = vnom / (3**0.5)
-P_ph = (v_ph**2) / R_ph # kv*kv/ohm = MW
-
-# load = gce.Load(name="load",P1= P/3, P2= P/3, P3= P/3, Q1= Q/3, Q2= Q/3, Q3= Q/3)
-load = gce.Load(name="load",P1= P_ph, P2= P_ph, P3= P_ph, Q1= 0.0, Q2= 0.0, Q3= 0.0)
+load = gce.Load(name="load",P1= Sb/3, P2= Sb/3, P3= Sb/3, Q1= 0.0, Q2= 0.0, Q3= 0.0)
 load.conn = ShuntConnectionType.GroundedStar
 
 # Generator
-gen0 = gce.Generator(name="Gen0", vset=1.0, Snom=grid.Sbase, freq = 50, r1=0.001, x1=1.7, x0 = 0.14)
-# r1=Ra, x1=xd'
+SCR = 3
+RL  = 0.1
+L_g = Zbase/(SCR*omega)
+R_g = (Zbase/SCR)*RL
+Xl_g = omega * L_g
+gen0 = gce.Generator(name="Gen0", vset=1.0, Snom=grid.Sbase, freq = 50, r1=R_g, x1=Xl_g)
 
 grid.add_line(line0)
 grid.add_generator(bus=bus0, api_obj=gen0)
@@ -125,13 +111,105 @@ for bus in grid.buses:
 ######################################################################################################
 gen_mdl = get_generator_thevenin_rl_emt_template_with_ref(vf= grid.var_factory).block
 
+line_mdl = get_trafo_grid_connection_G4L(vf= grid.var_factory).block
+
+load_mdl = get_complete_load_template_G4L(vf= grid.var_factory).block
+
+######################################################################################################
+# Add models to devices
+######################################################################################################
+
+set_emt_model(device=gen0, model=gen_mdl, var_factory= grid.var_factory)
+
+set_emt_model(device=line0, model=line_mdl, var_factory= grid.var_factory)
+
+set_emt_model(device=load, model=load_mdl, var_factory= grid.var_factory)
+
+######################################################################################################
+# PowerFlow
+######################################################################################################
+
+pf_options = PowerFlowOptions(
+    solver_type=SolverType.NR,
+    retry_with_other_methods=False,
+    verbose=0,
+    initialize_with_existing_solution=True,
+    tolerance=1e-6,
+    max_iter=25,
+    control_q=False,
+    control_taps_modules=True,
+    control_taps_phase=True,
+    control_remote_voltage=True,
+    orthogonalize_controls=True,
+    apply_temperature_correction=True,
+    branch_impedance_tolerance_mode=BranchImpedanceMode.Specified,
+    distributed_slack=False,
+    ignore_single_node_islands=False,
+    trust_radius=1.0,
+    backtracking_parameter=0.05,
+    use_stored_guess=False,
+    initialize_angles=False,
+    generate_report=False,
+)
+# Balanced powerflow
+power_flow = PowerFlowDriver(grid, pf_options)
+power_flow.run()
+res = power_flow.results
+print("Balanced power flow results")
+print("res.bus_names = ", res.bus_names)
+print("res.branch_names = ", res.branch_names)
+print("res.bus_types = ", res.bus_types)
+print("res.voltage_A = ", res.voltage)
+print("res.Sbus_A = ", res.Sbus)
+print("res.Sf_A = ", res.Sf)
+print("res.St_A = ", res.St)
+
+print(f"Converged: {res.converged}")
+print(res.get_bus_df())
+print(res.get_branch_df())
+
+######################################################################################################
+# EMT options and problem
+######################################################################################################
 
 
-# line
-# line_mdl = get_pi_line_emt_template(vf=grid.var_factory, line = line0).block
-line_mdl = get_pi_line_emt_template(vf = grid.var_factory, phN = False, phA = True, phB = True, phC = True).block
+options = EmtOptions(time_step = 5e-6,
+                     simulation_time =  0.01, # s
+                     tolerance = 1e-6,
+                     solver_type = EmtSolverTypes.StructuralAD,
+                     initialization_method = EmtInitializationMethod.Auto,
+                     integration_method = DynamicIntegrationMethod.DaeTrapezoidal,
+                     verbose = 1)
 
-# load
-# load_mdl = get_load_ZIP_3ph_emt_template(grid = grid, load = load).block
-load_mdl = get_shunt_r_emt_template(vf=grid.var_factory, phA=True, phB=True, phC=True).block
-# load_mdl.set_parameter_in_model(var_name="Vnom_Shunt_R_3ph", new_value=1.0)
+problem = EmtProblemDae(grid=grid,
+                              options=options,
+                              pf_results_3ph=None,
+                              pf_results=res)
+
+print(problem.initialization_report.method_requested)
+print(problem.initialization_report.method_used)
+print(problem.initialization_report.status)
+print(problem.initialization_report.newton_iterations)
+print(problem.initialization_report.pseudo_transient_steps)
+print(problem.initialization_report.message)
+
+DENSE_THRESHOLD = 0
+solver = StructuralVectorizedSolver(problem = problem,
+                                          t0 = 0.0,
+                                          t_end = options.simulation_time,
+                                          h = options.time_step,
+                                          method=options.integration_method,
+                                          pred_method=DynamicIntegrationMethod.OdeEuler,
+                                          dense_threshold=DENSE_THRESHOLD,
+                                          verbose = True,
+                                          auto_vectorization=False)
+boundary_updater = cast(Any, problem)
+t_arr: np.ndarray
+y_arr: np.ndarray
+dy_arr: np.ndarray
+t_arr, y_arr, dy_arr, well_initialized , converged= solver.simulate(boundary_updater=boundary_updater)
+
+
+
+
+
