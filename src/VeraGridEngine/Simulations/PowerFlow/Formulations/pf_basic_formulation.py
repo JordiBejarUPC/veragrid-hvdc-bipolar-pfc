@@ -62,7 +62,7 @@ class PfBasicFormulation(PfFormulationTemplate):
         self.buses_with_discrete_shunts_control: List[Tuple[int, int]] = list()
         self.shunt_step = self.nc.shunt_data.step.copy()
         for sh_i, bus_i in enumerate(self.nc.shunt_data.bus_idx):
-            if self.nc.shunt_data.control_mode[sh_i] == ShuntControlMode.Discrete:
+            if self.nc.shunt_data.control_mode_int[sh_i] == ShuntControlMode.Discrete.idx():
                 self.buses_with_discrete_shunts_control.append((bus_i, sh_i))
 
     def x2var(self, x: Vec):
