@@ -23,9 +23,10 @@ values it consumes by exposing only the desired enum keys in ``api_obj_mapping``
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, TYPE_CHECKING
 
 import numpy as np
+
 
 from VeraGridEngine.Devices.Branches.overhead_line_type import OverheadLineType
 from VeraGridEngine.Devices import MultiCircuit
@@ -43,6 +44,9 @@ from VeraGridEngine.enumerations import (
     ShuntControlMode,
     WindingType,
 )
+
+if TYPE_CHECKING:
+    import VeraGridEngine.Devices as dev
 
 devices_static_params_mapping: Dict[DeviceType, List[ParamPowerFlowRefferenceType]] = {
     DeviceType.LoadDevice: [
@@ -189,7 +193,7 @@ devices_static_params_mapping: Dict[DeviceType, List[ParamPowerFlowRefferenceTyp
         ParamPowerFlowRefferenceType.generator_r0_pu,
         ParamPowerFlowRefferenceType.generator_r2_pu,
         ParamPowerFlowRefferenceType.generator_x2_pu,
-        ParamPowerFlowRefferenceType.generator_is_controlled,
+        ParamPowerFlowRefferenceType.generator_control_mode,
         ParamPowerFlowRefferenceType.generator_enabled_dispatch,
         ParamPowerFlowRefferenceType.generator_must_run,
         ParamPowerFlowRefferenceType.generator_use_reactive_power_curve,
@@ -217,7 +221,7 @@ devices_static_params_mapping: Dict[DeviceType, List[ParamPowerFlowRefferenceTyp
         ParamPowerFlowRefferenceType.generator_r0_pu,
         ParamPowerFlowRefferenceType.generator_r2_pu,
         ParamPowerFlowRefferenceType.generator_x2_pu,
-        ParamPowerFlowRefferenceType.generator_is_controlled,
+        ParamPowerFlowRefferenceType.generator_control_mode,
         ParamPowerFlowRefferenceType.generator_enabled_dispatch,
         ParamPowerFlowRefferenceType.generator_must_run,
         ParamPowerFlowRefferenceType.generator_use_reactive_power_curve,
@@ -2570,7 +2574,7 @@ def assign_current_injection_static_api_mapping(
 
 def assign_generator_static_api_mapping(
         grid: MultiCircuit,
-        generator: Any,
+        generator: dev.Generator,
         mdl: Block,
         logger: Logger | None,
 ) -> None:
@@ -2723,8 +2727,8 @@ def assign_generator_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.generator_is_controlled,
-        value=boolean_to_float(bool(generator.is_controlled)),
+        key=ParamPowerFlowRefferenceType.generator_control_mode,
+        value=float(generator.control_mode.to_int()),
         logger=logger,
         device_name=device_name,
     )

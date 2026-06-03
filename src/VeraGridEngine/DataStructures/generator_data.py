@@ -27,7 +27,7 @@ class GeneratorData:
         self.names: StrVec = np.empty(nelm, dtype=object)
         self.idtag: StrVec = np.empty(nelm, dtype=object)
 
-        self.controllable: BoolVec = np.zeros(nelm, dtype=bool)
+        self.control_mode_int: IntVec = np.zeros(nelm, dtype=int)  # int representation of GeneratorControlMode
         self.installed_p: Vec = np.zeros(nelm, dtype=float)
 
         self.active: BoolVec = np.zeros(nelm, dtype=bool)
@@ -111,7 +111,7 @@ class GeneratorData:
         data.names = self.names[elm_idx]
         data.idtag = self.idtag[elm_idx]
 
-        data.controllable = self.controllable[elm_idx]
+        data.control_mode_int = self.control_mode_int[elm_idx]
         data.installed_p = self.installed_p[elm_idx]
 
         data.active = self.active[elm_idx]
@@ -219,7 +219,7 @@ class GeneratorData:
         data.names = self.names.copy()
         data.idtag = self.idtag.copy()
 
-        data.controllable = self.controllable.copy()
+        data.control_mode_int = self.control_mode_int.copy()
         data.installed_p = self.installed_p.copy()
 
         data.active = self.active.copy()
@@ -444,7 +444,7 @@ class GeneratorData:
         Get the indices of controllable generators
         :return: idx_controllable, idx_non_controllable
         """
-        return np.where(self.controllable == 1)[0], np.where(self.controllable == 0)[0]
+        return np.where(self.control_mode_int == 1)[0], np.where(self.control_mode_int == 0)[0]
 
     def get_gen_indices_at_buses(self, bus_indices: IntVec) -> IntVec:
 

@@ -13,7 +13,7 @@ from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.Aggregation.area import Area
 from VeraGridEngine.enumerations import (BusMode, BranchImpedanceMode, ExternalGridMode, DeviceType,
                                          TapModuleControl, TapPhaseControl, HvdcControlType, ConverterControlType,
-                                         ShuntConnectionType, ShuntControlMode)
+                                         ShuntConnectionType, ShuntControlMode, GeneratorControlMode)
 from VeraGridEngine.basic_structures import BoolVec, IntVec
 from VeraGridEngine.Devices.types import BRANCH_TYPES
 from VeraGridEngine.DataStructures.battery_data import BatteryData
@@ -1011,7 +1011,7 @@ def fill_generator_parent(
     data.mttf[k] = elm.mttf
     data.mttr[k] = elm.mttr
 
-    data.controllable[k] = elm.is_controlled
+    data.control_mode_int[k] = elm.control_mode.to_int()
     data.installed_p[k] = elm.Snom
     bus_data.installed_power[i] += elm.Snom
 
@@ -1071,7 +1071,7 @@ def fill_generator_parent(
         if elm.get_srap_enabled_at(t_idx) and data.p[k] > 0.0:
             bus_data.srap_available_power[i] += data.p[k]
 
-        if elm.is_controlled:
+        if elm.control_mode == GeneratorControlMode.V:
             if elm.control_bus is not None:
                 remote_control = True
                 j = bus_dict[elm.control_bus]
@@ -1114,7 +1114,7 @@ def fill_generator_parent(
     # would be half the value (1e-20/1e-20). 
     # A value of 1e-14 seems a sweet compromise.
     if data.active[k]:
-        if data.controllable[k]:
+        if data.control_mode_int[k]:
             bus_data.q_shared_total[i] += data.p[k] + 1e-14
             data.q_share[k] = data.p[k] + 1e-14
             # bus_data.q_shared_total[i] += data.p[k]

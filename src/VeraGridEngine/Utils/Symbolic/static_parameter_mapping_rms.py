@@ -189,7 +189,7 @@ devices_static_params_mapping: Dict[DeviceType, List[ParamPowerFlowRefferenceTyp
         ParamPowerFlowRefferenceType.generator_r0_pu,
         ParamPowerFlowRefferenceType.generator_r2_pu,
         ParamPowerFlowRefferenceType.generator_x2_pu,
-        ParamPowerFlowRefferenceType.generator_is_controlled,
+        ParamPowerFlowRefferenceType.generator_control_mode,
         ParamPowerFlowRefferenceType.generator_enabled_dispatch,
         ParamPowerFlowRefferenceType.generator_must_run,
         ParamPowerFlowRefferenceType.generator_use_reactive_power_curve,
@@ -217,7 +217,7 @@ devices_static_params_mapping: Dict[DeviceType, List[ParamPowerFlowRefferenceTyp
         ParamPowerFlowRefferenceType.generator_r0_pu,
         ParamPowerFlowRefferenceType.generator_r2_pu,
         ParamPowerFlowRefferenceType.generator_x2_pu,
-        ParamPowerFlowRefferenceType.generator_is_controlled,
+        ParamPowerFlowRefferenceType.generator_control_mode,
         ParamPowerFlowRefferenceType.generator_enabled_dispatch,
         ParamPowerFlowRefferenceType.generator_must_run,
         ParamPowerFlowRefferenceType.generator_use_reactive_power_curve,
@@ -2772,7 +2772,7 @@ def assign_generator_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.generator_is_controlled,
+        key=ParamPowerFlowRefferenceType.generator_control_mode,
         value=1.0 if bool(generator.is_controlled) else 0.0,
         logger=logger,
         device_name=device_name,

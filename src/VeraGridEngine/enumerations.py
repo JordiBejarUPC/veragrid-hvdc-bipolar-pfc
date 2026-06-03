@@ -179,6 +179,37 @@ class ShuntControlMode(Enum):
         except KeyError:
             return s
 
+class GeneratorControlMode(str, Enum):
+    """
+    Modes of operation of generator control modes.
+    """
+
+    Locked = ("Locked", 0)   # Fixed P, Q
+    V = ("V", 1)             # classic PV node
+    QVDroop = ("Q-V", 2)     # Like a PQ node with droop equation update of Q
+
+    def __new__(cls, value: str, code: int):
+        obj = str.__new__(cls, value)
+        obj._value_ = value
+        obj.code = code
+        return obj
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return str(self)
+
+    def to_int(self) -> int:
+        return self.code
+
+    @staticmethod
+    def argparse(s):
+        try:
+            return GeneratorControlMode[s]
+        except KeyError:
+            return s
+
 
 class GeneratorType(Enum):
     """
@@ -1319,7 +1350,6 @@ class ActionType(Enum):
         return list(enum_item.value for enum_item in cls)
 
 
-
 class PrpCat(Enum):
     """
     ActionType
@@ -1362,6 +1392,7 @@ class PrpCat(Enum):
         :return:
         """
         return list(enum_item.value for enum_item in cls)
+
 
 # class GpfControlType(Enum):
 #     """
@@ -2583,7 +2614,6 @@ class ResultTypes(Enum):
     RmsLineResults = 'Rms Line results'
     RmsLoadResults = 'Rms load results'
 
-
     RmsGeneratorOmegaResults = 'Rms Genqec omega results'
     RmsGeneratorDeltaResults = 'Rms Genqec delta results'
 
@@ -2738,8 +2768,6 @@ class ResultTypes(Enum):
     ReliabilitySAIDIResults = "SAIDI"
     ReliabilitySAIFIResults = "SAIFI"
     ReliabilityCAIDIResults = "CAIDI"
-
-
 
     def __str__(self):
         return self.value
@@ -3070,6 +3098,7 @@ class CascadeType(Enum):
         """
         return list(enum_item.value for enum_item in cls)
 
+
 class DynamicIntegrationMethod(Enum):
     """
     Dynamic integration methods.
@@ -3163,12 +3192,12 @@ class EmtSolverTypes(Enum):
         """
         return list(enum_item.value for enum_item in cls)
 
-class RmsProblemTypes(Enum):
 
-    Tensygrid       = "Tensygrid"
-    PowerBalance    = "RmsProblemDae"
-    CurrentBalance  = "RmsProblemPhasor"
-    Multilinear     = "RmsProblemMultilinear"
+class RmsProblemTypes(Enum):
+    Tensygrid = "Tensygrid"
+    PowerBalance = "RmsProblemDae"
+    CurrentBalance = "RmsProblemPhasor"
+    Multilinear = "RmsProblemMultilinear"
 
     def __str__(self) -> str:
         return str(self.value)
@@ -3196,9 +3225,9 @@ class RmsProblemTypes(Enum):
         """
         return list(enum_item.value for enum_item in cls)
 
-class EmtProblemTypes(Enum):
 
-    CurrentBalance       = "EmtProblemDae"
+class EmtProblemTypes(Enum):
+    CurrentBalance = "EmtProblemDae"
 
     def __str__(self) -> str:
         return str(self.value)
@@ -3225,7 +3254,8 @@ class EmtProblemTypes(Enum):
         :return:
         """
         return list(enum_item.value for enum_item in cls)
-    
+
+
 class SmallSignalEmtBuildTypes(Enum):
     """
     Jacobian construction backends for implicit solvers.
@@ -3292,7 +3322,6 @@ class EraSvdSolverType(Enum):
         :return:
         """
         return list(enum_item.value for enum_item in cls)
-
 
 
 class RmsInitializationMethod(Enum):
@@ -3502,8 +3531,8 @@ class VarPowerFlowRefferenceType(Enum):
     i_B = "i_B"  # Injection current at phase B in p.u.
     i_C = "i_C"  # Injection current at phase C in p.u.
     phi_v = "phi_v"  # voltage angle in the network
-    phi = "phi" # network angle
-    Vpk = "Vpk" # rms peak value of voltage in p.u.
+    phi = "phi"  # network angle
+    Vpk = "Vpk"  # rms peak value of voltage in p.u.
     Ipk = "Ipk"  # rms peak value of current in p.u.
 
     P_N = "P_N"  # Bus active power in phase N in p.u.
@@ -3574,9 +3603,9 @@ class ParamPowerFlowRefferenceType(Enum):
     ParamPowerFlowRefferenceType
     """
     NOTHING = "nothing"
-    #General
+    # General
     dt = "dt"  # time step for dynamic simulations
-    
+
     # Branch / load parameters
     g = "g"  # Branch resistance in per unit
     b = "b"  # Branch reactance in per unit
@@ -3584,8 +3613,8 @@ class ParamPowerFlowRefferenceType(Enum):
     gFe = "gFe"  # Branch magnetizing conductance in per unit
     vtap_f = "vtap_f"  # Virtual tap at from-side
     vtap_t = "vtap_t"  # Virtual tap at to-side
-    tap_module = 'tap_module' #Transformer tap module
-    tap_phase = 'tap_phase'  #Transformer tap phase
+    tap_module = 'tap_module'  # Transformer tap module
+    tap_phase = 'tap_phase'  # Transformer tap phase
     r = "r"  # Branch resistance in per unit
     x = "x"  # Branch reactance in per unit
     l = "l"  # Branch inductance in per unit
@@ -3605,7 +3634,7 @@ class ParamPowerFlowRefferenceType(Enum):
     Ql0_C = "Ql0_C"  # Load reactive power phase C
 
     # Three-phase line coupled R L and C
-    Rnn = "Rnn" # N-N line series resistance
+    Rnn = "Rnn"  # N-N line series resistance
     Rna = "Rna"  # N-A line series resistance
     Rnb = "Rnb"  # N-B line series resistance
     Rnc = "Rnc"  # N-C line series resistance
@@ -3704,9 +3733,8 @@ class ParamPowerFlowRefferenceType(Enum):
     transformer_to_connection_cb = "transformer_to_connection_cb"
     transformer_to_connection_cc = "transformer_to_connection_cc"
 
-
     # Active phases in a branch
-    phN = "phN" # 1 if the N wire is active, else 0.
+    phN = "phN"  # 1 if the N wire is active, else 0.
     phA = "phA"  # 1 if the A wire is active, else 0.
     phB = "phB"  # 1 if the B wire is active, else 0.
     phC = "phC"  # 1 if the C wire is active, else 0.
@@ -3771,19 +3799,19 @@ class ParamPowerFlowRefferenceType(Enum):
     vf = "vf"
     tm0 = "tm0"
 
-    #VSC loss parameters
+    # VSC loss parameters
     alpha1 = 'alpha1'
     alpha2 = 'alpha2'
-    alpha3 = 'alpha3'    
+    alpha3 = 'alpha3'
 
     converter_loss_power_0 = "converter_loss_power_0"
     converter_control_mode_1 = "converter_control_mode_1"
     converter_control_mode_2 = "converter_control_mode_2"
     converter_control_target_1 = "converter_control_target_1"
     converter_control_target_2 = "converter_control_target_2"
-    
-    omega_base = "omega_base" # in rad/s
-    Sbase = "Sbase" # in MVA
+
+    omega_base = "omega_base"  # in rad/s
+    Sbase = "Sbase"  # in MVA
 
     generator_share_enable = "generator_share_enable"
     generator_share_p_ref = "generator_share_p_ref"
@@ -3841,7 +3869,7 @@ class ParamPowerFlowRefferenceType(Enum):
     generator_r0_pu = "generator_r0_pu"
     generator_r2_pu = "generator_r2_pu"
     generator_x2_pu = "generator_x2_pu"
-    generator_is_controlled = "generator_is_controlled"
+    generator_control_mode = "generator_control_mode"
     generator_enabled_dispatch = "generator_enabled_dispatch"
     generator_must_run = "generator_must_run"
     generator_use_reactive_power_curve = "generator_use_reactive_power_curve"
@@ -3906,7 +3934,6 @@ class ParamPowerFlowRefferenceType(Enum):
     # VSC static parameters
     vsc_kdp_pu = "vsc_kdp_pu"
     vsc_min_ac_voltage_pu = "vsc_min_ac_voltage_pu"
-
 
     def __str__(self):
         return self.value
@@ -4030,6 +4057,7 @@ class EmtLineTypes(Enum):
         except KeyError:
             return s
 
+
 class DynamicSimulationMode(Enum):
     RMS = "RMS",
     EMT = "EMT",
@@ -4111,8 +4139,6 @@ class DynamicPlotEntryRole(Enum):
         return self.value
 
 
-
-
 class BlockScopeMode(Enum):
     """
     Block extraction scope modes for DGS block parsing.
@@ -4146,6 +4172,7 @@ class BlockScopeMode(Enum):
         """
         return list(enum_item.value for enum_item in cls)
 
+
 class BlockType(Enum):
     """
     this class contains the existing types of blocks
@@ -4175,7 +4202,6 @@ class BlockType(Enum):
     EXCITER_RMS = "EXCITER_RMS"
     LINE_RMS = "Line_RMS"
     LOAD_RMS = "Load_RMS"
-
 
     # EMT
     EMT_GENERATOR = "EMT_GENERATOR"
@@ -4229,7 +4255,6 @@ class BlockType(Enum):
     BATTERY_EMT = "BATTERY_EMT"
     COMPLETE_PSEUDO_VSC_EMT = "COMPLETE_PSEUDO_VSC_EMT"
 
-
     def __str__(self):
         return self.value
 
@@ -4246,7 +4271,6 @@ class BlockType(Enum):
             return BlockType[s]
         except KeyError:
             return s
-
 
 
 class ProceduralGridMethods(Enum):
@@ -4337,6 +4361,7 @@ class EmtInitializationStatus(Enum):
         except KeyError:
             return s
 
+
 class DynamicPlotEntryKind(Enum):
     """
     Semantic kind of one persistent dynamic plot entry.
@@ -4353,6 +4378,7 @@ class DynamicPlotEntryKind(Enum):
         """
         return self.value
 
+
 class DynamicEntrySection:
     """
     Stable source-tree section labels used for dynamic entries.
@@ -4362,6 +4388,7 @@ class DynamicEntrySection:
 
     VARIABLES: str = "Variables"
     PARAMETERS: str = "Parameters"
+
 
 class TreeStateNodeKind(Enum):
     """

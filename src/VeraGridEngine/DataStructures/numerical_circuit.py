@@ -857,13 +857,13 @@ class NumericalCircuit:
             q_min_gen=self.generator_data.qmin,
             q_max_gen=self.generator_data.qmax,
             active_gen=self.generator_data.active,
-            controllable_gen=self.generator_data.controllable,
+            controllable_gen=self.generator_data.control_mode_int,
 
             batt_idx=self.battery_data.bus_idx,
             q_min_batt=self.battery_data.qmin,
             q_max_batt=self.battery_data.qmax,
             active_batt=self.battery_data.active,
-            controllable_batt=self.battery_data.controllable,
+            controllable_batt=self.battery_data.control_mode_int,
 
             sh_idx=self.shunt_data.bus_idx,
             q_min_sh=self.shunt_data.qmin,
@@ -1051,11 +1051,11 @@ class NumericalCircuit:
         # Correct bus types because of generators moving around due to the topology processing
         if self.topology_performed:
             correct_bus_types(gen_idx=gen_idx,
-                              gen_controllable=nc.generator_data.controllable,
+                              gen_controllable=nc.generator_data.control_mode_int,
                               gen_controllable_bus_idx=nc.generator_data.controllable_bus_idx,
                               bus_types=nc.bus_data.bus_types)
             correct_bus_types(gen_idx=batt_idx,
-                              gen_controllable=nc.battery_data.controllable,
+                              gen_controllable=nc.battery_data.control_mode_int,
                               gen_controllable_bus_idx=nc.battery_data.controllable_bus_idx,
                               bus_types=nc.bus_data.bus_types)
 
