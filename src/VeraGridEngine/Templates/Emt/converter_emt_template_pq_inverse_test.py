@@ -300,7 +300,7 @@ def get_emt_ideal_converter(
     converter_block.api_obj_mapping = {
         ParamPowerFlowReferenceType.Sbase: sbase,
         ParamPowerFlowReferenceType.converter_loss_power_0: P_loss,
-        # ParamPowerFlowRefferenceType.P0: P0,
+        # ParamPowerFlowReferenceType.P0: P0,
         ParamPowerFlowReferenceType.omega_base: omega_base,
         ParamPowerFlowReferenceType.converter_control_mode_1: control1,
         ParamPowerFlowReferenceType.converter_control_mode_2: control2,

@@ -4,9 +4,9 @@ import math
 import numpy as np
 
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
-from VeraGridEngine.Utils.Symbolic.block import Block, VarPowerFlowRefferenceType
+from VeraGridEngine.Utils.Symbolic.block import Block, VarPowerFlowReferenceType
 from VeraGridEngine.Utils.Symbolic.block_helpers import tf_to_block
-from VeraGridEngine.enumerations import ConverterControlType, ParamPowerFlowRefferenceType
+from VeraGridEngine.enumerations import ConverterControlType, ParamPowerFlowReferenceType
 
 
 def park_transform_block(vf, v_abc, theta, name: str):
@@ -32,9 +32,9 @@ def park_transform_block(vf, v_abc, theta, name: str):
 
 
 def inverse_park_currents_block(vf, i_d, i_q, theta, name: str):
-    i_a = vf.add_var(f"i_A_{name}", reference=VarPowerFlowRefferenceType.i_A)
-    i_b = vf.add_var(f"i_B_{name}", reference=VarPowerFlowRefferenceType.i_B)
-    i_c = vf.add_var(f"i_C_{name}", reference=VarPowerFlowRefferenceType.i_C)
+    i_a = vf.add_var(f"i_A_{name}", reference=VarPowerFlowReferenceType.i_A)
+    i_b = vf.add_var(f"i_B_{name}", reference=VarPowerFlowReferenceType.i_B)
+    i_c = vf.add_var(f"i_C_{name}", reference=VarPowerFlowReferenceType.i_C)
     sqrt3 = vf.add_const(np.sqrt(3.0))
     half = vf.add_const(0.5)
     two = vf.add_const(2.0)
@@ -58,9 +58,9 @@ def build_emt_gfm_aggregated_model(
     _ = control1
     _ = control2
 
-    v_a = vf.add_var(f"v_A_{name}", reference=VarPowerFlowRefferenceType.v_A)
-    v_b = vf.add_var(f"v_B_{name}", reference=VarPowerFlowRefferenceType.v_B)
-    v_c = vf.add_var(f"v_C_{name}", reference=VarPowerFlowRefferenceType.v_C)
+    v_a = vf.add_var(f"v_A_{name}", reference=VarPowerFlowReferenceType.v_A)
+    v_b = vf.add_var(f"v_B_{name}", reference=VarPowerFlowReferenceType.v_B)
+    v_c = vf.add_var(f"v_C_{name}", reference=VarPowerFlowReferenceType.v_C)
 
     theta = vf.add_var(f"theta_{name}")
     omega = vf.add_var(f"omega_{name}")
@@ -238,31 +238,31 @@ def build_emt_gfm_aggregated_model(
         in_vars=[v_a, v_b, v_c],
         out_vars=[i_a, i_b, i_c],
         external_mapping={
-            VarPowerFlowRefferenceType.v_A: v_a,
-            VarPowerFlowRefferenceType.v_B: v_b,
-            VarPowerFlowRefferenceType.v_C: v_c,
-            VarPowerFlowRefferenceType.i_A: i_a,
-            VarPowerFlowRefferenceType.i_B: i_b,
-            VarPowerFlowRefferenceType.i_C: i_c,
-            VarPowerFlowRefferenceType.Pt: pt,
-            VarPowerFlowRefferenceType.Qt: qt,
-            VarPowerFlowRefferenceType.Pf: pf,
-            VarPowerFlowRefferenceType.Qf: qf,
-            VarPowerFlowRefferenceType.P_A: p_a,
-            VarPowerFlowRefferenceType.Q_A: q_a,
-            VarPowerFlowRefferenceType.P_B: p_b,
-            VarPowerFlowRefferenceType.Q_B: q_b,
-            VarPowerFlowRefferenceType.P_C: p_c,
-            VarPowerFlowRefferenceType.Q_C: q_c,
-            VarPowerFlowRefferenceType.d_v_A: d_v_a,
-            VarPowerFlowRefferenceType.d_v_B: d_v_b,
-            VarPowerFlowRefferenceType.d_v_C: d_v_c,
+            VarPowerFlowReferenceType.v_A: v_a,
+            VarPowerFlowReferenceType.v_B: v_b,
+            VarPowerFlowReferenceType.v_C: v_c,
+            VarPowerFlowReferenceType.i_A: i_a,
+            VarPowerFlowReferenceType.i_B: i_b,
+            VarPowerFlowReferenceType.i_C: i_c,
+            VarPowerFlowReferenceType.Pt: pt,
+            VarPowerFlowReferenceType.Qt: qt,
+            VarPowerFlowReferenceType.Pf: pf,
+            VarPowerFlowReferenceType.Qf: qf,
+            VarPowerFlowReferenceType.P_A: p_a,
+            VarPowerFlowReferenceType.Q_A: q_a,
+            VarPowerFlowReferenceType.P_B: p_b,
+            VarPowerFlowReferenceType.Q_B: q_b,
+            VarPowerFlowReferenceType.P_C: p_c,
+            VarPowerFlowReferenceType.Q_C: q_c,
+            VarPowerFlowReferenceType.d_v_A: d_v_a,
+            VarPowerFlowReferenceType.d_v_B: d_v_b,
+            VarPowerFlowReferenceType.d_v_C: d_v_c,
         },
         api_obj_mapping={
-            ParamPowerFlowRefferenceType.omega_base: omega_base,
-            ParamPowerFlowRefferenceType.alpha1: a0,
-            ParamPowerFlowRefferenceType.alpha2: a1,
-            ParamPowerFlowRefferenceType.alpha3: a2,
+            ParamPowerFlowReferenceType.omega_base: omega_base,
+            ParamPowerFlowReferenceType.alpha1: a0,
+            ParamPowerFlowReferenceType.alpha2: a1,
+            ParamPowerFlowReferenceType.alpha3: a2,
         },
     )
 

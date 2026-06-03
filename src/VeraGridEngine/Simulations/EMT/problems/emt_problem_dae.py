@@ -33,6 +33,8 @@ from VeraGridEngine.enumerations import (
     ParamPowerFlowReferenceType,
     DeviceType,
     DynamicEventTransitionType,
+    EmtInitializationMethod,
+    EmtInitializationStatus,
     EmtLineTypes,
     WindingType,
 )
@@ -572,14 +574,23 @@ def _realign_static_parameter_mapping_with_unified_block(
     uid_to_parameter_var: Dict[int, Var] = dict()
     parameter_var: Var
 
-    for parameter_var, parameter_value in sys_block.parameters.items():
-        if parameter_var not in static_parameter_values_mapping:
-            static_parameter_values_mapping[parameter_var] = parameter_value
-        else:
-            pass
+    # Some custom EMT templates keep parameter variables only in nested blocks.
+    # After block unification the final compiled equations may still reference
+    # those vars by UID even when the root ``sys_block.parameters`` dictionary is
+    # not the original object that first held them. Walk the full hierarchy to
+    # realign every constant parameter against the vars that survive in the
+    # unified graph.
+    all_blocks: List[Block] = sys_block.get_all_blocks()
+    block_obj: Block
+    parameter_value: Const
 
-    for parameter_var in sys_block.parameters.keys():
-        uid_to_parameter_var[parameter_var.uid] = parameter_var
+    for block_obj in all_blocks:
+        for parameter_var, parameter_value in block_obj.parameters.items():
+            if parameter_var not in static_parameter_values_mapping:
+                static_parameter_values_mapping[parameter_var] = parameter_value
+            else:
+                pass
+            uid_to_parameter_var[parameter_var.uid] = parameter_var
 
     if len(uid_to_parameter_var) == 0:
         return
@@ -1432,11 +1443,32 @@ class EmtProblemDae(EmtProblemTemplate):
         if self.progress_signal is not None:
             self.progress_signal.emit(5)
 
-        # 2) explicit init guesses initialization
-        self._run_explicit_initialization()
+        # 2) Initialization stage selection.
+        # Explicit initialization is the lightweight symbolic seed stage that
+        # resolves device-provided init equations directly. The broader EMT
+        # workflow may either stop here, use it as a seed for the reduced
+        # native consistency solve, or skip it entirely when the user
+        # requests a pure pseudo-transient initialization path driven only by
+        # the power-flow seeded variables.
+        if self.options.initialization_method == EmtInitializationMethod.PseudoTransient:
+            pass
+        else:
+            self._run_explicit_initialization()
         explicit_init_s: float = _toc(t_phase_start)
         t_phase_start = _tic()
-        self.initialization_report = run_emt_native_initialization(problem=self, options=self.options)
+
+        # 3) Native initialization stage selection.
+        # The native stage builds and solves the reduced consistency system only
+        # for workflows that require it. Pure Explicit stops after the symbolic
+        # seeding stage, while the other methods use the native initialization
+        # dispatcher to execute their requested algorithm from the current seed.
+        if self.options.initialization_method == EmtInitializationMethod.Explicit:
+            self.initialization_report = EmtInitializationReport(method_requested=EmtInitializationMethod.Explicit)
+            self.initialization_report.status = EmtInitializationStatus.RESOLVED
+            self.initialization_report.method_used = EmtInitializationMethod.Explicit
+            self.initialization_report.message = "Explicit initialization completed."
+        else:
+            self.initialization_report = run_emt_native_initialization(problem=self, options=self.options)
         self._seed_all_switched_vsc_models()
         self._seed_all_switch_models()
         self.init_guess.update(self._temp_post_init_guess)
@@ -4961,22 +4993,30 @@ class EmtProblemDae(EmtProblemTemplate):
         }
 
         omega_base: float = 2.0 * np.pi * self.grid.fBase
+        # ``I_ph = conj(S/V)`` already yields the branch-convention current
+        # from bus into branch. The EMT KCL also uses branch
+        # convention for VSC branches (``I_kcl -= i_branch``), so the
+        # seeded value is taken directly without any sign flip, just like
+        # with other branches
         for ph in ["N", "A", "B", "C"]:
             V_ph = phase_voltage_dict[ph]
             I_ph = phase_current_dict[ph]
             S_ph = phase_power_dict[ph]
+
+            # Store it once and reuse
+            i_branch_init: float = float(np.sqrt(2.0) * np.imag(I_ph))
 
             self.set_if_exists(mdl=mdl,
                                key=ac_voltage_keys[ph],
                                value=float(np.sqrt(2.0) * np.imag(V_ph)))
             self.set_if_exists(mdl=mdl,
                                key=ac_current_keys[ph],
-                               value=float(np.sqrt(2.0) * np.imag(I_ph)))
+                               value=i_branch_init)
 
             if ac_is_from:
                 self.set_if_exists(mdl=mdl,
                                    key=if_keys[ph],
-                                   value=float(np.sqrt(2.0) * np.imag(I_ph)))
+                                   value=i_branch_init)
                 self.set_if_exists(mdl=mdl,
                                    key=it_keys[ph],
                                    value=0.0)
@@ -4988,7 +5028,7 @@ class EmtProblemDae(EmtProblemTemplate):
                                    value=0.0)
                 self.set_if_exists(mdl=mdl,
                                    key=it_keys[ph],
-                                   value=float(np.sqrt(2.0) * np.imag(I_ph)))
+                                   value=i_branch_init)
                 self.set_external_param(mdl, d_vf_keys[ph], 0.0)
                 self.set_external_param(mdl, d_vt_keys[ph], omega_base * np.sqrt(2.0) * np.real(V_ph))
 
@@ -5163,22 +5203,27 @@ class EmtProblemDae(EmtProblemTemplate):
         }
 
         omega_base: float = 2.0 * np.pi * self.grid.fBase
+
         for ph in ["N", "A", "B", "C"]:
             V_ph = phase_voltage_dict[ph]
             I_ph = phase_current_dict[ph]
             S_ph = phase_power_dict[ph]
+
+            # ``I_ph = conj(S/V)`` is already in branch convention
+            # Hence no sign change needed
+            i_branch_init: float = float(np.sqrt(2.0) * np.imag(I_ph))
 
             self.set_if_exists(mdl=mdl,
                                key=ac_voltage_keys[ph],
                                value=float(np.sqrt(2.0) * np.imag(V_ph)))
             self.set_if_exists(mdl=mdl,
                                key=ac_current_keys[ph],
-                               value=float(np.sqrt(2.0) * np.imag(I_ph)))
+                               value=i_branch_init)
 
             if ac_is_from:
                 self.set_if_exists(mdl=mdl,
                                    key=if_keys[ph],
-                                   value=float(np.sqrt(2.0) * np.imag(I_ph)))
+                                   value=i_branch_init)
                 self.set_if_exists(mdl=mdl,
                                    key=it_keys[ph],
                                    value=0.0)
@@ -5190,7 +5235,7 @@ class EmtProblemDae(EmtProblemTemplate):
                                    value=0.0)
                 self.set_if_exists(mdl=mdl,
                                    key=it_keys[ph],
-                                   value=float(np.sqrt(2.0) * np.imag(I_ph)))
+                                   value=i_branch_init)
                 self.set_external_param(mdl, d_vf_keys[ph], 0.0)
                 self.set_external_param(mdl, d_vt_keys[ph], omega_base * np.sqrt(2.0) * np.real(V_ph))
 

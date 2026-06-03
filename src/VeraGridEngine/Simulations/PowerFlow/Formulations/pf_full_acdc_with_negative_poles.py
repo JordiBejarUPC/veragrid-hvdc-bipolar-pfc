@@ -86,6 +86,8 @@ def adv_jacobian(nbus: int,
                  # Unknowns
                  Pfp_vsc: Vec,
                  Pfn_vsc: Vec,
+                 k_vsc_pfp_droop: IntVec,
+                 dpfp_droop_slope: Vec,
                  Pt_vsc: Vec,
                  Qt_vsc: Vec,
                  Pf_hvdc: Vec,
@@ -142,6 +144,8 @@ def adv_jacobian(nbus: int,
     :param i_k_q:
     :param Pfp_vsc:
     :param Pfn_vsc:
+    :param k_vsc_pfp_droop:
+    :param dpfp_droop_slope:
     :param Pt_vsc:
     :param Qt_vsc:
     :param Pf_hvdc:
@@ -213,9 +217,9 @@ def adv_jacobian(nbus: int,
 
     # -------- ROW 4 (current balance VSCs) ---------
     dIvsc_dVa = CSC(nvsc_has_dc_n, len(i_u_va), 0, False)  # fully empty
-    dIvsc_dVm = deriv.dIvsc_dVm_csc(k_vsc_has_dc_n, nbus, i_u_vm, Pfp_vsc, Pfn_vsc, Fdcp_vsc, Fdcn_vsc)
-    dIvsc_dPfpvsc = deriv.dIvsc_dPfpvsc_csc(k_vsc_has_dc_n, u_vsc_pfp, Vm, Fdcn_vsc)
-    dIvsc_dPfnvsc = deriv.dIvsc_dPfnvsc_csc(k_vsc_has_dc_n, u_vsc_pfn, Vm, Fdcp_vsc)
+    dIvsc_dVm = deriv.dIvsc_dVm_csc(k_vsc_has_dc_n, nbus, i_u_vm, Pfp_vsc, Pfn_vsc, Va, Fdcp_vsc, Fdcn_vsc)
+    dIvsc_dPfpvsc = deriv.dIvsc_dPfpvsc_csc(k_vsc_has_dc_n, u_vsc_pfp, Vm, Va, Fdcn_vsc)
+    dIvsc_dPfnvsc = deriv.dIvsc_dPfnvsc_csc(k_vsc_has_dc_n, u_vsc_pfn, Vm, Va, Fdcp_vsc)
     dIvsc_dPtvsc = CSC(nvsc_has_dc_n, len(u_vsc_pt), 0, False)  # fully empty
     dIvsc_dQtvsc = CSC(nvsc_has_dc_n, len(u_vsc_qt), 0, False)  # fully empty
     dIvsc_dPfhvdc = CSC(nvsc_has_dc_n, nhvdc, 0, False)  # fully empty
@@ -238,6 +242,21 @@ def adv_jacobian(nbus: int,
     dImax_dQthvdc = CSC(nvsc_imax, nhvdc, 0, False)  # fully empty
     dImax_dm = CSC(nvsc_imax, len(u_cbr_m), 0, False)  # fully empty
     dImax_dtau = CSC(nvsc_imax, len(u_cbr_tau), 0, False)  # fully empty
+
+    # -------- ROW 5b (Pdc voltage-droop equations: Pfp - droop(Vm[pole]) = 0) ---------
+    n_droop = len(k_vsc_pfp_droop)
+    dDroop_dVa = CSC(n_droop, len(i_u_va), 0, False)  # fully empty
+    dDroop_dVm = deriv.dDroopvsc_dVm_csc(n_droop, nbus, i_u_vm, k_vsc_pfp_droop, Fdcp_vsc, dpfp_droop_slope)
+    dDroop_dPfpvsc = deriv.dDroopvsc_dPfp_csc(n_droop, nvsc, k_vsc_pfp_droop, u_vsc_pfp)
+    dDroop_dPfnvsc = CSC(n_droop, len(u_vsc_pfn), 0, False)  # fully empty
+    dDroop_dPtvsc = CSC(n_droop, len(u_vsc_pt), 0, False)  # fully empty
+    dDroop_dQtvsc = CSC(n_droop, len(u_vsc_qt), 0, False)  # fully empty
+    dDroop_dPfhvdc = CSC(n_droop, nhvdc, 0, False)  # fully empty
+    dDroop_dPthvdc = CSC(n_droop, nhvdc, 0, False)  # fully empty
+    dDroop_dQfhvdc = CSC(n_droop, nhvdc, 0, False)  # fully empty
+    dDroop_dQthvdc = CSC(n_droop, nhvdc, 0, False)  # fully empty
+    dDroop_dm = CSC(n_droop, len(u_cbr_m), 0, False)  # fully empty
+    dDroop_dtau = CSC(n_droop, len(u_cbr_tau), 0, False)  # fully empty
 
     # -------- ROW 6 (loss HVDCs) ---------
     dLhvdc_dVa = CSC(nhvdc, len(i_u_va), 0, False)  # fully empty
@@ -354,6 +373,9 @@ def adv_jacobian(nbus: int,
         dImax_dVa, dImax_dVm, dImax_dPfpvsc, dImax_dPfnvsc, dImax_dPtvsc, dImax_dQtvsc, dImax_dPfhvdc, dImax_dPthvdc,
         dImax_dQfhvdc, dImax_dQthvdc, dImax_dm, dImax_dtau,
 
+        dDroop_dVa, dDroop_dVm, dDroop_dPfpvsc, dDroop_dPfnvsc, dDroop_dPtvsc, dDroop_dQtvsc, dDroop_dPfhvdc,
+        dDroop_dPthvdc, dDroop_dQfhvdc, dDroop_dQthvdc, dDroop_dm, dDroop_dtau,
+
         dLhvdc_dVa, dLhvdc_dVm, dLhvdc_dPfpvsc, dLhvdc_dPfnvsc, dLhvdc_dPtvsc, dLhvdc_dQtvsc, dLhvdc_dPfhvdc,
         dLhvdc_dPthvdc,
         dLhvdc_dQfhvdc, dLhvdc_dQthvdc, dLhvdc_dm, dLhvdc_dtau,
@@ -374,7 +396,7 @@ def adv_jacobian(nbus: int,
         dQt_dVa, dQt_dVm, dQt_dPfpvsc, dQt_dPfnvsc, dQt_dPtvsc, dQt_dQtvsc, dQt_dPfhvdc, dQt_dPthvdc, dQt_dQfhvdc,
         dQt_dQthvdc, dQt_dm, dQt_dtau
 
-    ], n_rows=11, n_cols=12)
+    ], n_rows=12, n_cols=12)
 
     return J
 
@@ -646,6 +668,8 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         self.vsc_qt_set = np.zeros(0, dtype=float)
         self.vsc_i_set = np.zeros(0, dtype=float)
         self.k_vsc_has_dc_n = np.zeros(0, dtype=int)
+        self.k_vsc_pfp_droop = np.zeros(0, dtype=int)   # VSCs whose Pfp follows a Pdc voltage-droop
+        self.vsc_pfp_droop_side = np.zeros(0, dtype=int)  # 1 if control1 carries the droop, else 2
         self._set_vsc_control_indices()
 
         # Fill HVDC Indices
@@ -674,6 +698,9 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
 
         # set the VSC set-points
         self.Pfp_vsc[self.k_vsc_pfp] = self.vsc_pfp_set / self.nc.Sbase
+        if len(self.k_vsc_pfp_droop):
+            # warm-start the droop Pfp unknowns at the droop law evaluated at the initial voltage
+            self.Pfp_vsc[self.k_vsc_pfp_droop] = self._pfp_droop_values(polar_to_rect(self.Vm, self.Va))
         self.Pfn_vsc[self.k_vsc_pfn] = self.vsc_pfn_set / self.nc.Sbase
         self.Pt_vsc[self.k_vsc_pt] = self.vsc_pt_set / self.nc.Sbase
         self.Qt_vsc[self.k_vsc_qt] = self.vsc_qt_set / self.nc.Sbase
@@ -1556,6 +1583,30 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         self.vsc_qt_set = np.array(vsc_qt_set, dtype=float)
         self.vsc_i_set = np.array(vsc_i_set, dtype=float)
 
+        # --- Pdc voltage-droop reformulation -------------------------------------------------------------------------
+        droop_k = list() 
+        droop_side = list() 
+        keep_k = list() 
+        keep_set = list()
+        for idx in range(len(self.k_vsc_pfp)):
+            kk = int(self.k_vsc_pfp[idx])
+            if self.nc.vsc_data.control1[kk] == ConverterControlType.Pdc_droop:
+                droop_k.append(kk)
+                droop_side.append(1)
+            elif self.nc.vsc_data.control2[kk] == ConverterControlType.Pdc_droop:
+                droop_k.append(kk)
+                droop_side.append(2)
+            else:
+                keep_k.append(kk)
+                keep_set.append(self.vsc_pfp_set[idx])
+
+        self.k_vsc_pfp = np.array(keep_k, dtype=int)
+        self.vsc_pfp_set = np.array(keep_set, dtype=float)
+        self.k_vsc_pfp_droop = np.array(droop_k, dtype=int)
+        self.vsc_pfp_droop_side = np.array(droop_side, dtype=int)
+        if len(self.k_vsc_pfp_droop):
+            self.u_vsc_pfp = np.unique(np.r_[self.u_vsc_pfp, self.k_vsc_pfp_droop]).astype(int)
+
     def _set_hvdc_control_indices(self) -> None:
         """
         Analyze the control hvdc and compute the indices
@@ -1646,6 +1697,55 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                 + self.nc.hvdc_data.nelm
                 + len(self.u_cbr_m)
                 + len(self.u_cbr_tau))
+
+    def _pfp_droop_values(self, V: CxVec) -> Vec:
+        """
+        Pfp as given by the Pdc voltage-droop law
+        :param V: complex bus voltages
+        :return: array aligned with self.k_vsc_pfp_droop
+        """
+        vd = self.nc.vsc_data
+        out = np.zeros(len(self.k_vsc_pfp_droop))
+        for i in range(len(self.k_vsc_pfp_droop)):
+            k = int(self.k_vsc_pfp_droop[i])
+            if self.vsc_pfp_droop_side[i] == 1:
+                out[i] = voltage_pdc_droop(
+                    ut=V[vd.F[k]], u_setpoint_min=vd.control1_droop_val_min[k],
+                    u_setpoint_max=vd.control1_droop_val_max[k], u_setpoint=vd.control1_droop_val[k],
+                    Pdc_setpoint=vd.control1_val[k], S_r=vd.rates[k], droop=vd.control1_val_droop[k],
+                    P_min=vd.control1_val_min[k], P_max=vd.control1_val_max[k], S_base=self.nc.Sbase)
+            else:
+                out[i] = voltage_pdc_droop(
+                    ut=V[vd.F[k]], u_setpoint_min=vd.control2_droop_val_min[k],
+                    u_setpoint_max=vd.control2_droop_val_max[k], u_setpoint=vd.control2_droop_val[k],
+                    Pdc_setpoint=vd.control2_val[k], S_r=vd.rates[k], droop=vd.control2_val_droop[k],
+                    P_min=vd.control2_val_min[k], P_max=vd.control2_val_max[k], S_base=self.nc.Sbase)
+        return out
+
+    def _pfp_droop_slopes(self) -> Vec:
+        """
+        Slope d(Pfp)/dVm[pole] of the Pdc voltage-droop law [pu], 0 where voltage or power is
+        clamped, per droop-controlled converter (aligned with self.k_vsc_pfp_droop).
+        """
+        vd = self.nc.vsc_data
+        out = np.zeros(len(self.k_vsc_pfp_droop))
+        for i in range(len(self.k_vsc_pfp_droop)):
+            k = int(self.k_vsc_pfp_droop[i])
+            if self.vsc_pfp_droop_side[i] == 1:
+                droop, uset = vd.control1_val_droop[k], vd.control1_droop_val[k]
+                umin, umax = vd.control1_droop_val_min[k], vd.control1_droop_val_max[k]
+                Pset, Pmin, Pmax = vd.control1_val[k], vd.control1_val_min[k], vd.control1_val_max[k]
+            else:
+                droop, uset = vd.control2_val_droop[k], vd.control2_droop_val[k]
+                umin, umax = vd.control2_droop_val_min[k], vd.control2_droop_val_max[k]
+                Pset, Pmin, Pmax = vd.control2_val[k], vd.control2_val_min[k], vd.control2_val_max[k]
+            u = self.Vm[vd.F[k]]
+            if umin <= u <= umax:
+                P_droop = vd.rates[k] * 100.0 / droop
+                Pdc = Pset * self.nc.Sbase - P_droop * (uset - u)
+                if Pmin <= Pdc <= Pmax:
+                    out[i] = P_droop / self.nc.Sbase
+        return out
 
     def compute_f(self, x: Vec, update_class_vars: bool = False) -> Vec:
         """
@@ -1845,35 +1945,6 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                     S_base=self.nc.Sbase
                 )
 
-        for k in self.k_vsc_pfp:
-
-            if self.nc.vsc_data.control1[k] == ConverterControlType.Pdc_droop:
-                Pfp_vsc_[k] = voltage_pdc_droop(
-                    ut=V[self.nc.vsc_data.F[k]],
-                    u_setpoint_min=self.nc.vsc_data.control1_droop_val_min[k],
-                    u_setpoint_max=self.nc.vsc_data.control1_droop_val_max[k],
-                    u_setpoint=self.nc.vsc_data.control1_droop_val[k],
-                    Pdc_setpoint=self.nc.vsc_data.control1_val[k],
-                    S_r=self.nc.vsc_data.rates[k],
-                    droop=self.nc.vsc_data.control1_val_droop[k],
-                    P_min=self.nc.vsc_data.control1_val_min[k],
-                    P_max=self.nc.vsc_data.control1_val_max[k],
-                    S_base=self.nc.Sbase
-                )
-            elif self.nc.vsc_data.control2[k] == ConverterControlType.Pdc_droop:
-                Pfp_vsc_[k] = voltage_pdc_droop(
-                    ut=V[self.nc.vsc_data.F[k]],
-                    u_setpoint_min=self.nc.vsc_data.control2_droop_val_min[k],
-                    u_setpoint_max=self.nc.vsc_data.control2_droop_val_max[k],
-                    u_setpoint=self.nc.vsc_data.control2_droop_val[k],
-                    Pdc_setpoint=self.nc.vsc_data.control2_val[k],
-                    S_r=self.nc.vsc_data.rates[k],
-                    droop=self.nc.vsc_data.control2_val_droop[k],
-                    P_min=self.nc.vsc_data.control2_val_min[k],
-                    P_max=self.nc.vsc_data.control2_val_max[k],
-                    S_base=self.nc.Sbase
-                )
-
         T_vsc = self.nc.vsc_data.T
         It = np.sqrt(Pt_vsc_ * Pt_vsc_ + Qt_vsc_ * Qt_vsc_) / Vm_[T_vsc]
         It2 = It * It
@@ -1884,9 +1955,12 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         loss_vsc = PLoss_IEC - Pt_vsc_ - Pfp_vsc_ - Pfn_vsc_
         St_vsc = make_complex(Pt_vsc_, Qt_vsc_)
 
-        # Add the 2nd equation per VSC
-        balance_vsc = (Pfp_vsc_[self.k_vsc_has_dc_n] * Vm_[self.nc.vsc_data.F_dcn[self.k_vsc_has_dc_n]] +
-                       Pfn_vsc_[self.k_vsc_has_dc_n] * Vm_[self.nc.vsc_data.F[self.k_vsc_has_dc_n]])
+        # Use the signed DC voltage (real part of V) rather than the magnitude Vm
+        balance_vsc = (Pfp_vsc_[self.k_vsc_has_dc_n] * V[self.nc.vsc_data.F_dcn[self.k_vsc_has_dc_n]].real +
+                       Pfn_vsc_[self.k_vsc_has_dc_n] * V[self.nc.vsc_data.F[self.k_vsc_has_dc_n]].real)
+
+        # Pdc voltage-droop equation per droop converter: Pfp - droop(Vm[pole]) = 0
+        droop_vsc = Pfp_vsc_[self.k_vsc_pfp_droop] - self._pfp_droop_values(V)
 
         # Add the 3rd equation per VSC
         current_vsc = It ** 2 - Imax_vsc ** 2
@@ -1937,6 +2011,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             loss_vsc,
             balance_vsc,
             current_vsc[self.k_vsc_i],
+            droop_vsc,
             loss_hvdc,
             inj_hvdc,
             Pf_cbr - self.cbr_pf_set,
@@ -2488,8 +2563,11 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                      + self.nc.vsc_data.alpha1)
 
         loss_vsc = PLoss_IEC - self.Pt_vsc - self.Pfp_vsc - self.Pfn_vsc
-        balance_vsc = (self.Pfp_vsc[self.k_vsc_has_dc_n] * self.Vm[F_dcn[self.k_vsc_has_dc_n]] +
-                       self.Pfn_vsc[self.k_vsc_has_dc_n] * self.Vm[F[self.k_vsc_has_dc_n]])
+        balance_vsc = (self.Pfp_vsc[self.k_vsc_has_dc_n] * V[F_dcn[self.k_vsc_has_dc_n]].real +
+                       self.Pfn_vsc[self.k_vsc_has_dc_n] * V[F[self.k_vsc_has_dc_n]].real)
+
+        # Pdc voltage-droop equation per droop converter: Pfp - droop(Vm[pole]) = 0
+        droop_vsc = self.Pfp_vsc[self.k_vsc_pfp_droop] - self._pfp_droop_values(V)
 
         current_vsc = It ** 2 - Imax_vsc ** 2
 
@@ -2536,6 +2614,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             loss_vsc,
             balance_vsc,
             current_vsc[self.k_vsc_i],
+            droop_vsc,
             dloss_hvdc,
             dinj_hvdc,
             Pf_cbr - self.cbr_pf_set,
@@ -2571,6 +2650,9 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             hvdc_droop_redone = np.zeros(self.nc.hvdc_data.nelm, dtype=float)
             if len(self.hvdc_droop_idx) > 0:
                 hvdc_droop_redone[self.hvdc_droop_idx] = self.nc.hvdc_data.angle_droop[self.hvdc_droop_idx]
+
+            # Slope d(Pfp)/dVm[pole] of the Pdc voltage-droop law
+            dpfp_droop_slope = self._pfp_droop_slopes()
 
             assert isspmatrix_csc(self.adm.Ybus)
 
@@ -2630,6 +2712,8 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                 # Unknowns
                 Pfp_vsc=self.Pfp_vsc,
                 Pfn_vsc=self.Pfn_vsc,
+                k_vsc_pfp_droop=self.k_vsc_pfp_droop,
+                dpfp_droop_slope=dpfp_droop_slope,
                 Pt_vsc=self.Pt_vsc,
                 Qt_vsc=self.Qt_vsc,
                 Pf_hvdc=self.Pf_hvdc,
@@ -2682,6 +2766,9 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         rows = [f'dP_{i}' for i in self.i_k_p]
         rows += [f'dQ_{i}' for i in self.i_k_q]
         rows += [f'dloss_vsc_{i}' for i in range(self.nc.vsc_data.nelm)]
+        rows += [f'dbalance_vsc_{i}' for i in self.k_vsc_has_dc_n]
+        rows += [f'dImax_vsc_{i}' for i in self.k_vsc_i]
+        rows += [f'ddroop_vsc_{i}' for i in self.k_vsc_pfp_droop]
         rows += [f'dloss_hvdc_{i}' for i in range(self.nc.hvdc_data.nelm)]
         rows += [f'dinj_hvdc_{i}' for i in range(self.nc.hvdc_data.nelm)]
 

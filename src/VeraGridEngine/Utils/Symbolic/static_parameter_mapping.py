@@ -9,7 +9,7 @@ Static EMT API-object parameter mapping.
 This module contains the static-device to EMT-parameter assignment layer used
 by ``EmtProblemDae``. The contract is intentionally narrow:
 
-* ``Block.api_obj_mapping`` maps ``ParamPowerFlowRefferenceType`` keys to
+* ``Block.api_obj_mapping`` maps ``ParamPowerFlowReferenceType`` keys to
   constant symbolic EMT parameters.
 * Only values that come from the static grid device, or from static network
   bases such as ``Sbase`` and ``fBase``, are assigned here.
@@ -873,7 +873,7 @@ def assign_static_api_object_mapping_for_device(
     Assign static API-object parameters for one EMT device block.
 
     The dispatcher is generic with respect to RMS/EMT templates. A template receives
-    values only for the ``ParamPowerFlowRefferenceType`` keys it exposes in
+    values only for the ``ParamPowerFlowReferenceType`` keys it exposes in
     ``mdl.api_obj_mapping``. Adding a new EMT model for an already-supported
     ``DeviceType`` should not require modifying ``EmtProblemDae``.
 

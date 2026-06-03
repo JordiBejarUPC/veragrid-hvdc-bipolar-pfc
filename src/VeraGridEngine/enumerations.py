@@ -1844,6 +1844,7 @@ class FileType(Enum):
     Enumeration of logs severities
     """
     VeraGrid = "VeraGrid"
+    VeraGridScenario = "VeraGrid Scenario"
     VeraGrid_xlsx1 = "VeraGrid Excel 1"
     VeraGrid_xlsx2 = "VeraGrid Excel 2"
     VeraGrid_xlsx3 = "VeraGrid Excel 3"
@@ -3448,6 +3449,7 @@ class VarPowerFlowReferenceType(Enum):
     St_vsc = "St_vsc"
     If_vsc = "If_vsc"
     It_vsc = "It_vsc"
+
 
     # Phasor current references for RMS formulation
     Ir = "Ir"  # Real part of bus injection current

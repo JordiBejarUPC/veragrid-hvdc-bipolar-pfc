@@ -81,7 +81,7 @@ def print_gfl_init_consistency(grid2, pf_results):
     va_t = np.angle(pf_results.voltage[idx_t])
 
     # For TrafoGflBuild initialization, P/Q are tied to transformer "to" side
-    # (VarPowerFlowRefferenceType.Pt/Qt on the transformer model), not St_vsc.
+    # (VarPowerFlowReferenceType.Pt/Qt on the transformer model), not St_vsc.
     branch_list = list(grid2.get_branches_iter(add_vsc=False, add_hvdc=False, add_switch=True))
     branch_idx = branch_list.index(trafo)
     pt_vsc = float(np.real(pf_results.St[branch_idx]) / grid2.Sbase)

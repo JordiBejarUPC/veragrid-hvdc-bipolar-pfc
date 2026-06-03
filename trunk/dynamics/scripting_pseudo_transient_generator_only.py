@@ -14,7 +14,7 @@ if SRC_DIR not in sys.path:
     sys.path.insert(0, SRC_DIR)
 
 import VeraGridEngine.api as gce
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import VarPowerFlowReferenceType
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
@@ -113,10 +113,10 @@ def build_grid() -> gce.MultiCircuit:
         combined.algebraic_eqs = []
         combined.algebraic_vars = []
         combined.external_mapping = {
-            VarPowerFlowRefferenceType.P: gen_block.out_vars[0],
-            VarPowerFlowRefferenceType.Q: gen_block.out_vars[1],
-            VarPowerFlowRefferenceType.Vm: gen_block.in_vars[0],
-            VarPowerFlowRefferenceType.Va: gen_block.in_vars[1],
+            VarPowerFlowReferenceType.P: gen_block.out_vars[0],
+            VarPowerFlowReferenceType.Q: gen_block.out_vars[1],
+            VarPowerFlowReferenceType.Vm: gen_block.in_vars[0],
+            VarPowerFlowReferenceType.Va: gen_block.in_vars[1],
         }
         combined.in_vars = [gen_block.in_vars[0], gen_block.in_vars[1]]
         combined.out_vars = [gen_block.out_vars[0], gen_block.out_vars[1]]
