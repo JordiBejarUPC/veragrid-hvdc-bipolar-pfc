@@ -22,7 +22,7 @@ from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions impo
 from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_formulation_template import PfFormulationTemplate
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions import (compute_zip_power, compute_power,
                                                                                     polar_to_rect, voltage_q_droop,
-                                                                                    solve_reactive_power)
+                                                                                    asynchronous_gen_q)
 from VeraGridEngine.enumerations import (TapPhaseControl, TapModuleControl, HvdcControlType, ConverterControlType,
                                          ConverterFaultControlType, ShuntControlMode, GeneratorType)
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.converter_fault_controls import wecc_wt_type_4b
@@ -1243,8 +1243,8 @@ class PfAcDcWithNegativePolesSc(PfFormulationTemplate):
 
                 elif ((control1 == ConverterControlType.Qac.idx()
                        or control1 == ConverterControlType.Q_droop.idx())
-                      and ( control2 == ConverterControlType.Qac.idx()
-                            or control2 == ConverterControlType.Q_droop.idx())):
+                      and (control2 == ConverterControlType.Qac.idx()
+                           or control2 == ConverterControlType.Q_droop.idx())):
                     self.logger.add_error(
                         f"VSC control1 and control2 are the same for VSC indexed at {k},"
                         f" control1: {control1}, control2: {control2}")
@@ -1813,16 +1813,18 @@ class PfAcDcWithNegativePolesSc(PfFormulationTemplate):
 
         # Asynchronous Generators --------------------------------------------------------------------------------------
         Qag = np.zeros_like(self.S0, dtype=float)
-        for ag in range(len(self.nc.generator_data.tpe_int)):
-            if self.nc.generator_data.tpe_int[ag] == GeneratorType.Asynchronous.idx():
-                Qag[self.nc.generator_data.bus_idx[ag]] = solve_reactive_power(u=V[self.nc.generator_data.bus_idx[ag]],
-                                                                               Rs=self.nc.generator_data.Rs[ag],
-                                                                               Xs=self.nc.generator_data.Xs[ag],
-                                                                               Xm=self.nc.generator_data.Xm[ag],
-                                                                               Rr=self.nc.generator_data.Rr[ag],
-                                                                               Xr=self.nc.generator_data.Xr[ag],
-                                                                               P=self.nc.generator_data.p[ag],
-                                                                               Sr=self.nc.generator_data.snom[ag])
+        for k, gen_type in enumerate(self.nc.generator_data.tpe_int):
+            if gen_type == GeneratorType.Asynchronous.idx():
+                Qag[self.nc.generator_data.bus_idx[k]] = asynchronous_gen_q(
+                    u=V[self.nc.generator_data.bus_idx[k]],
+                    Rs=self.nc.generator_data.Rs[k],
+                    Xs=self.nc.generator_data.Xs[k],
+                    Xm=self.nc.generator_data.Xm[k],
+                    Rr=self.nc.generator_data.Rr[k],
+                    Xr=self.nc.generator_data.Xr[k],
+                    P=self.nc.generator_data.p[k],
+                    Sr=self.nc.generator_data.snom[k]
+                )
 
         # Use V instead of Vm (not a device-centered axis). Thus avoid compute_zip_power()
         # We add self.Y0 despite it being zero

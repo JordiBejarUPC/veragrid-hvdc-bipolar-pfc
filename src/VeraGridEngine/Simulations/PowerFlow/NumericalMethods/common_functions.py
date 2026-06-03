@@ -82,14 +82,14 @@ def solve_slip(f, a, b, tol, max_iter, u, Rs, Xs, Xm, Rr, Xr, P, Sr):
     return 0.5 * (a + b)
 
 
-def solve_reactive_power(u: complex,
-                         Rs: float,
-                         Xs: float,
-                         Xm: float,
-                         Rr: float,
-                         Xr: float,
-                         P: float,
-                         Sr: float) -> float:
+def asynchronous_gen_q(u: complex,
+                       Rs: float,
+                       Xs: float,
+                       Xm: float,
+                       Rr: float,
+                       Xr: float,
+                       P: float,
+                       Sr: float) -> float:
     """
 
     :param u:
