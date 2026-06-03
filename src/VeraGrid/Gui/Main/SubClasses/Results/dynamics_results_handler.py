@@ -7,7 +7,9 @@ from enum import Enum
 from typing import Dict, List, Sequence, Set, Optional, Protocol, Union
 import numpy as np
 import pandas as pd
-from matplotlib import pyplot as plt
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from VeraGrid.Gui.Icons.icon_associations import device_type_icons
@@ -2707,7 +2709,7 @@ class DynamicsResultsHandler:
     __slots__ = ("results", "circuit", "dialog_parent", "plot_simulation_type",
                   "pre_simulation_mode", "tree_data", "tree_model", "proxy_model", "plots_model", "group_idx",
                   "var_role", "group_name_role", "tree_state_role", "drag_mime_type", "drop_target_role", "entry_role_role", "plot_groups", "series_by_key",
-                  "series_by_var_uid", "candidates_by_parameter_name", "source_labels")
+                  "series_by_var_uid", "candidates_by_parameter_name", "source_labels", "_open_plot_dialogs")
 
     def __init__(self,
                  results: RmsResults | EmtResults | None,
@@ -2751,6 +2753,10 @@ class DynamicsResultsHandler:
         self.series_by_var_uid: Dict[int, List[DynamicResultSeries | DynamicPlotCandidate]] = dict()
         self.candidates_by_parameter_name: Dict[str, List[DynamicPlotCandidate]] = dict()
         self.source_labels: List[str] = list()
+
+        # Open plot windows are kept referenced so they are not garbage collected
+        # while still visible; entries are pruned when the user closes them.
+        self._open_plot_dialogs: List[QtWidgets.QDialog] = list()
 
         # The proxy model owns the reversible filtering state used by the device tree view.
         self.proxy_model: QtCore.QSortFilterProxyModel = QtCore.QSortFilterProxyModel()
@@ -4856,6 +4862,43 @@ class DynamicsResultsHandler:
         """
         return len(self.source_labels) > 1
 
+    def _show_figure(self, figure: Figure, title: str) -> None:
+        """
+        Display a Matplotlib figure in an embedded Qt window.
+
+        The figure is embedded in a ``FigureCanvasQTAgg`` inside a modeless
+        ``QDialog`` instead of being shown with ``pyplot.show()``. 
+        Before ``pyplot.show()`` was starting starts a second GUI event loop
+        on top of the already-running Qt application which is a hard
+        crash on the macOS backend.
+
+        :param figure: Figure to display (built with ``matplotlib.figure.Figure``).
+        :param title: Window title.
+        :return: Nothing.
+        """
+        dialog: QtWidgets.QDialog = QtWidgets.QDialog(self.dialog_parent)
+        dialog.setWindowTitle(title)
+        dialog.setWindowFlag(QtCore.Qt.WindowType.Window, True)
+        dialog.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose, True)
+
+        canvas: FigureCanvas = FigureCanvas(figure)
+        toolbar: NavigationToolbar = NavigationToolbar(canvas, dialog)
+
+        layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(dialog)
+        layout.addWidget(toolbar)
+        layout.addWidget(canvas)
+        dialog.resize(900, 600)
+
+        self._open_plot_dialogs.append(dialog)
+
+        # Drop our reference once the window is closed so the dialog can be freed
+        def _forget(_result: int = 0, _dialog: QtWidgets.QDialog = dialog) -> None:
+            if _dialog in self._open_plot_dialogs:
+                self._open_plot_dialogs.remove(_dialog)
+
+        dialog.finished.connect(_forget)
+        dialog.show()
+
     def plot_series(self, series: DynamicResultSeries) -> None:
         """
         Plot one source-specific series.
@@ -4863,14 +4906,14 @@ class DynamicsResultsHandler:
         :param series: Series to plot.
         :return: Nothing.
         """
-        figure = plt.figure(figsize=(12, 8))
+        figure = Figure(figsize=(12, 8))
         axis = figure.add_subplot(111)
         x_values, y_values = self._get_series_plot_data(series=series)
         axis.plot(x_values, y_values, label=series.get_plot_label(has_multiple_sources=self.has_multiple_sources()))
         axis.set_title(series.get_var().name)
         axis.set_xlabel("Time [s]")
         axis.legend()
-        plt.show()
+        self._show_figure(figure=figure, title=series.get_var().name)
 
     def plot_var(self, var: Var, group_name: str) -> None:
         """
@@ -4916,7 +4959,7 @@ class DynamicsResultsHandler:
         else:
             pass
 
-        figure = plt.figure(figsize=(12, 8))
+        figure = Figure(figsize=(12, 8))
         axis = figure.add_subplot(111)
 
         variable: DynamicResultSeries | DynamicPlotEntry | Var
@@ -4975,10 +5018,9 @@ class DynamicsResultsHandler:
             axis.legend()
             axis.set_xlabel("Time [s]")
             axis.set_title(plot_group_name)
-            plt.show()
+            self._show_figure(figure=figure, title=plot_group_name)
             return True
         else:
-            plt.close(figure)
             return False
 
     def _resolve_entry_signal(self,
@@ -5070,7 +5112,7 @@ class DynamicsResultsHandler:
         else:
             pass
 
-        figure = plt.figure(figsize=(12, 8))
+        figure = Figure(figsize=(12, 8))
         axis = figure.add_subplot(111)
 
         finite_mask: np.ndarray = np.isfinite(x_values) & np.isfinite(y_values)
@@ -5078,7 +5120,6 @@ class DynamicsResultsHandler:
         y_plot: np.ndarray = y_values[finite_mask]
 
         if len(x_plot) == 0:
-            plt.close(figure)
             return False
         else:
             pass
@@ -5111,7 +5152,7 @@ class DynamicsResultsHandler:
         else:
             pass
 
-        plt.show()
+        self._show_figure(figure=figure, title=plot_group.get_name())
         return True
 
 
@@ -5639,13 +5680,13 @@ class DynamicsResultsHandler:
             y_values: np.ndarray = parameter_plot_data[1]
             label: str = _build_parameter_plot_entry_label(entry=entry)
 
-            figure = plt.figure(figsize=(12, 8))
+            figure = Figure(figsize=(12, 8))
             axis = figure.add_subplot(111)
             axis.plot(x_values, y_values, label=label)
             axis.set_title(entry.variable_name)
             axis.set_xlabel("Time [s]")
             axis.legend()
-            plt.show()
+            self._show_figure(figure=figure, title=entry.variable_name)
             return True
         else:
             return False
