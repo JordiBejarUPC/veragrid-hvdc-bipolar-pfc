@@ -39,9 +39,9 @@ class ShuntData:
         self.Y3_star = np.zeros((self.nelm * 4, 4), dtype=complex)
         self.Y3_delta = np.zeros((self.nelm * 4), dtype=complex)
 
-        self.A_floatingstar = np.zeros(self.nelm, dtype=complex)
-        self.B_floatingstar = np.zeros(self.nelm, dtype=complex)
-        self.C_floatingstar = np.zeros(self.nelm, dtype=complex)
+        self.A_floating_star = np.zeros(self.nelm, dtype=complex)
+        self.B_floating_star = np.zeros(self.nelm, dtype=complex)
+        self.C_floating_star = np.zeros(self.nelm, dtype=complex)
 
         self.qmin: Vec = np.zeros(nelm, dtype=float)
         self.qmax: Vec = np.zeros(nelm, dtype=float)
@@ -100,9 +100,9 @@ class ShuntData:
         data.Y3_delta = self.Y3_delta[elm_idx_4]
         data.Y3_star = self.Y3_star[elm_idx_4]
 
-        data.A_floatingstar = self.A_floatingstar[elm_idx]
-        data.B_floatingstar = self.B_floatingstar[elm_idx]
-        data.C_floatingstar = self.C_floatingstar[elm_idx]
+        data.A_floating_star = self.A_floating_star[elm_idx]
+        data.B_floating_star = self.B_floating_star[elm_idx]
+        data.C_floating_star = self.C_floating_star[elm_idx]
 
         data.qmax = self.qmax[elm_idx]
         data.qmin = self.qmin[elm_idx]
@@ -170,9 +170,9 @@ class ShuntData:
         data.Y3_star = self.Y3_star.copy()
         data.Y3_delta = self.Y3_delta.copy()
 
-        data.A_floatingstar = self.A_floatingstar.copy()
-        data.B_floatingstar = self.B_floatingstar.copy()
-        data.C_floatingstar = self.C_floatingstar.copy()
+        data.A_floating_star = self.A_floating_star.copy()
+        data.B_floating_star = self.B_floating_star.copy()
+        data.C_floating_star = self.C_floating_star.copy()
 
         data.qmax = self.qmax.copy()
         data.qmin = self.qmin.copy()

@@ -814,9 +814,9 @@ def get_shunt_data(
                     Yc = elm.get_Yc_at(t_idx)
 
                     if Ya != 0.0 + 0.0j and Yb != 0.0 + 0.0j and Yc != 0.0 + 0.0j:
-                        data.A_floatingstar[ii] = Ya / (Ya + Yb + Yc)
-                        data.B_floatingstar[ii] = Yb / (Ya + Yb + Yc)
-                        data.C_floatingstar[ii] = Yc / (Ya + Yb + Yc)
+                        data.A_floating_star[ii] = Ya / (Ya + Yb + Yc)
+                        data.B_floating_star[ii] = Yb / (Ya + Yb + Yc)
+                        data.C_floating_star[ii] = Yc / (Ya + Yb + Yc)
 
                         A = Ya / (Ya + Yb + Yc)
                         B = Yb / (Ya + Yb + Yc)
