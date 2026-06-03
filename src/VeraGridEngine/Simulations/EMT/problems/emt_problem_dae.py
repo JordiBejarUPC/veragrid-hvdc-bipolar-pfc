@@ -48,6 +48,7 @@ from VeraGridEngine.Simulations.EMT.initialization_emt import EmtInitializationR
 from VeraGridEngine.Utils.Symbolic.explicit_initialization_symbolic import init_explicit_common, build_symbolic_vector_single_equation_compiler
 from VeraGridEngine.Utils.Symbolic.compiled_functions import get_compiled_functions_cache_stats
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_algebraic_vars
+from VeraGridEngine.Utils.procedural_logic import build_boundary_updater_from_block
 from VeraGridEngine.IO.fmu.importer import (
     finalize_emt_fmu_cs_devices,
     finalize_emt_fmu_me_devices,
@@ -1427,7 +1428,7 @@ class EmtProblemDae(EmtProblemTemplate):
         self._runtime_parameter_eqs0 = list(self._event_parameters_eqs)
         finalize_emt_fmu_cs_devices(self)
         finalize_emt_fmu_me_devices(self)
-        from VeraGridEngine.Utils.procedural_logic import build_boundary_updater_from_block
+
         self._block_boundary_updater = build_boundary_updater_from_block(self)
 
         if len(self._runtime_mode_parameters) > 0:
