@@ -1504,7 +1504,7 @@ class EmtProblemDae(EmtProblemTemplate):
                     [float(const.value) for const in self.get_parameters_values()],
                     dtype=np.float64,
                 ),
-                include_existing=True,
+                include_existing=False,
             )
         events_group_finalize_s: float = _toc(t_phase_start)
 
