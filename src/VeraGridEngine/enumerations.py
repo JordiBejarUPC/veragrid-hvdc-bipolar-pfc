@@ -159,7 +159,7 @@ class ShuntControlMode(str,  Enum):
     """
     Locked = ("Locked", 0)
     Continuous = ("Continuous", 1)
-    Discrete = ("Discrete", 1)
+    Discrete = ("Discrete", 2)
 
     def __new__(cls, value: str, code: int):
         obj = str.__new__(cls, value)
