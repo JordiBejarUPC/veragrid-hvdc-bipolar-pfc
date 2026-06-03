@@ -598,7 +598,7 @@ class IidmParser:
                     if bool(row["voltage_regulator_on"]):
                         control_mode = GeneratorControlMode.V
                     else:
-                        control_mode = GeneratorControlMode.Locked
+                        control_mode = GeneratorControlMode.Q
 
                     elm = dev.Generator(
                         name=row["name"] if row["name"] != "" else i,

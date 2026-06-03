@@ -228,7 +228,7 @@ def test_voltage_local_control_with_generation() -> None:
         assert np.isclose(vm[bus_i], gen.Vset, atol=options.tolerance)
 
     # run power flow with the local voltage control disabled
-    gen.control_mode = GeneratorControlMode.Locked
+    gen.control_mode = GeneratorControlMode.Q
     for solver_type in [SolverType.NR, SolverType.IWAMOTO, SolverType.LM,
                         SolverType.FASTDECOUPLED, SolverType.PowellDogLeg]:
         options = PowerFlowOptions(solver_type,

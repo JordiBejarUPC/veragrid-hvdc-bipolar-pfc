@@ -260,7 +260,7 @@ def parse_nodes(ucte_grid: UcteCircuit, grid: MultiCircuit, logger: Logger) -> D
             if ucte_elm.is_regulating_voltage() and is_defined_number(ucte_elm.voltage_reference):
                 control_mode = GeneratorControlMode.V
             else:
-                control_mode = GeneratorControlMode.Locked
+                control_mode = GeneratorControlMode.Q
             pmin = -coalesce_number(ucte_elm.max_gen_mw, get_default_power_limit())
             pmax = -coalesce_number(ucte_elm.min_gen_mw, -get_default_power_limit())
 

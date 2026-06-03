@@ -642,13 +642,13 @@ def get_veragrid_generator(psse_elm: RawGeneratorLike, psse_bus_dict: Dict[int, 
         Qmin = psse_elm.QB
         Qmax = psse_elm.QT
     elif psse_elm.WMOD == 3:  # Fixed Q
-        control_mode = GeneratorControlMode.Locked
+        control_mode = GeneratorControlMode.Q
         pf = psse_elm.WPF if psse_elm.WPF is not None else 0.8
         Q = psse_elm.PG * np.sqrt((1.0 / (pf ** 2)) - 1.0)
         Qmin = psse_elm.QB
         Qmax = psse_elm.QT
     elif psse_elm.WMOD == 4:  # Infeed machine
-        control_mode = GeneratorControlMode.Locked
+        control_mode = GeneratorControlMode.Q
         pf = psse_elm.WPF if psse_elm.WPF is not None else 0.8
         Q = psse_elm.PG * np.sqrt((1.0 / (pf ** 2)) - 1.0)
         Qmin = psse_elm.QB

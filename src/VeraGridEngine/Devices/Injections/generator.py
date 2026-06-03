@@ -1161,7 +1161,7 @@ class Generator(InjectionParent):
         :param val: Value to assign.
         :return: None
         """
-        self._control_mode = GeneratorControlMode.V if val else GeneratorControlMode.Locked
+        self._control_mode = GeneratorControlMode.V if val else GeneratorControlMode.Q
 
     @property
     def control_mode(self) -> GeneratorControlMode:

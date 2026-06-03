@@ -431,7 +431,7 @@ def parse_json_data_v3(data: dict, logger: Logger):
                 has_profiles = False
 
             for jentry in generators:
-                control_mode = GeneratorControlMode.V if bool(jentry['is_controlled']) else GeneratorControlMode.Locked
+                control_mode = GeneratorControlMode.V if bool(jentry['is_controlled']) else GeneratorControlMode.Q
                 elm = dev.Generator(
                     name=str(jentry['name']),
                     idtag=str(jentry['id']),
@@ -469,7 +469,7 @@ def parse_json_data_v3(data: dict, logger: Logger):
                 has_profiles = False
 
             for jentry in batteries:
-                control_mode = GeneratorControlMode.V if bool(jentry['is_controlled']) else GeneratorControlMode.Locked
+                control_mode = GeneratorControlMode.V if bool(jentry['is_controlled']) else GeneratorControlMode.Q
                 elm = dev.Battery(
                     name=str(jentry['name']),
                     idtag=str(jentry['id']),
@@ -1099,7 +1099,7 @@ def parse_json_data_v2(data: dict, logger: Logger):
                 if bool(jentry['is_controlled']):
                     control_mode = GeneratorControlMode.V
                 else:
-                    control_mode = GeneratorControlMode.Locked
+                    control_mode = GeneratorControlMode.Q
 
                 gen = dev.Generator(name=str(jentry['name']),
                                     idtag=str(jentry['id']),
@@ -1125,7 +1125,7 @@ def parse_json_data_v2(data: dict, logger: Logger):
                 if bool(jentry['is_controlled']):
                     control_mode = GeneratorControlMode.V
                 else:
-                    control_mode = GeneratorControlMode.Locked
+                    control_mode = GeneratorControlMode.Q
 
                 gen = dev.Battery(name=str(jentry['name']),
                                   idtag=str(jentry['id']),

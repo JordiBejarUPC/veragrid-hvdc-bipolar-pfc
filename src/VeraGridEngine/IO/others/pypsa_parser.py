@@ -175,7 +175,7 @@ class PyPSAParser:
 
             bus = self.buses[row['bus']]
 
-            control_mode=GeneratorControlMode.V if row['control'] == 'PV' else GeneratorControlMode.Locked
+            control_mode=GeneratorControlMode.V if row['control'] == 'PV' else GeneratorControlMode.Q
 
             Pmin = row['p_nom_min']
             if Pmin == -np.inf:
@@ -234,7 +234,7 @@ class PyPSAParser:
             else:
                 power_factor = 0.8
 
-            control_mode=GeneratorControlMode.V if row['control'] == 'PV' else GeneratorControlMode.Locked
+            control_mode=GeneratorControlMode.V if row['control'] == 'PV' else GeneratorControlMode.Q
 
             Pmin = row['p_nom_min']
             if Pmin == -np.inf:

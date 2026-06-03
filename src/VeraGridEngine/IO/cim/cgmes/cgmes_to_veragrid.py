@@ -2925,7 +2925,7 @@ def get_gcdev_generators(cgmes_model: CgmesCircuit,
                     Qmax=qmax,
                     Qmin=qmin,
                     vset=v_set,
-                    control_mode=GeneratorControlMode.V if is_controlled else GeneratorControlMode.V.Locked,
+                    control_mode=GeneratorControlMode.V if is_controlled else GeneratorControlMode.V.Q,
                 )
                 gcdev_elm.control_bus = controlled_bus
 

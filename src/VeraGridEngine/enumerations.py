@@ -179,14 +179,15 @@ class ShuntControlMode(Enum):
         except KeyError:
             return s
 
+
 class GeneratorControlMode(str, Enum):
     """
     Modes of operation of generator control modes.
     """
 
-    Locked = ("Locked", 0)   # Fixed P, Q
-    V = ("V", 1)             # classic PV node
-    QVDroop = ("Q-V", 2)     # Like a PQ node with droop equation update of Q
+    Q = ("Locked", 0)  # Fixed Q, classic PQ node
+    V = ("V", 1)  # Fixed V, classic PV node
+    QVDroop = ("Q-V", 2)  # Like a PQ node with droop equation update of Q
 
     def __new__(cls, value: str, code: int):
         obj = str.__new__(cls, value)
