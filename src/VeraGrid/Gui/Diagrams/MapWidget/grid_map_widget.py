@@ -38,6 +38,7 @@ from VeraGridEngine.Devices.Injections.external_grid import ExternalGrid
 from VeraGridEngine.Devices.Injections.static_generator import StaticGenerator
 from VeraGridEngine.Devices.Diagrams.map_diagram import MapDiagram
 from VeraGridEngine.Devices.Fluid import FluidNode, FluidPath
+from VeraGridEngine.Utils.GeographicalMethods.haversine_distance import haversine_distance
 from VeraGridEngine.basic_structures import Vec, CxVec, IntVec
 from VeraGridEngine.Devices.Substation.substation import Substation
 from VeraGridEngine.Devices.Substation.voltage_level import VoltageLevel
@@ -81,24 +82,6 @@ if TYPE_CHECKING:
 MAP_BRANCH_GRAPHIC_TYPES = Union[
     MapAcLine, MapDcLine, MapHvdcLine, MapFluidPathLine
 ]
-
-
-def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    """
-    Distance between two lat,lon points
-    :param lat1:
-    :param lon1:
-    :param lat2:
-    :param lon2:
-    :return:
-    """
-    R = 6371  # Earth radius in kilometers
-    dLat = math.radians(lat2 - lat1)
-    dLon = math.radians(lon2 - lon1)
-    a = math.sin(dLat / 2) * math.sin(dLat / 2) + math.cos(math.radians(lat1)) * math.cos(
-        math.radians(lat2)) * math.sin(dLon / 2) * math.sin(dLon / 2)
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-    return R * c
 
 
 class MapLibraryModel(QStandardItemModel):
