@@ -63,11 +63,18 @@ class BackEulerImplicitIntegrationVec:
         :return f_state_update or f_algeb
         """
 
+        _t0 = time.time()
         self.problem.update_input_matrices_by_model(x, dx)
+        self._timings["rhs_gather_time"] += time.time() - _t0
+
+        _t0 = time.time()
         f_algeb = self.problem.rhs_algebraic_vec(x, dx)
+        self._timings["rhs_algeb_eval_time"] += time.time() - _t0
 
         if self.problem.get_states_number() > 0:
+            _t0 = time.time()
             f_state = self.problem.rhs_state_vec()
+            self._timings["rhs_state_eval_time"] += time.time() - _t0
             f_state_update = x[:self.problem.get_states_number()] - xn[:self.problem.get_states_number()] - h * f_state
             return np.r_[f_state_update, f_algeb]
 
@@ -94,15 +101,29 @@ class BackEulerImplicitIntegrationVec:
                  |            |           |    |            |    |            |
         """
 
+        _t0 = time.time()
+        self.problem.update_input_matrices_by_model(x, dx)
+        self._timings["jac_gather_time"] += time.time() - _t0
+
         # returns only j22 if no states, returns J if states
         if self.problem.get_states_number() == 0:
-            j22: sp.csc_matrix = self.problem.get_j22(x, dx, h)
+            t0 = time.time()
+            j22: sp.csc_matrix = self.problem.get_j22_vec(x, dx, h)
+            self._timings["jac_j22_time"] += time.time() - t0
             return j22
 
-        j11_val: csc_matrix = self.problem.get_j11(x, dx, h)
-        j12_val: csc_matrix = self.problem.get_j12(x, dx, h)
-        j21_val: csc_matrix = self.problem.get_j21(x, dx, h)
-        j22_val: csc_matrix = self.problem.get_j22(x, dx, h)
+        t0 = time.time()
+        j11_val: csc_matrix = self.problem.get_j11_vec(h)
+        self._timings["jac_j11_time"] += time.time() - t0
+        t0 = time.time()
+        j12_val: csc_matrix = self.problem.get_j12_vec(h)
+        self._timings["jac_j12_time"] += time.time() - t0
+        t0 = time.time()
+        j21_val: csc_matrix = self.problem.get_j21_vec(h)
+        self._timings["jac_j21_time"] += time.time() - t0
+        t0 = time.time()
+        j22_val: csc_matrix = self.problem.get_j22_vec(x, dx, h)
+        self._timings["jac_j22_time"] += time.time() - t0
 
         I = sp.eye(m=self.problem.get_states_number(), n=self.problem.get_states_number())
         j11: sp.csc_matrix = (I - h * j11_val).tocsc()
@@ -128,13 +149,22 @@ class BackEulerImplicitIntegrationVec:
         dx0: Vec = np.zeros(self.problem.get_diff_var_number(), dtype=float)
 
         # timing accumulators
-        timings = {
+        self._timings = {
             "jacobian_time": 0.0,
             "rhs_time": 0.0,
             "lag_update_time": 0.0,
             "linear_solver_time": 0.0,
             "initial_step_time": 0.0,
+            "rhs_gather_time": 0.0,
+            "rhs_algeb_eval_time": 0.0,
+            "rhs_state_eval_time": 0.0,
+            "jac_gather_time": 0.0,
+            "jac_j11_time": 0.0,
+            "jac_j12_time": 0.0,
+            "jac_j21_time": 0.0,
+            "jac_j22_time": 0.0,
         }
+        timings = self._timings
 
         self.t[0] = self.t0
         self.y[0, :] = x0.copy()
@@ -251,8 +281,11 @@ class BackEulerImplicitIntegrationVec:
 
                         if not substep_converged:
                             solved = False
-                            linear_start = time.time()
+                            jac_start = time.time()
                             Jf = self._jacobian_implicit(x_new, dx, h_eff)
+                            jac_end = time.time()
+                            timings["jacobian_time"] += jac_end - jac_start
+                            linear_start = time.time()
                             delta = sp.linalg.spsolve(Jf, -rhs)
                             linear_end = time.time()
                             timings["linear_solver_time"] += linear_end - linear_start
@@ -325,5 +358,19 @@ class BackEulerImplicitIntegrationVec:
                 self.problem.close_fmu_cs_devices()
             if has_fmu_me:
                 self.problem.close_fmu_me_devices()
+
+        total = sum(timings.values())
+        print("\n--- Solver timing breakdown (Vec) ---")
+        for k, v in timings.items():
+            print(f"  {k:25s}: {v:8.4f} s  ({v/total*100:5.1f}%)")
+        print(f"  {'TOTAL':25s}: {total:8.4f} s")
+
+        if hasattr(self.problem, '_prof_timings') and self.problem._prof_timings:
+            print("\n--- Problem-level timing breakdown (Vec) ---")
+            pt = self.problem._prof_timings
+            ptotal = sum(pt.values())
+            for k, v in sorted(pt.items()):
+                print(f"  {k:35s}: {v:8.4f} s  ({v/ptotal*100:5.1f}%)")
+            print(f"  {'TOTAL':35s}: {ptotal:8.4f} s")
 
         return self.t, self.y, well_initialized, converged

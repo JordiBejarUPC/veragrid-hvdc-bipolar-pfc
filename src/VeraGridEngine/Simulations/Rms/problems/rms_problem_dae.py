@@ -1110,21 +1110,22 @@ class RmsProblemDae(RmsProblemTemplate):
             else:
                 pass
 
+        print("start creating balance equations")
         # add the nodal balance equations
         ac_virtual_buses = [elm.bus_to.idtag for elm in grid.get_vsc()]
         for i, elm in enumerate(self.grid.buses):
-            mdl = block_deep_copy(elm.rms_model, grid.var_factory)
-            if len(mdl.algebraic_eqs) == 0:
-                if not P_used[i] and not Q_used[i]:
-                    self.logger.add_error("Isolated bus", value=i)
+            if not P_used[i] and not Q_used[i]:
+                self.logger.add_error("Isolated bus", value=i)
+            else:
+                if elm.is_dc:
+                    self._algebraic_eqs.append(P[i])
+                elif (elm.idtag in ac_virtual_buses):
+                    self._algebraic_eqs.append(P[i])
                 else:
-                    if elm.is_dc:
-                        self._algebraic_eqs.append(P[i])
-                    elif (elm.idtag in ac_virtual_buses):
-                        self._algebraic_eqs.append(P[i])
-                    else:
-                        self._algebraic_eqs.append(Q[i])
-                        self._algebraic_eqs.append(P[i])
+                    self._algebraic_eqs.append(Q[i])
+                    self._algebraic_eqs.append(P[i])
+
+        print("created balance equations")
 
         # We define the parameter dt and delta
         self._dt = Var(name='dt')
@@ -2025,15 +2026,15 @@ class RmsProblemDae(RmsProblemTemplate):
         :param val:
         :type val:
         :return:
-        :rtype:
+        :rtype:self._
         """
         if reference_powerflow in mdl.external_mapping:
             var = mdl.external_mapping[reference_powerflow]
             self.init_guess[var.uid] = val
-            print(f"DEBUG: set_init_guess {reference_powerflow.value} = {val} for var {var.name} (uid={var.uid})")
-        else:
-            print(
-                f"DEBUG: set_init_guess {reference_powerflow.value} NOT FOUND in external_mapping. Available: {[k.value for k in mdl.external_mapping.keys()]}")
+            # print(f"DEBUG: set_init_guess {reference_powerflow.value} = {val} for var {var.name} (uid={var.uid})")
+        # else:
+            # print(
+                # f"DEBUG: set_init_guess {reference_powerflow.value} NOT FOUND in external_mapping. Available: {[k.value for k in mdl.external_mapping.keys()]}")
 
     def get_equation_at(self, i: int) -> Expr:
         """

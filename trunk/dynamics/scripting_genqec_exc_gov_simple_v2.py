@@ -119,10 +119,6 @@ line_mdl = get_line_rms_template(grid.var_factory).block
 # load
 load_mdl = get_load_rms_template(grid.var_factory).block
 
-# set models parameters
-# load_mdl.set_parameter_in_model(var_name="Pl0", new_value=-0.0999999)
-# load_mdl.set_parameter_in_model(var_name="Ql0", new_value=-0.009999999862208533)
-
 ######################################################################################################
 # Add models to devices
 ######################################################################################################

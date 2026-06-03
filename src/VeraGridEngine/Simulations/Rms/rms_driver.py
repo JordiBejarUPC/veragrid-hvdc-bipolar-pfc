@@ -14,7 +14,9 @@ from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.rms_results import RmsResults
 from VeraGridEngine.Simulations.Rms.rms_problem_factory import build_rms_problem
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
+from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae_vectorized import RmsProblemDaeVec
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
+from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx_vectorized import BackEulerImplicitIntegrationVec
 from VeraGridEngine.enumerations import EngineType, SimulationTypes, DynamicIntegrationMethod
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults
 from VeraGridEngine.basic_structures import Vec, StrVec
@@ -114,7 +116,7 @@ class RmsSimulationDriver(DriverTemplate):
         rms_events_group_names: StrVec = np.array([elm.name for elm in rms_events_groups])
         rms_events_group_idtags: StrVec = np.array([str(elm.idtag) for elm in rms_events_groups])
 
-        self.options.problem_type = RmsProblemTypes.PowerBalanceVectorized
+        # self.options.problem_type = RmsProblemTypes.PowerBalanceVectorized
 
         problem = build_rms_problem(
             grid=self.grid,
