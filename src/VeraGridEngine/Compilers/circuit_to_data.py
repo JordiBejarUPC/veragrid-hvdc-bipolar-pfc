@@ -895,7 +895,7 @@ def get_shunt_data(
             data.mttr[ii] = elm.mttr
 
             data.control_mode_int[ii] = elm.control_mode.idx()
-            # data.is_pv_control[ii] = elm.control_mode == ShuntControlMode.Continuous
+
             data.vset[ii] = elm.Vset
             data.vmin[ii] = elm.Vmin
             data.vmax[ii] = elm.Vmax

@@ -8,6 +8,7 @@ from scipy.sparse import csc_matrix, coo_matrix
 import VeraGridEngine.Topology.topology as tp
 from VeraGridEngine.Utils.Sparse.sparse_array import SparseObjectArray
 from VeraGridEngine.basic_structures import Vec, CxVec, IntVec, StrVec, BoolVec
+from VeraGridEngine.enumerations import ShuntControlMode
 
 
 class ShuntData:
@@ -30,7 +31,6 @@ class ShuntData:
         self.active: BoolVec = np.zeros(nelm, dtype=bool)
 
         self.control_mode_int: IntVec = np.zeros(self.nelm, dtype=int)
-        self.is_pv_control: BoolVec = np.zeros(nelm, dtype=bool)  # quick proxy to not making searches
 
         self.Y: CxVec = np.zeros(nelm, dtype=complex)
 
@@ -91,7 +91,6 @@ class ShuntData:
         data.active = self.active[elm_idx]
 
         data.control_mode_int = self.control_mode_int[elm_idx]
-        data.is_pv_control = self.is_pv_control[elm_idx]
 
         data.Y = self.Y[elm_idx]
 
@@ -163,7 +162,6 @@ class ShuntData:
         data.idtag = self.idtag.copy()
         data.active = self.active.copy()
         data.control_mode_int = self.control_mode_int.copy()
-        data.is_pv_control = self.is_pv_control.copy()
 
         data.Y = self.Y.copy()
         data.Y3_star = self.Y3_star.copy()
@@ -219,8 +217,9 @@ class ShuntData:
         Get fixed Injections per bus
         :return:
         """
+        is_pv_control = self.control_mode_int == ShuntControlMode.Continuous.idx()
         return tp.sum_per_bus_cx(nbus=self.nbus, bus_indices=self.bus_idx,
-                                 magnitude=self.Y * self.active * (1 - self.is_pv_control))
+                                 magnitude=self.Y * self.active * (1 - is_pv_control))
 
     def get_qmax_per_bus(self) -> Vec:
         """
@@ -251,8 +250,8 @@ class ShuntData:
         Get the indices of controllable generators
         :return: idx_controllable, idx_non_controllable
         """
-        return (np.where(self.is_pv_control == True)[0],
-                np.where(self.is_pv_control == False)[0])
+        return (np.where(self.control_mode_int == ShuntControlMode.Continuous.idx())[0],
+                np.where(self.control_mode_int != ShuntControlMode.Continuous.idx())[0])
 
     def get_C_bus_elm(self) -> csc_matrix:
         """

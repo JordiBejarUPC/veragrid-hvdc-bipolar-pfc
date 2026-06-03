@@ -14,7 +14,7 @@ from VeraGridEngine.Devices import RemedialAction
 from VeraGridEngine.Topology.simulation_indices import SimulationIndices
 from VeraGridEngine.Topology.topology import find_islands
 from VeraGridEngine.basic_structures import Vec, IntVec, CxVec, BoolVec, Mat, CxMat, Logger
-from VeraGridEngine.enumerations import ContingencyOperationTypes, GeneratorControlMode
+from VeraGridEngine.enumerations import ContingencyOperationTypes, GeneratorControlMode, ShuntControlMode
 import VeraGridEngine.Topology.topology as tp
 import VeraGridEngine.Topology.simulation_indices as si
 import VeraGridEngine.Topology.admittance_matrices as ycalc
@@ -55,9 +55,9 @@ ALL_STRUCTS = Union[
 def build_q_limits(nbus: int, Sbase: float,
                    gen_idx, q_min_gen, q_max_gen, active_gen, control_mode_int_gen,
                    batt_idx, q_min_batt, q_max_batt, active_batt, control_mode_int_batt,
-                   sh_idx, q_min_sh, q_max_sh, active_sh, controllable_sh,
+                   sh_idx, q_min_sh, q_max_sh, active_sh, control_mode_int_sh,
                    hvdc_f, hvdc_t, q_min_hvdc_f, q_max_hvdc_f, q_min_hvdc_t, q_max_hvdc_t, active_hvdc,
-                   v_ctrl_val_gen: int):
+                   v_ctrl_val_gen: int, v_ctrl_val_sh: int):
     """
 
     :param nbus:
@@ -76,7 +76,7 @@ def build_q_limits(nbus: int, Sbase: float,
     :param q_min_sh:
     :param q_max_sh:
     :param active_sh:
-    :param controllable_sh:
+    :param control_mode_int_sh:
     :param hvdc_f:
     :param hvdc_t:
     :param q_min_hvdc_f:
@@ -84,7 +84,8 @@ def build_q_limits(nbus: int, Sbase: float,
     :param q_min_hvdc_t:
     :param q_max_hvdc_t:
     :param active_hvdc:
-    :param v_ctrl_val_gen: 
+    :param v_ctrl_val_gen:
+    :param v_ctrl_val_sh
     :return:
     """
     max_mask = np.zeros(nbus, dtype=nb.int32)
@@ -126,9 +127,9 @@ def build_q_limits(nbus: int, Sbase: float,
             max_mask[i] += 1
             min_mask[i] += 1
 
-    for i, qmin, qmax, active, ctrl_mode in zip(sh_idx, q_min_sh, q_max_sh, active_sh, controllable_sh):
+    for i, qmin, qmax, active, ctrl_mode in zip(sh_idx, q_min_sh, q_max_sh, active_sh, control_mode_int_sh):
 
-        if active and ctrl_mode:
+        if active and ctrl_mode == v_ctrl_val_sh:
             if max_mask[i] == 0:
                 Qmax_bus[i] = qmax / Sbase
             else:
@@ -873,7 +874,7 @@ class NumericalCircuit:
             q_min_sh=self.shunt_data.qmin,
             q_max_sh=self.shunt_data.qmax,
             active_sh=self.shunt_data.active,
-            controllable_sh=self.shunt_data.is_pv_control,
+            control_mode_int_sh=self.shunt_data.control_mode_int,
 
             hvdc_f=self.hvdc_data.F,
             hvdc_t=self.hvdc_data.T,
@@ -883,7 +884,8 @@ class NumericalCircuit:
             q_max_hvdc_t=self.hvdc_data.Qmax_t,
             active_hvdc=self.hvdc_data.active,
 
-            v_ctrl_val_gen=GeneratorControlMode.V.idx()
+            v_ctrl_val_gen=GeneratorControlMode.V.idx(),
+            v_ctrl_val_sh = ShuntControlMode.Continuous.idx()
         )
         return Qmax_bus, Qmin_bus
 

@@ -11,11 +11,12 @@ from scipy import sparse as sp
 from scipy.sparse import csc_matrix as csc
 from scipy.sparse import lil_matrix
 
+from VeraGridEngine import ShuntControlMode
 from VeraGridEngine.Utils.Sparse.csc import diags
 from VeraGridEngine.Compilers.circuit_to_data import NumericalCircuit
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions import (compute_power, polar_to_rect)
 from VeraGridEngine.Simulations.OPF.opf_options import OptimalPowerFlowOptions
-from VeraGridEngine.enumerations import AcOpfMode, BusMode, TapPhaseControl, TapModuleControl
+from VeraGridEngine.enumerations import AcOpfMode, BusMode, TapPhaseControl, TapModuleControl, ShuntControlMode
 from VeraGridEngine.basic_structures import Vec, CxVec, IntVec, Logger, csr_matrix, csc_matrix
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions import get_Sf, get_St
 from VeraGridEngine.Simulations.OPF.NumericalMethods.newton_raphson_ips_fx import IpsSolution
@@ -377,7 +378,7 @@ class NonLinearOptimalPfProblem:
         # Shunt elements are treated as generators with fixed P.
         # As such, their limits are added in the generator limits array.
 
-        self.id_sh = np.where(nc.shunt_data.is_pv_control == True)[0]
+        self.id_sh = np.where(nc.shunt_data.control_mode_int == ShuntControlMode.Continuous.idx())[0]
         self.sh_bus_idx = nc.shunt_data.get_bus_indices()[self.id_sh]
         self.nsh = len(self.id_sh)
 

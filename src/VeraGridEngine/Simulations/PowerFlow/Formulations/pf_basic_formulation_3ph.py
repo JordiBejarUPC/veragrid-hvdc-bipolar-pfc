@@ -190,11 +190,11 @@ def compute_ybus(nc: NumericalCircuit) -> Tuple[csc_matrix, csc_matrix, csc_matr
             for p in range(start, end):
                 k = bus_branches[p]
 
-                if F[k] == bus_idx and nc.passive_branch_data.conn_f[k] == WindingType.GroundedStar:
+                if F[k] == bus_idx and nc.passive_branch_data.conn_f[k] == WindingType.GroundedStar.idx():
                     grounded_here = True
                     break
                 else:
-                    if T[k] == bus_idx and nc.passive_branch_data.conn_t[k] == WindingType.GroundedStar:
+                    if T[k] == bus_idx and nc.passive_branch_data.conn_t[k] == WindingType.GroundedStar.idx():
                         grounded_here = True
                         break
                     else:
