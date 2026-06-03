@@ -704,7 +704,7 @@ class PfAcDcWithNegativePolesSc(PfFormulationTemplate):
         self.buses_with_discrete_shunts_control: List[Tuple[int, int]] = list()
         self.shunt_step = self.nc.shunt_data.step.copy()
         for sh_i, bus_i in enumerate(self.nc.shunt_data.bus_idx):
-            if self.nc.shunt_data.control_mode[sh_i] == ShuntControlMode.Discrete:
+            if self.nc.shunt_data.control_mode[sh_i] == ShuntControlMode.Discrete.to_int():
                 self.buses_with_discrete_shunts_control.append((bus_i, sh_i))
 
     def _update_Qlim_indices(self, i_u_vm: IntVec, i_k_q: IntVec) -> None:

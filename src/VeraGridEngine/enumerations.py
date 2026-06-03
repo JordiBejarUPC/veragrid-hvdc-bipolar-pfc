@@ -153,13 +153,19 @@ class ExternalGridMode(Enum):
             return s
 
 
-class ShuntControlMode(Enum):
+class ShuntControlMode(str,  Enum):
     """
     Modes of operation of shunt control modes
     """
-    Locked = "Locked"
-    Continuous = "Continuous"
-    Discrete = "Discrete"
+    Locked = ("Locked", 0)
+    Continuous = ("Continuous", 1)
+    Discrete = ("Discrete", 1)
+
+    def __new__(cls, value: str, code: int):
+        obj = str.__new__(cls, value)
+        obj._value_ = value
+        obj.code = code
+        return obj
 
     def __str__(self):
         return self.value
@@ -167,13 +173,11 @@ class ShuntControlMode(Enum):
     def __repr__(self):
         return str(self)
 
+    def to_int(self) -> int:
+        return self.code
+
     @staticmethod
     def argparse(s):
-        """
-
-        :param s:
-        :return:
-        """
         try:
             return ShuntControlMode[s]
         except KeyError:
@@ -772,28 +776,32 @@ class AcOpfMode(Enum):
         return list(enum_item.value for enum_item in cls)
 
 
-class TapModuleControl(Enum):
+class TapModuleControl(str, Enum):
     """
     Tap module control types
     """
-    fixed = 'Fixed'
-    Vm = 'Vm'
-    Qf = 'Qf'
-    Qt = 'Qt'
+    fixed = ('Fixed', 0)
+    Vm = ('Vm', 1)
+    Qf = ('Qf', 2)
+    Qt = ('Qt', 3)
 
-    def __str__(self) -> str:
-        return str(self.value)
+    def __new__(cls, value: str, code: int):
+        obj = str.__new__(cls, value)
+        obj._value_ = value
+        obj.code = code
+        return obj
+
+    def __str__(self):
+        return self.value
 
     def __repr__(self):
         return str(self)
 
+    def to_int(self) -> int:
+        return self.code
+
     @staticmethod
     def argparse(s):
-        """
-
-        :param s:
-        :return:
-        """
         try:
             return TapModuleControl[s]
         except KeyError:
@@ -808,29 +816,33 @@ class TapModuleControl(Enum):
         return list(enum_item.value for enum_item in cls)
 
 
-class TapPhaseControl(Enum):
+class TapPhaseControl(str, Enum):
     """
     Tap angle control types
     """
-    fixed = 'Fixed'
-    Pf = 'Pf'
-    Pt = 'Pt'
+    fixed = ('Fixed', 0)
+    Pf = ('Pf', 1)
+    Pt = ('Pt', 2)
 
     # Droop = "Droop"
 
-    def __str__(self) -> str:
-        return str(self.value)
+    def __new__(cls, value: str, code: int):
+        obj = str.__new__(cls, value)
+        obj._value_ = value
+        obj.code = code
+        return obj
+
+    def __str__(self):
+        return self.value
 
     def __repr__(self):
         return str(self)
 
+    def to_int(self) -> int:
+        return self.code
+
     @staticmethod
     def argparse(s):
-        """
-
-        :param s:
-        :return:
-        """
         try:
             return TapPhaseControl[s]
         except KeyError:
@@ -845,37 +857,41 @@ class TapPhaseControl(Enum):
         return list(enum_item.value for enum_item in cls)
 
 
-class ConverterControlType(Enum):
+class ConverterControlType(str, Enum):
     """
     Converter control types
     """
-    Vm_dc = 'Vm_dc'
-    Vm_ac = 'Vm_ac'
-    Va_ac = 'Va_ac'
-    Qac = 'Q_ac'
-    Pdc = 'P_dc'
-    Pac = 'P_ac'
-    Pdc_angle_droop = 'P_dc_angle_droop'  # PMODE3
-    Pdc_droop = 'P_dc_droop'  # DC power / DC voltage droop: Pdc = Pdc* + Pdroop * (Vdc* - Vdc)
-    Q_droop = "Q_droop"
-    P_droop = "P_droop"
-    Imax = 'Imax'
-    Fault1 = 'Fault1'
-    Fault2 = 'Fault2'
+    Vm_dc = ('Vm_dc', 1)
+    Vm_ac = ('Vm_ac', 2)
+    Va_ac = ('Va_ac', 3)
+    Qac = ('Q_ac', 4)
+    Pdc = ('P_dc', 5)
+    Pac = ('P_ac', 6)
+    Pdc_angle_droop = ('P_dc_angle_droop', 7)  # PMODE3
+    Pdc_droop = ('P_dc_droop', 8)  # DC power / DC voltage droop: Pdc = Pdc* + Pdroop * (Vdc* - Vdc)
+    Q_droop = ("Q_droop", 9)
+    P_droop = ("P_droop", 10)
+    Imax = ('Imax', 11)
+    Fault1 = ('Fault1', 12)
+    Fault2 = ('Fault2', 13)
 
-    def __str__(self) -> str:
-        return str(self.value)
+    def __new__(cls, value: str, code: int):
+        obj = str.__new__(cls, value)
+        obj._value_ = value
+        obj.code = code
+        return obj
+
+    def __str__(self):
+        return self.value
 
     def __repr__(self):
         return str(self)
 
+    def to_int(self) -> int:
+        return self.code
+
     @staticmethod
     def argparse(s):
-        """
-
-        :param s:
-        :return:
-        """
         try:
             return ConverterControlType[s]
         except KeyError:
@@ -971,26 +987,30 @@ class ValveInitializationState(Enum):
             return s
 
 
-class HvdcControlType(Enum):
+class HvdcControlType(str, Enum):
     """
     Simple HVDC control types
     """
-    type_0_free = '0:Free'
-    type_1_Pset = '1:Pdc'
+    type_0_free = ('0:Free', 0)
+    type_1_Pset = ('1:Pdc', 1)
 
-    def __str__(self) -> str:
-        return str(self.value)
+    def __new__(cls, value: str, code: int):
+        obj = str.__new__(cls, value)
+        obj._value_ = value
+        obj.code = code
+        return obj
+
+    def __str__(self):
+        return self.value
 
     def __repr__(self):
         return str(self)
 
+    def to_int(self) -> int:
+        return self.code
+
     @staticmethod
     def argparse(s):
-        """
-
-        :param s:
-        :return:
-        """
         try:
             return HvdcControlType[s]
         except KeyError:

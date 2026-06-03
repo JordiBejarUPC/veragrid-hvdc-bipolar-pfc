@@ -27,14 +27,13 @@ from typing import Any, Dict, List, Tuple, TYPE_CHECKING
 
 import numpy as np
 
-
 from VeraGridEngine.Devices.Branches.overhead_line_type import OverheadLineType
 from VeraGridEngine.Devices import MultiCircuit
 from VeraGridEngine.Devices.Branches.dc_line import DcLine
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.symbolic import Const
-from VeraGridEngine.basic_structures import Logger
+from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var, Expr
+from VeraGridEngine.basic_structures import Logger, Vec
 from VeraGridEngine.enumerations import (
     ConverterControlType,
     DeviceType,
@@ -47,6 +46,7 @@ from VeraGridEngine.enumerations import (
 
 if TYPE_CHECKING:
     import VeraGridEngine.Devices as dev
+    from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 
 devices_static_params_mapping: Dict[DeviceType, List[ParamPowerFlowRefferenceType]] = {
     DeviceType.LoadDevice: [
@@ -335,7 +335,7 @@ devices_static_params_mapping: Dict[DeviceType, List[ParamPowerFlowRefferenceTyp
 }
 
 
-def to_static_mapping_const(value: Any) -> Const:
+def to_static_mapping_const(value: float | Const) -> Const:
     """
     Convert a static numerical mapping value into a symbolic constant.
 
@@ -393,7 +393,7 @@ def add_static_mapping_warning(
 def assign_api_mapping_value_if_present(
         mdl: Block,
         key: ParamPowerFlowRefferenceType,
-        value: Any,
+        value: float,
         logger: Logger | None,
         device_name: str,
 ) -> bool:
@@ -412,17 +412,16 @@ def assign_api_mapping_value_if_present(
     :return: ``True`` if the value was assigned, ``False`` otherwise.
     """
     assigned: bool = False
-    api_obj_mapping: Any = mdl.api_obj_mapping
-
+    api_obj_mapping: Dict[ParamPowerFlowRefferenceType, Var] = mdl.api_obj_mapping
 
     # The mapping is optional: a model receives only the static parameters it
     # explicitly requests by exposing the enum key.
-    target: Any | None = api_obj_mapping.get(key, None)
+    target: Var | None = api_obj_mapping.get(key, None)
 
     if target is None:
         assigned = False
     else:
-        event_dict: Any = mdl.event_dict
+        event_dict: Dict[Var, Expr | Const] = mdl.event_dict
 
         if target in event_dict:
 
@@ -445,8 +444,6 @@ def assign_api_mapping_value_if_present(
             mdl.parameters[target] = to_static_mapping_const(value)
             assigned = True
 
-
-
     return assigned
 
 
@@ -462,7 +459,7 @@ def api_mapping_has_any_key(
     :return: ``True`` if any key is present in ``mdl.api_obj_mapping``.
     """
     has_key: bool = False
-    api_obj_mapping: Any = mdl.api_obj_mapping
+    api_obj_mapping: Dict[ParamPowerFlowRefferenceType, Var] = mdl.api_obj_mapping
 
     if isinstance(api_obj_mapping, dict):
         key_index: int = 0
@@ -659,12 +656,12 @@ def abc_to_nabc(phase_values_abc: np.ndarray) -> np.ndarray:
     return phase_values_nabc
 
 
-def get_load_power_phase_values_pu_abc(load: Any, grid: MultiCircuit) -> Tuple[np.ndarray, np.ndarray]:
+def get_load_power_phase_values_pu_abc(load: dev.Load, grid: MultiCircuit) -> Tuple[np.ndarray, np.ndarray]:
     """
     Return explicit ABC active/reactive load powers in p.u. on ``grid.Sbase``.
 
     Explicit phase values are used when they are meaningfully populated.
-    Otherwise the balanced total values are split equally among phases.
+    Otherwise, the balanced total values are split equally among phases.
 
     :param load: Load-like static device.
     :param grid: Static network model.
@@ -688,7 +685,7 @@ def get_load_power_phase_values_pu_abc(load: Any, grid: MultiCircuit) -> Tuple[n
     return p_pu_abc, q_pu_abc
 
 
-def get_load_impedance_phase_values_pu_abc(load: Any, grid: MultiCircuit) -> Tuple[np.ndarray, np.ndarray]:
+def get_load_impedance_phase_values_pu_abc(load: dev.Load, grid: MultiCircuit) -> Tuple[np.ndarray, np.ndarray]:
     """
     Return explicit ABC ZIP-impedance powers in p.u. on ``grid.Sbase``.
 
@@ -715,7 +712,7 @@ def get_load_impedance_phase_values_pu_abc(load: Any, grid: MultiCircuit) -> Tup
     return g_pu_abc, b_pu_abc
 
 
-def get_load_current_phase_values_pu_abc(load: Any, grid: MultiCircuit) -> Tuple[np.ndarray, np.ndarray]:
+def get_load_current_phase_values_pu_abc(load: dev.Load, grid: MultiCircuit) -> Tuple[np.ndarray, np.ndarray]:
     """
     Return explicit ABC ZIP-current powers in p.u. on ``grid.Sbase``.
 
@@ -742,7 +739,7 @@ def get_load_current_phase_values_pu_abc(load: Any, grid: MultiCircuit) -> Tuple
     return ir_pu_abc, ii_pu_abc
 
 
-def get_shunt_phase_values_pu_abc(shunt: Any, grid: MultiCircuit) -> Tuple[np.ndarray, np.ndarray]:
+def get_shunt_phase_values_pu_abc(shunt: dev.Shunt, grid: MultiCircuit) -> Tuple[np.ndarray, np.ndarray]:
     """
     Return explicit ABC shunt conductance/susceptance powers in p.u.
 
@@ -772,7 +769,7 @@ def get_shunt_phase_values_pu_abc(shunt: Any, grid: MultiCircuit) -> Tuple[np.nd
 
 
 def get_current_injection_phase_values_pu_abc(
-        current_injection: Any,
+        current_injection: dev.CurrentInjection,
         grid: MultiCircuit,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
@@ -865,10 +862,9 @@ def controllable_shunt_mode_code(mode: ShuntControlMode) -> float:
     return code
 
 
-
 def assign_static_api_object_mapping_for_device(
         grid: MultiCircuit,
-        device: Any,
+        device: ALL_DEV_TYPES,
         mdl: Block,
         logger: Logger | None,
 ) -> None:
@@ -886,7 +882,7 @@ def assign_static_api_object_mapping_for_device(
     :param logger: Optional logger used for diagnostics.
     :return: None.
     """
-    api_obj_mapping: Any = mdl.api_obj_mapping
+    api_obj_mapping: Dict[ParamPowerFlowRefferenceType, Var] = mdl.api_obj_mapping
 
     if isinstance(api_obj_mapping, dict):
         if len(api_obj_mapping) == 0:
@@ -1058,7 +1054,6 @@ def assign_static_api_object_mapping_for_device(
         pass
 
 
-
 def converter_control_code(control_tpe: ConverterControlType | None) -> float:
     """
     Convert a static VSC control enum to the EMT template numerical code.
@@ -1090,7 +1085,6 @@ def converter_control_code(control_tpe: ConverterControlType | None) -> float:
         code = 0.0
 
     return code
-
 
 
 def xfmr_connection_matrix(winding_tpe: WindingType) -> np.ndarray:
@@ -1157,8 +1151,6 @@ def xfmr_phase_permutation_matrix(clock: int) -> np.ndarray:
             )
 
     return matrix
-
-
 
 
 def get_transformer_from_connection_keys() -> List[List[ParamPowerFlowRefferenceType]]:
@@ -1484,7 +1476,7 @@ def get_all_line_matrix_keys() -> List[ParamPowerFlowRefferenceType]:
     return all_keys
 
 
-def get_line_active_global_indices(line: Any) -> List[int]:
+def get_line_active_global_indices(line: dev.Line) -> List[int]:
     """
     Return active NABC phase indices for a line-like device.
 
@@ -1512,7 +1504,7 @@ def get_line_active_global_indices(line: Any) -> List[int]:
 
 
 def build_uncoupled_line_static_matrices(
-        line: Any,
+        line: dev.Line,
         omega_base: float,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
@@ -1562,7 +1554,7 @@ def build_uncoupled_line_static_matrices(
 
 def build_line_static_matrices(
         grid: MultiCircuit,
-        line: Any,
+        line: dev.Line,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Build line R, L and C matrices in EMT per-unit form.
@@ -1577,9 +1569,9 @@ def build_line_static_matrices(
     sbase_va: float = float(grid.Sbase) * 1.0e6
     zbase: float = (voltage_base * voltage_base) / sbase_va
     ybase: float = 1.0 / zbase
-    line_template: Any = line.template
+    line_template: dev.OverheadLineType | dev.UndergroundLineType | dev.SequenceLineType = line.template
 
-    if type(line_template)== OverheadLineType:
+    if type(line_template) == OverheadLineType:
         r_full: np.ndarray
         l_full: np.ndarray
         c_full: np.ndarray
@@ -1614,10 +1606,10 @@ def build_line_static_matrices(
 
 
 def validate_line_static_matrices(
-        line: Any,
-        r_full: np.ndarray,
-        l_full: np.ndarray,
-        c_full: np.ndarray,
+        line: dev.Line,
+        r_full: Vec,
+        l_full: Vec,
+        c_full: Vec,
         n_active: int,
         logger: Logger | None,
 ) -> bool:
@@ -1680,7 +1672,7 @@ def validate_line_static_matrices(
 
 def assign_common_injection_static_api_mapping(
         grid: MultiCircuit,
-        device: Any,
+        device: ALL_DEV_TYPES,
         mdl: Block,
         logger: Logger | None,
 ) -> None:
@@ -1719,7 +1711,7 @@ def assign_common_injection_static_api_mapping(
 
 
 def assign_common_branch_static_api_mapping(
-        device: Any,
+        device: ALL_DEV_TYPES,
         mdl: Block,
         logger: Logger | None,
 ) -> None:
@@ -1772,7 +1764,7 @@ def assign_common_branch_static_api_mapping(
 
 def assign_load_static_api_mapping(
         grid: MultiCircuit,
-        load: Any,
+        load: dev.Load,
         mdl: Block,
         logger: Logger | None,
 ) -> None:
@@ -2060,7 +2052,7 @@ def assign_load_static_api_mapping(
 
 def assign_static_generator_static_api_mapping(
         grid: MultiCircuit,
-        static_generator: Any,
+        static_generator: dev.StaticGenerator,
         mdl: Block,
         logger: Logger | None,
 ) -> None:
@@ -2203,7 +2195,7 @@ def assign_static_generator_static_api_mapping(
 
 def assign_external_grid_static_api_mapping(
         grid: MultiCircuit,
-        external_grid: Any,
+        external_grid: dev.ExternalGrid,
         mdl: Block,
         logger: Logger | None,
 ) -> None:
@@ -2318,7 +2310,7 @@ def assign_external_grid_static_api_mapping(
 
 def assign_shunt_static_api_mapping(
         grid: MultiCircuit,
-        shunt: Any,
+        shunt: dev.Shunt,
         mdl: Block,
         logger: Logger | None,
 ) -> None:
@@ -2405,9 +2397,10 @@ def assign_shunt_static_api_mapping(
                                         device_name=device_name
                                         )
 
+
 def assign_controllable_shunt_static_api_mapping(
         grid: MultiCircuit,
-        controllable_shunt: Any,
+        controllable_shunt: dev.ControllableShunt,
         mdl: Block,
         logger: Logger | None,
 ) -> None:
@@ -2486,7 +2479,7 @@ def assign_controllable_shunt_static_api_mapping(
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowRefferenceType.controllable_shunt_control_mode_code,
-        value=controllable_shunt_mode_code(controllable_shunt.control_mode),
+        value=float(controllable_shunt.control_mode.to_int()),
         logger=logger,
         device_name=device_name,
     )
@@ -2494,7 +2487,7 @@ def assign_controllable_shunt_static_api_mapping(
 
 def assign_current_injection_static_api_mapping(
         grid: MultiCircuit,
-        current_injection: Any,
+        current_injection: dev.CurrentInjection,
         mdl: Block,
         logger: Logger | None,
 ) -> None:
@@ -2571,6 +2564,7 @@ def assign_current_injection_static_api_mapping(
                                         logger=logger,
                                         device_name=device_name
                                         )
+
 
 def assign_generator_static_api_mapping(
         grid: MultiCircuit,
@@ -2771,7 +2765,7 @@ def assign_generator_static_api_mapping(
 
 def assign_battery_static_api_mapping(
         grid: MultiCircuit,
-        battery: Any,
+        battery: dev.Battery,
         mdl: Block,
         logger: Logger | None,
 ) -> None:
@@ -2851,7 +2845,7 @@ def assign_battery_static_api_mapping(
 
 def assign_vsc_static_api_mapping(
         grid: MultiCircuit,
-        vsc: Any,
+        vsc: dev.VSC,
         mdl: Block,
         logger: Logger | None,
 ) -> None:
@@ -3303,7 +3297,7 @@ def assign_transformer2w_static_api_mapping(
 
 def assign_line_static_api_mapping(
         grid: MultiCircuit,
-        line: Any,
+        line: dev.Line,
         mdl: Block,
         logger: Logger | None,
 ) -> None:
@@ -3459,11 +3453,8 @@ def assign_line_static_api_mapping(
             pass
 
 
-
-
-
 def assign_hvdc_line_static_api_mapping(
-        hvdc_line: Any,
+        hvdc_line: dev.HvdcLine,
         mdl: Block,
         logger: Logger | None,
 ) -> None:
@@ -3485,7 +3476,7 @@ def assign_hvdc_line_static_api_mapping(
 
 
 def assign_series_reactance_static_api_mapping(
-        series_reactance: Any,
+        series_reactance: dev.SeriesReactance,
         mdl: Block,
         logger: Logger | None,
 ) -> None:
@@ -3507,7 +3498,7 @@ def assign_series_reactance_static_api_mapping(
 
 
 def assign_switch_static_api_mapping(
-        switch: Any,
+        switch: dev.Switch,
         mdl: Block,
         logger: Logger | None,
 ) -> None:
@@ -3529,7 +3520,7 @@ def assign_switch_static_api_mapping(
 
 
 def assign_upfc_static_api_mapping(
-        upfc: Any,
+        upfc: dev.UPFC,
         mdl: Block,
         logger: Logger | None,
 ) -> None:

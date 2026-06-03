@@ -894,8 +894,8 @@ def get_shunt_data(
             data.mttf[ii] = elm.mttf
             data.mttr[ii] = elm.mttr
 
-            data.control_mode[ii] = elm.control_mode
-            data.is_pv_control[ii] = elm.control_mode == ShuntControlMode.Continuous
+            data.control_mode[ii] = elm.control_mode.to_int()
+            # data.is_pv_control[ii] = elm.control_mode == ShuntControlMode.Continuous
             data.vset[ii] = elm.Vset
             data.vmin[ii] = elm.Vmin
             data.vmax[ii] = elm.Vmax
@@ -961,7 +961,7 @@ def get_shunt_data(
 
             # reactive power sharing data
             if data.active[ii]:
-                if data.control_mode[ii] == ShuntControlMode.Locked:
+                if data.control_mode[ii] == ShuntControlMode.Locked.to_int():
                     bus_data.q_shared_total[i] += data.Y[ii].imag
                     data.q_share[ii] = data.Y[ii].imag
                 else:
