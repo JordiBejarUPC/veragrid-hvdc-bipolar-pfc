@@ -8,7 +8,7 @@ import numpy as np
 from scipy.sparse import csc_matrix, coo_matrix
 import VeraGridEngine.Topology.topology as tp
 from VeraGridEngine.basic_structures import CxVec, Vec, IntVec, BoolVec, StrVec, ObjVec
-from VeraGridEngine.enumerations import GeneratorType
+from VeraGridEngine.enumerations import GeneratorType, GeneratorControlMode
 
 
 class GeneratorData:
@@ -444,7 +444,9 @@ class GeneratorData:
         Get the indices of controllable generators
         :return: idx_controllable, idx_non_controllable
         """
-        return np.where(self.control_mode_int == 1)[0], np.where(self.control_mode_int == 0)[0]
+        v_idx = GeneratorControlMode.V.to_int()
+        return (np.where(self.control_mode_int == v_idx)[0],
+                np.where(self.control_mode_int != v_idx)[0])
 
     def get_gen_indices_at_buses(self, bus_indices: IntVec) -> IntVec:
 

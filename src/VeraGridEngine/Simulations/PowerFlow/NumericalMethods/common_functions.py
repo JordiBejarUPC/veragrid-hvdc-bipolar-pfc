@@ -860,14 +860,15 @@ def split_bus_quantity(
         Qmin_gen: Vec,
         Qmax_gen: Vec,
         gen_status: BoolVec,
-        is_controlling: BoolVec,
+        control_mode_int_gen: IntVec,
         Q0_gen: Vec,
         batt_bus_idx: IntVec,
         Qmin_batt: Vec,
         Qmax_batt: Vec,
         batt_status: BoolVec,
-        batt_is_controlling: BoolVec,
+        control_mode_int_batt: IntVec,
         Q0_batt: Vec,
+        v_ctrl_val_gen: int,
         atol: float = 1e-12,
 ) -> Tuple[Vec, Vec]:
     """
@@ -966,10 +967,10 @@ def split_bus_quantity(
     :param gen_status:
         Generator status vector. ``True`` means online.
     :type gen_status: BoolVec
-    :param is_controlling:
+    :param control_mode_int_gen:
         Generator control flag. ``True`` means the generator participates in
         reactive power sharing.
-    :type is_controlling: BoolVec
+    :type control_mode_int_gen: BoolVec
     :param Q0_gen:
         Initial or fixed reactive power set point of each generator.
     :type Q0_gen: Vec
@@ -985,13 +986,14 @@ def split_bus_quantity(
     :param batt_status:
         Battery status vector. ``True`` means online.
     :type batt_status: BoolVec
-    :param batt_is_controlling:
+    :param control_mode_int_batt:
         Battery control flag. ``True`` means the battery participates in
         reactive power sharing.
-    :type batt_is_controlling: BoolVec
+    :type control_mode_int_batt: BoolVec
     :param Q0_batt:
         Initial or fixed reactive power set point of each battery.
     :type Q0_batt: Vec
+    :param v_ctrl_val_gen:
     :param atol:
         Tolerance used to detect zero aggregate reactive range.
     :type atol: float
@@ -1043,7 +1045,7 @@ def split_bus_quantity(
         bus_idx = gen_bus_idx[gen_idx]
 
         if gen_status[gen_idx]:
-            if is_controlling[gen_idx]:
+            if control_mode_int_gen[gen_idx] == v_ctrl_val_gen:
                 qmin_control_per_bus[bus_idx] += Qmin_gen[gen_idx]
                 qmax_control_per_bus[bus_idx] += Qmax_gen[gen_idx]
                 control_count_per_bus[bus_idx] += 1
@@ -1071,7 +1073,7 @@ def split_bus_quantity(
         bus_idx = batt_bus_idx[batt_idx]
 
         if batt_status[batt_idx]:
-            if batt_is_controlling[batt_idx]:
+            if control_mode_int_batt[batt_idx] == v_ctrl_val_gen:
                 qmin_control_per_bus[bus_idx] += Qmin_batt[batt_idx]
                 qmax_control_per_bus[bus_idx] += Qmax_batt[batt_idx]
                 control_count_per_bus[bus_idx] += 1
@@ -1145,7 +1147,7 @@ def split_bus_quantity(
         bus_idx = gen_bus_idx[gen_idx]
 
         if gen_status[gen_idx]:
-            if is_controlling[gen_idx]:
+            if control_mode_int_gen[gen_idx] == v_ctrl_val_gen:
                 qmin_gen_value = Qmin_gen[gen_idx]
                 qmax_gen_value = Qmax_gen[gen_idx]
                 qrange_gen_value = qmax_gen_value - qmin_gen_value
@@ -1167,7 +1169,7 @@ def split_bus_quantity(
         bus_idx = batt_bus_idx[batt_idx]
 
         if batt_status[batt_idx]:
-            if batt_is_controlling[batt_idx]:
+            if control_mode_int_batt[batt_idx] == v_ctrl_val_gen:
                 qmin_batt_value = Qmin_batt[batt_idx]
                 qmax_batt_value = Qmax_batt[batt_idx]
                 qrange_batt_value = qmax_batt_value - qmin_batt_value

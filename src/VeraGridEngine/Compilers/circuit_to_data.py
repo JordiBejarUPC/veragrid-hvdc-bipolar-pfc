@@ -1114,7 +1114,7 @@ def fill_generator_parent(
     # would be half the value (1e-20/1e-20). 
     # A value of 1e-14 seems a sweet compromise.
     if data.active[k]:
-        if data.control_mode_int[k]:
+        if data.control_mode_int[k] == GeneratorControlMode.V.to_int():
             bus_data.q_shared_total[i] += data.p[k] + 1e-14
             data.q_share[k] = data.p[k] + 1e-14
             # bus_data.q_shared_total[i] += data.p[k]
