@@ -67,6 +67,12 @@ class DynamicEditorWorkspaceManager(QtCore.QObject):
         self._pending_drag_page = None
         self._pending_drag_workspace = None
 
+    def get_open_workspaces(self) -> "list[DynamicEditorWorkspaceWindow]":
+        """
+        Currently registered (open) editor workspace windows.
+        """
+        return list(self._workspaces)
+
     def register_workspace(self, workspace: DynamicEditorWorkspaceWindow) -> None:
         if workspace not in self._workspaces:
             self._workspaces.append(workspace)
