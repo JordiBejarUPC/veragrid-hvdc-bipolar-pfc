@@ -24,6 +24,7 @@ from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions impo
 from VeraGridEngine.Topology.simulation_indices import compile_types
 from VeraGridEngine.basic_structures import Vec, IntVec, CxVec, CxMat, BoolVec, Logger
 from VeraGridEngine.Utils.Sparse.csc2 import (CSC, scipy_to_mat)
+from VeraGridEngine.enumerations import WindingType
 
 
 @nb.njit(cache=True)
@@ -189,11 +190,11 @@ def compute_ybus(nc: NumericalCircuit) -> Tuple[csc_matrix, csc_matrix, csc_matr
             for p in range(start, end):
                 k = bus_branches[p]
 
-                if F[k] == bus_idx and nc.passive_branch_data.conn_f[k].value == 'Yg':
+                if F[k] == bus_idx and nc.passive_branch_data.conn_f[k] == WindingType.GroundedStar:
                     grounded_here = True
                     break
                 else:
-                    if T[k] == bus_idx and nc.passive_branch_data.conn_t[k].value == 'Yg':
+                    if T[k] == bus_idx and nc.passive_branch_data.conn_t[k] == WindingType.GroundedStar:
                         grounded_here = True
                         break
                     else:

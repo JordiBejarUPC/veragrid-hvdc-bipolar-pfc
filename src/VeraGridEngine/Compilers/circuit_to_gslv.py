@@ -2954,10 +2954,10 @@ def compare_nc(nc_gslv: "pg.NumericalCircuit", nc_gc: NumericalCircuit, tol: flo
     errors += CheckArr(nc_gslv.vsc_data.alpha3, nc_gc.vsc_data.alpha3, tol, 'VscData', 'alpha3')
 
     errors += CheckArrEq(np.array(nc_gslv.vsc_data.control1),
-                         convert_arr(nc_gc.vsc_data.control1, converter_control_type_dict),
+                         convert_arr(nc_gc.vsc_data.control1_int, converter_control_type_dict),
                          'VscData', 'control1')
     errors += CheckArrEq(np.array(nc_gslv.vsc_data.control2),
-                         convert_arr(nc_gc.vsc_data.control2, converter_control_type_dict),
+                         convert_arr(nc_gc.vsc_data.control2_int, converter_control_type_dict),
                          'VscData', 'control2')
 
     errors += CheckArr(nc_gslv.vsc_data.control1_val, nc_gc.vsc_data.control1_val, tol, 'VscData', 'control1_val')
@@ -2986,7 +2986,7 @@ def compare_nc(nc_gslv: "pg.NumericalCircuit", nc_gc: NumericalCircuit, tol: flo
     errors += CheckArr(nc_gslv.hvdc_data.angle_droop, nc_gc.hvdc_data.angle_droop, tol, 'HvdcData', 'control1_val')
 
     errors += CheckArrEq(np.array(nc_gslv.hvdc_data.control_mode),
-                         convert_arr(nc_gc.hvdc_data.control_mode, hvdc_control_mode_dict),
+                         convert_arr(nc_gc.hvdc_data.control_mode_int, hvdc_control_mode_dict),
                          'HvdcData', 'control_mode')
 
     errors += CheckArr(nc_gslv.hvdc_data.Qmin_f, nc_gc.hvdc_data.Qmin_f, tol, 'HvdcData', 'Qmin_f')

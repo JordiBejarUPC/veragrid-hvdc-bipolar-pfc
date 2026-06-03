@@ -415,11 +415,11 @@ def scale_grid_loads(grid, scaling_factor):
     # Scale VSC power controls
     for vsc in grid.vsc_devices:
         # Scale control1 if it's power-related
-        if vsc.control1 in [ConverterControlType.Pdc, ConverterControlType.Qac]:
+        if vsc.control1_int in [ConverterControlType.Pdc.idx(), ConverterControlType.Qac.idx()]:
             vsc.control1_val *= scaling_factor
 
         # Scale control2 if it's power-related
-        if vsc.control2 in [ConverterControlType.Pdc, ConverterControlType.Qac]:
+        if vsc.control2_int in [ConverterControlType.Pdc.idx(), ConverterControlType.Qac.idx()]:
             vsc.control2_val *= scaling_factor
 
 

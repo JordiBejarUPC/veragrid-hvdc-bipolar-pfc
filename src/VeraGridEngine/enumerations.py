@@ -173,7 +173,7 @@ class ShuntControlMode(str,  Enum):
     def __repr__(self):
         return str(self)
 
-    def to_int(self) -> int:
+    def idx(self) -> int:
         return self.code
 
     @staticmethod
@@ -205,7 +205,7 @@ class GeneratorControlMode(str, Enum):
     def __repr__(self):
         return str(self)
 
-    def to_int(self) -> int:
+    def idx(self) -> int:
         return self.code
 
     @staticmethod
@@ -216,18 +216,27 @@ class GeneratorControlMode(str, Enum):
             return s
 
 
-class GeneratorType(Enum):
+class GeneratorType(str, Enum):
     """
     Machine type of the generator element.
     """
-    Synchronous = "Synchronous"
-    Asynchronous = "Asynchronous"
+    Synchronous = ("Synchronous", 0)
+    Asynchronous = ("Asynchronous", 1)
+
+    def __new__(cls, value: str, code: int):
+        obj = str.__new__(cls, value)
+        obj._value_ = value
+        obj.code = code
+        return obj
 
     def __str__(self):
         return self.value
 
     def __repr__(self):
         return str(self)
+
+    def idx(self) -> int:
+        return self.code
 
     @staticmethod
     def argparse(s):
@@ -797,7 +806,7 @@ class TapModuleControl(str, Enum):
     def __repr__(self):
         return str(self)
 
-    def to_int(self) -> int:
+    def idx(self) -> int:
         return self.code
 
     @staticmethod
@@ -838,7 +847,7 @@ class TapPhaseControl(str, Enum):
     def __repr__(self):
         return str(self)
 
-    def to_int(self) -> int:
+    def idx(self) -> int:
         return self.code
 
     @staticmethod
@@ -887,7 +896,7 @@ class ConverterControlType(str, Enum):
     def __repr__(self):
         return str(self)
 
-    def to_int(self) -> int:
+    def idx(self) -> int:
         return self.code
 
     @staticmethod
@@ -1006,7 +1015,7 @@ class HvdcControlType(str, Enum):
     def __repr__(self):
         return str(self)
 
-    def to_int(self) -> int:
+    def idx(self) -> int:
         return self.code
 
     @staticmethod
@@ -1040,26 +1049,30 @@ class TimeFrame(Enum):
     Continuous = 'Continuous'
 
 
-class ConverterFaultControlType(Enum):
+class ConverterFaultControlType(str, Enum):
     """
     Converter fault control types
     """
-    Standard = 'Standard'
-    WECC_WT_Type_4B = 'WECC_WT_Type_4B'
+    Standard = ('Standard', 0)
+    WECC_WT_Type_4B = ('WECC_WT_Type_4B', 1)
+
+    def __new__(cls, value: str, code: int):
+        obj = str.__new__(cls, value)
+        obj._value_ = value
+        obj.code = code
+        return obj
 
     def __str__(self):
-        return str(self.value)
+        return self.value
 
     def __repr__(self):
         return str(self)
 
+    def idx(self) -> int:
+        return self.code
+
     @staticmethod
     def argparse(s):
-        """
-
-        :param s:
-        :return:
-        """
         try:
             return ConverterFaultControlType[s]
         except KeyError:
@@ -1071,7 +1084,7 @@ class ConverterFaultControlType(Enum):
 
         :return:
         """
-        return list(map(lambda c: c.value, cls))
+        return list(enum_item.value for enum_item in cls)
 
 
 class FaultType(Enum):
@@ -1181,25 +1194,34 @@ class PhasesShortCircuit(Enum):
         return list(enum_item.value for enum_item in cls)
 
 
-class WindingsConnection(Enum):
+class WindingsConnection(str, Enum):
     """
     Transformer windings connection types
     """
     # G: grounded star
     # S: ungrounded star
     # D: delta
-    GG = 'GG'
-    GS = 'GS'
-    GD = 'GD'
-    SS = 'SS'
-    SD = 'SD'
-    DD = 'DD'
+    GG = ('GG', 0)
+    GS = ('GS', 1)
+    GD = ('GD', 2)
+    SS = ('SS', 3)
+    SD = ('SD', 4)
+    DD = ('DD', 5)
+
+    def __new__(cls, value: str, code: int):
+        obj = str.__new__(cls, value)
+        obj._value_ = value
+        obj.code = code
+        return obj
 
     def __str__(self) -> str:
         return str(self.value)
 
     def __repr__(self):
         return str(self)
+
+    def idx(self) -> int:
+        return self.code
 
     @staticmethod
     def argparse(s):
@@ -1262,21 +1284,30 @@ class TerminalType(Enum):
         return list(enum_item.value for enum_item in cls)
 
 
-class WindingType(Enum):
+class WindingType(str, Enum):
     """
     Transformer windings connection types
     """
-    FloatingStar = "Y"
-    GroundedStar = "Yg"
-    NeutralStar = "Yn"
-    Delta = "D"
-    ZigZag = "Z"
+    NeutralStar = ("Yn", 0)
+    FloatingStar = ("Y", 1)
+    GroundedStar = ("Yg", 2)
+    Delta = ("D", 3)
+    ZigZag = ("Z", 4)
+
+    def __new__(cls, value: str, code: int):
+        obj = str.__new__(cls, value)
+        obj._value_ = value
+        obj.code = code
+        return obj
 
     def __str__(self) -> str:
         return str(self.value)
 
     def __repr__(self):
         return str(self)
+
+    def idx(self) -> int:
+        return self.code
 
     @staticmethod
     def argparse(s):
@@ -1299,20 +1330,29 @@ class WindingType(Enum):
         return list(enum_item.value for enum_item in cls)
 
 
-class ShuntConnectionType(Enum):
+class ShuntConnectionType(str, Enum):
     """
     Loads, shunts, etc.. connection types
     """
-    FloatingStar = "Y"
-    GroundedStar = "Yg"
-    NeutralStar = "Yn"
-    Delta = "D"
+    NeutralStar = ("Yn", 0)
+    GroundedStar = ("Yg", 1)
+    Delta = ("D", 2)
+    FloatingStar = ("Y", 3)
+
+    def __new__(cls, value: str, code: int):
+        obj = str.__new__(cls, value)
+        obj._value_ = value
+        obj.code = code
+        return obj
 
     def __str__(self) -> str:
         return str(self.value)
 
     def __repr__(self):
         return str(self)
+
+    def idx(self) -> int:
+        return self.code
 
     @staticmethod
     def argparse(s):

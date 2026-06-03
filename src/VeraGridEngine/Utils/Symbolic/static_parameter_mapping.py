@@ -2479,7 +2479,7 @@ def assign_controllable_shunt_static_api_mapping(
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowRefferenceType.controllable_shunt_control_mode_code,
-        value=float(controllable_shunt.control_mode.to_int()),
+        value=float(controllable_shunt.control_mode.idx()),
         logger=logger,
         device_name=device_name,
     )
@@ -2722,7 +2722,7 @@ def assign_generator_static_api_mapping(
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowRefferenceType.generator_control_mode,
-        value=float(generator.control_mode.to_int()),
+        value=float(generator.control_mode.idx()),
         logger=logger,
         device_name=device_name,
     )

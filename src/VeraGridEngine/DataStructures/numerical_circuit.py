@@ -883,7 +883,7 @@ class NumericalCircuit:
             q_max_hvdc_t=self.hvdc_data.Qmax_t,
             active_hvdc=self.hvdc_data.active,
 
-            v_ctrl_val_gen=GeneratorControlMode.V.to_int()
+            v_ctrl_val_gen=GeneratorControlMode.V.idx()
         )
         return Qmax_bus, Qmin_bus
 
@@ -1060,12 +1060,12 @@ class NumericalCircuit:
                               control_mode_int=nc.generator_data.control_mode_int,
                               gen_controllable_bus_idx=nc.generator_data.controllable_bus_idx,
                               bus_types=nc.bus_data.bus_types,
-                              v_ctrl_val=GeneratorControlMode.V.to_int())
+                              v_ctrl_val=GeneratorControlMode.V.idx())
             correct_bus_types(gen_idx=batt_idx,
                               control_mode_int=nc.battery_data.control_mode_int,
                               gen_controllable_bus_idx=nc.battery_data.controllable_bus_idx,
                               bus_types=nc.bus_data.bus_types,
-                              v_ctrl_val=GeneratorControlMode.V.to_int())
+                              v_ctrl_val=GeneratorControlMode.V.idx())
 
         return nc
 

@@ -7,8 +7,7 @@ import numpy as np
 from scipy.sparse import csc_matrix, coo_matrix
 import VeraGridEngine.Topology.topology as tp
 from VeraGridEngine.Utils.Sparse.sparse_array import SparseObjectArray
-from VeraGridEngine.basic_structures import Vec, CxVec, IntVec, StrVec, BoolVec, ObjVec
-from VeraGridEngine.enumerations import ShuntControlMode
+from VeraGridEngine.basic_structures import Vec, CxVec, IntVec, StrVec, BoolVec
 
 
 class ShuntData:
@@ -30,7 +29,7 @@ class ShuntData:
 
         self.active: BoolVec = np.zeros(nelm, dtype=bool)
 
-        self.control_mode: ObjVec = np.full(self.nelm, fill_value=ShuntControlMode.Locked, dtype=object)
+        self.control_mode_int: IntVec = np.zeros(self.nelm, dtype=int)
         self.is_pv_control: BoolVec = np.zeros(nelm, dtype=bool)  # quick proxy to not making searches
 
         self.Y: CxVec = np.zeros(nelm, dtype=complex)
@@ -91,7 +90,7 @@ class ShuntData:
 
         data.active = self.active[elm_idx]
 
-        data.control_mode = self.control_mode[elm_idx]
+        data.control_mode_int = self.control_mode_int[elm_idx]
         data.is_pv_control = self.is_pv_control[elm_idx]
 
         data.Y = self.Y[elm_idx]
@@ -163,7 +162,7 @@ class ShuntData:
         data.names = self.names.copy()
         data.idtag = self.idtag.copy()
         data.active = self.active.copy()
-        data.control_mode = self.control_mode.copy()
+        data.control_mode_int = self.control_mode_int.copy()
         data.is_pv_control = self.is_pv_control.copy()
 
         data.Y = self.Y.copy()

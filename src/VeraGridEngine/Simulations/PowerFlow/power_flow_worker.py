@@ -968,7 +968,7 @@ def multi_island_pf_nc(nc: NumericalCircuit,
             batt_status=nc.battery_data.active,
             control_mode_int_batt=nc.battery_data.control_mode_int,
             Q0_batt=nc.battery_data.q,
-            v_ctrl_val_gen=GeneratorControlMode.V.to_int(),
+            v_ctrl_val_gen=GeneratorControlMode.V.idx(),
             atol=1e-12,
         )
 
@@ -1003,7 +1003,7 @@ def multi_island_pf_nc(nc: NumericalCircuit,
             batt_status=nc.battery_data.active,
             control_mode_int_batt=nc.battery_data.control_mode_int,
             Q0_batt=nc.battery_data.q,
-            v_ctrl_val_gen=GeneratorControlMode.V.to_int(),
+            v_ctrl_val_gen=GeneratorControlMode.V.idx(),
             atol=1e-12,
         )
 
@@ -1022,7 +1022,7 @@ def multi_island_pf_nc(nc: NumericalCircuit,
                 batt_status=nc.battery_data.active,
                 control_mode_int_batt=nc.battery_data.control_mode_int,
                 Q0_batt=nc.battery_data.p,
-                v_ctrl_val_gen=GeneratorControlMode.V.to_int(),
+                v_ctrl_val_gen=GeneratorControlMode.V.idx(),
                 atol=1e-12,
             )
         else:
