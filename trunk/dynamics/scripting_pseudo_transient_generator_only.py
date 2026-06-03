@@ -79,52 +79,7 @@ def build_grid() -> gce.MultiCircuit:
         tm_in = gen_block.in_vars[2]
         gen_block.event_dict[tm_in] = grid.var_factory.add_const(None)
 
-        vm_avr = grid.var_factory.add_var(f"Vm_avr_{gen.name}")
-        x_avr = grid.var_factory.add_var(f"x_avr_{gen.name}", shared_reference="vf_reference")
-        k_avr = grid.var_factory.add_var(f"Kavr_{gen.name}")
-        t_avr = grid.var_factory.add_var(f"Tavr_{gen.name}")
-        vref_avr = grid.var_factory.add_var(f"Vref_avr_{gen.name}")
-
-        avr_block = Block(
-            state_eqs=[(k_avr * (vref_avr - vm_avr) - x_avr) / (t_avr + grid.var_factory.add_const(1e-6))],
-            state_vars=[x_avr],
-            algebraic_eqs=[],
-            algebraic_vars=[],
-            in_vars=[vm_avr],
-            out_vars=[x_avr],
-            event_dict={
-                k_avr: grid.var_factory.add_const(20.0),
-                t_avr: grid.var_factory.add_const(0.05),
-                vref_avr: grid.var_factory.add_const(1.05),
-            },
-            init_eqs={
-                x_avr: grid.var_factory.add_const(0.1),
-            },
-            name=f"avr_stub_{gen.name}",
-        )
-
-        # Explicitly drive generator Vf input from AVR output.
-        grid.var_factory.add_connection(gen_block.in_vars[3], avr_block.out_vars[0])
-        grid.var_factory.add_connection(avr_block.in_vars[0], gen_block.in_vars[0])
-
-        combined = Block(name=f"gen_with_avr_{gen.name}")
-        combined.children.append(gen_block)
-        combined.children.append(avr_block)
-        combined.algebraic_eqs = []
-        combined.algebraic_vars = []
-        combined.external_mapping = {
-            VarPowerFlowReferenceType.P: gen_block.out_vars[0],
-            VarPowerFlowReferenceType.Q: gen_block.out_vars[1],
-            VarPowerFlowReferenceType.Vm: gen_block.in_vars[0],
-            VarPowerFlowReferenceType.Va: gen_block.in_vars[1],
-        }
-        combined.in_vars = [gen_block.in_vars[0], gen_block.in_vars[1]]
-        combined.out_vars = [gen_block.out_vars[0], gen_block.out_vars[1]]
-        combined.unify_blocks()
-        n_eq, n_var = block_counts(combined)
-        print(f"Combined block structural count: eqs={n_eq}, vars={n_var}")
-
-        set_rms_model(device=gen, model=combined, var_factory=grid.var_factory)
+        set_rms_model(device=gen, model=gen_block, var_factory=grid.var_factory)
 
     group = gce.RmsEventsGroup(name="BaseCase")
     grid.add_rms_events_group(group)

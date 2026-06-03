@@ -65,11 +65,8 @@ def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec_rms_template") -> R
     # Saturated resistances
     Xd_2prime_sat = vfactory.add_var('Xd_2prime_sat' + name)
     Xq_2prime_sat = vfactory.add_var('Xq_2prime_sat' + name)
-    Sa = vfactory.add_var('Sa' + name)
-    Sat = vfactory.add_var('Sat' + name)
-    V_qag = vfactory.add_var('V_qag' + name)
-    V_dag = vfactory.add_var('V_dag' + name)
-    Psi_ag = vfactory.add_var('Psi_ag' + name)
+    Sa = vfactory.add_const(0)
+    Sat = vfactory.add_const(1)
 
     # ______________________________________________________________________________________
     #                                    parameters
@@ -96,16 +93,6 @@ def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec_rms_template") -> R
     Td0_2prime = vfactory.add_var('Td0_2prime')
     Tq0_2prime = vfactory.add_var('Tq0_2prime')
 
-    # Auxiliary expressions
-    Viag_expr = inputs[0] * sym.sin(inputs[1]) + sym.imag(
-        sym.conj(Pg + 1j * Qg) / sym.conj(inputs[0] * sym.exp(1j * inputs[1]))) * Ra + sym.real(
-        sym.conj(Pg + 1j * Qg) / sym.conj(inputs[0] * sym.exp(1j * inputs[1]))) * Xl
-    Vrag_expr = inputs[0] * sym.cos(inputs[1]) + sym.real(
-        sym.conj(Pg + 1j * Qg) / sym.conj(inputs[0] * sym.exp(1j * inputs[1]))) * Ra - sym.imag(
-        sym.conj(Pg + 1j * Qg) / sym.conj(inputs[0] * sym.exp(1j * inputs[1]))) * (Xl)
-
-    A = vfactory.add_var('A')
-    B = vfactory.add_var("B")
     Xd_prime_minus_Xl = vfactory.add_var('Xd_prime_minus_Xl')
     Xq_prime_minus_Xl = vfactory.add_var('Xq_prime_minus_Xl')
     Xdaux = vfactory.add_var('Xdaux')
@@ -147,8 +134,6 @@ def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec_rms_template") -> R
         Xqaux: ((Xq_prime - Xq_2prime) / (((Xq_prime - Xl) ** 2) + sym.Const(1e-12))),
         Xqaux2: (Xq_prime - Xq_2prime) / ((Xq_prime - Xl) + sym.Const(1e-12)),
         Xqaux3: ((Xq_2prime - Xl) / ((Xq_prime - Xl) + sym.Const(1e-12))),
-        A: vfactory.add_const(5.0),
-        B: vfactory.add_const(1.0)
     }
     # Xdaux = ((Xd_prime - Xd_2prime) / (Xd_prime_minus_Xl) ** 2).simplify()
     # Xdaux2 = ((Xd_prime - Xd_2prime) / (Xd_prime_minus_Xl)).simplify()
@@ -192,19 +177,10 @@ def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec_rms_template") -> R
             Eq1 - (Eq_prime + (Xd - Xd_prime) * (
                     Id_sat + (Eq_prime - Psid_prime - Id_sat * (Xd_prime_minus_Xl)) * Xdaux)),
 
-            # saturated resistance
-            Sat - (vfactory.add_const(1) + Sa),
             Id - Id_sat * Sat,
             Iq - Iq_sat * Sat,
             Sat * Xd_2prime_sat - (Xd_2prime + Xl * Sa),
             Sat * Xq_2prime_sat - (Xq_2prime + Xl * Sa),
-
-            # flux
-            V_dag - (Vd + Id * Ra - Iq * Xl),
-            V_qag - (Vq + Iq * Ra + Id * Xl),
-            omega * Psi_ag - sym.sqrt(V_qag * V_qag + V_dag * V_dag),
-            # saturations (quadratic)
-            Sa - A / 2 * ((Psi_ag - B) + sym.sqrt((Psi_ag - B) ** 2 + vfactory.add_const(1e-5))) ** 2,
 
             # Eq1, Eq2, Ed1, Ed2 exciter
             IRPu - Eq1 * Sat,
@@ -212,15 +188,10 @@ def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec_rms_template") -> R
         algebraic_vars=[Pg, Qg, Vd, Vq, Psid, Psiq, Te, Ed1, Eq1, Id, Iq,
                         # saturated resistance
                         Xq_2prime_sat, Xd_2prime_sat, Id_sat, Iq_sat,
-                        # flux
-                        Sa, Sat, V_dag, V_qag, Psi_ag,
                         IRPu],
         init_eqs={
             # Air Gap Voltages and delta
             omega: vfactory.add_const(1),
-            Psi_ag: sym.sqrt(Viag_expr ** 2 + Vrag_expr ** 2),
-            Sa: A / 2 * ((Psi_ag - B) + sym.sqrt((Psi_ag - B) ** 2 + vfactory.add_const(1e-5))) ** 2,
-            Sat: vfactory.add_const(1) + Sa,
             delta: sym.atan(
                 (inputs[0] * sym.sin(inputs[1]) + sym.imag(
                     sym.conj(Pg + 1j * Qg) / sym.conj(inputs[0] * sym.exp(1j * inputs[1]))) * Ra + sym.real(
@@ -240,8 +211,6 @@ def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec_rms_template") -> R
             Vq: (inputs[0] * sym.cos(inputs[1] - delta)),
             Id: (Pg * Vd + Qg * Vq) / (Vd ** 2 + Vq ** 2),
             Iq: (Pg * Vq - Qg * Vd) / (Vd ** 2 + Vq ** 2),
-            V_dag: (Vd + Id * Ra - Iq * Xl),
-            V_qag: (Vq + Iq * Ra + Id * Xl),
 
             # We initialize the states Eq', Ed', Psid', Psiq'
             Psid_prime: (Vq + Xd_2prime_sat * Id + Ra * Iq) / omega - (Xd_2prime - Xl) * Id / Sat,
