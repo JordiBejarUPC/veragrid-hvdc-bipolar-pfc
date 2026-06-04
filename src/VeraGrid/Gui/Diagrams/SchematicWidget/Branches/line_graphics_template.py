@@ -71,20 +71,25 @@ class TransformerSymbol(QGraphicsRectItem):
         self.pen_width = pen_width
         self.color = ACTIVE['color']
         self.style = ACTIVE['style']
+        self.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
 
-        self.setPen(QPen(TRANSPARENT))
+        QGraphicsRectItem.setPen(self, QPen(TRANSPARENT))
         self.setRect(QRectF(0, 0, w, h))
 
         self.c0 = QGraphicsEllipseItem(0, 0, d, d, parent=self)
         self.c1 = QGraphicsEllipseItem(0, 0, d, d, parent=self)
         self.c2 = QGraphicsEllipseItem(0, 0, d, d, parent=self)
+        self.c0.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
+        self.c1.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
+        self.c2.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
 
         self.c0.setPen(QPen(TRANSPARENT, self.width, self.style))
         self.c2.setPen(QPen(self.color, self.width, self.style))
         self.c1.setPen(QPen(self.color, self.width, self.style))
 
-        self.c0.setBrush(QBrush(WHITE))
-        self.c2.setBrush(QBrush(WHITE))
+        fill_brush = QBrush(Qt.BrushStyle.NoBrush)
+        self.c0.setBrush(fill_brush)
+        self.c2.setBrush(fill_brush)
 
         self.c0.setPos(w * 0.35 - d / 2, h * 0.5 - d / 2)
         self.c1.setPos(w * 0.35 - d / 2, h * 0.5 - d / 2)
@@ -102,8 +107,12 @@ class TransformerSymbol(QGraphicsRectItem):
         :param style: PenStyle instance
         :return:
         """
-        self.c2.setPen(QPen(color, w, style))
-        self.c1.setPen(QPen(color, w, style))
+        line_w = float(w)
+        pen = QPen(color, line_w, style)
+        self.c2.setPen(pen)
+        self.c1.setPen(pen)
+        self.c0.setBrush(QBrush(Qt.BrushStyle.NoBrush))
+        self.c2.setBrush(QBrush(Qt.BrushStyle.NoBrush))
 
     def set_pen(self, pen: QPen):
         """
@@ -111,7 +120,27 @@ class TransformerSymbol(QGraphicsRectItem):
         :param pen:
         :return:
         """
-        self.setPen(pen)
+        self.set_colour(color=pen.color(),
+                        w=max(1.2, pen.widthF()),
+                        style=pen.style())
+
+    def setBrush(self, brush: QBrush | QColor) -> None:
+        """
+        Keep transformer coils hollow regardless of external fill requests.
+
+        :param brush: Brush or color.
+        :return: ``None``.
+        """
+        self.c0.setBrush(QBrush(Qt.BrushStyle.NoBrush))
+        self.c2.setBrush(QBrush(Qt.BrushStyle.NoBrush))
+
+    def setPen(self, pen: QPen) -> None:
+        """
+        Apply one pen to the visible transformer coils.
+
+        :param pen: Pen to apply.
+        :return: ``None``.
+        """
         self.c1.setPen(pen)
         self.c2.setPen(pen)
 
@@ -2171,14 +2200,24 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         """
         Use the rendered route path for hit testing so routed branches remain selectable.
         """
-        if self._rendered_path.isEmpty():
-            return super().shape()
+        path = QPainterPath()
 
-        stroker = QPainterPathStroker()
-        stroker.setWidth(max(8.0, float(self.pen_width) + 4.0))
-        stroker.setCapStyle(Qt.PenCapStyle.RoundCap)
-        stroker.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-        return stroker.createStroke(self._rendered_path)
+        if self._rendered_path.isEmpty():
+            path = super().shape()
+        else:
+            stroker = QPainterPathStroker()
+            stroker.setWidth(max(8.0, float(self.pen_width) + 4.0))
+            stroker.setCapStyle(Qt.PenCapStyle.RoundCap)
+            stroker.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+            path = stroker.createStroke(self._rendered_path)
+
+        if self.symbol is None:
+            return path
+        else:
+            symbol_bounds = self.symbol.mapRectToParent(self.symbol.boundingRect()).adjusted(-6.0, -6.0, 6.0, 6.0)
+            symbol_path = QPainterPath()
+            symbol_path.addRoundedRect(symbol_bounds, 8.0, 8.0)
+            return path.united(symbol_path)
 
     def boundingRect(self) -> QRectF:
         """

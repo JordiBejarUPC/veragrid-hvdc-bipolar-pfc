@@ -479,6 +479,7 @@ class InjectionSymbolBase(QGraphicsItemGroup):
         :return: ``None``.
         """
         super().__init__(parent)
+        self.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
         self.w: float = float(w)
         self.h: float = float(h)
         self._stroke_items: list[
@@ -509,9 +510,13 @@ class InjectionSymbolBase(QGraphicsItemGroup):
                              QGraphicsEllipseItem,
                              QGraphicsPolygonItem,
                              QGraphicsPathItem)):
+            item.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
             self._stroke_items.append(item)
         else:
-            pass
+            if isinstance(item, QGraphicsTextItem):
+                item.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
+            else:
+                pass
 
         if fill_item and isinstance(item, (QGraphicsRectItem,
                                            QGraphicsEllipseItem,

@@ -5,12 +5,12 @@
 
 from __future__ import annotations
 from typing import TYPE_CHECKING, List, Any
-from PySide6.QtCore import Qt, QPointF
-from PySide6.QtGui import QPen, QCursor, QPainterPath, QColor, QBrush, QPainterPathStroker
+from PySide6.QtCore import Qt, QPointF, QRectF
+from PySide6.QtGui import QPen, QCursor, QPainter, QPainterPath, QColor, QBrush, QPainterPathStroker
 from PySide6.QtWidgets import (QGraphicsItem, QGraphicsItemGroup, QMenu,
                                QGraphicsSceneContextMenuEvent, QGraphicsPathItem,
                                QGraphicsEllipseItem, QGraphicsRectItem, QGraphicsSceneMouseEvent,
-                               QGraphicsSceneHoverEvent, QGraphicsTextItem)
+                               QGraphicsSceneHoverEvent, QGraphicsTextItem, QStyleOptionGraphicsItem, QWidget)
 from VeraGrid.Gui.messages import yes_no_question, error_msg
 from VeraGrid.Gui.DeviceEditors.TemplateDeviceEditor.template_device_editor import TemplateDeviceEditor
 from VeraGrid.Gui.gui_functions import add_menu_entry
@@ -21,7 +21,7 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.route_geometry import (merge
                                                                            move_polyline_route_vertex,
                                                                            normalize_route_points)
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.slot_geometry import (SchematicAttachmentSlot,
-                                                                          project_point_to_rectangle_perimeter)
+                                                                          )
 from VeraGridEngine.Devices.Diagrams.schematic_layout import (build_default_branch_route,
                                                               parse_schematic_route_kind)
 from VeraGridEngine.enumerations import SchematicRouteKind, DynamicSimulationMode
@@ -440,7 +440,11 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
 
         # Routed nexus path tying this object with the original bus or node.
         self.nexus = InjectionNexusPathItem(owner_item=self)
-        self.nexus.setPen(QPen(self.color, self.width, self.style))
+        self.nexus.setPen(QPen(self.color,
+                               self.width,
+                               self.style,
+                               Qt.PenCapStyle.FlatCap,
+                               Qt.PenJoinStyle.MiterJoin))
         self.nexus.setBrush(Qt.BrushStyle.NoBrush)
 
         self._interaction_target = QGraphicsPathItem(parent=self)
@@ -630,9 +634,11 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         """
         Build the padded local path used for hit-testing and hover affordance.
         """
-        bounds = self._get_glyph_bounds().adjusted(-8.0, -8.0, 8.0, 8.0)
+        glyph_bounds = self._get_glyph_bounds()
+        widget_bounds = QRectF(0.0, 0.0, float(self.w), float(self.h))
+        bounds = glyph_bounds.united(widget_bounds).adjusted(-6.0, -6.0, 6.0, 6.0)
         path = QPainterPath()
-        path.addRoundedRect(bounds, 9.0, 9.0)
+        path.addRoundedRect(bounds, 8.0, 8.0)
         return path
 
     def _apply_tooltip(self, text: str) -> None:
@@ -678,7 +684,7 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
             pass
 
         glyph_pen = QPen(glyph_color, self.width, self.style, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin)
-        nexus_pen = QPen(glyph_color, self.width, self.style, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin)
+        nexus_pen = QPen(glyph_color, self.width, self.style, Qt.PenCapStyle.FlatCap, Qt.PenJoinStyle.MiterJoin)
         self.nexus.setPen(nexus_pen)
 
         if self.glyph is not None:
@@ -726,9 +732,9 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         self._result_label.setHtml(
             f'<div style="font-size:9pt; font-weight:600; text-align:center;">{badge_rows}</div>'
         )
-        bounds = self._get_glyph_bounds()
         label_rect = self._result_label.boundingRect()
-        label_x = bounds.center().x() - (label_rect.x() + label_rect.width() * 0.5)
+        label_x = float(self.w) * 0.5 - (label_rect.x() + label_rect.width() * 0.5)
+        bounds = self._get_glyph_bounds()
         symbol_bottom: float = max(float(bounds.bottom()), float(self.h))
         label_y = symbol_bottom + 8.0
         self._result_label.set_anchor_position(QPointF(label_x, label_y))
@@ -812,6 +818,12 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         Keep the nexus line synchronized with scene-position changes.
         """
         if change == QGraphicsItem.GraphicsItemChange.ItemScenePositionHasChanged:
+            if self.editor.is_loading_diagram():
+                pass
+            elif self.nexus.isSelected():
+                pass
+            else:
+                self.sync_manual_dock_metadata_from_position()
             self.update_nexus(self.scenePos())
             return value
         elif change == QGraphicsItem.GraphicsItemChange.ItemSelectedHasChanged:
@@ -826,6 +838,24 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
             return value
         else:
             return super().itemChange(change, value)
+
+    def paint(self,
+              painter: QPainter,
+              option: QStyleOptionGraphicsItem,
+              widget: QWidget | None = None) -> None:
+        """
+        Keep the container item visually inert.
+
+        Children paint the actual symbol, labels, and nexus overlays. The group item
+        itself must not add the default Qt selection rectangle because selection is
+        represented by the shared rounded interaction ring instead.
+
+        :param painter: Unused painter.
+        :param option: Unused style option.
+        :param widget: Unused target widget.
+        :return: ``None``.
+        """
+        return None
 
     def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         """
@@ -862,27 +892,71 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         """
         self.editor.diagram.set_dock(self.api_object, dock)
 
-    def get_manual_dock_alignment(self) -> float:
+    def infer_manual_dock_side(self) -> SchematicAttachmentSlot:
         """
-        Compute the normalized horizontal alignment of the child center.
+        Infer the dock side from the current child center relative to the parent center.
 
+        :return: Inferred dock side.
+        """
+        parent_center_x: float = float(self.parent.rect().width()) * 0.5
+        parent_center_y: float = float(self.parent.rect().height()) * 0.5
+        child_center_x: float = float(self.x()) + float(self.w) * 0.5
+        child_center_y: float = float(self.y()) + float(self.h) * 0.5
+
+        dx: float = child_center_x - parent_center_x
+        dy: float = child_center_y - parent_center_y
+        norm_x: float = abs(dx) / max(parent_center_x, 1e-9)
+        norm_y: float = abs(dy) / max(parent_center_y, 1e-9)
+
+        if norm_x > norm_y:
+            if dx < 0.0:
+                return SchematicAttachmentSlot.LEFT
+            else:
+                return SchematicAttachmentSlot.RIGHT
+        else:
+            if dy < 0.0:
+                return SchematicAttachmentSlot.TOP
+            else:
+                return SchematicAttachmentSlot.BOTTOM
+
+    def get_manual_dock_alignment(self, side: SchematicAttachmentSlot) -> float:
+        """
+        Compute the normalized alignment of the child center on one dock side.
+
+        :param side: Dock side.
         :return: Alignment factor.
         """
-        parent_width: float = float(self.parent.rect().width())
         local_center_x: float = float(self.x()) + float(self.w) * 0.5
+        local_center_y: float = float(self.y()) + float(self.h) * 0.5
+        parent_width: float = float(self.parent.rect().width())
+        parent_height: float = float(self.parent.rect().height())
 
-        if parent_width <= 0.0:
-            return 0.5
+        if side == SchematicAttachmentSlot.LEFT or side == SchematicAttachmentSlot.RIGHT:
+            if parent_height <= 0.0:
+                return 0.5
+            else:
+                return clamp_alignment(local_center_y / parent_height)
         else:
-            return clamp_alignment(local_center_x / parent_width)
+            if parent_width <= 0.0:
+                return 0.5
+            else:
+                return clamp_alignment(local_center_x / parent_width)
 
-    def get_manual_dock_offset(self) -> float:
+    def get_manual_dock_offset(self, side: SchematicAttachmentSlot) -> float:
         """
-        Compute the vertical offset of the child origin from the parent bottom-dock baseline.
+        Compute the perpendicular offset of the child origin from one dock side baseline.
 
+        :param side: Dock side.
         :return: Dock offset.
         """
-        return float(self.y()) - float(self.parent.get_bottom_dock_baseline())
+        if side == SchematicAttachmentSlot.TOP:
+            return max(0.0, -float(self.y()) - float(self.h) - 40.0)
+        elif side == SchematicAttachmentSlot.LEFT:
+            return max(0.0, -float(self.x()) - float(self.w) - 40.0)
+        elif side == SchematicAttachmentSlot.RIGHT:
+            return max(0.0, float(self.x()) - float(self.parent.w) - 40.0)
+        else:
+            return max(0.0, float(self.y()) - float(self.parent.get_bottom_dock_baseline()))
 
     def get_child_anchor_local_point_from_parent_scene_anchor(self, parent_scene_anchor: QPointF) -> QPointF:
         """
@@ -892,11 +966,27 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         :return: Child-local anchor point.
         """
         local_reference_point: QPointF = self.mapFromScene(parent_scene_anchor)
-        projected_x, projected_y = project_point_to_rectangle_perimeter(width=float(self.w),
-                                                                        height=float(self.h),
-                                                                        point_x=float(local_reference_point.x()),
-                                                                        point_y=float(local_reference_point.y()))
-        return QPointF(projected_x, projected_y)
+        dock = self.get_dock_metadata()
+        side_value: str = str(dock.get("side", SchematicAttachmentSlot.BOTTOM.value))
+
+        if side_value == SchematicAttachmentSlot.TOP.value:
+            child_side: SchematicAttachmentSlot = SchematicAttachmentSlot.BOTTOM
+        elif side_value == SchematicAttachmentSlot.LEFT.value:
+            child_side = SchematicAttachmentSlot.RIGHT
+        elif side_value == SchematicAttachmentSlot.RIGHT.value:
+            child_side = SchematicAttachmentSlot.LEFT
+        else:
+            child_side = SchematicAttachmentSlot.TOP
+
+        if child_side == SchematicAttachmentSlot.TOP or child_side == SchematicAttachmentSlot.BOTTOM:
+            alignment: float = clamp_alignment(float(local_reference_point.x()) / max(float(self.w), 1e-9))
+        else:
+            alignment = clamp_alignment(float(local_reference_point.y()) / max(float(self.h), 1e-9))
+
+        return get_local_rect_side_anchor(width=float(self.w),
+                                          height=float(self.h),
+                                          side=child_side,
+                                          alignment=alignment)
 
     def get_child_anchor_local_point_from_dock(self, dock: dict[str, Any]) -> QPointF:
         """
@@ -912,7 +1002,26 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
             parent_anchor_scene_point: QPointF = self.get_parent_nexus_anchor()
             return self.get_child_anchor_local_point_from_parent_scene_anchor(parent_scene_anchor=parent_anchor_scene_point)
         else:
-            return QPointF(float(child_anchor_x), float(child_anchor_y))
+            side_value: str = str(dock.get("side", SchematicAttachmentSlot.BOTTOM.value))
+
+            if side_value == SchematicAttachmentSlot.TOP.value:
+                child_side: SchematicAttachmentSlot = SchematicAttachmentSlot.BOTTOM
+            elif side_value == SchematicAttachmentSlot.LEFT.value:
+                child_side = SchematicAttachmentSlot.RIGHT
+            elif side_value == SchematicAttachmentSlot.RIGHT.value:
+                child_side = SchematicAttachmentSlot.LEFT
+            else:
+                child_side = SchematicAttachmentSlot.TOP
+
+            if child_side == SchematicAttachmentSlot.TOP or child_side == SchematicAttachmentSlot.BOTTOM:
+                alignment: float = clamp_alignment(float(child_anchor_x) / max(float(self.w), 1e-9))
+            else:
+                alignment = clamp_alignment(float(child_anchor_y) / max(float(self.h), 1e-9))
+
+            return get_local_rect_side_anchor(width=float(self.w),
+                                              height=float(self.h),
+                                              side=child_side,
+                                              alignment=alignment)
 
     def sync_manual_dock_metadata_from_position(self) -> None:
         """
@@ -921,18 +1030,12 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         :return: ``None``.
         """
         dock = self.get_dock_metadata()
-        alignment: float = self.get_manual_dock_alignment()
-        offset: float = self.get_manual_dock_offset()
-        anchor_x: Any = dock.get("anchor_x", None)
-        anchor_y: Any = dock.get("anchor_y", None)
+        side: SchematicAttachmentSlot = self.infer_manual_dock_side()
+        alignment: float = self.get_manual_dock_alignment(side=side)
+        offset: float = self.get_manual_dock_offset(side=side)
         child_anchor_x: Any = dock.get("child_anchor_x", None)
         child_anchor_y: Any = dock.get("child_anchor_y", None)
-        anchor_auto: bool = bool(dock.get("anchor_auto", True))
-
-        if anchor_auto or anchor_x is None or anchor_y is None:
-            parent_anchor_local_point: QPointF = self.get_parent_anchor_local_point_from_child_position()
-        else:
-            parent_anchor_local_point = QPointF(float(anchor_x), float(anchor_y))
+        parent_anchor_local_point: QPointF = self.get_parent_anchor_local_point_from_child_position()
 
         if child_anchor_x is None or child_anchor_y is None:
             child_anchor_local_point: QPointF = self.get_child_anchor_local_point_from_parent_scene_anchor(
@@ -941,6 +1044,7 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         else:
             child_anchor_local_point = QPointF(float(child_anchor_x), float(child_anchor_y))
 
+        dock["side"] = side.value
         dock["alignment"] = alignment
         dock["offset"] = offset
         dock["auto_layout"] = False
@@ -1130,7 +1234,6 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
             dock["anchor_y"] = float(parent_anchor_local_point.y())
             dock["anchor_auto"] = False
         else:
-            local_point = self.mapFromScene(scene_pos)
             child_anchor_local_point = self.get_child_anchor_local_point_from_parent_scene_anchor(parent_scene_anchor=scene_pos)
             dock["child_anchor_x"] = float(child_anchor_local_point.x())
             dock["child_anchor_y"] = float(child_anchor_local_point.y())
@@ -1161,7 +1264,7 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
 
         :return: ``True`` when nexus handles should be visible.
         """
-        return self._nexus_edit_active and (self.isSelected() or self.nexus.isSelected())
+        return self._nexus_edit_active and self.nexus.isSelected()
 
     def set_nexus_edit_active(self, active: bool) -> None:
         """
@@ -1286,7 +1389,7 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         parent_anchor = self.get_parent_nexus_anchor()
         self._nexus_endpoint_handles["child"].setPos(child_anchor)
         self._nexus_endpoint_handles["parent"].setPos(parent_anchor)
-        self._nexus_endpoint_handles["child"].setVisible(self.is_nexus_edit_active())
+        self._nexus_endpoint_handles["child"].setVisible(False)
         self._nexus_endpoint_handles["parent"].setVisible(self.is_nexus_edit_active())
 
     def delete(self):
