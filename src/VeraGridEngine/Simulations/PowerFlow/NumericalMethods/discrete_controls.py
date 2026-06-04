@@ -215,6 +215,74 @@ def control_q_inside_method(Scalc: CxVec, S0: CxVec,
     return changed, pv, pq, pqv, p
 
 
+@nb.njit(cache=True)
+def control_discrete_shunts(Vm: Vec,
+                            shunt_discrete_ctrl_idx: IntVec,
+                            shunt_discrete_bus_idx: IntVec,
+                            shunt_discrete_vmax: Vec,
+                            shunt_discrete_vmin: Vec,
+                            shunt_step: IntVec,
+                            shunt_g_steps: np.ndarray,
+                            shunt_b_steps: np.ndarray,
+                            shunt_n_steps: IntVec,
+                            sbase: float):
+    """
+    Control discrete shunts within the numerical method.
+    The sparse Ybus diagonal update is returned to the caller and applied outside numba.
+    :param Vm: Voltage module array.
+    :param shunt_discrete_ctrl_idx: Array of controlled shunt indices in the full shunt arrays.
+    :param shunt_discrete_bus_idx: Array of bus indices for the controlled shunts.
+    :param shunt_discrete_vmax: Array of upper voltage bounds for the controlled shunts.
+    :param shunt_discrete_vmin: Array of lower voltage bounds for the controlled shunts.
+    :param shunt_step: Array of current shunt steps in the full shunt arrays (changed inside).
+    :param shunt_g_steps: Packed cumulative G steps for the controlled shunts.
+    :param shunt_b_steps: Packed cumulative B steps for the controlled shunts.
+    :param shunt_n_steps: Number of valid steps for each controlled shunt.
+    :param sbase: Base power.
+    :return: changed bus indices, Ybus diagonal increments, number of changed shunts.
+    """
+    n_ctrl = len(shunt_discrete_ctrl_idx)
+    changed_bus_idx = np.empty(n_ctrl, dtype=np.int64)
+    changed_delta_y = np.empty(n_ctrl, dtype=np.complex128)
+    n_changed = 0
+
+    for ctrl_k, sh_i in enumerate(shunt_discrete_ctrl_idx):
+        bus_i = shunt_discrete_bus_idx[ctrl_k]
+        step_i = shunt_step[sh_i]
+
+        if Vm[bus_i] > shunt_discrete_vmax[ctrl_k]:
+            # decrease B
+            if step_i > 0:
+                prev_g = shunt_g_steps[ctrl_k, step_i] / sbase
+                prev_b = shunt_b_steps[ctrl_k, step_i] / sbase
+                step_i -= 1
+                shunt_step[sh_i] = step_i
+                g = prev_g - shunt_g_steps[ctrl_k, step_i] / sbase
+                b = prev_b - shunt_b_steps[ctrl_k, step_i] / sbase
+                changed_bus_idx[n_changed] = bus_i
+                changed_delta_y[n_changed] = np.complex128(complex(g, b) - complex(prev_g, prev_b))
+                n_changed += 1
+
+        elif Vm[bus_i] < shunt_discrete_vmin[ctrl_k]:
+            # increase B
+            if step_i < (shunt_n_steps[ctrl_k] - 1):
+                prev_g = shunt_g_steps[ctrl_k, step_i] / sbase
+                prev_b = shunt_b_steps[ctrl_k, step_i] / sbase
+                step_i += 1
+                shunt_step[sh_i] = step_i
+                g = prev_g + shunt_g_steps[ctrl_k, step_i] / sbase
+                b = prev_b + shunt_b_steps[ctrl_k, step_i] / sbase
+                changed_bus_idx[n_changed] = bus_i
+                changed_delta_y[n_changed] = np.complex128(complex(g, b) - complex(prev_g, prev_b))
+                n_changed += 1
+
+        else:
+            # within boundaries
+            pass
+
+    return changed_bus_idx, changed_delta_y, n_changed
+
+
 @nb.njit()
 def control_q_for_generalized_method(Scalc: CxVec, S0: CxVec,
                                      pv: IntVec, i_u_vm: IntVec, i_k_q: IntVec,
@@ -252,6 +320,63 @@ def control_q_for_generalized_method(Scalc: CxVec, S0: CxVec,
         i_u_vm.sort()
 
     return changed, i_u_vm, i_k_q
+
+
+@nb.njit(cache=True)
+def update_qv_droop_generators(S0: CxVec,
+                               Q0: Vec,
+                               generator_q: Vec,
+                               qv_droop_bus_idx: IntVec,
+                               qv_droop_gen_idx: IntVec,
+                               generator_bus_idx: IntVec,
+                               generator_k_droop: Vec,
+                               generator_dead_band: Vec,
+                               generator_v: Vec,
+                               generator_qmax: Vec,
+                               Vm: Vec,
+                               sbase: float) -> bool:
+    """
+    Update generators with QV droop control within the numerical method.
+    :param S0: Specified power array (changed inside).
+    :param Q0: Initial specified reactive power per bus.
+    :param generator_q: Reactive power per generator (changed inside).
+    :param qv_droop_bus_idx: Buses hosting QV droop generators.
+    :param qv_droop_gen_idx: Generator indices with QV droop control.
+    :param generator_bus_idx: Generator-to-bus map.
+    :param generator_k_droop: Generator droop gain.
+    :param generator_dead_band: Generator dead-band.
+    :param generator_v: Generator voltage set point.
+    :param generator_qmax: Generator reactive power limit.
+    :param Vm: Voltage module array.
+    :param sbase: Base power.
+    :return: Was there any change?
+    """
+    any_change = False
+
+    # initialize
+    S0.imag[qv_droop_bus_idx] = Q0[qv_droop_bus_idx]
+
+    for k in qv_droop_gen_idx:
+        bus_i = generator_bus_idx[k]
+        k_droop = generator_k_droop[k]
+        db = generator_dead_band[k]
+        dV = generator_v[k] - Vm[bus_i]
+
+        if abs(dV) > db:
+            if dV > db:
+                any_change = True
+                generator_q[k] = (dV - db) * k_droop * generator_qmax[k] / sbase
+                S0.imag[bus_i] += generator_q[k]
+            elif dV < -db:
+                any_change = True
+                generator_q[k] = (dV + db) * k_droop * generator_qmax[k] / sbase
+                S0.imag[bus_i] += generator_q[k]
+            else:
+                pass
+        else:
+            pass
+
+    return any_change
 
 
 def compute_slack_distribution(Scalc: CxVec, vd: IntVec, bus_installed_power: Vec) -> Tuple[bool, Vec]:
