@@ -395,7 +395,7 @@ def assign_api_mapping_value_if_present(
     :return: ``True`` if the value was assigned, ``False`` otherwise.
     """
     assigned: bool = False
-    api_obj_mapping: Dict[ParamPowerFlowRefferenceType, Var] = mdl.api_obj_mapping
+    api_obj_mapping: Dict[ParamPowerFlowReferenceType, Var] = mdl.api_obj_mapping
 
     # The mapping is optional: a model receives only the static parameters it
     # explicitly requests by exposing the enum key.
@@ -443,7 +443,7 @@ def api_mapping_has_any_key(
     :return: ``True`` if any key is present in ``mdl.api_obj_mapping``.
     """
     has_key: bool = False
-    api_obj_mapping: Dict[ParamPowerFlowRefferenceType, Var] = mdl.api_obj_mapping
+    api_obj_mapping: Dict[ParamPowerFlowReferenceType, Var] = mdl.api_obj_mapping
 
     if isinstance(api_obj_mapping, dict):
         key_index: int = 0
@@ -2807,7 +2807,7 @@ def assign_generator_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowRefferenceType.generator_control_mode,
+        key=ParamPowerFlowReferenceType.generator_control_mode,
         value=1.0 if bool(generator.is_controlled) else 0.0,
         logger=logger,
         device_name=device_name,
