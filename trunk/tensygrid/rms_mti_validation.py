@@ -53,9 +53,14 @@ def build_rms_models_explicit(grid: vge.MultiCircuit) -> None:
     for igen, gen in enumerate(grid.generators):
         if not gen.rms_model.empty():
             continue
-        genqec = vge.get_complete_generator_template_phasor(grid.var_factory, name=f"Gen{igen}").block
+        genqec = vge.get_complete_generator_template_phasor(
+            grid.var_factory,
+            name=f"Gen{igen}",
+            hard_sat_type="mti",
+        ).block
         genqec.connect([genqec.in_vars[0]], [gen.bus.rms_model.out_vars[0]])
         genqec.connect([genqec.in_vars[1]], [gen.bus.rms_model.out_vars[1]])
+        genqec = vge.to_implicit(genqec, grid.var_factory)
         set_rms_model(device=gen, model=genqec, var_factory=grid.var_factory)
 
     for line in grid.lines:
@@ -227,6 +232,53 @@ def ensure_problem_event_api(problem) -> None:
         problem.update = MethodType(_update, problem)
 
 
+def get_hard_sat_event_limits(grid: vge.MultiCircuit, sat_var_name: str) -> tuple[float, float] | None:
+    for dev in list(grid.get_injection_devices_iter()) + list(grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True)):
+        block = getattr(dev, "rms_model", None)
+        if block is None or block.empty():
+            continue
+
+        block.unify_blocks()
+        if not any(str(var.name) == sat_var_name for var in block.algebraic_vars):
+            continue
+
+        uc_var = next((var for var in block.event_dict if str(var.name) == "Uc"), None)
+        uo_var = next((var for var in block.event_dict if str(var.name) == "Uo"), None)
+        if uc_var is None or uo_var is None:
+            continue
+
+        uc = block.event_dict[uc_var]
+        uo = block.event_dict[uo_var]
+        if uc.value is None or uo.value is None:
+            continue
+
+        return float(uc.value), float(uo.value)
+
+    return None
+
+
+def get_problem_event_limits(problem: RmsProblemPhasor, lower_name: str, upper_name: str) -> tuple[float, float] | None:
+    params = getattr(problem, "_variable_parameters", [])
+    eqs = getattr(problem, "_event_parameters_eqs", [])
+    lower = None
+    upper = None
+    for i, var in enumerate(params):
+        if i >= len(eqs):
+            continue
+        expr = eqs[i]
+        value = getattr(expr, "value", None)
+        if value is None:
+            continue
+        name = str(getattr(var, "name", ""))
+        if name == lower_name and lower is None:
+            lower = float(value)
+        elif name == upper_name and upper is None:
+            upper = float(value)
+        if lower is not None and upper is not None:
+            return lower, upper
+    return None
+
+
 def plot_results(
     t: np.ndarray,
     y: np.ndarray,
@@ -298,35 +350,42 @@ def plot_results(
     axes[3].grid(True, alpha=0.3)
 
     name_to_idx = {}
+    named_entries = []
     for uid, idx in problem.uid2idx_vars.items():
-        name_to_idx[str(problem.sys_vars[uid].name)] = idx
+        name = str(problem.sys_vars[uid].name)
+        name_to_idx[name] = idx
+        named_entries.append((idx, name))
 
-    hard_sat_names = sorted([nm for nm in name_to_idx.keys() if nm.startswith("y_sat_")])
-    if "y_sat_gov_rate" in hard_sat_names:
-        hard_sat_names = ["y_sat_gov_rate"]
-    elif len(hard_sat_names) > 0:
-        hard_sat_names = [hard_sat_names[0]]
-    sat_param_limits = {
-        # mti_hard_sat(..., y2, Uc, Uo, Uc, Uo, name="gov_rate")
-        "y_sat_gov_rate": (-0.01, 0.01),
-    }
+    sat_targets = []
+    for preferred in ("y_sat_gov_rate", "hs_gov_rate", "y_gov1_rate", "u_gov1"):
+        matches = sorted((idx, name) for idx, name in named_entries if name == preferred)
+        if matches:
+            sat_targets = matches
+            break
+    if not sat_targets:
+        sat_targets = sorted((idx, name) for idx, name in named_entries if name.startswith("y_sat_"))[:3]
 
-    if hard_sat_names:
-        for key in hard_sat_names:
-            idx_val = name_to_idx[key]
+    if sat_targets:
+        limits = get_problem_event_limits(problem, "Uc", "Uo")
+        if limits is None:
+            limits = get_hard_sat_event_limits(grid, sat_targets[0][1])
+        for idx_val, key in sat_targets:
             y_val = y[:, idx_val]
-            y_min_lim, y_max_lim = sat_param_limits.get(
-                key,
-                (float(np.min(y_val)), float(np.max(y_val))),
-            )
-            y_min = np.full_like(t, float(y_min_lim), dtype=float)
-            y_max = np.full_like(t, float(y_max_lim), dtype=float)
-            axes[4].plot(t, y_val, linewidth=1.8, label=f"{key} (actual)")
-            axes[4].step(t, y_max, where="post", linestyle="--", linewidth=1.2, label=f"{key} max param")
-            axes[4].step(t, y_min, where="post", linestyle="--", linewidth=1.2, label=f"{key} min param")
+            axes[4].plot(t, y_val, linewidth=2.0, label=f"{key}[{idx_val}]", zorder=3)
+        all_vals = np.concatenate([np.asarray(y[:, idx], dtype=float) for idx, _ in sat_targets])
+        if limits is not None:
+            y_min_lim, y_max_lim = limits
+            axes[4].axhline(float(y_max_lim), color="tab:red", linestyle="--", linewidth=1.6, label=f"Uo={y_max_lim:g}")
+            axes[4].axhline(float(y_min_lim), color="tab:green", linestyle="--", linewidth=1.6, label=f"Uc={y_min_lim:g}")
+            pad = max(0.02 * max(abs(float(y_min_lim)), abs(float(y_max_lim)), 1.0), 1e-4)
+            axes[4].set_ylim(float(y_min_lim) - pad, float(y_max_lim) + pad)
+        else:
+            pad = max(0.02 * max(float(np.max(np.abs(all_vals))), 1.0), 1e-4)
+            axes[4].set_ylim(float(np.min(all_vals)) - pad, float(np.max(all_vals)) + pad)
         axes[4].legend(loc="best", ncol=2, fontsize=8)
     else:
         axes[4].plot(t, np.zeros_like(t), linewidth=1.5)
+        axes[4].text(0.01, 0.85, "No governor saturation variable found", transform=axes[4].transAxes)
     axes[4].set_ylabel("Saturation")
     axes[4].set_xlabel("Time [s]")
     axes[4].grid(True, alpha=0.3)

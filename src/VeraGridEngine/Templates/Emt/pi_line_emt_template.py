@@ -187,6 +187,18 @@ def get_pi_line_emt_template(vf: VarFactory,
         "B": VarPowerFlowReferenceType.vt_B,
         "C": VarPowerFlowReferenceType.vt_C,
     })
+    if_keys = dict({
+        "N": VarPowerFlowReferenceType.if_N,
+        "A": VarPowerFlowReferenceType.if_A,
+        "B": VarPowerFlowReferenceType.if_B,
+        "C": VarPowerFlowReferenceType.if_C,
+    })
+    it_keys = dict({
+        "N": VarPowerFlowReferenceType.it_N,
+        "A": VarPowerFlowReferenceType.it_A,
+        "B": VarPowerFlowReferenceType.it_B,
+        "C": VarPowerFlowReferenceType.it_C,
+    })
 
     vf_vars = [vf.add_var(name=f"vf_{ph_label}_{name}", reference=vf_keys[ph_label]) for ph_label in active_ph]
     vt_vars = [vf.add_var(name=f"vt_{ph_label}_{name}", reference=vt_keys[ph_label]) for ph_label in active_ph]
@@ -208,8 +220,8 @@ def get_pi_line_emt_template(vf: VarFactory,
 
     i_cap_f = [vf.add_var(name=f"i_cap_f_{name}_{ph_label}") for ph_label in active_ph]
     i_cap_t = [vf.add_var(name=f"i_cap_t_{name}_{ph_label}") for ph_label in active_ph]
-    if_act = [vf.add_var(name=f"if_{name}_{ph_label}") for ph_label in active_ph]
-    it_act = [vf.add_var(name=f"it_{name}_{ph_label}") for ph_label in active_ph]
+    if_act = [vf.add_var(name=f"if_{name}_{ph_label}", reference=if_keys[ph_label]) for ph_label in active_ph]
+    it_act = [vf.add_var(name=f"it_{name}_{ph_label}", reference=it_keys[ph_label]) for ph_label in active_ph]
 
     # -----------------------------
     # Build block

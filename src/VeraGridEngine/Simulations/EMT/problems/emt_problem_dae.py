@@ -33,6 +33,8 @@ from VeraGridEngine.enumerations import (
     ParamPowerFlowReferenceType,
     DeviceType,
     DynamicEventTransitionType,
+    EmtInitializationMethod,
+    EmtInitializationStatus,
     EmtLineTypes,
     WindingType,
 )
@@ -46,6 +48,7 @@ from VeraGridEngine.Simulations.EMT.initialization_emt import EmtInitializationR
 from VeraGridEngine.Utils.Symbolic.explicit_initialization_symbolic import init_explicit_common, build_symbolic_vector_single_equation_compiler
 from VeraGridEngine.Utils.Symbolic.compiled_functions import get_compiled_functions_cache_stats
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_algebraic_vars
+from VeraGridEngine.Utils.procedural_logic import build_boundary_updater_from_block
 from VeraGridEngine.IO.fmu.importer import (
     finalize_emt_fmu_cs_devices,
     finalize_emt_fmu_me_devices,
@@ -572,14 +575,23 @@ def _realign_static_parameter_mapping_with_unified_block(
     uid_to_parameter_var: Dict[int, Var] = dict()
     parameter_var: Var
 
-    for parameter_var, parameter_value in sys_block.parameters.items():
-        if parameter_var not in static_parameter_values_mapping:
-            static_parameter_values_mapping[parameter_var] = parameter_value
-        else:
-            pass
+    # Some custom EMT templates keep parameter variables only in nested blocks.
+    # After block unification the final compiled equations may still reference
+    # those vars by UID even when the root ``sys_block.parameters`` dictionary is
+    # not the original object that first held them. Walk the full hierarchy to
+    # realign every constant parameter against the vars that survive in the
+    # unified graph.
+    all_blocks: List[Block] = sys_block.get_all_blocks()
+    block_obj: Block
+    parameter_value: Const
 
-    for parameter_var in sys_block.parameters.keys():
-        uid_to_parameter_var[parameter_var.uid] = parameter_var
+    for block_obj in all_blocks:
+        for parameter_var, parameter_value in block_obj.parameters.items():
+            if parameter_var not in static_parameter_values_mapping:
+                static_parameter_values_mapping[parameter_var] = parameter_value
+            else:
+                pass
+            uid_to_parameter_var[parameter_var.uid] = parameter_var
 
     if len(uid_to_parameter_var) == 0:
         return
@@ -1325,9 +1337,13 @@ class EmtProblemDae(EmtProblemTemplate):
 
         static_parameter_values_mapping: Dict[Var, Const] = dict()
 
-        # for init_explicit
-        self._models_with_init_eqs: List[Block] = []
-        self._models_with_init_eqs_seen: Set[int] = set()
+        # The explicit initialization stage must solve each device working model as
+        # one unified symbolic block. Registering nested child blocks separately can
+        # break coupled controller/plant operating-point seeds because sibling
+        # sub-blocks are then initialized independently instead of sharing one
+        # flattened dependency graph.
+        self._device_models_with_init_eqs: List[Block] = list()
+        self._device_models_with_init_eqs_seen: Set[int] = set()
 
         sys_block = Block(children=[], in_vars=[])
         glob_time = Var(self.TIME_NAME)
@@ -1416,7 +1432,7 @@ class EmtProblemDae(EmtProblemTemplate):
         self._runtime_parameter_eqs0 = list(self._event_parameters_eqs)
         finalize_emt_fmu_cs_devices(self)
         finalize_emt_fmu_me_devices(self)
-        from VeraGridEngine.Utils.procedural_logic import build_boundary_updater_from_block
+
         self._block_boundary_updater = build_boundary_updater_from_block(self)
 
         if len(self._runtime_mode_parameters) > 0:
@@ -1432,11 +1448,32 @@ class EmtProblemDae(EmtProblemTemplate):
         if self.progress_signal is not None:
             self.progress_signal.emit(5)
 
-        # 2) explicit init guesses initialization
-        self._run_explicit_initialization()
+        # 2) Initialization stage selection.
+        # Explicit initialization is the lightweight symbolic seed stage that
+        # resolves device-provided init equations directly. The broader EMT
+        # workflow may either stop here, use it as a seed for the reduced
+        # native consistency solve, or skip it entirely when the user
+        # requests a pure pseudo-transient initialization path driven only by
+        # the power-flow seeded variables.
+        if self.options.initialization_method == EmtInitializationMethod.PseudoTransient:
+            pass
+        else:
+            self._run_explicit_initialization()
         explicit_init_s: float = _toc(t_phase_start)
         t_phase_start = _tic()
-        self.initialization_report = run_emt_native_initialization(problem=self, options=self.options)
+
+        # 3) Native initialization stage selection.
+        # The native stage builds and solves the reduced consistency system only
+        # for workflows that require it. Pure Explicit stops after the symbolic
+        # seeding stage, while the other methods use the native initialization
+        # dispatcher to execute their requested algorithm from the current seed.
+        if self.options.initialization_method == EmtInitializationMethod.Explicit:
+            self.initialization_report = EmtInitializationReport(method_requested=EmtInitializationMethod.Explicit)
+            self.initialization_report.status = EmtInitializationStatus.RESOLVED
+            self.initialization_report.method_used = EmtInitializationMethod.Explicit
+            self.initialization_report.message = "Explicit initialization completed."
+        else:
+            self.initialization_report = run_emt_native_initialization(problem=self, options=self.options)
         self._seed_all_switched_vsc_models()
         self._seed_all_switch_models()
         self.init_guess.update(self._temp_post_init_guess)
@@ -1471,7 +1508,7 @@ class EmtProblemDae(EmtProblemTemplate):
                     [float(const.value) for const in self.get_parameters_values()],
                     dtype=np.float64,
                 ),
-                include_existing=True,
+                include_existing=False,
             )
         events_group_finalize_s: float = _toc(t_phase_start)
 
@@ -1552,39 +1589,59 @@ class EmtProblemDae(EmtProblemTemplate):
     # ---------------------------------------------------------------------
     # init_eqs registration + explicit init execution
     # ---------------------------------------------------------------------
-    def _register_init_model(self, mdl: Block) -> None:
+    def _device_block_has_init_equations(self, mdl: Block) -> bool:
         """
-        Register every block in one hierarchy that defines explicit init equations.
+        Return whether one unified device block contributes explicit init equations.
 
-        Wrapper EMT roots may not own ``init_eqs`` directly because the actual
-        initialization equations live in nested child blocks. The registration
-        pass therefore traverses the full hierarchy and stores every unique block
-        that contributes explicit initialization equations.
+        The device working model is flattened through ``unify_blocks()`` before
+        explicit initialization registration. After that stage, all child init
+        equations that belong to the device hierarchy are merged into the device
+        root itself. The explicit initializer should therefore treat the unified
+        device block as the only initialization unit.
 
         :param mdl: Root block to inspect.
-        :return: None
+        :type mdl: Block
+        :return: ``True`` when the device block has explicit init equations.
+        :rtype: bool
         """
-        blocks: List[Block] = _collect_block_hierarchy(mdl)
-        block: Block
+        init_eqs: Dict[Var, Expr] = mdl.init_eqs
+        diff_init_eqs: Dict[Var, Expr] = mdl.diff_init_eqs
+        has_init_eqs: bool = len(init_eqs) > 0
+        has_diff_init_eqs: bool = len(diff_init_eqs) > 0
 
-        # Every nested block is inspected because the GUI may wrap the actual
-        # device model inside non-physical container blocks.
-        for block in blocks:
-            init_eqs: Dict[Var, Expr] = block.init_eqs
-            diff_init_eqs: Dict[Var, Expr] = block.diff_init_eqs
-
-            if init_eqs is None or len(init_eqs) == 0:
-                if diff_init_eqs is None or len(diff_init_eqs) == 0:
-                    pass
+        if has_init_eqs:
+            return True
+        else:
+            if has_diff_init_eqs:
+                return True
             else:
+                return False
 
-                # The seen-set keeps the explicit-init schedule stable even if
-                # the same working model is visited from multiple build paths.
-                if block.uid in self._models_with_init_eqs_seen:
-                    pass
-                else:
-                    self._models_with_init_eqs_seen.add(block.uid)
-                    self._models_with_init_eqs.append(block)
+    def _register_init_model(self, mdl: Block) -> None:
+        """
+        Register one unified device working model for explicit initialization.
+
+        The broader EMT build process already connects the working model and then
+        flattens it through ``unify_blocks()`` before this registration point. At
+        that stage the device root owns the merged ``init_eqs`` / ``diff_init_eqs``
+        of its full hierarchy, so explicit initialization must run exactly once on
+        that root block instead of iterating over stale child blocks.
+
+        :param mdl: Unified device working model.
+        :type mdl: Block
+        :return: None.
+        :rtype: None
+        """
+        has_init_equations: bool = self._device_block_has_init_equations(mdl)
+
+        if has_init_equations:
+            if mdl.uid in self._device_models_with_init_eqs_seen:
+                pass
+            else:
+                self._device_models_with_init_eqs_seen.add(mdl.uid)
+                self._device_models_with_init_eqs.append(mdl)
+        else:
+            pass
 
     def get_build_report(self) -> Dict[str, float]:
         """
@@ -1595,23 +1652,33 @@ class EmtProblemDae(EmtProblemTemplate):
         """
         return dict(self.build_report)
 
-    def _run_explicit_initialization(self)-> None:
+    def _run_explicit_initialization(self) -> None:
         """
-        Run explicit initialization for every block that defines initialization equations.
+        Run explicit initialization once per unified device working model.
 
-        The routine may modify runtime parameter expressions, so runtime parameter
-        buffers are rebuilt afterwards.
+        The working-device model already contains the merged controller, plant,
+        runtime parameter, and init-equation hierarchy after ``unify_blocks()``.
+        Initializing the device root as one flat block preserves coupled operating
+        points across sibling sub-blocks, which is required for EMT templates whose
+        current references, delayed commands, and plant states must be seeded
+        together.
 
         :return: None
+        :rtype: None
         """
 
-        if len(self._models_with_init_eqs) == 0 :
+        if len(self._device_models_with_init_eqs) == 0:
             return
+        else:
+            pass
 
-        # sys_vars dict (uid -> Var), size = n_vars
+        # The explicit solver works on the already assembled global variable maps,
+        # but each call consumes one unified device block so sibling device states
+        # remain decoupled while sibling controller/plant blocks inside the device
+        # are initialized together.
         sys_vars: Dict[int, Var] = {v.uid: v for v in (self._state_vars + self._algebraic_vars)}
         sys_diff_vars: Dict[int, Var] = {dv.uid: dv for dv in self._diff_vars}
-        compile_single_equation = build_symbolic_vector_single_equation_compiler(
+        compile_single_equation: Any = build_symbolic_vector_single_equation_compiler(
             compiler_names_dict=self._compiler_names_dict,
             alias_names_dict=self._alias_names_dict,
             vars_name=self.VARS_NAME,
@@ -1620,10 +1687,9 @@ class EmtProblemDae(EmtProblemTemplate):
             params_name=self.CONSTANT_PARAMS_NAME,
         )
 
-        seen_blocks: set[int] = set()
+        seen_blocks: Set[int] = set()
 
-        for mdl in self._models_with_init_eqs:
-
+        for mdl in self._device_models_with_init_eqs:
             if mdl.uid not in seen_blocks:
                 seen_blocks.add(mdl.uid)
 
@@ -1652,21 +1718,20 @@ class EmtProblemDae(EmtProblemTemplate):
                         verbose=bool(self.options.verbose > 0),
                     )
 
-
                     for event_var in mdl.event_dict.keys():
                         event_idx: int | None = self.uid2idx_event_params.get(event_var.uid, None)
 
                         if event_idx is None:
-                            mdl.event_dict[event_var] = mdl.event_dict[event_var]
+                            pass
                         else:
                             mdl.event_dict[event_var] = self._event_parameters_eqs[event_idx]
                             self._runtime_parameter_eqs0[event_idx] = self._event_parameters_eqs[event_idx]
                 except Exception as e:
                     block_name: str = _get_block_name(mdl)
-                    error_detail = f"{type(e).__name__}: {str(e)}"
+                    error_detail: str = f"{type(e).__name__}: {str(e)}"
 
                     self.logger.add_warning(
-                        msg="EMT explicit initialization failed for block.",
+                        msg="EMT explicit initialization failed for unified device block.",
                         device=block_name,
                         value=error_detail,
                         expected_value="Successful explicit initialization",
@@ -1676,13 +1741,16 @@ class EmtProblemDae(EmtProblemTemplate):
 
                     if self.options.verbose > 0:
                         self.logger.add_debug(
-                            f"[EMT][init_explicit] failed for block '{block_name}'. Error: {error_detail}"
+                            f"[EMT][init_explicit] failed for unified device block '{block_name}'. Error: {error_detail}"
                         )
-
                         print(
-                            f"EMT explicit initialization failed for block {block_name}. "
+                            f"EMT explicit initialization failed for unified device block {block_name}. "
                             f"Error detail: {error_detail}"
                         )
+                    else:
+                        pass
+            else:
+                pass
 
 
         self._build_runtime_param_vectors()
@@ -4961,22 +5029,30 @@ class EmtProblemDae(EmtProblemTemplate):
         }
 
         omega_base: float = 2.0 * np.pi * self.grid.fBase
+        # ``I_ph = conj(S/V)`` already yields the branch-convention current
+        # from bus into branch. The EMT KCL also uses branch
+        # convention for VSC branches (``I_kcl -= i_branch``), so the
+        # seeded value is taken directly without any sign flip, just like
+        # with other branches
         for ph in ["N", "A", "B", "C"]:
             V_ph = phase_voltage_dict[ph]
             I_ph = phase_current_dict[ph]
             S_ph = phase_power_dict[ph]
+
+            # Store it once and reuse
+            i_branch_init: float = float(np.sqrt(2.0) * np.imag(I_ph))
 
             self.set_if_exists(mdl=mdl,
                                key=ac_voltage_keys[ph],
                                value=float(np.sqrt(2.0) * np.imag(V_ph)))
             self.set_if_exists(mdl=mdl,
                                key=ac_current_keys[ph],
-                               value=float(np.sqrt(2.0) * np.imag(I_ph)))
+                               value=i_branch_init)
 
             if ac_is_from:
                 self.set_if_exists(mdl=mdl,
                                    key=if_keys[ph],
-                                   value=float(np.sqrt(2.0) * np.imag(I_ph)))
+                                   value=i_branch_init)
                 self.set_if_exists(mdl=mdl,
                                    key=it_keys[ph],
                                    value=0.0)
@@ -4988,7 +5064,7 @@ class EmtProblemDae(EmtProblemTemplate):
                                    value=0.0)
                 self.set_if_exists(mdl=mdl,
                                    key=it_keys[ph],
-                                   value=float(np.sqrt(2.0) * np.imag(I_ph)))
+                                   value=i_branch_init)
                 self.set_external_param(mdl, d_vf_keys[ph], 0.0)
                 self.set_external_param(mdl, d_vt_keys[ph], omega_base * np.sqrt(2.0) * np.real(V_ph))
 
@@ -5163,22 +5239,27 @@ class EmtProblemDae(EmtProblemTemplate):
         }
 
         omega_base: float = 2.0 * np.pi * self.grid.fBase
+
         for ph in ["N", "A", "B", "C"]:
             V_ph = phase_voltage_dict[ph]
             I_ph = phase_current_dict[ph]
             S_ph = phase_power_dict[ph]
+
+            # ``I_ph = conj(S/V)`` is already in branch convention
+            # Hence no sign change needed
+            i_branch_init: float = float(np.sqrt(2.0) * np.imag(I_ph))
 
             self.set_if_exists(mdl=mdl,
                                key=ac_voltage_keys[ph],
                                value=float(np.sqrt(2.0) * np.imag(V_ph)))
             self.set_if_exists(mdl=mdl,
                                key=ac_current_keys[ph],
-                               value=float(np.sqrt(2.0) * np.imag(I_ph)))
+                               value=i_branch_init)
 
             if ac_is_from:
                 self.set_if_exists(mdl=mdl,
                                    key=if_keys[ph],
-                                   value=float(np.sqrt(2.0) * np.imag(I_ph)))
+                                   value=i_branch_init)
                 self.set_if_exists(mdl=mdl,
                                    key=it_keys[ph],
                                    value=0.0)
@@ -5190,7 +5271,7 @@ class EmtProblemDae(EmtProblemTemplate):
                                    value=0.0)
                 self.set_if_exists(mdl=mdl,
                                    key=it_keys[ph],
-                                   value=float(np.sqrt(2.0) * np.imag(I_ph)))
+                                   value=i_branch_init)
                 self.set_external_param(mdl, d_vf_keys[ph], 0.0)
                 self.set_external_param(mdl, d_vt_keys[ph], omega_base * np.sqrt(2.0) * np.real(V_ph))
 

@@ -98,8 +98,8 @@ def find_name_in_block(name: str, block: Block):
 #
 # big_gen1 = Block(children=[genqec_mdl])
 #
-# big_gen1.external_mapping.update({VarPowerFlowRefferenceType.P: genqec_mdl.out_vars[0]})
-# big_gen1.external_mapping.update({VarPowerFlowRefferenceType.Q: genqec_mdl.out_vars[1]})
+# big_gen1.external_mapping.update({VarPowerFlowReferenceType.P: genqec_mdl.out_vars[0]})
+# big_gen1.external_mapping.update({VarPowerFlowReferenceType.Q: genqec_mdl.out_vars[1]})
 #
 # # add models to dyn_host
 # line0.rms_model = line_mdl

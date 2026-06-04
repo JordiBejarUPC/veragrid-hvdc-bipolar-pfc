@@ -7,7 +7,7 @@ import numpy as np
 from typing import Union, Dict, Tuple, TYPE_CHECKING
 
 import VeraGridEngine.Simulations.PowerFlow as pflw
-from VeraGridEngine.enumerations import SolverType
+from VeraGridEngine.enumerations import SolverType, GeneratorControlMode
 from VeraGridEngine.basic_structures import Logger, ConvergenceReport
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions
@@ -960,14 +960,15 @@ def multi_island_pf_nc(nc: NumericalCircuit,
             Qmin_gen=nc.generator_data.qmin,
             Qmax_gen=nc.generator_data.qmax,
             gen_status=nc.generator_data.active,
-            is_controlling=nc.generator_data.controllable,
+            control_mode_int_gen=nc.generator_data.control_mode_int,
             Q0_gen=nc.generator_data.q,
             batt_bus_idx=nc.battery_data.bus_idx,
             Qmin_batt=nc.battery_data.qmin,
             Qmax_batt=nc.battery_data.qmax,
             batt_status=nc.battery_data.active,
-            batt_is_controlling=nc.battery_data.controllable,
+            control_mode_int_batt=nc.battery_data.control_mode_int,
             Q0_batt=nc.battery_data.q,
+            v_ctrl_val_gen=GeneratorControlMode.V.idx(),
             atol=1e-12,
         )
 
@@ -994,14 +995,15 @@ def multi_island_pf_nc(nc: NumericalCircuit,
             Qmin_gen=nc.generator_data.qmin,
             Qmax_gen=nc.generator_data.qmax,
             gen_status=nc.generator_data.active,
-            is_controlling=nc.generator_data.controllable,
+            control_mode_int_gen=nc.generator_data.control_mode_int,
             Q0_gen=nc.generator_data.q,
             batt_bus_idx=nc.battery_data.bus_idx,
             Qmin_batt=nc.battery_data.qmin,
             Qmax_batt=nc.battery_data.qmax,
             batt_status=nc.battery_data.active,
-            batt_is_controlling=nc.battery_data.controllable,
+            control_mode_int_batt=nc.battery_data.control_mode_int,
             Q0_batt=nc.battery_data.q,
+            v_ctrl_val_gen=GeneratorControlMode.V.idx(),
             atol=1e-12,
         )
 
@@ -1012,14 +1014,15 @@ def multi_island_pf_nc(nc: NumericalCircuit,
                 Qmin_gen=nc.generator_data.pmin,
                 Qmax_gen=nc.generator_data.pmax,
                 gen_status=nc.generator_data.active,
-                is_controlling=nc.generator_data.active,
+                control_mode_int_gen=nc.generator_data.control_mode_int,
                 Q0_gen=nc.generator_data.p,
                 batt_bus_idx=nc.battery_data.bus_idx,
                 Qmin_batt=nc.battery_data.pmin,
                 Qmax_batt=nc.battery_data.pmax,
                 batt_status=nc.battery_data.active,
-                batt_is_controlling=nc.battery_data.active,
+                control_mode_int_batt=nc.battery_data.control_mode_int,
                 Q0_batt=nc.battery_data.p,
+                v_ctrl_val_gen=GeneratorControlMode.V.idx(),
                 atol=1e-12,
             )
         else:

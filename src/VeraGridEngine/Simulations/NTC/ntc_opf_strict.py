@@ -12,7 +12,7 @@ import os
 import numpy as np
 from typing import List, Union, Tuple, Callable
 
-from VeraGridEngine.enumerations import MIPSolvers, ZonalGrouping
+from VeraGridEngine.enumerations import MIPSolvers, MIPFramework, ZonalGrouping
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.Events.contingency_group import ContingencyGroup
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
@@ -26,7 +26,7 @@ from VeraGridEngine.DataStructures.hvdc_data import HvdcData
 from VeraGridEngine.DataStructures.vsc_data import VscData
 from VeraGridEngine.DataStructures.bus_data import BusData
 from VeraGridEngine.basic_structures import Logger, Vec, IntVec, BoolVec, CxMat, Mat, ObjVec
-from VeraGridEngine.Utils.MIP.selected_interface import LpExp, LpVar, OrToolsLpModel, join, LpModel
+from VeraGridEngine.Utils.MIP.selected_interface import LpExp, LpVar, OrToolsLpModel, join, LpModel, get_model_instance
 from VeraGridEngine.enumerations import TapPhaseControl, HvdcControlType, AvailableTransferMode, ConverterControlType
 from VeraGridEngine.Simulations.LinearFactors.linear_analysis import LinearAnalysis, LinearMultiContingencies
 from VeraGridEngine.Simulations.ATC.available_transfer_capacity_driver import compute_alpha, compute_alpha_n1, \
@@ -1207,8 +1207,8 @@ def add_linear_branches_formulation(t_idx: int,
                     bk = 1.0 / branch_data_t.X[m]
 
                 # compute the flow
-                if (active_branch_data_t.tap_phase_control_mode[m] == TapPhaseControl.Pf or
-                        active_branch_data_t.tap_phase_control_mode[m] == TapPhaseControl.Pt):
+                if (active_branch_data_t.tap_phase_control_mode[m] == TapPhaseControl.Pf.idx() or
+                        active_branch_data_t.tap_phase_control_mode[m] == TapPhaseControl.Pt.idx()):
 
                     # add angle
                     branch_vars.tap_angles[t_idx, m] = prob.add_var(
@@ -1273,15 +1273,18 @@ def add_linear_branches_formulation(t_idx: int,
             else:
                 monitor_by_sensitivity_n = True
 
+            # DC branches are always monitored 
+            # Remember their PTDF sensitivity is 0
             branch_vars.monitor_logic[t_idx, m] = int(branch_data_t.monitor_loading[m]
-                                                      and monitor_by_sensitivity_n
-                                                      and monitor_by_load_rule_n)
+                                                      and (branch_data_t.dc[m]
+                                                           or (monitor_by_sensitivity_n
+                                                               and monitor_by_load_rule_n)))
 
             # add the rate constraint if the branch is monitored
             if branch_vars.monitor_logic[t_idx, m]:
                 # here flows is always a variable
                 # branch_vars.flows[t_idx, m].bounds(low=-rate_pu, up=rate_pu)
-                prob.set_var_bounds(var=branch_vars.flows[t_idx, m], ub=-rate_pu, lb=rate_pu)
+                prob.set_var_bounds(var=branch_vars.flows[t_idx, m], lb=-rate_pu, ub=rate_pu)
 
     # add the inter-area flows to the objective function with the correct sign
     for k, sense in branch_vars.inter_space_branches:
@@ -1373,7 +1376,8 @@ def add_linear_branches_contingencies_formulation(t_idx: int,
                     else:
                         monitor_by_sensitivity_n1 = True
 
-                    if monitor_by_load_rule_n1 and monitor_by_sensitivity_n1:
+                    # DC branches are always monitored (their PTDF sensitivity alpha is 0)
+                    if branch_data_t.dc[m] or (monitor_by_load_rule_n1 and monitor_by_sensitivity_n1):
                         # register the contingency data to evaluate the result at the end
                         branch_vars.add_contingency_flow(t=t_idx, m=m, c=c, flow_var=contingency_flow)
 
@@ -1424,7 +1428,7 @@ def add_linear_hvdc_formulation(t_idx: int,
 
         if hvdc_data_t.active[m]:
 
-            if hvdc_data_t.control_mode[m] == HvdcControlType.type_0_free:  # P-MODE 3
+            if hvdc_data_t.control_mode_int[m] == HvdcControlType.type_0_free.idx():  # P-MODE 3
 
                 # set the flow based on the angular difference
                 P0 = hvdc_data_t.Pset[m] / Sbase
@@ -1488,7 +1492,7 @@ def add_linear_hvdc_formulation(t_idx: int,
                 vars_bus.Pbalance[t_idx, fr] -= hvdc_vars.flows[t_idx, m]
                 vars_bus.Pbalance[t_idx, to] += hvdc_vars.flows[t_idx, m]
 
-            elif hvdc_data_t.control_mode[m] == HvdcControlType.type_1_Pset:
+            elif hvdc_data_t.control_mode_int[m] == HvdcControlType.type_1_Pset.idx():
 
                 if hvdc_data_t.dispatchable[m]:
 
@@ -1521,7 +1525,7 @@ def add_linear_hvdc_formulation(t_idx: int,
                     vars_bus.Pbalance[t_idx, fr] -= hvdc_vars.flows[t_idx, m]
                     vars_bus.Pbalance[t_idx, to] += hvdc_vars.flows[t_idx, m]
             else:
-                raise Exception('OPF: Unknown HVDC control mode {}'.format(hvdc_data_t.control_mode[m]))
+                raise Exception('OPF: Unknown HVDC control mode {}'.format(hvdc_data_t.control_mode_int[m]))
         else:
             # not active, therefore the flow is exactly zero
             prob.set_var_bounds(var=hvdc_vars.flows[t_idx, m], ub=0.0, lb=0.0)
@@ -1570,8 +1574,8 @@ def add_linear_vsc_formulation(t_idx: int,
 
         if vsc_data_t.active[m]:
 
-            if (vsc_data_t.control1[m] == ConverterControlType.Pdc_angle_droop and
-                    vsc_data_t.control2[m] == ConverterControlType.Pac):  # P-MODE 3
+            if (vsc_data_t.control1_int[m] == ConverterControlType.Pdc_angle_droop.idx() and
+                    vsc_data_t.control2_int[m] == ConverterControlType.Pac.idx()):  # P-MODE 3
 
                 # set the flow based on the angular difference
                 P0 = vsc_data_t.control2_val[m] / Sbase
@@ -1611,8 +1615,8 @@ def add_linear_vsc_formulation(t_idx: int,
                         name=join("vsc_flow_cst_", [t_idx, m], "_")
                     )
 
-            elif (vsc_data_t.control1[m] == ConverterControlType.Vm_dc and
-                  vsc_data_t.control2[m] == ConverterControlType.Pac):
+            elif (vsc_data_t.control1_int[m] == ConverterControlType.Vm_dc.idx() and
+                  vsc_data_t.control2_int[m] == ConverterControlType.Pac.idx()):
 
                 # set the DC slack
                 val = vsc_data_t.control1_val[m]
@@ -1628,8 +1632,8 @@ def add_linear_vsc_formulation(t_idx: int,
                     name=join("vsc_flow_", [t_idx, m], "_")
                 )
 
-            elif (vsc_data_t.control1[m] == ConverterControlType.Pac and
-                  vsc_data_t.control2[m] == ConverterControlType.Vm_dc):
+            elif (vsc_data_t.control1_int[m] == ConverterControlType.Pac.idx() and
+                  vsc_data_t.control2_int[m] == ConverterControlType.Vm_dc.idx()):
 
                 # set the DC slack
                 val = vsc_data_t.control2_val[m]
@@ -1645,8 +1649,8 @@ def add_linear_vsc_formulation(t_idx: int,
                     name=join("vsc_flow_", [t_idx, m], "_")
                 )
 
-            elif (vsc_data_t.control1[m] == ConverterControlType.Vm_dc and
-                  vsc_data_t.control2[m] == ConverterControlType.Pdc):
+            elif (vsc_data_t.control1_int[m] == ConverterControlType.Vm_dc.idx() and
+                  vsc_data_t.control2_int[m] == ConverterControlType.Pdc.idx()):
 
                 # set the DC slack
                 val = vsc_data_t.control1_val[m]
@@ -1662,8 +1666,8 @@ def add_linear_vsc_formulation(t_idx: int,
                     name=join("vsc_flow_", [t_idx, m], "_")
                 )
 
-            elif (vsc_data_t.control1[m] == ConverterControlType.Pdc and
-                  vsc_data_t.control2[m] == ConverterControlType.Vm_dc):
+            elif (vsc_data_t.control1_int[m] == ConverterControlType.Pdc.idx() and
+                  vsc_data_t.control2_int[m] == ConverterControlType.Vm_dc.idx()):
 
                 # set the DC slack
                 val = vsc_data_t.control2_val[m]
@@ -1679,8 +1683,8 @@ def add_linear_vsc_formulation(t_idx: int,
                     name=join("vsc_flow_", [t_idx, m], "_")
                 )
 
-            elif (vsc_data_t.control1[m] == ConverterControlType.Pdc and
-                  vsc_data_t.control2[m] == ConverterControlType.Pac):
+            elif (vsc_data_t.control1_int[m] == ConverterControlType.Pdc.idx() and
+                  vsc_data_t.control2_int[m] == ConverterControlType.Pac.idx()):
 
                 # declare the flow var
                 vsc_vars.flows[t_idx, m] = prob.add_var(
@@ -1689,8 +1693,8 @@ def add_linear_vsc_formulation(t_idx: int,
                     name=join("vsc_flow_", [t_idx, m], "_")
                 )
 
-            elif (vsc_data_t.control1[m] == ConverterControlType.Pac and
-                  vsc_data_t.control2[m] == ConverterControlType.Pdc):
+            elif (vsc_data_t.control1_int[m] == ConverterControlType.Pac.idx() and
+                  vsc_data_t.control2_int[m] == ConverterControlType.Pdc.idx()):
 
                 # declare the flow var
                 vsc_vars.flows[t_idx, m] = prob.add_var(
@@ -1701,7 +1705,7 @@ def add_linear_vsc_formulation(t_idx: int,
 
             else:
                 logger.add_error(msg=f"Unsupported controls",
-                                 value=f"{vsc_data_t.control1[m]}, {vsc_data_t.control2[m]}")
+                                 value=f"{vsc_data_t.control1_int[m]}, {vsc_data_t.control2_int[m]}")
 
             # add the injections matching the flow
             bus_vars.Pbalance[t_idx, fr] -= vsc_vars.flows[t_idx, m]
@@ -1780,7 +1784,8 @@ def run_linear_ntc_opf_strict(grid: MultiCircuit,
                               progress_text: Union[None, Callable[[str], None]] = None,
                               progress_func: Union[None, Callable[[float], None]] = None,
                               verbose: int = 0,
-                              robust: bool = False) -> Tuple[NtcVars, LpModel]:
+                              robust: bool = False,
+                              mip_framework: MIPFramework = MIPFramework.PuLP) -> Tuple[NtcVars, LpModel]:
     """
 
     :param grid: MultiCircuit instance
@@ -1823,8 +1828,8 @@ def run_linear_ntc_opf_strict(grid: MultiCircuit,
     n_hvdc = grid.get_hvdc_number()
     n_vsc = grid.get_vsc_number()
 
-    # Declare the LP model
-    lp_model: OrToolsLpModel = OrToolsLpModel(solver_type)
+    # Declare the LP model (falls back to PuLP when ORTools is not installed)
+    lp_model: LpModel = get_model_instance(tpe=mip_framework, solver_type=solver_type)
 
     # declare structures of LP vars
     mip_vars = NtcVars(nt=1, nbus=n, ng=ng, nb=nb, nl=nl, nbr=nbr, n_hvdc=n_hvdc, n_vsc=n_vsc,
@@ -2037,7 +2042,7 @@ def run_linear_ntc_opf_strict(grid: MultiCircuit,
     # gather the results
     logger.add_info(msg="Status", value=lp_model.status2string(status))
 
-    if status == OrToolsLpModel.OPTIMAL:
+    if status == lp_model.OPTIMAL:
         logger.add_info("Objective function", value=lp_model.fobj_value())
         mip_vars.acceptable_solution[t_idx] = True
     else:

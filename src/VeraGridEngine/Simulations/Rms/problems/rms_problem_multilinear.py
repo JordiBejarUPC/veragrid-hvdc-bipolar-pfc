@@ -6,12 +6,8 @@
 from __future__ import annotations
 from dataclasses import dataclass
 import numpy as np
-import tensorly as tl
 import scipy.linalg as la
 from scipy import sparse
-import sparse as sparse_coo
-from tensorly.contrib.sparse.decomposition import parafac
-from tensorly.cp_tensor import CPTensor
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_phasor import RmsProblemPhasor
 from VeraGridEngine.Utils.Symbolic.symbolic import Expr, Var, Const, BinOp, UnOp, get_expr_factors
 
@@ -77,6 +73,16 @@ class CpnFitDiagnostics:
     relative_changes: list[float]
     iterations: int
     converged: bool
+
+
+@dataclass(slots=True)
+class MultilinearCpTensor:
+    """
+    CP factor representation of a multilinear coefficient tensor.
+    """
+
+    weights: np.ndarray
+    factors: list[np.ndarray]
 
 
 class MultilinearCpnApproximator:
@@ -401,12 +407,10 @@ class MultilinearCpnApproximator:
         equation_factor: np.ndarray,
         variable_factors: list[np.ndarray],
         zero_tol: float,
-    ):
+    ) -> MultilinearCpTensor:
         """
-        Convert raw factors into a TensorLy CPTensor.
+        Convert raw factors into a normalized CP tensor representation.
         """
-        from tensorly.cp_tensor import CPTensor
-
         factors = [equation_factor.copy()] + [factor.copy() for factor in variable_factors]
         rank = equation_factor.shape[1]
         weights = np.ones(rank, dtype=float)
@@ -422,7 +426,7 @@ class MultilinearCpnApproximator:
             factors[factor_idx] = factor / safe_norms[np.newaxis, :]
             weights *= safe_norms
 
-        return CPTensor((weights, factors))
+        return MultilinearCpTensor(weights=weights, factors=factors)
 
     def fit(
         self,
@@ -439,7 +443,7 @@ class MultilinearCpnApproximator:
 
         Returns
         -------
-        tensorly.cp_tensor.CPTensor
+        MultilinearCpTensor
             Fitted CP tensor.
         """
         rng = np.random.default_rng(random_state)
@@ -609,10 +613,10 @@ class MultilinearCpnApproximator:
     def evaluate_residual(
         self,
         x: np.ndarray,
-        cp_tensor=None,
+        cp_tensor: MultilinearCpTensor | None = None,
     ) -> np.ndarray:
         """
-        Evaluate the approximate residual from a fitted TensorLy CPTensor.
+        Evaluate the approximate residual from a fitted CP tensor.
 
         If ``cp_tensor`` is not provided, this method uses the last fitted tensor.
         """
@@ -629,7 +633,7 @@ class MultilinearCpnApproximator:
 
         if x.shape[0] != len(variable_factors):
             raise ValueError(
-                f"x has {x.shape[0]} variables, but CPTensor has "
+                f"x has {x.shape[0]} variables, but CP tensor has "
                 f"{len(variable_factors)} variable modes."
             )
 
@@ -1008,7 +1012,7 @@ class RmsProblemMultilinear(RmsProblemPhasor):
 
         Returns
         -------
-        tensorly.cp_tensor.CPTensor
+        MultilinearCpTensor
             Fitted CP tensor approximating the coefficient tensor H.
         """
 
@@ -1037,10 +1041,10 @@ class RmsProblemMultilinear(RmsProblemPhasor):
     def evaluate_residual_from_cptensor(
         self,
         x: np.ndarray,
-        cp_tensor,
+        cp_tensor: MultilinearCpTensor,
     ) -> np.ndarray:
         """
-        Evaluate the approximate residual from a TensorLy CPTensor.
+        Evaluate the approximate residual from a CP tensor.
 
         This implements:
 
@@ -1056,7 +1060,7 @@ class RmsProblemMultilinear(RmsProblemPhasor):
         x
             Variable vector with shape ``(n_vars,)``.
         cp_tensor
-            TensorLy CPTensor representing the approximate coefficient tensor H.
+            CP tensor representing the approximate coefficient tensor H.
 
         Returns
         -------
@@ -1073,7 +1077,7 @@ class RmsProblemMultilinear(RmsProblemPhasor):
 
         if x.shape[0] != n_vars:
             raise ValueError(
-                f"x has {x.shape[0]} variables, but CPTensor has {n_vars} variable modes."
+                f"x has {x.shape[0]} variables, but CP tensor has {n_vars} variable modes."
             )
 
         rank_product = np.ones(weights.shape[0], dtype=float)
@@ -1163,7 +1167,11 @@ class RmsProblemMultilinear(RmsProblemPhasor):
         residual = self.Phi @ varphi
         return np.asarray(residual, dtype=float).reshape(-1)
     
-    def linearize_multilinear(self, x: np.ndarray | None = None) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def linearize_multilinear(
+        self,
+        x: np.ndarray | None = None,
+        sparse_output: bool = False,
+    ) -> tuple[np.ndarray | sparse.csc_matrix, np.ndarray | sparse.csc_matrix, np.ndarray | sparse.csc_matrix]:
         """
         Linearize using multilinear matrices S/Phi and return (E, A, EABC).
         """
@@ -1184,7 +1192,7 @@ class RmsProblemMultilinear(RmsProblemPhasor):
         v[:n_state_alg] = x_vec
 
         F = self._compute_jacobian_sparse_from_S(S, v)
-        EABC = (Phi @ F.T).toarray()
+        EABC_sparse = (Phi @ F.T).tocsc()
 
         all_vars = self._ml_all_vars_sa
         idx_vars = self._ml_idx_vars
@@ -1192,19 +1200,24 @@ class RmsProblemMultilinear(RmsProblemPhasor):
         idx_vars_ordered = [idx for idx, _ in ordered_pairs]
         vars_ordered = [v for _, v in ordered_pairs]
 
-        n_eq = EABC.shape[0]
+        n_eq = EABC_sparse.shape[0]
         cols_to_take = len(idx_vars_ordered)
         dim = max(n_eq, cols_to_take)
 
-        A = EABC[:, idx_vars_ordered[:cols_to_take]].copy()
-        if A.shape[0] != dim or A.shape[1] != dim:
-            A_pad = np.zeros((dim, dim), dtype=float)
-            A_pad[:A.shape[0], :A.shape[1]] = A
-            A = A_pad
+        A_sparse = EABC_sparse[:, idx_vars_ordered[:cols_to_take]].tocsc()
+        if A_sparse.shape[0] != dim or A_sparse.shape[1] != dim:
+            if A_sparse.shape[1] < dim:
+                right_pad = sparse.csc_matrix((A_sparse.shape[0], dim - A_sparse.shape[1]), dtype=float)
+                A_sparse = sparse.hstack([A_sparse, right_pad], format="csc")
+            if A_sparse.shape[0] < dim:
+                bottom_pad = sparse.csc_matrix((dim - A_sparse.shape[0], dim), dtype=float)
+                A_sparse = sparse.vstack([A_sparse, bottom_pad], format="csc")
 
         # Build descriptor E with explicit projection matrix using the same
         # diff->base convention as get_E_matrix.
-        P = np.zeros((EABC.shape[1], cols_to_take), dtype=float)
+        p_row: list[int] = []
+        p_col: list[int] = []
+        p_val: list[float] = []
         uid_to_basis_idx = self._ml_uid_to_basis_idx
         for dvar in self._diff_vars:
             base_var = dvar.base_var
@@ -1216,19 +1229,35 @@ class RmsProblemMultilinear(RmsProblemPhasor):
             deriv_idx = uid_to_basis_idx.get(dvar.uid)
             if deriv_idx is None:
                 continue
-            P[deriv_idx, dest_col] += 1.0
+            p_row.append(deriv_idx)
+            p_col.append(dest_col)
+            p_val.append(1.0)
 
-        E = EABC @ P
+        P = sparse.csc_matrix((p_val, (p_row, p_col)), shape=(EABC_sparse.shape[1], cols_to_take), dtype=float)
+
+        E_sparse = (EABC_sparse @ P).tocsc()
 
         n_states = len(self._state_vars)
-        E[:n_states, :n_states] -= np.eye(n_states, dtype=E.dtype)
+        if n_states > 0:
+            diag_rows = np.arange(n_states, dtype=np.int64)
+            I_state = sparse.csc_matrix((np.ones(n_states, dtype=float), (diag_rows, diag_rows)), shape=(dim, dim))
+        else:
+            I_state = sparse.csc_matrix((dim, dim), dtype=float)
 
-        if E.shape[0] != dim or E.shape[1] != dim:
-            E_pad = np.zeros((dim, dim), dtype=float)
-            E_pad[:E.shape[0], :E.shape[1]] = E
-            E = E_pad
+        if E_sparse.shape[0] != dim or E_sparse.shape[1] != dim:
+            if E_sparse.shape[1] < dim:
+                right_pad = sparse.csc_matrix((E_sparse.shape[0], dim - E_sparse.shape[1]), dtype=float)
+                E_sparse = sparse.hstack([E_sparse, right_pad], format="csc")
+            if E_sparse.shape[0] < dim:
+                bottom_pad = sparse.csc_matrix((dim - E_sparse.shape[0], dim), dtype=float)
+                E_sparse = sparse.vstack([E_sparse, bottom_pad], format="csc")
 
-        return E, A, EABC
+        E_sparse = E_sparse - I_state
+
+        if sparse_output:
+            return E_sparse, A_sparse, EABC_sparse
+
+        return E_sparse.toarray(), A_sparse.toarray(), EABC_sparse.toarray()
 
     def get_E_matrix(self, x: np.ndarray, dx: np.ndarray):
         E, _, _ = self.linearize_multilinear(x=np.asarray(x, dtype=float))
@@ -1303,5 +1332,3 @@ class RmsProblemMultilinear(RmsProblemPhasor):
                     f_val.append(val)
 
         return sparse.csc_matrix((f_val, (f_row, f_col)), shape=(n_vars, n_mon))
-
-

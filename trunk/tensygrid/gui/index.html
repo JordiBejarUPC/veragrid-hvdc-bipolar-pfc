@@ -218,6 +218,91 @@ canvas {
 .tooltip-title { font-weight: 700; margin-bottom: 4px; font-size: 13px; }
 .tooltip-row { color: var(--muted); margin-top: 2px; }
 
+.info-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid var(--muted);
+  background: transparent;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  font-style: italic;
+  font-family: Georgia, serif;
+  cursor: pointer;
+  margin-left: 8px;
+  vertical-align: middle;
+  transition: all 0.15s;
+  line-height: 1;
+  padding: 0;
+}
+.info-btn:hover {
+  border-color: var(--blue);
+  color: var(--blue);
+  background: rgba(59,130,246,0.08);
+}
+
+.info-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15,23,42,0.4);
+  z-index: 999;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+.info-overlay.visible {
+  display: flex;
+}
+.info-modal {
+  background: var(--panel);
+  border-radius: 12px;
+  padding: 28px 32px;
+  max-width: 540px;
+  width: 90%;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  position: relative;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+.info-modal-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  color: var(--text);
+}
+.info-modal-body {
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--text);
+}
+.info-modal-body p { margin-bottom: 10px; }
+.info-modal-body ul { margin: 6px 0 10px 20px; }
+.info-modal-body li { margin-bottom: 4px; }
+.info-modal-body strong { color: var(--text); }
+.info-modal-body .legend-line {
+  display: inline-block;
+  width: 20px;
+  height: 2px;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+.info-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: var(--muted);
+  line-height: 1;
+}
+.info-modal-close:hover { color: var(--text); }
+
 .selector-panel {
   background: var(--bg);
   border: 1px solid var(--border);
@@ -499,7 +584,7 @@ canvas {
         <!-- Right two-thirds: eigenvalue plot + stability assessment -->
         <div>
           <div class="card">
-            <div class="card-title">Complex Plane — Eigenvalues <span style="font-size:10px;color:var(--muted);font-weight:400;text-transform:none">· scroll to zoom</span></div>
+            <div class="card-title">Complex Plane — Eigenvalues <span style="font-size:10px;color:var(--muted);font-weight:400;text-transform:none">· scroll to zoom</span><button class="info-btn" onclick="showInfo('complex-plane')" title="What is this?">i</button></div>
             <canvas id="eig-canvas" style="height:380px"></canvas>
             <div class="legend">
               <div class="legend-item"><div class="legend-dot" style="border-color:var(--blue)"></div>Stable</div>
@@ -529,7 +614,7 @@ canvas {
     </div>
     <div id="eig-content" style="display:none">
       <div class="card">
-        <div class="card-title">Complex Plane — Eigenvalues <span style="font-size:10px;color:var(--muted);font-weight:400;text-transform:none">· scroll to zoom</span></div>
+        <div class="card-title">Complex Plane — Eigenvalues <span style="font-size:10px;color:var(--muted);font-weight:400;text-transform:none">· scroll to zoom</span><button class="info-btn" onclick="showInfo('complex-plane')" title="What is this?">i</button></div>
         <canvas id="eig-canvas-full" class="forecast-chart"></canvas>
         <div class="legend">
           <div class="legend-item"><div class="legend-dot" style="border-color:var(--blue)"></div>Stable</div>
@@ -539,12 +624,12 @@ canvas {
       </div>
 
       <div class="card">
-        <div class="card-title">Damping vs Frequency <span style="font-size:10px;color:var(--muted);font-weight:400;text-transform:none">· scroll to zoom</span></div>
+        <div class="card-title">Damping vs Frequency <span style="font-size:10px;color:var(--muted);font-weight:400;text-transform:none">· scroll to zoom</span><button class="info-btn" onclick="showInfo('damping-freq')" title="What is this?">i</button></div>
         <canvas id="damping-freq-canvas" style="height:320px"></canvas>
       </div>
 
       <div class="card">
-        <div class="card-title">All Eigenvalues</div>
+        <div class="card-title">All Eigenvalues<button class="info-btn" onclick="showInfo('eig-table')" title="What is this?">i</button></div>
         <table>
           <thead><tr><th>#</th><th>Re(λ)</th><th>Im(λ)</th><th>ζ</th><th>f (Hz)</th></tr></thead>
           <tbody id="eig-body"></tbody>
@@ -1783,6 +1868,78 @@ async function checkInitialState() {
   }
 }
 checkInitialState();
+
+const INFO_CONTENT = {
+  'complex-plane': {
+    title: 'Complex Plane — Eigenvalues',
+    body: `
+      <p>This plot shows the <strong>eigenvalues</strong> of the linearised power-system state matrix plotted in the complex plane: the horizontal axis is the <strong>real part</strong> Re(λ) and the vertical axis is the <strong>imaginary part</strong> Im(λ).</p>
+      <p><strong>How to read it:</strong></p>
+      <ul>
+        <li><span style="color:var(--red);font-weight:700">Red dashed line (Re = 0)</span> — the stability boundary. Any eigenvalue to the <em>right</em> of this line (Re &gt; 0) is <strong>unstable</strong>.</li>
+        <li><span style="color:var(--blue);font-weight:700">Blue dots</span> — stable eigenvalues (Re &lt; 0). The further left they are, the more damped the mode.</li>
+        <li><span style="color:var(--red);font-weight:700">Red dots with halo</span> — unstable eigenvalues (Re &gt; 0). These indicate growing oscillations.</li>
+        <li><span style="color:var(--muted)">Dashed wedge lines (ζ = 0.05, 0.1, 0.2)</span> — constant damping-ratio contours. Eigenvalues between the ζ = 0.05 lines have less than 5 % damping and are considered <strong>poorly damped</strong>.</li>
+      </ul>
+      <p><strong>Why it matters:</strong> The location of eigenvalues determines small-signal stability. A system is stable only when <em>all</em> eigenvalues lie in the left half-plane. The distance from the imaginary axis indicates how quickly oscillations decay.</p>
+    `
+  },
+  'damping-freq': {
+    title: 'Damping Ratio vs Oscillation Frequency',
+    body: `
+      <p>This scatter plot shows each <strong>oscillatory mode</strong> (eigenvalues with a non-zero imaginary part) with its <strong>oscillation frequency</strong> on the x-axis (Hz) and its <strong>damping ratio ζ</strong> on the y-axis.</p>
+      <p><strong>How to read it:</strong></p>
+      <ul>
+        <li><span style="color:var(--red);font-weight:700">Red dashed line (ζ = 0)</span> — stability boundary. Modes below this line have <strong>negative damping</strong> and are unstable (oscillations grow).</li>
+        <li><span style="color:var(--yellow);font-weight:700">Yellow dashed line (ζ = 0.05)</span> — the 5 % damping threshold commonly used in grid codes. Modes between ζ = 0 and ζ = 0.05 are <strong>critically damped</strong> and may cause concern.</li>
+        <li><span style="color:var(--green);font-weight:700">Green dots</span> — well-damped modes (ζ ≥ 0.05).</li>
+        <li><span style="color:var(--yellow);font-weight:700">Yellow dots</span> — critically damped modes (0 ≤ ζ &lt; 0.05).</li>
+        <li><span style="color:var(--red);font-weight:700">Red dots</span> — unstable modes (ζ &lt; 0).</li>
+      </ul>
+      <p><strong>Why it matters:</strong> This view quickly identifies which <em>frequency bands</em> contain poorly damped or unstable oscillations, helping operators target PSS tuning or FACTS placement at the right modes.</p>
+    `
+  },
+  'eig-table': {
+    title: 'Eigenvalue Table',
+    body: `
+      <p>This table lists every computed <strong>eigenvalue λ</strong> of the system's state matrix together with key derived quantities.</p>
+      <p><strong>Columns:</strong></p>
+      <ul>
+        <li><strong>Re(λ)</strong> — real part. Determines growth/decay: negative = stable, positive = unstable.</li>
+        <li><strong>Im(λ)</strong> — imaginary part. Related to the oscillation frequency: f = |Im(λ)| / 2π.</li>
+        <li><strong>ζ (damping ratio)</strong> — defined as −Re(λ) / |λ|. Positive values indicate a stable (decaying) mode; values below 0.05 flag poorly damped modes.</li>
+        <li><strong>f (Hz)</strong> — oscillation frequency in Hertz.</li>
+      </ul>
+      <p><strong>Colour coding:</strong></p>
+      <ul>
+        <li><span style="background:rgba(239,68,68,0.12);padding:2px 8px;border-radius:4px;color:var(--red);font-weight:700">Red row</span> — unstable eigenvalue (Re &gt; 0).</li>
+        <li><span style="background:rgba(245,158,11,0.12);padding:2px 8px;border-radius:4px;color:var(--yellow);font-weight:700">Yellow row</span> — critically low damping (|ζ| &lt; 0.05).</li>
+      </ul>
+      <p><strong>Why it matters:</strong> The table gives exact numerical values for every mode, complementing the graphical views and enabling precise reporting or comparison between operating points.</p>
+    `
+  }
+};
+
+function showInfo(key) {
+  const info = INFO_CONTENT[key];
+  if (!info) return;
+  document.getElementById('info-modal-title').innerHTML = info.title;
+  document.getElementById('info-modal-body').innerHTML = info.body;
+  document.getElementById('info-overlay').classList.add('visible');
+}
+
+function closeInfo() {
+  document.getElementById('info-overlay').classList.remove('visible');
+}
 </script>
+
+<div id="info-overlay" class="info-overlay" onclick="if(event.target===this)closeInfo()">
+  <div class="info-modal">
+    <button class="info-modal-close" onclick="closeInfo()">&times;</button>
+    <div id="info-modal-title" class="info-modal-title"></div>
+    <div id="info-modal-body" class="info-modal-body"></div>
+  </div>
+</div>
+
 </body>
 </html>

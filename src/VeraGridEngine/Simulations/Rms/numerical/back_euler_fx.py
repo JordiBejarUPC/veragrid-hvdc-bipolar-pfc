@@ -265,7 +265,6 @@ class BackEulerImplicitIntegration:
                                     eq = all_eq[i]
                                     print(f"eq {eq} with error {rhs[i]}")
                                 print("RMS simulation continues iterative initialization after the diagnostic. Check the logger for details.")
-                                #exit()
                                 # Continue with Newton iterations after reporting the initialization residual.
 
 

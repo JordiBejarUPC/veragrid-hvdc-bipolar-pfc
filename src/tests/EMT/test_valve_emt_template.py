@@ -445,7 +445,7 @@ def _build_default_emt_options() -> gce.EmtOptions:
         simulation_time=0.01,
         tolerance=1e-6,
         solver_type=EmtSolverTypes.Symbolic,
-        initialization_method=EmtInitializationMethod.Auto,
+        initialization_method=EmtInitializationMethod.ConsistentNewton,
         integration_method=DynamicIntegrationMethod.DaeTrapezoidal,
         verbose=0,
     )
