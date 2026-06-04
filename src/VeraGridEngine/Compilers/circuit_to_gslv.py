@@ -2867,6 +2867,11 @@ def convert_arr(arr, d: Dict):
     return np.array([d[e] for e in arr])
 
 
+def convert_gslv_arr_to_idx(arr, d: Dict):
+    pg_to_idx = {pg_val: gc_val.idx() for gc_val, pg_val in d.items()}
+    return np.array([pg_to_idx[e] for e in arr], dtype=int)
+
+
 def compare_branch_parent_data(gslv_branch_data: pg.BranchParentData,
                                gc_branch_data: BranchParentData,
                                tol: float,
@@ -2953,11 +2958,11 @@ def compare_nc(nc_gslv: "pg.NumericalCircuit", nc_gc: NumericalCircuit, tol: flo
     errors += CheckArr(nc_gslv.vsc_data.alpha2, nc_gc.vsc_data.alpha2, tol, 'VscData', 'alpha2')
     errors += CheckArr(nc_gslv.vsc_data.alpha3, nc_gc.vsc_data.alpha3, tol, 'VscData', 'alpha3')
 
-    errors += CheckArrEq(np.array(nc_gslv.vsc_data.control1),
-                         convert_arr(nc_gc.vsc_data.control1, converter_control_type_dict),
+    errors += CheckArrEq(convert_gslv_arr_to_idx(np.array(nc_gslv.vsc_data.control1), converter_control_type_dict),
+                         nc_gc.vsc_data.control1_int,
                          'VscData', 'control1')
-    errors += CheckArrEq(np.array(nc_gslv.vsc_data.control2),
-                         convert_arr(nc_gc.vsc_data.control2, converter_control_type_dict),
+    errors += CheckArrEq(convert_gslv_arr_to_idx(np.array(nc_gslv.vsc_data.control2), converter_control_type_dict),
+                         nc_gc.vsc_data.control2_int,
                          'VscData', 'control2')
 
     errors += CheckArr(nc_gslv.vsc_data.control1_val, nc_gc.vsc_data.control1_val, tol, 'VscData', 'control1_val')
@@ -2985,8 +2990,8 @@ def compare_nc(nc_gslv: "pg.NumericalCircuit", nc_gc: NumericalCircuit, tol: flo
     errors += CheckArr(nc_gslv.hvdc_data.Vnt, nc_gc.hvdc_data.Vnt, tol, 'HvdcData', 'Vnt')
     errors += CheckArr(nc_gslv.hvdc_data.angle_droop, nc_gc.hvdc_data.angle_droop, tol, 'HvdcData', 'control1_val')
 
-    errors += CheckArrEq(np.array(nc_gslv.hvdc_data.control_mode),
-                         convert_arr(nc_gc.hvdc_data.control_mode, hvdc_control_mode_dict),
+    errors += CheckArrEq(convert_gslv_arr_to_idx(np.array(nc_gslv.hvdc_data.control_mode), hvdc_control_mode_dict),
+                         nc_gc.hvdc_data.control_mode_int,
                          'HvdcData', 'control_mode')
 
     errors += CheckArr(nc_gslv.hvdc_data.Qmin_f, nc_gc.hvdc_data.Qmin_f, tol, 'HvdcData', 'Qmin_f')
