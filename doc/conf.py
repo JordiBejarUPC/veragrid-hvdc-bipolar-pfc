@@ -20,6 +20,7 @@ sys.path.append("..")
 sys.setrecursionlimit(5000)
 from doc.auto_document_models import write_models_to_md
 from doc.generate_device_docs import generate_device_docs
+from doc.generate_device_graph import generate_device_graph
 from VeraGridEngine.__version__ import __VeraGridEngine_VERSION__
 
 # -- Project information -----------------------------------------------------
@@ -68,6 +69,7 @@ myst_dmath_allow_labels = True
 # generate CGMES, PSSe and VeraGrid data models' rst files
 write_models_to_md(os.path.join('md_source', 'data_models.md'))
 generate_device_docs()
+generate_device_graph()
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
