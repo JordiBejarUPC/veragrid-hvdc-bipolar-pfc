@@ -1052,6 +1052,8 @@ def fill_generator_parent(
     data.active[k] = elm.get_active_at(t_idx)
 
     data.v[k] = elm.get_Vset_at(t_idx)
+    data.k_droop[k] = elm.k_droop
+    data.dead_band[k] = elm.dead_band
     data.pmax[k] = elm.get_Pmax_at(t_idx)
     data.pmin[k] = elm.get_Pmin_at(t_idx)
 

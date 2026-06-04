@@ -88,6 +88,8 @@ class Generator(InjectionParent):
         '_Snom',
         '_Vset',
         '_Vset_prof',
+        '_k_droop',
+        '_dead_band',
         '_use_reactive_power_curve',
         'q_curve',
         'custom_q_points',
@@ -190,6 +192,20 @@ class Generator(InjectionParent):
             tpe=float,
             definition='Set voltage. This is used for controlled generators.',
             profile_name='Vset_prof',
+            cat=[PrpCat.PF],
+        ),
+        GCProp(
+            prop_name='k_droop',
+            units='MVAr/kV',
+            tpe=float,
+            definition='QV droop constant.',
+            cat=[PrpCat.PF],
+        ),
+        GCProp(
+            prop_name='dead_band',
+            units='kV',
+            tpe=float,
+            definition='Droop dead band.',
             cat=[PrpCat.PF],
         ),
         GCProp(
@@ -416,6 +432,8 @@ class Generator(InjectionParent):
                  power_factor: float = 0.8,
                  vset: float = 1.0,
                  control_mode: GeneratorControlMode = GeneratorControlMode.V,
+                 k_droop=1.0,
+                 dead_band=0.0,
                  Qmin: float = -9999,
                  Qmax: float = 9999,
                  Snom: float = 9999,
@@ -593,6 +611,9 @@ class Generator(InjectionParent):
 
         # voltage set profile for this load in p.u.
         self._Vset_prof = ProfileFloat(default_value=self.Vset)
+
+        self.k_droop = k_droop
+        self.dead_band = dead_band
 
         self.use_reactive_power_curve = bool(use_reactive_power_curve)
 
@@ -1244,6 +1265,44 @@ class Generator(InjectionParent):
         :return: None
         """
         self._Vset = float(val)
+
+    @property
+    def k_droop(self) -> float:
+        """
+        Get ``k_droop``.
+
+        :return: float
+        """
+        return self._k_droop
+
+    @k_droop.setter
+    def k_droop(self, val: float) -> None:
+        """
+        Set ``k_droop``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._k_droop = float(val)
+
+    @property
+    def dead_band(self) -> float:
+        """
+        Get ``dead_band``.
+
+        :return: float
+        """
+        return self._dead_band
+
+    @dead_band.setter
+    def dead_band(self, val: float) -> None:
+        """
+        Set ``dead_band``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._dead_band = float(val)
 
     @property
     def use_reactive_power_curve(self) -> bool:
