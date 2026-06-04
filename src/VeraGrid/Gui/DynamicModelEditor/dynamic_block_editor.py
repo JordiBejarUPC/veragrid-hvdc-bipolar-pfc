@@ -82,6 +82,7 @@ from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_rlc_com
 from VeraGridEngine.Templates.Emt.load_zip_emt_template import get_load_ZIP_emt_template
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Utils.Symbolic.block import Block, find_connections
+from VeraGridEngine.Utils.Symbolic.equation_decomposer import EquationDecomposer
 from VeraGrid.Gui.DynamicModelEditor.block_editor import Ui_BlockEditorWindow
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_utilities import create_block_of_type, create_generic_block, \
     create_emt_wizard_block
@@ -3878,6 +3879,34 @@ class BlockItem(QGraphicsRectItem):
         else:
             pass
 
+        if self._should_offer_decompose():
+            reply = QtWidgets.QMessageBox.question(
+                None,
+                "Descomposición automática",
+                "Este bloque tiene ecuaciones pero no contiene sub-bloques.\n"
+                "¿Desea descomponerlo en un diagrama de bloques?\n\n"
+                'Seleccione "Sí" para crear sub-bloques a partir de las ecuaciones.\n'
+                'Seleccione "No" para ver las ecuaciones en tabla.',
+                QtWidgets.QMessageBox.StandardButton.Yes,
+                QtWidgets.QMessageBox.StandardButton.No,
+            )
+            if reply == QtWidgets.QMessageBox.StandardButton.Yes:
+                try:
+                    decomposer = EquationDecomposer(self.var_factory)
+                    decomposed = decomposer.decompose(self.subsys)
+                    preserved_uid = self.subsys.uid
+                    copy_block_state(source_block=decomposed, target_block=self.subsys)
+                    self.subsys.uid = preserved_uid
+                    if self.editor_window is not None:
+                        self.editor_window.close()
+                        self.editor_window = None
+                except Exception as exc:
+                    QtWidgets.QMessageBox.warning(
+                        None,
+                        "Descomposición",
+                        f"No se pudo descomponer el bloque:\n{exc}",
+                    )
+
         if self.editor_window is None:
             self.editor_window = DynamicBlockEditorGUI(
                 var_factory=self.var_factory,
@@ -3892,6 +3921,18 @@ class BlockItem(QGraphicsRectItem):
         self.editor_window.show()
 
         super().mouseDoubleClickEvent(event)
+
+    def _should_offer_decompose(self) -> bool:
+        if self.subsys is None:
+            return False
+        if self.subsys.children:
+            return False
+        if not self.subsys.algebraic_eqs and not self.subsys.state_eqs:
+            return False
+        modal_kind, _ = get_modal_template_metadata(self.subsys)
+        if modal_kind is not None:
+            return False
+        return True
 
 
     def set_subsystem(self, block: Block) -> None:
@@ -4420,6 +4461,27 @@ class DiagramScene(QGraphicsScene):
         else:
             pass
 
+    @staticmethod
+    def _is_decomposable(item: BlockItem | GenericBlockItem) -> bool:
+        block = item.subsys
+        if block is None:
+            return False
+        if block.children:
+            return False
+        has_eqs = bool(block.algebraic_eqs) or bool(block.state_eqs)
+        if not has_eqs:
+            return False
+        modal_kind, _ = get_modal_template_metadata(block)
+        if modal_kind is not None:
+            return False
+        return True
+
+    def decompose_context_item(self) -> None:
+        if self.context_item is not None and self.context_item.subsys is not None:
+            self.editor.decompose_block_in_place(self.context_item)
+        else:
+            pass
+
     def modify_context_item_template(self) -> None:
         """
         Reopen the modal configuration for the selected block when available.
@@ -4462,6 +4524,11 @@ class DiagramScene(QGraphicsScene):
                     edit_action: QAction = QAction("Edit Hierarchy", menu)
                     edit_action.triggered.connect(self.edit_context_item)
                     menu.addAction(edit_action)
+
+                    if self._is_decomposable(item):
+                        decomp_action: QAction = QAction("Descomponer en diagrama de bloques", menu)
+                        decomp_action.triggered.connect(self.decompose_context_item)
+                        menu.addAction(decomp_action)
                 else:
                     pass
 
@@ -11125,6 +11192,31 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         editor_window.show()
         editor_window.raise_()
         editor_window.activateWindow()
+
+    def decompose_block_in_place(self, item: BlockItem | GenericBlockItem) -> None:
+        if item.subsys is None:
+            return
+
+        block = item.subsys
+        if block.children:
+            return
+        if not block.algebraic_eqs and not block.state_eqs:
+            return
+
+        try:
+            decomposer = EquationDecomposer(self.var_factory)
+            decomposed = decomposer.decompose(block)
+            preserved_uid = block.uid
+            copy_block_state(source_block=decomposed, target_block=block)
+            block.uid = preserved_uid
+            self.rebuild_scene_from_diagram()
+            self.mark_unapplied_changes()
+        except Exception as exc:
+            QtWidgets.QMessageBox.warning(
+                self,
+                "Descomposición",
+                f"No se pudo descomponer el bloque:\n{exc}",
+            )
 
     def modify_scene_item_template(self, item: BlockItem | GenericBlockItem | ConnectionItem) -> None:
         """
