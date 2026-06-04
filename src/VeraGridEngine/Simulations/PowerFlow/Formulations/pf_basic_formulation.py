@@ -12,18 +12,15 @@ from VeraGridEngine.Simulations.Derivatives.ac_jacobian import create_J_vc_csc
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions import (compute_fx_error,
                                                                                     power_flow_post_process_nonlinear)
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.discrete_controls import (control_q_inside_method,
-                                                                                     control_discrete_shunts,
-                                                                                     compute_slack_distribution,
-                                                                                     update_qv_droop_generators)
+                                                                                     DiscreteShuntControlState,
+                                                                                     QvDroopControlState,
+                                                                                     compute_slack_distribution)
 from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_formulation_template import PfFormulationTemplate
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions import (compute_zip_power, compute_power,
                                                                                     compute_fx, polar_to_rect)
 from VeraGridEngine.Topology.simulation_indices import compile_types
 from VeraGridEngine.basic_structures import Vec, IntVec, CxVec
 from VeraGridEngine.Utils.Sparse.csc2 import CSC
-from VeraGridEngine.enumerations import ShuntControlMode, GeneratorControlMode
-
-
 class PfBasicFormulation(PfFormulationTemplate):
 
     def __init__(self,
@@ -61,35 +58,10 @@ class PfBasicFormulation(PfFormulationTemplate):
         self.Qmin = Qmin
         self.Qmax = Qmax
 
-        # Arrays for generation QV droop
-        self.Q0 = self.S0.imag.copy()
-        self.generator_q = self.nc.generator_data.q.copy()
-        self.qv_droop_gen_idx = np.where(nc.generator_data.control_mode_int == GeneratorControlMode.QVDroop.idx())[0]
-        self.qv_droop_bus_idx = np.unique(self.nc.generator_data.bus_idx[self.qv_droop_gen_idx])
-
-        # Arrays with shunt discrete controls
-        self.shunt_discrete_ctrl_idx = np.where(nc.shunt_data.control_mode_int == ShuntControlMode.Discrete.idx())[0]
-        self.shunt_step = self.nc.shunt_data.step.copy()
-        self.shunt_discrete_bus_idx = self.nc.shunt_data.bus_idx[self.shunt_discrete_ctrl_idx].copy()
-        self.shunt_discrete_vmax = self.nc.shunt_data.vmax[self.shunt_discrete_ctrl_idx].copy()
-        self.shunt_discrete_vmin = self.nc.shunt_data.vmin[self.shunt_discrete_ctrl_idx].copy()
-
-        max_shunt_steps = 0
-        for sh_i in self.shunt_discrete_ctrl_idx:
-            max_shunt_steps = max(max_shunt_steps, len(self.nc.shunt_data.b_steps[sh_i]))
-
-        n_discrete_shunts = len(self.shunt_discrete_ctrl_idx)
-        self.shunt_g_steps = np.zeros((n_discrete_shunts, max_shunt_steps), dtype=float)
-        self.shunt_b_steps = np.zeros((n_discrete_shunts, max_shunt_steps), dtype=float)
-        self.shunt_n_steps = np.zeros(n_discrete_shunts, dtype=int)
-
-        for k, sh_i in enumerate(self.shunt_discrete_ctrl_idx):
-            g_steps = self.nc.shunt_data.g_steps[sh_i]
-            b_steps = self.nc.shunt_data.b_steps[sh_i]
-            n_steps = len(b_steps)
-            self.shunt_g_steps[k, :n_steps] = g_steps
-            self.shunt_b_steps[k, :n_steps] = b_steps
-            self.shunt_n_steps[k] = n_steps
+        # Store the control states in lightweight wrappers that forward the
+        # numerical work to the existing Numba kernels.
+        self.discrete_shunt_control = DiscreteShuntControlState(nc=self.nc)
+        self.qv_droop_control = QvDroopControlState(S0=self.S0, nc=self.nc)
 
         # Compile the classical bus types
         self.vd, self.pq, self.pv, self.pqv, self.p, self.no_slack = compile_types(
@@ -238,42 +210,11 @@ class PfBasicFormulation(PfFormulationTemplate):
                     x = self.var2x()
 
             # discrete shunt logic -------------------------------------------------------------------------------------
-            changed_bus_idx, changed_delta_y, n_changed = control_discrete_shunts(
-                Vm=self.Vm,
-                shunt_discrete_ctrl_idx=self.shunt_discrete_ctrl_idx,
-                shunt_discrete_bus_idx=self.shunt_discrete_bus_idx,
-                shunt_discrete_vmax=self.shunt_discrete_vmax,
-                shunt_discrete_vmin=self.shunt_discrete_vmin,
-                shunt_step=self.shunt_step,
-                shunt_g_steps=self.shunt_g_steps,
-                shunt_b_steps=self.shunt_b_steps,
-                shunt_n_steps=self.shunt_n_steps,
-                sbase=self.nc.Sbase
-            )
-
-            for k in range(n_changed):
-                self.adm.Ybus[changed_bus_idx[k], changed_bus_idx[k]] += changed_delta_y[k]
-
-            if n_changed > 0:
+            if self.discrete_shunt_control.apply(Vm=self.Vm, adm=self.adm):
                 any_change = True
 
             # update QV droop generators -------------------------------------------------------------------------------
-            any_qv_droop_change = update_qv_droop_generators(
-                S0=self.S0,  # filled inside
-                Q0=self.Q0,
-                generator_q=self.generator_q,  # filled inside
-                qv_droop_bus_idx=self.qv_droop_bus_idx,
-                qv_droop_gen_idx=self.qv_droop_gen_idx,
-                generator_bus_idx=self.nc.generator_data.bus_idx,
-                generator_k_droop=self.nc.generator_data.k_droop,
-                generator_dead_band=self.nc.generator_data.dead_band,
-                generator_v=self.nc.generator_data.v,
-                generator_qmax=self.nc.generator_data.qmax,
-                Vm=self.Vm,
-                sbase=self.nc.Sbase
-            )
-
-            if any_qv_droop_change:
+            if self.qv_droop_control.apply(S0=self.S0, Vm=self.Vm):
                 any_change = True
 
             # update Slack control -------------------------------------------------------------------------------------

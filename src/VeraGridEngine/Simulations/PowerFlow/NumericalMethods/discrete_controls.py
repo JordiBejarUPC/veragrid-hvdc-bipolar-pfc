@@ -4,8 +4,10 @@
 # SPDX-License-Identifier: MPL-2.0
 import numpy as np
 import numba as nb
-from typing import Tuple
-from VeraGridEngine.enumerations import BusMode
+from typing import Optional, Tuple, Union
+from VeraGridEngine.DataStructures.numerical_circuit import NumericalCircuit
+from VeraGridEngine.Topology.admittance_matrices import AdmittanceMatrices, AdmittanceMatricesFast
+from VeraGridEngine.enumerations import BusMode, ShuntControlMode, GeneratorControlMode
 from VeraGridEngine.basic_structures import Vec, IntVec, CxVec
 
 
@@ -377,6 +379,214 @@ def update_qv_droop_generators(S0: CxVec,
             pass
 
     return any_change
+
+
+class DiscreteShuntControlState:
+    """
+    Python-side state holder for discrete shunt controls.
+
+    The packed arrays owned by this class are consumed by the Numba kernel so
+    the formulations only need to keep a lightweight wrapper object.
+    """
+    __slots__ = (
+        "_sbase",
+        "_shunt_discrete_ctrl_idx",
+        "_shunt_step",
+        "_shunt_discrete_bus_idx",
+        "_shunt_discrete_vmax",
+        "_shunt_discrete_vmin",
+        "_shunt_g_steps",
+        "_shunt_b_steps",
+        "_shunt_n_steps",
+    )
+
+    def __init__(self, nc: NumericalCircuit) -> None:
+        """
+        Build the discrete shunt control state.
+
+        :param nc: Numerical circuit hosting the shunt control data.
+        """
+        max_shunt_steps: int
+        n_discrete_shunts: int
+        sh_i: int
+        k: int
+        g_steps: IntVec
+        b_steps: IntVec
+        n_steps: int
+
+        # Store the base power once because all shunt increments are normalized by it.
+        self._sbase = nc.Sbase
+
+        # Select only the shunts that participate in discrete control.
+        self._shunt_discrete_ctrl_idx = np.where(
+            nc.shunt_data.control_mode_int == ShuntControlMode.Discrete.idx()
+        )[0]
+
+        # Copy the mutable step vector so the solver state remains local to the formulation.
+        self._shunt_step = nc.shunt_data.step.copy()
+        self._shunt_discrete_bus_idx = nc.shunt_data.bus_idx[self._shunt_discrete_ctrl_idx].copy()
+        self._shunt_discrete_vmax = nc.shunt_data.vmax[self._shunt_discrete_ctrl_idx].copy()
+        self._shunt_discrete_vmin = nc.shunt_data.vmin[self._shunt_discrete_ctrl_idx].copy()
+
+        # Pack the ragged cumulative shunt step arrays into a dense layout once
+        # so the compiled kernel never touches Python objects during the solve.
+        max_shunt_steps = 0
+        for sh_i in self._shunt_discrete_ctrl_idx:
+            max_shunt_steps = max(max_shunt_steps, len(nc.shunt_data.b_steps[sh_i]))
+        else:
+            pass
+
+        n_discrete_shunts = len(self._shunt_discrete_ctrl_idx)
+        self._shunt_g_steps = np.zeros((n_discrete_shunts, max_shunt_steps), dtype=float)
+        self._shunt_b_steps = np.zeros((n_discrete_shunts, max_shunt_steps), dtype=float)
+        self._shunt_n_steps = np.zeros(n_discrete_shunts, dtype=int)
+
+        for k, sh_i in enumerate(self._shunt_discrete_ctrl_idx):
+            g_steps = nc.shunt_data.g_steps[sh_i]
+            b_steps = nc.shunt_data.b_steps[sh_i]
+            n_steps = len(b_steps)
+            self._shunt_g_steps[k, :n_steps] = g_steps
+            self._shunt_b_steps[k, :n_steps] = b_steps
+            self._shunt_n_steps[k] = n_steps
+        else:
+            pass
+
+    def get_shunt_step(self) -> IntVec:
+        """
+        Get the mutable shunt step vector.
+
+        :return: Current discrete shunt step vector.
+        """
+        return self._shunt_step
+
+    def apply(self,
+              Vm: Vec,
+              adm: Union[AdmittanceMatrices, AdmittanceMatricesFast],
+              yshunt_bus: Optional[CxVec] = None) -> bool:
+        """
+        Apply one discrete shunt control step.
+
+        :param Vm: Voltage magnitude vector.
+        :param adm: Admittance container updated in place.
+        :param yshunt_bus: Optional external shunt-bus vector that must remain
+                           synchronized with ``adm.Yshunt_bus``.
+        :return: ``True`` if any discrete shunt changed state, ``False`` otherwise.
+        """
+        changed_bus_idx: IntVec
+        changed_delta_y: CxVec
+        n_changed: int
+        k: int
+        bus_i: int
+        delta_y: np.complex128
+
+        # Evaluate the compiled control law on the packed control arrays.
+        changed_bus_idx, changed_delta_y, n_changed = control_discrete_shunts(
+            Vm=Vm,
+            shunt_discrete_ctrl_idx=self._shunt_discrete_ctrl_idx,
+            shunt_discrete_bus_idx=self._shunt_discrete_bus_idx,
+            shunt_discrete_vmax=self._shunt_discrete_vmax,
+            shunt_discrete_vmin=self._shunt_discrete_vmin,
+            shunt_step=self._shunt_step,
+            shunt_g_steps=self._shunt_g_steps,
+            shunt_b_steps=self._shunt_b_steps,
+            shunt_n_steps=self._shunt_n_steps,
+            sbase=self._sbase
+        )
+
+        if yshunt_bus is None:
+            yshunt_bus = adm.Yshunt_bus
+        else:
+            pass
+
+        # Propagate every shunt increment to all admittance storages that must
+        # stay synchronized across later fast updates or full rebuilds.
+        for k in range(n_changed):
+            bus_i = changed_bus_idx[k]
+            delta_y = changed_delta_y[k]
+            yshunt_bus[bus_i] += delta_y
+            if yshunt_bus is not adm.Yshunt_bus:
+                adm.Yshunt_bus[bus_i] += delta_y
+            else:
+                pass
+            adm.Ybus[bus_i, bus_i] += delta_y
+        else:
+            pass
+
+        return n_changed > 0
+
+
+class QvDroopControlState:
+    """
+    Python-side state holder for generator QV droop controls.
+
+    The arrays are allocated once and the numerical update remains delegated to
+    the Numba kernel.
+    """
+    __slots__ = (
+        "_Q0",
+        "_generator_q",
+        "_qv_droop_gen_idx",
+        "_qv_droop_bus_idx",
+        "_generator_bus_idx",
+        "_generator_k_droop",
+        "_generator_dead_band",
+        "_generator_v",
+        "_generator_qmax",
+        "_sbase",
+    )
+
+    def __init__(self, S0: CxVec, nc: NumericalCircuit) -> None:
+        """
+        Build the QV droop control state.
+
+        :param S0: Initial specified bus power.
+        :param nc: Numerical circuit hosting the generator control data.
+        """
+        # Copy the initial reactive schedules because the droop update resets
+        # the controlled buses to that baseline on every control pass.
+        self._Q0 = S0.imag.copy()
+        self._generator_q = nc.generator_data.q.copy()
+        self._qv_droop_gen_idx = np.where(
+            nc.generator_data.control_mode_int == GeneratorControlMode.QVDroop.idx()
+        )[0]
+        self._qv_droop_bus_idx = np.unique(nc.generator_data.bus_idx[self._qv_droop_gen_idx])
+        self._generator_bus_idx = nc.generator_data.bus_idx
+        self._generator_k_droop = nc.generator_data.k_droop
+        self._generator_dead_band = nc.generator_data.dead_band
+        self._generator_v = nc.generator_data.v
+        self._generator_qmax = nc.generator_data.qmax
+        self._sbase = nc.Sbase
+
+    def get_generator_q(self) -> Vec:
+        """
+        Get the per-generator reactive power buffer.
+
+        :return: Generator reactive power vector.
+        """
+        return self._generator_q
+
+    def apply(self, S0: CxVec, Vm: Vec) -> bool:
+        """
+        Apply one QV droop control step.
+
+        :param S0: Specified bus power updated in place.
+        :param Vm: Voltage magnitude vector.
+        :return: ``True`` if any droop generator changed, ``False`` otherwise.
+        """
+        return update_qv_droop_generators(
+            S0=S0,
+            Q0=self._Q0,
+            generator_q=self._generator_q,
+            qv_droop_bus_idx=self._qv_droop_bus_idx,
+            qv_droop_gen_idx=self._qv_droop_gen_idx,
+            generator_bus_idx=self._generator_bus_idx,
+            generator_k_droop=self._generator_k_droop,
+            generator_dead_band=self._generator_dead_band,
+            generator_v=self._generator_v,
+            generator_qmax=self._generator_qmax,
+            Vm=Vm,
+            sbase=self._sbase
+        )
 
 
 def compute_slack_distribution(Scalc: CxVec, vd: IntVec, bus_installed_power: Vec) -> Tuple[bool, Vec]:
