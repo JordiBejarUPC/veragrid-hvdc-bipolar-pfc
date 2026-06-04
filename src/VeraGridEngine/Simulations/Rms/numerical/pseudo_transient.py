@@ -52,7 +52,7 @@ class  PseudoTransient:
         self.use_weighted_residual = os.getenv("VERAGRID_PSEUDO_WEIGHTED_RESIDUAL", "0").lower() in {"1", "true", "yes", "on"}
         self.weight_network = float(os.getenv("VERAGRID_PSEUDO_WEIGHT_NETWORK", "3.0"))
         self.weight_power = float(os.getenv("VERAGRID_PSEUDO_WEIGHT_POWER", "2.0"))
-        self.allow_lsqr_fallback = os.getenv("PSEUDO_ALLOW_LSQR", "0").lower() in {"1", "true", "yes", "on"}
+        self.allow_lsqr_fallback = os.getenv("PSEUDO_ALLOW_LSQR", "1").lower() in {"1", "true", "yes", "on"}
         self.fixed_var_uids = set(fixed_var_uids or [])
         uid2idx = getattr(self.problem, "uid2idx_vars", {})
         self._fixed_var_indices = sorted([uid2idx[uid] for uid in self.fixed_var_uids if uid in uid2idx])
@@ -1023,38 +1023,42 @@ class  PseudoTransient:
         if m == 0 or n == 0:
             return np.array([], dtype=float)
 
+        def solve_lsqr(reason: str) -> np.ndarray:
+            if not self.allow_lsqr_fallback:
+                raise RuntimeError(f"{context}: singular linear system in pseudo-transient ({reason})")
+
+            self._dbg(f"{context}: {reason}; trying lsqr fallback")
+            delta_lsqr, *_ = spla.lsqr(
+                J,
+                -rhs,
+                damp=1e-8,
+                atol=1e-10,
+                btol=1e-10,
+                iter_lim=max(200, 2 * max(m, n)),
+            )
+            if np.all(np.isfinite(delta_lsqr)):
+                self._dbg(f"{context}: lsqr fallback succeeded")
+                return np.asarray(delta_lsqr, dtype=float)
+            raise RuntimeError(f"{context}: lsqr fallback failed after {reason}")
+
         # Rectangular systems cannot be solved by spsolve; use least-squares.
         if m != n:
-            self._dbg(f"{context}: rectangular Jacobian {J.shape}, using lsqr")
-            delta_lsqr, *_ = spla.lsqr(J, -rhs, damp=1e-8, atol=1e-10, btol=1e-10, iter_lim=max(200, 2 * max(m, n)))
-            if np.all(np.isfinite(delta_lsqr)):
-                return np.asarray(delta_lsqr, dtype=float)
-            raise RuntimeError(f"{context}: lsqr failed for rectangular Jacobian {J.shape}")
+            return solve_lsqr(f"rectangular Jacobian {J.shape}")
+
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", message="Matrix is exactly singular")
             try:
                 delta = spla.spsolve(J, -rhs)
             except Exception as exc:
                 self._report_singularity_diagnostics(J, rhs, x=x, context=context)
-                if self.allow_lsqr_fallback:
-                    self._dbg(f"{context}: spsolve failed ({exc}); trying lsqr fallback")
-                    delta_lsqr, *_ = spla.lsqr(J, -rhs, damp=1e-8, atol=1e-10, btol=1e-10, iter_lim=max(200, 2 * n))
-                    if np.all(np.isfinite(delta_lsqr)):
-                        self._dbg(f"{context}: lsqr fallback succeeded")
-                        return np.asarray(delta_lsqr, dtype=float)
-                    raise RuntimeError(f"{context}: lsqr fallback failed after singular spsolve") from exc
-                raise RuntimeError(f"{context}: singular linear system in pseudo-transient") from exc
+                try:
+                    return solve_lsqr(f"spsolve failed ({exc})")
+                except RuntimeError as fallback_exc:
+                    raise fallback_exc from exc
 
         if not np.all(np.isfinite(delta)):
             self._report_singularity_diagnostics(J, rhs, x=x, context=context)
-            if self.allow_lsqr_fallback:
-                self._dbg(f"{context}: non-finite spsolve result; trying lsqr fallback")
-                delta_lsqr, *_ = spla.lsqr(J, -rhs, damp=1e-8, atol=1e-10, btol=1e-10, iter_lim=max(200, 2 * n))
-                if np.all(np.isfinite(delta_lsqr)):
-                    self._dbg(f"{context}: lsqr fallback succeeded")
-                    return np.asarray(delta_lsqr, dtype=float)
-                raise RuntimeError(f"{context}: lsqr fallback failed after non-finite spsolve result")
-            raise RuntimeError(f"{context}: singular linear system in pseudo-transient (non-finite solve result)")
+            return solve_lsqr("non-finite spsolve result")
 
         return np.asarray(delta, dtype=float)
 

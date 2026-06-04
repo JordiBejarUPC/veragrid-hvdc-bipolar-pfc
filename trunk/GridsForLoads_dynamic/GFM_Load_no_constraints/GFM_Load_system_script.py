@@ -51,7 +51,10 @@ import VeraGridEngine.api as gce
 
 
 def get_var_idx(problem: EmtProblemDae, name: str) -> int:
-    return problem.get_var_idx(find_name_in_block(name=name, block=problem.sys.block))
+    for var in list(problem.get_state_vars()) + list(problem.get_algebraic_vars()):
+        if var.name == name:
+            return problem.get_var_idx(var)
+    raise KeyError(name)
 
 
 def try_get_series(problem: EmtProblemDae, y_arr: np.ndarray, name: str):
@@ -65,6 +68,29 @@ def try_get_series(problem: EmtProblemDae, y_arr: np.ndarray, name: str):
 def plot_if_available(ax, t_arr: np.ndarray, series, label: str):
     if series is not None:
         ax.plot(t_arr, series, label=label)
+    else:
+        print(f"variable:{label} is not in results")
+
+
+def try_get_init_value(problem: EmtProblemDae, name: str):
+    try:
+        idx = get_var_idx(problem=problem, name=name)
+        x0 = problem.get_x0()
+        return x0[idx]
+    except Exception:
+        return None
+
+
+def try_get_init_diff_value(problem: EmtProblemDae, name: str):
+    try:
+        for dv in problem.get_diff_vars():
+            if dv.name == name:
+                idx = problem.get_diff_var_idx(dv)
+                dx0 = problem.get_dx0()
+                return dx0[idx]
+        return None
+    except Exception:
+        return None
 
 def find_name_in_block(name: str, block: Block):
     for var in block.algebraic_vars + block.state_vars + list(block.event_dict.keys()) + block.diff_vars:
@@ -107,7 +133,8 @@ B_sh_pu = 2.0 / 15.0
 line0 = gce.Line(name="line0", bus_from=bus0, bus_to=bus1, r=R_trf_pu, x=X_trf_pu, b=B_sh_pu, rate=Sb)
 
 # load
-load = gce.Load(name="load",P1= Sb/3, P2= Sb/3, P3= Sb/3, Q1= 0.0, Q2= 0.0, Q3= 0.0)
+P_target = 1.6 #MVA
+load = gce.Load(name="load",P = P_target, P1= P_target/3, P2= P_target/3, P3= P_target/3, Q =0.0, Q1= 0.0, Q2= 0.0, Q3= 0.0)
 load.conn = ShuntConnectionType.GroundedStar
 
 # Generator
@@ -192,11 +219,12 @@ print(res.get_branch_df())
 ######################################################################################################
 
 
-options = EmtOptions(time_step = 5e-6,
-                     simulation_time =  0.01, # s
+options = EmtOptions(time_step = 1e-6,
+                     simulation_time =  0.003, # s
                      tolerance = 1e-6,
                      solver_type = EmtSolverTypes.StructuralAD,
-                     initialization_method = EmtInitializationMethod.Explicit,
+                     # initialization_method = EmtInitializationMethod.PseudoTransient,
+                     initialization_method = EmtInitializationMethod.ConsistentNewton,
                      integration_method = DynamicIntegrationMethod.DaeTrapezoidal,
                      verbose = 1)
 
@@ -214,6 +242,25 @@ print(problem.initialization_report.message)
 
 DENSE_THRESHOLD = 0
 
+df = problem.get_init_guess_table()
+print(f"init_guess_table\n{df}")
+
+# RL branch residual diagnostics at t = 0 for the grid-side converter.
+omega_base = 2 * np.pi * 50.0
+X_f_pu = 1.0 / 10.0
+R_f_pu = 0.1 / 10.0
+L_f = X_f_pu / omega_base
+for ph in ["A", "B", "C"]:
+    v_bus = try_get_init_value(problem, f"v_{ph}_Bus1_emt_template")
+    v_con = try_get_init_value(problem, f"v_con_{ph}_mode_G4L_current_loop")
+    i_ser = try_get_init_value(problem, f"i_ser_{ph}_G4L_grid_side_converter")
+    di_ser = try_get_init_diff_value(problem, f"di_ser_{ph}_G4L_grid_side_converter")
+    if None not in (v_bus, v_con, i_ser, di_ser):
+        residual = v_bus - v_con - R_f_pu * i_ser - L_f * di_ser
+        v_con_required = v_bus - R_f_pu * i_ser - L_f * di_ser
+        print(f"grid-side RL residual phase {ph}: {residual}")
+        print(f"  v_bus={v_bus}, v_con={v_con}, i={i_ser}, di={di_ser}")
+        print(f"  v_con_required={v_con_required}, dv_con={(v_con - v_con_required)}")
 
 if options.solver_type == EmtSolverTypes.Automatic:
     solver = StructuralVectorizedSolver(problem=problem,
@@ -265,7 +312,7 @@ if hasattr(solver, "get_last_runtime_stats"):
 
 
 # Core diagnostics for the GFM-load system.
-fig, axes = plt.subplots(4, 2, figsize=(14, 12), sharex=True)
+fig, axes = plt.subplots(5, 2, figsize=(14, 15), sharex=True)
 axes = axes.ravel()
 
 # 1) PCC voltages and currents
@@ -321,15 +368,60 @@ axes[6].grid(True)
 if axes[6].lines:
     axes[6].legend(loc="best")
 
-for name in ["i_cap_t_A_G4L_transformer", "q_t_A_G4L_transformer", "i_ser_A_G4L_transformer"]:
+for name in [
+    "v_con_A_mode_G4L_current_loop",
+    "v_con_B_mode_G4L_current_loop",
+    "v_con_C_mode_G4L_current_loop",
+]:
     plot_if_available(axes[7], t_arr, try_get_series(problem, y_arr, name), name)
-axes[7].set_title("Transformer/Filter Branch A")
+axes[7].set_title("Converter Command Voltages")
 axes[7].grid(True)
 if axes[7].lines:
     axes[7].legend(loc="best")
+
+fig2, ax2 = plt.subplots(1, 1, figsize=(10, 4), sharex=True)
+for name in ["i_cap_t_A_G4L_transformer", "q_t_A_G4L_transformer", "i_ser_A_G4L_transformer"]:
+    plot_if_available(ax2, t_arr, try_get_series(problem, y_arr, name), name)
+ax2.set_title("Transformer/Filter Branch A")
+ax2.grid(True)
+if ax2.lines:
+    ax2.legend(loc="best")
+
+fig3, axes3 = plt.subplots(1, 2, figsize=(14, 4), sharex=True)
+for name in ["i_f_A_G4L_grid_side_converter", "i_f_B_G4L_grid_side_converter", "i_f_C_G4L_grid_side_converter"]:
+    plot_if_available(axes3[0], t_arr, try_get_series(problem, y_arr, name), name)
+axes3[0].set_title("Converter-Side abc Currents")
+axes3[0].grid(True)
+if axes3[0].lines:
+    axes3[0].legend(loc="best")
+
+for name in ["i_q_G4L_clark_park_transforms_qd", "i_d_G4L_clark_park_transforms_qd"]:
+    plot_if_available(axes3[1], t_arr, try_get_series(problem, y_arr, name), name)
+axes3[1].set_title("Converter-Side dq Currents")
+axes3[1].grid(True)
+if axes3[1].lines:
+    axes3[1].legend(loc="best")
+
+fig4, axes4 = plt.subplots(1, 2, figsize=(14, 4), sharex=True)
+for name in ["v_con_q_G4L_current_loop", "v_con_d_G4L_current_loop"]:
+    plot_if_available(axes4[0], t_arr, try_get_series(problem, y_arr, name), name)
+axes4[0].set_title("Current-Loop dq Commands")
+axes4[0].grid(True)
+if axes4[0].lines:
+    axes4[0].legend(loc="best")
+
+for name in ["err_q_G4L_current_loop", "err_d_G4L_current_loop", "y_q_G4L_current_loop", "y_d_G4L_current_loop"]:
+    plot_if_available(axes4[1], t_arr, try_get_series(problem, y_arr, name), name)
+axes4[1].set_title("Current-Loop PI Internals")
+axes4[1].grid(True)
+if axes4[1].lines:
+    axes4[1].legend(loc="best")
 
 for ax in axes:
     ax.set_xlabel("Time [s]")
 
 fig.tight_layout()
+fig2.tight_layout()
+fig3.tight_layout()
+fig4.tight_layout()
 plt.show()
