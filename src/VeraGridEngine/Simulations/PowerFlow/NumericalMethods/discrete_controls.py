@@ -334,9 +334,9 @@ def update_qv_droop_generators(S0: CxVec,
                                generator_k_droop: Vec,
                                generator_dead_band: Vec,
                                generator_v: Vec,
+                               generator_qmin: Vec,
                                generator_qmax: Vec,
-                               Vm: Vec,
-                               sbase: float) -> bool:
+                               Vm: Vec) -> bool:
     """
     Update generators with QV droop control within the numerical method.
     :param S0: Specified power array (changed inside).
@@ -348,9 +348,9 @@ def update_qv_droop_generators(S0: CxVec,
     :param generator_k_droop: Generator droop gain.
     :param generator_dead_band: Generator dead-band.
     :param generator_v: Generator voltage set point.
-    :param generator_qmax: Generator reactive power limit.
+    :param generator_qmax: Generator reactive power upper limit (p.u.).
+    :param generator_qmin: Generator reactive power lower limit (p.u.).
     :param Vm: Voltage module array.
-    :param sbase: Base power.
     :return: Was there any change?
     """
     any_change = False
@@ -367,11 +367,25 @@ def update_qv_droop_generators(S0: CxVec,
         if abs(dV) > db:
             if dV > db:
                 any_change = True
-                generator_q[k] = (dV - db) * k_droop * generator_qmax[k] / sbase
+                generator_q[k] = (dV - db) * k_droop * generator_qmax[k]
+
+                if generator_q[k] > generator_qmax[k]:
+                    generator_q[k] = generator_qmax[k]
+
+                if generator_q[k] < generator_qmin[k]:
+                    generator_q[k] = generator_qmin[k]
+
                 S0.imag[bus_i] += generator_q[k]
             elif dV < -db:
                 any_change = True
-                generator_q[k] = (dV + db) * k_droop * generator_qmax[k] / sbase
+                generator_q[k] = (dV + db) * k_droop * generator_qmax[k]
+
+                if generator_q[k] > generator_qmax[k]:
+                    generator_q[k] = generator_qmax[k]
+
+                if generator_q[k] < generator_qmin[k]:
+                    generator_q[k] = generator_qmin[k]
+
                 S0.imag[bus_i] += generator_q[k]
             else:
                 pass
@@ -532,6 +546,7 @@ class QvDroopControlState:
         "_generator_dead_band",
         "_generator_v",
         "_generator_qmax",
+        "_generator_qmin",
         "_sbase",
     )
 
@@ -554,7 +569,8 @@ class QvDroopControlState:
         self._generator_k_droop = nc.generator_data.k_droop
         self._generator_dead_band = nc.generator_data.dead_band
         self._generator_v = nc.generator_data.v
-        self._generator_qmax = nc.generator_data.qmax
+        self._generator_qmin: Vec = nc.generator_data.qmin / nc.Sbase
+        self._generator_qmax: Vec = nc.generator_data.qmax / nc.Sbase
         self._sbase = nc.Sbase
 
     def get_generator_q(self) -> Vec:
@@ -583,9 +599,9 @@ class QvDroopControlState:
             generator_k_droop=self._generator_k_droop,
             generator_dead_band=self._generator_dead_band,
             generator_v=self._generator_v,
+            generator_qmin=self._generator_qmin,
             generator_qmax=self._generator_qmax,
-            Vm=Vm,
-            sbase=self._sbase
+            Vm=Vm
         )
 
 
