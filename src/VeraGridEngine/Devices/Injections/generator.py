@@ -196,7 +196,7 @@ class Generator(InjectionParent):
         ),
         GCProp(
             prop_name='k_droop',
-            units='MVAr/kV',
+            units='',
             tpe=float,
             definition='QV droop constant.',
             cat=[PrpCat.PF],

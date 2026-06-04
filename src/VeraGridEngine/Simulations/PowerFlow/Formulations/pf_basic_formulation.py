@@ -61,7 +61,7 @@ class PfBasicFormulation(PfFormulationTemplate):
 
         # Arrays for generation QV droop
         self.Q0 = self.S0.imag.copy()
-        self.qv_droop_gen_idx = np.where(nc.generator_data.control_mode_int == GeneratorControlMode.QVDroop)[0]
+        self.qv_droop_gen_idx = np.where(nc.generator_data.control_mode_int == GeneratorControlMode.QVDroop.idx())[0]
         self.qv_droop_bus_idx = np.unique(self.nc.generator_data.bus_idx[self.qv_droop_gen_idx])
 
         # Arrays with shunt discrete controls
