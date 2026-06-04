@@ -189,7 +189,7 @@ class GeneratorControlMode(str, Enum):
     Modes of operation of generator control modes.
     """
 
-    Q = ("Locked", 0)  # Fixed Q, classic PQ node
+    Q = ("Q", 0)  # Fixed Q, classic PQ node
     V = ("V", 1)  # Fixed V, classic PV node
     QVDroop = ("Q-V", 2)  # Like a PQ node with droop equation update of Q
 
