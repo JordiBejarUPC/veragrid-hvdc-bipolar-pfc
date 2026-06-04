@@ -292,6 +292,106 @@ def _debug_bus38_power_balance(problem) -> None:
     print(f"  S_mismatch=V*conj(I_mismatch)={s_mis.real:+.9e}{s_mis.imag:+.9e}j")
 
 
+def _debug_gen9_subexciter_values(problem) -> None:
+    x0 = problem.get_x0()
+    state_vars_attr = getattr(problem, "get_state_vars", None)
+    alg_vars_attr = getattr(problem, "get_algebraic_vars", None)
+    state_vars = state_vars_attr() if callable(state_vars_attr) else getattr(problem, "_state_vars", [])
+    alg_vars = alg_vars_attr() if callable(alg_vars_attr) else getattr(problem, "_algebraic_vars", [])
+
+    print("\nGen9 subexciter debug values")
+    found = 0
+    for var in list(state_vars) + list(alg_vars):
+        name = str(var.name)
+        low = name.lower()
+        if "gen9" not in low:
+            continue
+        if "subexciter" not in low and "exciter" not in low and "kc" not in low:
+            continue
+        idx = problem.uid2idx_vars.get(var.uid, None)
+        x0_val = float(x0[idx]) if idx is not None and idx < len(x0) else float("nan")
+        init_val = problem.init_guess.get(var.uid, None)
+        print(f"  name={name} uid={var.uid} idx={idx} x0={x0_val:+.9e} init={init_val}")
+        found += 1
+
+    if found == 0:
+        print("  No Gen9 subexciter/exciter vars found with current name filters")
+
+
+def _debug_generator_exciter_all_vars(problem, gen_index: int = 9) -> None:
+    grid = getattr(problem, "grid", None)
+    if grid is None or not hasattr(grid, "generators"):
+        print(f"\nGen{gen_index} exciter full dump skipped: problem.grid.generators not available")
+        return
+
+    target = None
+    for gen in grid.generators:
+        gname = str(getattr(gen, "name", "")).strip().lower().replace(" ", "")
+        if gname == f"gen{gen_index}":
+            target = gen
+            break
+    if target is None and len(grid.generators) > gen_index:
+        target = grid.generators[gen_index]
+
+    if target is None:
+        print(f"\nGen{gen_index} exciter full dump skipped: target generator not found")
+        return
+
+    mdl = getattr(target, "rms_model", None)
+    if mdl is None or mdl.empty():
+        print(f"\nGen{gen_index} exciter full dump skipped: target RMS model empty")
+        return
+
+    x0 = problem.get_x0()
+    seen: set[int] = set()
+
+    def _collect(block, attr: str):
+        vals = getattr(block, attr, [])
+        return list(vals) if vals is not None else []
+
+    vars_all = []
+    vars_all += _collect(mdl, "state_vars")
+    vars_all += _collect(mdl, "algebraic_vars")
+    vars_all += _collect(mdl, "diff_vars")
+    vars_all += _collect(mdl, "in_vars")
+    vars_all += _collect(mdl, "out_vars")
+
+    print(f"\nGen{gen_index} exciter/full-generator variable dump")
+    print(f"  generator_name={getattr(target, 'name', 'unknown')} total_candidates={len(vars_all)}")
+    for var in vars_all:
+        uid = getattr(var, "uid", None)
+        if uid is None or uid in seen:
+            continue
+        seen.add(uid)
+        name = str(getattr(var, "name", ""))
+        x_idx = problem.uid2idx_vars.get(uid, None)
+        x0_val = float(x0[x_idx]) if x_idx is not None and x_idx < len(x0) else float("nan")
+        init_val = problem.init_guess.get(uid, None)
+        print(f"  name={name} uid={uid} x_idx={x_idx} x0={x0_val:+.9e} init={init_val}")
+
+
+def _debug_vars_by_compiler_index(problem, indices: list[int]) -> None:
+    x0 = problem.get_x0()
+    state_vars_attr = getattr(problem, "get_state_vars", None)
+    alg_vars_attr = getattr(problem, "get_algebraic_vars", None)
+    state_vars = state_vars_attr() if callable(state_vars_attr) else getattr(problem, "_state_vars", [])
+    alg_vars = alg_vars_attr() if callable(alg_vars_attr) else getattr(problem, "_algebraic_vars", [])
+    all_vars = list(state_vars) + list(alg_vars)
+
+    print("\nCompiler-index variable trace")
+    for idx in indices:
+        if idx < 0 or idx >= len(all_vars):
+            print(f"  idx={idx} out-of-range (n_vars={len(all_vars)})")
+            continue
+        var = all_vars[idx]
+        uid = var.uid
+        x_idx = problem.uid2idx_vars.get(uid, None)
+        x0_val = float(x0[x_idx]) if x_idx is not None and x_idx < len(x0) else float("nan")
+        init_val = problem.init_guess.get(uid, None)
+        print(f"  idx={idx} name={var.name} uid={uid} x_idx={x_idx} x0={x0_val:+.9e} init={init_val}")
+    _=0
+
+
 def _print_participation_summary(problem, eigenvalues: np.ndarray, participation_factors: np.ndarray, label: str, n_show: int = 8) -> None:
     if participation_factors is None or participation_factors.size == 0:
         print(f"{label} participation factors: unavailable")
@@ -304,19 +404,65 @@ def _print_participation_summary(problem, eigenvalues: np.ndarray, participation
     stable_or_marginal = [i for i in finite_idx if float(np.real(eigenvalues[i])) <= 0.0]
     ordered_idx = unstable + stable_or_marginal
     print(f"{label} dominant participation (top {min(n_show, len(finite_idx))} finite modes)")
+
+    def _var_name(k: int) -> str:
+        if k < len(state_vars):
+            return f"state:{state_vars[k]}"
+        if k < len(all_dyn_vars):
+            return f"alg:{all_dyn_vars[k]}"
+        return f"var[{k}]"
+
     for i in ordered_idx[:n_show]:
         if i >= participation_factors.shape[1] or participation_factors.shape[0] == 0:
             continue
         pf = np.abs(participation_factors[:, i])
         k = int(np.argmax(pf))
-        if k < len(state_vars):
-            name = f"state:{state_vars[k]}"
-        elif k < len(all_dyn_vars):
-            name = f"alg:{all_dyn_vars[k]}"
-        else:
-            name = f"var[{k}]"
+        name = _var_name(k)
         status = "UNSTABLE" if float(np.real(eigenvalues[i])) > 0.0 else "stable/marginal"
         print(f"  mode={i + 1} ev={eigenvalues[i].real:+.6e}{eigenvalues[i].imag:+.6e}j {status} dominant={name} PF={pf[k]:.3e}")
+
+    if len(unstable) == 0:
+        return
+
+    print(f"{label} unstable modes: top 5 dominant states")
+    for i in unstable:
+        if i >= participation_factors.shape[1] or participation_factors.shape[0] == 0:
+            continue
+        pf = np.abs(participation_factors[:, i])
+        top_idx = np.argsort(pf)[::-1][:5]
+        dom = ", ".join([f"{_var_name(int(k))}={pf[int(k)]:.3e}" for k in top_idx])
+        print(f"  mode={i + 1} ev={eigenvalues[i].real:+.6e}{eigenvalues[i].imag:+.6e}j -> {dom}")
+
+
+def _scale_event_dict_var(block, var_name: str, scale: float) -> int:
+    count = 0
+    for var, value in block.event_dict.items():
+        if var.name == var_name:
+            value.value = float(value.value) * scale
+            count += 1
+    for child in block.children:
+        count += _scale_event_dict_var(child, var_name, scale)
+    return count
+
+
+def _tune_generator_controller(block, ks_scale: float = 1.0, ka_scale: float = 1.0, ta_scale: float = 1.0) -> dict[str, int]:
+    updates = {"Ks": 0, "Ka": 0, "tA": 0}
+    if abs(ks_scale - 1.0) > 1e-12:
+        updates["Ks"] = _scale_event_dict_var(block, "Ks", ks_scale)
+    if abs(ka_scale - 1.0) > 1e-12:
+        updates["Ka"] = _scale_event_dict_var(block, "Ka", ka_scale)
+    if abs(ta_scale - 1.0) > 1e-12:
+        updates["tA"] = _scale_event_dict_var(block, "tA", ta_scale)
+    return updates
+
+
+def _scale_stabilizer_gain(grid, scale: float) -> int:
+    updated = 0
+    for gen in grid.generators:
+        if gen.rms_model.empty():
+            continue
+        updated += _scale_event_dict_var(gen.rms_model, "Ks", scale)
+    return updated
 
 
 def _apply_bus38_kcl_q_correction(problem) -> None:
@@ -372,7 +518,13 @@ def _apply_bus38_kcl_q_correction(problem) -> None:
     print(f"  Ii_Load1@bus 38: {ii_old:+.9e} -> {problem.init_guess[ii_load_var.uid]:+.9e}")
 
 
-def build_problems(grid_filename: str) -> tuple[vge.RmsProblemMultilinear, vge.RmsProblemPhasor, vge.PowerFlowResults, vge.RmsOptions, vge.RmsOptions]:
+def build_problems(
+    grid_filename: str,
+    pss_gain_scale: float = 1.0,
+    gen0_ks_scale: float = 1.0,
+    gen0_ka_scale: float = 1.0,
+    gen0_ta_scale: float = 1.0,
+) -> tuple[vge.RmsProblemMultilinear, vge.RmsProblemPhasor, vge.PowerFlowResults, vge.RmsOptions, vge.RmsOptions]:
     grid_path = project_base / "Grids_and_profiles" / "grids" / grid_filename
     grid = vge.open_file(str(grid_path))
     ensure_unique_device_names(grid)
@@ -392,6 +544,25 @@ def build_problems(grid_filename: str) -> tuple[vge.RmsProblemMultilinear, vge.R
         if not gen.rms_model.empty():
             continue
         gen_mdl = vge.get_complete_generator_template_phasor(grid.var_factory, name=f"Gen{igen}").block
+        if igen == 0:
+            updates = _tune_generator_controller(
+                gen_mdl,
+                ks_scale=gen0_ks_scale,
+                ka_scale=gen0_ka_scale,
+                ta_scale=gen0_ta_scale,
+            )
+            expected_updates = {
+                "Ks": abs(gen0_ks_scale - 1.0) > 1e-12,
+                "Ka": abs(gen0_ka_scale - 1.0) > 1e-12,
+                "tA": abs(gen0_ta_scale - 1.0) > 1e-12,
+            }
+            missing = [name for name, expected in expected_updates.items() if expected and updates[name] == 0]
+            if missing:
+                raise RuntimeError(f"Gen0 tuning requested but event vars were not found: {missing}")
+            print(
+                f"Gen0 tuning: Ks x{gen0_ks_scale:.3f}, Ka x{gen0_ka_scale:.3f}, tA x{gen0_ta_scale:.3f}"
+                f" -> updates {updates}"
+            )
         grid.var_factory.add_connections([gen_mdl.in_vars[0]], [gen.bus.rms_model.out_vars[0]])
         grid.var_factory.add_connections([gen_mdl.in_vars[1]], [gen.bus.rms_model.out_vars[1]])
         gen_mdl = vge.to_implicit(gen_mdl, grid.var_factory)
@@ -436,6 +607,10 @@ def build_problems(grid_filename: str) -> tuple[vge.RmsProblemMultilinear, vge.R
         shunt_mdl = vge.to_implicit(shunt_mdl, grid.var_factory)
         set_rms_model(device=shunt, model=shunt_mdl, var_factory=grid.var_factory)
 
+    if abs(pss_gain_scale - 1.0) > 1e-12:
+        n_scaled = _scale_stabilizer_gain(grid, pss_gain_scale)
+        print(f"Applied PSS gain scale={pss_gain_scale:.3f} to Ks entries: {n_scaled}")
+
     pf_results = vge.power_flow(grid, vge.PowerFlowOptions(tolerance=1e-5))
     if not pf_results.converged:
         raise RuntimeError("Power flow did not converge")
@@ -467,7 +642,7 @@ def run_small_signal_from_driver(
 ):
     ss_options = vge.RmsSmallSignalStabilityOptions(ss_assessment_time=0, verbose=verbose)
     n_modes = problem.get_states_number() + problem.get_diff_var_number()
-    k_eff = int(n_modes*0.9)
+    k_eff = int(n_modes*0.5)
     ss_options.k = k_eff
     driver = vge.SmallSignalStabilityRmsDriver(
         grid=vge.MultiCircuit(Sbase=problem.grid.Sbase),
@@ -550,52 +725,86 @@ def run_cpn_tests(problem_ml: vge.RmsProblemMultilinear) -> None:
 
 def main() -> None:
     grid_filename = sys.argv[1] if len(sys.argv) > 1 else "IEEE39.gridcal"
-    problem_ml, problem_ph, pf_results, rms_options_ml, rms_options_ph = build_problems(grid_filename=grid_filename)
+    gen0_tuning_cases = [
+        (1.0, 1.0, 1.0),
+        (0.7, 0.7, 2.0),
+        (0.5, 0.5, 3.0),
+        (0.3, 0.4, 5.0),
+        (0.1, 0.25, 8.0),
+    ]
+    for gen0_ks_scale, gen0_ka_scale, gen0_ta_scale in gen0_tuning_cases:
+        print(
+            f"\n=== Gen0 controller tuning: Ks x{gen0_ks_scale:.3f}, "
+            f"Ka x{gen0_ka_scale:.3f}, tA x{gen0_ta_scale:.3f} ==="
+        )
+        problem_ml, problem_ph, pf_results, rms_options_ml, rms_options_ph = build_problems(
+            grid_filename=grid_filename,
+            gen0_ks_scale=gen0_ks_scale,
+            gen0_ka_scale=gen0_ka_scale,
+            gen0_ta_scale=gen0_ta_scale,
+        )
 
-    print("Running phasor warm-start micro-step...")
-    _debug_kcl_uid_trace(problem_ph, marker="Irg_Gen9")
-    _debug_bus38_power_balance(problem_ph)
-    _apply_bus38_kcl_q_correction(problem_ph)
-    problem_ph.reset_boundary_update_state(0.0)
-    warm_solver = BackEulerImplicitIntegration(
-        problem=problem_ph,
-        t0=0.0,
-        t_end=2e-4,
-        h=1e-4,
-        max_iter=300,
-    )
-    t_warm, y_warm, warm_well_initialized, warm_converged = warm_solver.simulate()
-    print(f"  warm_converged={bool(warm_converged)} warm_well_initialized={bool(warm_well_initialized)}")
-    if warm_converged and y_warm is not None and y_warm.shape[0] > 0:
-        _seed_problem_init_guess_from_vector(problem_ph, y_warm[-1, :])
+        print("Running phasor warm-start micro-step...")
+        # Keep the sweep readable; enable these only for detailed initialization debugging.
+        # _debug_gen9_subexciter_values(problem_ph)
+        # _debug_generator_exciter_all_vars(problem_ph, gen_index=0)
+        # _debug_vars_by_compiler_index(problem_ph, indices=[1402, 1461])
+        # _debug_kcl_uid_trace(problem_ph, marker="Irg_Gen9")
+        # _debug_bus38_power_balance(problem_ph)
+        _apply_bus38_kcl_q_correction(problem_ph)
+        problem_ph.reset_boundary_update_state(0.0)
+        warm_solver = BackEulerImplicitIntegration(
+            problem=problem_ph,
+            t0=0.0,
+            t_end=2e-4,
+            h=1e-4,
+            max_iter=300,
+        )
+        _, y_warm, warm_well_initialized, warm_converged = warm_solver.simulate()
+        print(f"  warm_converged={bool(warm_converged)} warm_well_initialized={bool(warm_well_initialized)}")
+        if warm_converged and y_warm is not None and y_warm.shape[0] > 0:
+            _seed_problem_init_guess_from_vector(problem_ph, y_warm[-1, :])
 
-    eig_driver_ml, pf_driver_ml = run_small_signal_from_driver(problem=problem_ml,
-                                                                pf_results=pf_results,
-                                                                rms_options=rms_options_ml)
-    eig_driver_ph, pf_driver_ph = run_small_signal_from_driver(problem=problem_ph,
-                                                                pf_results=pf_results,
-                                                                rms_options=rms_options_ph)
+        eig_driver_ml, pf_driver_ml = run_small_signal_from_driver(problem=problem_ml,
+                                                                    pf_results=pf_results,
+                                                                    rms_options=rms_options_ml)
+        eig_driver_ph, pf_driver_ph = run_small_signal_from_driver(problem=problem_ph,
+                                                                    pf_results=pf_results,
+                                                                    rms_options=rms_options_ph)
 
-    #run_cpn_tests(problem_ml)
-    fin_drv_ml = eig_driver_ml[np.isfinite(eig_driver_ml) & (np.abs(eig_driver_ml) < 1e6)]
-    fin_drv_ph = eig_driver_ph[np.isfinite(eig_driver_ph) & (np.abs(eig_driver_ph) < 1e6)]
+        fin_drv_ml = eig_driver_ml[np.isfinite(eig_driver_ml) & (np.abs(eig_driver_ml) < 1e6)]
+        fin_drv_ph = eig_driver_ph[np.isfinite(eig_driver_ph) & (np.abs(eig_driver_ph) < 1e6)]
 
-    stable_ml = bool(np.all(np.real(fin_drv_ml) <= 0.0)) if len(fin_drv_ml) > 0 else False
-    margin_ml = float(np.max(np.real(fin_drv_ml))) if len(fin_drv_ml) > 0 else float("nan")
+        stable_ml = bool(np.all(np.real(fin_drv_ml) <= 0.0)) if len(fin_drv_ml) > 0 else False
+        margin_ml = float(np.max(np.real(fin_drv_ml))) if len(fin_drv_ml) > 0 else float("nan")
+        stable_ph = bool(np.all(np.real(fin_drv_ph) <= 0.0)) if len(fin_drv_ph) > 0 else False
+        margin_ph = float(np.max(np.real(fin_drv_ph))) if len(fin_drv_ph) > 0 else float("nan")
+        n_unstable_ml = int(np.sum(np.real(fin_drv_ml) > 0.0)) if len(fin_drv_ml) > 0 else 0
+        n_unstable_ph = int(np.sum(np.real(fin_drv_ph) > 0.0)) if len(fin_drv_ph) > 0 else 0
 
-    matches, ml_only, ph_only, mean_err = _compare_eigen_sets(fin_drv_ml, fin_drv_ph, tol=1e-6)
-    ml_unmatched, ph_unmatched = _compute_unmatched(fin_drv_ml, fin_drv_ph, tol=1e-6)
+        matches, ml_only, ph_only, mean_err = _compare_eigen_sets(fin_drv_ml, fin_drv_ph, tol=1e-6)
+        ml_unmatched, ph_unmatched = _compute_unmatched(fin_drv_ml, fin_drv_ph, tol=1e-6)
 
-    print(f"{grid_filename} small-signal (RmsProblemMultilinear)")
-    print(f"  modes_driver_ml={len(fin_drv_ml)} stable_ml={stable_ml} margin_ml={margin_ml:.6e}")
-    print(f"{grid_filename} small-signal (RmsProblemPhasor via driver)")
-    print(f"  modes_driver_ph={len(fin_drv_ph)}")
-    print("Driver eigen comparison (ML vs Phasor)")
-    print(f"  matches={matches} ml_only={ml_only} ph_only={ph_only} mean_err={mean_err:.3e}")
-    _print_participation_summary(problem_ml, eig_driver_ml, pf_driver_ml, label="ML driver")
-    _print_participation_summary(problem_ph, eig_driver_ph, pf_driver_ph, label="Phasor driver")
-    _print_unmatched(ml_unmatched, ph_unmatched, n_show=8)
-    _plot_eigen_comparison(fin_drv_ml, fin_drv_ph, grid_filename)
+        print(
+            "Sweep result: "
+            f"Ks={gen0_ks_scale:.3f} Ka={gen0_ka_scale:.3f} tA={gen0_ta_scale:.3f} | "
+            f"ML margin={margin_ml:+.6e} unstable={n_unstable_ml} stable={stable_ml} | "
+            f"PH margin={margin_ph:+.6e} unstable={n_unstable_ph} stable={stable_ph}"
+        )
+        print(f"{grid_filename} small-signal (RmsProblemMultilinear)")
+        print(f"  modes_driver_ml={len(fin_drv_ml)} stable_ml={stable_ml} margin_ml={margin_ml:.6e}")
+        print(f"{grid_filename} small-signal (RmsProblemPhasor via driver)")
+        print(f"  modes_driver_ph={len(fin_drv_ph)}")
+        print("Driver eigen comparison (ML vs Phasor)")
+        print(f"  matches={matches} ml_only={ml_only} ph_only={ph_only} mean_err={mean_err:.3e}")
+        _print_participation_summary(problem_ml, eig_driver_ml, pf_driver_ml, label="ML driver")
+        _print_participation_summary(problem_ph, eig_driver_ph, pf_driver_ph, label="Phasor driver")
+        _print_unmatched(ml_unmatched, ph_unmatched, n_show=8)
+        _plot_eigen_comparison(
+            fin_drv_ml,
+            fin_drv_ph,
+            f"{grid_filename} Gen0 Ks x{gen0_ks_scale:.2f} Ka x{gen0_ka_scale:.2f} tA x{gen0_ta_scale:.2f}",
+        )
 
 
 if __name__ == "__main__":

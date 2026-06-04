@@ -6,12 +6,8 @@
 from __future__ import annotations
 from dataclasses import dataclass
 import numpy as np
-import tensorly as tl
 import scipy.linalg as la
 from scipy import sparse
-import sparse as sparse_coo
-from tensorly.contrib.sparse.decomposition import parafac
-from tensorly.cp_tensor import CPTensor
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_phasor import RmsProblemPhasor
 from VeraGridEngine.Utils.Symbolic.symbolic import Expr, Var, Const, BinOp, UnOp, get_expr_factors
 
@@ -77,6 +73,16 @@ class CpnFitDiagnostics:
     relative_changes: list[float]
     iterations: int
     converged: bool
+
+
+@dataclass(slots=True)
+class MultilinearCpTensor:
+    """
+    CP factor representation of a multilinear coefficient tensor.
+    """
+
+    weights: np.ndarray
+    factors: list[np.ndarray]
 
 
 class MultilinearCpnApproximator:
@@ -401,12 +407,10 @@ class MultilinearCpnApproximator:
         equation_factor: np.ndarray,
         variable_factors: list[np.ndarray],
         zero_tol: float,
-    ):
+    ) -> MultilinearCpTensor:
         """
-        Convert raw factors into a TensorLy CPTensor.
+        Convert raw factors into a normalized CP tensor representation.
         """
-        from tensorly.cp_tensor import CPTensor
-
         factors = [equation_factor.copy()] + [factor.copy() for factor in variable_factors]
         rank = equation_factor.shape[1]
         weights = np.ones(rank, dtype=float)
@@ -422,7 +426,7 @@ class MultilinearCpnApproximator:
             factors[factor_idx] = factor / safe_norms[np.newaxis, :]
             weights *= safe_norms
 
-        return CPTensor((weights, factors))
+        return MultilinearCpTensor(weights=weights, factors=factors)
 
     def fit(
         self,
@@ -439,7 +443,7 @@ class MultilinearCpnApproximator:
 
         Returns
         -------
-        tensorly.cp_tensor.CPTensor
+        MultilinearCpTensor
             Fitted CP tensor.
         """
         rng = np.random.default_rng(random_state)
@@ -609,10 +613,10 @@ class MultilinearCpnApproximator:
     def evaluate_residual(
         self,
         x: np.ndarray,
-        cp_tensor=None,
+        cp_tensor: MultilinearCpTensor | None = None,
     ) -> np.ndarray:
         """
-        Evaluate the approximate residual from a fitted TensorLy CPTensor.
+        Evaluate the approximate residual from a fitted CP tensor.
 
         If ``cp_tensor`` is not provided, this method uses the last fitted tensor.
         """
@@ -629,7 +633,7 @@ class MultilinearCpnApproximator:
 
         if x.shape[0] != len(variable_factors):
             raise ValueError(
-                f"x has {x.shape[0]} variables, but CPTensor has "
+                f"x has {x.shape[0]} variables, but CP tensor has "
                 f"{len(variable_factors)} variable modes."
             )
 
@@ -1008,7 +1012,7 @@ class RmsProblemMultilinear(RmsProblemPhasor):
 
         Returns
         -------
-        tensorly.cp_tensor.CPTensor
+        MultilinearCpTensor
             Fitted CP tensor approximating the coefficient tensor H.
         """
 
@@ -1037,10 +1041,10 @@ class RmsProblemMultilinear(RmsProblemPhasor):
     def evaluate_residual_from_cptensor(
         self,
         x: np.ndarray,
-        cp_tensor,
+        cp_tensor: MultilinearCpTensor,
     ) -> np.ndarray:
         """
-        Evaluate the approximate residual from a TensorLy CPTensor.
+        Evaluate the approximate residual from a CP tensor.
 
         This implements:
 
@@ -1056,7 +1060,7 @@ class RmsProblemMultilinear(RmsProblemPhasor):
         x
             Variable vector with shape ``(n_vars,)``.
         cp_tensor
-            TensorLy CPTensor representing the approximate coefficient tensor H.
+            CP tensor representing the approximate coefficient tensor H.
 
         Returns
         -------
@@ -1073,7 +1077,7 @@ class RmsProblemMultilinear(RmsProblemPhasor):
 
         if x.shape[0] != n_vars:
             raise ValueError(
-                f"x has {x.shape[0]} variables, but CPTensor has {n_vars} variable modes."
+                f"x has {x.shape[0]} variables, but CP tensor has {n_vars} variable modes."
             )
 
         rank_product = np.ones(weights.shape[0], dtype=float)
@@ -1328,4 +1332,3 @@ class RmsProblemMultilinear(RmsProblemPhasor):
                     f_val.append(val)
 
         return sparse.csc_matrix((f_val, (f_row, f_col)), shape=(n_vars, n_mon))
-

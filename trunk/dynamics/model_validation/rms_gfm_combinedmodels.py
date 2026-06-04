@@ -294,13 +294,22 @@ def initialize_rms_models(grid: vge.MultiCircuit, pf_results):
     print(f"  + Aggregated GFM RMS model: {gfm_gen.name} (P0={p0:.6f}, Q0={q0:.6f})")
 
     for load in grid.get_loads():
+        load_bus_idx = list(grid.buses).index(load.bus)
+        load_vm0 = float(np.abs(pf_results.voltage[load_bus_idx]))
         load_model = ZIPLoadBuild(
             vfactory=vf,
             name=load.name,
             Pl0=-float(load.P) / grid.Sbase,
             Ql0=-float(load.Q) / grid.Sbase,
         ).block
+        v0 = find_name_in_block("V0", load_model)
+        if v0 is not None:
+            set_event_in_block(v0, load_vm0, vf, load_model)
+            load_model.init_eqs[v0] = sym.Const(load_vm0)
         set_rms_model(device=load, model=load_model, var_factory=vf)
+        load_vm = load_model.external_mapping[VarPowerFlowReferenceType.Vm]
+        bus_vm = load.bus.rms_model.external_mapping[VarPowerFlowReferenceType.Vm]
+        vf.add_connections([load_vm], [bus_vm])
         print(f"  + Load RMS model: {load.name}")
 
 

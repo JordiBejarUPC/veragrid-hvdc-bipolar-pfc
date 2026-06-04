@@ -399,7 +399,7 @@ def run_sparse_small_signal_stability(problem: RmsProblemTemplate,
         else:
             pass
 
-        sigma_candidates = (1e-4, 1e-3, 1e-2)
+        sigma_candidates = (1e-5, 1e-4, 1e-3, 1e-2, 1e-1)
         eig_ok = False
         last_err = None
 
