@@ -557,7 +557,7 @@ class MultiCircuit(Assets):
                            Q=gen.Q,
                            power_factor=gen.Pf,
                            vset=gen.Vset,
-                           is_controlled=gen.is_controlled,
+                           control_mode=gen.control_mode,
                            Qmin=gen.Qmin,
                            Qmax=gen.Qmax,
                            Snom=gen.Snom,

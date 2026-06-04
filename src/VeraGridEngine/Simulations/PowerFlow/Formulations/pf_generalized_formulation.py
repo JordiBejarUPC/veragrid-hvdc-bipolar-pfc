@@ -644,7 +644,7 @@ class PfGeneralizedFormulation(PfFormulationTemplate):
             ctrl_tau = self.nc.active_branch_data.tap_phase_control_mode[k]
 
             # analyze tap-module controls
-            if ctrl_m == TapModuleControl.Vm:
+            if ctrl_m == TapModuleControl.Vm.idx():
 
                 # Every bus controlled by m has to become a PQV bus
                 bus_idx: int = int(self.nc.active_branch_data.tap_controlled_buses[k])
@@ -659,44 +659,38 @@ class PfGeneralizedFormulation(PfFormulationTemplate):
                     self.logger.add_error("Controlled bus index outside of the island, skipping control",
                                           device=self.nc.passive_branch_data.idtag[k], )
 
-            elif ctrl_m == TapModuleControl.Qf:
+            elif ctrl_m == TapModuleControl.Qf.idx():
                 u_cbr_m.append(k)
                 k_cbr_qf.append(k)
                 cbr_qf_set.append(self.nc.active_branch_data.Qset[k])
 
-            elif ctrl_m == TapModuleControl.Qt:
+            elif ctrl_m == TapModuleControl.Qt.idx():
                 u_cbr_m.append(k)
                 k_cbr_qt.append(k)
                 cbr_qt_set.append(self.nc.active_branch_data.Qset[k])
 
-            elif ctrl_m == TapModuleControl.fixed:
+            elif ctrl_m == TapModuleControl.fixed.idx():
                 # bus_idx = self.nc.active_branch_data.tap_controlled_buses[k]
                 # self.is_vm_controlled[bus_idx] = False
                 # self.m[k] = self.nc.active_branch_data.tap_module[k]
-                pass
-
-            elif ctrl_m == 0:
                 pass
 
             else:
                 raise Exception(f"Unknown tap phase module mode {ctrl_m}")
 
             # analyze tap-phase controls
-            if ctrl_tau == TapPhaseControl.Pf:
+            if ctrl_tau == TapPhaseControl.Pf.idx():
                 u_cbr_tau.append(k)
                 k_cbr_pf.append(k)
                 cbr_pf_set.append(self.nc.active_branch_data.Pset[k])
 
-            elif ctrl_tau == TapPhaseControl.Pt:
+            elif ctrl_tau == TapPhaseControl.Pt.idx():
                 u_cbr_tau.append(k)
                 k_cbr_pt.append(k)
                 cbr_pt_set.append(self.nc.active_branch_data.Pset[k])
 
-            elif ctrl_tau == TapPhaseControl.fixed:
+            elif ctrl_tau == TapPhaseControl.fixed.idx():
                 # self.tau[k] = self.nc.active_branch_data.tap_angle[k]
-                pass
-
-            elif ctrl_tau == 0:
                 pass
 
             else:
@@ -736,8 +730,8 @@ class PfGeneralizedFormulation(PfFormulationTemplate):
         # VSC LOOP
         for k in range(self.nc.vsc_data.nelm):
 
-            control1 = self.nc.vsc_data.control1[k]
-            control2 = self.nc.vsc_data.control2[k]
+            control1 = self.nc.vsc_data.control1_int[k]
+            control2 = self.nc.vsc_data.control2_int[k]
             assert control1 != control2, f"VSC control types must be different for VSC indexed at {k}"
 
             control1_magnitude = self.nc.vsc_data.control1_val[k]
@@ -760,12 +754,12 @@ class PfGeneralizedFormulation(PfFormulationTemplate):
 
             """
 
-            if control1 == ConverterControlType.Vm_dc and control2 == ConverterControlType.Vm_dc:
+            if control1 == ConverterControlType.Vm_dc.idx() and control2 == ConverterControlType.Vm_dc.idx():
                 self.logger.add_error(
                     f"VSC control1 and control2 are the same for VSC indexed at {k},"
                     f" control1: {control1}, control2: {control2}")
 
-            elif control1 == ConverterControlType.Vm_dc and control2 == ConverterControlType.Vm_ac:
+            elif control1 == ConverterControlType.Vm_dc.idx() and control2 == ConverterControlType.Vm_ac.idx():
                 if control1_bus_device > -1:
                     self.is_vm_controlled[control1_bus_device] = True
                 if control2_bus_device > -1:
@@ -774,7 +768,7 @@ class PfGeneralizedFormulation(PfFormulationTemplate):
                 u_vsc_pt.append(k)
                 u_vsc_qt.append(k)
 
-            elif control1 == ConverterControlType.Vm_dc and control2 == ConverterControlType.Va_ac:
+            elif control1 == ConverterControlType.Vm_dc.idx() and control2 == ConverterControlType.Va_ac.idx():
                 if control1_bus_device > -1:
                     self.is_vm_controlled[control1_bus_device] = True
                 if control2_bus_device > -1:
@@ -783,7 +777,7 @@ class PfGeneralizedFormulation(PfFormulationTemplate):
                 u_vsc_pt.append(k)
                 u_vsc_qt.append(k)
 
-            elif control1 == ConverterControlType.Vm_dc and control2 == ConverterControlType.Qac:
+            elif control1 == ConverterControlType.Vm_dc.idx() and control2 == ConverterControlType.Qac.idx():
                 if control1_bus_device > -1:
                     self.is_vm_controlled[control1_bus_device] = True
                 if control2_bus_device > -1:
@@ -798,7 +792,7 @@ class PfGeneralizedFormulation(PfFormulationTemplate):
 
                     vsc_qt_set.append(control2_magnitude)
 
-            elif control1 == ConverterControlType.Vm_dc and control2 == ConverterControlType.Pdc:
+            elif control1 == ConverterControlType.Vm_dc.idx() and control2 == ConverterControlType.Pdc.idx():
                 if control1_bus_device > -1:
                     self.is_vm_controlled[control1_bus_device] = True
                 if control2_bus_device > -1:
@@ -813,7 +807,7 @@ class PfGeneralizedFormulation(PfFormulationTemplate):
 
                     vsc_pf_set.append(control2_magnitude)
 
-            elif control1 == ConverterControlType.Vm_dc and control2 == ConverterControlType.Pac:
+            elif control1 == ConverterControlType.Vm_dc.idx() and control2 == ConverterControlType.Pac.idx():
                 if control1_bus_device > -1:
                     self.is_vm_controlled[control1_bus_device] = True
                 if control2_bus_device > -1:
@@ -829,7 +823,7 @@ class PfGeneralizedFormulation(PfFormulationTemplate):
                     vsc_pt_set.append(control2_magnitude)
 
 
-            elif control1 == ConverterControlType.Vm_ac and control2 == ConverterControlType.Vm_dc:
+            elif control1 == ConverterControlType.Vm_ac.idx() and control2 == ConverterControlType.Vm_dc.idx():
                 if control1_bus_device > -1:
                     self.is_vm_controlled[control1_bus_device] = True
                 if control2_bus_device > -1:
@@ -838,12 +832,12 @@ class PfGeneralizedFormulation(PfFormulationTemplate):
                 u_vsc_pt.append(k)
                 u_vsc_qt.append(k)
 
-            elif control1 == ConverterControlType.Vm_ac and control2 == ConverterControlType.Vm_ac:
+            elif control1 == ConverterControlType.Vm_ac.idx() and control2 == ConverterControlType.Vm_ac.idx():
                 self.logger.add_error(
                     f"VSC control1 and control2 are the same for VSC indexed at {k},"
                     f" control1: {control1}, control2: {control2}")
 
-            elif control1 == ConverterControlType.Vm_ac and control2 == ConverterControlType.Va_ac:
+            elif control1 == ConverterControlType.Vm_ac.idx() and control2 == ConverterControlType.Va_ac.idx():
                 if control1_bus_device > -1:
                     self.is_vm_controlled[control1_bus_device] = True
                 if control2_bus_device > -1:
@@ -852,7 +846,7 @@ class PfGeneralizedFormulation(PfFormulationTemplate):
                 u_vsc_pt.append(k)
                 u_vsc_qt.append(k)
 
-            elif control1 == ConverterControlType.Vm_ac and control2 == ConverterControlType.Qac:
+            elif control1 == ConverterControlType.Vm_ac.idx() and control2 == ConverterControlType.Qac.idx():
                 if control1_bus_device > -1:
                     self.is_vm_controlled[control1_bus_device] = True
                 if control2_bus_device > -1:
@@ -865,7 +859,7 @@ class PfGeneralizedFormulation(PfFormulationTemplate):
                     k_vsc_qt.append(control2_branch_device)
                     vsc_qt_set.append(control2_magnitude)
 
-            elif control1 == ConverterControlType.Vm_ac and control2 == ConverterControlType.Pdc:
+            elif control1 == ConverterControlType.Vm_ac.idx() and control2 == ConverterControlType.Pdc.idx():
                 if control1_bus_device > -1:
                     self.is_vm_controlled[control1_bus_device] = True
                 if control2_bus_device > -1:
@@ -878,7 +872,7 @@ class PfGeneralizedFormulation(PfFormulationTemplate):
                     k_vsc_pf.append(control2_branch_device)
                     vsc_pf_set.append(control2_magnitude)
 
-            elif control1 == ConverterControlType.Vm_ac and control2 == ConverterControlType.Pac:
+            elif control1 == ConverterControlType.Vm_ac.idx() and control2 == ConverterControlType.Pac.idx():
                 if control1_bus_device > -1:
                     self.is_vm_controlled[control1_bus_device] = True
                 if control2_bus_device > -1:
@@ -891,8 +885,7 @@ class PfGeneralizedFormulation(PfFormulationTemplate):
                     k_vsc_pt.append(control2_branch_device)
                     vsc_pt_set.append(control2_magnitude)
 
-
-            elif control1 == ConverterControlType.Va_ac and control2 == ConverterControlType.Vm_dc:
+            elif control1 == ConverterControlType.Va_ac.idx() and control2 == ConverterControlType.Vm_dc.idx():
                 if control1_bus_device > -1:
                     self.is_va_controlled[control1_bus_device] = True
                 if control2_bus_device > -1:
@@ -901,7 +894,7 @@ class PfGeneralizedFormulation(PfFormulationTemplate):
                 u_vsc_pt.append(k)
                 u_vsc_qt.append(k)
 
-            elif control1 == ConverterControlType.Va_ac and control2 == ConverterControlType.Vm_ac:
+            elif control1 == ConverterControlType.Va_ac.idx() and control2 == ConverterControlType.Vm_ac.idx():
                 if control1_bus_device > -1:
                     self.is_va_controlled[control1_bus_device] = True
                 if control2_bus_device > -1:
@@ -910,12 +903,12 @@ class PfGeneralizedFormulation(PfFormulationTemplate):
                 u_vsc_pt.append(k)
                 u_vsc_qt.append(k)
 
-            elif control1 == ConverterControlType.Va_ac and control2 == ConverterControlType.Va_ac:
+            elif control1 == ConverterControlType.Va_ac.idx() and control2 == ConverterControlType.Va_ac.idx():
                 self.logger.add_error(
                     f"VSC control1 and control2 are the same for VSC indexed at {k},"
                     f" control1: {control1}, control2: {control2}")
 
-            elif control1 == ConverterControlType.Va_ac and control2 == ConverterControlType.Qac:
+            elif control1 == ConverterControlType.Va_ac.idx() and control2 == ConverterControlType.Qac.idx():
                 if control1_bus_device > -1:
                     self.is_va_controlled[control1_bus_device] = True
                 if control2_bus_device > -1:
@@ -928,7 +921,7 @@ class PfGeneralizedFormulation(PfFormulationTemplate):
                     k_vsc_qt.append(control2_branch_device)
                     vsc_qt_set.append(control2_magnitude)
 
-            elif control1 == ConverterControlType.Va_ac and control2 == ConverterControlType.Pdc:
+            elif control1 == ConverterControlType.Va_ac.idx() and control2 == ConverterControlType.Pdc.idx():
                 if control1_bus_device > -1:
                     self.is_va_controlled[control1_bus_device] = True
                 if control2_bus_device > -1:
@@ -941,7 +934,7 @@ class PfGeneralizedFormulation(PfFormulationTemplate):
                     k_vsc_pf.append(control2_branch_device)
                     vsc_pf_set.append(control2_magnitude)
 
-            elif control1 == ConverterControlType.Va_ac and control2 == ConverterControlType.Pac:
+            elif control1 == ConverterControlType.Va_ac.idx() and control2 == ConverterControlType.Pac.idx():
                 if control1_bus_device > -1:
                     self.is_va_controlled[control1_bus_device] = True
                 if control2_bus_device > -1:
@@ -955,7 +948,7 @@ class PfGeneralizedFormulation(PfFormulationTemplate):
                     vsc_pt_set.append(control2_magnitude)
 
 
-            elif control1 == ConverterControlType.Qac and control2 == ConverterControlType.Vm_dc:
+            elif control1 == ConverterControlType.Qac.idx() and control2 == ConverterControlType.Vm_dc.idx():
                 if control2_bus_device > -1:
                     self.is_vm_controlled[control2_bus_device] = True
                 if control1_branch_device > -1:
@@ -964,7 +957,7 @@ class PfGeneralizedFormulation(PfFormulationTemplate):
                     k_vsc_qt.append(control1_branch_device)
                     vsc_qt_set.append(control1_magnitude)
 
-            elif control1 == ConverterControlType.Qac and control2 == ConverterControlType.Vm_ac:
+            elif control1 == ConverterControlType.Qac.idx() and control2 == ConverterControlType.Vm_ac.idx():
                 if control2_bus_device > -1:
                     self.is_vm_controlled[control2_bus_device] = True
                 if control1_branch_device > -1:
@@ -973,7 +966,7 @@ class PfGeneralizedFormulation(PfFormulationTemplate):
                     k_vsc_qt.append(control1_branch_device)
                     vsc_qt_set.append(control1_magnitude)
 
-            elif control1 == ConverterControlType.Qac and control2 == ConverterControlType.Va_ac:
+            elif control1 == ConverterControlType.Qac.idx() and control2 == ConverterControlType.Va_ac.idx():
                 if control2_bus_device > -1:
                     self.is_va_controlled[control2_bus_device] = True
                 if control1_branch_device > -1:
@@ -982,12 +975,12 @@ class PfGeneralizedFormulation(PfFormulationTemplate):
                     k_vsc_qt.append(control1_branch_device)
                     vsc_qt_set.append(control1_magnitude)
 
-            elif control1 == ConverterControlType.Qac and control2 == ConverterControlType.Qac:
+            elif control1 == ConverterControlType.Qac.idx() and control2 == ConverterControlType.Qac.idx():
                 self.logger.add_error(
                     f"VSC control1 and control2 are the same for VSC indexed at {k},"
                     f" control1: {control1}, control2: {control2}")
 
-            elif control1 == ConverterControlType.Qac and control2 == ConverterControlType.Pdc:
+            elif control1 == ConverterControlType.Qac.idx() and control2 == ConverterControlType.Pdc.idx():
                 if control1_branch_device > -1:
                     u_vsc_pt.append(control1_branch_device)
                     k_vsc_qt.append(control1_branch_device)
@@ -997,7 +990,7 @@ class PfGeneralizedFormulation(PfFormulationTemplate):
                     k_vsc_pf.append(control2_branch_device)
                     vsc_pf_set.append(control2_magnitude)
 
-            elif control1 == ConverterControlType.Qac and control2 == ConverterControlType.Pac:
+            elif control1 == ConverterControlType.Qac.idx() and control2 == ConverterControlType.Pac.idx():
                 if control1_branch_device > -1:
                     u_vsc_pf.append(control1_branch_device)
                     k_vsc_qt.append(control1_branch_device)
@@ -1008,7 +1001,7 @@ class PfGeneralizedFormulation(PfFormulationTemplate):
                     vsc_pt_set.append(control2_magnitude)
 
 
-            elif control1 == ConverterControlType.Pdc and control2 == ConverterControlType.Vm_dc:
+            elif control1 == ConverterControlType.Pdc.idx() and control2 == ConverterControlType.Vm_dc.idx():
                 if control2_bus_device > -1:
                     self.is_vm_controlled[control2_bus_device] = True
                 if control1_branch_device > -1:
@@ -1017,7 +1010,7 @@ class PfGeneralizedFormulation(PfFormulationTemplate):
                     k_vsc_pf.append(control1_branch_device)
                     vsc_pf_set.append(control1_magnitude)
 
-            elif control1 == ConverterControlType.Pdc and control2 == ConverterControlType.Vm_ac:
+            elif control1 == ConverterControlType.Pdc.idx() and control2 == ConverterControlType.Vm_ac.idx():
                 if control2_bus_device > -1:
                     self.is_vm_controlled[control2_bus_device] = True
                 if control1_branch_device > -1:
@@ -1026,7 +1019,7 @@ class PfGeneralizedFormulation(PfFormulationTemplate):
                     k_vsc_pf.append(control1_branch_device)
                     vsc_pf_set.append(control1_magnitude)
 
-            elif control1 == ConverterControlType.Pdc and control2 == ConverterControlType.Va_ac:
+            elif control1 == ConverterControlType.Pdc.idx() and control2 == ConverterControlType.Va_ac.idx():
                 if control2_bus_device > -1:
                     self.is_va_controlled[control2_bus_device] = True
                 if control1_branch_device > -1:
@@ -1035,7 +1028,7 @@ class PfGeneralizedFormulation(PfFormulationTemplate):
                     k_vsc_pf.append(control1_branch_device)
                     vsc_pf_set.append(control1_magnitude)
 
-            elif control1 == ConverterControlType.Pdc and control2 == ConverterControlType.Qac:
+            elif control1 == ConverterControlType.Pdc.idx() and control2 == ConverterControlType.Qac.idx():
                 if control1_branch_device > -1:
                     k_vsc_pf.append(control1_branch_device)
                     vsc_pf_set.append(control1_magnitude)
@@ -1045,12 +1038,12 @@ class PfGeneralizedFormulation(PfFormulationTemplate):
                     k_vsc_qt.append(control2_branch_device)
                     vsc_qt_set.append(control2_magnitude)
 
-            elif control1 == ConverterControlType.Pdc and control2 == ConverterControlType.Pdc:
+            elif control1 == ConverterControlType.Pdc.idx() and control2 == ConverterControlType.Pdc.idx():
                 self.logger.add_error(
                     f"VSC control1 and control2 are the same for VSC indexed at {k},"
                     f" control1: {control1}, control2: {control2}")
 
-            elif control1 == ConverterControlType.Pdc and control2 == ConverterControlType.Pac:
+            elif control1 == ConverterControlType.Pdc.idx() and control2 == ConverterControlType.Pac.idx():
                 if control1_branch_device > -1:
                     u_vsc_pt.append(control1_branch_device)
                     u_vsc_qt.append(control1_branch_device)
@@ -1058,7 +1051,7 @@ class PfGeneralizedFormulation(PfFormulationTemplate):
                     vsc_pt_set.append(control1_magnitude)
 
 
-            elif control1 == ConverterControlType.Pac and control2 == ConverterControlType.Vm_dc:
+            elif control1 == ConverterControlType.Pac.idx() and control2 == ConverterControlType.Vm_dc.idx():
                 if control2_bus_device > -1:
                     self.is_vm_controlled[control2_bus_device] = True
                 if control1_branch_device > -1:
@@ -1067,7 +1060,7 @@ class PfGeneralizedFormulation(PfFormulationTemplate):
                     k_vsc_pf.append(control1_branch_device)
                     vsc_pf_set.append(control1_magnitude)
 
-            elif control1 == ConverterControlType.Pac and control2 == ConverterControlType.Vm_ac:
+            elif control1 == ConverterControlType.Pac.idx() and control2 == ConverterControlType.Vm_ac.idx():
                 if control2_bus_device > -1:
                     self.is_vm_controlled[control2_bus_device] = True
                 if control1_branch_device > -1:
@@ -1076,7 +1069,7 @@ class PfGeneralizedFormulation(PfFormulationTemplate):
                     k_vsc_pt.append(control1_branch_device)
                     vsc_pt_set.append(control1_magnitude)
 
-            elif control1 == ConverterControlType.Pac and control2 == ConverterControlType.Va_ac:
+            elif control1 == ConverterControlType.Pac.idx() and control2 == ConverterControlType.Va_ac.idx():
                 if control2_bus_device > -1:
                     self.is_va_controlled[control2_bus_device] = True
                 if control1_branch_device > -1:
@@ -1085,7 +1078,7 @@ class PfGeneralizedFormulation(PfFormulationTemplate):
                     k_vsc_pt.append(control1_branch_device)
                     vsc_pt_set.append(control1_magnitude)
 
-            elif control1 == ConverterControlType.Pac and control2 == ConverterControlType.Qac:
+            elif control1 == ConverterControlType.Pac.idx() and control2 == ConverterControlType.Qac.idx():
                 if control1_branch_device > -1:
                     u_vsc_pf.append(control1_branch_device)
                     k_vsc_pt.append(control1_branch_device)
@@ -1093,14 +1086,14 @@ class PfGeneralizedFormulation(PfFormulationTemplate):
                     vsc_qt_set.append(control2_magnitude)
                     vsc_pt_set.append(control1_magnitude)
 
-            elif control1 == ConverterControlType.Pac and control2 == ConverterControlType.Pdc:
+            elif control1 == ConverterControlType.Pac.idx() and control2 == ConverterControlType.Pdc.idx():
                 if control1_branch_device > -1:
                     u_vsc_pf.append(control1_branch_device)
                     u_vsc_qt.append(control1_branch_device)
                     k_vsc_pt.append(control1_branch_device)
                     vsc_pt_set.append(control1_magnitude)
 
-            elif control1 == ConverterControlType.Pac and control2 == ConverterControlType.Pac:
+            elif control1 == ConverterControlType.Pac.idx() and control2 == ConverterControlType.Pac.idx():
                 self.logger.add_error(
                     f"VSC control1 and control2 are the same for VSC indexed at {k},"
                     f" control1: {control1}, control2: {control2}")
@@ -1131,7 +1124,7 @@ class PfGeneralizedFormulation(PfFormulationTemplate):
             self.is_q_controlled[self.nc.hvdc_data.F[k]] = True
             self.is_q_controlled[self.nc.hvdc_data.T[k]] = True
 
-            if self.nc.hvdc_data.control_mode[k] == HvdcControlType.type_0_free:
+            if self.nc.hvdc_data.control_mode_int[k] == HvdcControlType.type_0_free.idx():
                 hvdc_droop_idx.append(k)
 
         # self.hvdc = np.array(hvdc, dtype=int)
@@ -1530,7 +1523,7 @@ class PfGeneralizedFormulation(PfFormulationTemplate):
                         m_fixed_idx.append(i)
 
                         # self.tap_module_control_mode[k] = TapModuleControl.fixed
-                        self.nc.active_branch_data.tap_module_control_mode[k] = TapModuleControl.fixed
+                        self.nc.active_branch_data.tap_module_control_mode[k] = TapModuleControl.fixed.idx()
                         self.nc.active_branch_data.tap_module[k] = self.m[i]
 
                         branch_ctrl_change = True
@@ -1543,7 +1536,7 @@ class PfGeneralizedFormulation(PfFormulationTemplate):
                         m_fixed_idx.append(i)
 
                         # self.tap_module_control_mode[k] = TapModuleControl.fixed
-                        self.nc.active_branch_data.tap_module_control_mode[k] = TapModuleControl.fixed
+                        self.nc.active_branch_data.tap_module_control_mode[k] = TapModuleControl.fixed.idx()
                         self.nc.active_branch_data.tap_module[k] = self.m[i]
 
                         branch_ctrl_change = True
@@ -1565,7 +1558,7 @@ class PfGeneralizedFormulation(PfFormulationTemplate):
                         self.tau[i] = self.nc.active_branch_data.tap_angle_min[k]
                         tau_fixed_idx.append(i)
 
-                        self.nc.active_branch_data.tap_phase_control_mode[k] = TapPhaseControl.fixed
+                        self.nc.active_branch_data.tap_phase_control_mode[k] = TapPhaseControl.fixed.idx()
                         self.nc.active_branch_data.tap_angle[k] = self.tau[i]
 
                         branch_ctrl_change = True
@@ -1577,7 +1570,7 @@ class PfGeneralizedFormulation(PfFormulationTemplate):
                         self.tau[i] = self.nc.active_branch_data.tap_angle_max[k]
                         tau_fixed_idx.append(i)
 
-                        self.nc.active_branch_data.tap_phase_control_mode[k] = TapPhaseControl.fixed
+                        self.nc.active_branch_data.tap_phase_control_mode[k] = TapPhaseControl.fixed.idx()
                         self.nc.active_branch_data.tap_angle[k] = self.tau[i]
 
                         branch_ctrl_change = True
