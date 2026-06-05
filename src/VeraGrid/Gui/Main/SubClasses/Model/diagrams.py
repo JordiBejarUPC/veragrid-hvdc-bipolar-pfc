@@ -2889,11 +2889,12 @@ class DiagramsMain(CompiledArraysMain):
                 else:
                     pass
                 # after creating a new events group or not, open eitherway the Events dialogue
+                rms_event_parameters, mode_parameter_uids = collect_block_runtime_event_parameters(target_device.rms_model)
                 rms_events_dialog = DynamicEventDialogue(circuit=self.circuit,
-                                                         parameters_list=[var for var in
-                                                                      target_device.rms_model.event_dict.keys()],
+                                                         parameters_list=rms_event_parameters,
                                                          target_device_name=target_device.type_name + ": " + target_device.name,
-                                                         mode=mode)
+                                                         mode=mode,
+                                                         mode_parameter_uids=mode_parameter_uids)
 
                 if rms_events_dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
 

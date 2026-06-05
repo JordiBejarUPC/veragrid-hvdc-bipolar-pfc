@@ -1048,10 +1048,11 @@ def fill_generator_parent(
     data.scalable[k] = elm.scalable
 
     data.p[k] = elm.get_P_at(t_idx)
-    data.q[k] = elm.get_Q_at(t_idx)
     data.active[k] = elm.get_active_at(t_idx)
 
     data.v[k] = elm.get_Vset_at(t_idx)
+    data.k_droop[k] = elm.k_droop
+    data.dead_band[k] = elm.dead_band
     data.pmax[k] = elm.get_Pmax_at(t_idx)
     data.pmin[k] = elm.get_Pmin_at(t_idx)
 
@@ -1089,6 +1090,17 @@ def fill_generator_parent(
                                     bus_voltage_used=bus_voltage_used,
                                     candidate_Vm=elm.Vset,
                                     logger=logger)
+            # we pick this value to initialize
+            data.q[k] = elm.get_Q_at(t_idx)
+
+        elif elm.control_mode == GeneratorControlMode.Q:
+            data.q[k] = elm.get_Q_at(t_idx)
+
+        elif elm.control_mode == GeneratorControlMode.QVDroop:
+            # Q will be computed by the droop
+            data.q[k] = 0.0
+        else:
+            pass
 
     if elm.use_kw:
         # pass kW to MW

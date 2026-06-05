@@ -38,6 +38,8 @@ class GeneratorData:
         self.q: Vec = np.zeros(nelm, dtype=float)
 
         self.v: Vec = np.zeros(nelm, dtype=float)
+        self.k_droop: Vec = np.zeros(nelm, dtype=float)
+        self.dead_band: Vec = np.zeros(nelm, dtype=float)
 
         self.qmin: Vec = np.zeros(nelm, dtype=float)
         self.qmax: Vec = np.zeros(nelm, dtype=float)
@@ -120,6 +122,8 @@ class GeneratorData:
         data.p3_star = self.p3_star[elm_idx_3]
         data.q = self.q[elm_idx]
         data.v = self.v[elm_idx]
+        data.k_droop = self.k_droop[elm_idx]
+        data.dead_band = self.dead_band[elm_idx]
 
         data.qmin = self.qmin[elm_idx]
         data.qmax = self.qmax[elm_idx]
@@ -227,6 +231,8 @@ class GeneratorData:
         data.p3_star = self.p3_star.copy()
         data.q = self.q.copy()
         data.v = self.v.copy()
+        data.k_droop = self.k_droop.copy()
+        data.dead_band = self.dead_band.copy()
 
         data.qmin = self.qmin.copy()
         data.qmax = self.qmax.copy()

@@ -43,6 +43,7 @@ from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.fmu_template import FmuTemplate
+from VeraGridEngine.Templates.predefined_blocks import signal_pair
 from VeraGridEngine.Templates.BasicBlockCatalog import BasicBlockTemplateDescriptor
 from VeraGridEngine.Templates.BasicBlockCatalog import get_editor_ready_basic_block_catalog_descriptors
 from VeraGridEngine.Templates.BasicBlockCatalog import load_basic_block_catalog_template
@@ -82,6 +83,7 @@ from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_rlc_com
 from VeraGridEngine.Templates.Emt.load_zip_emt_template import get_load_ZIP_emt_template
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Utils.Symbolic.block import Block, find_connections
+from VeraGridEngine.Utils.Symbolic.equation_decomposer import EquationDecomposer
 from VeraGrid.Gui.DynamicModelEditor.block_editor import Ui_BlockEditorWindow
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_utilities import create_block_of_type, create_generic_block, \
     create_emt_wizard_block
@@ -122,8 +124,11 @@ from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_runtime import set_jmarti_
 from dataclasses import dataclass
 
 from VeraGridEngine.Utils.Symbolic.static_parameter_mapping import devices_static_params_mapping
+import VeraGrid.ThirdParty.darkdetect as darkdetect
 
 # from VeraGridEngine.Templates.Rms.common import create_block_of_type, create_generic_block, create_emt_wizard_block
+
+
 
 BLOCK_BORDER: QColor = QColor("#36536b")
 BLOCK_BORDER_SELECTED: QColor = QColor("#cc6f2c")
@@ -934,8 +939,19 @@ def is_supported_library_payload(item_data: object) -> bool:
         return True
     elif isinstance(item_data, (RmsModelTemplate, EmtModelTemplate, FmuTemplate)):
         return True
+    elif isinstance(item_data, SignalPairPayload):
+        return True
     else:
         return False
+
+
+@dataclass(frozen=True)
+class SignalPairPayload:
+    """
+    Marker payload for the signal pair tool that creates two connected blocks
+    (one input, one output) sharing the same variable.
+    """
+    pass
 
 
 @dataclass(frozen=True)
@@ -3815,6 +3831,275 @@ class GenericBlockItem(QGraphicsRectItem):
         return super().itemChange(change, value)
 
 
+class PairedItem(QGraphicsRectItem):
+    """
+    A block item that is paired with another PairedItem.
+    Has the same functionality as GenericBlockItem plus the pairing feature.
+    When refresh_port_metadata is called, it also refreshes the paired item's ports.
+    """
+
+    def __init__(self,
+                 var_factory: VarFactory,
+                 subsys: Block,
+                 api_object,
+                 mode: DynamicSimulationMode,
+                 name: str,
+                 paired_item: PairedItem | None = None,
+                 position_changed_callback=None):
+        super().__init__(0, 0, 100, 60)
+
+        self._paired_item: PairedItem | None = paired_item
+        self.var_factory = var_factory
+        self.subsys = subsys
+        self.mode = mode
+        self.name: str = name
+        self.api_object = api_object
+        self.position_changed_callback = position_changed_callback
+
+        self.name_item = QGraphicsTextItem(self.subsys.name, self)
+        self.name_item.setDefaultTextColor(BLOCK_TITLE)
+        name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 9)
+        name_font.setBold(True)
+        self.name_item.setFont(name_font)
+        self.name_item.setPos(6, 4)
+
+        self.inputs: List[PortItem] = list()
+        self.outputs: List[PortItem] = list()
+        self.input_labels: List[QGraphicsTextItem] = list()
+        self.output_labels: List[QGraphicsTextItem] = list()
+
+        self.name_item.setDefaultTextColor(BLOCK_TITLE)
+
+        self.resize_handle: ResizeHandle | None = None
+        self.resizing_from_handle = False
+        self._suppress_resize: bool = False
+        self.setBrush(QBrush(DEFAULT_BLOCK_FILL))
+        self.setPen(QPen(Qt.GlobalColor.transparent, 0))
+        self.setFlags(
+            QGraphicsItem.GraphicsItemFlag.ItemIsMovable |
+            QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
+            QGraphicsItem.GraphicsItemFlag.ItemSendsScenePositionChanges
+        )
+        self.setAcceptHoverEvents(True)
+
+        name_font = QtGui.QFont("DejaVu Sans", 9)
+        name_font.setBold(True)
+        self.name_item.setFont(name_font)
+        self.name_item.setPos(6, 4)
+
+        n_inputs = len(self.subsys.in_vars)
+        n_outputs = len(self.subsys.out_vars)
+
+        self.inputs = [PortItem(self, True, i, n_inputs) for i in range(n_inputs)]
+        self.outputs = [PortItem(self, False, i, n_outputs) for i in range(n_outputs)]
+        self.input_labels = [self.create_port_label_item() for _ in range(n_inputs)]
+        self.output_labels = [self.create_port_label_item() for _ in range(n_outputs)]
+
+        self.refresh_port_metadata()
+
+        self.resize_handle = ResizeHandle(self)
+
+        self.resize_to_content()
+
+    def set_paired_item(self, paired_item: PairedItem) -> None:
+        self._paired_item = paired_item
+
+    def set_subsystem(self, block: Block) -> None:
+        self.subsys = block
+
+    def build_item(self) -> None:
+        if self.subsys is not None:
+            self.name_item = QGraphicsTextItem(self.name, self)
+            self.name_item.setDefaultTextColor(BLOCK_TITLE)
+            name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 9)
+            name_font.setBold(True)
+            self.name_item.setFont(name_font)
+            self.name_item.setPos(6, 4)
+
+            n_inputs: int = len(self.subsys.in_vars)
+            n_outputs: int = len(self.subsys.out_vars)
+
+            self.inputs = [PortItem(self, True, i, n_inputs) for i in range(n_inputs)]
+            self.outputs = [PortItem(self, False, i, n_outputs) for i in range(n_outputs)]
+            self.input_labels = [self.create_port_label_item() for _ in range(n_inputs)]
+            self.output_labels = [self.create_port_label_item() for _ in range(n_outputs)]
+            self.refresh_port_metadata()
+
+            self.resize_handle = ResizeHandle(self)
+            self.resize_to_content()
+        else:
+            pass
+
+    def resize_block(self, width, height):
+        self.prepareGeometryChange()
+        min_width: float
+        min_height: float
+        min_width, min_height = self.get_minimum_block_size()
+        QGraphicsRectItem.setRect(self, 0, 0, max(width, min_width), max(height, min_height))
+        self.update_ports()
+        self.update_handle_position()
+
+    def update_handle_position(self):
+        rect = self.rect()
+        self.resizing_from_handle = False
+        self.resize_handle.setPos(rect.width(), rect.height())
+        self.resizing_from_handle = True
+
+    def paint(self,
+              painter: QPainter,
+              option: QtWidgets.QStyleOptionGraphicsItem,
+              widget: Optional[QWidget] = None) -> None:
+        rect: QtCore.QRectF = self.rect()
+        outer_rect: QtCore.QRectF = rect.adjusted(2, 2, -2, -2)
+        shadow_rect: QtCore.QRectF = outer_rect.translated(2.5, 3.0)
+        body_rect: QtCore.QRectF = outer_rect
+        border_color: QColor = BLOCK_BORDER_SELECTED if self.isSelected() else BLOCK_BORDER
+        fill_color: QColor = self.brush().color()
+        body_path: QPainterPath = QPainterPath()
+        shadow_path: QPainterPath = QPainterPath()
+
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+
+        shadow_path.addRoundedRect(shadow_rect, 12.0, 12.0)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QBrush(BLOCK_SHADOW))
+        painter.drawPath(shadow_path)
+
+        body_path.addRoundedRect(body_rect, 12.0, 12.0)
+        painter.setBrush(QBrush(fill_color))
+        painter.drawPath(body_path)
+
+        painter.setPen(QPen(border_color, 1.6))
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.drawRoundedRect(body_rect, 12.0, 12.0)
+
+    def _set_rect_internal(self, w, h):
+        QGraphicsRectItem.setRect(self, 0, 0, w, h)
+        self.update_ports()
+        self.update_handle_position()
+
+    def set_rectangle(self, x, y, w, h):
+        if not self._suppress_resize:
+            self._set_rect_internal(w, h)
+
+    def get_minimum_block_size(self) -> tuple[float, float]:
+        port_rows: int = max(len(self.inputs), len(self.outputs), 1)
+        min_height: float = max(
+            BLOCK_MIN_HEIGHT,
+            BLOCK_HEADER_HEIGHT + BLOCK_PORT_SECTION_PADDING + port_rows * BLOCK_PORT_ROW_HEIGHT
+        )
+
+        name_width = len(self.subsys.name) * 7
+        max_label_length = 0
+        if self.subsys:
+            for var in self.subsys.in_vars:
+                max_label_length = max(max_label_length, len(var.name))
+            for var in self.subsys.out_vars:
+                max_label_length = max(max_label_length, len(var.name))
+
+        port_width = max_label_length * 7
+        min_width = max(BLOCK_MIN_WIDTH, name_width + 14, port_width + 28)
+
+        return min_width, min_height
+
+    def resize_to_content(self) -> None:
+        self.prepareGeometryChange()
+        min_width: float
+        min_height: float
+        min_width, min_height = self.get_minimum_block_size()
+        QGraphicsRectItem.setRect(self, 0, 0, min_width, min_height)
+        self.update_ports()
+        self.update_handle_position()
+
+    def create_port_label_item(self) -> QGraphicsTextItem:
+        label_item: QGraphicsTextItem = QGraphicsTextItem("", self)
+        label_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 9)
+        label_item.setFont(label_font)
+        label_item.setDefaultTextColor(PORT_LABEL_COLOR)
+        label_item.setZValue(4)
+        return label_item
+
+    def refresh_port_metadata(self) -> None:
+        """
+        Refresh tooltips and visible labels for all ports.
+        Also refreshes the paired item's ports if one is set.
+        """
+        i: int
+        port: PortItem
+        label_item: QGraphicsTextItem
+        variable_name: str
+
+        if self.subsys is not None:
+            for i, port in enumerate(self.inputs):
+                if port.base_var is None:
+                    port.base_var = self.subsys.in_vars[i]
+                else:
+                    pass
+
+                variable_name = self.subsys.in_vars[i].name
+                port.setToolTip(f"Input {i}: {variable_name}")
+                label_item = self.input_labels[i]
+                label_item.setPlainText(truncate_port_label(variable_name))
+
+            for i, port in enumerate(self.outputs):
+                if port.base_var is None:
+                    port.base_var = self.subsys.out_vars[i]
+                else:
+                    pass
+
+                variable_name = self.subsys.out_vars[i].name
+                port.setToolTip(f"Output {i}: {variable_name}")
+                label_item = self.output_labels[i]
+                label_item.setPlainText(truncate_port_label(variable_name))
+        else:
+            pass
+
+        if self._paired_item is not None:
+            other = self._paired_item
+            other._paired_item = None
+            other.refresh_port_metadata()
+            other._paired_item = self
+
+    def update_ports(self):
+        for i, port in enumerate(self.inputs):
+            spacing = self.rect().height() / (len(self.inputs) + 1)
+            port.setPos(0, spacing * (i + 1))
+        for i, port in enumerate(self.outputs):
+            spacing = self.rect().height() / (len(self.outputs) + 1)
+            port.setPos(self.rect().width(), spacing * (i + 1))
+
+        for i, label_item in enumerate(self.input_labels):
+            port = self.inputs[i]
+            label_item.setPos(14.0, port.pos().y() - 8.0)
+
+        for i, label_item in enumerate(self.output_labels):
+            port = self.outputs[i]
+            label_width: float = label_item.boundingRect().width()
+            label_item.setPos(self.rect().width() - label_width - 14.0, port.pos().y() - 8.0)
+
+        self.update_handle_position()
+        for port in self.inputs + self.outputs:
+            if port.connections:
+                for conn in port.connections:
+                    conn.update_path()
+
+    def hoverEnterEvent(self, event):
+        QApplication.setOverrideCursor(Qt.CursorShape.OpenHandCursor)
+
+    def hoverLeaveEvent(self, event):
+        QApplication.restoreOverrideCursor()
+
+    def itemChange(self, change, value):
+        if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:
+            if self.position_changed_callback is not None:
+                self.position_changed_callback(value.x(), value.y())
+            for port in self.inputs + self.outputs:
+                if port.connections:
+                    for conn in port.connections:
+                        conn.update_path()
+        return super().itemChange(change, value)
+
+
 class BlockItem(QGraphicsRectItem):
     """
     Graphics item representing a symbolic block.
@@ -3878,6 +4163,34 @@ class BlockItem(QGraphicsRectItem):
         else:
             pass
 
+        if self._should_offer_decompose():
+            reply = QtWidgets.QMessageBox.question(
+                None,
+                "Descomposición automática",
+                "Este bloque tiene ecuaciones pero no contiene sub-bloques.\n"
+                "¿Desea descomponerlo en un diagrama de bloques?\n\n"
+                'Seleccione "Sí" para crear sub-bloques a partir de las ecuaciones.\n'
+                'Seleccione "No" para ver las ecuaciones en tabla.',
+                QtWidgets.QMessageBox.StandardButton.Yes,
+                QtWidgets.QMessageBox.StandardButton.No,
+            )
+            if reply == QtWidgets.QMessageBox.StandardButton.Yes:
+                try:
+                    decomposer = EquationDecomposer(self.var_factory)
+                    decomposed = decomposer.decompose(self.subsys)
+                    preserved_uid = self.subsys.uid
+                    copy_block_state(source_block=decomposed, target_block=self.subsys)
+                    self.subsys.uid = preserved_uid
+                    if self.editor_window is not None:
+                        self.editor_window.close()
+                        self.editor_window = None
+                except Exception as exc:
+                    QtWidgets.QMessageBox.warning(
+                        None,
+                        "Descomposición",
+                        f"No se pudo descomponer el bloque:\n{exc}",
+                    )
+
         if self.editor_window is None:
             self.editor_window = DynamicBlockEditorGUI(
                 var_factory=self.var_factory,
@@ -3892,6 +4205,18 @@ class BlockItem(QGraphicsRectItem):
         self.editor_window.show()
 
         super().mouseDoubleClickEvent(event)
+
+    def _should_offer_decompose(self) -> bool:
+        if self.subsys is None:
+            return False
+        if self.subsys.children:
+            return False
+        if not self.subsys.algebraic_eqs and not self.subsys.state_eqs:
+            return False
+        modal_kind, _ = get_modal_template_metadata(self.subsys)
+        if modal_kind is not None:
+            return False
+        return True
 
 
     def set_subsystem(self, block: Block) -> None:
@@ -4420,6 +4745,27 @@ class DiagramScene(QGraphicsScene):
         else:
             pass
 
+    @staticmethod
+    def _is_decomposable(item: BlockItem | GenericBlockItem) -> bool:
+        block = item.subsys
+        if block is None:
+            return False
+        if block.children:
+            return False
+        has_eqs = bool(block.algebraic_eqs) or bool(block.state_eqs)
+        if not has_eqs:
+            return False
+        modal_kind, _ = get_modal_template_metadata(block)
+        if modal_kind is not None:
+            return False
+        return True
+
+    def decompose_context_item(self) -> None:
+        if self.context_item is not None and self.context_item.subsys is not None:
+            self.editor.decompose_block_in_place(self.context_item)
+        else:
+            pass
+
     def modify_context_item_template(self) -> None:
         """
         Reopen the modal configuration for the selected block when available.
@@ -4462,6 +4808,11 @@ class DiagramScene(QGraphicsScene):
                     edit_action: QAction = QAction("Edit Hierarchy", menu)
                     edit_action.triggered.connect(self.edit_context_item)
                     menu.addAction(edit_action)
+
+                    if self._is_decomposable(item):
+                        decomp_action: QAction = QAction("Descomponer en diagrama de bloques", menu)
+                        decomp_action.triggered.connect(self.decompose_context_item)
+                        menu.addAction(decomp_action)
                 else:
                     pass
 
@@ -4498,7 +4849,9 @@ class DiagramScene(QGraphicsScene):
                 if not item.is_input:
                     self.source_port = item
                     path: QPainterPath = QPainterPath(item.scenePos())
-                    self.temp_line = self.addPath(path, QPen(Qt.PenStyle.DashLine))
+                    IS_DARK = darkdetect.theme() == "Dark"
+                    pen: QPen = QPen(QColor("white"), 1, Qt.PenStyle.DashLine) if IS_DARK else QPen(Qt.PenStyle.DashLine)
+                    self.temp_line = self.addPath(path, pen)
                     return
                 else:
                     pass
@@ -4507,7 +4860,9 @@ class DiagramScene(QGraphicsScene):
 
                 self.source_port = item
                 path: QPainterPath = QPainterPath(item.scenePos())
-                self.temp_line = self.addPath(path, QPen(Qt.PenStyle.DashLine))
+                IS_DARK = darkdetect.theme() == "Dark"
+                pen: QPen = QPen(QColor("white"), 1, Qt.PenStyle.DashLine) if IS_DARK else QPen(Qt.PenStyle.DashLine)
+                self.temp_line = self.addPath(path, pen)
                 return
 
             else:
@@ -5066,6 +5421,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
+        self.tree_structure["Tools"] = [
+            LibraryLeafSpec("Signal Pair", SignalPairPayload()),
+        ]
+
         if self.templates_list:
             self.tree_structure["Templates"] = {
                 "Available": [LibraryLeafSpec(template.name, template, template.name) for template in
@@ -5180,7 +5539,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             # here we add the connection variables to the main block
             if self.main_editor:
                 self.add_connection_vars()
-                self.add_api_obj_mapping()
+                # self.add_api_obj_mapping()
             self.add_connection_items()
         self.rebuild_scene_from_diagram()
 
@@ -5378,7 +5737,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         return model
 
     def get_library_payload_from_mime_data(self,
-                                           mime_data: QtCore.QMimeData) -> BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | None:
+                                           mime_data: QtCore.QMimeData) -> BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | SignalPairPayload | None:
         """
         Decode the dragged library payload from the tree-view mime payload.
 
@@ -5397,6 +5756,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             elif isinstance(payload, BasicBlockTemplateDescriptor):
                 return payload
             elif isinstance(payload, (RmsModelTemplate, EmtModelTemplate, FmuTemplate)):
+                return payload
+            elif isinstance(payload, SignalPairPayload):
                 return payload
             else:
                 return None
@@ -8927,12 +9288,16 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         return self.create_template_block_item(template=template, x_pos=x_pos, y_pos=y_pos)
 
     def create_library_payload_item(self,
-                                    payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate,
+                                    payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | SignalPairPayload,
                                     x_pos: float,
                                     y_pos: float) -> GenericBlockItem | None:
         """
         Materialize one library payload on the diagram scene.
         """
+
+        if isinstance(payload, SignalPairPayload):
+            items = self.create_signal_pair_item(x_pos=x_pos, y_pos=y_pos)
+            return items[0] if items else None
 
         if isinstance(payload, BlockType) and payload == BlockType.GENERIC:
             return self.create_generic_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
@@ -9099,6 +9464,67 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     #         return self.create_template_block_item(template=payload, x_pos=x_pos, y_pos=y_pos)
     #     else:
     #         return None
+
+    def create_signal_pair_item(self,
+                                x_pos: float,
+                                y_pos: float) -> tuple[GenericBlockItem, GenericBlockItem] | None:
+        """
+        Create a signal pair (input + output blocks sharing the same variable).
+
+        :param x_pos: X coordinate for the drop position.
+        :param y_pos: Y coordinate for the drop position.
+        :return: Tuple of (input_item, output_item) or None on failure.
+        """
+        count: int = self.block_counters.get("signal_pair", 0) + 1
+        self.block_counters["signal_pair"] = count
+        item_name: str = str(count)
+
+        blk_in, blk_out = signal_pair(self.var_factory, item_name)
+
+        self.main_block.add(blk_in)
+        self.main_block.add(blk_out)
+
+        item_in = PairedItem(
+            var_factory=self.var_factory,
+            subsys=blk_in,
+            api_object=self.api_object,
+            mode=self.mode,
+            name=blk_in.name,
+            position_changed_callback=self._build_position_changed_callback(blk_in.uid)
+        )
+        item_in.setPos(QtCore.QPointF(x_pos - 75.0, y_pos))
+        self.scene.addItem(item_in)
+        self.diagram.add_node(
+            name=blk_in.name,
+            x=x_pos - 75.0,
+            y=y_pos,
+            tpe="signal_in",
+            device_uid=blk_in.uid
+        )
+
+        item_out = PairedItem(
+            var_factory=self.var_factory,
+            subsys=blk_out,
+            api_object=self.api_object,
+            mode=self.mode,
+            name=blk_out.name,
+            position_changed_callback=self._build_position_changed_callback(blk_out.uid)
+        )
+        item_out.setPos(QtCore.QPointF(x_pos + 75.0, y_pos))
+        self.scene.addItem(item_out)
+        self.diagram.add_node(
+            name=blk_out.name,
+            x=x_pos + 75.0,
+            y=y_pos,
+            tpe="signal_out",
+            device_uid=blk_out.uid
+        )
+
+        item_in.set_paired_item(item_out)
+        item_out.set_paired_item(item_in)
+
+        self.mark_unapplied_changes()
+        return item_in, item_out
 
     def remove_connection_item(self, item: ConnectionItem) -> None:
         """
@@ -11126,6 +11552,31 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         editor_window.raise_()
         editor_window.activateWindow()
 
+    def decompose_block_in_place(self, item: BlockItem | GenericBlockItem) -> None:
+        if item.subsys is None:
+            return
+
+        block = item.subsys
+        if block.children:
+            return
+        if not block.algebraic_eqs and not block.state_eqs:
+            return
+
+        try:
+            decomposer = EquationDecomposer(self.var_factory)
+            decomposed = decomposer.decompose(block)
+            preserved_uid = block.uid
+            copy_block_state(source_block=decomposed, target_block=block)
+            block.uid = preserved_uid
+            self.rebuild_scene_from_diagram()
+            self.mark_unapplied_changes()
+        except Exception as exc:
+            QtWidgets.QMessageBox.warning(
+                self,
+                "Descomposición",
+                f"No se pudo descomponer el bloque:\n{exc}",
+            )
+
     def modify_scene_item_template(self, item: BlockItem | GenericBlockItem | ConnectionItem) -> None:
         """
         Reopen the modal configuration of a block item when metadata is available.
@@ -12253,7 +12704,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param event:
         :return:
         """
-        payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | None = self.get_library_payload_from_mime_data(
+        payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | SignalPairPayload | None = self.get_library_payload_from_mime_data(
             event.mimeData()
         )
 
@@ -12269,7 +12720,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param event:
         :return:
         """
-        payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | None = self.get_library_payload_from_mime_data(
+        payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | SignalPairPayload | None = self.get_library_payload_from_mime_data(
             event.mimeData()
         )
 
@@ -12285,7 +12736,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param event:
         :return:
         """
-        payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | None = self.get_library_payload_from_mime_data(
+        payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | SignalPairPayload | None = self.get_library_payload_from_mime_data(
             event.mimeData()
         )
         scene_position: QtCore.QPointF = self.ui.graphicsView.mapToScene(

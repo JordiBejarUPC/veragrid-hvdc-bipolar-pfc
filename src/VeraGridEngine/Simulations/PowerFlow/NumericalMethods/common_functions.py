@@ -122,8 +122,7 @@ def voltage_q_droop(ut: complex,
                     droop: float,
                     Q_min: float,
                     Q_max: float,
-                    S_base: float
-                    ):
+                    S_base: float):
     """
     Find the actual reactive power output for generators controlled with a voltage droop.
     :param ut: Actual voltage value at the terminal [pu]
@@ -170,7 +169,7 @@ def voltage_pdc_droop(ut: complex,
                       droop: float,
                       P_min: float,
                       P_max: float,
-                      S_base: float):
+                      S_base: float) -> float:
     """
     Find the actual DC power output for converters controlled with a voltage droop.
 
@@ -212,7 +211,7 @@ def voltage_pdc_droop(ut: complex,
 
 
 @nb.njit(cache=True, fastmath=True)
-def polar_to_rect(Vm, Va) -> CxVec:
+def polar_to_rect(Vm: Vec, Va: Vec) -> CxVec:
     """
     Convert polar to rectangular coordinates
     :param Vm: Module
