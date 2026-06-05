@@ -129,11 +129,24 @@ X_trf_pu = 1.0 / 10.0
 # The EMT template implements the shunt only on the "to" side, while the
 # VeraGrid static line ``b`` is a symmetric pi-line susceptance used for PF
 # and EMT initialization. Keep the matching total susceptance here.
-B_sh_pu = 2.0 / 15.0
+# B_sh_pu = 2.0 / 15.0
+B_sh_pu = 1.0 / 15.0
 line0 = gce.Line(name="line0", bus_from=bus0, bus_to=bus1, r=R_trf_pu, x=X_trf_pu, b=B_sh_pu, rate=Sb)
 
 # load
-P_target = 1.6 #MVA
+P_dc_pu = 0.8
+R_f_pu = 0.1 / 10.0
+
+# Initial PF-based converter currents in pu.
+i_A0 = 0.030786800783117237
+i_B0 = 0.31277189836412106
+i_C0 = -0.34355869914723824
+
+P_loss_f_pu = R_f_pu * (i_A0*i_A0 + i_B0*i_B0 + i_C0*i_C0)
+
+P_load_pu = P_dc_pu + P_loss_f_pu
+# P_target = P_load_pu * 2.0  # MW, because Sb = 2 MVA
+P_target = 1.6
 load = gce.Load(name="load",P = P_target, P1= P_target/3, P2= P_target/3, P3= P_target/3, Q =0.0, Q1= 0.0, Q2= 0.0, Q3= 0.0)
 load.conn = ShuntConnectionType.GroundedStar
 
@@ -220,11 +233,11 @@ print(res.get_branch_df())
 
 
 options = EmtOptions(time_step = 1e-6,
-                     simulation_time =  0.003, # s
+                     simulation_time =  0.05, # s
                      tolerance = 1e-6,
-                     solver_type = EmtSolverTypes.StructuralAD,
+                     solver_type = EmtSolverTypes.StructuralCompiled,
                      # initialization_method = EmtInitializationMethod.PseudoTransient,
-                     initialization_method = EmtInitializationMethod.ConsistentNewton,
+                     initialization_method = EmtInitializationMethod.Explicit,
                      integration_method = DynamicIntegrationMethod.DaeTrapezoidal,
                      verbose = 1)
 

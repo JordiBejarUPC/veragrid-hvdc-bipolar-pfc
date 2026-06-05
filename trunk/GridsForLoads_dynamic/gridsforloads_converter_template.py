@@ -11,7 +11,7 @@ from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin, Expr
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.procedural_logic import hard_saturation, sampled_value
-from VeraGridEngine.enumerations import VarPowerFlowReferenceType, DeviceType, ParamPowerFlowReferenceType
+from VeraGridEngine.enumerations import VarPowerFlowReferenceType, DeviceType
 
 
 def get_trafo_grid_connection_G4L(vf: VarFactory, name: str = "G4L_transformer") -> EmtModelTemplate:
@@ -101,12 +101,15 @@ def get_trafo_grid_connection_G4L(vf: VarFactory, name: str = "G4L_transformer")
         # ALGEBRAIC EQUATIONS
         # --------------------------------------------------------------------------------------
         algebraic_eqs=[
+            # shunt RC equations
             q_t_A - C_sh * (v_t_A - R_sh * i_cap_t_A),
             q_t_B - C_sh * (v_t_B - R_sh * i_cap_t_B),
             q_t_C - C_sh * (v_t_C - R_sh * i_cap_t_C),
+            # current balance in the "from" node
             i_f_A - i_ser_A,
             i_f_B - i_ser_B,
             i_f_C - i_ser_C,
+            # current balance in the "to" node
             i_t_A - (-i_ser_A + i_cap_t_A),
             i_t_B - (-i_ser_B + i_cap_t_B),
             i_t_C - (-i_ser_C + i_cap_t_C),
@@ -125,9 +128,12 @@ def get_trafo_grid_connection_G4L(vf: VarFactory, name: str = "G4L_transformer")
             # Seed the one-sided shunt from sinusoidal steady state instead of
             # zero capacitor current. The EMT operating point uses instantaneous
             # phase values at t = 0, so the capacitor current follows C * dv/dt.
-            i_cap_t_A: C_sh * omega_base * v_t_A,
-            i_cap_t_B: C_sh * omega_base * v_t_B,
-            i_cap_t_C: C_sh * omega_base * v_t_C,
+            # i_cap_t_A: C_sh * omega_base * v_t_A,
+            # i_cap_t_B: C_sh * omega_base * v_t_B,
+            # i_cap_t_C: C_sh * omega_base * v_t_C,
+            i_cap_t_A: C_sh * omega_base * (v_t_C - v_t_B) / np.sqrt(3),
+            i_cap_t_B: C_sh * omega_base * (v_t_A - v_t_C) / np.sqrt(3),
+            i_cap_t_C: C_sh * omega_base * (v_t_B - v_t_A) / np.sqrt(3),
             q_t_A: C_sh * (v_t_A - R_sh * i_cap_t_A),
             q_t_B: C_sh * (v_t_B - R_sh * i_cap_t_B),
             q_t_C: C_sh * (v_t_C - R_sh * i_cap_t_C),
@@ -232,9 +238,12 @@ def get_grid_side_converter_GFL(vf: VarFactory, name: str = "G4L_grid_side_conve
         # --------------------------------------------------------------------------------------
         state_eqs=[
             # AC RL branch + AC voltage source
-            Linv_f * (v_A - v_con_A - R_f * i_ser_A),
-            Linv_f * (v_B - v_con_B - R_f * i_ser_B),
-            Linv_f * (v_C - v_con_C - R_f * i_ser_C),
+            # Linv_f * (v_A - v_con_A - R_f * i_ser_A),
+            # Linv_f * (v_B - v_con_B - R_f * i_ser_B),
+            # Linv_f * (v_C - v_con_C - R_f * i_ser_C),
+            Linv_f * (v_con_A - v_A - R_f * i_ser_A),
+            Linv_f * (v_con_B - v_B - R_f * i_ser_B),
+            Linv_f * (v_con_C - v_C - R_f * i_ser_C),
         ],
         state_vars=[i_ser_A, i_ser_B, i_ser_C],
         diff_vars=[di_ser_A, di_ser_B, di_ser_C],
@@ -248,26 +257,32 @@ def get_grid_side_converter_GFL(vf: VarFactory, name: str = "G4L_grid_side_conve
             i_B - i_ser_B,
             i_C - i_ser_C,
 
-            # DC current injection
+            # power in the AC voltage source of the converter NEG
             Pac - (v_con_A * i_A + v_con_B * i_B + v_con_C * i_C),
+            # DC current injection
             i_dc - i_dc_mode,
+            # power in the point of connection of the VSC (bus)
             Pac_bus - (v_A * i_A + v_B * i_B + v_C * i_C),
         ],
         algebraic_vars=[i_A, i_B, i_C, Pac, i_dc, Pac_bus],
         in_vars=inputs,
-        out_vars=[i_A, i_B, i_C, i_dc, Pac_bus],
+        out_vars=[i_A, i_B, i_C, i_dc, Pac_bus, Pac],
         init_eqs={
             i_ser_A: i_A,
             i_ser_B: i_B,
             i_ser_C: i_C,
             Pac_bus: v_A * i_A + v_B * i_B + v_C * i_C,
+            # Pac: Pac_bus,
             Pac: v_con_A * i_A + v_con_B * i_B + v_con_C * i_C,
-            i_dc: i_dc_mode,
+            i_dc: Pac / sym.max(v_dc, eps),
         },
         diff_init_eqs={
-            di_ser_A: Linv_f * (v_A - v_con_A - R_f * i_ser_A),
-            di_ser_B: Linv_f * (v_B - v_con_B - R_f * i_ser_B),
-            di_ser_C: Linv_f * (v_C - v_con_C - R_f * i_ser_C),
+            # di_ser_A: Linv_f * (v_A - v_con_A - R_f * i_ser_A),
+            # di_ser_B: Linv_f * (v_B - v_con_B - R_f * i_ser_B),
+            # di_ser_C: Linv_f * (v_C - v_con_C - R_f * i_ser_C),
+            di_ser_A: Linv_f * (v_con_A - v_A - R_f * i_ser_A),
+            di_ser_B: Linv_f * (v_con_B - v_B - R_f * i_ser_B),
+            di_ser_C: Linv_f * (v_con_C - v_C - R_f * i_ser_C),
         },
         mode_dict={
             i_dc_mode: i_dc,
@@ -285,12 +300,10 @@ def get_grid_side_converter_GFL(vf: VarFactory, name: str = "G4L_grid_side_conve
         VarPowerFlowReferenceType.v_A: v_A,
         VarPowerFlowReferenceType.v_B: v_B,
         VarPowerFlowReferenceType.v_C: v_C,
-        # VarPowerFlowReferenceType.Vdc: v_dc,
         VarPowerFlowReferenceType.i_A: i_A,
         VarPowerFlowReferenceType.i_B: i_B,
         VarPowerFlowReferenceType.i_C: i_C,
-        # VarPowerFlowReferenceType.Idc: i_dc,
-        VarPowerFlowReferenceType.P: Pac,
+        # VarPowerFlowReferenceType.P: Pac_bus,
     }
 
     return templ
@@ -326,9 +339,6 @@ def get_load_side_converter_GFL(vf: VarFactory, name: str = "G4L_load_side_conve
 
     inputs = [i_dc_vsc, i_dc_L]
 
-    # DC current
-    i_dc = vf.add_var(name=f"i_dc_{name}", reference=VarPowerFlowReferenceType.Idc)
-
     # cap current and charge
     i_cap_dc = vf.add_var(name=f"i_cap_dc_{name}")
     q_cap = vf.add_var(name=f"q_cap_{name}")
@@ -349,15 +359,13 @@ def get_load_side_converter_GFL(vf: VarFactory, name: str = "G4L_load_side_conve
         # --------------------------------------------------------------------------------------
         algebraic_eqs=[
             q_cap - Cdc * v_dc,
-            i_dc - i_dc_L - i_cap_dc,
-            i_dc_vsc - i_dc, # current balance equation -> as if there was a dc bus!
+            i_dc_vsc + i_dc_L - i_cap_dc, # CORRECT SIGN CONVENTION
         ],
-        algebraic_vars=[i_cap_dc, i_dc, v_dc],
+        algebraic_vars=[i_cap_dc, v_dc],
         in_vars=inputs,
         out_vars=[v_dc],
         init_eqs={
-            i_dc: i_dc_vsc,
-            i_cap_dc: i_dc - i_dc_L,
+            i_cap_dc: i_dc_vsc + i_dc_L, # CORRECT SIGN CONVENTION
             q_cap: Cdc * vf.add_const(1.0),
             v_dc: vf.add_const(1.0),
         },
@@ -390,7 +398,6 @@ def get_load_side_converter_control_GFL(vf: VarFactory, name: str = "G4L_load_si
 
     # Vdc reference
     v_dc_ref = vf.add_var(name=f"v_dc_ref_{name}")
-    v_dc_ref_sched = vf.add_var(name=f"v_dc_ref_sched_{name}")
 
     C_DC = 0.04
     chi_E = 0.707
@@ -399,25 +406,23 @@ def get_load_side_converter_control_GFL(vf: VarFactory, name: str = "G4L_load_si
     # PI
     Kp_E = vf.add_var(name=f"Kp_E_{name}")
     Ki_E = vf.add_var(name=f"Ki_E_{name}")
-    p_dc_init = vf.add_var(name=f"p_dc_init_{name}")
     event_dict = {
-        v_dc_ref_sched: vf.add_const(1.0),
+        v_dc_ref: vf.add_const(1.0),
         Kp_E: vf.add_const(C_DC * chi_E * w_E),
         Ki_E: vf.add_const((C_DC / 2) * w_E * w_E),
-        p_dc_init: vf.add_const(-0.8),
     }
 
 
     # DC connection voltages
     v_dc = vf.add_var(name=f"v_dc_{name}", reference=VarPowerFlowReferenceType.Vdc)
+    Pac = vf.add_var(name=f"Pac_{name}")
 
     # DC load current
     i_dc_L = vf.add_var(name=f"i_dc_L_{name}")
 
-    inputs = [v_dc]
+    inputs = [v_dc, Pac]
 
     # DC current and power
-    i_dc = vf.add_var(name=f"i_dc_{name}", reference=VarPowerFlowReferenceType.Idc)
     p_dc = vf.add_var(name=f"p_dc_{name}")
     i_dc_L_mode = vf.add_var(name=f"i_dc_L_mode_{name}")
 
@@ -425,7 +430,7 @@ def get_load_side_converter_control_GFL(vf: VarFactory, name: str = "G4L_load_si
     err = vf.add_var(name=f"err_{name}")
     # integral state of I (PI)
     x_e = vf.add_var(name=f"x_e_{name}")
-    dx_e = vf.add_var(name=f"dx_e_{name}", base_var=x_e)
+    dx_e = vf.add_diff_var(name=f"dx_e_{name}", base_var=x_e)
 
     templ.block = Block(
         # --------------------------------------------------------------------------------------
@@ -440,18 +445,17 @@ def get_load_side_converter_control_GFL(vf: VarFactory, name: str = "G4L_load_si
         # ALGEBRAIC EQUATIONS
         # --------------------------------------------------------------------------------------
         algebraic_eqs=[
-            v_dc_ref - v_dc_ref_sched,
             err - (v_dc_ref*v_dc_ref - v_dc*v_dc),
             p_dc -(Kp_E*err + x_e), # PI output
             i_dc_L - i_dc_L_mode,
         ],
-        algebraic_vars=[v_dc_ref, err, p_dc, i_dc_L],
+        algebraic_vars=[err, p_dc, i_dc_L],
         in_vars=inputs,
         out_vars=[i_dc_L],
         init_eqs={
-            v_dc_ref: v_dc_ref_sched,
-            p_dc: p_dc_init,
-            i_dc_L: p_dc / sym.max(v_dc, eps),
+            p_dc: Pac,
+            # p_dc: vf.add_const(-0.8),
+            i_dc_L: -p_dc / sym.max(v_dc, eps),
             err: c0,
             x_e: p_dc,
         },
@@ -465,7 +469,7 @@ def get_load_side_converter_control_GFL(vf: VarFactory, name: str = "G4L_load_si
         procedural_logic=[
             sampled_value(
                 output=i_dc_L_mode,
-                source=p_dc / sym.max(v_dc, eps),
+                source= -p_dc / sym.max(v_dc, eps),
                 name=f"i_dc_L_sample_{name}",
             ),
         ],
@@ -508,9 +512,12 @@ def get_grid_side_converter_control_GFL(vf: VarFactory, name: str = "G4L_grid_si
                            PLL_mdl.in_vars[3], # Pac
                            ]
     # OUT VARS:  v_con_A, v_con_B, v_con_C,
-    templ.block.out_vars = [current_loop_mdl.out_vars[0], # v_con_A
-                            current_loop_mdl.out_vars[1], # v_con_B
-                            current_loop_mdl.out_vars[2], # v_con_C
+    templ.block.out_vars = [current_loop_mdl.out_vars[0], # v_con_A_mode
+                            current_loop_mdl.out_vars[1], # v_con_B_mode
+                            current_loop_mdl.out_vars[2], # v_con_C_mode
+                            current_loop_mdl.out_vars[3],  # v_con_A
+                            current_loop_mdl.out_vars[4],  # v_con_B
+                            current_loop_mdl.out_vars[5],  # v_con_C
                             ]
 
     # CONNECT VARIABLES BETWEEN CHILDREN
@@ -618,18 +625,18 @@ def get_clark_park_transforms_qd_GFL(vf: VarFactory, name: str = "G4L_clark_park
         algebraic_eqs=[
             # voltage clark-park transform
             # Old formulas kept for reference:
-            # alpha_v - ((1 / 3) * (2 * v_A - v_B - v_C)),
-            # beta_v - ((1 / 3) * (-np.sqrt(3) * v_B - np.sqrt(3) * v_C)),
-            alpha_v - v_A,
-            beta_v - ((v_C - v_B) / np.sqrt(3)),
+            alpha_v - ((1 / 3) * (2 * v_A - v_B - v_C)),
+            beta_v - ((1 / 3) * (-np.sqrt(3) * v_B + np.sqrt(3) * v_C)),
+            # alpha_v - v_A,
+            # beta_v - ((v_C - v_B) / np.sqrt(3)),
             v_q - (alpha_v * cos(phase_pll) - beta_v * sin(phase_pll)),
             v_d - (alpha_v * sin(phase_pll) + beta_v * cos(phase_pll)),
             # current clark-park transform
             # Old formulas kept for reference:
-            # alpha_i - ((1 / 3) * (2 * i_A - i_B - i_C)),
-            # beta_i - ((1 / 3) * (-np.sqrt(3) * i_B - np.sqrt(3) * i_C)),
-            alpha_i - i_A,
-            beta_i - ((i_C - i_B) / np.sqrt(3)),
+            alpha_i - ((1 / 3) * (2 * i_A - i_B - i_C)),
+            beta_i - ((1 / 3) * (-np.sqrt(3) * i_B + np.sqrt(3) * i_C)),
+            # alpha_i - i_A,
+            # beta_i - ((i_C - i_B) / np.sqrt(3)),
             i_q - (alpha_i * cos(phase_pll) - beta_i * sin(phase_pll)),
             i_d - (alpha_i * sin(phase_pll) + beta_i * cos(phase_pll)),
         ],
@@ -638,10 +645,10 @@ def get_clark_park_transforms_qd_GFL(vf: VarFactory, name: str = "G4L_clark_park
         in_vars=inputs,
         out_vars=[v_q, v_d, i_q, i_d],
         init_eqs={
-            alpha_v: v_A,
-            beta_v: (v_C - v_B) / np.sqrt(3),
-            alpha_i: i_A,
-            beta_i: (i_C - i_B) / np.sqrt(3),
+            alpha_v: (1 / 3) * (2 * v_A - v_B - v_C),
+            beta_v: (1 / 3) * (-np.sqrt(3) * v_B + np.sqrt(3) * v_C),
+            alpha_i: (1 / 3) * (2 * i_A - i_B - i_C),
+            beta_i: (1 / 3) * (-np.sqrt(3) * i_B + np.sqrt(3) * i_C),
             v_q: alpha_v * cos(phase_pll) - beta_v * sin(phase_pll),
             v_d: alpha_v * sin(phase_pll) + beta_v * cos(phase_pll),
             i_q: alpha_i * cos(phase_pll) - beta_i * sin(phase_pll),
@@ -682,7 +689,6 @@ def get_PLL_GFL(vf: VarFactory, name: str = "G4L_PLL") -> EmtModelTemplate:
     Pac = vf.add_var(name=f"Pac_{name}")
 
     P_ref = vf.add_var(name=f"P_ref_{name}")
-    P_ref_sched = vf.add_var(name=f"P_ref_sched_{name}")
 
     inputs =[v_A, v_B, v_C, Pac]
 
@@ -724,7 +730,7 @@ def get_PLL_GFL(vf: VarFactory, name: str = "G4L_PLL") -> EmtModelTemplate:
     k_p = vf.add_var(name=f"k_p_{name}")
 
     event_dict = {
-        P_ref_sched: vf.add_const(-0.8),
+        P_ref: vf.add_const(-0.8),
         Kp_pll: vf.add_const(Kp_pll_expr),
         Ki_pll: vf.add_const(Ki_pll_expr),
         k_d: vf.add_const(kP * (C_pu / 2 * (1 / Zaparent) * omega_expr)),
@@ -750,7 +756,7 @@ def get_PLL_GFL(vf: VarFactory, name: str = "G4L_PLL") -> EmtModelTemplate:
 
     # integral state of I PLL
     x_e_pll = vf.add_var(name=f"x_e_pll_{name}")
-    dx_e_pll = vf.add_var(name=f"dx_e_pll_{name}", base_var=x_e_pll)
+    dx_e_pll = vf.add_diff_var(name=f"dx_e_pll_{name}", base_var=x_e_pll)
 
     # virtual synchronous machine helper parameters
     x = vf.add_var(name=f"x_{name}")
@@ -765,7 +771,8 @@ def get_PLL_GFL(vf: VarFactory, name: str = "G4L_PLL") -> EmtModelTemplate:
             Ki_pll * (-v_d),
             w_pll,
             # ------------------------------------------ VSM
-            ((1 - y) * k_p + P_ref - Pac / sym.max(Sb, eps) + x) / (2 * sym.max(H, eps)),
+            # ((1 - y) * k_p + P_ref - Pac / sym.max(Sb, eps) + x) / (2 * sym.max(H, eps)),
+            ((1 - y) * k_p - P_ref + Pac + x) / (2 * sym.max(H, eps)),
             omega_pll,
         ],
         state_vars=[x_e_pll, theta_pll, y, phase_pll],
@@ -775,31 +782,30 @@ def get_PLL_GFL(vf: VarFactory, name: str = "G4L_PLL") -> EmtModelTemplate:
         # --------------------------------------------------------------------------------------
         algebraic_eqs=[
             # Old formulas kept for reference:
-            # alpha - ((1/3) * (2*v_A - v_B - v_C)),
-            # beta - ((1/3) * (-np.sqrt(3)*v_B - np.sqrt(3)*v_C)),
-            alpha - v_A,
-            beta - ((v_C - v_B) / np.sqrt(3)),
+            alpha - ((1/3) * (2*v_A - v_B - v_C)),
+            beta - ((1/3) * (-np.sqrt(3)*v_B + np.sqrt(3)*v_C)),
+            # alpha - v_A,
+            # beta - ((v_C - v_B) / np.sqrt(3)),
             v_q -(alpha * cos(theta_pll_mode) - beta * sin(theta_pll_mode)),
             v_d -(alpha * sin(theta_pll_mode) + beta * cos(theta_pll_mode)),
-            w_pll - (omega_ref - v_d * Kp_pll + x_e_pll),
+            # w_pll - (omega_ref - v_d * Kp_pll + x_e_pll),
+            w_pll - (- v_d * Kp_pll + x_e_pll),
             # ------------------------------------------ VSM
             x - ((w_pll / sym.max(omega_ref, eps)) - y) * k_d,
-            P_ref - P_ref_sched,
             omega_pll - (y * omega_ref),
 
         ],
-        algebraic_vars=[alpha, beta, v_q, v_d, w_pll, x, P_ref, omega_pll],
+        algebraic_vars=[alpha, beta, v_q, v_d, w_pll, x,  omega_pll],
         in_vars=inputs,
         out_vars=[phase_pll, omega_pll],
         init_eqs={
-            x_e_pll: c0,
+            x_e_pll: vf.add_const(omega_expr),
             theta_pll: sym.atan2(-beta, alpha),
-            alpha: v_A,
-            beta: (v_C - v_B) / np.sqrt(3),
+            alpha: (1/3) * (2*v_A - v_B - v_C),
+            beta: (1/3) * (-np.sqrt(3)*v_B + np.sqrt(3)*v_C),
             v_q: alpha * cos(theta_pll) - beta * sin(theta_pll),
             v_d: alpha * sin(theta_pll) + beta * cos(theta_pll),
             w_pll: omega_ref,
-            P_ref: P_ref_sched,
             x: c0,
             y: vf.add_const(1.0),
             phase_pll: theta_pll,
@@ -853,15 +859,14 @@ def get_virtual_admittance_GFL(vf: VarFactory, name: str = "G4L_Virtual_admittan
     i_d_bias = vf.add_var(name=f"i_d_bias_{name}")
 
     inputs = [v_q, v_d, i_q_bias, i_d_bias]
+    # inputs = [v_q, v_d]
 
     v_q_ref = vf.add_var(name=f"v_q_ref_{name}")
     v_d_ref = vf.add_var(name=f"v_d_ref_{name}")
-    v_q_ref_sched = vf.add_var(name=f"v_q_ref_sched_{name}")
-    v_d_ref_sched = vf.add_var(name=f"v_d_ref_sched_{name}")
     event_dict = {
-        # v_q_ref_sched: vf.add_const(np.sqrt(2 / 3)),
-        v_q_ref_sched: vf.add_const(np.sqrt(2)),
-        v_d_ref_sched: vf.add_const(0.0),
+        v_q_ref: v_q,
+        # v_q_ref: vf.add_const(np.sqrt(2)),
+        v_d_ref: vf.add_const(0.0),
     }
 
     # parameters virtual admittance
@@ -943,23 +948,23 @@ def get_virtual_admittance_GFL(vf: VarFactory, name: str = "G4L_Virtual_admittan
         # ALGEBRAIC EQUATIONS
         # --------------------------------------------------------------------------------------
         algebraic_eqs=[
-            v_q_ref - v_q_ref_sched,
-            v_d_ref - v_d_ref_sched,
-            err_q - (v_q_ref-v_q),
+            err_q - (v_q_ref - v_q),
             err_d - (v_d_ref - v_d),
             y1 - (n1_0 * x2_1 + n0_0 * x1_1),
             y2 - (n0_1 * x1_2),
             y3 - (n0_1 * x1_3),
             y4 - (n1_0 * x2_4 + n0_0 * x1_4),
             i_q_out_VA - (i_q_bias + y1 - y2),
-            i_d_out_VA - (i_d_bias - y3 - y4),
+            i_d_out_VA - (i_d_bias + y3 + y4),
+            # i_q_out_VA - (-1 + y2), # from simulink
+            # i_d_out_VA - (- y3 - y4), # from simulink
+            # i_q_out_VA - (y1 - y2), # CORRECT SIGN CONVENTION!
+            # i_d_out_VA - (y3 + y4), # CORRECT SIGN CONVENTION!
         ],
-        algebraic_vars=[v_q_ref, v_d_ref, err_q, err_d, y1, y2, y3, y4, i_q_out_VA, i_d_out_VA],
+        algebraic_vars=[err_q, err_d, y1, y2, y3, y4, i_q_out_VA, i_d_out_VA],
         in_vars=inputs,
         out_vars=[i_q_out_VA, i_d_out_VA],
         init_eqs={
-            v_q_ref: v_q_ref_sched,
-            v_d_ref: v_d_ref_sched,
             err_q: v_q_ref - v_q,
             err_d: v_d_ref - v_d,
             x1_1: err_q / d0,
@@ -974,8 +979,8 @@ def get_virtual_admittance_GFL(vf: VarFactory, name: str = "G4L_Virtual_admittan
             y2: c0,
             y3: c0,
             y4: n0_0 * err_d / d0,
-            i_q_out_VA: i_q_bias + y1 - y2,
-            i_d_out_VA: i_d_bias - y3 - y4,
+            i_q_out_VA: (i_q_bias + y1 - y2),
+            i_d_out_VA: (i_d_bias + y3 + y4),
         },
         diff_init_eqs={
             dx1_1: x2_1,
@@ -1029,63 +1034,137 @@ def get_current_limiter_GFL(vf: VarFactory, name: str = "G4L_current_limiter") -
     templ.block.name = name
 
     c0 = vf.add_const(0.0)
-
+    #
+    # i_q = vf.add_var(name=f"i_q_{name}")
+    # i_d = vf.add_var(name=f"i_d_{name}")
+    #
+    # inputs = [i_q, i_d]
+    #
+    # # outputs
+    # i_d_lim = vf.add_var(name=f"i_d_lim_{name}")
+    # i_q_lim = vf.add_var(name=f"i_q_lim_{name}")
+    # i_q_lim_mode = vf.add_var(name=f"i_q_lim_mode_{name}")
+    # i_d_lim_mode = vf.add_var(name=f"i_d_lim_mode_{name}")
+    #
+    # # parameters current limiter
+    # Ipeak = np.sqrt(2 / 3)
+    # Imax_expr = 1.1 * Ipeak
+    # Imax = vf.add_const(Imax_expr)
+    #
+    # # First compute the dq current magnitude after the q-axis limiter has been applied.
+    # # This decides whether the d-axis command must be projected back to the circular limit.
+    # i_mag_expr: Expr = sym.sqrt(i_q_lim * i_q_lim + i_d * i_d)
+    # inside_limit_expr: Expr = sym.heaviside(Imax - i_mag_expr)
+    #
+    # # Build the signed d-axis headroom that remains after the limited q-axis current is fixed.
+    # i_d_sign_expr: Expr = sym.heaviside(i_d) - sym.heaviside(-i_d)
+    # i_d_cap_expr: Expr = sym.sqrt(sym.max(Imax * Imax - i_q_lim * i_q_lim, c0))
+    #
+    # # Sample the full branch expression procedurally so the DAE only consumes one retained value.
+    # i_d_lim_expr: Expr = (i_d * inside_limit_expr
+    #                       + i_d_cap_expr * sym.heaviside(sym.abs(i_d)) * i_d_sign_expr * (1 - inside_limit_expr))
+    #
+    #
+    # templ.block = Block(
+    #     # --------------------------------------------------------------------------------------
+    #     # STATE EQUATIONS (seconds + pu)
+    #     # --------------------------------------------------------------------------------------
+    #     state_eqs=[],
+    #     state_vars=[],
+    #     diff_vars=[],
+    #     # --------------------------------------------------------------------------------------
+    #     # ALGEBRAIC EQUATIONS
+    #     # --------------------------------------------------------------------------------------
+    #     algebraic_eqs=[
+    #         i_q_lim - sym.hard_sat(i_q, -Imax, Imax),
+    #         i_d_lim - i_d_lim_expr,
+    #     ],
+    #     algebraic_vars=[i_q_lim, i_d_lim],
+    #     in_vars=inputs,
+    #     out_vars=[i_q_lim, i_d_lim],
+    #     mode_dict={
+    #         i_q_lim_mode: i_q_lim,
+    #         i_d_lim_mode: i_d_lim,
+    #     },
+    #     init_eqs={
+    #         # i_q_lim: sym.hard_sat(i_q, -Imax, Imax),
+    #         i_q_lim: i_q,
+    #         i_d_lim: i_d_lim_expr,
+    #     },
+    #     procedural_logic=[
+    #         hard_saturation(
+    #             output=i_q_lim_mode,
+    #             u=i_q,
+    #             u_min=-Imax,
+    #             u_max=Imax,
+    #             name=f"i_q_lim_sat_{name}",
+    #         ),
+    #         sampled_value(
+    #             output=i_d_lim_mode,
+    #             source=i_d_lim_expr,
+    #             name=f"i_d_lim_sample_{name}",
+    #         ),
+    #     ],
+    # )
+    #
+    # return templ
+    # Inputs
     i_q = vf.add_var(name=f"i_q_{name}")
     i_d = vf.add_var(name=f"i_d_{name}")
-
     inputs = [i_q, i_d]
 
-    # outputs
-    i_d_lim = vf.add_var(name=f"i_d_lim_{name}")
+    # Outputs used by the current loop
     i_q_lim = vf.add_var(name=f"i_q_lim_{name}")
+    i_d_lim = vf.add_var(name=f"i_d_lim_{name}")
+
+    # Procedural retained values
     i_q_lim_mode = vf.add_var(name=f"i_q_lim_mode_{name}")
     i_d_lim_mode = vf.add_var(name=f"i_d_lim_mode_{name}")
 
-    # parameters current limiter
     Ipeak = np.sqrt(2 / 3)
-    Imax_expr = 1.1 * Ipeak
-    Imax = vf.add_const(Imax_expr)
+    Imax = vf.add_const(1.1 * Ipeak)
 
-    # First compute the dq current magnitude after the q-axis limiter has been applied.
-    # This decides whether the d-axis command must be projected back to the circular limit.
-    i_mag_expr: Expr = sym.sqrt(i_q_lim * i_q_lim + i_d * i_d)
-    inside_limit_expr: Expr = sym.heaviside(Imax - i_mag_expr)
+    # q-axis first, then d-axis uses remaining current capability
+    i_mag_expr = sym.sqrt(i_q * i_q + i_d * i_d)
+    i_d_cap_expr = sym.sqrt(sym.max(Imax * Imax - i_q_lim_mode * i_q_lim_mode, c0))
 
-    # Build the signed d-axis headroom that remains after the limited q-axis current is fixed.
-    i_d_sign_expr: Expr = sym.heaviside(i_d) - sym.heaviside(-i_d)
-    i_d_cap_expr: Expr = sym.sqrt(sym.max(Imax * Imax - i_q_lim * i_q_lim, c0))
+    # signed d-axis cap
+    i_d_cap_signed = (
+            i_d_cap_expr * sym.heaviside(i_d)
+            - i_d_cap_expr * sym.heaviside(-i_d)
+    )
 
-    # Sample the full branch expression procedurally so the DAE only consumes one retained value.
-    i_d_lim_expr: Expr = (i_d * inside_limit_expr
-                          + i_d_cap_expr * sym.heaviside(sym.abs(i_d)) * i_d_sign_expr * (1 - inside_limit_expr))
-
+    # If total current exceeds Imax, use signed cap, otherwise pass i_d
+    i_d_lim_expr = (
+            i_d * sym.heaviside(Imax - i_mag_expr)
+            + i_d_cap_signed * sym.heaviside(i_mag_expr - Imax)
+    )
 
     templ.block = Block(
-        # --------------------------------------------------------------------------------------
-        # STATE EQUATIONS (seconds + pu)
-        # --------------------------------------------------------------------------------------
         state_eqs=[],
         state_vars=[],
         diff_vars=[],
-        # --------------------------------------------------------------------------------------
-        # ALGEBRAIC EQUATIONS
-        # --------------------------------------------------------------------------------------
+
+        # Smooth/linear algebraic residuals only
         algebraic_eqs=[
-            i_q_lim - sym.hard_sat(i_q, -Imax, Imax),
-            i_d_lim - i_d_lim_expr,
+            i_q_lim - i_q_lim_mode,
+            i_d_lim - i_d_lim_mode,
         ],
         algebraic_vars=[i_q_lim, i_d_lim],
+
         in_vars=inputs,
         out_vars=[i_q_lim, i_d_lim],
-        mode_dict={
-            i_q_lim_mode: i_q_lim,
-            i_d_lim_mode: i_d_lim,
-        },
+
         init_eqs={
-            # i_q_lim: sym.hard_sat(i_q, -Imax, Imax),
             i_q_lim: i_q,
-            i_d_lim: i_d_lim_expr,
+            i_d_lim: i_d,
         },
+
+        mode_dict={
+            i_q_lim_mode: i_q,
+            i_d_lim_mode: i_d,
+        },
+
         procedural_logic=[
             hard_saturation(
                 output=i_q_lim_mode,
@@ -1162,9 +1241,9 @@ def get_current_loop_GFL(vf: VarFactory, name: str = "G4L_current_loop") -> EmtM
     err_d = vf.add_var(name=f"err_d_{name}")
     # integral state of I (PI)
     x_e_q = vf.add_var(name=f"x_e_q_{name}")
-    dx_e_q = vf.add_var(name=f"dx_e_q_{name}", base_var=x_e_q)
+    dx_e_q = vf.add_diff_var(name=f"dx_e_q_{name}", base_var=x_e_q)
     x_e_d = vf.add_var(name=f"x_e_d_{name}")
-    dx_e_d = vf.add_var(name=f"dx_e_d_{name}", base_var=x_e_d)
+    dx_e_d = vf.add_diff_var(name=f"dx_e_d_{name}", base_var=x_e_d)
     # PI output
     y_q = vf.add_var(name=f"y_q_{name}")
     y_d = vf.add_var(name=f"y_d_{name}")
@@ -1191,12 +1270,18 @@ def get_current_loop_GFL(vf: VarFactory, name: str = "G4L_current_loop") -> EmtM
         # --------------------------------------------------------------------------------------
         algebraic_eqs=[
             # current controller
-            err_q - (i_q - i_q_lim),
-            err_d - (i_d - i_d_lim),
-            y_q - (err_q * Kp_cc + x_e_q),
-            y_d - (err_d * Kp_cc + x_e_d),
-            v_con_q - (v_ffw_q + (omega_pll * L_f * i_d) - y_q),
-            v_con_d -(v_ffw_d - (omega_pll * L_f * i_q) - y_d),
+            # err_q - (i_q - i_q_lim),
+            # err_d - (i_d - i_d_lim),
+            err_q - (i_q_lim - i_q),
+            err_d - (i_d_lim - i_d),
+            # y_q + (err_q * Kp_cc + x_e_q), # from simulink model
+            # y_d + (err_d * Kp_cc + x_e_d), # from simulink model
+            y_q - (err_q * Kp_cc + x_e_q), # CORRECT SIGN CONV
+            y_d - (err_d * Kp_cc + x_e_d), # CORRECT SIGN CONV
+            # v_con_q - (v_ffw_q + y_q - omega_pll * L_f * i_d), # from simulink model
+            v_con_q - (v_ffw_q + y_q + omega_pll * L_f * i_d), # CORRECT SIGN CONV
+            # v_con_d - (v_ffw_d + y_d + omega_pll * L_f * i_q), # from simulink model
+            v_con_d - (v_ffw_d + y_d - omega_pll * L_f * i_q), # CORRECT SIGN CONV
             # transform qd to abc
             alpha - (v_con_q * cos(phase_cmd) + v_con_d * sin(phase_cmd)),
             beta - (-v_con_q * sin(phase_cmd) + v_con_d * cos(phase_cmd)),
@@ -1207,26 +1292,33 @@ def get_current_loop_GFL(vf: VarFactory, name: str = "G4L_current_loop") -> EmtM
         ],
         algebraic_vars=[err_q, err_d, y_q, y_d, v_con_q, v_con_d, alpha, beta, v_con_A, v_con_B, v_con_C],
         in_vars=inputs,
-        out_vars=[v_con_A, v_con_B, v_con_C],
+        out_vars=[v_con_A_mode, v_con_B_mode, v_con_C_mode, v_con_A, v_con_B, v_con_C],
         init_eqs={
+            # todo check!
             v_ffw_q: v_q,
             v_ffw_d: v_d,
-            err_q: i_q - i_q_lim,
-            err_d: i_d - i_d_lim,
-            # Seed the converter voltage close to the bus voltage in the same
-            # alpha-beta frame, matching the Simulink operating point where
-            # Vcon_abc is almost in phase with the PCC voltage.
-            alpha: v_q * cos(phase_cmd) + v_d * sin(phase_cmd) - R_f_pu * (i_q * cos(phase_cmd) + i_d * sin(phase_cmd)),
-            beta: -v_q * sin(phase_cmd) + v_d * cos(phase_cmd) - R_f_pu * (-i_q * sin(phase_cmd) + i_d * cos(phase_cmd)),
+            # Seed the current loop at the operating point by matching the
+            # measured and limited currents first. Then derive the controller
+            # output in dq and finally reconstruct abc from that dq command.
+            err_q: i_q_lim - i_q,
+            err_d: i_d_lim - i_d,
+            # v_con_q: v_q,
+            # v_con_d: v_d,
+            # v_con_q: v_q - R_f_pu*i_q - omega_pll*L_f*i_d,
+            # v_con_d: v_d - R_f_pu*i_d + omega_pll*L_f*i_q,
+            v_con_q: v_q + R_f_pu * i_q + omega_pll * L_f * i_d,
+            v_con_d: v_d + R_f_pu * i_d - omega_pll * L_f * i_q,
+            # y_q: v_ffw_q - v_con_q,
+            # y_d: v_con_d - v_ffw_d,
+            y_q: v_con_q - v_ffw_q - omega_pll * L_f * i_d,
+            y_d: v_con_d - v_ffw_d + omega_pll * L_f * i_q,
+            x_e_q: y_q - Kp_cc * err_q,
+            x_e_d: y_d - Kp_cc * err_d,
+            alpha: v_con_q * cos(phase_cmd) + v_con_d * sin(phase_cmd),
+            beta: -v_con_q * sin(phase_cmd) + v_con_d * cos(phase_cmd),
             v_con_A: alpha,
             v_con_B: 0.5 * (-alpha - c_sqrt3 * beta),
             v_con_C: 0.5 * (-alpha + c_sqrt3 * beta),
-            v_con_q: alpha * cos(phase_cmd) - beta * sin(phase_cmd),
-            v_con_d: alpha * sin(phase_cmd) + beta * cos(phase_cmd),
-            y_q: v_ffw_q + (omega_pll * L_f * i_d) - v_con_q,
-            y_d: v_ffw_d - (omega_pll * L_f * i_q) - v_con_d,
-            x_e_q: y_q - err_q * Kp_cc,
-            x_e_d: y_d - err_d * Kp_cc,
         },
         diff_init_eqs={
             dv_ffw_q: c0,
@@ -1246,9 +1338,9 @@ def get_current_loop_GFL(vf: VarFactory, name: str = "G4L_current_loop") -> EmtM
         ]
     )
 
-    vf.add_connection(v_con_A, v_con_A_mode)
-    vf.add_connection(v_con_B, v_con_B_mode)
-    vf.add_connection(v_con_C, v_con_C_mode)
+    # vf.add_connection(v_con_A, v_con_A_mode)
+    # vf.add_connection(v_con_B, v_con_B_mode)
+    # vf.add_connection(v_con_C, v_con_C_mode)
 
     return templ
 
@@ -1294,17 +1386,15 @@ def get_complete_load_template_G4L(vf: VarFactory, name: str = "G4L_complete_loa
     # CONNECT VARIABLES BETWEEN CHILDREN
     # i dc vsc
     vf.add_connection(load_side_vsc_mdl.in_vars[0], grid_side_vsc_mdl.out_vars[3])
-    # vdc
+    # v_dc
     vf.add_connection(grid_side_vsc_mdl.in_vars[3], load_side_vsc_mdl.out_vars[0])
     vf.add_connection(load_side_ctrl_mdl.in_vars[0], load_side_vsc_mdl.out_vars[0])
     # i_dc_L
     vf.add_connection(load_side_vsc_mdl.in_vars[1], load_side_ctrl_mdl.out_vars[0])
     # v_con_abc
-    current_loop_block = grid_side_ctrl_mdl.children[-1]
-    current_loop_mode_vars = list(current_loop_block.mode_dict.keys())
-    vf.add_connection(grid_side_vsc_mdl.in_vars[4], current_loop_mode_vars[0]) # v_con_A delayed
-    vf.add_connection(grid_side_vsc_mdl.in_vars[5], current_loop_mode_vars[1]) # v_con_B delayed
-    vf.add_connection(grid_side_vsc_mdl.in_vars[6], current_loop_mode_vars[2]) # v_con_C delayed
+    vf.add_connection(grid_side_vsc_mdl.in_vars[4], grid_side_ctrl_mdl.out_vars[3]) # v_con_A
+    vf.add_connection(grid_side_vsc_mdl.in_vars[5], grid_side_ctrl_mdl.out_vars[4]) # v_con_B
+    vf.add_connection(grid_side_vsc_mdl.in_vars[6], grid_side_ctrl_mdl.out_vars[5]) # v_con_C
     # bus voltages into controller
     vf.add_connection(grid_side_ctrl_mdl.in_vars[0], grid_side_vsc_mdl.in_vars[0])  # v_A
     vf.add_connection(grid_side_ctrl_mdl.in_vars[1], grid_side_vsc_mdl.in_vars[1])  # v_B
@@ -1315,6 +1405,8 @@ def get_complete_load_template_G4L(vf: VarFactory, name: str = "G4L_complete_loa
     vf.add_connection(grid_side_ctrl_mdl.in_vars[5], grid_side_vsc_mdl.out_vars[2])  # i_C
     # Pac_bus
     vf.add_connection(grid_side_ctrl_mdl.in_vars[6], grid_side_vsc_mdl.out_vars[4])
+    # Pac
+    vf.add_connection(load_side_ctrl_mdl.in_vars[1], grid_side_vsc_mdl.out_vars[5])
 
     # APPEND CHILDREN
     templ.block.children.append(grid_side_vsc_mdl)
@@ -1330,6 +1422,7 @@ def get_complete_load_template_G4L(vf: VarFactory, name: str = "G4L_complete_loa
         VarPowerFlowReferenceType.i_A: grid_side_vsc_mdl.out_vars[0],
         VarPowerFlowReferenceType.i_B: grid_side_vsc_mdl.out_vars[1],
         VarPowerFlowReferenceType.i_C: grid_side_vsc_mdl.out_vars[2],
+        VarPowerFlowReferenceType.P: grid_side_vsc_mdl.out_vars[4],
     }
 
 
