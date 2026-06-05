@@ -92,6 +92,38 @@ def try_get_init_diff_value(problem: EmtProblemDae, name: str):
     except Exception:
         return None
 
+
+def print_series_summary(problem: EmtProblemDae, y_arr: np.ndarray, name: str):
+    series = try_get_series(problem, y_arr, name)
+    if series is None:
+        print(f"series_summary:{name} unavailable")
+        return
+
+    print(
+        f"series_summary:{name} "
+        f"start={series[0]:.9f} end={series[-1]:.9f} "
+        f"min={np.min(series):.9f} max={np.max(series):.9f} "
+        f"mean={np.mean(series):.9f} delta={(series[-1] - series[0]):.9f}"
+    )
+
+
+def print_diff_summary(problem: EmtProblemDae, dy_arr: np.ndarray, name: str):
+    try:
+        for dv in problem.get_diff_vars():
+            if dv.name == name:
+                idx = problem.get_diff_var_idx(dv)
+                series = dy_arr[:, idx]
+                print(
+                    f"diff_summary:{name} "
+                    f"start={series[0]:.9f} end={series[-1]:.9f} "
+                    f"min={np.min(series):.9f} max={np.max(series):.9f} "
+                    f"mean={np.mean(series):.9f}"
+                )
+                return
+        print(f"diff_summary:{name} unavailable")
+    except Exception:
+        print(f"diff_summary:{name} unavailable")
+
 def find_name_in_block(name: str, block: Block):
     for var in block.algebraic_vars + block.state_vars + list(block.event_dict.keys()) + block.diff_vars:
         if name == var.name:
@@ -233,7 +265,7 @@ print(res.get_branch_df())
 
 
 options = EmtOptions(time_step = 1e-6,
-                     simulation_time =  0.05, # s
+                     simulation_time =  0.1, # s
                      tolerance = 1e-6,
                      solver_type = EmtSolverTypes.StructuralCompiled,
                      # initialization_method = EmtInitializationMethod.PseudoTransient,
@@ -257,6 +289,35 @@ DENSE_THRESHOLD = 0
 
 df = problem.get_init_guess_table()
 print(f"init_guess_table\n{df}")
+
+init_diagnostic_names = [
+    "Pac_bus_G4L_grid_side_converter",
+    "Pac_G4L_grid_side_converter",
+    "p_dc_G4L_load_side_converter_control",
+    "i_dc_G4L_grid_side_converter",
+    "i_dc_L_G4L_load_side_converter_control",
+    "i_cap_dc_G4L_load_side_converter",
+    "v_dc_G4L_load_side_converter",
+    "i_q_G4L_clark_park_transforms_qd",
+    "i_q_out_VA_G4L_Virtual_admittance",
+    "i_q_lim_G4L_current_limiter",
+]
+
+init_diagnostics: dict[str, float | None] = {}
+print("Initial scalar diagnostics")
+for name in init_diagnostic_names:
+    value = try_get_init_value(problem, name)
+    init_diagnostics[name] = value
+    print(f"  {name} = {value}")
+
+i_dc_init = init_diagnostics["i_dc_G4L_grid_side_converter"]
+i_dc_L_init = init_diagnostics["i_dc_L_G4L_load_side_converter_control"]
+i_cap_dc_init = init_diagnostics["i_cap_dc_G4L_load_side_converter"]
+if None not in (i_dc_init, i_dc_L_init, i_cap_dc_init):
+    dc_current_balance = i_dc_init - i_dc_L_init - i_cap_dc_init
+    print(f"  dc_current_balance = {dc_current_balance}")
+else:
+    print("  dc_current_balance = unavailable")
 
 # RL branch residual diagnostics at t = 0 for the grid-side converter.
 omega_base = 2 * np.pi * 50.0
@@ -323,6 +384,58 @@ print(f"EMT converged: {converged}")
 if hasattr(solver, "get_last_runtime_stats"):
     print(solver.get_last_runtime_stats())
 
+print("Time-series diagnostics")
+for name in [
+    "Pac_bus_G4L_grid_side_converter",
+    "Pac_G4L_grid_side_converter",
+    "p_dc_G4L_load_side_converter_control",
+    "i_dc_G4L_grid_side_converter",
+    "i_dc_L_G4L_load_side_converter_control",
+    "i_cap_dc_G4L_load_side_converter",
+    "v_dc_G4L_load_side_converter",
+    "i_q_out_VA_G4L_Virtual_admittance",
+    "i_q_lim_G4L_current_limiter",
+    "i_q_G4L_clark_park_transforms_qd",
+    "err_q_G4L_current_loop",
+    "i_d_out_VA_G4L_Virtual_admittance",
+    "i_d_lim_G4L_current_limiter",
+    "i_d_G4L_clark_park_transforms_qd",
+    "err_d_G4L_current_loop",
+    "err_q_G4L_Virtual_admittance",
+    "err_d_G4L_Virtual_admittance",
+    "y1_G4L_Virtual_admittance",
+    "y2_G4L_Virtual_admittance",
+    "y3_G4L_Virtual_admittance",
+    "y4_G4L_Virtual_admittance",
+    "y_G4L_PLL",
+    "omega_pll_G4L_PLL",
+    "w_pll_G4L_PLL",
+    "phase_pll_G4L_PLL",
+]:
+    print_series_summary(problem, y_arr, name)
+
+print("Differential-state diagnostics")
+for name in [
+    "dy_G4L_PLL",
+    "dx_e_pll_G4L_PLL",
+    "dx1_1_G4L_Virtual_admittance",
+    "dx2_1_G4L_Virtual_admittance",
+    "dx1_2_G4L_Virtual_admittance",
+    "dx2_2_G4L_Virtual_admittance",
+    "d_i_q_bias_state_G4L_Virtual_admittance",
+    "d_i_d_bias_state_G4L_Virtual_admittance",
+    "dv_ffw_q_G4L_current_loop",
+    "dv_ffw_d_G4L_current_loop",
+    "dx_e_q_G4L_current_loop",
+    "dx_e_d_G4L_current_loop",
+    "dx_e_G4L_load_side_converter_control",
+    "dq_cap_G4L_load_side_converter",
+    "di_ser_A_G4L_grid_side_converter",
+    "di_ser_B_G4L_grid_side_converter",
+    "di_ser_C_G4L_grid_side_converter",
+]:
+    print_diff_summary(problem, dy_arr, name)
+
 
 # Core diagnostics for the GFM-load system.
 fig, axes = plt.subplots(5, 2, figsize=(14, 15), sharex=True)
@@ -353,7 +466,7 @@ if axes[2].lines:
 
 for name in ["Pac_bus_G4L_grid_side_converter", "Pac_G4L_grid_side_converter", "p_dc_G4L_load_side_converter_control"]:
     plot_if_available(axes[3], t_arr, try_get_series(problem, y_arr, name), name)
-axes[3].set_title("Power Variables")
+axes[3].set_title("Converter Power Variables")
 axes[3].grid(True)
 if axes[3].lines:
     axes[3].legend(loc="best")
@@ -382,9 +495,9 @@ if axes[6].lines:
     axes[6].legend(loc="best")
 
 for name in [
-    "v_con_A_mode_G4L_current_loop",
-    "v_con_B_mode_G4L_current_loop",
-    "v_con_C_mode_G4L_current_loop",
+    "v_con_A_G4L_current_loop",
+    "v_con_B_G4L_current_loop",
+    "v_con_C_G4L_current_loop",
 ]:
     plot_if_available(axes[7], t_arr, try_get_series(problem, y_arr, name), name)
 axes[7].set_title("Converter Command Voltages")
@@ -430,11 +543,119 @@ axes4[1].grid(True)
 if axes4[1].lines:
     axes4[1].legend(loc="best")
 
+fig5, axes5 = plt.subplots(3, 1, figsize=(14, 10), sharex=True)
+for name in [
+    "i_q_out_VA_G4L_Virtual_admittance",
+    "i_d_out_VA_G4L_Virtual_admittance",
+    "i_q_bias_state_G4L_Virtual_admittance",
+    "i_d_bias_state_G4L_Virtual_admittance",
+]:
+    plot_if_available(axes5[0], t_arr, try_get_series(problem, y_arr, name), name)
+axes5[0].set_title("Virtual Admittance Currents and Bias States")
+axes5[0].grid(True)
+if axes5[0].lines:
+    axes5[0].legend(loc="best")
+
+for name in ["err_q_G4L_Virtual_admittance", "err_d_G4L_Virtual_admittance"]:
+    plot_if_available(axes5[1], t_arr, try_get_series(problem, y_arr, name), name)
+axes5[1].set_title("Virtual Admittance Voltage Errors")
+axes5[1].grid(True)
+if axes5[1].lines:
+    axes5[1].legend(loc="best")
+
+for name in [
+    "y1_G4L_Virtual_admittance",
+    "y2_G4L_Virtual_admittance",
+    "y3_G4L_Virtual_admittance",
+    "y4_G4L_Virtual_admittance",
+]:
+    plot_if_available(axes5[2], t_arr, try_get_series(problem, y_arr, name), name)
+axes5[2].set_title("Virtual Admittance Internal Outputs")
+axes5[2].grid(True)
+if axes5[2].lines:
+    axes5[2].legend(loc="best")
+
+fig6, axes6 = plt.subplots(2, 1, figsize=(14, 7), sharex=True)
+for name in [
+    "i_dc_G4L_grid_side_converter",
+    "i_dc_L_G4L_load_side_converter_control",
+    "i_cap_dc_G4L_load_side_converter",
+    "v_dc_G4L_load_side_converter",
+]:
+    plot_if_available(axes6[0], t_arr, try_get_series(problem, y_arr, name), name)
+axes6[0].set_title("DC-Link Current Balance")
+axes6[0].grid(True)
+if axes6[0].lines:
+    axes6[0].legend(loc="best")
+
+for name in ["Pac_bus_G4L_grid_side_converter", "Pac_G4L_grid_side_converter", "p_dc_G4L_load_side_converter_control"]:
+    plot_if_available(axes6[1], t_arr, try_get_series(problem, y_arr, name), name)
+axes6[1].set_title("AC/DC Power Balance")
+axes6[1].grid(True)
+if axes6[1].lines:
+    axes6[1].legend(loc="best")
+
+fig7, axes7 = plt.subplots(2, 1, figsize=(14, 7), sharex=True)
+for name in [
+    "i_q_out_VA_G4L_Virtual_admittance",
+    "i_q_lim_G4L_current_limiter",
+    "i_q_G4L_clark_park_transforms_qd",
+    "err_q_G4L_current_loop",
+]:
+    plot_if_available(axes7[0], t_arr, try_get_series(problem, y_arr, name), name)
+axes7[0].set_title("q-Axis Current Reference Chain")
+axes7[0].grid(True)
+if axes7[0].lines:
+    axes7[0].legend(loc="best")
+
+for name in [
+    "i_d_out_VA_G4L_Virtual_admittance",
+    "i_d_lim_G4L_current_limiter",
+    "i_d_G4L_clark_park_transforms_qd",
+    "err_d_G4L_current_loop",
+]:
+    plot_if_available(axes7[1], t_arr, try_get_series(problem, y_arr, name), name)
+axes7[1].set_title("d-Axis Current Reference Chain")
+axes7[1].grid(True)
+if axes7[1].lines:
+    axes7[1].legend(loc="best")
+
+fig8, ax8 = plt.subplots(1, 1, figsize=(14, 4), sharex=True)
+for name in [
+    "Pac_bus_G4L_grid_side_converter",
+    "y_G4L_PLL",
+    "omega_pll_G4L_PLL",
+    "w_pll_G4L_PLL",
+]:
+    plot_if_available(ax8, t_arr, try_get_series(problem, y_arr, name), name)
+ax8.axhline(-0.8, color="k", linestyle="--", linewidth=1.0, label="P_ref = -0.8")
+ax8.set_title("PLL / VSM Power and Frequency Diagnostics")
+ax8.grid(True)
+if ax8.lines:
+    ax8.legend(loc="best")
+
 for ax in axes:
     ax.set_xlabel("Time [s]")
+
+ax2.set_xlabel("Time [s]")
+for ax in axes3:
+    ax.set_xlabel("Time [s]")
+for ax in axes4:
+    ax.set_xlabel("Time [s]")
+for ax in axes5:
+    ax.set_xlabel("Time [s]")
+for ax in axes6:
+    ax.set_xlabel("Time [s]")
+for ax in axes7:
+    ax.set_xlabel("Time [s]")
+ax8.set_xlabel("Time [s]")
 
 fig.tight_layout()
 fig2.tight_layout()
 fig3.tight_layout()
 fig4.tight_layout()
+fig5.tight_layout()
+fig6.tight_layout()
+fig7.tight_layout()
+fig8.tight_layout()
 plt.show()

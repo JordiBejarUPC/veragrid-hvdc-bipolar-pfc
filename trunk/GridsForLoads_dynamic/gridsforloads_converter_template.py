@@ -274,7 +274,7 @@ def get_grid_side_converter_GFL(vf: VarFactory, name: str = "G4L_grid_side_conve
             Pac_bus: v_A * i_A + v_B * i_B + v_C * i_C,
             # Pac: Pac_bus,
             Pac: v_con_A * i_A + v_con_B * i_B + v_con_C * i_C,
-            i_dc: Pac / sym.max(v_dc, eps),
+            i_dc: -Pac / sym.max(v_dc, eps),
         },
         diff_init_eqs={
             # di_ser_A: Linv_f * (v_A - v_con_A - R_f * i_ser_A),
@@ -290,7 +290,7 @@ def get_grid_side_converter_GFL(vf: VarFactory, name: str = "G4L_grid_side_conve
         procedural_logic=[
             sampled_value(
                 output=i_dc_mode,
-                source=Pac / sym.max(v_dc, eps),
+                source=-Pac / sym.max(v_dc, eps),
                 name=f"i_dc_sample_{name}",
             ),
         ],
@@ -359,13 +359,13 @@ def get_load_side_converter_GFL(vf: VarFactory, name: str = "G4L_load_side_conve
         # --------------------------------------------------------------------------------------
         algebraic_eqs=[
             q_cap - Cdc * v_dc,
-            i_dc_vsc + i_dc_L - i_cap_dc, # CORRECT SIGN CONVENTION
+            i_dc_vsc - i_dc_L - i_cap_dc, # CORRECT SIGN CONVENTION
         ],
         algebraic_vars=[i_cap_dc, v_dc],
         in_vars=inputs,
         out_vars=[v_dc],
         init_eqs={
-            i_cap_dc: i_dc_vsc + i_dc_L, # CORRECT SIGN CONVENTION
+            i_cap_dc: i_dc_vsc - i_dc_L, # CORRECT SIGN CONVENTION
             q_cap: Cdc * vf.add_const(1.0),
             v_dc: vf.add_const(1.0),
         },
@@ -855,10 +855,10 @@ def get_virtual_admittance_GFL(vf: VarFactory, name: str = "G4L_Virtual_admittan
 
     v_q = vf.add_var(name=f"v_q_{name}")
     v_d = vf.add_var(name=f"v_d_{name}")
-    i_q_bias = vf.add_var(name=f"i_q_bias_{name}")
-    i_d_bias = vf.add_var(name=f"i_d_bias_{name}")
+    i_q_bias_init = vf.add_var(name=f"i_q_bias_init_{name}")
+    i_d_bias_init = vf.add_var(name=f"i_d_bias_init_{name}")
 
-    inputs = [v_q, v_d, i_q_bias, i_d_bias]
+    inputs = [v_q, v_d, i_q_bias_init, i_d_bias_init]
     # inputs = [v_q, v_d]
 
     v_q_ref = vf.add_var(name=f"v_q_ref_{name}")
@@ -924,6 +924,20 @@ def get_virtual_admittance_GFL(vf: VarFactory, name: str = "G4L_Virtual_admittan
     d1 = 2 * Lv * Rv
     d0 = sym.max(Lv * Lv * omega_ref * omega_ref + Rv * Rv, eps)
 
+    # Frozen operating-point current bias
+    i_q_bias_state = vf.add_var(name=f"i_q_bias_state_{name}")
+    i_d_bias_state = vf.add_var(name=f"i_d_bias_state_{name}")
+
+    d_i_q_bias_state = vf.add_diff_var(
+        name=f"d_i_q_bias_state_{name}",
+        base_var=i_q_bias_state,
+    )
+
+    d_i_d_bias_state = vf.add_diff_var(
+        name=f"d_i_d_bias_state_{name}",
+        base_var=i_d_bias_state,
+    )
+
     templ.block = Block(
         # --------------------------------------------------------------------------------------
         # STATE EQUATIONS (seconds + pu)
@@ -941,9 +955,12 @@ def get_virtual_admittance_GFL(vf: VarFactory, name: str = "G4L_Virtual_admittan
             # TF 4
             x2_4,
             (err_d - d1 * x2_4 - d0 * x1_4) / sym.max(d2, eps),
+            # frozen current bias
+            c0,
+            c0
         ],
-        state_vars=[x1_1, x2_1, x1_2, x2_2, x1_3, x2_3, x1_4, x2_4],
-        diff_vars=[dx1_1, dx2_1, dx1_2, dx2_2, dx1_3, dx2_3, dx1_4, dx2_4],
+        state_vars=[x1_1, x2_1, x1_2, x2_2, x1_3, x2_3, x1_4, x2_4, i_q_bias_state, i_d_bias_state],
+        diff_vars=[dx1_1, dx2_1, dx1_2, dx2_2, dx1_3, dx2_3, dx1_4, dx2_4, d_i_q_bias_state, d_i_d_bias_state],
         # --------------------------------------------------------------------------------------
         # ALGEBRAIC EQUATIONS
         # --------------------------------------------------------------------------------------
@@ -954,8 +971,12 @@ def get_virtual_admittance_GFL(vf: VarFactory, name: str = "G4L_Virtual_admittan
             y2 - (n0_1 * x1_2),
             y3 - (n0_1 * x1_3),
             y4 - (n1_0 * x2_4 + n0_0 * x1_4),
-            i_q_out_VA - (i_q_bias + y1 - y2),
-            i_d_out_VA - (i_d_bias + y3 + y4),
+            # i_q_out_VA - (i_q_bias_state + y2),
+            # i_d_out_VA - (i_d_bias_state - y3 - y4),
+            # i_q_out_VA - (i_q_bias_state + y1 - y2),
+            # i_d_out_VA - (i_d_bias_state + y3 + y4),
+            i_q_out_VA - i_q_bias_state ,
+            i_d_out_VA - i_d_bias_state ,
             # i_q_out_VA - (-1 + y2), # from simulink
             # i_d_out_VA - (- y3 - y4), # from simulink
             # i_q_out_VA - (y1 - y2), # CORRECT SIGN CONVENTION!
@@ -965,6 +986,8 @@ def get_virtual_admittance_GFL(vf: VarFactory, name: str = "G4L_Virtual_admittan
         in_vars=inputs,
         out_vars=[i_q_out_VA, i_d_out_VA],
         init_eqs={
+            i_q_bias_state: i_q_bias_init,
+            i_d_bias_state: i_d_bias_init,
             err_q: v_q_ref - v_q,
             err_d: v_d_ref - v_d,
             x1_1: err_q / d0,
@@ -979,8 +1002,12 @@ def get_virtual_admittance_GFL(vf: VarFactory, name: str = "G4L_Virtual_admittan
             y2: c0,
             y3: c0,
             y4: n0_0 * err_d / d0,
-            i_q_out_VA: (i_q_bias + y1 - y2),
-            i_d_out_VA: (i_d_bias + y3 + y4),
+            # i_q_out_VA: (i_q_bias_state + y1 - y2),
+            # i_d_out_VA: (i_d_bias_state + y3 + y4),
+            # i_q_out_VA: (i_q_bias_state + y2),
+            # i_d_out_VA: (i_d_bias_state - y3 - y4),
+            i_q_out_VA: i_q_bias_state,
+            i_d_out_VA: i_d_bias_state,
         },
         diff_init_eqs={
             dx1_1: x2_1,
@@ -991,6 +1018,8 @@ def get_virtual_admittance_GFL(vf: VarFactory, name: str = "G4L_Virtual_admittan
             dx2_2: (err_d - d1*x2_2 - d0*x1_2)/sym.max(d2, eps),
             dx2_3: (err_q - d1*x2_3 - d0*x1_3)/sym.max(d2, eps),
             dx2_4: (err_d - d1*x2_4 - d0*x1_4)/sym.max(d2, eps),
+            d_i_q_bias_state: c0,
+            d_i_d_bias_state: c0,
         },
         event_dict=event_dict,
     )
