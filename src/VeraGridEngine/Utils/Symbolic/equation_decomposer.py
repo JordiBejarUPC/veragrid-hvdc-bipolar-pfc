@@ -59,21 +59,27 @@ class EquationDecomposer:
             if eq_key.startswith("alg_"):
                 rhs = self._extract_rhs(eq, var)
                 if rhs is None:
+                    rhs = self._extract_rhs_fallback(eq, var)
+                if rhs is None:
                     continue
                 result_var, blocks = self._decompose_expr(rhs)
-                if not blocks and result_var is not var:
-                    if isinstance(rhs, sym.Var) and result_var.non_mutable_uid == rhs.non_mutable_uid:
-                        pass_through = self._make_pass_through(var, result_var)
-                        child_blocks.append(pass_through)
-                        var_to_block_output[var.non_mutable_uid] = var
+                if not blocks:
+                    if result_var is not var:
+                        blk = self._make_pass_through(var, result_var)
+                        child_blocks.append(blk)
                     else:
-                        pass
-                elif blocks:
-                    last_output = self._remap_last_output(blocks, result_var, var)
+                        blk = Block(
+                            algebraic_vars=[var],
+                            algebraic_eqs=[var - rhs],
+                            out_vars=[var],
+                            name="passthrough",
+                        )
+                        child_blocks.append(blk)
+                    var_to_block_output[var.non_mutable_uid] = var
+                else:
+                    self._remap_last_output(blocks, result_var, var)
                     var_to_block_output[var.non_mutable_uid] = var
                     child_blocks.extend(blocks)
-                else:
-                    var_to_block_output[var.non_mutable_uid] = result_var
 
             elif eq_key.startswith("state_"):
                 rhs = eq
@@ -82,6 +88,7 @@ class EquationDecomposer:
                     int_blk = Block(
                         state_vars=[var],
                         state_eqs=[result_var],
+                        out_vars=[var],
                         name="integrator",
                     )
                     child_blocks.append(int_blk)
@@ -90,6 +97,7 @@ class EquationDecomposer:
                     int_blk = Block(
                         state_vars=[var],
                         state_eqs=[result_var],
+                        out_vars=[var],
                         name="integrator",
                     )
                     child_blocks.append(int_blk)
@@ -149,6 +157,13 @@ class EquationDecomposer:
                 return True
         return False
 
+    @staticmethod
+    def _contains_var(expr: sym.Expr, target: sym.Var) -> bool:
+        for v in expr.get_vars():
+            if v.non_mutable_uid == target.non_mutable_uid:
+                return True
+        return False
+
     # ------------------------------------------------------------------
     # Naming helpers
     # ------------------------------------------------------------------
@@ -161,19 +176,48 @@ class EquationDecomposer:
         return self.vf.add_var(self._new_name(prefix))
 
     # ------------------------------------------------------------------
+    # Variable-to-equation mapping
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _find_defined_var(eq: sym.Expr,
+                          candidates: List[sym.Var]) -> Optional[sym.Var]:
+        """
+        Return the candidate variable that *eq* defines, or ``None``.
+
+        The canonical pattern is  ``var - expr`` where *var* is directly a
+        :class:`sym.Var`.  When that is not found the entire equation is
+        searched for any of the candidates and the first match is returned.
+        """
+        if isinstance(eq, sym.BinOp) and eq.op == "-":
+            for v in candidates:
+                if isinstance(eq.left, sym.Var) and eq.left.non_mutable_uid == v.non_mutable_uid:
+                    return v
+                if isinstance(eq.right, sym.Var) and eq.right.non_mutable_uid == v.non_mutable_uid:
+                    return v
+        for v in candidates:
+            for inner in eq.get_vars():
+                if inner.non_mutable_uid == v.non_mutable_uid:
+                    return v
+        return None
+
+    # ------------------------------------------------------------------
     # Topological sort of equations
     # ------------------------------------------------------------------
 
     def _topological_sort_block(self, block: Block) -> List[Tuple[str, sym.Var, sym.Expr]]:
         entries: List[Tuple[str, sym.Var, sym.Expr]] = []
-        for i, var in enumerate(block.algebraic_vars):
-            eq = block.algebraic_eqs[i]
-            entries.append((f"alg_{i}", var, eq))
+
+        for eq_idx, eq in enumerate(block.algebraic_eqs):
+            var = self._find_defined_var(eq, block.algebraic_vars)
+            if var is not None:
+                entries.append((f"alg_{eq_idx}", var, eq))
+
         for i, var in enumerate(block.state_vars):
             eq = block.state_eqs[i]
             entries.append((f"state_{i}", var, eq))
 
-        eq_deps: Dict[str, List[int]] = {}  # eq_key -> [dep_var_uids]
+        eq_deps: Dict[str, List[int]] = {}
         var_defined_by: Dict[int, str] = {}
 
         for eq_key, var, eq in entries:
@@ -227,6 +271,50 @@ class EquationDecomposer:
                 return eq.right
             if isinstance(eq.right, sym.Var) and eq.right.non_mutable_uid == defined_var.non_mutable_uid:
                 return eq.left
+        return None
+
+    def _extract_factor_for_var(self, expr: sym.Expr, var: sym.Var) -> sym.Expr | None:
+        """
+        If *expr* has the form ``factor * var`` or ``var * factor`` return
+        the *factor* sub-expression, otherwise return ``None``.
+        """
+        if isinstance(expr, sym.Var):
+            if expr.non_mutable_uid == var.non_mutable_uid:
+                return sym.Const(1.0)
+            return None
+        if isinstance(expr, sym.BinOp) and expr.op == "*":
+            if isinstance(expr.left, sym.Var) and expr.left.non_mutable_uid == var.non_mutable_uid:
+                return expr.right
+            if isinstance(expr.right, sym.Var) and expr.right.non_mutable_uid == var.non_mutable_uid:
+                return expr.left
+        return None
+
+    def _extract_rhs_fallback(self, eq: sym.Expr, defined_var: sym.Var) -> sym.Expr | None:
+        if isinstance(eq, sym.BinOp):
+            left_has = self._contains_var(eq.left, defined_var)
+            right_has = self._contains_var(eq.right, defined_var)
+
+            if eq.op == "-":
+                if left_has and not right_has:
+                    factor = self._extract_factor_for_var(eq.left, defined_var)
+                    if factor is not None and not (isinstance(factor, sym.Const) and factor.value == 1.0):
+                        return eq.right / factor
+                    return eq.right
+                if right_has and not left_has:
+                    factor = self._extract_factor_for_var(eq.right, defined_var)
+                    if factor is not None and not (isinstance(factor, sym.Const) and factor.value == 1.0):
+                        return eq.left / factor
+                    return eq.left
+
+            elif eq.op == "+":
+                if left_has and not right_has:
+                    return -eq.right
+                if right_has and not left_has:
+                    return -eq.left
+
+        if self._contains_var(eq, defined_var):
+            return eq
+
         return None
 
     # ------------------------------------------------------------------
@@ -542,6 +630,11 @@ class EquationDecomposer:
                     producer = var_to_producer_block.get(v.non_mutable_uid)
                     if producer is not None and producer != i:
                         dep_graph[i].add(producer)
+            for alg_eq in blk.algebraic_eqs or []:
+                for v in alg_eq.get_vars():
+                    producer = var_to_producer_block.get(v.non_mutable_uid)
+                    if producer is not None and producer != i:
+                        dep_graph[i].add(producer)
 
         layers = self._assign_layers(dep_graph)
 
@@ -586,6 +679,24 @@ class EquationDecomposer:
 
             for port_idx, state_eq in enumerate(blk.state_eqs or []):
                 for v in state_eq.get_vars():
+                    producer = var_to_producer_block.get(v.non_mutable_uid)
+                    if producer is not None and producer != i:
+                        src_port_idx = self._find_output_port(children[producer], v)
+                        if src_port_idx is not None:
+                            needed_input_port = self._find_or_create_input_port(blk, v)
+                            if needed_input_port is not None:
+                                con_uid_counter += 1
+                                diagram.add_branch(
+                                    connectionitem_uid=con_uid_counter,
+                                    device_uid_from=children[producer].uid,
+                                    device_uid_to=blk.uid,
+                                    port_number_from=src_port_idx,
+                                    port_number_to=needed_input_port,
+                                    color="#587291",
+                                )
+
+            for port_idx, alg_eq in enumerate(blk.algebraic_eqs or []):
+                for v in alg_eq.get_vars():
                     producer = var_to_producer_block.get(v.non_mutable_uid)
                     if producer is not None and producer != i:
                         src_port_idx = self._find_output_port(children[producer], v)
