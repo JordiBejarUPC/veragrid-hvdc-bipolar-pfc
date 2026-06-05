@@ -250,8 +250,14 @@ def build_problems(grid_filename: str, grid=None) -> tuple[RmsProblemMultilinear
         max_iter=20,
         problem_type=vge.RmsProblemTypes.Multilinear,
     )
-
+    rms_options_ph = vge.RmsOptions(
+        time_step=0.01,
+        simulation_time=1.0,
+        tolerance=1e-6,
+        max_iter=20,
+    )
     problem_ml = vge.RmsProblemMultilinear(grid=grid, options=rms_options_ml, pf_results=pf_results)
+    #problem_ph = vge.RmsProblemPhasor(grid=grid, options=rms_options_ph, pf_results=pf_results)
     return problem_ml, pf_results, rms_options_ml
 
 
@@ -280,7 +286,9 @@ def main() -> None:
     problem_ml, pf_results, rms_options_ml = build_problems(grid_filename=grid_filename)
     x = problem_ml.get_x0()
 
-
+    eig_driver_ml, pf_ml, state_var_names_ml = run_small_signal_from_driver(problem=problem_ml,
+                                                                            pf_results=pf_results,
+                                                                            rms_options=rms_options_ml)
 
     eqs_array = [str(eq) for eq in problem_ml.get_algebraic_eqs]
     vars_array = [str(var) for var in problem_ml.algebraic_vars]
