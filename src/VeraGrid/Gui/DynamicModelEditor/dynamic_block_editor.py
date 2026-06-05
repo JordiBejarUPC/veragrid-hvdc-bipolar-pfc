@@ -123,8 +123,11 @@ from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_runtime import set_jmarti_
 from dataclasses import dataclass
 
 from VeraGridEngine.Utils.Symbolic.static_parameter_mapping import devices_static_params_mapping
+import VeraGrid.ThirdParty.darkdetect as darkdetect
 
 # from VeraGridEngine.Templates.Rms.common import create_block_of_type, create_generic_block, create_emt_wizard_block
+
+
 
 BLOCK_BORDER: QColor = QColor("#36536b")
 BLOCK_BORDER_SELECTED: QColor = QColor("#cc6f2c")
@@ -4565,7 +4568,9 @@ class DiagramScene(QGraphicsScene):
                 if not item.is_input:
                     self.source_port = item
                     path: QPainterPath = QPainterPath(item.scenePos())
-                    self.temp_line = self.addPath(path, QPen(Qt.PenStyle.DashLine))
+                    IS_DARK = darkdetect.theme() == "Dark"
+                    pen: QPen = QPen(QColor("white"), 1, Qt.PenStyle.DashLine) if IS_DARK else QPen(Qt.PenStyle.DashLine)
+                    self.temp_line = self.addPath(path, pen)
                     return
                 else:
                     pass
@@ -4574,7 +4579,9 @@ class DiagramScene(QGraphicsScene):
 
                 self.source_port = item
                 path: QPainterPath = QPainterPath(item.scenePos())
-                self.temp_line = self.addPath(path, QPen(Qt.PenStyle.DashLine))
+                IS_DARK = darkdetect.theme() == "Dark"
+                pen: QPen = QPen(QColor("white"), 1, Qt.PenStyle.DashLine) if IS_DARK else QPen(Qt.PenStyle.DashLine)
+                self.temp_line = self.addPath(path, pen)
                 return
 
             else:
