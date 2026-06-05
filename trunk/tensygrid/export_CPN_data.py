@@ -45,121 +45,6 @@ def ensure_unique_device_names(grid) -> None:
     _rename(list(grid.shunts), "shunt")
 
 
-def sanitize_runtime_parameter_names(grid) -> None:
-    def _sanitize_block(block, tag: str) -> None:
-        block.unify_blocks()
-        all_syms = list(block.algebraic_vars) + list(block.state_vars) + list(block.diff_vars)
-        all_syms += list(block.event_dict.keys()) + list(block.mode_dict.keys())
-        seen: dict[str, int] = {}
-        for k, sym in enumerate(all_syms):
-            name = str(sym.name)
-            if name not in seen:
-                seen[name] = 0
-                continue
-            seen[name] += 1
-            sym.name = f"{name}__{tag}_{seen[name]}_{k}"
-
-    for i, dev in enumerate(grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True)):
-        if not dev.rms_model.empty():
-            _sanitize_block(dev.rms_model, f"br{i}")
-
-    for i, dev in enumerate(grid.get_injection_devices_iter()):
-        if not dev.rms_model.empty():
-            _sanitize_block(dev.rms_model, f"inj{i}")
-
-
-def _compare_eigen_sets(ref_eigs: np.ndarray, test_eigs: np.ndarray, tol: float = 1e-6) -> tuple[int, int, int, float]:
-    if len(ref_eigs) == 0 or len(test_eigs) == 0:
-        return 0, len(ref_eigs), len(test_eigs), float("nan")
-
-    candidates: list[tuple[float, int, int]] = []
-    for i, ev in enumerate(ref_eigs):
-        d = np.abs(test_eigs - ev)
-        valid = np.where(d <= tol)[0]
-        for j in valid:
-            candidates.append((float(d[j]), i, int(j)))
-
-    candidates.sort(key=lambda t: t[0])
-
-    used_ref: set[int] = set()
-    used_test: set[int] = set()
-    errs: list[float] = []
-    for err, i, j in candidates:
-        if i in used_ref or j in used_test:
-            continue
-        used_ref.add(i)
-        used_test.add(j)
-        errs.append(err)
-
-    matches = len(errs)
-
-    mean_err = float(np.mean(errs)) if errs else float("nan")
-    return matches, len(ref_eigs) - matches, len(test_eigs) - matches, mean_err
-
-
-def _compute_unmatched(ref_eigs: np.ndarray, test_eigs: np.ndarray, tol: float = 1e-6) -> tuple[
-    list[tuple[complex, float]], list[tuple[complex, float]]]:
-    if len(ref_eigs) == 0 or len(test_eigs) == 0:
-        return [], []
-
-    candidates: list[tuple[float, int, int]] = []
-    for i, ev in enumerate(ref_eigs):
-        d = np.abs(test_eigs - ev)
-        for j, dist in enumerate(d):
-            if dist <= tol:
-                candidates.append((float(dist), i, j))
-
-    candidates.sort(key=lambda t: t[0])
-    used_ref: set[int] = set()
-    used_test: set[int] = set()
-    for _, i, j in candidates:
-        if i in used_ref or j in used_test:
-            continue
-        used_ref.add(i)
-        used_test.add(j)
-
-    ref_unmatched: list[tuple[complex, float]] = []
-    for i, ev in enumerate(ref_eigs):
-        if i in used_ref:
-            continue
-        nearest = float(np.min(np.abs(test_eigs - ev)))
-        ref_unmatched.append((complex(ev), nearest))
-
-    test_unmatched: list[tuple[complex, float]] = []
-    for j, ev in enumerate(test_eigs):
-        if j in used_test:
-            continue
-        nearest = float(np.min(np.abs(ref_eigs - ev)))
-        test_unmatched.append((complex(ev), nearest))
-
-    ref_unmatched.sort(key=lambda x: x[1])
-    test_unmatched.sort(key=lambda x: x[1])
-    return ref_unmatched, test_unmatched
-
-
-def _print_unmatched(ref_unmatched: list[tuple[complex, float]],
-                     test_unmatched: list[tuple[complex, float]],
-                     n_show: int = 8) -> None:
-    print("Unmatched modes (nearest-neighbor distance)")
-    print(f"  ML-only (showing up to {n_show})")
-    for ev, dist in ref_unmatched[:n_show]:
-        print(f"    ev={ev.real:+.9e}{ev.imag:+.9e}j  nearest={dist:.3e}")
-
-
-def _plot_eigen_comparison(ml_eigs: np.ndarray, ph_eigs: np.ndarray) -> None:
-    fig, ax = plt.subplots(figsize=(9, 6))
-    ax.scatter(np.real(ml_eigs), np.imag(ml_eigs), s=40, alpha=0.7, c="tab:blue", label="ML driver")
-    ax.scatter(np.real(ph_eigs), np.imag(ph_eigs), s=40, alpha=0.7, c="tab:orange", marker="x", label="Phasor driver")
-    ax.axvline(x=0.0, color="k", linestyle="--", linewidth=1)
-    ax.set_xlabel("Real Part")
-    ax.set_ylabel("Imaginary Part")
-    ax.set_title("IEEE9 Eigenvalue Map (ML vs Phasor)")
-    ax.grid(True, alpha=0.3)
-    ax.legend(loc="best")
-    plt.tight_layout()
-    # plt.show()
-
-
 def build_problems(grid_filename: str, grid=None) -> tuple[RmsProblemMultilinear, PowerFlowResults, RmsOptions]:
     """Build RMS problems for small-signal analysis.
 
@@ -250,14 +135,8 @@ def build_problems(grid_filename: str, grid=None) -> tuple[RmsProblemMultilinear
         max_iter=20,
         problem_type=vge.RmsProblemTypes.Multilinear,
     )
-    rms_options_ph = vge.RmsOptions(
-        time_step=0.01,
-        simulation_time=1.0,
-        tolerance=1e-6,
-        max_iter=20,
-    )
+
     problem_ml = vge.RmsProblemMultilinear(grid=grid, options=rms_options_ml, pf_results=pf_results)
-    #problem_ph = vge.RmsProblemPhasor(grid=grid, options=rms_options_ph, pf_results=pf_results)
     return problem_ml, pf_results, rms_options_ml
 
 
@@ -286,14 +165,11 @@ def main() -> None:
     problem_ml, pf_results, rms_options_ml = build_problems(grid_filename=grid_filename)
     x = problem_ml.get_x0()
 
-    eig_driver_ml, pf_ml, state_var_names_ml = run_small_signal_from_driver(problem=problem_ml,
-                                                                            pf_results=pf_results,
-                                                                            rms_options=rms_options_ml)
+    problem_ml.build_multilinear_matrices()
 
     eqs_array = [str(eq) for eq in problem_ml.get_algebraic_eqs]
     vars_array = [str(var) for var in problem_ml.algebraic_vars]
 
-    # 2. Ahora sí, empaquetarlos en arreglos de NumPy para MATLAB
     eqs_array = np.array(eqs_array, dtype=object)
     vars_array = np.array(vars_array, dtype=object)
     scipy.io.savemat(f'CPN1_computations/CPN1_{problem_ml.grid}.mat', {
@@ -307,4 +183,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    #sys.stdout = open(os.devnull, 'w')
     main()
