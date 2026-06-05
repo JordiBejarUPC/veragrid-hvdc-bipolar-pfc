@@ -16,6 +16,8 @@ from VeraGridEngine.Simulations.Derivatives.csc_derivatives import dSbus_dV_with
 from VeraGridEngine.Utils.NumericalMethods.common import find_closest_number, make_complex
 from VeraGridEngine.Utils.Sparse.csc2 import (CSC, CxCSC, scipy_to_mat, sp_slice, csc_stack_2d_ff)
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.discrete_controls import (control_q_for_generalized_method,
+                                                                                     DiscreteShuntControlState,
+                                                                                     QvDroopControlState,
                                                                                      compute_slack_distribution)
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions import expand
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions import compute_fx_error
@@ -24,7 +26,7 @@ from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions impo
                                                                                     polar_to_rect, voltage_q_droop,
                                                                                     asynchronous_gen_q)
 from VeraGridEngine.enumerations import (TapPhaseControl, TapModuleControl, HvdcControlType, ConverterControlType,
-                                         ConverterFaultControlType, ShuntControlMode, GeneratorType)
+                                         ConverterFaultControlType, GeneratorType)
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.converter_fault_controls import wecc_wt_type_4b
 from VeraGridEngine.basic_structures import Vec, IntVec, CxVec, Logger
 
@@ -700,12 +702,10 @@ class PfAcDcWithNegativePolesSc(PfFormulationTemplate):
         if self.options.verbose > 1:
             print("Ybus\n", self.adm.Ybus.toarray())
 
-        # Discrete Shunts
-        self.buses_with_discrete_shunts_control: List[Tuple[int, int]] = list()
-        self.shunt_step = self.nc.shunt_data.step.copy()
-        for sh_i, bus_i in enumerate(self.nc.shunt_data.bus_idx):
-            if self.nc.shunt_data.control_mode_int[sh_i] == ShuntControlMode.Discrete.idx():
-                self.buses_with_discrete_shunts_control.append((bus_i, sh_i))
+        # Store the control states in lightweight wrappers that forward the
+        # numerical work to the existing Numba kernels.
+        self.discrete_shunt_control = DiscreteShuntControlState(nc=self.nc)
+        self.qv_droop_control = QvDroopControlState(S0=self.S0, nc=self.nc)
 
     def _update_Qlim_indices(self, i_u_vm: IntVec, i_k_q: IntVec) -> None:
         """
@@ -2099,35 +2099,11 @@ class PfAcDcWithNegativePolesSc(PfFormulationTemplate):
                     x = self.var2x()
 
             # discrete shunt logic
-            for bus_i, sh_i in self.buses_with_discrete_shunts_control:
-                if self.Vm[bus_i] > self.nc.shunt_data.vmax[sh_i]:
-                    # decrease B
-                    g_steps: IntVec = self.nc.shunt_data.g_steps[sh_i]
-                    b_steps: IntVec = self.nc.shunt_data.b_steps[sh_i]
-                    if self.shunt_step[sh_i] > 0:
-                        prev_g = g_steps[self.shunt_step[sh_i]] / self.nc.Sbase
-                        prev_b = b_steps[self.shunt_step[sh_i]] / self.nc.Sbase
-                        self.shunt_step[sh_i] -= 1
-                        g = prev_g - g_steps[self.shunt_step[sh_i]] / self.nc.Sbase
-                        b = prev_b - b_steps[self.shunt_step[sh_i]] / self.nc.Sbase
-                        self.adm.Ybus[bus_i, bus_i] += complex(g, b) - complex(prev_g, prev_b)
-                        any_change = True
+            if self.discrete_shunt_control.apply(Vm=self.Vm, adm=self.adm):
+                any_change = True
 
-                elif self.Vm[bus_i] < self.nc.shunt_data.vmin[sh_i]:
-                    # increase B
-                    g_steps: IntVec = self.nc.shunt_data.g_steps[sh_i]
-                    b_steps: IntVec = self.nc.shunt_data.b_steps[sh_i]
-                    if self.shunt_step[sh_i] < (len(b_steps) - 1):
-                        prev_g = g_steps[self.shunt_step[sh_i]] / self.nc.Sbase
-                        prev_b = b_steps[self.shunt_step[sh_i]] / self.nc.Sbase
-                        self.shunt_step[sh_i] += 1
-                        g = prev_g + g_steps[self.shunt_step[sh_i]] / self.nc.Sbase
-                        b = prev_b + b_steps[self.shunt_step[sh_i]] / self.nc.Sbase
-                        self.adm.Ybus[bus_i, bus_i] += complex(g, b) - complex(prev_g, prev_b)
-                        any_change = True
-                else:
-                    # within boundaries
-                    pass
+            if self.qv_droop_control.apply(S0=self.S0, Vm=self.Vm):
+                any_change = True
 
             # update Slack control
             # as before but noticed it can cause slow convergence
