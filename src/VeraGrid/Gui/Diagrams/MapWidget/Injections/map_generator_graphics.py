@@ -125,7 +125,8 @@ class MapGeneratorGraphicItem(MapInjectionTemplateGraphicItem):
         :return:
         """
         open_dynamic_editor(api_object=self.api_object, circuit=self.editor.circuit,
-                            preferred_mode=DynamicSimulationMode.RMS)
+                            preferred_mode=DynamicSimulationMode.RMS,
+                            toast_host=self.editor.gui)
 
     def edit_emt(self):
         """
@@ -135,14 +136,17 @@ class MapGeneratorGraphicItem(MapInjectionTemplateGraphicItem):
         """
 
         open_dynamic_editor(api_object=self.api_object, circuit=self.editor.circuit,
-                            preferred_mode=DynamicSimulationMode.EMT)
+                            preferred_mode=DynamicSimulationMode.EMT,
+                            toast_host=self.editor.gui)
 
     def edit_dynamic(self):
         """
         Open the unified dynamic editor workspace for this map generator.
         """
 
-        open_dynamic_editor(api_object=self.api_object, circuit=self.editor.circuit)
+        open_dynamic_editor(api_object=self.api_object,
+                            circuit=self.editor.circuit,
+                            toast_host=self.editor.gui)
 
     def to_battery(self):
         """

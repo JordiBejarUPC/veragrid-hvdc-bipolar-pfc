@@ -1035,146 +1035,61 @@ def get_virtual_admittance_GFL(vf: VarFactory, name: str = "G4L_Virtual_admittan
 
 def get_current_limiter_GFL(vf: VarFactory, name: str = "G4L_current_limiter") -> EmtModelTemplate:
     """
-    Current limiter that priorizes i_d
+    Current limiter equivalent to the Simulink block.
 
-    i_q current limitation:
-    if Imax >= abs(i_q):
-        i_q_lim = i_q # no limitation.
-    else:
-        if i_q>=0:
-            i_q_lim = Imax
-        else:
-            i_q_lim = -Imax
+    Simulink:
+        A = i_d
+        B = i_q
 
-
-    i_d current limitation:
-    if np.sqrt(i_q*i_q + i_d*i_d) >= Imax:
-        if i_d >=0:
-            i_d_lim = np.sqrt(Imax*Imax-i_q_lim*i_q_lim)
-        else:
-            i_d_lim = - np.sqrt(Imax*Imax-i_q_lim*i_q_lim)
-    else:
-        i_d_lim = i_d
-
+    Priority:
+        i_d is limited first.
+        i_q receives the remaining current capability.
     """
-
-
-    # Original limiter logic intentionally bypassed temporarily for diagnosis.
-    # The previous version used hard saturation / heaviside / sqrt(max(.)) logic,
-    # which is a strong candidate for the AD Jacobian crash at initialization.
 
     templ = EmtModelTemplate()
     templ.tpe = DeviceType.NoDevice
     templ.name = name
-
     templ.block.name = name
 
     c0 = vf.add_const(0.0)
-    #
-    # i_q = vf.add_var(name=f"i_q_{name}")
-    # i_d = vf.add_var(name=f"i_d_{name}")
-    #
-    # inputs = [i_q, i_d]
-    #
-    # # outputs
-    # i_d_lim = vf.add_var(name=f"i_d_lim_{name}")
-    # i_q_lim = vf.add_var(name=f"i_q_lim_{name}")
-    # i_q_lim_mode = vf.add_var(name=f"i_q_lim_mode_{name}")
-    # i_d_lim_mode = vf.add_var(name=f"i_d_lim_mode_{name}")
-    #
-    # # parameters current limiter
-    # Ipeak = np.sqrt(2 / 3)
-    # Imax_expr = 1.1 * Ipeak
-    # Imax = vf.add_const(Imax_expr)
-    #
-    # # First compute the dq current magnitude after the q-axis limiter has been applied.
-    # # This decides whether the d-axis command must be projected back to the circular limit.
-    # i_mag_expr: Expr = sym.sqrt(i_q_lim * i_q_lim + i_d * i_d)
-    # inside_limit_expr: Expr = sym.heaviside(Imax - i_mag_expr)
-    #
-    # # Build the signed d-axis headroom that remains after the limited q-axis current is fixed.
-    # i_d_sign_expr: Expr = sym.heaviside(i_d) - sym.heaviside(-i_d)
-    # i_d_cap_expr: Expr = sym.sqrt(sym.max(Imax * Imax - i_q_lim * i_q_lim, c0))
-    #
-    # # Sample the full branch expression procedurally so the DAE only consumes one retained value.
-    # i_d_lim_expr: Expr = (i_d * inside_limit_expr
-    #                       + i_d_cap_expr * sym.heaviside(sym.abs(i_d)) * i_d_sign_expr * (1 - inside_limit_expr))
-    #
-    #
-    # templ.block = Block(
-    #     # --------------------------------------------------------------------------------------
-    #     # STATE EQUATIONS (seconds + pu)
-    #     # --------------------------------------------------------------------------------------
-    #     state_eqs=[],
-    #     state_vars=[],
-    #     diff_vars=[],
-    #     # --------------------------------------------------------------------------------------
-    #     # ALGEBRAIC EQUATIONS
-    #     # --------------------------------------------------------------------------------------
-    #     algebraic_eqs=[
-    #         i_q_lim - sym.hard_sat(i_q, -Imax, Imax),
-    #         i_d_lim - i_d_lim_expr,
-    #     ],
-    #     algebraic_vars=[i_q_lim, i_d_lim],
-    #     in_vars=inputs,
-    #     out_vars=[i_q_lim, i_d_lim],
-    #     mode_dict={
-    #         i_q_lim_mode: i_q_lim,
-    #         i_d_lim_mode: i_d_lim,
-    #     },
-    #     init_eqs={
-    #         # i_q_lim: sym.hard_sat(i_q, -Imax, Imax),
-    #         i_q_lim: i_q,
-    #         i_d_lim: i_d_lim_expr,
-    #     },
-    #     procedural_logic=[
-    #         hard_saturation(
-    #             output=i_q_lim_mode,
-    #             u=i_q,
-    #             u_min=-Imax,
-    #             u_max=Imax,
-    #             name=f"i_q_lim_sat_{name}",
-    #         ),
-    #         sampled_value(
-    #             output=i_d_lim_mode,
-    #             source=i_d_lim_expr,
-    #             name=f"i_d_lim_sample_{name}",
-    #         ),
-    #     ],
-    # )
-    #
-    # return templ
-    # Inputs
+
+    # Parent connection order remains:
+    # input 0 = i_q_out_VA
+    # input 1 = i_d_out_VA
     i_q = vf.add_var(name=f"i_q_{name}")
     i_d = vf.add_var(name=f"i_d_{name}")
     inputs = [i_q, i_d]
 
-    # Outputs used by the current loop
+    # Output order remains:
+    # output 0 = i_q_lim
+    # output 1 = i_d_lim
     i_q_lim = vf.add_var(name=f"i_q_lim_{name}")
     i_d_lim = vf.add_var(name=f"i_d_lim_{name}")
 
-    # Procedural retained values
     i_q_lim_mode = vf.add_var(name=f"i_q_lim_mode_{name}")
     i_d_lim_mode = vf.add_var(name=f"i_d_lim_mode_{name}")
 
-    # Ipeak = np.sqrt(2 / 3)
-    # Imax = vf.add_const(1.1 * Ipeak)
+    # Simulink Imax = 1.1 * Ipeak [A], converted to VeraGrid current units.
     Imax = vf.add_const(1.1 * np.sqrt(2.0) / 3.0)
 
-    # q-axis first, then d-axis uses remaining current capability
+    # Total requested current magnitude
     i_mag_expr = sym.sqrt(i_q * i_q + i_d * i_d)
-    i_d_cap_expr = sym.sqrt(sym.max(Imax * Imax - i_q_lim_mode * i_q_lim_mode, c0))
 
-    # signed d-axis cap
-    i_d_cap_signed = (
-            i_d_cap_expr * sym.heaviside(i_d)
-            - i_d_cap_expr * sym.heaviside(-i_d)
+    # d-axis priority: first limit i_d
+    # Remaining q-axis current capability
+    i_q_cap_expr = sym.sqrt(sym.max(Imax * Imax - i_d_lim_mode * i_d_lim_mode, c0))
+
+    # signed q-axis cap
+    i_q_cap_signed = (
+        i_q_cap_expr * sym.heaviside(i_q)
+        - i_q_cap_expr * sym.heaviside(-i_q)
     )
 
-    # If total current exceeds Imax, use signed cap, otherwise pass i_d
-    i_d_lim_expr = (
-            i_d * sym.heaviside(Imax - i_mag_expr)
-            + i_d_cap_signed * sym.heaviside(i_mag_expr - Imax)
+    # If total current exceeds Imax, limit i_q to remaining headroom.
+    # Otherwise pass i_q.
+    i_q_lim_expr = (
+        i_q * sym.heaviside(Imax - i_mag_expr)
+        + i_q_cap_signed * sym.heaviside(i_mag_expr - Imax)
     )
 
     templ.block = Block(
@@ -1182,7 +1097,6 @@ def get_current_limiter_GFL(vf: VarFactory, name: str = "G4L_current_limiter") -
         state_vars=[],
         diff_vars=[],
 
-        # Smooth/linear algebraic residuals only
         algebraic_eqs=[
             i_q_lim - i_q_lim_mode,
             i_d_lim - i_d_lim_mode,
@@ -1192,6 +1106,7 @@ def get_current_limiter_GFL(vf: VarFactory, name: str = "G4L_current_limiter") -
         in_vars=inputs,
         out_vars=[i_q_lim, i_d_lim],
 
+        # Initialization is before procedural update, and your initial point is unsaturated.
         init_eqs={
             i_q_lim: i_q,
             i_d_lim: i_d,
@@ -1204,16 +1119,16 @@ def get_current_limiter_GFL(vf: VarFactory, name: str = "G4L_current_limiter") -
 
         procedural_logic=[
             hard_saturation(
-                output=i_q_lim_mode,
-                u=i_q,
+                output=i_d_lim_mode,
+                u=i_d,
                 u_min=-Imax,
                 u_max=Imax,
-                name=f"i_q_lim_sat_{name}",
+                name=f"i_d_lim_sat_{name}",
             ),
             sampled_value(
-                output=i_d_lim_mode,
-                source=i_d_lim_expr,
-                name=f"i_d_lim_sample_{name}",
+                output=i_q_lim_mode,
+                source=i_q_lim_expr,
+                name=f"i_q_lim_sample_{name}",
             ),
         ],
     )

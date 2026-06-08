@@ -247,7 +247,8 @@ class LineGraphicItem(LineGraphicTemplateItem):
         """
 
         open_dynamic_editor(api_object=self.api_object, circuit=self.editor.circuit,
-                            preferred_mode=DynamicSimulationMode.RMS)
+                            preferred_mode=DynamicSimulationMode.RMS,
+                            toast_host=self.editor.gui)
 
     def edit_dynamic_emt(self):
         """
@@ -255,7 +256,8 @@ class LineGraphicItem(LineGraphicTemplateItem):
         """
 
         open_dynamic_editor(api_object=self.api_object, circuit=self.editor.circuit,
-                            preferred_mode=DynamicSimulationMode.EMT)
+                            preferred_mode=DynamicSimulationMode.EMT,
+                            toast_host=self.editor.gui)
 
     def add_to_catalogue(self):
         """

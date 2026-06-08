@@ -10,7 +10,7 @@ import uuid
 import re
 import copy
 from enum import Enum
-from typing import List, Dict, Optional, Any, Set
+from typing import List, Dict, Optional, Any, Set, TYPE_CHECKING
 from PySide6 import QtWidgets, QtGui, QtCore
 from PySide6.QtWidgets import (QApplication, QHBoxLayout, QGraphicsScene, QGraphicsView, QGraphicsItem,
                                QGraphicsRectItem, QGraphicsEllipseItem, QGraphicsTextItem, QMenu, QGraphicsPathItem,
@@ -107,6 +107,7 @@ from VeraGrid.Gui.DynamicModelEditor.source_emt_dialog import SourceEmtDialog
 from VeraGrid.Gui.DynamicModelEditor.transformer_topology_emt_dialog import TransformerTopologyEmtDialog
 from VeraGrid.Gui.DynamicModelEditor.switch_emt_dialog import SwitchEmtDialog
 from VeraGrid.Gui.Icons.icon_associations import device_type_icons
+from VeraGrid.Gui.toast_widget import ToastManager
 from VeraGridEngine.Utils.Symbolic.symbolic import (symbolic_to_string, string_to_symbolic,
                                                     get_symbolic_parser_function_names,
                                                     Expr, Var, Const, Comparison)
@@ -125,6 +126,9 @@ from dataclasses import dataclass
 
 from VeraGridEngine.Utils.Symbolic.static_parameter_mapping import devices_static_params_mapping
 import VeraGrid.ThirdParty.darkdetect as darkdetect
+
+if TYPE_CHECKING:
+    from VeraGrid.Gui.Main.SubClasses.base_gui import BaseMainGui
 
 # from VeraGridEngine.Templates.Rms.common import create_block_of_type, create_generic_block, create_emt_wizard_block
 
@@ -5224,7 +5228,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                  circuit: Any | None = None,
                  main_editor=False,
                  modal: bool = True,
-                 workspace_embedded: bool = False):
+                 workspace_embedded: bool = False,
+                 toast_host: "BaseMainGui | None" = None):
         """
         Initializes a dynamic block editor window used for editing and managing blocks within a graphical model.
 
@@ -5250,6 +5255,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         self.ui = Ui_BlockEditorWindow()
         self.ui.setupUi(self)
+
+        # The editor owns its own toast manager so save notifications are
+        # stacked above this page instead of behind it on the main window.
+        self.toast_manager: ToastManager = ToastManager(parent=self, position_top=False)
 
         if modal:
             self.setWindowModality(QtCore.Qt.WindowModality.WindowModal)
@@ -5284,6 +5293,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.mode = mode
         self.main_editor = main_editor
         self.workspace_embedded = workspace_embedded
+        self.toast_host: BaseMainGui | None = toast_host
         self._emt_bus_fallback_warning_shown: bool = False
         self._selected_side_block: Block | None = None
         self.setWindowTitle(f"Dynamic Model Editor [{self.mode.name}]")
@@ -12423,6 +12433,21 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self.rebuild_scene_from_diagram()
             self.select_block_by_uid(block_uid)
 
+    def _show_model_saved_toast(self) -> None:
+        """
+        Show a non-blocking save confirmation using the main GUI toast API.
+
+        The editor does not own a toast manager. The main GUI owns the
+        application-level toast system, so the editor receives that host
+        explicitly and forwards the notification there after a successful save.
+
+        :return:
+        """
+        if self.toast_host is not None:
+            self.toast_manager.show_info_toast("Model saved")
+        else:
+            self.toast_manager.show_info_toast("Model saved")
+
     def apply_changes(self) -> None:
         """
         Commit the edited working copy back into the original block.
@@ -12430,18 +12455,26 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return:
         """
         if self.mode == DynamicSimulationMode.RMS:
+            # Persist the edited RMS block back into the original model object.
             copy_block_state(source_block=self.main_block, target_block=self.original_block)
+            # Rebuild the connected bus helper models so the saved block stays
+            # consistent with the rest of the dynamic network representation.
             initialize_connected_bus_models_for_editor_assignment(api_object=self.api_object,
                                                                   circuit=self.circuit,
                                                                   var_factory=self.var_factory,
                                                                   mode=self.mode)
+            # Mark the editor state as clean because all in-memory edits were
+            # transferred back to the owned device model successfully.
             self.has_unapplied_changes = False
             self.changes_applied = True
             self.dirtyStateChanged.emit(False)
+            # Notify the user that the save operation completed, while keeping
+            # the editor open for further edits.
+            self._show_model_saved_toast()
             if self.workspace_embedded:
                 pass
             else:
-                self.close()
+                pass
 
 
 
@@ -12459,14 +12492,20 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 # the edited model so the saved device contract matches the
                 # rebuilt terminal bus shells seen by the simulation builder.
                 self._prune_disconnected_emt_root_interface()
+                # Copy the validated editor state back to the owned EMT model.
                 copy_block_state(source_block=self.main_block, target_block=self.original_block)
+                # Mark the working copy as saved because the device model now
+                # contains the current editor contents.
                 self.has_unapplied_changes = False
                 self.changes_applied = True
                 self.dirtyStateChanged.emit(False)
+                # Inform the user that the model was saved and keep the editor
+                # available for incremental editing.
+                self._show_model_saved_toast()
                 if self.workspace_embedded:
                     pass
                 else:
-                    self.close()
+                    pass
             else:
                 # Do not apply the edited model if the bus interface is invalid.
                 # The warning is already emitted by the synchronisation method.

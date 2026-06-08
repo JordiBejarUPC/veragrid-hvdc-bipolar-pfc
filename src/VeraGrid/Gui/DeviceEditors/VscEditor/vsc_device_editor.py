@@ -88,7 +88,8 @@ class VscDeviceEditor(TemplateDeviceEditor):
         if self.circuit is not None:
             open_dynamic_editor(api_object=self.api_object,
                                 circuit=self.circuit,
-                                preferred_mode=DynamicSimulationMode.RMS)
+                                preferred_mode=DynamicSimulationMode.RMS,
+                                toast_host=self)
         else:
             pass
 
@@ -99,7 +100,8 @@ class VscDeviceEditor(TemplateDeviceEditor):
         if self.circuit is not None:
             open_dynamic_editor(api_object=self.api_object,
                                 circuit=self.circuit,
-                                preferred_mode=DynamicSimulationMode.EMT)
+                                preferred_mode=DynamicSimulationMode.EMT,
+                                toast_host=self)
         else:
             pass
 
