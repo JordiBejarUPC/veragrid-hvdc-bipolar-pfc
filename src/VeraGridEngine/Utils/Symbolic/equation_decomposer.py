@@ -959,40 +959,52 @@ class EquationDecomposer:
             layers_list[layer[i]].append(i)
 
         for l in layers_list:
-            l.sort()
+            l.sort(key=lambda x: (x in from_to_tpe, x))
 
         # --- Crossing minimization (barycenter + local optimization) ---
+        # Routing blocks are kept at the end of each layer so they don't
+        # interfere with functional-block ordering.
         def _parent_barycenter(layers, target_layer):
             if target_layer == 0:
                 return
             items = layers[target_layer]
+            func_items = [n for n in items if n not in from_to_tpe]
+            if not func_items:
+                return
             prev_layer = layers[target_layer - 1]
             scores = []
-            for node in items:
-                parents = [p for p in dep_graph.get(node, set()) if p in prev_layer]
+            for node in func_items:
+                parents = [p for p in dep_graph.get(node, set())
+                           if p in prev_layer and p not in from_to_tpe]
                 if parents:
                     avg = sum(prev_layer.index(p) for p in parents) / len(parents)
                     scores.append((avg, node))
                 else:
-                    scores.append((items.index(node), node))
+                    scores.append((func_items.index(node), node))
             scores.sort(key=lambda x: x[0])
-            layers[target_layer] = [node for _, node in scores]
+            routing_items = [n for n in items if n in from_to_tpe]
+            layers[target_layer] = [node for _, node in scores] + routing_items
 
         def _child_barycenter(layers, target_layer):
             if target_layer >= len(layers) - 1:
                 return
             items = layers[target_layer]
+            func_items = [n for n in items if n not in from_to_tpe]
+            if not func_items:
+                return
             next_layer = layers[target_layer + 1]
             scores = []
-            for node in items:
-                children = [c for c in successors.get(node, set()) if c in next_layer]
+            for node in func_items:
+                children = [c for c in successors.get(node, set())
+                            if c in next_layer and c not in from_to_tpe]
                 if children:
                     avg = sum(next_layer.index(c) for c in children) / len(children)
                     scores.append((avg, node))
                 else:
-                    scores.append((items.index(node), node))
+                    scores.append((func_items.index(node), node))
             scores.sort(key=lambda x: x[0])
-            layers[target_layer] = [node for _, node in scores]
+            routing_items = [n for n in items if n in from_to_tpe]
+            layers[target_layer] = [node for _, node in scores] + routing_items
 
         def _crossings_between(upper, lower):
             # Only count crossings for functional blocks — routing blocks
@@ -1031,7 +1043,7 @@ class EquationDecomposer:
             return total
 
         # Barycenter sweeps
-        for sweep in range(8):
+        for sweep in range(15):
             if sweep % 2 == 0:
                 for l in range(1, len(layers_list)):
                     _parent_barycenter(layers_list, l)
@@ -1039,19 +1051,22 @@ class EquationDecomposer:
                 for l in range(len(layers_list) - 2, -1, -1):
                     _child_barycenter(layers_list, l)
 
-        # Local optimization: try adjacent swaps that reduce crossings
-        for iteration in range(8):
+        # Local optimization: try adjacent swaps that reduce crossings.
+        # Only swap functional blocks; routing blocks stay at the end.
+        for iteration in range(12):
             improved = False
             for l in range(len(layers_list)):
                 items = layers_list[l]
-                for i in range(len(items) - 1):
+                func_idx = [idx for idx, n in enumerate(items) if n not in from_to_tpe]
+                for pos in range(len(func_idx) - 1):
+                    i, j = func_idx[pos], func_idx[pos + 1]
                     cnt_before = _total_crossings()
-                    items[i], items[i + 1] = items[i + 1], items[i]
+                    items[i], items[j] = items[j], items[i]
                     cnt_after = _total_crossings()
                     if cnt_after < cnt_before:
                         improved = True
                     else:
-                        items[i], items[i + 1] = items[i + 1], items[i]
+                        items[i], items[j] = items[j], items[i]
             if not improved:
                 break
 
