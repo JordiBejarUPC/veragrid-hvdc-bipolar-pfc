@@ -5,6 +5,7 @@
 from __future__ import annotations
 from uuid import uuid4
 import pandas as pd
+import numpy as np
 from PySide6.QtCore import QThread, Signal
 from typing import Dict, Union, List, Tuple, Any, Generator
 from collections.abc import Callable
@@ -370,9 +371,45 @@ class SimulationSession:
         )
 
         if drv is not None:
+            if drv.results is None:
+                if driver_tpe == SimulationTypes.RmsDynamic_run:
+                    drv.results = RmsResults(
+                        time_array=pd.DatetimeIndex([]),
+                        rms_events_group_names=np.array([], dtype=str),
+                        rms_events_group_idtags=np.array([], dtype=str),
+                        variables=list(),
+                        uid2idx=dict(),
+                        vars_glob_name2uid=dict(),
+                        devices_vars_info=dict(),
+                        parameter_value_maps=list(),
+                        has_event_group_results=np.array([], dtype=bool),
+                    )
+                elif driver_tpe == SimulationTypes.EmtDynamic_run:
+                    drv.results = EmtResults(
+                        time_array=pd.DatetimeIndex([]),
+                        emt_events_group_names=np.array([], dtype=str),
+                        emt_events_group_idtags=np.array([], dtype=str),
+                        variables=list(),
+                        diff_variables=list(),
+                        uid2idx_vars=dict(),
+                        uid2idx_diff=dict(),
+                        vars_glob_name2uid=dict(),
+                        devices_vars_info=dict(),
+                        parameter_value_maps=list(),
+                        has_event_group_results=np.array([], dtype=bool),
+                    )
+                else:
+                    pass
 
             # fill in the saved results
             drv.results.parse_saved_data(grid=grid, data_dict=data_dict, logger=logger)
+
+            if driver_tpe == SimulationTypes.RmsDynamic_run:
+                drv.results.restore_dynamic_metadata(grid=grid)
+            elif driver_tpe == SimulationTypes.EmtDynamic_run:
+                drv.results.restore_dynamic_metadata(grid=grid)
+            else:
+                pass
 
             # perform whatever operations are needed after loading
             drv.results.consolidate_after_loading()

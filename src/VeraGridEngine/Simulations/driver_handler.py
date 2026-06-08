@@ -34,6 +34,10 @@ from VeraGridEngine.Simulations.OPF.opf_driver import OptimalPowerFlowDriver
 from VeraGridEngine.Simulations.OPF.opf_ts_driver import (OptimalPowerFlowTimeSeriesDriver)
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
 from VeraGridEngine.Simulations.PowerFlow.power_flow_ts_driver import (PowerFlowTimeSeriesDriver)
+from VeraGridEngine.Simulations.Rms.rms_driver import RmsSimulationDriver
+from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
+from VeraGridEngine.Simulations.EMT.emt_driver import EmtSimulationDriver
+from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.ShortCircuitStudies.short_circuit_driver import ShortCircuitDriver
 from VeraGridEngine.Simulations.Stochastic.stochastic_power_flow_driver import (StochasticPowerFlowDriver)
 from VeraGridEngine.Simulations.types import DRIVER_OBJECTS
@@ -119,6 +123,25 @@ def create_driver(grid: MultiCircuit,
                                         options=PowerFlowOptions(),
                                         time_indices=time_indices,
                                         clustering_results=None)
+
+    elif driver_tpe == SimulationTypes.RmsDynamic_run:
+        # Disk retrieval only needs a driver shell that owns the correct results
+        # class. Saved RMS results already contain the solved traces.
+        drv = RmsSimulationDriver(
+            grid=grid,
+            options=RmsOptions(),
+            pf_results=None
+        )
+
+    elif driver_tpe == SimulationTypes.EmtDynamic_run:
+        # Disk retrieval only needs a driver shell that owns the correct results
+        # class. Saved EMT results already contain the solved traces.
+        drv = EmtSimulationDriver(
+            grid=grid,
+            options=EmtOptions(),
+            pf_results_3ph=None,
+            pf_results=None
+        )
 
     elif driver_tpe == SimulationTypes.ShortCircuit_run:
         drv = ShortCircuitDriver(grid=grid,

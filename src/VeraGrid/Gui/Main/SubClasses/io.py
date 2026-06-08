@@ -487,7 +487,7 @@ class IoMain(ScenariosMain):
 
                 # get the session tree structure
                 session_data_dict = self.open_file_thread_object.get_session_tree()
-                mdl = gf.get_tree_model(session_data_dict, 'Sessions')
+                mdl = gf.get_tree_model(session_data_dict, 'Sessions', icons=gf.get_simulation_tree_icons())
                 self.ui.diskSessionsTreeView.setModel(mdl)
 
                 # apply the GUI settings if found:
@@ -851,7 +851,7 @@ class IoMain(ScenariosMain):
 
         # get the session tree structure
         session_data_dict = self.save_file_thread_object.get_session_tree()
-        mdl = gf.get_tree_model(session_data_dict, 'Sessions')
+        mdl = gf.get_tree_model(session_data_dict, 'Sessions', icons=gf.get_simulation_tree_icons())
         self.ui.diskSessionsTreeView.setModel(mdl)
 
         # call the garbage collector to free memory

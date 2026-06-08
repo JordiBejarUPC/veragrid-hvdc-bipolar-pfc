@@ -231,6 +231,14 @@ class ResultsTemplate(metaclass=ResultsTemplateMeta):
         """
         pass
 
+    def prepare_for_saving(self) -> None:
+        """
+        Refresh any derived payload that must be serialized with the results.
+
+        :return: None.
+        """
+        pass
+
     def get_dict(self) -> Dict[str, Any]:
         """
         Get data to pass via json
@@ -591,7 +599,14 @@ class ResultsTemplate(metaclass=ResultsTemplateMeta):
                         # NumPy payloads are already restored with their native shape.
                         array = np.asarray(stored_data)
 
-                if isinstance(array, np.ndarray) and array.ndim == 2 and array.shape[1] == 1:
+                vector_like_types = (Vec, IntVec, StrVec, BoolVec, CxVec)
+
+                if (
+                        isinstance(array, np.ndarray)
+                        and array.ndim == 2
+                        and array.shape[1] == 1
+                        and res_prop.tpe in vector_like_types
+                ):
                     # if there is only one column, convert to array directly
                     array = array[:, 0]
 

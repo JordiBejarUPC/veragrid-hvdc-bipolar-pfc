@@ -257,8 +257,9 @@ class BackEulerImplicitIntegrationVec:
 
                         if step_idx == 0 and is_first_local_step:
                             if substep_converged:
-                                print("System well initialized.")
-                                print(f"x is {x_new}")
+                                # print("System well initialized.")
+                                # print(f"x is {x_new}")
+                                pass
                             else:
                                 well_initialized = False
                                 self.problem.logger.add_error(
@@ -267,15 +268,15 @@ class BackEulerImplicitIntegrationVec:
                                     value=residual,
                                     expected_value=tol,
                                 )
-                                print(f"System requires iterative initialization. Initial DAE residual is {residual}.")
-                                print(f"rhs is {rhs}")
-                                non_zero_indexes = np.where(np.abs(rhs) > 1e-7)[0]
-                                all_eq = self.problem._state_eqs + self.problem._algebraic_eqs
-                                print("eqs are")
-                                for i in non_zero_indexes:
-                                    eq = all_eq[i]
-                                    print(f"eq {eq} with error {rhs[i]}")
-                                print("RMS simulation continues iterative initialization after the diagnostic. Check the logger for details.")
+                                # print(f"System requires iterative initialization. Initial DAE residual is {residual}.")
+                                # print(f"rhs is {rhs}")
+                                # non_zero_indexes = np.where(np.abs(rhs) > 1e-7)[0]
+                                # all_eq = self.problem._state_eqs + self.problem._algebraic_eqs
+                                # print("eqs are")
+                                # for i in non_zero_indexes:
+                                #     eq = all_eq[i]
+                                #     print(f"eq {eq} with error {rhs[i]}")
+                                # print("RMS simulation continues iterative initialization after the diagnostic. Check the logger for details.")
                                 # Continue with Newton iterations after reporting the initialization residual.
 
 
@@ -345,7 +346,7 @@ class BackEulerImplicitIntegrationVec:
                     break
 
                 lag_update_start = time.time()
-                print(f'converged is {True} at step {step_idx} with {n_iter} iterations')
+                # print(f'converged is {True} at step {step_idx} with {n_iter} iterations')
 
                 self.y[step_idx + 1, :] = x_prev
                 self.t[step_idx + 1] = t_macro_target
@@ -359,18 +360,18 @@ class BackEulerImplicitIntegrationVec:
             if has_fmu_me:
                 self.problem.close_fmu_me_devices()
 
-        total = sum(timings.values())
-        print("\n--- Solver timing breakdown (Vec) ---")
-        for k, v in timings.items():
-            print(f"  {k:25s}: {v:8.4f} s  ({v/total*100:5.1f}%)")
-        print(f"  {'TOTAL':25s}: {total:8.4f} s")
+        # total = sum(timings.values())
+        # print("\n--- Solver timing breakdown (Vec) ---")
+        # for k, v in timings.items():
+        #     print(f"  {k:25s}: {v:8.4f} s  ({v/total*100:5.1f}%)")
+        # print(f"  {'TOTAL':25s}: {total:8.4f} s")
 
-        if hasattr(self.problem, '_prof_timings') and self.problem._prof_timings:
-            print("\n--- Problem-level timing breakdown (Vec) ---")
-            pt = self.problem._prof_timings
-            ptotal = sum(pt.values())
-            for k, v in sorted(pt.items()):
-                print(f"  {k:35s}: {v:8.4f} s  ({v/ptotal*100:5.1f}%)")
-            print(f"  {'TOTAL':35s}: {ptotal:8.4f} s")
+        # if self.problem._prof_timings is not None:
+        #     print("\n--- Problem-level timing breakdown (Vec) ---")
+        #     pt = self.problem._prof_timings
+        #     ptotal = sum(pt.values())
+        #     for k, v in sorted(pt.items()):
+        #         print(f"  {k:35s}: {v:8.4f} s  ({v/ptotal*100:5.1f}%)")
+        #     print(f"  {'TOTAL':35s}: {ptotal:8.4f} s")
 
         return self.t, self.y, well_initialized, converged
