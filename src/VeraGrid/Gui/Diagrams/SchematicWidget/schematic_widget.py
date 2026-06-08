@@ -3934,6 +3934,80 @@ class SchematicWidget(BaseDiagramWidget):
 
         return lookup
 
+    def _has_single_phase_explicit_injection_results(self,
+                                                     gen_p: Vec | None,
+                                                     gen_q: Vec | None,
+                                                     battery_p: Vec | None,
+                                                     battery_q: Vec | None,
+                                                     shunt_q: Vec | None) -> bool:
+        """
+        Tell whether the active study exported explicit single-phase injection results.
+
+        :param gen_p: Generator active powers.
+        :param gen_q: Generator reactive powers.
+        :param battery_p: Battery active powers.
+        :param battery_q: Battery reactive powers.
+        :param shunt_q: Shunt-like reactive powers.
+        :return: ``True`` when at least one explicit injection result channel is present.
+        """
+        # Dynamic and fallback colouring paths can reuse ``colour_results()``
+        # without providing any per-device injection arrays. In those cases the
+        # GUI must clear stale overlays and stop, otherwise profile-backed
+        # setpoints get painted as if they were simulation results.
+        if gen_p is not None or gen_q is not None:
+            return True
+        else:
+            pass
+
+        if battery_p is not None or battery_q is not None:
+            return True
+        else:
+            pass
+
+        if shunt_q is not None:
+            return True
+        else:
+            return False
+
+    def _has_three_phase_explicit_injection_results(self,
+                                                    gen_q_a: Vec | None,
+                                                    gen_q_b: Vec | None,
+                                                    gen_q_c: Vec | None,
+                                                    battery_q_a: Vec | None,
+                                                    battery_q_b: Vec | None,
+                                                    battery_q_c: Vec | None,
+                                                    shunt_q_a: Vec | None,
+                                                    shunt_q_b: Vec | None,
+                                                    shunt_q_c: Vec | None) -> bool:
+        """
+        Tell whether the active study exported explicit three-phase injection results.
+
+        :param gen_q_a: Generator phase-a reactive powers.
+        :param gen_q_b: Generator phase-b reactive powers.
+        :param gen_q_c: Generator phase-c reactive powers.
+        :param battery_q_a: Battery phase-a reactive powers.
+        :param battery_q_b: Battery phase-b reactive powers.
+        :param battery_q_c: Battery phase-c reactive powers.
+        :param shunt_q_a: Shunt-like phase-a reactive powers.
+        :param shunt_q_b: Shunt-like phase-b reactive powers.
+        :param shunt_q_c: Shunt-like phase-c reactive powers.
+        :return: ``True`` when at least one explicit 3-phase injection result channel is present.
+        """
+        if gen_q_a is not None or gen_q_b is not None or gen_q_c is not None:
+            return True
+        else:
+            pass
+
+        if battery_q_a is not None or battery_q_b is not None or battery_q_c is not None:
+            return True
+        else:
+            pass
+
+        if shunt_q_a is not None or shunt_q_b is not None or shunt_q_c is not None:
+            return True
+        else:
+            return False
+
     def _get_injection_result_color(self, graphic_object: INJECTION_GRAPHICS) -> QColor:
         """
         Get the result overlay color for an injection graphic.
@@ -4783,6 +4857,13 @@ class SchematicWidget(BaseDiagramWidget):
         generator_lookup: dict[str, int] = self._build_injection_name_lookup(names=gen_names)
         battery_lookup: dict[str, int] = self._build_injection_name_lookup(names=battery_names)
         shunt_lookup: dict[str, int] = self._build_injection_name_lookup(names=shunt_names)
+        has_explicit_results: bool = self._has_single_phase_explicit_injection_results(
+            gen_p=gen_p,
+            gen_q=gen_q,
+            battery_p=battery_p,
+            battery_q=battery_q,
+            shunt_q=shunt_q,
+        )
 
         self._colour_generator_results(gen_p=gen_p,
                                        gen_q=gen_q,
@@ -4792,10 +4873,17 @@ class SchematicWidget(BaseDiagramWidget):
                                      battery_lookup=battery_lookup)
         self._colour_shunt_like_results(shunt_q=shunt_q,
                                         shunt_lookup=shunt_lookup)
-        self._colour_static_generator_results(t_idx=t_idx)
-        self._colour_load_results(t_idx=t_idx)
-        self._colour_external_grid_results(t_idx=t_idx)
-        self._colour_current_injection_results(t_idx=t_idx)
+
+        # Only studies that export some explicit per-device injection channels
+        # should fall back to the profile-backed injections that still lack
+        # study-native result vectors.
+        if has_explicit_results:
+            self._colour_static_generator_results(t_idx=t_idx)
+            self._colour_load_results(t_idx=t_idx)
+            self._colour_external_grid_results(t_idx=t_idx)
+            self._colour_current_injection_results(t_idx=t_idx)
+        else:
+            pass
 
     def _colour_injection_results_3ph(self,
                                       gen_q_a: Vec | None,
@@ -4834,6 +4922,17 @@ class SchematicWidget(BaseDiagramWidget):
         generator_lookup: dict[str, int] = self._build_injection_name_lookup(names=gen_names)
         battery_lookup: dict[str, int] = self._build_injection_name_lookup(names=battery_names)
         shunt_lookup: dict[str, int] = self._build_injection_name_lookup(names=shunt_names)
+        has_explicit_results: bool = self._has_three_phase_explicit_injection_results(
+            gen_q_a=gen_q_a,
+            gen_q_b=gen_q_b,
+            gen_q_c=gen_q_c,
+            battery_q_a=battery_q_a,
+            battery_q_b=battery_q_b,
+            battery_q_c=battery_q_c,
+            shunt_q_a=shunt_q_a,
+            shunt_q_b=shunt_q_b,
+            shunt_q_c=shunt_q_c,
+        )
 
         self._colour_generator_results_3ph(gen_q_a=gen_q_a,
                                            gen_q_b=gen_q_b,
@@ -4847,10 +4946,14 @@ class SchematicWidget(BaseDiagramWidget):
                                             shunt_q_b=shunt_q_b,
                                             shunt_q_c=shunt_q_c,
                                             shunt_lookup=shunt_lookup)
-        self._colour_static_generator_results_3ph(t_idx=t_idx)
-        self._colour_load_results_3ph(t_idx=t_idx)
-        self._colour_external_grid_results_3ph(t_idx=t_idx)
-        self._colour_current_injection_results_3ph(t_idx=t_idx)
+
+        if has_explicit_results:
+            self._colour_static_generator_results_3ph(t_idx=t_idx)
+            self._colour_load_results_3ph(t_idx=t_idx)
+            self._colour_external_grid_results_3ph(t_idx=t_idx)
+            self._colour_current_injection_results_3ph(t_idx=t_idx)
+        else:
+            pass
 
     def colour_results(self,
                        Sbus: CxVec,
