@@ -1045,6 +1045,7 @@ class IoMain(ScenariosMain):
                         self.show_logs(name="Results parsing", logger=logger, expand_all=True)
 
                     self.update_available_results()
+                    self.show_info_toast(f"Loaded '{study_name}' results from disk")
                 else:
                     error_msg('No file driver declared :/')
             else:
