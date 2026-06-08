@@ -201,8 +201,8 @@ def _export_emt_results_to_zip(results: EmtResults,
                                                                 group_names=results.emt_events_group_names,
                                                                 group_idtags=results.emt_events_group_idtags)
 
-            values_filename: str = f"EMT simulation/values/{group_identity}.csv"
-            diff_values_filename: str = f"EMT simulation/diff_values/{group_identity}.csv"
+            values_filename: str = f"EMT simulation/{group_identity}.csv"
+            diff_values_filename: str = f"EMT simulation/{group_identity}_diff_values.csv"
 
             if text_func is not None:
                 text_func(f"flushing {results.name} {values_filename}")
@@ -311,7 +311,17 @@ def export_results(results_list: List[RESULTS_OBJECTS],
 
                                 if mdl is not None:
                                     with StringIO() as buffer:
-                                        filename = results.name + ' ' + result_name + '.csv'
+                                        raw_text: str = str(results.name + ' ' + result_name + '.csv')
+
+                                        # Windows extraction rejects path segments containing reserved filename
+                                        # characters such as ``:``. Removing those characters keeps the archive
+                                        # portable while preserving the original wording as closely as possible.
+                                        filename: str = re.sub(r'[\\:*?"<>|]+', '', raw_text)
+                                        filename = re.sub(r'/+', '/', filename)
+                                        filename = re.sub(r'\s+', ' ', filename).strip()
+                                        if filename == "":
+                                            filename = "unnamed_result.csv"
+
                                         try:
                                             mdl.save_to_csv(buffer)
                                             myzip.writestr(filename, buffer.getvalue())
