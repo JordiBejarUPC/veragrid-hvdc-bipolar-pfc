@@ -537,8 +537,8 @@ def get_grid_side_converter_control_GFL(vf: VarFactory, name: str = "G4L_grid_si
     vf.add_connection(VA_mdl.in_vars[1], clark_park_transforms_mdl.out_vars[1])
     vf.add_connection(current_loop_mdl.in_vars[1], clark_park_transforms_mdl.out_vars[1])
     # VA current bias from measured operating point
-    vf.add_connection(VA_mdl.in_vars[2], clark_park_transforms_mdl.out_vars[2])
-    vf.add_connection(VA_mdl.in_vars[3], clark_park_transforms_mdl.out_vars[3])
+    # vf.add_connection(VA_mdl.in_vars[2], clark_park_transforms_mdl.out_vars[2])
+    # vf.add_connection(VA_mdl.in_vars[3], clark_park_transforms_mdl.out_vars[3])
     # i_q
     vf.add_connection(current_loop_mdl.in_vars[2], clark_park_transforms_mdl.out_vars[2])
     # i_d
@@ -763,6 +763,9 @@ def get_PLL_GFL(vf: VarFactory, name: str = "G4L_PLL") -> EmtModelTemplate:
     y = vf.add_var(name=f"y_{name}")
     dy = vf.add_diff_var(name=f"dy_{name}", base_var=y)
 
+    theta_v = sym.atan2(-beta, alpha)
+    delta_va0 = vf.add_const(-0.1631094655)
+
     templ.block = Block(
         # --------------------------------------------------------------------------------------
         # STATE EQUATIONS (seconds + pu)
@@ -800,7 +803,8 @@ def get_PLL_GFL(vf: VarFactory, name: str = "G4L_PLL") -> EmtModelTemplate:
         out_vars=[phase_pll, omega_pll],
         init_eqs={
             x_e_pll: vf.add_const(omega_expr),
-            theta_pll: sym.atan2(-beta, alpha),
+            # theta_pll: sym.atan2(-beta, alpha),
+            theta_pll: theta_v,
             alpha: (1/3) * (2*v_A - v_B - v_C),
             beta: (1/3) * (-np.sqrt(3)*v_B + np.sqrt(3)*v_C),
             v_q: alpha * cos(theta_pll) - beta * sin(theta_pll),
@@ -808,7 +812,8 @@ def get_PLL_GFL(vf: VarFactory, name: str = "G4L_PLL") -> EmtModelTemplate:
             w_pll: omega_ref,
             x: c0,
             y: vf.add_const(1.0),
-            phase_pll: theta_pll,
+            # phase_pll: theta_pll,
+            phase_pll: theta_v + delta_va0,
             omega_pll: omega_ref,
 
         },
@@ -855,26 +860,26 @@ def get_virtual_admittance_GFL(vf: VarFactory, name: str = "G4L_Virtual_admittan
 
     v_q = vf.add_var(name=f"v_q_{name}")
     v_d = vf.add_var(name=f"v_d_{name}")
-    i_q_bias_init = vf.add_var(name=f"i_q_bias_init_{name}")
-    i_d_bias_init = vf.add_var(name=f"i_d_bias_init_{name}")
+    # i_q_bias_init = vf.add_var(name=f"i_q_bias_init_{name}")
+    # i_d_bias_init = vf.add_var(name=f"i_d_bias_init_{name}")
 
-    inputs = [v_q, v_d, i_q_bias_init, i_d_bias_init]
-    # inputs = [v_q, v_d]
+    # inputs = [v_q, v_d, i_q_bias_init, i_d_bias_init]
+    inputs = [v_q, v_d]
 
     v_q_ref = vf.add_var(name=f"v_q_ref_{name}")
     v_d_ref = vf.add_var(name=f"v_d_ref_{name}")
     event_dict = {
-        v_q_ref: v_q,
-        # v_q_ref: vf.add_const(np.sqrt(2)),
+        # v_q_ref: v_q,
+        v_q_ref: vf.add_const(np.sqrt(2)),
+        # v_q_ref: vf.add_const(1.0),
         v_d_ref: vf.add_const(0.0),
     }
 
     # parameters virtual admittance
     Vac_expr = np.sqrt(2 / 3)
     omega_ref_expr = 2 * np.pi * 50
-    Zvirtual = 0.2
+    Zvirtual = 0.6 #0.2
     R_L = 0.1
-    Vac = vf.add_const(Vac_expr)
     Lv = vf.add_const(Zvirtual / omega_ref_expr)
     Rv = vf.add_const(Zvirtual * R_L)
     omega_ref = vf.add_const(omega_ref_expr)
@@ -925,18 +930,17 @@ def get_virtual_admittance_GFL(vf: VarFactory, name: str = "G4L_Virtual_admittan
     d0 = sym.max(Lv * Lv * omega_ref * omega_ref + Rv * Rv, eps)
 
     # Frozen operating-point current bias
-    i_q_bias_state = vf.add_var(name=f"i_q_bias_state_{name}")
-    i_d_bias_state = vf.add_var(name=f"i_d_bias_state_{name}")
-
-    d_i_q_bias_state = vf.add_diff_var(
-        name=f"d_i_q_bias_state_{name}",
-        base_var=i_q_bias_state,
-    )
-
-    d_i_d_bias_state = vf.add_diff_var(
-        name=f"d_i_d_bias_state_{name}",
-        base_var=i_d_bias_state,
-    )
+    # i_q_bias_state = vf.add_var(name=f"i_q_bias_state_{name}")
+    # i_d_bias_state = vf.add_var(name=f"i_d_bias_state_{name}")
+    # d_i_q_bias_state = vf.add_diff_var(
+    #     name=f"d_i_q_bias_state_{name}",
+    #     base_var=i_q_bias_state,
+    # )
+    #
+    # d_i_d_bias_state = vf.add_diff_var(
+    #     name=f"d_i_d_bias_state_{name}",
+    #     base_var=i_d_bias_state,
+    # )
 
     templ.block = Block(
         # --------------------------------------------------------------------------------------
@@ -956,11 +960,13 @@ def get_virtual_admittance_GFL(vf: VarFactory, name: str = "G4L_Virtual_admittan
             x2_4,
             (err_d - d1 * x2_4 - d0 * x1_4) / sym.max(d2, eps),
             # frozen current bias
-            c0,
-            c0
+            # c0,
+            # c0
         ],
-        state_vars=[x1_1, x2_1, x1_2, x2_2, x1_3, x2_3, x1_4, x2_4, i_q_bias_state, i_d_bias_state],
-        diff_vars=[dx1_1, dx2_1, dx1_2, dx2_2, dx1_3, dx2_3, dx1_4, dx2_4, d_i_q_bias_state, d_i_d_bias_state],
+        # state_vars=[x1_1, x2_1, x1_2, x2_2, x1_3, x2_3, x1_4, x2_4, i_q_bias_state, i_d_bias_state],
+        # diff_vars=[dx1_1, dx2_1, dx1_2, dx2_2, dx1_3, dx2_3, dx1_4, dx2_4, d_i_q_bias_state, d_i_d_bias_state],
+        state_vars=[x1_1, x2_1, x1_2, x2_2, x1_3, x2_3, x1_4, x2_4],
+        diff_vars=[dx1_1, dx2_1, dx1_2, dx2_2, dx1_3, dx2_3, dx1_4, dx2_4],
         # --------------------------------------------------------------------------------------
         # ALGEBRAIC EQUATIONS
         # --------------------------------------------------------------------------------------
@@ -975,8 +981,8 @@ def get_virtual_admittance_GFL(vf: VarFactory, name: str = "G4L_Virtual_admittan
             # i_d_out_VA - (i_d_bias_state - y3 - y4),
             # i_q_out_VA - (i_q_bias_state + y1 - y2),
             # i_d_out_VA - (i_d_bias_state + y3 + y4),
-            i_q_out_VA - i_q_bias_state ,
-            i_d_out_VA - i_d_bias_state ,
+            i_q_out_VA - (y1 - y2) ,
+            i_d_out_VA - (y3 + y4) ,
             # i_q_out_VA - (-1 + y2), # from simulink
             # i_d_out_VA - (- y3 - y4), # from simulink
             # i_q_out_VA - (y1 - y2), # CORRECT SIGN CONVENTION!
@@ -986,8 +992,8 @@ def get_virtual_admittance_GFL(vf: VarFactory, name: str = "G4L_Virtual_admittan
         in_vars=inputs,
         out_vars=[i_q_out_VA, i_d_out_VA],
         init_eqs={
-            i_q_bias_state: i_q_bias_init,
-            i_d_bias_state: i_d_bias_init,
+            # i_q_bias_state: i_q_bias_init,
+            # i_d_bias_state: i_d_bias_init,
             err_q: v_q_ref - v_q,
             err_d: v_d_ref - v_d,
             x1_1: err_q / d0,
@@ -998,16 +1004,16 @@ def get_virtual_admittance_GFL(vf: VarFactory, name: str = "G4L_Virtual_admittan
             x2_2: c0,
             x2_3: c0,
             x2_4: c0,
-            y1:n0_0*err_q/d0,
-            y2: c0,
-            y3: c0,
-            y4: n0_0 * err_d / d0,
+            y1: n1_0 * x2_1 + n0_0 * x1_1,
+            y2: n0_1 * x1_2,
+            y3: n0_1 * x1_3,
+            y4: n1_0 * x2_4 + n0_0 * x1_4,
             # i_q_out_VA: (i_q_bias_state + y1 - y2),
             # i_d_out_VA: (i_d_bias_state + y3 + y4),
             # i_q_out_VA: (i_q_bias_state + y2),
             # i_d_out_VA: (i_d_bias_state - y3 - y4),
-            i_q_out_VA: i_q_bias_state,
-            i_d_out_VA: i_d_bias_state,
+            i_q_out_VA: (y1 - y2),
+            i_d_out_VA: (y3 + y4),
         },
         diff_init_eqs={
             dx1_1: x2_1,
@@ -1018,8 +1024,8 @@ def get_virtual_admittance_GFL(vf: VarFactory, name: str = "G4L_Virtual_admittan
             dx2_2: (err_d - d1*x2_2 - d0*x1_2)/sym.max(d2, eps),
             dx2_3: (err_q - d1*x2_3 - d0*x1_3)/sym.max(d2, eps),
             dx2_4: (err_d - d1*x2_4 - d0*x1_4)/sym.max(d2, eps),
-            d_i_q_bias_state: c0,
-            d_i_d_bias_state: c0,
+            # d_i_q_bias_state: c0,
+            # d_i_d_bias_state: c0,
         },
         event_dict=event_dict,
     )
@@ -1152,6 +1158,7 @@ def get_current_limiter_GFL(vf: VarFactory, name: str = "G4L_current_limiter") -
 
     Ipeak = np.sqrt(2 / 3)
     Imax = vf.add_const(1.1 * Ipeak)
+    # Imax = vf.add_const(1.1 * np.sqrt(2.0) / 3.0)
 
     # q-axis first, then d-axis uses remaining current capability
     i_mag_expr = sym.sqrt(i_q * i_q + i_d * i_d)
