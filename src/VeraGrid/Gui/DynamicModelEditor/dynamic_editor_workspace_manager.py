@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional, TYPE_CHECKING
+from typing import Any, Optional
 
 from PySide6 import QtCore, QtWidgets
 
@@ -19,9 +19,6 @@ from VeraGrid.Gui.DynamicModelEditor.dyn_editor_multiwindow_engine import get_te
 from VeraGrid.Gui.DynamicModelEditor.dyn_editor_multiwindow_engine import iter_dynamic_editor_entries
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_window import DynamicEditorWorkspaceWindow
 from VeraGridEngine.enumerations import DynamicSimulationMode
-
-if TYPE_CHECKING:
-    from VeraGrid.Gui.Main.SubClasses.base_gui import BaseMainGui
 
 
 class DynamicEditorWorkspaceManager(QtCore.QObject):
@@ -42,8 +39,6 @@ class DynamicEditorWorkspaceManager(QtCore.QObject):
         self._last_active_workspace: DynamicEditorWorkspaceWindow | None = None
         self._pending_drag_page: QtWidgets.QWidget | None = None
         self._pending_drag_workspace: DynamicEditorWorkspaceWindow | None = None
-        self._toast_host: BaseMainGui | None = None
-
         # Permanent strong references ("anchors") to every window this manager
         # creates: workspace windows AND the editor pages (both QMainWindows).
         # We have to avoid macos GUI crashes
@@ -171,7 +166,6 @@ class DynamicEditorWorkspaceManager(QtCore.QObject):
             main_editor=True,
             modal=False,
             workspace_embedded=True,
-            toast_host=self._toast_host,
         )
         self._connect_page_signals(page)
         # Anchor the page so the cyclic GC can never reclaim it 
@@ -209,9 +203,7 @@ class DynamicEditorWorkspaceManager(QtCore.QObject):
                                 api_object: Any,
                                 circuit: Any,
                                 preferred_mode: DynamicSimulationMode | None = None,
-                                target_workspace: DynamicEditorWorkspaceWindow | None = None,
-                                toast_host: "BaseMainGui | None" = None) -> DynamicBlockEditorGUI | None:
-        self._toast_host: BaseMainGui | None = toast_host
+                                target_workspace: DynamicEditorWorkspaceWindow | None = None) -> DynamicBlockEditorGUI | None:
         entry = build_dynamic_editor_entry(api_object, circuit)
         if entry is None:
             return None
@@ -296,8 +288,7 @@ class DynamicEditorWorkspaceManager(QtCore.QObject):
 def open_dynamic_editor(api_object: Any,
                         circuit: Any,
                         preferred_mode: DynamicSimulationMode | None = None,
-                        target_workspace: DynamicEditorWorkspaceWindow | None = None,
-                        toast_host: "BaseMainGui | None" = None) -> DynamicBlockEditorGUI | None:
+                        target_workspace: DynamicEditorWorkspaceWindow | None = None) -> DynamicBlockEditorGUI | None:
     """
     Unified public launcher used by context menus and dialogs.
     """
@@ -307,5 +298,4 @@ def open_dynamic_editor(api_object: Any,
         circuit=circuit,
         preferred_mode=preferred_mode,
         target_workspace=target_workspace,
-        toast_host=toast_host,
     )

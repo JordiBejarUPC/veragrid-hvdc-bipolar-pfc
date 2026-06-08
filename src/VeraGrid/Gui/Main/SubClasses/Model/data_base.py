@@ -1056,14 +1056,12 @@ class DataBaseTableMain(DiagramsMain):
 
                     elif elm_type == DeviceType.RmsModelTemplateDevice.value:
                         open_dynamic_editor(api_object=elm, circuit=self.circuit,
-                                            preferred_mode=DynamicSimulationMode.RMS,
-                                            toast_host=self)
+                                            preferred_mode=DynamicSimulationMode.RMS)
                         self.retain_dynamic_editor_windows()
 
                     elif elm_type == DeviceType.EmtModelTemplateDevice.value:
                         open_dynamic_editor(api_object=elm, circuit=self.circuit,
-                                            preferred_mode=DynamicSimulationMode.EMT,
-                                            toast_host=self)
+                                            preferred_mode=DynamicSimulationMode.EMT)
                         self.retain_dynamic_editor_windows()
 
                     elif elm_type == DeviceType.FmuTemplateDevice.value:

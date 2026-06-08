@@ -10,7 +10,7 @@ import uuid
 import re
 import copy
 from enum import Enum
-from typing import List, Dict, Optional, Any, Set, TYPE_CHECKING
+from typing import List, Dict, Optional, Any, Set
 from PySide6 import QtWidgets, QtGui, QtCore
 from PySide6.QtWidgets import (QApplication, QHBoxLayout, QGraphicsScene, QGraphicsView, QGraphicsItem,
                                QGraphicsRectItem, QGraphicsEllipseItem, QGraphicsTextItem, QMenu, QGraphicsPathItem,
@@ -126,9 +126,6 @@ from dataclasses import dataclass
 
 from VeraGridEngine.Utils.Symbolic.static_parameter_mapping import devices_static_params_mapping
 import VeraGrid.ThirdParty.darkdetect as darkdetect
-
-if TYPE_CHECKING:
-    from VeraGrid.Gui.Main.SubClasses.base_gui import BaseMainGui
 
 # from VeraGridEngine.Templates.Rms.common import create_block_of_type, create_generic_block, create_emt_wizard_block
 
@@ -5228,8 +5225,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                  circuit: Any | None = None,
                  main_editor=False,
                  modal: bool = True,
-                 workspace_embedded: bool = False,
-                 toast_host: "BaseMainGui | None" = None):
+                 workspace_embedded: bool = False):
         """
         Initializes a dynamic block editor window used for editing and managing blocks within a graphical model.
 
@@ -5246,10 +5242,17 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :type api_object: ALL_DEV_TYPES | None
         :param mode: Specifies the editor mode, either RMS or EMT.
         :type mode: DynamicSimulationMode
+        :param templates_list: Optional block-template catalogue entries exposed to the editor.
+        :type templates_list: Optional[List[RmsModelTemplate | EmtModelTemplate | FmuTemplate]]
+        :param circuit: Circuit context that owns the edited dynamic device.
+        :type circuit: Any | None
         :param main_editor: Indicates whether this instance is the main editor for the block.
         :type main_editor: bool
         :param modal: Specifies whether the editor window should be modal.
         :type modal: bool
+        :param workspace_embedded: Whether the editor is hosted inside the tabbed dynamic-editor workspace.
+        :type workspace_embedded: bool
+        :return: None.
         """
         super().__init__()
 
@@ -5293,7 +5296,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.mode = mode
         self.main_editor = main_editor
         self.workspace_embedded = workspace_embedded
-        self.toast_host: BaseMainGui | None = toast_host
         self._emt_bus_fallback_warning_shown: bool = False
         self._selected_side_block: Block | None = None
         self.setWindowTitle(f"Dynamic Model Editor [{self.mode.name}]")
@@ -12435,18 +12437,16 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
     def _show_model_saved_toast(self) -> None:
         """
-        Show a non-blocking save confirmation using the main GUI toast API.
+        Show one save confirmation toast attached to this editor window.
 
-        The editor does not own a toast manager. The main GUI owns the
-        application-level toast system, so the editor receives that host
-        explicitly and forwards the notification there after a successful save.
+        The editor owns a local toast manager so the notification is layered on
+        top of the editor page that triggered the save operation.
 
-        :return:
+        :return: None.
         """
-        if self.toast_host is not None:
-            self.toast_manager.show_info_toast("Model saved")
-        else:
-            self.toast_manager.show_info_toast("Model saved")
+        # Emit the toast from the editor itself so the notification stays in
+        # front of the page where the user clicked the save button.
+        self.toast_manager.show_info_toast("Model saved")
 
     def apply_changes(self) -> None:
         """
