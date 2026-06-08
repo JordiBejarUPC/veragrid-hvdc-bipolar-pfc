@@ -216,7 +216,7 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         self._terminal.setPen(QPen(TRANSPARENT, self.pen_width, self.style,
                                    Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
 
-        self.set_tile_color(self.color)
+        self.update_color()
 
         self.setPen(QPen(TRANSPARENT, self.pen_width, self.style))
         self.setBrush(TRANSPARENT)
@@ -327,11 +327,23 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         badge_stroke.setAlpha(150)
         self.label_badge.setPen(QPen(badge_stroke, 1.0))
         self.label_badge.setBrush(QBrush(badge_fill))
-        self.set_tile_color(self.color)
+        self.update_color()
 
         for e in self._child_graphics:
             if e is not None:
                 e.recolour_mode()
+
+    def _get_base_bus_brush(self) -> QBrush:
+        """
+        Resolve the default bus brush outside study-result colouring.
+
+        :return: Brush used for the idle bus appearance.
+        """
+        if self.api_object.active:
+            color_hex: str = str(self.api_object.color)
+            return QBrush(QColor(color_hex))
+        else:
+            return QBrush(DEACTIVATED['color'])
 
     def enable_label_drawing(self) -> None:
         """
@@ -925,10 +937,7 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         """
         Update the colour
         """
-        if self.api_object.active:
-            self.set_tile_color(QBrush(ACTIVE['color']))
-        else:
-            self.set_tile_color(QBrush(DEACTIVATED['color']))
+        self.set_tile_color(self._get_base_bus_brush())
 
     def convert_to_voltage_level(self) -> None:
         """
