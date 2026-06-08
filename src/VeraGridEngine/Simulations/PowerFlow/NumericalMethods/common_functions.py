@@ -861,6 +861,9 @@ def split_bus_quantity(
         gen_status: BoolVec,
         control_mode_int_gen: IntVec,
         Q0_gen: Vec,
+        Vset_gen: Vec,
+        k_droop_gen: Vec,
+        dead_band_gen: Vec,
         batt_bus_idx: IntVec,
         Qmin_batt: Vec,
         Qmax_batt: Vec,
@@ -868,6 +871,8 @@ def split_bus_quantity(
         control_mode_int_batt: IntVec,
         Q0_batt: Vec,
         v_ctrl_val_gen: int,
+        qv_droop_val_gen: int,
+        Vm: Vec,
         atol: float = 1e-12,
 ) -> Tuple[Vec, Vec]:
     """
@@ -973,6 +978,15 @@ def split_bus_quantity(
     :param Q0_gen:
         Initial or fixed reactive power set point of each generator.
     :type Q0_gen: Vec
+    :param Vset_gen:
+        Voltage set point of each generator.
+    :type Vset_gen: Vec
+    :param k_droop_gen:
+        QV droop constant of each generator.
+    :type k_droop_gen: Vec
+    :param dead_band_gen:
+        QV droop dead band of each generator.
+    :type dead_band_gen: Vec
     :param batt_bus_idx:
         Bus index of each battery.
     :type batt_bus_idx: IntVec
@@ -993,6 +1007,10 @@ def split_bus_quantity(
         Initial or fixed reactive power set point of each battery.
     :type Q0_batt: Vec
     :param v_ctrl_val_gen:
+    :param qv_droop_val_gen:
+    :param Vm:
+        Converged voltage magnitude per bus.
+    :type Vm: Vec
     :param atol:
         Tolerance used to detect zero aggregate reactive range.
     :type atol: float
@@ -1029,6 +1047,10 @@ def split_bus_quantity(
 
     # Normalized bus sharing factor for online controlling elements.
     qshare_per_bus: Vec = np.zeros(n_bus, dtype=np.float64)
+    q_droop_value: float
+    delta_v: float
+    qmin_gen_value: float
+    qmax_gen_value: float
 
     # -------------------------------------------------------------------------
     # First generator pass.
@@ -1049,6 +1071,46 @@ def split_bus_quantity(
                 qmax_control_per_bus[bus_idx] += Qmax_gen[gen_idx]
                 control_count_per_bus[bus_idx] += 1
                 qfixed_per_bus[bus_idx] += 0.0
+            elif control_mode_int_gen[gen_idx] == qv_droop_val_gen:
+                # The droop-controlled generator reactive power is known once
+                # the final bus voltage is known, so it behaves as a fixed
+                # contribution in the post-processing split.
+                delta_v = Vset_gen[gen_idx] - Vm[bus_idx]
+                q_droop_value = 0.0
+
+                if abs(delta_v) > dead_band_gen[gen_idx]:
+                    if delta_v > dead_band_gen[gen_idx]:
+                        q_droop_value = (
+                            (delta_v - dead_band_gen[gen_idx])
+                            * k_droop_gen[gen_idx]
+                            * Qmax_gen[gen_idx]
+                        )
+                    else:
+                        if delta_v < -dead_band_gen[gen_idx]:
+                            q_droop_value = (
+                                (delta_v + dead_band_gen[gen_idx])
+                                * k_droop_gen[gen_idx]
+                                * Qmax_gen[gen_idx]
+                            )
+                        else:
+                            q_droop_value = 0.0
+
+                    if q_droop_value > Qmax_gen[gen_idx]:
+                        q_droop_value = Qmax_gen[gen_idx]
+                    else:
+                        pass
+
+                    if q_droop_value < Qmin_gen[gen_idx]:
+                        q_droop_value = Qmin_gen[gen_idx]
+                    else:
+                        pass
+                else:
+                    q_droop_value = 0.0
+
+                qfixed_per_bus[bus_idx] += q_droop_value
+                qmin_control_per_bus[bus_idx] += 0.0
+                qmax_control_per_bus[bus_idx] += 0.0
+                control_count_per_bus[bus_idx] += 0
             else:
                 qfixed_per_bus[bus_idx] += Q0_gen[gen_idx]
                 qmin_control_per_bus[bus_idx] += 0.0
@@ -1152,7 +1214,42 @@ def split_bus_quantity(
                 qrange_gen_value = qmax_gen_value - qmin_gen_value
 
                 q_gen[gen_idx] = qmin_gen_value + qshare_per_bus[bus_idx] * qrange_gen_value
+            elif control_mode_int_gen[gen_idx] == qv_droop_val_gen:
+                # Recompute the same droop law so the reported per-generator Q
+                # matches the fixed contribution used in the bus decomposition.
+                delta_v = Vset_gen[gen_idx] - Vm[bus_idx]
+                q_droop_value = 0.0
 
+                if abs(delta_v) > dead_band_gen[gen_idx]:
+                    if delta_v > dead_band_gen[gen_idx]:
+                        q_droop_value = (
+                            (delta_v - dead_band_gen[gen_idx])
+                            * k_droop_gen[gen_idx]
+                            * Qmax_gen[gen_idx]
+                        )
+                    else:
+                        if delta_v < -dead_band_gen[gen_idx]:
+                            q_droop_value = (
+                                (delta_v + dead_band_gen[gen_idx])
+                                * k_droop_gen[gen_idx]
+                                * Qmax_gen[gen_idx]
+                            )
+                        else:
+                            q_droop_value = 0.0
+
+                    if q_droop_value > Qmax_gen[gen_idx]:
+                        q_droop_value = Qmax_gen[gen_idx]
+                    else:
+                        pass
+
+                    if q_droop_value < Qmin_gen[gen_idx]:
+                        q_droop_value = Qmin_gen[gen_idx]
+                    else:
+                        pass
+                else:
+                    q_droop_value = 0.0
+
+                q_gen[gen_idx] = q_droop_value
             else:
                 q_gen[gen_idx] = Q0_gen[gen_idx]
         else:

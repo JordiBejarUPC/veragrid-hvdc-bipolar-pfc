@@ -565,7 +565,15 @@ class DiagramsMain(CompiledArraysMain):
             max_branch_width=max_branch_width,
             min_bus_width=min_bus_width,
             max_bus_width=max_bus_width,
-            cmap=cmap
+            cmap=cmap,
+            gen_p=results.gen_p,
+            gen_q=results.gen_q,
+            gen_names=results.gen_names,
+            battery_p=results.battery_p,
+            battery_q=results.battery_q,
+            battery_names=results.batt_names,
+            shunt_q=results.shunt_q,
+            shunt_names=results.sh_names
         )
 
     def pf_3ph_colouring(self, diagram_widget: ALL_EDITORS,
@@ -642,7 +650,19 @@ class DiagramsMain(CompiledArraysMain):
             max_branch_width=max_branch_width,
             min_bus_width=min_bus_width,
             max_bus_width=max_bus_width,
-            cmap=cmap)
+            cmap=cmap,
+            gen_q_a=results.gen_q_A,
+            gen_q_b=results.gen_q_B,
+            gen_q_c=results.gen_q_C,
+            gen_names=results.gen_names,
+            battery_q_a=results.battery_q_A,
+            battery_q_b=results.battery_q_B,
+            battery_q_c=results.battery_q_C,
+            battery_names=results.batt_names,
+            shunt_q_a=results.shunt_q_A,
+            shunt_q_b=results.shunt_q_B,
+            shunt_q_c=results.shunt_q_C,
+            shunt_names=results.sh_names)
 
     def se_colouring(self, diagram_widget: ALL_EDITORS,
                      results: StateEstimationResults,
@@ -697,7 +717,15 @@ class DiagramsMain(CompiledArraysMain):
             max_branch_width=max_branch_width,
             min_bus_width=min_bus_width,
             max_bus_width=max_bus_width,
-            cmap=cmap
+            cmap=cmap,
+            gen_p=None,
+            gen_q=results.gen_q,
+            gen_names=results.gen_names,
+            battery_p=None,
+            battery_q=results.battery_q,
+            battery_names=results.batt_names,
+            shunt_q=results.shunt_q,
+            shunt_names=results.sh_names
         )
 
     def pf_ts_colouring(self, t_idx: int,
@@ -745,7 +773,16 @@ class DiagramsMain(CompiledArraysMain):
                                              max_branch_width=max_branch_width,
                                              min_bus_width=min_bus_width,
                                              max_bus_width=max_bus_width,
-                                             cmap=cmap)
+                                             cmap=cmap,
+                                             gen_p=results.gen_p[t_idx, :],
+                                             gen_q=results.gen_q[t_idx, :],
+                                             gen_names=results.gen_names,
+                                             battery_p=results.battery_p[t_idx, :],
+                                             battery_q=results.battery_q[t_idx, :],
+                                             battery_names=results.batt_names,
+                                             shunt_q=results.shunt_q[t_idx, :],
+                                             shunt_names=results.sh_names,
+                                             t_idx=t_idx)
 
     def cpf_colouring(self, diagram_widget: ALL_EDITORS,
                       results: ContinuationPowerFlowResults, cmap: Colormaps,
@@ -998,7 +1035,15 @@ class DiagramsMain(CompiledArraysMain):
                                              max_branch_width=max_branch_width,
                                              min_bus_width=min_bus_width,
                                              max_bus_width=max_bus_width,
-                                             cmap=cmap)
+                                             cmap=cmap,
+                                             gen_p=results.generator_power,
+                                             gen_q=results.generator_reactive_power,
+                                             gen_names=results.generator_names,
+                                             battery_p=results.battery_power,
+                                             battery_q=None,
+                                             battery_names=results.battery_names,
+                                             shunt_q=results.shunt_like_reactive_power,
+                                             shunt_names=results.shunt_like_names)
 
     def opf_ts_colouring(self, t_idx: int,
                          diagram_widget: ALL_EDITORS,
@@ -1051,7 +1096,16 @@ class DiagramsMain(CompiledArraysMain):
                                              max_branch_width=max_branch_width,
                                              min_bus_width=min_bus_width,
                                              max_bus_width=max_bus_width,
-                                             cmap=cmap)
+                                             cmap=cmap,
+                                             gen_p=results.generator_power[t_idx, :],
+                                             gen_q=results.generator_reactive_power[t_idx, :],
+                                             gen_names=results.generator_names,
+                                             battery_p=results.battery_power[t_idx, :],
+                                             battery_q=None,
+                                             battery_names=results.battery_names,
+                                             shunt_q=results.shunt_like_reactive_power[t_idx, :],
+                                             shunt_names=results.shunt_like_names,
+                                             t_idx=t_idx)
 
     def ntc_colouring(self, diagram_widget: ALL_EDITORS,
                       results: sim.OptimalNetTransferCapacityResults, cmap: Colormaps,
