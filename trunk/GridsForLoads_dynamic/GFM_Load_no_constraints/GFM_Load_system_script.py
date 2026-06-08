@@ -277,7 +277,7 @@ print(res.get_branch_df())
 
 
 options = EmtOptions(time_step = 1e-6,
-                     simulation_time =  0.7, # s
+                     simulation_time =  2, # s
                      tolerance = 1e-6,
                      solver_type = EmtSolverTypes.StructuralCompiled,
                      # initialization_method = EmtInitializationMethod.PseudoTransient,

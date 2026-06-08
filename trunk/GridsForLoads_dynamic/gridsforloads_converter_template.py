@@ -775,7 +775,8 @@ def get_PLL_GFL(vf: VarFactory, name: str = "G4L_PLL") -> EmtModelTemplate:
             w_pll,
             # ------------------------------------------ VSM
             # ((1 - y) * k_p + P_ref - Pac / sym.max(Sb, eps) + x) / (2 * sym.max(H, eps)),
-            ((1 - y) * k_p - P_ref + Pac + x) / (2 * sym.max(H, eps)),
+            # ((1 - y) * k_p - P_ref + Pac + x) / (2 * sym.max(H, eps)),
+            ((1 - y) * k_p + P_ref - Pac + x) / (2 * sym.max(H, eps)),
             omega_pll,
         ],
         state_vars=[x_e_pll, theta_pll, y, phase_pll],
@@ -1156,9 +1157,9 @@ def get_current_limiter_GFL(vf: VarFactory, name: str = "G4L_current_limiter") -
     i_q_lim_mode = vf.add_var(name=f"i_q_lim_mode_{name}")
     i_d_lim_mode = vf.add_var(name=f"i_d_lim_mode_{name}")
 
-    Ipeak = np.sqrt(2 / 3)
-    Imax = vf.add_const(1.1 * Ipeak)
-    # Imax = vf.add_const(1.1 * np.sqrt(2.0) / 3.0)
+    # Ipeak = np.sqrt(2 / 3)
+    # Imax = vf.add_const(1.1 * Ipeak)
+    Imax = vf.add_const(1.1 * np.sqrt(2.0) / 3.0)
 
     # q-axis first, then d-axis uses remaining current capability
     i_mag_expr = sym.sqrt(i_q * i_q + i_d * i_d)
