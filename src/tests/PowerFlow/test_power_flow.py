@@ -243,6 +243,49 @@ def test_voltage_local_control_with_generation() -> None:
         assert not np.isclose(vm[bus_i], gen.Vset, atol=options.tolerance)
 
 
+def test_qv_droop_control_mode() -> None:
+    """
+    Check that the reported generator reactive power follows the QV droop law.
+    """
+    fname: str = os.path.join('data', 'grids', 'RAW', 'IEEE 14 bus.raw')
+    grid = gce.open_file(fname)
+
+    # Use a seeded random choice so the test exercises a non-slack machine
+    # without making the test outcome depend on runtime randomness.
+    rng: np.random.Generator = np.random.default_rng(14)
+    candidate_indices: np.ndarray = np.arange(1, len(grid.generators), dtype=int)
+    gen_position: int = int(rng.integers(0, len(candidate_indices)))
+    gen_idx: int = int(candidate_indices[gen_position])
+    gen = grid.generators[gen_idx]
+    bus_index_dict: dict = grid.get_bus_index_dict()
+    bus_i: int = bus_index_dict[gen.bus]
+
+    # Configure the selected generator in droop mode with a small set-point
+    # offset so the converged operating point produces a measurable Q response.
+    gen.control_mode = GeneratorControlMode.QVDroop
+    gen.k_droop = 4.0
+    gen.dead_band = 0.0
+    gen.Q = 0.0
+    gen.Vset = gen.Vset + 0.01
+
+    options = PowerFlowOptions(solver_type=SolverType.NR,
+                               verbose=0,
+                               control_q=False,
+                               retry_with_other_methods=False)
+
+    results = gce.power_flow(grid, options)
+    vm: np.ndarray = np.abs(results.voltage)
+    delta_v: float = gen.Vset - vm[bus_i]
+
+    # Reproduce the implemented droop equation in MVAr, including the reactive
+    # power clipping at the generator capability limits.
+    expected_q: float = delta_v * gen.k_droop * gen.Qmax
+    expected_q = float(np.clip(expected_q, gen.Qmin, gen.Qmax))
+
+    assert results.converged
+    assert np.isclose(results.gen_q[gen_idx], expected_q, atol=1e-6, rtol=1e-6)
+
+
 def test_voltage_remote_control_with_generation() -> None:
     """
     Check that a generator can perform remote voltage regulation
