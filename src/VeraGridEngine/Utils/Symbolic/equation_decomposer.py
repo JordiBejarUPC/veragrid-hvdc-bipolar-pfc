@@ -6,6 +6,12 @@ import VeraGridEngine.Utils.Symbolic.symbolic as sym
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
 
+try:
+    from VeraGridEngine.Utils.Symbolic.elk_layout.elk_layout import compute_layout_with_elk as _compute_layout_with_elk
+    _HAVE_ELK = True
+except ImportError:
+    _HAVE_ELK = False
+
 
 class EquationDecomposer:
     """
@@ -748,8 +754,11 @@ class EquationDecomposer:
             if producer_idx is not None:
                 routing_pairs.append((from_idx, to_idx, producer_idx, consumer_idx))
 
-        # ---- hierarchical layout (Sugiyama-based) ----
-        positions = self._layout_hierarchical(children, dep_graph, from_to_tpe, routing_pairs)
+        # ---- layout: ELK (preferred) or fallback to Sugiyama ----
+        if _HAVE_ELK:
+            positions = _compute_layout_with_elk(len(children), dep_graph)
+        else:
+            positions = self._layout_hierarchical(children, dep_graph, from_to_tpe, routing_pairs)
 
         for i, blk in enumerate(children):
             x, y = positions.get(i, (80.0, 60.0))
