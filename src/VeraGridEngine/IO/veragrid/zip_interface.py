@@ -76,14 +76,20 @@ def save_results_in_zip(f_zip_ptr: zipfile.ZipFile,
                     # pack the array into a DataFrame
 
                     try:
-                        if np.iscomplexobj(arr):
+                        if isinstance(arr, np.ndarray) and arr.ndim > 2:
+                            # Dynamic simulations store tensor-shaped traces.
+                            # Those arrays do not fit the historical 2-D parquet
+                            # path, so persist them as raw NumPy payloads.
+                            np.save(buffer, arr)
+                            f_zip_ptr.writestr(filename + ".npy", buffer.getvalue())
+                        elif np.iscomplexobj(arr):
                             filename += "__complex__"
                             pd.DataFrame(data=np.c_[arr.real, arr.imag]).to_parquet(buffer)
+                            f_zip_ptr.writestr(filename + ".parquet", buffer.getvalue())
                         else:
                             pd.DataFrame(data=arr).to_parquet(buffer)
-
-                        # save the buffer to the zip file
-                        f_zip_ptr.writestr(filename + ".parquet", buffer.getvalue())
+                            # save the buffer to the zip file
+                            f_zip_ptr.writestr(filename + ".parquet", buffer.getvalue())
 
                     except ValueError as e:
                         warn(str(e))

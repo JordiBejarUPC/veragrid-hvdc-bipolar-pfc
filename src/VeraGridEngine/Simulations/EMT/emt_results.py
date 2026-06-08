@@ -8,7 +8,7 @@ from matplotlib import pyplot as plt
 from typing import List, Dict, Optional
 
 from VeraGridEngine.Simulations.results_template import ResultsTemplate, ResultsProperty
-from VeraGridEngine.basic_structures import Vec, StrVec,  DateVec, Mat
+from VeraGridEngine.basic_structures import Vec, StrVec, DateVec, Mat, BoolVec
 from VeraGridEngine.enumerations import StudyResultsType,  DeviceType
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
@@ -17,8 +17,13 @@ from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 class EmtResults(ResultsTemplate):
 
     LOCAL_RESULTS_DECLARATIONS = (
+        ResultsProperty(name='time_array', tpe=DateVec, old_names=list(), expandable=False),
         ResultsProperty(name='values', tpe=Vec, old_names=list(), expandable=False),
+        ResultsProperty(name='diff_values', tpe=Vec, old_names=list(), expandable=False),
         ResultsProperty(name='emt_events_group_idtags', tpe=StrVec, old_names=list(), expandable=False),
+        ResultsProperty(name='has_event_group_results', tpe=BoolVec, old_names=list(), expandable=False),
+        ResultsProperty(name='well_initialized', tpe=BoolVec, old_names=list(), expandable=False),
+        ResultsProperty(name='converged', tpe=BoolVec, old_names=list(), expandable=False),
     )
 
     __slots__ = (
@@ -241,4 +246,3 @@ class EmtResults(ResultsTemplate):
                 data[:, i] = self.diff_values[:, idx, group_idx]
 
         return data
-
