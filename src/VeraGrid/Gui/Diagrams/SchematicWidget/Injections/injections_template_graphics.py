@@ -1277,6 +1277,14 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         :return: ``None``.
         """
         self._nexus_edit_active = bool(active)
+
+        # Keep the nexus selection synchronized with the explicit edit-mode state so programmatic
+        # activation follows the same path as a direct nexus click.
+        if active:
+            self.nexus.setSelected(True)
+        else:
+            pass
+
         self.refresh_nexus_z_order()
         self.refresh_nexus_handles()
 
@@ -1389,7 +1397,7 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         parent_anchor = self.get_parent_nexus_anchor()
         self._nexus_endpoint_handles["child"].setPos(child_anchor)
         self._nexus_endpoint_handles["parent"].setPos(parent_anchor)
-        self._nexus_endpoint_handles["child"].setVisible(False)
+        self._nexus_endpoint_handles["child"].setVisible(self.is_nexus_edit_active())
         self._nexus_endpoint_handles["parent"].setVisible(self.is_nexus_edit_active())
 
     def delete(self):
