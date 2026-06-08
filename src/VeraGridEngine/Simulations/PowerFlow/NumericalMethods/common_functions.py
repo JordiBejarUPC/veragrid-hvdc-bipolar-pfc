@@ -1277,3 +1277,247 @@ def split_bus_quantity(
             q_batt[batt_idx] = 0.0
 
     return q_gen, q_batt
+
+
+def split_reactive_power_between_generators_and_batteries(
+        Qbus: Vec,
+        Qfixed_bus: Vec,
+        gen_bus_idx: IntVec,
+        Qmin_gen: Vec,
+        Qmax_gen: Vec,
+        gen_status: BoolVec,
+        control_mode_int_gen: IntVec,
+        Q0_gen: Vec,
+        Vset_gen: Vec,
+        k_droop_gen: Vec,
+        dead_band_gen: Vec,
+        batt_bus_idx: IntVec,
+        Qmin_batt: Vec,
+        Qmax_batt: Vec,
+        batt_status: BoolVec,
+        control_mode_int_batt: IntVec,
+        Q0_batt: Vec,
+        v_ctrl_val_gen: int,
+        qv_droop_val_gen: int,
+        Vm: Vec,
+        atol: float = 1e-12,
+) -> Tuple[Vec, Vec]:
+    """
+    Split solved bus reactive power between generator-like controlling devices.
+
+    This routine is the reactive-power post-processing counterpart of the
+    generator/battery bus split. Unlike the generic quantity split, it starts
+    from an already compiled fixed bus contribution ``Qfixed_bus`` that includes
+    load-like injections, fixed current/admittance terms, and non-controlling
+    generator-like set points captured by the numerical circuit compilation.
+
+    The controlling residual at each bus is therefore:
+
+    .. math::
+
+        Qctrl_i = Qbus_i - Qfixed_i - Qdroop_i
+
+    where ``Qdroop_i`` is the contribution of droop-controlled generators
+    evaluated at the solved voltage magnitude.
+
+    Online voltage-controlled generators and batteries share that residual
+    subject to their aggregate limits. Online non-controlling generators and
+    batteries keep their compiled set points. Offline devices receive zero.
+
+    :param Qbus: Solved nodal reactive power injection.
+    :param Qfixed_bus: Fixed compiled reactive contribution per bus.
+    :param gen_bus_idx: Generator bus index.
+    :param Qmin_gen: Generator minimum reactive power.
+    :param Qmax_gen: Generator maximum reactive power.
+    :param gen_status: Generator active status.
+    :param control_mode_int_gen: Generator control mode codes.
+    :param Q0_gen: Generator fixed reactive set point.
+    :param Vset_gen: Generator voltage set points.
+    :param k_droop_gen: Generator droop coefficients.
+    :param dead_band_gen: Generator droop dead bands.
+    :param batt_bus_idx: Battery bus index.
+    :param Qmin_batt: Battery minimum reactive power.
+    :param Qmax_batt: Battery maximum reactive power.
+    :param batt_status: Battery active status.
+    :param control_mode_int_batt: Battery control mode codes.
+    :param Q0_batt: Battery fixed reactive set point.
+    :param v_ctrl_val_gen: Integer code for voltage control.
+    :param qv_droop_val_gen: Integer code for QV droop control.
+    :param Vm: Solved bus voltage magnitudes.
+    :param atol: Numerical zero tolerance.
+    :return: Tuple with generator and battery reactive power vectors.
+    """
+    n_bus: int = len(Qbus)
+    n_gen: int = len(gen_bus_idx)
+    n_batt: int = len(batt_bus_idx)
+
+    q_gen: Vec = Q0_gen.copy()
+    q_batt: Vec = Q0_batt.copy()
+
+    # Start from the fixed bus decomposition built during compilation. This
+    # already contains load-like terms and non-controlling generator-like Q0.
+    qfixed_per_bus: Vec = Qfixed_bus.copy()
+    qmin_control_per_bus: Vec = np.zeros(n_bus, dtype=np.float64)
+    qmax_control_per_bus: Vec = np.zeros(n_bus, dtype=np.float64)
+    control_count_per_bus: np.ndarray = np.zeros(n_bus, dtype=np.int64)
+    qshare_per_bus: Vec = np.zeros(n_bus, dtype=np.float64)
+
+    delta_v: float
+    q_droop_value: float
+    qmin_gen_value: float
+    qmax_gen_value: float
+
+    for gen_idx in range(n_gen):
+        bus_idx = gen_bus_idx[gen_idx]
+
+        if gen_status[gen_idx]:
+            if control_mode_int_gen[gen_idx] == v_ctrl_val_gen:
+                qmin_control_per_bus[bus_idx] += Qmin_gen[gen_idx]
+                qmax_control_per_bus[bus_idx] += Qmax_gen[gen_idx]
+                control_count_per_bus[bus_idx] += 1
+            elif control_mode_int_gen[gen_idx] == qv_droop_val_gen:
+                delta_v = Vset_gen[gen_idx] - Vm[bus_idx]
+                q_droop_value = 0.0
+
+                if abs(delta_v) > dead_band_gen[gen_idx]:
+                    if delta_v > dead_band_gen[gen_idx]:
+                        q_droop_value = (
+                            (delta_v - dead_band_gen[gen_idx])
+                            * k_droop_gen[gen_idx]
+                            * Qmax_gen[gen_idx]
+                        )
+                    else:
+                        if delta_v < -dead_band_gen[gen_idx]:
+                            q_droop_value = (
+                                (delta_v + dead_band_gen[gen_idx])
+                                * k_droop_gen[gen_idx]
+                                * Qmax_gen[gen_idx]
+                            )
+                        else:
+                            q_droop_value = 0.0
+
+                    if q_droop_value > Qmax_gen[gen_idx]:
+                        q_droop_value = Qmax_gen[gen_idx]
+                    else:
+                        pass
+
+                    if q_droop_value < Qmin_gen[gen_idx]:
+                        q_droop_value = Qmin_gen[gen_idx]
+                    else:
+                        pass
+                else:
+                    q_droop_value = 0.0
+
+                qfixed_per_bus[bus_idx] += q_droop_value
+            else:
+                pass
+        else:
+            pass
+
+    for batt_idx in range(n_batt):
+        bus_idx = batt_bus_idx[batt_idx]
+
+        if batt_status[batt_idx]:
+            if control_mode_int_batt[batt_idx] == v_ctrl_val_gen:
+                qmin_control_per_bus[bus_idx] += Qmin_batt[batt_idx]
+                qmax_control_per_bus[bus_idx] += Qmax_batt[batt_idx]
+                control_count_per_bus[bus_idx] += 1
+            else:
+                pass
+        else:
+            pass
+
+    for bus_idx in range(n_bus):
+        qmin_control_value = qmin_control_per_bus[bus_idx]
+        qmax_control_value = qmax_control_per_bus[bus_idx]
+        qrange_control_value = qmax_control_value - qmin_control_value
+        qcontrol_required_value = Qbus[bus_idx] - qfixed_per_bus[bus_idx]
+        control_count_value = control_count_per_bus[bus_idx]
+
+        if control_count_value > 0:
+            if qrange_control_value > atol:
+                if qcontrol_required_value < qmin_control_value:
+                    qcontrol_limited_value = qmin_control_value
+                else:
+                    if qcontrol_required_value > qmax_control_value:
+                        qcontrol_limited_value = qmax_control_value
+                    else:
+                        qcontrol_limited_value = qcontrol_required_value
+
+                qshare_value = (qcontrol_limited_value - qmin_control_value) / qrange_control_value
+
+                if qshare_value < 0.0:
+                    qshare_per_bus[bus_idx] = 0.0
+                else:
+                    if qshare_value > 1.0:
+                        qshare_per_bus[bus_idx] = 1.0
+                    else:
+                        qshare_per_bus[bus_idx] = qshare_value
+            else:
+                qshare_per_bus[bus_idx] = 0.0
+        else:
+            qshare_per_bus[bus_idx] = 0.0
+
+    for gen_idx in range(n_gen):
+        bus_idx = gen_bus_idx[gen_idx]
+
+        if gen_status[gen_idx]:
+            if control_mode_int_gen[gen_idx] == v_ctrl_val_gen:
+                qmin_gen_value = Qmin_gen[gen_idx]
+                qmax_gen_value = Qmax_gen[gen_idx]
+                qrange_gen_value = qmax_gen_value - qmin_gen_value
+                q_gen[gen_idx] = qmin_gen_value + qshare_per_bus[bus_idx] * qrange_gen_value
+            elif control_mode_int_gen[gen_idx] == qv_droop_val_gen:
+                delta_v = Vset_gen[gen_idx] - Vm[bus_idx]
+                q_droop_value = 0.0
+
+                if abs(delta_v) > dead_band_gen[gen_idx]:
+                    if delta_v > dead_band_gen[gen_idx]:
+                        q_droop_value = (
+                            (delta_v - dead_band_gen[gen_idx])
+                            * k_droop_gen[gen_idx]
+                            * Qmax_gen[gen_idx]
+                        )
+                    else:
+                        if delta_v < -dead_band_gen[gen_idx]:
+                            q_droop_value = (
+                                (delta_v + dead_band_gen[gen_idx])
+                                * k_droop_gen[gen_idx]
+                                * Qmax_gen[gen_idx]
+                            )
+                        else:
+                            q_droop_value = 0.0
+
+                    if q_droop_value > Qmax_gen[gen_idx]:
+                        q_droop_value = Qmax_gen[gen_idx]
+                    else:
+                        pass
+
+                    if q_droop_value < Qmin_gen[gen_idx]:
+                        q_droop_value = Qmin_gen[gen_idx]
+                    else:
+                        pass
+                else:
+                    q_droop_value = 0.0
+
+                q_gen[gen_idx] = q_droop_value
+            else:
+                q_gen[gen_idx] = Q0_gen[gen_idx]
+        else:
+            q_gen[gen_idx] = 0.0
+
+    for batt_idx in range(n_batt):
+        bus_idx = batt_bus_idx[batt_idx]
+
+        if batt_status[batt_idx]:
+            if control_mode_int_batt[batt_idx] == v_ctrl_val_gen:
+                qmin_batt_value = Qmin_batt[batt_idx]
+                qmax_batt_value = Qmax_batt[batt_idx]
+                qrange_batt_value = qmax_batt_value - qmin_batt_value
+                q_batt[batt_idx] = qmin_batt_value + qshare_per_bus[bus_idx] * qrange_batt_value
+            else:
+                q_batt[batt_idx] = Q0_batt[batt_idx]
+        else:
+            q_batt[batt_idx] = 0.0
+
+    return q_gen, q_batt

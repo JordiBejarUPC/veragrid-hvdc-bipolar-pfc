@@ -15,7 +15,10 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_results import NumericPower
 from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_basic_formulation import PfBasicFormulation
 from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_full_acdc_with_negative_poles import PfAcDcWithNegativePoles
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.newton_raphson_fx import newton_raphson_fx
-from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions import split_bus_quantity
+from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions import (
+    split_bus_quantity,
+    split_reactive_power_between_generators_and_batteries,
+)
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.powell_fx import powell_fx
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.levenberg_marquadt_fx import levenberg_marquardt_fx
 from VeraGridEngine.Topology.simulation_indices import SimulationIndices
@@ -953,9 +956,21 @@ def multi_island_pf_nc(nc: NumericalCircuit,
         if nc.topology_performed:
             results.voltage = nc.propagate_bus_result(results.voltage)
 
-        # do the reactive power partition and store the values
-        results.gen_q, results.battery_q = split_bus_quantity(
+        vm_abs: Vec = np.abs(results.voltage)
+        qfixed_bus: Vec = (
+            nc.bus_data.q_fixed
+            - (nc.bus_data.ii_fixed + nc.bus_data.b_fixed * vm_abs) * vm_abs
+        )
+
+        # Reconstruct the fixed shunt-like device reactive power from the final
+        # solved voltage so the reported device values remain in nodal balance.
+        results.shunt_q = -(nc.shunt_data.Y.imag * np.power(vm_abs[nc.shunt_data.bus_idx], 2.0)) * nc.shunt_data.active
+
+        # Split only the remaining generator-like reactive power after removing
+        # the fixed compiled bus contribution.
+        results.gen_q, results.battery_q = split_reactive_power_between_generators_and_batteries(
             Qbus=results.Sbus.imag,
+            Qfixed_bus=qfixed_bus,
             gen_bus_idx=nc.generator_data.bus_idx,
             Qmin_gen=nc.generator_data.qmin,
             Qmax_gen=nc.generator_data.qmax,
@@ -973,7 +988,7 @@ def multi_island_pf_nc(nc: NumericalCircuit,
             Q0_batt=nc.battery_data.q,
             v_ctrl_val_gen=GeneratorControlMode.V.idx(),
             qv_droop_val_gen=GeneratorControlMode.QVDroop.idx(),
-            Vm=np.abs(results.voltage),
+            Vm=vm_abs,
             atol=1e-12,
         )
 
@@ -993,9 +1008,19 @@ def multi_island_pf_nc(nc: NumericalCircuit,
         if nc.topology_performed:
             results.voltage = nc.propagate_bus_result(results.voltage)
 
-        # do the reactive power partition and store the values
-        results.gen_q, results.battery_q = split_bus_quantity(
+        vm_abs: Vec = np.abs(results.voltage)
+        qfixed_bus: Vec = (
+            nc.bus_data.q_fixed
+            - (nc.bus_data.ii_fixed + nc.bus_data.b_fixed * vm_abs) * vm_abs
+        )
+
+        results.shunt_q = -(nc.shunt_data.Y.imag * np.power(vm_abs[nc.shunt_data.bus_idx], 2.0)) * nc.shunt_data.active
+
+        # Remove the compiled fixed bus-side Q before allocating the solved
+        # residual to generator-like voltage controllers.
+        results.gen_q, results.battery_q = split_reactive_power_between_generators_and_batteries(
             Qbus=results.Sbus.imag,
+            Qfixed_bus=qfixed_bus,
             gen_bus_idx=nc.generator_data.bus_idx,
             Qmin_gen=nc.generator_data.qmin,
             Qmax_gen=nc.generator_data.qmax,
@@ -1013,7 +1038,7 @@ def multi_island_pf_nc(nc: NumericalCircuit,
             Q0_batt=nc.battery_data.q,
             v_ctrl_val_gen=GeneratorControlMode.V.idx(),
             qv_droop_val_gen=GeneratorControlMode.QVDroop.idx(),
-            Vm=np.abs(results.voltage),
+            Vm=vm_abs,
             atol=1e-12,
         )
 
