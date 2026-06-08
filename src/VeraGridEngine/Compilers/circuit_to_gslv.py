@@ -5,7 +5,7 @@
 from __future__ import annotations
 import time
 import numpy as np
-from typing import List, Dict, Union, Tuple, TYPE_CHECKING
+from typing import List, Dict, Union, TYPE_CHECKING
 
 
 from VeraGridEngine.Utils.ThirdParty.gslv.gslv_activation import (pg, build_status_dict, tap_module_control_mode_dict,
@@ -21,10 +21,10 @@ from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 import VeraGridEngine.Devices as dev
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
+from VeraGridEngine.Simulations.PowerFlow.power_flow_ts_results import PowerFlowTimeSeriesResults
 from VeraGridEngine.enumerations import ShuntControlMode
 from VeraGridEngine.enumerations import TapModuleControl, TapPhaseControl
 from VeraGridEngine.enumerations import SolverType, OpfDispatchMode, MIPSolvers, ZonalGrouping, TimeGrouping
-from VeraGridEngine.DataStructures.numerical_circuit import NumericalCircuit
 
 from VeraGridEngine.basic_structures import Logger
 
@@ -2480,12 +2480,14 @@ def gslv_pf(circuit: MultiCircuit,
     return pf_res
 
 
-def translate_gslv_pf_results(grid: MultiCircuit, res: "pg.PowerFlowResults", logger: Logger) -> PowerFlowResults:
+def translate_gslv_pf_results(
+        grid: MultiCircuit,
+        res: "pg.PowerFlowResults",
+) -> PowerFlowResults:
     """
     Translate the GSLV Power Analytics results back to VeraGrid
     :param grid: MultiCircuit instance
     :param res: GSLV's PowerFlowResults instance
-    :param logger: Logger
     :return: PowerFlowResults instance
     """
     results = PowerFlowResults(
@@ -2528,10 +2530,14 @@ def translate_gslv_pf_results(grid: MultiCircuit, res: "pg.PowerFlowResults", lo
     results.losses_hvdc = res.losses_hvdc[0, :]
 
     results.Pfp_vsc = res.Pf_vsc[0, :]
+    results.Pfn_vsc = res.Pfn_vsc[0, :]
     results.St_vsc = res.St_vsc[0, :]
+    results.If_vsc = res.If_vsc[0, :]
+    results.It_vsc = res.It_vsc[0, :]
     results.loading_vsc = res.loading_vsc[0, :]
     results.losses_vsc = res.losses_vsc[0, :]
-
+    results.gen_p = res.gen_p[0, :]
+    results.battery_p = res.battery_p[0, :]
     results.gen_q = res.gen_q[0, :]
     results.battery_q = res.battery_q[0, :]
     results.shunt_q = res.shunt_q[0, :]
@@ -2549,6 +2555,84 @@ def translate_gslv_pf_results(grid: MultiCircuit, res: "pg.PowerFlowResults", lo
                        elapsed=rep.elapsed[i],
                        iterations=rep.iterations[i])
             results.convergence_reports.append(report)
+
+    return results
+
+
+def translate_gslv_pf_time_series_results(
+        grid: MultiCircuit,
+        res: "pg.PowerFlowResults",
+        options: PowerFlowOptions,
+        time_indices: Union[IntVec, None],
+        clustering_results,
+) -> PowerFlowTimeSeriesResults:
+    """
+    Translate GSLV time-series power-flow results to VeraGrid results.
+
+    :param grid: MultiCircuit instance.
+    :param res: GSLV power-flow results.
+    :param options: Power-flow options used for the run.
+    :param time_indices: Requested global time indices, or ``None`` for all.
+    :param clustering_results: Optional clustering metadata.
+    :return: PowerFlowTimeSeriesResults instance.
+    """
+    if time_indices is None:
+        selected_time_indices: IntVec = np.array(grid.get_all_time_indices(), dtype=int)
+    else:
+        selected_time_indices = np.array(time_indices, dtype=int)
+
+    n_bus: int = grid.get_bus_number()
+    results = PowerFlowTimeSeriesResults(
+        n=n_bus,
+        m=grid.get_branch_number(add_switch=True, add_vsc=False, add_hvdc=False),
+        n_hvdc=grid.get_hvdc_number(),
+        n_vsc=grid.get_vsc_number(),
+        n_gen=grid.get_generators_number(),
+        n_batt=grid.get_batteries_number(),
+        n_sh=grid.get_shunt_like_device_number(),
+        bus_names=grid.get_bus_names(),
+        branch_names=grid.get_branch_names(add_switch=True, add_vsc=False, add_hvdc=False),
+        hvdc_names=grid.get_hvdc_names(),
+        vsc_names=grid.get_vsc_names(),
+        gen_names=grid.get_generator_names(),
+        batt_names=grid.get_battery_names(),
+        sh_names=grid.get_shunt_like_devices_names(),
+        bus_types=np.ones(n_bus, dtype=int),
+        time_array=grid.get_time_array()[selected_time_indices],
+        area_names=grid.get_area_names(),
+        clustering_results=clustering_results,
+    )
+
+    # GSLV returns full-length time-series arrays. Slice them to the requested
+    # time positions so the VeraGrid result object preserves its usual shape.
+    results.voltage = res.voltage[selected_time_indices, :]
+    results.S = res.S[selected_time_indices, :]
+    results.Sf = res.Sf[selected_time_indices, :]
+    results.St = res.St[selected_time_indices, :]
+    results.If = res.If[selected_time_indices, :]
+    results.It = res.It[selected_time_indices, :]
+    results.loading = res.loading[selected_time_indices, :]
+    results.losses = res.losses[selected_time_indices, :]
+    results.tap_module = res.tap_module[selected_time_indices, :]
+    results.tap_angle = res.tap_angle[selected_time_indices, :]
+    results.hvdc_Pf = res.Pf_hvdc[selected_time_indices, :]
+    results.hvdc_Pt = res.Pt_hvdc[selected_time_indices, :]
+    results.hvdc_loading = res.loading_hvdc[selected_time_indices, :]
+    results.hvdc_losses = res.losses_hvdc[selected_time_indices, :]
+    results.Pf_vsc = res.Pf_vsc[selected_time_indices, :]
+    results.Pfn_vsc = res.Pfn_vsc[selected_time_indices, :]
+    results.St_vsc = res.St_vsc[selected_time_indices, :]
+    results.If_vsc = res.If_vsc[selected_time_indices, :]
+    results.It_vsc = res.It_vsc[selected_time_indices, :]
+    results.loading_vsc = res.loading_vsc[selected_time_indices, :]
+    results.losses_vsc = res.losses_vsc[selected_time_indices, :]
+    results.gen_p = res.gen_p[selected_time_indices, :]
+    results.battery_p = res.battery_p[selected_time_indices, :]
+    results.gen_q = res.gen_q[selected_time_indices, :]
+    results.battery_q = res.battery_q[selected_time_indices, :]
+    results.shunt_q = res.shunt_q[selected_time_indices, :]
+    results.error_values = res.error_values[selected_time_indices]
+    results.converged_values = res.converged_values[selected_time_indices]
 
     return results
 
