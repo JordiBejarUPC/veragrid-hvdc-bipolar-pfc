@@ -16,7 +16,7 @@ from VeraGridEngine.Templates.Emt.simple_generator_emt_template import get_simpl
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, EmtInitializationMethod
+from VeraGridEngine.enumerations import VarPowerFlowReferenceType, DynamicIntegrationMethod, EmtInitializationMethod
 from VeraGridEngine.Devices.Events.rms_event import RmsEvent
 from VeraGridEngine.enumerations import ConverterControlType
 import VeraGridEngine.api as gce
@@ -167,8 +167,8 @@ grid.var_factory.add_connections([vsc_mdl.in_vars[3]], [bus3.emt_model.out_vars[
 
 # external mapping
 big_gen1 = Block(children=[genrow_mdl1])
-big_gen1.external_mapping.update({VarPowerFlowRefferenceType.P: genrow_mdl1.out_vars[0]})
-big_gen1.external_mapping.update({VarPowerFlowRefferenceType.Q: genrow_mdl1.out_vars[1]})
+big_gen1.external_mapping.update({VarPowerFlowReferenceType.P: genrow_mdl1.out_vars[0]})
+big_gen1.external_mapping.update({VarPowerFlowReferenceType.Q: genrow_mdl1.out_vars[1]})
 
 # attach emt models to Veragrid objects
 line12.emt_model = line12_mdl

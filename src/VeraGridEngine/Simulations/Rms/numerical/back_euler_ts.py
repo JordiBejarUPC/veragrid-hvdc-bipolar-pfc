@@ -171,6 +171,7 @@ class BackEulerImplicitTensygrid:
                         for i in non_zero_indexes:
                             eq = all_eq[i]
                             print(f"eq {eq} with error {rhs[i]}")
+                            print("")
 
 
                 if not converged:

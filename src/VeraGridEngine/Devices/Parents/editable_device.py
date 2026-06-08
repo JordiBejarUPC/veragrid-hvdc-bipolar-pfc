@@ -22,9 +22,10 @@ from VeraGridEngine.enumerations import (DeviceType, PrpCat, TimeFrame, BuildSta
                                          WindingType, MethodShortCircuit, PhasesShortCircuit, ShuntConnectionType,
                                          BusGraphicType, SwitchGraphicType, DynamicIntegrationMethod, OpfDispatchMode,
                                          EmtLineTypes, EmtProblemTypes, EmtInitializationMethod,
-                                         SmallSignalEmtBuildTypes, FmuTemplateDomain,
+                                         SmallSignalEmtBuildTypes, FmuTemplateDomain, DynamicPlotMode,
                                          EraSvdSolverType, ShuntControlMode, RmsProblemTypes, FmuTemplateDomain,
-                                         FmuTemplateMode, RmsInitializationMethod, EmtSolverTypes, PlotSimulationType,DynamicEventTransitionType)
+                                         FmuTemplateMode, RmsInitializationMethod, EmtSolverTypes, PlotSimulationType,
+                                         DynamicEventTransitionType, DynamicPlotEntryKind, DynamicPlotEntryRole)
 # types that can be assigned to a VeraGrid property
 GCPROP_TYPES = Union[
     Type[int],
@@ -80,6 +81,9 @@ GCPROP_TYPES = Union[
     Type[FmuTemplateMode],
     Type[PlotSimulationType],
     Type[DynamicEventTransitionType],
+    Type[DynamicPlotMode],
+    Type[DynamicPlotEntryKind],
+    Type[DynamicPlotEntryRole],
 ]
 
 
@@ -157,7 +161,7 @@ class GCProp:
                  profile_name: str = '',
                  display: bool = True,
                  editable: bool = True,
-                 old_names: Union[List[str], Tuple[str, ...], None] = None,
+                 old_names: List[str] | Tuple[str, ...] | None = None,
                  is_color: bool = False,
                  is_date: bool = False,
                  key: Union[str, None] = None,

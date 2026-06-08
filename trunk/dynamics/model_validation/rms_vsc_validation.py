@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'sr
 import numpy as np
 import matplotlib.pyplot as plt
 import VeraGridEngine.api as vge
-from VeraGridEngine.enumerations import ConverterControlType, VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import ConverterControlType, VarPowerFlowReferenceType
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import SolverType
 from VeraGridEngine.Templates.Rms.vsc_gfl_dclinked import build_vsc_rms, build_trafo_vsc
 from VeraGridEngine.Templates.Rms.dc_voltage_source import DCCurrentSource
@@ -280,7 +280,7 @@ def initialize_grid2_rms_models(grid2):
             # Get the Vdc variable from the bus RMS model
             if hasattr(bus, 'rms_model') and bus.rms_model is not None:
                 # Access Vdc through external_mapping
-                vdc = bus.rms_model.external_mapping[VarPowerFlowRefferenceType.Vdc]
+                vdc = bus.rms_model.external_mapping[VarPowerFlowReferenceType.Vdc]
                 print(f"vdc uid is {vdc.uid}")
                 # Check for potential NaN sources
                 print(f"    DEBUG: Initial Pdc={gen.P}, Vdc should come from PF results")

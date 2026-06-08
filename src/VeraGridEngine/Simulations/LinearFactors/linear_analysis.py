@@ -394,7 +394,7 @@ def make_acdc_ptdf(nc: NumericalCircuit,
         f = nc.vsc_data.F[k]
         t = nc.vsc_data.T[k]
 
-        if nc.vsc_data.control1[k] == ConverterControlType.Pdc_angle_droop:
+        if nc.vsc_data.control1_int[k] == ConverterControlType.Pdc_angle_droop.idx():
             # P-MODE 3: The VSC behaves as a droop control
             # P = P0 + k * (theta_f - theta_t)
             # k is in MW/deg, we need it in p.u./rad
@@ -413,7 +413,7 @@ def make_acdc_ptdf(nc: NumericalCircuit,
         f = nc.hvdc_data.F[k]
         t = nc.hvdc_data.T[k]
 
-        if nc.hvdc_data.control_mode[k] == HvdcControlType.type_0_free:
+        if nc.hvdc_data.control_mode_int[k] == HvdcControlType.type_0_free.idx():
             # Free mode: P = Pset + angle_droop * (theta_f - theta_t)
             # angle_droop is in MW/deg, we need it in p.u./rad
             ys = nc.hvdc_data.angle_droop[k] * 57.295779513 / nc.Sbase
@@ -1307,6 +1307,8 @@ class LinearAnalysisTs:
 
         self.time_indices = grid.get_all_time_indices() if time_indices is None else time_indices
 
+        self._inverse_time_index = {t: i for i, t in enumerate(self.time_indices)}
+
         # get the states matrix
         mat: IntMat = grid.get_branch_active_time_array()[self.time_indices, :]
 
@@ -1325,6 +1327,7 @@ class LinearAnalysisTs:
             lin = LinearAnalysis(nc=nc,
                                  distributed_slack=distributed_slack,
                                  correct_values=correct_values)
+
             self._linear_analysis[t_idx] = lin
 
             if compute_multi_contingencies:
@@ -1349,11 +1352,14 @@ class LinearAnalysisTs:
     def get_linear_analysis_at(self, t_idx: int) -> LinearAnalysis:
         """
 
-        :param t_idx:
+        :param t_idx: time index in the general schema
         :return:
         """
-        # get the base index
-        t_i = self.mapping[t_idx]
+        # get the base index (i.e. when clustering)
+        it = self._inverse_time_index[t_idx]
+
+        # get the mapped reduced index
+        t_i = self.mapping[it]
 
         # get the linear analysis
         lin: LinearAnalysis = self._linear_analysis[t_i]
@@ -1366,8 +1372,11 @@ class LinearAnalysisTs:
         :param t_idx:
         :return:
         """
-        # get the base index
-        t_i = self.mapping[t_idx]
+        # get the base index (i.e. when clustering)
+        it = self._inverse_time_index[t_idx]
+
+        # get the mapped reduced index
+        t_i = self.mapping[it]
 
         # get the linear analysis
         lin: LinearMultiContingencies = self._linear_multi_contingencies[t_i]

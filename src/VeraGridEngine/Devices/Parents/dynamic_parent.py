@@ -250,7 +250,6 @@ class DynamicDevice(PhysicalDevice):
     def rms_model(self, val: Block) -> None:
         if isinstance(val, Block):
             self._rms_model = val
-            #print("")
         else:
             raise ValueError(f"RMS model cannot accept {val}")
 
@@ -309,7 +308,7 @@ class DynamicDevice(PhysicalDevice):
             self._clear_emt_fmu_config()
 
             if self.auto_update_enabled:
-                val.block.unify_blocks()
+                # val.block.unify_blocks()
                 emt_mdl = duplicate_block(val.block, self._var_factory)
                 connect_bus_variables_emt(self, emt_mdl, self._var_factory, allow_deferred_connection=True)
 

@@ -33,7 +33,7 @@ from VeraGridEngine.Templates.Emt.valve_emt_template import get_valve_emt_templa
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Expr, Var
 from VeraGridEngine.Utils.procedural_logic import build_boundary_updater_from_block
-from VeraGridEngine.enumerations import DynamicIntegrationMethod, ValveEmtModelVariant, ValveEmtType, ValveInitializationState, VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import DynamicIntegrationMethod, ValveEmtModelVariant, ValveEmtType, ValveInitializationState, VarPowerFlowReferenceType
 
 
 class GenericEmtProblem(EmtProblemTemplate):
@@ -369,8 +369,8 @@ def _connect_valve_terminals(block: Block, v_source: Var, v_load: Var) -> None:
     vf_terminal: Var
     vt_terminal: Var
 
-    vf_terminal = block.external_mapping[VarPowerFlowRefferenceType.Vf_dc]
-    vt_terminal = block.external_mapping[VarPowerFlowRefferenceType.Vt_dc]
+    vf_terminal = block.external_mapping[VarPowerFlowReferenceType.Vf_dc]
+    vt_terminal = block.external_mapping[VarPowerFlowReferenceType.Vt_dc]
     block.update_model(vf_terminal, v_source)
     block.update_model(vt_terminal, v_load)
 
@@ -510,7 +510,7 @@ def _build_valve_problem(valve_tpe: ValveEmtType) -> Tuple[GenericEmtProblem, in
     _set_block_runtime_parameter(valve_block, f'snubber_enabled_{block_name}', 0.0)
     _connect_valve_terminals(valve_block, v_source=v_source, v_load=v_load)
 
-    i_branch = valve_block.external_mapping[VarPowerFlowRefferenceType.If_dc]
+    i_branch = valve_block.external_mapping[VarPowerFlowReferenceType.If_dc]
     v_valve = _find_name_in_block(f'v_valve_{block_name}', valve_block)
     if v_valve is None:
         raise KeyError(f"Valve voltage variable for block '{block_name}' could not be resolved")

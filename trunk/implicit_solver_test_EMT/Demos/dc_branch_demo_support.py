@@ -22,7 +22,7 @@ from VeraGridEngine.enumerations import (
     ValveEmtModelVariant,
     ValveEmtType,
     ValveInitializationState,
-    VarPowerFlowRefferenceType,
+    VarPowerFlowReferenceType,
 )
 
 
@@ -510,8 +510,8 @@ def _connect_dc_branch_terminals(branch_block: Block, v_source: Var, v_load: Var
     :param v_load: Load-side voltage variable.
     :return: None.
     """
-    vf_terminal: Var = branch_block.external_mapping[VarPowerFlowRefferenceType.Vf_dc]
-    vt_terminal: Var = branch_block.external_mapping[VarPowerFlowRefferenceType.Vt_dc]
+    vf_terminal: Var = branch_block.external_mapping[VarPowerFlowReferenceType.Vf_dc]
+    vt_terminal: Var = branch_block.external_mapping[VarPowerFlowReferenceType.Vt_dc]
 
     branch_block.update_model(vf_terminal, v_source)
     branch_block.update_model(vt_terminal, v_load)
@@ -686,9 +686,9 @@ def build_dc_line_demo_problem() -> Tuple[GenericEmtProblem, DcLineDemoResult, i
     _set_block_constant_parameter(line_block, f"g_ser_{block_name}", g_branch)
     _connect_dc_branch_terminals(line_block, v_source=v_source, v_load=v_load)
 
-    i_branch: Var = line_block.external_mapping[VarPowerFlowRefferenceType.If_dc]
-    p_source: Var = line_block.external_mapping[VarPowerFlowRefferenceType.Pf]
-    p_load: Var = line_block.external_mapping[VarPowerFlowRefferenceType.Pt]
+    i_branch: Var = line_block.external_mapping[VarPowerFlowReferenceType.If_dc]
+    p_source: Var = line_block.external_mapping[VarPowerFlowReferenceType.Pf]
+    p_load: Var = line_block.external_mapping[VarPowerFlowReferenceType.Pt]
 
     v_load_initial: float = _compute_resistive_divider_voltage(v_source=v_source_ref, g_branch=g_branch, g_load=g_load_initial)
 
@@ -821,7 +821,7 @@ def build_valve_demo_problem(valve_tpe: ValveEmtType) -> Tuple[GenericEmtProblem
     _set_block_runtime_parameter(valve_block, f"snubber_enabled_{block_name}", 0.0)
     _connect_dc_branch_terminals(valve_block, v_source=v_source, v_load=v_load)
 
-    i_branch: Var = valve_block.external_mapping[VarPowerFlowRefferenceType.If_dc]
+    i_branch: Var = valve_block.external_mapping[VarPowerFlowReferenceType.If_dc]
     v_valve: Var | None = find_var_in_block_by_name(f"v_valve_{block_name}", valve_block)
     if v_valve is None:
         raise KeyError(f"Valve voltage variable for block '{block_name}' was not found")
