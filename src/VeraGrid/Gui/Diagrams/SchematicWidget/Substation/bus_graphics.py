@@ -1631,11 +1631,12 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         :return:
         """
         if self.draw_labels:
+            msg: str = str()
 
-            msg = f"Bus {i}"
-            if tpe is not None:
-                msg += f" [{tpe}]"
-            msg += "<br>"
+            if tpe is None:
+                pass
+            else:
+                msg += f"[{tpe}]<br>"
 
             vm = vm_fmt.format(Vm)
             vm_kv = format_str.format(Vm * self._api_object.Vnom)
@@ -1650,7 +1651,10 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         else:
             msg = ""
 
-        title = self._api_object.name if self._api_object is not None else ""
+        if self._api_object is None:
+            title = f"Bus {i}"
+        else:
+            title = f"{i}: {self._api_object.name}"
         self.set_label_content(title=title, msg=msg)
 
         self.setToolTip(msg)
@@ -1672,11 +1676,12 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         :param format_str: number formatting string
         """
         if self.draw_labels:
+            msg: str = str()
 
-            msg = f"Bus {i}"
-            if tpe is not None:
-                msg += f" [{tpe}]"
-            msg += "<br>"
+            if tpe is None:
+                pass
+            else:
+                msg += f"[{tpe}]<br>"
 
             for Vm_i, Va_i, ph in zip([VmA, VmB, VmC], [VaA, VaB, VaC], ["a", "b", "c"]):
                 if not (Vm_i == 0.0 and Va_i == 0.0):
@@ -1688,7 +1693,10 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         else:
             msg = ""
 
-        title = self._api_object.name if self._api_object is not None else ""
+        if self._api_object is None:
+            title = f"Bus {i}"
+        else:
+            title = f"{i}: {self._api_object.name}"
         self.set_label_content(title=title, msg=msg)
 
         self.setToolTip(msg)
