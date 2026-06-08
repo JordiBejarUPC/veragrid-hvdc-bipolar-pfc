@@ -4456,3 +4456,12 @@ class TreeStateNodeKind(Enum):
     SOURCE = "source"
     PLOT_GROUP = "plot_group"
     PLOT_ENTRY = "plot_entry"
+
+class DynamicTableModelMode(Enum):
+    """
+    Modes to define data table in block editor
+    """
+
+    VARIABLES = "variables"
+    PARAMETERS = "parameters"
+    EQUATIONS = "equations"
