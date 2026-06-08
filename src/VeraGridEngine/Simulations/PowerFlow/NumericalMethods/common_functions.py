@@ -1521,3 +1521,148 @@ def split_reactive_power_between_generators_and_batteries(
             q_batt[batt_idx] = 0.0
 
     return q_gen, q_batt
+
+
+def split_slack_bus_quantity_between_generators_and_batteries(
+        Qbus: Vec,
+        Qfixed_bus: Vec,
+        slack_bus_mask: BoolVec,
+        gen_bus_idx: IntVec,
+        Qmin_gen: Vec,
+        Qmax_gen: Vec,
+        gen_status: BoolVec,
+        Q0_gen: Vec,
+        batt_bus_idx: IntVec,
+        Qmin_batt: Vec,
+        Qmax_batt: Vec,
+        batt_status: BoolVec,
+        Q0_batt: Vec,
+        atol: float = 1e-12,
+) -> Tuple[Vec, Vec]:
+    """
+    Split one solved bus quantity among online generator-like devices at slack buses.
+
+    This helper is used after the main power-flow post-processing to reconstruct
+    the per-device values that belong to slack buses. The solved bus quantities
+    are already correct, but the slack balancing residual can remain attached
+    only to the bus result instead of being reassigned to the connected online
+    generators and batteries.
+
+    The split is performed independently at every slack bus. Devices connected
+    to non-slack buses preserve their input values ``Q0_gen`` and ``Q0_batt``.
+    Online devices connected to slack buses share the residual bus quantity
+    after subtracting the fixed bus contribution ``Qfixed_bus``. Offline devices
+    receive zero.
+
+    :param Qbus: Solved per-bus quantity to reconstruct.
+    :param Qfixed_bus: Fixed per-bus contribution that does not belong to the participating slack devices.
+    :param slack_bus_mask: Boolean mask marking the slack buses.
+    :param gen_bus_idx: Generator bus index.
+    :param Qmin_gen: Generator lower bound for the reconstructed quantity.
+    :param Qmax_gen: Generator upper bound for the reconstructed quantity.
+    :param gen_status: Generator active status.
+    :param Q0_gen: Generator baseline values kept at non-slack buses.
+    :param batt_bus_idx: Battery bus index.
+    :param Qmin_batt: Battery lower bound for the reconstructed quantity.
+    :param Qmax_batt: Battery upper bound for the reconstructed quantity.
+    :param batt_status: Battery active status.
+    :param Q0_batt: Battery baseline values kept at non-slack buses.
+    :param atol: Numerical zero tolerance.
+    :return: Tuple with generator and battery reconstructed values.
+    """
+    n_bus: int = len(Qbus)
+    n_gen: int = len(gen_bus_idx)
+    n_batt: int = len(batt_bus_idx)
+
+    q_gen: Vec = Q0_gen.copy()
+    q_batt: Vec = Q0_batt.copy()
+
+    qfixed_per_bus: Vec = Qfixed_bus.copy()
+    qmin_control_per_bus: Vec = np.zeros(n_bus, dtype=np.float64)
+    qmax_control_per_bus: Vec = np.zeros(n_bus, dtype=np.float64)
+    control_count_per_bus: np.ndarray = np.zeros(n_bus, dtype=np.int64)
+    qshare_per_bus: Vec = np.zeros(n_bus, dtype=np.float64)
+
+    gen_idx: int
+    batt_idx: int
+    bus_idx: int
+
+    for gen_idx in range(n_gen):
+        bus_idx = gen_bus_idx[gen_idx]
+
+        if gen_status[gen_idx]:
+            if slack_bus_mask[bus_idx]:
+                qmin_control_per_bus[bus_idx] += Qmin_gen[gen_idx]
+                qmax_control_per_bus[bus_idx] += Qmax_gen[gen_idx]
+                control_count_per_bus[bus_idx] += 1
+            else:
+                qfixed_per_bus[bus_idx] += Q0_gen[gen_idx]
+        else:
+            pass
+
+    for batt_idx in range(n_batt):
+        bus_idx = batt_bus_idx[batt_idx]
+
+        if batt_status[batt_idx]:
+            if slack_bus_mask[bus_idx]:
+                qmin_control_per_bus[bus_idx] += Qmin_batt[batt_idx]
+                qmax_control_per_bus[bus_idx] += Qmax_batt[batt_idx]
+                control_count_per_bus[bus_idx] += 1
+            else:
+                qfixed_per_bus[bus_idx] += Q0_batt[batt_idx]
+        else:
+            pass
+
+    for bus_idx in range(n_bus):
+        qmin_control_value: float = qmin_control_per_bus[bus_idx]
+        qmax_control_value: float = qmax_control_per_bus[bus_idx]
+        qrange_control_value: float = qmax_control_value - qmin_control_value
+        qcontrol_required_value: float = Qbus[bus_idx] - qfixed_per_bus[bus_idx]
+        control_count_value: int = int(control_count_per_bus[bus_idx])
+
+        if slack_bus_mask[bus_idx]:
+            if control_count_value > 0:
+                if qrange_control_value > atol:
+                    # Slack-bus reporting must reproduce the solved bus balance
+                    # exactly, even when the final value exceeds the declared
+                    # operating limits. Therefore the normalized factor is not
+                    # clipped to [0, 1] here.
+                    qshare_per_bus[bus_idx] = (
+                        (qcontrol_required_value - qmin_control_value) / qrange_control_value
+                    )
+                else:
+                    qshare_per_bus[bus_idx] = 0.0
+            else:
+                qshare_per_bus[bus_idx] = 0.0
+        else:
+            qshare_per_bus[bus_idx] = 0.0
+
+    for gen_idx in range(n_gen):
+        bus_idx = gen_bus_idx[gen_idx]
+
+        if gen_status[gen_idx]:
+            if slack_bus_mask[bus_idx]:
+                qmin_gen_value: float = Qmin_gen[gen_idx]
+                qmax_gen_value: float = Qmax_gen[gen_idx]
+                qrange_gen_value: float = qmax_gen_value - qmin_gen_value
+                q_gen[gen_idx] = qmin_gen_value + qshare_per_bus[bus_idx] * qrange_gen_value
+            else:
+                q_gen[gen_idx] = Q0_gen[gen_idx]
+        else:
+            q_gen[gen_idx] = 0.0
+
+    for batt_idx in range(n_batt):
+        bus_idx = batt_bus_idx[batt_idx]
+
+        if batt_status[batt_idx]:
+            if slack_bus_mask[bus_idx]:
+                qmin_batt_value: float = Qmin_batt[batt_idx]
+                qmax_batt_value: float = Qmax_batt[batt_idx]
+                qrange_batt_value: float = qmax_batt_value - qmin_batt_value
+                q_batt[batt_idx] = qmin_batt_value + qshare_per_bus[bus_idx] * qrange_batt_value
+            else:
+                q_batt[batt_idx] = Q0_batt[batt_idx]
+        else:
+            q_batt[batt_idx] = 0.0
+
+    return q_gen, q_batt
