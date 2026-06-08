@@ -916,7 +916,7 @@ class EquationDecomposer:
             return {}
 
         LAYER_SPACING_X = 300.0
-        BLOCK_SPACING_Y = 130.0
+        BLOCK_SPACING_Y = 200.0
         BLOCK_H = 70.0
         MARGIN_X = 100.0
         MARGIN_Y = 80.0
@@ -959,49 +959,116 @@ class EquationDecomposer:
             layers_list[layer[i]].append(i)
 
         for l in layers_list:
-            l.sort()
+            l.sort(key=lambda x: (x in from_to_tpe, x))
 
-        # --- Barycenter ordering helpers ---
+        # --- Crossing minimization (barycenter + local optimization) ---
+        # Routing blocks are kept at the end of each layer so they don't
+        # interfere with functional-block ordering.
         def _parent_barycenter(layers, target_layer):
             if target_layer == 0:
                 return
             items = layers[target_layer]
+            func_items = [n for n in items if n not in from_to_tpe]
+            if not func_items:
+                return
             prev_layer = layers[target_layer - 1]
             scores = []
-            for node in items:
-                parents = [p for p in dep_graph.get(node, set()) if p in prev_layer]
+            for node in func_items:
+                parents = [p for p in dep_graph.get(node, set())
+                           if p in prev_layer and p not in from_to_tpe]
                 if parents:
                     avg = sum(prev_layer.index(p) for p in parents) / len(parents)
                     scores.append((avg, node))
                 else:
-                    scores.append((items.index(node), node))
+                    scores.append((func_items.index(node), node))
             scores.sort(key=lambda x: x[0])
-            layers[target_layer] = [node for _, node in scores]
+            routing_items = [n for n in items if n in from_to_tpe]
+            layers[target_layer] = [node for _, node in scores] + routing_items
 
         def _child_barycenter(layers, target_layer):
             if target_layer >= len(layers) - 1:
                 return
             items = layers[target_layer]
+            func_items = [n for n in items if n not in from_to_tpe]
+            if not func_items:
+                return
             next_layer = layers[target_layer + 1]
             scores = []
-            for node in items:
-                children = [c for c in successors.get(node, set()) if c in next_layer]
+            for node in func_items:
+                children = [c for c in successors.get(node, set())
+                            if c in next_layer and c not in from_to_tpe]
                 if children:
                     avg = sum(next_layer.index(c) for c in children) / len(children)
                     scores.append((avg, node))
                 else:
-                    scores.append((items.index(node), node))
+                    scores.append((func_items.index(node), node))
             scores.sort(key=lambda x: x[0])
-            layers[target_layer] = [node for _, node in scores]
+            routing_items = [n for n in items if n in from_to_tpe]
+            layers[target_layer] = [node for _, node in scores] + routing_items
 
-        # --- Barycenter sweeps: top-down, bottom-up, top-down, bottom-up ---
-        for sweep in range(4):
+        def _crossings_between(upper, lower):
+            # Only count crossings for functional blocks — routing blocks
+            # (signal_in / signal_out) get repositioned later, so optimising
+            # crossings that involve them is wasted effort.
+            lower_pos = {n: i for i, n in enumerate(lower) if n not in from_to_tpe}
+            cnt = 0
+            for i, u in enumerate(upper):
+                if u in from_to_tpe:
+                    continue
+                u_conn = successors.get(u, set()) & set(lower)
+                if not u_conn:
+                    continue
+                for v in upper[i + 1:]:
+                    if v in from_to_tpe:
+                        continue
+                    v_conn = successors.get(v, set()) & set(lower)
+                    if not v_conn:
+                        continue
+                    for a in u_conn:
+                        pa = lower_pos.get(a)
+                        if pa is None:
+                            continue
+                        for b in v_conn:
+                            pb = lower_pos.get(b)
+                            if pb is None:
+                                continue
+                            if pb < pa:
+                                cnt += 1
+            return cnt
+
+        def _total_crossings():
+            total = 0
+            for l in range(len(layers_list) - 1):
+                total += _crossings_between(layers_list[l], layers_list[l + 1])
+            return total
+
+        # Barycenter sweeps
+        for sweep in range(15):
             if sweep % 2 == 0:
                 for l in range(1, len(layers_list)):
                     _parent_barycenter(layers_list, l)
             else:
                 for l in range(len(layers_list) - 2, -1, -1):
                     _child_barycenter(layers_list, l)
+
+        # Local optimization: try adjacent swaps that reduce crossings.
+        # Only swap functional blocks; routing blocks stay at the end.
+        for iteration in range(12):
+            improved = False
+            for l in range(len(layers_list)):
+                items = layers_list[l]
+                func_idx = [idx for idx, n in enumerate(items) if n not in from_to_tpe]
+                for pos in range(len(func_idx) - 1):
+                    i, j = func_idx[pos], func_idx[pos + 1]
+                    cnt_before = _total_crossings()
+                    items[i], items[j] = items[j], items[i]
+                    cnt_after = _total_crossings()
+                    if cnt_after < cnt_before:
+                        improved = True
+                    else:
+                        items[i], items[j] = items[j], items[i]
+            if not improved:
+                break
 
         # --- Initial positions ---
         pos: Dict[int, List[float]] = {}
@@ -1012,52 +1079,68 @@ class EquationDecomposer:
                     MARGIN_Y + i * BLOCK_SPACING_Y,
                 ]
 
-        # --- Build adjacency for relaxation ---
-        adj: Dict[int, Set[int]] = {i: set() for i in range(n)}
-        for i in range(n):
-            for p in dep_graph.get(i, set()):
-                adj[i].add(p)
-                adj[p].add(i)
+        # --- Vertical alignment: align connected nodes across layers ---
+        # Connected blocks should share similar Y to minimize long vertical
+        # connection lines.  This replaces a generic force-directed relaxation.
+        ALIGN_MIN_GAP = BLOCK_H + 12.0
+        ALIGN_BLEND = 0.6
 
-        # --- Gentle Y relaxation to break grid appearance ---
-        for iteration in range(40):
-            cooling = 1.0 - iteration / 40.0
-            deltas: Dict[int, float] = {}
-            for i in range(n):
-                neighbors = adj.get(i, set())
-                if len(neighbors) == 0:
-                    continue
-                avg_y = sum(pos[n][1] for n in neighbors) / len(neighbors)
-                diff = avg_y - pos[i][1]
-                max_delta = 4.0 * cooling
-                d = max(-max_delta, min(max_delta, diff * 0.15))
-                if abs(d) > 0.5:
-                    deltas[i] = d
+        for iteration in range(3):
+            # Left-to-right: align each node with its predecessors
+            for l in range(1, len(layers_list)):
+                items = layers_list[l]
+                # store current Y snapshot for this sweep
+                cur = [pos[node][1] for node in items]
+                for idx, node in enumerate(items):
+                    preds = [p for p in dep_graph.get(node, set())
+                             if p in layers_list[l - 1]]
+                    if not preds:
+                        continue
+                    avg_pred = sum(pos[p][1] for p in preds) / len(preds)
+                    lower = cur[idx - 1] + ALIGN_MIN_GAP if idx > 0 else float("-inf")
+                    target = max(lower, avg_pred)
+                    pos[node][1] += (target - pos[node][1]) * ALIGN_BLEND
 
-            for i, d in deltas.items():
-                pos[i][1] += d
+                # Reverse pass: enforce upper bound from successor in layer
+                for idx in range(len(items) - 2, -1, -1):
+                    node = items[idx]
+                    nxt = items[idx + 1]
+                    upper = pos[nxt][1] - ALIGN_MIN_GAP
+                    if pos[node][1] > upper:
+                        pos[node][1] = upper
 
-            # Enforce minimum separation within layers
-            for l in layers_list:
-                sorted_nodes = sorted(l, key=lambda x: pos[x][1])
-                for idx in range(1, len(sorted_nodes)):
-                    prev = sorted_nodes[idx - 1]
-                    curr = sorted_nodes[idx]
-                    gap = pos[curr][1] - pos[prev][1]
-                    min_dist = BLOCK_H + 15.0
-                    if gap < min_dist:
-                        pos[curr][1] = pos[prev][1] + min_dist
+            # Right-to-left: align each node with its successors
+            for l in range(len(layers_list) - 2, -1, -1):
+                items = layers_list[l]
+                cur = [pos[node][1] for node in items]
+                for idx, node in enumerate(items):
+                    succs = [s for s in successors.get(node, set())
+                             if s in layers_list[l + 1]]
+                    if not succs:
+                        continue
+                    avg_succ = sum(pos[s][1] for s in succs) / len(succs)
+                    lower = cur[idx - 1] + ALIGN_MIN_GAP if idx > 0 else float("-inf")
+                    target = max(lower, avg_succ)
+                    pos[node][1] += (target - pos[node][1]) * ALIGN_BLEND
+
+                # Reverse pass: enforce upper bound
+                for idx in range(len(items) - 2, -1, -1):
+                    node = items[idx]
+                    nxt = items[idx + 1]
+                    upper = pos[nxt][1] - ALIGN_MIN_GAP
+                    if pos[node][1] > upper:
+                        pos[node][1] = upper
 
         # --- Compact vertically ---
         for l in layers_list:
             if len(l) <= 1:
                 continue
-            sorted_nodes = sorted(l, key=lambda x: pos[x][1])
-            for idx in range(1, len(sorted_nodes)):
-                curr = sorted_nodes[idx]
-                prev = sorted_nodes[idx - 1]
-                min_dist = BLOCK_H + 10.0
+            items = sorted(l, key=lambda x: pos[x][1])
+            for idx in range(1, len(items)):
+                curr = items[idx]
+                prev = items[idx - 1]
                 gap = pos[curr][1] - pos[prev][1]
+                min_dist = BLOCK_H + 10.0
                 if gap > min_dist + 25.0:
                     pos[curr][1] = pos[prev][1] + min_dist
 
@@ -1084,6 +1167,13 @@ class EquationDecomposer:
             # Build occupied rects for all non-routing blocks
             occupied: List[Tuple[float, float, float, float]] = []
 
+            # Build connection corridors between functional blocks.
+            # These represent the area where an orthogonal connection line
+            # between two functional blocks travels. Routing blocks must
+            # avoid sitting on top of these lines.
+            corridors: List[Tuple[float, float, float, float]] = []
+            CORRIDOR_PAD = 15.0
+
             def _add_rect(idx: int, w: float, h: float) -> None:
                 occupied.append((
                     pos[idx][0],
@@ -1096,6 +1186,25 @@ class EquationDecomposer:
                 if i not in is_signal:
                     _add_rect(i, FUNC_BLOCK_W, FUNC_BLOCK_H)
 
+            for i in range(n):
+                if i in is_signal:
+                    continue
+                for p in dep_graph.get(i, set()):
+                    if p in is_signal:
+                        continue
+                    p_right = pos[p][0] + FUNC_BLOCK_W
+                    i_left = pos[i][0]
+                    if p_right >= i_left:
+                        continue
+                    p_cy = pos[p][1] + FUNC_BLOCK_H / 2.0
+                    i_cy = pos[i][1] + FUNC_BLOCK_H / 2.0
+                    corridors.append((
+                        p_right - CORRIDOR_PAD,
+                        min(p_cy, i_cy) - CORRIDOR_PAD,
+                        i_left + CORRIDOR_PAD,
+                        max(p_cy, i_cy) + CORRIDOR_PAD,
+                    ))
+
             def _rects_overlap(
                 l1: float, t1: float, r1: float, b1: float,
                 l2: float, t2: float, r2: float, b2: float,
@@ -1106,12 +1215,15 @@ class EquationDecomposer:
                 for o in occupied:
                     if _rects_overlap(l, t, r, b, o[0], o[1], o[2], o[3]):
                         return False
+                for c in corridors:
+                    if _rects_overlap(l, t, r, b, c[0], c[1], c[2], c[3]):
+                        return False
                 return True
 
             def _place_near_anchor(
                 target_idx: int,
                 ideal_x: float,
-                ideal_y: float,
+               ideal_y: float,
                 block_w: float,
                 block_h: float,
             ) -> None:
@@ -1163,6 +1275,82 @@ class EquationDecomposer:
                     ideal_y = pos[consumer_idx][1]
                     _place_near_anchor(to_idx, ideal_x, ideal_y,
                                        SIGNAL_BLOCK_W, SIGNAL_BLOCK_H)
+
+        # --- Global overlap resolution ---
+        # After all blocks are placed, resolve any remaining overlaps
+        # between ANY two blocks (functional vs functional, routing vs any, etc.)
+        GLOBAL_FUNC_W = 160.0
+        GLOBAL_FUNC_H = 70.0
+        GLOBAL_SIG_W = 140.0
+        GLOBAL_SIG_H = 70.0
+        GLOBAL_GAP = 15.0
+        is_sig = {i for i, t in from_to_tpe.items() if t in ("signal_in", "signal_out")}
+
+        # Rebuild connection corridors for the overlap check
+        global_corridors: List[Tuple[float, float, float, float]] = []
+        for i in range(n):
+            if i in is_sig:
+                continue
+            for p in dep_graph.get(i, set()):
+                if p in is_sig:
+                    continue
+                pr = pos[p][0] + GLOBAL_FUNC_W
+                il = pos[i][0]
+                if pr >= il:
+                    continue
+                pc = pos[p][1] + GLOBAL_FUNC_H / 2.0
+                ic = pos[i][1] + GLOBAL_FUNC_H / 2.0
+                global_corridors.append((pr, min(pc, ic), il, max(pc, ic)))
+
+        def _global_rects_overlap(a, b):
+            return not (a[2] <= b[0] or a[0] >= b[2] or a[3] <= b[1] or a[1] >= b[3])
+
+        for iteration in range(40):
+            any_sep = False
+            # Build rects for current positions
+            rects = []
+            for idx in range(n):
+                w = GLOBAL_SIG_W if idx in is_sig else GLOBAL_FUNC_W
+                h = GLOBAL_SIG_H if idx in is_sig else GLOBAL_FUNC_H
+                rects.append((pos[idx][0], pos[idx][1], pos[idx][0] + w, pos[idx][1] + h))
+
+            for i in range(n):
+                for j in range(i + 1, n):
+                    if not _global_rects_overlap(rects[i], rects[j]):
+                        continue
+                    any_sep = True
+                    ri = rects[i]
+                    rj = rects[j]
+                    overlap_x = min(ri[2], rj[2]) - max(ri[0], rj[0])
+                    overlap_y = min(ri[3], rj[3]) - max(ri[1], rj[1])
+                    if overlap_y < overlap_x:
+                        dir_y = 1.0 if pos[i][1] < pos[j][1] else -1.0
+                        push = overlap_y + GLOBAL_GAP
+                        pos[i][1] -= dir_y * push * 0.5
+                        pos[j][1] += dir_y * push * 0.5
+                    else:
+                        dir_x = 1.0 if pos[i][0] < pos[j][0] else -1.0
+                        push = overlap_x + GLOBAL_GAP
+                        pos[i][0] -= dir_x * push * 0.5
+                        pos[j][0] += dir_x * push * 0.5
+
+            # Also check routing blocks against connection corridors
+            for idx in range(n):
+                if idx not in is_sig:
+                    continue
+                w = GLOBAL_SIG_W
+                h = GLOBAL_SIG_H
+                br = (pos[idx][0], pos[idx][1], pos[idx][0] + w, pos[idx][1] + h)
+                for c in global_corridors:
+                    if _global_rects_overlap(br, c):
+                        any_sep = True
+                        overlap_y = min(br[3], c[3]) - max(br[1], c[1])
+                        dir_y = 1.0 if pos[idx][1] + h / 2 < (c[1] + c[3]) / 2 else -1.0
+                        pos[idx][1] += dir_y * (overlap_y + GLOBAL_GAP)
+                        break
+
+            if not any_sep:
+                break
 
         # --- Normalize to positive coordinates ---
         min_x = min(p[0] for p in pos.values())
