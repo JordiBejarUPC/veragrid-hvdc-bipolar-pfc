@@ -3443,6 +3443,13 @@ class SchematicWidget(BaseDiagramWidget):
                                   value: float,
                                   cmap: palettes.Colormaps | None,
                                   voltage_cmap: Callable) -> QColor:
+        """
+
+        :param value:
+        :param cmap:
+        :param voltage_cmap:
+        :return:
+        """
         a = 255
         if cmap == palettes.Colormaps.Green2Red:
             b, g, r = palettes.green_to_red_bgr(value)
@@ -3458,11 +3465,19 @@ class SchematicWidget(BaseDiagramWidget):
             a *= 255
         return QColor(r, g, b, a)
 
-    def _get_branch_result_color(self,
-                                 value: float,
+    @staticmethod
+    def _get_branch_result_color(value: float,
                                  cmap: palettes.Colormaps | None,
                                  loading_cmap: Callable,
                                  nominal_voltage: float) -> QColor:
+        """
+
+        :param value:
+        :param cmap:
+        :param loading_cmap:
+        :param nominal_voltage:
+        :return:
+        """
         a = 255
         if cmap == palettes.Colormaps.Green2Red:
             b, g, r = palettes.green_to_red_bgr(value)
@@ -3489,6 +3504,20 @@ class SchematicWidget(BaseDiagramWidget):
                             voltage_cmap: Callable,
                             cmap: palettes.Colormaps | None,
                             use_flow_based_width: bool) -> None:
+        """
+
+        :param Sbus:
+        :param bus_active:
+        :param vabs:
+        :param vang:
+        :param vnorm:
+        :param types:
+        :param bus_types:
+        :param voltage_cmap:
+        :param cmap:
+        :param use_flow_based_width:
+        :return:
+        """
         nbus = self.circuit.get_bus_number()
         if nbus != len(vnorm):
             error_msg("Bus results length differs from the number of Bus results. \n"
@@ -3530,6 +3559,25 @@ class SchematicWidget(BaseDiagramWidget):
                                ma: Vec | None,
                                tau: Vec | None,
                                is_three_phase: bool = False) -> float | None:
+        """
+
+        :param Sf:
+        :param St:
+        :param loadings:
+        :param losses:
+        :param br_active:
+        :param hvdc_Pf:
+        :param loading_label:
+        :param use_flow_based_width:
+        :param min_branch_width:
+        :param max_branch_width:
+        :param loading_cmap:
+        :param cmap:
+        :param ma:
+        :param tau:
+        :param is_three_phase:
+        :return:
+        """
         if Sf is None or len(Sf) == 0:
             return 1.0
 
@@ -3628,6 +3676,23 @@ class SchematicWidget(BaseDiagramWidget):
                             loading_cmap: Callable,
                             cmap: palettes.Colormaps | None,
                             max_flow: float) -> None:
+        """
+
+        :param vsc_Pf:
+        :param vsc_Pt:
+        :param vsc_Qt:
+        :param vsc_losses:
+        :param vsc_loading:
+        :param vsc_active:
+        :param loading_label:
+        :param use_flow_based_width:
+        :param min_branch_width:
+        :param max_branch_width:
+        :param loading_cmap:
+        :param cmap:
+        :param max_flow:
+        :return:
+        """
         if vsc_Pf is None:
             return
 
@@ -3693,6 +3758,22 @@ class SchematicWidget(BaseDiagramWidget):
                              loading_cmap: Callable,
                              cmap: palettes.Colormaps | None,
                              max_flow: float) -> None:
+        """
+
+        :param hvdc_Pf:
+        :param hvdc_Pt:
+        :param hvdc_losses:
+        :param hvdc_loading:
+        :param hvdc_active:
+        :param loading_label:
+        :param use_flow_based_width:
+        :param min_branch_width:
+        :param max_branch_width:
+        :param loading_cmap:
+        :param cmap:
+        :param max_flow:
+        :return:
+        """
         if hvdc_Pf is None:
             return
 
@@ -3737,6 +3818,11 @@ class SchematicWidget(BaseDiagramWidget):
                                             Qt.PenStyle.DashLine))
 
     def _colour_fluid_path_results(self, fluid_path_flow: Vec | None) -> None:
+        """
+
+        :param fluid_path_flow:
+        :return:
+        """
         if fluid_path_flow is None:
             return
 
@@ -3760,6 +3846,20 @@ class SchematicWidget(BaseDiagramWidget):
                                    fluid_node_spillage: Vec | None,
                                    fluid_node_flow_in: Vec | None,
                                    fluid_node_flow_out: Vec | None) -> None:
+        """
+
+        :param vabs:
+        :param vang:
+        :param Sbus:
+        :param types:
+        :param bus_types:
+        :param fluid_node_p2x_flow:
+        :param fluid_node_current_level:
+        :param fluid_node_spillage:
+        :param fluid_node_flow_in:
+        :param fluid_node_flow_out:
+        :return:
+        """
         if fluid_node_current_level is None:
             return
 
@@ -3811,79 +3911,106 @@ class SchematicWidget(BaseDiagramWidget):
                 else:
                     graphic_object.clear_result_visuals()
 
-    def _colour_injection_results(self,
+    def _build_injection_name_lookup(self, names: np.ndarray | list[str] | None) -> dict[str, int]:
+        """
+        Build a name-to-index lookup for injection result arrays.
+
+        :param names: Result name sequence.
+        :return: Lookup from device name to result index.
+        """
+        lookup: dict[str, int] = dict()
+        index: int
+
+        if names is None:
+            pass
+        else:
+            for index, name in enumerate(names):
+                name_str: str = str(name)
+
+                if name_str in lookup:
+                    pass
+                else:
+                    lookup[name_str] = index
+
+        return lookup
+
+    def _get_injection_result_color(self, graphic_object: INJECTION_GRAPHICS) -> QColor:
+        """
+        Get the result overlay color for an injection graphic.
+
+        :param graphic_object: Injection graphic item.
+        :return: Overlay color.
+        """
+        parent_graphic = graphic_object.parent
+        color: QColor = ACTIVE['color']
+
+        # Use the host bus color when available so the overlay remains visually tied to the node state.
+        if isinstance(parent_graphic, BusGraphicItem):
+            if parent_graphic.tile is None:
+                color = parent_graphic.terminal.brush().color()
+            else:
+                color = parent_graphic.tile.brush().color()
+        else:
+            pass
+
+        return color
+
+    def _apply_single_phase_injection_result(self,
+                                             graphic_object: INJECTION_GRAPHICS,
+                                             device_name: str,
+                                             tooltip_title: str,
+                                             p_value: float | None,
+                                             q_value: float | None) -> None:
+        """
+        Apply a single-phase result badge to an injection graphic.
+
+        :param graphic_object: Injection graphic item.
+        :param device_name: Injection device name.
+        :param tooltip_title: Tooltip title.
+        :param p_value: Active power value.
+        :param q_value: Reactive power value.
+        :return: ``None``.
+        """
+        if p_value is None and q_value is None:
+            pass
+        else:
+            color: QColor = self._get_injection_result_color(graphic_object=graphic_object)
+            lines: list[str] = list()
+
+            # Only show channels that are present in the resolved result for this device.
+            if p_value is None:
+                pass
+            else:
+                lines.append(f"P {p_value:+.1f} MW")
+
+            if q_value is None:
+                pass
+            else:
+                lines.append(f"Q {q_value:+.1f} MVAr")
+
+            tooltip_lines: list[str] = [device_name, tooltip_title]
+            tooltip_lines.extend(lines)
+            graphic_object.set_result_visuals(lines=lines,
+                                              tooltip="\n".join(tooltip_lines),
+                                              color=color)
+
+    def _colour_generator_results(self,
                                   gen_p: Vec | None,
                                   gen_q: Vec | None,
-                                  gen_names: np.ndarray | list[str] | None,
-                                  battery_p: Vec | None,
-                                  battery_q: Vec | None,
-                                  battery_names: np.ndarray | list[str] | None,
-                                  shunt_q: Vec | None,
-                                  shunt_names: np.ndarray | list[str] | None,
-                                  t_idx: int | None) -> None:
+                                  generator_lookup: dict[str, int]) -> None:
         """
-        Apply snapshot injection result overlays using the existing colouring flow.
+        Colour generator injection results.
 
         :param gen_p: Generator active powers.
         :param gen_q: Generator reactive powers.
-        :param gen_names: Generator result names.
-        :param battery_p: Battery active powers.
-        :param battery_q: Battery reactive powers.
-        :param battery_names: Battery result names.
-        :param shunt_q: Shunt-like reactive powers.
-        :param shunt_names: Shunt-like result names.
-        :param t_idx: Optional time index for profile-backed injections.
+        :param generator_lookup: Generator result-name lookup.
         :return: ``None``.
         """
-        self._clear_all_injection_results()
-
-        generator_lookup: dict[str, int] = dict()
-        battery_lookup: dict[str, int] = dict()
-        shunt_lookup: dict[str, int] = dict()
-        generator_index: int
-        battery_index: int
-        shunt_index: int
-        generator: Generator
-        battery: Battery
-        shunt: Shunt
-        controllable_shunt: ControllableShunt
-
-        if gen_names is None:
-            pass
-        else:
-            for generator_index, generator_name in enumerate(gen_names):
-                generator_name_str: str = str(generator_name)
-
-                if generator_name_str in generator_lookup:
-                    pass
-                else:
-                    generator_lookup[generator_name_str] = generator_index
-
-        if battery_names is None:
-            pass
-        else:
-            for battery_index, battery_name in enumerate(battery_names):
-                battery_name_str: str = str(battery_name)
-
-                if battery_name_str in battery_lookup:
-                    pass
-                else:
-                    battery_lookup[battery_name_str] = battery_index
-
-        if shunt_names is None:
-            pass
-        else:
-            for shunt_index, shunt_name in enumerate(shunt_names):
-                shunt_name_str: str = str(shunt_name)
-
-                if shunt_name_str in shunt_lookup:
-                    pass
-                else:
-                    shunt_lookup[shunt_name_str] = shunt_index
-
-        # Result name vectors can be reordered by engine, so named matches take priority.
         generator_devices: list[Generator] = self.circuit.get_generators()
+        generator_index: int
+        generator: Generator
 
+        # Result name vectors can be reordered by the engine, so named matches take priority.
         for generator_index, generator in enumerate(generator_devices):
             graphic_object: INJECTION_GRAPHICS | None = self.graphics_manager.query(generator)
 
@@ -3894,7 +4021,6 @@ class SchematicWidget(BaseDiagramWidget):
                 p_value: float | None = None
                 q_value: float | None = None
 
-                # Match by name first because some studies use dedicated result name arrays.
                 if result_index is None:
                     if gen_p is not None and generator_index < len(gen_p):
                         p_value = float(gen_p[generator_index])
@@ -3916,49 +4042,37 @@ class SchematicWidget(BaseDiagramWidget):
                     else:
                         pass
 
-                if p_value is None and q_value is None:
-                    pass
-                else:
-                    parent_graphic = graphic_object.parent
-                    color: QColor = ACTIVE['color']
+                self._apply_single_phase_injection_result(graphic_object=graphic_object,
+                                                          device_name=generator.name,
+                                                          tooltip_title="Generator results",
+                                                          p_value=p_value,
+                                                          q_value=q_value)
 
-                    if isinstance(parent_graphic, BusGraphicItem):
-                        if parent_graphic.tile is None:
-                            color = parent_graphic.terminal.brush().color()
-                        else:
-                            color = parent_graphic.tile.brush().color()
-                    else:
-                        pass
+    def _colour_battery_results(self,
+                                battery_p: Vec | None,
+                                battery_q: Vec | None,
+                                battery_lookup: dict[str, int]) -> None:
+        """
+        Colour battery injection results.
 
-                    lines: list[str] = list()
-
-                    if p_value is None:
-                        pass
-                    else:
-                        lines.append(f"P {p_value:+.1f} MW")
-
-                    if q_value is None:
-                        pass
-                    else:
-                        lines.append(f"Q {q_value:+.1f} MVAr")
-
-                    tooltip_lines: list[str] = [generator.name, "Generator results"]
-                    tooltip_lines.extend(lines)
-                    graphic_object.set_result_visuals(lines=lines,
-                                                      tooltip="\n".join(tooltip_lines),
-                                                      color=color)
-
+        :param battery_p: Battery active powers.
+        :param battery_q: Battery reactive powers.
+        :param battery_lookup: Battery result-name lookup.
+        :return: ``None``.
+        """
         battery_devices: list[Battery] = self.circuit.get_batteries()
+        battery_index: int
+        battery: Battery
 
         for battery_index, battery in enumerate(battery_devices):
-            graphic_object = self.graphics_manager.query(battery)
+            graphic_object: INJECTION_GRAPHICS | None = self.graphics_manager.query(battery)
 
             if graphic_object is None:
                 pass
             else:
-                result_index = battery_lookup.get(battery.name, None)
-                p_value = None
-                q_value = None
+                result_index: int | None = battery_lookup.get(battery.name, None)
+                p_value: float | None = None
+                q_value: float | None = None
 
                 # Battery studies may omit Q altogether, so both channels stay optional.
                 if result_index is None:
@@ -3982,50 +4096,36 @@ class SchematicWidget(BaseDiagramWidget):
                     else:
                         pass
 
-                if p_value is None and q_value is None:
-                    pass
-                else:
-                    parent_graphic = graphic_object.parent
-                    color = ACTIVE['color']
+                self._apply_single_phase_injection_result(graphic_object=graphic_object,
+                                                          device_name=battery.name,
+                                                          tooltip_title="Battery results",
+                                                          p_value=p_value,
+                                                          q_value=q_value)
 
-                    if isinstance(parent_graphic, BusGraphicItem):
-                        if parent_graphic.tile is None:
-                            color = parent_graphic.terminal.brush().color()
-                        else:
-                            color = parent_graphic.tile.brush().color()
-                    else:
-                        pass
+    def _colour_shunt_like_results(self,
+                                   shunt_q: Vec | None,
+                                   shunt_lookup: dict[str, int]) -> None:
+        """
+        Colour shunt-like injection results.
 
-                    lines = list()
+        :param shunt_q: Shunt-like reactive powers.
+        :param shunt_lookup: Shunt-like result-name lookup.
+        :return: ``None``.
+        """
+        shunt_like_devices: list[INJECTION_DEVICE_TYPES] = self.circuit.get_shunt_like_devices()
+        shunt_index: int
+        shunt_like_device: INJECTION_DEVICE_TYPES
 
-                    if p_value is None:
-                        pass
-                    else:
-                        lines.append(f"P {p_value:+.1f} MW")
-
-                    if q_value is None:
-                        pass
-                    else:
-                        lines.append(f"Q {q_value:+.1f} MVAr")
-
-                    tooltip_lines = [battery.name, "Battery results"]
-                    tooltip_lines.extend(lines)
-                    graphic_object.set_result_visuals(lines=lines,
-                                                      tooltip="\n".join(tooltip_lines),
-                                                      color=color)
-
-        shunt_devices: list[Shunt] = self.circuit.get_shunts()
-
-        for shunt_index, shunt in enumerate(shunt_devices):
-            graphic_object = self.graphics_manager.query(shunt)
+        for shunt_index, shunt_like_device in enumerate(shunt_like_devices):
+            graphic_object: INJECTION_GRAPHICS | None = self.graphics_manager.query(shunt_like_device)
 
             if graphic_object is None:
                 pass
             else:
-                result_index = shunt_lookup.get(shunt.name, None)
-                q_value = None
+                result_index: int | None = shunt_lookup.get(shunt_like_device.name, None)
+                q_value: float | None = None
 
-                # Shunt results are reactive-only, so the badge stays compact.
+                # Power-flow shunt-like results are ordered against the multi-circuit shunt-like collection.
                 if result_index is None:
                     if shunt_q is not None and shunt_index < len(shunt_q):
                         q_value = float(shunt_q[shunt_index])
@@ -4037,253 +4137,665 @@ class SchematicWidget(BaseDiagramWidget):
                     else:
                         pass
 
-                if q_value is None:
-                    pass
+                if isinstance(shunt_like_device, ControllableShunt):
+                    tooltip_title: str = "Controllable shunt results"
                 else:
-                    parent_graphic = graphic_object.parent
-                    color = ACTIVE['color']
+                    tooltip_title = "Shunt results"
 
-                    if isinstance(parent_graphic, BusGraphicItem):
-                        if parent_graphic.tile is None:
-                            color = parent_graphic.terminal.brush().color()
-                        else:
-                            color = parent_graphic.tile.brush().color()
-                    else:
-                        pass
+                self._apply_single_phase_injection_result(graphic_object=graphic_object,
+                                                          device_name=shunt_like_device.name,
+                                                          tooltip_title=tooltip_title,
+                                                          p_value=None,
+                                                          q_value=q_value)
 
-                    lines = [f"Q {q_value:+.1f} MVAr"]
-                    tooltip_lines = [shunt.name, "Shunt results", lines[0]]
-                    graphic_object.set_result_visuals(lines=lines,
-                                                      tooltip="\n".join(tooltip_lines),
-                                                      color=color)
+    def _colour_static_generator_results(self, t_idx: int | None) -> None:
+        """
+        Colour static-generator injection results.
 
-        controllable_shunt_devices: list[ControllableShunt] = self.circuit.get_controllable_shunts()
-        controllable_shunt_offset: int = len(shunt_devices)
-
-        for shunt_index, controllable_shunt in enumerate(controllable_shunt_devices):
-            graphic_object = self.graphics_manager.query(controllable_shunt)
-
-            if graphic_object is None:
-                pass
-            else:
-                result_index = shunt_lookup.get(controllable_shunt.name, None)
-                q_value = None
-
-                # Controllable shunts share the same result channel as fixed shunts.
-                if result_index is None:
-                    fallback_index: int = controllable_shunt_offset + shunt_index
-
-                    if shunt_q is not None and fallback_index < len(shunt_q):
-                        q_value = float(shunt_q[fallback_index])
-                    else:
-                        pass
-                else:
-                    if shunt_q is not None and result_index < len(shunt_q):
-                        q_value = float(shunt_q[result_index])
-                    else:
-                        pass
-
-                if q_value is None:
-                    pass
-                else:
-                    parent_graphic = graphic_object.parent
-                    color = ACTIVE['color']
-
-                    if isinstance(parent_graphic, BusGraphicItem):
-                        if parent_graphic.tile is None:
-                            color = parent_graphic.terminal.brush().color()
-                        else:
-                            color = parent_graphic.tile.brush().color()
-                    else:
-                        pass
-
-                    lines = [f"Q {q_value:+.1f} MVAr"]
-                    tooltip_lines = [controllable_shunt.name, "Controllable shunt results", lines[0]]
-                    graphic_object.set_result_visuals(lines=lines,
-                                                      tooltip="\n".join(tooltip_lines),
-                                                      color=color)
-
+        :param t_idx: Optional time index for profile-backed injections.
+        :return: ``None``.
+        """
         static_generator_devices: list[StaticGenerator] = self.circuit.get_static_generators()
         static_generator: StaticGenerator
 
         for static_generator in static_generator_devices:
-            graphic_object = self.graphics_manager.query(static_generator)
+            graphic_object: INJECTION_GRAPHICS | None = self.graphics_manager.query(static_generator)
 
             if graphic_object is None:
                 pass
             else:
-                p_value = float(static_generator.get_P_at(t_idx))
-                q_value = float(static_generator.get_Q_at(t_idx))
+                p_value: float = float(static_generator.get_P_at(t_idx))
+                q_value: float = float(static_generator.get_Q_at(t_idx))
 
-                if p_value == 0.0 and q_value == 0.0:
-                    pass
+                if p_value == 0.0:
+                    resolved_p_value: float | None = None
                 else:
-                    parent_graphic = graphic_object.parent
-                    color = ACTIVE['color']
+                    resolved_p_value = p_value
 
-                    if isinstance(parent_graphic, BusGraphicItem):
-                        if parent_graphic.tile is None:
-                            color = parent_graphic.terminal.brush().color()
-                        else:
-                            color = parent_graphic.tile.brush().color()
-                    else:
-                        pass
+                if q_value == 0.0:
+                    resolved_q_value: float | None = None
+                else:
+                    resolved_q_value = q_value
 
-                    lines = list()
+                self._apply_single_phase_injection_result(graphic_object=graphic_object,
+                                                          device_name=static_generator.name,
+                                                          tooltip_title="Static generator setpoint",
+                                                          p_value=resolved_p_value,
+                                                          q_value=resolved_q_value)
 
-                    if p_value == 0.0:
-                        pass
-                    else:
-                        lines.append(f"P {p_value:+.1f} MW")
+    def _colour_load_results(self, t_idx: int | None) -> None:
+        """
+        Colour load injection results.
 
-                    if q_value == 0.0:
-                        pass
-                    else:
-                        lines.append(f"Q {q_value:+.1f} MVAr")
-
-                    tooltip_lines = [static_generator.name, "Static generator setpoint"]
-                    tooltip_lines.extend(lines)
-                    graphic_object.set_result_visuals(lines=lines,
-                                                      tooltip="\n".join(tooltip_lines),
-                                                      color=color)
-
+        :param t_idx: Optional time index for profile-backed injections.
+        :return: ``None``.
+        """
         load_devices: list[Load] = self.circuit.get_loads()
         load_device: Load
 
         for load_device in load_devices:
-            graphic_object = self.graphics_manager.query(load_device)
+            graphic_object: INJECTION_GRAPHICS | None = self.graphics_manager.query(load_device)
 
             if graphic_object is None:
                 pass
             else:
-                p_value = -float(load_device.get_P_at(t_idx))
-                q_value = -float(load_device.get_Q_at(t_idx))
+                p_value: float = -float(load_device.get_P_at(t_idx))
+                q_value: float = -float(load_device.get_Q_at(t_idx))
 
+                # Fall back to equivalent current channels when the ZIP power channels are empty.
                 if p_value == 0.0 and q_value == 0.0:
                     p_value = -float(load_device.get_Ir_at(t_idx))
                     q_value = -float(load_device.get_Ii_at(t_idx))
                 else:
                     pass
 
-                if p_value == 0.0 and q_value == 0.0:
-                    pass
+                if p_value == 0.0:
+                    resolved_p_value: float | None = None
                 else:
-                    parent_graphic = graphic_object.parent
-                    color = ACTIVE['color']
+                    resolved_p_value = p_value
 
-                    if isinstance(parent_graphic, BusGraphicItem):
-                        if parent_graphic.tile is None:
-                            color = parent_graphic.terminal.brush().color()
-                        else:
-                            color = parent_graphic.tile.brush().color()
-                    else:
-                        pass
+                if q_value == 0.0:
+                    resolved_q_value: float | None = None
+                else:
+                    resolved_q_value = q_value
 
-                    lines = list()
+                self._apply_single_phase_injection_result(graphic_object=graphic_object,
+                                                          device_name=load_device.name,
+                                                          tooltip_title="Load equivalent injection",
+                                                          p_value=resolved_p_value,
+                                                          q_value=resolved_q_value)
 
-                    if p_value == 0.0:
-                        pass
-                    else:
-                        lines.append(f"P {p_value:+.1f} MW")
+    def _colour_external_grid_results(self, t_idx: int | None) -> None:
+        """
+        Colour external-grid injection results.
 
-                    if q_value == 0.0:
-                        pass
-                    else:
-                        lines.append(f"Q {q_value:+.1f} MVAr")
-
-                    tooltip_lines = [load_device.name, "Load equivalent injection"]
-                    tooltip_lines.extend(lines)
-                    graphic_object.set_result_visuals(lines=lines,
-                                                      tooltip="\n".join(tooltip_lines),
-                                                      color=color)
-
+        :param t_idx: Optional time index for profile-backed injections.
+        :return: ``None``.
+        """
         external_grid_devices: list[ExternalGrid] = self.circuit.get_external_grids()
         external_grid: ExternalGrid
 
         for external_grid in external_grid_devices:
-            graphic_object = self.graphics_manager.query(external_grid)
+            graphic_object: INJECTION_GRAPHICS | None = self.graphics_manager.query(external_grid)
 
             if graphic_object is None:
                 pass
             else:
-                p_value = -float(external_grid.get_P_at(t_idx))
-                q_value = -float(external_grid.get_Q_at(t_idx))
+                p_value: float = -float(external_grid.get_P_at(t_idx))
+                q_value: float = -float(external_grid.get_Q_at(t_idx))
 
-                if p_value == 0.0 and q_value == 0.0:
-                    pass
+                if p_value == 0.0:
+                    resolved_p_value: float | None = None
                 else:
-                    parent_graphic = graphic_object.parent
-                    color = ACTIVE['color']
+                    resolved_p_value = p_value
 
-                    if isinstance(parent_graphic, BusGraphicItem):
-                        if parent_graphic.tile is None:
-                            color = parent_graphic.terminal.brush().color()
-                        else:
-                            color = parent_graphic.tile.brush().color()
-                    else:
-                        pass
+                if q_value == 0.0:
+                    resolved_q_value: float | None = None
+                else:
+                    resolved_q_value = q_value
 
-                    lines = list()
+                self._apply_single_phase_injection_result(graphic_object=graphic_object,
+                                                          device_name=external_grid.name,
+                                                          tooltip_title="External grid equivalent injection",
+                                                          p_value=resolved_p_value,
+                                                          q_value=resolved_q_value)
 
-                    if p_value == 0.0:
-                        pass
-                    else:
-                        lines.append(f"P {p_value:+.1f} MW")
+    def _colour_current_injection_results(self, t_idx: int | None) -> None:
+        """
+        Colour current-injection results.
 
-                    if q_value == 0.0:
-                        pass
-                    else:
-                        lines.append(f"Q {q_value:+.1f} MVAr")
-
-                    tooltip_lines = [external_grid.name, "External grid equivalent injection"]
-                    tooltip_lines.extend(lines)
-                    graphic_object.set_result_visuals(lines=lines,
-                                                      tooltip="\n".join(tooltip_lines),
-                                                      color=color)
-
+        :param t_idx: Optional time index for profile-backed injections.
+        :return: ``None``.
+        """
         current_injection_devices: list[CurrentInjection] = self.circuit.get_current_injections()
         current_injection: CurrentInjection
 
         for current_injection in current_injection_devices:
-            graphic_object = self.graphics_manager.query(current_injection)
+            graphic_object: INJECTION_GRAPHICS | None = self.graphics_manager.query(current_injection)
 
             if graphic_object is None:
                 pass
             else:
-                p_value = -float(current_injection.get_Ir_at(t_idx))
-                q_value = -float(current_injection.get_Ii_at(t_idx))
+                p_value: float = -float(current_injection.get_Ir_at(t_idx))
+                q_value: float = -float(current_injection.get_Ii_at(t_idx))
 
-                if p_value == 0.0 and q_value == 0.0:
+                if p_value == 0.0:
+                    resolved_p_value: float | None = None
+                else:
+                    resolved_p_value = p_value
+
+                if q_value == 0.0:
+                    resolved_q_value: float | None = None
+                else:
+                    resolved_q_value = q_value
+
+                self._apply_single_phase_injection_result(graphic_object=graphic_object,
+                                                          device_name=current_injection.name,
+                                                          tooltip_title="Current injection equivalent power",
+                                                          p_value=resolved_p_value,
+                                                          q_value=resolved_q_value)
+
+    def _apply_three_phase_injection_result(self,
+                                            graphic_object: INJECTION_GRAPHICS,
+                                            device_name: str,
+                                            tooltip_title: str,
+                                            qa: float | None,
+                                            qb: float | None,
+                                            qc: float | None,
+                                            include_total_p: bool = False,
+                                            pa: float | None = None,
+                                            pb: float | None = None,
+                                            pc: float | None = None) -> None:
+        """
+        Apply a three-phase result badge to an injection graphic.
+
+        :param graphic_object: Injection graphic item.
+        :param device_name: Injection device name.
+        :param tooltip_title: Tooltip title.
+        :param qa: Phase-a reactive power.
+        :param qb: Phase-b reactive power.
+        :param qc: Phase-c reactive power.
+        :param include_total_p: Include aggregated active power in the badge.
+        :param pa: Phase-a active power.
+        :param pb: Phase-b active power.
+        :param pc: Phase-c active power.
+        :return: ``None``.
+        """
+        if qa is None and qb is None and qc is None:
+            pass
+        else:
+            color: QColor = self._get_injection_result_color(graphic_object=graphic_object)
+            total_q: float = float((0.0 if qa is None else qa) +
+                                   (0.0 if qb is None else qb) +
+                                   (0.0 if qc is None else qc))
+            lines: list[str] = list()
+
+            if include_total_p:
+                total_p: float = float((0.0 if pa is None else pa) +
+                                       (0.0 if pb is None else pb) +
+                                       (0.0 if pc is None else pc))
+                lines.append(f"PΣ {total_p:+.1f} MW")
+            else:
+                pass
+
+            lines.append(f"QΣ {total_q:+.1f} MVAr")
+
+            tooltip_lines: list[str] = [device_name, tooltip_title]
+
+            if include_total_p:
+                if pa is None:
                     pass
                 else:
-                    parent_graphic = graphic_object.parent
-                    color = ACTIVE['color']
+                    tooltip_lines.append(f"Pa {pa:+.1f} MW")
 
-                    if isinstance(parent_graphic, BusGraphicItem):
-                        if parent_graphic.tile is None:
-                            color = parent_graphic.terminal.brush().color()
-                        else:
-                            color = parent_graphic.tile.brush().color()
+                if pb is None:
+                    pass
+                else:
+                    tooltip_lines.append(f"Pb {pb:+.1f} MW")
+
+                if pc is None:
+                    pass
+                else:
+                    tooltip_lines.append(f"Pc {pc:+.1f} MW")
+            else:
+                pass
+
+            if qa is None:
+                pass
+            else:
+                tooltip_lines.append(f"Qa {qa:+.1f} MVAr")
+
+            if qb is None:
+                pass
+            else:
+                tooltip_lines.append(f"Qb {qb:+.1f} MVAr")
+
+            if qc is None:
+                pass
+            else:
+                tooltip_lines.append(f"Qc {qc:+.1f} MVAr")
+
+            graphic_object.set_result_visuals(lines=lines,
+                                              tooltip="\n".join(tooltip_lines),
+                                              color=color)
+
+    def _colour_generator_results_3ph(self,
+                                      gen_q_a: Vec | None,
+                                      gen_q_b: Vec | None,
+                                      gen_q_c: Vec | None,
+                                      generator_lookup: dict[str, int]) -> None:
+        """
+        Colour three-phase generator results.
+
+        :param gen_q_a: Generator phase-a reactive powers.
+        :param gen_q_b: Generator phase-b reactive powers.
+        :param gen_q_c: Generator phase-c reactive powers.
+        :param generator_lookup: Generator result-name lookup.
+        :return: ``None``.
+        """
+        generator_devices: list[Generator] = self.circuit.get_generators()
+        index: int
+        generator: Generator
+
+        for index, generator in enumerate(generator_devices):
+            graphic_object: INJECTION_GRAPHICS | None = self.graphics_manager.query(generator)
+
+            if graphic_object is None:
+                pass
+            else:
+                result_index: int | None = generator_lookup.get(generator.name, None)
+                qa: float | None = None
+                qb: float | None = None
+                qc: float | None = None
+
+                if result_index is None:
+                    if gen_q_a is not None and index < len(gen_q_a):
+                        qa = float(gen_q_a[index])
                     else:
                         pass
 
-                    lines = list()
-
-                    if p_value == 0.0:
-                        pass
+                    if gen_q_b is not None and index < len(gen_q_b):
+                        qb = float(gen_q_b[index])
                     else:
-                        lines.append(f"P {p_value:+.1f} MW")
-
-                    if q_value == 0.0:
                         pass
-                    else:
-                        lines.append(f"Q {q_value:+.1f} MVAr")
 
-                    tooltip_lines = [current_injection.name, "Current injection equivalent power"]
-                    tooltip_lines.extend(lines)
-                    graphic_object.set_result_visuals(lines=lines,
-                                                      tooltip="\n".join(tooltip_lines),
-                                                      color=color)
+                    if gen_q_c is not None and index < len(gen_q_c):
+                        qc = float(gen_q_c[index])
+                    else:
+                        pass
+                else:
+                    if gen_q_a is not None and result_index < len(gen_q_a):
+                        qa = float(gen_q_a[result_index])
+                    else:
+                        pass
+
+                    if gen_q_b is not None and result_index < len(gen_q_b):
+                        qb = float(gen_q_b[result_index])
+                    else:
+                        pass
+
+                    if gen_q_c is not None and result_index < len(gen_q_c):
+                        qc = float(gen_q_c[result_index])
+                    else:
+                        pass
+
+                self._apply_three_phase_injection_result(graphic_object=graphic_object,
+                                                         device_name=generator.name,
+                                                         tooltip_title="Generator 3ph results",
+                                                         qa=qa,
+                                                         qb=qb,
+                                                         qc=qc)
+
+    def _colour_battery_results_3ph(self,
+                                    battery_q_a: Vec | None,
+                                    battery_q_b: Vec | None,
+                                    battery_q_c: Vec | None,
+                                    battery_lookup: dict[str, int]) -> None:
+        """
+        Colour three-phase battery results.
+
+        :param battery_q_a: Battery phase-a reactive powers.
+        :param battery_q_b: Battery phase-b reactive powers.
+        :param battery_q_c: Battery phase-c reactive powers.
+        :param battery_lookup: Battery result-name lookup.
+        :return: ``None``.
+        """
+        battery_devices: list[Battery] = self.circuit.get_batteries()
+        index: int
+        battery: Battery
+
+        for index, battery in enumerate(battery_devices):
+            graphic_object: INJECTION_GRAPHICS | None = self.graphics_manager.query(battery)
+
+            if graphic_object is None:
+                pass
+            else:
+                result_index: int | None = battery_lookup.get(battery.name, None)
+                qa: float | None = None
+                qb: float | None = None
+                qc: float | None = None
+
+                if result_index is None:
+                    if battery_q_a is not None and index < len(battery_q_a):
+                        qa = float(battery_q_a[index])
+                    else:
+                        pass
+
+                    if battery_q_b is not None and index < len(battery_q_b):
+                        qb = float(battery_q_b[index])
+                    else:
+                        pass
+
+                    if battery_q_c is not None and index < len(battery_q_c):
+                        qc = float(battery_q_c[index])
+                    else:
+                        pass
+                else:
+                    if battery_q_a is not None and result_index < len(battery_q_a):
+                        qa = float(battery_q_a[result_index])
+                    else:
+                        pass
+
+                    if battery_q_b is not None and result_index < len(battery_q_b):
+                        qb = float(battery_q_b[result_index])
+                    else:
+                        pass
+
+                    if battery_q_c is not None and result_index < len(battery_q_c):
+                        qc = float(battery_q_c[result_index])
+                    else:
+                        pass
+
+                self._apply_three_phase_injection_result(graphic_object=graphic_object,
+                                                         device_name=battery.name,
+                                                         tooltip_title="Battery 3ph results",
+                                                         qa=qa,
+                                                         qb=qb,
+                                                         qc=qc)
+
+    def _colour_shunt_like_results_3ph(self,
+                                       shunt_q_a: Vec | None,
+                                       shunt_q_b: Vec | None,
+                                       shunt_q_c: Vec | None,
+                                       shunt_lookup: dict[str, int]) -> None:
+        """
+        Colour three-phase shunt-like results.
+
+        :param shunt_q_a: Shunt-like phase-a reactive powers.
+        :param shunt_q_b: Shunt-like phase-b reactive powers.
+        :param shunt_q_c: Shunt-like phase-c reactive powers.
+        :param shunt_lookup: Shunt-like result-name lookup.
+        :return: ``None``.
+        """
+        shunt_like_devices: list[INJECTION_DEVICE_TYPES] = self.circuit.get_shunt_like_devices()
+        index: int
+        shunt_like_device: INJECTION_DEVICE_TYPES
+
+        for index, shunt_like_device in enumerate(shunt_like_devices):
+            graphic_object: INJECTION_GRAPHICS | None = self.graphics_manager.query(shunt_like_device)
+
+            if graphic_object is None:
+                pass
+            else:
+                result_index: int | None = shunt_lookup.get(shunt_like_device.name, None)
+                qa: float | None = None
+                qb: float | None = None
+                qc: float | None = None
+
+                if result_index is None:
+                    if shunt_q_a is not None and index < len(shunt_q_a):
+                        qa = float(shunt_q_a[index])
+                    else:
+                        pass
+
+                    if shunt_q_b is not None and index < len(shunt_q_b):
+                        qb = float(shunt_q_b[index])
+                    else:
+                        pass
+
+                    if shunt_q_c is not None and index < len(shunt_q_c):
+                        qc = float(shunt_q_c[index])
+                    else:
+                        pass
+                else:
+                    if shunt_q_a is not None and result_index < len(shunt_q_a):
+                        qa = float(shunt_q_a[result_index])
+                    else:
+                        pass
+
+                    if shunt_q_b is not None and result_index < len(shunt_q_b):
+                        qb = float(shunt_q_b[result_index])
+                    else:
+                        pass
+
+                    if shunt_q_c is not None and result_index < len(shunt_q_c):
+                        qc = float(shunt_q_c[result_index])
+                    else:
+                        pass
+
+                if isinstance(shunt_like_device, ControllableShunt):
+                    tooltip_title: str = "Controllable shunt 3ph results"
+                else:
+                    tooltip_title = "Shunt 3ph results"
+
+                self._apply_three_phase_injection_result(graphic_object=graphic_object,
+                                                         device_name=shunt_like_device.name,
+                                                         tooltip_title=tooltip_title,
+                                                         qa=qa,
+                                                         qb=qb,
+                                                         qc=qc)
+
+    def _colour_static_generator_results_3ph(self, t_idx: int | None) -> None:
+        """
+        Colour three-phase static-generator results.
+
+        :param t_idx: Optional time index for profile-backed injections.
+        :return: ``None``.
+        """
+        static_generator_devices: list[StaticGenerator] = self.circuit.get_static_generators()
+        static_generator: StaticGenerator
+
+        for static_generator in static_generator_devices:
+            graphic_object: INJECTION_GRAPHICS | None = self.graphics_manager.query(static_generator)
+
+            if graphic_object is None:
+                pass
+            else:
+                pa: float = float(static_generator.get_Pa_at(t_idx))
+                pb: float = float(static_generator.get_Pb_at(t_idx))
+                pc: float = float(static_generator.get_Pc_at(t_idx))
+                qa: float = float(static_generator.get_Qa_at(t_idx))
+                qb: float = float(static_generator.get_Qb_at(t_idx))
+                qc: float = float(static_generator.get_Qc_at(t_idx))
+                total_p: float = pa + pb + pc
+                total_q: float = qa + qb + qc
+
+                if total_p == 0.0 and total_q == 0.0:
+                    pass
+                else:
+                    self._apply_three_phase_injection_result(graphic_object=graphic_object,
+                                                             device_name=static_generator.name,
+                                                             tooltip_title="Static generator 3ph setpoint",
+                                                             qa=qa,
+                                                             qb=qb,
+                                                             qc=qc,
+                                                             include_total_p=True,
+                                                             pa=pa,
+                                                             pb=pb,
+                                                             pc=pc)
+
+    def _colour_load_results_3ph(self, t_idx: int | None) -> None:
+        """
+        Colour three-phase load results.
+
+        :param t_idx: Optional time index for profile-backed injections.
+        :return: ``None``.
+        """
+        load_devices: list[Load] = self.circuit.get_loads()
+        load_device: Load
+
+        for load_device in load_devices:
+            graphic_object: INJECTION_GRAPHICS | None = self.graphics_manager.query(load_device)
+
+            if graphic_object is None:
+                pass
+            else:
+                pa: float = -float(load_device.get_Pa_at(t_idx))
+                pb: float = -float(load_device.get_Pb_at(t_idx))
+                pc: float = -float(load_device.get_Pc_at(t_idx))
+                qa: float = -float(load_device.get_Qa_at(t_idx))
+                qb: float = -float(load_device.get_Qb_at(t_idx))
+                qc: float = -float(load_device.get_Qc_at(t_idx))
+                total_p: float = pa + pb + pc
+                total_q: float = qa + qb + qc
+
+                # Fall back to equivalent current channels when the ZIP power channels are empty.
+                if total_p == 0.0 and total_q == 0.0:
+                    pa = -float(load_device.get_Ir1_at(t_idx))
+                    pb = -float(load_device.get_Ir2_at(t_idx))
+                    pc = -float(load_device.get_Ir3_at(t_idx))
+                    qa = -float(load_device.get_Ii1_at(t_idx))
+                    qb = -float(load_device.get_Ii2_at(t_idx))
+                    qc = -float(load_device.get_Ii3_at(t_idx))
+                    total_p = pa + pb + pc
+                    total_q = qa + qb + qc
+                else:
+                    pass
+
+                if total_p == 0.0 and total_q == 0.0:
+                    pass
+                else:
+                    self._apply_three_phase_injection_result(graphic_object=graphic_object,
+                                                             device_name=load_device.name,
+                                                             tooltip_title="Load 3ph equivalent injection",
+                                                             qa=qa,
+                                                             qb=qb,
+                                                             qc=qc,
+                                                             include_total_p=True,
+                                                             pa=pa,
+                                                             pb=pb,
+                                                             pc=pc)
+
+    def _colour_external_grid_results_3ph(self, t_idx: int | None) -> None:
+        """
+        Colour three-phase external-grid results.
+
+        :param t_idx: Optional time index for profile-backed injections.
+        :return: ``None``.
+        """
+        external_grid_devices: list[ExternalGrid] = self.circuit.get_external_grids()
+        external_grid: ExternalGrid
+
+        for external_grid in external_grid_devices:
+            graphic_object: INJECTION_GRAPHICS | None = self.graphics_manager.query(external_grid)
+
+            if graphic_object is None:
+                pass
+            else:
+                pa: float = -float(external_grid.get_Pa_at(t_idx))
+                pb: float = -float(external_grid.get_Pb_at(t_idx))
+                pc: float = -float(external_grid.get_Pc_at(t_idx))
+                qa: float = -float(external_grid.get_Qa_at(t_idx))
+                qb: float = -float(external_grid.get_Qb_at(t_idx))
+                qc: float = -float(external_grid.get_Qc_at(t_idx))
+                total_p: float = pa + pb + pc
+                total_q: float = qa + qb + qc
+
+                if total_p == 0.0 and total_q == 0.0:
+                    pass
+                else:
+                    self._apply_three_phase_injection_result(graphic_object=graphic_object,
+                                                             device_name=external_grid.name,
+                                                             tooltip_title="External grid 3ph equivalent injection",
+                                                             qa=qa,
+                                                             qb=qb,
+                                                             qc=qc,
+                                                             include_total_p=True,
+                                                             pa=pa,
+                                                             pb=pb,
+                                                             pc=pc)
+
+    def _colour_current_injection_results_3ph(self, t_idx: int | None) -> None:
+        """
+        Colour three-phase current-injection results.
+
+        :param t_idx: Optional time index for profile-backed injections.
+        :return: ``None``.
+        """
+        current_injection_devices: list[CurrentInjection] = self.circuit.get_current_injections()
+        current_injection: CurrentInjection
+
+        for current_injection in current_injection_devices:
+            graphic_object: INJECTION_GRAPHICS | None = self.graphics_manager.query(current_injection)
+
+            if graphic_object is None:
+                pass
+            else:
+                pa: float = -float(current_injection.get_Ir1_at(t_idx))
+                pb: float = -float(current_injection.get_Ir2_at(t_idx))
+                pc: float = -float(current_injection.get_Ir3_at(t_idx))
+                qa: float = -float(current_injection.get_Ii1_at(t_idx))
+                qb: float = -float(current_injection.get_Ii2_at(t_idx))
+                qc: float = -float(current_injection.get_Ii3_at(t_idx))
+                total_p: float = pa + pb + pc
+                total_q: float = qa + qb + qc
+
+                if total_p == 0.0 and total_q == 0.0:
+                    pass
+                else:
+                    self._apply_three_phase_injection_result(graphic_object=graphic_object,
+                                                             device_name=current_injection.name,
+                                                             tooltip_title="Current injection 3ph equivalent power",
+                                                             qa=qa,
+                                                             qb=qb,
+                                                             qc=qc,
+                                                             include_total_p=True,
+                                                             pa=pa,
+                                                             pb=pb,
+                                                             pc=pc)
+
+    def _colour_injection_results(self,
+                                  gen_p: Vec | None,
+                                  gen_q: Vec | None,
+                                  gen_names: np.ndarray | list[str] | None,
+                                  battery_p: Vec | None,
+                                  battery_q: Vec | None,
+                                  battery_names: np.ndarray | list[str] | None,
+                                  shunt_q: Vec | None,
+                                  shunt_names: np.ndarray | list[str] | None,
+                                  t_idx: int | None) -> None:
+        """
+        Apply snapshot injection result overlays using the existing coloring flow.
+
+        :param gen_p: Generator active powers.
+        :param gen_q: Generator reactive powers.
+        :param gen_names: Generator result names.
+        :param battery_p: Battery active powers.
+        :param battery_q: Battery reactive powers.
+        :param battery_names: Battery result names.
+        :param shunt_q: Shunt-like reactive powers.
+        :param shunt_names: Shunt-like result names.
+        :param t_idx: Optional time index for profile-backed injections.
+        :return: ``None``.
+        """
+        self._clear_all_injection_results()
+
+        generator_lookup: dict[str, int] = self._build_injection_name_lookup(names=gen_names)
+        battery_lookup: dict[str, int] = self._build_injection_name_lookup(names=battery_names)
+        shunt_lookup: dict[str, int] = self._build_injection_name_lookup(names=shunt_names)
+
+        self._colour_generator_results(gen_p=gen_p,
+                                       gen_q=gen_q,
+                                       generator_lookup=generator_lookup)
+        self._colour_battery_results(battery_p=battery_p,
+                                     battery_q=battery_q,
+                                     battery_lookup=battery_lookup)
+        self._colour_shunt_like_results(shunt_q=shunt_q,
+                                        shunt_lookup=shunt_lookup)
+        self._colour_static_generator_results(t_idx=t_idx)
+        self._colour_load_results(t_idx=t_idx)
+        self._colour_external_grid_results(t_idx=t_idx)
+        self._colour_current_injection_results(t_idx=t_idx)
 
     def _colour_injection_results_3ph(self,
                                       gen_q_a: Vec | None,
@@ -4319,570 +4831,26 @@ class SchematicWidget(BaseDiagramWidget):
         """
         self._clear_all_injection_results()
 
-        generator_lookup: dict[str, int] = dict()
-        battery_lookup: dict[str, int] = dict()
-        shunt_lookup: dict[str, int] = dict()
-        idx: int
-
-        if gen_names is None:
-            pass
-        else:
-            for idx, name in enumerate(gen_names):
-                name_str: str = str(name)
-
-                if name_str in generator_lookup:
-                    pass
-                else:
-                    generator_lookup[name_str] = idx
-
-        if battery_names is None:
-            pass
-        else:
-            for idx, name in enumerate(battery_names):
-                name_str = str(name)
-
-                if name_str in battery_lookup:
-                    pass
-                else:
-                    battery_lookup[name_str] = idx
-
-        if shunt_names is None:
-            pass
-        else:
-            for idx, name in enumerate(shunt_names):
-                name_str = str(name)
-
-                if name_str in shunt_lookup:
-                    pass
-                else:
-                    shunt_lookup[name_str] = idx
-
-        generator_devices: list[Generator] = self.circuit.get_generators()
-
-        for idx, generator in enumerate(generator_devices):
-            graphic_object = self.graphics_manager.query(generator)
-
-            if graphic_object is None:
-                pass
-            else:
-                result_index = generator_lookup.get(generator.name, None)
-                qa = None
-                qb = None
-                qc = None
-
-                if result_index is None:
-                    if gen_q_a is not None and idx < len(gen_q_a):
-                        qa = float(gen_q_a[idx])
-                    else:
-                        pass
-
-                    if gen_q_b is not None and idx < len(gen_q_b):
-                        qb = float(gen_q_b[idx])
-                    else:
-                        pass
-
-                    if gen_q_c is not None and idx < len(gen_q_c):
-                        qc = float(gen_q_c[idx])
-                    else:
-                        pass
-                else:
-                    if gen_q_a is not None and result_index < len(gen_q_a):
-                        qa = float(gen_q_a[result_index])
-                    else:
-                        pass
-
-                    if gen_q_b is not None and result_index < len(gen_q_b):
-                        qb = float(gen_q_b[result_index])
-                    else:
-                        pass
-
-                    if gen_q_c is not None and result_index < len(gen_q_c):
-                        qc = float(gen_q_c[result_index])
-                    else:
-                        pass
-
-                if qa is None and qb is None and qc is None:
-                    pass
-                else:
-                    total_q: float = float((0.0 if qa is None else qa) +
-                                           (0.0 if qb is None else qb) +
-                                           (0.0 if qc is None else qc))
-                    parent_graphic = graphic_object.parent
-                    color = ACTIVE['color']
-
-                    if isinstance(parent_graphic, BusGraphicItem):
-                        if parent_graphic.tile is None:
-                            color = parent_graphic.terminal.brush().color()
-                        else:
-                            color = parent_graphic.tile.brush().color()
-                    else:
-                        pass
-
-                    lines = [f"QΣ {total_q:+.1f} MVAr"]
-                    tooltip_lines = [generator.name, "Generator 3ph results"]
-
-                    if qa is None:
-                        pass
-                    else:
-                        tooltip_lines.append(f"Qa {qa:+.1f} MVAr")
-
-                    if qb is None:
-                        pass
-                    else:
-                        tooltip_lines.append(f"Qb {qb:+.1f} MVAr")
-
-                    if qc is None:
-                        pass
-                    else:
-                        tooltip_lines.append(f"Qc {qc:+.1f} MVAr")
-
-                    graphic_object.set_result_visuals(lines=lines,
-                                                      tooltip="\n".join(tooltip_lines),
-                                                      color=color)
-
-        battery_devices: list[Battery] = self.circuit.get_batteries()
-
-        for idx, battery in enumerate(battery_devices):
-            graphic_object = self.graphics_manager.query(battery)
-
-            if graphic_object is None:
-                pass
-            else:
-                result_index = battery_lookup.get(battery.name, None)
-                qa = None
-                qb = None
-                qc = None
-
-                if result_index is None:
-                    if battery_q_a is not None and idx < len(battery_q_a):
-                        qa = float(battery_q_a[idx])
-                    else:
-                        pass
-
-                    if battery_q_b is not None and idx < len(battery_q_b):
-                        qb = float(battery_q_b[idx])
-                    else:
-                        pass
-
-                    if battery_q_c is not None and idx < len(battery_q_c):
-                        qc = float(battery_q_c[idx])
-                    else:
-                        pass
-                else:
-                    if battery_q_a is not None and result_index < len(battery_q_a):
-                        qa = float(battery_q_a[result_index])
-                    else:
-                        pass
-
-                    if battery_q_b is not None and result_index < len(battery_q_b):
-                        qb = float(battery_q_b[result_index])
-                    else:
-                        pass
-
-                    if battery_q_c is not None and result_index < len(battery_q_c):
-                        qc = float(battery_q_c[result_index])
-                    else:
-                        pass
-
-                if qa is None and qb is None and qc is None:
-                    pass
-                else:
-                    total_q = float((0.0 if qa is None else qa) +
-                                    (0.0 if qb is None else qb) +
-                                    (0.0 if qc is None else qc))
-                    parent_graphic = graphic_object.parent
-                    color = ACTIVE['color']
-
-                    if isinstance(parent_graphic, BusGraphicItem):
-                        if parent_graphic.tile is None:
-                            color = parent_graphic.terminal.brush().color()
-                        else:
-                            color = parent_graphic.tile.brush().color()
-                    else:
-                        pass
-
-                    lines = [f"QΣ {total_q:+.1f} MVAr"]
-                    tooltip_lines = [battery.name, "Battery 3ph results"]
-
-                    if qa is None:
-                        pass
-                    else:
-                        tooltip_lines.append(f"Qa {qa:+.1f} MVAr")
-
-                    if qb is None:
-                        pass
-                    else:
-                        tooltip_lines.append(f"Qb {qb:+.1f} MVAr")
-
-                    if qc is None:
-                        pass
-                    else:
-                        tooltip_lines.append(f"Qc {qc:+.1f} MVAr")
-
-                    graphic_object.set_result_visuals(lines=lines,
-                                                      tooltip="\n".join(tooltip_lines),
-                                                      color=color)
-
-        shunt_devices: list[Shunt] = self.circuit.get_shunts()
-
-        for idx, shunt in enumerate(shunt_devices):
-            graphic_object = self.graphics_manager.query(shunt)
-
-            if graphic_object is None:
-                pass
-            else:
-                result_index = shunt_lookup.get(shunt.name, None)
-                qa = None
-                qb = None
-                qc = None
-
-                if result_index is None:
-                    if shunt_q_a is not None and idx < len(shunt_q_a):
-                        qa = float(shunt_q_a[idx])
-                    else:
-                        pass
-
-                    if shunt_q_b is not None and idx < len(shunt_q_b):
-                        qb = float(shunt_q_b[idx])
-                    else:
-                        pass
-
-                    if shunt_q_c is not None and idx < len(shunt_q_c):
-                        qc = float(shunt_q_c[idx])
-                    else:
-                        pass
-                else:
-                    if shunt_q_a is not None and result_index < len(shunt_q_a):
-                        qa = float(shunt_q_a[result_index])
-                    else:
-                        pass
-
-                    if shunt_q_b is not None and result_index < len(shunt_q_b):
-                        qb = float(shunt_q_b[result_index])
-                    else:
-                        pass
-
-                    if shunt_q_c is not None and result_index < len(shunt_q_c):
-                        qc = float(shunt_q_c[result_index])
-                    else:
-                        pass
-
-                if qa is None and qb is None and qc is None:
-                    pass
-                else:
-                    total_q = float((0.0 if qa is None else qa) +
-                                    (0.0 if qb is None else qb) +
-                                    (0.0 if qc is None else qc))
-                    parent_graphic = graphic_object.parent
-                    color = ACTIVE['color']
-
-                    if isinstance(parent_graphic, BusGraphicItem):
-                        if parent_graphic.tile is None:
-                            color = parent_graphic.terminal.brush().color()
-                        else:
-                            color = parent_graphic.tile.brush().color()
-                    else:
-                        pass
-
-                    lines = [f"QΣ {total_q:+.1f} MVAr"]
-                    tooltip_lines = [shunt.name, "Shunt 3ph results"]
-
-                    if qa is None:
-                        pass
-                    else:
-                        tooltip_lines.append(f"Qa {qa:+.1f} MVAr")
-
-                    if qb is None:
-                        pass
-                    else:
-                        tooltip_lines.append(f"Qb {qb:+.1f} MVAr")
-
-                    if qc is None:
-                        pass
-                    else:
-                        tooltip_lines.append(f"Qc {qc:+.1f} MVAr")
-
-                    graphic_object.set_result_visuals(lines=lines,
-                                                      tooltip="\n".join(tooltip_lines),
-                                                      color=color)
-
-        controllable_shunt_devices: list[ControllableShunt] = self.circuit.get_controllable_shunts()
-        controllable_shunt_offset: int = len(shunt_devices)
-
-        for idx, controllable_shunt in enumerate(controllable_shunt_devices):
-            graphic_object = self.graphics_manager.query(controllable_shunt)
-
-            if graphic_object is None:
-                pass
-            else:
-                result_index = shunt_lookup.get(controllable_shunt.name, None)
-                qa = None
-                qb = None
-                qc = None
-
-                if result_index is None:
-                    fallback_index = controllable_shunt_offset + idx
-
-                    if shunt_q_a is not None and fallback_index < len(shunt_q_a):
-                        qa = float(shunt_q_a[fallback_index])
-                    else:
-                        pass
-
-                    if shunt_q_b is not None and fallback_index < len(shunt_q_b):
-                        qb = float(shunt_q_b[fallback_index])
-                    else:
-                        pass
-
-                    if shunt_q_c is not None and fallback_index < len(shunt_q_c):
-                        qc = float(shunt_q_c[fallback_index])
-                    else:
-                        pass
-                else:
-                    if shunt_q_a is not None and result_index < len(shunt_q_a):
-                        qa = float(shunt_q_a[result_index])
-                    else:
-                        pass
-
-                    if shunt_q_b is not None and result_index < len(shunt_q_b):
-                        qb = float(shunt_q_b[result_index])
-                    else:
-                        pass
-
-                    if shunt_q_c is not None and result_index < len(shunt_q_c):
-                        qc = float(shunt_q_c[result_index])
-                    else:
-                        pass
-
-                if qa is None and qb is None and qc is None:
-                    pass
-                else:
-                    total_q = float((0.0 if qa is None else qa) +
-                                    (0.0 if qb is None else qb) +
-                                    (0.0 if qc is None else qc))
-                    parent_graphic = graphic_object.parent
-                    color = ACTIVE['color']
-
-                    if isinstance(parent_graphic, BusGraphicItem):
-                        if parent_graphic.tile is None:
-                            color = parent_graphic.terminal.brush().color()
-                        else:
-                            color = parent_graphic.tile.brush().color()
-                    else:
-                        pass
-
-                    lines = [f"QΣ {total_q:+.1f} MVAr"]
-                    tooltip_lines = [controllable_shunt.name, "Controllable shunt 3ph results"]
-
-                    if qa is None:
-                        pass
-                    else:
-                        tooltip_lines.append(f"Qa {qa:+.1f} MVAr")
-
-                    if qb is None:
-                        pass
-                    else:
-                        tooltip_lines.append(f"Qb {qb:+.1f} MVAr")
-
-                    if qc is None:
-                        pass
-                    else:
-                        tooltip_lines.append(f"Qc {qc:+.1f} MVAr")
-
-                    graphic_object.set_result_visuals(lines=lines,
-                                                      tooltip="\n".join(tooltip_lines),
-                                                      color=color)
-
-        static_generator_devices: list[StaticGenerator] = self.circuit.get_static_generators()
-        static_generator: StaticGenerator
-
-        for static_generator in static_generator_devices:
-            graphic_object = self.graphics_manager.query(static_generator)
-
-            if graphic_object is None:
-                pass
-            else:
-                pa = float(static_generator.get_Pa_at(t_idx))
-                pb = float(static_generator.get_Pb_at(t_idx))
-                pc = float(static_generator.get_Pc_at(t_idx))
-                qa = float(static_generator.get_Qa_at(t_idx))
-                qb = float(static_generator.get_Qb_at(t_idx))
-                qc = float(static_generator.get_Qc_at(t_idx))
-                total_p = pa + pb + pc
-                total_q = qa + qb + qc
-
-                if total_p == 0.0 and total_q == 0.0:
-                    pass
-                else:
-                    parent_graphic = graphic_object.parent
-                    color = ACTIVE['color']
-
-                    if isinstance(parent_graphic, BusGraphicItem):
-                        if parent_graphic.tile is None:
-                            color = parent_graphic.terminal.brush().color()
-                        else:
-                            color = parent_graphic.tile.brush().color()
-                    else:
-                        pass
-
-                    lines = [f"PΣ {total_p:+.1f} MW", f"QΣ {total_q:+.1f} MVAr"]
-                    tooltip_lines = [static_generator.name,
-                                     "Static generator 3ph setpoint",
-                                     f"Pa {pa:+.1f} MW",
-                                     f"Pb {pb:+.1f} MW",
-                                     f"Pc {pc:+.1f} MW",
-                                     f"Qa {qa:+.1f} MVAr",
-                                     f"Qb {qb:+.1f} MVAr",
-                                     f"Qc {qc:+.1f} MVAr"]
-                    graphic_object.set_result_visuals(lines=lines,
-                                                      tooltip="\n".join(tooltip_lines),
-                                                      color=color)
-
-        load_devices: list[Load] = self.circuit.get_loads()
-        load_device: Load
-
-        for load_device in load_devices:
-            graphic_object = self.graphics_manager.query(load_device)
-
-            if graphic_object is None:
-                pass
-            else:
-                pa = -float(load_device.get_Pa_at(t_idx))
-                pb = -float(load_device.get_Pb_at(t_idx))
-                pc = -float(load_device.get_Pc_at(t_idx))
-                qa = -float(load_device.get_Qa_at(t_idx))
-                qb = -float(load_device.get_Qb_at(t_idx))
-                qc = -float(load_device.get_Qc_at(t_idx))
-                total_p = pa + pb + pc
-                total_q = qa + qb + qc
-
-                if total_p == 0.0 and total_q == 0.0:
-                    pa = -float(load_device.get_Ir1_at(t_idx))
-                    pb = -float(load_device.get_Ir2_at(t_idx))
-                    pc = -float(load_device.get_Ir3_at(t_idx))
-                    qa = -float(load_device.get_Ii1_at(t_idx))
-                    qb = -float(load_device.get_Ii2_at(t_idx))
-                    qc = -float(load_device.get_Ii3_at(t_idx))
-                    total_p = pa + pb + pc
-                    total_q = qa + qb + qc
-                else:
-                    pass
-
-                if total_p == 0.0 and total_q == 0.0:
-                    pass
-                else:
-                    parent_graphic = graphic_object.parent
-                    color = ACTIVE['color']
-
-                    if isinstance(parent_graphic, BusGraphicItem):
-                        if parent_graphic.tile is None:
-                            color = parent_graphic.terminal.brush().color()
-                        else:
-                            color = parent_graphic.tile.brush().color()
-                    else:
-                        pass
-
-                    lines = [f"PΣ {total_p:+.1f} MW", f"QΣ {total_q:+.1f} MVAr"]
-                    tooltip_lines = [load_device.name,
-                                     "Load 3ph equivalent injection",
-                                     f"Pa {pa:+.1f} MW",
-                                     f"Pb {pb:+.1f} MW",
-                                     f"Pc {pc:+.1f} MW",
-                                     f"Qa {qa:+.1f} MVAr",
-                                     f"Qb {qb:+.1f} MVAr",
-                                     f"Qc {qc:+.1f} MVAr"]
-                    graphic_object.set_result_visuals(lines=lines,
-                                                      tooltip="\n".join(tooltip_lines),
-                                                      color=color)
-
-        external_grid_devices: list[ExternalGrid] = self.circuit.get_external_grids()
-        external_grid: ExternalGrid
-
-        for external_grid in external_grid_devices:
-            graphic_object = self.graphics_manager.query(external_grid)
-
-            if graphic_object is None:
-                pass
-            else:
-                pa = -float(external_grid.get_Pa_at(t_idx))
-                pb = -float(external_grid.get_Pb_at(t_idx))
-                pc = -float(external_grid.get_Pc_at(t_idx))
-                qa = -float(external_grid.get_Qa_at(t_idx))
-                qb = -float(external_grid.get_Qb_at(t_idx))
-                qc = -float(external_grid.get_Qc_at(t_idx))
-                total_p = pa + pb + pc
-                total_q = qa + qb + qc
-
-                if total_p == 0.0 and total_q == 0.0:
-                    pass
-                else:
-                    parent_graphic = graphic_object.parent
-                    color = ACTIVE['color']
-
-                    if isinstance(parent_graphic, BusGraphicItem):
-                        if parent_graphic.tile is None:
-                            color = parent_graphic.terminal.brush().color()
-                        else:
-                            color = parent_graphic.tile.brush().color()
-                    else:
-                        pass
-
-                    lines = [f"PΣ {total_p:+.1f} MW", f"QΣ {total_q:+.1f} MVAr"]
-                    tooltip_lines = [external_grid.name,
-                                     "External grid 3ph equivalent injection",
-                                     f"Pa {pa:+.1f} MW",
-                                     f"Pb {pb:+.1f} MW",
-                                     f"Pc {pc:+.1f} MW",
-                                     f"Qa {qa:+.1f} MVAr",
-                                     f"Qb {qb:+.1f} MVAr",
-                                     f"Qc {qc:+.1f} MVAr"]
-                    graphic_object.set_result_visuals(lines=lines,
-                                                      tooltip="\n".join(tooltip_lines),
-                                                      color=color)
-
-        current_injection_devices: list[CurrentInjection] = self.circuit.get_current_injections()
-        current_injection: CurrentInjection
-
-        for current_injection in current_injection_devices:
-            graphic_object = self.graphics_manager.query(current_injection)
-
-            if graphic_object is None:
-                pass
-            else:
-                pa = -float(current_injection.get_Ir1_at(t_idx))
-                pb = -float(current_injection.get_Ir2_at(t_idx))
-                pc = -float(current_injection.get_Ir3_at(t_idx))
-                qa = -float(current_injection.get_Ii1_at(t_idx))
-                qb = -float(current_injection.get_Ii2_at(t_idx))
-                qc = -float(current_injection.get_Ii3_at(t_idx))
-                total_p = pa + pb + pc
-                total_q = qa + qb + qc
-
-                if total_p == 0.0 and total_q == 0.0:
-                    pass
-                else:
-                    parent_graphic = graphic_object.parent
-                    color = ACTIVE['color']
-
-                    if isinstance(parent_graphic, BusGraphicItem):
-                        if parent_graphic.tile is None:
-                            color = parent_graphic.terminal.brush().color()
-                        else:
-                            color = parent_graphic.tile.brush().color()
-                    else:
-                        pass
-
-                    lines = [f"PΣ {total_p:+.1f} MW", f"QΣ {total_q:+.1f} MVAr"]
-                    tooltip_lines = [current_injection.name,
-                                     "Current injection 3ph equivalent power",
-                                     f"Pa {pa:+.1f} MW",
-                                     f"Pb {pb:+.1f} MW",
-                                     f"Pc {pc:+.1f} MW",
-                                     f"Qa {qa:+.1f} MVAr",
-                                     f"Qb {qb:+.1f} MVAr",
-                                     f"Qc {qc:+.1f} MVAr"]
-                    graphic_object.set_result_visuals(lines=lines,
-                                                      tooltip="\n".join(tooltip_lines),
-                                                      color=color)
+        generator_lookup: dict[str, int] = self._build_injection_name_lookup(names=gen_names)
+        battery_lookup: dict[str, int] = self._build_injection_name_lookup(names=battery_names)
+        shunt_lookup: dict[str, int] = self._build_injection_name_lookup(names=shunt_names)
+
+        self._colour_generator_results_3ph(gen_q_a=gen_q_a,
+                                           gen_q_b=gen_q_b,
+                                           gen_q_c=gen_q_c,
+                                           generator_lookup=generator_lookup)
+        self._colour_battery_results_3ph(battery_q_a=battery_q_a,
+                                         battery_q_b=battery_q_b,
+                                         battery_q_c=battery_q_c,
+                                         battery_lookup=battery_lookup)
+        self._colour_shunt_like_results_3ph(shunt_q_a=shunt_q_a,
+                                            shunt_q_b=shunt_q_b,
+                                            shunt_q_c=shunt_q_c,
+                                            shunt_lookup=shunt_lookup)
+        self._colour_static_generator_results_3ph(t_idx=t_idx)
+        self._colour_load_results_3ph(t_idx=t_idx)
+        self._colour_external_grid_results_3ph(t_idx=t_idx)
+        self._colour_current_injection_results_3ph(t_idx=t_idx)
 
     def colour_results(self,
                        Sbus: CxVec,
@@ -5035,6 +5003,22 @@ class SchematicWidget(BaseDiagramWidget):
                                 voltage_cmap: Callable,
                                 cmap: palettes.Colormaps | None,
                                 use_flow_based_width: bool) -> None:
+        """
+
+        :param VmA:
+        :param VmB:
+        :param VmC:
+        :param VaA:
+        :param VaB:
+        :param VaC:
+        :param bus_active:
+        :param types:
+        :param bus_types:
+        :param voltage_cmap:
+        :param cmap:
+        :param use_flow_based_width:
+        :return:
+        """
         nbus = self.circuit.get_bus_number()
         if nbus != len(VmA):
             error_msg("Bus results length differs from the number of Bus results. \n"
@@ -5089,6 +5073,27 @@ class SchematicWidget(BaseDiagramWidget):
                                 loading_cmap: Callable,
                                 cmap: palettes.Colormaps | None,
                                 max_flow: float) -> None:
+        """
+
+        :param vsc_Pf:
+        :param vsc_PtA:
+        :param vsc_PtB:
+        :param vsc_PtC:
+        :param vsc_QtA:
+        :param vsc_QtB:
+        :param vsc_QtC:
+        :param vsc_losses:
+        :param vsc_loading:
+        :param vsc_active:
+        :param loading_label:
+        :param use_flow_based_width:
+        :param min_branch_width:
+        :param max_branch_width:
+        :param loading_cmap:
+        :param cmap:
+        :param max_flow:
+        :return:
+        """
         if vsc_Pf is None:
             return
 
@@ -5145,6 +5150,22 @@ class SchematicWidget(BaseDiagramWidget):
                                  loading_cmap: Callable,
                                  cmap: palettes.Colormaps | None,
                                  max_flow: float) -> None:
+        """
+
+        :param hvdc_PfA:
+        :param hvdc_PtA:
+        :param hvdc_losses:
+        :param hvdc_loading:
+        :param hvdc_active:
+        :param loading_label:
+        :param use_flow_based_width:
+        :param min_branch_width:
+        :param max_branch_width:
+        :param loading_cmap:
+        :param cmap:
+        :param max_flow:
+        :return:
+        """
         if len(hvdc_PfA) == 0:
             return
 
@@ -5247,10 +5268,72 @@ class SchematicWidget(BaseDiagramWidget):
                            shunt_q_a: Vec | None = None,
                            shunt_q_b: Vec | None = None,
                            shunt_q_c: Vec | None = None,
-                           shunt_names: np.ndarray | list[str] | None = None,
-                           ):
+                           shunt_names: np.ndarray | list[str] | None = None):
         """
         Color objects based on the three-phase results passed.
+        :param SbusA:
+        :param SbusB:
+        :param SbusC:
+        :param voltagesA:
+        :param voltagesB:
+        :param voltagesC:
+        :param bus_active:
+        :param types:
+        :param SfA:
+        :param SfB:
+        :param SfC:
+        :param StA:
+        :param StB:
+        :param StC:
+        :param loadingsA:
+        :param loadingsB:
+        :param loadingsC:
+        :param lossesA:
+        :param lossesB:
+        :param lossesC:
+        :param br_active:
+        :param hvdc_PfA:
+        :param hvdc_PfB:
+        :param hvdc_PfC:
+        :param hvdc_PtA:
+        :param hvdc_PtB:
+        :param hvdc_PtC:
+        :param hvdc_losses:
+        :param hvdc_loading:
+        :param hvdc_active:
+        :param vsc_Pf:
+        :param vsc_PtA:
+        :param vsc_PtB:
+        :param vsc_PtC:
+        :param vsc_QtA:
+        :param vsc_QtB:
+        :param vsc_QtC:
+        :param vsc_losses:
+        :param vsc_loading:
+        :param vsc_active:
+        :param loading_label:
+        :param use_flow_based_width:
+        :param min_branch_width:
+        :param max_branch_width:
+        :param min_bus_width:
+        :param max_bus_width:
+        :param cmap:
+        :param ma:
+        :param tau:
+        :param t_idx:
+        :param gen_q_a:
+        :param gen_q_b:
+        :param gen_q_c:
+        :param gen_names:
+        :param battery_q_a:
+        :param battery_q_b:
+        :param battery_q_c:
+        :param battery_names:
+        :param shunt_q_a:
+        :param shunt_q_b:
+        :param shunt_q_c:
+        :param shunt_names:
+        :return:
         """
         VmA = np.abs(voltagesA)
         VmB = np.abs(voltagesB)
