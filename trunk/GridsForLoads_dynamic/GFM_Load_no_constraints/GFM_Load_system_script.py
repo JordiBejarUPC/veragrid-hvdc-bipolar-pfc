@@ -270,9 +270,19 @@ TEST_VAC_STEP = "vac_step"
 TEST_VQ_STEP = "vq_step"
 TEST_VD_STEP = "vd_step"
 
+TEST_CSV_SUFFIX = {
+    TEST_NONE: "none",
+    TEST_P_GFM: "p_gfm",
+    TEST_ROCOF: "rocof",
+    TEST_PHASE_JUMP: "phase_jump",
+    TEST_VAC_STEP: "vac_step",
+    TEST_VQ_STEP: "vq_step",
+    TEST_VD_STEP: "vd_step",
+}
+
 # Select a single EMT test here.
 # selected_test = TEST_P_GFM
-selected_test = TEST_ROCOF
+selected_test = TEST_PHASE_JUMP
 
 ## Active power reference change (GFM controller)
 t_P_GFM = 1.0
@@ -1112,7 +1122,8 @@ for ax in axes_si_currents:
 for ax in axes_si_pll:
     ax.set_xlabel("Time [s]")
 
-csv_path = os.path.join(REPO_ROOT, "trunk", "GridsForLoads_dynamic", "veragrid_G4L.csv")
+csv_suffix = TEST_CSV_SUFFIX.get(selected_test, selected_test)
+csv_path = os.path.join(REPO_ROOT, "trunk", "GridsForLoads_dynamic", f"veragrid_G4L_{csv_suffix}.csv")
 csv_columns = {"time_s": t_arr}
 
 
@@ -1192,4 +1203,4 @@ fig_si_pll.tight_layout()
 fig_si_va_corrected.tight_layout()
 fig_si_va_inferred.tight_layout()
 fig_si_currents_corrected.tight_layout()
-plt.show()
+# plt.show()
