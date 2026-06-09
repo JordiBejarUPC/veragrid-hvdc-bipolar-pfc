@@ -1340,7 +1340,7 @@ def plot_emt_vs_back_euler_mti_mismatch_zoom(proc_t: np.ndarray, proc_gates: np.
 def run_slow_tie_break_improvement_demo() -> Path:
     f_ref = 1.0
     f_sw = 20.0
-    t_end = 1.0e-2
+    t_end = 10.0e-2
     h = 2.5e-3
     modulation_index = 0.8
 

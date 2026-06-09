@@ -362,7 +362,7 @@ class PseudoTransientInitProblem:
         param_uid_map = {v.uid: c for v, c in block.parameters.items()}
         
         self.equilibrium_inputs_as_params = os.getenv(
-            "VERAGRID_PSEUDO_EQUILIBRIUM_INPUTS_AS_PARAMS", "1"
+            "VERAGRID_PSEUDO_EQUILIBRIUM_INPUTS_AS_PARAMS", "0"
         ).lower() in {"1", "true", "yes", "on"}
 
         equilibrium_input_uids = set()
@@ -885,27 +885,8 @@ def init_pseudo_transient(mdl: Block,
         fixed_var_uids=[],
     )
     
-    def _deterministic_seed_value(var: Var) -> float:
-        name = var.name.lower()
-        if name.startswith("omega"):
-            return 1.0
-        if name.startswith("vd"):
-            return 0.0
-        if name.startswith("vq"):
-            return 1.0
-        if name.startswith(("v", "u")) or "vref" in name or "usref" in name:
-            return 1.0
-        if name.startswith(("eq", "efd", "vf")):
-            return 1.0
-        if name.startswith("x"):
-            return 1.0
-        return 0.0
-
-    # Build a deterministic baseline, then overwrite with known init_guess values.
-    x0 = np.zeros(problem.get_all_vars_number(), dtype=float)
-    for local_idx, var in enumerate(local_vars):
-        if local_idx < x0.size and isinstance(var, Var):
-            x0[local_idx] = _deterministic_seed_value(var)
+    # Build initial guess: random baseline, then overwrite with known init_guess values.
+    x0 = np.random.rand(problem.get_all_vars_number())
     for local_idx, var in enumerate(local_vars):
         if local_idx >= len(x0):
             continue
