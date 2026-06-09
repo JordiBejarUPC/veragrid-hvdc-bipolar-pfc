@@ -1025,9 +1025,10 @@ class RmsProblemDaeVec(RmsProblemTemplate):
                     raise ValueError("Not implemented initialization method")
 
                 self.sys_block.add(elm.rms_model)
-        print("yeeeha")
+
         total_init_explicit_time += time.perf_counter() - t0
-        print(f"\nTotal time explicit initialization: {total_init_explicit_time:.6f} seconds")
+        # print(f"\nTotal time explicit initialization: {total_init_explicit_time:.6f} seconds")
+        self.logger.add_info("Total time explicit initialization", value=total_init_explicit_time)
         if self.progress_signal is not None:
             self.progress_signal.emit(10)
 

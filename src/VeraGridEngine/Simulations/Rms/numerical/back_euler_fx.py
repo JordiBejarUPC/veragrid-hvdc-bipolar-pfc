@@ -246,8 +246,9 @@ class BackEulerImplicitIntegration:
 
                         if step_idx == 0 and is_first_local_step:
                             if substep_converged:
-                                print("System well initialized.")
-                                print(f"x is {x_new}")
+                                # print("System well initialized.")
+                                # print(f"x is {x_new}")
+                                pass
                             else:
                                 well_initialized = False
                                 self.problem.logger.add_error(
@@ -256,15 +257,15 @@ class BackEulerImplicitIntegration:
                                     value=residual,
                                     expected_value=tol,
                                 )
-                                print(f"System requires iterative initialization. Initial DAE residual is {residual}.")
-                                print(f"rhs is {rhs}")
-                                non_zero_indexes = np.where(np.abs(rhs) > 1e-7)[0]
-                                all_eq = self.problem._state_eqs + self.problem._algebraic_eqs
-                                print("eqs are")
-                                for i in non_zero_indexes:
-                                    eq = all_eq[i]
-                                    print(f"eq {eq} with error {rhs[i]}")
-                                print("RMS simulation continues iterative initialization after the diagnostic. Check the logger for details.")
+                                # print(f"System requires iterative initialization. Initial DAE residual is {residual}.")
+                                # print(f"rhs is {rhs}")
+                                # non_zero_indexes = np.where(np.abs(rhs) > 1e-7)[0]
+                                # all_eq = self.problem._state_eqs + self.problem._algebraic_eqs
+                                # print("eqs are")
+                                # for i in non_zero_indexes:
+                                #     eq = all_eq[i]
+                                #     print(f"eq {eq} with error {rhs[i]}")
+                                # print("RMS simulation continues iterative initialization after the diagnostic. Check the logger for details.")
                                 # Continue with Newton iterations after reporting the initialization residual.
 
 
@@ -334,7 +335,7 @@ class BackEulerImplicitIntegration:
                     break
 
                 lag_update_start = time.time()
-                print(f'converged is {True} at step {step_idx} with {n_iter} iterations')
+                # print(f'converged is {True} at step {step_idx} with {n_iter} iterations')
 
                 self.y[step_idx + 1, :] = x_prev
                 self.t[step_idx + 1] = t_macro_target
@@ -348,9 +349,9 @@ class BackEulerImplicitIntegration:
             if has_fmu_me:
                 self.problem.close_fmu_me_devices()
 
-        total = sum(timings.values())
-        print("\n--- Solver timing breakdown (no-Vec) ---")
-        for k, v in timings.items():
-            print(f"  {k:25s}: {v:8.4f} s  ({v/total*100:5.1f}%)")
-        print(f"  {'TOTAL':25s}: {total:8.4f} s")
+        # total = sum(timings.values())
+        # print("\n--- Solver timing breakdown (no-Vec) ---")
+        # for k, v in timings.items():
+        #     print(f"  {k:25s}: {v:8.4f} s  ({v/total*100:5.1f}%)")
+        # print(f"  {'TOTAL':25s}: {total:8.4f} s")
         return self.t, self.y, well_initialized, converged

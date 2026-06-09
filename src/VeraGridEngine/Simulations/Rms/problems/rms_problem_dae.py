@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import scipy.sparse as sp
 
-
+from VeraGridEngine import Logger
 from VeraGridEngine.enumerations import ParamPowerFlowReferenceType, DeviceType, DynamicEventTransitionType
 from VeraGridEngine.Devices import MultiCircuit
 from VeraGridEngine.Simulations.driver_template import DummySignal
@@ -1078,7 +1078,8 @@ class RmsProblemDae(RmsProblemTemplate):
                 self.sys_block.add(elm.rms_model)
 
         total_init_explicit_time += time.perf_counter() - t0
-        print(f"\nTotal time explicit initialization: {total_init_explicit_time:.6f} seconds")
+        # print(f"\nTotal time explicit initialization: {total_init_explicit_time:.6f} seconds")
+        self.logger.add_info("Total time explicit initialization", value=total_init_explicit_time)
         if self.progress_signal is not None:
             self.progress_signal.emit(10)
 
@@ -1110,7 +1111,7 @@ class RmsProblemDae(RmsProblemTemplate):
             else:
                 pass
 
-        print("start creating balance equations")
+        # print("start creating balance equations")
         # add the nodal balance equations
         ac_virtual_buses = [elm.bus_to.idtag for elm in grid.get_vsc()]
         for i, elm in enumerate(self.grid.buses):
@@ -1125,7 +1126,7 @@ class RmsProblemDae(RmsProblemTemplate):
                     self._algebraic_eqs.append(Q[i])
                     self._algebraic_eqs.append(P[i])
 
-        print("created balance equations")
+        # print("created balance equations")
 
         # We define the parameter dt and delta
         self._dt = Var(name='dt')

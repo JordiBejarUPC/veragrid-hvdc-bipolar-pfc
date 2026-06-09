@@ -216,7 +216,7 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         self._terminal.setPen(QPen(TRANSPARENT, self.pen_width, self.style,
                                    Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
 
-        self.set_tile_color(self.color)
+        self.update_color()
 
         self.setPen(QPen(TRANSPARENT, self.pen_width, self.style))
         self.setBrush(TRANSPARENT)
@@ -327,11 +327,23 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         badge_stroke.setAlpha(150)
         self.label_badge.setPen(QPen(badge_stroke, 1.0))
         self.label_badge.setBrush(QBrush(badge_fill))
-        self.set_tile_color(self.color)
+        self.update_color()
 
         for e in self._child_graphics:
             if e is not None:
                 e.recolour_mode()
+
+    def _get_base_bus_brush(self) -> QBrush:
+        """
+        Resolve the default bus brush outside study-result colouring.
+
+        :return: Brush used for the idle bus appearance.
+        """
+        if self.api_object.active:
+            color_hex: str = str(self.api_object.color)
+            return QBrush(QColor(color_hex))
+        else:
+            return QBrush(DEACTIVATED['color'])
 
     def enable_label_drawing(self) -> None:
         """
@@ -925,10 +937,7 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         """
         Update the colour
         """
-        if self.api_object.active:
-            self.set_tile_color(QBrush(ACTIVE['color']))
-        else:
-            self.set_tile_color(QBrush(DEACTIVATED['color']))
+        self.set_tile_color(self._get_base_bus_brush())
 
     def convert_to_voltage_level(self) -> None:
         """
@@ -1631,11 +1640,12 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         :return:
         """
         if self.draw_labels:
+            msg: str = str()
 
-            msg = f"Bus {i}"
-            if tpe is not None:
-                msg += f" [{tpe}]"
-            msg += "<br>"
+            if tpe is None:
+                pass
+            else:
+                msg += f"[{tpe}]<br>"
 
             vm = vm_fmt.format(Vm)
             vm_kv = format_str.format(Vm * self._api_object.Vnom)
@@ -1650,7 +1660,10 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         else:
             msg = ""
 
-        title = self._api_object.name if self._api_object is not None else ""
+        if self._api_object is None:
+            title = f"Bus {i}"
+        else:
+            title = f"{i}: {self._api_object.name}"
         self.set_label_content(title=title, msg=msg)
 
         self.setToolTip(msg)
@@ -1672,11 +1685,12 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         :param format_str: number formatting string
         """
         if self.draw_labels:
+            msg: str = str()
 
-            msg = f"Bus {i}"
-            if tpe is not None:
-                msg += f" [{tpe}]"
-            msg += "<br>"
+            if tpe is None:
+                pass
+            else:
+                msg += f"[{tpe}]<br>"
 
             for Vm_i, Va_i, ph in zip([VmA, VmB, VmC], [VaA, VaB, VaC], ["a", "b", "c"]):
                 if not (Vm_i == 0.0 and Va_i == 0.0):
@@ -1688,7 +1702,10 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         else:
             msg = ""
 
-        title = self._api_object.name if self._api_object is not None else ""
+        if self._api_object is None:
+            title = f"Bus {i}"
+        else:
+            title = f"{i}: {self._api_object.name}"
         self.set_label_content(title=title, msg=msg)
 
         self.setToolTip(msg)
