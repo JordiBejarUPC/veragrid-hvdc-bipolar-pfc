@@ -70,14 +70,15 @@ for name in [
         print("Vm ok", Vm_ok)
 
         if not Vm_ok:
-            # pd.DataFrame({"Vm_veragrid": Vm_vg, "Vm_psse": Vm_psse})
+            print(pd.DataFrame({"Vm_veragrid": Vm_vg[:n_psse], "Vm_psse": Vm_psse}))
             max_mismatch = np.max(np.abs(Vm_psse - Vm_vg[:n_psse]))
             print("\tMax Vm mismatch", max_mismatch)
 
         print("Va ok", Va_ok)
 
         if not Va_ok:
-            max_mismatch = np.max(np.abs(Va_psse, Va_vg[:n_psse]))
+            print(pd.DataFrame({"Va_veragrid": Va_vg[:n_psse], "Va_psse": Va_psse}))
+            max_mismatch = np.max(np.abs(Va_psse - Va_vg[:n_psse]))
             print("\tMax Va mismatch", max_mismatch)
     else:
         print("*" * 40)
