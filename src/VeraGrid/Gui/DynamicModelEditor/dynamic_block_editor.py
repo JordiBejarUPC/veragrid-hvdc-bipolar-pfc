@@ -4187,8 +4187,8 @@ class BlockItem(QGraphicsRectItem):
                 except Exception as exc:
                     QtWidgets.QMessageBox.warning(
                         None,
-                        "Descomposición",
-                        f"No se pudo descomponer el bloque:\n{exc}",
+                        "Decompose",
+                        f"Could not decompose block:\n{exc}",
                     )
 
         if self.editor_window is None:
@@ -4810,7 +4810,7 @@ class DiagramScene(QGraphicsScene):
                     menu.addAction(edit_action)
 
                     if self._is_decomposable(item):
-                        decomp_action: QAction = QAction("Descomponer en diagrama de bloques", menu)
+                        decomp_action: QAction = QAction("Break down into a block diagram", menu)
                         decomp_action.triggered.connect(self.decompose_context_item)
                         menu.addAction(decomp_action)
                 else:
@@ -9467,7 +9467,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
     def create_signal_pair_item(self,
                                 x_pos: float,
-                                y_pos: float) -> tuple[GenericBlockItem, GenericBlockItem] | None:
+                                y_pos: float) -> tuple[PairedItem, PairedItem] | None:
         """
         Create a signal pair (input + output blocks sharing the same variable).
 
@@ -12515,6 +12515,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.scene.clear()
 
         # Recreate nodes
+        signal_in_items: Dict[str, PairedItem] = {}
+        signal_out_items: Dict[str, PairedItem] = {}
+
         for uid, node in self.diagram.node_data.items():
             block_type: BlockType | None
             block_model: Block | None = self.get_block_from_main_block(node.device_uid)
@@ -12568,38 +12571,60 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         pass
 
                 else:
-                    generic_item = GenericBlockItem(
-                        var_factory=self.var_factory,
-                        subsys=block_model,
-                        api_object=self.api_object,
-                        mode=self.mode,
-                        name=block_model.name,
-                        position_changed_callback=self._build_position_changed_callback(block_model.uid)
-                    )
-                    self.scene.addItem(generic_item)
-                    generic_item.setPos(QPointF(node.x, node.y))
+                    if node.tpe in ("signal_in", "signal_out"):
+                        item = PairedItem(
+                            var_factory=self.var_factory,
+                            subsys=block_model,
+                            api_object=self.api_object,
+                            mode=self.mode,
+                            name=block_model.name,
+                            position_changed_callback=self._build_position_changed_callback(block_model.uid)
+                        )
+                        suffix = block_model.name.replace("From_", "").replace("To_", "")
+                        if node.tpe == "signal_in":
+                            signal_in_items[suffix] = item
+                        else:
+                            signal_out_items[suffix] = item
+                    else:
+                        item = GenericBlockItem(
+                            var_factory=self.var_factory,
+                            subsys=block_model,
+                            api_object=self.api_object,
+                            mode=self.mode,
+                            name=block_model.name,
+                            position_changed_callback=self._build_position_changed_callback(block_model.uid)
+                        )
+                    self.scene.addItem(item)
+                    item.setPos(QPointF(node.x, node.y))
                     modal_kind, modal_config = get_modal_template_metadata(block_model)
                     if modal_kind == "jmarti_line_emt" and modal_config is not None:
-                        generic_item.setToolTip(self._build_jmarti_modal_tooltip(modal_config))
+                        item.setToolTip(self._build_jmarti_modal_tooltip(modal_config))
                     elif modal_kind == "source_emt" and modal_config is not None:
-                        generic_item.setToolTip(self._build_source_emt_modal_tooltip(modal_config))
+                        item.setToolTip(self._build_source_emt_modal_tooltip(modal_config))
                     elif modal_kind == "dc_source_emt" and modal_config is not None:
-                        generic_item.setToolTip(self._build_dc_source_emt_modal_tooltip(modal_config))
+                        item.setToolTip(self._build_dc_source_emt_modal_tooltip(modal_config))
                     elif modal_kind == "balanced_source_emt" and modal_config is not None:
-                        generic_item.setToolTip(self._build_balanced_source_emt_modal_tooltip(modal_config))
+                        item.setToolTip(self._build_balanced_source_emt_modal_tooltip(modal_config))
                     elif modal_kind == "arbitrary_source_emt" and modal_config is not None:
-                        generic_item.setToolTip(self._build_arbitrary_source_emt_modal_tooltip(modal_config))
+                        item.setToolTip(self._build_arbitrary_source_emt_modal_tooltip(modal_config))
                     elif modal_kind == "transient_source_emt" and modal_config is not None:
-                        generic_item.setToolTip(self._build_transient_source_emt_modal_tooltip(modal_config))
+                        item.setToolTip(self._build_transient_source_emt_modal_tooltip(modal_config))
                     elif modal_kind == "induction_motor_emt" and modal_config is not None:
-                        generic_item.setToolTip(self._build_induction_motor_emt_modal_tooltip(modal_config))
+                        item.setToolTip(self._build_induction_motor_emt_modal_tooltip(modal_config))
                     else:
                         pass
-                    brush = generic_item.brush()
+                    brush = item.brush()
                     brush.setColor(QColor(node.color))
-                    generic_item.setBrush(brush)
+                    item.setBrush(brush)
 
-                    uid_to_blockitem[uid] = generic_item
+                    uid_to_blockitem[uid] = item
+
+        # Pair signal_in and signal_out items
+        for suffix, in_item in signal_in_items.items():
+            out_item = signal_out_items.get(suffix)
+            if out_item is not None:
+                in_item.set_paired_item(out_item)
+                out_item.set_paired_item(in_item)
         # Recreate connections
         for uid, con in self.diagram.con_data.items():
             src_item: BlockItem | None = uid_to_blockitem.get(con.from_uid, None)

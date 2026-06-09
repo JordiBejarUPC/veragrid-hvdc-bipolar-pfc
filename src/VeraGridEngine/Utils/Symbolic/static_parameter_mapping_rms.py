@@ -49,7 +49,6 @@ if TYPE_CHECKING:
     import VeraGridEngine.Devices as dev
     from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 
-
 devices_static_params_mapping: Dict[DeviceType, List[ParamPowerFlowReferenceType]] = {
     DeviceType.LoadDevice: [
         ParamPowerFlowReferenceType.device_active,
@@ -374,7 +373,7 @@ def add_static_mapping_warning(
 def assign_api_mapping_value_if_present(
         mdl: Block,
         key: ParamPowerFlowReferenceType,
-        value: ALL_DEV_TYPES,
+        value: float,
         logger: Logger | None,
         device_name: str,
         problem_mapping: Dict[Var, Const] | None = None,
@@ -404,7 +403,7 @@ def assign_api_mapping_value_if_present(
     if target is None:
         assigned = False
     else:
-        event_dict: Dict[Var, Expr| Const] = mdl.event_dict
+        event_dict: Dict[Var, Expr | Const] = mdl.event_dict
 
         if target in event_dict:
             # A target present in event_dict means the model declared a
@@ -788,7 +787,6 @@ def controllable_shunt_mode_code(mode: ShuntControlMode) -> float:
     return code
 
 
-
 def assign_static_api_object_mapping_for_device(
         grid: MultiCircuit,
         device: ALL_DEV_TYPES,
@@ -1001,7 +999,6 @@ def assign_static_api_object_mapping_for_device(
         pass
 
 
-
 def converter_control_code(control_tpe: ConverterControlType | None) -> float:
     """
     Convert a static VSC control enum to the EMT template numerical code.
@@ -1033,7 +1030,6 @@ def converter_control_code(control_tpe: ConverterControlType | None) -> float:
         code = 0.0
 
     return code
-
 
 
 def xfmr_connection_matrix(winding_tpe: WindingType) -> np.ndarray:
@@ -1100,8 +1096,6 @@ def xfmr_phase_permutation_matrix(clock: int) -> np.ndarray:
             )
 
     return matrix
-
-
 
 
 def get_transformer_from_connection_keys() -> List[List[ParamPowerFlowReferenceType]]:
@@ -1678,7 +1672,7 @@ def assign_common_injection_static_api_mapping(
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowReferenceType.device_active,
-        value= 1.0 if bool(device.active) else 0.0,
+        value=1.0 if bool(device.active) else 0.0,
         logger=logger,
         device_name=device_name,
         problem_mapping=problem_mapping,
@@ -1714,7 +1708,7 @@ def assign_common_branch_static_api_mapping(
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowReferenceType.device_active,
-        value= 1.0 if bool(device.active) else 0.0,
+        value=1.0 if bool(device.active) else 0.0,
         logger=logger,
         device_name=device_name,
         problem_mapping=problem_mapping,
@@ -2014,7 +2008,7 @@ def assign_load_static_api_mapping(
             value=dc_p_value,
             logger=logger,
             device_name=device_name,
-        problem_mapping=problem_mapping,
+            problem_mapping=problem_mapping,
         )
         assign_api_mapping_value_if_present(
             mdl=mdl,
@@ -2022,7 +2016,7 @@ def assign_load_static_api_mapping(
             value=dc_g_value,
             logger=logger,
             device_name=device_name,
-        problem_mapping=problem_mapping,
+            problem_mapping=problem_mapping,
         )
     else:
         omega_base: float = 2.0 * np.pi * float(grid.fBase)
@@ -2048,7 +2042,7 @@ def assign_load_static_api_mapping(
                 value=float(p_values[phase_index]),
                 logger=logger,
                 device_name=device_name,
-        problem_mapping=problem_mapping,
+                problem_mapping=problem_mapping,
             )
             assign_api_mapping_value_if_present(
                 mdl=mdl,
@@ -2056,7 +2050,7 @@ def assign_load_static_api_mapping(
                 value=float(q_values[phase_index]),
                 logger=logger,
                 device_name=device_name,
-        problem_mapping=problem_mapping,
+                problem_mapping=problem_mapping,
             )
             phase_index += 1
 
@@ -2066,7 +2060,7 @@ def assign_load_static_api_mapping(
             value=omega_base,
             logger=logger,
             device_name=device_name,
-        problem_mapping=problem_mapping,
+            problem_mapping=problem_mapping,
         )
 
 
@@ -2451,6 +2445,7 @@ def assign_shunt_static_api_mapping(
                                         device_name=device_name
                                         )
 
+
 def assign_controllable_shunt_static_api_mapping(
         grid: MultiCircuit,
         controllable_shunt: dev.ControllableShunt,
@@ -2461,6 +2456,7 @@ def assign_controllable_shunt_static_api_mapping(
     """
     Assign static ControllableShunt parameters exposed by ``mdl.api_obj_mapping``.
 
+    :param problem_mapping:
     :param grid: Static network model.
     :param controllable_shunt: Controllable shunt device.
     :param mdl: EMT block.
@@ -2630,6 +2626,7 @@ def assign_current_injection_static_api_mapping(
                                         logger=logger,
                                         device_name=device_name
                                         )
+
 
 def assign_generator_static_api_mapping(
         grid: MultiCircuit,
@@ -3003,7 +3000,6 @@ def assign_vsc_static_api_mapping(
         device_name=device_name,
         problem_mapping=problem_mapping,
     )
-
 
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -3485,7 +3481,7 @@ def assign_transformer2w_static_api_mapping(
                     value=r1_value,
                     logger=logger,
                     device_name=device_name,
-        problem_mapping=problem_mapping,
+                    problem_mapping=problem_mapping,
                 )
                 assign_api_mapping_value_if_present(
                     mdl=mdl,
@@ -3493,7 +3489,7 @@ def assign_transformer2w_static_api_mapping(
                     value=r2_value,
                     logger=logger,
                     device_name=device_name,
-        problem_mapping=problem_mapping,
+                    problem_mapping=problem_mapping,
                 )
                 assign_api_mapping_value_if_present(
                     mdl=mdl,
@@ -3501,7 +3497,7 @@ def assign_transformer2w_static_api_mapping(
                     value=l1_value,
                     logger=logger,
                     device_name=device_name,
-        problem_mapping=problem_mapping,
+                    problem_mapping=problem_mapping,
                 )
                 assign_api_mapping_value_if_present(
                     mdl=mdl,
@@ -3509,7 +3505,7 @@ def assign_transformer2w_static_api_mapping(
                     value=l2_value,
                     logger=logger,
                     device_name=device_name,
-        problem_mapping=problem_mapping,
+                    problem_mapping=problem_mapping,
                 )
                 assign_api_mapping_value_if_present(
                     mdl=mdl,
@@ -3517,7 +3513,7 @@ def assign_transformer2w_static_api_mapping(
                     value=mutual_inductance,
                     logger=logger,
                     device_name=device_name,
-        problem_mapping=problem_mapping,
+                    problem_mapping=problem_mapping,
                 )
                 assign_api_mapping_value_if_present(
                     mdl=mdl,
@@ -3525,7 +3521,7 @@ def assign_transformer2w_static_api_mapping(
                     value=g_core,
                     logger=logger,
                     device_name=device_name,
-        problem_mapping=problem_mapping,
+                    problem_mapping=problem_mapping,
                 )
     else:
         pass
@@ -3736,7 +3732,7 @@ def assign_line_static_api_mapping(
                             value=float(r_full[reduced_row, reduced_col]),
                             logger=logger,
                             device_name=device_name,
-        problem_mapping=problem_mapping,
+                            problem_mapping=problem_mapping,
                         )
                         assign_api_mapping_value_if_present(
                             mdl=mdl,
@@ -3744,7 +3740,7 @@ def assign_line_static_api_mapping(
                             value=float(linv_full[reduced_row, reduced_col]),
                             logger=logger,
                             device_name=device_name,
-        problem_mapping=problem_mapping,
+                            problem_mapping=problem_mapping,
                         )
                         assign_api_mapping_value_if_present(
                             mdl=mdl,
@@ -3752,16 +3748,13 @@ def assign_line_static_api_mapping(
                             value=float(c_full[reduced_row, reduced_col]),
                             logger=logger,
                             device_name=device_name,
-        problem_mapping=problem_mapping,
+                            problem_mapping=problem_mapping,
                         )
                         reduced_col += 1
 
                     reduced_row += 1
         else:
             pass
-
-
-
 
 
 def assign_hvdc_line_static_api_mapping(
@@ -3790,7 +3783,7 @@ def assign_hvdc_line_static_api_mapping(
 def assign_series_reactance_static_api_mapping(
         series_reactance: dev.SeriesReactance,
         mdl: Block,
-        problem_mapping: Dict[Var,Const],
+        problem_mapping: Dict[Var, Const],
         logger: Logger | None,
 ) -> None:
     """
@@ -3814,7 +3807,7 @@ def assign_series_reactance_static_api_mapping(
 def assign_switch_static_api_mapping(
         switch: dev.Switch,
         mdl: Block,
-        problem_mapping: Dict[Var,Const],
+        problem_mapping: Dict[Var, Const],
         logger: Logger | None,
 ) -> None:
     """
@@ -3873,7 +3866,7 @@ def assign_switch_static_api_mapping(
 def assign_upfc_static_api_mapping(
         upfc: dev.UPFC,
         mdl: Block,
-        problem_mapping: Dict[Var,Const],
+        problem_mapping: Dict[Var, Const],
         logger: Logger | None,
 ) -> None:
     """
