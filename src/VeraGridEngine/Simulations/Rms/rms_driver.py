@@ -194,7 +194,7 @@ class RmsSimulationDriver(DriverTemplate):
                 _t_start = time.time()
                 t, y, well_initialized, converged = solver.simulate()
                 _t_end = time.time()
-                print(f"RMS simulation time: {_t_end - _t_start:.4f} s")
+                # print(f"RMS simulation time: {_t_end - _t_start:.4f} s")
 
                 self.results.converged[group_idx] = converged
                 self.results.well_initialized[group_idx] = well_initialized

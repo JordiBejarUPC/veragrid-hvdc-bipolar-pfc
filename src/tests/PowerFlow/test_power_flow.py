@@ -8,6 +8,10 @@ import pandas as pd
 import numpy as np
 
 from VeraGridEngine.IO.file_open import FileOpen
+from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions import (
+    split_reactive_power_between_generators_and_batteries,
+    split_slack_bus_quantity_between_generators_and_batteries,
+)
 from VeraGridEngine.Simulations.PowerFlow.power_flow_worker import PowerFlowOptions, multi_island_pf_nc
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import SolverType
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
@@ -284,6 +288,148 @@ def test_qv_droop_control_mode() -> None:
 
     assert results.converged
     assert np.isclose(results.gen_q[gen_idx], expected_q, atol=1e-6, rtol=1e-6)
+
+
+def test_reactive_split_removes_fixed_bus_q_before_voltage_control_share() -> None:
+    """
+    Check that the reactive split removes fixed bus-side Q before assigning the
+    remaining reactive injection to voltage-controlled generator-like devices.
+    """
+    qbus: np.ndarray = np.array([2.0], dtype=float)
+    qfixed_bus: np.ndarray = np.array([-4.0], dtype=float)
+    gen_bus_idx: np.ndarray = np.array([0], dtype=int)
+    qmin_gen: np.ndarray = np.array([0.0], dtype=float)
+    qmax_gen: np.ndarray = np.array([10.0], dtype=float)
+    gen_status: np.ndarray = np.array([True], dtype=bool)
+    control_mode_int_gen: np.ndarray = np.array([GeneratorControlMode.V.idx()], dtype=int)
+    q0_gen: np.ndarray = np.array([0.0], dtype=float)
+    vset_gen: np.ndarray = np.array([1.0], dtype=float)
+    k_droop_gen: np.ndarray = np.array([0.0], dtype=float)
+    dead_band_gen: np.ndarray = np.array([0.0], dtype=float)
+    batt_bus_idx: np.ndarray = np.zeros(0, dtype=int)
+    qmin_batt: np.ndarray = np.zeros(0, dtype=float)
+    qmax_batt: np.ndarray = np.zeros(0, dtype=float)
+    batt_status: np.ndarray = np.zeros(0, dtype=bool)
+    control_mode_int_batt: np.ndarray = np.zeros(0, dtype=int)
+    q0_batt: np.ndarray = np.zeros(0, dtype=float)
+    vm: np.ndarray = np.array([1.0], dtype=float)
+
+    q_gen: np.ndarray
+    q_batt: np.ndarray
+    q_gen, q_batt = split_reactive_power_between_generators_and_batteries(
+        Qbus=qbus,
+        Qfixed_bus=qfixed_bus,
+        gen_bus_idx=gen_bus_idx,
+        Qmin_gen=qmin_gen,
+        Qmax_gen=qmax_gen,
+        gen_status=gen_status,
+        control_mode_int_gen=control_mode_int_gen,
+        Q0_gen=q0_gen,
+        Vset_gen=vset_gen,
+        k_droop_gen=k_droop_gen,
+        dead_band_gen=dead_band_gen,
+        batt_bus_idx=batt_bus_idx,
+        Qmin_batt=qmin_batt,
+        Qmax_batt=qmax_batt,
+        batt_status=batt_status,
+        control_mode_int_batt=control_mode_int_batt,
+        Q0_batt=q0_batt,
+        v_ctrl_val_gen=GeneratorControlMode.V.idx(),
+        qv_droop_val_gen=GeneratorControlMode.QVDroop.idx(),
+        Vm=vm,
+        atol=1e-12,
+    )
+
+    assert q_batt.size == 0
+    assert np.isclose(q_gen[0], 6.0, atol=1e-12)
+    assert np.isclose(qfixed_bus[0] + q_gen[0], qbus[0], atol=1e-12)
+
+
+def test_slack_bus_split_handles_multiple_slack_buses() -> None:
+    """
+    Check that each slack bus reassigns its solved residual to the connected
+    online generator-like devices independently.
+    """
+    qbus: np.ndarray = np.array([15.0, -3.0, 7.0], dtype=float)
+    qfixed_bus: np.ndarray = np.array([5.0, -3.0, 1.0], dtype=float)
+    slack_bus_mask: np.ndarray = np.array([True, False, True], dtype=bool)
+    gen_bus_idx: np.ndarray = np.array([0, 2], dtype=int)
+    qmin_gen: np.ndarray = np.array([0.0, 0.0], dtype=float)
+    qmax_gen: np.ndarray = np.array([20.0, 10.0], dtype=float)
+    gen_status: np.ndarray = np.array([True, True], dtype=bool)
+    q0_gen: np.ndarray = np.array([0.0, 0.0], dtype=float)
+    batt_bus_idx: np.ndarray = np.array([0], dtype=int)
+    qmin_batt: np.ndarray = np.array([0.0], dtype=float)
+    qmax_batt: np.ndarray = np.array([10.0], dtype=float)
+    batt_status: np.ndarray = np.array([True], dtype=bool)
+    q0_batt: np.ndarray = np.array([0.0], dtype=float)
+
+    q_gen: np.ndarray
+    q_batt: np.ndarray
+    q_gen, q_batt = split_slack_bus_quantity_between_generators_and_batteries(
+        Qbus=qbus,
+        Qfixed_bus=qfixed_bus,
+        slack_bus_mask=slack_bus_mask,
+        gen_bus_idx=gen_bus_idx,
+        Qmin_gen=qmin_gen,
+        Qmax_gen=qmax_gen,
+        gen_status=gen_status,
+        Q0_gen=q0_gen,
+        batt_bus_idx=batt_bus_idx,
+        Qmin_batt=qmin_batt,
+        Qmax_batt=qmax_batt,
+        batt_status=batt_status,
+        Q0_batt=q0_batt,
+        atol=1e-12,
+    )
+
+    assert np.isclose(q_gen[0], 20.0 / 3.0, atol=1e-12)
+    assert np.isclose(q_batt[0], 10.0 / 3.0, atol=1e-12)
+    assert np.isclose(q_gen[1], 6.0, atol=1e-12)
+    assert np.isclose(qfixed_bus[0] + q_gen[0] + q_batt[0], qbus[0], atol=1e-12)
+    assert np.isclose(qfixed_bus[2] + q_gen[1], qbus[2], atol=1e-12)
+
+
+def test_slack_bus_split_does_not_clip_solved_residual_to_limits() -> None:
+    """
+    Check that slack-bus reconstruction reports the solved value even when it
+    exceeds the declared device limits.
+    """
+    qbus: np.ndarray = np.array([18.55], dtype=float)
+    qfixed_bus: np.ndarray = np.array([0.0], dtype=float)
+    slack_bus_mask: np.ndarray = np.array([True], dtype=bool)
+    gen_bus_idx: np.ndarray = np.array([0], dtype=int)
+    qmin_gen: np.ndarray = np.array([-10.0], dtype=float)
+    qmax_gen: np.ndarray = np.array([10.0], dtype=float)
+    gen_status: np.ndarray = np.array([True], dtype=bool)
+    q0_gen: np.ndarray = np.array([0.0], dtype=float)
+    batt_bus_idx: np.ndarray = np.zeros(0, dtype=int)
+    qmin_batt: np.ndarray = np.zeros(0, dtype=float)
+    qmax_batt: np.ndarray = np.zeros(0, dtype=float)
+    batt_status: np.ndarray = np.zeros(0, dtype=bool)
+    q0_batt: np.ndarray = np.zeros(0, dtype=float)
+
+    q_gen: np.ndarray
+    q_batt: np.ndarray
+    q_gen, q_batt = split_slack_bus_quantity_between_generators_and_batteries(
+        Qbus=qbus,
+        Qfixed_bus=qfixed_bus,
+        slack_bus_mask=slack_bus_mask,
+        gen_bus_idx=gen_bus_idx,
+        Qmin_gen=qmin_gen,
+        Qmax_gen=qmax_gen,
+        gen_status=gen_status,
+        Q0_gen=q0_gen,
+        batt_bus_idx=batt_bus_idx,
+        Qmin_batt=qmin_batt,
+        Qmax_batt=qmax_batt,
+        batt_status=batt_status,
+        Q0_batt=q0_batt,
+        atol=1e-12,
+    )
+
+    assert q_batt.size == 0
+    assert np.isclose(q_gen[0], 18.55, atol=1e-12)
 
 
 def test_voltage_remote_control_with_generation() -> None:
