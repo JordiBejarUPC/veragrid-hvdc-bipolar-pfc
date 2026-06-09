@@ -1807,7 +1807,7 @@ def parse_veragrid_data(data: VERAGRID_FILE_TYPE,
     # These files are just .json stored in the model_data inside the zip file
 
     block_parser = BlockParser(circuit.var_factory)
-    symbolic_data = data.get('symbolic_data', None)
+    symbolic_data: Dict[str, Any] | None = data.get('symbolic_data', None)
     if symbolic_data is not None:
         if len(symbolic_data) > 0:
             if "shared_references" in symbolic_data:
