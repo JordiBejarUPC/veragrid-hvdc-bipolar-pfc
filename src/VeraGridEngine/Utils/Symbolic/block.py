@@ -80,6 +80,7 @@ class Block:
                  procedural_logic: List[Any] | None = None,
                  external_mapping: Dict[VarPowerFlowReferenceType, Var] | None = None,
                  api_obj_mapping: Dict[ParamPowerFlowReferenceType, Var] | None = None,
+                 is_decomposable: bool = True,
                  name: str = "",
                  uid: int | None = None):
         """
@@ -103,6 +104,8 @@ class Block:
         self.name: str = name
 
         self.uid: int = _new_uid() if uid is None else uid
+
+        self.is_decomposable = is_decomposable
         self.tpe_uid: int | None =  None
         self.vars_glob_name2uid: Dict[str, int] = dict()
 
@@ -1032,6 +1035,16 @@ class Block:
                     return True
 
         return False
+
+    def is_eq_decomposable(self) -> bool:
+
+        if self.children:
+            return False
+        if not (bool(self.algebraic_eqs) or bool(self.state_eqs)):
+            return False
+        if not self.is_decomposable:
+            return False
+        return True
 
 def find_connections(mdl1: Block, mdl2: Block) -> tuple[List[tuple[Var, Var]], List[tuple[Var, Var]]]:
     """

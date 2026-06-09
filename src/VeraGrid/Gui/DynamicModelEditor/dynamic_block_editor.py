@@ -1044,6 +1044,7 @@ def copy_block_state(source_block: Block, target_block: Block) -> None:
     # The original object identity must be preserved for external references in the GUI and device model.
     target_block.name = source_clone.name
     target_block.uid = source_clone.uid
+    target_block.is_decomposable = source_clone.is_decomposable
     target_block.vars_glob_name2uid = source_clone.vars_glob_name2uid
     target_block.state_vars = source_clone.state_vars
     target_block.state_eqs = source_clone.state_eqs
@@ -4625,38 +4626,6 @@ class DiagramScene(QGraphicsScene):
         else:
             pass
 
-    def edit_context_item(self) -> None:
-        """
-        Open the hierarchy editor for the item currently selected by the context menu.
-
-        :return: None.
-        """
-        if self.context_item is not None:
-            self.editor.edit_scene_item(self.context_item)
-        else:
-            pass
-
-    @staticmethod
-    def _is_decomposable(item: BlockItem | GenericBlockItem) -> bool:
-        block = item.subsys
-        if block is None:
-            return False
-        if block.children:
-            return False
-        has_eqs = bool(block.algebraic_eqs) or bool(block.state_eqs)
-        if not has_eqs:
-            return False
-        modal_kind, _ = get_modal_template_metadata(block)
-        if modal_kind is not None:
-            return False
-        return True
-
-    def decompose_context_item(self) -> None:
-        if self.context_item is not None and self.context_item.subsys is not None:
-            self.editor.decompose_block_in_place(self.context_item)
-        else:
-            pass
-
     def modify_context_item_template(self) -> None:
         """
         Reopen the modal configuration for the selected block when available.
@@ -4696,14 +4665,6 @@ class DiagramScene(QGraphicsScene):
                     else:
                         pass
 
-                    edit_action: QAction = QAction("Edit Hierarchy", menu)
-                    edit_action.triggered.connect(self.edit_context_item)
-                    menu.addAction(edit_action)
-
-                    if self._is_decomposable(item):
-                        decomp_action: QAction = QAction("Break down into a block diagram", menu)
-                        decomp_action.triggered.connect(self.decompose_context_item)
-                        menu.addAction(decomp_action)
                 else:
                     pass
 
@@ -5453,13 +5414,56 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.toolBox.currentChanged.connect(self.on_side_panel_page_changed)
         self.scene.selectionChanged.connect(self.on_scene_selection_changed)
         if not self.main_block.empty() and not self.main_block.diagram.node_data:
-            blocks_list = list()
-            for child in self.main_block.children:
-                item = self.generate_block_item_for_block(child)
-                blocks_list.append(item)
-            self.add_connection_items(blocks_list)
-            if len(blocks_list) != 0:
-                self.connect_items(blocks_list)
+            if self.main_block.children:
+                blocks_list = list()
+                for child in self.main_block.children:
+                    item = self.generate_block_item_for_block(child)
+                    blocks_list.append(item)
+                self.add_connection_items(blocks_list)
+                if len(blocks_list) != 0:
+                    self.connect_items(blocks_list)
+
+            else:
+                items_list = list()
+                if self.main_block.is_eq_decomposable():
+                    self.decompose_block_in_place(self.main_block)
+                    self.diagram = self.main_block.diagram
+
+                for uid, node in self.diagram.node_data.items():
+                    block_type: BlockType | None
+                    block_model: Block | None = self.get_block_from_main_block(node.device_uid)
+
+                    if node.tpe in BlockType.__members__:
+                        block_type = BlockType[node.tpe]
+                    else:
+                        block_type = None
+
+                    if block_model is not None:
+                        if node.tpe in ("signal_in", "signal_out"):
+                            item = PairedItem(
+                                var_factory=self.var_factory,
+                                subsys=block_model,
+                                api_object=self.api_object,
+                                mode=self.mode,
+                                name=block_model.name,
+                                position_changed_callback=self._build_position_changed_callback(block_model.uid)
+                            )
+
+                        else:
+                            item = GenericBlockItem(
+                                var_factory=self.var_factory,
+                                subsys=block_model,
+                                api_object=self.api_object,
+                                mode=self.mode,
+                                name=block_model.name,
+                                position_changed_callback=self._build_position_changed_callback(block_model.uid)
+                            )
+                        items_list.append(item)
+
+                self.add_connection_items(items_list)
+
+                self.connect_items(items_list)
+
         elif not self.main_block.diagram.node_data:
             # here we add the connection variables to the main block
             if self.main_editor:
@@ -7580,6 +7584,32 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
                     if power_flow_pairs:
                         self.create_conn_items(item_1, item_2, power_flow_pairs)
+
+    def connect_blocks(self, blocks_list: List[Block]):
+        """
+        create connection lines to show in editor
+        :param items_list:
+        :type items_list:
+        :return:
+        :rtype:
+        """
+
+        for block_1 in blocks_list:
+            for block_2 in blocks_list:
+                if block_1.uid != block_2.uid:
+                    pairs, power_flow_pairs = find_connections(block_1, block_2)
+                    if pairs:
+                        self.create_conn_items(block_1, block_2, pairs)
+
+                    if power_flow_pairs:
+                        self.create_conn_items(block_1, block_2, power_flow_pairs)
+
+                    pairs, power_flow_pairs = find_connections(block_2.subsys, block_1.subsys)
+                    if pairs:
+                        self.create_conn_items(block_2, block_1, pairs)
+
+                    if power_flow_pairs:
+                        self.create_conn_items(block_1, block_2, power_flow_pairs)
 
     def create_conn_items(self, item_source: GenericBlockItem, item_dest: GenericBlockItem, pairs:List[tuple[Var, Var]]):
         """
@@ -11495,30 +11525,13 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         editor_window.raise_()
         editor_window.activateWindow()
 
-    def decompose_block_in_place(self, item: BlockItem | GenericBlockItem) -> None:
-        if item.subsys is None:
-            return
+    def decompose_block_in_place(self, block: Block) -> None:
 
-        block = item.subsys
-        if block.children:
-            return
-        if not block.algebraic_eqs and not block.state_eqs:
-            return
-
-        try:
-            decomposer = EquationDecomposer(self.var_factory)
-            decomposed = decomposer.decompose(block)
-            preserved_uid = block.uid
-            copy_block_state(source_block=decomposed, target_block=block)
-            block.uid = preserved_uid
-            self.rebuild_scene_from_diagram()
-            self.mark_unapplied_changes()
-        except Exception as exc:
-            QtWidgets.QMessageBox.warning(
-                self,
-                "Descomposición",
-                f"No se pudo descomponer el bloque:\n{exc}",
-            )
+        decomposer = EquationDecomposer(self.var_factory)
+        decomposed = decomposer.decompose(block)
+        preserved_uid = block.uid
+        copy_block_state(source_block=decomposed, target_block=block)
+        block.uid = preserved_uid
 
     def modify_scene_item_template(self, item: BlockItem | GenericBlockItem | ConnectionItem) -> None:
         """

@@ -81,6 +81,7 @@ class EquationDecomposer:
                                 algebraic_eqs=[var - rhs],
                                 out_vars=[var],
                                 name="passthrough",
+                                is_decomposable=False
                             )
                             block_eq_map[blk.uid] = eq_key
                             child_blocks.append(blk)
@@ -101,6 +102,7 @@ class EquationDecomposer:
                         state_eqs=[result_var],
                         out_vars=[var],
                         name="integrator",
+                        is_decomposable=False
                     )
                     block_eq_map[int_blk.uid] = eq_key
                     child_blocks.append(int_blk)
@@ -113,6 +115,7 @@ class EquationDecomposer:
                         state_eqs=[result_var],
                         out_vars=[var],
                         name="integrator",
+                        is_decomposable=False
                     )
                     block_eq_map[int_blk.uid] = eq_key
                     child_blocks.append(int_blk)
@@ -355,6 +358,7 @@ class EquationDecomposer:
                 algebraic_eqs=[y - expr],
                 out_vars=[y],
                 name="const",
+                is_decomposable=False
             )
             result = (y, [blk])
 
@@ -413,6 +417,7 @@ class EquationDecomposer:
                 in_vars=in_vars,
                 out_vars=[y],
                 name="sum",
+                is_decomposable=False
             )
             all_blocks.append(blk)
             return (y, all_blocks)
@@ -425,6 +430,7 @@ class EquationDecomposer:
                 in_vars=in_vars,
                 out_vars=[y],
                 name="substraction",
+                is_decomposable=False
             )
             all_blocks.append(blk)
             return (y, all_blocks)
@@ -437,6 +443,7 @@ class EquationDecomposer:
                 in_vars=in_vars,
                 out_vars=[y],
                 name="divide",
+                is_decomposable=False
             )
             all_blocks.append(blk)
             return (y, all_blocks)
@@ -449,6 +456,7 @@ class EquationDecomposer:
                 in_vars=in_vars,
                 out_vars=[y],
                 name="power",
+                is_decomposable=False
             )
             all_blocks.append(blk)
             return (y, all_blocks)
@@ -468,6 +476,7 @@ class EquationDecomposer:
                 out_vars=[gain_var],
                 event_dict={gain_param: sym.Const(expr.right.value)},
                 name="gain",
+                is_decomposable=False
             )
             return (gain_var, inner_blocks + [blk])
 
@@ -482,6 +491,7 @@ class EquationDecomposer:
                 out_vars=[gain_var],
                 event_dict={gain_param: sym.Const(expr.left.value)},
                 name="gain",
+                is_decomposable=False
             )
             return (gain_var, inner_blocks + [blk])
 
@@ -495,6 +505,7 @@ class EquationDecomposer:
                 out_vars=[gain_var],
                 event_dict={expr.right: sym.Const(0.0)},
                 name="gain",
+                is_decomposable=False
             )
             return (gain_var, inner_blocks + [blk])
 
@@ -508,6 +519,7 @@ class EquationDecomposer:
                 out_vars=[gain_var],
                 event_dict={expr.left: sym.Const(0.0)},
                 name="gain",
+                is_decomposable=False
             )
             return (gain_var, inner_blocks + [blk])
 
@@ -520,6 +532,7 @@ class EquationDecomposer:
             in_vars=[left_var, right_var],
             out_vars=[prod_var],
             name="product",
+            is_decomposable=False
         )
         return (prod_var, left_blocks + right_blocks + [blk])
 
@@ -535,6 +548,7 @@ class EquationDecomposer:
                 out_vars=[y],
                 event_dict={neg_param: sym.Const(-1.0)},
                 name="gain",
+                is_decomposable=False
             )
             return (y, inner_blocks + [blk])
         else:
@@ -560,6 +574,7 @@ class EquationDecomposer:
                 in_vars=[inner_var],
                 out_vars=[y],
                 name=expr.op,
+                is_decomposable=False
             )
             return (y, inner_blocks + [blk])
         else:
@@ -580,6 +595,7 @@ class EquationDecomposer:
                 in_vars=[left_var, right_var],
                 out_vars=[y],
                 name=expr.name,
+                is_decomposable=False
             )
             return (y, left_blocks + right_blocks + [blk])
         else:
