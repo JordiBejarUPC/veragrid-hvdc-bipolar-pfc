@@ -33,11 +33,27 @@ def get_trafo_grid_connection_G4L(vf: VarFactory, name: str = "G4L_transformer")
     # instead of introducing extra parameter vars that must be registered in the
     # compiler maps.
     omega_base = 2 * np.pi * 50.0
-    R_ser = vf.add_const(0.1 / 10.0)
-    X_ser = vf.add_const(1.0 / 10.0)
-    Linv = vf.add_const(omega_base / (1.0 / 10.0))
-    C_sh = vf.add_const((2.0 / 15.0) / (2.0 * omega_base))
-    R_sh = vf.add_const(0.05)
+    # R_ser = vf.add_const(0.1 / 10.0)
+    # X_ser = vf.add_const(1.0 / 10.0)
+    # Linv = vf.add_const(omega_base / (1.0 / 10.0))
+    # C_sh = vf.add_const((2.0 / 15.0) / (2.0 * omega_base))
+    # R_sh = vf.add_const(0.05)
+    PU_Z_TO_EMT = 3.0
+    PU_Y_TO_EMT = 1.0 / 3.0
+
+    R_ser_pu = PU_Z_TO_EMT * (0.1 / 10.0)  # 0.03
+    X_ser_pu = PU_Z_TO_EMT * (1.0 / 10.0)  # 0.30
+
+    R_ser = vf.add_const(R_ser_pu)
+    X_ser = vf.add_const(X_ser_pu)
+    Linv = vf.add_const(omega_base / X_ser_pu)
+
+    # Simulink C_f gives standard susceptance B = 1/15 pu.
+    # In VeraGrid EMT phase/current signal base, admittance is 1/3 of standard pu.
+    C_sh = vf.add_const((PU_Y_TO_EMT * (1.0 / 15.0)) / omega_base)  # 1/(45*omega)
+
+    # Simulink R_Cf = 0.05*Zbase; in the EMT signal impedance base it is 3x.
+    R_sh = vf.add_const(PU_Z_TO_EMT * 0.05)  # 0.15
 
     # grid connection voltages
     v_f_A = vf.add_var(name=f"v_f_A_{name}", reference=VarPowerFlowReferenceType.vf_A)
@@ -193,8 +209,12 @@ def get_grid_side_converter_GFL(vf: VarFactory, name: str = "G4L_grid_side_conve
     # Follow the working converter/filter templates: fixed internal filter
     # coefficients are embedded directly in the equations instead of being
     # introduced as separate symbolic parameter vars.
-    R_f_pu = 0.1 / 10.0
-    X_f_pu = 1.0 / 10.0
+    # R_f_pu = 0.1 / 10.0
+    # X_f_pu = 1.0 / 10.0
+    PU_Z_TO_EMT = 3.0
+
+    R_f_pu = PU_Z_TO_EMT * (0.1 / 10.0)  # 0.03
+    X_f_pu = PU_Z_TO_EMT * (1.0 / 10.0)  # 0.30
     omega_base = 2 * np.pi * 50
     R_f = vf.add_const(R_f_pu)
     Linv_f = vf.add_const(omega_base / X_f_pu)
@@ -1183,8 +1203,12 @@ def get_current_loop_GFL(vf: VarFactory, name: str = "G4L_current_loop") -> EmtM
     # PI current loop
     tau_cc = 0.001
     omega_ref_expr = 2 * np.pi * 50
-    X_f_pu = 1.0 / 10.0
-    R_f_pu = 0.1 / 10.0
+    # X_f_pu = 1.0 / 10.0
+    # R_f_pu = 0.1 / 10.0
+    PU_Z_TO_EMT = 3.0
+
+    R_f_pu = PU_Z_TO_EMT * (0.1 / 10.0)  # 0.03
+    X_f_pu = PU_Z_TO_EMT * (1.0 / 10.0)  # 0.30
     L_f_expr = X_f_pu / omega_ref_expr
     Kp_cc = vf.add_const(L_f_expr / tau_cc)
     Ki_cc = vf.add_const(R_f_pu / tau_cc)
