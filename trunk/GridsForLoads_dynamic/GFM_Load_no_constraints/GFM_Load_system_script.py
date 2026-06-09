@@ -75,6 +75,34 @@ def plot_if_available(ax, t_arr: np.ndarray, series, label: str):
         print(f"variable:{label} is not in results")
 
 
+def scale_series(series, factor):
+    if series is None:
+        return None
+    return series * factor
+
+
+def negate_scale_series(series, factor):
+    if series is None:
+        return None
+    return -series * factor
+
+
+def constant_series(value, t_arr):
+    return np.full_like(t_arr, fill_value=value, dtype=float)
+
+
+def plot_scaled_if_available(ax, t_arr: np.ndarray, problem: EmtProblemDae, y_arr: np.ndarray,
+                             name: str, factor: float, label: str, negate: bool = False):
+    series = try_get_series(problem, y_arr, name)
+    if series is None:
+        print(f"variable:{name} is not in results")
+        return False
+
+    scaled = negate_scale_series(series, factor) if negate else scale_series(series, factor)
+    ax.plot(t_arr, scaled, label=label)
+    return True
+
+
 def try_get_init_value(problem: EmtProblemDae, name: str):
     try:
         idx = get_var_idx(problem=problem, name=name)
@@ -562,4 +590,298 @@ for ax in axes_currents:
 fig_overview.tight_layout()
 fig_va.tight_layout()
 fig_currents.tight_layout()
+
+U_LL = 33000.0
+Sb_va = 2_000_000.0
+Vdc_ref = 1200.0
+V_phase_rms_base = U_LL / np.sqrt(3.0)
+Vac_phase_peak = U_LL * np.sqrt(2.0 / 3.0)
+Ibase_vg = Sb_va / V_phase_rms_base
+Ipeak_sim = (Sb_va / U_LL) * np.sqrt(2.0 / 3.0)
+Idc_base = Sb_va / Vdc_ref
+Imax_sim_A = 1.1 * Ipeak_sim
+
+print("SI comparison base values")
+print(f"  V_phase_rms_base = {V_phase_rms_base}")
+print(f"  Vac_phase_peak = {Vac_phase_peak}")
+print(f"  Ibase_vg = {Ibase_vg}")
+print(f"  Ipeak_sim = {Ipeak_sim}")
+print(f"  Idc_base = {Idc_base}")
+print(f"  Ibase_vg / Ipeak_sim = {Ibase_vg / Ipeak_sim}")
+
+missing_si_variables: set[str] = set()
+
+
+def plot_scaled_with_tracking(ax, t_arr: np.ndarray, problem: EmtProblemDae, y_arr: np.ndarray,
+                              name: str, factor: float, label: str, negate: bool = False,
+                              linestyle: str = "-"):
+    before_count = len(ax.lines)
+    plotted = plot_scaled_if_available(ax, t_arr, problem, y_arr, name, factor, label, negate=negate)
+    if not plotted:
+        missing_si_variables.add(name)
+        return False
+    if len(ax.lines) > before_count:
+        ax.lines[-1].set_linestyle(linestyle)
+    return True
+
+
+def add_constant_line(ax, t_arr: np.ndarray, value: float, label: str, linestyle: str = "--"):
+    ax.plot(t_arr, constant_series(value, t_arr), linestyle=linestyle, label=label)
+
+
+# If the VA model is changed to normalized voltage form, update these reference lines accordingly.
+v_q_ref_SI = np.sqrt(2.0) * V_phase_rms_base
+v_d_ref_SI = 0.0
+
+# If VA is changed to normalized voltage form err = 1 - v/sqrt(2), use Vac_phase_peak instead.
+
+fig_si_overview, axes_si_overview = plt.subplots(3, 2, figsize=(16, 12), sharex=True)
+axes_si_overview = axes_si_overview.ravel()
+
+plot_scaled_with_tracking(axes_si_overview[0], t_arr, problem, y_arr, "v_A_Bus1_emt_template",
+                          V_phase_rms_base / 1000.0, "v_A_Bus1 [kV]")
+plot_scaled_with_tracking(axes_si_overview[0], t_arr, problem, y_arr, "v_B_Bus1_emt_template",
+                          V_phase_rms_base / 1000.0, "v_B_Bus1 [kV]")
+plot_scaled_with_tracking(axes_si_overview[0], t_arr, problem, y_arr, "v_C_Bus1_emt_template",
+                          V_phase_rms_base / 1000.0, "v_C_Bus1 [kV]")
+axes_si_overview[0].set_title("Grid-Side AC Voltages [kV phase-to-neutral instantaneous]")
+axes_si_overview[0].set_ylabel("Voltage [kV]")
+axes_si_overview[0].grid(True)
+if axes_si_overview[0].lines:
+    axes_si_overview[0].legend(loc="best")
+
+plot_scaled_with_tracking(axes_si_overview[1], t_arr, problem, y_arr, "i_f_A_G4L_grid_side_converter",
+                          Ibase_vg, "i_f_A [A] sim sign", negate=True)
+plot_scaled_with_tracking(axes_si_overview[1], t_arr, problem, y_arr, "i_f_B_G4L_grid_side_converter",
+                          Ibase_vg, "i_f_B [A] sim sign", negate=True)
+plot_scaled_with_tracking(axes_si_overview[1], t_arr, problem, y_arr, "i_f_C_G4L_grid_side_converter",
+                          Ibase_vg, "i_f_C [A] sim sign", negate=True)
+axes_si_overview[1].set_title("Grid-Side AC Currents [A] - Simulink/load sign")
+axes_si_overview[1].set_ylabel("Current [A]")
+axes_si_overview[1].grid(True)
+if axes_si_overview[1].lines:
+    axes_si_overview[1].legend(loc="best")
+
+plot_scaled_with_tracking(axes_si_overview[2], t_arr, problem, y_arr, "v_q_G4L_clark_park_transforms_qd",
+                          V_phase_rms_base, "v_q [V]")
+plot_scaled_with_tracking(axes_si_overview[2], t_arr, problem, y_arr, "v_d_G4L_clark_park_transforms_qd",
+                          V_phase_rms_base, "v_d [V]")
+add_constant_line(axes_si_overview[2], t_arr, v_q_ref_SI, "Vq_ref [V]", linestyle="--")
+add_constant_line(axes_si_overview[2], t_arr, v_d_ref_SI, "Vd_ref [V]", linestyle=":")
+axes_si_overview[2].set_title("VA/Input dq Voltages [V]")
+axes_si_overview[2].set_ylabel("Voltage [V]")
+axes_si_overview[2].grid(True)
+if axes_si_overview[2].lines:
+    axes_si_overview[2].legend(loc="best")
+
+plot_scaled_with_tracking(axes_si_overview[3], t_arr, problem, y_arr, "i_q_out_VA_G4L_Virtual_admittance",
+                          Ibase_vg, "i_q_out_VA [A]", negate=True, linestyle="-")
+plot_scaled_with_tracking(axes_si_overview[3], t_arr, problem, y_arr, "i_q_lim_G4L_current_limiter",
+                          Ibase_vg, "i_q_lim [A]", negate=True, linestyle="-")
+plot_scaled_with_tracking(axes_si_overview[3], t_arr, problem, y_arr, "i_q_G4L_clark_park_transforms_qd",
+                          Ibase_vg, "i_q_meas [A]", negate=True, linestyle="-")
+plot_scaled_with_tracking(axes_si_overview[3], t_arr, problem, y_arr, "i_d_out_VA_G4L_Virtual_admittance",
+                          Ibase_vg, "i_d_out_VA [A]", negate=True, linestyle="--")
+plot_scaled_with_tracking(axes_si_overview[3], t_arr, problem, y_arr, "i_d_lim_G4L_current_limiter",
+                          Ibase_vg, "i_d_lim [A]", negate=True, linestyle="--")
+plot_scaled_with_tracking(axes_si_overview[3], t_arr, problem, y_arr, "i_d_G4L_clark_park_transforms_qd",
+                          Ibase_vg, "i_d_meas [A]", negate=True, linestyle="--")
+axes_si_overview[3].set_title("dq Currents [A] - Simulink/load sign")
+axes_si_overview[3].set_ylabel("Current [A]")
+axes_si_overview[3].grid(True)
+if axes_si_overview[3].lines:
+    axes_si_overview[3].legend(loc="best")
+
+plot_scaled_with_tracking(axes_si_overview[4], t_arr, problem, y_arr, "Pac_bus_G4L_grid_side_converter",
+                          Sb_va / 1e6, "Pac_bus [MW]", negate=True)
+plot_scaled_with_tracking(axes_si_overview[4], t_arr, problem, y_arr, "Pac_G4L_grid_side_converter",
+                          Sb_va / 1e6, "Pac [MW]", negate=True)
+plot_scaled_with_tracking(axes_si_overview[4], t_arr, problem, y_arr, "p_dc_G4L_load_side_converter_control",
+                          Sb_va / 1e6, "p_dc [MW]", negate=True)
+pref_series_mw = np.where(t_arr < 1.0, 0.8 * Sb_va / 1e6, 0.4 * Sb_va / 1e6)
+axes_si_overview[4].plot(t_arr, pref_series_mw, linestyle="--", label="P_ref [MW]")
+axes_si_overview[4].set_title("Active Powers [MW] - Simulink/load sign")
+axes_si_overview[4].set_ylabel("Power [MW]")
+axes_si_overview[4].grid(True)
+if axes_si_overview[4].lines:
+    axes_si_overview[4].legend(loc="best")
+
+ax_dc_v = axes_si_overview[5]
+ax_dc_i = ax_dc_v.twinx()
+plot_scaled_with_tracking(ax_dc_v, t_arr, problem, y_arr, "v_dc_G4L_load_side_converter",
+                          Vdc_ref, "v_dc [V]")
+plot_scaled_with_tracking(ax_dc_i, t_arr, problem, y_arr, "i_dc_G4L_grid_side_converter",
+                          Idc_base, "i_dc [A]")
+plot_scaled_with_tracking(ax_dc_i, t_arr, problem, y_arr, "i_dc_L_G4L_load_side_converter_control",
+                          Idc_base, "i_dc_L [A]")
+plot_scaled_with_tracking(ax_dc_i, t_arr, problem, y_arr, "i_cap_dc_G4L_load_side_converter",
+                          Idc_base, "i_cap_dc [A]")
+ax_dc_v.set_title("DC-Link Variables [V, A]")
+ax_dc_v.set_ylabel("Voltage [V]")
+ax_dc_i.set_ylabel("Current [A]")
+ax_dc_v.grid(True)
+dc_lines = ax_dc_v.lines + ax_dc_i.lines
+if dc_lines:
+    dc_labels = [line.get_label() for line in dc_lines]
+    ax_dc_v.legend(dc_lines, dc_labels, loc="best")
+
+fig_si_va, axes_si_va = plt.subplots(3, 1, figsize=(14, 10), sharex=True)
+plot_scaled_with_tracking(axes_si_va[0], t_arr, problem, y_arr, "i_q_out_VA_G4L_Virtual_admittance",
+                          Ibase_vg, "i_q_out_VA [A]", negate=True)
+plot_scaled_with_tracking(axes_si_va[0], t_arr, problem, y_arr, "i_d_out_VA_G4L_Virtual_admittance",
+                          Ibase_vg, "i_d_out_VA [A]", negate=True, linestyle="--")
+axes_si_va[0].set_title("VA Output Currents [A] - Simulink/load sign")
+axes_si_va[0].set_ylabel("Current [A]")
+axes_si_va[0].grid(True)
+if axes_si_va[0].lines:
+    axes_si_va[0].legend(loc="best")
+
+plot_scaled_with_tracking(axes_si_va[1], t_arr, problem, y_arr, "err_q_G4L_Virtual_admittance",
+                          V_phase_rms_base, "err_q [V]")
+plot_scaled_with_tracking(axes_si_va[1], t_arr, problem, y_arr, "err_d_G4L_Virtual_admittance",
+                          V_phase_rms_base, "err_d [V]", linestyle="--")
+axes_si_va[1].set_title("VA Voltage Errors [V]")
+axes_si_va[1].set_ylabel("Error [V]")
+axes_si_va[1].grid(True)
+if axes_si_va[1].lines:
+    axes_si_va[1].legend(loc="best")
+
+plot_scaled_with_tracking(axes_si_va[2], t_arr, problem, y_arr, "y1_G4L_Virtual_admittance",
+                          Ibase_vg, "y1 [A] sim sign", negate=True)
+plot_scaled_with_tracking(axes_si_va[2], t_arr, problem, y_arr, "y2_G4L_Virtual_admittance",
+                          Ibase_vg, "y2 [A] sim sign", negate=True)
+plot_scaled_with_tracking(axes_si_va[2], t_arr, problem, y_arr, "y3_G4L_Virtual_admittance",
+                          Ibase_vg, "y3 [A] sim sign", negate=True, linestyle="--")
+plot_scaled_with_tracking(axes_si_va[2], t_arr, problem, y_arr, "y4_G4L_Virtual_admittance",
+                          Ibase_vg, "y4 [A] sim sign", negate=True, linestyle="--")
+axes_si_va[2].set_title("VA Internal Outputs y1-y4 [A] - Simulink/load sign")
+axes_si_va[2].set_ylabel("Output [A]")
+axes_si_va[2].grid(True)
+if axes_si_va[2].lines:
+    axes_si_va[2].legend(loc="best")
+
+fig_si_currents, axes_si_currents = plt.subplots(2, 1, figsize=(14, 8), sharex=True)
+plot_scaled_with_tracking(axes_si_currents[0], t_arr, problem, y_arr, "i_q_out_VA_G4L_Virtual_admittance",
+                          Ibase_vg, "i_q_out_VA [A]", negate=True)
+plot_scaled_with_tracking(axes_si_currents[0], t_arr, problem, y_arr, "i_q_lim_G4L_current_limiter",
+                          Ibase_vg, "i_q_lim [A]", negate=True)
+plot_scaled_with_tracking(axes_si_currents[0], t_arr, problem, y_arr, "i_q_G4L_clark_park_transforms_qd",
+                          Ibase_vg, "i_q_meas [A]", negate=True)
+add_constant_line(axes_si_currents[0], t_arr, Imax_sim_A, "+Imax_sim_A", linestyle="--")
+add_constant_line(axes_si_currents[0], t_arr, -Imax_sim_A, "-Imax_sim_A", linestyle=":")
+axes_si_currents[0].set_title("q-Axis Current Chain [A]")
+axes_si_currents[0].set_ylabel("Current [A]")
+axes_si_currents[0].grid(True)
+if axes_si_currents[0].lines:
+    axes_si_currents[0].legend(loc="best")
+
+plot_scaled_with_tracking(axes_si_currents[1], t_arr, problem, y_arr, "i_d_out_VA_G4L_Virtual_admittance",
+                          Ibase_vg, "i_d_out_VA [A]", negate=True)
+plot_scaled_with_tracking(axes_si_currents[1], t_arr, problem, y_arr, "i_d_lim_G4L_current_limiter",
+                          Ibase_vg, "i_d_lim [A]", negate=True)
+plot_scaled_with_tracking(axes_si_currents[1], t_arr, problem, y_arr, "i_d_G4L_clark_park_transforms_qd",
+                          Ibase_vg, "i_d_meas [A]", negate=True)
+add_constant_line(axes_si_currents[1], t_arr, Imax_sim_A, "+Imax_sim_A", linestyle="--")
+add_constant_line(axes_si_currents[1], t_arr, -Imax_sim_A, "-Imax_sim_A", linestyle=":")
+axes_si_currents[1].set_title("d-Axis Current Chain [A]")
+axes_si_currents[1].set_ylabel("Current [A]")
+axes_si_currents[1].grid(True)
+if axes_si_currents[1].lines:
+    axes_si_currents[1].legend(loc="best")
+
+fig_si_pll, axes_si_pll = plt.subplots(2, 1, figsize=(14, 8), sharex=True)
+plot_scaled_with_tracking(axes_si_pll[0], t_arr, problem, y_arr, "Pac_bus_G4L_grid_side_converter",
+                          Sb_va / 1e6, "Pac_bus [MW]", negate=True)
+axes_si_pll[0].plot(t_arr, pref_series_mw, linestyle="--", label="P_ref event [MW] @ t=1 s")
+axes_si_pll[0].set_title("PCC Power vs Reference [MW] - Simulink/load sign")
+axes_si_pll[0].set_ylabel("Power [MW]")
+axes_si_pll[0].grid(True)
+if axes_si_pll[0].lines:
+    axes_si_pll[0].legend(loc="best")
+
+plot_scaled_with_tracking(axes_si_pll[1], t_arr, problem, y_arr, "omega_pll_G4L_PLL",
+                          1.0, "omega_pll [rad/s]")
+plot_scaled_with_tracking(axes_si_pll[1], t_arr, problem, y_arr, "w_pll_G4L_PLL",
+                          1.0, "w_pll [rad/s]", linestyle="--")
+axes_si_pll[1].set_title("PLL/VSM Frequencies [rad/s, Hz]")
+axes_si_pll[1].set_ylabel("Angular frequency [rad/s]")
+axes_si_pll[1].grid(True)
+if axes_si_pll[1].lines:
+    axes_si_pll[1].legend(loc="best")
+
+omega_pll_series = try_get_series(problem, y_arr, "omega_pll_G4L_PLL")
+w_pll_series = try_get_series(problem, y_arr, "w_pll_G4L_PLL")
+if omega_pll_series is not None or w_pll_series is not None:
+    ax_freq_hz = axes_si_pll[1].twinx()
+    if omega_pll_series is not None:
+        ax_freq_hz.plot(t_arr, omega_pll_series / (2.0 * np.pi), color=axes_si_pll[1].lines[0].get_color(),
+                        alpha=0.35, linestyle=":", label="omega_pll [Hz]")
+    if w_pll_series is not None:
+        color_idx = 1 if omega_pll_series is not None and len(axes_si_pll[1].lines) > 1 else 0
+        ax_freq_hz.plot(t_arr, w_pll_series / (2.0 * np.pi),
+                        color=axes_si_pll[1].lines[color_idx].get_color(), alpha=0.35, linestyle="-.",
+                        label="w_pll [Hz]")
+    ax_freq_hz.set_ylabel("Frequency [Hz]")
+    pll_lines = axes_si_pll[1].lines + ax_freq_hz.lines
+    pll_labels = [line.get_label() for line in pll_lines]
+    axes_si_pll[1].legend(pll_lines, pll_labels, loc="best")
+
+for ax in axes_si_overview[:5]:
+    ax.set_xlabel("Time [s]")
+ax_dc_v.set_xlabel("Time [s]")
+for ax in axes_si_va:
+    ax.set_xlabel("Time [s]")
+for ax in axes_si_currents:
+    ax.set_xlabel("Time [s]")
+for ax in axes_si_pll:
+    ax.set_xlabel("Time [s]")
+
+# csv_path = os.path.join(os.path.dirname(__file__), "veragrid_si_comparison_timeseries.csv")
+# csv_columns = {"time_s": t_arr}
+#
+#
+# def add_csv_series(column_name: str, source_name: str, factor: float, negate: bool = False):
+#     series = try_get_series(problem, y_arr, source_name)
+#     if series is None:
+#         missing_si_variables.add(source_name)
+#         return
+#     csv_columns[column_name] = negate_scale_series(series, factor) if negate else scale_series(series, factor)
+#
+#
+# add_csv_series("vA_Bus1_kV", "v_A_Bus1_emt_template", V_phase_rms_base / 1000.0)
+# add_csv_series("vB_Bus1_kV", "v_B_Bus1_emt_template", V_phase_rms_base / 1000.0)
+# add_csv_series("vC_Bus1_kV", "v_C_Bus1_emt_template", V_phase_rms_base / 1000.0)
+# add_csv_series("iA_grid_A_sim_sign", "i_f_A_G4L_grid_side_converter", Ibase_vg, negate=True)
+# add_csv_series("iB_grid_A_sim_sign", "i_f_B_G4L_grid_side_converter", Ibase_vg, negate=True)
+# add_csv_series("iC_grid_A_sim_sign", "i_f_C_G4L_grid_side_converter", Ibase_vg, negate=True)
+# add_csv_series("vq_V", "v_q_G4L_clark_park_transforms_qd", V_phase_rms_base)
+# add_csv_series("vd_V", "v_d_G4L_clark_park_transforms_qd", V_phase_rms_base)
+# add_csv_series("iq_va_A_sim_sign", "i_q_out_VA_G4L_Virtual_admittance", Ibase_vg, negate=True)
+# add_csv_series("id_va_A_sim_sign", "i_d_out_VA_G4L_Virtual_admittance", Ibase_vg, negate=True)
+# add_csv_series("iq_lim_A_sim_sign", "i_q_lim_G4L_current_limiter", Ibase_vg, negate=True)
+# add_csv_series("id_lim_A_sim_sign", "i_d_lim_G4L_current_limiter", Ibase_vg, negate=True)
+# add_csv_series("iq_meas_A_sim_sign", "i_q_G4L_clark_park_transforms_qd", Ibase_vg, negate=True)
+# add_csv_series("id_meas_A_sim_sign", "i_d_G4L_clark_park_transforms_qd", Ibase_vg, negate=True)
+# add_csv_series("Pac_bus_MW_sim_sign", "Pac_bus_G4L_grid_side_converter", Sb_va / 1e6, negate=True)
+# add_csv_series("Pac_MW_sim_sign", "Pac_G4L_grid_side_converter", Sb_va / 1e6, negate=True)
+# add_csv_series("pdc_MW_sim_sign", "p_dc_G4L_load_side_converter_control", Sb_va / 1e6, negate=True)
+# add_csv_series("vdc_V", "v_dc_G4L_load_side_converter", Vdc_ref)
+# add_csv_series("idc_A", "i_dc_G4L_grid_side_converter", Idc_base)
+# add_csv_series("idcL_A", "i_dc_L_G4L_load_side_converter_control", Idc_base)
+# add_csv_series("icapdc_A", "i_cap_dc_G4L_load_side_converter", Idc_base)
+#
+# with open(csv_path, "w", newline="") as csv_file:
+#     writer = csv.writer(csv_file)
+#     headers = list(csv_columns.keys())
+#     writer.writerow(headers)
+#     for idx in range(len(t_arr)):
+#         writer.writerow([csv_columns[col][idx] for col in headers])
+
+# print(f"SI comparison CSV exported to: {csv_path}")
+print("SI comparison missing variables:", sorted(missing_si_variables) if missing_si_variables else "none")
+
+fig_si_overview.tight_layout()
+fig_si_va.tight_layout()
+fig_si_currents.tight_layout()
+fig_si_pll.tight_layout()
 plt.show()

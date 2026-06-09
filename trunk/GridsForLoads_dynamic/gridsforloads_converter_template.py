@@ -702,7 +702,8 @@ def get_PLL_GFL(vf: VarFactory, name: str = "G4L_PLL") -> EmtModelTemplate:
     # pll
     tau_pll = 0.01
     xi_pll = 0.707
-    Vac = np.sqrt(2 / 3)
+    # Vac = np.sqrt(2 / 3)
+    Vac = np.sqrt(2)
     Kp_pll_expr = 4*xi_pll*xi_pll/(tau_pll*Vac)
     Ki_pll_expr = Kp_pll_expr / tau_pll
     Kp_pll = vf.add_var(name=f"Kp_pll_{name}")
