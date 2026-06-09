@@ -2247,6 +2247,7 @@ class TypSym(DGSElement):
         DgsProperty('xq', 'r', 'Synchronous q-Axis Reactance in p.u.', py_name='xq'),
         DgsProperty('xdsss', 'r', 'Subtransient d-Axis Reactance in p.u.', py_name='xdsss'),
         DgsProperty('rstr', 'r', 'Stator Resistance in p.u.', py_name='rstr'),
+        DgsProperty('xstr', 'r', 'Stator Reactance in p.u.', py_name='xstr'),
         DgsProperty('xdsat', 'r', 'Saturated d-Axis Reactance in p.u.', py_name='xdsat'),
         DgsProperty('satur', 'i', 'Magnetic Saturation Enabled', py_name='satur'),
         DgsProperty('Q_min', 'r', 'Minimum Reactive Power Capability in MVAr', py_name='Q_min'),
@@ -2284,6 +2285,7 @@ class TypSym(DGSElement):
         self.xq: float = 0.0
         self.xdsss: float = 0.0
         self.rstr: float = 0.0
+        self.xstr: float = 0.0
         self.xdsat: float = 0.0
         self.satur: int = 0
         self.Q_min: float = 0.0

@@ -119,7 +119,8 @@ def test_short_circuit_vsc_14buses():
         vge.ShortCircuitEvent(
             device=grid.buses[9],
             method=MethodShortCircuit.sequences_vsc,
-            r_fault=0.9182736455463728
+            r_fault=0.9182736455463728,
+            constz=False
         )
     )
 
@@ -136,7 +137,7 @@ def test_short_circuit_vsc_14buses():
          0.74351305, 0.80790032, 0.79696124, 0.7823984, 0.94797783, 0.86826011, 0.84541255, 0.84725015, 0.81377177,
          0.84692126, 0.83635092, 0.82205093, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
 
-    assert np.allclose(abs(res_sc.voltage1[:, 0]), Usc_reference, atol=1e-6)
+    assert np.allclose(abs(res_sc.voltage1[:, 1]), Usc_reference, atol=1e-6)
 
 
 def test_short_circuit_vsc_14buses_disconnection():
@@ -275,7 +276,8 @@ def test_dgs_parse_external_grid_sc():
         vge.ShortCircuitEvent(
             device=grid.buses[12],
             method=MethodShortCircuit.sequences_vsc,
-            r_fault=10.0 / (33 ** 2 / 100)
+            r_fault=10.0 / (33 ** 2 / 100),
+            constz=False
         )
     )
 

@@ -3060,8 +3060,8 @@ def convert_dgs_to_generator(elmsym: ElmSym,
 
     # Optional sequence data from type (best-effort, may not exist in all exports)
     if typsym is not None:
-        r1 = typsym.rstr
-        x1 = typsym.xd
+        r1 = typsym.rstr * baseMVA / snom
+        x1 = typsym.xstr * baseMVA / snom
 
         if r1 != 0.0 or x1 != 0.0:
             gen.R1 = float(r1)

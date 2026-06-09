@@ -387,6 +387,7 @@ class ShortCircuitDriver(DriverTemplate):
                                  Z_fault: CxVec,
                                  fault_bus: int,
                                  options: PowerFlowOptions,
+                                 constz: bool,
                                  logger: Logger):
 
         adm = nc.get_admittance_matrices()
@@ -400,6 +401,7 @@ class ShortCircuitDriver(DriverTemplate):
                                      Z_fault=Z_fault,
                                      fault_bus=fault_bus,
                                      options=options,
+                                     constz=constz,
                                      logger=logger)
 
         # if we get here, no short circuit was done, so declare empty results and exit --------------------------------
@@ -554,6 +556,7 @@ class ShortCircuitDriver(DriverTemplate):
                                         Z_fault=Zf[island.bus_data.original_idx],
                                         fault_bus=island_bus_index,
                                         options=self.pf_options,
+                                        constz=sc_definition.constz,
                                         logger=self.logger
                                     )
 

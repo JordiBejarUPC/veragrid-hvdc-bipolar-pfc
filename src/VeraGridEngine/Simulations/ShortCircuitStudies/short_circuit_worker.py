@@ -757,6 +757,7 @@ def short_circuit_vsc(nc: NumericalCircuit,
                       Z_fault: CxVec,
                       fault_bus: int,
                       options: PowerFlowOptions,
+                      constz: bool,
                       logger: Logger):
     if logger is None:
         logger = Logger()
@@ -813,10 +814,6 @@ def short_circuit_vsc(nc: NumericalCircuit,
 
         nbus = nc.nbus
 
-        # S0_linear = np.zeros(shape=nbus, dtype=complex)
-        S0_non_gen = S0 - nc.generator_data.get_injections_per_bus() / nc.Sbase
-        S0_gen = S_pf / nc.Sbase - S0_non_gen - I0 - Y0
-
         Yfault = np.zeros(shape=nbus, dtype=complex)
         Yfault[fault_bus] = 1 / Z_fault[fault_bus]
 
@@ -825,10 +822,19 @@ def short_circuit_vsc(nc: NumericalCircuit,
         for gen_i in range(len(gen_idx)):
             Ygen[bus_gen_idx[gen_i]] += 1 / (nc.generator_data.r1[gen_i] + 1j * nc.generator_data.x1[gen_i])
 
-        # Y0_linear = - np.conj(S0_non_gen / (np.conj(V_pf) * V_pf)) - I0 / V_pf - Y0 + Ygen + Yfault
-        Y0_linear = - I0 / V_pf - Y0 + Ygen + Yfault
+        S0_non_gen = S0 - nc.generator_data.get_injections_per_bus() / nc.Sbase
+        S0_gen = S_pf / nc.Sbase - S0_non_gen - I0 - Y0
 
-        I0_linear = np.zeros(shape=nbus, dtype=complex)  # Add generator's norton
+        if constz:
+            S0_linear = np.zeros(shape=nbus, dtype=complex)
+            I0_linear = np.zeros(shape=nbus, dtype=complex)  # Add generator's norton
+            Y0_linear = - np.conj(S0_non_gen / (np.conj(V_pf) * V_pf)) - I0 / V_pf - Y0 + Ygen + Yfault
+
+        else:
+            S0_linear = S0_non_gen
+            I0_linear = np.zeros(shape=nbus, dtype=complex)  # Add generator's norton
+            Y0_linear = - I0 / V_pf - Y0 + Ygen + Yfault
+
         for gen_i in range(len(bus_gen_idx)):
             Ugen = V_pf[bus_gen_idx[gen_i]]
             Sgen = S0_gen[bus_gen_idx[gen_i]]
@@ -843,7 +849,7 @@ def short_circuit_vsc(nc: NumericalCircuit,
         if len(indices.vd) > 0:
 
             problem = PfAcDcWithNegativePolesSc(V0=V_pf,
-                                                S0=S0_non_gen,
+                                                S0=S0_linear,
                                                 I0=I0_linear,
                                                 Y0=Y0_linear,
                                                 St_vsc_pf=St_vsc_pf,
