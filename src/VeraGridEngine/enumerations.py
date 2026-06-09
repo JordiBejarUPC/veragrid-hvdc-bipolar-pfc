@@ -189,7 +189,7 @@ class GeneratorControlMode(str, Enum):
     Modes of operation of generator control modes.
     """
 
-    Q = ("Locked", 0)  # Fixed Q, classic PQ node
+    Q = ("Q", 0)  # Fixed Q, classic PQ node
     V = ("V", 1)  # Fixed V, classic PV node
     QVDroop = ("Q-V", 2)  # Like a PQ node with droop equation update of Q
 
@@ -3255,10 +3255,12 @@ class EmtSolverTypes(Enum):
 
 
 class RmsProblemTypes(Enum):
-    Tensygrid = "Tensygrid"
-    PowerBalance = "RmsProblemDae"
-    CurrentBalance = "RmsProblemPhasor"
-    Multilinear = "RmsProblemMultilinear"
+
+    Tensygrid       = "Tensygrid"
+    PowerBalance    = "RmsProblemDae"
+    PowerBalanceVectorized = "RmsProblemDaeVectorized"
+    CurrentBalance  = "RmsProblemPhasor"
+    Multilinear     = "RmsProblemMultilinear"
 
     def __str__(self) -> str:
         return str(self.value)
@@ -4455,3 +4457,12 @@ class TreeStateNodeKind(Enum):
     SOURCE = "source"
     PLOT_GROUP = "plot_group"
     PLOT_ENTRY = "plot_entry"
+
+class DynamicTableModelMode(Enum):
+    """
+    Modes to define data table in block editor
+    """
+
+    VARIABLES = "variables"
+    PARAMETERS = "parameters"
+    EQUATIONS = "equations"

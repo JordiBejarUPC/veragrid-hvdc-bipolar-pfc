@@ -17,6 +17,8 @@ from VeraGridEngine.Utils.NumericalMethods.common import find_closest_number
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions import (expand, compute_fx_error,
                                                                                     power_flow_post_process_nonlinear)
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.discrete_controls import (control_q_inside_method,
+                                                                                     DiscreteShuntControlState,
+                                                                                     QvDroopControlState,
                                                                                      compute_slack_distribution)
 from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_formulation_template import PfFormulationTemplate
 from VeraGridEngine.enumerations import BusMode, TapPhaseControl, TapModuleControl
@@ -229,6 +231,7 @@ class PfAdvancedFormulation(PfFormulationTemplate):
 
         self.m: Vec = self.nc.active_branch_data.tap_module[self.idx_dm]
         self.tau: Vec = self.nc.active_branch_data.tap_angle[self.idx_dtau]
+        self.Yshunt_bus = self.nc.get_Yshunt_bus_pu()
 
         self.Ys: CxVec = self.nc.passive_branch_data.get_series_admittance()
 
@@ -243,11 +246,16 @@ class PfAdvancedFormulation(PfFormulationTemplate):
             tap_angle=expand(self.nc.nbr, self.tau, self.idx_dtau, 0.0),
             Cf=self.Cf,
             Ct=self.Ct,
-            Yshunt_bus=self.nc.get_Yshunt_bus_pu(),
+            Yshunt_bus=self.Yshunt_bus,
             conn=self.nc.passive_branch_data.conn,
             seq=1,
             add_windings_phase=False
         )
+
+        # Store the control states in lightweight wrappers that forward the
+        # numerical work to the existing Numba kernels.
+        self.discrete_shunt_control = DiscreteShuntControlState(nc=self.nc)
+        self.qv_droop_control = QvDroopControlState(S0=self.S0, nc=self.nc)
 
         if not len(self.pqv) >= len(k_v_m):
             raise ValueError("k_v_m indices must be the same size as pqv indices!")
@@ -414,7 +422,7 @@ class PfAdvancedFormulation(PfFormulationTemplate):
             tap_angle=expand(self.nc.nbr, tau, self.idx_dtau, 0.0),
             Cf=self.Cf,
             Ct=self.Ct,
-            Yshunt_bus=self.nc.get_Yshunt_bus_pu(),
+            Yshunt_bus=self.Yshunt_bus,
             conn=self.nc.passive_branch_data.conn,
             seq=1,
             add_windings_phase=False,
@@ -478,7 +486,7 @@ class PfAdvancedFormulation(PfFormulationTemplate):
             tap_angle=expand(self.nc.nbr, self.tau, self.idx_dtau, 0.0),
             Cf=self.Cf,
             Ct=self.Ct,
-            Yshunt_bus=self.nc.get_Yshunt_bus_pu(),
+            Yshunt_bus=self.Yshunt_bus,
             conn=self.nc.passive_branch_data.conn,
             seq=1,
             add_windings_phase=False
@@ -555,6 +563,12 @@ class PfAdvancedFormulation(PfFormulationTemplate):
 
                     # the composition of x may have changed, so recompute
                     x = self.var2x()
+
+            if self.discrete_shunt_control.apply(Vm=self.Vm, adm=self.adm, yshunt_bus=self.Yshunt_bus):
+                any_change = True
+
+            if self.qv_droop_control.apply(S0=self.S0, Vm=self.Vm):
+                any_change = True
 
             # update Slack control
             if self.options.distributed_slack:
@@ -708,7 +722,7 @@ class PfAdvancedFormulation(PfFormulationTemplate):
             tap_angle=tau,
             Cf=self.Cf,
             Ct=self.Ct,
-            Yshunt_bus=self.nc.get_Yshunt_bus_pu(),
+            Yshunt_bus=self.Yshunt_bus,
             conn=self.nc.passive_branch_data.conn,
             seq=1,
             add_windings_phase=False

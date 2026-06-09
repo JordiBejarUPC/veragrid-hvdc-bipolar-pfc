@@ -199,6 +199,64 @@ class EmptySparseJacobianEvaluator:
         return self._matrix
 
 
+class EmptyVecSparseJacobianEvaluator:
+    """
+    Reusable callable returning a zero 2D data array for vectorized Jacobians.
+    """
+
+    __slots__ = ("_n_rows", "_n_cols")
+
+    def __init__(self, n_rows: int, n_cols: int) -> None:
+        self._n_rows: int = n_rows
+        self._n_cols: int = n_cols
+
+    def __call__(self, vrs: Vec, diff: Vec, vprms: Vec, cprms: Vec, h: float) -> np.ndarray:
+        n_inst: int = vrs.shape[1]
+        return np.zeros((0, n_inst), dtype=np.float64)
+
+    def get_sparsity(self) -> Tuple[np.ndarray, np.ndarray, int, int]:
+        n_vars: int = self._n_cols
+        return (np.zeros(0, dtype=np.int32),
+                np.zeros(n_vars + 1, dtype=np.int32),
+                self._n_rows,
+                n_vars)
+
+
+class SparseJacobianEvaluatorVecWrapper:
+    """
+    Callable wrapper around a vectorized sparse Jacobian filler.
+
+    The filler function fills a 2D data_out array of shape (nnz, n_instances).
+    This wrapper allocates the output array, calls the filler, and returns it.
+    It also exposes the sparsity pattern (row indices, column pointers) so the
+    problem class can assemble the global sparse Jacobian.
+    """
+
+    __slots__ = ("_filler_fn", "_nnz", "_n_rows", "_n_cols",
+                 "_rows", "_cols", "_indices", "_indptr")
+
+    def __init__(self, filler_fn: Callable, nnz: int, n_rows: int, n_cols: int,
+                 rows: List[int], cols: List[int],
+                 indices: np.ndarray, indptr: np.ndarray) -> None:
+        self._filler_fn: Callable = filler_fn
+        self._nnz: int = nnz
+        self._n_rows: int = n_rows
+        self._n_cols: int = n_cols
+        self._rows: List[int] = rows
+        self._cols: List[int] = cols
+        self._indices: np.ndarray = indices
+        self._indptr: np.ndarray = indptr
+
+    def __call__(self, vrs: Vec, diff: Vec, vprms: Vec, cprms: Vec, h: float) -> np.ndarray:
+        n_inst: int = vrs.shape[1]
+        data_out: np.ndarray = np.zeros((self._nnz, n_inst), dtype=np.float64)
+        self._filler_fn(vrs, diff, vprms, cprms, h, data_out)
+        return data_out
+
+    def get_sparsity(self) -> Tuple[np.ndarray, np.ndarray, int, int]:
+        return self._indices, self._indptr, self._n_rows, self._n_cols
+
+
 class SparseJacobianEvaluatorWrapper:
     """
     Callable sparse Jacobian wrapper around one generated CSC filler function.
@@ -2496,9 +2554,9 @@ class RMSCompilerVec(EquationCompiler):
 
     def compile_sparse_jacobian(self, eqs: List[Expr],
                                 wrt_vars: List[Var],
-                                func_name: str) -> Callable[[Vec, Vec, Vec, Vec, float], sp.csc_matrix]:
+                                func_name: str) -> Callable[[Vec, Vec, Vec, Vec, float], np.ndarray]:
         """
-        Compiles a sparse Jacobian evaluator using an O(N) structural extraction algorithm.
+        Compiles a vectorized sparse Jacobian evaluator.
 
         Args:
             eqs (List[Expr]): The list of symbolic equations (F or G).
@@ -2506,7 +2564,7 @@ class RMSCompilerVec(EquationCompiler):
             func_name (str): The desired name for the compiled target function.
 
         Returns:
-            Callable: A function that populates and returns a scipy.sparse.csc_matrix.
+            Callable: A function that returns a 2D data array (nnz, n_instances).
         """
         wrt_map = {v.uid: (i, v) for i, v in enumerate(wrt_vars)}
         triplets: List[Tuple[int, int, Expr]] = list()
@@ -2522,37 +2580,39 @@ class RMSCompilerVec(EquationCompiler):
 
         # Handle edge case: Empty Jacobian matrix (no dependencies found)
         if not triplets:
-            J_empty = sp.csc_matrix((len(eqs), len(wrt_vars)))
-            return EmptySparseJacobianEvaluator(J_empty)
-        # Extract sorted coordinates and corresponding symbolic derivatives
-        cols_sorted = [t[0] for t in triplets]
-        rows_sorted = [t[1] for t in triplets]
-        d_exprs = [t[2] for t in triplets]
+            return EmptyVecSparseJacobianEvaluator(len(eqs), len(wrt_vars))
 
-        # Precompute CSC (Compressed Sparse Column) pointer arrays
-        nnz = len(cols_sorted)
+        d_exprs = [t[2] for t in triplets]
+        nnz = len(d_exprs)
+
+        # The generated code fills a 2D data_out array (nnz, n_models) using
+        # numpy broadcasting over the instance dimension.
+        lines = [f"def {func_name}_filler(vrs, diff, vprms, cprms, h, data_out):"]
+        lines.append("    vars = vrs")
+        for i, expr in enumerate(d_exprs):
+            expr_str = expression2numba(expr, self.compiler_names_dict)
+            lines.append(f"    data_out[{i}, :] = {expr_str}")
+
+        filler_fn = _compile_to_file("\n".join(lines), f"{func_name}_filler")
+
+        rows_sorted = [t[1] for t in triplets]
+        cols_sorted = [t[0] for t in triplets]
         indices = np.fromiter(rows_sorted, dtype=np.int32, count=nnz)
         indptr = np.zeros(len(wrt_vars) + 1, dtype=np.int32)
         for c in cols_sorted:
             indptr[c + 1] += 1
         np.cumsum(indptr, out=indptr)
 
-        # Initialize the sparse matrix template
-        J_template = sp.csc_matrix((np.zeros(nnz), indices, indptr), shape=(len(eqs), len(wrt_vars)))
-
-        # The Jacobian receives 'h' in its signature for solver compatibility,
-        # even though 'expression2numba' internally resolves 'dt' via vprms[...]
-        lines = [f"def {func_name}_filler(vrs, diff, vprms, cprms, h, data_out):"]
-        lines.append("    vars = vrs")
-        for i, expr in enumerate(d_exprs):
-            expr_str = expression2numba(expr, self.compiler_names_dict)
-            # in case of vectorization
-            # lines.append(f"    data_out[{i}] = {expr_str}")
-            lines.append(f"    data_out[{i}] = {expr_str}")
-
-        filler_fn = _compile_to_file("\n".join(lines), f"{func_name}_filler")
-
-        return SparseJacobianEvaluatorWrapper(filler_fn=filler_fn, matrix=J_template)
+        return SparseJacobianEvaluatorVecWrapper(
+            filler_fn=filler_fn,
+            nnz=nnz,
+            n_rows=len(eqs),
+            n_cols=len(wrt_vars),
+            rows=rows_sorted,
+            cols=cols_sorted,
+            indices=indices,
+            indptr=indptr,
+        )
 
     def compile_event_params_fn(self, eqs: List[Expr], alias_names_dict: Dict[int, str],
                                 EVENT_PARAMS_NAME: str, TIME_NAME: str,

@@ -350,6 +350,21 @@ class RmsProblemDaeVec(RmsProblemTemplate):
         # imput matrices by model for vectorization
         self._input_matrices_by_model: Dict[int, List[Vec]] = dict()
 
+        # precomputed gather indices for vectorized input assembly
+        self._x_gather_idx: Dict[int, np.ndarray] = dict()
+        self._dx_gather_idx: Dict[int, np.ndarray] = dict()
+        self._vp_gather_idx: Dict[int, np.ndarray] = dict()
+        self._cp_gather_idx: Dict[int, np.ndarray] = dict()
+
+        # Jacobian vectorization: per-type column offsets for global assembly
+        self._jac_state_col_off: Dict[int, np.ndarray] = dict()
+        self._jac_algeb_col_off: Dict[int, np.ndarray] = dict()
+
+        # Global Jacobian templates and scatter maps for Vec assembly
+        # Each entry: (csc_template, scatter_map)
+        # scatter_map[model_type] -> array (nnz_type, n_inst) of global data indices
+        self._jac_global_data: Dict[str, Tuple[sp.csc_matrix, Dict[int, np.ndarray]]] = dict()
+
         # mapping from model uid → global start index of its state equations
         self._model_state_eq_start_idx: Dict[int, int] = dict()
         self._model_algebraic_eq_start_idx: Dict[int, int] = dict()
@@ -394,6 +409,9 @@ class RmsProblemDaeVec(RmsProblemTemplate):
         self._j12_fn_by_types: Dict[int,Callable[[Vec, Vec, Vec, Vec, float], sp.csc_matrix]] = dict()
         self._j21_fn_by_types: Dict[int,Callable[[Vec, Vec, Vec, Vec, float], sp.csc_matrix]] = dict()
         self._j22_fn_by_types: Dict[int,Callable[[Vec, Vec, Vec, Vec, float], sp.csc_matrix]] = dict()
+
+        self._jbalance_fn: Callable[[Vec, Vec, Vec, Vec, float], sp.csc_matrix] | None = None
+        self._jbalance_state_fn: Callable[[Vec, Vec, Vec, Vec, float], sp.csc_matrix] | None = None
         # function pointers
         self._derivative_fn: SymbolicDerivative | None = None
         self._event_params_fn: SymbolicParamsVector | None = None
@@ -487,8 +505,11 @@ class RmsProblemDaeVec(RmsProblemTemplate):
         self._n_event_params = 0
         self._n_diff = 0
 
+        print("starting to type models")
+
         self.equivalence_dict, self.variables_equivalence_dict, self.block_composition_dict = build_equivalence_classes_dict(self.grid)
 
+        print("typing models done!")
         ######################################## Initialize devices ########################################
 
         # initialize buses
@@ -498,9 +519,8 @@ class RmsProblemDaeVec(RmsProblemTemplate):
 
             bus_dict[elm] = bus_num
 
-            # when vectorizing, it will not be needed ########################
+
             self.add_variables_to_compilation_dicts(elm, elm.rms_model)
-            ##################################################################
 
             # add init values from powerflow to initial guess
             if elm.is_dc:
@@ -1007,7 +1027,8 @@ class RmsProblemDaeVec(RmsProblemTemplate):
                 self.sys_block.add(elm.rms_model)
 
         total_init_explicit_time += time.perf_counter() - t0
-        print(f"\nTotal time explicit initialization: {total_init_explicit_time:.6f} seconds")
+        # print(f"\nTotal time explicit initialization: {total_init_explicit_time:.6f} seconds")
+        self.logger.add_info("Total time explicit initialization", value=total_init_explicit_time)
         if self.progress_signal is not None:
             self.progress_signal.emit(10)
 
@@ -1042,21 +1063,19 @@ class RmsProblemDaeVec(RmsProblemTemplate):
         # add the nodal balance equations
         ac_virtual_buses = [elm.bus_to.idtag for elm in grid.get_vsc()]
         for i, elm in enumerate(self.grid.buses):
-            mdl = block_deep_copy(elm.rms_model, grid.var_factory)
-            if len(mdl.algebraic_eqs) == 0:
-                if not P_used[i] and not Q_used[i]:
-                    self.logger.add_error("Isolated bus", value=i)
+            if not P_used[i] and not Q_used[i]:
+                self.logger.add_error("Isolated bus", value=i)
+            else:
+                if elm.is_dc:
+                    self._algebraic_eqs.append(P[i])
+                elif (elm.idtag in ac_virtual_buses):
+                    self._algebraic_eqs.append(P[i])
                 else:
-                    if elm.is_dc:
-                        self._algebraic_eqs.append(P[i])
-                    elif (elm.idtag in ac_virtual_buses):
-                        self._algebraic_eqs.append(P[i])
-                    else:
-                        self._algebraic_eqs.append(Q[i])
-                        self._algebraic_eqs.append(P[i])
-                        # vectorization
-                        self._balance_equations.append(Q[i])
-                        self._balance_equations.append(P[i])
+                    self._algebraic_eqs.append(Q[i])
+                    self._algebraic_eqs.append(P[i])
+                    # vectorization
+                    self._balance_equations.append(Q[i])
+                    self._balance_equations.append(P[i])
 
         # We define the parameter dt and delta
         self._dt = Var(name='dt')
@@ -1393,36 +1412,43 @@ class RmsProblemDaeVec(RmsProblemTemplate):
                 self._j22_fn_by_types[model_type] = j22_fn
 
         self._rhs_algeb_energy_balance_fn = rms_compiler_all_models.compile_rhs(self._balance_equations, "rhs_algeb_balance")
+        if len(self._balance_equations) > 0:
+            self._jbalance_fn = rms_compiler_all_models.compile_sparse_jacobian(
+                self._balance_equations, self._algebraic_vars, "j_balance"
+            )
+            self._jbalance_state_fn = rms_compiler_all_models.compile_sparse_jacobian(
+                self._balance_equations, self._state_vars, "j_balance_state"
+            )
 
-        self._rhs_algeb_fn = rms_compiler_all_models.compile_rhs(self._algebraic_eqs, "rhs_algeb")
-        timings["RHS algebraic"] = _toc(t0)
-
-
-        if len(self._state_eqs) != 0:
-            t0 = _tic()
-            self._rhs_state_fn = rms_compiler_all_models.compile_rhs(self._state_eqs, "rhs_state")
-            timings["RHS state"] = _toc(t0)
-
-            t0 = _tic()
-            self._j11_fn = rms_compiler_all_models.compile_sparse_jacobian(self._state_eqs, self._state_vars, "j11")
-            timings["J11 (dF/dx)"] = _toc(t0)
-
-            t0 = _tic()
-            self._j12_fn = rms_compiler_all_models.compile_sparse_jacobian(self._state_eqs, self._algebraic_vars, "j12")
-            timings["J12 (dF/dy)"] = _toc(t0)
-
-            t0 = _tic()
-            self._j21_fn = rms_compiler_all_models.compile_sparse_jacobian(self._algebraic_eqs, self._state_vars, "j21")
-            timings["J21 (dG/dx)"] = _toc(t0)
-
-            t0 = _tic()
-            self._j22_fn = rms_compiler_all_models.compile_sparse_jacobian(self._algebraic_eqs, self._algebraic_vars, "j22")
-            timings["J22 (dG/dy)"] = _toc(t0)
-
-        else:
-            t0 = _tic()
-            self._j22_fn = rms_compiler_all_models.compile_sparse_jacobian(self._algebraic_eqs, self._algebraic_vars, "j22")
-            timings["J22 only (no states)"] = _toc(t0)
+        # self._rhs_algeb_fn = rms_compiler_all_models.compile_rhs(self._algebraic_eqs, "rhs_algeb")
+        # timings["RHS algebraic"] = _toc(t0)
+        #
+        #
+        # if len(self._state_eqs) != 0:
+        #     t0 = _tic()
+        #     self._rhs_state_fn = rms_compiler_all_models.compile_rhs(self._state_eqs, "rhs_state")
+        #     timings["RHS state"] = _toc(t0)
+        #
+        #     t0 = _tic()
+        #     self._j11_fn = rms_compiler_all_models.compile_sparse_jacobian(self._state_eqs, self._state_vars, "j11")
+        #     timings["J11 (dF/dx)"] = _toc(t0)
+        #
+        #     t0 = _tic()
+        #     self._j12_fn = rms_compiler_all_models.compile_sparse_jacobian(self._state_eqs, self._algebraic_vars, "j12")
+        #     timings["J12 (dF/dy)"] = _toc(t0)
+        #
+        #     t0 = _tic()
+        #     self._j21_fn = rms_compiler_all_models.compile_sparse_jacobian(self._algebraic_eqs, self._state_vars, "j21")
+        #     timings["J21 (dG/dx)"] = _toc(t0)
+        #
+        #     t0 = _tic()
+        #     self._j22_fn = rms_compiler_all_models.compile_sparse_jacobian(self._algebraic_eqs, self._algebraic_vars, "j22")
+        #     timings["J22 (dG/dy)"] = _toc(t0)
+        #
+        # else:
+        #     t0 = _tic()
+        #     self._j22_fn = rms_compiler_all_models.compile_sparse_jacobian(self._algebraic_eqs, self._algebraic_vars, "j22")
+        #     timings["J22 only (no states)"] = _toc(t0)
 
         if self.options.verbose > 0:
             print(f"Model compiled with {self._n_vars} variables")
@@ -1430,6 +1456,8 @@ class RmsProblemDaeVec(RmsProblemTemplate):
             for k, v in timings.items():
                 print(f"  {k:30s}: {v:8.4f} s")
             print(f"\nTotal JIT compile time: {sum(timings.values()):.4f} s")
+
+        self._precompute_gather_indices()
 
         variable_parameters_init = np.ones(self.get_variable_parameter_number())
 
@@ -1447,8 +1475,115 @@ class RmsProblemDaeVec(RmsProblemTemplate):
         if self.options.verbose > 0:
             print(f"\nTotal compile time: {sum(timings.values()):.4f} s")
 
+        # Build global Jacobian templates for Vec assembly
+        self._build_global_jacobian_templates()
+
         # we mark the problem as ready for simulation
         self.set_initialize_flag()
+
+    def _build_global_jacobian_templates(self):
+        n_states = self.get_states_number()
+        n_algebraic = self._n_algebraic
+
+        # Each Jacobian block references variables that are NOT necessarily
+        # contiguous in the global variable vector (bus branch algebraic
+        # variables sit at local positions 0..n_bus_vars-1, then block state
+        # vars, then block algebraic vars).  We therefore build a column
+        # index mapping per (local_col, instance) from _x_gather_idx instead
+        # of using a single offset per instance.
+        block_specs = [
+            ("j11", "_j11_fn_by_types", "_model_state_eq_start_idx", False, False),
+            ("j12", "_j12_fn_by_types", "_model_state_eq_start_idx", False, True),
+            ("j21", "_j21_fn_by_types", "_model_algebraic_eq_start_idx", True, False),
+            ("j22", "_j22_fn_by_types", "_model_algebraic_eq_start_idx", True, True),
+        ]
+
+        # Map block to the wrk_vars list used during compilation
+        wrt_vars_key = {
+            "j11": "_state_vars_equiv_class_dict",
+            "j12": "_algebraic_vars_equiv_class_dict",
+            "j21": "_state_vars_equiv_class_dict",
+            "j22": "_algebraic_vars_equiv_class_dict",
+        }
+
+        for block_name, fn_key, row_key, algeb_rows, algeb_cols in block_specs:
+            fn_dict = getattr(self, fn_key)
+            row_off_dict = getattr(self, row_key)
+
+            entries = []
+            nnz_per_type = {}
+
+            for model_type, fn in fn_dict.items():
+                if fn is None:
+                    continue
+                indices, indptr, n_rows_type, n_cols_type = fn.get_sparsity()
+                nnz_type = len(indices)
+                if nnz_type == 0:
+                    continue
+
+                model_uids = [model_type] + self.equivalence_dict.get(model_type, [])
+                n_inst = len(model_uids)
+                nnz_per_type[model_type] = (nnz_type, n_inst)
+
+                local_rows = np.asarray(indices, dtype=np.intp)
+                col_counts = np.diff(indptr)
+                local_cols = np.repeat(np.arange(n_cols_type, dtype=np.intp), col_counts)
+
+                # Build column index map: (lc, inst) -> global column index
+                wrt_vars_list = getattr(self, wrt_vars_key[block_name]).get(model_type, [])
+                uid2pos = self._uid2idx_vars_vec.get(model_type, {})
+                x_gather = self._x_gather_idx.get(model_type)
+                if x_gather is None:
+                    continue
+                col_idx = np.zeros((n_cols_type, n_inst), dtype=np.intp)
+                for lc, var in enumerate(wrt_vars_list):
+                    local_pos = uid2pos.get(var.uid, 0)
+                    col_idx[lc, :] = x_gather[local_pos, :n_inst]
+                    if algeb_cols:
+                        col_idx[lc, :] -= n_states
+
+                for j, uid in enumerate(model_uids):
+                    row_off = row_off_dict.get(uid, 0)
+                    for i in range(nnz_type):
+                        gr = local_rows[i] + row_off
+                        gc = col_idx[local_cols[i], j]
+                        entries.append((gc, gr, model_type, j, i))
+
+            # Sort by (col, row) to establish CSC data order
+            entries.sort(key=lambda e: (e[0], e[1]))
+
+            # Build CSC matrix directly from sorted entries.
+            # We must NOT use sp.coo_matrix here because it merges duplicate
+            # (row, col) entries, which would shrink the data array and break
+            # the scatter-map indexing.  Entries are already sorted by (col, row).
+            n_rows_global = n_algebraic if algeb_rows else n_states
+            n_cols_global = n_algebraic if algeb_cols else n_states
+
+            if entries:
+                nnz_total = len(entries)
+                j_data = np.zeros(nnz_total, dtype=np.float64)
+                csc_indices = np.array([e[1] for e in entries], dtype=np.int32)
+                csc_indptr = np.zeros(n_cols_global + 1, dtype=np.int32)
+                for e in entries:
+                    csc_indptr[e[0] + 1] += 1
+                np.cumsum(csc_indptr, out=csc_indptr)
+                csc = sp.csc_matrix(
+                    (j_data, csc_indices, csc_indptr),
+                    shape=(n_rows_global, n_cols_global)
+                )
+            else:
+                csc = sp.csc_matrix((n_rows_global, n_cols_global), dtype=np.float64)
+
+            # Build scatter map: for each model type, 2D array (nnz_type, n_inst)
+            # of indices into the CSC data array (same order as sorted entries).
+            scatter_map = {}
+            for data_idx, (gc, gr, mt, j, i) in enumerate(entries):
+                if mt not in scatter_map:
+                    nnz_t, n_i = nnz_per_type[mt]
+                    scatter_map[mt] = np.empty((nnz_t, n_i), dtype=np.intp)
+                scatter_map[mt][i, j] = data_idx
+
+            self._jac_global_data[block_name] = (csc, scatter_map)
 
     def get_next_forced_event_time(self, t_prev: float, t_target: float) -> Optional[float]:
         t_mode = _get_next_forced_mode_event_time(self._scheduled_mode_events, t_prev, t_target)
@@ -1883,7 +2018,7 @@ class RmsProblemDaeVec(RmsProblemTemplate):
         self._variable_parameters_values[:] = params[: len(self._variable_parameters)]
 
     def add_variables_to_compilation_dicts(self, elm: ALL_DEV_TYPES, mdl: Block):
-        # only for blocks representing a block type and their children
+
         self.add_block_variables_to_compilation_dicts(elm, mdl)
         for child in mdl.children:
             self.add_variables_to_compilation_dicts(elm, child)
@@ -2018,6 +2153,8 @@ class RmsProblemDaeVec(RmsProblemTemplate):
             self._n_vars += 1
 
         for ep, const in mdl.parameters.items():
+            if ep.name == "g":
+                print("")
             if ep.uid in self._uid2idx_params:
                 raise ValueError(f"Parameter '{ep.name}' (uid={ep.uid}) is already registered in the system. "
                                  f"Previous device may have created a duplicate parameter.")
@@ -2475,54 +2612,72 @@ class RmsProblemDaeVec(RmsProblemTemplate):
         return self._derivative_fn(x, xn, dx, h)
 
     ########### vectorized functions ##########################
-    def update_input_matrices_by_model(self, x: Vec, dx: Vec):
+
+    def _precompute_gather_indices(self) -> None:
         for model_type in self._rhs_state_fn_by_types.keys():
             var_equiv_lists = self.variables_equivalence_dict.get(model_type, [])
-            var_equiv = {}
+            var_equiv: Dict[int, List[int]] = {}
             for eq_list in var_equiv_lists:
-                for uid in eq_list:
-                    var_equiv[uid] = eq_list
+                var_equiv[eq_list[0]] = eq_list
 
-            # build x_variables
-            x_variables =  np.empty((len(self._uid2idx_vars_vec[model_type]), len(self.equivalence_dict[model_type])+1))
-            for var_uid in self._uid2idx_vars_vec[model_type]:
-                eq_list = var_equiv.get(var_uid, [var_uid])
-                x_var = np.zeros(len(eq_list))
-                for i, uid in enumerate(eq_list):
-                    x_var[i] = x[self._uid2idx_vars[uid]]
-                x_variables[self._uid2idx_vars_vec[model_type][var_uid]] = x_var
+            n_inst = len(self.equivalence_dict.get(model_type, [])) + 1
 
-            # build dx_variables
-            dx_variables =  np.empty((len(self._uid2idx_diff_vec[model_type]), len(self.equivalence_dict[model_type])+1))
-            for var_uid in self._uid2idx_diff_vec[model_type]:
-                eq_list = var_equiv.get(var_uid, [var_uid])
-                dx_var = np.zeros(len(eq_list))
-                for i, uid in enumerate(eq_list):
-                    dx_var[i] = dx[self._uid2idx_diff[uid]]
-                dx_variables[self._uid2idx_diff_vec[model_type][var_uid]] = dx_var
+            # x variables
+            n_vars = len(self._uid2idx_vars_vec.get(model_type, {}))
+            if n_vars:
+                idx_x = np.zeros((n_vars, n_inst), dtype=np.intp)
+                for var_uid, var_pos in self._uid2idx_vars_vec[model_type].items():
+                    eq_list = var_equiv.get(var_uid, [var_uid])
+                    for i, uid in enumerate(eq_list):
+                        idx_x[var_pos, i] = self._uid2idx_vars[uid]
+                self._x_gather_idx[model_type] = idx_x
 
-            # build v_params (variable/event parameters)
-            vp_params =  np.empty((len(self._uid2idx_event_params_vec[model_type]), len(self.equivalence_dict[model_type])+1))
-            for vp_uid in self._uid2idx_event_params_vec[model_type]:
-                eq_list = var_equiv.get(vp_uid, [vp_uid])
-                vp_var = np.zeros(len(eq_list))
-                for i, uid in enumerate(eq_list):
-                    vp_var[i] = self._variable_parameters_values[self._uid2idx_event_params[uid]]
-                vp_params[self._uid2idx_event_params_vec[model_type][vp_uid]] = vp_var
+            # dx variables
+            n_dx = len(self._uid2idx_diff_vec.get(model_type, {}))
+            if n_dx:
+                idx_dx = np.zeros((n_dx, n_inst), dtype=np.intp)
+                for var_uid, var_pos in self._uid2idx_diff_vec[model_type].items():
+                    eq_list = var_equiv.get(var_uid, [var_uid])
+                    for i, uid in enumerate(eq_list):
+                        idx_dx[var_pos, i] = self._uid2idx_diff[uid]
+                self._dx_gather_idx[model_type] = idx_dx
 
-            # build c_params (constant parameters)
-            cp_params =  np.empty((len(self._uid2idx_params_vec[model_type]), len(self.equivalence_dict[model_type])+1))
-            for cp_uid in self._uid2idx_params_vec[model_type]:
-                eq_list = var_equiv.get(cp_uid, [cp_uid])
-                cp_var = np.zeros(len(eq_list))
-                for i, uid in enumerate(eq_list):
-                    cp_var[i] = self._constant_params[self._uid2idx_params[uid]]
-                cp_params[self._uid2idx_params_vec[model_type][cp_uid]] = cp_var
+            # vp params
+            n_vp = len(self._uid2idx_event_params_vec.get(model_type, {}))
+            if n_vp:
+                idx_vp = np.zeros((n_vp, n_inst), dtype=np.intp)
+                for vp_uid, vp_pos in self._uid2idx_event_params_vec[model_type].items():
+                    eq_list = var_equiv.get(vp_uid, [vp_uid])
+                    for i, uid in enumerate(eq_list):
+                        idx_vp[vp_pos, i] = self._uid2idx_event_params[uid]
+                self._vp_gather_idx[model_type] = idx_vp
 
-            self._input_matrices_by_model[model_type][0] = x_variables
-            self._input_matrices_by_model[model_type][1] = dx_variables
-            self._input_matrices_by_model[model_type][2] = vp_params
-            self._input_matrices_by_model[model_type][3] = cp_params
+            # cp params
+            n_cp = len(self._uid2idx_params_vec.get(model_type, {}))
+            if n_cp:
+                idx_cp = np.zeros((n_cp, n_inst), dtype=np.intp)
+                for cp_uid, cp_pos in self._uid2idx_params_vec[model_type].items():
+                    eq_list = var_equiv.get(cp_uid, [cp_uid])
+                    for i, uid in enumerate(eq_list):
+                        idx_cp[cp_pos, i] = self._uid2idx_params[uid]
+                self._cp_gather_idx[model_type] = idx_cp
+
+    def update_input_matrices_by_model(self, x: Vec, dx: Vec):
+        _t0 = time.time()
+        for model_type in self._rhs_state_fn_by_types.keys():
+            self._input_matrices_by_model[model_type][0] = x[self._x_gather_idx[model_type]]
+            dx_gather = self._dx_gather_idx.get(model_type)
+            if dx_gather is not None:
+                self._input_matrices_by_model[model_type][1] = dx[dx_gather]
+            vp_gather = self._vp_gather_idx.get(model_type)
+            if vp_gather is not None:
+                self._input_matrices_by_model[model_type][2] = self._variable_parameters_values[vp_gather]
+            cp_gather = self._cp_gather_idx.get(model_type)
+            if cp_gather is not None:
+                self._input_matrices_by_model[model_type][3] = self._constant_params[cp_gather]
+        if not hasattr(self, '_prof_timings'):
+            self._prof_timings = {}
+        self._prof_timings['total_gather_time'] = self._prof_timings.get('total_gather_time', 0.0) + time.time() - _t0
 
 
 
@@ -2534,10 +2689,12 @@ class RmsProblemDaeVec(RmsProblemTemplate):
         for model_type in self._rhs_state_fn_by_types.keys():
             rhs_state_fn = self._rhs_state_fn_by_types[model_type]
             if rhs_state_fn is not None:
+                _t0 = time.time()
                 rhs_state = rhs_state_fn(self._input_matrices_by_model[model_type][0],
                                          self._input_matrices_by_model[model_type][1],
                                          self._input_matrices_by_model[model_type][2],
                                          self._input_matrices_by_model[model_type][3])
+                _t1 = time.time()
                 if rhs_state.ndim == 1:
                     rhs_state = rhs_state.reshape(-1, 1)
                 # fill complete_rhs_state
@@ -2546,6 +2703,10 @@ class RmsProblemDaeVec(RmsProblemTemplate):
                 for inst_idx, uid in enumerate(model_uids):
                     start = self._model_state_eq_start_idx[uid]
                     complete_rhs_state[start:start + n_eqs] = rhs_state[:, inst_idx]
+                if not hasattr(self, '_prof_timings'):
+                    self._prof_timings = {}
+                self._prof_timings['rhs_state_filler_total'] = self._prof_timings.get('rhs_state_filler_total', 0.0) + _t1 - _t0
+                self._prof_timings['rhs_state_scatter_total'] = self._prof_timings.get('rhs_state_scatter_total', 0.0) + time.time() - _t1
 
         return complete_rhs_state
 
@@ -2557,18 +2718,23 @@ class RmsProblemDaeVec(RmsProblemTemplate):
 
         for model_type in self._rhs_algeb_fn_by_types.keys():
             rhs_algeb_fn = self._rhs_algeb_fn_by_types[model_type]
+            _t0 = time.time()
             rhs_algeb = rhs_algeb_fn(self._input_matrices_by_model[model_type][0],
                                      self._input_matrices_by_model[model_type][1],
                                      self._input_matrices_by_model[model_type][2],
                                      self._input_matrices_by_model[model_type][3])
+            _t1 = time.time()
             if rhs_algeb.ndim == 1:
                 rhs_algeb = rhs_algeb.reshape(-1, 1)
-            # fill complete_rhs_algeb
             model_uids = [model_type] + self.equivalence_dict.get(model_type, [])
             n_eqs = rhs_algeb.shape[0]
             for inst_idx, uid in enumerate(model_uids):
                 start = self._model_algebraic_eq_start_idx[uid]
                 complete_rhs_algeb[start:start + n_eqs] = rhs_algeb[:, inst_idx]
+            if not hasattr(self, '_prof_timings'):
+                self._prof_timings = {}
+            self._prof_timings['rhs_algeb_filler_total'] = self._prof_timings.get('rhs_algeb_filler_total', 0.0) + _t1 - _t0
+            self._prof_timings['rhs_algeb_scatter_total'] = self._prof_timings.get('rhs_algeb_scatter_total', 0.0) + time.time() - _t1
 
         # energy balance equations
         if self._rhs_algeb_energy_balance_fn is None:
@@ -2578,74 +2744,69 @@ class RmsProblemDaeVec(RmsProblemTemplate):
 
         return complete_rhs_algeb
 
-    def get_j11_vec(self, x: Vec, dx: Vec, h: float):
+    def _fill_jacobian_block(self, block_name: str, fn_key: str, h: float) -> sp.csc_matrix:
+        csc_template, scatter_map = self._jac_global_data[block_name]
+        if csc_template.nnz == 0:
+            return csc_template
 
-        # here we need to iterate through equivalence_dict and build rhs for every model and then
-        # fill the complete j11
-        complete_j11 = np.zeros(len(self._algebraic_eqs))
+        csc_template.data[:] = 0.0
 
-        if self._j11_fn_by_types is None:
-            raise ValueError("_j11_fn is None")
+        if not hasattr(self, '_prof_timings'):
+            self._prof_timings = {}
 
-        for model_type in self._j11_fn_by_types.keys():
+        _t0 = time.time()
+        fn_dict = getattr(self, fn_key)
+        for model_type, fn in fn_dict.items():
+            if fn is None:
+                continue
+            data_out = fn(
+                self._input_matrices_by_model[model_type][0],
+                self._input_matrices_by_model[model_type][1],
+                self._input_matrices_by_model[model_type][2],
+                self._input_matrices_by_model[model_type][3],
+                h,
+            )
+            if data_out.ndim == 1:
+                data_out = data_out.reshape(-1, 1)
+            smap = scatter_map.get(model_type)
+            if smap is not None:
+                csc_template.data[smap] = data_out
+        _t1 = time.time()
+        self._prof_timings['jac_filler_' + block_name] = self._prof_timings.get('jac_filler_' + block_name, 0.0) + _t1 - _t0
 
-            j11_fn = self._j11_fn_by_types[model_type]
-            # construct vectors for model from x, self._variables_parameters_values, self.constant_params
-            # calculate rhs_state for this model
-            # fill complete_j11
+        return csc_template
 
-        return complete_j11
+    def _add_balance_jacobian(self, j_sub: sp.csc_matrix, balance_fn, x, dx, h, is_state_block: bool) -> sp.csc_matrix:
+        if balance_fn is None or len(self._balance_equations) == 0:
+            return j_sub
+        j_bal = balance_fn(x, dx, self._variable_parameters_values, self._constant_params, h)
+        if j_bal.nnz == 0:
+            return j_sub
+        n_model_algeb = self._n_algebraic - len(self._balance_equations)
+        n_cols = self.get_states_number() if is_state_block else self._n_algebraic
+        top = sp.csc_matrix((n_model_algeb, n_cols), dtype=np.float64)
+        return (j_sub + sp.vstack([top, j_bal])).tocsc()
 
-    def get_j12_vec(self, x: Vec, dx: Vec, h: float):
+    def get_j11_vec(self, h: float) -> sp.csc_matrix:
+        if not self._jac_global_data.get("j11"):
+            raise ValueError("J11 templates not built")
+        return self._fill_jacobian_block("j11", "_j11_fn_by_types", h)
 
-        # here we need to iterate through equivalence_dict and build rhs for every model and then
-        # fill the complete j12
-        complete_j12 = np.zeros(len(self._algebraic_eqs))
+    def get_j12_vec(self, h: float) -> sp.csc_matrix:
+        if not self._jac_global_data.get("j12"):
+            raise ValueError("J12 templates not built")
+        return self._fill_jacobian_block("j12", "_j12_fn_by_types", h)
 
-        if self._j12_fn_by_types is None:
-            raise ValueError("_j12_fn is None")
+    def get_j21_vec(self, h: float) -> sp.csc_matrix:
+        if not self._jac_global_data.get("j21"):
+            raise ValueError("J21 templates not built")
+        return self._fill_jacobian_block("j21", "_j21_fn_by_types", h)
 
-        for model_type in self._j12_fn_by_types.keys():
-
-            j12_fn = self._j12_fn_by_types[model_type]
-            # construct vectors for model from x, self._variables_parameters_values, self.constant_params
-            # calculate rhs_state for this model
-            # fill complete_j12
-        return complete_j12
-
-    def get_j21_vec(self, x: Vec, dx: Vec, h: float):
-
-        # here we need to iterate through equivalence_dict and build rhs for every model and then
-        # fill the complete j21
-        complete_j21 = np.zeros(len(self._algebraic_eqs))
-
-        if self._j21_fn_by_types is None:
-            raise ValueError("_j21_fn is None")
-
-        for model_type in self._j21_fn_by_types.keys():
-            j21_fn = self._j21_fn_by_types[model_type]
-            # construct vectors for model from x, self._variables_parameters_values, self.constant_params
-            # calculate j21 for this model
-            # fill complete_j21
-
-        return complete_j21
-
-    def get_j22_vec(self, x: Vec, dx: Vec, h: float):
-
-        # here we need to iterate through equivalence_dict and build rhs for every model and then
-        # fill the complete j22
-        complete_j22 = np.zeros(len(self._algebraic_eqs))
-
-        if self._j22_fn_by_types is None:
-            raise ValueError("_j22_fn is None")
-
-        for model_type in self._j22_fn_by_types.keys():
-            j22_fn = self._j22_fn_by_types[model_type]
-            # construct vectors for model from x, self._variables_parameters_values, self.constant_params
-            # calculate rhs_state for this model
-            # fill complete_j22
-
-        return complete_j22
+    def get_j22_vec(self, x: Vec, dx: Vec, h: float) -> sp.csc_matrix:
+        if not self._jac_global_data.get("j22"):
+            raise ValueError("J22 templates not built")
+        j22 = self._fill_jacobian_block("j22", "_j22_fn_by_types", h)
+        return self._add_balance_jacobian(j22, self._jbalance_fn, x, dx, h, is_state_block=False)
 
     def rhs_state(self, x: Vec, dx: Vec) -> Vec:
 

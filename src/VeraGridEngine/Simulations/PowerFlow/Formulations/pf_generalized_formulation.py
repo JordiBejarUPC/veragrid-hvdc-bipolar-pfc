@@ -15,6 +15,8 @@ import VeraGridEngine.Simulations.Derivatives.csc_derivatives as deriv
 from VeraGridEngine.Utils.NumericalMethods.common import find_closest_number, make_complex
 from VeraGridEngine.Utils.Sparse.csc2 import (CSC, CxCSC, scipy_to_mat, sp_slice, csc_stack_2d_ff)
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.discrete_controls import (control_q_for_generalized_method,
+                                                                                     DiscreteShuntControlState,
+                                                                                     QvDroopControlState,
                                                                                      compute_slack_distribution)
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions import expand
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions import compute_fx_error
@@ -600,6 +602,11 @@ class PfGeneralizedFormulation(PfFormulationTemplate):
 
         if self.options.verbose > 1:
             print("Ybus\n", self.adm.Ybus.toarray())
+
+        # Store the control states in lightweight wrappers that forward the
+        # numerical work to the existing Numba kernels.
+        self.discrete_shunt_control = DiscreteShuntControlState(nc=self.nc)
+        self.qv_droop_control = QvDroopControlState(S0=self.S0, nc=self.nc)
 
     def _update_Qlim_indices(self, i_u_vm: IntVec, i_k_q: IntVec) -> None:
         """
@@ -1489,6 +1496,12 @@ class PfGeneralizedFormulation(PfFormulationTemplate):
 
                     # the composition of x may have changed, so recompute
                     x = self.var2x()
+
+            if self.discrete_shunt_control.apply(Vm=self.Vm, adm=self.adm):
+                any_change = True
+
+            if self.qv_droop_control.apply(S0=self.S0, Vm=self.Vm):
+                any_change = True
 
             # update Slack control
             # as before but noticed it can cause slow convergence
