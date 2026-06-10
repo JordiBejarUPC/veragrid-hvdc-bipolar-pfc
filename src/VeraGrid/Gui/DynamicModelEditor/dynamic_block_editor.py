@@ -2564,7 +2564,6 @@ def refresh_block_parameter_row_cache(row: BlockParameterRow) -> None:
 
 def refresh_row_search_cache(row: BlockParameterRow) -> None:
     parts = [str(row.name or "")]
-    parts.append(str(row.kind.value if row.kind else ""))
     if row.value is not None:
         parts.append(str(row.value))
     if row.init_eq is not None:
