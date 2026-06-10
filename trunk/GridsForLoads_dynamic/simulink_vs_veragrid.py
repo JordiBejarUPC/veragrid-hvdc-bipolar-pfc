@@ -305,14 +305,24 @@ def create_plot_groups() -> list[PlotGroup]:
     )
     groups.append(
         PlotGroup(
-            "Grid source references",
-            "grid_source_references",
+            "Grid source voltage references",
+            "grid_source_voltage_references",
             list(
                 [
                     SignalSpec("Vac grid", "Vac_grid", "Vac_grid", "V"),
                     SignalSpec("phase a", "phase_a", "phase_a", "rad"),
                     SignalSpec("phase b", "phase_b", "phase_b", "rad"),
                     SignalSpec("phase c", "phase_c", "phase_c", "rad"),
+                ]
+            ),
+        )
+    )
+    groups.append(
+        PlotGroup(
+            "Grid source frequency references",
+            "grid_source_omega_references",
+            list(
+                [
                     SignalSpec("omega grid", "omega_grid", "omega_grid", "rad/s"),
                 ]
             ),

@@ -297,11 +297,13 @@ selected_test = TEST_P_GFM
 # selected_test = TEST_VAC_STEP
 # selected_test = TEST_VQ_STEP
 # selected_test = TEST_VD_STEP
-if len(sys.argv) > 1:
-    cli_test = sys.argv[1].strip().lower()
-    if cli_test not in VALID_TESTS:
-        raise ValueError(f"Unknown selected_test from command line: {cli_test}")
-    selected_test = cli_test
+# selected_test = TEST_NONE
+
+if selected_test not in VALID_TESTS:
+    valid_tests_list = ", ".join(sorted(VALID_TESTS))
+    raise ValueError(f"Unknown selected_test '{selected_test}'. Valid options: {valid_tests_list}")
+
+print(f"Selected EMT test: {selected_test}")
 
 ## Active power reference change (GFM controller)
 t_P_GFM = 1.0
@@ -465,7 +467,7 @@ print(res.get_branch_df())
 options = EmtOptions(time_step = 1e-6,
                      simulation_time =  2, # s
                      tolerance = 1e-6,
-                     solver_type = EmtSolverTypes.StructuralCompiled,
+                     solver_type = EmtSolverTypes.Automatic,
                      # initialization_method = EmtInitializationMethod.PseudoTransient,
                      initialization_method = EmtInitializationMethod.Explicit,
                      integration_method = DynamicIntegrationMethod.DaeBackEuler,
@@ -826,21 +828,39 @@ v_q_ref_final_V = (V_Q_REF0_PU + DELTA_VQ_PU) * V_phase_rms_base
 v_d_ref_initial_V = v_d_ref_initial_pu * V_phase_rms_base
 v_d_ref_final_V = (V_D_REF0_PU + DELTA_VD_PU) * V_phase_rms_base
 
-vac_grid_series_V = step_series(t_arr, t_Vac, vac_grid_initial_V, vac_grid_fault_V)
+if selected_test == TEST_VAC_STEP:
+    vac_grid_series_V = step_series(t_arr, t_Vac, vac_grid_initial_V, vac_grid_fault_V)
+else:
+    vac_grid_series_V = np.full_like(t_arr, vac_grid_initial_V, dtype=float)
 
 
 omega_grid_initial = omega
 omega_grid_final = omega + rocof_omega * (t_omega_end - t_omega)
-omega_grid_series = ramp_series(t_arr, t_omega, t_omega_end, omega_grid_initial, omega_grid_final)
+if selected_test == TEST_ROCOF:
+    omega_grid_series = ramp_series(t_arr, t_omega, t_omega_end, omega_grid_initial, omega_grid_final)
+else:
+    omega_grid_series = np.full_like(t_arr, omega_grid_initial, dtype=float)
 
-phase_jump_series = step_series(t_arr, t_phase, 0.0, d_phase)
+
+if selected_test == TEST_PHASE_JUMP:
+    phase_jump_series = step_series(t_arr, t_phase, 0.0, d_phase)
+else:
+    phase_jump_series = np.zeros_like(t_arr, dtype=float)
+
 theta_grid_series = np.cumsum(omega_grid_series) * options.time_step + phase_jump_series
 phase_a_grid_series = theta_grid_series
 phase_b_grid_series = theta_grid_series - 2.0 * np.pi / 3.0
 phase_c_grid_series = theta_grid_series + 2.0 * np.pi / 3.0
 
-v_q_ref_series_V = step_series(t_arr, t_Vq, v_q_ref_initial_V, v_q_ref_final_V)
-v_d_ref_series_V = step_series(t_arr, t_Vd, v_d_ref_initial_V, v_d_ref_final_V)
+if selected_test == TEST_VQ_STEP:
+    v_q_ref_series_V = step_series(t_arr, t_Vq, v_q_ref_initial_V, v_q_ref_final_V)
+else:
+    v_q_ref_series_V = np.full_like(t_arr, v_q_ref_initial_V, dtype=float)
+
+if selected_test == TEST_VD_STEP:
+    v_d_ref_series_V = step_series(t_arr, t_Vd, v_d_ref_initial_V, v_d_ref_final_V)
+else:
+    v_d_ref_series_V = np.full_like(t_arr, v_d_ref_initial_V, dtype=float)
 
 # If VA is changed to normalized voltage form err = 1 - v/sqrt(2), use Vac_phase_peak instead.
 
@@ -907,7 +927,10 @@ plot_scaled_with_tracking(axes_si_overview[4], t_arr, problem, y_arr, "Pac_G4L_g
                           Sb_va / 1e6, "Pac [MW]", negate=True)
 plot_scaled_with_tracking(axes_si_overview[4], t_arr, problem, y_arr, "p_dc_G4L_load_side_converter_control",
                           Sb_va / 1e6, "p_dc [MW]", negate=True)
-pref_series_mw = np.where(t_arr < 1.0, 0.8 * Sb_va / 1e6, 0.4 * Sb_va / 1e6)
+if selected_test == TEST_P_GFM:
+    pref_series_mw = step_series(t_arr, t_P_GFM, P_dc_pu * Sb_va / 1e6, (P_dc_pu + d_P_GFM) * Sb_va / 1e6)
+else:
+    pref_series_mw = np.full_like(t_arr, P_dc_pu * Sb_va / 1e6, dtype=float)
 axes_si_overview[4].plot(t_arr, pref_series_mw, linestyle="--", label="P_ref [MW]")
 axes_si_overview[4].set_title("Active Powers [MW] - Simulink/load sign")
 axes_si_overview[4].set_ylabel("Power [MW]")
@@ -1281,10 +1304,10 @@ print("  - Added steady-state inferred-error diagnostics.")
 print(f"  - Listed unavailable variables: {sorted(missing_si_variables) if missing_si_variables else 'none'}.")
 
 fig_si_overview.tight_layout()
-fig_si_va.tight_layout()
+# fig_si_va.tight_layout()
 fig_si_currents.tight_layout()
-fig_si_pll.tight_layout()
-fig_si_va_corrected.tight_layout()
-fig_si_va_inferred.tight_layout()
+# fig_si_pll.tight_layout()
+# fig_si_va_corrected.tight_layout()
+# fig_si_va_inferred.tight_layout()
 fig_si_currents_corrected.tight_layout()
 # plt.show()

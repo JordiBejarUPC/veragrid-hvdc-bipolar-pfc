@@ -5324,6 +5324,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             DeviceType.LoadDevice: [
                 LibraryLeafSpec("Generic", BlockType.GENERIC),
                 LibraryLeafSpec("Load", BlockType.LOAD_RMS),
+                # LibraryLeafSpec("Load", BlockType.DC_PV_SOURCE_RMS),
             ],
         }
 

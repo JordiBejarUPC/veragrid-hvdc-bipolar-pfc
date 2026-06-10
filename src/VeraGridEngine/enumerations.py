@@ -4256,6 +4256,7 @@ class BlockType(Enum):
     LINE_RMS = "Line_RMS"
     LOAD_RMS = "Load_RMS"
     GFL_VSC_RMS = "GFL_VSC_RMS"
+    DC_PV_SOURCE_RMS = "DC_PV_SOURCE_RMS"
 
     # EMT
     EMT_GENERATOR = "EMT_GENERATOR"

@@ -785,7 +785,6 @@ def get_PLL_GFL(vf: VarFactory, name: str = "G4L_PLL") -> EmtModelTemplate:
     dy = vf.add_diff_var(name=f"dy_{name}", base_var=y)
 
     theta_v = sym.atan2(-beta, alpha)
-    delta_va0 = vf.add_const(-0.1631094655)
 
     templ.block = Block(
         # --------------------------------------------------------------------------------------
@@ -834,8 +833,7 @@ def get_PLL_GFL(vf: VarFactory, name: str = "G4L_PLL") -> EmtModelTemplate:
             w_pll: omega_ref,
             x: c0,
             y: vf.add_const(1.0),
-            # phase_pll: theta_pll,
-            phase_pll: theta_v + delta_va0,
+            phase_pll: theta_pll,
             omega_pll: omega_ref,
 
         },
@@ -900,7 +898,7 @@ def get_virtual_admittance_GFL(vf: VarFactory, name: str = "G4L_Virtual_admittan
     # parameters virtual admittance
     Vac_expr = np.sqrt(2 / 3)
     omega_ref_expr = 2 * np.pi * 50
-    Zvirtual = 0.2 #0.6 #0.2
+    Zvirtual = 1 #0.6 #0.2
     R_L = 0.1
     Lv = vf.add_const(Zvirtual / omega_ref_expr)
     Rv = vf.add_const(Zvirtual * R_L)

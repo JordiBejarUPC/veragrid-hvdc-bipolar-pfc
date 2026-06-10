@@ -20,3 +20,4 @@ from VeraGridEngine.Templates.Rms.pvd1_rms_template import get_pvd1_rms_template
 from VeraGridEngine.Templates.Rms.esd1_rms_template import get_esd1_rms_template
 from VeraGridEngine.Templates.Rms.voltage_source_template import VoltageSourceBuild
 from VeraGridEngine.Templates.Rms.vsc_gfl_dclinked import build_vsc_rms
+from VeraGridEngine.Templates.Rms.dc_voltage_source import DCPVSourceAveraged
