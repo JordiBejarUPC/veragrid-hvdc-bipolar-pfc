@@ -131,6 +131,11 @@ def create_block_of_type(var_factory: VarFactory,
         blk.name = item_name
         return blk
 
+    elif block_type == BlockType.GFL_VSC_RMS:
+        blk = tem.build_vsc_rms(var_factory).block
+        blk.name = item_name
+        return blk
+
     # ---------- EMT BLOCKS ----------
     # EMT type GENERATOR
     elif block_type == BlockType.EMT_GENERATOR:
