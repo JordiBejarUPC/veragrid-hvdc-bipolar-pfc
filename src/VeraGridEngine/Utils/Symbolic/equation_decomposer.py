@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import deque
 from typing import List, Tuple, Dict, Optional, Any, Set
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
@@ -263,11 +264,11 @@ class EquationDecomposer:
             adj[eq_key] = deps
 
         in_degree = {k: len(v) for k, v in adj.items()}
-        queue = [k for k, v in in_degree.items() if v == 0]
+        queue = deque(k for k, v in in_degree.items() if v == 0)
         sorted_keys: List[str] = []
 
         while queue:
-            node = queue.pop(0)
+            node = queue.popleft()
             sorted_keys.append(node)
             for other_key, other_deps in adj.items():
                 if node in other_deps:
@@ -639,12 +640,14 @@ class EquationDecomposer:
         if not children:
             return diagram, children
 
-        block_uid_to_idx: Dict[int, int] = {}
-        for i, blk in enumerate(children):
-            block_uid_to_idx[blk.uid] = i
+        original_count = len(children)
 
-        # --- Build producer map from original children only ---
+        # Single combined pass: producer map + consumer detection + port caches + eq vars cache
         var_to_producer_block: Dict[int, int] = {}
+        var_consumers: Dict[int, List[int]] = {}
+        block_output_ports: List[Dict[int, int]] = [{} for _ in range(original_count)]
+        eq_vars_cache: Dict[int, List[Any]] = {}
+
         for i, blk in enumerate(children):
             for v in blk.algebraic_vars:
                 var_to_producer_block[v.non_mutable_uid] = i
@@ -653,37 +656,46 @@ class EquationDecomposer:
             for v in blk.out_vars:
                 var_to_producer_block[v.non_mutable_uid] = i
 
-        # --- Detect fan-out: variables consumed by >= 2 blocks ---
-        var_consumers: Dict[int, List[int]] = {}
-        for i, blk in enumerate(children):
             for in_var in blk.in_vars:
                 producer = var_to_producer_block.get(in_var.non_mutable_uid)
                 if producer is not None and producer != i:
                     var_consumers.setdefault(in_var.non_mutable_uid, []).append(i)
+
             for eq in (blk.state_eqs or []) + (blk.algebraic_eqs or []):
-                for v in eq.get_vars():
+                eq_vars = eq.get_vars()
+                eq_vars_cache[eq.uid] = eq_vars
+                for v in eq_vars:
                     producer = var_to_producer_block.get(v.non_mutable_uid)
                     if producer is not None and producer != i:
                         consumers = var_consumers.setdefault(v.non_mutable_uid, [])
                         if i not in consumers:
                             consumers.append(i)
 
-        # Save original producer map before adding From/To blocks
+        # Pre-build output port index lookup per block
+        for i, blk in enumerate(children):
+            ports = block_output_ports[i]
+            for idx, v in enumerate(blk.out_vars):
+                ports[v.non_mutable_uid] = idx
+            for idx, v in enumerate(blk.algebraic_vars):
+                if v.non_mutable_uid not in ports:
+                    ports[v.non_mutable_uid] = idx
+            for idx, v in enumerate(blk.state_vars):
+                if v.non_mutable_uid not in ports:
+                    ports[v.non_mutable_uid] = idx
+
         original_var_to_producer = dict(var_to_producer_block)
-        original_count = len(children)
 
         # --- Create From/To pairs for fan-out variables ---
         new_children: List[Block] = list(children)
-        fan_out_pairs: List[Tuple[int, int, int, int]] = []  # (var_uid, from_idx, to_idx, consumer_idx)
+        fan_out_pairs: List[Tuple[int, int, int, int]] = []
         fan_out_vars: Set[int] = set()
         pair_counter = 0
-        from_to_tpe: Dict[int, str] = {}  # block index -> "signal_in" or "signal_out"
+        from_to_tpe: Dict[int, str] = {}
 
         for var_uid, consumer_indices in var_consumers.items():
             if len(consumer_indices) < 2:
                 continue
             fan_out_vars.add(var_uid)
-            # Find the variable object from any consumer
             v = None
             for ci in consumer_indices:
                 for iv in children[ci].in_vars:
@@ -695,7 +707,7 @@ class EquationDecomposer:
             if v is None:
                 for ci in consumer_indices:
                     for eq in (children[ci].state_eqs or []) + (children[ci].algebraic_eqs or []):
-                        for ev in eq.get_vars():
+                        for ev in eq_vars_cache.get(eq.uid, eq.get_vars()):
                             if ev.non_mutable_uid == var_uid:
                                 v = ev
                                 break
@@ -719,11 +731,7 @@ class EquationDecomposer:
 
         children = new_children
 
-        # --- Rebuild indices with all children ---
-        block_uid_to_idx = {}
-        for i, blk in enumerate(children):
-            block_uid_to_idx[blk.uid] = i
-
+        # --- Rebuild var_to_producer_block with all children ---
         var_to_producer_block = {}
         for i, blk in enumerate(children):
             for v in blk.algebraic_vars:
@@ -733,7 +741,7 @@ class EquationDecomposer:
             for v in blk.out_vars:
                 var_to_producer_block[v.non_mutable_uid] = i
 
-        # --- Build dependency graph for layering ---
+        # --- Build dependency graph using cached eq vars ---
         dep_graph: Dict[int, set] = {i: set() for i in range(len(children))}
         for i in range(original_count):
             blk = children[i]
@@ -741,22 +749,13 @@ class EquationDecomposer:
                 producer = original_var_to_producer.get(in_var.non_mutable_uid)
                 if producer is not None and producer != i:
                     dep_graph[i].add(producer)
-            for state_eq in blk.state_eqs or []:
-                for v in state_eq.get_vars():
+            for eq in (blk.state_eqs or []) + (blk.algebraic_eqs or []):
+                for v in eq_vars_cache.get(eq.uid, ()):
                     producer = original_var_to_producer.get(v.non_mutable_uid)
                     if producer is not None and producer != i:
                         dep_graph[i].add(producer)
-            for alg_eq in blk.algebraic_eqs or []:
-                for v in alg_eq.get_vars():
-                    producer = original_var_to_producer.get(v.non_mutable_uid)
-                    if producer is not None and producer != i:
-                        dep_graph[i].add(producer)
-        # From depends on producer, To depends on From,
-        # Consumer depends on To (replaces dep on original producer)
-        from_to_idx_set: Set[int] = set()
+
         for var_uid, from_idx, to_idx, consumer_idx in fan_out_pairs:
-            from_to_idx_set.add(from_idx)
-            from_to_idx_set.add(to_idx)
             producer_idx = original_var_to_producer.get(var_uid)
             if producer_idx is not None:
                 dep_graph[from_idx].add(producer_idx)
@@ -764,14 +763,8 @@ class EquationDecomposer:
             dep_graph[consumer_idx].discard(producer_idx)
             dep_graph[consumer_idx].add(to_idx)
 
-        # ---- Build routing pairs for From/To post-processing ----
-        routing_pairs: List[Tuple[int, int, int, int]] = []
-        for var_uid, from_idx, to_idx, consumer_idx in fan_out_pairs:
-            producer_idx = original_var_to_producer.get(var_uid)
-            if producer_idx is not None:
-                routing_pairs.append((from_idx, to_idx, producer_idx, consumer_idx))
-
         # ---- layout: v2 (Sugiyama-inspired) or fallback to legacy ----
+        positions = {}
         if _HAVE_LAYOUT_V2:
             positions = _compute_layout_v2(
                 len(children), dep_graph, from_to_tpe,
@@ -798,13 +791,17 @@ class EquationDecomposer:
         con_uid_counter = 0
         for i in range(original_count):
             blk = children[i]
+            ports_in: Dict[int, int] = {}
+            for idx, v in enumerate(blk.in_vars):
+                ports_in[v.non_mutable_uid] = idx
+
             for port_idx, in_var in enumerate(blk.in_vars):
                 producer = original_var_to_producer.get(in_var.non_mutable_uid)
                 if producer is not None and producer != i:
                     if (in_var.non_mutable_uid in fan_out_var_consumers and
                             i in fan_out_var_consumers[in_var.non_mutable_uid]):
                         continue
-                    src_port_idx = self._find_output_port(children[producer], in_var)
+                    src_port_idx = block_output_ports[producer].get(in_var.non_mutable_uid)
                     if src_port_idx is not None:
                         con_uid_counter += 1
                         diagram.add_branch(
@@ -816,99 +813,89 @@ class EquationDecomposer:
                             color="#587291",
                         )
 
-            for port_idx, state_eq in enumerate(blk.state_eqs or []):
-                for v in state_eq.get_vars():
+            for eq in blk.state_eqs or []:
+                for v in eq_vars_cache.get(eq.uid, ()):
                     producer = original_var_to_producer.get(v.non_mutable_uid)
                     if producer is not None and producer != i:
                         if (v.non_mutable_uid in fan_out_var_consumers and
                                 i in fan_out_var_consumers[v.non_mutable_uid]):
                             continue
-                        src_port_idx = self._find_output_port(children[producer], v)
+                        src_port_idx = block_output_ports[producer].get(v.non_mutable_uid)
                         if src_port_idx is not None:
-                            needed_input_port = self._find_or_create_input_port(blk, v)
-                            if needed_input_port is not None:
-                                con_uid_counter += 1
-                                diagram.add_branch(
-                                    connectionitem_uid=con_uid_counter,
-                                    device_uid_from=children[producer].uid,
-                                    device_uid_to=blk.uid,
-                                    port_number_from=src_port_idx,
-                                    port_number_to=needed_input_port,
-                                    color="#587291",
-                                )
+                            needed_input_port = ports_in.get(v.non_mutable_uid)
+                            if needed_input_port is None:
+                                needed_input_port = len(blk.in_vars)
+                                blk.in_vars.append(v)
+                                ports_in[v.non_mutable_uid] = needed_input_port
+                            con_uid_counter += 1
+                            diagram.add_branch(
+                                connectionitem_uid=con_uid_counter,
+                                device_uid_from=children[producer].uid,
+                                device_uid_to=blk.uid,
+                                port_number_from=src_port_idx,
+                                port_number_to=needed_input_port,
+                                color="#587291",
+                            )
 
-            for port_idx, alg_eq in enumerate(blk.algebraic_eqs or []):
-                for v in alg_eq.get_vars():
+            for eq in blk.algebraic_eqs or []:
+                for v in eq_vars_cache.get(eq.uid, ()):
                     producer = original_var_to_producer.get(v.non_mutable_uid)
                     if producer is not None and producer != i:
                         if (v.non_mutable_uid in fan_out_var_consumers and
                                 i in fan_out_var_consumers[v.non_mutable_uid]):
                             continue
-                        src_port_idx = self._find_output_port(children[producer], v)
+                        src_port_idx = block_output_ports[producer].get(v.non_mutable_uid)
                         if src_port_idx is not None:
-                            needed_input_port = self._find_or_create_input_port(blk, v)
-                            if needed_input_port is not None:
-                                con_uid_counter += 1
-                                diagram.add_branch(
-                                    connectionitem_uid=con_uid_counter,
-                                    device_uid_from=children[producer].uid,
-                                    device_uid_to=blk.uid,
-                                    port_number_from=src_port_idx,
-                                    port_number_to=needed_input_port,
-                                    color="#587291",
-                                )
+                            needed_input_port = ports_in.get(v.non_mutable_uid)
+                            if needed_input_port is None:
+                                needed_input_port = len(blk.in_vars)
+                                blk.in_vars.append(v)
+                                ports_in[v.non_mutable_uid] = needed_input_port
+                            con_uid_counter += 1
+                            diagram.add_branch(
+                                connectionitem_uid=con_uid_counter,
+                                device_uid_from=children[producer].uid,
+                                device_uid_to=blk.uid,
+                                port_number_from=src_port_idx,
+                                port_number_to=needed_input_port,
+                                color="#587291",
+                            )
 
         # ---- manual fan-out connections: Producer -> From, To -> Consumer ----
         for var_uid, from_idx, to_idx, consumer_idx in fan_out_pairs:
-            # Find the variable object from the producer
             producer_idx = original_var_to_producer.get(var_uid)
             if producer_idx is None:
                 continue
-            producer_blk = children[producer_idx]
-            v = None
-            for ov in producer_blk.out_vars:
-                if ov.non_mutable_uid == var_uid:
-                    v = ov
-                    break
-            if v is None:
-                for av in producer_blk.algebraic_vars:
-                    if av.non_mutable_uid == var_uid:
-                        v = av
-                        break
-            if v is None:
-                for sv in producer_blk.state_vars:
-                    if sv.non_mutable_uid == var_uid:
-                        v = sv
-                        break
-            if v is None:
-                continue
-
-            # Producer -> From (port 0)
-            src_port_idx = self._find_output_port(producer_blk, v)
+            src_port_idx = block_output_ports[producer_idx].get(var_uid)
             if src_port_idx is not None:
                 con_uid_counter += 1
                 diagram.add_branch(
                     connectionitem_uid=con_uid_counter,
-                    device_uid_from=producer_blk.uid,
+                    device_uid_from=children[producer_idx].uid,
                     device_uid_to=children[from_idx].uid,
                     port_number_from=src_port_idx,
                     port_number_to=0,
                     color="#587291",
                 )
 
-            # To (port 0) -> Consumer
             consumer_blk = children[consumer_idx]
-            needed_input_port = self._find_or_create_input_port(consumer_blk, v)
-            if needed_input_port is not None:
-                con_uid_counter += 1
-                diagram.add_branch(
-                    connectionitem_uid=con_uid_counter,
-                    device_uid_from=children[to_idx].uid,
-                    device_uid_to=consumer_blk.uid,
-                    port_number_from=0,
-                    port_number_to=needed_input_port,
-                    color="#587291",
-                )
+            v = children[from_idx].in_vars[0]
+            ports_in = {}
+            for idx, iv in enumerate(consumer_blk.in_vars):
+                ports_in[iv.non_mutable_uid] = idx
+            needed_input_port = ports_in.get(var_uid)
+            if needed_input_port is None:
+                needed_input_port = len(consumer_blk.in_vars)
+                consumer_blk.in_vars.append(v)
+            con_uid_counter += 1
+            diagram.add_branch(
+                connectionitem_uid=con_uid_counter,
+                device_uid_from=children[to_idx].uid,
+                device_uid_to=consumer_blk.uid,
+                port_number_from=0,
+                port_number_to=needed_input_port,
+                color="#587291",
+            )
 
         return diagram, children
 
