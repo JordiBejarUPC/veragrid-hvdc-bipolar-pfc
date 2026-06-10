@@ -7,12 +7,26 @@ from typing import Optional
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-
-
+# power reference change in the GFM controller
 TEST_NAME: str = "p_ref_step"
 SIMULINK_CSV_NAME: str = "simulink_results_G4L_p_ref_step.csv"
-VERAGRID_CSV_NAME: str = "veragrid_G4L.csv"
+VERAGRID_CSV_NAME: str = "veragrid_G4L_p_gfm.csv"
+# rocof
+# TEST_NAME: str = "rocof"
+# SIMULINK_CSV_NAME: str = "simulink_results_G4L_rocof.csv"
+# VERAGRID_CSV_NAME: str = "veragrid_G4L_rocof.csv"
+# phase jump
+# TEST_NAME: str = "phase_jump"
+# SIMULINK_CSV_NAME: str = "simulink_results_G4L_phase_jump.csv"
+# VERAGRID_CSV_NAME: str = "veragrid_G4L_phase_jump.csv"
 
+# TEST_NAME: str = "vac_step"
+# SIMULINK_CSV_NAME: str = "simulink_results_G4L_v_mag_variation.csv"
+# VERAGRID_CSV_NAME: str = "veragrid_G4L_vac_step.csv"
+
+# TEST_NAME: str = "vq_step"
+# SIMULINK_CSV_NAME: str = "simulink_results_G4L_vq_step.csv"
+# VERAGRID_CSV_NAME: str = "veragrid_G4L_vq_step.csv"
 
 class TimeBase(Enum):
     """Time base selection for signal comparison.
@@ -285,6 +299,33 @@ def create_plot_groups() -> list[PlotGroup]:
                 [
                     SignalSpec("omega pll", "omega_pll", "omega_pll", "rad/s"),
                     # SignalSpec("phase pll", "phase_pll", "phase_pll", "rad"),
+                ]
+            ),
+        )
+    )
+    groups.append(
+        PlotGroup(
+            "Grid source references",
+            "grid_source_references",
+            list(
+                [
+                    SignalSpec("Vac grid", "Vac_grid", "Vac_grid", "V"),
+                    SignalSpec("phase a", "phase_a", "phase_a", "rad"),
+                    SignalSpec("phase b", "phase_b", "phase_b", "rad"),
+                    SignalSpec("phase c", "phase_c", "phase_c", "rad"),
+                    SignalSpec("omega grid", "omega_grid", "omega_grid", "rad/s"),
+                ]
+            ),
+        )
+    )
+    groups.append(
+        PlotGroup(
+            "VA references",
+            "va_references",
+            list(
+                [
+                    SignalSpec("Vq ref", "Vq_ref", "Vq_ref", "V"),
+                    SignalSpec("Vd ref", "Vd_ref", "Vd_ref", "V"),
                 ]
             ),
         )

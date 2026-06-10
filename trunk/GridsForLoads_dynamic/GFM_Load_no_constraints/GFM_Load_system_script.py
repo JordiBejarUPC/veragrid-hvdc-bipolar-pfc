@@ -280,37 +280,79 @@ TEST_CSV_SUFFIX = {
     TEST_VD_STEP: "vd_step",
 }
 
+VALID_TESTS = {
+    TEST_NONE,
+    TEST_P_GFM,
+    TEST_ROCOF,
+    TEST_PHASE_JUMP,
+    TEST_VAC_STEP,
+    TEST_VQ_STEP,
+    TEST_VD_STEP,
+}
+
 # Select a single EMT test here.
-# selected_test = TEST_P_GFM
-selected_test = TEST_PHASE_JUMP
+selected_test = TEST_P_GFM
+# selected_test = TEST_ROCOF
+# selected_test = TEST_PHASE_JUMP
+# selected_test = TEST_VAC_STEP
+# selected_test = TEST_VQ_STEP
+# selected_test = TEST_VD_STEP
+if len(sys.argv) > 1:
+    cli_test = sys.argv[1].strip().lower()
+    if cli_test not in VALID_TESTS:
+        raise ValueError(f"Unknown selected_test from command line: {cli_test}")
+    selected_test = cli_test
 
 ## Active power reference change (GFM controller)
 t_P_GFM = 1.0
-P_GFM0 = 0.8
 d_P_GFM = -0.4
 
 ## Deviation of frequency with a Rate-of-Change-of-Frequency (ROCOF)
+# The Thevenin source frequency event is applied as an absolute scale target,
+# with a ramp from t_omega to t_omega_end.
 t_omega = 1.0
-d_omega = -1 * np.pi * 2
-rate_omega = 1 * np.pi * 2
+t_omega_end = 2.0
+rocof_omega = -1 * np.pi * 2
 
 ## Phase jump disturbance
+# Phase offset applied directly in radians to the Thevenin source.
 t_phase = 1.0
 d_phase = -10 * np.pi / 180
 
 ## Grid voltage magnitude variation
+# Simulink applies the grid-voltage magnitude disturbance in volts at the
+# source amplitude input. This value is the voltage deviation equivalent to
+# -0.01 pu on the phase-peak base used by the EMT source.
 t_Vac = 1.0
-d_Vac = -0.01
-tfault = 0.0  # 0 = permanent step, >0 = fault-and-clear
+d_Vac = -269.4438717061496
 
 ## AC voltage reference change (q-axis)
+# Simulink defines the VA q-axis reference offset and step in volts. The event
+# target in VeraGrid is the final absolute p.u. reference, built from the
+# initial reference plus this deviation.
 t_Vq = 1.0
 d_Vq0 = 0.0
-d_Vq = -23.0
+d_Vq = -269.4438717061496
 
 ## AC voltage reference change (d-axis)
+# Simulink defines the VA d-axis reference step in volts. The event target in
+# VeraGrid is the final absolute p.u. reference, built from the initial
+# reference plus this deviation.
 t_Vd = 1.0
-d_Vd = 0.0
+d_Vd = -269.4438717061496
+
+# Simulink applies these voltage disturbances in volts. Convert them to the EMT
+# internal p.u. voltage base used by the Thevenin source and virtual admittance
+# before creating events. VeraGrid event values are absolute targets, not
+# increments, so each target is built from the initial value plus the deviation.
+VLL_RMS_BASE_V = 33000.0
+V_PHASE_PEAK_BASE_V = np.sqrt(2.0 / 3.0) * VLL_RMS_BASE_V
+V_Q_REF0_PU = np.sqrt(2.0) + d_Vq0 / V_PHASE_PEAK_BASE_V
+V_D_REF0_PU = 0.0
+VAC_SCALE0_PU = 1.0
+DELTA_VAC_PU = d_Vac / V_PHASE_PEAK_BASE_V
+DELTA_VQ_PU = d_Vq / V_PHASE_PEAK_BASE_V
+DELTA_VD_PU = d_Vd / V_PHASE_PEAK_BASE_V
 
 events_group = EmtEventsGroup(name="simulation1")
 grid.add_emt_events_group(events_group)
@@ -331,10 +373,11 @@ elif selected_test == TEST_P_GFM:
         EmtEvent(device=load, parameter=P_ref, time=t_P_GFM, value=d_P_GFM, group=events_group),
     ]
 elif selected_test == TEST_ROCOF:
-    if abs(rate_omega) < 1e-12:
-        raise ValueError("rate_omega must be non-zero for the ROCOF test")
-    t_omega_end = t_omega + abs(d_omega / rate_omega)
-    omega_scale_after_ramp = 1.0 + d_omega / omega
+    if t_omega_end <= t_omega:
+        raise ValueError("t_omega_end must be greater than t_omega for the ROCOF test")
+
+    omega_end = omega + rocof_omega * (t_omega_end - t_omega)
+    omega_scale_after_ramp = omega_end / omega
     events_to_add = [
         EmtEvent(
             device=gen0,
@@ -351,21 +394,18 @@ elif selected_test == TEST_PHASE_JUMP:
         EmtEvent(device=gen0, parameter=phase_jump_param, time=t_phase, value=d_phase, group=events_group),
     ]
 elif selected_test == TEST_VAC_STEP:
-    voltage_scale_fault = 1.0 + d_Vac
+    voltage_scale_fault = VAC_SCALE0_PU + DELTA_VAC_PU
     events_to_add = [
         EmtEvent(device=gen0, parameter=voltage_scale_param, time=t_Vac, value=voltage_scale_fault, group=events_group),
     ]
-    if tfault > 0.0:
-        events_to_add.append(
-            EmtEvent(device=gen0, parameter=voltage_scale_param, time=t_Vac + tfault, value=1.0, group=events_group)
-        )
+
 elif selected_test == TEST_VQ_STEP:
     events_to_add = [
-        EmtEvent(device=load, parameter=v_q_ref, time=t_Vq, value=d_Vq0 + d_Vq, group=events_group),
+        EmtEvent(device=load, parameter=v_q_ref, time=t_Vq, value=V_Q_REF0_PU + DELTA_VQ_PU, group=events_group),
     ]
 elif selected_test == TEST_VD_STEP:
     events_to_add = [
-        EmtEvent(device=load, parameter=v_d_ref, time=t_Vd, value=d_Vd, group=events_group),
+        EmtEvent(device=load, parameter=v_d_ref, time=t_Vd, value=V_D_REF0_PU + DELTA_VD_PU, group=events_group),
     ]
 else:
     raise ValueError(f"Unknown selected_test: {selected_test}")
@@ -428,7 +468,7 @@ options = EmtOptions(time_step = 1e-6,
                      solver_type = EmtSolverTypes.StructuralCompiled,
                      # initialization_method = EmtInitializationMethod.PseudoTransient,
                      initialization_method = EmtInitializationMethod.Explicit,
-                     integration_method = DynamicIntegrationMethod.DaeTrapezoidal,
+                     integration_method = DynamicIntegrationMethod.DaeBackEuler,
                      verbose = 1)
 
 problem = EmtProblemDae(grid=grid,
@@ -748,6 +788,21 @@ def add_constant_line(ax, t_arr: np.ndarray, value: float, label: str, linestyle
     ax.plot(t_arr, constant_series(value, t_arr), linestyle=linestyle, label=label)
 
 
+def step_series(t_arr: np.ndarray, time: float, before_value: float, after_value: float):
+    return np.where(t_arr < time, before_value, after_value)
+
+
+def ramp_series(t_arr: np.ndarray, start_time: float, end_time: float, start_value: float, end_value: float):
+    if end_time <= start_time:
+        return constant_series(start_value, t_arr)
+
+    result = np.full_like(t_arr, fill_value=start_value, dtype=float)
+    ramp_mask = (t_arr >= start_time) & (t_arr < end_time)
+    result[ramp_mask] = start_value + (end_value - start_value) * (t_arr[ramp_mask] - start_time) / (end_time - start_time)
+    result[t_arr >= end_time] = end_value
+    return result
+
+
 def get_series_with_tracking(name: str):
     series = try_get_series(problem, y_arr, name)
     if series is None:
@@ -762,8 +817,30 @@ def max_abs_value(series):
 
 
 # If the VA model is changed to normalized voltage form, update these reference lines accordingly.
-v_q_ref_SI = np.sqrt(2.0) * V_phase_rms_base
-v_d_ref_SI = 0.0
+v_q_ref_initial_pu = np.sqrt(2.0)
+v_d_ref_initial_pu = 0.0
+vac_grid_initial_V = Vac_phase_peak
+vac_grid_fault_V = (VAC_SCALE0_PU + DELTA_VAC_PU) * Vac_phase_peak
+v_q_ref_initial_V = v_q_ref_initial_pu * V_phase_rms_base
+v_q_ref_final_V = (V_Q_REF0_PU + DELTA_VQ_PU) * V_phase_rms_base
+v_d_ref_initial_V = v_d_ref_initial_pu * V_phase_rms_base
+v_d_ref_final_V = (V_D_REF0_PU + DELTA_VD_PU) * V_phase_rms_base
+
+vac_grid_series_V = step_series(t_arr, t_Vac, vac_grid_initial_V, vac_grid_fault_V)
+
+
+omega_grid_initial = omega
+omega_grid_final = omega + rocof_omega * (t_omega_end - t_omega)
+omega_grid_series = ramp_series(t_arr, t_omega, t_omega_end, omega_grid_initial, omega_grid_final)
+
+phase_jump_series = step_series(t_arr, t_phase, 0.0, d_phase)
+theta_grid_series = np.cumsum(omega_grid_series) * options.time_step + phase_jump_series
+phase_a_grid_series = theta_grid_series
+phase_b_grid_series = theta_grid_series - 2.0 * np.pi / 3.0
+phase_c_grid_series = theta_grid_series + 2.0 * np.pi / 3.0
+
+v_q_ref_series_V = step_series(t_arr, t_Vq, v_q_ref_initial_V, v_q_ref_final_V)
+v_d_ref_series_V = step_series(t_arr, t_Vd, v_d_ref_initial_V, v_d_ref_final_V)
 
 # If VA is changed to normalized voltage form err = 1 - v/sqrt(2), use Vac_phase_peak instead.
 
@@ -798,8 +875,8 @@ plot_scaled_with_tracking(axes_si_overview[2], t_arr, problem, y_arr, "v_q_G4L_c
                           V_phase_rms_base, "v_q [V]")
 plot_scaled_with_tracking(axes_si_overview[2], t_arr, problem, y_arr, "v_d_G4L_clark_park_transforms_qd",
                           V_phase_rms_base, "v_d [V]")
-add_constant_line(axes_si_overview[2], t_arr, v_q_ref_SI, "Vq_ref [V]", linestyle="--")
-add_constant_line(axes_si_overview[2], t_arr, v_d_ref_SI, "Vd_ref [V]", linestyle=":")
+plot_if_available(axes_si_overview[2], t_arr, v_q_ref_series_V, "Vq_ref [V]")
+plot_if_available(axes_si_overview[2], t_arr, v_d_ref_series_V, "Vd_ref [V]")
 axes_si_overview[2].set_title("VA/Input dq Voltages [V]")
 axes_si_overview[2].set_ylabel("Voltage [V]")
 axes_si_overview[2].grid(True)
@@ -1164,6 +1241,13 @@ add_csv_series("icapdc_A", "i_cap_dc_G4L_load_side_converter", Idc_base)
 add_csv_series("omega_pll", "omega_pll_G4L_PLL", 1.0)
 add_csv_series("w_pll", "w_pll_G4L_PLL", 1.0)
 add_csv_series("phase_pll", "phase_pll_G4L_PLL", 1.0)
+add_csv_array("Vac_grid", vac_grid_series_V)
+add_csv_array("phase_a", phase_a_grid_series)
+add_csv_array("phase_b", phase_b_grid_series)
+add_csv_array("phase_c", phase_c_grid_series)
+add_csv_array("omega_grid", omega_grid_series)
+add_csv_array("Vq_ref", v_q_ref_series_V)
+add_csv_array("Vd_ref", v_d_ref_series_V)
 
 add_csv_array("err_q_V", err_q_V)
 add_csv_array("err_d_V", err_d_V)

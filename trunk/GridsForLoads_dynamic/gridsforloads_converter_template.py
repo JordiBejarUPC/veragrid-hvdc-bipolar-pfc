@@ -900,7 +900,7 @@ def get_virtual_admittance_GFL(vf: VarFactory, name: str = "G4L_Virtual_admittan
     # parameters virtual admittance
     Vac_expr = np.sqrt(2 / 3)
     omega_ref_expr = 2 * np.pi * 50
-    Zvirtual = 0.6 #0.2
+    Zvirtual = 0.2 #0.6 #0.2
     R_L = 0.1
     Lv = vf.add_const(Zvirtual / omega_ref_expr)
     Rv = vf.add_const(Zvirtual * R_L)
