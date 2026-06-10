@@ -1073,6 +1073,24 @@ def find_connections(mdl1: Block, mdl2: Block) -> tuple[List[tuple[Var, Var]], L
 
     return pairs, power_flow_pairs
 
+def find_connections_pf(mdl1: Block, mdl2: Block) -> List[tuple[Var, Var]]:
+    """
+    find connections between the two blocks by vars searching
+    :return:
+    :rtype:
+    """
+
+    power_flow_pairs =  [
+        (outp, inpt)
+        for outp in mdl1.out_vars
+        for inpt in mdl2.in_vars
+        if
+        outp.ref == inpt.ref and outp.ref is not None and inpt.ref is not None and outp.uid == inpt.uid
+    ]
+
+
+    return power_flow_pairs
+
 def find_name_in_block(name: str, block: Block) -> Var | None:
     """
 

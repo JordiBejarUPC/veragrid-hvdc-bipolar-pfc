@@ -82,7 +82,7 @@ from VeraGridEngine.Templates.Emt.induction_motor_emt_template import get_induct
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_rlc_combo_emt_template
 from VeraGridEngine.Templates.Emt.load_zip_emt_template import get_load_ZIP_emt_template
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
-from VeraGridEngine.Utils.Symbolic.block import Block, find_connections
+from VeraGridEngine.Utils.Symbolic.block import Block, find_connections, find_connections_pf
 from VeraGridEngine.Utils.Symbolic.equation_decomposer import EquationDecomposer
 from VeraGrid.Gui.DynamicModelEditor.block_editor import Ui_BlockEditorWindow
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_utilities import create_block_of_type, create_generic_block, \
@@ -3492,7 +3492,46 @@ class GenericBlockItem(QGraphicsRectItem):
         Returns
         -------
 
+
         """
+
+        items_list = list()
+        if not self.subsys.children:
+            if self.subsys.is_eq_decomposable():
+                self.editor_window.decompose_block_in_place(self.subsys)
+                self.editor_window.diagram = self.subsys.diagram
+                self.editor_window.main_block = self.subsys
+
+            for uid, node in self.editor_window.diagram.node_data.items():
+                block_type: BlockType | None
+                block_model: Block | None = self.editor_window.get_block_from_main_block(node.device_uid)
+
+                if block_model is not None:
+                    if node.tpe in ("signal_in", "signal_out"):
+                        item = PairedItem(
+                            var_factory=self.var_factory,
+                            subsys=block_model,
+                            api_object=self.api_object,
+                            mode=self.mode,
+                            name=block_model.name,
+                            position_changed_callback=self.editor_window._build_position_changed_callback(block_model.uid)
+                        )
+
+                    else:
+                        item = GenericBlockItem(
+                            var_factory=self.var_factory,
+                            subsys=block_model,
+                            api_object=self.api_object,
+                            mode=self.mode,
+                            name=block_model.name,
+                            position_changed_callback=self.editor_window._build_position_changed_callback(block_model.uid)
+                        )
+                    items_list.append(item)
+
+            self.editor_window.add_connection_items(items_list)
+
+            self.editor_window.connect_items_pf(items_list)
+            self.editor_window.rebuild_scene_from_diagram()
         self.editor_window.show()
 
     def set_subsystem(self, block: Block) -> None:
@@ -4020,13 +4059,6 @@ class BlockItem(QGraphicsRectItem):
         self.outputs: List[PortItem] = list()
         self.input_labels: List[QGraphicsTextItem] = list()
         self.output_labels: List[QGraphicsTextItem] = list()
-        if self.subsys is not None:
-            self.editor_window = DynamicBlockEditorGUI(
-                var_factory=self.var_factory,
-                block=self.subsys,
-                api_object=self.api_object,
-                mode=self.mode
-            )
 
         self.setFlags(
             QGraphicsItem.GraphicsItemFlag.ItemIsMovable |
@@ -4036,78 +4068,6 @@ class BlockItem(QGraphicsRectItem):
         self.setAcceptHoverEvents(True)
         self.setPen(QPen(Qt.GlobalColor.transparent, 0))
         self.setBrush(QBrush(DEFAULT_BLOCK_FILL))
-
-    def mouseDoubleClickEvent(self, event):
-        """
-        opens the editor
-        Parameters
-        ----------
-        event :
-
-        Returns
-        -------
-
-        """
-        print("clicking")
-        if self.subsys is None:
-            return
-        else:
-            pass
-
-        if self._should_offer_decompose():
-            reply = QtWidgets.QMessageBox.question(
-                None,
-                "Descomposición automática",
-                "Este bloque tiene ecuaciones pero no contiene sub-bloques.\n"
-                "¿Desea descomponerlo en un diagrama de bloques?\n\n"
-                'Seleccione "Sí" para crear sub-bloques a partir de las ecuaciones.\n'
-                'Seleccione "No" para ver las ecuaciones en tabla.',
-                QtWidgets.QMessageBox.StandardButton.Yes,
-                QtWidgets.QMessageBox.StandardButton.No,
-            )
-            if reply == QtWidgets.QMessageBox.StandardButton.Yes:
-                try:
-                    decomposer = EquationDecomposer(self.var_factory)
-                    decomposed = decomposer.decompose(self.subsys)
-                    preserved_uid = self.subsys.uid
-                    copy_block_state(source_block=decomposed, target_block=self.subsys)
-                    self.subsys.uid = preserved_uid
-                    if self.editor_window is not None:
-                        self.editor_window.close()
-                        self.editor_window = None
-                except Exception as exc:
-                    QtWidgets.QMessageBox.warning(
-                        None,
-                        "Decompose",
-                        f"Could not decompose block:\n{exc}",
-                    )
-
-        if self.editor_window is None:
-            self.editor_window = DynamicBlockEditorGUI(
-                var_factory=self.var_factory,
-                block=self.subsys,
-                api_object=self.api_object,
-                mode=self.mode,
-                modal=False,
-            )
-        else:
-            pass
-
-        self.editor_window.show()
-
-        super().mouseDoubleClickEvent(event)
-
-    def _should_offer_decompose(self) -> bool:
-        if self.subsys is None:
-            return False
-        if self.subsys.children:
-            return False
-        if not self.subsys.algebraic_eqs and not self.subsys.state_eqs:
-            return False
-        modal_kind, _ = get_modal_template_metadata(self.subsys)
-        if modal_kind is not None:
-            return False
-        return True
 
 
     def set_subsystem(self, block: Block) -> None:
@@ -5413,55 +5373,14 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.toolBox.currentChanged.connect(self.on_side_panel_page_changed)
         self.scene.selectionChanged.connect(self.on_scene_selection_changed)
         if not self.main_block.empty() and not self.main_block.diagram.node_data:
-            if self.main_block.children:
-                blocks_list = list()
-                for child in self.main_block.children:
-                    item = self.generate_block_item_for_block(child)
-                    blocks_list.append(item)
-                self.add_connection_items(blocks_list)
-                if len(blocks_list) != 0:
-                    self.connect_items(blocks_list)
 
-            else:
-                items_list = list()
-                if self.main_block.is_eq_decomposable():
-                    self.decompose_block_in_place(self.main_block)
-                    self.diagram = self.main_block.diagram
-
-                for uid, node in self.diagram.node_data.items():
-                    block_type: BlockType | None
-                    block_model: Block | None = self.get_block_from_main_block(node.device_uid)
-
-                    if node.tpe in BlockType.__members__:
-                        block_type = BlockType[node.tpe]
-                    else:
-                        block_type = None
-
-                    if block_model is not None:
-                        if node.tpe in ("signal_in", "signal_out"):
-                            item = PairedItem(
-                                var_factory=self.var_factory,
-                                subsys=block_model,
-                                api_object=self.api_object,
-                                mode=self.mode,
-                                name=block_model.name,
-                                position_changed_callback=self._build_position_changed_callback(block_model.uid)
-                            )
-
-                        else:
-                            item = GenericBlockItem(
-                                var_factory=self.var_factory,
-                                subsys=block_model,
-                                api_object=self.api_object,
-                                mode=self.mode,
-                                name=block_model.name,
-                                position_changed_callback=self._build_position_changed_callback(block_model.uid)
-                            )
-                        items_list.append(item)
-
-                self.add_connection_items(items_list)
-
-                self.connect_items(items_list)
+            blocks_list = list()
+            for child in self.main_block.children:
+                item = self.generate_block_item_for_block(child)
+                blocks_list.append(item)
+            self.add_connection_items(blocks_list)
+            if len(blocks_list) != 0:
+                self.connect_items(blocks_list)
 
         elif not self.main_block.diagram.node_data:
             # here we add the connection variables to the main block
@@ -7580,6 +7499,28 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     pairs, power_flow_pairs = find_connections(item_2.subsys, item_1.subsys)
                     if pairs:
                         self.create_conn_items(item_2, item_1, pairs)
+
+                    if power_flow_pairs:
+                        self.create_conn_items(item_1, item_2, power_flow_pairs)
+
+    def connect_items_pf(self, items_list: List[GenericBlockItem]):
+        """
+        create connection lines to show in editor
+        :param items_list:
+        :type items_list:
+        :return:
+        :rtype:
+        """
+
+        for item_1 in items_list:
+            for item_2 in items_list:
+                if item_1.subsys.uid != item_2.subsys.uid:
+                    power_flow_pairs = find_connections_pf(item_1.subsys, item_2.subsys)
+
+                    if power_flow_pairs:
+                        self.create_conn_items(item_1, item_2, power_flow_pairs)
+
+                    power_flow_pairs = find_connections_pf(item_2.subsys, item_1.subsys)
 
                     if power_flow_pairs:
                         self.create_conn_items(item_1, item_2, power_flow_pairs)
@@ -11529,8 +11470,32 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         decomposer = EquationDecomposer(self.var_factory)
         decomposed = decomposer.decompose(block)
         preserved_uid = block.uid
-        copy_block_state(source_block=decomposed, target_block=block)
+        block.name = decomposed.name
+        block.is_decomposable = decomposed.is_decomposable
+        block.vars_glob_name2uid = decomposed.vars_glob_name2uid
+        block.state_vars = decomposed.state_vars
+        block.state_eqs = decomposed.state_eqs
+        block.algebraic_vars = decomposed.algebraic_vars
+        block.algebraic_eqs = decomposed.algebraic_eqs
+        block.diff_vars = decomposed.diff_vars
+        block.reformulated_vars = decomposed.reformulated_vars
+        block.differential_eqs = decomposed.differential_eqs
+        block.init_eqs = decomposed.init_eqs
+        block.diff_init_eqs = decomposed.diff_init_eqs
+        block.children = decomposed.children
+        block.in_vars = decomposed.in_vars
+        block.out_vars = decomposed.out_vars
+        block.parameters = decomposed.parameters
+        block.discrete_eqs = decomposed.discrete_eqs
+        block.external_mapping = decomposed.external_mapping
+        block.api_obj_mapping = decomposed.api_obj_mapping
+        block.init_values = decomposed.init_values
+        block.var_mapping = decomposed.var_mapping
+        block.event_dict = decomposed.event_dict
+        block.mode_dict = decomposed.mode_dict
+        block.diagram = decomposed.diagram
         block.uid = preserved_uid
+
 
     def modify_scene_item_template(self, item: BlockItem | GenericBlockItem | ConnectionItem) -> None:
         """

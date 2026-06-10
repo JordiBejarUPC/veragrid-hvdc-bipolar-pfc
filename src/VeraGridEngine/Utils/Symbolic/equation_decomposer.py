@@ -563,7 +563,7 @@ class EquationDecomposer:
             "exp": sym.exp, "log": sym.log, "sqrt": sym.sqrt,
             "abs": sym.abs, "asin": sym.asin, "acos": sym.acos,
             "atan": sym.atan, "sinh": sym.sinh, "cosh": sym.cosh,
-            "floor": sym.floor, "ceil": sym.ceil,
+            "floor": sym.floor, "ceil": sym.ceil, "heaviside": sym.heaviside,
         }
 
         if expr.op in func_map:
