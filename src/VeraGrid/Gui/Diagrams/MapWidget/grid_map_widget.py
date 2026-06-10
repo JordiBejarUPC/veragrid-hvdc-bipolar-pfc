@@ -17,7 +17,8 @@ from matplotlib import pyplot as plt
 from PySide6.QtWidgets import QGraphicsItem, QMessageBox, QDialog, QVBoxLayout, QLabel, QPushButton
 from collections.abc import Callable
 from PySide6.QtCore import (Qt, QMimeData, QIODevice, QByteArray, QDataStream, QModelIndex, QRunnable, QThreadPool)
-from PySide6.QtGui import (QIcon, QPixmap, QImage, QStandardItemModel, QStandardItem, QColor, QDropEvent, QWheelEvent)
+from PySide6.QtGui import (QIcon, QPixmap, QImage, QStandardItemModel, QStandardItem, QColor, QDropEvent,
+                           QWheelEvent, QPainter)
 
 from VeraGrid.Gui.Diagrams.MapWidget.Branches.map_line_container import MapLineContainer
 from VeraGrid.Gui.Diagrams.MapWidget.Branches.map_line_polyline import MapLinePolyline
@@ -1520,6 +1521,7 @@ class GridMapWidget(BaseDiagramWidget):
 
         # voltage_cmap = viz.get_voltage_color_map()
         loading_cmap = viz.get_loading_color_map()
+        video_export_active: bool = self.is_video_export_active()
 
         # nbus = self.circuit.get_bus_number()
         # longitudes = np.zeros(nbus)
@@ -1551,13 +1553,20 @@ class GridMapWidget(BaseDiagramWidget):
 
                 if graphic_object:
 
-                    # compose the tooltip
-                    tooltip = str(i) + ': ' + branch.name
-                    tooltip += '\n' + loading_label + ': ' + "{:10.4f}".format(lnorm[i] * 100) + ' [%]'
-                    if Sf is not None:
-                        tooltip += '\nPower: ' + "{:10.4f}".format(Sf[i]) + ' [MVA]'
-                    if losses is not None:
-                        tooltip += '\nLosses: ' + "{:10.4f}".format(losses[i]) + ' [MVA]'
+                    # Tooltips are not visible in the export, so avoid rebuilding them per frame.
+                    if video_export_active:
+                        tooltip: str = ''
+                    else:
+                        tooltip = str(i) + ': ' + branch.name
+                        tooltip += '\n' + loading_label + ': ' + "{:10.4f}".format(lnorm[i] * 100) + ' [%]'
+                        if Sf is not None:
+                            tooltip += '\nPower: ' + "{:10.4f}".format(Sf[i]) + ' [MVA]'
+                        else:
+                            pass
+                        if losses is not None:
+                            tooltip += '\nLosses: ' + "{:10.4f}".format(losses[i]) + ' [MVA]'
+                        else:
+                            pass
 
                     # get the line colour
 
@@ -1590,11 +1599,10 @@ class GridMapWidget(BaseDiagramWidget):
 
                     graphic_object.set_colour(color=color, style=style, tool_tip=tooltip)
 
-                    if hasattr(graphic_object, 'set_arrows_with_power'):
-                        graphic_object.set_arrows_with_power(
-                            Sf=Sf[i] if Sf is not None else None,
-                            St=St[i] if St is not None else None
-                        )
+                    graphic_object.set_arrows_with_power(
+                        Sf=Sf[i] if Sf is not None else None,
+                        St=St[i] if St is not None else None
+                    )
                 else:
                     # the graphic object is None
                     pass
@@ -1613,14 +1621,6 @@ class GridMapWidget(BaseDiagramWidget):
                 graphic_object: MapHvdcLine = self.graphics_manager.query(branch)
 
                 if graphic_object:
-
-                    # compose the tooltip
-                    tooltip = str(i) + ': ' + branch.name
-                    tooltip += '\n' + loading_label + ': ' + "{:10.4f}".format(lnorm[i] * 100) + ' [%]'
-                    if Sf is not None:
-                        tooltip += '\nPower: ' + "{:10.4f}".format(hvdc_Pf[i]) + ' [MW]'
-                    if losses is not None:
-                        tooltip += '\nLosses: ' + "{:10.4f}".format(hvdc_losses[i]) + ' [MW]'
 
                     # get the line colour
                     a = 255
@@ -1647,16 +1647,23 @@ class GridMapWidget(BaseDiagramWidget):
                             np.floor(min_branch_width + Sfnorm[i] * (max_branch_width - min_branch_width) * 0.1)
                         )
                         graphic_object.set_width_scale(width=weight, arrow_width=arrow_size)
+                    else:
+                        pass
 
-                    tooltip = str(i) + ': ' + graphic_object.api_object.name
-                    tooltip += '\n' + loading_label + ': ' + "{:10.4f}".format(
-                        abs(hvdc_loading[i]) * 100) + ' [%]'
-
-                    tooltip += '\nPower (from):\t' + "{:10.4f}".format(hvdc_Pf[i]) + ' [MW]'
+                    if video_export_active:
+                        tooltip = ''
+                    else:
+                        tooltip = str(i) + ': ' + graphic_object.api_object.name
+                        tooltip += '\n' + loading_label + ': ' + "{:10.4f}".format(
+                            abs(hvdc_loading[i]) * 100) + ' [%]'
+                        tooltip += '\nPower (from):\t' + "{:10.4f}".format(hvdc_Pf[i]) + ' [MW]'
+                        if hvdc_losses is not None:
+                            tooltip += '\nPower (to):\t' + "{:10.4f}".format(hvdc_Pt[i]) + ' [MW]'
+                            tooltip += '\nLosses: \t\t' + "{:10.4f}".format(hvdc_losses[i]) + ' [MW]'
+                        else:
+                            pass
 
                     if hvdc_losses is not None:
-                        tooltip += '\nPower (to):\t' + "{:10.4f}".format(hvdc_Pt[i]) + ' [MW]'
-                        tooltip += '\nLosses: \t\t' + "{:10.4f}".format(hvdc_losses[i]) + ' [MW]'
                         graphic_object.set_arrows_with_hvdc_power(Pf=float(hvdc_Pf[i]), Pt=float(hvdc_Pt[i]))
                     else:
                         graphic_object.set_arrows_with_hvdc_power(Pf=float(hvdc_Pf[i]), Pt=-hvdc_Pf[i])
