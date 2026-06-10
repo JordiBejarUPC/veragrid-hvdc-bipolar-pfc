@@ -785,6 +785,12 @@ def gather_model_as_jsons(circuit: MultiCircuit,
 
     # time
     unix_time = circuit.get_unix_time()
+    if len(unix_time) > 1 and np.all(unix_time == unix_time[0]) and abs(int(unix_time[0])) <= 10:
+        raise ValueError(
+            f"Refusing to save degenerate master time profile: all {len(unix_time)} unix values are "
+            f"{int(unix_time[0])}. This usually means circuit.time_profile was overwritten before saving."
+        )
+
     data['time'] = {'unix': unix_time.tolist(),
                     'prob': list(np.ones(len(unix_time))),
                     'snapshot_unix': circuit.get_snapshot_time_unix()}
