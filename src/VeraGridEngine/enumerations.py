@@ -3291,6 +3291,7 @@ class RmsProblemTypes(Enum):
 
 class EmtProblemTypes(Enum):
     CurrentBalance = "EmtProblemDae"
+    Multilinear = "EmtProblemMultilinear"
 
     def __str__(self) -> str:
         return str(self.value)
