@@ -5044,6 +5044,74 @@ class ConnectionVarSpec:
     reference: VarPowerFlowReferenceType
     visible_name: str
 
+
+def build_rms_bus_input_specs(bus: Bus,
+                              voltage_reference: VarPowerFlowReferenceType,
+                              angle_reference: VarPowerFlowReferenceType,
+                              dc_voltage_reference: VarPowerFlowReferenceType) -> List[ConnectionVarSpec]:
+    """
+    Build the RMS voltage-interface specs for one connected bus.
+
+    AC buses expose magnitude and angle because RMS phasor models need both
+    quantities. DC buses only expose the DC voltage because no phasor angle
+    exists in the DC domain.
+
+    :param bus: Connected bus.
+    :param voltage_reference: AC voltage-magnitude reference for this terminal.
+    :param angle_reference: AC voltage-angle reference for this terminal.
+    :param dc_voltage_reference: DC voltage reference for this terminal.
+    :return: RMS input connection specs for the bus domain.
+    """
+    safe_bus_name: str = re.sub(r"[^0-9A-Za-z_]+", "_", bus.name).strip("_") or "Bus"
+    specs: List[ConnectionVarSpec] = list()
+
+    if bus.is_dc:
+        # DC terminals only contribute one voltage state to the RMS interface.
+        specs.append(ConnectionVarSpec("input", dc_voltage_reference, f"Vdc_{safe_bus_name}"))
+    else:
+        # AC terminals expose phasor magnitude and angle to the device model.
+        specs.append(ConnectionVarSpec("input", voltage_reference, f"Vm_{safe_bus_name}"))
+        specs.append(ConnectionVarSpec("input", angle_reference, f"Va_{safe_bus_name}"))
+
+    return specs
+
+
+def build_rms_bus_output_specs(bus: Bus,
+                               active_power_reference: VarPowerFlowReferenceType,
+                               reactive_power_reference: VarPowerFlowReferenceType,
+                               terminal_label: str) -> List[ConnectionVarSpec]:
+    """
+    Build the RMS injected-power specs for one connected bus.
+
+    AC terminals export active and reactive power because both are meaningful
+    in the phasor network. DC terminals only export active/DC power because a
+    DC connection has no reactive-power channel.
+
+    :param bus: Connected bus.
+    :param active_power_reference: Active-power reference for this terminal.
+    :param reactive_power_reference: Reactive-power reference for this terminal.
+    :param terminal_label: Stable terminal label such as ``f`` or ``t``.
+    :return: RMS output connection specs for the bus domain.
+    """
+    safe_bus_name: str = re.sub(r"[^0-9A-Za-z_]+", "_", bus.name).strip("_") or "Bus"
+    specs: List[ConnectionVarSpec] = list()
+
+    if terminal_label == "":
+        active_name = f"net_conn_P_{safe_bus_name}"
+        reactive_name = f"net_conn_Q_{safe_bus_name}"
+    else:
+        active_name = f"net_conn_P{terminal_label}_{safe_bus_name}"
+        reactive_name = f"net_conn_Q{terminal_label}_{safe_bus_name}"
+
+    specs.append(ConnectionVarSpec("output", active_power_reference, active_name))
+
+    if bus.is_dc:
+        pass
+    else:
+        specs.append(ConnectionVarSpec("output", reactive_power_reference, reactive_name))
+
+    return specs
+
 def build_emt_injection_bus_mask_from_refs(refs: set[VarPowerFlowReferenceType]) -> list[bool]:
     """
     Build the AC bus phase mask implied by one injection editor interface.
