@@ -471,6 +471,12 @@ class RmsProblemDaeVec(RmsProblemTemplate):
         self._uid2idx_diff: Dict[int, int] = dict()
         self._uid2idx_t: Dict[int, int] = dict()
 
+        # balace equations vectorized
+        self._balance_eqs_p_equiv_class_dict: Dict[int, List[Expr]] = dict()
+        self._balance_eqs_q_equiv_class_dict: Dict[int, List[Expr]] = dict()
+        self.mdl_index2bus: Dict[int, List[int]] = dict()
+
+
         # We put algebraic_vars that are actually states first
         self._algebraic_vars.sort(key=lambda obj: obj.diff_var is None)
         diff_vars_from_states = [var.diff_var for var in self._state_vars]
@@ -492,6 +498,13 @@ class RmsProblemDaeVec(RmsProblemTemplate):
 
         # initialize balance equation arrays
         n = len(self.grid.buses)
+        self.P_vec: ObjVec = np.zeros(n, dtype=object)
+        self.Q_vec: ObjVec = np.zeros(n, dtype=object)
+        self.P_used_vec: BoolVec = np.zeros(n, dtype=bool)
+        self.Q_used_vec: BoolVec = np.zeros(n, dtype=bool)
+        self.branch_bus_p_vec = np.zeros(n, dtype=float)
+        self.branch_bus_q_vec = np.zeros(n, dtype=float)
+
         P: ObjVec = np.zeros(n, dtype=object)
         Q: ObjVec = np.zeros(n, dtype=object)
         P_used: BoolVec = np.zeros(n, dtype=bool)
@@ -507,17 +520,17 @@ class RmsProblemDaeVec(RmsProblemTemplate):
 
         print("starting to type models")
 
-        self.equivalence_dict, self.variables_equivalence_dict, self.block_composition_dict = build_equivalence_classes_dict(self.grid)
+        self.equivalence_dict, self.variables_equivalence_dict, self.block_composition_dict, self.reference_class_for_all_blocks_dict = build_equivalence_classes_dict(self.grid)
 
         print("typing models done!")
         ######################################## Initialize devices ########################################
 
         # initialize buses
-        bus_dict: Dict[Bus, int] = dict()
+        self.bus_dict: Dict[Bus, int] = dict()
 
         for bus_num, elm in enumerate(self.grid.buses):
 
-            bus_dict[elm] = bus_num
+            self.bus_dict[elm] = bus_num
 
 
             self.add_variables_to_compilation_dicts(elm, elm.rms_model)
@@ -565,8 +578,8 @@ class RmsProblemDaeVec(RmsProblemTemplate):
                 self.set_init_guess(elm.rms_model, VarPowerFlowReferenceType.Pt, self.St[branch_num].real)
                 self.set_init_guess(elm.rms_model, VarPowerFlowReferenceType.Qt, self.St[branch_num].imag)
 
-                f_idx = bus_dict[elm.bus_from]
-                t_idx = bus_dict[elm.bus_to]
+                f_idx = self.bus_dict[elm.bus_from]
+                t_idx = self.bus_dict[elm.bus_to]
                 branch_bus_p[f_idx] += self.Sf[branch_num].real
                 branch_bus_q[f_idx] += self.Sf[branch_num].imag
                 branch_bus_p[t_idx] += self.St[branch_num].real
@@ -651,8 +664,8 @@ class RmsProblemDaeVec(RmsProblemTemplate):
                 self.sys_block.add(elm.rms_model)
 
                 # add variable to conservation equations of the bus to which the element is connected
-                f = bus_dict[elm.bus_from]
-                t = bus_dict[elm.bus_to]
+                f = self.bus_dict[elm.bus_from]
+                t = self.bus_dict[elm.bus_to]
 
                 setP(P, P_used, f, -elm.rms_model.E(VarPowerFlowReferenceType.Pf))
                 setP(P, P_used, t, -elm.rms_model.E(VarPowerFlowReferenceType.Pt))
@@ -685,8 +698,8 @@ class RmsProblemDaeVec(RmsProblemTemplate):
                 # fill init_guess
 
                 self.add_variables_to_compilation_dicts(elm, mdl)
-                f = bus_dict[elm.bus_from]
-                t = bus_dict[elm.bus_to]
+                f = self.bus_dict[elm.bus_from]
+                t = self.bus_dict[elm.bus_to]
                 pt_init = St_vsc[i].real
                 qt_init = St_vsc[i].imag
                 vm_t = np.abs(self.power_flow_results.voltage[t])
@@ -731,8 +744,8 @@ class RmsProblemDaeVec(RmsProblemTemplate):
                 self.set_init_guess(mdl, VarPowerFlowReferenceType.Pt_hvdc,
                                     self.power_flow_results.Pt_hvdc[i] / self.grid.Sbase)
 
-                f = bus_dict[elm.bus_from]
-                t = bus_dict[elm.bus_to]
+                f = self.bus_dict[elm.bus_from]
+                t = self.bus_dict[elm.bus_to]
                 setP(P, P_used, f, -mdl.E(VarPowerFlowReferenceType.Pf))
                 setP(P, P_used, t, -mdl.E(VarPowerFlowReferenceType.Pt))
                 setQ(Q, Q_used, f, -mdl.E(VarPowerFlowReferenceType.Qf))
@@ -832,7 +845,7 @@ class RmsProblemDaeVec(RmsProblemTemplate):
         slack_gen_snom = np.zeros(n, dtype=float)
 
         for dev in grid.get_injection_devices_iter():
-            bidx = bus_dict[dev.bus]
+            bidx = self.bus_dict[dev.bus]
             if not dev.rms_model.empty() and not dev.bus.is_dc:
 
                 if dev.idtag in gen_idx_map and dev.bus.is_slack:
@@ -873,9 +886,10 @@ class RmsProblemDaeVec(RmsProblemTemplate):
                                       device_class=elm.device_type.value,
                                       device=elm.name)
             else:
-                bus_index = bus_dict[elm.bus]
+                bus_index = self.bus_dict[elm.bus]
 
                 self.add_variables_to_compilation_dicts(elm, elm.rms_model)
+
                 register_rms_fmu_cs_device(self, elm, elm.rms_model)
                 register_rms_fmu_me_device(self, elm, elm.rms_model)
 
@@ -932,7 +946,7 @@ class RmsProblemDaeVec(RmsProblemTemplate):
                     self.set_init_guess(elm.rms_model, VarPowerFlowReferenceType.Q,
                                         Sdev.imag)
 
-                k = bus_dict[elm.bus]
+                k = self.bus_dict[elm.bus]
                 if VarPowerFlowReferenceType.P in elm.rms_model.external_mapping:
                     setP(P, P_used, k, elm.rms_model.E(VarPowerFlowReferenceType.P))
                 if VarPowerFlowReferenceType.Q in elm.rms_model.external_mapping:
@@ -1063,7 +1077,7 @@ class RmsProblemDaeVec(RmsProblemTemplate):
         # add the nodal balance equations
         ac_virtual_buses = [elm.bus_to.idtag for elm in grid.get_vsc()]
         for i, elm in enumerate(self.grid.buses):
-            if not P_used[i] and not Q_used[i]:
+            if not P_used[i] and not self.Q_used[i]:
                 self.logger.add_error("Isolated bus", value=i)
             else:
                 if elm.is_dc:
@@ -2031,6 +2045,7 @@ class RmsProblemDaeVec(RmsProblemTemplate):
         :type elm: Union[VeraGridEngine.Devices.Substation.bus.Bus, VeraGridEngine.Devices.Injections.load.Load]
         :param mdl:
         :type mdl: VeraGridEngine.Utils.Symbolic.block.Block
+        :param external_mapping:
         :return:
         :rtype: None
         """
@@ -2050,6 +2065,8 @@ class RmsProblemDaeVec(RmsProblemTemplate):
             self._variable_parameters_equiv_class_dict[mdl.uid] = list()
             self._state_eqs_equiv_class_dict[mdl.uid] = list()
             self._algebraic_eqs_equiv_class_dict[mdl.uid] = list()
+            self._balance_eqs_p_equiv_class_dict[mdl.uid] = list()
+            self._balance_eqs_q_equiv_class_dict[mdl.uid] = list()
 
             # we add bus variables for vectorization
             class_idx = self._class_n_vars.get(mdl.uid, 0)
@@ -2139,7 +2156,29 @@ class RmsProblemDaeVec(RmsProblemTemplate):
                 self._uid2idx_vars_vec[equiv_class_uid][v.uid] = class_idx
                 self._algebraic_vars_equiv_class_dict[equiv_class_uid].append(v)
                 self._class_n_vars[equiv_class_uid] = class_idx + 1
-
+                if v.ref == VarPowerFlowReferenceType.P:
+                    self._balance_eqs_p_equiv_class_dict[equiv_class_uid].append(v)
+                if v.ref == VarPowerFlowReferenceType.Pf:
+                    self._balance_eqs_p_equiv_class_dict[equiv_class_uid].append(v)
+                if v.ref == VarPowerFlowReferenceType.Pt:
+                    self._balance_eqs_p_equiv_class_dict[equiv_class_uid].append(v)
+                if v.ref == VarPowerFlowReferenceType.Q:
+                    self._balance_eqs_q_equiv_class_dict[equiv_class_uid].append(v)
+                if v.ref == VarPowerFlowReferenceType.Qf:
+                    self._balance_eqs_q_equiv_class_dict[equiv_class_uid].append(v)
+                if v.ref == VarPowerFlowReferenceType.Qt:
+                    self._balance_eqs_q_equiv_class_dict[equiv_class_uid].append(v)
+            else:
+                uid_class = next((uid for uid, list_uid in self.reference_class_for_all_blocks_dict.items() if mdl.uid in list_uid), None)
+                if uid_class is not None:
+                    if v.ref == VarPowerFlowReferenceType.P:
+                        if uid_class not in self.mdl_index2bus.keys():
+                            self.mdl_index2bus[uid_class] = list()
+                        self.mdl_index2bus[uid_class].append(self.bus_dict[elm.bus])
+                    if v.ref == VarPowerFlowReferenceType.Pf:
+                        if uid_class not in self.mdl_index2bus.keys():
+                            self.mdl_index2bus[uid_class] = list()
+                        self.mdl_index2bus[uid_class].append(self.bus_dict[elm.bus_from])
 
 
             self._compiler_names_dict[v.uid] = f"{self.VARS_NAME}[{self._n_vars}]"
@@ -2264,6 +2303,8 @@ class RmsProblemDaeVec(RmsProblemTemplate):
 
             self._state_eqs_equiv_class_dict[equiv_class_uid].extend(mdl.state_eqs)
             self._algebraic_eqs_equiv_class_dict[equiv_class_uid].extend(mdl.algebraic_eqs)
+            self._algebraic_eqs_equiv_class_dict[equiv_class_uid].extend(self._balance_eqs_p_equiv_class_dict[equiv_class_uid])
+            self._algebraic_eqs_equiv_class_dict[equiv_class_uid].extend(self._balance_eqs_q_equiv_class_dict[equiv_class_uid])
 
 
         self._model_state_eq_start_idx[mdl.uid] = len(self._state_eqs)
@@ -2723,6 +2764,7 @@ class RmsProblemDaeVec(RmsProblemTemplate):
                                      self._input_matrices_by_model[model_type][1],
                                      self._input_matrices_by_model[model_type][2],
                                      self._input_matrices_by_model[model_type][3])
+            # here we will have in the last two positions the values for P and Q to be summed up to P and Q
             _t1 = time.time()
             if rhs_algeb.ndim == 1:
                 rhs_algeb = rhs_algeb.reshape(-1, 1)
@@ -2736,11 +2778,23 @@ class RmsProblemDaeVec(RmsProblemTemplate):
             self._prof_timings['rhs_algeb_filler_total'] = self._prof_timings.get('rhs_algeb_filler_total', 0.0) + _t1 - _t0
             self._prof_timings['rhs_algeb_scatter_total'] = self._prof_timings.get('rhs_algeb_scatter_total', 0.0) + time.time() - _t1
 
-        # energy balance equations
-        if self._rhs_algeb_energy_balance_fn is None:
-            raise ValueError("_rhs_algeb_balance_fn is None")
-        rhs_energy_balance = self._rhs_algeb_energy_balance_fn(x, dx, self._variable_parameters_values, self._constant_params)
+            # energy balance equations:
+            P_value_array = rhs_algeb[-2]
+            Q_value_array = rhs_algeb[-1]
+            for i, value in enumerate(P_value_array):
+                bus_num = self.mdl_index2bus[model_type][i]
+                setP(self.P_vec, self.P_used_vec, bus_num, value)
+            for i, value in enumerate(Q_value_array):
+                bus_num = self.mdl_index2bus[model_type][i]
+                setP(self.Q_vec, self.Q_used_vec, bus_num, value)
+
+        rhs_energy_balance = np.concatenate((self.P_vec, self.Q_vec))
         complete_rhs_algeb[-len(rhs_energy_balance):] = rhs_energy_balance
+        # energy balance equations
+        # if self._rhs_algeb_energy_balance_fn is None:
+        #     raise ValueError("_rhs_algeb_balance_fn is None")
+        # rhs_energy_balance = self._rhs_algeb_energy_balance_fn(x, dx, self._variable_parameters_values, self._constant_params)
+        # complete_rhs_algeb[-len(rhs_energy_balance):] = rhs_energy_balance
 
         return complete_rhs_algeb
 
