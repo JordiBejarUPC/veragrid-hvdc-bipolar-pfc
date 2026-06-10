@@ -1547,3 +1547,58 @@ class LinearAnalysisTs:
             )
 
         return Pbus
+
+    def get_hvdc_flows_ts(self, Pdc_hvdc_ts: Mat) -> Mat:
+        """
+        Get the AC branch flow time series due to the HVDC transfers
+        :param Pdc_hvdc_ts: (nt, nhvdc) HVDC from->to transfer time series (see get_hvdc_Pdc_ts), in MW
+        :return: (nt, nbr) branch flows due to the HVDC lines, in MW
+        """
+        assert Pdc_hvdc_ts.shape[0] == self.nt
+
+        flows = np.zeros((self.nt, self.nbr))
+
+        for t_idx, time_steps in self.groups.items():
+            lin: LinearAnalysis = self._linear_analysis[t_idx]
+            flows[time_steps, :] = (lin.HvdcDF @ Pdc_hvdc_ts[time_steps, :].T).T
+
+        return flows
+
+
+def get_hvdc_Pdc_ts(grid: MultiCircuit) -> Mat:
+    """
+    Get the HVDC scheduled from->to transfer time series in MW
+    (this equals -Pf of HvdcData.get_power evaluated at theta=0)
+    :param grid: MultiCircuit
+    :return: (nt, nhvdc) transfer of each HvdcLine, positive from->to, in MW
+    """
+    nt = grid.get_time_number()
+    nhvdc = len(grid.hvdc_lines)
+    Pdc = np.zeros((nt, nhvdc), dtype=float)
+
+    for i, elm in enumerate(grid.hvdc_lines):
+        active = elm.active_prof.toarray().astype(bool)
+
+        if elm.control_mode == HvdcControlType.type_1_Pset:
+            Pcalc = elm.Pset_prof.toarray() * active
+        elif elm.control_mode == HvdcControlType.type_0_free:
+            # at theta=0 the angle droop term is zero; clip to the rating
+            rates = elm.rate_prof.toarray()
+            Pcalc = np.clip(elm.Pset_prof.toarray(), -rates, rates) * active
+        else:
+            Pcalc = np.zeros(nt)
+
+        # -Pf as in HvdcData.get_power: Pcalc (+ losses on the sending side when Pcalc < 0)
+        Vnt = elm.bus_to.Vnom
+        Vset_t = elm.Vset_t_prof.toarray()
+
+        pos = Pcalc > 0.0
+        neg = Pcalc < 0.0
+
+        Pdc[pos, i] = Pcalc[pos]
+
+        I_neg = Pcalc[neg] / (Vnt * Vset_t[neg])  # kA
+        losses_neg = elm.r * I_neg * I_neg  # MW
+        Pdc[neg, i] = Pcalc[neg] + losses_neg
+
+    return Pdc
