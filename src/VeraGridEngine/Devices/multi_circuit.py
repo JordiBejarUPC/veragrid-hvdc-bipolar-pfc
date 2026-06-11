@@ -13,7 +13,6 @@ from typing import List, Dict, Tuple, Union, Set, Sequence, TYPE_CHECKING
 from uuid import getnode as get_mac, uuid4
 import networkx as nx
 from matplotlib import pyplot as plt
-from pygments.styles.dracula import comment
 from scipy.sparse import csc_matrix, lil_matrix
 
 from VeraGridEngine.Devices.assets import Assets
