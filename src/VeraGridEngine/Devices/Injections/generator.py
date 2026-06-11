@@ -465,7 +465,7 @@ class Generator(InjectionParent):
                  Cost2: float = 0.0,
                  Cost0: float = 0.0,
                  market_unit: MarketUnit | None = None,
-                 market_unit_share: float = 0.0,
+                 market_unit_share: float = 1.0,
                  Sbase: float = 100,
                  enabled_dispatch=True,
                  mttf: float = 0.0,
