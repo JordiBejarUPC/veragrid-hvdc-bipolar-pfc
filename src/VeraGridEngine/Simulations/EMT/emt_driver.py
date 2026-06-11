@@ -46,6 +46,29 @@ def _collect_emt_group_parameter_values(problem: EmtProblemDae) -> Dict[str, flo
     return parameter_values
 
 
+def _collect_emt_group_initial_parameter_values(problem: EmtProblemDae) -> Dict[str, float]:
+    """
+    Export one event-group initial parameter snapshot from the EMT problem.
+
+    :param problem: EMT problem instance before event evolution.
+    :return: Initial parameter scalar map keyed by ``device_idtag:param_name``.
+    """
+    parameter_values: Dict[str, float] = dict()
+    event_parameter_count: int = len(problem.get_variable_parameters())
+    parameter_index: int
+
+    for parameter_index in range(event_parameter_count):
+        parameter_var = problem.get_variable_parameters()[parameter_index]
+        device_idtag: str | None = problem._event_parameter_device_idtags.get(parameter_var.uid, None)
+        if device_idtag is not None:
+            parameter_key: str = str(device_idtag) + ":" + str(parameter_var.name)
+            parameter_values[parameter_key] = float(problem._event_params_values[parameter_index])
+        else:
+            pass
+
+    return parameter_values
+
+
 class EmtSimulationDriver(DriverTemplate):
     __slots__ = (
         "pf_results_3Ph",
@@ -234,6 +257,7 @@ class EmtSimulationDriver(DriverTemplate):
                 # Persist the solver status in the shared results object so the
                 # GUI post-processing stage reports the actual simulation
                 # outcome instead of the default False placeholders.
+                self.results.initial_parameter_value_maps[group_idx] = _collect_emt_group_initial_parameter_values(problem=problem)
                 self.results.converged[group_idx] = converged
                 self.results.well_initialized[group_idx] = well_initialized
                 self.results.values[:, :, group_idx] = y
