@@ -1208,7 +1208,12 @@ def parse_object_type_from_dataframe(
                         dfp = data.get(profile_key, None)
 
                         if dfp is not None:
-                            elm.set_profile(gc_prop, arr=dfp.values[:, i].astype(gc_prop.tpe))
+                            try:
+                                elm.set_profile(gc_prop, arr=dfp.values[:, i].astype(gc_prop.tpe))
+                            except TypeError as terr:
+                                logger.add_error(msg="Cannot set profile value",
+                                                 device_property=gc_prop.profile_name,
+                                                 device=elm.name)
 
                         else:
                             skip = False
