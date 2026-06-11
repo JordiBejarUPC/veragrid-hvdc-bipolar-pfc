@@ -119,7 +119,7 @@ class BackEulerImplicitIntegrationVec:
         j12_val: csc_matrix = self.problem.get_j12_vec(h)
         self._timings["jac_j12_time"] += time.time() - t0
         t0 = time.time()
-        j21_val: csc_matrix = self.problem.get_j21_vec(h)
+        j21_val: csc_matrix = self.problem.get_j21_vec(x, dx, h)
         self._timings["jac_j21_time"] += time.time() - t0
         t0 = time.time()
         j22_val: csc_matrix = self.problem.get_j22_vec(x, dx, h)
@@ -254,6 +254,15 @@ class BackEulerImplicitIntegrationVec:
 
                         residual = np.linalg.norm(rhs, np.inf)
                         substep_converged = residual < tol
+
+                        if step_idx in [99, 100, 101, 110, 120, 130, 140, 150, 200, 250, 300] and n_iter == 0:
+                            vp = self.problem._variable_parameters_values
+                            print(f"  step={step_idx} t={t_local_prev:.4f} vp={vp}", flush=True)
+                        if step_idx > 0 and n_iter == 0:
+                            n_bal = 2 * len(self.problem.grid.buses)
+                            bal_rhs = rhs[-n_bal:] if n_bal > 0 else np.array([])
+                            bal_norm = np.linalg.norm(bal_rhs, np.inf) if len(bal_rhs) > 0 else 0.0
+                            print(f"  step={step_idx} t={t_local_prev:.4f} res={residual:.2e} bal_norm={bal_norm:.2e} rhs_nonzero={(np.abs(rhs)>1e-10).sum()}", flush=True)
 
                         if step_idx == 0 and is_first_local_step:
                             if substep_converged:
