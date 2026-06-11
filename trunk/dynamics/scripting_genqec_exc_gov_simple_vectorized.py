@@ -157,12 +157,12 @@ set_rms_model(device=load, model=load_mdl, var_factory= grid.var_factory)
 ######################################################################################################
 # Add event
 ######################################################################################################
-# Pl0 = find_name_in_block("Pl0", load_mdl)
+Pl0 = find_name_in_block("Pl0", load_mdl)
 events_group = RmsEventsGroup("simulation1")
-# grid.add_rms_events_group(events_group)
+grid.add_rms_events_group(events_group)
 # # event = RmsEvent(device=load, parameter=Pl0, time=0.1,  value=-0.06, group=events_group, transition_type=DynamicEventTransitionType.Step)
-# event = RmsEvent(device=load, parameter=Pl0, time=0.1, end_time = 0.2, value=-0.06, group=events_group, transition_type=DynamicEventTransitionType.Ramp)
-# grid.add_rms_event(event)
+event = RmsEvent(device=load, parameter=Pl0, time=0.1, end_time = 0.2, value=-0.06, group=events_group, transition_type=DynamicEventTransitionType.Ramp)
+grid.add_rms_event(event)
 
 
 
