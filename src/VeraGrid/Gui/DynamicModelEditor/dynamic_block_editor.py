@@ -5233,6 +5233,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 LibraryLeafSpec("Governor", BlockType.GOV_RMS),
                 LibraryLeafSpec("Stabilizer", BlockType.STAB_RMS),
                 LibraryLeafSpec("Exciter", BlockType.EXCITER_RMS),
+                LibraryLeafSpec("Inverse Park transform", BlockType.INVERSE_PARK_TRANSFORM),
+                LibraryLeafSpec("Park transform", BlockType.PARK_TRANSFORM),
+                LibraryLeafSpec("Pll transform", BlockType.PLL_TRANSFORM),
             ],
             DeviceType.LineDevice: [
                 LibraryLeafSpec("Generic", BlockType.GENERIC),
