@@ -2,15 +2,15 @@ from __future__ import annotations
 
 from enum import Enum
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 # power reference change in the GFM controller
-TEST_NAME: str = "p_ref_step"
-SIMULINK_CSV_NAME: str = "simulink_results_G4L_p_ref_step.csv"
-VERAGRID_CSV_NAME: str = "veragrid_G4L_p_gfm.csv"
+# TEST_NAME: str = "p_ref_step"
+# SIMULINK_CSV_NAME: str = "simulink_results_G4L_p_ref.csv"
+# VERAGRID_CSV_NAME: str = "veragrid_G4L_p_gfm.csv"
 # rocof
 # TEST_NAME: str = "rocof"
 # SIMULINK_CSV_NAME: str = "simulink_results_G4L_rocof.csv"
@@ -21,12 +21,16 @@ VERAGRID_CSV_NAME: str = "veragrid_G4L_p_gfm.csv"
 # VERAGRID_CSV_NAME: str = "veragrid_G4L_phase_jump.csv"
 
 # TEST_NAME: str = "vac_step"
-# SIMULINK_CSV_NAME: str = "simulink_results_G4L_v_mag_variation.csv"
+# SIMULINK_CSV_NAME: str = "simulink_results_G4L_vac_jump.csv"
 # VERAGRID_CSV_NAME: str = "veragrid_G4L_vac_step.csv"
 
 # TEST_NAME: str = "vq_step"
-# SIMULINK_CSV_NAME: str = "simulink_results_G4L_vq_step.csv"
+# SIMULINK_CSV_NAME: str = "simulink_results_G4L_vq_jump.csv"
 # VERAGRID_CSV_NAME: str = "veragrid_G4L_vq_step.csv"
+
+TEST_NAME: str = "vd_step"
+SIMULINK_CSV_NAME: str = "simulink_results_G4L_vd_jump.csv"
+VERAGRID_CSV_NAME: str = "veragrid_G4L_vd_step.csv"
 
 class TimeBase(Enum):
     """Time base selection for signal comparison.
@@ -61,6 +65,10 @@ class SignalSpec:
         "veragrid_scale",
         "simulink_offset",
         "veragrid_offset",
+        "simulink_columns",
+        "veragrid_columns",
+        "simulink_transform",
+        "veragrid_transform",
     )
 
     def __init__(
@@ -73,6 +81,10 @@ class SignalSpec:
         veragrid_scale: float = 1.0,
         simulink_offset: float = 0.0,
         veragrid_offset: float = 0.0,
+        simulink_columns: Optional[list[str]] = None,
+        veragrid_columns: Optional[list[str]] = None,
+        simulink_transform: Optional[Callable[[pd.DataFrame], pd.Series]] = None,
+        veragrid_transform: Optional[Callable[[pd.DataFrame], pd.Series]] = None,
     ) -> None:
         """Initialize a signal specification.
 
@@ -94,6 +106,10 @@ class SignalSpec:
         self.veragrid_scale = veragrid_scale
         self.simulink_offset = simulink_offset
         self.veragrid_offset = veragrid_offset
+        self.simulink_columns = simulink_columns if simulink_columns is not None else [simulink_column]
+        self.veragrid_columns = veragrid_columns if veragrid_columns is not None else [veragrid_column]
+        self.simulink_transform = simulink_transform
+        self.veragrid_transform = veragrid_transform
 
 
 class PlotGroup:
@@ -163,6 +179,54 @@ class ComparisonResult:
         self.max_abs_error = max_abs_error
 
 
+def wrap_to_pi(angle: pd.Series | np.ndarray) -> pd.Series | np.ndarray:
+    """Wrap angles to ``[-pi, pi]``.
+
+    :param angle: Input angle series or array in radians.
+    :return: Wrapped angle with the same shape.
+    """
+    return np.arctan2(np.sin(angle), np.cos(angle))
+
+
+def _signal_magnitude(dataframe: pd.DataFrame, q_column: str, d_column: str) -> pd.Series:
+    """Return the Euclidean magnitude of one qd signal pair.
+
+    :param dataframe: Source dataframe.
+    :param q_column: q-axis column name.
+    :param d_column: d-axis column name.
+    :return: Magnitude series.
+    """
+    q_values: pd.Series = pd.to_numeric(dataframe[q_column], errors="coerce")
+    d_values: pd.Series = pd.to_numeric(dataframe[d_column], errors="coerce")
+    return np.sqrt(q_values ** 2 + d_values ** 2)
+
+
+def _delta_vsm_signal(dataframe: pd.DataFrame, phase_column: str, theta_column: str) -> pd.Series:
+    """Return the wrapped VSM internal angle offset.
+
+    :param dataframe: Source dataframe.
+    :param phase_column: Internal VSM phase column name.
+    :param theta_column: Grid PLL angle column name.
+    :return: Wrapped angle difference series.
+    """
+    phase_values: pd.Series = pd.to_numeric(dataframe[phase_column], errors="coerce")
+    theta_values: pd.Series = pd.to_numeric(dataframe[theta_column], errors="coerce")
+    return wrap_to_pi(phase_values - theta_values)
+
+
+def _delta_from_vdq_signal(dataframe: pd.DataFrame, v_d_column: str, v_q_column: str) -> pd.Series:
+    """Return the angle inferred from ``atan2(Vd, Vq)``.
+
+    :param dataframe: Source dataframe.
+    :param v_d_column: d-axis voltage column name.
+    :param v_q_column: q-axis voltage column name.
+    :return: Inferred angle series.
+    """
+    v_d_values: pd.Series = pd.to_numeric(dataframe[v_d_column], errors="coerce")
+    v_q_values: pd.Series = pd.to_numeric(dataframe[v_q_column], errors="coerce")
+    return np.arctan2(v_d_values, v_q_values)
+
+
 def create_plot_groups() -> list[PlotGroup]:
     """Create plot groups and editable signal mappings.
 
@@ -205,6 +269,26 @@ def create_plot_groups() -> list[PlotGroup]:
     )
     groups.append(
         PlotGroup(
+            "dq voltage magnitude",
+            "dq_voltage_magnitude",
+            list(
+                [
+                    SignalSpec(
+                        "|Vdq|",
+                        "Vq",
+                        "vq_V",
+                        "V",
+                        simulink_columns=["Vq", "Vd"],
+                        veragrid_columns=["vq_V", "vd_V"],
+                        simulink_transform=lambda dataframe: _signal_magnitude(dataframe, "Vq", "Vd"),
+                        veragrid_transform=lambda dataframe: _signal_magnitude(dataframe, "vq_V", "vd_V"),
+                    )
+                ]
+            ),
+        )
+    )
+    groups.append(
+        PlotGroup(
             "q-axis current chain",
             "q_axis_current_chain",
             list(
@@ -212,6 +296,26 @@ def create_plot_groups() -> list[PlotGroup]:
                     SignalSpec("Iq", "Iq", "iq_va_A_sim_sign", "A"),
                     SignalSpec("Iq limited", "Iq", "iq_lim_A_sim_sign", "A"),
                     SignalSpec("Iq measured", "Iq", "iq_meas_A_sim_sign", "A"),
+                ]
+            ),
+        )
+    )
+    groups.append(
+        PlotGroup(
+            "dq current magnitude",
+            "dq_current_magnitude",
+            list(
+                [
+                    SignalSpec(
+                        "|Idq|",
+                        "Iq",
+                        "iq_va_A_sim_sign",
+                        "A",
+                        simulink_columns=["Iq", "Id"],
+                        veragrid_columns=["iq_va_A_sim_sign", "id_va_A_sim_sign"],
+                        simulink_transform=lambda dataframe: _signal_magnitude(dataframe, "Iq", "Id"),
+                        veragrid_transform=lambda dataframe: _signal_magnitude(dataframe, "iq_va_A_sim_sign", "id_va_A_sim_sign"),
+                    )
                 ]
             ),
         )
@@ -298,7 +402,26 @@ def create_plot_groups() -> list[PlotGroup]:
             list(
                 [
                     SignalSpec("omega pll", "omega_pll", "omega_pll", "rad/s"),
-                    # SignalSpec("phase pll", "phase_pll", "phase_pll", "rad"),
+                    SignalSpec(
+                        "delta_vsm",
+                        "phase_pll",
+                        "phase_pll",
+                        "rad",
+                        simulink_columns=["phase_pll", "theta_pll"],
+                        veragrid_columns=["phase_pll", "theta_pll"],
+                        simulink_transform=lambda dataframe: _delta_vsm_signal(dataframe, "phase_pll", "theta_pll"),
+                        veragrid_transform=lambda dataframe: _delta_vsm_signal(dataframe, "phase_pll", "theta_pll"),
+                    ),
+                    SignalSpec(
+                        "delta from vdq",
+                        "Vd",
+                        "vd_V",
+                        "rad",
+                        simulink_columns=["Vd", "Vq"],
+                        veragrid_columns=["vd_V", "vq_V"],
+                        simulink_transform=lambda dataframe: _delta_from_vdq_signal(dataframe, "Vd", "Vq"),
+                        veragrid_transform=lambda dataframe: _delta_from_vdq_signal(dataframe, "vd_V", "vq_V"),
+                    ),
                 ]
             ),
         )
@@ -557,6 +680,8 @@ def extract_signal(
     scale: float,
     offset: float,
     label: str,
+    required_columns: Optional[list[str]] = None,
+    transform: Optional[Callable[[pd.DataFrame], pd.Series]] = None,
 ) -> Optional[tuple[np.ndarray, np.ndarray]]:
     """Extract sorted numeric time and value arrays for one signal.
 
@@ -568,14 +693,20 @@ def extract_signal(
     :param label: Signal label used in messages.
     :return: Tuple with time and values, or None.
     """
-    if value_column not in dataframe.columns:
-        print(f"Missing column for {label}: {value_column}")
+    columns_to_check: list[str] = required_columns if required_columns is not None else [value_column]
+    missing_columns: list[str] = [column_name for column_name in columns_to_check if column_name not in dataframe.columns]
+    if len(missing_columns) > 0:
+        print(f"Missing column(s) for {label}: {missing_columns}")
         return None
     else:
         pass
 
     time_values: np.ndarray = pd.to_numeric(dataframe[time_column], errors="coerce").to_numpy(dtype=float)
-    raw_values: np.ndarray = pd.to_numeric(dataframe[value_column], errors="coerce").to_numpy(dtype=float)
+    if transform is None:
+        raw_series: pd.Series = pd.to_numeric(dataframe[value_column], errors="coerce")
+    else:
+        raw_series = pd.to_numeric(transform(dataframe), errors="coerce")
+    raw_values: np.ndarray = raw_series.to_numpy(dtype=float)
     valid_mask: np.ndarray = np.isfinite(time_values) & np.isfinite(raw_values)
 
     if not np.any(valid_mask):
@@ -807,6 +938,8 @@ def run_comparison() -> None:
                 signal.simulink_scale,
                 signal.simulink_offset,
                 simulink_label,
+                required_columns=signal.simulink_columns,
+                transform=signal.simulink_transform,
             )
             veragrid_pair: Optional[tuple[np.ndarray, np.ndarray]] = extract_signal(
                 veragrid_frame,
@@ -815,6 +948,8 @@ def run_comparison() -> None:
                 signal.veragrid_scale,
                 signal.veragrid_offset,
                 veragrid_label,
+                required_columns=signal.veragrid_columns,
+                transform=signal.veragrid_transform,
             )
 
             if simulink_pair is None or veragrid_pair is None:

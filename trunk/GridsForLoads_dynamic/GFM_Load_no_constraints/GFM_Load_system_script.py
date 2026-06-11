@@ -291,12 +291,12 @@ VALID_TESTS = {
 }
 
 # Select a single EMT test here.
-selected_test = TEST_P_GFM
+# selected_test = TEST_P_GFM
 # selected_test = TEST_ROCOF
 # selected_test = TEST_PHASE_JUMP
 # selected_test = TEST_VAC_STEP
 # selected_test = TEST_VQ_STEP
-# selected_test = TEST_VD_STEP
+selected_test = TEST_VD_STEP
 # selected_test = TEST_NONE
 
 if selected_test not in VALID_TESTS:
@@ -485,6 +485,15 @@ print(problem.initialization_report.newton_iterations)
 print(problem.initialization_report.pseudo_transient_steps)
 print(problem.initialization_report.message)
 
+
+def wrap_to_pi(angle: np.ndarray | float) -> np.ndarray | float:
+    """Wrap angles to ``[-pi, pi]``.
+
+    :param angle: Input angle or angle series in radians.
+    :return: Wrapped angle with the same shape.
+    """
+    return np.arctan2(np.sin(angle), np.cos(angle))
+
 DENSE_THRESHOLD = 0
 
 df = problem.get_init_guess_table()
@@ -501,6 +510,8 @@ init_diagnostic_names = [
     "i_q_G4L_clark_park_transforms_qd",
     "i_q_out_VA_G4L_Virtual_admittance",
     "i_q_lim_G4L_current_limiter",
+    "theta_pll_G4L_PLL",
+    "phase_pll_G4L_PLL",
 ]
 
 init_diagnostics: dict[str, float | None] = {}
@@ -509,6 +520,13 @@ for name in init_diagnostic_names:
     value = try_get_init_value(problem, name)
     init_diagnostics[name] = value
     print(f"  {name} = {value}")
+
+theta_pll_init = init_diagnostics.get("theta_pll_G4L_PLL")
+phase_pll_init = init_diagnostics.get("phase_pll_G4L_PLL")
+if theta_pll_init is not None and phase_pll_init is not None:
+    delta_vsm_init = float(wrap_to_pi(float(phase_pll_init) - float(theta_pll_init)))
+    init_diagnostics["delta_vsm_init"] = delta_vsm_init
+    print(f"  delta_vsm_init = {delta_vsm_init}")
 
 i_dc_init = init_diagnostics["i_dc_G4L_grid_side_converter"]
 i_dc_L_init = init_diagnostics["i_dc_L_G4L_load_side_converter_control"]
@@ -1263,6 +1281,7 @@ add_csv_series("idcL_A", "i_dc_L_G4L_load_side_converter_control", Idc_base)
 add_csv_series("icapdc_A", "i_cap_dc_G4L_load_side_converter", Idc_base)
 add_csv_series("omega_pll", "omega_pll_G4L_PLL", 1.0)
 add_csv_series("w_pll", "w_pll_G4L_PLL", 1.0)
+add_csv_series("theta_pll", "theta_pll_G4L_PLL", 1.0)
 add_csv_series("phase_pll", "phase_pll_G4L_PLL", 1.0)
 add_csv_array("Vac_grid", vac_grid_series_V)
 add_csv_array("phase_a", phase_a_grid_series)
@@ -1271,6 +1290,10 @@ add_csv_array("phase_c", phase_c_grid_series)
 add_csv_array("omega_grid", omega_grid_series)
 add_csv_array("Vq_ref", v_q_ref_series_V)
 add_csv_array("Vd_ref", v_d_ref_series_V)
+if "phase_pll" in csv_columns and "theta_pll" in csv_columns:
+    add_csv_array("delta_vsm", wrap_to_pi(csv_columns["phase_pll"] - csv_columns["theta_pll"]))
+if "vd_V" in csv_columns and "vq_V" in csv_columns:
+    add_csv_array("delta_from_vdq", np.arctan2(csv_columns["vd_V"], csv_columns["vq_V"]))
 
 add_csv_array("err_q_V", err_q_V)
 add_csv_array("err_d_V", err_d_V)
