@@ -8195,6 +8195,9 @@ class Assets:
                     for prop in changed_props:
                         val = api_obj.get_property_value(prop=prop, t_idx=None)
                         elm_from_base.set_property_value(prop=prop, value=val, t_idx=None)
+                        if prop.has_profile():
+                            elm_from_base.set_profile(prop=prop,
+                                                      arr=api_obj.get_profile_by_prop(prop=prop).copy())
                 else:
                     new_obj = api_obj.copy(forced_new_idtag=False)
                     new_obj.rebind_device_references(objects_by_idtag=all_elms_base_dict)

@@ -358,6 +358,10 @@ def initialize_grid2_rms_models(grid2, pf_results):
 
     vf = grid2.var_factory
 
+    for bus in grid2.buses:
+        if bus.rms_model.empty():
+            initialize_bus_rms(bus, vf)
+
     for vsc in grid2.vsc_devices:
         print(f"  Initializing VSC '{vsc.name}' with build_vsc_rms...")
         vsc.rms_model = build_vsc_rms(vfactory=vf, name=vsc.name).block
@@ -374,7 +378,7 @@ def initialize_grid2_rms_models(grid2, pf_results):
             initialize_bus_rms(vsc.bus_to, vf)
         vm_vsc = vsc.rms_model.external_mapping[VarPowerFlowReferenceType.Vm]
         bus_vm = vsc.bus_to.rms_model.external_mapping[VarPowerFlowReferenceType.Vm]
-        grid.var_factory.add_connections([vm_vsc], [bus_vm])
+        grid2.var_factory.add_connections([vm_vsc], [bus_vm])
         print("    ✓ VSC RMS model assigned")
 
     for trafo in grid2.transformers2w:
@@ -394,7 +398,7 @@ def initialize_grid2_rms_models(grid2, pf_results):
         if ki_vdc_var is not None:
             set_event_in_block(ki_vdc_var, 0.006, vf, trafo.rms_model)
         if kp_vdc_var is not None or ki_vdc_var is not None:
-            print("    - Tuned Vdc PI gains: Kp_vdc=0.007, Ki_vdc=0.03")
+            print("    - Tuned Vdc PI gains: Kp_vdc=0.01, Ki_vdc=0.006")
 
         if trafo.bus_from.rms_model.empty():
             initialize_bus_rms(trafo.bus_from, vf)
@@ -411,7 +415,7 @@ def initialize_grid2_rms_models(grid2, pf_results):
         bus_vm_t = trafo.bus_to.rms_model.external_mapping[VarPowerFlowReferenceType.Vm]
         bus_va_t = trafo.bus_to.rms_model.external_mapping[VarPowerFlowReferenceType.Va]
 
-        grid.var_factory.add_connections([vm_f, va_f, vm_t, va_t], [bus_vm_f, bus_va_f, bus_vm_t, bus_va_t])
+        grid2.var_factory.add_connections([vm_f, va_f, vm_t, va_t], [bus_vm_f, bus_va_f, bus_vm_t, bus_va_t])
 
         # Force TrafoGFL reactive initialization to match PF branch "to" side.
         branch_list = list(grid2.get_branches_iter(add_vsc=False, add_hvdc=False, add_switch=True))
@@ -429,6 +433,7 @@ def initialize_grid2_rms_models(grid2, pf_results):
     for line in grid2.lines:
         print(f"  Initializing AC Line '{line.name}' with RMS line model...")
         line.rms_model = get_line_rms_template(vf, name=line.name).block
+        set_rms_model(device=line, model=line.rms_model, var_factory=vf)
         print("    ✓ AC line RMS model assigned")
 
     for gen in grid2.generators:
@@ -486,7 +491,10 @@ def initialize_grid2_rms_models(grid2, pf_results):
             Pl0=-float(load.P) / grid2.Sbase,
             Ql0=-float(load.Q) / grid2.Sbase,
         ).block
-        load.rms_model = load_model
+        set_rms_model(device=load, model=load_model, var_factory=vf)
+        load_vm = load_model.external_mapping[VarPowerFlowReferenceType.Vm]
+        bus_vm = load.bus.rms_model.external_mapping[VarPowerFlowReferenceType.Vm]
+        grid2.var_factory.add_connections([load_vm], [bus_vm])
         print("    ✓ AC load RMS model assigned")
 
     if len(grid2.vsc_devices) > 0 and len(grid2.transformers2w) > 0:
@@ -496,7 +504,7 @@ def initialize_grid2_rms_models(grid2, pf_results):
             if hasattr(trafo.rms_model, 'in_vars') and len(trafo.rms_model.in_vars) > 0:
                 vdc_trafo = trafo.rms_model.external_mapping[VarPowerFlowReferenceType.Vdc]
                 vdc_bus = vsc.bus_from.rms_model.out_vars[0]
-                grid.var_factory.add_connections([vdc_trafo], [vdc_bus])
+                grid2.var_factory.add_connections([vdc_trafo], [vdc_bus])
                 print("  ✓ Connected transformer to DC bus")
 
     print("  ✓ All RMS models initialized successfully")

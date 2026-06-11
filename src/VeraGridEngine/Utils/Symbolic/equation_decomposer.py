@@ -6,6 +6,13 @@ import VeraGridEngine.Utils.Symbolic.symbolic as sym
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
 
+try:
+    from VeraGridEngine.Utils.Symbolic.hierarchical_layout_v2 import compute_layout as _compute_layout_v2
+    _HAVE_LAYOUT_V2 = True
+except ImportError as e:
+    _HAVE_LAYOUT_V2 = False
+    _layout_import_error = str(e)
+
 
 class EquationDecomposer:
     """
@@ -748,8 +755,11 @@ class EquationDecomposer:
             if producer_idx is not None:
                 routing_pairs.append((from_idx, to_idx, producer_idx, consumer_idx))
 
-        # ---- hierarchical layout (Sugiyama-based) ----
-        positions = self._layout_hierarchical(children, dep_graph, from_to_tpe, routing_pairs)
+        # ---- layout: v2 (Sugiyama-inspired) or fallback to legacy ----
+        if _HAVE_LAYOUT_V2:
+            positions = _compute_layout_v2(
+                len(children), dep_graph, from_to_tpe,
+            )
 
         for i, blk in enumerate(children):
             x, y = positions.get(i, (80.0, 60.0))
@@ -903,274 +913,6 @@ class EquationDecomposer:
                         in_degree[other] = max(0, in_degree[other] - 1)
 
         return layers
-
-    def _layout_hierarchical(
-        self,
-        children: List[Block],
-        dep_graph: Dict[int, Set[int]],
-        from_to_tpe: Dict[int, str],
-        routing_pairs: List[Tuple[int, int, int, int]] = None,
-    ) -> Dict[int, Tuple[float, float]]:
-        n = len(children)
-        if n == 0:
-            return {}
-
-        LAYER_SPACING_X = 300.0
-        BLOCK_SPACING_Y = 130.0
-        BLOCK_H = 70.0
-        MARGIN_X = 100.0
-        MARGIN_Y = 80.0
-
-        # --- Build forward graph (successors) ---
-        successors: Dict[int, Set[int]] = {i: set() for i in range(n)}
-        for i in range(n):
-            for p in dep_graph.get(i, set()):
-                successors[p].add(i)
-
-        # --- Topological sort ---
-        in_degree = {i: len(dep_graph.get(i, set())) for i in range(n)}
-        queue = [i for i in range(n) if in_degree.get(i, 0) == 0]
-        topo_order: List[int] = []
-        temp_in_degree = dict(in_degree)
-        while queue:
-            node = queue.pop(0)
-            topo_order.append(node)
-            for succ in successors.get(node, set()):
-                temp_in_degree[succ] -= 1
-                if temp_in_degree[succ] == 0:
-                    queue.append(succ)
-
-        remaining = set(range(n)) - set(topo_order)
-        topo_order.extend(remaining)
-
-        # --- Longest-path layering ---
-        layer: Dict[int, int] = {i: 0 for i in range(n)}
-        for node in topo_order:
-            max_parent_layer = -1
-            for parent in dep_graph.get(node, set()):
-                pl = layer.get(parent, 0)
-                if pl > max_parent_layer:
-                    max_parent_layer = pl
-            layer[node] = max_parent_layer + 1
-
-        max_layer = max(layer.values()) if layer else 0
-        layers_list: List[List[int]] = [[] for _ in range(max_layer + 1)]
-        for i in range(n):
-            layers_list[layer[i]].append(i)
-
-        for l in layers_list:
-            l.sort()
-
-        # --- Barycenter ordering helpers ---
-        def _parent_barycenter(layers, target_layer):
-            if target_layer == 0:
-                return
-            items = layers[target_layer]
-            prev_layer = layers[target_layer - 1]
-            scores = []
-            for node in items:
-                parents = [p for p in dep_graph.get(node, set()) if p in prev_layer]
-                if parents:
-                    avg = sum(prev_layer.index(p) for p in parents) / len(parents)
-                    scores.append((avg, node))
-                else:
-                    scores.append((items.index(node), node))
-            scores.sort(key=lambda x: x[0])
-            layers[target_layer] = [node for _, node in scores]
-
-        def _child_barycenter(layers, target_layer):
-            if target_layer >= len(layers) - 1:
-                return
-            items = layers[target_layer]
-            next_layer = layers[target_layer + 1]
-            scores = []
-            for node in items:
-                children = [c for c in successors.get(node, set()) if c in next_layer]
-                if children:
-                    avg = sum(next_layer.index(c) for c in children) / len(children)
-                    scores.append((avg, node))
-                else:
-                    scores.append((items.index(node), node))
-            scores.sort(key=lambda x: x[0])
-            layers[target_layer] = [node for _, node in scores]
-
-        # --- Barycenter sweeps: top-down, bottom-up, top-down, bottom-up ---
-        for sweep in range(4):
-            if sweep % 2 == 0:
-                for l in range(1, len(layers_list)):
-                    _parent_barycenter(layers_list, l)
-            else:
-                for l in range(len(layers_list) - 2, -1, -1):
-                    _child_barycenter(layers_list, l)
-
-        # --- Initial positions ---
-        pos: Dict[int, List[float]] = {}
-        for l, items in enumerate(layers_list):
-            for i, node in enumerate(items):
-                pos[node] = [
-                    MARGIN_X + l * LAYER_SPACING_X,
-                    MARGIN_Y + i * BLOCK_SPACING_Y,
-                ]
-
-        # --- Build adjacency for relaxation ---
-        adj: Dict[int, Set[int]] = {i: set() for i in range(n)}
-        for i in range(n):
-            for p in dep_graph.get(i, set()):
-                adj[i].add(p)
-                adj[p].add(i)
-
-        # --- Gentle Y relaxation to break grid appearance ---
-        for iteration in range(40):
-            cooling = 1.0 - iteration / 40.0
-            deltas: Dict[int, float] = {}
-            for i in range(n):
-                neighbors = adj.get(i, set())
-                if len(neighbors) == 0:
-                    continue
-                avg_y = sum(pos[n][1] for n in neighbors) / len(neighbors)
-                diff = avg_y - pos[i][1]
-                max_delta = 4.0 * cooling
-                d = max(-max_delta, min(max_delta, diff * 0.15))
-                if abs(d) > 0.5:
-                    deltas[i] = d
-
-            for i, d in deltas.items():
-                pos[i][1] += d
-
-            # Enforce minimum separation within layers
-            for l in layers_list:
-                sorted_nodes = sorted(l, key=lambda x: pos[x][1])
-                for idx in range(1, len(sorted_nodes)):
-                    prev = sorted_nodes[idx - 1]
-                    curr = sorted_nodes[idx]
-                    gap = pos[curr][1] - pos[prev][1]
-                    min_dist = BLOCK_H + 15.0
-                    if gap < min_dist:
-                        pos[curr][1] = pos[prev][1] + min_dist
-
-        # --- Compact vertically ---
-        for l in layers_list:
-            if len(l) <= 1:
-                continue
-            sorted_nodes = sorted(l, key=lambda x: pos[x][1])
-            for idx in range(1, len(sorted_nodes)):
-                curr = sorted_nodes[idx]
-                prev = sorted_nodes[idx - 1]
-                min_dist = BLOCK_H + 10.0
-                gap = pos[curr][1] - pos[prev][1]
-                if gap > min_dist + 25.0:
-                    pos[curr][1] = pos[prev][1] + min_dist
-
-        # --- Post-process: reposition signal_in/signal_out blocks ---
-        # These must stay visually close to their producer/consumer blocks,
-        # overriding the Sugiyama layer assignment for these routing elements.
-        # Includes collision avoidance: search vertically for free space if
-        # the ideal position is already occupied by another block.
-        if routing_pairs:
-            FUNC_BLOCK_W = 160.0
-            FUNC_BLOCK_H = 70.0
-            SIGNAL_BLOCK_W = 140.0
-            SIGNAL_BLOCK_H = 70.0
-            ROUTING_GAP = 80.0
-            SIGNAL_GAP_Y = 30.0
-            SEARCH_STEP_Y = 25.0
-            MAX_VERTICAL_STEPS = 30
-            SECONDARY_OFFSET_X = 60.0
-
-            # Identify which indices are routing blocks
-            is_signal: Set[int] = {i for i, t in from_to_tpe.items()
-                                   if t in ("signal_in", "signal_out")}
-
-            # Build occupied rects for all non-routing blocks
-            occupied: List[Tuple[float, float, float, float]] = []
-
-            def _add_rect(idx: int, w: float, h: float) -> None:
-                occupied.append((
-                    pos[idx][0],
-                    pos[idx][1],
-                    pos[idx][0] + w,
-                    pos[idx][1] + h,
-                ))
-
-            for i in range(n):
-                if i not in is_signal:
-                    _add_rect(i, FUNC_BLOCK_W, FUNC_BLOCK_H)
-
-            def _rects_overlap(
-                l1: float, t1: float, r1: float, b1: float,
-                l2: float, t2: float, r2: float, b2: float,
-            ) -> bool:
-                return not (r1 <= l2 or l1 >= r2 or b1 <= t2 or t1 >= b2)
-
-            def _is_free(l: float, t: float, r: float, b: float) -> bool:
-                for o in occupied:
-                    if _rects_overlap(l, t, r, b, o[0], o[1], o[2], o[3]):
-                        return False
-                return True
-
-            def _place_near_anchor(
-                target_idx: int,
-                ideal_x: float,
-                ideal_y: float,
-                block_w: float,
-                block_h: float,
-            ) -> None:
-                for step in range(MAX_VERTICAL_STEPS + 1):
-                    for direction in ([0] if step == 0 else [step, -step]):
-                        cy = ideal_y + direction * SEARCH_STEP_Y
-                        cr = ideal_x + block_w
-                        cb = cy + block_h
-                        if _is_free(ideal_x, cy, cr, cb):
-                            pos[target_idx] = [ideal_x, cy]
-                            _add_rect(target_idx, block_w, block_h)
-                            return
-                for step in range(1, 10):
-                    for h_dir in (1, -1):
-                        cx = ideal_x + h_dir * step * SECONDARY_OFFSET_X
-                        cr = cx + block_w
-                        cb = ideal_y + block_h
-                        if _is_free(cx, ideal_y, cr, cb):
-                            pos[target_idx] = [cx, ideal_y]
-                            _add_rect(target_idx, block_w, block_h)
-                            return
-                pos[target_idx] = [ideal_x, ideal_y]
-                _add_rect(target_idx, block_w, block_h)
-
-            # --- Place signal_in (From) blocks ---
-            producer_to_froms: Dict[int, List[int]] = {}
-            for from_idx, to_idx, producer_idx, consumer_idx in routing_pairs:
-                producer_to_froms.setdefault(producer_idx, []).append(from_idx)
-            for producer_idx, from_indices in producer_to_froms.items():
-                base_x = pos[producer_idx][0] + FUNC_BLOCK_W + ROUTING_GAP
-                base_y = pos[producer_idx][1]
-                count = len(from_indices)
-                for i, from_idx in enumerate(from_indices):
-                    ideal_x = base_x
-                    if count == 1:
-                        ideal_y = base_y
-                    else:
-                        ideal_y = base_y + (i - (count - 1) / 2.0) * SIGNAL_GAP_Y
-                    _place_near_anchor(from_idx, ideal_x, ideal_y,
-                                       SIGNAL_BLOCK_W, SIGNAL_BLOCK_H)
-
-            # --- Place signal_out (To) blocks ---
-            consumer_to_tos: Dict[int, List[int]] = {}
-            for from_idx, to_idx, producer_idx, consumer_idx in routing_pairs:
-                consumer_to_tos.setdefault(consumer_idx, []).append(to_idx)
-            for consumer_idx, to_indices in consumer_to_tos.items():
-                for i, to_idx in enumerate(to_indices):
-                    ideal_x = pos[consumer_idx][0] - SIGNAL_BLOCK_W - ROUTING_GAP
-                    ideal_y = pos[consumer_idx][1]
-                    _place_near_anchor(to_idx, ideal_x, ideal_y,
-                                       SIGNAL_BLOCK_W, SIGNAL_BLOCK_H)
-
-        # --- Normalize to positive coordinates ---
-        min_x = min(p[0] for p in pos.values())
-        min_y = min(p[1] for p in pos.values())
-        return {
-            i: (pos[i][0] - min_x + MARGIN_X, pos[i][1] - min_y + MARGIN_Y)
-            for i in range(n)
-        }
 
     def _find_output_port(self, blk: Block, var: sym.Var) -> int | None:
         for i, v in enumerate(blk.out_vars):

@@ -3503,7 +3503,8 @@ class SchematicWidget(BaseDiagramWidget):
                             bus_types: list[str],
                             voltage_cmap: Callable,
                             cmap: palettes.Colormaps | None,
-                            use_flow_based_width: bool) -> None:
+                            use_flow_based_width: bool,
+                            apply_result_coloring: bool = True) -> None:
         """
 
         :param Sbus:
@@ -3536,7 +3537,10 @@ class SchematicWidget(BaseDiagramWidget):
                                           P=Sbus[i].real if Sbus is not None else None,
                                           Q=Sbus[i].imag if Sbus is not None else None,
                                           tpe=bus_types[int(types[i])] if types is not None else None)
-                graphic_object.set_tile_color(self._get_voltage_result_color(vnorm[i], cmap, voltage_cmap))
+                if apply_result_coloring:
+                    graphic_object.set_tile_color(self._get_voltage_result_color(vnorm[i], cmap, voltage_cmap))
+                else:
+                    graphic_object.update_color()
                 if use_flow_based_width:
                     graphic_object.change_size(w=graphic_object.w)
             else:
@@ -5001,7 +5005,8 @@ class SchematicWidget(BaseDiagramWidget):
                        min_bus_width=20,
                        max_bus_width=20,
                        cmap: palettes.Colormaps = None,
-                       is_three_phase: bool = False):
+                       is_three_phase: bool = False,
+                       apply_bus_result_coloring: bool = True):
         """
         Color objects based on the results passed.
         """
@@ -5024,7 +5029,8 @@ class SchematicWidget(BaseDiagramWidget):
                                  bus_types=bus_types,
                                  voltage_cmap=voltage_cmap,
                                  cmap=cmap,
-                                 use_flow_based_width=use_flow_based_width)
+                                 use_flow_based_width=use_flow_based_width,
+                                 apply_result_coloring=apply_bus_result_coloring)
 
         self._colour_injection_results(gen_p=gen_p,
                                        gen_q=gen_q,
