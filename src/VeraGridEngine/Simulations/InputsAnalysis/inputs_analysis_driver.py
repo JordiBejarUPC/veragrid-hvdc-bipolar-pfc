@@ -228,6 +228,36 @@ class InputsAnalysisResults(ResultsTemplate):
             names.add(element.name)
         return sorted(names)
 
+    def get_aggregation_elements(self, aggregation: str) -> List[Any]:
+        """
+        Get the aggregation objects associated to an aggregation name.
+
+        This method preserves the collection order used by the bus-to-index
+        maps so that time-series matrices and index lookups share the same
+        coordinate system.
+
+        :param aggregation: Aggregation name
+        :return: Ordered list of aggregation objects
+        """
+        if aggregation == "Area":
+            return self.grid.areas
+        elif aggregation == "Zone":
+            return self.grid.zones
+        elif aggregation == "Substation":
+            return self.grid.get_substations()
+        elif aggregation == "VoltageLevel":
+            return self.grid.get_voltage_levels()
+        elif aggregation == "Country":
+            return self.grid.countries
+        elif aggregation == "Community":
+            return self.grid.get_communities()
+        elif aggregation == "Region":
+            return self.grid.get_regions()
+        elif aggregation == "Municipality":
+            return self.grid.get_municipalities()
+        else:
+            raise Exception("Unknown aggregation:" + str(aggregation))
+
     def get_aggregation_headers(self) -> List[str]:
         """
         Get the dataframe aggregation column headers.
@@ -706,7 +736,8 @@ class InputsAnalysisResults(ResultsTemplate):
         else:
             raise Exception('Unknown Aggregation. Possible aggregations are Zone, Area, Substation, VoltageLevel, Country, Community, Region, Municipality')
 
-        headers = self.get_aggregation_names(aggregation)
+        elements: List[Any] = self.get_aggregation_elements(aggregation)
+        headers = [element.name for element in elements]
         ne = len(headers)
 
         nt = self.grid.get_time_number()
