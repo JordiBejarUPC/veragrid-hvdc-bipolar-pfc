@@ -26,7 +26,7 @@ from VeraGridEngine.Devices.types import ALL_DEV_TYPES, INJECTION_DEVICE_TYPES, 
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Topology.topology import find_different_states
 from VeraGridEngine.enumerations import (DeviceType, ActionType, SubObjectType, ConverterControlType, ExternalGridMode,
-                                         BusGraphicType)
+                                          BusGraphicType, VarPowerFlowReferenceType)
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic_io import compare_blocks
 
@@ -125,6 +125,182 @@ def get_fused_device_lst(elm_list: List[INJECTION_DEVICE_TYPES], property_names:
     else:
         # the list is empty
         return list(), list()
+
+
+def _get_emt_external_var(mdl: Block, reference: VarPowerFlowReferenceType) -> dev.Var | None:
+    """
+    Return one EMT external-mapping variable when present.
+
+    :param mdl: EMT block to inspect.
+    :param reference: External interface reference.
+    :return: Mapped variable or ``None``.
+    """
+    if mdl.empty():
+        return None
+    else:
+        return mdl.external_mapping.get(reference, None)
+
+
+def _validate_bus_side_emt_reference(logger: Logger,
+                                     device: ALL_DEV_TYPES,
+                                     device_mdl: Block,
+                                     bus_mdl: Block,
+                                     device_reference: VarPowerFlowReferenceType,
+                                     bus_reference: VarPowerFlowReferenceType,
+                                     property_name: str) -> None:
+    """
+    Validate that one device EMT interface variable is bound to the live bus EMT shell.
+
+    :param logger: Validation logger.
+    :param device: Device being validated.
+    :param device_mdl: Device EMT model.
+    :param bus_mdl: Bus EMT shell.
+    :param device_reference: Reference exposed by the device EMT interface.
+    :param bus_reference: Reference exposed by the bus EMT shell.
+    :param property_name: Human-readable property label for logs.
+    :return: None.
+    """
+    if device_mdl.empty() or bus_mdl.empty():
+        return
+    else:
+        pass
+
+    device_var = _get_emt_external_var(device_mdl, device_reference)
+    bus_var = _get_emt_external_var(bus_mdl, bus_reference)
+
+    if device_var is None or bus_var is None:
+        return
+    else:
+        pass
+
+    if device_var.uid == bus_var.uid:
+        return
+    else:
+        logger.add_error(
+            msg="Stale EMT bus connection",
+            device=device.name,
+            value=f"uid={device_var.uid}",
+            expected_value=f"uid={bus_var.uid}",
+            device_class=device.device_type.value,
+            device_property=property_name,
+            object_value=device_var.name,
+            expected_object_value=bus_var.name,
+        )
+
+
+def _validate_branch_emt_bus_connections(logger: Logger,
+                                         branch: ALL_DEV_TYPES) -> None:
+    """
+    Validate bus-side EMT voltage bindings for one branch-like device.
+
+    :param logger: Validation logger.
+    :param branch: Branch-like device.
+    :return: None.
+    """
+    mdl = branch.emt_model
+
+    if mdl.empty():
+        return
+    else:
+        pass
+
+    if branch.device_type == DeviceType.VscDevice:
+        _validate_bus_side_emt_reference(logger, branch, mdl, branch.bus_from.emt_model,
+                                         VarPowerFlowReferenceType.Vdc,
+                                         VarPowerFlowReferenceType.Vdc,
+                                         "bus_from.Vdc")
+        _validate_bus_side_emt_reference(logger, branch, mdl, branch.bus_to.emt_model,
+                                         VarPowerFlowReferenceType.v_A,
+                                         VarPowerFlowReferenceType.v_A,
+                                         "bus_to.v_A")
+        _validate_bus_side_emt_reference(logger, branch, mdl, branch.bus_to.emt_model,
+                                         VarPowerFlowReferenceType.v_B,
+                                         VarPowerFlowReferenceType.v_B,
+                                         "bus_to.v_B")
+        _validate_bus_side_emt_reference(logger, branch, mdl, branch.bus_to.emt_model,
+                                         VarPowerFlowReferenceType.v_C,
+                                         VarPowerFlowReferenceType.v_C,
+                                         "bus_to.v_C")
+    else:
+        _validate_bus_side_emt_reference(logger, branch, mdl, branch.bus_from.emt_model,
+                                         VarPowerFlowReferenceType.Vf_dc,
+                                         VarPowerFlowReferenceType.Vdc,
+                                         "bus_from.Vf_dc")
+        _validate_bus_side_emt_reference(logger, branch, mdl, branch.bus_to.emt_model,
+                                         VarPowerFlowReferenceType.Vt_dc,
+                                         VarPowerFlowReferenceType.Vdc,
+                                         "bus_to.Vt_dc")
+        _validate_bus_side_emt_reference(logger, branch, mdl, branch.bus_from.emt_model,
+                                         VarPowerFlowReferenceType.vf_N,
+                                         VarPowerFlowReferenceType.v_N,
+                                         "bus_from.vf_N")
+        _validate_bus_side_emt_reference(logger, branch, mdl, branch.bus_from.emt_model,
+                                         VarPowerFlowReferenceType.vf_A,
+                                         VarPowerFlowReferenceType.v_A,
+                                         "bus_from.vf_A")
+        _validate_bus_side_emt_reference(logger, branch, mdl, branch.bus_from.emt_model,
+                                         VarPowerFlowReferenceType.vf_B,
+                                         VarPowerFlowReferenceType.v_B,
+                                         "bus_from.vf_B")
+        _validate_bus_side_emt_reference(logger, branch, mdl, branch.bus_from.emt_model,
+                                         VarPowerFlowReferenceType.vf_C,
+                                         VarPowerFlowReferenceType.v_C,
+                                         "bus_from.vf_C")
+        _validate_bus_side_emt_reference(logger, branch, mdl, branch.bus_to.emt_model,
+                                         VarPowerFlowReferenceType.vt_N,
+                                         VarPowerFlowReferenceType.v_N,
+                                         "bus_to.vt_N")
+        _validate_bus_side_emt_reference(logger, branch, mdl, branch.bus_to.emt_model,
+                                         VarPowerFlowReferenceType.vt_A,
+                                         VarPowerFlowReferenceType.v_A,
+                                         "bus_to.vt_A")
+        _validate_bus_side_emt_reference(logger, branch, mdl, branch.bus_to.emt_model,
+                                         VarPowerFlowReferenceType.vt_B,
+                                         VarPowerFlowReferenceType.v_B,
+                                         "bus_to.vt_B")
+        _validate_bus_side_emt_reference(logger, branch, mdl, branch.bus_to.emt_model,
+                                         VarPowerFlowReferenceType.vt_C,
+                                         VarPowerFlowReferenceType.v_C,
+                                         "bus_to.vt_C")
+
+
+def _validate_injection_emt_bus_connections(logger: Logger,
+                                            injection: ALL_DEV_TYPES) -> None:
+    """
+    Validate bus-side EMT voltage bindings for one single-bus injection device.
+
+    :param logger: Validation logger.
+    :param injection: Injection device.
+    :return: None.
+    """
+    mdl = injection.emt_model
+
+    if mdl.empty():
+        return
+    else:
+        pass
+
+    bus_mdl = injection.bus.emt_model
+    _validate_bus_side_emt_reference(logger, injection, mdl, bus_mdl,
+                                     VarPowerFlowReferenceType.Vdc,
+                                     VarPowerFlowReferenceType.Vdc,
+                                     "bus.Vdc")
+    _validate_bus_side_emt_reference(logger, injection, mdl, bus_mdl,
+                                     VarPowerFlowReferenceType.v_N,
+                                     VarPowerFlowReferenceType.v_N,
+                                     "bus.v_N")
+    _validate_bus_side_emt_reference(logger, injection, mdl, bus_mdl,
+                                     VarPowerFlowReferenceType.v_A,
+                                     VarPowerFlowReferenceType.v_A,
+                                     "bus.v_A")
+    _validate_bus_side_emt_reference(logger, injection, mdl, bus_mdl,
+                                     VarPowerFlowReferenceType.v_B,
+                                     VarPowerFlowReferenceType.v_B,
+                                     "bus.v_B")
+    _validate_bus_side_emt_reference(logger, injection, mdl, bus_mdl,
+                                     VarPowerFlowReferenceType.v_C,
+                                     VarPowerFlowReferenceType.v_C,
+                                     "bus.v_C")
 
 
 class MultiCircuit(Assets):
@@ -3343,10 +3519,14 @@ class MultiCircuit(Assets):
                 logger.add_error("Missing EMT model",
                                  device_class=elm.device_type.value,
                                  device=elm.name)
+            else:
+                _validate_branch_emt_bus_connections(logger=logger, branch=elm)
 
         for elm in self.get_injection_devices_iter():
             if elm.emt_model.empty():
                 logger.add_error("Missing EMT model",
                                  device_class=elm.device_type.value,
                                  device=elm.name)
+            else:
+                _validate_injection_emt_bus_connections(logger=logger, injection=elm)
         return logger

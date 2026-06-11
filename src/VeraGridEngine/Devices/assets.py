@@ -8916,6 +8916,7 @@ class Assets:
             tem.get_line_rms_template(vfactory=self._var_factory),
             tem.get_load_rms_template(vfactory=self._var_factory),
             tem.get_pvd1_rms_template(vfactory=self._var_factory),
+            tem.build_vsc_rms(vfactory=self._var_factory)
         ]
 
     def add_emt_model_catalogue(self):

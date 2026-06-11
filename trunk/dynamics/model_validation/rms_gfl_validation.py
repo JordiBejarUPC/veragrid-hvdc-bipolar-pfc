@@ -339,7 +339,7 @@ def run_power_flow(circuit, grid_name):
     print(f"\nRunning Power Flow on {grid_name}...")
     pf_options = vge.PowerFlowOptions(
         solver_type=SolverType.NR,
-        verbose=False,
+        verbose=True,
         retry_with_other_methods=True,
         max_iter=100,
         tolerance=1e-11,
