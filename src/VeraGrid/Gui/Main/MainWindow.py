@@ -5492,7 +5492,7 @@ class Ui_mainWindow(object):
         self.modelTabWidget.setCurrentIndex(0)
         self.tabWidget_6.setCurrentIndex(0)
         self.toolBox.setCurrentIndex(0)
-        self.tabWidget_5.setCurrentIndex(2)
+        self.tabWidget_5.setCurrentIndex(0)
         self.resultsTabWidget.setCurrentIndex(0)
         self.tabWidget_2.setCurrentIndex(0)
         self.settingsTabWidget.setCurrentIndex(0)

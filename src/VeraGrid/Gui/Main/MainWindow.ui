@@ -1332,7 +1332,7 @@
                    <enum>QTabWidget::TabPosition::East</enum>
                   </property>
                   <property name="currentIndex">
-                   <number>2</number>
+                   <number>0</number>
                   </property>
                   <property name="documentMode">
                    <bool>true</bool>
