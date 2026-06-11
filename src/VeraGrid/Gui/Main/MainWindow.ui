@@ -1332,7 +1332,7 @@
                    <enum>QTabWidget::TabPosition::East</enum>
                   </property>
                   <property name="currentIndex">
-                   <number>0</number>
+                   <number>2</number>
                   </property>
                   <property name="documentMode">
                    <bool>true</bool>
@@ -2354,7 +2354,7 @@
              <property name="orientation">
               <enum>Qt::Orientation::Horizontal</enum>
              </property>
-             <widget class="QTabWidget" name="tabWidget_3">
+             <widget class="QToolBox" name="toolBox_3">
               <property name="minimumSize">
                <size>
                 <width>240</width>
@@ -2364,33 +2364,12 @@
               <property name="toolTip">
                <string/>
               </property>
-              <property name="tabPosition">
-               <enum>QTabWidget::TabPosition::South</enum>
-              </property>
-              <property name="currentIndex">
-               <number>0</number>
-              </property>
-              <property name="documentMode">
-               <bool>true</bool>
-              </property>
-              <property name="tabsClosable">
-               <bool>false</bool>
-              </property>
-              <property name="movable">
-               <bool>false</bool>
-              </property>
-              <property name="tabBarAutoHide">
-               <bool>true</bool>
-              </property>
-              <widget class="QWidget" name="tab_8">
-               <property name="toolTip">
-                <string>List of current reults</string>
-               </property>
+              <widget class="QWidget" name="toolBox_3Page1" native="true">
                <attribute name="icon">
                 <iconset resource="../Icons/icons.qrc">
-                 <normaloff>:/Icons/icons/data.png</normaloff>:/Icons/icons/data.png</iconset>
+                 <normaloff>:/Icons/icons/plot.png</normaloff>:/Icons/icons/plot.png</iconset>
                </attribute>
-               <attribute name="title">
+               <attribute name="label">
                 <string>Results</string>
                </attribute>
                <layout class="QVBoxLayout" name="verticalLayout_28">
@@ -2534,16 +2513,13 @@
                 </item>
                </layout>
               </widget>
-              <widget class="QWidget" name="tab_12">
-               <property name="toolTip">
-                <string>Saved sessions on the disk file</string>
-               </property>
+              <widget class="QWidget" name="toolBox_3Page2" native="true">
                <attribute name="icon">
                 <iconset resource="../Icons/icons.qrc">
-                 <normaloff>:/Icons/icons/load.png</normaloff>:/Icons/icons/load.png</iconset>
+                 <normaloff>:/Icons/icons/load_add.png</normaloff>:/Icons/icons/load_add.png</iconset>
                </attribute>
-               <attribute name="title">
-                <string>Saved</string>
+               <attribute name="label">
+                <string>Saved results in this file</string>
                </attribute>
                <layout class="QVBoxLayout" name="verticalLayout_44">
                 <property name="leftMargin">
