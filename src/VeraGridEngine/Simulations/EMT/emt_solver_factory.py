@@ -16,6 +16,7 @@ from VeraGridEngine.enumerations import DynamicIntegrationMethod
 from VeraGridEngine.Utils.NumericalMethods.emt_sparse_solver_registry import resolve_emt_sparse_solver_backend_provider
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonDiagnosticsConfig
 from collections.abc import Callable
+from typing import Any
 
 
 EMT_SOLVER_CLASS_MAP = {
@@ -33,7 +34,29 @@ def build_emt_solver(options: EmtOptions,
                      h: float,
                      method: DynamicIntegrationMethod = DynamicIntegrationMethod.DaeTrapezoidal,
                      newton_diag_config: NewtonDiagnosticsConfig | None = None,
-                     cancel_checker: Callable[[], bool] | None = None):
+                     cancel_checker: Callable[[], bool] | None = None) -> Any:
+    """
+    Build the configured EMT solver.
+
+    :param options: EMT options selecting the solver implementation.
+    :type options: EmtOptions
+    :param problem: EMT problem instance consumed by the solver.
+    :type problem: EmtProblemTemplate
+    :param t0: Initial simulation time.
+    :type t0: float
+    :param t_end: Final simulation time.
+    :type t_end: float
+    :param h: Nominal integration time step.
+    :type h: float
+    :param method: Integration method used by the solver.
+    :type method: DynamicIntegrationMethod
+    :param newton_diag_config: Optional Newton diagnostics configuration.
+    :type newton_diag_config: NewtonDiagnosticsConfig | None
+    :param cancel_checker: Optional cancellation callback checked by the solver at safe boundaries.
+    :type cancel_checker: Callable[[], bool] | None
+    :return: Configured EMT solver instance.
+    :rtype: Any
+    """
 
     if options.solver_type in EMT_SOLVER_CLASS_MAP:
         solver_cls = EMT_SOLVER_CLASS_MAP[options.solver_type]

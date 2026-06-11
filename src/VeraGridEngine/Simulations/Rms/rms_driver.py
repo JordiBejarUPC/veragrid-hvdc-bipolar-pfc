@@ -145,6 +145,10 @@ class RmsSimulationDriver(DriverTemplate):
 
         # self.options.problem_type = RmsProblemTypes.PowerBalanceVectorized
 
+        if self.is_cancel():
+            self.report_text("Cancelled!")
+            return
+
         problem = build_rms_problem(
             grid=self.grid,
             options=self.options,
@@ -152,6 +156,11 @@ class RmsSimulationDriver(DriverTemplate):
             progress_signal=self.progress_signal,
         )
         self.problem = problem
+
+        if self.is_cancel():
+            self.report_text("Cancelled!")
+            return
+
         # The results container keeps the full declared event-group layout so
         # downstream code can preserve stable event-group identities. The extra
         # availability mask records which of those declared groups are actually
@@ -170,6 +179,10 @@ class RmsSimulationDriver(DriverTemplate):
         )
 
         for group_idx, rms_events_group in enumerate(rms_events_groups):
+
+            if self.is_cancel():
+                self.report_text("Cancelled!")
+                return
 
             if rms_events_group.active:
 
@@ -199,7 +212,8 @@ class RmsSimulationDriver(DriverTemplate):
                         t0=0,
                         t_end=self.options.simulation_time,
                         h=self.options.time_step,
-                        max_iter=self.options.max_iter
+                        max_iter=self.options.max_iter,
+                        cancel_checker=self.is_cancel,
                     )
 
                 else:
@@ -214,7 +228,8 @@ class RmsSimulationDriver(DriverTemplate):
                         t0=0,
                         t_end=self.options.simulation_time,
                         h=self.options.time_step,
-                        max_iter=self.options.max_iter
+                        max_iter=self.options.max_iter,
+                        cancel_checker=self.is_cancel,
                     )
                 
                 _t_start = time.time()
@@ -222,6 +237,10 @@ class RmsSimulationDriver(DriverTemplate):
                 t, y, well_initialized, converged = solver.simulate()
                 _t_end = time.time()
                 # print(f"RMS simulation time: {_t_end - _t_start:.4f} s")
+
+                if self.is_cancel():
+                    self.report_text("Cancelled!")
+                    return
 
                 self.results.converged[group_idx] = converged
                 self.results.well_initialized[group_idx] = well_initialized
