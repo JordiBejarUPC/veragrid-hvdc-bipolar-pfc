@@ -1604,6 +1604,7 @@ class DeviceType(Enum):
     ModellingAuthority = "Modelling Authority"
 
     FacilityDevice = "Facility"
+    MarketUnitDevice = "Market unit"
 
     SimulationOptionsDevice = "SimulationOptionsDevice"
 
