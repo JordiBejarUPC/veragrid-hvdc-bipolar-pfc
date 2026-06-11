@@ -77,7 +77,9 @@ def build_grid() -> gce.MultiCircuit:
         # GENQEC with minimal AVR stub.
         gen_block = get_genqec_rms(grid.var_factory, name=gen.name).block
         tm_in = gen_block.in_vars[2]
+        Ef_in = gen_block.in_vars[3]
         gen_block.event_dict[tm_in] = grid.var_factory.add_const(None)
+        gen_block.event_dict[Ef_in] = grid.var_factory.add_const(None)
 
         set_rms_model(device=gen, model=gen_block, var_factory=grid.var_factory)
 

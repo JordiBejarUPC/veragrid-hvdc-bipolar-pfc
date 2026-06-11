@@ -34,7 +34,7 @@ from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Devices.Injections.shunt import Shunt
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowReferenceType, ParamPowerFlowReferenceType, \
-    DynamicSimulationMode, ShuntConnectionType, WindingType
+    DynamicSimulationMode, ShuntConnectionType, WindingType, DynamicTableModelMode
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms, get_bus_rms_algebraic_vars
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import BusEmtTemplate, get_bus_emt_template, get_bus_emt_algebraic_vars
 from VeraGridEngine.Devices.Substation.bus import Bus
@@ -107,6 +107,8 @@ from VeraGrid.Gui.DynamicModelEditor.source_emt_dialog import SourceEmtDialog
 from VeraGrid.Gui.DynamicModelEditor.transformer_topology_emt_dialog import TransformerTopologyEmtDialog
 from VeraGrid.Gui.DynamicModelEditor.switch_emt_dialog import SwitchEmtDialog
 from VeraGrid.Gui.Icons.icon_associations import device_type_icons
+from VeraGrid.Gui.wrappable_table_model import WrappableTableModel
+from VeraGrid.Gui.gui_functions import ComboDelegate, TextDelegate
 from VeraGridEngine.Utils.Symbolic.symbolic import (symbolic_to_string, string_to_symbolic,
                                                     get_symbolic_parser_function_names,
                                                     Expr, Var, Const, Comparison)
@@ -153,6 +155,7 @@ TEMPLATE_NODE_TYPE: str = "TEMPLATE"
 PARAMETER_VALUE_TYPE_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 500
 PARAMETER_EDITABLE_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 501
 LIBRARY_SEARCH_TEXT_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 502
+BLOCK_SEARCH_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 503
 MODAL_TEMPLATE_KIND_ATTR: str = "_modal_template_kind"
 MODAL_TEMPLATE_CONFIG_ATTR: str = "_modal_template_config"
 LOOKUP_ARRAY_LINEAR_DESCRIPTOR_KEYS: set[str] = {
@@ -1004,6 +1007,18 @@ class LibraryTreeFilterProxyModel(QtCore.QSortFilterProxyModel):
         else:
             return super().supportedDragActions()
 
+
+class BlockTableFilterProxyModel(QtCore.QSortFilterProxyModel):
+    """
+    Flat table proxy used for the three side-panel table searches
+    (Variables, Parameters, Equations).
+    """
+
+    def __init__(self, parent: QtCore.QObject | None = None):
+        super().__init__(parent)
+        self.setFilterCaseSensitivity(QtCore.Qt.CaseSensitivity.CaseInsensitive)
+        self.setFilterRole(BLOCK_SEARCH_ROLE)
+        self.setFilterKeyColumn(0)
 
 
 def clone_block_for_editing(block: Block) -> Block:
@@ -2460,7 +2475,7 @@ class BlockParameterRow:
     """
 
     __slots__ = ("name", "kind", "key_var", "value", "editable_name", "editable_value", "value_type", "item_index",
-                 "init_eq", "source_dict_name", "display_value", "display_init_eq")
+                 "init_eq", "source_dict_name", "display_value", "display_init_eq", "search_text")
 
     def __init__(self,
                  name: str,
@@ -2499,7 +2514,9 @@ class BlockParameterRow:
         self.source_dict_name: str | None = source_dict_name
         self.display_value: Any = None
         self.display_init_eq: Any = None
+        self.search_text: str = ""
         refresh_block_parameter_row_cache(self)
+        refresh_row_search_cache(self)
 
     @property
     def is_section(self) -> bool:
@@ -2544,81 +2561,90 @@ def refresh_block_parameter_row_cache(row: BlockParameterRow) -> None:
         row.display_init_eq = None
 
 
-class BlockParameterValueDelegate(QtWidgets.QStyledItemDelegate):
+def refresh_row_search_cache(row: BlockParameterRow) -> None:
+    parts = [str(row.name or "")]
+    parts.append(str(row.kind.value if row.kind else ""))
+    if row.value is not None:
+        parts.append(str(row.value))
+    if row.init_eq is not None:
+        parts.append(str(row.init_eq))
+    if row.display_value is not None:
+        parts.append(str(row.display_value))
+    if row.display_init_eq is not None:
+        parts.append(str(row.display_init_eq))
+    row.search_text = " ".join(parts).lower()
+
+
+class BlockValueDelegate(QtWidgets.QStyledItemDelegate):
     """
-    Delegate that chooses a numeric or text editor depending on the parameter row metadata.
+    Delegate that chooses an appropriate editor based on the row kind.
+    Inspects row.kind to decide: float spinbox for numeric parameters,
+    text editor for symbolic expressions, etc.
     """
 
     def createEditor(self,
                      parent: QtWidgets.QWidget,
                      option: QtWidgets.QStyleOptionViewItem,
                      index: QtCore.QModelIndex) -> QtWidgets.QWidget | None:
-        """
-        Create the editor widget for the parameter value cell.
-
-        :param parent:
-        :param option:
-        :param index:
-        :return:
-        """
-        value_type_name: str = str(index.model().data(index, PARAMETER_VALUE_TYPE_ROLE))
-        editable: bool = bool(index.model().data(index, PARAMETER_EDITABLE_ROLE))
-
-        if not editable:
-            return None
-        elif value_type_name == "float":
-            editor: QDoubleSpinBox = QDoubleSpinBox(parent)
-            editor.setDecimals(8)
-            editor.setMinimum(-1e200)
-            editor.setMaximum(1e200)
-            return editor
-        elif value_type_name == "int":
-            editor_int: QSpinBox = QSpinBox(parent)
-            editor_int.setMinimum(-999999999)
-            editor_int.setMaximum(999999999)
-            return editor_int
+        model = index.model()
+        if isinstance(model, QtCore.QSortFilterProxyModel):
+            source_index = model.mapToSource(index)
+            source_model = model.sourceModel()
+            row = source_model.get_row(source_index.row()) if hasattr(source_model, 'get_row') else None
         else:
+            row = model.get_row(index.row()) if hasattr(model, 'get_row') else None
+        if row is None:
             return QLineEdit(parent)
 
+        if not row.editable_value:
+            return None
+
+        if row.is_section:
+            return None
+
+        if row.kind in (BlockParameterKind.STATE_VAR, BlockParameterKind.ALGEBRAIC_VAR):
+            return QLineEdit(parent)
+
+        elif row.kind in (BlockParameterKind.EVENT_PARAMETER, BlockParameterKind.MODE_PARAMETER):
+            editor = self._make_float_editor(parent) if row.value_type == float else QLineEdit(parent)
+            return editor
+
+        elif row.kind == BlockParameterKind.FIXED_PARAMETER:
+            editor = self._make_float_editor(parent) if row.value_type == float else QLineEdit(parent)
+            return editor
+
+        elif row.kind in (BlockParameterKind.STATE_EQUATION,
+                          BlockParameterKind.ALGEBRAIC_EQUATION):
+            return QLineEdit(parent)
+
+        return QLineEdit(parent)
+
+    @staticmethod
+    def _make_float_editor(parent: QtWidgets.QWidget) -> QDoubleSpinBox:
+        editor = QDoubleSpinBox(parent)
+        editor.setDecimals(8)
+        editor.setMinimum(-1e200)
+        editor.setMaximum(1e200)
+        return editor
+
     def setEditorData(self, editor: QtWidgets.QWidget, index: QtCore.QModelIndex) -> None:
-        """
-        Load the current model value into the editor widget.
-
-        :param editor:
-        :param index:
-        :return:
-        """
-        value: Any = index.model().data(index, QtCore.Qt.ItemDataRole.EditRole)
-
+        value = index.model().data(index, QtCore.Qt.ItemDataRole.EditRole)
         if isinstance(editor, QDoubleSpinBox):
-            editor.setValue(float(value))
-        elif isinstance(editor, QSpinBox):
-            editor.setValue(int(value))
+            try:
+                editor.setValue(float(value))
+            except (TypeError, ValueError):
+                editor.setValue(0.0)
         elif isinstance(editor, QLineEdit):
-            editor.setText(str(value))
-        else:
-            pass
+            editor.setText(str(value) if value is not None else "")
 
     def setModelData(self,
                      editor: QtWidgets.QWidget,
                      model: QtCore.QAbstractItemModel,
                      index: QtCore.QModelIndex) -> None:
-        """
-        Push the editor value back into the model.
-
-        :param editor:
-        :param model:
-        :param index:
-        :return:
-        """
         if isinstance(editor, QDoubleSpinBox):
-            model.setData(index, editor.value(), QtCore.Qt.ItemDataRole.EditRole)
-        elif isinstance(editor, QSpinBox):
             model.setData(index, editor.value(), QtCore.Qt.ItemDataRole.EditRole)
         elif isinstance(editor, QLineEdit):
             model.setData(index, editor.text(), QtCore.Qt.ItemDataRole.EditRole)
-        else:
-            pass
 
 
 class EditParameterDialog(QDialog):
@@ -2729,101 +2755,193 @@ class EditParameterDialog(QDialog):
             self.static_variable_combo.setEnabled(False)
 
 
-class VariablesTableModel(QtCore.QAbstractTableModel):
+class WrappableBlockTableModel(WrappableTableModel):
     """
-    Table model for block variables (state and algebraic only).
-    Columns: Type, Name, Init Equation
+    ViewModel that adapts a Block for Qt table views.
+
+    Modes:
+        - "variables": columns Type, Name, Init Equation
+        - "parameters": columns Type, Name, Value
+        - "equations": columns Type, Equation
+        - "all": columns Type, Name, Value
+
+    Block is the single source of truth.
+    This model only generates adapted rows for the GUI.
     """
 
     block_updated = Signal(object)
 
-    def __init__(self, var_factory: VarFactory, parent: Optional[QtCore.QObject] = None):
+    def __init__(self,
+                 var_factory: VarFactory,
+                 api_object: Any = None,
+                 parent: Optional[QtCore.QObject] = None):
         super().__init__(parent)
+        self._table_view = parent
         self.var_factory = var_factory
+        self.api_object = api_object
         self.block = None
-        self.rows = []
+        self.rows: List[BlockParameterRow] = []
+        self.mode = DynamicTableModelMode.VARIABLES
         self.headers = ["Type", "Name", "Init Equation"]
+        self.symbol_namespace = None
+        self._value_column = 2
+
+    def set_mode(self, mode: DynamicTableModelMode) -> None:
+        self.mode = mode
+        if mode == DynamicTableModelMode.VARIABLES:
+            self.headers = ["Type", "Name", "Init Equation"]
+            self._value_column = 2
+        elif mode == DynamicTableModelMode.PARAMETERS:
+            self.headers = ["Type", "Name", "Value"]
+            self._value_column = 2
+        elif mode == DynamicTableModelMode.EQUATIONS:
+            self.headers = ["Type", "Equation"]
+            self._value_column = 1
+        self.rebuild()
 
     def set_block(self, block: Block | None) -> None:
-        self.beginResetModel()
         self.block = block
-        self.rows: List[BlockParameterRow] = list()
-        build_variables_rows(self.block, self.rows)
+        self.rebuild()
+
+    def rebuild(self) -> None:
+        self.beginResetModel()
+        self.rows.clear()
+        if self.block is not None:
+            if self.mode == DynamicTableModelMode.VARIABLES:
+                build_variables_rows(self.block, self.rows)
+            elif self.mode == DynamicTableModelMode.PARAMETERS:
+                build_parameters_rows(self, self.block, self.rows)
+            elif self.mode == DynamicTableModelMode.EQUATIONS:
+                build_equations_rows(self.block, self.rows)
         self.endResetModel()
 
     def rowCount(self, parent=QtCore.QModelIndex()) -> int:
         return len(self.rows)
 
     def columnCount(self, parent=QtCore.QModelIndex()) -> int:
-        return 3
+        return 2 if self.mode == DynamicTableModelMode.EQUATIONS else 3
 
     def data(self, index, role=QtCore.Qt.ItemDataRole.DisplayRole):
         if not index.isValid() or self.block is None:
             return None
         row = self.rows[index.row()]
-        if role == QtCore.Qt.ItemDataRole.DisplayRole or role == QtCore.Qt.ItemDataRole.EditRole:
-            if index.column() == 0:
-                if row.kind == BlockParameterKind.STATE_VAR:
-                    return "State"
-                elif row.kind == BlockParameterKind.ALGEBRAIC_VAR:
-                    return "Algebraic"
-            elif index.column() == 1:
-                return row.name
-            elif index.column() == 2:
-                if row.init_eq is not None:
-                    return row.display_init_eq
-                else:
+        col = index.column()
+
+        if role in (QtCore.Qt.ItemDataRole.DisplayRole, QtCore.Qt.ItemDataRole.EditRole):
+            if col == 0:
+                return row.kind.value
+            elif col == 1:
+                if self.mode == DynamicTableModelMode.EQUATIONS:
                     return row.display_value
-        elif role == PARAMETER_VALUE_TYPE_ROLE and index.column() == 2:
-            return "float" if row.value_type == float else "text"
-        elif role == PARAMETER_EDITABLE_ROLE and index.column() == 2:
+                return row.name
+            elif col == 2:
+                if self.mode == DynamicTableModelMode.VARIABLES:
+                    return row.display_init_eq if row.init_eq is not None else row.display_value
+                elif self.mode == DynamicTableModelMode.PARAMETERS:
+                    if row.kind == BlockParameterKind.FIXED_PARAMETER:
+                        return row.value
+                    return row.display_value
+        elif role == PARAMETER_VALUE_TYPE_ROLE and col == self._value_column:
+            if self.mode == DynamicTableModelMode.VARIABLES:
+                return "float" if row.value_type == float else "text"
+            return self.get_python_value_type(row.value).__name__
+        elif role == PARAMETER_EDITABLE_ROLE and col == self._value_column:
+            if self.mode == DynamicTableModelMode.PARAMETERS and row.kind == BlockParameterKind.FIXED_PARAMETER:
+                return False
             return row.editable_value
         elif role == QtCore.Qt.ItemDataRole.BackgroundRole:
+            if col == 2 and self.mode == DynamicTableModelMode.PARAMETERS and not row.editable_value and row.kind != BlockParameterKind.FIXED_PARAMETER:
+                return QColor("#d3d3d3")
             return QColor("#f7fafc")
         elif role == QtCore.Qt.ItemDataRole.ForegroundRole:
             return QColor("#333333")
+        elif role == BLOCK_SEARCH_ROLE:
+            return row.search_text
         return None
 
     def setData(self, index, value, role=QtCore.Qt.ItemDataRole.EditRole):
-        if not index.isValid():
+        if not index.isValid() or role != QtCore.Qt.ItemDataRole.EditRole:
             return False
         row = self.rows[index.row()]
-        if role == QtCore.Qt.ItemDataRole.EditRole:
-            if index.column() == 1:
-                row.name = value
+        col = index.column()
+
+        if col == 1:
+            if self.mode == DynamicTableModelMode.EQUATIONS:
+                old_expr = row.value
+                try:
+                    namespace = self.symbol_namespace
+                    if namespace is None and self.block is not None:
+                        namespace = build_block_symbol_namespace(self.block)
+                    new_expr = string_to_symbolic(value, namespace)
+                    row.value = new_expr
+                    refresh_block_parameter_row_cache(row)
+                    refresh_row_search_cache(row)
+                    update_source_dict(self.block, row, row.value, old_expr)
+                    self.dataChanged.emit(index, index, [role])
+                    self.block_updated.emit(self.block.uid)
+                    return True
+                except Exception:
+                    return False
+            if row.key_var is not None:
                 row.key_var.name = value
-            elif index.column() == 2 and row.editable_value:
-                row.value = value
-                refresh_block_parameter_row_cache(row)
-            else:
-                return False
+            row.name = value
+            refresh_row_search_cache(row)
             self.dataChanged.emit(index, index, [role])
             return True
-        return False
 
-    def set_init_eq(self, row_index: int, init_eq: Expr) -> None:
-        if 0 <= row_index < len(self.rows):
-            row = self.rows[row_index]
-            row.init_eq = init_eq
-            refresh_block_parameter_row_cache(row)
-            if self.block is not None and row.key_var is not None:
-                update_source_dict(self.block, row, init_eq)
-            index = self.index(row_index, 2)
-            self.dataChanged.emit(index, index, [QtCore.Qt.ItemDataRole.EditRole])
+        elif col == 2 and self.mode != DynamicTableModelMode.EQUATIONS:
+            if not row.editable_value:
+                return False
+            if self.mode == DynamicTableModelMode.VARIABLES:
+                row.value = value
+                refresh_block_parameter_row_cache(row)
+                refresh_row_search_cache(row)
+                self.dataChanged.emit(index, index, [role])
+                return True
+            elif self.mode == DynamicTableModelMode.PARAMETERS:
+                try:
+                    parsed_value = _parse_symbolic_editor_value(self.block, value)
+                except Exception:
+                    return False
+                row.value = parsed_value
+                refresh_block_parameter_row_cache(row)
+                refresh_row_search_cache(row)
+                update_source_dict(self.block, row, parsed_value)
+                self.dataChanged.emit(index, index, [role])
+                self.block_updated.emit(self.block.uid)
+                return True
+
+        return False
 
     def flags(self, index):
         if not index.isValid():
             return QtCore.Qt.ItemFlag.NoItemFlags
+        if index.row() < 0 or index.row() >= len(self.rows):
+            return QtCore.Qt.ItemFlag.NoItemFlags
+        row = self.rows[index.row()]
+        col = index.column()
         flags = QtCore.Qt.ItemFlag.ItemIsEnabled | QtCore.Qt.ItemFlag.ItemIsSelectable
-        if index.column() == 1:
-            flags |= QtCore.Qt.ItemFlag.ItemIsEditable
-        elif index.column() == 2:
-            flags |= QtCore.Qt.ItemFlag.ItemIsEditable
+
+        if self.mode == DynamicTableModelMode.VARIABLES:
+            if col == 1:
+                flags |= QtCore.Qt.ItemFlag.ItemIsEditable
+            elif col == 2 and row.editable_value:
+                flags |= QtCore.Qt.ItemFlag.ItemIsEditable
+        elif self.mode == DynamicTableModelMode.PARAMETERS:
+            if col == 1:
+                flags |= QtCore.Qt.ItemFlag.ItemIsEditable
+            elif col == 2 and row.editable_value and row.kind != BlockParameterKind.FIXED_PARAMETER:
+                flags |= QtCore.Qt.ItemFlag.ItemIsEditable
+        elif self.mode == DynamicTableModelMode.EQUATIONS:
+            if col == 1:
+                flags |= QtCore.Qt.ItemFlag.ItemIsEditable
+
         return flags
 
     def headerData(self, section, orientation, role=QtCore.Qt.ItemDataRole.DisplayRole):
         if role == QtCore.Qt.ItemDataRole.DisplayRole and orientation == QtCore.Qt.Orientation.Horizontal:
-            return self.headers[section]
+            if section < len(self.headers):
+                return self.headers[section]
         return None
 
     def get_row(self, row_index: int) -> BlockParameterRow | None:
@@ -2831,34 +2949,60 @@ class VariablesTableModel(QtCore.QAbstractTableModel):
             return self.rows[row_index]
         return None
 
-    def get_last_index_of_type(self, var_type: str) -> int:
-        """
-        Return the last row index for a given variable type.
-        State vars come first, then algebraic vars.
+    def set_delegates(self) -> None:
+        if self._table_view is None:
+            return
+        view = self._table_view
 
-        :param var_type: "state" or "algebraic"
-        :return: Last row index for that type, or -1 if none found
-        """
-        if var_type == "state":
-            return len(self.block.state_vars) - 1 if self.block and self.block.state_vars else -1
-        elif var_type == "algebraic":
-            return len(self.rows) - 1 if self.block and self.block.algebraic_vars else -1
-        return -1
+        if self.mode == DynamicTableModelMode.VARIABLES:
+            delegate = ComboDelegate(view, ["State", "Algebraic"], ["State", "Algebraic"])
+            view.setItemDelegateForColumn(0, delegate)
+            delegate = TextDelegate(view)
+            view.setItemDelegateForColumn(1, delegate)
+            delegate = BlockValueDelegate(view)
+            view.setItemDelegateForColumn(2, delegate)
+
+        elif self.mode == DynamicTableModelMode.PARAMETERS:
+            delegate = ComboDelegate(
+                view,
+                ["Event Parameter", "Mode Parameter", "Static Parameter"],
+                ["Event Parameter", "Mode Parameter", "Static Parameter"]
+            )
+            view.setItemDelegateForColumn(0, delegate)
+            delegate = TextDelegate(view)
+            view.setItemDelegateForColumn(1, delegate)
+            delegate = BlockValueDelegate(view)
+            view.setItemDelegateForColumn(2, delegate)
+
+        elif self.mode == DynamicTableModelMode.EQUATIONS:
+            delegate = BlockValueDelegate(view)
+            view.setItemDelegateForColumn(1, delegate)
+
+    def set_init_eq(self, row_index: int, init_eq: Expr) -> None:
+        if 0 <= row_index < len(self.rows):
+            row = self.rows[row_index]
+            row.init_eq = init_eq
+            refresh_block_parameter_row_cache(row)
+            refresh_row_search_cache(row)
+            if self.block is not None and row.key_var is not None:
+                update_source_dict(self.block, row, init_eq)
+            index = self.index(row_index, 2)
+            self.dataChanged.emit(index, index, [QtCore.Qt.ItemDataRole.EditRole])
+
+    def set_value_from_expression(self, row_index: int, expr: Expr) -> None:
+        if 0 <= row_index < len(self.rows):
+            row = self.rows[row_index]
+            row.value = expr
+            refresh_block_parameter_row_cache(row)
+            refresh_row_search_cache(row)
+            update_source_dict(self.block, row, expr)
+            index = self.index(row_index, self._value_column)
+            self.dataChanged.emit(index, index, [QtCore.Qt.ItemDataRole.EditRole])
 
     def add_variable_at_end_of_type(self, name: str, category: str, parameter_value: float = 0.0) -> None:
-        """
-        Add a new variable to the block, inserting it after the last variable of the same type.
-        State vars are added after the last state var, algebraic vars after the last algebraic var.
-
-        :param name: Variable name
-        :param category: "state" or "algebraic"
-        :param parameter_value: Initial value for state variables
-        """
         if self.block is None:
             raise ValueError("No block is currently selected.")
-
         new_var = self.var_factory.add_var(name=name)
-
         if category == "state":
             self.block.state_vars.append(new_var)
             if parameter_value != 0.0:
@@ -2866,127 +3010,16 @@ class VariablesTableModel(QtCore.QAbstractTableModel):
         elif category == "algebraic":
             self.block.algebraic_vars.append(new_var)
         else:
-            raise ValueError(f"Unsupported category for VariablesTableModel: {category}")
-
+            raise ValueError(f"Unsupported category: {category}")
         self.set_block(self.block)
         self.block_updated.emit(self.block.uid)
 
-
-class ParametersTableModel(QtCore.QAbstractTableModel):
-    """
-    Table model for block parameters (fixed and event).
-    Columns: , Name, Kind, Value
-    """
-
-    block_updated = Signal(object)
-
-    def __init__(self, api_object: Any, var_factory: VarFactory, block=Block(), parent: Optional[QtCore.QObject] = None):
-        super().__init__(parent)
-        self.api_object = api_object
-        self.var_factory = var_factory
-        self.block = None
-        self.rows = []
-        self.headers = ["Type", "Name", "Value"]
-        if block is not None:
-            self.block = block
-            build_parameters_rows(self, self.block, self.rows)
-
-    def set_block(self, block: Block | None) -> None:
-        self.beginResetModel()
-        self.block = block
-        self.rows: List[BlockParameterRow] = list()
-        build_parameters_rows(self, self.block, self.rows)
-        self.endResetModel()
-
-    def rowCount(self, parent=QtCore.QModelIndex()) -> int:
-        return len(self.rows)
-
-    def columnCount(self, parent=QtCore.QModelIndex()) -> int:
-        return 3
-
-    def data(self, index, role=QtCore.Qt.ItemDataRole.DisplayRole):
-        if not index.isValid() or self.block is None:
-            return None
-        row = self.rows[index.row()]
-        if role == QtCore.Qt.ItemDataRole.DisplayRole:
-            if index.column() == 0:
-                return row.kind.value
-            elif index.column() == 1:
-                return row.name
-            elif index.column() == 2:
-                if row.kind == BlockParameterKind.FIXED_PARAMETER:
-                    return row.value
-                return row.display_value
-        elif role == QtCore.Qt.ItemDataRole.EditRole:
-            if index.column() == 0:
-                return row.kind.value
-            elif index.column() == 1:
-                return row.name
-            elif index.column() == 2:
-                if row.kind == BlockParameterKind.FIXED_PARAMETER:
-                    return None
-                return row.display_value
-        elif role == PARAMETER_EDITABLE_ROLE and index.column() == 2:
-            return row.editable_value
-        elif role == PARAMETER_VALUE_TYPE_ROLE and index.column() == 2:
-            return self.get_python_value_type(row.value)
-        elif role == QtCore.Qt.ItemDataRole.BackgroundRole:
-            if index.column() == 2 and not row.editable_value and row.kind != BlockParameterKind.FIXED_PARAMETER:
-                return QColor("#d3d3d3")
-            return QColor("#f7fafc")
-        elif role == QtCore.Qt.ItemDataRole.ForegroundRole:
-            return QColor("#333333")
-        return None
-
-    def setData(self, index, value, role=QtCore.Qt.ItemDataRole.EditRole):
-        if not index.isValid():
-            return False
-        row = self.rows[index.row()]
-        if role == QtCore.Qt.ItemDataRole.EditRole:
-            if index.column() == 1:
-                row.name = value
-                row.key_var.name = value
-            elif index.column() == 2 and row.editable_value:
-                try:
-                    parsed_value = _parse_symbolic_editor_value(self.block, value)
-                except Exception:
-                    return False
-                row.value = parsed_value
-                refresh_block_parameter_row_cache(row)
-                update_source_dict(self.block, row, parsed_value)
-            else:
-                return False
-            self.dataChanged.emit(index, index, [role])
-            return True
-        return False
-
-    def set_value_from_expression(self, row_index: int, expr: Expr) -> None:
-        if 0 <= row_index < len(self.rows):
-            row = self.rows[row_index]
-            row.value = expr
-            refresh_block_parameter_row_cache(row)
-            update_source_dict(self.block, row, expr)
-            index = self.index(row_index, 2)
-            self.dataChanged.emit(index, index, [QtCore.Qt.ItemDataRole.EditRole])
-
-    def flags(self, index):
-        if not index.isValid():
-            return QtCore.Qt.ItemFlag.NoItemFlags
-        row_idx = index.row()
-        if row_idx < 0 or row_idx >= len(self.rows):
-            return QtCore.Qt.ItemFlag.NoItemFlags
-        row = self.rows[row_idx]
-        flags = QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEnabled
-        if index.column() == 1:
-            flags |= QtCore.Qt.ItemFlag.ItemIsEditable
-        elif index.column() == 2 and row.editable_value and row.kind != BlockParameterKind.FIXED_PARAMETER:
-            flags |= QtCore.Qt.ItemFlag.ItemIsEditable
-        return flags
-
-    def headerData(self, section, orientation, role=QtCore.Qt.ItemDataRole.DisplayRole):
-        if role == QtCore.Qt.ItemDataRole.DisplayRole and orientation == QtCore.Qt.Orientation.Horizontal:
-            return self.headers[section]
-        return None
+    def get_last_index_of_type(self, var_type: str) -> int:
+        if var_type == "state":
+            return len(self.block.state_vars) - 1 if self.block and self.block.state_vars else -1
+        elif var_type == "algebraic":
+            return len(self.rows) - 1 if self.block and self.block.algebraic_vars else -1
+        return -1
 
     @staticmethod
     def get_python_value_type(value) -> type:
@@ -2995,148 +3028,6 @@ class ParametersTableModel(QtCore.QAbstractTableModel):
         elif isinstance(value, float):
             return float
         return str
-
-    def get_row(self, row_index: int) -> BlockParameterRow | None:
-        if 0 <= row_index < len(self.rows):
-            return self.rows[row_index]
-        return None
-
-
-class EquationsTableModel(QtCore.QAbstractTableModel):
-    """
-    Table model for block equations (state and algebraic).
-    Columns: Type, Equation
-    """
-
-    block_updated = Signal(object)
-    equation_edited = Signal(int, object)
-
-    def __init__(self, var_factory: VarFactory, parent: Optional[QtCore.QObject] = None):
-        """
-
-        :param var_factory:
-        :param parent:
-        """
-        super().__init__(parent)
-        self.var_factory = var_factory
-        self.block = None
-        self.rows = []
-        self.headers = ["Type", "Equation"]
-        self.symbol_namespace = None
-
-    def set_block(self, block: Block | None) -> None:
-        """
-
-        :param block:
-        :return:
-        """
-        self.beginResetModel()
-        self.block = block
-        self.rows: List[BlockParameterRow] = list()
-        build_equations_rows(self.block, self.rows)
-        self.endResetModel()
-
-    def rowCount(self, parent=QtCore.QModelIndex()) -> int:
-        """
-
-        :param parent:
-        :return:
-        """
-        return len(self.rows)
-
-    def columnCount(self, parent=QtCore.QModelIndex()) -> int:
-        """
-
-        :param parent:
-        :return:
-        """
-        return 2
-
-    def data(self, index, role=QtCore.Qt.ItemDataRole.DisplayRole):
-        """
-
-        :param index:
-        :param role:
-        :return:
-        """
-        if not index.isValid() or self.block is None:
-            return None
-        row = self.rows[index.row()]
-        if role == QtCore.Qt.ItemDataRole.DisplayRole or role == QtCore.Qt.ItemDataRole.EditRole:
-            if index.column() == 0:
-                if row.kind == BlockParameterKind.STATE_EQUATION:
-                    return "State"
-                elif row.kind == BlockParameterKind.ALGEBRAIC_EQUATION:
-                    return "Algebraic"
-            elif index.column() == 1:
-                return row.display_value
-        elif role == QtCore.Qt.ItemDataRole.BackgroundRole:
-            return QColor("#f7fafc")
-        elif role == QtCore.Qt.ItemDataRole.ForegroundRole:
-            return QColor("#333333")
-        return None
-
-    def setData(self, index, value, role=QtCore.Qt.ItemDataRole.EditRole):
-        """
-
-        :param index:
-        :param value:
-        :param role:
-        :return:
-        """
-        if not index.isValid():
-            return False
-        row = self.rows[index.row()]
-        old_expr = row.value
-        if role == QtCore.Qt.ItemDataRole.EditRole:
-            if index.column() == 1:
-                try:
-
-                    new_expr = string_to_symbolic(value, self.symbol_namespace)
-                    row.value = new_expr
-                    refresh_block_parameter_row_cache(row)
-                    update_source_dict(self.block, row, row.value, old_expr)
-                    self.dataChanged.emit(index, index, [role])
-                    self.block_updated.emit(self.block.uid)
-                    return True
-                except:
-                    return False
-        return False
-
-    def headerData(self, section, orientation, role=QtCore.Qt.ItemDataRole.DisplayRole):
-        """
-
-        :param section:
-        :param orientation:
-        :param role:
-        :return:
-        """
-        if role == QtCore.Qt.ItemDataRole.DisplayRole and orientation == QtCore.Qt.Orientation.Horizontal:
-            return self.headers[section]
-        return None
-
-    def flags(self, index):
-        """
-
-        :param index:
-        :return:
-        """
-        if not index.isValid():
-            return QtCore.Qt.ItemFlag.NoItemFlags
-        flags = QtCore.Qt.ItemFlag.ItemIsEnabled | QtCore.Qt.ItemFlag.ItemIsSelectable
-        if index.column() == 1:
-            flags |= QtCore.Qt.ItemFlag.ItemIsEditable
-        return flags
-
-    def get_row(self, row_index: int) -> BlockParameterRow | None:
-        """
-
-        :param row_index:
-        :return:
-        """
-        if 0 <= row_index < len(self.rows):
-            return self.rows[row_index]
-        return None
 
 
 class InspectModel(QWidget):
@@ -5459,11 +5350,22 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.library_find_shortcut.activated.connect(self.focus_library_search)
         self.reset_library_tree_expansion()
 
-        self.variables_table_model = VariablesTableModel(
+        self.variables_model = WrappableBlockTableModel(
             var_factory=self.var_factory,
             parent=self.ui.variablesTableView
         )
-        self.ui.variablesTableView.setModel(self.variables_table_model)
+        self.variables_model.set_mode(DynamicTableModelMode.VARIABLES)
+        self.variables_model.set_delegates()
+        self.variables_search = QLineEdit()
+        self.variables_search.setPlaceholderText("Search variables...")
+        self.variables_search.setClearButtonEnabled(True)
+        self.ui.verticalLayout_7.insertWidget(0, self.variables_search)
+        self.variables_proxy = BlockTableFilterProxyModel(parent=self.ui.variablesTableView)
+        self.variables_proxy.setSourceModel(self.variables_model)
+        self.ui.variablesTableView.setModel(self.variables_proxy)
+        self.variables_search.textChanged.connect(
+            lambda text: self.variables_proxy.setFilterFixedString(text.strip())
+        )
         variables_header: QtWidgets.QHeaderView = self.ui.variablesTableView.horizontalHeader()
         variables_header.setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Interactive)
         variables_header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
@@ -5475,12 +5377,23 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.variablesTableView.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.ui.variablesTableView.customContextMenuRequested.connect(self.show_variables_table_context_menu)
 
-        self.parameters_table_model = ParametersTableModel(
+        self.parameters_model = WrappableBlockTableModel(
             api_object=self.api_object,
             var_factory=self.var_factory,
             parent=self.ui.parametersTableView
         )
-        self.ui.parametersTableView.setModel(self.parameters_table_model)
+        self.parameters_model.set_mode(DynamicTableModelMode.PARAMETERS)
+        self.parameters_model.set_delegates()
+        self.parameters_search = QLineEdit()
+        self.parameters_search.setPlaceholderText("Search parameters...")
+        self.parameters_search.setClearButtonEnabled(True)
+        self.ui.verticalLayout_8.insertWidget(0, self.parameters_search)
+        self.parameters_proxy = BlockTableFilterProxyModel(parent=self.ui.parametersTableView)
+        self.parameters_proxy.setSourceModel(self.parameters_model)
+        self.ui.parametersTableView.setModel(self.parameters_proxy)
+        self.parameters_search.textChanged.connect(
+            lambda text: self.parameters_proxy.setFilterFixedString(text.strip())
+        )
         parameters_header: QtWidgets.QHeaderView = self.ui.parametersTableView.horizontalHeader()
         parameters_header.setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Interactive)
         parameters_header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
@@ -5492,11 +5405,22 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.parametersTableView.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.ui.parametersTableView.customContextMenuRequested.connect(self.show_parameters_table_context_menu)
 
-        self.equations_table_model = EquationsTableModel(
+        self.equations_model = WrappableBlockTableModel(
             var_factory=self.var_factory,
             parent=self.ui.equationsTableView
         )
-        self.ui.equationsTableView.setModel(self.equations_table_model)
+        self.equations_model.set_mode(DynamicTableModelMode.EQUATIONS)
+        self.equations_model.set_delegates()
+        self.equations_search = QLineEdit()
+        self.equations_search.setPlaceholderText("Search equations...")
+        self.equations_search.setClearButtonEnabled(True)
+        self.ui.verticalLayout_9.insertWidget(0, self.equations_search)
+        self.equations_proxy = BlockTableFilterProxyModel(parent=self.ui.equationsTableView)
+        self.equations_proxy.setSourceModel(self.equations_model)
+        self.ui.equationsTableView.setModel(self.equations_proxy)
+        self.equations_search.textChanged.connect(
+            lambda text: self.equations_proxy.setFilterFixedString(text.strip())
+        )
         equations_header: QtWidgets.QHeaderView = self.ui.equationsTableView.horizontalHeader()
         equations_header.setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Interactive)
         equations_header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
@@ -5508,8 +5432,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.equationsTableView.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.ui.equationsTableView.customContextMenuRequested.connect(self.show_equations_table_context_menu)
 
-        self.parameters_table_model.block_updated.connect(self.on_parameters_model_block_updated)
-        self.variables_table_model.block_updated.connect(self.on_parameters_model_block_updated)
+        self.parameters_model.block_updated.connect(self.on_block_updated)
+        self.variables_model.block_updated.connect(self.on_block_updated)
+        self.equations_model.block_updated.connect(self.on_block_updated)
 
         self.view: GraphicsView = GraphicsView(self.scene)
         self.ui.verticalLayout_3.removeWidget(self.ui.graphicsView)
@@ -10898,17 +10823,20 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param index:
         :return:
         """
-        if index.model() == self.parameters_table_model and index.column() == 0:
-            self.open_edit_parameter_type_dialog(index.row())
-        elif index.model() == self.parameters_table_model and index.column() == 2:
-            row_data: BlockParameterRow | None = self.parameters_table_model.get_row(index.row())
+        source_model = self._table_source_model(index)
+        source_index = self._table_source_index(index)
+        source_row = source_index.row()
+        if source_model is self.parameters_model and source_index.column() == 0:
+            self.open_edit_parameter_type_dialog(source_row)
+        elif source_model is self.parameters_model and source_index.column() == 2:
+            row_data: BlockParameterRow | None = self.parameters_model.get_row(source_row)
             if row_data is not None and row_data.kind != BlockParameterKind.FIXED_PARAMETER:
-                self.open_expression_editor_for_parameters(index.row())
-        elif index.model() == self.equations_table_model:
-            row_data: BlockParameterRow | None = self.equations_table_model.get_row(index.row())
+                self.open_expression_editor_for_parameters(source_row)
+        elif source_model is self.equations_model:
+            row_data: BlockParameterRow | None = self.equations_model.get_row(source_row)
             if row_data is not None:
-                if row_data.opens_expression_editor and index.column() == 1:
-                    self.open_expression_row_editor(index.row())
+                if row_data.opens_expression_editor and source_index.column() == 1:
+                    self.open_expression_row_editor(source_row)
 
     def open_edit_parameter_type_dialog(self, row_index: int) -> None:
         """
@@ -10917,13 +10845,13 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param row_index:
         :return:
         """
-        row_data: BlockParameterRow | None = self.parameters_table_model.get_row(row_index)
-        if row_data is None or self.parameters_table_model.block is None:
+        row_data: BlockParameterRow | None = self.parameters_model.get_row(row_index)
+        if row_data is None or self.parameters_model.block is None:
             return
 
-        block = self.parameters_table_model.block
+        block = self.parameters_model.block
 
-        api_object = self.parameters_table_model.api_object
+        api_object = self.parameters_model.api_object
         dialog: EditParameterDialog = EditParameterDialog(api_object, row_data.kind, self)
 
         if dialog.exec() == QDialog.DialogCode.Accepted:
@@ -10960,8 +10888,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 elif new_kind == BlockParameterKind.FIXED_PARAMETER:
                     block.parameters[new_var] = Const(const_value, name=var_name)
 
-                self.parameters_table_model.set_block(block)
-                self.parameters_table_model.block_updated.emit(block.uid)
+                self.parameters_model.set_block(block)
+                self.parameters_model.block_updated.emit(block.uid)
             except Exception as exc:
                 QtWidgets.QMessageBox.warning(self, "Edit Parameter Type Error", str(exc))
 
@@ -10972,19 +10900,19 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param row_index:
         :return:
         """
-        row_data: BlockParameterRow | None = self.parameters_table_model.get_row(row_index)
+        row_data: BlockParameterRow | None = self.parameters_model.get_row(row_index)
         expression_text: str
         dialog: ExpressionTextEditorDialog
         symbol_namespace: Dict[str, Expr]
         parsed_expression: Expr | Comparison
         expression_value: Expr
 
-        if row_data is not None and self.parameters_table_model.block is not None:
+        if row_data is not None and self.parameters_model.block is not None:
             if row_data.value is not None and isinstance(row_data.value, Expr):
                 expression_text = symbolic_to_string(row_data.value)
             else:
                 expression_text = str(row_data.value) if row_data.value is not None else ""
-            symbol_namespace = build_block_symbol_namespace(self.parameters_table_model.block)
+            symbol_namespace = build_block_symbol_namespace(self.parameters_model.block)
             dialog = ExpressionTextEditorDialog(
                 expression_text=expression_text,
                 symbol_namespace=symbol_namespace,
@@ -11000,13 +10928,27 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     else:
                         expression_value = parsed_expression
 
-                    self.parameters_table_model.set_value_from_expression(row_index, expression_value)
+                    self.parameters_model.set_value_from_expression(row_index, expression_value)
                 except Exception as exc:
                     QtWidgets.QMessageBox.warning(
                         self,
                         "Expression Error",
                         str(exc)
                     )
+
+    @staticmethod
+    def _table_source_index(index: QtCore.QModelIndex) -> QtCore.QModelIndex:
+        model = index.model()
+        if isinstance(model, QtCore.QSortFilterProxyModel):
+            return model.mapToSource(index)
+        return index
+
+    @staticmethod
+    def _table_source_model(index: QtCore.QModelIndex) -> QtCore.QAbstractItemModel | None:
+        model = index.model()
+        if isinstance(model, QtCore.QSortFilterProxyModel):
+            return model.sourceModel()
+        return model
 
     def on_variables_table_double_clicked(self, index: QtCore.QModelIndex) -> None:
         """
@@ -11016,7 +10958,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return:
         """
         if index.column() == 2:
-            self.open_expression_row_editor_for_variables(index.row())
+            source_index = self._table_source_index(index)
+            self.open_expression_row_editor_for_variables(source_index.row())
 
     def open_expression_row_editor_for_variables(self, row_index: int) -> None:
         """
@@ -11025,19 +10968,19 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param row_index:
         :return:
         """
-        row_data: BlockParameterRow | None = self.variables_table_model.get_row(row_index)
+        row_data: BlockParameterRow | None = self.variables_model.get_row(row_index)
         expression_text: str
         dialog: ExpressionTextEditorDialog
         symbol_namespace: Dict[str, Expr]
         parsed_expression: Expr | Comparison
         expression_value: Expr
 
-        if row_data is not None and self.variables_table_model.block is not None:
+        if row_data is not None and self.variables_model.block is not None:
             if row_data.init_eq is not None and isinstance(row_data.init_eq, Expr):
                 expression_text = symbolic_to_string(row_data.init_eq)
             else:
                 expression_text = ""
-            symbol_namespace = build_block_symbol_namespace(self.variables_table_model.block)
+            symbol_namespace = build_block_symbol_namespace(self.variables_model.block)
             dialog = ExpressionTextEditorDialog(
                 expression_text=expression_text,
                 symbol_namespace=symbol_namespace,
@@ -11053,7 +10996,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     else:
                         expression_value = parsed_expression
 
-                    self.variables_table_model.set_init_eq(row_index, expression_value)
+                    self.variables_model.set_init_eq(row_index, expression_value)
                 except Exception as exc:
                     QtWidgets.QMessageBox.warning(
                         self,
@@ -11196,10 +11139,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     parameter_value=parameter_value
                 )
 
-                self.variables_table_model.set_block(block)
-                self.parameters_table_model.set_block(block)
-                self.equations_table_model.set_block(block)
-                self.variables_table_model.block_updated.emit(block.uid)
+                self.variables_model.set_block(block)
+                self.parameters_model.set_block(block)
+                self.equations_model.set_block(block)
+                self.variables_model.block_updated.emit(block.uid)
             except Exception as exc:
                 QtWidgets.QMessageBox.warning(self, "Add Variable Error", str(exc))
         else:
@@ -11211,7 +11154,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         :return:
         """
-        api_object = self.parameters_table_model.api_object
+        api_object = self.parameters_model.api_object
         dialog: AddParameterDialog = AddParameterDialog(api_object, self)
 
         if dialog.exec() == QDialog.DialogCode.Accepted:
@@ -11243,9 +11186,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     parameter_value=parameter_value
                 )
 
-                self.parameters_table_model.set_block(block)
-                self.equations_table_model.set_block(block)
-                self.parameters_table_model.block_updated.emit(block.uid)
+                self.parameters_model.set_block(block)
+                self.equations_model.set_block(block)
+                self.parameters_model.block_updated.emit(block.uid)
             except Exception as exc:
                 QtWidgets.QMessageBox.warning(self, "Add Parameter Error", str(exc))
         else:
@@ -11279,8 +11222,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 else:
                     raise ValueError(f"Unknown equation type: {category}")
 
-                self.equations_table_model.set_block(block)
-                self.equations_table_model.block_updated.emit(block.uid)
+                self.equations_model.set_block(block)
+                self.equations_model.block_updated.emit(block.uid)
             except Exception as exc:
                 QtWidgets.QMessageBox.warning(self, "Add Equation Error", str(exc))
         else:
@@ -11296,8 +11239,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         if block is None:
             return
 
-        vars_model = self.variables_table_model
-        vars_selected = [idx.row() for idx in self.ui.variablesTableView.selectionModel().selectedRows()]
+        vars_model = self.variables_model
+        vars_selected = [self._table_source_index(idx).row() for idx in self.ui.variablesTableView.selectionModel().selectedRows()]
         if not vars_selected:
             return
 
@@ -11335,8 +11278,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         if block is None:
             return
 
-        params_model = self.parameters_table_model
-        params_selected = [idx.row() for idx in self.ui.parametersTableView.selectionModel().selectedRows()]
+        params_model = self.parameters_model
+        params_selected = [self._table_source_index(idx).row() for idx in self.ui.parametersTableView.selectionModel().selectedRows()]
         if not params_selected:
             return
 
@@ -11366,8 +11309,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         if block is None:
             return
 
-        equations_model = self.equations_table_model
-        equations_selected = [idx.row() for idx in self.ui.equationsTableView.selectionModel().selectedRows()]
+        equations_model = self.equations_model
+        equations_selected = [self._table_source_index(idx).row() for idx in self.ui.equationsTableView.selectionModel().selectedRows()]
         if not equations_selected:
             return
 
@@ -11396,37 +11339,37 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param row_index:
         :return:
         """
-        row_data: BlockParameterRow | None = self.equations_table_model.get_row(row_index)
+        row_data: BlockParameterRow | None = self.equations_model.get_row(row_index)
         expression_text: str
         dialog: ExpressionTextEditorDialog
         symbol_namespace: Dict[str, Expr]
         parsed_expression: Expr | Comparison
         expression_value: Expr
 
-        if row_data is not None and self.equations_table_model.block is not None:
+        if row_data is not None and self.equations_model.block is not None:
             if isinstance(row_data.value, Expr):
                 old_expr = row_data.value
                 expression_text = symbolic_to_string(row_data.value)
-                self.equations_table_model.symbol_namespace = build_block_symbol_namespace(
-                    self.equations_table_model.block)
+                self.equations_model.symbol_namespace = build_block_symbol_namespace(
+                    self.equations_model.block)
                 dialog = ExpressionTextEditorDialog(
                     expression_text=expression_text,
-                    symbol_namespace=self.equations_table_model.symbol_namespace,
+                    symbol_namespace=self.equations_model.symbol_namespace,
                     parent=self
                 )
 
                 if dialog.exec() == QDialog.DialogCode.Accepted:
                     try:
                         parsed_expression = string_to_symbolic(dialog.get_expression_text(),
-                                                               self.equations_table_model.symbol_namespace)
+                                                               self.equations_model.symbol_namespace)
 
                         if isinstance(parsed_expression, Comparison):
                             expression_value = parsed_expression.to_expression()
                         else:
                             expression_value = parsed_expression
 
-                        index = self.equations_table_model.index(row_index, 1)
-                        self.equations_table_model.setData(index, symbolic_to_string(expression_value),
+                        index = self.equations_model.index(row_index, 1)
+                        self.equations_model.setData(index, symbolic_to_string(expression_value),
                                                            QtCore.Qt.ItemDataRole.EditRole)
                     except Exception as exc:
                         QtWidgets.QMessageBox.warning(
@@ -11495,13 +11438,13 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         current_widget: QtWidgets.QWidget = self.ui.toolBox.currentWidget()
 
         if current_widget == self.ui.page:
-            self.variables_table_model.set_block(self._selected_side_block)
+            self.variables_model.set_block(self._selected_side_block)
         else:
             if current_widget == self.ui.page_2:
-                self.parameters_table_model.set_block(self._selected_side_block)
+                self.parameters_model.set_block(self._selected_side_block)
             else:
                 if current_widget == self.ui.page_3:
-                    self.equations_table_model.set_block(self._selected_side_block)
+                    self.equations_model.set_block(self._selected_side_block)
                 else:
                     pass
 
@@ -12407,7 +12350,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
-    def on_parameters_model_block_updated(self, block_uid: int) -> None:
+    def on_block_updated(self, block_uid: int) -> None:
         """
         Refresh the scene after a block edit coming from the parameters tab.
 
@@ -12417,7 +12360,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.mark_unapplied_changes()
         sender_obj: QtCore.QObject | None = self.sender()
 
-        if sender_obj is self.parameters_table_model:
+        if sender_obj is self.parameters_model:
             self.refresh_active_side_panel()
         else:
             self.rebuild_scene_from_diagram()
