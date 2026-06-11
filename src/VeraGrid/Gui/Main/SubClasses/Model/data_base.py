@@ -893,6 +893,12 @@ class DataBaseTableMain(DiagramsMain):
                 obj = dev.Facility(name=name)
                 self.circuit.add_facility(obj)
 
+            elif elm_type == DeviceType.MarketUnitDevice.value:
+
+                name = f'Market unit {self.circuit.get_market_unit_number()}'
+                obj = dev.MarketUnit(name=name)
+                self.circuit.add_market_unit(obj)
+
             # elif elm_type == DeviceType.DynamicModelHostDevice.value:
             #
             #     name = f'RMS model {self.circuit.get_rms_models_number()}'

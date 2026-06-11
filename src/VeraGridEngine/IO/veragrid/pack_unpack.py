@@ -57,6 +57,8 @@ def get_objects_dictionary() -> Dict[str, ALL_DEV_TYPES]:
 
         'facility': dev.Facility(),
 
+        'market_unit': dev.MarketUnit(),
+
         'rms_model_template': dev.RmsModelTemplate(),
         'emt_model_template': dev.EmtModelTemplate(),
         'fmu_template': dev.FmuTemplate(),

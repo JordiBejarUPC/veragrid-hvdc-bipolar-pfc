@@ -25,17 +25,16 @@ class MarketUnit(EditableDevice):
     )
 
     def __init__(self, name='', code='', idtag: Union[str, None] = None,
-                 device_type=DeviceType.GenericArea,  color: str | None = None):
+                 color: str | None = None):
         """
 
         :param name:
         :param idtag:
-        :param device_type:
         """
         EditableDevice.__init__(self,
                                 name=name,
                                 code=code,
                                 idtag=idtag,
-                                device_type=device_type)
+                                device_type=DeviceType.MarketUnitDevice)
 
         self.color = color if color is not None else self.rnd_color()
