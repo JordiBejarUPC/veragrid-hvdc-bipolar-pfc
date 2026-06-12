@@ -1113,7 +1113,11 @@ class RmsProblemDae(RmsProblemTemplate):
 
         # print("start creating balance equations")
         # add the nodal balance equations
-        ac_virtual_buses = [elm.bus_to.idtag for elm in grid.get_vsc()]
+        ac_virtual_buses = [
+            elm.bus_to.idtag
+            for elm in grid.get_vsc()
+            if VarPowerFlowReferenceType.Qt in elm.rms_model.external_mapping
+        ]
         for i, elm in enumerate(self.grid.buses):
             if not P_used[i] and not Q_used[i]:
                 self.logger.add_error("Isolated bus", value=i)

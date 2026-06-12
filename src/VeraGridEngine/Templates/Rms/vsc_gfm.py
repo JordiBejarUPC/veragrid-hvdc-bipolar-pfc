@@ -16,13 +16,30 @@ import VeraGridEngine.Utils.Symbolic.symbolic as sym
 
 
 def build_gfm_converter_model(vfactory: VarFactory, inputs: List[Var],
-                              multilinear: bool = False):
+                              multilinear: bool = False,
+                              voltage_inputs: List[Var] | None = None,
+                              power_inputs: List[Var] | None = None,
+                              current_power_inputs: List[Var] | None = None):
     """
     Build Grid Forming Converter model (Droop + voltage + current control)
     based on the provided conceptual equations.
     """
-    Vm = inputs[0]
-    Va = inputs[1]
+    if voltage_inputs is None:
+        Vm = inputs[0]
+        Va = inputs[1]
+        Vm_c = Vm
+        Va_c = Va
+        Vm_f = None
+        Va_f = None
+        Vm_g = Vm
+        Va_g = Va
+    else:
+        Vm_c = voltage_inputs[0]
+        Va_c = voltage_inputs[1]
+        Vm_f = voltage_inputs[2]
+        Va_f = voltage_inputs[3]
+        Vm_g = voltage_inputs[4]
+        Va_g = voltage_inputs[5]
     Pt_vsc = inputs[2]
     Qt_vsc = inputs[3]
 
@@ -115,42 +132,69 @@ def build_gfm_converter_model(vfactory: VarFactory, inputs: List[Var],
     id_c_ref = vfactory.add_var('id_c_ref')
     iq_c_ref = vfactory.add_var('iq_c_ref')
 
-    # Mapping terminal voltages to dq relative to internal angle theta
-    algebraic_eqs.append(vd_g - Vm * sym.sin(Va - theta))
-    algebraic_eqs.append(vq_g - Vm * sym.cos(Va - theta))
+    # Mapping physical node voltages to dq relative to internal angle theta.
+    algebraic_eqs.append(vd_g - Vm_g * sym.sin(Va_g - theta))
+    algebraic_eqs.append(vq_g - Vm_g * sym.cos(Va_g - theta))
+    if voltage_inputs is not None:
+        algebraic_eqs.append(vd_f - Vm_f * sym.sin(Va_f - theta))
+        algebraic_eqs.append(vq_f - Vm_f * sym.cos(Va_f - theta))
+        algebraic_eqs.append(vd_c - Vm_c * sym.sin(Va_c - theta))
+        algebraic_eqs.append(vq_c - Vm_c * sym.cos(Va_c - theta))
 
-    # Filter nodes (simplified algebraic representation for RMS for EMT add di/dt terms)
-    algebraic_eqs.append(vd_f - vd_g - (Rc*id_g - omega*Lc*iq_g))
-    algebraic_eqs.append(vq_f - vq_g - (Rc*iq_g + omega*Lc*id_g))
+    # In the combined model the filter drops are internal equations. In the
+    # separated model those drops are represented by actual network lines.
+    if voltage_inputs is None:
+        algebraic_eqs.append(vd_f - vd_g - (Rc*id_g - omega*Lc*iq_g))
+        algebraic_eqs.append(vq_f - vq_g - (Rc*iq_g + omega*Lc*id_g))
 
-    algebraic_eqs.append(vd_c - vd_f - (Rf*id_c - omega*Lf*iq_c))
-    algebraic_eqs.append(vq_c - vq_f - (Rf*iq_c + omega*Lf*id_c))
+        algebraic_eqs.append(vd_c - vd_f - (Rf*id_c - omega*Lf*iq_c))
+        algebraic_eqs.append(vq_c - vq_f - (Rf*iq_c + omega*Lf*id_c))
 
-    # Grid currents (mapped from converter side)
-    algebraic_eqs.append(iq_c - iq_g - (-Cf*omega*vq_f + vd_f/Rcap))
-    algebraic_eqs.append(id_c - id_g - ( Cf*omega*vd_f + vq_f/Rcap))
+    k = vfactory.add_const(1.5)  # Power calculation constant for dq frame
+    den_g = vd_g ** 2 + vq_g ** 2 + vfactory.add_const(1e-12)
+    den_c = vd_c ** 2 + vq_c ** 2 + vfactory.add_const(1e-12)
+
+    if current_power_inputs is None:
+        # Grid currents (mapped from converter side)
+        algebraic_eqs.append(id_c - id_g - (Cf * omega * vq_f + vd_f / Rcap))
+        algebraic_eqs.append(iq_c - iq_g - (-Cf * omega * vd_f + vq_f / Rcap))
+    else:
+        P_c = current_power_inputs[0]
+        Q_c = current_power_inputs[1]
+        P_g = current_power_inputs[2]
+        Q_g = current_power_inputs[3]
+        algebraic_eqs.append(id_c - (((Q_c / k) * vq_c + (P_c / k) * vd_c) / den_c))
+        algebraic_eqs.append(iq_c - (((P_c / k) * vq_c - (Q_c / k) * vd_c) / den_c))
+        algebraic_eqs.append(id_g - (((Q_g / k) * vq_g + (P_g / k) * vd_g) / den_g))
+        algebraic_eqs.append(iq_g - (((P_g / k) * vq_g - (Q_g / k) * vd_g) / den_g))
 
     # Power measurement
-    k = vfactory.add_const(1.0)  # Power calculation constant for dq frame
     algebraic_eqs.append(P - k * (vq_g * iq_g + vd_g * id_g))
     algebraic_eqs.append(Q - k * (vq_g * id_g - vd_g * iq_g))
+
+    if power_inputs is None:
+        P_ctrl = P
+        Q_ctrl = Q
+    else:
+        P_ctrl = power_inputs[0]
+        Q_ctrl = power_inputs[1]
 
     # Droop control with Low-pass filters
     # Transfer function: 1/(tau*s + 1)
     # At steady state: output = input, derivative = 0
-    block_P, P_lowpass = tf_to_block(vfactory, num=[vfactory.add_const(1)], den=[vfactory.add_const(1), tau_P], x=P,
+    block_P, P_lowpass = tf_to_block(vfactory, num=[vfactory.add_const(1)], den=[vfactory.add_const(1), tau_P], x=P_ctrl,
                                      name='P_loop')
-    block_Q, Q_lowpass = tf_to_block(vfactory, num=[vfactory.add_const(1)], den=[vfactory.add_const(1), tau_Q], x=Q,
+    block_Q, Q_lowpass = tf_to_block(vfactory, num=[vfactory.add_const(1)], den=[vfactory.add_const(1), tau_Q], x=Q_ctrl,
                                      name='Q_loop')
-    block_P.init_eqs = {P_lowpass: P}
-    block_Q.init_eqs = {Q_lowpass: Q}
+    block_P.init_eqs = {P_lowpass: P_ctrl}
+    block_Q.init_eqs = {Q_lowpass: Q_ctrl}
     res_block.add(block_P)
     res_block.add(block_Q)
 
     # omega = omega_ref - Kdp * (P_filt - P_ref)
     algebraic_eqs.append(omega - (omega_ref - Kdp * (P_lowpass - P_ref)))
     # V = V_ref - Kdq * (Q_filt - Q_ref)
-    algebraic_eqs.append(V - (V_ref - Kdq * (Q_lowpass - Q_ref)))
+    algebraic_eqs.append(V - (V_ref + Kdq * (-Q_lowpass + Q_ref)))
 
     # Internal angle integration
     # d(theta)/dt = 2*pi*fn * (omega - 1)
@@ -158,17 +202,22 @@ def build_gfm_converter_model(vfactory: VarFactory, inputs: List[Var],
     algebraic_eqs.append(dt_theta - 2 * math.pi * fn * (omega - 1))
 
     # Voltage control loop
-
-
     # PI controllers for voltage
-    block_vd, id_hat = tf_to_block(vfactory, num=[Ki_icl, Kp_icl], den=[0, 1], x=vd_ref - vd_f, name='vd_ctrl')
-    block_vq, iq_hat = tf_to_block(vfactory, num=[Ki_icl, Kp_icl], den=[0, 1], x=vq_ref - vq_f, name='vq_ctrl')
+    if voltage_inputs is None:
+        vd_ctrl_input = vd_ref - vd_f
+        vq_ctrl_input = vq_ref - vq_f
+    else:
+        vd_ctrl_input = -vd_f
+        vq_ctrl_input = V - vq_f
+
+    block_vd, id_hat = tf_to_block(vfactory, num=[Ki_icl, Kp_icl], den=[0, 1], x=vd_ctrl_input, name='vd_ctrl')
+    block_vq, iq_hat = tf_to_block(vfactory, num=[Ki_icl, Kp_icl], den=[0, 1], x=vq_ctrl_input, name='vq_ctrl')
     res_block.add(block_vd)
     res_block.add(block_vq)
 
     # Current reference calculation (with feedforward and decoupling)
-    i_d_ref_raw = iq_hat + iq_g - Cf * omega * vq_f
-    i_q_ref_raw = id_hat + id_g + Cf * omega * vd_f
+    i_d_ref_raw = id_hat + id_g - Cf * omega * vq_f
+    i_q_ref_raw = iq_hat + iq_g + Cf * omega * vd_f
 
     # Current limitation with anti-windup (UPC-style back-calculation path):
     # positive feedback through LPF 1/(1+s*tau_aw), tau_aw = Kp_icl/Ki_icl.
@@ -223,32 +272,52 @@ def build_gfm_converter_model(vfactory: VarFactory, inputs: List[Var],
          [P, Q, omega, theta, V, vd_g, vq_g, id_g, iq_g, id_c, iq_c, vd_f, vq_f, vd_c, vq_c, vd_c_ref, vq_c_ref, id_c_ref, iq_c_ref,
           i_d_ref_aw, i_q_ref_aw, i_d_ref_sat_var, i_q_ref_sat_var, aw_d_in, aw_q_in])
 
+    if current_power_inputs is None:
+        p_init = -Pt_vsc
+        q_init = -Qt_vsc
+        id_g_init = ((q_init / k) * vq_g + (p_init / k) * vd_g) / den_g
+        iq_g_init = ((p_init / k) * vq_g - (q_init / k) * vd_g) / den_g
+        id_c_init = id_g + Cf * omega * vq_f + vd_f / Rcap
+        iq_c_init = iq_g - Cf * omega * vd_f + vq_f / Rcap
+    else:
+        p_init = current_power_inputs[2]
+        q_init = current_power_inputs[3]
+        p_c_init = current_power_inputs[0]
+        q_c_init = current_power_inputs[1]
+        id_g_init = ((q_init / k) * vq_g + (p_init / k) * vd_g) / den_g
+        iq_g_init = ((p_init / k) * vq_g - (q_init / k) * vd_g) / den_g
+        id_c_init = ((q_c_init / k) * vq_c + (p_c_init / k) * vd_c) / den_c
+        iq_c_init = ((p_c_init / k) * vq_c - (q_c_init / k) * vd_c) / den_c
+
     core_block = Block(
         algebraic_eqs=algebraic_eqs,
         algebraic_vars=algebraic_vars,
         diff_vars=[dt_theta],
         event_dict=event_dict,
+        diff_init_eqs={
+            dt_theta: 2 * math.pi * fn * (omega - 1),
+        },
         init_eqs={
-            P: -Pt_vsc,
-            Q: -Qt_vsc,
-            P_ref: P,
-            Q_ref: Q,
-            theta: Va,
+            P: p_init,
+            Q: q_init,
+            P_ref: P_ctrl,
+            Q_ref: Q_ctrl,
+            theta: Va_f if voltage_inputs is not None else Va_c,
             omega: vfactory.add_const(1.0),
-            V: Vm,
-            V_ref: Vm,
-            vd_g: vfactory.add_const(0.0),
-            vq_g: Vm,
-            id_g: (1 / k) * Q / vq_g,
-            iq_g: (1 / k) * P / vq_g,
-            vd_f: vd_g + (Rc*id_g - omega*Lc*iq_g),
-            vq_f: vq_g + (Rc*iq_g + omega*Lc*id_g),
-            vd_ref: vd_f,
-            vq_ref: vq_f,
+            V: Vm_f if voltage_inputs is not None else Vm_c,
+            V_ref: Vm_f if voltage_inputs is not None else Vm_c,
+            vd_g: Vm_g * sym.sin(Va_g - theta),
+            vq_g: Vm_g * sym.cos(Va_g - theta),
+            id_g: id_g_init,
+            iq_g: iq_g_init,
+            vd_f: Vm_f * sym.sin(Va_f - theta) if voltage_inputs is not None else vd_g + (Rc*id_g - omega*Lc*iq_g),
+            vq_f: Vm_f * sym.cos(Va_f - theta) if voltage_inputs is not None else vq_g + (Rc*iq_g + omega*Lc*id_g),
+            vd_ref: vfactory.add_const(0.0) if voltage_inputs is not None else vd_f,
+            vq_ref: V if voltage_inputs is not None else vq_f,
 
             # Capacitor currents (Rcap is large, so damping terms are negligible)
-            id_c: id_g + Cf * omega * vd_f + vq_f / Rcap,
-            iq_c: iq_g - Cf * omega * vq_f - vd_f / Rcap,
+            id_c: id_c_init,
+            iq_c: iq_c_init,
             
             # Current references match currents (PI input = 0)
             id_c_ref: id_c,
@@ -261,19 +330,17 @@ def build_gfm_converter_model(vfactory: VarFactory, inputs: List[Var],
             aw_q_in: vfactory.add_const(0.0),
             aw_d: vfactory.add_const(0.0),
             aw_q: vfactory.add_const(0.0),
-            vd_c_ref: Rf * id_c - Lf * omega * iq_c + vd_f,
-            vq_c_ref: Rf * iq_c + Lf * omega * id_c + vq_f,
-            vq_c: vq_c_ref,
-            vd_c: vd_c_ref,
+            vd_c_ref: Vm_c * sym.sin(Va_c - theta) if voltage_inputs is not None else Rf * id_c - Lf * omega * iq_c + vd_f,
+            vq_c_ref: Vm_c * sym.cos(Va_c - theta) if voltage_inputs is not None else Rf * iq_c + Lf * omega * id_c + vq_f,
+            vq_c: Vm_c * sym.cos(Va_c - theta) if voltage_inputs is not None else vq_c_ref,
+            vd_c: Vm_c * sym.sin(Va_c - theta) if voltage_inputs is not None else vd_c_ref,
 
             #control loop init
             vd_hat: (vd_c_ref) - (vd_f) + (Lf * omega * iq_c),
             vq_hat: (vq_c_ref) - (vq_f) - (Lf * omega * id_c),
             # Voltage PI controller outputs (feedforward currents)
-            # From id_c_ref = y_vq_ctrl + iq_g - Cf*vq_f with id_c_ref = id_c:
-            iq_hat: id_c - iq_g + Cf * omega * vq_f,
-            # From iq_c_ref = y_vd_ctrl + id_g + Cf*vd_f with iq_c_ref = iq_c:
-            id_hat: iq_c - id_g - Cf * omega * vd_f,
+            id_hat: id_c - id_g + Cf * omega * vq_f,
+            iq_hat: iq_c - iq_g - Cf * omega * vd_f,
         },
         external_mapping={
             VarPowerFlowReferenceType.P: P,
@@ -295,6 +362,103 @@ def build_gfm_converter_model(vfactory: VarFactory, inputs: List[Var],
         "vq_f": vq_f,
         "L": Lf,
     }
+
+
+def VscGfmLossBuild(vfactory: VarFactory, name: str = "", current_power_inputs: List[Var] | None = None) -> RmsModelTemplate:
+    """
+    VSC GFM model builder for explicit AC filter-network validations.
+
+    This maps the VSC active powers through the converter loss equation,
+    exposes controlled/filter/grid AC node voltages separately, and does not
+    expose a DC-side reactive power mapping.
+    """
+    templ = RmsModelTemplate()
+    templ.tpe = DeviceType.VscDevice
+
+    inputs = [
+        vfactory.add_var("Vm_c_"),
+        vfactory.add_var("Va_c_"),
+        vfactory.add_var("Vm_f_"),
+        vfactory.add_var("Va_f_"),
+        vfactory.add_var("Vm_g_"),
+        vfactory.add_var("Va_g_"),
+        vfactory.add_var("Vdc_"),
+    ]
+    Vm_c = inputs[0]
+    Va_c = inputs[1]
+    Vm_f = inputs[2]
+    Va_f = inputs[3]
+    Vm_g = inputs[4]
+    Va_g = inputs[5]
+    v_dc = inputs[6]
+
+    # Power Flow related variables
+    Pt_vsc = vfactory.add_var('Pt_vsc')
+    Pf_vsc = vfactory.add_var('Pf_vsc')
+    Qt_ref = vfactory.add_var('Qt_ref')
+
+    # Optional loss parameters (following GFL pattern)
+    a0 = vfactory.add_var('a0')
+    a1 = vfactory.add_var('a1')
+    a2 = vfactory.add_var('a2')
+
+    event_dict = {
+        a0: vfactory.add_const(0.0),
+        a1: vfactory.add_const(0.0),
+        a2: vfactory.add_const(0.1),
+        Qt_ref: vfactory.add_const(0.0),
+    }
+
+    gfm_block, i_d, i_q, P, Q, internals = build_gfm_converter_model(
+        vfactory=vfactory,
+        inputs=[Vm_c, Va_c, Pt_vsc, vfactory.add_const(0.0)],
+        voltage_inputs=[Vm_c, Va_c, Vm_f, Va_f, Vm_g, Va_g],
+        current_power_inputs=current_power_inputs,
+    )
+
+    Im = sym.sqrt(i_d ** 2 + i_q ** 2 + vfactory.add_const(1e-5))
+    P_poly_loss = a0 + a1 * Im + a2 * Im ** 2
+
+    vsc_wrapper = Block(
+        algebraic_eqs=[
+            Pf_vsc + Pt_vsc - P_poly_loss,
+        ],
+        algebraic_vars=[Pt_vsc, Pf_vsc],
+        event_dict=event_dict,
+        external_mapping={
+            VarPowerFlowReferenceType.Vmt: Vm_c,
+            VarPowerFlowReferenceType.Vat: Va_c,
+            VarPowerFlowReferenceType.Vmf: Vm_g,
+            VarPowerFlowReferenceType.Vaf: Va_g,
+            VarPowerFlowReferenceType.Pt: Pt_vsc,
+            VarPowerFlowReferenceType.Pf: Pf_vsc,
+            VarPowerFlowReferenceType.Qt: Qt_ref,
+            VarPowerFlowReferenceType.Vdc: v_dc,
+        },
+        in_vars=inputs,
+        init_eqs={
+            Pf_vsc: P_poly_loss - Pt_vsc,
+        },
+        out_vars=[Pt_vsc, Pf_vsc]
+    )
+
+    vsc_wrapper.add(gfm_block)
+    vsc_wrapper.name = 'gfm_block'
+    vsc_wrapper.unify_blocks()  # Merge init_eqs from child blocks
+    vsc_wrapper.external_mapping.pop(VarPowerFlowReferenceType.P, None)
+    vsc_wrapper.external_mapping.pop(VarPowerFlowReferenceType.Q, None)
+    vsc_wrapper.init_eqs[Pf_vsc] = P_poly_loss - Pt_vsc
+
+    vsc_wrapper.api_obj_mapping = {
+        ParamPowerFlowReferenceType.R1: internals["Rf"],
+        ParamPowerFlowReferenceType.X1: internals["L"],
+        ParamPowerFlowReferenceType.alpha1: a0,
+        ParamPowerFlowReferenceType.alpha2: a1,
+        ParamPowerFlowReferenceType.alpha3: a2,
+    }
+
+    templ.block = vsc_wrapper
+    return templ
 
 
 def VscGfmBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:

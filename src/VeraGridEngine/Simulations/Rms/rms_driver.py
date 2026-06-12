@@ -173,7 +173,8 @@ class RmsSimulationDriver(DriverTemplate):
                         t0=0,
                         t_end=self.options.simulation_time,
                         h=self.options.time_step,
-                        max_iter=self.options.max_iter
+                        max_iter=self.options.max_iter,
+                        tolerance=self.options.tolerance,
                     )
 
                 else:
@@ -188,7 +189,8 @@ class RmsSimulationDriver(DriverTemplate):
                         t0=0,
                         t_end=self.options.simulation_time,
                         h=self.options.time_step,
-                        max_iter=self.options.max_iter
+                        max_iter=self.options.max_iter,
+                        tolerance=self.options.tolerance,
                     )
                 
                 _t_start = time.time()

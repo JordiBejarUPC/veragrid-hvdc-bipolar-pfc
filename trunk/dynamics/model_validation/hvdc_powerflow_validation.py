@@ -62,14 +62,14 @@ def create_hvdc_grid():
     # Generators
     gen1 = Generator(
         name="Gen 1", P=50.0, vset=1.0, Snom=100.0,
-        x1=0.3, r1=0.0, freq=60.0, M=10.0, D=5.0,
+        x1=0.3, r1=0.0, freq=60.0, D=5.0,
         tm0=1.0, vf=1.0, omega_ref=1.0, Kp=0.0, Ki=0.0
     )
     grid.add_generator(bus1, gen1)
     
     gen3 = Generator(
         name="Gen 3", P=30.0, vset=1.05, Snom=100.0,
-        x1=0.3, r1=0.0, freq=60.0, M=10.0, D=5.0,
+        x1=0.3, r1=0.0, freq=60.0, D=5.0,
         tm0=0.5, vf=1.0, omega_ref=1.0, Kp=0.0, Ki=0.0,
     )
     grid.add_generator(bus3, gen3)

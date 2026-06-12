@@ -205,16 +205,12 @@ class BackEulerImplicitIntegration:
                             f"Invalid local step size h_eff={h_eff} while integrating RMS macro step {step_idx}."
                         )
 
-                    # Historical RMS implicit integration evaluates runtime
-                    # parameters from the previously accepted local time
-                    # before solving the next substep. Continuous step events
-                    # in ``event_dict`` therefore remain on the pre-event
-                    # value on the sample aligned with the event instant,
-                    # which is the trajectory stored in the regression CSVs.
-                    # Ramp events still preserve their dedicated continuous
-                    # interpolation because the symbolic ramp expression is
-                    # rebuilt from the event metadata inside the problem.
-                    self.problem.update_variable_params(t=t_local_prev,
+                    # Continuous event-dict parameters must be evaluated at the
+                    # implicit target time so the nonlinear solve sees steps and
+                    # ramps inside the current substep. Scheduled mode events use
+                    # the previous local time to preserve their latched boundary
+                    # semantics.
+                    self.problem.update_variable_params(t=t_curr,
                                                         x_snapshot=x_new,
                                                         scheduled_t=t_local_prev)
 
@@ -228,7 +224,6 @@ class BackEulerImplicitIntegration:
                     n_iter = 0
                     substep_converged = False
                     tol = self.tol
-                    tol = 1e-6
 
                     while not substep_converged and n_iter < self.max_iter_0:
                         if step_idx == 0 and is_first_local_step:
@@ -257,17 +252,14 @@ class BackEulerImplicitIntegration:
                                     value=residual,
                                     expected_value=tol,
                                 )
-                                # print(f"System requires iterative initialization. Initial DAE residual is {residual}.")
-                                # print(f"rhs is {rhs}")
-                                # non_zero_indexes = np.where(np.abs(rhs) > 1e-7)[0]
-                                # all_eq = self.problem._state_eqs + self.problem._algebraic_eqs
-                                # print("eqs are")
-                                # for i in non_zero_indexes:
-                                #     eq = all_eq[i]
-                                #     print(f"eq {eq} with error {rhs[i]}")
-                                # print("RMS simulation continues iterative initialization after the diagnostic. Check the logger for details.")
-                                # Continue with Newton iterations after reporting the initialization residual.
-
+                                print(f"Iterative initialization stopped at iter {n_iter} with residual {residual}")
+                                non_zero_indexes = np.where(np.abs(rhs) > 1e-6)[0]
+                                all_eq = self.problem._state_eqs + self.problem._algebraic_eqs
+                                print("eqs are")
+                                for i in non_zero_indexes:
+                                    eq = all_eq[i]
+                                    print(f"eq {eq} with error {rhs[i]}")
+                                exit()
 
                         if not substep_converged:
                             solved = False
@@ -323,11 +315,8 @@ class BackEulerImplicitIntegration:
                         t_local_prev = t_curr
                         is_first_local_step = False
                     else:
-                        if step_idx == 0:
-                            print(f"Iterative initialization stopped at iter {n_iter} with residual {residual}")
-                        else:
-                            print(f"Failed to converge at step {step_idx} and n_iter is {n_iter}")
-                            print(f"Residual is {residual}")
+                        print(f"Failed to converge at step {step_idx} and n_iter is {n_iter}")
+                        print(f"Residual is {residual}")
                         converged = False
                         break
 

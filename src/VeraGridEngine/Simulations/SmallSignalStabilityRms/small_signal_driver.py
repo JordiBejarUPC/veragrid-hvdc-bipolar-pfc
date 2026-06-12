@@ -114,42 +114,55 @@ def compute_participation_factors(v: np.ndarray,
     return PF_norm
 
 
-def compute_participation_factors_generalized(v: np.ndarray,
-                                              w: np.ndarray,
-                                              E: Union[np.ndarray, sp.spmatrix]) -> np.ndarray:
+def compute_participation_factors_generalized(v, w, E):
     """
     Participation factors for generalized eigenproblems A x = lambda E x.
-    Normalization uses w^T E v = 1 per mode.
+
+    Assumes:
+    - v[:, i] is the right eigenvector of mode i.
+    - w[:, i] is the corresponding left eigenvector of mode i.
+    - left/right eigenvectors are ordered consistently.
+    - finite, well-separated eigenvalues are being analysed.
+
+    Uses the normalization:
+
+        w_i^H E v_i = 1
+
+    and computes:
+
+        p_ki = |v_ki (w_i^H E)_k|
+
+    The returned participation factors are column-normalized.
     """
     v_c = v.astype(np.complex128, copy=False)
     w_c = w.astype(np.complex128, copy=False).copy()
 
     if sp.issparse(E):
         Ev = E @ v_c
-        Etw = E.T @ w_c
     else:
         E_arr = np.asarray(E, dtype=np.complex128)
         Ev = E_arr @ v_c
-        Etw = E_arr.T @ w_c
 
-    k = v_c.shape[1]
-    for i in range(k):
+    for i in range(v_c.shape[1]):
         norm_factor = np.vdot(w_c[:, i], Ev[:, i])
-        if np.abs(norm_factor) > 1e-15:
-            w_c[:, i] /= norm_factor
-        else:
-            pass
 
-    PF = np.abs(v_c * Etw)
+        if np.abs(norm_factor) > 1e-15:
+            w_c[:, i] /= np.conj(norm_factor)
+
+    if sp.issparse(E):
+        EH_w = E.conj().T @ w_c
+    else:
+        EH_w = E_arr.conj().T @ w_c
+
+    PF = np.abs(v_c * np.conj(EH_w))
+
     col_sum = np.sum(PF, axis=0)
     PF_norm = PF.copy()
-    for i in range(PF.shape[1]):
-        if col_sum[i] > 1e-15:
-            PF_norm[:, i] /= col_sum[i]
-        else:
-            pass
-    return PF_norm.astype(np.float64, copy=False)
 
+    valid = col_sum > 1e-15
+    PF_norm[:, valid] /= col_sum[valid]
+
+    return PF_norm.astype(np.float64, copy=False)
 
 def select_eigs_without_conjugates(eigenvalues: Vec) -> Vec:
     """
