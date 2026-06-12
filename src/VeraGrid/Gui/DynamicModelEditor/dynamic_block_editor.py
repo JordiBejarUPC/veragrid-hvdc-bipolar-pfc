@@ -78,6 +78,7 @@ from VeraGridEngine.Templates.Emt.source_emt_template import get_controlled_volt
 from VeraGridEngine.Templates.Emt.source_emt_template import get_current_source_emt_template
 from VeraGridEngine.Templates.Emt.source_emt_template import get_voltage_source_emt_template
 from VeraGridEngine.Templates.Emt.switch_emt_template import get_switch_emt_template
+from VeraGridEngine.Templates.Emt.fault_emt_template import get_fault_emt_template
 from VeraGridEngine.Templates.Emt.induction_motor_emt_template import get_induction_motor_emt_template
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_rlc_combo_emt_template
 from VeraGridEngine.Templates.Emt.load_zip_emt_template import get_load_ZIP_emt_template
@@ -106,6 +107,7 @@ from VeraGrid.Gui.DynamicModelEditor.transient_source_emt_dialog import Transien
 from VeraGrid.Gui.DynamicModelEditor.source_emt_dialog import SourceEmtDialog
 from VeraGrid.Gui.DynamicModelEditor.transformer_topology_emt_dialog import TransformerTopologyEmtDialog
 from VeraGrid.Gui.DynamicModelEditor.switch_emt_dialog import SwitchEmtDialog
+from VeraGrid.Gui.DynamicModelEditor.fault_emt_dialog import FaultEmtDialog
 from VeraGrid.Gui.Icons.icon_associations import device_type_icons
 from VeraGrid.Gui.wrappable_table_model import WrappableTableModel
 from VeraGrid.Gui.gui_functions import ComboDelegate, TextDelegate
@@ -115,7 +117,7 @@ from VeraGridEngine.Utils.Symbolic.symbolic import (symbolic_to_string, string_t
                                                     Expr, Var, Const, Comparison)
 from VeraGridEngine.Utils.Symbolic.symbolic_io import duplicate_block
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
-from VeraGridEngine.enumerations import BlockType
+from VeraGridEngine.enumerations import BlockType, EmtFaultPlacementSide, FaultType
 from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_fit_options import JMartiFitOptions
 from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_fit_workflow import build_jmarti_fit_bundle_from_frequency_samples
 from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_fit_workflow import build_jmarti_frequency_samples_from_line
@@ -6090,6 +6092,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             LibraryLeafSpec("C load", BlockType.C_LOAD_EMT),
             LibraryLeafSpec("DC load", BlockType.DC_LOAD_EMT),
         ])
+        common_emt_fault_blocks: List[LibraryLeafSpec] = list([
+            LibraryLeafSpec("Fault EMT", BlockType.FAULT_EMT),
+        ])
 
         device_rms_related_blocks = {
             DeviceType.GeneratorDevice: [
@@ -6178,6 +6183,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self.tree_structure["Basic"] = self.build_basic_library_branch()
             specific_emt_blocks: List[LibraryLeafSpec] = list(device_emt_related_blocks.get(api_object_device_type, list()))
             self.tree_structure["Devices"] = list(common_emt_device_blocks + specific_emt_blocks)
+            self.tree_structure["Faults"] = list(common_emt_fault_blocks)
 
         else:
             pass
@@ -8169,6 +8175,38 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 config=dict(switch_config),
             )
 
+        elif block_type == BlockType.FAULT_EMT:
+            default_fault_config: Dict[str, Any] = self._build_default_fault_emt_modal_config()
+            dialog = FaultEmtDialog(self, initial_config=default_fault_config)
+
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                fault_config = dict(default_fault_config)
+                fault_config.update(dialog.get_configuration())
+            else:
+                return None
+
+            item_name = f"fault_emt_{count}"
+            block_model = get_fault_emt_template(
+                vf=self.var_factory,
+                fault_type=fault_config["fault_type"],
+                phA=bool(fault_config["phA"]),
+                phB=bool(fault_config["phB"]),
+                phC=bool(fault_config["phC"]),
+                signal_controlled=bool(fault_config["signal_controlled"]),
+                initial_closed=bool(fault_config["initial_closed"]),
+                fault_resistance=float(fault_config["fault_resistance"]),
+                ground_resistance=float(fault_config["ground_resistance"]),
+                open_conductance=float(fault_config["open_conductance"]),
+                fault_time_constant=float(fault_config["fault_time_constant"]),
+                command_threshold=float(fault_config["command_threshold"]),
+                name=item_name,
+            ).block
+            set_modal_template_metadata(
+                block_model,
+                kind="fault_emt",
+                config=dict(fault_config),
+            )
+
         elif block_type == BlockType.RLC_COMBO_EMT:
             dialog = self._build_rlc_combo_emt_dialog()
 
@@ -8808,6 +8846,147 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             return block_item
         else:
             return None
+
+    def _build_default_fault_emt_modal_config(self) -> Dict[str, Any]:
+        """
+        Build one default persisted configuration for the EMT fault modal.
+
+        :return: Default fault configuration.
+        """
+        return dict({
+            "fault_type": FaultType.LG,
+            "placement_side": EmtFaultPlacementSide.FromSide,
+            "phA": True,
+            "phB": False,
+            "phC": False,
+            "signal_controlled": False,
+            "initial_closed": False,
+            "fault_resistance": 1.0e-4,
+            "ground_resistance": 1.0e-4,
+            "open_conductance": 1.0e-8,
+            "fault_time_constant": 1.0e-6,
+            "command_threshold": 0.5,
+        })
+
+    def _build_fault_emt_modal_tooltip(self, modal_config: Dict[str, Any]) -> str:
+        """
+        Build one compact tooltip for one EMT fault block.
+
+        :param modal_config: Persisted fault modal configuration.
+        :return: Tooltip text.
+        """
+        active_labels: List[str] = list()
+        fault_tpe_obj: object = modal_config.get("fault_type", FaultType.LG)
+        fault_tpe: FaultType
+
+        if isinstance(fault_tpe_obj, FaultType):
+            fault_tpe = fault_tpe_obj
+        else:
+            fault_tpe = FaultType.argparse(str(fault_tpe_obj))
+
+        if bool(modal_config.get("phA", False)):
+            active_labels.append("A")
+        else:
+            pass
+
+        if bool(modal_config.get("phB", False)):
+            active_labels.append("B")
+        else:
+            pass
+
+        if bool(modal_config.get("phC", False)):
+            active_labels.append("C")
+        else:
+            pass
+
+        tooltip_lines: List[str] = list(["FAULT_EMT"])
+        tooltip_lines.append(f"Type: {fault_tpe.name}")
+        tooltip_lines.append(f"Placement: {str(modal_config.get('placement_side', EmtFaultPlacementSide.FromSide))}")
+        tooltip_lines.append(f"Phases: {', '.join(active_labels)}")
+        tooltip_lines.append(f"Rf={float(modal_config.get('fault_resistance', 0.0)):.4g}")
+
+        if fault_tpe in {FaultType.LG, FaultType.LLG, FaultType.LLLG}:
+            tooltip_lines.append(f"Rg={float(modal_config.get('ground_resistance', 0.0)):.4g}")
+        else:
+            pass
+
+        tooltip_lines.append(f"Gopen={float(modal_config.get('open_conductance', 0.0)):.4g}")
+        tooltip_lines.append(f"tau={float(modal_config.get('fault_time_constant', 0.0)):.4g} s")
+
+        if bool(modal_config.get("signal_controlled", False)):
+            tooltip_lines.append("Controlled by command input")
+        else:
+            tooltip_lines.append("Controlled by EMT events")
+
+        return "\n".join(tooltip_lines)
+
+    def create_fault_emt_block_item(self, x_pos: float, y_pos: float) -> GenericBlockItem | None:
+        """
+        Create one EMT fault block configured through the fault modal.
+
+        :param x_pos: Drop x position.
+        :param y_pos: Drop y position.
+        :return: Created block item or None when the dialog is cancelled.
+        """
+        default_config: Dict[str, Any] = self._build_default_fault_emt_modal_config()
+        dialog = FaultEmtDialog(self, initial_config=default_config)
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            # The dialog returns a persisted modal payload, and the defaults fill any
+            # future optional keys so old diagrams remain rebuildable after refactors.
+            fault_config: Dict[str, Any] = dict(default_config)
+            fault_config.update(dialog.get_configuration())
+        else:
+            return None
+
+        count: int = self.block_counters.get(BlockType.FAULT_EMT, 0) + 1
+        item_name: str = f"fault_emt_{count}"
+        block_model = get_fault_emt_template(
+            vf=self.var_factory,
+            fault_type=fault_config["fault_type"],
+            placement_side=fault_config["placement_side"],
+            phA=bool(fault_config["phA"]),
+            phB=bool(fault_config["phB"]),
+            phC=bool(fault_config["phC"]),
+            signal_controlled=bool(fault_config["signal_controlled"]),
+            initial_closed=bool(fault_config["initial_closed"]),
+            fault_resistance=float(fault_config["fault_resistance"]),
+            ground_resistance=float(fault_config["ground_resistance"]),
+            open_conductance=float(fault_config["open_conductance"]),
+            fault_time_constant=float(fault_config["fault_time_constant"]),
+            command_threshold=float(fault_config["command_threshold"]),
+            name=item_name,
+        ).block
+        block_item: GenericBlockItem = GenericBlockItem(var_factory=self.var_factory,
+                                                        subsys=block_model,
+                                                        api_object=self.api_object,
+                                                        mode=self.mode,
+                                                        name=item_name,
+                                                        position_changed_callback=self._build_position_changed_callback(block_model.uid))
+
+        set_modal_template_metadata(
+            block_model,
+            kind="fault_emt",
+            config=dict(fault_config),
+        )
+
+        self.block_counters[BlockType.FAULT_EMT] = count
+        block_item.set_subsystem(block_model)
+        block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
+        block_item.build_item()
+        block_item.setToolTip(self._build_fault_emt_modal_tooltip(fault_config))
+        self.main_block.add(block_model)
+        self.scene.addItem(block_item)
+        block_item.setPos(QtCore.QPointF(x_pos, y_pos))
+        self.diagram.add_node(
+            name=item_name,
+            x=x_pos,
+            y=y_pos,
+            tpe=BlockType.FAULT_EMT.name,
+            device_uid=block_model.uid,
+        )
+        self.mark_unapplied_changes()
+        return block_item
 
     def create_rlc_combo_emt_block_item(self, x_pos: float, y_pos: float) -> GenericBlockItem | None:
         """
@@ -10183,13 +10362,16 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             BlockType.DOUBLE_EXPONENTIAL_CURRENT_SOURCE_EMT,
             BlockType.HEIDLER_CURRENT_SOURCE_EMT,
             BlockType.CIGRE_SURGE_CURRENT_SOURCE_EMT,
+            BlockType.FAULT_EMT,
             BlockType.SWITCH_EMT,
             BlockType.GROUNDING_LINK_EMT,
             BlockType.NONLINEAR_RESISTOR_EMT,
             BlockType.RLC_COMBO_EMT,
             BlockType.INDUCTION_MOTOR_EMT,
         }:
-            if payload == BlockType.SWITCH_EMT:
+            if payload == BlockType.FAULT_EMT:
+                return self.create_fault_emt_block_item(x_pos=x_pos, y_pos=y_pos)
+            elif payload == BlockType.SWITCH_EMT:
                 return self.create_switch_emt_block_item(x_pos=x_pos, y_pos=y_pos)
             elif payload == BlockType.GROUNDING_LINK_EMT:
                 return self.create_grounding_link_emt_block_item(x_pos=x_pos, y_pos=y_pos)
@@ -12487,6 +12669,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self._modify_rlc_combo_emt_block(item, modal_config)
         elif modal_kind == "induction_motor_emt":
             self._modify_induction_motor_emt_block(item, modal_config)
+        elif modal_kind == "fault_emt":
+            self._modify_fault_emt_block(item, modal_config)
         elif modal_kind == "switch_emt":
             self._modify_switch_emt_block(item, modal_config)
         else:
@@ -12933,6 +13117,47 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         new_block = get_switch_emt_template(vf=self.var_factory, name=item.subsys.name, **switch_config).block
         self._replace_scene_block_from_template(item, new_block, "switch_emt", dict(switch_config))
+
+    def _modify_fault_emt_block(self, item: BlockItem | GenericBlockItem, modal_config: Dict[str, Any]) -> None:
+        """
+        Reconfigure one modal-created EMT fault block.
+
+        :param item: Target block item.
+        :param modal_config: Stored modal configuration.
+        :return: None.
+        """
+        initial_fault_config: Dict[str, Any] = self._build_default_fault_emt_modal_config()
+        initial_fault_config.update(modal_config)
+        dialog = FaultEmtDialog(self, initial_config=initial_fault_config)
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            fault_config: Dict[str, Any] = self._build_default_fault_emt_modal_config()
+            fault_config.update(dialog.get_configuration())
+        else:
+            return
+
+        if item.subsys is None:
+            return
+        else:
+            pass
+
+        new_block = get_fault_emt_template(
+            vf=self.var_factory,
+            fault_type=fault_config["fault_type"],
+            placement_side=fault_config["placement_side"],
+            phA=bool(fault_config["phA"]),
+            phB=bool(fault_config["phB"]),
+            phC=bool(fault_config["phC"]),
+            signal_controlled=bool(fault_config["signal_controlled"]),
+            initial_closed=bool(fault_config["initial_closed"]),
+            fault_resistance=float(fault_config["fault_resistance"]),
+            ground_resistance=float(fault_config["ground_resistance"]),
+            open_conductance=float(fault_config["open_conductance"]),
+            fault_time_constant=float(fault_config["fault_time_constant"]),
+            command_threshold=float(fault_config["command_threshold"]),
+            name=item.subsys.name,
+        ).block
+        self._replace_scene_block_from_template(item, new_block, "fault_emt", dict(fault_config))
 
     def _modify_rlc_combo_emt_block(self, item: BlockItem | GenericBlockItem, modal_config: Dict[str, Any]) -> None:
         """
@@ -13839,6 +14064,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         block_item.setToolTip(self._build_transient_source_emt_modal_tooltip(modal_config))
                     elif modal_kind == "induction_motor_emt" and modal_config is not None:
                         block_item.setToolTip(self._build_induction_motor_emt_modal_tooltip(modal_config))
+                    elif modal_kind == "fault_emt" and modal_config is not None:
+                        block_item.setToolTip(self._build_fault_emt_modal_tooltip(modal_config))
                     else:
                         pass
 
@@ -13897,6 +14124,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         item.setToolTip(self._build_transient_source_emt_modal_tooltip(modal_config))
                     elif modal_kind == "induction_motor_emt" and modal_config is not None:
                         item.setToolTip(self._build_induction_motor_emt_modal_tooltip(modal_config))
+                    elif modal_kind == "fault_emt" and modal_config is not None:
+                        item.setToolTip(self._build_fault_emt_modal_tooltip(modal_config))
                     else:
                         pass
                     brush = item.brush()

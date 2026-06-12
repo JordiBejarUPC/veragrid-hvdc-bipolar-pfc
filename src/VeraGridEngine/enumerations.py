@@ -1124,6 +1124,40 @@ class FaultType(Enum):
         return list(enum_item.value for enum_item in cls)
 
 
+class EmtFaultPlacementSide(Enum):
+    """
+    Internal EMT fault placement side within one composed branch model.
+    """
+    FromSide = 'FromSide'
+    ToSide = 'ToSide'
+
+    def __str__(self):
+        return str(self.value)
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return EmtFaultPlacementSide[s]
+        except KeyError:
+            return s
+
+    @classmethod
+    def list(cls):
+        """
+
+        :return:
+        """
+        return list(enum_item.value for enum_item in cls)
+
+
 class MethodShortCircuit(Enum):
     """
     Short circuit type
@@ -4289,6 +4323,7 @@ class BlockType(Enum):
     HEIDLER_CURRENT_SOURCE_EMT = "HEIDLER_CURRENT_SOURCE_EMT"
     CIGRE_SURGE_CURRENT_SOURCE_EMT = "CIGRE_SURGE_CURRENT_SOURCE_EMT"
     SWITCH_EMT = "SWITCH_EMT"
+    FAULT_EMT = "FAULT_EMT"
     GROUND_EMT = "GROUND_EMT"
     GROUNDING_LINK_EMT = "GROUNDING_LINK_EMT"
     NONLINEAR_RESISTOR_EMT = "NONLINEAR_RESISTOR_EMT"
