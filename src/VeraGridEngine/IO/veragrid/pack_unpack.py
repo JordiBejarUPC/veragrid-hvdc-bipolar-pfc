@@ -57,6 +57,8 @@ def get_objects_dictionary() -> Dict[str, ALL_DEV_TYPES]:
 
         'facility': dev.Facility(),
 
+        'market_unit': dev.MarketUnit(),
+
         'rms_model_template': dev.RmsModelTemplate(),
         'emt_model_template': dev.EmtModelTemplate(),
         'fmu_template': dev.FmuTemplate(),
@@ -1206,7 +1208,12 @@ def parse_object_type_from_dataframe(
                         dfp = data.get(profile_key, None)
 
                         if dfp is not None:
-                            elm.set_profile(gc_prop, arr=dfp.values[:, i].astype(gc_prop.tpe))
+                            try:
+                                elm.set_profile(gc_prop, arr=dfp.values[:, i].astype(gc_prop.tpe))
+                            except TypeError as terr:
+                                logger.add_error(msg="Cannot set profile value",
+                                                 device_property=gc_prop.profile_name,
+                                                 device=elm.name)
 
                         else:
                             skip = False

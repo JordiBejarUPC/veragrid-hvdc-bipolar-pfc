@@ -1638,6 +1638,7 @@ class DeviceType(Enum):
     ModellingAuthority = "Modelling Authority"
 
     FacilityDevice = "Facility"
+    MarketUnitDevice = "Market unit"
 
     SimulationOptionsDevice = "SimulationOptionsDevice"
 
@@ -2729,18 +2730,38 @@ class ResultTypes(Enum):
     ZoneAnalysis = 'Zone analysis'
     CountryAnalysis = 'Country analysis'
     AreaAnalysis = 'Area analysis'
+    SubstationAnalysis = 'Substation analysis'
+    VoltageLevelAnalysis = 'Voltage level analysis'
+    CommunityAnalysis = 'Community analysis'
+    RegionAnalysis = 'Region analysis'
+    MunicipalityAnalysis = 'Municipality analysis'
 
     AreaGenerationAnalysis = 'Area generation analysis'
     ZoneGenerationAnalysis = 'Zone generation analysis'
+    SubstationGenerationAnalysis = 'Substation generation analysis'
+    VoltageLevelGenerationAnalysis = 'Voltage level generation analysis'
     CountryGenerationAnalysis = 'Country generation analysis'
+    CommunityGenerationAnalysis = 'Community generation analysis'
+    RegionGenerationAnalysis = 'Region generation analysis'
+    MunicipalityGenerationAnalysis = 'Municipality generation analysis'
 
     AreaLoadAnalysis = 'Area load analysis'
     ZoneLoadAnalysis = 'Zone load analysis'
+    SubstationLoadAnalysis = 'Substation load analysis'
+    VoltageLevelLoadAnalysis = 'Voltage level load analysis'
     CountryLoadAnalysis = 'Country load analysis'
+    CommunityLoadAnalysis = 'Community load analysis'
+    RegionLoadAnalysis = 'Region load analysis'
+    MunicipalityLoadAnalysis = 'Municipality load analysis'
 
     AreaBalanceAnalysis = 'Area balance analysis'
     ZoneBalanceAnalysis = 'Zone balance analysis'
+    SubstationBalanceAnalysis = 'Substation balance analysis'
+    VoltageLevelBalanceAnalysis = 'Voltage level balance analysis'
     CountryBalanceAnalysis = 'Country balance analysis'
+    CommunityBalanceAnalysis = 'Community balance analysis'
+    RegionBalanceAnalysis = 'Region balance analysis'
+    MunicipalityBalanceAnalysis = 'Municipality balance analysis'
 
     # Short circuit
     BusVoltageModule0 = 'Voltage module (0)'
@@ -2813,6 +2834,13 @@ class ResultTypes(Enum):
     HvdcResults = 'Hvdc'
     VscResults = 'Vsc'
     AreaResults = 'Area'
+    ZoneResults = 'Zone'
+    SubstationResults = 'Substation'
+    VoltageLevelResults = 'Voltage level'
+    CountryResults = 'Country'
+    CommunityResults = 'Community'
+    RegionResults = 'Region'
+    MunicipalityResults = 'Municipality'
     InfoResults = 'Information'
     ReportsResults = 'Reports'
     ParetoResults = 'Pareto'
