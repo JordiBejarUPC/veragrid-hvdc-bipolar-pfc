@@ -593,7 +593,13 @@ class Var(Expr):
     def shared_ref(self) -> SharedVarReferenceType | None:
         return self._shared_ref
 
-    @property
+    @shared_ref.setter
+    def shared_ref(self, val: SharedVarReferenceType) -> None:
+        if isinstance(val, SharedVarReferenceType):
+            self._shared_ref = val
+        else:
+            raise ValueError(f"RMS model cannot accept {val}")
+
     def ref(self) -> VarPowerFlowReferenceType | None:
         return self._ref
 

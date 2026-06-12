@@ -105,8 +105,76 @@ def park_transform_block(vfactory: VarFactory, v_abc: list[Var], theta: Var, mul
 
     return park_block, (x_d, x_q), aux_vars
 
+def get_pll_transform_rms(vfactory: VarFactory, name: str = "Pll_transform_rms") -> RmsModelTemplate:
+    """
+     Pll
+    """
+    suffix = f"_{name}" if name else ""
+    templ = RmsModelTemplate(name=name)
+    templ.tpe = DeviceType.GeneratorDevice
+
+    inputs = [vfactory.add_var("Vm_" + name, reference=VarPowerFlowReferenceType.Vm),
+              vfactory.add_var("Va_" + name, reference=VarPowerFlowReferenceType.Va),
+              vfactory.add_var("omega_" + name, shared_reference="omega_reference")]
+
+    # Variables
+    theta = vfactory.add_var(f'theta{suffix}', shared_reference="theta_reference")
+    vd = vfactory.add_var(f'vd{suffix}', shared_reference="vd_reference")
+    vq = vfactory.add_var(f'vq{suffix}', shared_reference="vq_reference")
+
+    # Parameters
+    Kp_pll = vfactory.add_var(f'Kp_pll{suffix}')
+    Ki_pll = vfactory.add_var(f'Ki_pll{suffix}')
+    fn = vfactory.add_var(f'fn{suffix}')
+
+    res_event_dict = {
+        fn: vfactory.add_const(50),
+    }
+
+    PI_event_dict = {
+        Kp_pll: vfactory.add_const(0.001),
+        Ki_pll: vfactory.add_const(0.1),
+    }
+
+    block = Block()
+
+    res_block = Block(
+        state_eqs=[2 * math.pi * fn * (inputs[2] - 1)],
+        state_vars=[theta],
+        algebraic_eqs=[
+            vd - inputs[0] * sym.sin(inputs[1] - theta),
+            vq - inputs[0] * sym.cos(inputs[1] - theta),
+        ],
+        algebraic_vars=[vd, vq],
+        event_dict=res_event_dict,
+        init_eqs={
+            theta: inputs[1],
+            vd: inputs[0] * sym.sin(inputs[1] - theta),
+            vq: inputs[0] * sym.cos(inputs[1] - theta),
+        },
+    )
+
+    PI_block, omega = tf_to_block(vfactory,
+                                  num=[Ki_pll, Kp_pll],
+                                  den=[0, 1],
+                                  x=(inputs[0] * sym.sin(inputs[1] - theta)),
+                                  name='PLL_integrator'
+                                  )
+    #Todo: add this method to var factory
+    vfactory.add_shared_ref_to_var(omega, "omega_reference")
+    PI_block.event_dict = PI_event_dict
+
+    block.children = [res_block, PI_block]
+    block.out_vars = [vd, vq, theta, omega]
+
+    templ.block = block
+
+
+    return templ
+
 def pll_transform_rms(vfactory: VarFactory, Vm, Va, name:str = ''):
     suffix = f"_{name}" if name else ""
+
 
     # Variables
     theta = vfactory.add_var(f'theta{suffix}')

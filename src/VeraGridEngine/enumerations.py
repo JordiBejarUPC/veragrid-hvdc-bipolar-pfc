@@ -4257,6 +4257,10 @@ class BlockType(Enum):
     LOAD_RMS = "Load_RMS"
     GFL_VSC_RMS = "GFL_VSC_RMS"
     DC_PV_SOURCE_RMS = "DC_PV_SOURCE_RMS"
+    PLL_TRANSFORM_RMS = "Pll_transform_rms"
+    PI_CURRENT_CONTROLLER = "Pi_current_controller"
+    PI_POWER_CONTROLLER = "Pi_power_controller"
+    GFL_CONVERTER_RMS = "Gfl_converter_rms"
 
     # EMT
     EMT_GENERATOR = "EMT_GENERATOR"

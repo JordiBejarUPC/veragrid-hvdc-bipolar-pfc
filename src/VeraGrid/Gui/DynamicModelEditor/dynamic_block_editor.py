@@ -5225,6 +5225,12 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             LibraryLeafSpec("DC load", BlockType.DC_LOAD_EMT),
         ])
 
+        common_rms_device_blocks: List[LibraryLeafSpec] = list([
+            LibraryLeafSpec("Pll transformer", BlockType.PLL_TRANSFORM_RMS),
+            LibraryLeafSpec("Pi current controller", BlockType.PI_CURRENT_CONTROLLER),
+            LibraryLeafSpec("Pi power controller", BlockType.PI_POWER_CONTROLLER),
+            LibraryLeafSpec("Gfl converter", BlockType.GFL_CONVERTER_RMS)])
+
         device_rms_related_blocks = {
             DeviceType.GeneratorDevice: [
                 LibraryLeafSpec("Generic", BlockType.GENERIC),
@@ -5233,9 +5239,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 LibraryLeafSpec("Governor", BlockType.GOV_RMS),
                 LibraryLeafSpec("Stabilizer", BlockType.STAB_RMS),
                 LibraryLeafSpec("Exciter", BlockType.EXCITER_RMS),
-                LibraryLeafSpec("Inverse Park transform", BlockType.INVERSE_PARK_TRANSFORM),
-                LibraryLeafSpec("Park transform", BlockType.PARK_TRANSFORM),
-                LibraryLeafSpec("Pll transform", BlockType.PLL_TRANSFORM),
+
             ],
             DeviceType.LineDevice: [
                 LibraryLeafSpec("Generic", BlockType.GENERIC),
@@ -5309,6 +5313,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.tree_structure: Dict[str, Any] = dict()
         if mode == DynamicSimulationMode.RMS:
             self.tree_structure["Basic"] = self.build_basic_library_branch()
+            self.tree_structure["Basic_devices"] = list(common_rms_device_blocks)
             self.tree_structure["Devices"] = device_rms_related_blocks.get(api_object_device_type, dict())
 
         elif mode == DynamicSimulationMode.EMT:
