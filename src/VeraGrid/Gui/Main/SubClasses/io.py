@@ -109,7 +109,8 @@ class IoMain(ScenariosMain):
 
         # Buttons
         self.ui.exportSimulationDataButton.clicked.connect(self.export_simulation_data)
-        self.ui.loadResultFromDiskButton.clicked.connect(self.load_results_driver)
+        self.ui.diskSessionsTreeView.customContextMenuRequested.connect(self.show_disk_sessions_context_menu)
+        self.ui.diskSessionsTreeView.setContextMenuPolicy(QtGui.Qt.ContextMenuPolicy.CustomContextMenu)
 
     def check_extension(self, path: str) -> bool:
         """
@@ -487,7 +488,7 @@ class IoMain(ScenariosMain):
 
                 # get the session tree structure
                 session_data_dict = self.open_file_thread_object.get_session_tree()
-                mdl = gf.get_tree_model(session_data_dict, 'Sessions')
+                mdl = gf.get_tree_model(session_data_dict, 'Sessions', icons=gf.get_simulation_tree_icons())
                 self.ui.diskSessionsTreeView.setModel(mdl)
 
                 # apply the GUI settings if found:
@@ -851,7 +852,7 @@ class IoMain(ScenariosMain):
 
         # get the session tree structure
         session_data_dict = self.save_file_thread_object.get_session_tree()
-        mdl = gf.get_tree_model(session_data_dict, 'Sessions')
+        mdl = gf.get_tree_model(session_data_dict, 'Sessions', icons=gf.get_simulation_tree_icons())
         self.ui.diskSessionsTreeView.setModel(mdl)
 
         # call the garbage collector to free memory
@@ -1045,10 +1046,31 @@ class IoMain(ScenariosMain):
                         self.show_logs(name="Results parsing", logger=logger, expand_all=True)
 
                     self.update_available_results()
+                    self.show_info_toast(f"Loaded '{study_name}' results from disk")
                 else:
                     error_msg('No file driver declared :/')
             else:
                 info_msg('Select a driver inside a session', 'Driver load from disk')
+
+    def show_disk_sessions_context_menu(self, pos) -> None:
+        """
+        Display the context menu for loading saved results from disk.
+
+        :param pos: Local click position in the tree view.
+        :return: None.
+        """
+        index = self.ui.diskSessionsTreeView.indexAt(pos)
+
+        if index.isValid():
+            self.ui.diskSessionsTreeView.setCurrentIndex(index)
+            menu = QtWidgets.QMenu(self.ui.diskSessionsTreeView)
+            gf.add_menu_entry(menu=menu,
+                              text="Load results from disk",
+                              icon_path=":/Icons/icons/loadc.png",
+                              function_ptr=self.load_results_driver)
+            menu.exec(self.ui.diskSessionsTreeView.viewport().mapToGlobal(pos))
+        else:
+            pass
 
     def import_contingencies(self) -> None:
         """

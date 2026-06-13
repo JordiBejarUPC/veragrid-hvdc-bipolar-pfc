@@ -950,7 +950,6 @@ def analyze_generators(elements: List[Generator],
                                                         value_low=obj.Qmin,
                                                         value_high=obj.Qmax))
 
-        # elif obj.Qmax == obj.Qmin and obj.is_controlled:
         elif obj.Qmax == obj.Qmin:
 
             if obj.Qmax == 0.0:
@@ -1405,7 +1404,9 @@ def grid_analysis(circuit: MultiCircuit,
     Sbus = nc.get_power_injections()
     indices = nc.get_simulation_indices(Sbus=Sbus)
     lin_adm = nc.get_linear_admittance_matrices(indices=indices)
-    rcond, unstable = sparse_instability_svd_test(lin_adm.Bbus, condition_number_thrshold=1.0 / condition_number_threshold)
+
+    rcond, unstable = sparse_instability_svd_test(lin_adm.Bbus,
+                                                  condition_number_thrshold=1.0 / condition_number_threshold)
 
     if unstable:
         logger.add(object_type='matrix',

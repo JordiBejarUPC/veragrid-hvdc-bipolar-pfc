@@ -201,6 +201,7 @@ class DataBaseTableMain(DiagramsMain):
                 if len(magnitudes) > 0:
                     # get the enumeration unique association with the device text
                     dev_type = self.circuit.device_type_name_dict[dev_type_text]
+                    _, dictionary_of_lists = self.circuit.get_dictionary_of_lists(elm_type=dev_type)
 
                     idx = self.ui.device_type_magnitude_comboBox.currentIndex()
                     magnitude = magnitudes[idx]
@@ -211,6 +212,7 @@ class DataBaseTableMain(DiagramsMain):
                                         device_type=dev_type,
                                         magnitude=magnitude,
                                         data_format=mtype,
+                                        dictionary_of_lists=dictionary_of_lists,
                                         parent=self.ui.profiles_tableView)
                     self.ui.profiles_tableView.setModel(mdl)
                 else:
@@ -893,6 +895,12 @@ class DataBaseTableMain(DiagramsMain):
                 obj = dev.Facility(name=name)
                 self.circuit.add_facility(obj)
 
+            elif elm_type == DeviceType.MarketUnitDevice.value:
+
+                name = f'Market unit {self.circuit.get_market_unit_number()}'
+                obj = dev.MarketUnit(name=name)
+                self.circuit.add_market_unit(obj)
+
             # elif elm_type == DeviceType.DynamicModelHostDevice.value:
             #
             #     name = f'RMS model {self.circuit.get_rms_models_number()}'
@@ -1057,10 +1065,12 @@ class DataBaseTableMain(DiagramsMain):
                     elif elm_type == DeviceType.RmsModelTemplateDevice.value:
                         open_dynamic_editor(api_object=elm, circuit=self.circuit,
                                             preferred_mode=DynamicSimulationMode.RMS)
+                        self.retain_dynamic_editor_windows()
 
                     elif elm_type == DeviceType.EmtModelTemplateDevice.value:
                         open_dynamic_editor(api_object=elm, circuit=self.circuit,
                                             preferred_mode=DynamicSimulationMode.EMT)
+                        self.retain_dynamic_editor_windows()
 
                     elif elm_type == DeviceType.FmuTemplateDevice.value:
                         dlg = FmuTemplateEditorDialog(

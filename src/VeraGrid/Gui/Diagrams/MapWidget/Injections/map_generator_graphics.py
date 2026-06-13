@@ -75,13 +75,6 @@ class MapGeneratorGraphicItem(MapInjectionTemplateGraphicItem):
         menu.addSection("Generator")
 
         add_menu_entry(menu=menu,
-                       text="Voltage control",
-                       icon_path="",
-                       function_ptr=self.enable_disable_control_toggle,
-                       checkeable=True,
-                       checked_value=self.api_object.is_controlled)
-
-        add_menu_entry(menu=menu,
                        text="RMS Editor",
                        function_ptr=self.edit_rms,
                        icon_path=":/Icons/icons/dyn_edit.png")
@@ -149,7 +142,8 @@ class MapGeneratorGraphicItem(MapInjectionTemplateGraphicItem):
         Open the unified dynamic editor workspace for this map generator.
         """
 
-        open_dynamic_editor(api_object=self.api_object, circuit=self.editor.circuit)
+        open_dynamic_editor(api_object=self.api_object,
+                            circuit=self.editor.circuit)
 
     def to_battery(self):
         """
@@ -159,13 +153,6 @@ class MapGeneratorGraphicItem(MapInjectionTemplateGraphicItem):
                              'Convert generator')
         if ok:
             self._editor.convert_generator_to_battery(gen=self.api_object, graphic_object=self)
-
-    def enable_disable_control_toggle(self):
-        """
-        Enable / Disable device voltage control
-        """
-        if self.api_object is not None:
-            self.api_object.is_controlled = not self.api_object.is_controlled
 
     def set_regulation_bus(self):
         """

@@ -8,17 +8,21 @@ from typing import Union, List, Dict, Any, Tuple
 import uuid
 
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
-from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import DeviceType, VarPowerFlowReferenceType
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, SharedVarReferenceType
 
 
 def _new_uid() -> int:
-    """Generate a fresh UUID‑v4 string."""
+    """
+    Generate one fresh integer uid.
+
+    :return: New unique integer identifier.
+    """
     return uuid.uuid4().int
 
 class Connection:
     """
-    connection
+    Lightweight saved description of one propagated variable connection.
     """
     __slots__ = (
         'non_mutable_uid',
@@ -28,10 +32,24 @@ class Connection:
     def __init__(self,
                  non_mutable_uid: int,
                  name: str,
-                 uid: int):
+                 uid: int) -> None:
+        """
+        Store the identity required to restore one detached variable.
 
+        :param non_mutable_uid: Stable uid of the connected variable.
+        :param name: Variable name to restore after disconnection.
+        :param uid: Mutable uid to restore after disconnection.
+        :return: None.
+        """
+
+        # Preserve the stable symbolic identity used to match the connection
+        # entry during later remove operations.
         self.non_mutable_uid = non_mutable_uid
+        # Preserve the pre-connection variable name so the symbolic variable
+        # returns to its original label when the edge is removed.
         self.name = name
+        # Preserve the pre-connection uid so the symbolic variable returns to
+        # the exact original identity when the edge is removed.
         self.uid = uid
 
 
@@ -100,7 +118,7 @@ class VarFactory(EditableDevice):
 
     def add_var(self,
                 name: str,
-                reference: VarPowerFlowRefferenceType | None = None,
+                reference: VarPowerFlowReferenceType | None = None,
                 network_conn: bool = False,
                 shared_reference: str | None | SharedVarReferenceType = None,
                 non_mutable_uid: int | None = None,
@@ -158,7 +176,7 @@ class VarFactory(EditableDevice):
 
     def add_diff_var(self,
                      name: str,
-                     reference: VarPowerFlowRefferenceType | None = None,
+                     reference: VarPowerFlowReferenceType | None = None,
                      network_conn: bool = False,
                      shared_reference: str | None | SharedVarReferenceType = None,
                      non_mutable_uid: int | None = None,
@@ -238,11 +256,48 @@ class VarFactory(EditableDevice):
 
         self.connect_variables_by_uid(connection.non_mutable_uid, incoming_var.uid, incoming_var.name)
 
-    def remove_connection(self, var_to_disconnect: Var, outgoing_var: Var):
-        for i, connection in enumerate(self._vars_connected_dict[outgoing_var.non_mutable_uid]):
+    def remove_connection(self, var_to_disconnect: Var, outgoing_var: Var) -> None:
+        """
+        Remove one saved variable connection if it still exists.
+
+        :param var_to_disconnect: Variable that should be detached from the outgoing source.
+        :param outgoing_var: Source variable that owns the propagated connection list.
+        :return: None.
+        """
+        connections: List[Connection] | None = self._vars_connected_dict.get(outgoing_var.non_mutable_uid, None)
+        connection_index: int
+        connection: Connection
+
+        # The editor can request a connection removal after the backing
+        # connection registry was already pruned by a previous editor action.
+        # In that case there is nothing left to remove and the state is already
+        # consistent, so the function must exit quietly.
+        if connections is None:
+            return
+        else:
+            pass
+
+        for connection_index, connection in enumerate(connections):
+            # Restore the disconnected variable identity before removing the
+            # propagated connection record so downstream references stop using
+            # the outgoing variable metadata.
             if connection.non_mutable_uid == var_to_disconnect.non_mutable_uid:
                 self.connect_variables_by_uid(connection.non_mutable_uid, connection.uid, connection.name)
-                del self._vars_connected_dict[outgoing_var.non_mutable_uid][i]
+                del connections[connection_index]
+
+                # Drop the now-empty registry entry to keep the connection map
+                # aligned with the actual set of active propagated links.
+                if len(connections) == 0:
+                    del self._vars_connected_dict[outgoing_var.non_mutable_uid]
+                else:
+                    pass
+                return
+            else:
+                pass
+
+        # No matching propagated connection was present. The requested state is
+        # therefore already reached and no extra action is necessary.
+        return
 
     def add_connections(self, vars_to_subs: List[Var], incoming_vars: List[Var]):
         pairs: List[Tuple[Var, Var]] = list(zip(vars_to_subs, incoming_vars))
@@ -379,10 +434,10 @@ class VarFactory(EditableDevice):
                     key_ref = None
 
             ref_power_flow_data: Any = data.get("ref", None)
-            key_power_flow_ref: VarPowerFlowRefferenceType | None
+            key_power_flow_ref: VarPowerFlowReferenceType | None
 
             if ref_power_flow_data is not None:
-                key_power_flow_ref = VarPowerFlowRefferenceType(ref_power_flow_data)
+                key_power_flow_ref = VarPowerFlowReferenceType(ref_power_flow_data)
             else:
                 key_power_flow_ref = None
 
@@ -409,7 +464,7 @@ class VarFactory(EditableDevice):
         The loader must rebuild each differential variable using the exact
         symbolic metadata stored in the ``.veragrid`` payload. In particular,
         the power-flow reference has to be converted back to the
-        ``VarPowerFlowRefferenceType`` enum so downstream EMT connection logic
+        ``VarPowerFlowReferenceType`` enum so downstream EMT connection logic
         can distinguish branch terminal references such as ``vf_A`` and
         ``vt_A`` from bus references such as ``v_A``.
 
@@ -464,9 +519,9 @@ class VarFactory(EditableDevice):
             # Keeping the enum identity is required so EMT topology validation
             # can still recognize branch-side references after reopening files.
             reference_power_flow_data: Any = data.get("ref", None)
-            reference_power_flow: VarPowerFlowRefferenceType | None
+            reference_power_flow: VarPowerFlowReferenceType | None
             if reference_power_flow_data is not None:
-                reference_power_flow = VarPowerFlowRefferenceType(reference_power_flow_data)
+                reference_power_flow = VarPowerFlowReferenceType(reference_power_flow_data)
             else:
                 reference_power_flow = None
 

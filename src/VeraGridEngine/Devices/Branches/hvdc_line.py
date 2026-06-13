@@ -545,7 +545,7 @@ class HvdcLine(BranchParent):
                                                  r1=self.r,
                                                  angle_droop=self.angle_droop,
                                                  rate=self.rate,
-                                                 free=self.control_mode == HvdcControlType.type_0_free,
+                                                 free=self.control_mode == HvdcControlType.type_0_free.idx(),
                                                  in_pu=in_pu)
 
             return Pf, Pt, losses
@@ -569,7 +569,7 @@ class HvdcLine(BranchParent):
                                                  r1=self.r,
                                                  angle_droop=self.angle_droop,
                                                  rate=self.rate_prof[t],
-                                                 free=self.control_mode == HvdcControlType.type_0_free,
+                                                 free=self.control_mode == HvdcControlType.type_0_free.idx(),
                                                  in_pu=in_pu)
 
             return Pf, Pt, losses

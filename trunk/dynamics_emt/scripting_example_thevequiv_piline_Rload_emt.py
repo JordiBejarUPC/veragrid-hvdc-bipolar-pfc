@@ -184,8 +184,8 @@ set_emt_model(device=load, model=load_mdl, var_factory= grid.var_factory)
 # # external mapping
 # # big_gen1 = Block(children=[gen_mdl])
 # #
-# # big_gen1.external_mapping.update({VarPowerFlowRefferenceType.P: gen_mdl.out_vars[0]})
-# # big_gen1.external_mapping.update({VarPowerFlowRefferenceType.Q: gen_mdl.out_vars[1]})
+# # big_gen1.external_mapping.update({VarPowerFlowReferenceType.P: gen_mdl.out_vars[0]})
+# # big_gen1.external_mapping.update({VarPowerFlowReferenceType.Q: gen_mdl.out_vars[1]})
 #
 # # attach emt models to Veragrid objects
 # line0.emt_model= line_mdl
@@ -291,7 +291,8 @@ options = EmtOptions(time_step = 5e-6,
                      simulation_time =  0.01, # s
                      tolerance = 1e-6,
                      solver_type = SOLVER_TYPE_MAP[CHOSEN_SOLVER],
-                     initialization_method = EmtInitializationMethod.Explicit,
+                     # initialization_method = EmtInitializationMethod.Explicit,
+                     initialization_method = EmtInitializationMethod.PseudoTransient,
                      integration_method = DynamicIntegrationMethod.DaeTrapezoidal,
                      verbose = 1)
 
@@ -305,6 +306,13 @@ def create_problem() -> EmtProblemDae:
                                   options=options,
                                   pf_results_3ph=None,
                                   pf_results=res)
+
+    print(local_problem.initialization_report.method_requested)
+    print(local_problem.initialization_report.method_used)
+    print(local_problem.initialization_report.status)
+    print(local_problem.initialization_report.newton_iterations)
+    print(local_problem.initialization_report.pseudo_transient_steps)
+    print(local_problem.initialization_report.message)
 
     if ENABLE_NEWTON_TRACE:
         local_problem.set_newton_trace_collector(NewtonTraceCollector())

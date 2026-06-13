@@ -44,7 +44,7 @@ from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template imp
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
-from VeraGridEngine.enumerations import DynamicIntegrationMethod, ConverterControlType, SolverType, VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import DynamicIntegrationMethod, ConverterControlType, SolverType, VarPowerFlowReferenceType
 
 
 class LoadStepBoundaryUpdater(BoundaryUpdateWrapper):
@@ -397,12 +397,12 @@ def run_dc_line_case(enable_plots: bool = False) -> None:
     time_s, state_traj, _diff_traj, _, _ = solver.simulate(boundary_updater=boundary_updater)
 
     # The variables are taken directly from the EMT external mapping to avoid fragile name heuristics.
-    v_source_var = bus_dc_source.emt_model.external_mapping[VarPowerFlowRefferenceType.Vdc]
-    v_load_var = bus_dc_load.emt_model.external_mapping[VarPowerFlowRefferenceType.Vdc]
-    i_from_var = dc_line.emt_model.external_mapping[VarPowerFlowRefferenceType.If_dc]
-    i_to_var = dc_line.emt_model.external_mapping[VarPowerFlowRefferenceType.It_dc]
-    p_from_var = dc_line.emt_model.external_mapping[VarPowerFlowRefferenceType.Pf]
-    p_to_var = dc_line.emt_model.external_mapping[VarPowerFlowRefferenceType.Pt]
+    v_source_var = bus_dc_source.emt_model.external_mapping[VarPowerFlowReferenceType.Vdc]
+    v_load_var = bus_dc_load.emt_model.external_mapping[VarPowerFlowReferenceType.Vdc]
+    i_from_var = dc_line.emt_model.external_mapping[VarPowerFlowReferenceType.If_dc]
+    i_to_var = dc_line.emt_model.external_mapping[VarPowerFlowReferenceType.It_dc]
+    p_from_var = dc_line.emt_model.external_mapping[VarPowerFlowReferenceType.Pf]
+    p_to_var = dc_line.emt_model.external_mapping[VarPowerFlowReferenceType.Pt]
 
     v_source_trace = np.array(state_traj[:, problem.get_var_idx(v_source_var)], copy=True)
     v_load_trace = np.array(state_traj[:, problem.get_var_idx(v_load_var)], copy=True)

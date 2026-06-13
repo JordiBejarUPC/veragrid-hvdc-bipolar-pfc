@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, RmsInitializationMethod
+from VeraGridEngine.enumerations import VarPowerFlowReferenceType, DynamicIntegrationMethod, RmsInitializationMethod
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGridEngine.Devices.Branches.line import Line
@@ -529,17 +529,17 @@ def rms_kundur():
     big_gen3 = Block(children=[genqec_mdl3])
     big_gen4 = Block(children=[genqec_mdl4])
 
-    big_gen1.external_mapping.update({VarPowerFlowRefferenceType.P: genqec_mdl1.out_vars[0]})
-    big_gen1.external_mapping.update({VarPowerFlowRefferenceType.Q: genqec_mdl1.out_vars[1]})
+    big_gen1.external_mapping.update({VarPowerFlowReferenceType.P: genqec_mdl1.out_vars[0]})
+    big_gen1.external_mapping.update({VarPowerFlowReferenceType.Q: genqec_mdl1.out_vars[1]})
 
-    big_gen2.external_mapping.update({VarPowerFlowRefferenceType.P: genqec_mdl2.out_vars[0]})
-    big_gen2.external_mapping.update({VarPowerFlowRefferenceType.Q: genqec_mdl2.out_vars[1]})
+    big_gen2.external_mapping.update({VarPowerFlowReferenceType.P: genqec_mdl2.out_vars[0]})
+    big_gen2.external_mapping.update({VarPowerFlowReferenceType.Q: genqec_mdl2.out_vars[1]})
 
-    big_gen3.external_mapping.update({VarPowerFlowRefferenceType.P: genqec_mdl3.out_vars[0]})
-    big_gen3.external_mapping.update({VarPowerFlowRefferenceType.Q: genqec_mdl3.out_vars[1]})
+    big_gen3.external_mapping.update({VarPowerFlowReferenceType.P: genqec_mdl3.out_vars[0]})
+    big_gen3.external_mapping.update({VarPowerFlowReferenceType.Q: genqec_mdl3.out_vars[1]})
 
-    big_gen4.external_mapping.update({VarPowerFlowRefferenceType.P: genqec_mdl4.out_vars[0]})
-    big_gen4.external_mapping.update({VarPowerFlowRefferenceType.Q: genqec_mdl4.out_vars[1]})
+    big_gen4.external_mapping.update({VarPowerFlowReferenceType.P: genqec_mdl4.out_vars[0]})
+    big_gen4.external_mapping.update({VarPowerFlowReferenceType.Q: genqec_mdl4.out_vars[1]})
 
     # attach rms models to Veragrid objects
     gen1.rms_model = big_gen1

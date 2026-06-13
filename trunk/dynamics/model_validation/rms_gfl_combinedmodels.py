@@ -24,7 +24,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_options import SolverType
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Devices.Events.rms_event import RmsEvent
-from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod, VarPowerFlowRefferenceType, ConverterControlType
+from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod, VarPowerFlowReferenceType, ConverterControlType
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
@@ -88,11 +88,11 @@ def build_pv_current_injection_model(
     ) -> Block:
     vm_f_src = vf.add_var(f"Vm_f_{name}")
     va_f_src = vf.add_var(f"Va_f_{name}")
-    vm_t_src = vf.add_var(f"Vm_t_{name}", VarPowerFlowRefferenceType.Vm)
-    va_t_src = vf.add_var(f"Va_t_{name}", VarPowerFlowRefferenceType.Va)
+    vm_t_src = vf.add_var(f"Vm_t_{name}", VarPowerFlowReferenceType.Vm)
+    va_t_src = vf.add_var(f"Va_t_{name}", VarPowerFlowReferenceType.Va)
     vdc = vf.add_var(f"Vdc_{name}")
-    p_out = vf.add_var(f"P_{name}", VarPowerFlowRefferenceType.P)
-    q_out = vf.add_var(f"Q_{name}", VarPowerFlowRefferenceType.Q)
+    p_out = vf.add_var(f"P_{name}", VarPowerFlowReferenceType.P)
+    q_out = vf.add_var(f"Q_{name}", VarPowerFlowReferenceType.Q)
 
     trafo_block = TrafoGflBuild(
         vfactory=vf,
@@ -102,19 +102,19 @@ def build_pv_current_injection_model(
     ).block
     pv_block = DCPowerLimitedSource(vfactory=vf, Vdc=vdc, name=f"{name}_pv").block
 
-    vm_f = trafo_block.external_mapping[VarPowerFlowRefferenceType.Vmf]
-    va_f = trafo_block.external_mapping[VarPowerFlowRefferenceType.Vaf]
-    vm_t = trafo_block.external_mapping[VarPowerFlowRefferenceType.Vmt]
-    va_t = trafo_block.external_mapping[VarPowerFlowRefferenceType.Vat]
-    vdc_t = trafo_block.external_mapping[VarPowerFlowRefferenceType.Vdc]
-    pf_t = trafo_block.external_mapping[VarPowerFlowRefferenceType.Pf]
-    pt_t = trafo_block.external_mapping[VarPowerFlowRefferenceType.Pt]
-    qt_t = trafo_block.external_mapping[VarPowerFlowRefferenceType.Qt]
+    vm_f = trafo_block.external_mapping[VarPowerFlowReferenceType.Vmf]
+    va_f = trafo_block.external_mapping[VarPowerFlowReferenceType.Vaf]
+    vm_t = trafo_block.external_mapping[VarPowerFlowReferenceType.Vmt]
+    va_t = trafo_block.external_mapping[VarPowerFlowReferenceType.Vat]
+    vdc_t = trafo_block.external_mapping[VarPowerFlowReferenceType.Vdc]
+    pf_t = trafo_block.external_mapping[VarPowerFlowReferenceType.Pf]
+    pt_t = trafo_block.external_mapping[VarPowerFlowReferenceType.Pt]
+    qt_t = trafo_block.external_mapping[VarPowerFlowReferenceType.Qt]
 
-    pdc = pv_block.external_mapping[VarPowerFlowRefferenceType.P]
-    del pv_block.external_mapping[VarPowerFlowRefferenceType.P] 
+    pdc = pv_block.external_mapping[VarPowerFlowReferenceType.P]
+    del pv_block.external_mapping[VarPowerFlowReferenceType.P]
 
-    vdc_pv = pv_block.external_mapping[VarPowerFlowRefferenceType.Vdc]
+    vdc_pv = pv_block.external_mapping[VarPowerFlowReferenceType.Vdc]
     trafo_block.connect([vm_f, va_f, vm_t, va_t, vdc_t], [vm_f_src, va_f_src, vm_t_src, va_t_src, vdc])
 
     algebraic_eqs = [
@@ -131,13 +131,13 @@ def build_pv_current_injection_model(
         in_vars=[vm_t_src, va_t_src],
         out_vars=[p_out, q_out, vdc],
         external_mapping={
-            VarPowerFlowRefferenceType.Vm: vm_t_src,
-            VarPowerFlowRefferenceType.Va: va_t_src,
+            VarPowerFlowReferenceType.Vm: vm_t_src,
+            VarPowerFlowReferenceType.Va: va_t_src,
         },
     )
     model.unify_blocks()
-    model.external_mapping[VarPowerFlowRefferenceType.P] = p_out
-    model.external_mapping[VarPowerFlowRefferenceType.Q] = q_out
+    model.external_mapping[VarPowerFlowReferenceType.P] = p_out
+    model.external_mapping[VarPowerFlowReferenceType.Q] = q_out
 
     # Avoid registering bus variables as local algebraic variables after substitutions.
     bus_uids = {vm_t_src.uid, va_t_src.uid}

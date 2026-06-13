@@ -363,7 +363,6 @@ class Line(BranchParent):
         # Line locations
         self._locations: LineLocations = LineLocations()
 
-
     @property
     def R(self):
         return self._R

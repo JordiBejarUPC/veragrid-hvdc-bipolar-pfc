@@ -11,7 +11,7 @@ from typing import List, Dict, Any, Tuple
 
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, _expr_to_dict, _dict_to_expr, BinOp, UnOp, Func, Func2, Comparison
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
+from VeraGridEngine.enumerations import VarPowerFlowReferenceType, ParamPowerFlowReferenceType
 from VeraGridEngine.Utils.Symbolic.compare_expressions_structure import equivalent_systems
 from VeraGridEngine.Utils.Symbolic.variable_alignment_engine import align_variables
 
@@ -78,8 +78,9 @@ class Block:
                  mode_dict: Dict[Var, Expr] | None = None,
                  boolean_guards: Dict[Var, Expr | Comparison] | None = None,
                  procedural_logic: List[Any] | None = None,
-                 external_mapping: Dict[VarPowerFlowRefferenceType, Var] | None = None,
-                 api_obj_mapping: Dict[ParamPowerFlowRefferenceType, Var] | None = None,
+                 external_mapping: Dict[VarPowerFlowReferenceType, Var] | None = None,
+                 api_obj_mapping: Dict[ParamPowerFlowReferenceType, Var] | None = None,
+                 is_decomposable: bool = True,
                  name: str = "",
                  uid: int | None = None):
         """
@@ -103,6 +104,8 @@ class Block:
         self.name: str = name
 
         self.uid: int = _new_uid() if uid is None else uid
+
+        self.is_decomposable = is_decomposable
         self.tpe_uid: int | None =  None
         self.vars_glob_name2uid: Dict[str, int] = dict()
 
@@ -130,11 +133,11 @@ class Block:
         self.parameters: Dict[Var, Const] = dict() if parameters is None else parameters
 
         self.discrete_eqs: Dict[Var, Expr] = dict() if discrete_eqs is None else discrete_eqs
-        self.external_mapping: Dict[VarPowerFlowRefferenceType, Var | None] = (dict()
+        self.external_mapping: Dict[VarPowerFlowReferenceType, Var | None] = (dict()
                                                                                if external_mapping is None
                                                                                else external_mapping)
 
-        self.api_obj_mapping: Dict[ParamPowerFlowRefferenceType, Var] = (dict()
+        self.api_obj_mapping: Dict[ParamPowerFlowReferenceType, Var] = (dict()
                                                                          if api_obj_mapping is None
                                                                          else api_obj_mapping)
         # initialization
@@ -330,11 +333,11 @@ class Block:
             },
             procedural_logic=Block._procedural_logic_from_dict(data.get("procedural_logic", [])),
             external_mapping={
-                VarPowerFlowRefferenceType(k): (_dict_to_expr(v) if v is not None else None)
+                VarPowerFlowReferenceType(k): (_dict_to_expr(v) if v is not None else None)
                 for k, v in data["external_mapping"].items()
             },
             api_obj_mapping={
-                ParamPowerFlowRefferenceType(k): (_dict_to_expr(v) if v is not None else None)
+                ParamPowerFlowReferenceType(k): (_dict_to_expr(v) if v is not None else None)
                 for k, v in data["api_obj_mapping"].items()
             },
             name=data["name"],
@@ -456,7 +459,7 @@ class Block:
         x = self.compare(other)
         return x
 
-    # def set_const(self, ref: ParamPowerFlowRefferenceType, val: Const):
+    # def set_const(self, ref: ParamPowerFlowReferenceType, val: Const):
     #
     #     self.parameters[self.api_obj_mapping[ref]] = val
 
@@ -527,10 +530,10 @@ class Block:
 
         return False
 
-    def E(self, d: VarPowerFlowRefferenceType) -> Var:
+    def E(self, d: VarPowerFlowReferenceType) -> Var:
         """
 
-        returns the value of the external mapping corresponding to the VarPowerFlowRefferenceType
+        returns the value of the external mapping corresponding to the VarPowerFlowReferenceType
 
         :param d:
         :return:
@@ -840,14 +843,14 @@ class Block:
         event_dict_new: Dict[Var, Expr] = dict()
         mode_dict_new: Dict[Var, Expr] = dict()
         boolean_guards_new: Dict[Var, Expr | Comparison] = dict()
-        external_mapping_new: Dict[VarPowerFlowRefferenceType, Var | None] = dict()
+        external_mapping_new: Dict[VarPowerFlowReferenceType, Var | None] = dict()
         procedural_var_mapping: Dict[Expr | str, Expr] = dict()
         i: int
         eq: Expr
         var: Var
         expr: Expr
         new_var: Var | None
-        var_pf_ref: VarPowerFlowRefferenceType
+        var_pf_ref: VarPowerFlowReferenceType
         mdl_var: Var | None
 
         for old_var, replacement_var in var_mapping.items():
@@ -1033,6 +1036,16 @@ class Block:
 
         return False
 
+    def is_eq_decomposable(self) -> bool:
+
+        if self.children:
+            return False
+        if not (bool(self.algebraic_eqs) or bool(self.state_eqs)):
+            return False
+        if not self.is_decomposable:
+            return False
+        return True
+
 def find_connections(mdl1: Block, mdl2: Block) -> tuple[List[tuple[Var, Var]], List[tuple[Var, Var]]]:
     """
     find connections between the two blocks by vars searching
@@ -1059,6 +1072,24 @@ def find_connections(mdl1: Block, mdl2: Block) -> tuple[List[tuple[Var, Var]], L
 
 
     return pairs, power_flow_pairs
+
+def find_connections_pf(mdl1: Block, mdl2: Block) -> List[tuple[Var, Var]]:
+    """
+    find connections between the two blocks by vars searching
+    :return:
+    :rtype:
+    """
+
+    power_flow_pairs =  [
+        (outp, inpt)
+        for outp in mdl1.out_vars
+        for inpt in mdl2.in_vars
+        if
+        outp.ref == inpt.ref and outp.ref is not None and inpt.ref is not None and outp.uid == inpt.uid
+    ]
+
+
+    return power_flow_pairs
 
 def find_name_in_block(name: str, block: Block) -> Var | None:
     """
@@ -1154,6 +1185,8 @@ def _get_var_attribute_mapping(block: Block) -> Dict[int, str]:
         mapping[var.uid] = "parameters"
     for var in block.event_dict:
         mapping[var.uid] = "event_dict"
+    for var in block.in_vars:
+        mapping[var.uid] = "in_vars"
     return mapping
 
 def variables_in_corresponding_attributes(blocks: List[Block], variables_mappings: List[Dict[int, int]]) -> bool:

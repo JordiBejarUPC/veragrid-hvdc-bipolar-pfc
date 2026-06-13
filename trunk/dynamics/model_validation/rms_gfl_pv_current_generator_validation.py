@@ -24,7 +24,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_options import SolverType
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Devices.Events.rms_event import RmsEvent
-from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod, VarPowerFlowRefferenceType, ConverterControlType
+from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod, VarPowerFlowReferenceType, ConverterControlType
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
@@ -78,14 +78,14 @@ def patch_missing_vm_va_init_deps(model: Block, vm0: float, va0: float, vdc0: fl
     va_names = {"Va"}
     vdc_names = {"Vdc"}
     for v in model.in_vars:
-        if v.ref == VarPowerFlowRefferenceType.Vm:
+        if v.ref == VarPowerFlowReferenceType.Vm:
             vm_names.add(v.name)
-        elif v.ref == VarPowerFlowRefferenceType.Va:
+        elif v.ref == VarPowerFlowReferenceType.Va:
             va_names.add(v.name)
-        elif v.ref == VarPowerFlowRefferenceType.Vdc:
+        elif v.ref == VarPowerFlowReferenceType.Vdc:
             vdc_names.add(v.name)
     for v in model.out_vars:
-        if v.ref == VarPowerFlowRefferenceType.Vdc:
+        if v.ref == VarPowerFlowReferenceType.Vdc:
             vdc_names.add(v.name)
         if v.name.startswith("Vdc_"):
             vdc_names.add(v.name)
@@ -113,8 +113,8 @@ def patch_missing_vm_va_init_deps(model: Block, vm0: float, va0: float, vdc0: fl
 
 
 def build_pv_current_injection_model(vf, name: str) -> Block:
-    vm = vf.add_var(f"Vm_{name}", VarPowerFlowRefferenceType.Vm)
-    va = vf.add_var(f"Va_{name}", VarPowerFlowRefferenceType.Va)
+    vm = vf.add_var(f"Vm_{name}", VarPowerFlowReferenceType.Vm)
+    va = vf.add_var(f"Va_{name}", VarPowerFlowReferenceType.Va)
     vdc = vf.add_var(f"Vdc_{name}")
 
     ir = vf.add_var(f"Ir_{name}")
@@ -131,20 +131,20 @@ def build_pv_current_injection_model(vf, name: str) -> Block:
     vsc_block = build_vsc_rms(vfactory=vf, name=f"{name}_vsc").block
     pv_block = DCPVSourceAveraged(vfactory=vf, Vdc=vdc, name=f"{name}_pv").block
 
-    vm_f = trafo_block.external_mapping[VarPowerFlowRefferenceType.Vmf]
-    va_f = trafo_block.external_mapping[VarPowerFlowRefferenceType.Vaf]
-    vm_t = trafo_block.external_mapping[VarPowerFlowRefferenceType.Vmt]
-    va_t = trafo_block.external_mapping[VarPowerFlowRefferenceType.Vat]
-    vdc_t = trafo_block.external_mapping[VarPowerFlowRefferenceType.Vdc]
-    pf_t = trafo_block.external_mapping[VarPowerFlowRefferenceType.Pf]
-    pt_t = trafo_block.external_mapping[VarPowerFlowRefferenceType.Pt]
-    qt_t = trafo_block.external_mapping[VarPowerFlowRefferenceType.Qt]
+    vm_f = trafo_block.external_mapping[VarPowerFlowReferenceType.Vmf]
+    va_f = trafo_block.external_mapping[VarPowerFlowReferenceType.Vaf]
+    vm_t = trafo_block.external_mapping[VarPowerFlowReferenceType.Vmt]
+    va_t = trafo_block.external_mapping[VarPowerFlowReferenceType.Vat]
+    vdc_t = trafo_block.external_mapping[VarPowerFlowReferenceType.Vdc]
+    pf_t = trafo_block.external_mapping[VarPowerFlowReferenceType.Pf]
+    pt_t = trafo_block.external_mapping[VarPowerFlowReferenceType.Pt]
+    qt_t = trafo_block.external_mapping[VarPowerFlowReferenceType.Qt]
 
-    vm_vsc = vsc_block.external_mapping[VarPowerFlowRefferenceType.Vm]
-    pf_vsc = vsc_block.external_mapping[VarPowerFlowRefferenceType.Pf]
-    pt_vsc = vsc_block.external_mapping[VarPowerFlowRefferenceType.Pt]
+    vm_vsc = vsc_block.external_mapping[VarPowerFlowReferenceType.Vm]
+    pf_vsc = vsc_block.external_mapping[VarPowerFlowReferenceType.Pf]
+    pt_vsc = vsc_block.external_mapping[VarPowerFlowReferenceType.Pt]
 
-    pdc = pv_block.external_mapping[VarPowerFlowRefferenceType.P]
+    pdc = pv_block.external_mapping[VarPowerFlowReferenceType.P]
     qt_ref = find_name_in_block("Qt_ref", vsc_block)
 
     grid.var_factory.add_connections([vm_f, va_f, vm_t, va_t, vdc_t], [vm, va, vm, va, vdc])
@@ -190,10 +190,10 @@ def build_pv_current_injection_model(vf, name: str) -> Block:
         in_vars=[vm, va],
         out_vars=[p, q, ir, ii, vdc],
         external_mapping={
-            VarPowerFlowRefferenceType.Vm: vm,
-            VarPowerFlowRefferenceType.Va: va,
-            VarPowerFlowRefferenceType.P: p,
-            VarPowerFlowRefferenceType.Q: q,
+            VarPowerFlowReferenceType.Vm: vm,
+            VarPowerFlowReferenceType.Va: va,
+            VarPowerFlowReferenceType.P: p,
+            VarPowerFlowReferenceType.Q: q,
         },
     )
     model.unify_blocks()

@@ -119,10 +119,6 @@ line_mdl = get_line_rms_template(grid.var_factory).block
 # load
 load_mdl = get_load_rms_template(grid.var_factory).block
 
-# set models parameters
-# load_mdl.set_parameter_in_model(var_name="Pl0", new_value=-0.0999999)
-# load_mdl.set_parameter_in_model(var_name="Ql0", new_value=-0.009999999862208533)
-
 ######################################################################################################
 # Add models to devices
 ######################################################################################################
@@ -141,7 +137,7 @@ events_group = RmsEventsGroup("simulation1")
 grid.add_rms_events_group(events_group)
 # event = RmsEvent(device=load, parameter=Pl0, time=0.1,  value=-0.06, group=events_group, transition_type=DynamicEventTransitionType.Step)
 event = RmsEvent(device=load, parameter=Pl0, time=0.1, end_time = 0.2, value=-0.06, group=events_group, transition_type=DynamicEventTransitionType.Ramp)
-grid.add_rms_event(event)
+# grid.add_rms_event(event)
 
 
 
@@ -196,7 +192,8 @@ options = RmsOptions(time_step=0.001,
                      simulation_time=1,
                      tolerance=1e-6,
                      integration_method=DynamicIntegrationMethod.DaeBackEuler,
-                     initialization_method=RmsInitializationMethod.Explicit,
+                     # initialization_method=RmsInitializationMethod.Explicit,
+                     initialization_method=RmsInitializationMethod.PseudoTransient,
                      use_init_values=False,
                      max_iter=1000,
                      verbose=0)

@@ -8,7 +8,7 @@ from VeraGridEngine.Utils.Symbolic import symbolic as sym
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.procedural_logic import picdro, sampled_value
-from VeraGridEngine.enumerations import ConverterControlType, DeviceType, VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import ConverterControlType, DeviceType, VarPowerFlowReferenceType
 from VeraGridEngine.Templates.Rms.vsc_gfl import pll_transform_rms
 from trunk.nu_actis.nuactis_modulator_template import get_nuactis_modulator_rms_template
 
@@ -22,10 +22,10 @@ def get_slavepwm_model_emt_template(vf: VarFactory,
 
     # --- In vars ---
     bindings = {} if bindings is None else bindings
-    Vmf = bindings.get("Vmf", vf.add_var("Vmf_" + name, VarPowerFlowRefferenceType.Vmf))
-    Vaf = bindings.get("Vaf", vf.add_var("Vaf_" + name, VarPowerFlowRefferenceType.Vaf))
-    Vmt = bindings.get("Vmt", vf.add_var("Vmt_" + name, VarPowerFlowRefferenceType.Vmt))
-    Vat = bindings.get("Vat", vf.add_var("Vat_" + name, VarPowerFlowRefferenceType.Vat))
+    Vmf = bindings.get("Vmf", vf.add_var("Vmf_" + name, VarPowerFlowReferenceType.Vmf))
+    Vaf = bindings.get("Vaf", vf.add_var("Vaf_" + name, VarPowerFlowReferenceType.Vaf))
+    Vmt = bindings.get("Vmt", vf.add_var("Vmt_" + name, VarPowerFlowReferenceType.Vmt))
+    Vat = bindings.get("Vat", vf.add_var("Vat_" + name, VarPowerFlowReferenceType.Vat))
 
     # --- Parameters ---
     Current_Limiter_C = vf.add_var('Current_Limiter__C_' + name)
@@ -502,11 +502,11 @@ def get_slavepwm_model_emt_template(vf: VarFactory,
         name='SlavePWM_Model'
     )
     templ.block.external_mapping = {
-        VarPowerFlowRefferenceType.Vmf: Vmf,
-        VarPowerFlowRefferenceType.Vaf: Vaf,
-        VarPowerFlowRefferenceType.Vmt: Vmt,
-        VarPowerFlowRefferenceType.Vat: Vat,
-        VarPowerFlowRefferenceType.Vdc: uDC,
+        VarPowerFlowReferenceType.Vmf: Vmf,
+        VarPowerFlowReferenceType.Vaf: Vaf,
+        VarPowerFlowReferenceType.Vmt: Vmt,
+        VarPowerFlowReferenceType.Vat: Vat,
+        VarPowerFlowReferenceType.Vdc: uDC,
     }
     internal_vars = {
         "P_act": P_act,
@@ -636,15 +636,15 @@ def build_trafo_slave_block(vfactory: VarFactory,
     )
 
     block.external_mapping = {
-        VarPowerFlowRefferenceType.Vmf: vm_f,
-        VarPowerFlowRefferenceType.Vaf: va_f,
-        VarPowerFlowRefferenceType.Vmt: vm_t,
-        VarPowerFlowRefferenceType.Vat: va_t,
-        VarPowerFlowRefferenceType.Vdc: vdc,
-        VarPowerFlowRefferenceType.Pf: pf_vsc,
-        VarPowerFlowRefferenceType.Pt: pt_vsc,
-        VarPowerFlowRefferenceType.Qt: qt_vsc,
-        VarPowerFlowRefferenceType.Im: im_out,
+        VarPowerFlowReferenceType.Vmf: vm_f,
+        VarPowerFlowReferenceType.Vaf: va_f,
+        VarPowerFlowReferenceType.Vmt: vm_t,
+        VarPowerFlowReferenceType.Vat: va_t,
+        VarPowerFlowReferenceType.Vdc: vdc,
+        VarPowerFlowReferenceType.Pf: pf_vsc,
+        VarPowerFlowReferenceType.Pt: pt_vsc,
+        VarPowerFlowReferenceType.Qt: qt_vsc,
+        VarPowerFlowReferenceType.Im: im_out,
     }
 
     templ._block = block
@@ -665,33 +665,33 @@ def connect_rms_vsc_to_buses(vsc_model: Block,
     local_vars = []
     remote_vars = []
 
-    ctrl_vm = controlled_bus_model.external_mapping[VarPowerFlowRefferenceType.Vm]
-    ctrl_va = controlled_bus_model.external_mapping[VarPowerFlowRefferenceType.Va]
-    grid_vm = grid_bus_model.external_mapping[VarPowerFlowRefferenceType.Vm]
-    grid_va = grid_bus_model.external_mapping[VarPowerFlowRefferenceType.Va]
-    bus_dc_v = dc_bus_model.external_mapping[VarPowerFlowRefferenceType.Vdc]
+    ctrl_vm = controlled_bus_model.external_mapping[VarPowerFlowReferenceType.Vm]
+    ctrl_va = controlled_bus_model.external_mapping[VarPowerFlowReferenceType.Va]
+    grid_vm = grid_bus_model.external_mapping[VarPowerFlowReferenceType.Vm]
+    grid_va = grid_bus_model.external_mapping[VarPowerFlowReferenceType.Va]
+    bus_dc_v = dc_bus_model.external_mapping[VarPowerFlowReferenceType.Vdc]
 
     from_vm, from_va = ctrl_vm, ctrl_va
     to_vm, to_va = grid_vm, grid_va
 
-    if (VarPowerFlowRefferenceType.Vmf in vsc_model.external_mapping
-            and VarPowerFlowRefferenceType.Vaf in vsc_model.external_mapping):
+    if (VarPowerFlowReferenceType.Vmf in vsc_model.external_mapping
+            and VarPowerFlowReferenceType.Vaf in vsc_model.external_mapping):
         local_vars.extend([
-            vsc_model.external_mapping[VarPowerFlowRefferenceType.Vmf],
-            vsc_model.external_mapping[VarPowerFlowRefferenceType.Vaf],
+            vsc_model.external_mapping[VarPowerFlowReferenceType.Vmf],
+            vsc_model.external_mapping[VarPowerFlowReferenceType.Vaf],
         ])
         remote_vars.extend([from_vm, from_va])
 
-    if (VarPowerFlowRefferenceType.Vmt in vsc_model.external_mapping
-            and VarPowerFlowRefferenceType.Vat in vsc_model.external_mapping):
+    if (VarPowerFlowReferenceType.Vmt in vsc_model.external_mapping
+            and VarPowerFlowReferenceType.Vat in vsc_model.external_mapping):
         local_vars.extend([
-            vsc_model.external_mapping[VarPowerFlowRefferenceType.Vmt],
-            vsc_model.external_mapping[VarPowerFlowRefferenceType.Vat],
+            vsc_model.external_mapping[VarPowerFlowReferenceType.Vmt],
+            vsc_model.external_mapping[VarPowerFlowReferenceType.Vat],
         ])
         remote_vars.extend([to_vm, to_va])
 
-    if VarPowerFlowRefferenceType.Vdc in vsc_model.external_mapping:
-        local_vars.append(vsc_model.external_mapping[VarPowerFlowRefferenceType.Vdc])
+    if VarPowerFlowReferenceType.Vdc in vsc_model.external_mapping:
+        local_vars.append(vsc_model.external_mapping[VarPowerFlowReferenceType.Vdc])
         remote_vars.append(bus_dc_v)
 
     if not local_vars:

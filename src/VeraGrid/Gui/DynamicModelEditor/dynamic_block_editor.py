@@ -33,8 +33,8 @@ from VeraGridEngine.Devices.Injections.controllable_shunt import ControllableShu
 from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Devices.Injections.shunt import Shunt
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
-from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType, \
-    DynamicSimulationMode, ShuntConnectionType, WindingType
+from VeraGridEngine.enumerations import DeviceType, VarPowerFlowReferenceType, ParamPowerFlowReferenceType, \
+    DynamicSimulationMode, ShuntConnectionType, WindingType, DynamicTableModelMode
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms, get_bus_rms_algebraic_vars
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import BusEmtTemplate, get_bus_emt_template, get_bus_emt_algebraic_vars
 from VeraGridEngine.Devices.Substation.bus import Bus
@@ -43,6 +43,7 @@ from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.fmu_template import FmuTemplate
+from VeraGridEngine.Templates.predefined_blocks import signal_pair
 from VeraGridEngine.Templates.BasicBlockCatalog import BasicBlockTemplateDescriptor
 from VeraGridEngine.Templates.BasicBlockCatalog import get_editor_ready_basic_block_catalog_descriptors
 from VeraGridEngine.Templates.BasicBlockCatalog import load_basic_block_catalog_template
@@ -81,7 +82,8 @@ from VeraGridEngine.Templates.Emt.induction_motor_emt_template import get_induct
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_rlc_combo_emt_template
 from VeraGridEngine.Templates.Emt.load_zip_emt_template import get_load_ZIP_emt_template
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
-from VeraGridEngine.Utils.Symbolic.block import Block, find_connections
+from VeraGridEngine.Utils.Symbolic.block import Block, find_connections, find_connections_pf
+from VeraGridEngine.Utils.Symbolic.equation_decomposer import EquationDecomposer
 from VeraGrid.Gui.DynamicModelEditor.block_editor import Ui_BlockEditorWindow
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_utilities import create_block_of_type, create_generic_block, \
     create_emt_wizard_block
@@ -105,6 +107,9 @@ from VeraGrid.Gui.DynamicModelEditor.source_emt_dialog import SourceEmtDialog
 from VeraGrid.Gui.DynamicModelEditor.transformer_topology_emt_dialog import TransformerTopologyEmtDialog
 from VeraGrid.Gui.DynamicModelEditor.switch_emt_dialog import SwitchEmtDialog
 from VeraGrid.Gui.Icons.icon_associations import device_type_icons
+from VeraGrid.Gui.wrappable_table_model import WrappableTableModel
+from VeraGrid.Gui.gui_functions import ComboDelegate, TextDelegate
+from VeraGrid.Gui.toast_widget import ToastManager
 from VeraGridEngine.Utils.Symbolic.symbolic import (symbolic_to_string, string_to_symbolic,
                                                     get_symbolic_parser_function_names,
                                                     Expr, Var, Const, Comparison)
@@ -122,8 +127,11 @@ from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_runtime import set_jmarti_
 from dataclasses import dataclass
 
 from VeraGridEngine.Utils.Symbolic.static_parameter_mapping import devices_static_params_mapping
+import VeraGrid.ThirdParty.darkdetect as darkdetect
 
 # from VeraGridEngine.Templates.Rms.common import create_block_of_type, create_generic_block, create_emt_wizard_block
+
+
 
 BLOCK_BORDER: QColor = QColor("#36536b")
 BLOCK_BORDER_SELECTED: QColor = QColor("#cc6f2c")
@@ -148,6 +156,7 @@ TEMPLATE_NODE_TYPE: str = "TEMPLATE"
 PARAMETER_VALUE_TYPE_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 500
 PARAMETER_EDITABLE_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 501
 LIBRARY_SEARCH_TEXT_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 502
+BLOCK_SEARCH_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 503
 MODAL_TEMPLATE_KIND_ATTR: str = "_modal_template_kind"
 MODAL_TEMPLATE_CONFIG_ATTR: str = "_modal_template_config"
 LOOKUP_ARRAY_LINEAR_DESCRIPTOR_KEYS: set[str] = {
@@ -251,82 +260,6 @@ def _is_load_topology_block_type(block_type: BlockType) -> bool:
     :return: Boolean state.
     """
     return block_type in {BlockType.EXP_LOAD_EMT, BlockType.ZIP_LOAD_EMT}
-
-
-def _is_source_emt_block_type(block_type: BlockType) -> bool:
-    """
-    Return whether one block type uses the EMT source modal.
-
-    :param block_type: Candidate block type.
-    :return: Boolean state.
-    """
-    return block_type in {
-        BlockType.VOLTAGE_SOURCE_EMT,
-        BlockType.CURRENT_SOURCE_EMT,
-        BlockType.CONTROLLED_VOLTAGE_SOURCE_EMT,
-        BlockType.CONTROLLED_CURRENT_SOURCE_EMT,
-    }
-
-
-def _is_dc_source_emt_block_type(block_type: BlockType) -> bool:
-    """
-    Return whether one block type uses the EMT DC source modal.
-
-    :param block_type: Candidate block type.
-    :return: Boolean state.
-    """
-    return block_type in {
-        BlockType.DC_VOLTAGE_SOURCE_EMT,
-        BlockType.DC_CURRENT_SOURCE_EMT,
-        BlockType.CONTROLLED_DC_VOLTAGE_SOURCE_EMT,
-        BlockType.CONTROLLED_DC_CURRENT_SOURCE_EMT,
-    }
-
-
-def _is_balanced_source_emt_block_type(block_type: BlockType) -> bool:
-    """
-    Return whether one block type uses the balanced EMT source modal.
-
-    :param block_type: Candidate block type.
-    :return: Boolean state.
-    """
-    return block_type in {
-        BlockType.BALANCED_3PH_VOLTAGE_SOURCE_EMT,
-        BlockType.BALANCED_3PH_CURRENT_SOURCE_EMT,
-        BlockType.CONTROLLED_BALANCED_3PH_VOLTAGE_SOURCE_EMT,
-        BlockType.CONTROLLED_BALANCED_3PH_CURRENT_SOURCE_EMT,
-    }
-
-
-def _is_arbitrary_source_emt_block_type(block_type: BlockType) -> bool:
-    """
-    Return whether one block type uses the arbitrary-waveform EMT source modal.
-
-    :param block_type: Candidate block type.
-    :return: Boolean state.
-    """
-    return block_type in {
-        BlockType.ARBITRARY_WAVEFORM_VOLTAGE_SOURCE_EMT,
-        BlockType.ARBITRARY_WAVEFORM_CURRENT_SOURCE_EMT,
-    }
-
-
-def _is_transient_source_emt_block_type(block_type: BlockType) -> bool:
-    """
-    Return whether one block type uses the transient EMT source modal.
-
-    :param block_type: Candidate block type.
-    :return: Boolean state.
-    """
-    return block_type in {
-        BlockType.STEP_VOLTAGE_SOURCE_EMT,
-        BlockType.STEP_CURRENT_SOURCE_EMT,
-        BlockType.RAMP_VOLTAGE_SOURCE_EMT,
-        BlockType.RAMP_CURRENT_SOURCE_EMT,
-        BlockType.DOUBLE_EXPONENTIAL_CURRENT_SOURCE_EMT,
-        BlockType.HEIDLER_CURRENT_SOURCE_EMT,
-        BlockType.CIGRE_SURGE_CURRENT_SOURCE_EMT,
-    }
 
 
 def get_modal_template_metadata(block: Block | None) -> tuple[str | None, Dict[str, Any] | None]:
@@ -1010,8 +943,19 @@ def is_supported_library_payload(item_data: object) -> bool:
         return True
     elif isinstance(item_data, (RmsModelTemplate, EmtModelTemplate, FmuTemplate)):
         return True
+    elif isinstance(item_data, SignalPairPayload):
+        return True
     else:
         return False
+
+
+@dataclass(frozen=True)
+class SignalPairPayload:
+    """
+    Marker payload for the signal pair tool that creates two connected blocks
+    (one input, one output) sharing the same variable.
+    """
+    pass
 
 
 @dataclass(frozen=True)
@@ -1065,6 +1009,18 @@ class LibraryTreeFilterProxyModel(QtCore.QSortFilterProxyModel):
             return super().supportedDragActions()
 
 
+class BlockTableFilterProxyModel(QtCore.QSortFilterProxyModel):
+    """
+    Flat table proxy used for the three side-panel table searches
+    (Variables, Parameters, Equations).
+    """
+
+    def __init__(self, parent: QtCore.QObject | None = None):
+        super().__init__(parent)
+        self.setFilterCaseSensitivity(QtCore.Qt.CaseSensitivity.CaseInsensitive)
+        self.setFilterRole(BLOCK_SEARCH_ROLE)
+        self.setFilterKeyColumn(0)
+
 
 def clone_block_for_editing(block: Block) -> Block:
     """
@@ -1089,6 +1045,7 @@ def copy_block_state(source_block: Block, target_block: Block) -> None:
     # The original object identity must be preserved for external references in the GUI and device model.
     target_block.name = source_clone.name
     target_block.uid = source_clone.uid
+    target_block.is_decomposable = source_clone.is_decomposable
     target_block.vars_glob_name2uid = source_clone.vars_glob_name2uid
     target_block.state_vars = source_clone.state_vars
     target_block.state_eqs = source_clone.state_eqs
@@ -1128,66 +1085,11 @@ def _initialize_editor_assigned_rms_bus_model(bus: Bus, var_factory: VarFactory)
         pass
 
 
-def _build_editor_assigned_emt_bus_mask(bus: Bus,
-                                        api_object: Any,
-                                        editor_interface_refs: set[VarPowerFlowRefferenceType]) -> list[bool] | None:
-    """
-    Build the EMT AC phase mask implied by the current editor interface.
-
-    The algorithm uses the edited root-interface references as the source of
-    truth because those references reflect which ports the user kept before
-    pressing apply. The bus argument is then matched against the edited device
-    so the correct side-specific mask can be extracted.
-
-    :param bus: Connected bus that may need an EMT shell.
-    :param api_object: Edited concrete device that owns the interface.
-    :param editor_interface_refs: References that still exist in the editor.
-    :return: Phase mask ordered as ``[N, A, B, C]`` when the interface can be mapped to the bus, else ``None``.
-    """
-    mask: list[bool] | None = None
-
-    # Injection devices expose one bus interface, so the edited references map
-    # directly to that single connected bus.
-    if isinstance(api_object, InjectionParent):
-        if api_object.bus is bus:
-            mask = list([False, False, False, False])
-            mask[0] = VarPowerFlowRefferenceType.v_N in editor_interface_refs or VarPowerFlowRefferenceType.i_N in editor_interface_refs
-            mask[1] = VarPowerFlowRefferenceType.v_A in editor_interface_refs or VarPowerFlowRefferenceType.i_A in editor_interface_refs
-            mask[2] = VarPowerFlowRefferenceType.v_B in editor_interface_refs or VarPowerFlowRefferenceType.i_B in editor_interface_refs
-            mask[3] = VarPowerFlowRefferenceType.v_C in editor_interface_refs or VarPowerFlowRefferenceType.i_C in editor_interface_refs
-        else:
-            mask = None
-    else:
-        # Branch devices expose two side-specific interfaces, so the edited bus
-        # must first be matched against the from or to side before the mask is
-        # evaluated from the remaining references.
-        if isinstance(api_object, BranchParent):
-            if api_object.bus_from is bus:
-                mask = list([False, False, False, False])
-                mask[0] = VarPowerFlowRefferenceType.vf_N in editor_interface_refs or VarPowerFlowRefferenceType.if_N in editor_interface_refs
-                mask[1] = VarPowerFlowRefferenceType.vf_A in editor_interface_refs or VarPowerFlowRefferenceType.if_A in editor_interface_refs
-                mask[2] = VarPowerFlowRefferenceType.vf_B in editor_interface_refs or VarPowerFlowRefferenceType.if_B in editor_interface_refs
-                mask[3] = VarPowerFlowRefferenceType.vf_C in editor_interface_refs or VarPowerFlowRefferenceType.if_C in editor_interface_refs
-            else:
-                if api_object.bus_to is bus:
-                    mask = list([False, False, False, False])
-                    mask[0] = VarPowerFlowRefferenceType.vt_N in editor_interface_refs or VarPowerFlowRefferenceType.it_N in editor_interface_refs
-                    mask[1] = VarPowerFlowRefferenceType.vt_A in editor_interface_refs or VarPowerFlowRefferenceType.it_A in editor_interface_refs
-                    mask[2] = VarPowerFlowRefferenceType.vt_B in editor_interface_refs or VarPowerFlowRefferenceType.it_B in editor_interface_refs
-                    mask[3] = VarPowerFlowRefferenceType.vt_C in editor_interface_refs or VarPowerFlowRefferenceType.it_C in editor_interface_refs
-                else:
-                    mask = None
-        else:
-            mask = None
-
-    return mask
-
-
 def _initialize_editor_assigned_emt_bus_model(bus: Bus,
                                               api_object: Any,
                                               circuit: MultiCircuit | None,
                                               var_factory: VarFactory,
-                                              editor_interface_refs: set[VarPowerFlowRefferenceType] | None = None) -> None:
+                                              editor_interface_refs: set[VarPowerFlowReferenceType] | None = None) -> None:
     """
     Initialize one missing EMT bus shell after assigning one editor-built device model.
 
@@ -1202,9 +1104,53 @@ def _initialize_editor_assigned_emt_bus_model(bus: Bus,
         # Editor-driven assignments must preserve the phase ports that the user
         # kept in the GUI instead of falling back to a hardcoded AC shell.
         if editor_interface_refs is not None:
-            mask: list[bool] | None = _build_editor_assigned_emt_bus_mask(bus=bus,
-                                                                          api_object=api_object,
-                                                                          editor_interface_refs=editor_interface_refs)
+            mask: list[bool] | None = None
+
+            # Injection devices expose one bus interface, so the edited
+            # references map directly to that single connected bus.
+            if isinstance(api_object, InjectionParent):
+                if api_object.bus is bus:
+                    mask = list([False, False, False, False])
+                    mask[0] = (VarPowerFlowReferenceType.v_N in editor_interface_refs
+                               or VarPowerFlowReferenceType.i_N in editor_interface_refs)
+                    mask[1] = (VarPowerFlowReferenceType.v_A in editor_interface_refs
+                               or VarPowerFlowReferenceType.i_A in editor_interface_refs)
+                    mask[2] = (VarPowerFlowReferenceType.v_B in editor_interface_refs
+                               or VarPowerFlowReferenceType.i_B in editor_interface_refs)
+                    mask[3] = (VarPowerFlowReferenceType.v_C in editor_interface_refs
+                               or VarPowerFlowReferenceType.i_C in editor_interface_refs)
+                else:
+                    mask = None
+            else:
+                # Branch devices expose two side-specific interfaces, so the
+                # edited bus must first be matched against the from or to side
+                # before the mask is evaluated from the remaining references.
+                if isinstance(api_object, BranchParent):
+                    if api_object.bus_from is bus:
+                        mask = list([False, False, False, False])
+                        mask[0] = (VarPowerFlowReferenceType.vf_N in editor_interface_refs
+                                   or VarPowerFlowReferenceType.if_N in editor_interface_refs)
+                        mask[1] = (VarPowerFlowReferenceType.vf_A in editor_interface_refs
+                                   or VarPowerFlowReferenceType.if_A in editor_interface_refs)
+                        mask[2] = (VarPowerFlowReferenceType.vf_B in editor_interface_refs
+                                   or VarPowerFlowReferenceType.if_B in editor_interface_refs)
+                        mask[3] = (VarPowerFlowReferenceType.vf_C in editor_interface_refs
+                                   or VarPowerFlowReferenceType.if_C in editor_interface_refs)
+                    else:
+                        if api_object.bus_to is bus:
+                            mask = list([False, False, False, False])
+                            mask[0] = (VarPowerFlowReferenceType.vt_N in editor_interface_refs
+                                       or VarPowerFlowReferenceType.it_N in editor_interface_refs)
+                            mask[1] = (VarPowerFlowReferenceType.vt_A in editor_interface_refs
+                                       or VarPowerFlowReferenceType.it_A in editor_interface_refs)
+                            mask[2] = (VarPowerFlowReferenceType.vt_B in editor_interface_refs
+                                       or VarPowerFlowReferenceType.it_B in editor_interface_refs)
+                            mask[3] = (VarPowerFlowReferenceType.vt_C in editor_interface_refs
+                                       or VarPowerFlowReferenceType.it_C in editor_interface_refs)
+                        else:
+                            mask = None
+                else:
+                    mask = None
         else:
             mask = None
 
@@ -1258,7 +1204,7 @@ def initialize_connected_bus_models_for_editor_assignment(api_object: Any,
                                                           circuit: MultiCircuit | None,
                                                           var_factory: VarFactory,
                                                           mode: DynamicSimulationMode,
-                                                          editor_interface_refs: set[VarPowerFlowRefferenceType] | None = None) -> None:
+                                                          editor_interface_refs: set[VarPowerFlowReferenceType] | None = None) -> None:
     """
     Initialize missing connected bus models right after one Dynamic Editor assignment.
 
@@ -1400,34 +1346,6 @@ def add_variable_to_block(block: Block,
         block.mode_dict[var] = Const(parameter_value, name=var.name)
     else:
         raise ValueError(f"Unknown var_type {var_type}")
-
-
-def build_block_tree(block: Block):
-    root = Node(block.name)
-
-    state_vars_node = Node("State Vars")
-    for v in block.state_vars:
-        state_vars_node.add_child(Node(v.name, v))
-
-    alg_vars_node = Node("Algebraic Vars")
-    for v in block.algebraic_vars:
-        alg_vars_node.add_child(Node(v.name, v))
-
-    state_eq_node = Node("State Equations")
-    for eq in block.state_eqs:
-        state_eq_node.add_child(Node(symbolic_to_string(eq), eq))
-
-    alg_eq_node = Node("Algebraic Equations")
-    for eq in block.algebraic_eqs:
-        alg_eq_node.add_child(Node(symbolic_to_string(eq), eq))
-
-    root.add_child(state_vars_node)
-    root.add_child(alg_vars_node)
-    root.add_child(state_eq_node)
-    root.add_child(alg_eq_node)
-
-    return root
-
 
 class Node:
     def __init__(self, name, data=None, parent=None):
@@ -2287,7 +2205,7 @@ class AddParameterDialog(QDialog):
     def get_parameter_value(self) -> float:
         return float(self.parameter_value_spin.value())
 
-    def get_static_variable(self) -> ParamPowerFlowRefferenceType | None:
+    def get_static_variable(self) -> ParamPowerFlowReferenceType | None:
         return self.static_variable_combo.currentData()
 
     def update_validation_state(self) -> None:
@@ -2559,7 +2477,7 @@ class BlockParameterRow:
     """
 
     __slots__ = ("name", "kind", "key_var", "value", "editable_name", "editable_value", "value_type", "item_index",
-                 "init_eq", "source_dict_name", "display_value", "display_init_eq")
+                 "init_eq", "source_dict_name", "display_value", "display_init_eq", "search_text")
 
     def __init__(self,
                  name: str,
@@ -2598,7 +2516,9 @@ class BlockParameterRow:
         self.source_dict_name: str | None = source_dict_name
         self.display_value: Any = None
         self.display_init_eq: Any = None
+        self.search_text: str = ""
         refresh_block_parameter_row_cache(self)
+        refresh_row_search_cache(self)
 
     @property
     def is_section(self) -> bool:
@@ -2643,81 +2563,89 @@ def refresh_block_parameter_row_cache(row: BlockParameterRow) -> None:
         row.display_init_eq = None
 
 
-class BlockParameterValueDelegate(QtWidgets.QStyledItemDelegate):
+def refresh_row_search_cache(row: BlockParameterRow) -> None:
+    parts = [str(row.name or "")]
+    if row.value is not None:
+        parts.append(str(row.value))
+    if row.init_eq is not None:
+        parts.append(str(row.init_eq))
+    if row.display_value is not None:
+        parts.append(str(row.display_value))
+    if row.display_init_eq is not None:
+        parts.append(str(row.display_init_eq))
+    row.search_text = " ".join(parts).lower()
+
+
+class BlockValueDelegate(QtWidgets.QStyledItemDelegate):
     """
-    Delegate that chooses a numeric or text editor depending on the parameter row metadata.
+    Delegate that chooses an appropriate editor based on the row kind.
+    Inspects row.kind to decide: float spinbox for numeric parameters,
+    text editor for symbolic expressions, etc.
     """
 
     def createEditor(self,
                      parent: QtWidgets.QWidget,
                      option: QtWidgets.QStyleOptionViewItem,
                      index: QtCore.QModelIndex) -> QtWidgets.QWidget | None:
-        """
-        Create the editor widget for the parameter value cell.
-
-        :param parent:
-        :param option:
-        :param index:
-        :return:
-        """
-        value_type_name: str = str(index.model().data(index, PARAMETER_VALUE_TYPE_ROLE))
-        editable: bool = bool(index.model().data(index, PARAMETER_EDITABLE_ROLE))
-
-        if not editable:
-            return None
-        elif value_type_name == "float":
-            editor: QDoubleSpinBox = QDoubleSpinBox(parent)
-            editor.setDecimals(8)
-            editor.setMinimum(-1e200)
-            editor.setMaximum(1e200)
-            return editor
-        elif value_type_name == "int":
-            editor_int: QSpinBox = QSpinBox(parent)
-            editor_int.setMinimum(-999999999)
-            editor_int.setMaximum(999999999)
-            return editor_int
+        model = index.model()
+        if isinstance(model, QtCore.QSortFilterProxyModel):
+            source_index = model.mapToSource(index)
+            source_model = model.sourceModel()
+            row = source_model.get_row(source_index.row()) if hasattr(source_model, 'get_row') else None
         else:
+            row = model.get_row(index.row()) if hasattr(model, 'get_row') else None
+        if row is None:
             return QLineEdit(parent)
 
+        if not row.editable_value:
+            return None
+
+        if row.is_section:
+            return None
+
+        if row.kind in (BlockParameterKind.STATE_VAR, BlockParameterKind.ALGEBRAIC_VAR):
+            return QLineEdit(parent)
+
+        elif row.kind in (BlockParameterKind.EVENT_PARAMETER, BlockParameterKind.MODE_PARAMETER):
+            editor = self._make_float_editor(parent) if row.value_type == float else QLineEdit(parent)
+            return editor
+
+        elif row.kind == BlockParameterKind.FIXED_PARAMETER:
+            editor = self._make_float_editor(parent) if row.value_type == float else QLineEdit(parent)
+            return editor
+
+        elif row.kind in (BlockParameterKind.STATE_EQUATION,
+                          BlockParameterKind.ALGEBRAIC_EQUATION):
+            return QLineEdit(parent)
+
+        return QLineEdit(parent)
+
+    @staticmethod
+    def _make_float_editor(parent: QtWidgets.QWidget) -> QDoubleSpinBox:
+        editor = QDoubleSpinBox(parent)
+        editor.setDecimals(8)
+        editor.setMinimum(-1e200)
+        editor.setMaximum(1e200)
+        return editor
+
     def setEditorData(self, editor: QtWidgets.QWidget, index: QtCore.QModelIndex) -> None:
-        """
-        Load the current model value into the editor widget.
-
-        :param editor:
-        :param index:
-        :return:
-        """
-        value: Any = index.model().data(index, QtCore.Qt.ItemDataRole.EditRole)
-
+        value = index.model().data(index, QtCore.Qt.ItemDataRole.EditRole)
         if isinstance(editor, QDoubleSpinBox):
-            editor.setValue(float(value))
-        elif isinstance(editor, QSpinBox):
-            editor.setValue(int(value))
+            try:
+                editor.setValue(float(value))
+            except (TypeError, ValueError):
+                editor.setValue(0.0)
         elif isinstance(editor, QLineEdit):
-            editor.setText(str(value))
-        else:
-            pass
+            editor.setText(str(value) if value is not None else "")
 
     def setModelData(self,
                      editor: QtWidgets.QWidget,
                      model: QtCore.QAbstractItemModel,
                      index: QtCore.QModelIndex) -> None:
-        """
-        Push the editor value back into the model.
-
-        :param editor:
-        :param model:
-        :param index:
-        :return:
-        """
         if isinstance(editor, QDoubleSpinBox):
-            model.setData(index, editor.value(), QtCore.Qt.ItemDataRole.EditRole)
-        elif isinstance(editor, QSpinBox):
             model.setData(index, editor.value(), QtCore.Qt.ItemDataRole.EditRole)
         elif isinstance(editor, QLineEdit):
             model.setData(index, editor.text(), QtCore.Qt.ItemDataRole.EditRole)
-        else:
-            pass
 
 
 class EditParameterDialog(QDialog):
@@ -2803,7 +2731,7 @@ class EditParameterDialog(QDialog):
     def get_parameter_value(self) -> float:
         return float(self.parameter_value_spin.value())
 
-    def get_static_variable(self) -> ParamPowerFlowRefferenceType | None:
+    def get_static_variable(self) -> ParamPowerFlowReferenceType | None:
         return self.static_variable_combo.currentData()
 
     def update_visibility(self) -> None:
@@ -2828,101 +2756,193 @@ class EditParameterDialog(QDialog):
             self.static_variable_combo.setEnabled(False)
 
 
-class VariablesTableModel(QtCore.QAbstractTableModel):
+class WrappableBlockTableModel(WrappableTableModel):
     """
-    Table model for block variables (state and algebraic only).
-    Columns: Type, Name, Init Equation
+    ViewModel that adapts a Block for Qt table views.
+
+    Modes:
+        - "variables": columns Type, Name, Init Equation
+        - "parameters": columns Type, Name, Value
+        - "equations": columns Type, Equation
+        - "all": columns Type, Name, Value
+
+    Block is the single source of truth.
+    This model only generates adapted rows for the GUI.
     """
 
     block_updated = Signal(object)
 
-    def __init__(self, var_factory: VarFactory, parent: Optional[QtCore.QObject] = None):
+    def __init__(self,
+                 var_factory: VarFactory,
+                 api_object: Any = None,
+                 parent: Optional[QtCore.QObject] = None):
         super().__init__(parent)
+        self._table_view = parent
         self.var_factory = var_factory
+        self.api_object = api_object
         self.block = None
-        self.rows = []
+        self.rows: List[BlockParameterRow] = []
+        self.mode = DynamicTableModelMode.VARIABLES
         self.headers = ["Type", "Name", "Init Equation"]
+        self.symbol_namespace = None
+        self._value_column = 2
+
+    def set_mode(self, mode: DynamicTableModelMode) -> None:
+        self.mode = mode
+        if mode == DynamicTableModelMode.VARIABLES:
+            self.headers = ["Type", "Name", "Init Equation"]
+            self._value_column = 2
+        elif mode == DynamicTableModelMode.PARAMETERS:
+            self.headers = ["Type", "Name", "Value"]
+            self._value_column = 2
+        elif mode == DynamicTableModelMode.EQUATIONS:
+            self.headers = ["Type", "Equation"]
+            self._value_column = 1
+        self.rebuild()
 
     def set_block(self, block: Block | None) -> None:
-        self.beginResetModel()
         self.block = block
-        self.rows: List[BlockParameterRow] = list()
-        build_variables_rows(self.block, self.rows)
+        self.rebuild()
+
+    def rebuild(self) -> None:
+        self.beginResetModel()
+        self.rows.clear()
+        if self.block is not None:
+            if self.mode == DynamicTableModelMode.VARIABLES:
+                build_variables_rows(self.block, self.rows)
+            elif self.mode == DynamicTableModelMode.PARAMETERS:
+                build_parameters_rows(self, self.block, self.rows)
+            elif self.mode == DynamicTableModelMode.EQUATIONS:
+                build_equations_rows(self.block, self.rows)
         self.endResetModel()
 
     def rowCount(self, parent=QtCore.QModelIndex()) -> int:
         return len(self.rows)
 
     def columnCount(self, parent=QtCore.QModelIndex()) -> int:
-        return 3
+        return 2 if self.mode == DynamicTableModelMode.EQUATIONS else 3
 
     def data(self, index, role=QtCore.Qt.ItemDataRole.DisplayRole):
         if not index.isValid() or self.block is None:
             return None
         row = self.rows[index.row()]
-        if role == QtCore.Qt.ItemDataRole.DisplayRole or role == QtCore.Qt.ItemDataRole.EditRole:
-            if index.column() == 0:
-                if row.kind == BlockParameterKind.STATE_VAR:
-                    return "State"
-                elif row.kind == BlockParameterKind.ALGEBRAIC_VAR:
-                    return "Algebraic"
-            elif index.column() == 1:
-                return row.name
-            elif index.column() == 2:
-                if row.init_eq is not None:
-                    return row.display_init_eq
-                else:
+        col = index.column()
+
+        if role in (QtCore.Qt.ItemDataRole.DisplayRole, QtCore.Qt.ItemDataRole.EditRole):
+            if col == 0:
+                return row.kind.value
+            elif col == 1:
+                if self.mode == DynamicTableModelMode.EQUATIONS:
                     return row.display_value
-        elif role == PARAMETER_VALUE_TYPE_ROLE and index.column() == 2:
-            return "float" if row.value_type == float else "text"
-        elif role == PARAMETER_EDITABLE_ROLE and index.column() == 2:
+                return row.name
+            elif col == 2:
+                if self.mode == DynamicTableModelMode.VARIABLES:
+                    return row.display_init_eq if row.init_eq is not None else row.display_value
+                elif self.mode == DynamicTableModelMode.PARAMETERS:
+                    if row.kind == BlockParameterKind.FIXED_PARAMETER:
+                        return row.value
+                    return row.display_value
+        elif role == PARAMETER_VALUE_TYPE_ROLE and col == self._value_column:
+            if self.mode == DynamicTableModelMode.VARIABLES:
+                return "float" if row.value_type == float else "text"
+            return self.get_python_value_type(row.value).__name__
+        elif role == PARAMETER_EDITABLE_ROLE and col == self._value_column:
+            if self.mode == DynamicTableModelMode.PARAMETERS and row.kind == BlockParameterKind.FIXED_PARAMETER:
+                return False
             return row.editable_value
         elif role == QtCore.Qt.ItemDataRole.BackgroundRole:
+            if col == 2 and self.mode == DynamicTableModelMode.PARAMETERS and not row.editable_value and row.kind != BlockParameterKind.FIXED_PARAMETER:
+                return QColor("#d3d3d3")
             return QColor("#f7fafc")
         elif role == QtCore.Qt.ItemDataRole.ForegroundRole:
             return QColor("#333333")
+        elif role == BLOCK_SEARCH_ROLE:
+            return row.search_text
         return None
 
     def setData(self, index, value, role=QtCore.Qt.ItemDataRole.EditRole):
-        if not index.isValid():
+        if not index.isValid() or role != QtCore.Qt.ItemDataRole.EditRole:
             return False
         row = self.rows[index.row()]
-        if role == QtCore.Qt.ItemDataRole.EditRole:
-            if index.column() == 1:
-                row.name = value
+        col = index.column()
+
+        if col == 1:
+            if self.mode == DynamicTableModelMode.EQUATIONS:
+                old_expr = row.value
+                try:
+                    namespace = self.symbol_namespace
+                    if namespace is None and self.block is not None:
+                        namespace = build_block_symbol_namespace(self.block)
+                    new_expr = string_to_symbolic(value, namespace)
+                    row.value = new_expr
+                    refresh_block_parameter_row_cache(row)
+                    refresh_row_search_cache(row)
+                    update_source_dict(self.block, row, row.value, old_expr)
+                    self.dataChanged.emit(index, index, [role])
+                    self.block_updated.emit(self.block.uid)
+                    return True
+                except Exception:
+                    return False
+            if row.key_var is not None:
                 row.key_var.name = value
-            elif index.column() == 2 and row.editable_value:
-                row.value = value
-                refresh_block_parameter_row_cache(row)
-            else:
-                return False
+            row.name = value
+            refresh_row_search_cache(row)
             self.dataChanged.emit(index, index, [role])
             return True
-        return False
 
-    def set_init_eq(self, row_index: int, init_eq: Expr) -> None:
-        if 0 <= row_index < len(self.rows):
-            row = self.rows[row_index]
-            row.init_eq = init_eq
-            refresh_block_parameter_row_cache(row)
-            if self.block is not None and row.key_var is not None:
-                update_source_dict(self.block, row, init_eq)
-            index = self.index(row_index, 2)
-            self.dataChanged.emit(index, index, [QtCore.Qt.ItemDataRole.EditRole])
+        elif col == 2 and self.mode != DynamicTableModelMode.EQUATIONS:
+            if not row.editable_value:
+                return False
+            if self.mode == DynamicTableModelMode.VARIABLES:
+                row.value = value
+                refresh_block_parameter_row_cache(row)
+                refresh_row_search_cache(row)
+                self.dataChanged.emit(index, index, [role])
+                return True
+            elif self.mode == DynamicTableModelMode.PARAMETERS:
+                try:
+                    parsed_value = _parse_symbolic_editor_value(self.block, value)
+                except Exception:
+                    return False
+                row.value = parsed_value
+                refresh_block_parameter_row_cache(row)
+                refresh_row_search_cache(row)
+                update_source_dict(self.block, row, parsed_value)
+                self.dataChanged.emit(index, index, [role])
+                self.block_updated.emit(self.block.uid)
+                return True
+
+        return False
 
     def flags(self, index):
         if not index.isValid():
             return QtCore.Qt.ItemFlag.NoItemFlags
+        if index.row() < 0 or index.row() >= len(self.rows):
+            return QtCore.Qt.ItemFlag.NoItemFlags
+        row = self.rows[index.row()]
+        col = index.column()
         flags = QtCore.Qt.ItemFlag.ItemIsEnabled | QtCore.Qt.ItemFlag.ItemIsSelectable
-        if index.column() == 1:
-            flags |= QtCore.Qt.ItemFlag.ItemIsEditable
-        elif index.column() == 2:
-            flags |= QtCore.Qt.ItemFlag.ItemIsEditable
+
+        if self.mode == DynamicTableModelMode.VARIABLES:
+            if col == 1:
+                flags |= QtCore.Qt.ItemFlag.ItemIsEditable
+            elif col == 2 and row.editable_value:
+                flags |= QtCore.Qt.ItemFlag.ItemIsEditable
+        elif self.mode == DynamicTableModelMode.PARAMETERS:
+            if col == 1:
+                flags |= QtCore.Qt.ItemFlag.ItemIsEditable
+            elif col == 2 and row.editable_value and row.kind != BlockParameterKind.FIXED_PARAMETER:
+                flags |= QtCore.Qt.ItemFlag.ItemIsEditable
+        elif self.mode == DynamicTableModelMode.EQUATIONS:
+            if col == 1:
+                flags |= QtCore.Qt.ItemFlag.ItemIsEditable
+
         return flags
 
     def headerData(self, section, orientation, role=QtCore.Qt.ItemDataRole.DisplayRole):
         if role == QtCore.Qt.ItemDataRole.DisplayRole and orientation == QtCore.Qt.Orientation.Horizontal:
-            return self.headers[section]
+            if section < len(self.headers):
+                return self.headers[section]
         return None
 
     def get_row(self, row_index: int) -> BlockParameterRow | None:
@@ -2930,34 +2950,60 @@ class VariablesTableModel(QtCore.QAbstractTableModel):
             return self.rows[row_index]
         return None
 
-    def get_last_index_of_type(self, var_type: str) -> int:
-        """
-        Return the last row index for a given variable type.
-        State vars come first, then algebraic vars.
+    def set_delegates(self) -> None:
+        if self._table_view is None:
+            return
+        view = self._table_view
 
-        :param var_type: "state" or "algebraic"
-        :return: Last row index for that type, or -1 if none found
-        """
-        if var_type == "state":
-            return len(self.block.state_vars) - 1 if self.block and self.block.state_vars else -1
-        elif var_type == "algebraic":
-            return len(self.rows) - 1 if self.block and self.block.algebraic_vars else -1
-        return -1
+        if self.mode == DynamicTableModelMode.VARIABLES:
+            delegate = ComboDelegate(view, ["State", "Algebraic"], ["State", "Algebraic"])
+            view.setItemDelegateForColumn(0, delegate)
+            delegate = TextDelegate(view)
+            view.setItemDelegateForColumn(1, delegate)
+            delegate = BlockValueDelegate(view)
+            view.setItemDelegateForColumn(2, delegate)
+
+        elif self.mode == DynamicTableModelMode.PARAMETERS:
+            delegate = ComboDelegate(
+                view,
+                ["Event Parameter", "Mode Parameter", "Static Parameter"],
+                ["Event Parameter", "Mode Parameter", "Static Parameter"]
+            )
+            view.setItemDelegateForColumn(0, delegate)
+            delegate = TextDelegate(view)
+            view.setItemDelegateForColumn(1, delegate)
+            delegate = BlockValueDelegate(view)
+            view.setItemDelegateForColumn(2, delegate)
+
+        elif self.mode == DynamicTableModelMode.EQUATIONS:
+            delegate = BlockValueDelegate(view)
+            view.setItemDelegateForColumn(1, delegate)
+
+    def set_init_eq(self, row_index: int, init_eq: Expr) -> None:
+        if 0 <= row_index < len(self.rows):
+            row = self.rows[row_index]
+            row.init_eq = init_eq
+            refresh_block_parameter_row_cache(row)
+            refresh_row_search_cache(row)
+            if self.block is not None and row.key_var is not None:
+                update_source_dict(self.block, row, init_eq)
+            index = self.index(row_index, 2)
+            self.dataChanged.emit(index, index, [QtCore.Qt.ItemDataRole.EditRole])
+
+    def set_value_from_expression(self, row_index: int, expr: Expr) -> None:
+        if 0 <= row_index < len(self.rows):
+            row = self.rows[row_index]
+            row.value = expr
+            refresh_block_parameter_row_cache(row)
+            refresh_row_search_cache(row)
+            update_source_dict(self.block, row, expr)
+            index = self.index(row_index, self._value_column)
+            self.dataChanged.emit(index, index, [QtCore.Qt.ItemDataRole.EditRole])
 
     def add_variable_at_end_of_type(self, name: str, category: str, parameter_value: float = 0.0) -> None:
-        """
-        Add a new variable to the block, inserting it after the last variable of the same type.
-        State vars are added after the last state var, algebraic vars after the last algebraic var.
-
-        :param name: Variable name
-        :param category: "state" or "algebraic"
-        :param parameter_value: Initial value for state variables
-        """
         if self.block is None:
             raise ValueError("No block is currently selected.")
-
         new_var = self.var_factory.add_var(name=name)
-
         if category == "state":
             self.block.state_vars.append(new_var)
             if parameter_value != 0.0:
@@ -2965,127 +3011,16 @@ class VariablesTableModel(QtCore.QAbstractTableModel):
         elif category == "algebraic":
             self.block.algebraic_vars.append(new_var)
         else:
-            raise ValueError(f"Unsupported category for VariablesTableModel: {category}")
-
+            raise ValueError(f"Unsupported category: {category}")
         self.set_block(self.block)
         self.block_updated.emit(self.block.uid)
 
-
-class ParametersTableModel(QtCore.QAbstractTableModel):
-    """
-    Table model for block parameters (fixed and event).
-    Columns: , Name, Kind, Value
-    """
-
-    block_updated = Signal(object)
-
-    def __init__(self, api_object: Any, var_factory: VarFactory, block=Block(), parent: Optional[QtCore.QObject] = None):
-        super().__init__(parent)
-        self.api_object = api_object
-        self.var_factory = var_factory
-        self.block = None
-        self.rows = []
-        self.headers = ["Type", "Name", "Value"]
-        if block is not None:
-            self.block = block
-            build_parameters_rows(self, self.block, self.rows)
-
-    def set_block(self, block: Block | None) -> None:
-        self.beginResetModel()
-        self.block = block
-        self.rows: List[BlockParameterRow] = list()
-        build_parameters_rows(self, self.block, self.rows)
-        self.endResetModel()
-
-    def rowCount(self, parent=QtCore.QModelIndex()) -> int:
-        return len(self.rows)
-
-    def columnCount(self, parent=QtCore.QModelIndex()) -> int:
-        return 3
-
-    def data(self, index, role=QtCore.Qt.ItemDataRole.DisplayRole):
-        if not index.isValid() or self.block is None:
-            return None
-        row = self.rows[index.row()]
-        if role == QtCore.Qt.ItemDataRole.DisplayRole:
-            if index.column() == 0:
-                return row.kind.value
-            elif index.column() == 1:
-                return row.name
-            elif index.column() == 2:
-                if row.kind == BlockParameterKind.FIXED_PARAMETER:
-                    return row.value
-                return row.display_value
-        elif role == QtCore.Qt.ItemDataRole.EditRole:
-            if index.column() == 0:
-                return row.kind.value
-            elif index.column() == 1:
-                return row.name
-            elif index.column() == 2:
-                if row.kind == BlockParameterKind.FIXED_PARAMETER:
-                    return None
-                return row.display_value
-        elif role == PARAMETER_EDITABLE_ROLE and index.column() == 2:
-            return row.editable_value
-        elif role == PARAMETER_VALUE_TYPE_ROLE and index.column() == 2:
-            return self.get_python_value_type(row.value)
-        elif role == QtCore.Qt.ItemDataRole.BackgroundRole:
-            if index.column() == 2 and not row.editable_value and row.kind != BlockParameterKind.FIXED_PARAMETER:
-                return QColor("#d3d3d3")
-            return QColor("#f7fafc")
-        elif role == QtCore.Qt.ItemDataRole.ForegroundRole:
-            return QColor("#333333")
-        return None
-
-    def setData(self, index, value, role=QtCore.Qt.ItemDataRole.EditRole):
-        if not index.isValid():
-            return False
-        row = self.rows[index.row()]
-        if role == QtCore.Qt.ItemDataRole.EditRole:
-            if index.column() == 1:
-                row.name = value
-                row.key_var.name = value
-            elif index.column() == 2 and row.editable_value:
-                try:
-                    parsed_value = _parse_symbolic_editor_value(self.block, value)
-                except Exception:
-                    return False
-                row.value = parsed_value
-                refresh_block_parameter_row_cache(row)
-                update_source_dict(self.block, row, parsed_value)
-            else:
-                return False
-            self.dataChanged.emit(index, index, [role])
-            return True
-        return False
-
-    def set_value_from_expression(self, row_index: int, expr: Expr) -> None:
-        if 0 <= row_index < len(self.rows):
-            row = self.rows[row_index]
-            row.value = expr
-            refresh_block_parameter_row_cache(row)
-            update_source_dict(self.block, row, expr)
-            index = self.index(row_index, 2)
-            self.dataChanged.emit(index, index, [QtCore.Qt.ItemDataRole.EditRole])
-
-    def flags(self, index):
-        if not index.isValid():
-            return QtCore.Qt.ItemFlag.NoItemFlags
-        row_idx = index.row()
-        if row_idx < 0 or row_idx >= len(self.rows):
-            return QtCore.Qt.ItemFlag.NoItemFlags
-        row = self.rows[row_idx]
-        flags = QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEnabled
-        if index.column() == 1:
-            flags |= QtCore.Qt.ItemFlag.ItemIsEditable
-        elif index.column() == 2 and row.editable_value and row.kind != BlockParameterKind.FIXED_PARAMETER:
-            flags |= QtCore.Qt.ItemFlag.ItemIsEditable
-        return flags
-
-    def headerData(self, section, orientation, role=QtCore.Qt.ItemDataRole.DisplayRole):
-        if role == QtCore.Qt.ItemDataRole.DisplayRole and orientation == QtCore.Qt.Orientation.Horizontal:
-            return self.headers[section]
-        return None
+    def get_last_index_of_type(self, var_type: str) -> int:
+        if var_type == "state":
+            return len(self.block.state_vars) - 1 if self.block and self.block.state_vars else -1
+        elif var_type == "algebraic":
+            return len(self.rows) - 1 if self.block and self.block.algebraic_vars else -1
+        return -1
 
     @staticmethod
     def get_python_value_type(value) -> type:
@@ -3094,148 +3029,6 @@ class ParametersTableModel(QtCore.QAbstractTableModel):
         elif isinstance(value, float):
             return float
         return str
-
-    def get_row(self, row_index: int) -> BlockParameterRow | None:
-        if 0 <= row_index < len(self.rows):
-            return self.rows[row_index]
-        return None
-
-
-class EquationsTableModel(QtCore.QAbstractTableModel):
-    """
-    Table model for block equations (state and algebraic).
-    Columns: Type, Equation
-    """
-
-    block_updated = Signal(object)
-    equation_edited = Signal(int, object)
-
-    def __init__(self, var_factory: VarFactory, parent: Optional[QtCore.QObject] = None):
-        """
-
-        :param var_factory:
-        :param parent:
-        """
-        super().__init__(parent)
-        self.var_factory = var_factory
-        self.block = None
-        self.rows = []
-        self.headers = ["Type", "Equation"]
-        self.symbol_namespace = None
-
-    def set_block(self, block: Block | None) -> None:
-        """
-
-        :param block:
-        :return:
-        """
-        self.beginResetModel()
-        self.block = block
-        self.rows: List[BlockParameterRow] = list()
-        build_equations_rows(self.block, self.rows)
-        self.endResetModel()
-
-    def rowCount(self, parent=QtCore.QModelIndex()) -> int:
-        """
-
-        :param parent:
-        :return:
-        """
-        return len(self.rows)
-
-    def columnCount(self, parent=QtCore.QModelIndex()) -> int:
-        """
-
-        :param parent:
-        :return:
-        """
-        return 2
-
-    def data(self, index, role=QtCore.Qt.ItemDataRole.DisplayRole):
-        """
-
-        :param index:
-        :param role:
-        :return:
-        """
-        if not index.isValid() or self.block is None:
-            return None
-        row = self.rows[index.row()]
-        if role == QtCore.Qt.ItemDataRole.DisplayRole or role == QtCore.Qt.ItemDataRole.EditRole:
-            if index.column() == 0:
-                if row.kind == BlockParameterKind.STATE_EQUATION:
-                    return "State"
-                elif row.kind == BlockParameterKind.ALGEBRAIC_EQUATION:
-                    return "Algebraic"
-            elif index.column() == 1:
-                return row.display_value
-        elif role == QtCore.Qt.ItemDataRole.BackgroundRole:
-            return QColor("#f7fafc")
-        elif role == QtCore.Qt.ItemDataRole.ForegroundRole:
-            return QColor("#333333")
-        return None
-
-    def setData(self, index, value, role=QtCore.Qt.ItemDataRole.EditRole):
-        """
-
-        :param index:
-        :param value:
-        :param role:
-        :return:
-        """
-        if not index.isValid():
-            return False
-        row = self.rows[index.row()]
-        old_expr = row.value
-        if role == QtCore.Qt.ItemDataRole.EditRole:
-            if index.column() == 1:
-                try:
-
-                    new_expr = string_to_symbolic(value, self.symbol_namespace)
-                    row.value = new_expr
-                    refresh_block_parameter_row_cache(row)
-                    update_source_dict(self.block, row, row.value, old_expr)
-                    self.dataChanged.emit(index, index, [role])
-                    self.block_updated.emit(self.block.uid)
-                    return True
-                except:
-                    return False
-        return False
-
-    def headerData(self, section, orientation, role=QtCore.Qt.ItemDataRole.DisplayRole):
-        """
-
-        :param section:
-        :param orientation:
-        :param role:
-        :return:
-        """
-        if role == QtCore.Qt.ItemDataRole.DisplayRole and orientation == QtCore.Qt.Orientation.Horizontal:
-            return self.headers[section]
-        return None
-
-    def flags(self, index):
-        """
-
-        :param index:
-        :return:
-        """
-        if not index.isValid():
-            return QtCore.Qt.ItemFlag.NoItemFlags
-        flags = QtCore.Qt.ItemFlag.ItemIsEnabled | QtCore.Qt.ItemFlag.ItemIsSelectable
-        if index.column() == 1:
-            flags |= QtCore.Qt.ItemFlag.ItemIsEditable
-        return flags
-
-    def get_row(self, row_index: int) -> BlockParameterRow | None:
-        """
-
-        :param row_index:
-        :return:
-        """
-        if 0 <= row_index < len(self.rows):
-            return self.rows[row_index]
-        return None
 
 
 class InspectModel(QWidget):
@@ -3700,7 +3493,46 @@ class GenericBlockItem(QGraphicsRectItem):
         Returns
         -------
 
+
         """
+
+        items_list = list()
+        if not self.subsys.children:
+            if self.subsys.is_eq_decomposable():
+                self.editor_window.decompose_block_in_place(self.subsys)
+                self.editor_window.diagram = self.subsys.diagram
+                self.editor_window.main_block = self.subsys
+
+            for uid, node in self.editor_window.diagram.node_data.items():
+                block_type: BlockType | None
+                block_model: Block | None = self.editor_window.get_block_from_main_block(node.device_uid)
+
+                if block_model is not None:
+                    if node.tpe in ("signal_in", "signal_out"):
+                        item = PairedItem(
+                            var_factory=self.var_factory,
+                            subsys=block_model,
+                            api_object=self.api_object,
+                            mode=self.mode,
+                            name=block_model.name,
+                            position_changed_callback=self.editor_window._build_position_changed_callback(block_model.uid)
+                        )
+
+                    else:
+                        item = GenericBlockItem(
+                            var_factory=self.var_factory,
+                            subsys=block_model,
+                            api_object=self.api_object,
+                            mode=self.mode,
+                            name=block_model.name,
+                            position_changed_callback=self.editor_window._build_position_changed_callback(block_model.uid)
+                        )
+                    items_list.append(item)
+
+            self.editor_window.add_connection_items(items_list)
+
+            self.editor_window.connect_items_pf(items_list)
+            self.editor_window.rebuild_scene_from_diagram()
         self.editor_window.show()
 
     def set_subsystem(self, block: Block) -> None:
@@ -3930,6 +3762,275 @@ class GenericBlockItem(QGraphicsRectItem):
         return super().itemChange(change, value)
 
 
+class PairedItem(QGraphicsRectItem):
+    """
+    A block item that is paired with another PairedItem.
+    Has the same functionality as GenericBlockItem plus the pairing feature.
+    When refresh_port_metadata is called, it also refreshes the paired item's ports.
+    """
+
+    def __init__(self,
+                 var_factory: VarFactory,
+                 subsys: Block,
+                 api_object,
+                 mode: DynamicSimulationMode,
+                 name: str,
+                 paired_item: PairedItem | None = None,
+                 position_changed_callback=None):
+        super().__init__(0, 0, 100, 60)
+
+        self._paired_item: PairedItem | None = paired_item
+        self.var_factory = var_factory
+        self.subsys = subsys
+        self.mode = mode
+        self.name: str = name
+        self.api_object = api_object
+        self.position_changed_callback = position_changed_callback
+
+        self.name_item = QGraphicsTextItem(self.subsys.name, self)
+        self.name_item.setDefaultTextColor(BLOCK_TITLE)
+        name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 9)
+        name_font.setBold(True)
+        self.name_item.setFont(name_font)
+        self.name_item.setPos(6, 4)
+
+        self.inputs: List[PortItem] = list()
+        self.outputs: List[PortItem] = list()
+        self.input_labels: List[QGraphicsTextItem] = list()
+        self.output_labels: List[QGraphicsTextItem] = list()
+
+        self.name_item.setDefaultTextColor(BLOCK_TITLE)
+
+        self.resize_handle: ResizeHandle | None = None
+        self.resizing_from_handle = False
+        self._suppress_resize: bool = False
+        self.setBrush(QBrush(DEFAULT_BLOCK_FILL))
+        self.setPen(QPen(Qt.GlobalColor.transparent, 0))
+        self.setFlags(
+            QGraphicsItem.GraphicsItemFlag.ItemIsMovable |
+            QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
+            QGraphicsItem.GraphicsItemFlag.ItemSendsScenePositionChanges
+        )
+        self.setAcceptHoverEvents(True)
+
+        name_font = QtGui.QFont("DejaVu Sans", 9)
+        name_font.setBold(True)
+        self.name_item.setFont(name_font)
+        self.name_item.setPos(6, 4)
+
+        n_inputs = len(self.subsys.in_vars)
+        n_outputs = len(self.subsys.out_vars)
+
+        self.inputs = [PortItem(self, True, i, n_inputs) for i in range(n_inputs)]
+        self.outputs = [PortItem(self, False, i, n_outputs) for i in range(n_outputs)]
+        self.input_labels = [self.create_port_label_item() for _ in range(n_inputs)]
+        self.output_labels = [self.create_port_label_item() for _ in range(n_outputs)]
+
+        self.refresh_port_metadata()
+
+        self.resize_handle = ResizeHandle(self)
+
+        self.resize_to_content()
+
+    def set_paired_item(self, paired_item: PairedItem) -> None:
+        self._paired_item = paired_item
+
+    def set_subsystem(self, block: Block) -> None:
+        self.subsys = block
+
+    def build_item(self) -> None:
+        if self.subsys is not None:
+            self.name_item = QGraphicsTextItem(self.name, self)
+            self.name_item.setDefaultTextColor(BLOCK_TITLE)
+            name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 9)
+            name_font.setBold(True)
+            self.name_item.setFont(name_font)
+            self.name_item.setPos(6, 4)
+
+            n_inputs: int = len(self.subsys.in_vars)
+            n_outputs: int = len(self.subsys.out_vars)
+
+            self.inputs = [PortItem(self, True, i, n_inputs) for i in range(n_inputs)]
+            self.outputs = [PortItem(self, False, i, n_outputs) for i in range(n_outputs)]
+            self.input_labels = [self.create_port_label_item() for _ in range(n_inputs)]
+            self.output_labels = [self.create_port_label_item() for _ in range(n_outputs)]
+            self.refresh_port_metadata()
+
+            self.resize_handle = ResizeHandle(self)
+            self.resize_to_content()
+        else:
+            pass
+
+    def resize_block(self, width, height):
+        self.prepareGeometryChange()
+        min_width: float
+        min_height: float
+        min_width, min_height = self.get_minimum_block_size()
+        QGraphicsRectItem.setRect(self, 0, 0, max(width, min_width), max(height, min_height))
+        self.update_ports()
+        self.update_handle_position()
+
+    def update_handle_position(self):
+        rect = self.rect()
+        self.resizing_from_handle = False
+        self.resize_handle.setPos(rect.width(), rect.height())
+        self.resizing_from_handle = True
+
+    def paint(self,
+              painter: QPainter,
+              option: QtWidgets.QStyleOptionGraphicsItem,
+              widget: Optional[QWidget] = None) -> None:
+        rect: QtCore.QRectF = self.rect()
+        outer_rect: QtCore.QRectF = rect.adjusted(2, 2, -2, -2)
+        shadow_rect: QtCore.QRectF = outer_rect.translated(2.5, 3.0)
+        body_rect: QtCore.QRectF = outer_rect
+        border_color: QColor = BLOCK_BORDER_SELECTED if self.isSelected() else BLOCK_BORDER
+        fill_color: QColor = self.brush().color()
+        body_path: QPainterPath = QPainterPath()
+        shadow_path: QPainterPath = QPainterPath()
+
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+
+        shadow_path.addRoundedRect(shadow_rect, 12.0, 12.0)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QBrush(BLOCK_SHADOW))
+        painter.drawPath(shadow_path)
+
+        body_path.addRoundedRect(body_rect, 12.0, 12.0)
+        painter.setBrush(QBrush(fill_color))
+        painter.drawPath(body_path)
+
+        painter.setPen(QPen(border_color, 1.6))
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.drawRoundedRect(body_rect, 12.0, 12.0)
+
+    def _set_rect_internal(self, w, h):
+        QGraphicsRectItem.setRect(self, 0, 0, w, h)
+        self.update_ports()
+        self.update_handle_position()
+
+    def set_rectangle(self, x, y, w, h):
+        if not self._suppress_resize:
+            self._set_rect_internal(w, h)
+
+    def get_minimum_block_size(self) -> tuple[float, float]:
+        port_rows: int = max(len(self.inputs), len(self.outputs), 1)
+        min_height: float = max(
+            BLOCK_MIN_HEIGHT,
+            BLOCK_HEADER_HEIGHT + BLOCK_PORT_SECTION_PADDING + port_rows * BLOCK_PORT_ROW_HEIGHT
+        )
+
+        name_width = len(self.subsys.name) * 7
+        max_label_length = 0
+        if self.subsys:
+            for var in self.subsys.in_vars:
+                max_label_length = max(max_label_length, len(var.name))
+            for var in self.subsys.out_vars:
+                max_label_length = max(max_label_length, len(var.name))
+
+        port_width = max_label_length * 7
+        min_width = max(BLOCK_MIN_WIDTH, name_width + 14, port_width + 28)
+
+        return min_width, min_height
+
+    def resize_to_content(self) -> None:
+        self.prepareGeometryChange()
+        min_width: float
+        min_height: float
+        min_width, min_height = self.get_minimum_block_size()
+        QGraphicsRectItem.setRect(self, 0, 0, min_width, min_height)
+        self.update_ports()
+        self.update_handle_position()
+
+    def create_port_label_item(self) -> QGraphicsTextItem:
+        label_item: QGraphicsTextItem = QGraphicsTextItem("", self)
+        label_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 9)
+        label_item.setFont(label_font)
+        label_item.setDefaultTextColor(PORT_LABEL_COLOR)
+        label_item.setZValue(4)
+        return label_item
+
+    def refresh_port_metadata(self) -> None:
+        """
+        Refresh tooltips and visible labels for all ports.
+        Also refreshes the paired item's ports if one is set.
+        """
+        i: int
+        port: PortItem
+        label_item: QGraphicsTextItem
+        variable_name: str
+
+        if self.subsys is not None:
+            for i, port in enumerate(self.inputs):
+                if port.base_var is None:
+                    port.base_var = self.subsys.in_vars[i]
+                else:
+                    pass
+
+                variable_name = self.subsys.in_vars[i].name
+                port.setToolTip(f"Input {i}: {variable_name}")
+                label_item = self.input_labels[i]
+                label_item.setPlainText(truncate_port_label(variable_name))
+
+            for i, port in enumerate(self.outputs):
+                if port.base_var is None:
+                    port.base_var = self.subsys.out_vars[i]
+                else:
+                    pass
+
+                variable_name = self.subsys.out_vars[i].name
+                port.setToolTip(f"Output {i}: {variable_name}")
+                label_item = self.output_labels[i]
+                label_item.setPlainText(truncate_port_label(variable_name))
+        else:
+            pass
+
+        if self._paired_item is not None:
+            other = self._paired_item
+            other._paired_item = None
+            other.refresh_port_metadata()
+            other._paired_item = self
+
+    def update_ports(self):
+        for i, port in enumerate(self.inputs):
+            spacing = self.rect().height() / (len(self.inputs) + 1)
+            port.setPos(0, spacing * (i + 1))
+        for i, port in enumerate(self.outputs):
+            spacing = self.rect().height() / (len(self.outputs) + 1)
+            port.setPos(self.rect().width(), spacing * (i + 1))
+
+        for i, label_item in enumerate(self.input_labels):
+            port = self.inputs[i]
+            label_item.setPos(14.0, port.pos().y() - 8.0)
+
+        for i, label_item in enumerate(self.output_labels):
+            port = self.outputs[i]
+            label_width: float = label_item.boundingRect().width()
+            label_item.setPos(self.rect().width() - label_width - 14.0, port.pos().y() - 8.0)
+
+        self.update_handle_position()
+        for port in self.inputs + self.outputs:
+            if port.connections:
+                for conn in port.connections:
+                    conn.update_path()
+
+    def hoverEnterEvent(self, event):
+        QApplication.setOverrideCursor(Qt.CursorShape.OpenHandCursor)
+
+    def hoverLeaveEvent(self, event):
+        QApplication.restoreOverrideCursor()
+
+    def itemChange(self, change, value):
+        if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:
+            if self.position_changed_callback is not None:
+                self.position_changed_callback(value.x(), value.y())
+            for port in self.inputs + self.outputs:
+                if port.connections:
+                    for conn in port.connections:
+                        conn.update_path()
+        return super().itemChange(change, value)
+
+
 class BlockItem(QGraphicsRectItem):
     """
     Graphics item representing a symbolic block.
@@ -3959,13 +4060,6 @@ class BlockItem(QGraphicsRectItem):
         self.outputs: List[PortItem] = list()
         self.input_labels: List[QGraphicsTextItem] = list()
         self.output_labels: List[QGraphicsTextItem] = list()
-        if self.subsys is not None:
-            self.editor_window = DynamicBlockEditorGUI(
-                var_factory=self.var_factory,
-                block=self.subsys,
-                api_object=self.api_object,
-                mode=self.mode
-            )
 
         self.setFlags(
             QGraphicsItem.GraphicsItemFlag.ItemIsMovable |
@@ -3975,38 +4069,6 @@ class BlockItem(QGraphicsRectItem):
         self.setAcceptHoverEvents(True)
         self.setPen(QPen(Qt.GlobalColor.transparent, 0))
         self.setBrush(QBrush(DEFAULT_BLOCK_FILL))
-
-    def mouseDoubleClickEvent(self, event):
-        """
-        opens the editor
-        Parameters
-        ----------
-        event :
-
-        Returns
-        -------
-
-        """
-        print("clicking")
-        if self.subsys is None:
-            return
-        else:
-            pass
-
-        if self.editor_window is None:
-            self.editor_window = DynamicBlockEditorGUI(
-                var_factory=self.var_factory,
-                block=self.subsys,
-                api_object=self.api_object,
-                mode=self.mode,
-                modal=False,
-            )
-        else:
-            pass
-
-        self.editor_window.show()
-
-        super().mouseDoubleClickEvent(event)
 
 
     def set_subsystem(self, block: Block) -> None:
@@ -4524,17 +4586,6 @@ class DiagramScene(QGraphicsScene):
         else:
             pass
 
-    def edit_context_item(self) -> None:
-        """
-        Open the hierarchy editor for the item currently selected by the context menu.
-
-        :return: None.
-        """
-        if self.context_item is not None:
-            self.editor.edit_scene_item(self.context_item)
-        else:
-            pass
-
     def modify_context_item_template(self) -> None:
         """
         Reopen the modal configuration for the selected block when available.
@@ -4574,9 +4625,6 @@ class DiagramScene(QGraphicsScene):
                     else:
                         pass
 
-                    edit_action: QAction = QAction("Edit Hierarchy", menu)
-                    edit_action.triggered.connect(self.edit_context_item)
-                    menu.addAction(edit_action)
                 else:
                     pass
 
@@ -4613,7 +4661,9 @@ class DiagramScene(QGraphicsScene):
                 if not item.is_input:
                     self.source_port = item
                     path: QPainterPath = QPainterPath(item.scenePos())
-                    self.temp_line = self.addPath(path, QPen(Qt.PenStyle.DashLine))
+                    IS_DARK = darkdetect.theme() == "Dark"
+                    pen: QPen = QPen(QColor("white"), 1, Qt.PenStyle.DashLine) if IS_DARK else QPen(Qt.PenStyle.DashLine)
+                    self.temp_line = self.addPath(path, pen)
                     return
                 else:
                     pass
@@ -4622,7 +4672,9 @@ class DiagramScene(QGraphicsScene):
 
                 self.source_port = item
                 path: QPainterPath = QPainterPath(item.scenePos())
-                self.temp_line = self.addPath(path, QPen(Qt.PenStyle.DashLine))
+                IS_DARK = darkdetect.theme() == "Dark"
+                pen: QPen = QPen(QColor("white"), 1, Qt.PenStyle.DashLine) if IS_DARK else QPen(Qt.PenStyle.DashLine)
+                self.temp_line = self.addPath(path, pen)
                 return
 
             else:
@@ -4909,10 +4961,78 @@ class ConnectionVarSpec:
     """
 
     direction: str
-    reference: VarPowerFlowRefferenceType
+    reference: VarPowerFlowReferenceType
     visible_name: str
 
-def build_emt_injection_bus_mask_from_refs(refs: set[VarPowerFlowRefferenceType]) -> list[bool]:
+
+def build_rms_bus_input_specs(bus: Bus,
+                              voltage_reference: VarPowerFlowReferenceType,
+                              angle_reference: VarPowerFlowReferenceType,
+                              dc_voltage_reference: VarPowerFlowReferenceType) -> List[ConnectionVarSpec]:
+    """
+    Build the RMS voltage-interface specs for one connected bus.
+
+    AC buses expose magnitude and angle because RMS phasor models need both
+    quantities. DC buses only expose the DC voltage because no phasor angle
+    exists in the DC domain.
+
+    :param bus: Connected bus.
+    :param voltage_reference: AC voltage-magnitude reference for this terminal.
+    :param angle_reference: AC voltage-angle reference for this terminal.
+    :param dc_voltage_reference: DC voltage reference for this terminal.
+    :return: RMS input connection specs for the bus domain.
+    """
+    safe_bus_name: str = re.sub(r"[^0-9A-Za-z_]+", "_", bus.name).strip("_") or "Bus"
+    specs: List[ConnectionVarSpec] = list()
+
+    if bus.is_dc:
+        # DC terminals only contribute one voltage state to the RMS interface.
+        specs.append(ConnectionVarSpec("input", dc_voltage_reference, f"Vdc_{safe_bus_name}"))
+    else:
+        # AC terminals expose phasor magnitude and angle to the device model.
+        specs.append(ConnectionVarSpec("input", voltage_reference, f"Vm_{safe_bus_name}"))
+        specs.append(ConnectionVarSpec("input", angle_reference, f"Va_{safe_bus_name}"))
+
+    return specs
+
+
+def build_rms_bus_output_specs(bus: Bus,
+                               active_power_reference: VarPowerFlowReferenceType,
+                               reactive_power_reference: VarPowerFlowReferenceType,
+                               terminal_label: str) -> List[ConnectionVarSpec]:
+    """
+    Build the RMS injected-power specs for one connected bus.
+
+    AC terminals export active and reactive power because both are meaningful
+    in the phasor network. DC terminals only export active/DC power because a
+    DC connection has no reactive-power channel.
+
+    :param bus: Connected bus.
+    :param active_power_reference: Active-power reference for this terminal.
+    :param reactive_power_reference: Reactive-power reference for this terminal.
+    :param terminal_label: Stable terminal label such as ``f`` or ``t``.
+    :return: RMS output connection specs for the bus domain.
+    """
+    safe_bus_name: str = re.sub(r"[^0-9A-Za-z_]+", "_", bus.name).strip("_") or "Bus"
+    specs: List[ConnectionVarSpec] = list()
+
+    if terminal_label == "":
+        active_name = f"net_conn_P_{safe_bus_name}"
+        reactive_name = f"net_conn_Q_{safe_bus_name}"
+    else:
+        active_name = f"net_conn_P{terminal_label}_{safe_bus_name}"
+        reactive_name = f"net_conn_Q{terminal_label}_{safe_bus_name}"
+
+    specs.append(ConnectionVarSpec("output", active_power_reference, active_name))
+
+    if bus.is_dc:
+        pass
+    else:
+        specs.append(ConnectionVarSpec("output", reactive_power_reference, reactive_name))
+
+    return specs
+
+def build_emt_injection_bus_mask_from_refs(refs: set[VarPowerFlowReferenceType]) -> list[bool]:
     """
     Build the AC bus phase mask implied by one injection editor interface.
 
@@ -4928,16 +5048,16 @@ def build_emt_injection_bus_mask_from_refs(refs: set[VarPowerFlowRefferenceType]
     # Each phase can be kept either through its voltage input or through its
     # current output. This avoids requiring the user to keep both variables
     # just to declare that a phase exists.
-    mask[0] = VarPowerFlowRefferenceType.v_N in refs or VarPowerFlowRefferenceType.i_N in refs
-    mask[1] = VarPowerFlowRefferenceType.v_A in refs or VarPowerFlowRefferenceType.i_A in refs
-    mask[2] = VarPowerFlowRefferenceType.v_B in refs or VarPowerFlowRefferenceType.i_B in refs
-    mask[3] = VarPowerFlowRefferenceType.v_C in refs or VarPowerFlowRefferenceType.i_C in refs
+    mask[0] = VarPowerFlowReferenceType.v_N in refs or VarPowerFlowReferenceType.i_N in refs
+    mask[1] = VarPowerFlowReferenceType.v_A in refs or VarPowerFlowReferenceType.i_A in refs
+    mask[2] = VarPowerFlowReferenceType.v_B in refs or VarPowerFlowReferenceType.i_B in refs
+    mask[3] = VarPowerFlowReferenceType.v_C in refs or VarPowerFlowReferenceType.i_C in refs
 
     return mask
 
 
 def build_emt_branch_bus_mask_from_refs(
-        refs: set[VarPowerFlowRefferenceType],
+        refs: set[VarPowerFlowReferenceType],
         side: str,
 ) -> list[bool]:
     """
@@ -4952,15 +5072,15 @@ def build_emt_branch_bus_mask_from_refs(
     # The branch interface has side-specific variables, so the mask must be
     # derived independently for the from and to terminals.
     if side == "from":
-        mask[0] = VarPowerFlowRefferenceType.vf_N in refs or VarPowerFlowRefferenceType.if_N in refs
-        mask[1] = VarPowerFlowRefferenceType.vf_A in refs or VarPowerFlowRefferenceType.if_A in refs
-        mask[2] = VarPowerFlowRefferenceType.vf_B in refs or VarPowerFlowRefferenceType.if_B in refs
-        mask[3] = VarPowerFlowRefferenceType.vf_C in refs or VarPowerFlowRefferenceType.if_C in refs
+        mask[0] = VarPowerFlowReferenceType.vf_N in refs or VarPowerFlowReferenceType.if_N in refs
+        mask[1] = VarPowerFlowReferenceType.vf_A in refs or VarPowerFlowReferenceType.if_A in refs
+        mask[2] = VarPowerFlowReferenceType.vf_B in refs or VarPowerFlowReferenceType.if_B in refs
+        mask[3] = VarPowerFlowReferenceType.vf_C in refs or VarPowerFlowReferenceType.if_C in refs
     elif side == "to":
-        mask[0] = VarPowerFlowRefferenceType.vt_N in refs or VarPowerFlowRefferenceType.it_N in refs
-        mask[1] = VarPowerFlowRefferenceType.vt_A in refs or VarPowerFlowRefferenceType.it_A in refs
-        mask[2] = VarPowerFlowRefferenceType.vt_B in refs or VarPowerFlowRefferenceType.it_B in refs
-        mask[3] = VarPowerFlowRefferenceType.vt_C in refs or VarPowerFlowRefferenceType.it_C in refs
+        mask[0] = VarPowerFlowReferenceType.vt_N in refs or VarPowerFlowReferenceType.it_N in refs
+        mask[1] = VarPowerFlowReferenceType.vt_A in refs or VarPowerFlowReferenceType.it_A in refs
+        mask[2] = VarPowerFlowReferenceType.vt_B in refs or VarPowerFlowReferenceType.it_B in refs
+        mask[3] = VarPowerFlowReferenceType.vt_C in refs or VarPowerFlowReferenceType.it_C in refs
     else:
         # Unsupported sides are handled as an empty mask. The caller decides
         # whether this is acceptable or whether the save operation must stop.
@@ -5001,15 +5121,26 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :type api_object: ALL_DEV_TYPES | None
         :param mode: Specifies the editor mode, either RMS or EMT.
         :type mode: DynamicSimulationMode
+        :param templates_list: Optional block-template catalogue entries exposed to the editor.
+        :type templates_list: Optional[List[RmsModelTemplate | EmtModelTemplate | FmuTemplate]]
+        :param circuit: Circuit context that owns the edited dynamic device.
+        :type circuit: Any | None
         :param main_editor: Indicates whether this instance is the main editor for the block.
         :type main_editor: bool
         :param modal: Specifies whether the editor window should be modal.
         :type modal: bool
+        :param workspace_embedded: Whether the editor is hosted inside the tabbed dynamic-editor workspace.
+        :type workspace_embedded: bool
+        :return: None.
         """
         super().__init__()
 
         self.ui = Ui_BlockEditorWindow()
         self.ui.setupUi(self)
+
+        # The editor owns its own toast manager so save notifications are
+        # stacked above this page instead of behind it on the main window.
+        self.toast_manager: ToastManager = ToastManager(parent=self, position_top=False)
 
         if modal:
             self.setWindowModality(QtCore.Qt.WindowModality.WindowModal)
@@ -5107,9 +5238,13 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 LibraryLeafSpec("Generic", BlockType.GENERIC),
                 LibraryLeafSpec("Line", BlockType.LINE_RMS),
             ],
+            DeviceType.VscDevice: [
+                LibraryLeafSpec("GFL VSC", BlockType.GFL_VSC_RMS),
+            ],
             DeviceType.LoadDevice: [
                 LibraryLeafSpec("Generic", BlockType.GENERIC),
                 LibraryLeafSpec("Load", BlockType.LOAD_RMS),
+                # LibraryLeafSpec("Load", BlockType.DC_PV_SOURCE_RMS),
             ],
         }
 
@@ -5181,6 +5316,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
+        self.tree_structure["Tools"] = [
+            LibraryLeafSpec("Signal Pair", SignalPairPayload()),
+        ]
+
         if self.templates_list:
             self.tree_structure["Templates"] = {
                 "Available": [LibraryLeafSpec(template.name, template, template.name) for template in
@@ -5215,11 +5354,22 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.library_find_shortcut.activated.connect(self.focus_library_search)
         self.reset_library_tree_expansion()
 
-        self.variables_table_model = VariablesTableModel(
+        self.variables_model = WrappableBlockTableModel(
             var_factory=self.var_factory,
             parent=self.ui.variablesTableView
         )
-        self.ui.variablesTableView.setModel(self.variables_table_model)
+        self.variables_model.set_mode(DynamicTableModelMode.VARIABLES)
+        self.variables_model.set_delegates()
+        self.variables_search = QLineEdit()
+        self.variables_search.setPlaceholderText("Search variables...")
+        self.variables_search.setClearButtonEnabled(True)
+        self.ui.verticalLayout_7.insertWidget(0, self.variables_search)
+        self.variables_proxy = BlockTableFilterProxyModel(parent=self.ui.variablesTableView)
+        self.variables_proxy.setSourceModel(self.variables_model)
+        self.ui.variablesTableView.setModel(self.variables_proxy)
+        self.variables_search.textChanged.connect(
+            lambda text: self.variables_proxy.setFilterFixedString(text.strip())
+        )
         variables_header: QtWidgets.QHeaderView = self.ui.variablesTableView.horizontalHeader()
         variables_header.setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Interactive)
         variables_header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
@@ -5231,12 +5381,23 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.variablesTableView.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.ui.variablesTableView.customContextMenuRequested.connect(self.show_variables_table_context_menu)
 
-        self.parameters_table_model = ParametersTableModel(
+        self.parameters_model = WrappableBlockTableModel(
             api_object=self.api_object,
             var_factory=self.var_factory,
             parent=self.ui.parametersTableView
         )
-        self.ui.parametersTableView.setModel(self.parameters_table_model)
+        self.parameters_model.set_mode(DynamicTableModelMode.PARAMETERS)
+        self.parameters_model.set_delegates()
+        self.parameters_search = QLineEdit()
+        self.parameters_search.setPlaceholderText("Search parameters...")
+        self.parameters_search.setClearButtonEnabled(True)
+        self.ui.verticalLayout_8.insertWidget(0, self.parameters_search)
+        self.parameters_proxy = BlockTableFilterProxyModel(parent=self.ui.parametersTableView)
+        self.parameters_proxy.setSourceModel(self.parameters_model)
+        self.ui.parametersTableView.setModel(self.parameters_proxy)
+        self.parameters_search.textChanged.connect(
+            lambda text: self.parameters_proxy.setFilterFixedString(text.strip())
+        )
         parameters_header: QtWidgets.QHeaderView = self.ui.parametersTableView.horizontalHeader()
         parameters_header.setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Interactive)
         parameters_header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
@@ -5248,11 +5409,22 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.parametersTableView.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.ui.parametersTableView.customContextMenuRequested.connect(self.show_parameters_table_context_menu)
 
-        self.equations_table_model = EquationsTableModel(
+        self.equations_model = WrappableBlockTableModel(
             var_factory=self.var_factory,
             parent=self.ui.equationsTableView
         )
-        self.ui.equationsTableView.setModel(self.equations_table_model)
+        self.equations_model.set_mode(DynamicTableModelMode.EQUATIONS)
+        self.equations_model.set_delegates()
+        self.equations_search = QLineEdit()
+        self.equations_search.setPlaceholderText("Search equations...")
+        self.equations_search.setClearButtonEnabled(True)
+        self.ui.verticalLayout_9.insertWidget(0, self.equations_search)
+        self.equations_proxy = BlockTableFilterProxyModel(parent=self.ui.equationsTableView)
+        self.equations_proxy.setSourceModel(self.equations_model)
+        self.ui.equationsTableView.setModel(self.equations_proxy)
+        self.equations_search.textChanged.connect(
+            lambda text: self.equations_proxy.setFilterFixedString(text.strip())
+        )
         equations_header: QtWidgets.QHeaderView = self.ui.equationsTableView.horizontalHeader()
         equations_header.setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Interactive)
         equations_header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
@@ -5264,8 +5436,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.equationsTableView.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.ui.equationsTableView.customContextMenuRequested.connect(self.show_equations_table_context_menu)
 
-        self.parameters_table_model.block_updated.connect(self.on_parameters_model_block_updated)
-        self.variables_table_model.block_updated.connect(self.on_parameters_model_block_updated)
+        self.parameters_model.block_updated.connect(self.on_block_updated)
+        self.variables_model.block_updated.connect(self.on_block_updated)
+        self.equations_model.block_updated.connect(self.on_block_updated)
 
         self.view: GraphicsView = GraphicsView(self.scene)
         self.ui.verticalLayout_3.removeWidget(self.ui.graphicsView)
@@ -5284,6 +5457,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.toolBox.currentChanged.connect(self.on_side_panel_page_changed)
         self.scene.selectionChanged.connect(self.on_scene_selection_changed)
         if not self.main_block.empty() and not self.main_block.diagram.node_data:
+
             blocks_list = list()
             for child in self.main_block.children:
                 item = self.generate_block_item_for_block(child)
@@ -5291,11 +5465,12 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self.add_connection_items(blocks_list)
             if len(blocks_list) != 0:
                 self.connect_items(blocks_list)
+
         elif not self.main_block.diagram.node_data:
             # here we add the connection variables to the main block
             if self.main_editor:
                 self.add_connection_vars()
-                self.add_api_obj_mapping()
+                # self.add_api_obj_mapping()
             self.add_connection_items()
         self.rebuild_scene_from_diagram()
 
@@ -5493,7 +5668,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         return model
 
     def get_library_payload_from_mime_data(self,
-                                           mime_data: QtCore.QMimeData) -> BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | None:
+                                           mime_data: QtCore.QMimeData) -> BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | SignalPairPayload | None:
         """
         Decode the dragged library payload from the tree-view mime payload.
 
@@ -5512,6 +5687,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             elif isinstance(payload, BasicBlockTemplateDescriptor):
                 return payload
             elif isinstance(payload, (RmsModelTemplate, EmtModelTemplate, FmuTemplate)):
+                return payload
+            elif isinstance(payload, SignalPairPayload):
                 return payload
             else:
                 return None
@@ -7410,6 +7587,54 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     if power_flow_pairs:
                         self.create_conn_items(item_1, item_2, power_flow_pairs)
 
+    def connect_items_pf(self, items_list: List[GenericBlockItem]):
+        """
+        create connection lines to show in editor
+        :param items_list:
+        :type items_list:
+        :return:
+        :rtype:
+        """
+
+        for item_1 in items_list:
+            for item_2 in items_list:
+                if item_1.subsys.uid != item_2.subsys.uid:
+                    power_flow_pairs = find_connections_pf(item_1.subsys, item_2.subsys)
+
+                    if power_flow_pairs:
+                        self.create_conn_items(item_1, item_2, power_flow_pairs)
+
+                    power_flow_pairs = find_connections_pf(item_2.subsys, item_1.subsys)
+
+                    if power_flow_pairs:
+                        self.create_conn_items(item_1, item_2, power_flow_pairs)
+
+    def connect_blocks(self, blocks_list: List[Block]):
+        """
+        create connection lines to show in editor
+        :param items_list:
+        :type items_list:
+        :return:
+        :rtype:
+        """
+
+        for block_1 in blocks_list:
+            for block_2 in blocks_list:
+                if block_1.uid != block_2.uid:
+                    pairs, power_flow_pairs = find_connections(block_1, block_2)
+                    if pairs:
+                        self.create_conn_items(block_1, block_2, pairs)
+
+                    if power_flow_pairs:
+                        self.create_conn_items(block_1, block_2, power_flow_pairs)
+
+                    pairs, power_flow_pairs = find_connections(block_2.subsys, block_1.subsys)
+                    if pairs:
+                        self.create_conn_items(block_2, block_1, pairs)
+
+                    if power_flow_pairs:
+                        self.create_conn_items(block_1, block_2, power_flow_pairs)
+
     def create_conn_items(self, item_source: GenericBlockItem, item_dest: GenericBlockItem, pairs:List[tuple[Var, Var]]):
         """
         Create the connection items for two block items
@@ -7534,42 +7759,53 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return:
         """
         count: int = self.block_counters.get(block_type, 0) + 1
-        item_name: str = f"{var.name}"
-        block_item: ProtectedConnectionBlockItem = ProtectedConnectionBlockItem(var_factory=self.var_factory, name=item_name)
-        block_model: Block = Block()
 
-        if block_type == BlockType.INPUT_CONN:
-            block_model.out_vars.append(var)
-
-        elif block_type == BlockType.OUTPUT_CONN:
-            block_model.in_vars.append(var)
-
-        if block_model is not None:
-            # The symbolic block has to be attached first so the graphics item can build its ports from it.
-
-            block_item.set_subsystem(block_model)
-            block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
-            block_item.build_item()
-
-            # The editor block is the authoritative model container for later save/rebuild steps.
-            self.main_block.add(block_model)
-            self.scene.addItem(block_item)
-            if blocks_list is not None:
-                blocks_list.append(block_item)
-            block_item.setPos(QtCore.QPointF(x_pos, y_pos))
-
-            # Keep the diagram synchronized so later features can rebuild from the same data source.
-            self.diagram.add_node(
-                name=item_name,
-                x=x_pos,
-                y=y_pos,
-                tpe=block_type.name,
-                device_uid=block_model.uid
-            )
-
-            return block_item
-        else:
+        if var is None:
+            # The RMS/EMT connection builders should never emit ``None``.
+            # Keep this guard so a malformed editor interface does not crash the GUI.
             return None
+        else:
+            item_name: str = f"{var.name}"
+            block_item: ProtectedConnectionBlockItem = ProtectedConnectionBlockItem(var_factory=self.var_factory, name=item_name)
+            block_model: Block = Block()
+
+            if block_type == BlockType.INPUT_CONN:
+                block_model.out_vars.append(var)
+
+            elif block_type == BlockType.OUTPUT_CONN:
+                block_model.in_vars.append(var)
+
+            else:
+                pass
+
+            if block_model is not None:
+                # The symbolic block has to be attached first so the graphics item can build its ports from it.
+
+                block_item.set_subsystem(block_model)
+                block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
+                block_item.build_item()
+
+                # The editor block is the authoritative model container for later save/rebuild steps.
+                self.main_block.add(block_model)
+                self.scene.addItem(block_item)
+                if blocks_list is not None:
+                    blocks_list.append(block_item)
+                else:
+                    pass
+                block_item.setPos(QtCore.QPointF(x_pos, y_pos))
+
+                # Keep the diagram synchronized so later features can rebuild from the same data source.
+                self.diagram.add_node(
+                    name=item_name,
+                    x=x_pos,
+                    y=y_pos,
+                    tpe=block_type.name,
+                    device_uid=block_model.uid
+                )
+
+                return block_item
+            else:
+                return None
 
     def create_template_block_item(self,
                                    template: RmsModelTemplate | EmtModelTemplate | FmuTemplate,
@@ -8175,11 +8411,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
         nominal_voltage_kv, base_power_mva, base_frequency_hz = self._get_rlc_combo_base_values()
         static_connection_type: ShuntConnectionType | None = None
-        force_static_connection: bool = False
+        allow_static_device_values: bool = False
 
         if isinstance(self.api_object, (Load, Shunt, ControllableShunt)):
             static_connection_type = self.api_object.conn
-            force_static_connection = True
+            allow_static_device_values = True
         elif isinstance(self.api_object, InjectionParent):
             static_connection_type = self.api_object.conn
         else:
@@ -8191,15 +8427,16 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             resolved_config = dict()
 
-        if force_static_connection and static_connection_type is not None:
-            resolved_config["connection_type"] = static_connection_type
+        if "use_static_device_values" not in resolved_config and "use_static_load_values" in resolved_config:
+            resolved_config["use_static_device_values"] = resolved_config["use_static_load_values"]
         else:
             pass
 
         return RlcComboEmtDialog(
             self,
             initial_config=resolved_config,
-            static_connection_type=static_connection_type if force_static_connection else None,
+            allow_static_device_values=allow_static_device_values,
+            static_connection_type=static_connection_type,
             nominal_voltage_kv=nominal_voltage_kv,
             base_power_mva=base_power_mva,
             base_frequency_hz=base_frequency_hz,
@@ -8292,13 +8529,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
         component_kind: str | None = _get_shunt_component_kind(block_type)
         nominal_voltage_kv, base_power_mva, base_frequency_hz = self._get_rlc_combo_base_values()
-        allow_static_load_values: bool = isinstance(self.api_object, Load)
+        allow_static_device_values: bool = isinstance(self.api_object, (Load, Shunt, ControllableShunt))
         static_connection_type: ShuntConnectionType | None = None
-        force_static_connection: bool = False
 
         if isinstance(self.api_object, (Load, Shunt, ControllableShunt)):
             static_connection_type = self.api_object.conn
-            force_static_connection = True
         elif isinstance(self.api_object, InjectionParent):
             static_connection_type = self.api_object.conn
         else:
@@ -8313,8 +8548,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             component_kind=component_kind,
             parent=self,
             initial_config=initial_config,
-            allow_static_load_values=allow_static_load_values,
-            static_connection_type=static_connection_type if force_static_connection else None,
+            allow_static_device_values=allow_static_device_values,
+            static_connection_type=static_connection_type,
             nominal_voltage_kv=nominal_voltage_kv,
             base_power_mva=base_power_mva,
             base_frequency_hz=base_frequency_hz,
@@ -8410,7 +8645,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
         resolved_config: Dict[str, Any] | None = None
         static_connection_type: ShuntConnectionType | None = None
-        force_static_connection: bool = False
+        allow_static_device_values: bool = False
 
         if initial_config is not None:
             resolved_config = dict(initial_config)
@@ -8419,8 +8654,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         if isinstance(self.api_object, Load):
             static_connection_type = self.api_object.conn
-            resolved_config["connection_type"] = static_connection_type
-            force_static_connection = True
+            allow_static_device_values = True
         elif isinstance(self.api_object, InjectionParent):
             static_connection_type = self.api_object.conn
         else:
@@ -8430,7 +8664,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             title=self._get_load_topology_dialog_title(block_type),
             parent=self,
             initial_config=resolved_config,
-            static_connection_type=static_connection_type if force_static_connection else None,
+            allow_static_device_values=allow_static_device_values,
+            static_connection_type=static_connection_type,
         )
 
     @staticmethod
@@ -8639,7 +8874,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param modal_config: Raw modal configuration.
         :return: Template-builder keyword arguments.
         """
-        use_static_load_values: bool = bool(modal_config.get("use_static_load_values", False))
+        use_static_load_values: bool = bool(modal_config.get("use_static_device_values", modal_config.get("use_static_load_values", False)))
 
         # Static-value mode must expose load-derived P/Q mappings to the EMT
         # block, so the direct R/L/C values are left unresolved on purpose.
@@ -8800,18 +9035,18 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return: None.
         """
         safe_bus_name: str = self._get_safe_bus_name(bus)
-        voltage_refs: List[VarPowerFlowRefferenceType] = list()
-        current_refs: List[VarPowerFlowRefferenceType] = list()
+        voltage_refs: List[VarPowerFlowReferenceType] = list()
+        current_refs: List[VarPowerFlowReferenceType] = list()
 
         # DC terminals must use side-specific references so that branch
         # interfaces do not mix the from and to bus quantities.
         if bus.is_dc:
             if side == "from":
-                voltage_refs.append(VarPowerFlowRefferenceType.Vf_dc)
-                current_refs.append(VarPowerFlowRefferenceType.If_dc)
+                voltage_refs.append(VarPowerFlowReferenceType.Vf_dc)
+                current_refs.append(VarPowerFlowReferenceType.If_dc)
             elif side == "to":
-                voltage_refs.append(VarPowerFlowRefferenceType.Vt_dc)
-                current_refs.append(VarPowerFlowRefferenceType.It_dc)
+                voltage_refs.append(VarPowerFlowReferenceType.Vt_dc)
+                current_refs.append(VarPowerFlowReferenceType.It_dc)
             else:
                 QtWidgets.QMessageBox.warning(
                     self,
@@ -8823,25 +9058,25 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             # phase set. The saved editor interface will later define the
             # effective bus phase mask.
             if side == "from":
-                voltage_refs.append(VarPowerFlowRefferenceType.vf_N)
-                voltage_refs.append(VarPowerFlowRefferenceType.vf_A)
-                voltage_refs.append(VarPowerFlowRefferenceType.vf_B)
-                voltage_refs.append(VarPowerFlowRefferenceType.vf_C)
+                voltage_refs.append(VarPowerFlowReferenceType.vf_N)
+                voltage_refs.append(VarPowerFlowReferenceType.vf_A)
+                voltage_refs.append(VarPowerFlowReferenceType.vf_B)
+                voltage_refs.append(VarPowerFlowReferenceType.vf_C)
 
-                current_refs.append(VarPowerFlowRefferenceType.if_N)
-                current_refs.append(VarPowerFlowRefferenceType.if_A)
-                current_refs.append(VarPowerFlowRefferenceType.if_B)
-                current_refs.append(VarPowerFlowRefferenceType.if_C)
+                current_refs.append(VarPowerFlowReferenceType.if_N)
+                current_refs.append(VarPowerFlowReferenceType.if_A)
+                current_refs.append(VarPowerFlowReferenceType.if_B)
+                current_refs.append(VarPowerFlowReferenceType.if_C)
             elif side == "to":
-                voltage_refs.append(VarPowerFlowRefferenceType.vt_N)
-                voltage_refs.append(VarPowerFlowRefferenceType.vt_A)
-                voltage_refs.append(VarPowerFlowRefferenceType.vt_B)
-                voltage_refs.append(VarPowerFlowRefferenceType.vt_C)
+                voltage_refs.append(VarPowerFlowReferenceType.vt_N)
+                voltage_refs.append(VarPowerFlowReferenceType.vt_A)
+                voltage_refs.append(VarPowerFlowReferenceType.vt_B)
+                voltage_refs.append(VarPowerFlowReferenceType.vt_C)
 
-                current_refs.append(VarPowerFlowRefferenceType.it_N)
-                current_refs.append(VarPowerFlowRefferenceType.it_A)
-                current_refs.append(VarPowerFlowRefferenceType.it_B)
-                current_refs.append(VarPowerFlowRefferenceType.it_C)
+                current_refs.append(VarPowerFlowReferenceType.it_N)
+                current_refs.append(VarPowerFlowReferenceType.it_A)
+                current_refs.append(VarPowerFlowReferenceType.it_B)
+                current_refs.append(VarPowerFlowReferenceType.it_C)
             else:
                 QtWidgets.QMessageBox.warning(
                     self,
@@ -8849,7 +9084,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     f"Unsupported EMT branch side '{side}'. No ports were created for this side.",
                 )
 
-        reference: VarPowerFlowRefferenceType
+        reference: VarPowerFlowReferenceType
 
         for reference in voltage_refs:
             specs.append(ConnectionVarSpec("input", reference, f"{reference.value}_{safe_bus_name}"))
@@ -9043,12 +9278,16 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         return self.create_template_block_item(template=template, x_pos=x_pos, y_pos=y_pos)
 
     def create_library_payload_item(self,
-                                    payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate,
+                                    payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | SignalPairPayload,
                                     x_pos: float,
                                     y_pos: float) -> GenericBlockItem | None:
         """
         Materialize one library payload on the diagram scene.
         """
+
+        if isinstance(payload, SignalPairPayload):
+            items = self.create_signal_pair_item(x_pos=x_pos, y_pos=y_pos)
+            return items[0] if items else None
 
         if isinstance(payload, BlockType) and payload == BlockType.GENERIC:
             return self.create_generic_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
@@ -9095,15 +9334,44 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 return self.create_jmarti_line_emt_block_item(x_pos=x_pos, y_pos=y_pos)
             elif payload == BlockType.INDUCTION_MOTOR_EMT:
                 return self.create_induction_motor_emt_block_item(x_pos=x_pos, y_pos=y_pos)
-            elif _is_source_emt_block_type(payload):
+            # Source EMT blocks share the same creation dialog, so the payload
+            # is first classified by its concrete source family before building
+            # the corresponding editor block.
+            elif payload in {
+                BlockType.VOLTAGE_SOURCE_EMT,
+                BlockType.CURRENT_SOURCE_EMT,
+                BlockType.CONTROLLED_VOLTAGE_SOURCE_EMT,
+                BlockType.CONTROLLED_CURRENT_SOURCE_EMT,
+            }:
                 return self.create_source_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
-            elif _is_dc_source_emt_block_type(payload):
+            elif payload in {
+                BlockType.DC_VOLTAGE_SOURCE_EMT,
+                BlockType.DC_CURRENT_SOURCE_EMT,
+                BlockType.CONTROLLED_DC_VOLTAGE_SOURCE_EMT,
+                BlockType.CONTROLLED_DC_CURRENT_SOURCE_EMT,
+            }:
                 return self.create_dc_source_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
-            elif _is_balanced_source_emt_block_type(payload):
+            elif payload in {
+                BlockType.BALANCED_3PH_VOLTAGE_SOURCE_EMT,
+                BlockType.BALANCED_3PH_CURRENT_SOURCE_EMT,
+                BlockType.CONTROLLED_BALANCED_3PH_VOLTAGE_SOURCE_EMT,
+                BlockType.CONTROLLED_BALANCED_3PH_CURRENT_SOURCE_EMT,
+            }:
                 return self.create_balanced_source_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
-            elif _is_arbitrary_source_emt_block_type(payload):
+            elif payload in {
+                BlockType.ARBITRARY_WAVEFORM_VOLTAGE_SOURCE_EMT,
+                BlockType.ARBITRARY_WAVEFORM_CURRENT_SOURCE_EMT,
+            }:
                 return self.create_arbitrary_source_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
-            elif _is_transient_source_emt_block_type(payload):
+            elif payload in {
+                BlockType.STEP_VOLTAGE_SOURCE_EMT,
+                BlockType.STEP_CURRENT_SOURCE_EMT,
+                BlockType.RAMP_VOLTAGE_SOURCE_EMT,
+                BlockType.RAMP_CURRENT_SOURCE_EMT,
+                BlockType.DOUBLE_EXPONENTIAL_CURRENT_SOURCE_EMT,
+                BlockType.HEIDLER_CURRENT_SOURCE_EMT,
+                BlockType.CIGRE_SURGE_CURRENT_SOURCE_EMT,
+            }:
                 return self.create_transient_source_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
             else:
                 return self.create_emt_wizard_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
@@ -9186,6 +9454,67 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     #         return self.create_template_block_item(template=payload, x_pos=x_pos, y_pos=y_pos)
     #     else:
     #         return None
+
+    def create_signal_pair_item(self,
+                                x_pos: float,
+                                y_pos: float) -> tuple[PairedItem, PairedItem] | None:
+        """
+        Create a signal pair (input + output blocks sharing the same variable).
+
+        :param x_pos: X coordinate for the drop position.
+        :param y_pos: Y coordinate for the drop position.
+        :return: Tuple of (input_item, output_item) or None on failure.
+        """
+        count: int = self.block_counters.get("signal_pair", 0) + 1
+        self.block_counters["signal_pair"] = count
+        item_name: str = str(count)
+
+        blk_in, blk_out = signal_pair(self.var_factory, item_name)
+
+        self.main_block.add(blk_in)
+        self.main_block.add(blk_out)
+
+        item_in = PairedItem(
+            var_factory=self.var_factory,
+            subsys=blk_in,
+            api_object=self.api_object,
+            mode=self.mode,
+            name=blk_in.name,
+            position_changed_callback=self._build_position_changed_callback(blk_in.uid)
+        )
+        item_in.setPos(QtCore.QPointF(x_pos - 75.0, y_pos))
+        self.scene.addItem(item_in)
+        self.diagram.add_node(
+            name=blk_in.name,
+            x=x_pos - 75.0,
+            y=y_pos,
+            tpe="signal_in",
+            device_uid=blk_in.uid
+        )
+
+        item_out = PairedItem(
+            var_factory=self.var_factory,
+            subsys=blk_out,
+            api_object=self.api_object,
+            mode=self.mode,
+            name=blk_out.name,
+            position_changed_callback=self._build_position_changed_callback(blk_out.uid)
+        )
+        item_out.setPos(QtCore.QPointF(x_pos + 75.0, y_pos))
+        self.scene.addItem(item_out)
+        self.diagram.add_node(
+            name=blk_out.name,
+            x=x_pos + 75.0,
+            y=y_pos,
+            tpe="signal_out",
+            device_uid=blk_out.uid
+        )
+
+        item_in.set_paired_item(item_out)
+        item_out.set_paired_item(item_in)
+
+        self.mark_unapplied_changes()
+        return item_in, item_out
 
     def remove_connection_item(self, item: ConnectionItem) -> None:
         """
@@ -9341,8 +9670,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             ``main_block.out_vars``.
         :return: None.
         """
-        mapping_keys_to_remove: List[VarPowerFlowRefferenceType] = list()
-        mapping_key: VarPowerFlowRefferenceType
+        mapping_keys_to_remove: List[VarPowerFlowReferenceType] = list()
+        mapping_key: VarPowerFlowReferenceType
         mapped_var: Var | None
 
         if direction == "input":
@@ -9413,77 +9742,16 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return:
         """
 
+        specs: List[ConnectionVarSpec] = list()
+
         if isinstance(self.api_object, BranchParent):
-
-            # connect bus variables
-            if self.api_object.bus_from.rms_model.empty():
-                initialize_bus_rms(self.api_object.bus_from, self.var_factory)
-
-            Vmf, Vaf = get_bus_rms_algebraic_vars(self.api_object.bus_from.rms_model)
-
-            if self.api_object.bus_to.rms_model.empty():
-                initialize_bus_rms(self.api_object.bus_to, self.var_factory)
-
-            Vmt, Vat = get_bus_rms_algebraic_vars(self.api_object.bus_to.rms_model)
-
-            self.main_block.in_vars.append(Vmf)
-            self.main_block.in_vars.append(Vaf)
-            self.main_block.in_vars.append(Vmt)
-            self.main_block.in_vars.append(Vat)
-
-            self.main_block.external_mapping.update(
-                {VarPowerFlowRefferenceType.Vmf: Vmf})
-            self.main_block.external_mapping.update(
-                {VarPowerFlowRefferenceType.Vaf: Vaf})
-
-            self.main_block.external_mapping.update(
-                {VarPowerFlowRefferenceType.Vmt: Vmt})
-            self.main_block.external_mapping.update(
-                {VarPowerFlowRefferenceType.Vat: Vat})
-
-            # add connection variables
-            Pf = self.var_factory.add_var('net_conn_Pf', VarPowerFlowRefferenceType.P, True)
-            Qf = self.var_factory.add_var('net_conn_Qf', VarPowerFlowRefferenceType.Q, True)
-
-            self.main_block.out_vars.append(Pf)
-            self.main_block.out_vars.append(Qf)
-
-            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Pf: Pf})
-            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Qf: Qf})
-
-            Pt = self.var_factory.add_var('net_conn_Pt', VarPowerFlowRefferenceType.P, True)
-            Qt = self.var_factory.add_var('net_conn_Qt', VarPowerFlowRefferenceType.Q, True)
-
-            self.main_block.out_vars.append(Pt)
-            self.main_block.out_vars.append(Qt)
-
-            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Pt: Pt})
-            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Qt: Qt})
-
+            specs = self._build_rms_branch_connection_specs()
         elif isinstance(self.api_object, InjectionParent):
+            specs = self._build_rms_injection_connection_specs()
+        else:
+            pass
 
-            # connect bus variables
-            if self.api_object.bus.rms_model.empty():
-                initialize_bus_rms(self.api_object.bus, self.var_factory)
-
-            Vm, Va = get_bus_rms_algebraic_vars(self.api_object.bus.rms_model)
-            self.main_block.in_vars.append(Vm)
-            self.main_block.in_vars.append(Va)
-
-            self.main_block.external_mapping.update(
-                {VarPowerFlowRefferenceType.Vm: Vm})
-            self.main_block.external_mapping.update(
-                {VarPowerFlowRefferenceType.Va: Va})
-
-            # add connection variables
-            P = self.var_factory.add_var('net_conn_P', VarPowerFlowRefferenceType.P, True)
-            Q = self.var_factory.add_var('net_conn_Q', VarPowerFlowRefferenceType.Q, True)
-
-            self.main_block.out_vars.append(P)
-            self.main_block.out_vars.append(Q)
-
-            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.P: P})
-            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Q: Q})
+        self._materialize_connection_specs(specs)
 
     def add_connection_items(self, blocks_list: List[BlockItem] | None = None):
         """
@@ -9604,7 +9872,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     )
                     self._emt_bus_fallback_warning_shown = True
 
-    def get_injection_emt_voltage_pairs(self, bus: Any) -> List[tuple[VarPowerFlowRefferenceType, Any]]:
+    def get_injection_emt_voltage_pairs(self, bus: Any) -> List[tuple[VarPowerFlowReferenceType, Any]]:
         """
         Get the ordered EMT bus-voltage references used by injection models.
 
@@ -9615,31 +9883,31 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self._ensure_emt_bus_model(bus)
         if bus.is_dc:
             v_dc, _, _, _ = get_bus_emt_algebraic_vars(bus.emt_model)
-            return [(VarPowerFlowRefferenceType.Vdc, v_dc)]
+            return [(VarPowerFlowReferenceType.Vdc, v_dc)]
         else:
             v_n, v_a, v_b, v_c = get_bus_emt_algebraic_vars(bus.emt_model)
-            pairs: List[tuple[VarPowerFlowRefferenceType, Any]] = list()
+            pairs: List[tuple[VarPowerFlowReferenceType, Any]] = list()
             if v_n is not None:
-                pairs.append((VarPowerFlowRefferenceType.v_N, v_n))
+                pairs.append((VarPowerFlowReferenceType.v_N, v_n))
             else:
                 pass
             if v_a is not None:
-                pairs.append((VarPowerFlowRefferenceType.v_A, v_a))
+                pairs.append((VarPowerFlowReferenceType.v_A, v_a))
             else:
                 pass
             if v_b is not None:
-                pairs.append((VarPowerFlowRefferenceType.v_B, v_b))
+                pairs.append((VarPowerFlowReferenceType.v_B, v_b))
             else:
                 pass
             if v_c is not None:
-                pairs.append((VarPowerFlowRefferenceType.v_C, v_c))
+                pairs.append((VarPowerFlowReferenceType.v_C, v_c))
             else:
                 pass
             return pairs
 
     def get_branch_emt_voltage_pairs(self,
                                      bus: Any,
-                                     side: str) -> List[tuple[VarPowerFlowRefferenceType, Any]]:
+                                     side: str) -> List[tuple[VarPowerFlowReferenceType, Any]]:
         """
         Get the ordered EMT bus-voltage references used by branch models.
 
@@ -9650,11 +9918,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         self._ensure_emt_bus_model(bus)
         if bus.is_dc:
-            pairs: List[tuple[VarPowerFlowRefferenceType, Any]] = list()
+            pairs: List[tuple[VarPowerFlowReferenceType, Any]] = list()
 
             vdc, _, _, _ = get_bus_emt_algebraic_vars(bus.emt_model)
 
-            ref = VarPowerFlowRefferenceType.Vdc
+            ref = VarPowerFlowReferenceType.Vdc
             if vdc is not None:
                 pairs.append((ref, vdc))
 
@@ -9663,23 +9931,23 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             v_n, v_a, v_b, v_c = get_bus_emt_algebraic_vars(bus.emt_model)
             if side == "from":
                 refs = [
-                    VarPowerFlowRefferenceType.vf_N,
-                    VarPowerFlowRefferenceType.vf_A,
-                    VarPowerFlowRefferenceType.vf_B,
-                    VarPowerFlowRefferenceType.vf_C,
+                    VarPowerFlowReferenceType.vf_N,
+                    VarPowerFlowReferenceType.vf_A,
+                    VarPowerFlowReferenceType.vf_B,
+                    VarPowerFlowReferenceType.vf_C,
                 ]
             else:
                 if side == "to":
                     refs = [
-                        VarPowerFlowRefferenceType.vt_N,
-                        VarPowerFlowRefferenceType.vt_A,
-                        VarPowerFlowRefferenceType.vt_B,
-                        VarPowerFlowRefferenceType.vt_C,
+                        VarPowerFlowReferenceType.vt_N,
+                        VarPowerFlowReferenceType.vt_A,
+                        VarPowerFlowReferenceType.vt_B,
+                        VarPowerFlowReferenceType.vt_C,
                     ]
                 else:
                     raise ValueError(f"Unsupported branch EMT side {side}")
 
-            pairs: List[tuple[VarPowerFlowRefferenceType, Any]] = list()
+            pairs: List[tuple[VarPowerFlowReferenceType, Any]] = list()
             for reference, variable in zip(refs, [v_n, v_a, v_b, v_c]):
                 if variable is not None:
                     pairs.append((reference, variable))
@@ -9713,16 +9981,35 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         :return:
         """
+        specs: List[ConnectionVarSpec] = list()
+
         if self.api_object.bus.rms_model.empty():
             initialize_bus_rms(self.api_object.bus, self.var_factory)
+        else:
+            pass
 
-        safe_bus_name: str = self._get_safe_bus_name(self.api_object.bus)
+        specs.extend(build_rms_bus_input_specs(
+            bus=self.api_object.bus,
+            voltage_reference=VarPowerFlowReferenceType.Vm,
+            angle_reference=VarPowerFlowReferenceType.Va,
+            dc_voltage_reference=VarPowerFlowReferenceType.Vdc,
+        ))
+        specs.extend(build_rms_bus_output_specs(
+            bus=self.api_object.bus,
+            active_power_reference=VarPowerFlowReferenceType.P,
+            reactive_power_reference=VarPowerFlowReferenceType.Q,
+            terminal_label="",
+        ))
 
-        specs: List[ConnectionVarSpec] = list()
-        specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.Vm, f"Vm_{safe_bus_name}"))
-        specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.Va, f"Va_{safe_bus_name}"))
-        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.P, f"net_conn_P_{safe_bus_name}"))
-        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.Q, f"net_conn_Q_{safe_bus_name}"))
+        if len(specs) > 0 and specs[-1].visible_name.endswith("_"):
+            specs[-1].visible_name = specs[-1].visible_name.rstrip("_")
+        else:
+            pass
+
+        if len(specs) > 1 and specs[-2].visible_name.endswith("_"):
+            specs[-2].visible_name = specs[-2].visible_name.rstrip("_")
+        else:
+            pass
 
         return specs
 
@@ -9738,20 +10025,33 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         if self.api_object.bus_to.rms_model.empty():
             initialize_bus_rms(self.api_object.bus_to, self.var_factory)
 
-        safe_bus_from: str = self._get_safe_bus_name(self.api_object.bus_from)
-        safe_bus_to: str = self._get_safe_bus_name(self.api_object.bus_to)
-
         specs: List[ConnectionVarSpec] = list()
 
-        specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.Vmf, f"Vm_{safe_bus_from}"))
-        specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.Vaf, f"Va_{safe_bus_from}"))
-        specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.Vmt, f"Vm_{safe_bus_to}"))
-        specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.Vat, f"Va_{safe_bus_to}"))
+        specs.extend(build_rms_bus_input_specs(
+            bus=self.api_object.bus_from,
+            voltage_reference=VarPowerFlowReferenceType.Vmf,
+            angle_reference=VarPowerFlowReferenceType.Vaf,
+            dc_voltage_reference=VarPowerFlowReferenceType.Vf_dc,
+        ))
+        specs.extend(build_rms_bus_input_specs(
+            bus=self.api_object.bus_to,
+            voltage_reference=VarPowerFlowReferenceType.Vmt,
+            angle_reference=VarPowerFlowReferenceType.Vat,
+            dc_voltage_reference=VarPowerFlowReferenceType.Vt_dc,
+        ))
 
-        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.Pf, f"net_conn_Pf_{safe_bus_from}"))
-        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.Qf, f"net_conn_Qf_{safe_bus_from}"))
-        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.Pt, f"net_conn_Pt_{safe_bus_to}"))
-        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.Qt, f"net_conn_Qt_{safe_bus_to}"))
+        specs.extend(build_rms_bus_output_specs(
+            bus=self.api_object.bus_from,
+            active_power_reference=VarPowerFlowReferenceType.Pf,
+            reactive_power_reference=VarPowerFlowReferenceType.Qf,
+            terminal_label="f",
+        ))
+        specs.extend(build_rms_bus_output_specs(
+            bus=self.api_object.bus_to,
+            active_power_reference=VarPowerFlowReferenceType.Pt,
+            reactive_power_reference=VarPowerFlowReferenceType.Qt,
+            terminal_label="t",
+        ))
 
         return specs
 
@@ -9766,17 +10066,17 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     #
     #     # The editor must expose the full editable EMT contract up front. Static
     #     # bus-domain and phase compatibility are validated later during EMT build.
-    #     specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.v_N, f"v_N_{safe_bus_name}"))
-    #     specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.v_A, f"v_A_{safe_bus_name}"))
-    #     specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.v_B, f"v_B_{safe_bus_name}"))
-    #     specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.v_C, f"v_C_{safe_bus_name}"))
-    #     specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.Vdc, f"Vdc_{safe_bus_name}"))
+    #     specs.append(ConnectionVarSpec("input", VarPowerFlowReferenceType.v_N, f"v_N_{safe_bus_name}"))
+    #     specs.append(ConnectionVarSpec("input", VarPowerFlowReferenceType.v_A, f"v_A_{safe_bus_name}"))
+    #     specs.append(ConnectionVarSpec("input", VarPowerFlowReferenceType.v_B, f"v_B_{safe_bus_name}"))
+    #     specs.append(ConnectionVarSpec("input", VarPowerFlowReferenceType.v_C, f"v_C_{safe_bus_name}"))
+    #     specs.append(ConnectionVarSpec("input", VarPowerFlowReferenceType.Vdc, f"Vdc_{safe_bus_name}"))
     #
-    #     specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.i_N, f"net_conn_{VarPowerFlowRefferenceType.i_N.value}_{self.api_object.name}"))
-    #     specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.i_A, f"net_conn_{VarPowerFlowRefferenceType.i_A.value}_{self.api_object.name}"))
-    #     specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.i_B, f"net_conn_{VarPowerFlowRefferenceType.i_B.value}_{self.api_object.name}"))
-    #     specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.i_C, f"net_conn_{VarPowerFlowRefferenceType.i_C.value}_{self.api_object.name}"))
-    #     specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.Idc, f"net_conn_{VarPowerFlowRefferenceType.Idc.value}_{self.api_object.name}"))
+    #     specs.append(ConnectionVarSpec("output", VarPowerFlowReferenceType.i_N, f"net_conn_{VarPowerFlowReferenceType.i_N.value}_{self.api_object.name}"))
+    #     specs.append(ConnectionVarSpec("output", VarPowerFlowReferenceType.i_A, f"net_conn_{VarPowerFlowReferenceType.i_A.value}_{self.api_object.name}"))
+    #     specs.append(ConnectionVarSpec("output", VarPowerFlowReferenceType.i_B, f"net_conn_{VarPowerFlowReferenceType.i_B.value}_{self.api_object.name}"))
+    #     specs.append(ConnectionVarSpec("output", VarPowerFlowReferenceType.i_C, f"net_conn_{VarPowerFlowReferenceType.i_C.value}_{self.api_object.name}"))
+    #     specs.append(ConnectionVarSpec("output", VarPowerFlowReferenceType.Idc, f"net_conn_{VarPowerFlowReferenceType.Idc.value}_{self.api_object.name}"))
     #
     #     return specs
 
@@ -9799,51 +10099,51 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         if self.api_object.bus.is_dc:
             # A DC injection has one voltage input and one injected current
             # output. No AC phase ports are valid for this bus domain.
-            specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.Vdc, f"Vdc_{safe_bus_name}"))
+            specs.append(ConnectionVarSpec("input", VarPowerFlowReferenceType.Vdc, f"Vdc_{safe_bus_name}"))
             specs.append(ConnectionVarSpec(
                 "output",
-                VarPowerFlowRefferenceType.Idc,
-                f"net_conn_{VarPowerFlowRefferenceType.Idc.value}_{self.api_object.name}",
+                VarPowerFlowReferenceType.Idc,
+                f"net_conn_{VarPowerFlowReferenceType.Idc.value}_{self.api_object.name}",
             ))
         else:
             # An AC injection starts with the complete editable phase set.
             # The user can remove phases, and the apply step will rebuild
             # the connected bus EMT shell from the remaining ports.
             specs.append(ConnectionVarSpec("input",
-                                           VarPowerFlowRefferenceType.v_N,
+                                           VarPowerFlowReferenceType.v_N,
                                            f"v_N_{safe_bus_name}"))
 
             specs.append(ConnectionVarSpec("input",
-                                           VarPowerFlowRefferenceType.v_A,
+                                           VarPowerFlowReferenceType.v_A,
                                            f"v_A_{safe_bus_name}"))
 
             specs.append(ConnectionVarSpec("input",
-                                           VarPowerFlowRefferenceType.v_B,
+                                           VarPowerFlowReferenceType.v_B,
                                            f"v_B_{safe_bus_name}"))
 
             specs.append(ConnectionVarSpec("input",
-                                           VarPowerFlowRefferenceType.v_C,
+                                           VarPowerFlowReferenceType.v_C,
                                            f"v_C_{safe_bus_name}"))
 
             specs.append(ConnectionVarSpec(
                 "output",
-                VarPowerFlowRefferenceType.i_N,
-                f"net_conn_{VarPowerFlowRefferenceType.i_N.value}_{self.api_object.name}",
+                VarPowerFlowReferenceType.i_N,
+                f"net_conn_{VarPowerFlowReferenceType.i_N.value}_{self.api_object.name}",
             ))
             specs.append(ConnectionVarSpec(
                 "output",
-                VarPowerFlowRefferenceType.i_A,
-                f"net_conn_{VarPowerFlowRefferenceType.i_A.value}_{self.api_object.name}",
+                VarPowerFlowReferenceType.i_A,
+                f"net_conn_{VarPowerFlowReferenceType.i_A.value}_{self.api_object.name}",
             ))
             specs.append(ConnectionVarSpec(
                 "output",
-                VarPowerFlowRefferenceType.i_B,
-                f"net_conn_{VarPowerFlowRefferenceType.i_B.value}_{self.api_object.name}",
+                VarPowerFlowReferenceType.i_B,
+                f"net_conn_{VarPowerFlowReferenceType.i_B.value}_{self.api_object.name}",
             ))
             specs.append(ConnectionVarSpec(
                 "output",
-                VarPowerFlowRefferenceType.i_C,
-                f"net_conn_{VarPowerFlowRefferenceType.i_C.value}_{self.api_object.name}",
+                VarPowerFlowReferenceType.i_C,
+                f"net_conn_{VarPowerFlowReferenceType.i_C.value}_{self.api_object.name}",
             ))
 
         return specs
@@ -9872,7 +10172,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         return specs
 
-    def build_emt_injection_current_refs(self, bus: Any) -> List[VarPowerFlowRefferenceType]:
+    def build_emt_injection_current_refs(self, bus: Any) -> List[VarPowerFlowReferenceType]:
         """
         Return the ordered EMT current references that should be exposed for one injection device.
 
@@ -9881,18 +10181,18 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
 
         if bus.is_dc:
-            current_refs: List[VarPowerFlowRefferenceType] = list()
-            current_refs.append(VarPowerFlowRefferenceType.Idc)
+            current_refs: List[VarPowerFlowReferenceType] = list()
+            current_refs.append(VarPowerFlowReferenceType.Idc)
             return current_refs
         else:
             voltage_pairs = self.get_injection_emt_voltage_pairs(bus)
-            current_refs: List[VarPowerFlowRefferenceType] = list()
-            voltage_to_current_map: Dict[VarPowerFlowRefferenceType, VarPowerFlowRefferenceType] = dict()
-            voltage_to_current_map[VarPowerFlowRefferenceType.v_N] = VarPowerFlowRefferenceType.i_N
-            voltage_to_current_map[VarPowerFlowRefferenceType.v_A] = VarPowerFlowRefferenceType.i_A
-            voltage_to_current_map[VarPowerFlowRefferenceType.v_B] = VarPowerFlowRefferenceType.i_B
-            voltage_to_current_map[VarPowerFlowRefferenceType.v_C] = VarPowerFlowRefferenceType.i_C
-            reference: VarPowerFlowRefferenceType
+            current_refs: List[VarPowerFlowReferenceType] = list()
+            voltage_to_current_map: Dict[VarPowerFlowReferenceType, VarPowerFlowReferenceType] = dict()
+            voltage_to_current_map[VarPowerFlowReferenceType.v_N] = VarPowerFlowReferenceType.i_N
+            voltage_to_current_map[VarPowerFlowReferenceType.v_A] = VarPowerFlowReferenceType.i_A
+            voltage_to_current_map[VarPowerFlowReferenceType.v_B] = VarPowerFlowReferenceType.i_B
+            voltage_to_current_map[VarPowerFlowReferenceType.v_C] = VarPowerFlowReferenceType.i_C
+            reference: VarPowerFlowReferenceType
             for reference, _ in voltage_pairs:
                 mapped_reference = voltage_to_current_map.get(reference, None)
                 if mapped_reference is not None:
@@ -9904,8 +10204,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     def _build_emt_branch_current_refs(self,
                                        bus: Any,
                                        side: str,
-                                       voltage_pairs: List[tuple[VarPowerFlowRefferenceType, Any]]
-                                       ) -> List[VarPowerFlowRefferenceType]:
+                                       voltage_pairs: List[tuple[VarPowerFlowReferenceType, Any]]
+                                       ) -> List[VarPowerFlowReferenceType]:
         """
         Return the ordered EMT branch-current references that should be exposed for one branch side.
 
@@ -9915,25 +10215,25 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
 
         if side == "from":
-            voltage_to_current_map: Dict[VarPowerFlowRefferenceType, VarPowerFlowRefferenceType] = dict()
-            voltage_to_current_map[VarPowerFlowRefferenceType.vf_N] = VarPowerFlowRefferenceType.if_N
-            voltage_to_current_map[VarPowerFlowRefferenceType.vf_A] = VarPowerFlowRefferenceType.if_A
-            voltage_to_current_map[VarPowerFlowRefferenceType.vf_B] = VarPowerFlowRefferenceType.if_B
-            voltage_to_current_map[VarPowerFlowRefferenceType.vf_C] = VarPowerFlowRefferenceType.if_C
-            voltage_to_current_map[VarPowerFlowRefferenceType.Vdc] = VarPowerFlowRefferenceType.Idc
+            voltage_to_current_map: Dict[VarPowerFlowReferenceType, VarPowerFlowReferenceType] = dict()
+            voltage_to_current_map[VarPowerFlowReferenceType.vf_N] = VarPowerFlowReferenceType.if_N
+            voltage_to_current_map[VarPowerFlowReferenceType.vf_A] = VarPowerFlowReferenceType.if_A
+            voltage_to_current_map[VarPowerFlowReferenceType.vf_B] = VarPowerFlowReferenceType.if_B
+            voltage_to_current_map[VarPowerFlowReferenceType.vf_C] = VarPowerFlowReferenceType.if_C
+            voltage_to_current_map[VarPowerFlowReferenceType.Vdc] = VarPowerFlowReferenceType.Idc
         else:
             if side == "to":
                 voltage_to_current_map = dict()
-                voltage_to_current_map[VarPowerFlowRefferenceType.vt_N] = VarPowerFlowRefferenceType.it_N
-                voltage_to_current_map[VarPowerFlowRefferenceType.vt_A] = VarPowerFlowRefferenceType.it_A
-                voltage_to_current_map[VarPowerFlowRefferenceType.vt_B] = VarPowerFlowRefferenceType.it_B
-                voltage_to_current_map[VarPowerFlowRefferenceType.vt_C] = VarPowerFlowRefferenceType.it_C
-                voltage_to_current_map[VarPowerFlowRefferenceType.Vdc] = VarPowerFlowRefferenceType.Idc
+                voltage_to_current_map[VarPowerFlowReferenceType.vt_N] = VarPowerFlowReferenceType.it_N
+                voltage_to_current_map[VarPowerFlowReferenceType.vt_A] = VarPowerFlowReferenceType.it_A
+                voltage_to_current_map[VarPowerFlowReferenceType.vt_B] = VarPowerFlowReferenceType.it_B
+                voltage_to_current_map[VarPowerFlowReferenceType.vt_C] = VarPowerFlowReferenceType.it_C
+                voltage_to_current_map[VarPowerFlowReferenceType.Vdc] = VarPowerFlowReferenceType.Idc
             else:
                 raise ValueError(f"Unsupported branch EMT side {side}")
 
-        current_refs: List[VarPowerFlowRefferenceType] = list()
-        reference: VarPowerFlowRefferenceType
+        current_refs: List[VarPowerFlowReferenceType] = list()
+        reference: VarPowerFlowReferenceType
         for reference, _ in voltage_pairs:
             mapped_reference = voltage_to_current_map.get(reference, None)
             if mapped_reference is not None:
@@ -9951,7 +10251,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
         return bus.name.replace(" ", "_")
 
-    def _get_current_root_interface_refs(self) -> set[VarPowerFlowRefferenceType]:
+    def _get_current_root_interface_refs(self) -> set[VarPowerFlowReferenceType]:
         """
         Return the references still present in the saved root interface.
 
@@ -9962,9 +10262,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         :return: Set of power-flow reference types still exposed by the block.
         """
-        refs: set[VarPowerFlowRefferenceType] = set()
+        refs: set[VarPowerFlowReferenceType] = set()
         var: Var
-        mapping_ref: VarPowerFlowRefferenceType
+        mapping_ref: VarPowerFlowReferenceType
         mapped_var: Var | None
 
         # Collect references from explicit root inputs.
@@ -10042,7 +10342,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         return is_connected
 
-    def _get_connected_root_interface_refs(self) -> set[VarPowerFlowRefferenceType]:
+    def _get_connected_root_interface_refs(self) -> set[VarPowerFlowReferenceType]:
         """
         Return the root interface references backed by live editor connections.
 
@@ -10053,7 +10353,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         :return: Connected root-interface references.
         """
-        refs: set[VarPowerFlowRefferenceType] = set()
+        refs: set[VarPowerFlowReferenceType] = set()
         scene_item: QGraphicsItem
         protected_item: ProtectedConnectionBlockItem
         node_data: Any | None = None
@@ -10133,13 +10433,13 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         :return: None.
         """
-        connected_refs: set[VarPowerFlowRefferenceType] = self._get_connected_root_interface_refs()
+        connected_refs: set[VarPowerFlowReferenceType] = self._get_connected_root_interface_refs()
         kept_in_vars: list[Var] = list()
         kept_out_vars: list[Var] = list()
         var: Var
-        mapping_key: VarPowerFlowRefferenceType
+        mapping_key: VarPowerFlowReferenceType
         mapped_var: Var | None
-        mapping_keys_to_remove: list[VarPowerFlowRefferenceType] = list()
+        mapping_keys_to_remove: list[VarPowerFlowReferenceType] = list()
 
         # Keep only input variables whose EMT reference is still wired in the
         # editor. Non-interface variables or RMS/DC references are left intact.
@@ -10180,7 +10480,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         for mapping_key in mapping_keys_to_remove:
             del self.main_block.external_mapping[mapping_key]
 
-    def _is_emt_interface_reference(self, reference: VarPowerFlowRefferenceType | None) -> bool:
+    def _is_emt_interface_reference(self, reference: VarPowerFlowReferenceType | None) -> bool:
         """
         Return whether one reference belongs to the EMT AC editor interface.
 
@@ -10191,33 +10491,33 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param reference: Reference carried by one root-interface variable.
         :return: ``True`` when the reference is one EMT AC interface key.
         """
-        emt_interface_refs: set[VarPowerFlowRefferenceType] = set()
+        emt_interface_refs: set[VarPowerFlowReferenceType] = set()
         is_interface_reference: bool = False
 
-        emt_interface_refs.add(VarPowerFlowRefferenceType.v_N)
-        emt_interface_refs.add(VarPowerFlowRefferenceType.v_A)
-        emt_interface_refs.add(VarPowerFlowRefferenceType.v_B)
-        emt_interface_refs.add(VarPowerFlowRefferenceType.v_C)
-        emt_interface_refs.add(VarPowerFlowRefferenceType.i_N)
-        emt_interface_refs.add(VarPowerFlowRefferenceType.i_A)
-        emt_interface_refs.add(VarPowerFlowRefferenceType.i_B)
-        emt_interface_refs.add(VarPowerFlowRefferenceType.i_C)
-        emt_interface_refs.add(VarPowerFlowRefferenceType.vf_N)
-        emt_interface_refs.add(VarPowerFlowRefferenceType.vf_A)
-        emt_interface_refs.add(VarPowerFlowRefferenceType.vf_B)
-        emt_interface_refs.add(VarPowerFlowRefferenceType.vf_C)
-        emt_interface_refs.add(VarPowerFlowRefferenceType.if_N)
-        emt_interface_refs.add(VarPowerFlowRefferenceType.if_A)
-        emt_interface_refs.add(VarPowerFlowRefferenceType.if_B)
-        emt_interface_refs.add(VarPowerFlowRefferenceType.if_C)
-        emt_interface_refs.add(VarPowerFlowRefferenceType.vt_N)
-        emt_interface_refs.add(VarPowerFlowRefferenceType.vt_A)
-        emt_interface_refs.add(VarPowerFlowRefferenceType.vt_B)
-        emt_interface_refs.add(VarPowerFlowRefferenceType.vt_C)
-        emt_interface_refs.add(VarPowerFlowRefferenceType.it_N)
-        emt_interface_refs.add(VarPowerFlowRefferenceType.it_A)
-        emt_interface_refs.add(VarPowerFlowRefferenceType.it_B)
-        emt_interface_refs.add(VarPowerFlowRefferenceType.it_C)
+        emt_interface_refs.add(VarPowerFlowReferenceType.v_N)
+        emt_interface_refs.add(VarPowerFlowReferenceType.v_A)
+        emt_interface_refs.add(VarPowerFlowReferenceType.v_B)
+        emt_interface_refs.add(VarPowerFlowReferenceType.v_C)
+        emt_interface_refs.add(VarPowerFlowReferenceType.i_N)
+        emt_interface_refs.add(VarPowerFlowReferenceType.i_A)
+        emt_interface_refs.add(VarPowerFlowReferenceType.i_B)
+        emt_interface_refs.add(VarPowerFlowReferenceType.i_C)
+        emt_interface_refs.add(VarPowerFlowReferenceType.vf_N)
+        emt_interface_refs.add(VarPowerFlowReferenceType.vf_A)
+        emt_interface_refs.add(VarPowerFlowReferenceType.vf_B)
+        emt_interface_refs.add(VarPowerFlowReferenceType.vf_C)
+        emt_interface_refs.add(VarPowerFlowReferenceType.if_N)
+        emt_interface_refs.add(VarPowerFlowReferenceType.if_A)
+        emt_interface_refs.add(VarPowerFlowReferenceType.if_B)
+        emt_interface_refs.add(VarPowerFlowReferenceType.if_C)
+        emt_interface_refs.add(VarPowerFlowReferenceType.vt_N)
+        emt_interface_refs.add(VarPowerFlowReferenceType.vt_A)
+        emt_interface_refs.add(VarPowerFlowReferenceType.vt_B)
+        emt_interface_refs.add(VarPowerFlowReferenceType.vt_C)
+        emt_interface_refs.add(VarPowerFlowReferenceType.it_N)
+        emt_interface_refs.add(VarPowerFlowReferenceType.it_A)
+        emt_interface_refs.add(VarPowerFlowReferenceType.it_B)
+        emt_interface_refs.add(VarPowerFlowReferenceType.it_C)
 
         if reference is not None:
             if reference in emt_interface_refs:
@@ -10240,17 +10540,17 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         :return: Connected EMT mask, or ``None`` when one phase pair is inconsistent.
         """
-        refs: set[VarPowerFlowRefferenceType] = self._get_connected_root_interface_refs()
+        refs: set[VarPowerFlowReferenceType] = self._get_connected_root_interface_refs()
         mask: list[bool] = list([False, False, False, False])
         inconsistent_phase_labels: list[str] = list()
-        neutral_voltage_connected: bool = VarPowerFlowRefferenceType.v_N in refs
-        neutral_current_connected: bool = VarPowerFlowRefferenceType.i_N in refs
-        phase_a_voltage_connected: bool = VarPowerFlowRefferenceType.v_A in refs
-        phase_a_current_connected: bool = VarPowerFlowRefferenceType.i_A in refs
-        phase_b_voltage_connected: bool = VarPowerFlowRefferenceType.v_B in refs
-        phase_b_current_connected: bool = VarPowerFlowRefferenceType.i_B in refs
-        phase_c_voltage_connected: bool = VarPowerFlowRefferenceType.v_C in refs
-        phase_c_current_connected: bool = VarPowerFlowRefferenceType.i_C in refs
+        neutral_voltage_connected: bool = VarPowerFlowReferenceType.v_N in refs
+        neutral_current_connected: bool = VarPowerFlowReferenceType.i_N in refs
+        phase_a_voltage_connected: bool = VarPowerFlowReferenceType.v_A in refs
+        phase_a_current_connected: bool = VarPowerFlowReferenceType.i_A in refs
+        phase_b_voltage_connected: bool = VarPowerFlowReferenceType.v_B in refs
+        phase_b_current_connected: bool = VarPowerFlowReferenceType.i_B in refs
+        phase_c_voltage_connected: bool = VarPowerFlowReferenceType.v_C in refs
+        phase_c_current_connected: bool = VarPowerFlowReferenceType.i_C in refs
 
         if neutral_voltage_connected == neutral_current_connected:
             mask[0]: bool = neutral_voltage_connected and neutral_current_connected
@@ -10289,32 +10589,32 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param side: Branch side identifier. Expected values are ``from`` and ``to``.
         :return: Connected EMT mask for the requested side, or ``None`` on inconsistency.
         """
-        refs: set[VarPowerFlowRefferenceType] = self._get_connected_root_interface_refs()
+        refs: set[VarPowerFlowReferenceType] = self._get_connected_root_interface_refs()
         mask: list[bool] = list([False, False, False, False])
         inconsistent_phase_labels: list[str] = list()
         side_label: str = ""
 
         if side == "from":
             side_label = "from"
-            neutral_voltage_connected: bool = VarPowerFlowRefferenceType.vf_N in refs
-            neutral_current_connected: bool = VarPowerFlowRefferenceType.if_N in refs
-            phase_a_voltage_connected: bool = VarPowerFlowRefferenceType.vf_A in refs
-            phase_a_current_connected: bool = VarPowerFlowRefferenceType.if_A in refs
-            phase_b_voltage_connected: bool = VarPowerFlowRefferenceType.vf_B in refs
-            phase_b_current_connected: bool = VarPowerFlowRefferenceType.if_B in refs
-            phase_c_voltage_connected: bool = VarPowerFlowRefferenceType.vf_C in refs
-            phase_c_current_connected: bool = VarPowerFlowRefferenceType.if_C in refs
+            neutral_voltage_connected: bool = VarPowerFlowReferenceType.vf_N in refs
+            neutral_current_connected: bool = VarPowerFlowReferenceType.if_N in refs
+            phase_a_voltage_connected: bool = VarPowerFlowReferenceType.vf_A in refs
+            phase_a_current_connected: bool = VarPowerFlowReferenceType.if_A in refs
+            phase_b_voltage_connected: bool = VarPowerFlowReferenceType.vf_B in refs
+            phase_b_current_connected: bool = VarPowerFlowReferenceType.if_B in refs
+            phase_c_voltage_connected: bool = VarPowerFlowReferenceType.vf_C in refs
+            phase_c_current_connected: bool = VarPowerFlowReferenceType.if_C in refs
         else:
             if side == "to":
                 side_label = "to"
-                neutral_voltage_connected = VarPowerFlowRefferenceType.vt_N in refs
-                neutral_current_connected = VarPowerFlowRefferenceType.it_N in refs
-                phase_a_voltage_connected = VarPowerFlowRefferenceType.vt_A in refs
-                phase_a_current_connected = VarPowerFlowRefferenceType.it_A in refs
-                phase_b_voltage_connected = VarPowerFlowRefferenceType.vt_B in refs
-                phase_b_current_connected = VarPowerFlowRefferenceType.it_B in refs
-                phase_c_voltage_connected = VarPowerFlowRefferenceType.vt_C in refs
-                phase_c_current_connected = VarPowerFlowRefferenceType.it_C in refs
+                neutral_voltage_connected = VarPowerFlowReferenceType.vt_N in refs
+                neutral_current_connected = VarPowerFlowReferenceType.it_N in refs
+                phase_a_voltage_connected = VarPowerFlowReferenceType.vt_A in refs
+                phase_a_current_connected = VarPowerFlowReferenceType.it_A in refs
+                phase_b_voltage_connected = VarPowerFlowReferenceType.vt_B in refs
+                phase_b_current_connected = VarPowerFlowReferenceType.it_B in refs
+                phase_c_voltage_connected = VarPowerFlowReferenceType.vt_C in refs
+                phase_c_current_connected = VarPowerFlowReferenceType.it_C in refs
             else:
                 return None
 
@@ -10492,9 +10792,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self.main_block.parameters[bsh] = self.var_factory.add_const(0.03)
 
             self.main_block.api_obj_mapping = {
-                ParamPowerFlowRefferenceType.g: g,
-                ParamPowerFlowRefferenceType.b: b,
-                ParamPowerFlowRefferenceType.bsh: bsh,
+                ParamPowerFlowReferenceType.g: g,
+                ParamPowerFlowReferenceType.b: b,
+                ParamPowerFlowReferenceType.bsh: bsh,
             }
 
     def get_block_from_main_block(self, device_uid: int) -> Block | None:
@@ -10559,17 +10859,20 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param index:
         :return:
         """
-        if index.model() == self.parameters_table_model and index.column() == 0:
-            self.open_edit_parameter_type_dialog(index.row())
-        elif index.model() == self.parameters_table_model and index.column() == 2:
-            row_data: BlockParameterRow | None = self.parameters_table_model.get_row(index.row())
+        source_model = self._table_source_model(index)
+        source_index = self._table_source_index(index)
+        source_row = source_index.row()
+        if source_model is self.parameters_model and source_index.column() == 0:
+            self.open_edit_parameter_type_dialog(source_row)
+        elif source_model is self.parameters_model and source_index.column() == 2:
+            row_data: BlockParameterRow | None = self.parameters_model.get_row(source_row)
             if row_data is not None and row_data.kind != BlockParameterKind.FIXED_PARAMETER:
-                self.open_expression_editor_for_parameters(index.row())
-        elif index.model() == self.equations_table_model:
-            row_data: BlockParameterRow | None = self.equations_table_model.get_row(index.row())
+                self.open_expression_editor_for_parameters(source_row)
+        elif source_model is self.equations_model:
+            row_data: BlockParameterRow | None = self.equations_model.get_row(source_row)
             if row_data is not None:
-                if row_data.opens_expression_editor and index.column() == 1:
-                    self.open_expression_row_editor(index.row())
+                if row_data.opens_expression_editor and source_index.column() == 1:
+                    self.open_expression_row_editor(source_row)
 
     def open_edit_parameter_type_dialog(self, row_index: int) -> None:
         """
@@ -10578,13 +10881,13 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param row_index:
         :return:
         """
-        row_data: BlockParameterRow | None = self.parameters_table_model.get_row(row_index)
-        if row_data is None or self.parameters_table_model.block is None:
+        row_data: BlockParameterRow | None = self.parameters_model.get_row(row_index)
+        if row_data is None or self.parameters_model.block is None:
             return
 
-        block = self.parameters_table_model.block
+        block = self.parameters_model.block
 
-        api_object = self.parameters_table_model.api_object
+        api_object = self.parameters_model.api_object
         dialog: EditParameterDialog = EditParameterDialog(api_object, row_data.kind, self)
 
         if dialog.exec() == QDialog.DialogCode.Accepted:
@@ -10621,8 +10924,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 elif new_kind == BlockParameterKind.FIXED_PARAMETER:
                     block.parameters[new_var] = Const(const_value, name=var_name)
 
-                self.parameters_table_model.set_block(block)
-                self.parameters_table_model.block_updated.emit(block.uid)
+                self.parameters_model.set_block(block)
+                self.parameters_model.block_updated.emit(block.uid)
             except Exception as exc:
                 QtWidgets.QMessageBox.warning(self, "Edit Parameter Type Error", str(exc))
 
@@ -10633,19 +10936,19 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param row_index:
         :return:
         """
-        row_data: BlockParameterRow | None = self.parameters_table_model.get_row(row_index)
+        row_data: BlockParameterRow | None = self.parameters_model.get_row(row_index)
         expression_text: str
         dialog: ExpressionTextEditorDialog
         symbol_namespace: Dict[str, Expr]
         parsed_expression: Expr | Comparison
         expression_value: Expr
 
-        if row_data is not None and self.parameters_table_model.block is not None:
+        if row_data is not None and self.parameters_model.block is not None:
             if row_data.value is not None and isinstance(row_data.value, Expr):
                 expression_text = symbolic_to_string(row_data.value)
             else:
                 expression_text = str(row_data.value) if row_data.value is not None else ""
-            symbol_namespace = build_block_symbol_namespace(self.parameters_table_model.block)
+            symbol_namespace = build_block_symbol_namespace(self.parameters_model.block)
             dialog = ExpressionTextEditorDialog(
                 expression_text=expression_text,
                 symbol_namespace=symbol_namespace,
@@ -10661,13 +10964,27 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     else:
                         expression_value = parsed_expression
 
-                    self.parameters_table_model.set_value_from_expression(row_index, expression_value)
+                    self.parameters_model.set_value_from_expression(row_index, expression_value)
                 except Exception as exc:
                     QtWidgets.QMessageBox.warning(
                         self,
                         "Expression Error",
                         str(exc)
                     )
+
+    @staticmethod
+    def _table_source_index(index: QtCore.QModelIndex) -> QtCore.QModelIndex:
+        model = index.model()
+        if isinstance(model, QtCore.QSortFilterProxyModel):
+            return model.mapToSource(index)
+        return index
+
+    @staticmethod
+    def _table_source_model(index: QtCore.QModelIndex) -> QtCore.QAbstractItemModel | None:
+        model = index.model()
+        if isinstance(model, QtCore.QSortFilterProxyModel):
+            return model.sourceModel()
+        return model
 
     def on_variables_table_double_clicked(self, index: QtCore.QModelIndex) -> None:
         """
@@ -10677,7 +10994,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return:
         """
         if index.column() == 2:
-            self.open_expression_row_editor_for_variables(index.row())
+            source_index = self._table_source_index(index)
+            self.open_expression_row_editor_for_variables(source_index.row())
 
     def open_expression_row_editor_for_variables(self, row_index: int) -> None:
         """
@@ -10686,19 +11004,19 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param row_index:
         :return:
         """
-        row_data: BlockParameterRow | None = self.variables_table_model.get_row(row_index)
+        row_data: BlockParameterRow | None = self.variables_model.get_row(row_index)
         expression_text: str
         dialog: ExpressionTextEditorDialog
         symbol_namespace: Dict[str, Expr]
         parsed_expression: Expr | Comparison
         expression_value: Expr
 
-        if row_data is not None and self.variables_table_model.block is not None:
+        if row_data is not None and self.variables_model.block is not None:
             if row_data.init_eq is not None and isinstance(row_data.init_eq, Expr):
                 expression_text = symbolic_to_string(row_data.init_eq)
             else:
                 expression_text = ""
-            symbol_namespace = build_block_symbol_namespace(self.variables_table_model.block)
+            symbol_namespace = build_block_symbol_namespace(self.variables_model.block)
             dialog = ExpressionTextEditorDialog(
                 expression_text=expression_text,
                 symbol_namespace=symbol_namespace,
@@ -10714,7 +11032,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     else:
                         expression_value = parsed_expression
 
-                    self.variables_table_model.set_init_eq(row_index, expression_value)
+                    self.variables_model.set_init_eq(row_index, expression_value)
                 except Exception as exc:
                     QtWidgets.QMessageBox.warning(
                         self,
@@ -10857,10 +11175,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     parameter_value=parameter_value
                 )
 
-                self.variables_table_model.set_block(block)
-                self.parameters_table_model.set_block(block)
-                self.equations_table_model.set_block(block)
-                self.variables_table_model.block_updated.emit(block.uid)
+                self.variables_model.set_block(block)
+                self.parameters_model.set_block(block)
+                self.equations_model.set_block(block)
+                self.variables_model.block_updated.emit(block.uid)
             except Exception as exc:
                 QtWidgets.QMessageBox.warning(self, "Add Variable Error", str(exc))
         else:
@@ -10872,7 +11190,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         :return:
         """
-        api_object = self.parameters_table_model.api_object
+        api_object = self.parameters_model.api_object
         dialog: AddParameterDialog = AddParameterDialog(api_object, self)
 
         if dialog.exec() == QDialog.DialogCode.Accepted:
@@ -10904,9 +11222,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     parameter_value=parameter_value
                 )
 
-                self.parameters_table_model.set_block(block)
-                self.equations_table_model.set_block(block)
-                self.parameters_table_model.block_updated.emit(block.uid)
+                self.parameters_model.set_block(block)
+                self.equations_model.set_block(block)
+                self.parameters_model.block_updated.emit(block.uid)
             except Exception as exc:
                 QtWidgets.QMessageBox.warning(self, "Add Parameter Error", str(exc))
         else:
@@ -10940,8 +11258,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 else:
                     raise ValueError(f"Unknown equation type: {category}")
 
-                self.equations_table_model.set_block(block)
-                self.equations_table_model.block_updated.emit(block.uid)
+                self.equations_model.set_block(block)
+                self.equations_model.block_updated.emit(block.uid)
             except Exception as exc:
                 QtWidgets.QMessageBox.warning(self, "Add Equation Error", str(exc))
         else:
@@ -10957,8 +11275,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         if block is None:
             return
 
-        vars_model = self.variables_table_model
-        vars_selected = [idx.row() for idx in self.ui.variablesTableView.selectionModel().selectedRows()]
+        vars_model = self.variables_model
+        vars_selected = [self._table_source_index(idx).row() for idx in self.ui.variablesTableView.selectionModel().selectedRows()]
         if not vars_selected:
             return
 
@@ -10996,8 +11314,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         if block is None:
             return
 
-        params_model = self.parameters_table_model
-        params_selected = [idx.row() for idx in self.ui.parametersTableView.selectionModel().selectedRows()]
+        params_model = self.parameters_model
+        params_selected = [self._table_source_index(idx).row() for idx in self.ui.parametersTableView.selectionModel().selectedRows()]
         if not params_selected:
             return
 
@@ -11027,8 +11345,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         if block is None:
             return
 
-        equations_model = self.equations_table_model
-        equations_selected = [idx.row() for idx in self.ui.equationsTableView.selectionModel().selectedRows()]
+        equations_model = self.equations_model
+        equations_selected = [self._table_source_index(idx).row() for idx in self.ui.equationsTableView.selectionModel().selectedRows()]
         if not equations_selected:
             return
 
@@ -11057,37 +11375,37 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param row_index:
         :return:
         """
-        row_data: BlockParameterRow | None = self.equations_table_model.get_row(row_index)
+        row_data: BlockParameterRow | None = self.equations_model.get_row(row_index)
         expression_text: str
         dialog: ExpressionTextEditorDialog
         symbol_namespace: Dict[str, Expr]
         parsed_expression: Expr | Comparison
         expression_value: Expr
 
-        if row_data is not None and self.equations_table_model.block is not None:
+        if row_data is not None and self.equations_model.block is not None:
             if isinstance(row_data.value, Expr):
                 old_expr = row_data.value
                 expression_text = symbolic_to_string(row_data.value)
-                self.equations_table_model.symbol_namespace = build_block_symbol_namespace(
-                    self.equations_table_model.block)
+                self.equations_model.symbol_namespace = build_block_symbol_namespace(
+                    self.equations_model.block)
                 dialog = ExpressionTextEditorDialog(
                     expression_text=expression_text,
-                    symbol_namespace=self.equations_table_model.symbol_namespace,
+                    symbol_namespace=self.equations_model.symbol_namespace,
                     parent=self
                 )
 
                 if dialog.exec() == QDialog.DialogCode.Accepted:
                     try:
                         parsed_expression = string_to_symbolic(dialog.get_expression_text(),
-                                                               self.equations_table_model.symbol_namespace)
+                                                               self.equations_model.symbol_namespace)
 
                         if isinstance(parsed_expression, Comparison):
                             expression_value = parsed_expression.to_expression()
                         else:
                             expression_value = parsed_expression
 
-                        index = self.equations_table_model.index(row_index, 1)
-                        self.equations_table_model.setData(index, symbolic_to_string(expression_value),
+                        index = self.equations_model.index(row_index, 1)
+                        self.equations_model.setData(index, symbolic_to_string(expression_value),
                                                            QtCore.Qt.ItemDataRole.EditRole)
                     except Exception as exc:
                         QtWidgets.QMessageBox.warning(
@@ -11156,13 +11474,13 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         current_widget: QtWidgets.QWidget = self.ui.toolBox.currentWidget()
 
         if current_widget == self.ui.page:
-            self.variables_table_model.set_block(self._selected_side_block)
+            self.variables_model.set_block(self._selected_side_block)
         else:
             if current_widget == self.ui.page_2:
-                self.parameters_table_model.set_block(self._selected_side_block)
+                self.parameters_model.set_block(self._selected_side_block)
             else:
                 if current_widget == self.ui.page_3:
-                    self.equations_table_model.set_block(self._selected_side_block)
+                    self.equations_model.set_block(self._selected_side_block)
                 else:
                     pass
 
@@ -11212,6 +11530,38 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         editor_window.show()
         editor_window.raise_()
         editor_window.activateWindow()
+
+    def decompose_block_in_place(self, block: Block) -> None:
+
+        decomposer = EquationDecomposer(self.var_factory)
+        decomposed = decomposer.decompose(block)
+        preserved_uid = block.uid
+        block.name = decomposed.name
+        block.is_decomposable = decomposed.is_decomposable
+        block.vars_glob_name2uid = decomposed.vars_glob_name2uid
+        block.state_vars = decomposed.state_vars
+        block.state_eqs = decomposed.state_eqs
+        block.algebraic_vars = decomposed.algebraic_vars
+        block.algebraic_eqs = decomposed.algebraic_eqs
+        block.diff_vars = decomposed.diff_vars
+        block.reformulated_vars = decomposed.reformulated_vars
+        block.differential_eqs = decomposed.differential_eqs
+        block.init_eqs = decomposed.init_eqs
+        block.diff_init_eqs = decomposed.diff_init_eqs
+        block.children = decomposed.children
+        block.in_vars = decomposed.in_vars
+        block.out_vars = decomposed.out_vars
+        block.parameters = decomposed.parameters
+        block.discrete_eqs = decomposed.discrete_eqs
+        block.external_mapping = decomposed.external_mapping
+        block.api_obj_mapping = decomposed.api_obj_mapping
+        block.init_values = decomposed.init_values
+        block.var_mapping = decomposed.var_mapping
+        block.event_dict = decomposed.event_dict
+        block.mode_dict = decomposed.mode_dict
+        block.diagram = decomposed.diagram
+        block.uid = preserved_uid
+
 
     def modify_scene_item_template(self, item: BlockItem | GenericBlockItem | ConnectionItem) -> None:
         """
@@ -12043,7 +12393,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
-    def on_parameters_model_block_updated(self, block_uid: int) -> None:
+    def on_block_updated(self, block_uid: int) -> None:
         """
         Refresh the scene after a block edit coming from the parameters tab.
 
@@ -12053,11 +12403,24 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.mark_unapplied_changes()
         sender_obj: QtCore.QObject | None = self.sender()
 
-        if sender_obj is self.parameters_table_model:
+        if sender_obj is self.parameters_model:
             self.refresh_active_side_panel()
         else:
             self.rebuild_scene_from_diagram()
             self.select_block_by_uid(block_uid)
+
+    def _show_model_saved_toast(self) -> None:
+        """
+        Show one save confirmation toast attached to this editor window.
+
+        The editor owns a local toast manager so the notification is layered on
+        top of the editor page that triggered the save operation.
+
+        :return: None.
+        """
+        # Emit the toast from the editor itself so the notification stays in
+        # front of the page where the user clicked the save button.
+        self.toast_manager.show_info_toast("Model saved")
 
     def apply_changes(self) -> None:
         """
@@ -12066,18 +12429,26 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return:
         """
         if self.mode == DynamicSimulationMode.RMS:
+            # Persist the edited RMS block back into the original model object.
             copy_block_state(source_block=self.main_block, target_block=self.original_block)
+            # Rebuild the connected bus helper models so the saved block stays
+            # consistent with the rest of the dynamic network representation.
             initialize_connected_bus_models_for_editor_assignment(api_object=self.api_object,
                                                                   circuit=self.circuit,
                                                                   var_factory=self.var_factory,
                                                                   mode=self.mode)
+            # Mark the editor state as clean because all in-memory edits were
+            # transferred back to the owned device model successfully.
             self.has_unapplied_changes = False
             self.changes_applied = True
             self.dirtyStateChanged.emit(False)
+            # Notify the user that the save operation completed, while keeping
+            # the editor open for further edits.
+            self._show_model_saved_toast()
             if self.workspace_embedded:
                 pass
             else:
-                self.close()
+                pass
 
 
 
@@ -12095,14 +12466,20 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 # the edited model so the saved device contract matches the
                 # rebuilt terminal bus shells seen by the simulation builder.
                 self._prune_disconnected_emt_root_interface()
+                # Copy the validated editor state back to the owned EMT model.
                 copy_block_state(source_block=self.main_block, target_block=self.original_block)
+                # Mark the working copy as saved because the device model now
+                # contains the current editor contents.
                 self.has_unapplied_changes = False
                 self.changes_applied = True
                 self.dirtyStateChanged.emit(False)
+                # Inform the user that the model was saved and keep the editor
+                # available for incremental editing.
+                self._show_model_saved_toast()
                 if self.workspace_embedded:
                     pass
                 else:
-                    self.close()
+                    pass
             else:
                 # Do not apply the edited model if the bus interface is invalid.
                 # The warning is already emitted by the synchronisation method.
@@ -12151,6 +12528,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.scene.clear()
 
         # Recreate nodes
+        signal_in_items: Dict[str, PairedItem] = {}
+        signal_out_items: Dict[str, PairedItem] = {}
+
         for uid, node in self.diagram.node_data.items():
             block_type: BlockType | None
             block_model: Block | None = self.get_block_from_main_block(node.device_uid)
@@ -12204,38 +12584,60 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         pass
 
                 else:
-                    generic_item = GenericBlockItem(
-                        var_factory=self.var_factory,
-                        subsys=block_model,
-                        api_object=self.api_object,
-                        mode=self.mode,
-                        name=block_model.name,
-                        position_changed_callback=self._build_position_changed_callback(block_model.uid)
-                    )
-                    self.scene.addItem(generic_item)
-                    generic_item.setPos(QPointF(node.x, node.y))
+                    if node.tpe in ("signal_in", "signal_out"):
+                        item = PairedItem(
+                            var_factory=self.var_factory,
+                            subsys=block_model,
+                            api_object=self.api_object,
+                            mode=self.mode,
+                            name=block_model.name,
+                            position_changed_callback=self._build_position_changed_callback(block_model.uid)
+                        )
+                        suffix = block_model.name.replace("From_", "").replace("To_", "")
+                        if node.tpe == "signal_in":
+                            signal_in_items[suffix] = item
+                        else:
+                            signal_out_items[suffix] = item
+                    else:
+                        item = GenericBlockItem(
+                            var_factory=self.var_factory,
+                            subsys=block_model,
+                            api_object=self.api_object,
+                            mode=self.mode,
+                            name=block_model.name,
+                            position_changed_callback=self._build_position_changed_callback(block_model.uid)
+                        )
+                    self.scene.addItem(item)
+                    item.setPos(QPointF(node.x, node.y))
                     modal_kind, modal_config = get_modal_template_metadata(block_model)
                     if modal_kind == "jmarti_line_emt" and modal_config is not None:
-                        generic_item.setToolTip(self._build_jmarti_modal_tooltip(modal_config))
+                        item.setToolTip(self._build_jmarti_modal_tooltip(modal_config))
                     elif modal_kind == "source_emt" and modal_config is not None:
-                        generic_item.setToolTip(self._build_source_emt_modal_tooltip(modal_config))
+                        item.setToolTip(self._build_source_emt_modal_tooltip(modal_config))
                     elif modal_kind == "dc_source_emt" and modal_config is not None:
-                        generic_item.setToolTip(self._build_dc_source_emt_modal_tooltip(modal_config))
+                        item.setToolTip(self._build_dc_source_emt_modal_tooltip(modal_config))
                     elif modal_kind == "balanced_source_emt" and modal_config is not None:
-                        generic_item.setToolTip(self._build_balanced_source_emt_modal_tooltip(modal_config))
+                        item.setToolTip(self._build_balanced_source_emt_modal_tooltip(modal_config))
                     elif modal_kind == "arbitrary_source_emt" and modal_config is not None:
-                        generic_item.setToolTip(self._build_arbitrary_source_emt_modal_tooltip(modal_config))
+                        item.setToolTip(self._build_arbitrary_source_emt_modal_tooltip(modal_config))
                     elif modal_kind == "transient_source_emt" and modal_config is not None:
-                        generic_item.setToolTip(self._build_transient_source_emt_modal_tooltip(modal_config))
+                        item.setToolTip(self._build_transient_source_emt_modal_tooltip(modal_config))
                     elif modal_kind == "induction_motor_emt" and modal_config is not None:
-                        generic_item.setToolTip(self._build_induction_motor_emt_modal_tooltip(modal_config))
+                        item.setToolTip(self._build_induction_motor_emt_modal_tooltip(modal_config))
                     else:
                         pass
-                    brush = generic_item.brush()
+                    brush = item.brush()
                     brush.setColor(QColor(node.color))
-                    generic_item.setBrush(brush)
+                    item.setBrush(brush)
 
-                    uid_to_blockitem[uid] = generic_item
+                    uid_to_blockitem[uid] = item
+
+        # Pair signal_in and signal_out items
+        for suffix, in_item in signal_in_items.items():
+            out_item = signal_out_items.get(suffix)
+            if out_item is not None:
+                in_item.set_paired_item(out_item)
+                out_item.set_paired_item(in_item)
         # Recreate connections
         for uid, con in self.diagram.con_data.items():
             src_item: BlockItem | None = uid_to_blockitem.get(con.from_uid, None)
@@ -12340,7 +12742,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param event:
         :return:
         """
-        payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | None = self.get_library_payload_from_mime_data(
+        payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | SignalPairPayload | None = self.get_library_payload_from_mime_data(
             event.mimeData()
         )
 
@@ -12356,7 +12758,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param event:
         :return:
         """
-        payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | None = self.get_library_payload_from_mime_data(
+        payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | SignalPairPayload | None = self.get_library_payload_from_mime_data(
             event.mimeData()
         )
 
@@ -12372,7 +12774,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param event:
         :return:
         """
-        payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | None = self.get_library_payload_from_mime_data(
+        payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | SignalPairPayload | None = self.get_library_payload_from_mime_data(
             event.mimeData()
         )
         scene_position: QtCore.QPointF = self.ui.graphicsView.mapToScene(
