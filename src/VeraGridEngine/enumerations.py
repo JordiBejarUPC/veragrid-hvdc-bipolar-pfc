@@ -2919,6 +2919,7 @@ class SimulationTypes(Enum):
     TemplateDriver = 'Template'
     PowerFlow_run = 'Power flow'
     PowerFlow3ph_run = 'Power flow 3ph'
+    PowerFlowTimeSeries3ph_run = 'Power flow time series 3ph'
     StateEstimation_run = 'State estimation'
     ShortCircuit_run = 'Short circuit'
     MonteCarlo_run = 'Monte Carlo'

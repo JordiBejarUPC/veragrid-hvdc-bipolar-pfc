@@ -11,7 +11,7 @@ from trunk.tensygrid.emt.ieee9_emt_multilinear_simulation import attach_multilin
 from trunk.tensygrid.emt.ieee9_emt_simulation import build_emt_options, build_ieee9_grid, build_power_flow_options
 
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_multilinear import EmtProblemMultilinear
-from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlowDriver3Ph
+from VeraGridEngine.Simulations.PowerFlow3ph.power_flow_driver_3ph import PowerFlowDriver3Ph
 
 
 def build_multilinear_problem_and_matrices() -> tuple[EmtProblemMultilinear, sparse.csr_matrix, sparse.csc_matrix]:
