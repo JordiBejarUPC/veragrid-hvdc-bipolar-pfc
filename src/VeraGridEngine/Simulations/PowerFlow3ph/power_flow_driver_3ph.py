@@ -18,7 +18,7 @@ if TYPE_CHECKING:  # Only imports the below statements during type checking
 
 
 class PowerFlowDriver3Ph(DriverTemplate):
-    name = 'Power Flow 3ph'
+    name = 'Power flow 3ph'
     tpe = SimulationTypes.PowerFlow3ph_run
 
     """
