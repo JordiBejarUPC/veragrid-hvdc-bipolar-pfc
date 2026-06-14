@@ -5,10 +5,15 @@
 
 from __future__ import annotations
 
-from typing import Union
+from typing import TYPE_CHECKING, Dict, Union
 
 import numpy as np
 
+from VeraGridEngine.Compilers.circuit_to_gslv import (
+    GSLV_AVAILABLE,
+    gslv_pf_3ph,
+    translate_gslv_pf_3ph_results,
+)
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.Clustering.clustering_results import ClusteringResults
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions
@@ -17,6 +22,9 @@ from VeraGridEngine.Simulations.PowerFlow3ph.power_flow_worker_3ph import multi_
 from VeraGridEngine.Simulations.driver_template import TimeSeriesDriverTemplate
 from VeraGridEngine.basic_structures import IntVec
 from VeraGridEngine.enumerations import EngineType, SimulationTypes
+
+if TYPE_CHECKING:
+    from VeraGridEngine.Simulations.PowerFlow.power_flow_ts_results import PowerFlowTimeSeriesResults
 
 
 class PowerFlowTimeSeriesDriver3Ph(TimeSeriesDriverTemplate):
@@ -37,7 +45,7 @@ class PowerFlowTimeSeriesDriver3Ph(TimeSeriesDriverTemplate):
         grid: MultiCircuit,
         options: Union[PowerFlowOptions, None] = None,
         time_indices: Union[IntVec, None] = None,
-        opf_time_series_results=None,
+        opf_time_series_results: Union["PowerFlowTimeSeriesResults", None] = None,
         clustering_results: Union[ClusteringResults, None] = None,
         engine: EngineType = EngineType.VeraGrid,
     ) -> None:
@@ -61,7 +69,7 @@ class PowerFlowTimeSeriesDriver3Ph(TimeSeriesDriverTemplate):
         )
 
         self.options: PowerFlowOptions = PowerFlowOptions() if options is None else options
-        self.opf_time_series_results = opf_time_series_results
+        self.opf_time_series_results: Union["PowerFlowTimeSeriesResults", None] = opf_time_series_results
 
         bus_names: np.ndarray = self.grid.get_bus_names()
         branch_names: np.ndarray = self.grid.get_branch_names(add_hvdc=False, add_vsc=False, add_switch=True)
@@ -120,13 +128,16 @@ class PowerFlowTimeSeriesDriver3Ph(TimeSeriesDriverTemplate):
             clustering_results=self.clustering_results,
         )
 
-        bus_dict: dict = {bus: i for i, bus in enumerate(self.grid.buses)}
-        areas_dict: dict = {area: i for i, area in enumerate(self.grid.areas)}
+        # The internal solver already accepts reusable index lookups, so they are
+        # built once here to avoid repeating the same mapping work on every step.
+        bus_dict: Dict = {bus: i for i, bus in enumerate(self.grid.buses)}
+        areas_dict: Dict = {area: i for i, area in enumerate(self.grid.areas)}
         self.report_progress(0.0)
 
         it: int
         t_idx: int
         for it, t_idx in enumerate(time_indices):
+            # Each step must rebuild the network state at the selected profile index.
             self.report_text("Time series 3ph at " + str(self.grid.time_profile[t_idx]) + "...")
             self.report_progress2(it, len(time_indices))
 
@@ -149,6 +160,61 @@ class PowerFlowTimeSeriesDriver3Ph(TimeSeriesDriverTemplate):
 
         return results
 
+    def run_gslv(self, time_indices: IntVec) -> PowerFlowTimeSeriesResults3Ph:
+        """
+        Run the three-phase time series with one native GSLV snapshot per time step.
+
+        :param time_indices: Selected time indices.
+        :return: Time-series results.
+        """
+        bus_names: np.ndarray = self.grid.get_bus_names()
+        branch_names: np.ndarray = self.grid.get_branch_names(add_hvdc=False, add_vsc=False, add_switch=True)
+        results: PowerFlowTimeSeriesResults3Ph = PowerFlowTimeSeriesResults3Ph(
+            n=3 * len(bus_names),
+            m=3 * len(branch_names),
+            n_hvdc=self.grid.get_hvdc_number(),
+            n_vsc=self.grid.get_vsc_number(),
+            n_gen=self.grid.get_generation_like_number(),
+            n_batt=self.grid.get_batteries_number(),
+            n_sh=self.grid.get_shunt_like_device_number(),
+            n_load=self.grid.get_load_like_device_number(),
+            bus_names=bus_names,
+            branch_names=branch_names,
+            hvdc_names=self.grid.get_hvdc_names(),
+            vsc_names=self.grid.get_vsc_names(),
+            gen_names=self.grid.get_generation_like_names(),
+            batt_names=self.grid.get_battery_names(),
+            sh_names=self.grid.get_shunt_like_devices_names(),
+            load_names=self.grid.get_load_like_devices_names(),
+            bus_types=np.ones(len(bus_names), dtype=int),
+            time_array=self.grid.time_profile[time_indices],
+            clustering_results=self.clustering_results,
+        )
+
+        it: int
+        t_idx: int
+        for it, t_idx in enumerate(time_indices):
+            # The GSLV wrapper exposes a snapshot three-phase API, so the time-series
+            # driver dispatches one explicit snapshot per requested time index.
+            self.report_text("Time series 3ph at " + str(self.grid.time_profile[t_idx]) + "...")
+            self.report_progress2(it, len(time_indices))
+
+            gslv_snapshot = gslv_pf_3ph(
+                circuit=self.grid,
+                pf_opt=self.options,
+                t_idx=int(t_idx),
+                logger=self.logger,
+            )
+            snapshot_results = translate_gslv_pf_3ph_results(self.grid, gslv_snapshot)
+            results.set_at(it, snapshot_results)
+
+            if self.is_cancel():
+                return results
+            else:
+                pass
+
+        return results
+
     def run(self) -> None:
         """
         Run the selected three-phase time-series simulation.
@@ -157,8 +223,17 @@ class PowerFlowTimeSeriesDriver3Ph(TimeSeriesDriverTemplate):
         """
         self.tic()
 
+        # The driver can only keep the GSLV engine when the wrapper is available.
+        if self.engine == EngineType.GSLV and not GSLV_AVAILABLE:
+            self.engine = EngineType.VeraGrid
+            self.logger.add_warning('Failed back to VeraGrid')
+        else:
+            pass
+
         if self.engine == EngineType.VeraGrid:
             self.results = self.run_single_thread(time_indices=self.time_indices)
+        elif self.engine == EngineType.GSLV:
+            self.results = self.run_gslv(time_indices=self.time_indices)
         else:
             raise Exception("Engine " + self.engine.value + " not implemented for " + self.name)
 
