@@ -31,7 +31,7 @@ from VeraGridEngine.Simulations.OPF.opf_driver import OptimalPowerFlowDriver, Op
 from VeraGridEngine.Simulations.OPF.opf_ts_driver import (OptimalPowerFlowTimeSeriesDriver,
                                                           OptimalPowerFlowTimeSeriesResults)
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver, PowerFlowResults
-from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlowDriver3Ph, PowerFlowResults3Ph
+from VeraGridEngine.Simulations.PowerFlow3ph.power_flow_driver_3ph import PowerFlowDriver3Ph, PowerFlowResults3Ph
 from VeraGridEngine.Simulations.PowerFlow.power_flow_ts_driver import (PowerFlowTimeSeriesDriver,
                                                                        PowerFlowTimeSeriesResults)
 from VeraGridEngine.Simulations.ShortCircuitStudies.short_circuit_driver import ShortCircuitDriver, ShortCircuitResults
@@ -49,7 +49,6 @@ from VeraGridEngine.Simulations.SigmaAnalysis.sigma_analysis_driver import Sigma
 from VeraGridEngine.Simulations.NTC.ntc_driver import (OptimalNetTransferCapacityResults,
                                                        OptimalNetTransferCapacityDriver)
 from VeraGridEngine.Simulations.NTC.ntc_ts_driver import (
-    OptimalNetTransferCapacityTimeSeriesDriver,
     OptimalNetTransferCapacityTimeSeriesResults,
 )
 from VeraGridEngine.Simulations.NodalCapacity.nodal_capacity_ts_driver import (NodalCapacityTimeSeriesDriver,

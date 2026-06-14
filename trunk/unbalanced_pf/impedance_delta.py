@@ -1,9 +1,6 @@
 import VeraGridEngine.api as gce
-from VeraGridEngine import WindingType, ShuntConnectionType, AdmittanceMatrix
+from VeraGridEngine import ShuntConnectionType
 import numpy as np
-from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_basic_formulation_3ph import PfBasicFormulation3Ph
-from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.newton_raphson_fx import newton_raphson_fx
-import pandas as pd
 
 logger = gce.Logger()
 

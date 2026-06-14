@@ -48,7 +48,7 @@ from VeraGridEngine.enumerations import ShuntConnectionType
 from VeraGridEngine.Templates.Emt.xfmr_emt_template import get_xfmr_emt_template
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
 
-from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlowDriver3Ph
+from VeraGridEngine.Simulations.PowerFlow3ph.power_flow_driver_3ph import PowerFlowDriver3Ph
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
 from VeraGridEngine.enumerations import BranchImpedanceMode, SolverType
 
