@@ -316,6 +316,32 @@ def grade_from_score(score: int) -> str:
                     return "F"
 
 
+def sigma_point_is_outside_curve(sigma_real: float, sigma_imag: float, tolerance: float = 1e-9) -> bool:
+    """
+    Check whether one sigma point lies outside the sigma stability boundary.
+
+    The sigma boundary used by the plot is:
+    ``sigma_im = ±sqrt(0.25 + sigma_real)``, valid for ``sigma_real >= -0.25``.
+
+    :param sigma_real: Sigma real coordinate
+    :param sigma_imag: Sigma imaginary coordinate
+    :param tolerance: Small tolerance to avoid false positives near the boundary
+    :return: True when the point lies outside the stability region
+    """
+    if np.isnan(sigma_real) or np.isnan(sigma_imag):
+        return False
+
+    if sigma_real < (-0.25 - tolerance):
+        return True
+
+    boundary_argument: float = 0.25 + sigma_real
+    if boundary_argument < 0.0:
+        boundary_argument = 0.0
+
+    boundary: float = math.sqrt(boundary_argument)
+    return abs(sigma_imag) > (boundary + tolerance)
+
+
 def build_fixable_identifiers(fixable_error: FIXABLE_ERROR_TYPES) -> List[str]:
     """
     Extract a small family of identifiers that can be matched against log rows.
@@ -875,7 +901,7 @@ QWidget#overviewPage QProgressBar::chunk {{
             min_vcc=self.ui.transformerVccMinSpinBox.value(),
             max_vcc=self.ui.transformerVccMaxSpinBox.value(),
             branch_x_threshold=1e-4,
-            condition_number_threshold=1e4,
+            power_flow_options=self.power_flow_options,
             logger=self.log,
         )
 
@@ -989,6 +1015,8 @@ QWidget#overviewPage QProgressBar::chunk {{
 
         bus_names: np.ndarray = results.bus_names
         distances: np.ndarray = results.distances
+        sigma_real_values: np.ndarray = results.sigma_re
+        sigma_imag_values: np.ndarray = results.sigma_im
         for index, distance in enumerate(distances):
             if np.isnan(distance):
                 entries.append(
@@ -1006,7 +1034,10 @@ QWidget#overviewPage QProgressBar::chunk {{
                     )
                 )
             else:
-                if distance < 0.0:
+                sigma_real: float = float(sigma_real_values[index])
+                sigma_imag: float = float(sigma_imag_values[index])
+
+                if sigma_point_is_outside_curve(sigma_real=sigma_real, sigma_imag=sigma_imag):
                     entries.append(
                         IssueEntry(
                             message="Sigma point is outside the stability curve",
@@ -1016,7 +1047,7 @@ QWidget#overviewPage QProgressBar::chunk {{
                             severity=LogSeverity.Error,
                             property_name="Sigma distance",
                             lower="0.0",
-                            value=f"{distance:.6f}",
+                            value=f"{abs(float(distance)):.6f}",
                             upper="inf",
                             fixable=False,
                         )
