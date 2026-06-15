@@ -1,7 +1,6 @@
 import numpy as np
 import VeraGridEngine.api as gce
 from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_basic_formulation import PfBasicFormulation
-from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_basic_formulation_3ph import PfBasicFormulation3Ph
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.newton_raphson_fx import newton_raphson_fx
 
 grid = gce.open_file("SinglePhase_Test.gridcal")

@@ -8,12 +8,12 @@ from typing import Union, Dict, Tuple, TYPE_CHECKING
 
 from VeraGridEngine.enumerations import SolverType
 from VeraGridEngine.basic_structures import Logger, ConvergenceReport
-from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
+from VeraGridEngine.Simulations.PowerFlow3ph.power_flow_results_3ph import PowerFlowResults3Ph
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import NumericPowerFlowResults
-from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_basic_formulation_3ph import (PfBasicFormulation3Ph,
-                                                                                        expand3ph,
-                                                                                        expandVoltage3ph)
+from VeraGridEngine.Simulations.PowerFlow3ph.Formulations.pf_basic_formulation_3ph import (PfBasicFormulation3Ph,
+                                                                                           expand3ph,
+                                                                                           expandVoltage3ph)
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions import (floating_star_currents,
                                                                                     floating_star_powers)
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.newton_raphson_fx import newton_raphson_fx

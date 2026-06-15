@@ -1115,15 +1115,15 @@ class SimulationsMain(TimeEventsMain):
         """
         if self.server_driver.is_running():
             if self.ts_flag():
-                instruction = RemoteInstruction(operation=SimulationTypes.PowerFlowTimeSeries_run)
+                instruction = RemoteInstruction(operation=SimulationTypes.PowerFlowTimeSeries3ph_run)
             else:
-                instruction = RemoteInstruction(operation=SimulationTypes.PowerFlow_run)
+                instruction = RemoteInstruction(operation=SimulationTypes.PowerFlow3ph_run)
 
             self.run_remote(instruction=instruction)
 
         else:
             if self.ts_flag():
-                self.show_warning_toast("Time series not available yer for 3-phase formulation :/")
+                self.run_power_flow_time_series_3ph()
             else:
                 self.run_power_flow3ph()
 
@@ -1582,6 +1582,66 @@ class SimulationsMain(TimeEventsMain):
         else:
             warning_msg('There are no power flow results.\nIs there any slack bus or generator?',
                         'Power flow')
+
+        if not self.session.is_anything_running():
+            self.UNLOCK()
+
+    def run_power_flow_time_series_3ph(self):
+        """
+        Run a three-phase power-flow time-series simulation in a separated thread from the GUI.
+
+        :return: None.
+        """
+        if self.circuit.valid_for_simulation():
+            if not self.session.is_this_running(SimulationTypes.PowerFlowTimeSeries3ph_run):
+                if self.valid_time_series():
+                    self.LOCK()
+
+                    self.add_simulation(SimulationTypes.PowerFlowTimeSeries3ph_run)
+
+                    self.ui.progress_label.setText('Compiling the grid...')
+                    QtGui.QGuiApplication.processEvents()
+
+                    opf_time_series_results = self.get_opf_ts_results(
+                        use_opf=self.ui.actionOpf_to_Power_flow.isChecked()
+                    )
+                    options = self.get_selected_power_flow_options()
+
+                    drv = sim.PowerFlowTimeSeriesDriver3Ph(grid=self.circuit,
+                                                          options=options,
+                                                          time_indices=self.get_time_indices(),
+                                                          opf_time_series_results=opf_time_series_results,
+                                                          clustering_results=self.get_clustering_results(),
+                                                          engine=self.get_preferred_engine())
+
+                    self.session.run(drv,
+                                     post_func=self.post_power_flow_time_series_3ph,
+                                     prog_func=self.ui.progressBar.setValue,
+                                     text_func=self.ui.progress_label.setText)
+                else:
+                    self.show_warning_toast('There are no time series.')
+            else:
+                self.show_warning_toast('Another three-phase time series power flow is being executed now...')
+        else:
+            pass
+
+    def post_power_flow_time_series_3ph(self):
+        """
+        Events to do when the three-phase time-series simulation has finished.
+
+        :return: None.
+        """
+        _, results = self.session.power_flow_3ph_ts
+
+        if results is not None:
+            results.expand_clustered_results()
+
+            self.remove_simulation(SimulationTypes.PowerFlowTimeSeries3ph_run)
+
+            self.update_available_results()
+            self.colour_diagrams()
+        else:
+            self.show_warning_toast('No results for the three-phase time series simulation.')
 
         if not self.session.is_anything_running():
             self.UNLOCK()
