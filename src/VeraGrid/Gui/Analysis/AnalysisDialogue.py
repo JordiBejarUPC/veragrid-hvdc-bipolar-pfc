@@ -400,7 +400,6 @@ class GridAnalysisGUI(QtWidgets.QMainWindow):
         "sigma_model",
         "summary",
         "theme_is_dark",
-        "theme_stylesheet",
         "theme_refresh_in_progress",
         "theme_updates_enabled",
     )
@@ -420,7 +419,6 @@ class GridAnalysisGUI(QtWidgets.QMainWindow):
 
         # Keep theme refreshes disabled until the window state is fully initialized.
         self.theme_is_dark = False
-        self.theme_stylesheet = ""
         self.theme_refresh_in_progress = False
         self.theme_updates_enabled = False
 
@@ -501,7 +499,7 @@ class GridAnalysisGUI(QtWidgets.QMainWindow):
             f"{circuit_name}  •  {bus_count} buses  •  {line_count} lines  •  {transformer_count} transformers"
         )
 
-        # Apply the dashboard-specific theme after the widgets exist so it follows the main application mode.
+        # Sync the auxiliary dashboard visuals with the current application theme.
         self.apply_theme()
 
     def configure_tables(self) -> None:
@@ -640,7 +638,7 @@ class GridAnalysisGUI(QtWidgets.QMainWindow):
 
     def apply_theme(self) -> None:
         """
-        Apply the dashboard stylesheet that matches the current main-window theme.
+        Sync the dashboard helper visuals with the current main-window theme.
         """
         if not self.theme_updates_enabled:
             return
@@ -652,13 +650,11 @@ class GridAnalysisGUI(QtWidgets.QMainWindow):
         else:
             pass
 
-        # Recompute the theme mode each time because the main application can switch live between light and dark.
+        # Recompute the mode each time because the main application can switch live between light and dark.
         new_theme_is_dark: bool = self.is_dashboard_dark_mode()
-        new_stylesheet: str = self.build_theme_stylesheet(dark_mode=new_theme_is_dark)
-        theme_changed: bool = (
-            (new_theme_is_dark != self.theme_is_dark)
-            or (new_stylesheet != self.theme_stylesheet)
-        )
+        theme_changed: bool = (new_theme_is_dark != self.theme_is_dark)
+        overview_stylesheet: str = self.build_overview_stylesheet(dark_mode=new_theme_is_dark)
+        self.ui.overviewPage.setStyleSheet(overview_stylesheet)
 
         if not theme_changed:
             return
@@ -668,35 +664,26 @@ class GridAnalysisGUI(QtWidgets.QMainWindow):
         self.theme_refresh_in_progress = True
         try:
             self.theme_is_dark = new_theme_is_dark
-            self.theme_stylesheet = new_stylesheet
-            self.setStyleSheet(new_stylesheet)
             self.refresh_issue_table()
             self.update_sigma_panel()
             self.update_narrative()
         finally:
             self.theme_refresh_in_progress = False
 
-    def build_theme_stylesheet(self, dark_mode: bool) -> str:
+    def build_overview_stylesheet(self, dark_mode: bool) -> str:
         """
-        Build the dashboard stylesheet for the current theme mode.
+        Build the dashboard stylesheet for the overview tab only.
 
-        :param dark_mode: Whether the dashboard should use dark mode
-        :return: Complete dashboard stylesheet
+        :param dark_mode: Whether the overview should use dark-mode colors
+        :return: Overview-page stylesheet
         """
-        # Select the complete visual palette explicitly so the dashboard remains readable in both modes.
         if dark_mode:
             window_background: str = "#161b22"
             panel_background: str = "#1f2630"
-            soft_panel_background: str = "#1b212a"
             border_color: str = "#344051"
             text_color: str = "#e7edf5"
-            muted_text_color: str = "#9fb0c2"
-            input_background: str = "#0f141a"
             input_border: str = "#46556a"
-            selection_background: str = "#214e77"
-            selection_text_color: str = "#f7fbff"
             progress_background: str = "#304053"
-            toolbar_background: str = "#1a2028"
             hero_gradient_start: str = "#0a2a43"
             hero_gradient_mid: str = "#0f4d69"
             hero_gradient_end: str = "#19614d"
@@ -712,13 +699,6 @@ class GridAnalysisGUI(QtWidgets.QMainWindow):
             secondary_button_text: str = "#d9ecff"
             accent_button_background: str = "#173c35"
             accent_button_text: str = "#bff2e1"
-            toolbox_tab_background: str = "#18202a"
-            toolbox_tab_hover: str = "#233041"
-            toolbox_tab_selected: str = "#25364a"
-            toolbox_tab_text: str = "#d7e3ef"
-            table_alternate_background: str = "#1a2028"
-            browser_background: str = "#171c24"
-            section_header_background: str = "#26303d"
             sigma_status_color: str = "#bfd0e3"
             card_caption_color: str = "#8fa3b9"
             card_value_color: str = "#f2f7fb"
@@ -726,16 +706,10 @@ class GridAnalysisGUI(QtWidgets.QMainWindow):
         else:
             window_background = "#f3f7fb"
             panel_background = "#ffffff"
-            soft_panel_background = "#fbfdff"
             border_color = "#dce7f2"
             text_color = "#102235"
-            muted_text_color = "#688097"
-            input_background = "#f8fbfe"
             input_border = "#d4e1ee"
-            selection_background = "#dff1ff"
-            selection_text_color = "#0d2236"
             progress_background = "#e5eef6"
-            toolbar_background = "#ffffff"
             hero_gradient_start = "#0d344f"
             hero_gradient_mid = "#135a7c"
             hero_gradient_end = "#1f8a70"
@@ -751,59 +725,48 @@ class GridAnalysisGUI(QtWidgets.QMainWindow):
             secondary_button_text = "#10415f"
             accent_button_background = "#e3fbf2"
             accent_button_text = "#0f473e"
-            toolbox_tab_background = "#eef4f9"
-            toolbox_tab_hover = "#e4edf5"
-            toolbox_tab_selected = "#ffffff"
-            toolbox_tab_text = "#23415a"
-            table_alternate_background = "#f7fbff"
-            browser_background = "#fbfdff"
-            section_header_background = "#eef4f9"
             sigma_status_color = "#375166"
             card_caption_color = "#5e7388"
             card_value_color = "#0d2236"
             muted_line_color = "#90abc6"
 
         return f"""
-QMainWindow, QWidget#centralwidget, QWidget#leftPanelWidget, QWidget#rightPanelWidget,
-QWidget#findingsPage, QWidget#narrativePage, QWidget#sigmaPage, QWidget#controlsPage {{
+QWidget#overviewPage {{
     background-color: {window_background};
     color: {text_color};
     font-family: "DejaVu Sans";
 }}
 
-QFrame#heroFrame {{
+QWidget#overviewPage QFrame#heroFrame {{
     border-radius: 28px;
     background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
                                 stop:0 {hero_gradient_start}, stop:0.55 {hero_gradient_mid}, stop:1 {hero_gradient_end});
 }}
 
-QFrame#scoreCardFrame,
-QFrame#issueCardFrame,
-QFrame#criticalCardFrame,
-QFrame#fixableCardFrame,
-QFrame#sigmaCardFrame,
-QFrame#findingsFrame,
-QFrame#narrativeFrame,
-QFrame#sigmaPanelFrame,
-QFrame#controlsFrame {{
+QWidget#overviewPage QFrame#scoreCardFrame,
+QWidget#overviewPage QFrame#issueCardFrame,
+QWidget#overviewPage QFrame#criticalCardFrame,
+QWidget#overviewPage QFrame#fixableCardFrame,
+QWidget#overviewPage QFrame#sigmaCardFrame,
+QWidget#overviewPage QFrame#overviewHintFrame {{
     background-color: {panel_background};
     border: 1px solid {border_color};
     border-radius: 24px;
 }}
 
-QLabel#titleLabel {{
+QWidget#overviewPage QLabel#titleLabel {{
     color: #f7fbff;
     font-size: 30px;
     font-weight: 700;
 }}
 
-QLabel#subtitleLabel,
-QLabel#gridNameLabel {{
+QWidget#overviewPage QLabel#subtitleLabel,
+QWidget#overviewPage QLabel#gridNameLabel {{
     color: rgba(247, 251, 255, 215);
     font-size: 13px;
 }}
 
-QLabel#statusChipLabel {{
+QWidget#overviewPage QLabel#statusChipLabel {{
     color: #ffffff;
     background-color: {chip_background};
     border: 1px solid {chip_border};
@@ -813,25 +776,19 @@ QLabel#statusChipLabel {{
     font-weight: 600;
 }}
 
-QLabel[cssClass="sectionTitle"] {{
-    font-size: 18px;
-    font-weight: 700;
-    color: {text_color};
-}}
-
-QLabel[cssClass="cardCaption"] {{
+QWidget#overviewPage QLabel[cssClass="cardCaption"] {{
     color: {card_caption_color};
     font-size: 11px;
     font-weight: 600;
 }}
 
-QLabel[cssClass="cardValue"] {{
+QWidget#overviewPage QLabel[cssClass="cardValue"] {{
     color: {card_value_color};
     font-size: 28px;
     font-weight: 700;
 }}
 
-QLabel#scoreGradeLabel {{
+QWidget#overviewPage QLabel#scoreGradeLabel {{
     color: {grade_text_color};
     background-color: {grade_background};
     border: 1px solid {grade_border};
@@ -841,25 +798,12 @@ QLabel#scoreGradeLabel {{
     font-weight: 700;
 }}
 
-QLabel#sigmaStatusLabel,
-QLabel#scoreExplainerLabel,
-QLabel#filtersHintLabel,
-QLabel#controlsHintLabel {{
+QWidget#overviewPage QLabel#scoreExplainerLabel {{
     color: {sigma_status_color};
     font-size: 12px;
 }}
 
-QLineEdit, QComboBox, QDoubleSpinBox {{
-    background-color: {input_background};
-    color: {text_color};
-    border: 1px solid {input_border};
-    border-radius: 12px;
-    min-height: 34px;
-    padding-left: 10px;
-    padding-right: 10px;
-}}
-
-QPushButton {{
+QWidget#overviewPage QPushButton {{
     min-height: 38px;
     border-radius: 18px;
     padding-left: 16px;
@@ -870,66 +814,33 @@ QPushButton {{
     color: {text_color};
 }}
 
-QPushButton#analyzeButton {{
+QWidget#overviewPage QPushButton#analyzeButton {{
     color: {primary_button_text};
     border: 0px;
     background-color: {primary_button_background};
 }}
 
-QPushButton#fixIssuesButton {{
+QWidget#overviewPage QPushButton#fixIssuesButton {{
     color: {secondary_button_text};
     background-color: {secondary_button_background};
     border: 1px solid {border_color};
 }}
 
-QPushButton#exportReportButton {{
+QWidget#overviewPage QPushButton#exportReportButton {{
     color: {accent_button_text};
     background-color: {accent_button_background};
     border: 1px solid {border_color};
 }}
 
-QPushButton:hover {{
+QWidget#overviewPage QPushButton:hover {{
     border-color: {muted_line_color};
 }}
 
-QPushButton#analyzeButton:hover {{
+QWidget#overviewPage QPushButton#analyzeButton:hover {{
     background-color: {primary_button_hover};
 }}
 
-QCheckBox {{
-    color: {text_color};
-    spacing: 8px;
-    background: transparent;
-}}
-
-QTableView {{
-    background-color: {panel_background};
-    alternate-background-color: {table_alternate_background};
-    border: 1px solid {border_color};
-    border-radius: 18px;
-    gridline-color: {border_color};
-    selection-background-color: {selection_background};
-    selection-color: {selection_text_color};
-}}
-
-QHeaderView::section {{
-    background-color: {section_header_background};
-    color: {text_color};
-    border: 0px;
-    border-bottom: 1px solid {border_color};
-    padding: 8px;
-    font-weight: 700;
-}}
-
-QTextBrowser {{
-    background-color: {browser_background};
-    color: {text_color};
-    border: 1px solid {border_color};
-    border-radius: 18px;
-    padding: 10px;
-}}
-
-QProgressBar {{
+QWidget#overviewPage QProgressBar {{
     border: 0px;
     border-radius: 10px;
     background-color: {progress_background};
@@ -937,50 +848,10 @@ QProgressBar {{
     max-height: 10px;
 }}
 
-QProgressBar::chunk {{
+QWidget#overviewPage QProgressBar::chunk {{
     border-radius: 10px;
     background-color: {primary_button_background};
 }}
-
-QScrollArea {{
-    border: 0px;
-    background: transparent;
-}}
-
-QToolBar {{
-    background-color: {toolbar_background};
-    border-bottom: 1px solid {border_color};
-    spacing: 8px;
-}}
-
-QTabWidget::pane {{
-    border: 1px solid {border_color};
-    border-radius: 18px;
-    background: {panel_background};
-    margin-top: 10px;
-}}
-
-QTabBar::tab {{
-    background: {toolbox_tab_background};
-    color: {toolbox_tab_text};
-    border: 1px solid {border_color};
-    border-bottom: 0px;
-    border-top-left-radius: 14px;
-    border-top-right-radius: 14px;
-    padding: 10px 16px;
-    margin-right: 6px;
-    font-weight: 700;
-}}
-
-QTabBar::tab:selected {{
-    background: {toolbox_tab_selected};
-    color: {text_color};
-}}
-
-QTabBar::tab:hover {{
-    background: {toolbox_tab_hover};
-}}
-
 """
 
     def analyze_all(self) -> None:
@@ -1343,7 +1214,7 @@ QTabBar::tab:hover {{
         penalty: float = (
             (12.0 * float(error_count))
             + (4.0 * float(warning_count))
-            + (1.0 * float(information_count))
+            + (0.1 * float(information_count))
             + (16.0 * float(divergence_count))
         )
 
