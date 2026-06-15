@@ -11,6 +11,11 @@ from VeraGridEngine.Simulations.PowerFlow3ph.power_flow_worker_3ph import multi_
 from VeraGridEngine.Simulations.PowerFlow3ph.power_flow_results_3ph import PowerFlowResults3Ph
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.driver_template import DriverTemplate
+from VeraGridEngine.Compilers.circuit_to_gslv import (
+    GSLV_AVAILABLE,
+    gslv_pf_3ph,
+    translate_gslv_pf_3ph_results,
+)
 from VeraGridEngine.enumerations import EngineType, SimulationTypes
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
@@ -18,6 +23,12 @@ if TYPE_CHECKING:  # Only imports the below statements during type checking
 
 
 class PowerFlowDriver3Ph(DriverTemplate):
+    __slots__ = (
+        "options",
+        "opf_results",
+        "convergence_reports",
+    )
+
     name = 'Power flow 3ph'
     tpe = SimulationTypes.PowerFlow3ph_run
 
@@ -28,7 +39,7 @@ class PowerFlowDriver3Ph(DriverTemplate):
     def __init__(self, grid: MultiCircuit,
                  options: Union[PowerFlowOptions, None] = None,
                  opf_results: Union[OptimalPowerFlowResults, None] = None,
-                 engine: EngineType = EngineType.VeraGrid):
+                 engine: EngineType = EngineType.VeraGrid) -> None:
         """
         PowerFlowDriver class constructor
         :param grid: MultiCircuit instance
@@ -64,7 +75,7 @@ class PowerFlowDriver3Ph(DriverTemplate):
             bus_types=np.ones(self.grid.get_bus_number())
         )
 
-        self.convergence_reports = list()
+        self.convergence_reports: List = list()
 
         self.__cancel__ = False
 
@@ -114,6 +125,13 @@ class PowerFlowDriver3Ph(DriverTemplate):
         """
         self.tic()
 
+        # The three-phase driver can only stay on GSLV when that engine is present.
+        if self.engine == EngineType.GSLV and not GSLV_AVAILABLE:
+            self.engine = EngineType.VeraGrid
+            self.logger.add_warning('Failed back to VeraGrid')
+        else:
+            pass
+
         if self.engine == EngineType.VeraGrid:
 
             # There is a different worker for 3-phase calculations
@@ -123,6 +141,18 @@ class PowerFlowDriver3Ph(DriverTemplate):
                                                opf_results=self.opf_results,
                                                logger=self.logger)
 
+            self.convergence_reports = self.results.convergence_reports
+
+        elif self.engine == EngineType.GSLV:
+            # Native GSLV solves the explicit NABC formulation, then the result is
+            # translated back into the VeraGrid three-phase results container.
+            gslv_results = gslv_pf_3ph(
+                circuit=self.grid,
+                pf_opt=self.options,
+                t_idx=None,
+                logger=self.logger,
+            )
+            self.results = translate_gslv_pf_3ph_results(self.grid, gslv_results)
             self.convergence_reports = self.results.convergence_reports
 
         else:
