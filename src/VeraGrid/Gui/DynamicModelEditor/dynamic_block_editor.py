@@ -455,6 +455,8 @@ def _parse_symbolic_editor_value(block: Block | None, value: Any) -> Any:
     Expr-compatible objects in init/event/mode dictionaries.
     """
     if not isinstance(value, str) or block is None:
+        if isinstance(value, (int, float)):
+            return Const(value)
         return value
 
     parsed = string_to_symbolic(value, build_block_symbol_namespace(block))
@@ -10973,6 +10975,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         expression_value = parsed_expression
 
                     self.parameters_model.set_value_from_expression(row_index, expression_value)
+                    print("")
                 except Exception as exc:
                     QtWidgets.QMessageBox.warning(
                         self,
