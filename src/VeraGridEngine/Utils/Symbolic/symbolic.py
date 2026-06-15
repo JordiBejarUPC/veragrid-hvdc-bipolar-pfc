@@ -600,6 +600,7 @@ class Var(Expr):
         else:
             raise ValueError(f"RMS model cannot accept {val}")
 
+    @property
     def ref(self) -> VarPowerFlowReferenceType | None:
         return self._ref
 
