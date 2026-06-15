@@ -41,6 +41,17 @@ OTHER = ACTIVE
 FONT_SCALE = 1.9
 
 
+def _is_palette_dark(palette: QPalette) -> bool:
+    """
+    Determine whether one Qt palette should be treated as dark.
+
+    :param palette: Qt palette to inspect.
+    :return: ``True`` when the palette window background is dark.
+    """
+    window_color: QColor = QColor(palette.color(QPalette.ColorGroup.Active, QPalette.ColorRole.Window))
+    return window_color.lightness() < 128
+
+
 def set_dark_mode() -> None:
     """
     Set the dark mode
@@ -80,7 +91,13 @@ def is_dark_mode() -> bool:
 
     :return:
     """
-    return IS_DARK
+    app: QApplication | None = QApplication.instance()
+
+    if app is None:
+        return IS_DARK
+    else:
+        palette: QPalette = app.palette()
+        return _is_palette_dark(palette=palette)
 
 
 def is_light_mode() -> bool:
@@ -88,7 +105,10 @@ def is_light_mode() -> bool:
 
     :return:
     """
-    return not IS_DARK
+    if is_dark_mode():
+        return False
+    else:
+        return True
 
 
 if IS_DARK:
