@@ -16,9 +16,9 @@ for name in [
     # "wecc179.raw",
     # "case300.raw",
     "01_A-HP_0-ST_2027_INV_MAX-D_(1).raw",
-    "01_A-HP_0-ST_2027_INV_MAX-N_(1).raw",
-    "01_A-HP_0-ST_2027_VER_MAX-D_(1).raw",
-    "01_A-HP_0-ST_2027_VER_MAX-N_(1).raw",
+    # "01_A-HP_0-ST_2027_INV_MAX-N_(1).raw",
+    # "01_A-HP_0-ST_2027_VER_MAX-D_(1).raw",
+    # "01_A-HP_0-ST_2027_VER_MAX-N_(1).raw",
 ]:
     # ------------------------------------------------------------------------------------------------------------------
     # Load PSSe
@@ -44,7 +44,9 @@ for name in [
         tolerance=1e-5,
         solver_type=vg.SolverType.NR,
         retry_with_other_methods=False,
-        initialize_angles=True
+        initialize_angles=True,
+        control_q=True,
+        ignore_single_node_islands=True
     )
     results = vg.power_flow(grid, options=options)
 

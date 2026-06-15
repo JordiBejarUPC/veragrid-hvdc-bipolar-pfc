@@ -1121,9 +1121,26 @@ def get_veragrid_transformer(
         tr3w.winding3.tap_phase = np.deg2rad(psse_elm.ANG3)
 
         # STAT=2/3/4 means winding 1/2/3 is individually out of service
-        tr3w.winding1.active = psse_elm.STAT != 2
-        tr3w.winding2.active = psse_elm.STAT != 3
-        tr3w.winding3.active = psse_elm.STAT != 4
+        if psse_elm.STAT == 0:
+            tr3w.winding1.active = False
+            tr3w.winding2.active = False
+            tr3w.winding3.active = False
+        elif psse_elm.STAT == 1:
+            tr3w.winding1.active = True
+            tr3w.winding2.active = True
+            tr3w.winding3.active = True
+        elif psse_elm.STAT == 2:
+            tr3w.winding1.active = True
+            tr3w.winding2.active = False
+            tr3w.winding3.active = True
+        elif psse_elm.STAT == 3:
+            tr3w.winding1.active = True
+            tr3w.winding2.active = True
+            tr3w.winding3.active = False
+        elif psse_elm.STAT == 4:
+            tr3w.winding1.active = False
+            tr3w.winding2.active = True
+            tr3w.winding3.active = True
 
         NOMV1 = psse_elm.NOMV1 if psse_elm.NOMV1 > 0 else bus_1.Vnom
         NOMV2 = psse_elm.NOMV2 if psse_elm.NOMV2 > 0 else bus_2.Vnom

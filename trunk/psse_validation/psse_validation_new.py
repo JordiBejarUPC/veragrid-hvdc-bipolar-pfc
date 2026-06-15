@@ -44,10 +44,14 @@ for name in [
         tolerance=1e-5,
         solver_type=vg.SolverType.NR,
         retry_with_other_methods=False,
-        initialize_angles=True,
+        control_q=False,
         ignore_single_node_islands=True,
-        control_q=True,
-        # verbose = 2 # delete line once singular jacobian problem solved
+        initialize_angles=True,
+        control_taps_modules=False,
+        control_taps_phase=False,
+        control_remote_voltage=False,
+        orthogonalize_controls=False,
+        apply_temperature_correction=False
     )
     driver = vg.PowerFlowDriver(grid, options=options)
     driver.run()
@@ -130,42 +134,26 @@ for name in [
             ("Vm", Vm_diff, Vm_psse, Vm_vg_cmp, "pu"),
             ("Va", Va_diff, Va_psse, Va_vg_cmp, "rad"),
         ]:
-            bad_mask = diff > 1e-3
-            if not bad_mask.any():
-                continue
 
-            bad_bus_numbers = psse_bus_df['number'].values[bad_mask]
-            connected_to = np.array([_connected_to(b) for b in bad_bus_numbers])
+            all_bus_numbers = psse_bus_df['number'].values
+            connected_to = np.array([_connected_to(b) for b in all_bus_numbers])
 
             diag = pd.DataFrame({
-                'bus_number':             bad_bus_numbers,
-                'bus_name':               psse_bus_df['names'].values[bad_mask],
+                'bus_name':               psse_bus_df['names'].values,
                 'connected_to':           connected_to,
-                f'{label}_psse ({unit})': val_psse[bad_mask],
-                f'{label}_vg ({unit})':   val_vg[bad_mask],
-                f'{label}_diff':          diff[bad_mask],
-                'P_vg (MW)':              vg_bus_df_cmp['P'].values[bad_mask],
-                'Q_vg (MVAr)':            vg_bus_df_cmp['Q'].values[bad_mask],
-            }).sort_values(f'{label}_diff', ascending=False)
+                f'{label}_vg ({unit})': val_vg,
+                f'{label}_psse ({unit})': val_psse,
+                f'{label}_diff':          diff,
+            })# .sort_values(f'{label}_diff', ascending=False)
 
-            print(f"\n  --- Failing {label} buses ---")
+            print(f"\n  --- All {label} buses ---")
             print(diag.to_string(index=False))
 
             # Breakdown of failing buses by the device they are connected to
             counts = pd.Series(connected_to).value_counts()
-            print(f"\n  Failing {label} buses by connection: "
+            print(f"\n {label} buses by connection: "
                   + ", ".join(f"{k}={v}" for k, v in counts.items()))
 
-            # Branch flows adjacent to the worst-mismatch bus
-            worst_bus_num = int(diag.iloc[0]['bus_number'])
-            adj_psse = psse_br_df[(psse_br_df['f'] == worst_bus_num) | (psse_br_df['t'] == worst_bus_num)]
-            if not adj_psse.empty:
-                print(f"\n  PSSE branch flows adjacent to worst bus {worst_bus_num}:")
-                print(adj_psse[['names', 'f', 't', 'Pf', 'Qf', 'Pt', 'Qt']].to_string(index=False))
-                adj_vg = vg_br_df[vg_br_df.index.isin(adj_psse['names'])]
-                if not adj_vg.empty:
-                    print(f"\n  VG branch flows adjacent to worst bus {worst_bus_num}:")
-                    print(adj_vg[['Pf', 'Qf', 'Pt', 'Qt']].to_string())
     else:
         print("*" * 40)
         print(name)
