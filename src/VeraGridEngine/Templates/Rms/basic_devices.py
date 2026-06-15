@@ -91,6 +91,8 @@ def get_pi_current_controller(vfactory: VarFactory, name: str = "current_ctrl_iq
 
     block = Block()
 
+    block.name = name
+
     event_dict = {
         Kp_icl: vfactory.add_const(0.05),
         Ki_icl: vfactory.add_const(1.0),
@@ -148,7 +150,7 @@ def get_pi_current_controller(vfactory: VarFactory, name: str = "current_ctrl_iq
     return templ
 
 
-def get_pi_power_controller(vfactory: VarFactory, name: str = "current_ctrl_iq") -> RmsModelTemplate:
+def get_pi_power_controller(vfactory: VarFactory, name: str = "power_ctrl") -> RmsModelTemplate:
     """
      Current control iq
     """
@@ -173,12 +175,13 @@ def get_pi_power_controller(vfactory: VarFactory, name: str = "current_ctrl_iq")
 
     block = Block()
 
+    block.name = name
 
 
     i_q_ref = vfactory.add_var('i_q_ref', shared_reference='i_q_ref_reference')
     i_d_ref = vfactory.add_var('i_d_ref', shared_reference='i_d_ref_reference')
 
-    inputs = [P, P_ref, i_q_ref, Q, Q_ref, i_d_ref]
+    inputs = [P, i_q_ref, Q, i_d_ref]
 
     control_block_1, _ = tf_to_block(vfactory,
                                      num=[Ki_pol, Kp_pol],
@@ -291,8 +294,8 @@ def get_gfl_converter_rms(vfactory: VarFactory, name: str = "current_ctrl_iq") -
             R: vfactory.add_const(0.01),
             L: vfactory.add_const(0.05),
         },
-        in_vars = [v_d_g, v_q_g, theta, omega, vd_hat, vq_hat],
-        out_vars = [P, Q, i_d, i_q],
+        in_vars = [v_d_g, v_q_g, theta, omega, vd_hat, vq_hat, Pt_vsc, Qt_vsc],
+        out_vars = [P, Q, i_d, i_q, P],
         init_eqs = {
         P: -Pt_vsc,
         Q: -Qt_vsc,
@@ -304,6 +307,8 @@ def get_gfl_converter_rms(vfactory: VarFactory, name: str = "current_ctrl_iq") -
         vq_hat: v_q_c - (v_q_g + L * omega * i_d),
     }
     )
+
+    electrical_block.name = "electrical equations"
 
     current_limiter_block =  Block(
         algebraic_eqs = [i_d_ref_sat_var - i_d_ref_sat,
@@ -320,7 +325,12 @@ def get_gfl_converter_rms(vfactory: VarFactory, name: str = "current_ctrl_iq") -
         }
     )
 
+    current_limiter_block.name = "current limiters"
+
     block = Block()
+
+    block.name = name
+
     block.children = [pll_block.block, pi_current_controller.block, pi_power_controller.block, electrical_block, current_limiter_block]
     block.in_vars = inputs
     block.out_vars = [i_d, i_q, P, Q, theta, v_d_c, v_q_c, vd_hat, vq_hat, R, L]
