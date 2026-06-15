@@ -1,0 +1,55 @@
+# eRoots Analytics
+
+## Rules of good code for Humans and LLMs
+
+Good code is evident once you understand what it is required from it.
+
+### Maintenance
+- Global vars are absolutely forbidden. This includes OS PATH vars and any other type of environment variable.
+- All functions must have types for every argument and the returning type.
+- All functions must have a clear docstring in ReStructuredText format.
+- All variable declaration must have their type hint.
+- Put comments on the code explaining what is going on at each stage, even inside functions. Explain, why each step happens from the algorithm point of view, and why the steps need to happen in the broader algorithm.
+- Functions inside functions are strictly forbidden.
+- Lambda functions are to be avoided at all cost.
+- Do not shadow reserved words with variable declarations, use `tpe` instead of `type` for variable names etc. Learn the language reserved words.
+- Pointer functions are to be avoided at all cost, it is better to pass a wrapper object where the function call is type-explicit.
+- Initialize dictionaries with `dict()`, lists with `list()` and sets with `set()`. This makes it clear what they are.
+- All `if` statements must have an `else` statement. In general all code states must be explicit and evident to inspect.
+- Avoid throwing exceptions if the state can be handled.
+- Never use `continue`, use proper `if` statements for nesting a clear logic instead.
+- Never use `hasattr`, `getattr` or `setattr`, use the structures directly and if unsure use `isinstance` to check that the class is of the expected type.
+- Use a style of "light classes" where classes have the functions that most logically belong to their behaviour. Avoiding static methods and `cls` constructors, those should be placed as functions outside the class.
+- Avoid logical loops; if a function inside a class depends on the class, it means it belongs outside of the class.
+- Avoid dataclasses and most related class magic.
+- Use `__slots__` to mark the class final.
+- Never use Pydantic or related libraries. They are a trap.
+- For interactive classes, create getters and setters to modify the internal values. This protects the class state and makes debugging easier.
+- Use complete module paths when importing local files, avoid the relative imports.
+- Do not create a system command to run a python file, we are not in the 1980's. Use a normal script instead.
+- Whenever there are some options for something (i.e. solver types) use an `Enum` and never use strings for that purpose.
+- Never reimplement exceptions. Avoid free complexity.
+- Never use ** for argument decompression. Use explicit function args always.
+- Compare enums, not the enum `.value`. Comparing strings is not refactorable.
+- Don't create functions packaging a single line.
+- Monkeypatching is for monkeys, pros use static imports.
+- Adding new dependencies is strictly forbidden without human intervention and validation.
+- Every time you are about to write new code, you must try to avoid it. Great engineers delete code.
+
+### Performance
+- Always declare the sizes in advance if you can know them. Use a numpy array instead of a list if you know the size in advance.
+- Vectorization of numerical arrays is always preferred. Alternatively numba functions with painfully explicit loops are preferred.
+- Avoid creating dictionaries for passing or storing data, create classes with properties instead, this makes it type and access safe.
+- Avoid using dictionaries if absolutely no other solution is available. Using a dictionary for a lookup functionality is tolerable, replacing a list or array with a dictionary is terrible.
+- Variables must not change type during their lifecycle, optional `None` is preferred.
+- If a key might not exist in a dictionary, use `.get(key, None)` and check for `None` afterwards.
+- Never add two or more lists to iterate over them. Instead, loop over the list collection and then loop over the individual list (2 for loops).
+- Use zero overhead programming when economically feasible.
+- Code python as if you were coding const-correct c++ code, this means that typing and access rights should be evident always.
+- Avoid polymorphism whenever economically feasible.
+- Once you create an object, do not modify it by changing the amount of memory it uses (i.e. changing the length of lists or arrays inside the object). In general, avoid increasing an object memory usage once it has been allocated.
+- When using sparse matrices do not change the matrix internal storage type (unlike what scipy does).
+- For sparse matrices, prefer CSC for storage, LIL or COO for matrix creation.
+
+
+
