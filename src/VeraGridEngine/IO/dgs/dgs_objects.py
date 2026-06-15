@@ -1490,6 +1490,7 @@ class ElmTr4(DGSElement):
         DgsProperty('fold_id', 'p', 'In Folder', py_name='fold_id'),
         DgsProperty('typ_id', 'p', 'Type in TypTr4', py_name='typ_id'),
         DgsProperty('outserv', 'i', 'Out of Service', py_name='outserv'),
+        DgsProperty('nt4nm', 'i', 'Number of parallel transformers', py_name='nt4nm'),
 
         DgsProperty('ictrlside', 'i', 'Controlled Side', py_name='ictrlside'),
         DgsProperty('ntrcn', 'i', 'Control Node Number', py_name='ntrcn'),
@@ -1596,6 +1597,7 @@ class ElmTr4(DGSElement):
         self.fold_id: str = ""
         self.typ_id: str = ""
         self.outserv: int = 0
+        self.nt4nm: int = 1
 
         self.ictrlside: int = 0
         self.ntrcn: int = 0
@@ -2737,6 +2739,7 @@ class TypTr4(DGSElement):
         DgsProperty('OP', 'a:1', 'Operation flag', py_name='OP'),
         DgsProperty('loc_name', 'a:80', 'Name', py_name='loc_name'),
         DgsProperty('fold_id', 'p', 'In Folder', py_name='fold_id'),
+        DgsProperty('inputData', 'i', 'Input data mode for Tr4W, 0 for complete, 1 for simplified', py_name='inputData'),
 
         DgsProperty('pfe', 'r', 'Iron Losses in kW', py_name='pfe'),
         DgsProperty('chr_name', 'a:40', 'Characteristic Name', py_name='chr_name'),
@@ -2885,6 +2888,7 @@ class TypTr4(DGSElement):
         self.OP: str = ""
         self.loc_name: str = ""
         self.fold_id: str = ""
+        self.inputData: int = 0
 
         self.pfe: float = 0.0
         self.chr_name: str = ""

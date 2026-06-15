@@ -1053,6 +1053,56 @@ def _order_hv_mv_lv(bus_a: dev.Bus, bus_b: dev.Bus, bus_c: dev.Bus, logger: Logg
 
     return buses_sorted[0], buses_sorted[1], buses_sorted[2]
 
+def _order_tr4(bus_a: dev.Bus, bus_b: dev.Bus, bus_c: dev.Bus,bus_d: dev.Bus, logger: Logger, tr_name: str) -> Tuple[
+    dev.Bus, dev.Bus, dev.Bus, dev.Bus]:
+    """
+    Order hv mv lv.
+
+    :param bus_a: bus_a parameter.
+    :param bus_b: bus_b parameter.
+    :param bus_c: bus_c parameter.
+    :param logger: logger parameter.
+    :param tr_name: tr_name parameter.
+    :return: Function result.
+    """
+    va = float(bus_a.Vnom)
+    vb = float(bus_b.Vnom)
+    vc = float(bus_c.Vnom)
+    vd = float(bus_d.Vnom)
+
+    if va == 0.0 or vb == 0.0 or vc == 0.0 or vd == 0.0:
+        logger.add_warning(
+            f"one or more buses have Vnom=0.0",
+            device=tr_name,
+            device_class="Transformer3W",
+            value=f"(va={va}, vb={vb}, vc={vc})"
+        )
+
+        return bus_a, bus_b, bus_c, bus_d
+
+    buses: List[dev.Bus] = list()
+    buses.append(bus_a)
+    buses.append(bus_b)
+    buses.append(bus_c)
+    buses.append(bus_d)
+    buses_sorted: List[dev.Bus] = sorted(buses, key=_bus_vnom_sort_key, reverse=True)
+
+    v0 = float(buses_sorted[0].Vnom)
+    v1 = float(buses_sorted[1].Vnom)
+    v2 = float(buses_sorted[2].Vnom)
+    v3 = float(buses_sorted[3].Vnom)
+
+    if v0 == v1 or v1 == v2 or v2 == v3:
+        logger.add_warning(
+            f"HV/MV/LV ambiguous, keeping Vnom-based ordering ",
+            device=tr_name,
+            device_class="Transformer4W",
+            value=f"(va={va}, vb={vb}, vc={vc}, vd={vd})"
+        )
+
+    return buses_sorted[0], buses_sorted[1], buses_sorted[2], buses_sorted[3]
+
+
 
 def _apply_tr3_winding_connection_data(
         winding: dev.Winding,
@@ -1470,6 +1520,163 @@ def convert_dgs_to_transformer3w(tr3: ElmTr3,
                                 y=y)
 
     trafo3w.fill_from_design_values(
+        V1=float(template.utrn3_h),
+        V2=float(template.utrn3_m),
+        V3=float(template.utrn3_l),
+        Sn1=float(template.strn3_h),
+        Sn2=float(template.strn3_m),
+        Sn3=float(template.strn3_l),
+        Pcu12=float(template.pcut3_h),
+        Pcu23=float(template.pcut3_m),
+        Pcu31=float(template.pcut3_l),
+        Vsc12=float(template.uktr3_h),
+        Vsc23=float(template.uktr3_m),
+        Vsc31=float(template.uktr3_l),
+        Pfe=float(template.pfe),
+        I0=float(template.curm3),
+        Sbase=float(baseMVA),
+    )
+
+    _apply_tr3_winding_tap_data(
+        winding=trafo3w.winding1,
+        current_position=int(tr3.n3tap_h),
+        neutral_position=int(template.n3tp0_h),
+        minimum_position=int(template.n3tmn_h),
+        maximum_position=int(template.n3tmx_h),
+        step_percent=float(template.du3tp_h),
+        phase_angle_deg=float(template.ph3tr_h)
+    )
+    _apply_tr3_winding_tap_data(
+        winding=trafo3w.winding2,
+        current_position=int(tr3.n3tap_m),
+        neutral_position=int(template.n3tp0_m),
+        minimum_position=int(template.n3tmn_m),
+        maximum_position=int(template.n3tmx_m),
+        step_percent=float(template.du3tp_m),
+        phase_angle_deg=float(template.ph3tr_m)
+    )
+    _apply_tr3_winding_tap_data(
+        winding=trafo3w.winding3,
+        current_position=int(tr3.n3tap_l),
+        neutral_position=int(template.n3tp0_l),
+        minimum_position=int(template.n3tmn_l),
+        maximum_position=int(template.n3tmx_l),
+        step_percent=float(template.du3tp_l),
+        phase_angle_deg=float(template.ph3tr_l)
+    )
+
+    _apply_tr3_winding_connection_data(
+        winding=trafo3w.winding1,
+        pf_connection_code=str(template.tr3cn_h),
+        pf_vector_group_angle=float(template.nt3ag_h)
+    )
+    _apply_tr3_winding_connection_data(
+        winding=trafo3w.winding2,
+        pf_connection_code=str(template.tr3cn_m),
+        pf_vector_group_angle=float(template.nt3ag_m)
+    )
+    _apply_tr3_winding_connection_data(
+        winding=trafo3w.winding3,
+        pf_connection_code=str(template.tr3cn_l),
+        pf_vector_group_angle=float(template.nt3ag_l)
+    )
+
+    hv_closed, mv_closed, lv_closed = _get_tr3_winding_closed_states(
+        tr3_id=tr3.ID,
+        cubics_by_objid=cubics_by_objid,
+        switch_by_cubic_id=switch_by_cubic_id,
+        bus_by_term_id=bus_by_term_id,
+        bus_hv=bus_hv,
+        bus_mv=bus_mv,
+        bus_lv=bus_lv,
+    )
+    trafo3w.winding1.active = hv_closed
+    trafo3w.winding2.active = mv_closed
+    trafo3w.winding3.active = lv_closed
+
+    return trafo3w
+
+def convert_dgs_to_transformer4w(tr4: ElmTr4,
+                                 buses: List[dev.Bus],
+                                 stacubic_dict: Dict[str, List[int]],
+                                 templates_dict: Dict[str, TypTr4],
+                                 baseMVA: float,
+                                 logger: Logger,
+                                 cubics_by_objid: Dict[str, List[StaCubic]],
+                                 bus_by_term_id: Dict[str, dev.Bus],
+                                 switch_by_cubic_id: Dict[str, StaSwitch],
+                                 parallel_index: int = 0,
+                                 parallel_count: int = 1) -> dev.TransformerNW:
+    """
+    Convert dgs to transformer4w.
+
+    :param tr4: tr4 parameter.
+    :param buses: buses parameter.
+    :param stacubic_dict: stacubic_dict parameter.
+    :param templates_dict: templates_dict parameter.
+    :param baseMVA: baseMVA parameter.
+    :param logger: logger parameter.
+    :param cubics_by_objid: cubics_by_objid parameter.
+    :param bus_by_term_id: bus_by_term_id parameter.
+    :param switch_by_cubic_id: switch_by_cubic_id parameter.
+    :param parallel_index: parallel_index parameter.
+    :param parallel_count: parallel_count parameter.
+    :return: Function result.
+    """
+    template = _resolve_pointer_dict_value(key=tr4.typ_id, mapping=templates_dict)
+    if template is None:
+        raise ValueError(f"No TypTr4 data for transformer {tr4.ID}")
+    else:
+        pass
+
+    # Check connectivity through robust StaCubic.fold_id mapping first (preferred)
+    term_ids = get_terminal_ids(element_id=tr4.ID, cubics_by_objid=cubics_by_objid)
+    if len(term_ids) == 4:
+        bus_a = bus_by_term_id[term_ids[0]]
+        bus_b = bus_by_term_id[term_ids[1]]
+        bus_c = bus_by_term_id[term_ids[2]]
+        bus_d = bus_by_term_id[term_ids[3]]
+    else:
+        bus_ids = stacubic_dict[_ref_id(tr4.ID)]
+        bus_a = buses[bus_ids[0]]
+        bus_b = buses[bus_ids[1]]
+        bus_c = buses[bus_ids[2]]
+        bus_d = buses[bus_ids[3]]
+
+    bus_hv, bus_mv, bus_lv, bus_lv2 = _order_tr4(bus_a=bus_a, bus_b=bus_b, bus_c=bus_c, bus_d=bus_d, logger=logger, tr_name=tr4.loc_name)
+
+    # Graphic position not working right now
+    x = (float(bus_hv.x) + float(bus_mv.x) + float(bus_lv.x) + float(bus_lv2.x)) / 4.0
+    y = (float(bus_hv.y) + float(bus_mv.y) + float(bus_lv.y) + float(bus_lv2.y)) / 4.0
+
+    transformer_name = _get_non_empty_name(tr4.loc_name, f"Transformer4W_{_ref_id(tr4.ID)}")
+    transformer_name = _get_parallel_device_name(transformer_name, parallel_index, parallel_count)
+    transformer_idtag = _get_parallel_device_idtag(_ref_id(tr4.ID), parallel_index, parallel_count)
+
+    trafo4w = dev.TransformerNW(
+        idtag=transformer_idtag,
+        code=_ref_id(tr4.ID) or "",
+        name=transformer_name,
+        bus0=None,
+        winding_count=4,
+        buses=[
+            bus_hv,
+            bus_mv,
+            bus_lv,
+            bus_lv2,
+        ],
+        active=(int(tr4.outserv) == 0),
+        Pfe=float(template.pfe),
+        I0=float(template.curmag),
+        x=x,
+        y=y,
+    )
+
+    
+
+    return trafo4w
+
+    trafoNw.fill_from_design_values(
         V1=float(template.utrn3_h),
         V2=float(template.utrn3_m),
         V3=float(template.utrn3_l),
@@ -4229,6 +4436,82 @@ def _add_elmtr3_transformers(dgs_grid: DgsCircuit,
                     trafo3w.winding3.group = branch_group
             grid.add_transformer3w(obj=trafo3w)
 
+def _add_elmtr4_transformers(dgs_grid: DgsCircuit,
+                             grid: dev.MultiCircuit,
+                             stacubic_dict: Dict[str, List[int]],
+                             typtr4_dict: Dict[str, TypTr4],
+                             baseMVA: float,
+                             logger: Logger,
+                             cubics_by_objid: Dict[str, List[StaCubic]],
+                             bus_by_term_id: Dict[str, dev.Bus],
+                             switch_by_cubic_id: Dict[str, StaSwitch],
+                             branch_group_by_id: Dict[str, dev.BranchGroup]) -> None:
+    """
+    Add elmtr3 transformers.
+
+    :param dgs_grid: dgs_grid parameter.
+    :param grid: grid parameter.
+    :param stacubic_dict: stacubic_dict parameter.
+    :param typtr3_dict: typtr3_dict parameter.
+    :param baseMVA: baseMVA parameter.
+    :param logger: logger parameter.
+    :param cubics_by_objid: cubics_by_objid parameter.
+    :param bus_by_term_id: bus_by_term_id parameter.
+    :param switch_by_cubic_id: switch_by_cubic_id parameter.
+    :param branch_group_by_id: branch_group_by_id parameter.
+    :return: Function result.
+    """
+    for elmtr4 in dgs_grid.elmtr4s:
+        tr4_typ_id: str | None = _ref_id(elmtr4.typ_id)
+        if tr4_typ_id is None or tr4_typ_id == "":
+            logger.add_warning(
+                f"missing typ_id (no TypTr4 reference in DGS)",
+                device=f"{elmtr4.loc_name}' (ID={elmtr4.ID}) ",
+                device_class="Transformer4W",
+            )
+            continue
+        if typtr4_dict.get(tr4_typ_id, None) is None:
+            logger.add_warning(
+                f"referenced TypTr4 not found",
+                device=f"{elmtr4.loc_name}' (ID={elmtr4.ID}) ",
+                device_class="Transformer4W",
+                value=str(elmtr4.typ_id)
+            )
+            continue
+        term_ids: List[str] = get_terminal_ids(element_id=elmtr4.ID, cubics_by_objid=cubics_by_objid)
+        if len(term_ids) != 4:
+            bus_ids: List[int] | None = stacubic_dict.get(_ref_id(elmtr4.ID), None)
+            if bus_ids is None or len(bus_ids) != 4:
+                logger.add_warning(
+                    f"Not connected to exactly 4 terminals",
+                    device=f"{elmtr4.loc_name}' (ID={elmtr4.ID}) ",
+                    device_class="Transformer4W",
+                )
+                continue
+        parallel_count = _get_parallel_device_count(count=int(elmtr4.nt4nm))
+        for parallel_index in range(parallel_count):
+            trafo4w: dev.TransformerNW = convert_dgs_to_transformer4w(
+                tr4=elmtr4,
+                buses=grid.buses,
+                stacubic_dict=stacubic_dict,
+                templates_dict=typtr4_dict,
+                baseMVA=baseMVA,
+                logger=logger,
+                cubics_by_objid=cubics_by_objid,
+                bus_by_term_id=bus_by_term_id,
+                switch_by_cubic_id=switch_by_cubic_id,
+                parallel_index=parallel_index,
+                parallel_count=parallel_count
+            )
+            grid.add_bus(obj=trafo4w.bus0)
+            fold_id = _ref_id(elmtr4.fold_id)
+            if fold_id is not None and fold_id != "":
+                branch_group = branch_group_by_id.get(fold_id)
+                if branch_group is not None:
+                    for winding in trafo4w.windings:
+                        winding.group = branch_group
+            grid.add_transformer_nw(obj=trafo4w)
+
 
 def _build_stacubic_mappings(stacubics: List[StaCubic]) -> Tuple[Dict[str, List[int]], Dict[str, List[StaCubic]]]:
     """
@@ -5155,6 +5438,19 @@ def dgs_to_circuit(path: str,
         grid=grid,
         stacubic_dict=stacubic_dict,
         typtr3_dict=typtr3_dict,
+        baseMVA=baseMVA,
+        logger=logger,
+        cubics_by_objid=cubics_by_objid,
+        bus_by_term_id=bus_by_term_id,
+        switch_by_cubic_id=switch_by_cubic_id,
+        branch_group_by_id=branch_group_by_id,
+    )
+
+    _add_elmtr4_transformers(
+        dgs_grid=dgs_grid,
+        grid=grid,
+        stacubic_dict=stacubic_dict,
+        typtr4_dict=typtr4_dict,
         baseMVA=baseMVA,
         logger=logger,
         cubics_by_objid=cubics_by_objid,
