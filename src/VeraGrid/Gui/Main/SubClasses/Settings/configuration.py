@@ -139,11 +139,10 @@ class ConfigurationMain(ResultsMain):
                          "primary>list.selectionBackground": "#00aa88be"}
 
         if self.ui.dark_mode_checkBox.isChecked():
-            set_dark_mode()
-
             qdarktheme.setup_theme(theme='dark',
                                    custom_colors=custom_colors,
                                    additional_qss="QToolTip {color: white; background-color: black; border: 0px; }")
+            set_dark_mode()
 
             # note: The 0px border on the tooltips allow it to render properly
             for diagram in self.diagram_widgets_list:
@@ -153,10 +152,10 @@ class ConfigurationMain(ResultsMain):
             self.colour_diagrams()
 
         else:
-            set_light_mode()
             qdarktheme.setup_theme(theme='light',
                                    custom_colors=custom_colors,
                                    additional_qss="QToolTip {color: black; background-color: white; border: 0px;}")
+            set_light_mode()
 
             # note: The 0px border on the tooltips allow it to render properly
             for diagram in self.diagram_widgets_list:
