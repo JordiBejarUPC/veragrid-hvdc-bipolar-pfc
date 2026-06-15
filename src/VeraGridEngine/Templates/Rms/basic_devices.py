@@ -72,8 +72,7 @@ def get_pll_transform_rms(vfactory: VarFactory, name: str = "Pll_transform_rms")
     res_block.unify_blocks()
 
 
-
-    #Todo: add this method to var factory
+    omega.name = "omega_Pll_transformer"
     vfactory.add_shared_ref_to_var(omega, "omega_reference")
     templ.block = res_block
 
