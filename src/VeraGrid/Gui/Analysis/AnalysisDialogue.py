@@ -21,9 +21,11 @@ from VeraGrid.Gui.Analysis.object_plot_analysis import (FIXABLE_ERROR_TYPES, Fix
                                                         FixableErrorValueCorrection, FixableTransformerVtaps,
                                                         GridErrorLog, grid_analysis)
 from VeraGrid.Gui.Icons import icons_rc
+from VeraGrid.Gui.Widgets.matplotlibwidget import MatplotlibWidget
 from VeraGrid.Gui.general_dialogues import Logger, LogsDialogue
 from VeraGrid.Gui.results_model import ResultsModel
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from VeraGridEngine.Simulations.InputsAnalysis.inputs_analysis_driver import InputsAnalysisDriver, InputsAnalysisResults
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions
 from VeraGridEngine.Simulations.SigmaAnalysis.sigma_analysis_driver import SigmaAnalysisDriver, SigmaAnalysisResults
 from VeraGridEngine.enumerations import LogSeverity, ResultTypes
@@ -422,12 +424,18 @@ class GridAnalysisGUI(QtWidgets.QMainWindow):
         "fixable_errors",
         "issue_entries",
         "issue_model",
+        "inputs_results",
         "sigma_results",
         "sigma_model",
         "summary",
         "theme_is_dark",
         "theme_refresh_in_progress",
         "theme_updates_enabled",
+        "balance_page",
+        "balanceAggregationComboBox",
+        "balanceTopNSpinBox",
+        "balanceSummaryLabel",
+        "balancePlotWidget",
     )
 
     def __init__(self,
@@ -718,9 +726,9 @@ class GridAnalysisGUI(QtWidgets.QMainWindow):
             grade_text_color: str = "#a6f4d0"
             grade_background: str = "#153e35"
             grade_border: str = "#2a6d5d"
-            primary_button_background: str = "#ff934e"
-            primary_button_hover: str = "#ffa96f"
-            primary_button_text: str = "#102235"
+            primary_button_background: str = "#1f8a70"
+            primary_button_hover: str = "#27a27f"
+            primary_button_text: str = "#ffffff"
             secondary_button_background: str = "#203547"
             secondary_button_text: str = "#d9ecff"
             accent_button_background: str = "#173c35"
@@ -744,8 +752,8 @@ class GridAnalysisGUI(QtWidgets.QMainWindow):
             grade_text_color = "#0b6b4b"
             grade_background = "#def7ea"
             grade_border = "#c4ebd8"
-            primary_button_background = "#ff8a3d"
-            primary_button_hover = "#ff9b58"
+            primary_button_background = "#1f8a70"
+            primary_button_hover = "#27a27f"
             primary_button_text = "#ffffff"
             secondary_button_background = "#e9f5ff"
             secondary_button_text = "#10415f"
