@@ -29,7 +29,7 @@ from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.emt_solver_factory import build_emt_solver
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
-from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlowDriver3Ph
+from VeraGridEngine.Simulations.PowerFlow3ph.power_flow_driver_3ph import PowerFlowDriver3Ph
 from VeraGridEngine.Utils.Symbolic.block import Var, find_name_in_block
 from VeraGridEngine.enumerations import (
     BranchImpedanceMode,
