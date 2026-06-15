@@ -19,7 +19,8 @@ def build_gfm_converter_model(vfactory: VarFactory, inputs: List[Var],
                               multilinear: bool = False,
                               voltage_inputs: List[Var] | None = None,
                               power_inputs: List[Var] | None = None,
-                              current_power_inputs: List[Var] | None = None):
+                              current_power_inputs: List[Var] | None = None,
+                              reconstruct_filter_voltage: bool = False):
     """
     Build Grid Forming Converter model (Droop + voltage + current control)
     based on the provided conceptual equations.
@@ -36,10 +37,16 @@ def build_gfm_converter_model(vfactory: VarFactory, inputs: List[Var],
     else:
         Vm_c = voltage_inputs[0]
         Va_c = voltage_inputs[1]
-        Vm_f = voltage_inputs[2]
-        Va_f = voltage_inputs[3]
-        Vm_g = voltage_inputs[4]
-        Va_g = voltage_inputs[5]
+        if reconstruct_filter_voltage:
+            Vm_f = None
+            Va_f = None
+            Vm_g = voltage_inputs[2]
+            Va_g = voltage_inputs[3]
+        else:
+            Vm_f = voltage_inputs[2]
+            Va_f = voltage_inputs[3]
+            Vm_g = voltage_inputs[4]
+            Va_g = voltage_inputs[5]
     Pt_vsc = inputs[2]
     Qt_vsc = inputs[3]
 
@@ -119,6 +126,35 @@ def build_gfm_converter_model(vfactory: VarFactory, inputs: List[Var],
     vd_c = vfactory.add_var('vd_c')
     vq_c = vfactory.add_var('vq_c')
 
+    def hidden_filter_voltage_from_terminals():
+        """Recover the removed LCL midpoint from terminal voltages.
+
+        The RMS dq convention used here represents a phasor as vq + j*vd.
+        The reduced pi branch preserves terminal currents, but not this hidden
+        midpoint, so reconstruct it from the original T-network admittances.
+        """
+        xf = Lf
+        xc = Lc
+        den_f = Rf ** 2 + xf ** 2 + vfactory.add_const(1e-12)
+        den_c = Rc ** 2 + xc ** 2 + vfactory.add_const(1e-12)
+        g_f = Rf / den_f
+        b_f = -xf / den_f
+        g_c = Rc / den_c
+        b_c = -xc / den_c
+        g_sh = vfactory.add_const(1.0) / Rcap
+        b_sh = Cf
+
+        g_sum = g_f + g_c + g_sh
+        b_sum = b_f + b_c + b_sh
+        den_sum = g_sum ** 2 + b_sum ** 2 + vfactory.add_const(1e-12)
+
+        num_q = g_f * vq_c - b_f * vd_c + g_c * vq_g - b_c * vd_g
+        num_d = g_f * vd_c + b_f * vq_c + g_c * vd_g + b_c * vq_g
+
+        vq_mid = (num_q * g_sum + num_d * b_sum) / den_sum
+        vd_mid = (num_d * g_sum - num_q * b_sum) / den_sum
+        return vd_mid, vq_mid
+
     id_c = vfactory.add_var('id_c')
     iq_c = vfactory.add_var('iq_c')
     vd_f = vfactory.add_var('vd_f')
@@ -136,10 +172,15 @@ def build_gfm_converter_model(vfactory: VarFactory, inputs: List[Var],
     algebraic_eqs.append(vd_g - Vm_g * sym.sin(Va_g - theta))
     algebraic_eqs.append(vq_g - Vm_g * sym.cos(Va_g - theta))
     if voltage_inputs is not None:
-        algebraic_eqs.append(vd_f - Vm_f * sym.sin(Va_f - theta))
-        algebraic_eqs.append(vq_f - Vm_f * sym.cos(Va_f - theta))
         algebraic_eqs.append(vd_c - Vm_c * sym.sin(Va_c - theta))
         algebraic_eqs.append(vq_c - Vm_c * sym.cos(Va_c - theta))
+        if reconstruct_filter_voltage:
+            vd_mid, vq_mid = hidden_filter_voltage_from_terminals()
+            algebraic_eqs.append(vd_f - vd_mid)
+            algebraic_eqs.append(vq_f - vq_mid)
+        else:
+            algebraic_eqs.append(vd_f - Vm_f * sym.sin(Va_f - theta))
+            algebraic_eqs.append(vq_f - Vm_f * sym.cos(Va_f - theta))
 
     # In the combined model the filter drops are internal equations. In the
     # separated model those drops are represented by actual network lines.
@@ -154,19 +195,47 @@ def build_gfm_converter_model(vfactory: VarFactory, inputs: List[Var],
     den_g = vd_g ** 2 + vq_g ** 2 + vfactory.add_const(1e-12)
     den_c = vd_c ** 2 + vq_c ** 2 + vfactory.add_const(1e-12)
 
+    def line_endpoint_powers(vd_from, vq_from, vd_to, vq_to, r, x):
+        den = r ** 2 + x ** 2 + vfactory.add_const(1e-12)
+        g = r / den
+        b = -x / den
+        vm_from2 = vd_from ** 2 + vq_from ** 2
+        vm_to2 = vd_to ** 2 + vq_to ** 2
+        dot = vq_from * vq_to + vd_from * vd_to
+        sin_from_to = vd_from * vq_to - vq_from * vd_to
+
+        p_from = g * vm_from2 - g * dot - b * sin_from_to
+        q_from = -b * vm_from2 - g * sin_from_to + b * dot
+        p_to = g * vm_to2 - g * dot + b * sin_from_to
+        q_to = -b * vm_to2 + g * sin_from_to + b * dot
+        return p_from, q_from, p_to, q_to
+
+    def current_from_power(p, q, vd, vq, den):
+        id_ = ((q / k) * vq + (p / k) * vd) / den
+        iq_ = ((p / k) * vq - (q / k) * vd) / den
+        return id_, iq_
+
     if current_power_inputs is None:
         # Grid currents (mapped from converter side)
         algebraic_eqs.append(id_c - id_g - (Cf * omega * vq_f + vd_f / Rcap))
         algebraic_eqs.append(iq_c - iq_g - (-Cf * omega * vd_f + vq_f / Rcap))
     else:
-        P_c = current_power_inputs[0]
-        Q_c = current_power_inputs[1]
-        P_g = current_power_inputs[2]
-        Q_g = current_power_inputs[3]
-        algebraic_eqs.append(id_c - (((Q_c / k) * vq_c + (P_c / k) * vd_c) / den_c))
-        algebraic_eqs.append(iq_c - (((P_c / k) * vq_c - (Q_c / k) * vd_c) / den_c))
-        algebraic_eqs.append(id_g - (((Q_g / k) * vq_g + (P_g / k) * vd_g) / den_g))
-        algebraic_eqs.append(iq_g - (((P_g / k) * vq_g - (Q_g / k) * vd_g) / den_g))
+        if reconstruct_filter_voltage:
+            P_c, Q_c, _, _ = line_endpoint_powers(vd_c, vq_c, vd_f, vq_f, Rf, Lf)
+            _, _, P_t_grid, Q_t_grid = line_endpoint_powers(vd_f, vq_f, vd_g, vq_g, Rc, Lc)
+            P_g = -P_t_grid
+            Q_g = -Q_t_grid
+        else:
+            P_c = current_power_inputs[0]
+            Q_c = current_power_inputs[1]
+            P_g = current_power_inputs[2]
+            Q_g = current_power_inputs[3]
+        id_c_expr, iq_c_expr = current_from_power(P_c, Q_c, vd_c, vq_c, den_c)
+        id_g_expr, iq_g_expr = current_from_power(P_g, Q_g, vd_g, vq_g, den_g)
+        algebraic_eqs.append(id_c - id_c_expr)
+        algebraic_eqs.append(iq_c - iq_c_expr)
+        algebraic_eqs.append(id_g - id_g_expr)
+        algebraic_eqs.append(iq_g - iq_g_expr)
 
     # Power measurement
     algebraic_eqs.append(P - k * (vq_g * iq_g + vd_g * id_g))
@@ -206,6 +275,9 @@ def build_gfm_converter_model(vfactory: VarFactory, inputs: List[Var],
     if voltage_inputs is None:
         vd_ctrl_input = vd_ref - vd_f
         vq_ctrl_input = vq_ref - vq_f
+    elif reconstruct_filter_voltage:
+        vd_ctrl_input = vd_ref - vd_f
+        vq_ctrl_input = vq_ref + V - V_ref - vq_f
     else:
         vd_ctrl_input = -vd_f
         vq_ctrl_input = V - vq_f
@@ -272,6 +344,12 @@ def build_gfm_converter_model(vfactory: VarFactory, inputs: List[Var],
          [P, Q, omega, theta, V, vd_g, vq_g, id_g, iq_g, id_c, iq_c, vd_f, vq_f, vd_c, vq_c, vd_c_ref, vq_c_ref, id_c_ref, iq_c_ref,
           i_d_ref_aw, i_q_ref_aw, i_d_ref_sat_var, i_q_ref_sat_var, aw_d_in, aw_q_in])
 
+    if reconstruct_filter_voltage:
+        vd_f_init, vq_f_init = hidden_filter_voltage_from_terminals()
+    else:
+        vd_f_init = Vm_f * sym.sin(Va_f - theta) if voltage_inputs is not None else vd_g + (Rc*id_g - omega*Lc*iq_g)
+        vq_f_init = Vm_f * sym.cos(Va_f - theta) if voltage_inputs is not None else vq_g + (Rc*iq_g + omega*Lc*id_g)
+
     if current_power_inputs is None:
         p_init = -Pt_vsc
         q_init = -Qt_vsc
@@ -280,14 +358,18 @@ def build_gfm_converter_model(vfactory: VarFactory, inputs: List[Var],
         id_c_init = id_g + Cf * omega * vq_f + vd_f / Rcap
         iq_c_init = iq_g - Cf * omega * vd_f + vq_f / Rcap
     else:
-        p_init = current_power_inputs[2]
-        q_init = current_power_inputs[3]
-        p_c_init = current_power_inputs[0]
-        q_c_init = current_power_inputs[1]
-        id_g_init = ((q_init / k) * vq_g + (p_init / k) * vd_g) / den_g
-        iq_g_init = ((p_init / k) * vq_g - (q_init / k) * vd_g) / den_g
-        id_c_init = ((q_c_init / k) * vq_c + (p_c_init / k) * vd_c) / den_c
-        iq_c_init = ((p_c_init / k) * vq_c - (q_c_init / k) * vd_c) / den_c
+        if reconstruct_filter_voltage:
+            p_c_init, q_c_init, _, _ = line_endpoint_powers(vd_c, vq_c, vd_f_init, vq_f_init, Rf, Lf)
+            _, _, p_t_grid_init, q_t_grid_init = line_endpoint_powers(vd_f_init, vq_f_init, vd_g, vq_g, Rc, Lc)
+            p_init = -p_t_grid_init
+            q_init = -q_t_grid_init
+        else:
+            p_init = current_power_inputs[2]
+            q_init = current_power_inputs[3]
+            p_c_init = current_power_inputs[0]
+            q_c_init = current_power_inputs[1]
+        id_g_init, iq_g_init = current_from_power(p_init, q_init, vd_g, vq_g, den_g)
+        id_c_init, iq_c_init = current_from_power(p_c_init, q_c_init, vd_c, vq_c, den_c)
 
     core_block = Block(
         algebraic_eqs=algebraic_eqs,
@@ -302,18 +384,18 @@ def build_gfm_converter_model(vfactory: VarFactory, inputs: List[Var],
             Q: q_init,
             P_ref: P_ctrl,
             Q_ref: Q_ctrl,
-            theta: Va_f if voltage_inputs is not None else Va_c,
+            theta: (Va_g if reconstruct_filter_voltage else Va_f) if voltage_inputs is not None else Va_c,
             omega: vfactory.add_const(1.0),
-            V: Vm_f if voltage_inputs is not None else Vm_c,
-            V_ref: Vm_f if voltage_inputs is not None else Vm_c,
+            V: V_ref if reconstruct_filter_voltage else (Vm_f if voltage_inputs is not None else Vm_c),
+            V_ref: (vq_f if reconstruct_filter_voltage else Vm_f) if voltage_inputs is not None else Vm_c,
             vd_g: Vm_g * sym.sin(Va_g - theta),
             vq_g: Vm_g * sym.cos(Va_g - theta),
             id_g: id_g_init,
             iq_g: iq_g_init,
-            vd_f: Vm_f * sym.sin(Va_f - theta) if voltage_inputs is not None else vd_g + (Rc*id_g - omega*Lc*iq_g),
-            vq_f: Vm_f * sym.cos(Va_f - theta) if voltage_inputs is not None else vq_g + (Rc*iq_g + omega*Lc*id_g),
-            vd_ref: vfactory.add_const(0.0) if voltage_inputs is not None else vd_f,
-            vq_ref: V if voltage_inputs is not None else vq_f,
+            vd_f: vd_f_init,
+            vq_f: vq_f_init,
+            vd_ref: vd_f if reconstruct_filter_voltage else (vfactory.add_const(0.0) if voltage_inputs is not None else vd_f),
+            vq_ref: vq_f if reconstruct_filter_voltage else (V if voltage_inputs is not None else vq_f),
 
             # Capacitor currents (Rcap is large, so damping terms are negligible)
             id_c: id_c_init,
@@ -364,7 +446,8 @@ def build_gfm_converter_model(vfactory: VarFactory, inputs: List[Var],
     }
 
 
-def VscGfmLossBuild(vfactory: VarFactory, name: str = "", current_power_inputs: List[Var] | None = None) -> RmsModelTemplate:
+def VscGfmLossBuild(vfactory: VarFactory, name: str = "", current_power_inputs: List[Var] | None = None,
+                    reconstruct_filter_voltage: bool = False) -> RmsModelTemplate:
     """
     VSC GFM model builder for explicit AC filter-network validations.
 
@@ -409,11 +492,17 @@ def VscGfmLossBuild(vfactory: VarFactory, name: str = "", current_power_inputs: 
         Qt_ref: vfactory.add_const(0.0),
     }
 
+    if reconstruct_filter_voltage:
+        voltage_inputs = [Vm_c, Va_c, Vm_g, Va_g]
+    else:
+        voltage_inputs = [Vm_c, Va_c, Vm_f, Va_f, Vm_g, Va_g]
+
     gfm_block, i_d, i_q, P, Q, internals = build_gfm_converter_model(
         vfactory=vfactory,
         inputs=[Vm_c, Va_c, Pt_vsc, vfactory.add_const(0.0)],
-        voltage_inputs=[Vm_c, Va_c, Vm_f, Va_f, Vm_g, Va_g],
+        voltage_inputs=voltage_inputs,
         current_power_inputs=current_power_inputs,
+        reconstruct_filter_voltage=reconstruct_filter_voltage,
     )
 
     Im = sym.sqrt(i_d ** 2 + i_q ** 2 + vfactory.add_const(1e-5))

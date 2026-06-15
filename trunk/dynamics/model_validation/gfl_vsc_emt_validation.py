@@ -4,20 +4,32 @@
 # SPDX-License-Identifier: MPL-2.0
 
 import cProfile
+import os
+import sys
+import matplotlib
+import numpy as np
+import numpy as np
+
+matplotlib.use("Agg")
+
 from matplotlib import pyplot as plt
 
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src')))
+
 from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.Templates.Emt.load_zip_emt_template import get_load_ZIP_emt_template
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
 from VeraGridEngine.Templates.Emt.vsc_gfl_emt import VscGflEmtBuild
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
-from VeraGridEngine.Templates.Rms.vsc_template import PVCellBuild
-from VeraGridEngine.Templates.Rms.dc_voltage_source import DCVoltageSource
-from VeraGridEngine.Templates.Emt.simple_generator_emt_template import get_simple_generator_emt_template
+from VeraGridEngine.Templates.Emt.dc_source_emt_template import get_dc_voltage_source_emt_template
+from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template_with_ref
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
+from VeraGridEngine.Simulations.EMT.emt_solver_factory import build_emt_solver
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
 
-from VeraGridEngine.enumerations import VarPowerFlowReferenceType, DynamicIntegrationMethod, EmtInitializationMethod
-from VeraGridEngine.Devices.Events.rms_event import RmsEvent
+from VeraGridEngine.enumerations import DynamicIntegrationMethod, EmtInitializationMethod
+from VeraGridEngine.Devices.Events.emt_event import EmtEvent
 from VeraGridEngine.enumerations import ConverterControlType
 import VeraGridEngine.api as gce
 
@@ -32,7 +44,7 @@ profiler.enable()
 def find_name_in_block(name: str, block: Block):
     """Recursively find a variable by name in the block and all its children."""
     for var in block.algebraic_vars + block.state_vars + list(block.event_dict.keys()):
-        if name == var.name:
+        if name == var.name or var.name.startswith(f"{name}_"):
             return var
 
     for mdl in block.children:
@@ -41,6 +53,18 @@ def find_name_in_block(name: str, block: Block):
             return res
 
     return None
+
+
+PLOT_OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "gfl_vsc_emt_validation_plots")
+
+
+def save_and_show_or_close_plot(filename: str):
+    os.makedirs(PLOT_OUTPUT_DIR, exist_ok=True)
+    plt.savefig(os.path.join(PLOT_OUTPUT_DIR, filename), dpi=150)
+    if matplotlib.get_backend().lower() == "agg":
+        plt.close()
+    else:
+        plt.show()
 
 
 # Grid instantiation
@@ -57,7 +81,7 @@ grid.add_bus(bus3)
 
 # Initialize EMT models for buses
 for bus in grid.buses:
-    get_bus_emt_template(grid, bus, vf=grid.var_factory)
+    get_bus_emt_template(grid, bus)
 
 # Define AC lines
 line12 = gce.Line(name="line 1-2", bus_from=bus1, bus_to=bus2, r=0.029585798816568046, x=0.07100591715976332, b=0.03,
@@ -73,14 +97,14 @@ vsc1 = gce.VSC(name='VSC1', bus_from=bus3, bus_to=bus2, rate=100, alpha1=0.0, al
                control1_val=1.03, control2_val=1.001)
 
 # Define generators
-gen1 = gce.Generator(name='Gen1', P=5.0, vset=1.00)
+gen1 = gce.Generator(name='Gen1', P=5.0, vset=1.00, Snom=grid.Sbase, freq=50.0, r1=0.001, x1=1.7)
 
 # Define loads
 load1 = gce.Load(name='Load1', P=10, Q=1.0)
 
-#Grid modifications
-gen3 = gce.Load(name='Load1', P=-1.0, Q=-0.1)
-grid.add_load(bus=bus3, api_obj=gen3)
+# DC source feeding the VSC DC bus.
+gen3 = gce.Generator(name='DC Source', P=1.0, vset=1.03)
+grid.add_generator(bus=bus3, api_obj=gen3)
 
 ###############
 # Add to the grid
@@ -128,56 +152,29 @@ print(res.get_branch_df())
 line12_mdl = get_pi_line_emt_template(vf=grid.var_factory).block
 load_type = 'zip'
 if load_type == 'zip':
-    load_mdl = ZIPLoadEmtBuild(grid.var_factory, Pl0=-0.1, Ql0=-0.01).block
+    load_mdl = get_load_ZIP_emt_template(grid.var_factory).block
 else:
     raise ValueError(f"Unknown load type: {load_type}")
     
-genrow_mdl1 = get_simple_generator_emt_template(grid.var_factory).block
+genrow_mdl1 = get_generator_thevenin_rl_emt_template_with_ref(grid.var_factory).block
 
 # Build VSC EMT model with the same control modes used in the VSC device
 vsc_mdl = VscGflEmtBuild(grid.var_factory, control1=CONTROL1_MODE, control2=CONTROL2_MODE).block
 
-pv_cell_block = PVCellBuild(grid.var_factory).block
-dc_source = DCVoltageSource(grid.var_factory, bus3.emt_model.out_vars[0]).block
+dc_source = get_dc_voltage_source_emt_template(
+    vf=grid.var_factory,
+    source_voltage_value=1.03,
+    name="dc_voltage_source",
+).block
 
-# Connect generator to bus1 (three-phase voltages)
-grid.var_factory.add_connections([genrow_mdl1.in_vars[0]], [bus1.emt_model.out_vars[0]])  # v_A
-grid.var_factory.add_connections([genrow_mdl1.in_vars[1]], [bus1.emt_model.out_vars[1]])  # v_B
-grid.var_factory.add_connections([genrow_mdl1.in_vars[2]], [bus1.emt_model.out_vars[2]])  # v_C
+# Attach EMT models and let the current helper create bus/device connections.
+set_emt_model(device=line12, model=line12_mdl, var_factory=grid.var_factory)
+set_emt_model(device=load1, model=load_mdl, var_factory=grid.var_factory)
+set_emt_model(device=gen1, model=genrow_mdl1, var_factory=grid.var_factory)
+set_emt_model(device=gen3, model=dc_source, var_factory=grid.var_factory)
+set_emt_model(device=vsc1, model=vsc_mdl, var_factory=grid.var_factory)
 
-# Connect load to bus2 (three-phase voltages)
-grid.var_factory.add_connections([load_mdl.in_vars[0]], [bus2.emt_model.out_vars[0]])  # v_A
-grid.var_factory.add_connections([load_mdl.in_vars[1]], [bus2.emt_model.out_vars[1]])  # v_B
-grid.var_factory.add_connections([load_mdl.in_vars[2]], [bus2.emt_model.out_vars[2]])  # v_C
-
-# Connect line12 between bus1 and bus2 (three-phase voltages)
-grid.var_factory.add_connections([line12_mdl.in_vars[0]], [bus1.emt_model.out_vars[0]])  # v_A from
-grid.var_factory.add_connections([line12_mdl.in_vars[1]], [bus1.emt_model.out_vars[1]])  # v_B from
-grid.var_factory.add_connections([line12_mdl.in_vars[2]], [bus1.emt_model.out_vars[2]])  # v_C from
-
-grid.var_factory.add_connections([line12_mdl.in_vars[3]], [bus2.emt_model.out_vars[0]])  # v_A to
-grid.var_factory.add_connections([line12_mdl.in_vars[4]], [bus2.emt_model.out_vars[1]])  # v_B to
-grid.var_factory.add_connections([line12_mdl.in_vars[5]], [bus2.emt_model.out_vars[2]])  # v_C to
-
-# Updated connections for new VSC EMT model with 4 inputs: [Va, Vb, Vc, Vdc]
-grid.var_factory.add_connections([vsc_mdl.in_vars[0]], [bus2.emt_model.out_vars[0]])  # Va
-grid.var_factory.add_connections([vsc_mdl.in_vars[1]], [bus2.emt_model.out_vars[1]])  # Vb
-grid.var_factory.add_connections([vsc_mdl.in_vars[2]], [bus2.emt_model.out_vars[2]])  # Vc
-grid.var_factory.add_connections([vsc_mdl.in_vars[3]], [bus3.emt_model.out_vars[0]])  # Vdc
-
-# external mapping
-big_gen1 = Block(children=[genrow_mdl1])
-big_gen1.external_mapping.update({VarPowerFlowReferenceType.P: genrow_mdl1.out_vars[0]})
-big_gen1.external_mapping.update({VarPowerFlowReferenceType.Q: genrow_mdl1.out_vars[1]})
-
-# attach emt models to Veragrid objects
-line12.emt_model = line12_mdl
-load1.emt_model = load_mdl
-gen1.emt_model = big_gen1
-gen3.emt_model = dc_source
-gen3.emt_model.unify_blocks()
-
-Vpv0 = find_name_in_block('Vpv0', gen3.emt_model)
+V_src = find_name_in_block('V_src_dc_voltage_source', gen3.emt_model)
 
 # Find appropriate reference variable based on control mode
 if CONTROL1_MODE == ConverterControlType.Vm_dc:
@@ -190,33 +187,118 @@ else:
     ref_var = find_name_in_block('P_ref', vsc_mdl)
     print(f"Using P_ref for control mode {CONTROL1_MODE}")
 
-event1 = RmsEvent(device=gen3, parameter=Vpv0, time=.2, value=0.3)
-event2 = RmsEvent(device=vsc1, parameter=ref_var, time=.2, value=0.1)
-grid.add_rms_event(event1)
-grid.add_rms_event(event2)
+event1 = EmtEvent(device=gen3, parameter=V_src, time=.2, value=0.3)
+event2 = EmtEvent(device=vsc1, parameter=ref_var, time=.2, value=0.1)
+event3 = EmtEvent(device=vsc1, parameter=ref_var, time=.25, value=1.03)
+grid.add_emt_event(event1)
+grid.add_emt_event(event2)
+grid.add_emt_event(event3)
 
 options = EmtOptions(time_step=0.0001,  # EMT requires smaller time step
                      simulation_time=0.3,
                      tolerance=1e-6,
-                     integration_method=DynamicIntegrationMethod.BackEuler,
+                     integration_method=DynamicIntegrationMethod.DaeBackEuler,
                      initialization_method=EmtInitializationMethod.Explicit,
-                     use_init_values=False,
-                     max_iter=1000,
                      verbose=0)
+print(f"EMT initialization method: {options.initialization_method!r}")
 
 problem = EmtProblemDae(grid=grid,
                         options=options,
                         pf_results=res)
 
-solver = BackEulerImplicitIntegrationEmt(
+
+def seed_gfl_vsc_initial_guess(problem, vsc, pf_results):
+    bus_names = [bus.name for bus in grid.buses]
+
+    def value_of(var):
+        return problem.get_x0()[problem.get_var_idx(var)]
+
+    v_a_var = find_name_in_block('v_A', vsc.bus_to.emt_model)
+    v_b_var = find_name_in_block('v_B', vsc.bus_to.emt_model)
+    v_c_var = find_name_in_block('v_C', vsc.bus_to.emt_model)
+    va0 = value_of(v_a_var)
+    vb0 = value_of(v_b_var)
+    vc0 = value_of(v_c_var)
+
+    best_theta = 0.0
+    best_abs_d = None
+    best_q = 1.0
+    for theta_candidate in np.linspace(-np.pi, np.pi, 40001):
+        vd_candidate = (1.0 / 3.0) * (
+            2.0 * np.cos(theta_candidate) * va0
+            + (-np.cos(theta_candidate) - np.sqrt(3.0) * np.sin(theta_candidate)) * vb0
+            + (-np.cos(theta_candidate) + np.sqrt(3.0) * np.sin(theta_candidate)) * vc0
+        )
+        vq_candidate = (1.0 / 3.0) * (
+            2.0 * np.sin(theta_candidate) * va0
+            + (-np.sin(theta_candidate) + np.sqrt(3.0) * np.cos(theta_candidate)) * vb0
+            + (-np.sin(theta_candidate) - np.sqrt(3.0) * np.cos(theta_candidate)) * vc0
+        )
+        if vq_candidate > 0.0 and (best_abs_d is None or abs(vd_candidate) < best_abs_d):
+            best_abs_d = abs(vd_candidate)
+            best_theta = theta_candidate
+            best_q = vq_candidate
+
+    vpk = float(best_q)
+
+    p0 = -float(np.real(pf_results.St_vsc[0]) / grid.Sbase)
+    q0 = -float(np.imag(pf_results.St_vsc[0]) / grid.Sbase)
+    theta0 = float(best_theta)
+    vd0 = 0.0
+    vq0 = vpk
+    iq0 = (2.0 / 3.0) * p0 / vq0
+    id0 = (2.0 / 3.0) * q0 / vq0
+
+    r0 = 0.1
+    l0 = 0.1
+    omega0 = 1.0
+    vd_c0 = vd0 + (r0 * id0 - omega0 * l0 * iq0)
+    vq_c0 = vq0 + (r0 * iq0 - omega0 * l0 * id0)
+    vd_hat0 = vd_c0 - (vd0 + l0 * omega0 * iq0)
+    vq_hat0 = vq_c0 - (vq0 - l0 * omega0 * id0)
+
+    values = {
+        'P': p0,
+        'Q': q0,
+        'Pt_vsc': -p0,
+        'Qt_vsc': -q0,
+        'theta': theta0,
+        'omega': omega0,
+        'vg_d': vd0,
+        'vg_q': vq0,
+        'i_d': id0,
+        'i_q': iq0,
+        'i_d_ref': id0,
+        'i_q_ref': iq0,
+        'v_d_c': vd_c0,
+        'v_q_c': vq_c0,
+        'y_vd_hat': vd_hat0,
+        'y_vq_hat': vq_hat0,
+        'Vdc_ref': float(abs(pf_results.voltage[bus_names.index(vsc.bus_from.name)])),
+        'Vm_ac_ref': vq0,
+        'u_Vdc_ctrl': 0.0,
+        'u_Vac_ctrl': 0.0,
+        'u_vd_hat': 0.0,
+        'u_vq_hat': 0.0,
+    }
+    for name, value in values.items():
+        var = find_name_in_block(name, vsc.emt_model)
+        if var is not None:
+            problem.init_guess[var.uid] = float(value)
+
+
+seed_gfl_vsc_initial_guess(problem, vsc1, res)
+
+solver = build_emt_solver(
+    options=options,
     problem=problem,
-    t0=0,
+    t0=0.0,
     t_end=options.simulation_time,
     h=options.time_step,
-    max_iter=options.max_iter
+    method=options.integration_method,
 )
 
-t, y, well_initialized, converged = solver.simulate()
+t, y, dy, well_initialized, converged = solver.simulate()
 
 profiler.disable()
 profiler.dump_stats("profiling_stats_emt.prof")
@@ -238,7 +320,18 @@ i_C_vsc = find_name_in_block("i_c", vsc_mdl)
 
 P = find_name_in_block('P', vsc_mdl)
 Q = find_name_in_block('Q', vsc_mdl)
-Vdc = find_name_in_block('Vdc', bus3.emt_model)
+Vdc = bus3.emt_model.out_vars[0]
+theta_vsc = find_name_in_block('theta', vsc_mdl)
+omega_vsc = find_name_in_block('omega', vsc_mdl)
+v_d_g = find_name_in_block('vg_d', vsc_mdl)
+v_q_g = find_name_in_block('vg_q', vsc_mdl)
+
+pre_event = t < 0.19
+if np.any(pre_event):
+    for label, var in [("Vdc", Vdc), ("P", P), ("Q", Q), ("theta", theta_vsc), ("omega", omega_vsc), ("v_d_g", v_d_g), ("v_q_g", v_q_g)]:
+        trace = y[pre_event, problem.get_var_idx(var)]
+        print(f"Pre-event max |Delta {label}|: {np.max(np.abs(trace - trace[0])):.6e}")
+        print(f"  {label}: t0={trace[0]:.6e}, min={np.min(trace):.6e}, max={np.max(trace):.6e}")
 
 # Plot 1: Bus 1 Three-phase voltages
 plt.figure(figsize=(10, 6))
@@ -252,7 +345,7 @@ plt.xlim([0, xlim])
 plt.grid(True)
 plt.tight_layout()
 plt.title(f'Bus 1 Voltages (EMT): {CONTROL1_MODE.value} + {CONTROL2_MODE.value}')
-plt.show()
+save_and_show_or_close_plot("bus1_voltages.png")
 
 # Plot 2: Bus 2 Three-phase voltages
 plt.figure(figsize=(10, 6))
@@ -266,7 +359,7 @@ plt.xlim([0, xlim])
 plt.grid(True)
 plt.tight_layout()
 plt.title(f'Bus 2 Voltages (EMT): {CONTROL1_MODE.value} + {CONTROL2_MODE.value}')
-plt.show()
+save_and_show_or_close_plot("bus2_voltages.png")
 
 # Plot 3: VSC Three-phase currents
 plt.figure(figsize=(10, 6))
@@ -280,7 +373,7 @@ plt.xlim([0, xlim])
 plt.grid(True)
 plt.tight_layout()
 plt.title(f'VSC GFL Currents (EMT): {CONTROL1_MODE.value} + {CONTROL2_MODE.value}')
-plt.show()
+save_and_show_or_close_plot("vsc_currents.png")
 
 # Plot 4: VSC P and Q
 plt.figure(figsize=(10, 6))
@@ -293,7 +386,7 @@ plt.xlim([0, xlim])
 plt.grid(True)
 plt.tight_layout()
 plt.title(f'VSC GFL Power (EMT): {CONTROL1_MODE.value} + {CONTROL2_MODE.value}')
-plt.show()
+save_and_show_or_close_plot("vsc_power.png")
 
 # Plot 5: DC Voltage
 plt.figure(figsize=(10, 6))
@@ -305,7 +398,7 @@ plt.xlim([0, xlim])
 plt.grid(True)
 plt.tight_layout()
 plt.title(f'VSC DC Voltage (EMT): {CONTROL1_MODE.value} + {CONTROL2_MODE.value}')
-plt.show()
+save_and_show_or_close_plot("dc_voltage.png")
 
 print(f"\nEMT Simulation completed with control modes: {CONTROL1_MODE.value} + {CONTROL2_MODE.value}")
 print("Supported combinations:")
