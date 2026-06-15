@@ -7,8 +7,8 @@ from __future__ import annotations
 import numpy as np
 from typing import Union, List, TYPE_CHECKING
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions
-from VeraGridEngine.Simulations.PowerFlow.power_flow_worker_3ph import multi_island_pf_3ph
-from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
+from VeraGridEngine.Simulations.PowerFlow3ph.power_flow_worker_3ph import multi_island_pf_3ph
+from VeraGridEngine.Simulations.PowerFlow3ph.power_flow_results_3ph import PowerFlowResults3Ph
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.driver_template import DriverTemplate
 from VeraGridEngine.enumerations import EngineType, SimulationTypes
@@ -18,7 +18,7 @@ if TYPE_CHECKING:  # Only imports the below statements during type checking
 
 
 class PowerFlowDriver3Ph(DriverTemplate):
-    name = 'Power Flow 3ph'
+    name = 'Power flow 3ph'
     tpe = SimulationTypes.PowerFlow3ph_run
 
     """

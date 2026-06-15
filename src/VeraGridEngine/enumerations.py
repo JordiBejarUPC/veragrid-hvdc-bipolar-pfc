@@ -1124,6 +1124,40 @@ class FaultType(Enum):
         return list(enum_item.value for enum_item in cls)
 
 
+class EmtFaultPlacementSide(Enum):
+    """
+    Internal EMT fault placement side within one composed branch model.
+    """
+    FromSide = 'FromSide'
+    ToSide = 'ToSide'
+
+    def __str__(self):
+        return str(self.value)
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return EmtFaultPlacementSide[s]
+        except KeyError:
+            return s
+
+    @classmethod
+    def list(cls):
+        """
+
+        :return:
+        """
+        return list(enum_item.value for enum_item in cls)
+
+
 class MethodShortCircuit(Enum):
     """
     Short circuit type
@@ -1604,6 +1638,7 @@ class DeviceType(Enum):
     ModellingAuthority = "Modelling Authority"
 
     FacilityDevice = "Facility"
+    MarketUnitDevice = "Market unit"
 
     SimulationOptionsDevice = "SimulationOptionsDevice"
 
@@ -2695,18 +2730,38 @@ class ResultTypes(Enum):
     ZoneAnalysis = 'Zone analysis'
     CountryAnalysis = 'Country analysis'
     AreaAnalysis = 'Area analysis'
+    SubstationAnalysis = 'Substation analysis'
+    VoltageLevelAnalysis = 'Voltage level analysis'
+    CommunityAnalysis = 'Community analysis'
+    RegionAnalysis = 'Region analysis'
+    MunicipalityAnalysis = 'Municipality analysis'
 
     AreaGenerationAnalysis = 'Area generation analysis'
     ZoneGenerationAnalysis = 'Zone generation analysis'
+    SubstationGenerationAnalysis = 'Substation generation analysis'
+    VoltageLevelGenerationAnalysis = 'Voltage level generation analysis'
     CountryGenerationAnalysis = 'Country generation analysis'
+    CommunityGenerationAnalysis = 'Community generation analysis'
+    RegionGenerationAnalysis = 'Region generation analysis'
+    MunicipalityGenerationAnalysis = 'Municipality generation analysis'
 
     AreaLoadAnalysis = 'Area load analysis'
     ZoneLoadAnalysis = 'Zone load analysis'
+    SubstationLoadAnalysis = 'Substation load analysis'
+    VoltageLevelLoadAnalysis = 'Voltage level load analysis'
     CountryLoadAnalysis = 'Country load analysis'
+    CommunityLoadAnalysis = 'Community load analysis'
+    RegionLoadAnalysis = 'Region load analysis'
+    MunicipalityLoadAnalysis = 'Municipality load analysis'
 
     AreaBalanceAnalysis = 'Area balance analysis'
     ZoneBalanceAnalysis = 'Zone balance analysis'
+    SubstationBalanceAnalysis = 'Substation balance analysis'
+    VoltageLevelBalanceAnalysis = 'Voltage level balance analysis'
     CountryBalanceAnalysis = 'Country balance analysis'
+    CommunityBalanceAnalysis = 'Community balance analysis'
+    RegionBalanceAnalysis = 'Region balance analysis'
+    MunicipalityBalanceAnalysis = 'Municipality balance analysis'
 
     # Short circuit
     BusVoltageModule0 = 'Voltage module (0)'
@@ -2779,6 +2834,13 @@ class ResultTypes(Enum):
     HvdcResults = 'Hvdc'
     VscResults = 'Vsc'
     AreaResults = 'Area'
+    ZoneResults = 'Zone'
+    SubstationResults = 'Substation'
+    VoltageLevelResults = 'Voltage level'
+    CountryResults = 'Country'
+    CommunityResults = 'Community'
+    RegionResults = 'Region'
+    MunicipalityResults = 'Municipality'
     InfoResults = 'Information'
     ReportsResults = 'Reports'
     ParetoResults = 'Pareto'
@@ -2857,6 +2919,7 @@ class SimulationTypes(Enum):
     TemplateDriver = 'Template'
     PowerFlow_run = 'Power flow'
     PowerFlow3ph_run = 'Power flow 3ph'
+    PowerFlowTimeSeries3ph_run = 'Power flow time series 3ph'
     StateEstimation_run = 'State estimation'
     ShortCircuit_run = 'Short circuit'
     MonteCarlo_run = 'Monte Carlo'
@@ -4255,6 +4318,8 @@ class BlockType(Enum):
     EXCITER_RMS = "EXCITER_RMS"
     LINE_RMS = "Line_RMS"
     LOAD_RMS = "Load_RMS"
+    GFL_VSC_RMS = "GFL_VSC_RMS"
+    DC_PV_SOURCE_RMS = "DC_PV_SOURCE_RMS"
 
     # EMT
     EMT_GENERATOR = "EMT_GENERATOR"
@@ -4287,6 +4352,7 @@ class BlockType(Enum):
     HEIDLER_CURRENT_SOURCE_EMT = "HEIDLER_CURRENT_SOURCE_EMT"
     CIGRE_SURGE_CURRENT_SOURCE_EMT = "CIGRE_SURGE_CURRENT_SOURCE_EMT"
     SWITCH_EMT = "SWITCH_EMT"
+    FAULT_EMT = "FAULT_EMT"
     GROUND_EMT = "GROUND_EMT"
     GROUNDING_LINK_EMT = "GROUNDING_LINK_EMT"
     NONLINEAR_RESISTOR_EMT = "NONLINEAR_RESISTOR_EMT"

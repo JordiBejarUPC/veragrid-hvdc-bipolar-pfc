@@ -27,7 +27,7 @@ ensure_repo_import_paths()
 import VeraGridEngine.api as gce
 from VeraGridEngine.Simulations.EMT.emt_solver_factory import build_emt_solver
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
-from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlowDriver3Ph
+from VeraGridEngine.Simulations.PowerFlow3ph.power_flow_driver_3ph import PowerFlowDriver3Ph
 from VeraGridEngine.Templates.Emt.load_zip_emt_multilinear_template import get_load_ZIP_emt_multilinear_template
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
 from VeraGridEngine.Templates.Emt.simple_generator_emt_multilinear_template import get_simple_generator_emt_multilinear_template

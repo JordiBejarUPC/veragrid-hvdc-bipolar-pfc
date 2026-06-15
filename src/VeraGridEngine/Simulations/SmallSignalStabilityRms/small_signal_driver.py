@@ -114,7 +114,9 @@ def compute_participation_factors(v: np.ndarray,
     return PF_norm
 
 
-def compute_participation_factors_generalized(v, w, E):
+def compute_participation_factors_generalized(v: np.ndarray,
+                                              w: np.ndarray,
+                                              E: Union[np.ndarray, sp.spmatrix]) -> np.ndarray:
     """
     Participation factors for generalized eigenproblems A x = lambda E x.
 
@@ -126,16 +128,18 @@ def compute_participation_factors_generalized(v, w, E):
 
     Uses the normalization:
 
-        w_i^H E v_i = 1
+        w_i^T E v_i = 1
 
     and computes:
 
-        p_ki = |v_ki (w_i^H E)_k|
+        p_ki = |v_ki (w_i^T E)_k|
 
     The returned participation factors are column-normalized.
     """
     v_c = v.astype(np.complex128, copy=False)
     w_c = w.astype(np.complex128, copy=False).copy()
+
+    k = v_c.shape[1]
 
     if sp.issparse(E):
         Ev = E @ v_c
@@ -143,18 +147,20 @@ def compute_participation_factors_generalized(v, w, E):
         E_arr = np.asarray(E, dtype=np.complex128)
         Ev = E_arr @ v_c
 
-    for i in range(v_c.shape[1]):
-        norm_factor = np.vdot(w_c[:, i], Ev[:, i])
+    for i in range(k):
+        norm_factor = w_c[:, i] @ Ev[:, i]
 
         if np.abs(norm_factor) > 1e-15:
-            w_c[:, i] /= np.conj(norm_factor)
+            w_c[:, i] /= norm_factor
+        else:
+            pass
 
     if sp.issparse(E):
-        EH_w = E.conj().T @ w_c
+        Etw = E.T @ w_c
     else:
-        EH_w = E_arr.conj().T @ w_c
+        Etw = E_arr.T @ w_c
 
-    PF = np.abs(v_c * np.conj(EH_w))
+    PF = np.abs(v_c * Etw)
 
     col_sum = np.sum(PF, axis=0)
     PF_norm = PF.copy()
