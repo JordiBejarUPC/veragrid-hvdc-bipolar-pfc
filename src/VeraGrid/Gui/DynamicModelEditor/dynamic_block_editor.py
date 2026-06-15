@@ -82,7 +82,7 @@ from VeraGridEngine.Templates.Emt.induction_motor_emt_template import get_induct
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_rlc_combo_emt_template
 from VeraGridEngine.Templates.Emt.load_zip_emt_template import get_load_ZIP_emt_template
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
-from VeraGridEngine.Utils.Symbolic.block import Block, find_connections
+from VeraGridEngine.Utils.Symbolic.block import Block, find_connections, find_connections_pf
 from VeraGridEngine.Utils.Symbolic.equation_decomposer import EquationDecomposer
 from VeraGrid.Gui.DynamicModelEditor.block_editor import Ui_BlockEditorWindow
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_utilities import create_block_of_type, create_generic_block, \
@@ -109,6 +109,7 @@ from VeraGrid.Gui.DynamicModelEditor.switch_emt_dialog import SwitchEmtDialog
 from VeraGrid.Gui.Icons.icon_associations import device_type_icons
 from VeraGrid.Gui.wrappable_table_model import WrappableTableModel
 from VeraGrid.Gui.gui_functions import ComboDelegate, TextDelegate
+from VeraGrid.Gui.toast_widget import ToastManager
 from VeraGridEngine.Utils.Symbolic.symbolic import (symbolic_to_string, string_to_symbolic,
                                                     get_symbolic_parser_function_names,
                                                     Expr, Var, Const, Comparison)
@@ -1044,6 +1045,7 @@ def copy_block_state(source_block: Block, target_block: Block) -> None:
     # The original object identity must be preserved for external references in the GUI and device model.
     target_block.name = source_clone.name
     target_block.uid = source_clone.uid
+    target_block.is_decomposable = source_clone.is_decomposable
     target_block.vars_glob_name2uid = source_clone.vars_glob_name2uid
     target_block.state_vars = source_clone.state_vars
     target_block.state_eqs = source_clone.state_eqs
@@ -2563,7 +2565,6 @@ def refresh_block_parameter_row_cache(row: BlockParameterRow) -> None:
 
 def refresh_row_search_cache(row: BlockParameterRow) -> None:
     parts = [str(row.name or "")]
-    parts.append(str(row.kind.value if row.kind else ""))
     if row.value is not None:
         parts.append(str(row.value))
     if row.init_eq is not None:
@@ -3492,7 +3493,46 @@ class GenericBlockItem(QGraphicsRectItem):
         Returns
         -------
 
+
         """
+
+        items_list = list()
+        if not self.subsys.children:
+            if self.subsys.is_eq_decomposable():
+                self.editor_window.decompose_block_in_place(self.subsys)
+                self.editor_window.diagram = self.subsys.diagram
+                self.editor_window.main_block = self.subsys
+
+            for uid, node in self.editor_window.diagram.node_data.items():
+                block_type: BlockType | None
+                block_model: Block | None = self.editor_window.get_block_from_main_block(node.device_uid)
+
+                if block_model is not None:
+                    if node.tpe in ("signal_in", "signal_out"):
+                        item = PairedItem(
+                            var_factory=self.var_factory,
+                            subsys=block_model,
+                            api_object=self.api_object,
+                            mode=self.mode,
+                            name=block_model.name,
+                            position_changed_callback=self.editor_window._build_position_changed_callback(block_model.uid)
+                        )
+
+                    else:
+                        item = GenericBlockItem(
+                            var_factory=self.var_factory,
+                            subsys=block_model,
+                            api_object=self.api_object,
+                            mode=self.mode,
+                            name=block_model.name,
+                            position_changed_callback=self.editor_window._build_position_changed_callback(block_model.uid)
+                        )
+                    items_list.append(item)
+
+            self.editor_window.add_connection_items(items_list)
+
+            self.editor_window.connect_items_pf(items_list)
+            self.editor_window.rebuild_scene_from_diagram()
         self.editor_window.show()
 
     def set_subsystem(self, block: Block) -> None:
@@ -4020,13 +4060,6 @@ class BlockItem(QGraphicsRectItem):
         self.outputs: List[PortItem] = list()
         self.input_labels: List[QGraphicsTextItem] = list()
         self.output_labels: List[QGraphicsTextItem] = list()
-        if self.subsys is not None:
-            self.editor_window = DynamicBlockEditorGUI(
-                var_factory=self.var_factory,
-                block=self.subsys,
-                api_object=self.api_object,
-                mode=self.mode
-            )
 
         self.setFlags(
             QGraphicsItem.GraphicsItemFlag.ItemIsMovable |
@@ -4036,78 +4069,6 @@ class BlockItem(QGraphicsRectItem):
         self.setAcceptHoverEvents(True)
         self.setPen(QPen(Qt.GlobalColor.transparent, 0))
         self.setBrush(QBrush(DEFAULT_BLOCK_FILL))
-
-    def mouseDoubleClickEvent(self, event):
-        """
-        opens the editor
-        Parameters
-        ----------
-        event :
-
-        Returns
-        -------
-
-        """
-        print("clicking")
-        if self.subsys is None:
-            return
-        else:
-            pass
-
-        if self._should_offer_decompose():
-            reply = QtWidgets.QMessageBox.question(
-                None,
-                "Descomposición automática",
-                "Este bloque tiene ecuaciones pero no contiene sub-bloques.\n"
-                "¿Desea descomponerlo en un diagrama de bloques?\n\n"
-                'Seleccione "Sí" para crear sub-bloques a partir de las ecuaciones.\n'
-                'Seleccione "No" para ver las ecuaciones en tabla.',
-                QtWidgets.QMessageBox.StandardButton.Yes,
-                QtWidgets.QMessageBox.StandardButton.No,
-            )
-            if reply == QtWidgets.QMessageBox.StandardButton.Yes:
-                try:
-                    decomposer = EquationDecomposer(self.var_factory)
-                    decomposed = decomposer.decompose(self.subsys)
-                    preserved_uid = self.subsys.uid
-                    copy_block_state(source_block=decomposed, target_block=self.subsys)
-                    self.subsys.uid = preserved_uid
-                    if self.editor_window is not None:
-                        self.editor_window.close()
-                        self.editor_window = None
-                except Exception as exc:
-                    QtWidgets.QMessageBox.warning(
-                        None,
-                        "Decompose",
-                        f"Could not decompose block:\n{exc}",
-                    )
-
-        if self.editor_window is None:
-            self.editor_window = DynamicBlockEditorGUI(
-                var_factory=self.var_factory,
-                block=self.subsys,
-                api_object=self.api_object,
-                mode=self.mode,
-                modal=False,
-            )
-        else:
-            pass
-
-        self.editor_window.show()
-
-        super().mouseDoubleClickEvent(event)
-
-    def _should_offer_decompose(self) -> bool:
-        if self.subsys is None:
-            return False
-        if self.subsys.children:
-            return False
-        if not self.subsys.algebraic_eqs and not self.subsys.state_eqs:
-            return False
-        modal_kind, _ = get_modal_template_metadata(self.subsys)
-        if modal_kind is not None:
-            return False
-        return True
 
 
     def set_subsystem(self, block: Block) -> None:
@@ -4625,38 +4586,6 @@ class DiagramScene(QGraphicsScene):
         else:
             pass
 
-    def edit_context_item(self) -> None:
-        """
-        Open the hierarchy editor for the item currently selected by the context menu.
-
-        :return: None.
-        """
-        if self.context_item is not None:
-            self.editor.edit_scene_item(self.context_item)
-        else:
-            pass
-
-    @staticmethod
-    def _is_decomposable(item: BlockItem | GenericBlockItem) -> bool:
-        block = item.subsys
-        if block is None:
-            return False
-        if block.children:
-            return False
-        has_eqs = bool(block.algebraic_eqs) or bool(block.state_eqs)
-        if not has_eqs:
-            return False
-        modal_kind, _ = get_modal_template_metadata(block)
-        if modal_kind is not None:
-            return False
-        return True
-
-    def decompose_context_item(self) -> None:
-        if self.context_item is not None and self.context_item.subsys is not None:
-            self.editor.decompose_block_in_place(self.context_item)
-        else:
-            pass
-
     def modify_context_item_template(self) -> None:
         """
         Reopen the modal configuration for the selected block when available.
@@ -4696,14 +4625,6 @@ class DiagramScene(QGraphicsScene):
                     else:
                         pass
 
-                    edit_action: QAction = QAction("Edit Hierarchy", menu)
-                    edit_action.triggered.connect(self.edit_context_item)
-                    menu.addAction(edit_action)
-
-                    if self._is_decomposable(item):
-                        decomp_action: QAction = QAction("Break down into a block diagram", menu)
-                        decomp_action.triggered.connect(self.decompose_context_item)
-                        menu.addAction(decomp_action)
                 else:
                     pass
 
@@ -5043,6 +4964,74 @@ class ConnectionVarSpec:
     reference: VarPowerFlowReferenceType
     visible_name: str
 
+
+def build_rms_bus_input_specs(bus: Bus,
+                              voltage_reference: VarPowerFlowReferenceType,
+                              angle_reference: VarPowerFlowReferenceType,
+                              dc_voltage_reference: VarPowerFlowReferenceType) -> List[ConnectionVarSpec]:
+    """
+    Build the RMS voltage-interface specs for one connected bus.
+
+    AC buses expose magnitude and angle because RMS phasor models need both
+    quantities. DC buses only expose the DC voltage because no phasor angle
+    exists in the DC domain.
+
+    :param bus: Connected bus.
+    :param voltage_reference: AC voltage-magnitude reference for this terminal.
+    :param angle_reference: AC voltage-angle reference for this terminal.
+    :param dc_voltage_reference: DC voltage reference for this terminal.
+    :return: RMS input connection specs for the bus domain.
+    """
+    safe_bus_name: str = re.sub(r"[^0-9A-Za-z_]+", "_", bus.name).strip("_") or "Bus"
+    specs: List[ConnectionVarSpec] = list()
+
+    if bus.is_dc:
+        # DC terminals only contribute one voltage state to the RMS interface.
+        specs.append(ConnectionVarSpec("input", dc_voltage_reference, f"Vdc_{safe_bus_name}"))
+    else:
+        # AC terminals expose phasor magnitude and angle to the device model.
+        specs.append(ConnectionVarSpec("input", voltage_reference, f"Vm_{safe_bus_name}"))
+        specs.append(ConnectionVarSpec("input", angle_reference, f"Va_{safe_bus_name}"))
+
+    return specs
+
+
+def build_rms_bus_output_specs(bus: Bus,
+                               active_power_reference: VarPowerFlowReferenceType,
+                               reactive_power_reference: VarPowerFlowReferenceType,
+                               terminal_label: str) -> List[ConnectionVarSpec]:
+    """
+    Build the RMS injected-power specs for one connected bus.
+
+    AC terminals export active and reactive power because both are meaningful
+    in the phasor network. DC terminals only export active/DC power because a
+    DC connection has no reactive-power channel.
+
+    :param bus: Connected bus.
+    :param active_power_reference: Active-power reference for this terminal.
+    :param reactive_power_reference: Reactive-power reference for this terminal.
+    :param terminal_label: Stable terminal label such as ``f`` or ``t``.
+    :return: RMS output connection specs for the bus domain.
+    """
+    safe_bus_name: str = re.sub(r"[^0-9A-Za-z_]+", "_", bus.name).strip("_") or "Bus"
+    specs: List[ConnectionVarSpec] = list()
+
+    if terminal_label == "":
+        active_name = f"net_conn_P_{safe_bus_name}"
+        reactive_name = f"net_conn_Q_{safe_bus_name}"
+    else:
+        active_name = f"net_conn_P{terminal_label}_{safe_bus_name}"
+        reactive_name = f"net_conn_Q{terminal_label}_{safe_bus_name}"
+
+    specs.append(ConnectionVarSpec("output", active_power_reference, active_name))
+
+    if bus.is_dc:
+        pass
+    else:
+        specs.append(ConnectionVarSpec("output", reactive_power_reference, reactive_name))
+
+    return specs
+
 def build_emt_injection_bus_mask_from_refs(refs: set[VarPowerFlowReferenceType]) -> list[bool]:
     """
     Build the AC bus phase mask implied by one injection editor interface.
@@ -5132,15 +5121,26 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :type api_object: ALL_DEV_TYPES | None
         :param mode: Specifies the editor mode, either RMS or EMT.
         :type mode: DynamicSimulationMode
+        :param templates_list: Optional block-template catalogue entries exposed to the editor.
+        :type templates_list: Optional[List[RmsModelTemplate | EmtModelTemplate | FmuTemplate]]
+        :param circuit: Circuit context that owns the edited dynamic device.
+        :type circuit: Any | None
         :param main_editor: Indicates whether this instance is the main editor for the block.
         :type main_editor: bool
         :param modal: Specifies whether the editor window should be modal.
         :type modal: bool
+        :param workspace_embedded: Whether the editor is hosted inside the tabbed dynamic-editor workspace.
+        :type workspace_embedded: bool
+        :return: None.
         """
         super().__init__()
 
         self.ui = Ui_BlockEditorWindow()
         self.ui.setupUi(self)
+
+        # The editor owns its own toast manager so save notifications are
+        # stacked above this page instead of behind it on the main window.
+        self.toast_manager: ToastManager = ToastManager(parent=self, position_top=False)
 
         if modal:
             self.setWindowModality(QtCore.Qt.WindowModality.WindowModal)
@@ -5238,9 +5238,13 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 LibraryLeafSpec("Generic", BlockType.GENERIC),
                 LibraryLeafSpec("Line", BlockType.LINE_RMS),
             ],
+            DeviceType.VscDevice: [
+                LibraryLeafSpec("GFL VSC", BlockType.GFL_VSC_RMS),
+            ],
             DeviceType.LoadDevice: [
                 LibraryLeafSpec("Generic", BlockType.GENERIC),
                 LibraryLeafSpec("Load", BlockType.LOAD_RMS),
+                # LibraryLeafSpec("Load", BlockType.DC_PV_SOURCE_RMS),
             ],
         }
 
@@ -5453,6 +5457,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.toolBox.currentChanged.connect(self.on_side_panel_page_changed)
         self.scene.selectionChanged.connect(self.on_scene_selection_changed)
         if not self.main_block.empty() and not self.main_block.diagram.node_data:
+
             blocks_list = list()
             for child in self.main_block.children:
                 item = self.generate_block_item_for_block(child)
@@ -5460,6 +5465,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self.add_connection_items(blocks_list)
             if len(blocks_list) != 0:
                 self.connect_items(blocks_list)
+
         elif not self.main_block.diagram.node_data:
             # here we add the connection variables to the main block
             if self.main_editor:
@@ -7581,6 +7587,54 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     if power_flow_pairs:
                         self.create_conn_items(item_1, item_2, power_flow_pairs)
 
+    def connect_items_pf(self, items_list: List[GenericBlockItem]):
+        """
+        create connection lines to show in editor
+        :param items_list:
+        :type items_list:
+        :return:
+        :rtype:
+        """
+
+        for item_1 in items_list:
+            for item_2 in items_list:
+                if item_1.subsys.uid != item_2.subsys.uid:
+                    power_flow_pairs = find_connections_pf(item_1.subsys, item_2.subsys)
+
+                    if power_flow_pairs:
+                        self.create_conn_items(item_1, item_2, power_flow_pairs)
+
+                    power_flow_pairs = find_connections_pf(item_2.subsys, item_1.subsys)
+
+                    if power_flow_pairs:
+                        self.create_conn_items(item_1, item_2, power_flow_pairs)
+
+    def connect_blocks(self, blocks_list: List[Block]):
+        """
+        create connection lines to show in editor
+        :param items_list:
+        :type items_list:
+        :return:
+        :rtype:
+        """
+
+        for block_1 in blocks_list:
+            for block_2 in blocks_list:
+                if block_1.uid != block_2.uid:
+                    pairs, power_flow_pairs = find_connections(block_1, block_2)
+                    if pairs:
+                        self.create_conn_items(block_1, block_2, pairs)
+
+                    if power_flow_pairs:
+                        self.create_conn_items(block_1, block_2, power_flow_pairs)
+
+                    pairs, power_flow_pairs = find_connections(block_2.subsys, block_1.subsys)
+                    if pairs:
+                        self.create_conn_items(block_2, block_1, pairs)
+
+                    if power_flow_pairs:
+                        self.create_conn_items(block_1, block_2, power_flow_pairs)
+
     def create_conn_items(self, item_source: GenericBlockItem, item_dest: GenericBlockItem, pairs:List[tuple[Var, Var]]):
         """
         Create the connection items for two block items
@@ -7705,42 +7759,53 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return:
         """
         count: int = self.block_counters.get(block_type, 0) + 1
-        item_name: str = f"{var.name}"
-        block_item: ProtectedConnectionBlockItem = ProtectedConnectionBlockItem(var_factory=self.var_factory, name=item_name)
-        block_model: Block = Block()
 
-        if block_type == BlockType.INPUT_CONN:
-            block_model.out_vars.append(var)
-
-        elif block_type == BlockType.OUTPUT_CONN:
-            block_model.in_vars.append(var)
-
-        if block_model is not None:
-            # The symbolic block has to be attached first so the graphics item can build its ports from it.
-
-            block_item.set_subsystem(block_model)
-            block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
-            block_item.build_item()
-
-            # The editor block is the authoritative model container for later save/rebuild steps.
-            self.main_block.add(block_model)
-            self.scene.addItem(block_item)
-            if blocks_list is not None:
-                blocks_list.append(block_item)
-            block_item.setPos(QtCore.QPointF(x_pos, y_pos))
-
-            # Keep the diagram synchronized so later features can rebuild from the same data source.
-            self.diagram.add_node(
-                name=item_name,
-                x=x_pos,
-                y=y_pos,
-                tpe=block_type.name,
-                device_uid=block_model.uid
-            )
-
-            return block_item
-        else:
+        if var is None:
+            # The RMS/EMT connection builders should never emit ``None``.
+            # Keep this guard so a malformed editor interface does not crash the GUI.
             return None
+        else:
+            item_name: str = f"{var.name}"
+            block_item: ProtectedConnectionBlockItem = ProtectedConnectionBlockItem(var_factory=self.var_factory, name=item_name)
+            block_model: Block = Block()
+
+            if block_type == BlockType.INPUT_CONN:
+                block_model.out_vars.append(var)
+
+            elif block_type == BlockType.OUTPUT_CONN:
+                block_model.in_vars.append(var)
+
+            else:
+                pass
+
+            if block_model is not None:
+                # The symbolic block has to be attached first so the graphics item can build its ports from it.
+
+                block_item.set_subsystem(block_model)
+                block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
+                block_item.build_item()
+
+                # The editor block is the authoritative model container for later save/rebuild steps.
+                self.main_block.add(block_model)
+                self.scene.addItem(block_item)
+                if blocks_list is not None:
+                    blocks_list.append(block_item)
+                else:
+                    pass
+                block_item.setPos(QtCore.QPointF(x_pos, y_pos))
+
+                # Keep the diagram synchronized so later features can rebuild from the same data source.
+                self.diagram.add_node(
+                    name=item_name,
+                    x=x_pos,
+                    y=y_pos,
+                    tpe=block_type.name,
+                    device_uid=block_model.uid
+                )
+
+                return block_item
+            else:
+                return None
 
     def create_template_block_item(self,
                                    template: RmsModelTemplate | EmtModelTemplate | FmuTemplate,
@@ -9677,77 +9742,16 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return:
         """
 
+        specs: List[ConnectionVarSpec] = list()
+
         if isinstance(self.api_object, BranchParent):
-
-            # connect bus variables
-            if self.api_object.bus_from.rms_model.empty():
-                initialize_bus_rms(self.api_object.bus_from, self.var_factory)
-
-            Vmf, Vaf = get_bus_rms_algebraic_vars(self.api_object.bus_from.rms_model)
-
-            if self.api_object.bus_to.rms_model.empty():
-                initialize_bus_rms(self.api_object.bus_to, self.var_factory)
-
-            Vmt, Vat = get_bus_rms_algebraic_vars(self.api_object.bus_to.rms_model)
-
-            self.main_block.in_vars.append(Vmf)
-            self.main_block.in_vars.append(Vaf)
-            self.main_block.in_vars.append(Vmt)
-            self.main_block.in_vars.append(Vat)
-
-            self.main_block.external_mapping.update(
-                {VarPowerFlowReferenceType.Vmf: Vmf})
-            self.main_block.external_mapping.update(
-                {VarPowerFlowReferenceType.Vaf: Vaf})
-
-            self.main_block.external_mapping.update(
-                {VarPowerFlowReferenceType.Vmt: Vmt})
-            self.main_block.external_mapping.update(
-                {VarPowerFlowReferenceType.Vat: Vat})
-
-            # add connection variables
-            Pf = self.var_factory.add_var('net_conn_Pf', VarPowerFlowReferenceType.P, True)
-            Qf = self.var_factory.add_var('net_conn_Qf', VarPowerFlowReferenceType.Q, True)
-
-            self.main_block.out_vars.append(Pf)
-            self.main_block.out_vars.append(Qf)
-
-            self.main_block.external_mapping.update({VarPowerFlowReferenceType.Pf: Pf})
-            self.main_block.external_mapping.update({VarPowerFlowReferenceType.Qf: Qf})
-
-            Pt = self.var_factory.add_var('net_conn_Pt', VarPowerFlowReferenceType.P, True)
-            Qt = self.var_factory.add_var('net_conn_Qt', VarPowerFlowReferenceType.Q, True)
-
-            self.main_block.out_vars.append(Pt)
-            self.main_block.out_vars.append(Qt)
-
-            self.main_block.external_mapping.update({VarPowerFlowReferenceType.Pt: Pt})
-            self.main_block.external_mapping.update({VarPowerFlowReferenceType.Qt: Qt})
-
+            specs = self._build_rms_branch_connection_specs()
         elif isinstance(self.api_object, InjectionParent):
+            specs = self._build_rms_injection_connection_specs()
+        else:
+            pass
 
-            # connect bus variables
-            if self.api_object.bus.rms_model.empty():
-                initialize_bus_rms(self.api_object.bus, self.var_factory)
-
-            Vm, Va = get_bus_rms_algebraic_vars(self.api_object.bus.rms_model)
-            self.main_block.in_vars.append(Vm)
-            self.main_block.in_vars.append(Va)
-
-            self.main_block.external_mapping.update(
-                {VarPowerFlowReferenceType.Vm: Vm})
-            self.main_block.external_mapping.update(
-                {VarPowerFlowReferenceType.Va: Va})
-
-            # add connection variables
-            P = self.var_factory.add_var('net_conn_P', VarPowerFlowReferenceType.P, True)
-            Q = self.var_factory.add_var('net_conn_Q', VarPowerFlowReferenceType.Q, True)
-
-            self.main_block.out_vars.append(P)
-            self.main_block.out_vars.append(Q)
-
-            self.main_block.external_mapping.update({VarPowerFlowReferenceType.P: P})
-            self.main_block.external_mapping.update({VarPowerFlowReferenceType.Q: Q})
+        self._materialize_connection_specs(specs)
 
     def add_connection_items(self, blocks_list: List[BlockItem] | None = None):
         """
@@ -9977,16 +9981,35 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         :return:
         """
+        specs: List[ConnectionVarSpec] = list()
+
         if self.api_object.bus.rms_model.empty():
             initialize_bus_rms(self.api_object.bus, self.var_factory)
+        else:
+            pass
 
-        safe_bus_name: str = self._get_safe_bus_name(self.api_object.bus)
+        specs.extend(build_rms_bus_input_specs(
+            bus=self.api_object.bus,
+            voltage_reference=VarPowerFlowReferenceType.Vm,
+            angle_reference=VarPowerFlowReferenceType.Va,
+            dc_voltage_reference=VarPowerFlowReferenceType.Vdc,
+        ))
+        specs.extend(build_rms_bus_output_specs(
+            bus=self.api_object.bus,
+            active_power_reference=VarPowerFlowReferenceType.P,
+            reactive_power_reference=VarPowerFlowReferenceType.Q,
+            terminal_label="",
+        ))
 
-        specs: List[ConnectionVarSpec] = list()
-        specs.append(ConnectionVarSpec("input", VarPowerFlowReferenceType.Vm, f"Vm_{safe_bus_name}"))
-        specs.append(ConnectionVarSpec("input", VarPowerFlowReferenceType.Va, f"Va_{safe_bus_name}"))
-        specs.append(ConnectionVarSpec("output", VarPowerFlowReferenceType.P, f"net_conn_P_{safe_bus_name}"))
-        specs.append(ConnectionVarSpec("output", VarPowerFlowReferenceType.Q, f"net_conn_Q_{safe_bus_name}"))
+        if len(specs) > 0 and specs[-1].visible_name.endswith("_"):
+            specs[-1].visible_name = specs[-1].visible_name.rstrip("_")
+        else:
+            pass
+
+        if len(specs) > 1 and specs[-2].visible_name.endswith("_"):
+            specs[-2].visible_name = specs[-2].visible_name.rstrip("_")
+        else:
+            pass
 
         return specs
 
@@ -10002,20 +10025,33 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         if self.api_object.bus_to.rms_model.empty():
             initialize_bus_rms(self.api_object.bus_to, self.var_factory)
 
-        safe_bus_from: str = self._get_safe_bus_name(self.api_object.bus_from)
-        safe_bus_to: str = self._get_safe_bus_name(self.api_object.bus_to)
-
         specs: List[ConnectionVarSpec] = list()
 
-        specs.append(ConnectionVarSpec("input", VarPowerFlowReferenceType.Vmf, f"Vm_{safe_bus_from}"))
-        specs.append(ConnectionVarSpec("input", VarPowerFlowReferenceType.Vaf, f"Va_{safe_bus_from}"))
-        specs.append(ConnectionVarSpec("input", VarPowerFlowReferenceType.Vmt, f"Vm_{safe_bus_to}"))
-        specs.append(ConnectionVarSpec("input", VarPowerFlowReferenceType.Vat, f"Va_{safe_bus_to}"))
+        specs.extend(build_rms_bus_input_specs(
+            bus=self.api_object.bus_from,
+            voltage_reference=VarPowerFlowReferenceType.Vmf,
+            angle_reference=VarPowerFlowReferenceType.Vaf,
+            dc_voltage_reference=VarPowerFlowReferenceType.Vf_dc,
+        ))
+        specs.extend(build_rms_bus_input_specs(
+            bus=self.api_object.bus_to,
+            voltage_reference=VarPowerFlowReferenceType.Vmt,
+            angle_reference=VarPowerFlowReferenceType.Vat,
+            dc_voltage_reference=VarPowerFlowReferenceType.Vt_dc,
+        ))
 
-        specs.append(ConnectionVarSpec("output", VarPowerFlowReferenceType.Pf, f"net_conn_Pf_{safe_bus_from}"))
-        specs.append(ConnectionVarSpec("output", VarPowerFlowReferenceType.Qf, f"net_conn_Qf_{safe_bus_from}"))
-        specs.append(ConnectionVarSpec("output", VarPowerFlowReferenceType.Pt, f"net_conn_Pt_{safe_bus_to}"))
-        specs.append(ConnectionVarSpec("output", VarPowerFlowReferenceType.Qt, f"net_conn_Qt_{safe_bus_to}"))
+        specs.extend(build_rms_bus_output_specs(
+            bus=self.api_object.bus_from,
+            active_power_reference=VarPowerFlowReferenceType.Pf,
+            reactive_power_reference=VarPowerFlowReferenceType.Qf,
+            terminal_label="f",
+        ))
+        specs.extend(build_rms_bus_output_specs(
+            bus=self.api_object.bus_to,
+            active_power_reference=VarPowerFlowReferenceType.Pt,
+            reactive_power_reference=VarPowerFlowReferenceType.Qt,
+            terminal_label="t",
+        ))
 
         return specs
 
@@ -11495,30 +11531,37 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         editor_window.raise_()
         editor_window.activateWindow()
 
-    def decompose_block_in_place(self, item: BlockItem | GenericBlockItem) -> None:
-        if item.subsys is None:
-            return
+    def decompose_block_in_place(self, block: Block) -> None:
 
-        block = item.subsys
-        if block.children:
-            return
-        if not block.algebraic_eqs and not block.state_eqs:
-            return
+        decomposer = EquationDecomposer(self.var_factory)
+        decomposed = decomposer.decompose(block)
+        preserved_uid = block.uid
+        block.name = decomposed.name
+        block.is_decomposable = decomposed.is_decomposable
+        block.vars_glob_name2uid = decomposed.vars_glob_name2uid
+        block.state_vars = decomposed.state_vars
+        block.state_eqs = decomposed.state_eqs
+        block.algebraic_vars = decomposed.algebraic_vars
+        block.algebraic_eqs = decomposed.algebraic_eqs
+        block.diff_vars = decomposed.diff_vars
+        block.reformulated_vars = decomposed.reformulated_vars
+        block.differential_eqs = decomposed.differential_eqs
+        block.init_eqs = decomposed.init_eqs
+        block.diff_init_eqs = decomposed.diff_init_eqs
+        block.children = decomposed.children
+        block.in_vars = decomposed.in_vars
+        block.out_vars = decomposed.out_vars
+        block.parameters = decomposed.parameters
+        block.discrete_eqs = decomposed.discrete_eqs
+        block.external_mapping = decomposed.external_mapping
+        block.api_obj_mapping = decomposed.api_obj_mapping
+        block.init_values = decomposed.init_values
+        block.var_mapping = decomposed.var_mapping
+        block.event_dict = decomposed.event_dict
+        block.mode_dict = decomposed.mode_dict
+        block.diagram = decomposed.diagram
+        block.uid = preserved_uid
 
-        try:
-            decomposer = EquationDecomposer(self.var_factory)
-            decomposed = decomposer.decompose(block)
-            preserved_uid = block.uid
-            copy_block_state(source_block=decomposed, target_block=block)
-            block.uid = preserved_uid
-            self.rebuild_scene_from_diagram()
-            self.mark_unapplied_changes()
-        except Exception as exc:
-            QtWidgets.QMessageBox.warning(
-                self,
-                "Descomposición",
-                f"No se pudo descomponer el bloque:\n{exc}",
-            )
 
     def modify_scene_item_template(self, item: BlockItem | GenericBlockItem | ConnectionItem) -> None:
         """
@@ -12366,6 +12409,19 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self.rebuild_scene_from_diagram()
             self.select_block_by_uid(block_uid)
 
+    def _show_model_saved_toast(self) -> None:
+        """
+        Show one save confirmation toast attached to this editor window.
+
+        The editor owns a local toast manager so the notification is layered on
+        top of the editor page that triggered the save operation.
+
+        :return: None.
+        """
+        # Emit the toast from the editor itself so the notification stays in
+        # front of the page where the user clicked the save button.
+        self.toast_manager.show_info_toast("Model saved")
+
     def apply_changes(self) -> None:
         """
         Commit the edited working copy back into the original block.
@@ -12373,18 +12429,26 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return:
         """
         if self.mode == DynamicSimulationMode.RMS:
+            # Persist the edited RMS block back into the original model object.
             copy_block_state(source_block=self.main_block, target_block=self.original_block)
+            # Rebuild the connected bus helper models so the saved block stays
+            # consistent with the rest of the dynamic network representation.
             initialize_connected_bus_models_for_editor_assignment(api_object=self.api_object,
                                                                   circuit=self.circuit,
                                                                   var_factory=self.var_factory,
                                                                   mode=self.mode)
+            # Mark the editor state as clean because all in-memory edits were
+            # transferred back to the owned device model successfully.
             self.has_unapplied_changes = False
             self.changes_applied = True
             self.dirtyStateChanged.emit(False)
+            # Notify the user that the save operation completed, while keeping
+            # the editor open for further edits.
+            self._show_model_saved_toast()
             if self.workspace_embedded:
                 pass
             else:
-                self.close()
+                pass
 
 
 
@@ -12402,14 +12466,20 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 # the edited model so the saved device contract matches the
                 # rebuilt terminal bus shells seen by the simulation builder.
                 self._prune_disconnected_emt_root_interface()
+                # Copy the validated editor state back to the owned EMT model.
                 copy_block_state(source_block=self.main_block, target_block=self.original_block)
+                # Mark the working copy as saved because the device model now
+                # contains the current editor contents.
                 self.has_unapplied_changes = False
                 self.changes_applied = True
                 self.dirtyStateChanged.emit(False)
+                # Inform the user that the model was saved and keep the editor
+                # available for incremental editing.
+                self._show_model_saved_toast()
                 if self.workspace_embedded:
                     pass
                 else:
-                    self.close()
+                    pass
             else:
                 # Do not apply the edited model if the bus interface is invalid.
                 # The warning is already emitted by the synchronisation method.

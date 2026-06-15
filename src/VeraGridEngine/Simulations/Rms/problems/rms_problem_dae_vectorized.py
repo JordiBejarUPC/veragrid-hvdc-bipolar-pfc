@@ -507,7 +507,7 @@ class RmsProblemDaeVec(RmsProblemTemplate):
 
         print("starting to type models")
 
-        self.equivalence_dict, self.variables_equivalence_dict, self.block_composition_dict = build_equivalence_classes_dict(self.grid)
+        self.equivalence_dict, self.variables_equivalence_dict, self.block_composition_dict, self.reference_class_for_all_blocks_dict = build_equivalence_classes_dict(self.grid)
 
         print("typing models done!")
         ######################################## Initialize devices ########################################

@@ -1142,10 +1142,71 @@ class PolynomialMatrixBuilder:
 
         S, Phi = (self.S_W, self.Phi_W) if c_type == ConstraintType.INEQUALITY else (self.S_H, self.Phi_H)
         v = self._build_v_vector(v_dict)
+
+        # Debug: dump symbol mapping and v vector for troubleshooting ordering issues
+        try:
+            print("[DEBUG] all_symbols:")
+            for i, s in enumerate(self.all_symbols):
+                print(f"  {i}: {s.name}")
+            print("[DEBUG] sym_to_idx:")
+            for k, vv in sorted(self.sym_to_idx.items(), key=lambda x: x[1]):
+                print(f"  {vv}: {k}")
+            print("[DEBUG] v vector:")
+            print(v)
+        except Exception:
+            pass
+
         F = self._compute_jacobian_sparse(S, v)
 
+        # Debug: basic stats on S, Phi, F
+        try:
+            print(f"[DEBUG] S.shape={S.shape}, Phi.shape={Phi.shape}, F.shape={F.shape}")
+            print(f"[DEBUG] S.nnz={getattr(S, 'nnz', None)}, Phi.nnz={getattr(Phi, 'nnz', None)}, F.nnz={getattr(F, 'nnz', None)}")
+            # For small matrices show dense forms
+            if S.shape[0] <= 20 and S.shape[1] <= 20:
+                try:
+                    print("[DEBUG] S dense:\n", S.toarray())
+                except Exception:
+                    pass
+            if Phi.shape[0] <= 20 and Phi.shape[1] <= 20:
+                try:
+                    print("[DEBUG] Phi dense:\n", Phi.toarray())
+                except Exception:
+                    pass
+            try:
+                print("[DEBUG] F dense:\n", F.toarray())
+            except Exception:
+                pass
+        except Exception:
+            pass
+
         self.EABC = Phi @ F.T
+
+        # Debug: print EABC shape and a dense sample
+        try:
+            print(f"[DEBUG] EABC.shape={self.EABC.shape}")
+            print(self.EABC.toarray())
+        except Exception:
+            pass
+
         self.E, self.A, self.B = self._split_EABC(self.EABC)
+
+        # Debug: print idx_vars/idx_dx lists used in splitting
+        try:
+            idx_dx, idx_vars, idx_u = [], [], []
+            for idx_counter, s in enumerate(self.all_symbols):
+                s_name = s.name
+                if s_name.startswith('dx') or s_name.startswith('xp') or s_name.startswith('d_') or s_name.startswith('dt_'):
+                    idx_dx.append(idx_counter)
+                elif s_name.startswith('u') and not s_name.startswith('u_'):
+                    idx_u.append(idx_counter)
+                else:
+                    idx_vars.append(idx_counter)
+            print(f"[DEBUG] idx_vars={idx_vars}")
+            print(f"[DEBUG] idx_dx={idx_dx}")
+            print(f"[DEBUG] idx_u={idx_u}")
+        except Exception:
+            pass
 
         return self.EABC
 
@@ -1384,7 +1445,7 @@ class PolynomialMatrixBuilder:
             if deriv_idx != -1 and deriv_idx in idx_dx:
                 P_row.append(deriv_idx)
                 P_col.append(i)
-                P_val.append(-1.0)  # Extract and negate the derivative column
+                P_val.append(-1.0)  # Extract and negate the derivative column (original convention)
 
         # Build Projection matrix P in pure CSC format
         P = sparse.csc_matrix((P_val, (P_row, P_col)), shape=(EABC.shape[1], dim))

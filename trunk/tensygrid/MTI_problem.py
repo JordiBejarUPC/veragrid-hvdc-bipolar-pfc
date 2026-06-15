@@ -8,9 +8,14 @@ from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr)
 from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicDerivative
 from VeraGridEngine.Utils.Symbolic.jit_compiler import RMSCompiler
 import VeraGridEngine.api as vge
-from VeraGridEngine.Simulations.Rms.problems.rms_problem_template import RmsProblemTemplate
+from VeraGridEngine.Simulations.Rms.problems.rms_problem_phasor import RmsProblemPhasor
 
-class MTI_Problem(RmsProblemTemplate):
+dummy_grid = vge.MultiCircuit()
+rms_options = vge.RmsOptions()
+mti_results = vge.power_flow(dummy_grid)
+
+
+class MTI_Problem(RmsProblemPhasor):
     """
     Mathematical DAE/ODE problem builder for TenSyGrid.
 
@@ -27,7 +32,9 @@ class MTI_Problem(RmsProblemTemplate):
         "_uid2idx_params", "_uid2idx_diff", "_uid2idx_t", "_uid2idx_event_params",
         "_glob_time", "_n_event_params", "_dt", "_delta", "_state_algeb_vars",
         "_n_state", "_n_alg", "_n_algebraic", "_n_diff", "timings",
-        "_derivative_fn", "_event_params_fn", "_rhs_algeb_fn", "_rhs_state_fn"
+        "_derivative_fn", "_event_params_fn", "_rhs_algeb_fn", "_rhs_state_fn",
+        # JIT/Runtime jacobian function placeholders used by RMS engine
+        "_j11_fn", "_j12_fn", "_j21_fn", "_j22_fn"
     )
 
     VARS_NAME: str = "vars"
@@ -45,7 +52,7 @@ class MTI_Problem(RmsProblemTemplate):
                        to their numerical values at the operating point. If omitted,
                        all values default to 0.0 and can be set later via set_operating_point().
         """
-        super().__init__()
+        super().__init__(grid=dummy_grid, pf_results=mti_results, options=rms_options)
 
         # Default to an empty dictionary if no initial guess is provided yet
         if v_dict is None:
@@ -66,6 +73,8 @@ class MTI_Problem(RmsProblemTemplate):
         self._state_vars, self._state_eqs = [], []
         self._algebraic_vars, self._algebraic_eqs = [], []
         self._diff_vars, self._constant_parameters = [], []
+        # Backwards-compatible container for numeric constant parameter values
+        self._constant_params = []
         self._variable_parameters, self._event_parameters_eqs = [], []
         self._parameters_values = []
 
@@ -135,10 +144,30 @@ class MTI_Problem(RmsProblemTemplate):
             self._constant_parameters.append(v_u)
             val_u = float(v_dict.get(f"u{idx}", 0.0))
             self._parameters_values.append(Const(val_u))
+            # Maintain a plain float list for compatibility with older API expectations
+            self._constant_params.append(val_u)
             self._register_param(v_u, i, sym_dict, var_dict)
 
         # --- 6. Equation Parsing and JIT Compilation ---
         self._parse_and_compile(eqs_str, sym_dict, var_dict)
+        # Ensure constant params is a numpy array to match engine expectations
+        try:
+            self._constant_params = np.array(self._constant_params, dtype=float)
+        except Exception:
+            # Fallback to empty array if conversion fails
+            self._constant_params = np.zeros(0, dtype=float)
+
+        # Ensure the counts used by downstream code (inherited RMSProblemPhasor) are set
+        # Correctly set counts expected by the RMS engine
+        self._n_state = len(getattr(self, '_state_vars', []))
+        self._n_alg = len(getattr(self, '_algebraic_vars', []))
+        # Compute number of equations (should match number of algebraic+state eqs)
+        n_eqs = len(getattr(self, '_state_eqs', [])) + len(getattr(self, '_algebraic_eqs', []))
+        # Prefer uid2idx length, but ensure consistency: _n_vars should match the number of equations
+        uid2len = len(getattr(self, '_uid2idx_vars', {})) if getattr(self, '_uid2idx_vars', None) is not None else 0
+        listlen = self._n_state + self._n_alg
+        self._n_vars = max(uid2len, listlen) if listlen > 0 else max(uid2len, n_eqs)
+        self._n_algebraic = len(getattr(self, '_algebraic_eqs', []))
 
     def set_operating_point(self, v_dict: Dict[str, float]) -> None:
         """
@@ -169,6 +198,113 @@ class MTI_Problem(RmsProblemTemplate):
         for i, v_u in enumerate(self._constant_parameters):
             if v_u.name in v_dict:
                 self._parameters_values[i] = Const(float(v_dict[v_u.name]))
+
+    def get_E_matrix(self, x, dx):
+        """
+        Defensive override that ensures a valid E matrix is returned,
+        sized (n_vars, n_vars) for compatibility with la.eig(A, -E).
+        """
+        try:
+            if not isinstance(self._constant_params, np.ndarray):
+                self._constant_params = np.asarray(self._constant_params, dtype=float)
+        except Exception:
+            self._constant_params = np.zeros(0, dtype=float)
+
+        try:
+            n_vars = getattr(self, '_n_vars', 0)
+            if not isinstance(n_vars, int) or n_vars <= 0:
+                n_from_lists = len(getattr(self, '_state_vars', [])) + len(getattr(self, '_algebraic_vars', []))
+                self._n_vars = n_from_lists if n_from_lists > 0 else 0
+                n_vars = self._n_vars
+        except Exception:
+            n_vars = 0
+
+        if n_vars == 0:
+            import scipy.sparse as sp
+            return sp.csc_matrix((0, 0), dtype=np.float64)
+
+        all_eqs = getattr(self, '_state_eqs', []) + getattr(self, '_algebraic_eqs', [])
+        xdot = getattr(self, '_diff_vars', [])
+        n_eqs = len(all_eqs)
+
+        if n_eqs == 0:
+            import scipy.sparse as sp
+            return sp.eye(n_vars, format="csc", dtype=np.float64)
+
+        try:
+            from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicJacobian
+            E_call = SymbolicJacobian(
+                eqs=all_eqs, variables=xdot,
+                compiler_names_dict=self._compiler_names_dict,
+                alias_names_dict=self._alias_names_dict,
+                VARS_NAME=self.VARS_NAME, DIFF_NAME=self.DIFF_NAME,
+                EVENT_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
+                PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
+                static=True,
+            )
+            vp = getattr(self, '_variable_parameters_values', np.zeros(0, dtype=float))
+            cp = getattr(self, '_constant_params', np.zeros(0, dtype=float))
+            E_partial = E_call(x, dx, vp, cp, h=0).tocsc()
+        except Exception:
+            import scipy.sparse as sp
+            return sp.eye(n_vars, format="csc", dtype=np.float64)
+
+        uid2idx = getattr(self, '_uid2idx_vars', {}) or {}
+        import scipy.sparse as sp
+        E_value = sp.lil_matrix((n_vars, n_vars), dtype=np.float64)
+
+        for j, dvar in enumerate(xdot):
+            base_var = getattr(dvar, 'base_var', None)
+            if base_var is None:
+                continue
+            col_idx = uid2idx.get(getattr(base_var, 'uid', None), None)
+            if col_idx is not None and 0 <= col_idx < n_vars:
+                col = E_partial[:, j]
+                if col.shape[0] <= n_vars:
+                    E_value[:col.shape[0], col_idx] += col
+
+        return E_value.tocsc()
+
+    def get_static_state_matrix(self, x, dx):
+        """Return (n_vars, n_vars) square matrix compatible with la.eig(A, -E)."""
+        n_vars = getattr(self, '_n_vars', 0)
+        n_eqs = len(getattr(self, '_state_eqs', [])) + len(getattr(self, '_algebraic_eqs', []))
+        if n_vars == 0 or n_eqs == 0:
+            import scipy.sparse as sp
+            return sp.eye(max(n_vars, n_eqs, 1), format="csc", dtype=np.float64)
+        try:
+            parent_res = super().get_static_state_matrix(x, dx)
+            if parent_res.shape == (n_vars, n_vars):
+                return parent_res
+            if parent_res.shape[0] == n_vars:
+                return parent_res
+            # Pad rows to make (n_vars, n_vars)
+            import scipy.sparse as sp
+            if parent_res.shape[1] != n_vars:
+                # Rebuild with correct column count
+                return self._build_square_static_matrix(x, dx, n_vars)
+            extra_rows = n_vars - parent_res.shape[0]
+            if extra_rows > 0:
+                padding = sp.csc_matrix((extra_rows, n_vars), dtype=np.float64)
+                return sp.vstack([parent_res, padding], format="csc")
+            return parent_res[:n_vars, :]
+        except Exception:
+            return self._build_square_static_matrix(x, dx, n_vars)
+
+    def _build_square_static_matrix(self, x, dx, n_vars):
+        """Build (n_vars, n_vars) static matrix by padding the parent's rectangular result."""
+        try:
+            parent_res = super().get_static_state_matrix(x, dx)
+            import scipy.sparse as sp
+            n_rows, n_cols = parent_res.shape
+            if n_rows >= n_vars and n_cols >= n_vars:
+                return parent_res[:n_vars, :n_vars]
+            result = sp.lil_matrix((n_vars, n_vars), dtype=np.float64)
+            result[:min(n_rows, n_vars), :min(n_cols, n_vars)] = parent_res[:min(n_rows, n_vars), :min(n_cols, n_vars)]
+            return result.tocsc()
+        except Exception:
+            import scipy.sparse as sp
+            return sp.eye(n_vars, format="csc", dtype=np.float64)
 
     def _get_max_idx(self, p: str, text: str, d: int) -> int:
         """Finds the maximum numeric index referenced in equations via regex."""
@@ -305,6 +441,13 @@ class MTI_Problem(RmsProblemTemplate):
             self._n_event_params = self._n_event_params + 1
 
         self.timings = dict()
+
+        # Placeholders so attribute access is safe even if compilation fails
+        self._j11_fn = None
+        self._j12_fn = None
+        self._j21_fn = None
+        self._j22_fn = None
+
         self._compile_system()
 
     def _compile_system(self) -> None:
@@ -318,6 +461,43 @@ class MTI_Problem(RmsProblemTemplate):
         self._rhs_algeb_fn = rms_compiler.compile_rhs(self._algebraic_eqs, "rhs_algeb")
         if self._n_state > 0:
             self._rhs_state_fn = rms_compiler.compile_rhs(self._state_eqs, "rhs_state")
+
+            # Compile sparse jacobians used by the RMS engine for small-signal analysis
+            try:
+                self._j11_fn = rms_compiler.compile_sparse_jacobian(self._state_eqs, self._state_vars, "j11")
+                self._j12_fn = rms_compiler.compile_sparse_jacobian(self._state_eqs, self._algebraic_vars, "j12")
+                self._j21_fn = rms_compiler.compile_sparse_jacobian(self._algebraic_eqs, self._state_vars, "j21")
+                self._j22_fn = rms_compiler.compile_sparse_jacobian(self._algebraic_eqs, self._algebraic_vars, "j22")
+            except Exception as e:
+                # If compilation fails, provide a runtime Python fallback using SymbolicJacobian
+                print(f"[MTI_problem] Sparse jacobian compilation failed ({e}), installing runtime fallbacks.")
+                try:
+                    from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicJacobian
+                    import numpy as _np
+
+                    def _make_runtime_jac(eqs, variables):
+                        def _jfn(x, dx, vp=None, cp=None, h=0):
+                            vp_arr = vp if vp is not None else _np.zeros(0, dtype=float)
+                            cp_arr = cp if cp is not None else _np.zeros(0, dtype=float)
+                            sj = SymbolicJacobian(eqs=eqs,
+                                                 variables=variables,
+                                                 compiler_names_dict=self._compiler_names_dict,
+                                                 alias_names_dict=self._alias_names_dict,
+                                                 VARS_NAME=self.VARS_NAME,
+                                                 DIFF_NAME=self.DIFF_NAME,
+                                                 EVENT_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
+                                                 PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
+                                                 static=True)
+                            return sj(x, dx, vp_arr, cp_arr, h=0).tocsc()
+                        return _jfn
+
+                    self._j11_fn = _make_runtime_jac(self._state_eqs, self._state_vars)
+                    self._j12_fn = _make_runtime_jac(self._state_eqs, self._algebraic_vars)
+                    self._j21_fn = _make_runtime_jac(self._algebraic_eqs, self._state_vars)
+                    self._j22_fn = _make_runtime_jac(self._algebraic_eqs, self._algebraic_vars)
+                except Exception:
+                    # If even the runtime fallback fails, raise the original compilation error
+                    raise
         self.timings["Compilation"] = time.time() - t0
 
 

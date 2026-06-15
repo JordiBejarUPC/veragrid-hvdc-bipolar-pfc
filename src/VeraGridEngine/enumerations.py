@@ -1604,6 +1604,7 @@ class DeviceType(Enum):
     ModellingAuthority = "Modelling Authority"
 
     FacilityDevice = "Facility"
+    MarketUnitDevice = "Market unit"
 
     SimulationOptionsDevice = "SimulationOptionsDevice"
 
@@ -2884,6 +2885,7 @@ class SimulationTypes(Enum):
     TemplateDriver = 'Template'
     PowerFlow_run = 'Power flow'
     PowerFlow3ph_run = 'Power flow 3ph'
+    PowerFlowTimeSeries3ph_run = 'Power flow time series 3ph'
     StateEstimation_run = 'State estimation'
     ShortCircuit_run = 'Short circuit'
     MonteCarlo_run = 'Monte Carlo'
@@ -4282,6 +4284,8 @@ class BlockType(Enum):
     EXCITER_RMS = "EXCITER_RMS"
     LINE_RMS = "Line_RMS"
     LOAD_RMS = "Load_RMS"
+    GFL_VSC_RMS = "GFL_VSC_RMS"
+    DC_PV_SOURCE_RMS = "DC_PV_SOURCE_RMS"
 
     # EMT
     EMT_GENERATOR = "EMT_GENERATOR"
