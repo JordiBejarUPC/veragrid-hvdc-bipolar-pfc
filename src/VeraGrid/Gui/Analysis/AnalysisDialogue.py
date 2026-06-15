@@ -459,6 +459,7 @@ class GridAnalysisGUI(QtWidgets.QMainWindow):
         # Build the generated UI first because every later step depends on the widgets.
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
+        self.setup_balance_tab()
 
         # Store the circuit and the power-flow options used to compute sigma data.
         self.circuit = circuit
@@ -472,6 +473,7 @@ class GridAnalysisGUI(QtWidgets.QMainWindow):
         self.fixable_errors = list()
         self.issue_entries = list()
         self.issue_model = QtGui.QStandardItemModel(self)
+        self.inputs_results = None
         self.sigma_results = None
         self.sigma_model = None
         self.summary = DashboardSummary(
@@ -561,6 +563,72 @@ class GridAnalysisGUI(QtWidgets.QMainWindow):
         self.ui.mainTabWidget.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding,
                                             QtWidgets.QSizePolicy.Policy.Expanding)
 
+    def setup_balance_tab(self) -> None:
+        """
+        Create the runtime inputs-analysis tab used to explore the strongest balances.
+        """
+        self.balance_page = QtWidgets.QWidget()
+        self.balance_page.setObjectName("balancePage")
+
+        page_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self.balance_page)
+        page_layout.setSpacing(12)
+        page_layout.setContentsMargins(10, 10, 10, 10)
+
+        panel_frame: QtWidgets.QFrame = QtWidgets.QFrame(self.balance_page)
+        panel_frame.setObjectName("balancePanelFrame")
+        panel_frame.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
+        panel_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(panel_frame)
+        panel_layout.setSpacing(12)
+        panel_layout.setContentsMargins(22, 18, 22, 18)
+
+        header_layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout()
+        header_layout.setSpacing(10)
+
+        title_label: QtWidgets.QLabel = QtWidgets.QLabel("Balance Explorer", panel_frame)
+        title_label.setObjectName("balanceTitleLabel")
+        title_label.setProperty("cssClass", "sectionTitle")
+        header_layout.addWidget(title_label)
+
+        header_layout.addStretch(1)
+
+        aggregation_label: QtWidgets.QLabel = QtWidgets.QLabel("Aggregation", panel_frame)
+        aggregation_label.setObjectName("balanceAggregationLabel")
+        header_layout.addWidget(aggregation_label)
+
+        self.balanceAggregationComboBox = QtWidgets.QComboBox(panel_frame)
+        self.balanceAggregationComboBox.setObjectName("balanceAggregationComboBox")
+        header_layout.addWidget(self.balanceAggregationComboBox)
+
+        top_n_label: QtWidgets.QLabel = QtWidgets.QLabel("Top N", panel_frame)
+        top_n_label.setObjectName("balanceTopNLabel")
+        header_layout.addWidget(top_n_label)
+
+        self.balanceTopNSpinBox = QtWidgets.QSpinBox(panel_frame)
+        self.balanceTopNSpinBox.setObjectName("balanceTopNSpinBox")
+        self.balanceTopNSpinBox.setMinimum(1)
+        self.balanceTopNSpinBox.setMaximum(20)
+        self.balanceTopNSpinBox.setValue(8)
+        header_layout.addWidget(self.balanceTopNSpinBox)
+
+        panel_layout.addLayout(header_layout)
+
+        self.balanceSummaryLabel = QtWidgets.QLabel("Inputs analysis pending.", panel_frame)
+        self.balanceSummaryLabel.setObjectName("balanceSummaryLabel")
+        self.balanceSummaryLabel.setWordWrap(True)
+        panel_layout.addWidget(self.balanceSummaryLabel)
+
+        self.balancePlotWidget = MatplotlibWidget(panel_frame)
+        self.balancePlotWidget.setObjectName("balancePlotWidget")
+        panel_layout.addWidget(self.balancePlotWidget)
+
+        page_layout.addWidget(panel_frame)
+
+        controls_index: int = self.ui.mainTabWidget.indexOf(self.ui.controlsPage)
+        if controls_index >= 0:
+            self.ui.mainTabWidget.insertTab(controls_index, self.balance_page, "Balance Explorer")
+        else:
+            self.ui.mainTabWidget.addTab(self.balance_page, "Balance Explorer")
+
     def populate_static_controls(self) -> None:
         """
         Fill dashboard controls whose contents do not depend on a simulation.
@@ -575,6 +643,16 @@ class GridAnalysisGUI(QtWidgets.QMainWindow):
 
         self.ui.objectTypeFilterComboBox.clear()
         self.ui.objectTypeFilterComboBox.addItem("All object types")
+
+        self.balanceAggregationComboBox.clear()
+        self.balanceAggregationComboBox.addItem("Area")
+        self.balanceAggregationComboBox.addItem("Zone")
+        self.balanceAggregationComboBox.addItem("Substation")
+        self.balanceAggregationComboBox.addItem("VoltageLevel")
+        self.balanceAggregationComboBox.addItem("Country")
+        self.balanceAggregationComboBox.addItem("Community")
+        self.balanceAggregationComboBox.addItem("Region")
+        self.balanceAggregationComboBox.addItem("Municipality")
 
     def populate_object_type_filter(self) -> None:
         """
@@ -616,6 +694,8 @@ class GridAnalysisGUI(QtWidgets.QMainWindow):
         self.ui.issueSearchLineEdit.textChanged.connect(self.refresh_issue_table)
         self.ui.expandAllIssuesButton.clicked.connect(self.expand_all_issues)
         self.ui.collapseAllIssuesButton.clicked.connect(self.collapse_all_issues)
+        self.balanceAggregationComboBox.currentTextChanged.connect(self.update_balance_panel)
+        self.balanceTopNSpinBox.valueChanged.connect(self.update_balance_panel)
 
     def expand_all_issues(self) -> None:
         """
@@ -699,6 +779,7 @@ class GridAnalysisGUI(QtWidgets.QMainWindow):
         try:
             self.theme_is_dark = new_theme_is_dark
             self.refresh_issue_table()
+            self.update_balance_panel()
             self.update_sigma_panel()
             self.update_narrative()
         finally:
@@ -726,8 +807,8 @@ class GridAnalysisGUI(QtWidgets.QMainWindow):
             grade_text_color: str = "#a6f4d0"
             grade_background: str = "#153e35"
             grade_border: str = "#2a6d5d"
-            primary_button_background: str = "#1f8a70"
-            primary_button_hover: str = "#27a27f"
+            primary_button_background: str = "#00aa88"
+            primary_button_hover: str = "#0ab596"
             primary_button_text: str = "#ffffff"
             secondary_button_background: str = "#203547"
             secondary_button_text: str = "#d9ecff"
@@ -752,8 +833,8 @@ class GridAnalysisGUI(QtWidgets.QMainWindow):
             grade_text_color = "#0b6b4b"
             grade_background = "#def7ea"
             grade_border = "#c4ebd8"
-            primary_button_background = "#1f8a70"
-            primary_button_hover = "#27a27f"
+            primary_button_background = "#00aa88"
+            primary_button_hover = "#0ab596"
             primary_button_text = "#ffffff"
             secondary_button_background = "#e9f5ff"
             secondary_button_text = "#10415f"
@@ -915,6 +996,7 @@ QWidget#overviewPage QProgressBar::chunk {{
 
         # Run sigma analysis separately so the dashboard can still open even when sigma is not available.
         sigma_status_text: str
+        self.inputs_results = self.run_inputs_analysis()
         self.sigma_results, sigma_status_text = self.run_sigma_analysis()
 
         # Normalize the log into table rows before score computation and filtering.
@@ -929,11 +1011,279 @@ QWidget#overviewPage QProgressBar::chunk {{
         # Refresh every visual section after the new state has been fully computed.
         self.update_score_cards()
         self.refresh_issue_table()
+        self.update_balance_panel()
         self.update_sigma_panel()
         self.update_narrative()
         self.statusBar().showMessage(
             f"Dashboard refreshed: {self.summary.issue_count} findings, score {self.summary.overall_score}/100.",
             8000,
+        )
+
+    def run_inputs_analysis(self) -> Optional[InputsAnalysisResults]:
+        """
+        Build the inputs-analysis results used by the balance explorer tab.
+
+        :return: Inputs-analysis results when available
+        """
+        inputs_driver: InputsAnalysisDriver
+
+        # Reuse the existing backend so the balance explorer stays aligned with the main application logic.
+        try:
+            inputs_driver = InputsAnalysisDriver(grid=self.circuit)
+        except Exception:
+            return None
+        else:
+            return inputs_driver.results
+
+    def get_balance_result_type(self, aggregation: str) -> ResultTypes:
+        """
+        Map one balance aggregation label to the matching inputs-analysis result type.
+
+        :param aggregation: Aggregation label selected in the balance explorer
+        :return: Matching balance result type
+        """
+        if aggregation == "Area":
+            return ResultTypes.AreaBalanceAnalysis
+        else:
+            if aggregation == "Zone":
+                return ResultTypes.ZoneBalanceAnalysis
+            else:
+                if aggregation == "Substation":
+                    return ResultTypes.SubstationBalanceAnalysis
+                else:
+                    if aggregation == "VoltageLevel":
+                        return ResultTypes.VoltageLevelBalanceAnalysis
+                    else:
+                        if aggregation == "Country":
+                            return ResultTypes.CountryBalanceAnalysis
+                        else:
+                            if aggregation == "Community":
+                                return ResultTypes.CommunityBalanceAnalysis
+                            else:
+                                if aggregation == "Region":
+                                    return ResultTypes.RegionBalanceAnalysis
+                                else:
+                                    return ResultTypes.MunicipalityBalanceAnalysis
+
+    def update_balance_panel(self) -> None:
+        """
+        Refresh the balance explorer chart from the latest inputs-analysis results.
+        """
+        axis = self.balancePlotWidget.get_axis()
+        figure = self.balancePlotWidget.get_figure()
+        self.balancePlotWidget.clear(force=True)
+        axis = self.balancePlotWidget.get_axis()
+        figure = self.balancePlotWidget.get_figure()
+
+        if self.theme_is_dark:
+            figure_facecolor: str = "#1f2630"
+            axis_facecolor: str = "#171c24"
+            grid_color: str = "#455365"
+            label_color: str = "#e7edf5"
+            positive_color: str = "#00aa88"
+            negative_color: str = "#c96f5d"
+        else:
+            figure_facecolor = "#ffffff"
+            axis_facecolor = "#f7fbff"
+            grid_color = "#dce7f2"
+            label_color = "#17324a"
+            positive_color = "#00aa88"
+            negative_color = "#c96f5d"
+
+        figure.set_facecolor(figure_facecolor)
+        axis.set_facecolor(axis_facecolor)
+
+        if self.inputs_results is None:
+            self.balanceSummaryLabel.setText("Inputs analysis is unavailable for the current grid.")
+            axis.text(0.5,
+                      0.5,
+                      "Inputs analysis unavailable",
+                      ha="center",
+                      va="center",
+                      fontsize=12,
+                      color=label_color,
+                      transform=axis.transAxes)
+            axis.set_xticks(list())
+            axis.set_yticks(list())
+            axis.set_frame_on(False)
+            figure.tight_layout()
+            self.balancePlotWidget.redraw()
+            return
+        else:
+            pass
+
+        aggregation: str = self.balanceAggregationComboBox.currentText()
+        top_n: int = self.balanceTopNSpinBox.value()
+
+        if self.circuit.get_time_number() > 0:
+            self.plot_time_series_balances(aggregation=aggregation,
+                                           top_n=top_n,
+                                           axis=axis,
+                                           label_color=label_color,
+                                           grid_color=grid_color,
+                                           positive_color=positive_color,
+                                           negative_color=negative_color)
+        else:
+            self.plot_snapshot_balances(aggregation=aggregation,
+                                        top_n=top_n,
+                                        axis=axis,
+                                        label_color=label_color,
+                                        grid_color=grid_color,
+                                        positive_color=positive_color,
+                                        negative_color=negative_color)
+
+        figure.tight_layout()
+        self.balancePlotWidget.redraw()
+        self.ui.mainTabWidget.setTabText(self.ui.mainTabWidget.indexOf(self.balance_page), "Balance Explorer")
+
+    def plot_time_series_balances(self,
+                                  aggregation: str,
+                                  top_n: int,
+                                  axis,
+                                  label_color: str,
+                                  grid_color: str,
+                                  positive_color: str,
+                                  negative_color: str) -> None:
+        """
+        Plot the strongest time-series balances for the selected aggregation.
+
+        :param aggregation: Aggregation label
+        :param top_n: Maximum number of traces to show
+        :param axis: Matplotlib axis
+        :param label_color: Theme text color
+        :param grid_color: Theme grid color
+        :param positive_color: Positive accent color
+        :param negative_color: Negative accent color
+        """
+        result_type: ResultTypes = self.get_balance_result_type(aggregation)
+        result_table = self.inputs_results.mdl(result_type)
+        magnitude: np.ndarray = np.max(np.abs(result_table.data_c), axis=0)
+        ranking: np.ndarray = np.argsort(magnitude)[::-1]
+        selected_indices: np.ndarray = ranking[:min(top_n, len(ranking))]
+
+        if len(selected_indices) == 0:
+            self.balanceSummaryLabel.setText(f"No {aggregation.lower()} balances are available to plot.")
+            axis.text(0.5,
+                      0.5,
+                      "No balance series available",
+                      ha="center",
+                      va="center",
+                      fontsize=12,
+                      color=label_color,
+                      transform=axis.transAxes)
+            axis.set_xticks(list())
+            axis.set_yticks(list())
+            axis.set_frame_on(False)
+            return
+        else:
+            pass
+
+        time_index = pd.to_datetime(result_table.index_c)
+        for position, column_index in enumerate(selected_indices):
+            series_values: np.ndarray = result_table.data_c[:, column_index]
+            column_name: str = str(result_table.cols_c[column_index])
+
+            if position == 0:
+                line_color: str = positive_color
+            else:
+                if position == 1:
+                    line_color = negative_color
+                else:
+                    line_color = "#4f7cac"
+
+            axis.plot(time_index, series_values, linewidth=1.8, label=column_name, color=line_color)
+
+        axis.axhline(0.0, color=grid_color, linewidth=1.0, linestyle="--")
+        axis.grid(True, color=grid_color, linewidth=0.7)
+        axis.tick_params(axis="x", colors=label_color)
+        axis.tick_params(axis="y", colors=label_color)
+        axis.title.set_color(label_color)
+        axis.xaxis.label.set_color(label_color)
+        axis.yaxis.label.set_color(label_color)
+        axis.set_title(f"Top {len(selected_indices)} {aggregation} balances over time")
+        axis.set_xlabel("Time")
+        axis.set_ylabel("Net balance (MW)")
+        axis.legend(loc="best")
+
+        top_column_name: str = str(result_table.cols_c[selected_indices[0]])
+        top_column_value: float = float(magnitude[selected_indices[0]])
+        self.balanceSummaryLabel.setText(
+            f"Showing the {len(selected_indices)} strongest {aggregation.lower()} balance traces. "
+            f"Largest absolute balance: {top_column_name} at {top_column_value:.3f} MW."
+        )
+
+    def plot_snapshot_balances(self,
+                               aggregation: str,
+                               top_n: int,
+                               axis,
+                               label_color: str,
+                               grid_color: str,
+                               positive_color: str,
+                               negative_color: str) -> None:
+        """
+        Plot the strongest snapshot balances for the selected aggregation.
+
+        :param aggregation: Aggregation label
+        :param top_n: Maximum number of bars to show
+        :param axis: Matplotlib axis
+        :param label_color: Theme text color
+        :param grid_color: Theme grid color
+        :param positive_color: Positive accent color
+        :param negative_color: Negative accent color
+        """
+        grouped_frame: pd.DataFrame = self.inputs_results.group_by(aggregation)
+        balance_series: pd.Series = grouped_frame["P"].astype(float)
+        ordered_series: pd.Series = balance_series.reindex(balance_series.abs().sort_values(ascending=False).index)
+        selected_series: pd.Series = ordered_series.head(top_n)
+
+        if selected_series.empty:
+            self.balanceSummaryLabel.setText(f"No {aggregation.lower()} balances are available to plot.")
+            axis.text(0.5,
+                      0.5,
+                      "No snapshot balances available",
+                      ha="center",
+                      va="center",
+                      fontsize=12,
+                      color=label_color,
+                      transform=axis.transAxes)
+            axis.set_xticks(list())
+            axis.set_yticks(list())
+            axis.set_frame_on(False)
+            return
+        else:
+            pass
+
+        labels: List[str] = list(selected_series.index.astype(str))
+        values: np.ndarray = selected_series.to_numpy(dtype=float)
+        colors: List[str] = list()
+        value_index: int = 0
+        while value_index < len(values):
+            if values[value_index] >= 0.0:
+                colors.append(positive_color)
+            else:
+                colors.append(negative_color)
+            value_index += 1
+
+        axis.barh(labels[::-1], values[::-1], color=colors[::-1])
+        axis.axvline(0.0, color=grid_color, linewidth=1.0, linestyle="--")
+        axis.grid(True, color=grid_color, linewidth=0.7, axis="x")
+        axis.tick_params(axis="x", colors=label_color)
+        axis.tick_params(axis="y", colors=label_color)
+        axis.title.set_color(label_color)
+        axis.xaxis.label.set_color(label_color)
+        axis.yaxis.label.set_color(label_color)
+        axis.set_title(f"Top {len(values)} {aggregation} snapshot balances")
+        axis.set_xlabel("Net balance (MW)")
+        axis.set_ylabel(aggregation)
+
+        exporter_name: str = str(selected_series.idxmax())
+        exporter_value: float = float(selected_series.max())
+        importer_name: str = str(selected_series.idxmin())
+        importer_value: float = float(selected_series.min())
+        self.balanceSummaryLabel.setText(
+            f"Snapshot net balances by {aggregation.lower()}. "
+            f"Largest exporter: {exporter_name} ({exporter_value:.3f} MW). "
+            f"Largest importer: {importer_name} ({importer_value:.3f} MW)."
         )
 
     def sort_issue_entries(self, issue: IssueEntry) -> Tuple[int, str, str]:
