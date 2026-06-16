@@ -1118,7 +1118,9 @@ class BaseMainGui(QMainWindow):
         Display the grid analysis GUI
         """
 
-        self.analysis_dialogue = GridAnalysisGUI(circuit=self.circuit)
+        self.analysis_dialogue = GridAnalysisGUI(circuit=self.circuit,
+                                                 power_flow_options=self.get_selected_power_flow_options(),
+                                                 parent=self)
 
         self.analysis_dialogue.resize(int(1.61 * 600.0), 600)
         self.analysis_dialogue.show()
