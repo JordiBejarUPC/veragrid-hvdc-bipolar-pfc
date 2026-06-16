@@ -659,6 +659,12 @@ def get_veragrid_generator(psse_elm: RawGeneratorLike, psse_bus_dict: Dict[int, 
         Qmax = psse_elm.QT
         Q = psse_elm.QG
 
+    # A generator with no reactive range (QT == QB) cannot regulate voltage. PSSe models
+    # such a machine as a fixed-Q (PQ) injection, letting its bus voltage float, so a
+    # voltage-controlling WMOD must be demoted to fixed-Q here to match.
+    if Qmax == Qmin:
+        control_mode = GeneratorControlMode.Q
+
     elm = dev.Generator(
         name=name,
         idtag=None,
