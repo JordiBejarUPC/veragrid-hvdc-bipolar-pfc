@@ -6,19 +6,19 @@ import VeraGridEngine as vg
 folder = "data"
 
 for name in [
-    # "ACTIVSg2000.RAW",
-    # "AU14GenModel.RAW",
-    # "ieee9.raw",
-    # "IEEE14bus.raw",
-    # "IEEE30bus.raw",
-    # "NETS-NYPS68Bus.raw",
-    # "IEEE118Busv2.raw",
-    # "wecc179.raw",
-    # "case300.raw",
+    "ACTIVSg2000.RAW",
+    "AU14GenModel.RAW",
+    "ieee9.raw",
+    "IEEE14bus.raw",
+    "IEEE30bus.raw",
+    "NETS-NYPS68Bus.raw",
+    "IEEE118Busv2.raw",
+    "wecc179.raw",
+    "case300.raw",
     "01_A-HP_0-ST_2027_INV_MAX-D_(1).raw",
-    # "01_A-HP_0-ST_2027_INV_MAX-N_(1).raw",
-    # "01_A-HP_0-ST_2027_VER_MAX-D_(1).raw",
-    # "01_A-HP_0-ST_2027_VER_MAX-N_(1).raw",
+    "01_A-HP_0-ST_2027_INV_MAX-N_(1).raw",
+    "01_A-HP_0-ST_2027_VER_MAX-D_(1).raw",
+    "01_A-HP_0-ST_2027_VER_MAX-N_(1).raw",
 ]:
     # ------------------------------------------------------------------------------------------------------------------
     # Load PSSe
@@ -44,14 +44,8 @@ for name in [
         tolerance=1e-5,
         solver_type=vg.SolverType.NR,
         retry_with_other_methods=False,
-        control_q=False,
-        ignore_single_node_islands=True,
         initialize_angles=True,
-        control_taps_modules=False,
-        control_taps_phase=False,
-        control_remote_voltage=False,
-        orthogonalize_controls=False,
-        apply_temperature_correction=False
+        control_q=False,
     )
     results = vg.power_flow(grid, options=options)
 
@@ -77,15 +71,14 @@ for name in [
         print("Vm ok", Vm_ok)
 
         if not Vm_ok:
-            print(pd.DataFrame({"Vm_veragrid": Vm_vg[:n_psse], "Vm_psse": Vm_psse}))
+            # pd.DataFrame({"Vm_veragrid": Vm_vg, "Vm_psse": Vm_psse})
             max_mismatch = np.max(np.abs(Vm_psse - Vm_vg[:n_psse]))
             print("\tMax Vm mismatch", max_mismatch)
 
         print("Va ok", Va_ok)
 
         if not Va_ok:
-            print(pd.DataFrame({"Va_veragrid": Va_vg[:n_psse], "Va_psse": Va_psse}))
-            max_mismatch = np.max(np.abs(Va_psse - Va_vg[:n_psse]))
+            max_mismatch = np.max(np.abs(Va_psse, Va_vg[:n_psse]))
             print("\tMax Va mismatch", max_mismatch)
     else:
         print("*" * 40)

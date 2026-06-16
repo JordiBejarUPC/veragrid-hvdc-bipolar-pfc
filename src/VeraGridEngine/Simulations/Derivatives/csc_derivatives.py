@@ -2024,6 +2024,49 @@ def dDroopvsc_dVm_csc(n_droop: int, nbus: int, i_u_vm, k_vsc_pfp_droop, Fdcp_vsc
 
 
 @njit()
+def dVmdcDiff_dVm_csc(n_diff: int, nbus: int, i_u_vm, k_vsc_vmdc_diff, Fdcp_vsc, Fdcn_vsc, Va) -> CSC:
+    """
+    Compute the d/dVm block of the bipolar Vm_dc pole-to-pole equation
+    (V[F].real - V[F_dcn].real) - Udc_set = 0. Using V.real = Vm*cos(Va):
+    d/dVm[F] = cos(Va[F]) and d/dVm[F_dcn] = -cos(Va[F_dcn]).
+    :param n_diff: number of pole-to-pole equations (rows)
+    :param nbus: number of buses
+    :param i_u_vm: unknown-Vm bus indices (column space)
+    :param k_vsc_vmdc_diff: VSC index of each pole-to-pole equation
+    :param Fdcp_vsc: from (positive pole) bus index of each VSC
+    :param Fdcn_vsc: negative pole bus index of each VSC
+    :param Va: voltage angles at buses (used for the signed DC voltage Vm*cos(Va))
+    :return: CSC block.
+    """
+    j_lookup = make_lookup(nbus, i_u_vm)
+    max_nnz = 2 * n_diff
+    mat = CSC(n_diff, len(i_u_vm), max_nnz, False)
+    Tx = np.empty(max_nnz, dtype=np.float64)
+    Ti = np.empty(max_nnz, dtype=np.int32)
+    Tj = np.empty(max_nnz, dtype=np.int32)
+    nnz = 0
+    for i in range(n_diff):
+        k = k_vsc_vmdc_diff[i]
+        fp = Fdcp_vsc[k]
+        fn = Fdcn_vsc[k]
+        jp = j_lookup[fp]
+        if jp >= 0:
+            Tx[nnz] = np.cos(Va[fp])  # d(V[F].real)/dVm[F]
+            Ti[nnz] = i
+            Tj[nnz] = jp
+            nnz += 1
+        if fn > -1:
+            jn = j_lookup[fn]
+            if jn >= 0:
+                Tx[nnz] = -np.cos(Va[fn])  # -d(V[F_dcn].real)/dVm[F_dcn]
+                Ti[nnz] = i
+                Tj[nnz] = jn
+                nnz += 1
+    mat.fill_from_coo(Ti, Tj, Tx, nnz)
+    return mat
+
+
+@njit()
 def dDroopvsc_dPfp_csc(n_droop: int, nvsc: int, k_vsc_pfp_droop, u_vsc_pfp) -> CSC:
     """
     Compute the d(droop equation)/dPfp block 
