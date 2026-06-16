@@ -37,9 +37,8 @@ from VeraGridEngine.enumerations import DeviceType, VarPowerFlowReferenceType, P
     DynamicSimulationMode, ShuntConnectionType, WindingType, DynamicTableModelMode
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms, get_bus_rms_algebraic_vars
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import BusEmtTemplate, get_bus_emt_template, get_bus_emt_algebraic_vars
-from VeraGridEngine.Utils.Symbolic.templates_common_functions import _debug_dump_device_contract, \
-    _debug_dump_bus_contract, _debug_dump_bus_registry, register_saved_emt_model_vars_for_device, \
-    _debug_dump_device_root_io_alignment, unify_saved_emt_model_root_contract, attach_emt_model_to_buses
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import register_saved_emt_model_vars_for_device, \
+    unify_saved_emt_model_root_contract, attach_emt_model_to_buses
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
@@ -13547,9 +13546,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
 
         elif self.mode == DynamicSimulationMode.EMT:
-            print(f"[EMT DEBUG] editor_apply_changes start device={self.api_object.name}")
-            _debug_dump_device_contract(device=self.api_object, label="before_editor_apply_changes")
-            _debug_dump_device_root_io_alignment(device=self.api_object, label="before_editor_apply_changes")
             masks_are_valid: bool
             requested_bus_mask: list[bool] | None
             requested_from_mask: list[bool] | None
@@ -13589,8 +13585,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 # identities through the factory connection machinery.
                 register_saved_emt_model_vars_for_device(device=self.api_object,
                                                          var_factory=self.var_factory)
-                _debug_dump_device_contract(device=self.api_object, label="after_copy_and_register")
-                _debug_dump_device_root_io_alignment(device=self.api_object, label="after_copy_and_register")
                 # The editor path now reuses the same engine-side EMT attachment
                 # workflow as the native template-assignment path. The only GUI-
                 # specific responsibility left here is determining which phase
@@ -13601,8 +13595,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                           bus_mask=requested_bus_mask,
                                           from_mask=requested_from_mask,
                                           to_mask=requested_to_mask)
-                _debug_dump_device_contract(device=self.api_object, label="after_editor_apply_changes")
-                _debug_dump_device_root_io_alignment(device=self.api_object, label="after_editor_apply_changes")
                 # Mark the working copy as saved because the device model now
                 # contains the current editor contents.
                 self.has_unapplied_changes = False

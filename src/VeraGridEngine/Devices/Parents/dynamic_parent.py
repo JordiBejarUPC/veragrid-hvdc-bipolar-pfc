@@ -17,7 +17,7 @@ from VeraGridEngine.Utils.Symbolic.symbolic_io import duplicate_block
 
 
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import connect_bus_variables_rms, connect_bus_variables_emt, \
-    unregister_connected_emt_model_from_attached_buses, _debug_dump_device_contract
+    unregister_connected_emt_model_from_attached_buses
 
 
 
@@ -309,7 +309,6 @@ class DynamicDevice(PhysicalDevice):
             self._clear_emt_fmu_config()
 
             if self.auto_update_enabled:
-                print(f"[EMT DEBUG] emt_template_setter start device={self.name}")
                 # val.block.unify_blocks()
                 emt_mdl = duplicate_block(val.block, self._var_factory)
                 connect_bus_variables_emt(self,
@@ -318,7 +317,6 @@ class DynamicDevice(PhysicalDevice):
                                           allow_deferred_connection=True)
 
                 self.emt_model = emt_mdl
-                _debug_dump_device_contract(device=self, label="after_emt_template_setter")
         elif val is None:
             # Clearing the template makes any previously registered bus endpoint
             # stale because the device no longer guarantees that its current EMT
