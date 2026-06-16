@@ -460,6 +460,8 @@ def _parse_symbolic_editor_value(block: Block | None, value: Any) -> Any:
     Expr-compatible objects in init/event/mode dictionaries.
     """
     if not isinstance(value, str) or block is None:
+        if isinstance(value, (int, float)):
+            return Const(value)
         return value
 
     parsed = string_to_symbolic(value, build_block_symbol_namespace(block))
@@ -4305,7 +4307,6 @@ class GenericBlockItem(QGraphicsRectItem):
         self.api_object = api_object
         self.position_changed_callback = position_changed_callback
 
-
         self.name_item = QGraphicsTextItem(self.subsys.name, self)
         self.name_item.setDefaultTextColor(BLOCK_TITLE)
         name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 9)
@@ -4320,12 +4321,7 @@ class GenericBlockItem(QGraphicsRectItem):
 
         self.name_item.setDefaultTextColor(BLOCK_TITLE)
 
-        self.editor_window = DynamicBlockEditorGUI(
-            var_factory=self.var_factory,
-            block=self.subsys,
-            api_object=self.api_object,
-            mode=self.mode
-        )
+        self.editor_window: DynamicBlockEditorGUI | None = None
 
         self.resize_handle: ResizeHandle | None = None
         self.resizing_from_handle = False
@@ -4372,8 +4368,24 @@ class GenericBlockItem(QGraphicsRectItem):
 
         """
 
-        items_list = list()
-        if not self.subsys.children:
+        if self.editor_window is None and self.subsys.children:
+            self.editor_window = DynamicBlockEditorGUI(
+                var_factory=self.var_factory,
+                block=self.subsys,
+                api_object=self.api_object,
+                mode=self.mode,
+            )
+
+
+        else:
+            self.editor_window = DynamicBlockEditorGUI(
+                var_factory=self.var_factory,
+                block=self.subsys,
+                api_object=self.api_object,
+                mode=self.mode,
+            )
+            items_list = list()
+
             if self.subsys.is_eq_decomposable():
                 self.editor_window.decompose_block_in_place(self.subsys)
                 self.editor_window.diagram = self.subsys.diagram
@@ -6042,12 +6054,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.var_factory = var_factory
         self.api_object = api_object
 
-        self.original_block: Block = block  # api_object.rms_model
-
-        self.main_block: Block = clone_block_for_editing(block)
-
-        self.diagram: BlockDiagram = self.main_block.diagram
-
         self.circuit = circuit
         self.mode = mode
         self.main_editor = main_editor
@@ -6059,6 +6065,22 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.scene: DiagramScene = DiagramScene(self)
         self.changes_applied: bool = False
         self.has_unapplied_changes: bool = False
+
+        self.original_block: Block = block  # api_object.rms_model
+
+        if not self.original_block.children and not self.original_block.empty() and self.main_editor:
+            self.main_block = Block()
+            block_to_append = clone_block_for_editing(block)
+            self.main_block.children.append(block_to_append)
+            self.main_block.in_vars = block_to_append.in_vars
+            self.main_block.out_vars = block_to_append.out_vars
+            self.main_block.external_mapping = block_to_append.external_mapping
+        else:
+            self.main_block: Block = clone_block_for_editing(block)
+
+        self.diagram: BlockDiagram = self.main_block.diagram
+
+
 
         if self.workspace_embedded:
             self.menuBar().setVisible(False)
@@ -6105,6 +6127,12 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             LibraryLeafSpec("Fault EMT", BlockType.FAULT_EMT),
         ])
 
+        common_rms_device_blocks: List[LibraryLeafSpec] = list([
+            LibraryLeafSpec("Pll transformer", BlockType.PLL_TRANSFORM_RMS),
+            LibraryLeafSpec("Pi current controller", BlockType.PI_CURRENT_CONTROLLER),
+            LibraryLeafSpec("Pi power controller", BlockType.PI_POWER_CONTROLLER),
+            LibraryLeafSpec("Gfl converter", BlockType.GFL_CONVERTER_RMS)])
+
         device_rms_related_blocks = {
             DeviceType.GeneratorDevice: [
                 LibraryLeafSpec("Generic", BlockType.GENERIC),
@@ -6113,6 +6141,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 LibraryLeafSpec("Governor", BlockType.GOV_RMS),
                 LibraryLeafSpec("Stabilizer", BlockType.STAB_RMS),
                 LibraryLeafSpec("Exciter", BlockType.EXCITER_RMS),
+
             ],
             DeviceType.LineDevice: [
                 LibraryLeafSpec("Generic", BlockType.GENERIC),
@@ -6186,6 +6215,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.tree_structure: Dict[str, Any] = dict()
         if mode == DynamicSimulationMode.RMS:
             self.tree_structure["Basic"] = self.build_basic_library_branch()
+            self.tree_structure["Basic_devices"] = list(common_rms_device_blocks)
             self.tree_structure["Devices"] = device_rms_related_blocks.get(api_object_device_type, dict())
 
         elif mode == DynamicSimulationMode.EMT:
@@ -6339,14 +6369,24 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.toolBox.currentChanged.connect(self.on_side_panel_page_changed)
         self.scene.selectionChanged.connect(self.on_scene_selection_changed)
         if not self.main_block.empty() and not self.main_block.diagram.node_data:
-
-            blocks_list = list()
-            for child in self.main_block.children:
-                item = self.generate_block_item_for_block(child)
-                blocks_list.append(item)
-            self.add_connection_items(blocks_list)
-            if len(blocks_list) != 0:
-                self.connect_items(blocks_list)
+            if self.main_block.children:
+                blocks_list = list()
+                for child in self.main_block.children:
+                    item = self.generate_block_item_for_block(child)
+                    blocks_list.append(item)
+                self.add_connection_items(blocks_list)
+                if len(blocks_list) != 0:
+                    self.connect_items(blocks_list)
+            # elif not self.main_block.children and self.main_editor:
+            #     block = Block()
+            #     block.children.append(self.main_block)
+            #
+            #     blocks_list = list()
+            #     item = self.generate_block_item_for_block(self.main_block, main_editor_shell = True)
+            #     blocks_list.append(item)
+            #     self.add_connection_items(blocks_list)
+            #     if len(blocks_list) != 0:
+            #         self.connect_items(blocks_list)
 
         elif not self.main_block.diagram.node_data:
             # here we add the connection variables to the main block
@@ -11982,6 +12022,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         expression_value = parsed_expression
 
                     self.parameters_model.set_value_from_expression(row_index, expression_value)
+                    print("")
                 except Exception as exc:
                     QtWidgets.QMessageBox.warning(
                         self,
@@ -12508,15 +12549,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param item: Scene item selected from the context menu.
         :return: None.
         """
-        if isinstance(item, GenericBlockItem):
-            item.editor_window.show()
-            item.editor_window.raise_()
-            item.editor_window.activateWindow()
-        else:
-            if isinstance(item, BlockItem):
-                self.open_block_subeditor(item)
-            else:
-                pass
+        if isinstance(item, (GenericBlockItem, BlockItem)):
+            self.open_block_subeditor(item)
 
     def open_block_subeditor(self, item: BlockItem | GenericBlockItem) -> None:
         """
