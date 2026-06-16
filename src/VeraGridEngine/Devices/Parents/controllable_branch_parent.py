@@ -9,7 +9,7 @@ from typing import Union, Tuple
 
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.enumerations import (BuildStatus, TapModuleControl, TapPhaseControl, SubObjectType, TapChangerTypes,
-                                         PrpCat)
+                                         PrpCat, ParamPowerFlowReferenceType)
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
 from VeraGridEngine.Devices.Branches.tap_changer import TapChanger
 from VeraGridEngine.Devices.Parents.editable_device import DeviceType, get_at, GCProp
@@ -167,6 +167,7 @@ class ControllableBranchParent(BranchParent):
             profile_name='tap_module_prof',
             old_names=['tap', 'm'],
             cat=[PrpCat.PF, PrpCat.OPF],
+            dyn_ref=ParamPowerFlowReferenceType.tap_module,
         ),
         GCProp(
             prop_name='tap_module_max',
@@ -270,6 +271,7 @@ class ControllableBranchParent(BranchParent):
                  code: str,
                  active: bool,
                  reducible: bool,
+                 design_rate: float,
                  rate: float,
                  r: float,
                  x: float,
@@ -328,6 +330,7 @@ class ControllableBranchParent(BranchParent):
         :param x: reactance in per unit
         :param g: shunt conductance in per unit
         :param b: shunt susceptance in per unit
+        :param design_rate: Design rate (MVA)
         :param rate: rate in MVA
         :param tap_module: tap module in p.u.
         :param tap_module_max:
@@ -373,6 +376,7 @@ class ControllableBranchParent(BranchParent):
                               bus_to=bus_to,
                               active=active,
                               reducible=reducible,
+                              design_rate=design_rate,
                               rate=rate,
                               contingency_factor=contingency_factor,
                               protection_rating_factor=protection_rating_factor,

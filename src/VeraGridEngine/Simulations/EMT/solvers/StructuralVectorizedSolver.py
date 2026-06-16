@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Tuple, Callable, List, Any, Dict, Union, Set
+from typing import Tuple, Callable, List, Any, Dict, Union, Set, Optional
 import time
 import hashlib
 
@@ -65,7 +65,7 @@ def _build_backend_cache_token(
     :rtype: str
     """
     payload: str = "|".join([method.name, str(n_rows), str(n_cols), str(len(group_keys))])
-    return hashlib.md5(payload.encode("utf-8")).hexdigest()[:16]
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
 
 
 def fill_full_parameter_buffer(runtime_params: Vec, static_params: Vec, full_params_out: Vec) -> None:
@@ -1187,7 +1187,7 @@ class StructuralVectorizedSolver:
         'jit_jacobians_ad', 'vectorized_ready', '_last_sim_loop_time', '_newton_diag_config', '_vectorized_warmup_done',
         '_predictor', '_runtime_param_count', '_static_parameter_buffer', '_full_parameter_buffer', '_residual_buffer',
         '_trial_state_buffer', '_trial_residual_buffer', '_trial_residual_evaluator',
-        '_backend_build_stats', '_last_runtime_stats', '_sparse_solver_backend_provider', '_sparse_factorization_manager'
+        '_backend_build_stats', '_last_runtime_stats', '_sparse_solver_backend_provider', '_sparse_factorization_manager', '_cancel_checker'
     ]
 
     def __init__(self,
@@ -1202,7 +1202,8 @@ class StructuralVectorizedSolver:
                  newton_max_iter: int = 20,
                  auto_vectorization: bool = True,
                  sparse_solver_backend_provider: SparseLinearSolverBackendProvider | None = None,
-                 newton_diag_config: NewtonDiagnosticsConfig | None = None)-> None:
+                 newton_diag_config: NewtonDiagnosticsConfig | None = None,
+                 cancel_checker: Callable[[], bool] | None = None)-> None:
         """
         :param problem: The DAE problem definition.
         :param t0: Initial time.
@@ -1279,6 +1280,7 @@ class StructuralVectorizedSolver:
         self._last_runtime_stats: Dict[str, float] = dict()
         self._sparse_solver_backend_provider = sparse_solver_backend_provider
         self._sparse_factorization_manager = None
+        self._cancel_checker = cancel_checker
 
         if auto_vectorization:
             self.auto_detect_vectorization(method)
@@ -1337,7 +1339,7 @@ class StructuralVectorizedSolver:
             )
 
             # Cluster by structural signature
-            eq_hash = hashlib.md5(sig_str.encode()).hexdigest()
+            eq_hash = hashlib.sha256(sig_str.encode("utf-8")).hexdigest()
 
             if eq_hash in groups:
                 group = groups[eq_hash]
@@ -1635,6 +1637,9 @@ class StructuralVectorizedSolver:
             pass
 
         for i in range(steps):
+
+            if self._cancel_checker is not None and self._cancel_checker():
+                return t[:i + 1].copy(), y[:i + 1, :].copy(), dy[:i + 1, :].copy(), well_initialized, converged
 
             t_step_start: float = float(t[i])
             t_step_target: float = float(t[i + 1])

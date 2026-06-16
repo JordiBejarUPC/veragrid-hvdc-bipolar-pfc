@@ -3,13 +3,13 @@ from __future__ import annotations
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
-from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlowDriver3Ph
+from VeraGridEngine.Simulations.PowerFlow3ph.power_flow_driver_3ph import PowerFlowDriver3Ph
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_emt_template
 from VeraGridEngine.Templates.Emt.switch_emt_template import get_switch_emt_template
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template_with_ref
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
-from VeraGridEngine.enumerations import DynamicIntegrationMethod, EmtInitializationMethod, EmtSolverTypes, ShuntConnectionType, SolverType, VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import DynamicIntegrationMethod, EmtInitializationMethod, EmtSolverTypes, ShuntConnectionType, SolverType, VarPowerFlowReferenceType
 import VeraGridEngine.api as gce
 
 
@@ -139,7 +139,7 @@ def test_emt_problem_tolerates_missing_optional_neutral_load_mapping() -> None:
     gen_mdl = get_generator_thevenin_rl_emt_template_with_ref(vf=grid.var_factory).block
     switch_mdl = get_switch_emt_template(vf=grid.var_factory, signal_controlled=False, name="SW").block
     load_mdl = get_shunt_r_emt_template(vf=grid.var_factory, phA=True, phB=True, phC=True).block
-    load_mdl.external_mapping.pop(VarPowerFlowRefferenceType.i_N, None)
+    load_mdl.external_mapping.pop(VarPowerFlowReferenceType.i_N, None)
 
     set_emt_model(device=gen, model=gen_mdl, var_factory=grid.var_factory)
     set_emt_model(device=switch, model=switch_mdl, var_factory=grid.var_factory)

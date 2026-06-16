@@ -11,12 +11,14 @@ from matplotlib import pyplot as plt
 
 from VeraGridEngine.basic_structures import Logger, CxVec
 from VeraGridEngine.Devices.Substation.bus import Bus
-from VeraGridEngine.enumerations import DeviceType, BuildStatus, SubObjectType, GeneratorType, PrpCat
+from VeraGridEngine.enumerations import (DeviceType, BuildStatus, SubObjectType, GeneratorType, PrpCat,
+                                         GeneratorControlMode, ParamPowerFlowReferenceType)
+from VeraGridEngine.Devices.Aggregation.market_unit import MarketUnit
 from VeraGridEngine.Devices.Associations.association import Associations
 from VeraGridEngine.Devices.Associations.fuel import Fuel
 from VeraGridEngine.Devices.Associations.emission_gas import EmissionGas
 from VeraGridEngine.Devices.Injections.generator_q_curve import GeneratorQCurve
-from VeraGridEngine.Devices.Profiles import ProfileBool, ProfileFloat
+from VeraGridEngine.Devices.Profiles import ProfileBool, ProfileFloat, ProfileDevice
 from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
 
@@ -83,10 +85,12 @@ class Generator(InjectionParent):
         '_Xr',
         '_Pf',
         '_Pf_prof',
-        '_is_controlled',
+        '_control_mode',
         '_Snom',
         '_Vset',
         '_Vset_prof',
+        '_k_droop',
+        '_dead_band',
         '_use_reactive_power_curve',
         'q_curve',
         'custom_q_points',
@@ -102,6 +106,10 @@ class Generator(InjectionParent):
         '_Cost0_prof',
         'emissions',
         'fuels',
+        '_market_unit',
+        '_market_unit_prof',
+        '_market_unit_share',
+        '_market_unit_share_prof',
         'Sbase',
         'freq',
         '_must_run',
@@ -118,6 +126,7 @@ class Generator(InjectionParent):
             definition='Active power',
             profile_name='P_prof',
             cat=[PrpCat.PF],
+            dyn_ref=ParamPowerFlowReferenceType.generator_p_pu,
         ),
         GCProp(
             prop_name='Pmin',
@@ -126,6 +135,7 @@ class Generator(InjectionParent):
             definition='Minimum active power. Used in OPF.',
             profile_name='Pmin_prof',
             cat=[PrpCat.OPF],
+            dyn_ref=ParamPowerFlowReferenceType.Pmin,
         ),
         GCProp(
             prop_name='Pmax',
@@ -134,6 +144,7 @@ class Generator(InjectionParent):
             definition='Maximum active power. Used in OPF.',
             profile_name='Pmax_prof',
             cat=[PrpCat.OPF],
+            dyn_ref=ParamPowerFlowReferenceType.Pmax,
         ),
         GCProp(
             prop_name='Q',
@@ -142,6 +153,7 @@ class Generator(InjectionParent):
             definition='Reactive power',
             profile_name='Q_prof',
             cat=[PrpCat.PF],
+            dyn_ref=ParamPowerFlowReferenceType.generator_q_pu,
         ),
         GCProp(
             prop_name='Qmin',
@@ -150,6 +162,7 @@ class Generator(InjectionParent):
             definition='Minimum reactive power.',
             profile_name='Qmin_prof',
             cat=[PrpCat.PF, PrpCat.OPF],
+            dyn_ref=ParamPowerFlowReferenceType.generator_qmin_pu,
         ),
         GCProp(
             prop_name='Qmax',
@@ -158,13 +171,16 @@ class Generator(InjectionParent):
             definition='Maximum reactive power.',
             profile_name='Qmax_prof',
             cat=[PrpCat.PF, PrpCat.OPF],
+            dyn_ref=ParamPowerFlowReferenceType.generator_qmax_pu,
         ),
         GCProp(
-            prop_name='is_controlled',
+            prop_name='control_mode',
             units='',
-            tpe=bool,
-            definition='Is this generator voltage-controlled?',
+            tpe=GeneratorControlMode,
+            definition='Generator control mode',
             cat=[PrpCat.PF],
+            old_names=("is_controlled",),
+            dyn_ref=ParamPowerFlowReferenceType.generator_control_mode,
         ),
         GCProp(
             prop_name='control_bus',
@@ -181,6 +197,7 @@ class Generator(InjectionParent):
             definition='Power factor (cos(phi)). This is used for non-controlled generators.',
             profile_name='Pf_prof',
             cat=[PrpCat.PF],
+            dyn_ref=ParamPowerFlowReferenceType.generator_power_factor,
         ),
         GCProp(
             prop_name='Vset',
@@ -189,6 +206,21 @@ class Generator(InjectionParent):
             definition='Set voltage. This is used for controlled generators.',
             profile_name='Vset_prof',
             cat=[PrpCat.PF],
+            dyn_ref=ParamPowerFlowReferenceType.generator_vset_pu,
+        ),
+        GCProp(
+            prop_name='k_droop',
+            units='',
+            tpe=float,
+            definition='QV droop constant.',
+            cat=[PrpCat.PF],
+        ),
+        GCProp(
+            prop_name='dead_band',
+            units='kV',
+            tpe=float,
+            definition='Droop dead band.',
+            cat=[PrpCat.PF],
         ),
         GCProp(
             prop_name='Snom',
@@ -196,6 +228,7 @@ class Generator(InjectionParent):
             tpe=float,
             definition='Nominal power.',
             cat=[PrpCat.TP],
+            dyn_ref=ParamPowerFlowReferenceType.generator_snom_mva,
         ),
 
         GCProp(
@@ -204,6 +237,7 @@ class Generator(InjectionParent):
             tpe=bool,
             definition='Use the reactive power capability curve?',
             cat=[PrpCat.PF],
+            dyn_ref=ParamPowerFlowReferenceType.generator_use_reactive_power_curve,
         ),
         GCProp(
             prop_name='q_curve',
@@ -220,6 +254,7 @@ class Generator(InjectionParent):
             tpe=float,
             definition='Total positive sequence resistance.',
             cat=[PrpCat.SC],
+            dyn_ref=ParamPowerFlowReferenceType.R1,
         ),
         GCProp(
             prop_name='X1',
@@ -227,6 +262,7 @@ class Generator(InjectionParent):
             tpe=float,
             definition='Total positive sequence reactance.',
             cat=[PrpCat.SC],
+            dyn_ref=ParamPowerFlowReferenceType.X1,
         ),
         GCProp(
             prop_name='R0',
@@ -234,6 +270,7 @@ class Generator(InjectionParent):
             tpe=float,
             definition='Total zero sequence resistance.',
             cat=[PrpCat.SC],
+            dyn_ref=ParamPowerFlowReferenceType.generator_r0_pu,
         ),
         GCProp(
             prop_name='X0',
@@ -241,6 +278,7 @@ class Generator(InjectionParent):
             tpe=float,
             definition='Total zero sequence reactance.',
             cat=[PrpCat.SC],
+            dyn_ref=ParamPowerFlowReferenceType.X0,
         ),
         GCProp(
             prop_name='R2',
@@ -248,6 +286,7 @@ class Generator(InjectionParent):
             tpe=float,
             definition='Total negative sequence resistance.',
             cat=[PrpCat.SC],
+            dyn_ref=ParamPowerFlowReferenceType.generator_r2_pu,
         ),
         GCProp(
             prop_name='X2',
@@ -255,6 +294,7 @@ class Generator(InjectionParent):
             tpe=float,
             definition='Total negative sequence reactance.',
             cat=[PrpCat.SC],
+            dyn_ref=ParamPowerFlowReferenceType.generator_x2_pu,
         ),
         GCProp(
             prop_name='Rs',
@@ -362,6 +402,7 @@ class Generator(InjectionParent):
             profile_name="enabled_dispatch_prof",
             definition='Enabled for dispatch? Used in OPF.',
             cat=[PrpCat.OPF],
+            dyn_ref=ParamPowerFlowReferenceType.generator_enabled_dispatch,
         ),
         GCProp(
             prop_name='must_run',
@@ -370,6 +411,7 @@ class Generator(InjectionParent):
             profile_name="must_run_prof",
             definition='P >= Pmin constraint. Used in OPF with unit commitment active.',
             cat=[PrpCat.OPF],
+            dyn_ref=ParamPowerFlowReferenceType.generator_must_run,
         ),
         GCProp(
             prop_name='emissions',
@@ -385,6 +427,22 @@ class Generator(InjectionParent):
             tpe=SubObjectType.Associations,
             definition='List of fuels',
             display=False,
+            cat=[PrpCat.OPF],
+        ),
+        GCProp(
+            prop_name='market_unit',
+            units='',
+            tpe=DeviceType.MarketUnitDevice,
+            definition='Market unit associated to this generator.',
+            profile_name='market_unit_prof',
+            cat=[PrpCat.OPF],
+        ),
+        GCProp(
+            prop_name='market_unit_share',
+            units='p.u.',
+            tpe=float,
+            definition='Participation share of the generator inside the market unit.',
+            profile_name='market_unit_share_prof',
             cat=[PrpCat.OPF],
         ),
         GCProp(
@@ -413,7 +471,9 @@ class Generator(InjectionParent):
                  Q: float = 0.0,
                  power_factor: float = 0.8,
                  vset: float = 1.0,
-                 is_controlled=True,
+                 control_mode: GeneratorControlMode = GeneratorControlMode.V,
+                 k_droop=1.0,
+                 dead_band=0.0,
                  Qmin: float = -9999,
                  Qmax: float = 9999,
                  Snom: float = 9999,
@@ -423,6 +483,8 @@ class Generator(InjectionParent):
                  Cost: float = 1.0,
                  Cost2: float = 0.0,
                  Cost0: float = 0.0,
+                 market_unit: MarketUnit | None = None,
+                 market_unit_share: float = 1.0,
                  Sbase: float = 100,
                  enabled_dispatch=True,
                  mttf: float = 0.0,
@@ -461,7 +523,7 @@ class Generator(InjectionParent):
         :param P: Active power in MW
         :param power_factor: Power factor
         :param vset: Voltage set point in per unit
-        :param is_controlled: Is the generator voltage controlled?
+        :param control_mode: Generator control mode
         :param Qmin: Minimum reactive power in MVAr
         :param Qmax: Maximum reactive power in MVAr
         :param Snom: Nominal apparent power in MVA
@@ -471,6 +533,8 @@ class Generator(InjectionParent):
         :param Cost: Proportional cost [e/MWh]
         :param Cost2: Quadratic cost [e/MWh^2]
         :param Cost0: Fixed cost [e]
+        :param market_unit: Market unit associated to the generator
+        :param market_unit_share: Participation share of the generator in the market unit
         :param Sbase: Nominal apparent power in MVA
         :param enabled_dispatch: Is the generator enabled for OPF?
         :param mttf: Mean time to failure [h]
@@ -581,7 +645,7 @@ class Generator(InjectionParent):
         self._Pf_prof = ProfileFloat(default_value=self.Pf)
 
         # If this generator is voltage controlled it produces a PV node, otherwise the node remains as PQ
-        self._is_controlled = bool(is_controlled)
+        self._control_mode: GeneratorControlMode = control_mode
 
         # Nominal power in MVA (also the machine base)
         self._Snom = float(Snom)
@@ -591,6 +655,9 @@ class Generator(InjectionParent):
 
         # voltage set profile for this load in p.u.
         self._Vset_prof = ProfileFloat(default_value=self.Vset)
+
+        self.k_droop = k_droop
+        self.dead_band = dead_band
 
         self.use_reactive_power_curve = bool(use_reactive_power_curve)
 
@@ -620,13 +687,18 @@ class Generator(InjectionParent):
         self.emissions: Associations = Associations(device_type=DeviceType.EmissionGasDevice)
         self.fuels: Associations = Associations(device_type=DeviceType.FuelDevice)
 
+        self._market_unit: MarketUnit | None = market_unit
+        self._market_unit_prof = ProfileDevice(default_value=self._market_unit, device_type=DeviceType.MarketUnitDevice)
+
+        self._market_unit_share: float = float(market_unit_share)
+        self._market_unit_share_prof = ProfileFloat(default_value=self._market_unit_share)
+
         # system base power MVA
         self.Sbase = float(Sbase)
 
         self.freq = freq
 
         self.tpe: GeneratorType = tpe
-
 
     @property
     def P(self) -> float:
@@ -1006,6 +1078,113 @@ class Generator(InjectionParent):
         return get_at(self.Cost0, self.Cost0_prof, t)
 
     @property
+    def market_unit(self) -> MarketUnit | None:
+        """
+        Get ``market_unit``.
+
+        :return: MarketUnit or ``None``
+        """
+        return self._market_unit
+
+    @market_unit.setter
+    def market_unit(self, val: MarketUnit | None) -> None:
+        """
+        Set ``market_unit``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        if isinstance(val, MarketUnit) or val is None:
+            self._market_unit = val
+        else:
+            raise ValueError("The value must be a MarketUnit or None")
+
+    @property
+    def market_unit_prof(self) -> ProfileDevice:
+        """
+        Get ``market_unit_prof``.
+
+        :return: ProfileDevice
+        """
+        return self._market_unit_prof
+
+    @market_unit_prof.setter
+    def market_unit_prof(self, val: Union[ProfileDevice, np.ndarray]) -> None:
+        """
+        Set ``market_unit_prof``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        if isinstance(val, ProfileDevice):
+            self._market_unit_prof = val
+        elif isinstance(val, np.ndarray):
+            self._market_unit_prof.set(arr=val)
+        else:
+            raise ValueError("The value must be a ProfileDevice or ndarray")
+
+    def get_market_unit_at(self, t: int | None) -> MarketUnit | None:
+        """
+        Get the market unit value at a time index.
+
+        :param t: Time index
+        :return: MarketUnit or ``None``
+        """
+        return get_at(self.market_unit, self.market_unit_prof, t)
+
+    @property
+    def market_unit_share(self) -> float:
+        """
+        Get ``market_unit_share``.
+
+        :return: float
+        """
+        return self._market_unit_share
+
+    @market_unit_share.setter
+    def market_unit_share(self, val: float) -> None:
+        """
+        Set ``market_unit_share``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._market_unit_share = float(val)
+
+    @property
+    def market_unit_share_prof(self) -> ProfileFloat:
+        """
+        Get ``market_unit_share_prof``.
+
+        :return: ProfileFloat
+        """
+        return self._market_unit_share_prof
+
+    @market_unit_share_prof.setter
+    def market_unit_share_prof(self, val: Union[ProfileFloat, np.ndarray]) -> None:
+        """
+        Set ``market_unit_share_prof``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        if isinstance(val, ProfileFloat):
+            self._market_unit_share_prof = val
+        elif isinstance(val, np.ndarray):
+            self._market_unit_share_prof.set(arr=val)
+        else:
+            raise ValueError("The value must be a ProfileFloat or ndarray")
+
+    def get_market_unit_share_at(self, t: int | None) -> float:
+        """
+        Get the market unit share value at a time index.
+
+        :param t: Time index
+        :return: float
+        """
+        return get_at(self.market_unit_share, self.market_unit_share_prof, t)
+
+    @property
     def enabled_dispatch_prof(self) -> ProfileBool:
         """
         Cost profile
@@ -1150,7 +1329,7 @@ class Generator(InjectionParent):
 
         :return: bool
         """
-        return self._is_controlled
+        return self._control_mode == GeneratorControlMode.V
 
     @is_controlled.setter
     def is_controlled(self, val: bool) -> None:
@@ -1160,7 +1339,24 @@ class Generator(InjectionParent):
         :param val: Value to assign.
         :return: None
         """
-        self._is_controlled = bool(val)
+        self._control_mode = GeneratorControlMode.V if val else GeneratorControlMode.Q
+
+    @property
+    def control_mode(self) -> GeneratorControlMode:
+        """
+        Get ``control_mode``.
+        :return:
+        """
+        return self._control_mode
+
+    @control_mode.setter
+    def control_mode(self, val: GeneratorControlMode) -> None:
+        """
+        Set control mode
+        :param val:
+        :return:
+        """
+        self._control_mode = val
 
     @property
     def Pf(self) -> float:
@@ -1226,6 +1422,44 @@ class Generator(InjectionParent):
         :return: None
         """
         self._Vset = float(val)
+
+    @property
+    def k_droop(self) -> float:
+        """
+        Get ``k_droop``.
+
+        :return: float
+        """
+        return self._k_droop
+
+    @k_droop.setter
+    def k_droop(self, val: float) -> None:
+        """
+        Set ``k_droop``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._k_droop = float(val)
+
+    @property
+    def dead_band(self) -> float:
+        """
+        Get ``dead_band``.
+
+        :return: float
+        """
+        return self._dead_band
+
+    @dead_band.setter
+    def dead_band(self, val: float) -> None:
+        """
+        Set ``dead_band``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._dead_band = float(val)
 
     @property
     def use_reactive_power_curve(self) -> bool:

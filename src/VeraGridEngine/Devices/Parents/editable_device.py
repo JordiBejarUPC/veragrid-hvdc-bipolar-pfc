@@ -11,7 +11,7 @@ import pandas as pd
 
 from typing import List, Dict, AnyStr, Any, Union, Type, Tuple
 from VeraGridEngine.basic_structures import Logger, IntVec
-from VeraGridEngine.Devices.Profiles import ProfileBool, ProfileDevice, ProfileEnum, ProfileFloat, ProfileInt, AnyProfile, PROFILE_INSTANCE_TYPES
+from VeraGridEngine.Devices.Profiles import AnyProfile, PROFILE_INSTANCE_TYPES
 from VeraGridEngine.enumerations import (DeviceType, PrpCat, TimeFrame, BuildStatus, WindingsConnection,
                                          TapModuleControl, TapPhaseControl, SubObjectType, ConverterControlType,
                                          HvdcControlType, ActionType, AvailableTransferMode, ContingencyMethod,
@@ -22,9 +22,11 @@ from VeraGridEngine.enumerations import (DeviceType, PrpCat, TimeFrame, BuildSta
                                          WindingType, MethodShortCircuit, PhasesShortCircuit, ShuntConnectionType,
                                          BusGraphicType, SwitchGraphicType, DynamicIntegrationMethod, OpfDispatchMode,
                                          EmtLineTypes, EmtProblemTypes, EmtInitializationMethod,
-                                         SmallSignalEmtBuildTypes, FmuTemplateDomain,
+                                         SmallSignalEmtBuildTypes, FmuTemplateDomain, DynamicPlotMode,
                                          EraSvdSolverType, ShuntControlMode, RmsProblemTypes, FmuTemplateDomain,
-                                         FmuTemplateMode, RmsInitializationMethod, EmtSolverTypes, PlotSimulationType,DynamicEventTransitionType)
+                                         FmuTemplateMode, RmsInitializationMethod, EmtSolverTypes, PlotSimulationType,
+                                         DynamicEventTransitionType, DynamicPlotEntryKind, DynamicPlotEntryRole,
+                                         ParamPowerFlowReferenceType)
 # types that can be assigned to a VeraGrid property
 GCPROP_TYPES = Union[
     Type[int],
@@ -80,6 +82,9 @@ GCPROP_TYPES = Union[
     Type[FmuTemplateMode],
     Type[PlotSimulationType],
     Type[DynamicEventTransitionType],
+    Type[DynamicPlotMode],
+    Type[DynamicPlotEntryKind],
+    Type[DynamicPlotEntryRole],
 ]
 
 
@@ -146,7 +151,8 @@ class GCProp:
         "_old_names",
         "_is_color",
         "_is_date",
-        "_category"
+        "_category",
+        "dyn_ref"
     )
 
     def __init__(self,
@@ -157,11 +163,12 @@ class GCProp:
                  profile_name: str = '',
                  display: bool = True,
                  editable: bool = True,
-                 old_names: Union[List[str], Tuple[str, ...], None] = None,
+                 old_names: List[str] | Tuple[str, ...] | None = None,
                  is_color: bool = False,
                  is_date: bool = False,
                  key: Union[str, None] = None,
-                 cat: List[PrpCat] | None = None):
+                 cat: List[PrpCat] | None = None,
+                 dyn_ref: ParamPowerFlowReferenceType | None = None,):
         """
         VeraGrid property
         :param prop_name:
@@ -173,6 +180,9 @@ class GCProp:
         :param editable: Is this editable?
         :param is_color: Is this a color? i.e. the tpe is str, but it represents a color
         :param is_date: Is this a date? i.e. the tpe is int but represents a date
+        :param key: Property key
+        :param cat: Property categories
+        :param dyn_ref: Property dynamic reference
         """
 
         if prop_name is None:
@@ -194,6 +204,7 @@ class GCProp:
         self._editable: bool = editable
         self._is_color: bool = is_color
         self._is_date: bool = is_date
+        self.dyn_ref = dyn_ref
         if old_names is None:
             self._old_names: Tuple[str, ...] = tuple()
         else:
@@ -1204,6 +1215,7 @@ class EditableDevice(metaclass=EditableDeviceMeta):
 
         # Create a new instance of the object
         tpe = self.__class__
+        new_obj: EditableDevice
 
         try:
             new_obj = tpe(name=self.name,
@@ -1213,7 +1225,7 @@ class EditableDevice(metaclass=EditableDeviceMeta):
             new_obj.disable_auto_updates()
 
         except TypeError:
-            new_obj = tpe()
+            new_obj: EditableDevice = tpe()
             new_obj.disable_auto_updates()
 
         # deep-copy each property
@@ -1363,7 +1375,7 @@ class EditableDevice(metaclass=EditableDeviceMeta):
 
             if prop.has_profile():
                 p1 = self.get_profile_by_prop(prop=prop)
-                p2 = self.get_profile_by_prop(prop=prop)
+                p2 = other.get_profile_by_prop(prop=prop)
 
                 if p1 != p2:
                     logger.add_info(msg="Different profile values",
@@ -1372,7 +1384,8 @@ class EditableDevice(metaclass=EditableDeviceMeta):
                                     object_value=p2,
                                     expected_object_value=p1)
                     action = ActionType.Modify
-                    properties_changed.append(prop)
+                    if prop not in properties_changed:
+                        properties_changed.append(prop)
 
                 if detailed_profile_comparison:
                     for t_idx in range(nt):
@@ -1388,6 +1401,8 @@ class EditableDevice(metaclass=EditableDeviceMeta):
                                             value=v2,
                                             expected_value=v1)
                             action = ActionType.Modify
+                            if prop not in properties_changed:
+                                properties_changed.append(prop)
 
                         v1b = self.get_property_value(prop=prop, t_idx=t_idx)
                         v2b = other.get_property_value(prop=prop, t_idx=t_idx)

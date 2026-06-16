@@ -16,7 +16,7 @@ from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Devices.Events.rms_event import RmsEvent
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
 from VeraGridEngine.Simulations.Rms.rms_problem_factory import build_rms_problem
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import VarPowerFlowReferenceType
 from build_and_populate_tuvalu_grid_procedural import TuvaluGridPopulator, get_technology_names, initialize_tuvalu_rms_models
 
 
@@ -346,8 +346,8 @@ def plot_bus_vm_va(grid: vg.MultiCircuit, problem, t, y, output_file: Path) -> N
         if mapping is None:
             continue
 
-        vm_var = mapping.get(VarPowerFlowRefferenceType.Vm)
-        va_var = mapping.get(VarPowerFlowRefferenceType.Va)
+        vm_var = mapping.get(VarPowerFlowReferenceType.Vm)
+        va_var = mapping.get(VarPowerFlowReferenceType.Va)
 
         if vm_var is not None:
             ax_vm.plot(t_arr, y_arr[:, problem.get_var_idx(vm_var)], label=bus.name, linewidth=1.4)

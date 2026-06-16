@@ -1175,12 +1175,15 @@ class ElmSite(DGSElement):
 class ElmSubstat(DGSElement):
     element_type = 'ElmSubstat'
     properties_list = [
-        DgsProperty('ID', 'a:40', 'Unique identifier for DGS file', py_name='ID'),
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
         DgsProperty('OP', 'a:1', 'Operation flag', py_name='OP'),
-        DgsProperty('loc_name', 'a:80', 'Name', py_name='loc_name'),
-        DgsProperty('fold_id', 'p', 'In Folder', py_name='fold_id'),
-        DgsProperty('sShort', 'a:24', 'Short Name', py_name='sShort'),
-        DgsProperty('sType', 'a:160', 'Type', py_name='sType'),
+        DgsProperty('loc_name', 'a:80', 'DGS field loc_name (a)', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+        DgsProperty('Unom', 'r', 'DGS field Unom (r)', py_name='Unom'),
+        DgsProperty('pRA', 'p', 'DGS field pRA (p)', py_name='pRA'),
+        DgsProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
+        DgsProperty('sShort', 'a:24', 'DGS field sShort (a:6)', py_name='sShort'),
+        DgsProperty('sType', 'a:160', 'DGS field sType (a:80)', py_name='sType'),
         DgsProperty('GPSlat', 'r', 'Latitude / Northing in deg', py_name='GPSlat'),
         DgsProperty('GPSlon', 'r', 'Longitude / Easting in deg', py_name='GPSlon'),
         DgsProperty('cpArea', 'p', 'Default Area in ElmArea', py_name='cpArea'),
@@ -1192,12 +1195,13 @@ class ElmSubstat(DGSElement):
         self.OP: str = ""
         self.loc_name: str = ""
         self.fold_id: str = ""
+        self.Unom: float = 0.0
+        self.pRA: str = ""
+        self.for_name: str = ""
         self.sShort: str = ""
         self.sType: str = ""
         self.GPSlat: float = 0.0
         self.GPSlon: float = 0.0
-        self.cpArea: str = ""
-        self.cpZone: str = ""
 
 
 class ElmSym(DGSElement):

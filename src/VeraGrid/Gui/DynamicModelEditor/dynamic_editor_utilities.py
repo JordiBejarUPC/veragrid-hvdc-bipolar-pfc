@@ -20,6 +20,7 @@ from VeraGridEngine.Templates.predefined_blocks import (
     absolut,
     generic
 )
+
 import VeraGridEngine.Templates as tem
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 
@@ -130,6 +131,40 @@ def create_block_of_type(var_factory: VarFactory,
         blk = tem.get_load_rms_template(var_factory).block
         blk.name = item_name
         return blk
+
+    # GRID FORMING CONVERTER
+    elif block_type == BlockType.GFL_VSC_RMS:
+        blk = tem.build_vsc_rms(var_factory).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.PLL_TRANSFORM_RMS:
+        blk = tem.get_pll_transform_rms(var_factory).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.PI_CURRENT_CONTROLLER:
+        blk = tem.get_pi_current_controller(var_factory).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.PI_POWER_CONTROLLER:
+        blk = tem.get_pi_power_controller(var_factory).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.GFL_CONVERTER_RMS:
+        blk = tem.get_gfl_converter_rms(var_factory).block
+        blk.name = item_name
+        return blk
+
+
+
+    # DC PV source averaged
+    # elif block_type == BlockType.DC_PV_SOURCE_RMS:
+    #     blk = tem.DCPVSourceAveraged(var_factory).block
+    #     blk.name = item_name
+    #     return blk
 
     # ---------- EMT BLOCKS ----------
     # EMT type GENERATOR

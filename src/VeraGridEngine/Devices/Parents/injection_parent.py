@@ -9,7 +9,8 @@ import numpy as np
 from VeraGridEngine.Devices.Parents.dynamic_parent import DynamicDevice
 from VeraGridEngine.Devices.Associations.association import Associations
 from VeraGridEngine.Devices.Substation.bus import Bus
-from VeraGridEngine.enumerations import BuildStatus, DeviceType, SubObjectType, ShuntConnectionType, PrpCat
+from VeraGridEngine.enumerations import (BuildStatus, DeviceType, SubObjectType, ShuntConnectionType, PrpCat,
+                                         ParamPowerFlowReferenceType)
 from VeraGridEngine.basic_structures import CxVec
 from VeraGridEngine.Devices.Profiles import ProfileBool, ProfileFloat
 from VeraGridEngine.Devices.Aggregation.facility import Facility
@@ -65,6 +66,7 @@ class InjectionParent(DynamicDevice):
             definition='Is the load active?',
             profile_name='active_prof',
             cat=[PrpCat.PF, PrpCat.OPF, PrpCat.CON],
+            dyn_ref=ParamPowerFlowReferenceType.device_active,
         ),
         GCProp(
             prop_name='color',
@@ -168,6 +170,7 @@ class InjectionParent(DynamicDevice):
             tpe=ShuntConnectionType,
             definition='Connection type for 3-phase studies',
             cat=[PrpCat.SC, PrpCat.PF3],
+            dyn_ref=ParamPowerFlowReferenceType.injection_connection_type,
         ),
 
         GCProp(
@@ -212,11 +215,11 @@ class InjectionParent(DynamicDevice):
         """
 
         DynamicDevice.__init__(self,
-                                name=name,
-                                idtag=idtag,
-                                code=code,
-                                device_type=device_type,
-                                build_status=build_status)
+                               name=name,
+                               idtag=idtag,
+                               code=code,
+                               device_type=device_type,
+                               build_status=build_status)
 
         self._bus = bus
 
@@ -250,8 +253,6 @@ class InjectionParent(DynamicDevice):
         self._use_kw: bool = False
 
         self._conn: ShuntConnectionType = ShuntConnectionType.GroundedStar
-
-
 
         self.bus_pos: int = 0
 
@@ -382,8 +383,6 @@ class InjectionParent(DynamicDevice):
     def conn(self, val: ShuntConnectionType):
         if isinstance(val, ShuntConnectionType):
             self._conn = val
-
-
 
     def get_S_with_sign(self) -> complex:
         """

@@ -21,7 +21,7 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.block_solver_no_diff import _compile_equations
 from VeraGridEngine.Utils.Symbolic.symbolic import (Var, LagVar, Const, Expr, cos, sin,
                                                     expression2numba, heaviside_num, get_expression_vars)
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod
+from VeraGridEngine.enumerations import VarPowerFlowReferenceType, DynamicIntegrationMethod
 from VeraGridEngine.Utils.Sparse.csc import pack_4_by_4_scipy
 from VeraGridEngine.basic_structures import Vec, IntVec
 
@@ -1387,12 +1387,12 @@ class BlockSolver:
                 for child_block in block.get_all_blocks():
                     if not hasattr(child_block, 'external_mapping'):
                         continue
-                    if not VarPowerFlowRefferenceType.P in child_block.external_mapping.keys():
+                    if not VarPowerFlowReferenceType.P in child_block.external_mapping.keys():
                         continue
-                    Pg = child_block.external_mapping[VarPowerFlowRefferenceType.P]
-                    Qg = child_block.external_mapping[VarPowerFlowRefferenceType.Q]
-                    Vm = child_block.external_mapping[VarPowerFlowRefferenceType.Vm]
-                    Va = child_block.external_mapping[VarPowerFlowRefferenceType.Va]
+                    Pg = child_block.external_mapping[VarPowerFlowReferenceType.P]
+                    Qg = child_block.external_mapping[VarPowerFlowReferenceType.Q]
+                    Vm = child_block.external_mapping[VarPowerFlowReferenceType.Vm]
+                    Va = child_block.external_mapping[VarPowerFlowReferenceType.Va]
                     found = True
                     break
 

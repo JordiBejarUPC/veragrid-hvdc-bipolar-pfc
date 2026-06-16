@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'sr
 import numpy as np
 import matplotlib.pyplot as plt
 import VeraGridEngine.api as vge
-from VeraGridEngine.enumerations import ConverterControlType, VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import ConverterControlType, VarPowerFlowReferenceType
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import SolverType
 from VeraGridEngine.Templates.Rms.vsc_gfl_dclinked import build_vsc_rms, build_trafo_vsc
 from VeraGridEngine.Templates.Rms.dc_voltage_source import DCCurrentSource
@@ -261,12 +261,31 @@ def initialize_grid2_rms_models(grid2):
     for vsc in grid2.vsc_devices:
         print(f"  Initializing VSC '{vsc.name}' with build_vsc_rms...")
         vsc.rms_model = build_vsc_rms(vfactory=vf, name=vsc.name).block
+        if vsc.bus_to.rms_model.empty():
+            initialize_bus_rms(vsc.bus_to, vf)
+        vm_vsc = vsc.rms_model.external_mapping[VarPowerFlowReferenceType.Vm]
+        bus_vm = vsc.bus_to.rms_model.external_mapping[VarPowerFlowReferenceType.Vm]
+        grid2.var_factory.add_connections([vm_vsc], [bus_vm])
         print(f"    ✓ VSC RMS model assigned")
 
     # Assign RMS models to transformers using build_trafo_vsc
     for trafo in grid2.transformers2w:
         print(f"  Initializing Transformer '{trafo.name}' with build_trafo_vsc...")
         trafo.rms_model = build_trafo_vsc(vf=vf, trafo=trafo).block
+        if trafo.bus_from.rms_model.empty():
+            initialize_bus_rms(trafo.bus_from, vf)
+        if trafo.bus_to.rms_model.empty():
+            initialize_bus_rms(trafo.bus_to, vf)
+
+        vm_f = trafo.rms_model.external_mapping[VarPowerFlowReferenceType.Vmf]
+        va_f = trafo.rms_model.external_mapping[VarPowerFlowReferenceType.Vaf]
+        vm_t = trafo.rms_model.external_mapping[VarPowerFlowReferenceType.Vmt]
+        va_t = trafo.rms_model.external_mapping[VarPowerFlowReferenceType.Vat]
+        bus_vm_f = trafo.bus_from.rms_model.external_mapping[VarPowerFlowReferenceType.Vm]
+        bus_va_f = trafo.bus_from.rms_model.external_mapping[VarPowerFlowReferenceType.Va]
+        bus_vm_t = trafo.bus_to.rms_model.external_mapping[VarPowerFlowReferenceType.Vm]
+        bus_va_t = trafo.bus_to.rms_model.external_mapping[VarPowerFlowReferenceType.Va]
+        grid2.var_factory.add_connections([vm_f, va_f, vm_t, va_t], [bus_vm_f, bus_va_f, bus_vm_t, bus_va_t])
         print(f"    ✓ Transformer RMS model assigned")
     
     # Assign RMS models to generators (including DC load)
@@ -280,7 +299,7 @@ def initialize_grid2_rms_models(grid2):
             # Get the Vdc variable from the bus RMS model
             if hasattr(bus, 'rms_model') and bus.rms_model is not None:
                 # Access Vdc through external_mapping
-                vdc = bus.rms_model.external_mapping[VarPowerFlowRefferenceType.Vdc]
+                vdc = bus.rms_model.external_mapping[VarPowerFlowReferenceType.Vdc]
                 print(f"vdc uid is {vdc.uid}")
                 # Check for potential NaN sources
                 print(f"    DEBUG: Initial Pdc={gen.P}, Vdc should come from PF results")
@@ -305,11 +324,8 @@ def initialize_grid2_rms_models(grid2):
             if hasattr(trafo.rms_model, 'in_vars') and len(trafo.rms_model.in_vars) > 0:
                 vdc_trafo = trafo.rms_model.in_vars[0]
                 vdc_bus = vsc.bus_from.rms_model.out_vars[0]
-                grid.var_factory.add_connections([vdc_trafo], [vdc_bus])
+                grid2.var_factory.add_connections([vdc_trafo], [vdc_bus])
 
-                pt_vsc = vsc.rms_model.in_vars[1]
-                pt_trafo = trafo.rms_model.out_vars[1]
-                grid.var_factory.add_connections([pt_vsc], [pt_trafo])
                 print(f"  ✓ Connected transformer to DC bus")
 
     
@@ -357,11 +373,11 @@ def run_rms_simulation(grid2, pf_results):
                 group=events_group
             )
             grid2.add_rms_event(event)
-            print(f"  Added event: Idc_src0 step at t=1.0s to value=0.5")
+            print(f"  Added event: Idc_src0 step at t=0.1s to value=0.011")
     
     # Set up RMS simulation options
     rms_options = vge.RmsOptions(
-        simulation_time=0.2,       # 0.5 seconds simulation
+        simulation_time=0.2,       # 0.2 seconds simulation
         time_step=0.001,           # 1 ms time step
         max_iter=20,               # Max Newton-Raphson iterations
         integration_method=DynamicIntegrationMethod.DaeBackEuler
@@ -536,7 +552,7 @@ def plot_rms_results(grid2, t, y, results):
         ax3.legend(loc='upper right')
         ax3.grid(True)
         ax3.set_xlim([0, t[-1]])
-        ax3.axvline(x=1.0, color='red', linestyle=':', alpha=0.7, label='Event at t=1.0s')
+        ax3.axvline(x=0.1, color='red', linestyle=':', alpha=0.7, label='Event at t=0.1s')
     
     plt.tight_layout()
     plt.show()

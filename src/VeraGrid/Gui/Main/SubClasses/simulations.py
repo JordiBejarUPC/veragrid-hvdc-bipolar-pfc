@@ -22,11 +22,14 @@ from VeraGrid.Gui.SigmaAnalysis.sigma_analysis_dialogue import SigmaAnalysisGUI
 from VeraGrid.Gui.ProceduralGrid.procedural_grid import ProceduralGridWindow
 from VeraGrid.Gui.ProceduralGrid.map_warning import MapWarningDialog
 from VeraGrid.Session.server_driver import RemoteJobDriver
+from VeraGrid.Gui.dynamic_events_editor_dialog import create_dynamic_events_group_with_dialog
 
 # Engine imports
 import VeraGridEngine.Devices as dev
 import VeraGridEngine.Simulations as sim
 import VeraGridEngine.Simulations.PowerFlow.grid_analysis as grid_analysis
+from VeraGridEngine.Devices.Events.emt_events_group import EmtEventsGroup
+from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Compilers.circuit_to_newton_pa import get_newton_mip_solvers_list
 from VeraGridEngine.Utils.MIP.selected_interface import get_available_mip_solvers, get_available_mip_frameworks
 from VeraGridEngine.IO.veragrid.remote import RemoteInstruction
@@ -38,7 +41,8 @@ from VeraGridEngine.enumerations import (DeviceType, AvailableTransferMode, Solv
                                          BranchImpedanceMode, ResultTypes, SimulationTypes, NodalCapacityMethod,
                                          ContingencyFilteringMethods, InvestmentsEvaluationObjectives,
                                          ReliabilityMode, OpfDispatchMode, DynamicIntegrationMethod,
-                                         RmsInitializationMethod, EmtInitializationMethod, EmtSolverTypes)
+                                         RmsInitializationMethod, EmtInitializationMethod, EmtSolverTypes,
+                                         DynamicSimulationMode)
 
 
 class SimulationsMain(TimeEventsMain):
@@ -213,7 +217,8 @@ class SimulationsMain(TimeEventsMain):
         # investment evaluation methods
         (self.investment_evaluation_method_dict,
          investment_evaluation_method_mdl) = gf.enums_to_model(
-            [InvestmentEvaluationMethod.Independent,
+            [InvestmentEvaluationMethod.CBA_PINT_TOOT,
+             InvestmentEvaluationMethod.PINT_TOOT_NSGA3,
              InvestmentEvaluationMethod.NSGA3,
              InvestmentEvaluationMethod.MVRSM,
              InvestmentEvaluationMethod.MixedVariableGA, ]
@@ -239,6 +244,7 @@ class SimulationsMain(TimeEventsMain):
          investment_evaluation_objfunc_mdl) = gf.enums_to_model(
             [InvestmentsEvaluationObjectives.PowerFlow,
              InvestmentsEvaluationObjectives.TimeSeriesPowerFlow,
+             InvestmentsEvaluationObjectives.LinearOptimalPowerFlowTimeSeries,
              InvestmentsEvaluationObjectives.GenerationAdequacy,
              InvestmentsEvaluationObjectives.SimpleDispatch]
         )
@@ -879,37 +885,7 @@ class SimulationsMain(TimeEventsMain):
             if len(steps) > max_steps:
                 max_steps = len(steps)
 
-        icons = {
-            SimulationTypes.PowerFlow_run.value: ':/Icons/icons/pf',
-            SimulationTypes.PowerFlow3ph_run.value: ':/Icons/icons/pf3',
-            SimulationTypes.PowerFlowTimeSeries_run.value: ':/Icons/icons/pf_ts.png',
-            SimulationTypes.OPF_run.value: ':/Icons/icons/dcopf.png',
-            SimulationTypes.OPFTimeSeries_run.value: ':/Icons/icons/dcopf_ts.png',
-            SimulationTypes.ShortCircuit_run.value: ':/Icons/icons/short_circuit.png',
-            SimulationTypes.LinearAnalysis_run.value: ':/Icons/icons/ptdf.png',
-            SimulationTypes.LinearAnalysis_TS_run.value: ':/Icons/icons/ptdf_ts.png',
-            SimulationTypes.SigmaAnalysis_run.value: ':/Icons/icons/sigma.png',
-            SimulationTypes.StochasticPowerFlow.value: ':/Icons/icons/stochastic_power_flow.png',
-            SimulationTypes.ContingencyAnalysis_run.value: ':/Icons/icons/otdf.png',
-            SimulationTypes.ContingencyAnalysisTS_run.value: ':/Icons/icons/otdf_ts.png',
-            SimulationTypes.NetTransferCapacity_run.value: ':/Icons/icons/atc.png',
-            SimulationTypes.NetTransferCapacityTS_run.value: ':/Icons/icons/atc_ts.png',
-            SimulationTypes.OptimalNetTransferCapacityTimeSeries_run.value: ':/Icons/icons/ntc_opf_ts.png',
-            SimulationTypes.InputsAnalysis_run.value: ':/Icons/icons/stats.png',
-            SimulationTypes.NodeGrouping_run.value: ':/Icons/icons/ml.png',
-            SimulationTypes.ContinuationPowerFlow_run.value: ':/Icons/icons/continuation_power_flow.png',
-            SimulationTypes.ClusteringAnalysis_run.value: ':/Icons/icons/clustering.png',
-            SimulationTypes.InvestmentsEvaluation_run.value: ':/Icons/icons/expansion_planning.png',
-            SimulationTypes.NodalCapacityTimeSeries_run.value: ':/Icons/icons/nodal_capacity.png',
-            SimulationTypes.OPF_NTC_run.value: ':/Icons/icons/ntc_opf.png',
-            SimulationTypes.OPF_NTC_TS_run.value: ':/Icons/icons/ntc_opf_ts.png',
-            SimulationTypes.Reliability_run.value: ':/Icons/icons/reliability.png',
-            SimulationTypes.RmsSmallSignal_run.value: ':/Icons/icons/ss_icon.png',
-            SimulationTypes.RmsDynamic_run.value: ':/Icons/icons/dyn.png',
-            SimulationTypes.EmtSmallSignal_run.value: ':/Icons/icons/ss_emt_icon.png',
-            SimulationTypes.EmtDynamic_run.value: ':/Icons/icons/dyn_emt.png',
-            SimulationTypes.StateEstimation_run.value: ':/Icons/icons/SE.png',
-        }
+        icons = gf.get_simulation_tree_icons()
 
         self.ui.results_treeView.setModel(gf.get_tree_model(d, 'Results', icons=icons))
         lst.reverse()  # this is to show the latest simulation first
@@ -1139,15 +1115,15 @@ class SimulationsMain(TimeEventsMain):
         """
         if self.server_driver.is_running():
             if self.ts_flag():
-                instruction = RemoteInstruction(operation=SimulationTypes.PowerFlowTimeSeries_run)
+                instruction = RemoteInstruction(operation=SimulationTypes.PowerFlowTimeSeries3ph_run)
             else:
-                instruction = RemoteInstruction(operation=SimulationTypes.PowerFlow_run)
+                instruction = RemoteInstruction(operation=SimulationTypes.PowerFlow3ph_run)
 
             self.run_remote(instruction=instruction)
 
         else:
             if self.ts_flag():
-                self.show_warning_toast("Time series not available yer for 3-phase formulation :/")
+                self.run_power_flow_time_series_3ph()
             else:
                 self.run_power_flow3ph()
 
@@ -1264,7 +1240,47 @@ class SimulationsMain(TimeEventsMain):
             self.run_remote(instruction=instruction)
 
         else:
-            self.run_rms()
+            if self.circuit.valid_for_simulation():
+
+                if not self.session.is_this_running(SimulationTypes.RmsDynamic_run):
+
+                    logger = self.circuit.check_rms_models()
+                    if logger.has_errors():
+                        # Show dialogue
+                        dlg = LogsDialogue(name="RMS pre simulation check",
+                                           logger=logger)
+                        dlg.setModal(True)
+                        dlg.exec()
+                        return
+                    else:
+                        if not len(self.circuit.rms_events_groups) == 0:
+                            self.run_rms()
+
+                        else:
+                            mode: DynamicSimulationMode = DynamicSimulationMode.RMS
+                            missing_group_message = "No RMS Events Group found, please create one before running a RMS simulation."
+                            created_group_message_body_prefix: str = "New group name"
+                            created_group_message_title = "RMS group Created"
+
+                            created_group: RmsEventsGroup | None = create_dynamic_events_group_with_dialog(
+                                circuit=self.circuit,
+                                mode=mode,
+                                parent=None,
+                                missing_group_message=missing_group_message,
+                                created_group_message_title=created_group_message_title,
+                                created_group_message_body_prefix=created_group_message_body_prefix,
+                            )
+
+                            if created_group is not None:
+                                self.run_rms()
+                            else:
+                                info_msg(f"No RMS Events Group was added. The RMS simulation can't run.")
+
+                else:
+                    self.show_warning_toast('Another rms simulation is running already...')
+
+            else:
+                pass
 
     def emt_dispatcher(self):
         """
@@ -1276,7 +1292,97 @@ class SimulationsMain(TimeEventsMain):
             self.run_remote(instruction=instruction)
 
         else:
-            self.run_emt()
+            if self.circuit.valid_for_simulation():
+
+                if not self.session.is_this_running(SimulationTypes.EmtDynamic_run):
+
+                    logger = self.circuit.check_emt_models()
+                    if logger.has_errors():
+                        # Show dialogue
+                        dlg = LogsDialogue(name="EMT pre simulation check",
+                                           logger=logger)
+                        dlg.setModal(True)
+                        dlg.exec()
+                        return
+                    else:
+
+                        if not len(self.circuit.emt_events_groups) == 0:
+                            self.run_emt()
+
+                            # self.remove_simulation(SimulationTypes.EmtDynamic_run)
+                            #
+                            # _, pf_results_3ph = self.session.power_flow_3ph
+                            #
+                            # _, pf_results = self.session.power_flow
+                            #
+                            # emt_options = self.get_selected_emt_simulation_options()
+                            # if emt_options.simulation_time > 0.0:
+                            #     if pf_results_3ph is not None:
+                            #
+                            #         self.add_simulation(SimulationTypes.EmtDynamic_run)
+                            #         self.ui.progress_label.setText('Running emt simulation...')
+                            #         QtGui.QGuiApplication.processEvents()
+                            #         self.LOCK()
+                            #
+                            #         drv = sim.EmtSimulationDriver(grid=self.circuit,
+                            #                                       options=self.get_selected_emt_simulation_options(),
+                            #                                       pf_results_3ph=pf_results_3ph)
+                            #
+                            #         self.session.run(drv,
+                            #                          post_func=self.post_emt,
+                            #                          prog_func=self.ui.progressBar.setValue,
+                            #                          text_func=self.ui.progress_label.setText)
+                            #
+                            #     elif pf_results is not None:
+                            #
+                            #         # self.add_simulation(SimulationTypes.RmsDynamic_run)
+                            #         self.ui.progress_label.setText(
+                            #             'Running emt simulation from balanced power flow results ...')
+                            #         QtGui.QGuiApplication.processEvents()
+                            #         self.LOCK()
+                            #
+                            #         drv = sim.EmtSimulationDriver(grid=self.circuit,
+                            #                                       options=self.get_selected_emt_simulation_options(),
+                            #                                       pf_results=pf_results)
+                            #
+                            #         self.session.run(drv,
+                            #                          post_func=self.post_emt,
+                            #                          prog_func=self.ui.progressBar.setValue,
+                            #                          text_func=self.ui.progress_label.setText)
+                            #
+                            #     else:
+                            #         info_msg('Run a power flow simulation first.\n'
+                            #                  'The results are needed to initialize this simulation.')
+                            #
+                            # else:
+                            #     info_msg('The simulation time is 0. Change it to a proper time in settings.')
+
+                        else:
+                            mode: DynamicSimulationMode = DynamicSimulationMode.EMT
+                            missing_group_message = "No EMT Events Group found, please create one before running a EMT simulation."
+                            created_group_message_body_prefix: str = "New group name"
+                            created_group_message_title = "EMT group Created"
+
+                            created_group: EmtEventsGroup | None = create_dynamic_events_group_with_dialog(
+                                circuit=self.circuit,
+                                mode=mode,
+                                parent=None,
+                                missing_group_message=missing_group_message,
+                                created_group_message_title=created_group_message_title,
+                                created_group_message_body_prefix=created_group_message_body_prefix,
+                            )
+
+                            if created_group is not None:
+                                self.run_emt()
+                            else:
+                                info_msg(f"No EMT Events Group was added. The EMT simulation can't run.")
+
+
+                else:
+                    self.show_warning_toast('Another EMT simulation is running already...')
+
+            else:
+                pass
 
     def rms_small_signal_dispatcher(self):
         """
@@ -1476,6 +1582,66 @@ class SimulationsMain(TimeEventsMain):
         else:
             warning_msg('There are no power flow results.\nIs there any slack bus or generator?',
                         'Power flow')
+
+        if not self.session.is_anything_running():
+            self.UNLOCK()
+
+    def run_power_flow_time_series_3ph(self):
+        """
+        Run a three-phase power-flow time-series simulation in a separated thread from the GUI.
+
+        :return: None.
+        """
+        if self.circuit.valid_for_simulation():
+            if not self.session.is_this_running(SimulationTypes.PowerFlowTimeSeries3ph_run):
+                if self.valid_time_series():
+                    self.LOCK()
+
+                    self.add_simulation(SimulationTypes.PowerFlowTimeSeries3ph_run)
+
+                    self.ui.progress_label.setText('Compiling the grid...')
+                    QtGui.QGuiApplication.processEvents()
+
+                    opf_time_series_results = self.get_opf_ts_results(
+                        use_opf=self.ui.actionOpf_to_Power_flow.isChecked()
+                    )
+                    options = self.get_selected_power_flow_options()
+
+                    drv = sim.PowerFlowTimeSeriesDriver3Ph(grid=self.circuit,
+                                                          options=options,
+                                                          time_indices=self.get_time_indices(),
+                                                          opf_time_series_results=opf_time_series_results,
+                                                          clustering_results=self.get_clustering_results(),
+                                                          engine=self.get_preferred_engine())
+
+                    self.session.run(drv,
+                                     post_func=self.post_power_flow_time_series_3ph,
+                                     prog_func=self.ui.progressBar.setValue,
+                                     text_func=self.ui.progress_label.setText)
+                else:
+                    self.show_warning_toast('There are no time series.')
+            else:
+                self.show_warning_toast('Another three-phase time series power flow is being executed now...')
+        else:
+            pass
+
+    def post_power_flow_time_series_3ph(self):
+        """
+        Events to do when the three-phase time-series simulation has finished.
+
+        :return: None.
+        """
+        _, results = self.session.power_flow_3ph_ts
+
+        if results is not None:
+            results.expand_clustered_results()
+
+            self.remove_simulation(SimulationTypes.PowerFlowTimeSeries3ph_run)
+
+            self.update_available_results()
+            self.colour_diagrams()
+        else:
+            self.show_warning_toast('No results for the three-phase time series simulation.')
 
         if not self.session.is_anything_running():
             self.UNLOCK()
@@ -3124,6 +3290,20 @@ class SimulationsMain(TimeEventsMain):
                             engine=self.get_preferred_engine()
                         )
 
+                    elif obj_fn_tpe == InvestmentsEvaluationObjectives.LinearOptimalPowerFlowTimeSeries:
+
+                        if self.circuit.has_time_series:
+                            problem = sim.TimeSeriesLinearOptimalPowerFlowInvestmentProblem(
+                                grid=self.circuit,
+                                opf_options=self.get_opf_options(),
+                                time_indices=self.get_time_indices(),
+                                clustering_results=self.get_clustering_results(),
+                                engine=self.get_preferred_engine()
+                            )
+                        else:
+                            self.show_warning_toast('Linear OPF investment studies need time data...')
+                            return
+
                     elif obj_fn_tpe == InvestmentsEvaluationObjectives.GenerationAdequacy:
 
                         if self.circuit.has_time_series:
@@ -3161,7 +3341,8 @@ class SimulationsMain(TimeEventsMain):
                     drv = sim.InvestmentsEvaluationDriver(
                         grid=self.circuit,
                         options=options,
-                        problem=problem
+                        problem=problem,
+                        engine=self.get_preferred_engine()
                     )
 
                     self.session.run(
@@ -3519,62 +3700,38 @@ class SimulationsMain(TimeEventsMain):
         Run rms simulation
         :return:
         """
-        if self.circuit.valid_for_simulation():
+        self.remove_simulation(SimulationTypes.RmsDynamic_run)
 
-            if not self.session.is_this_running(SimulationTypes.RmsDynamic_run):
-
-                logger = self.circuit.check_rms_models()
-                if logger.has_errors():
-                    # Show dialogue
-                    dlg = LogsDialogue(name="RMS pre simulation check",
-                                       logger=logger)
-                    dlg.setModal(True)
-                    dlg.exec()
-                    return
-                else:
-
-                    self.remove_simulation(SimulationTypes.RmsDynamic_run)
-
-                    _, pf_results = self.session.power_flow
-
-                    if not len(self.circuit.rms_events_groups) == 0:
-                        rms_options = self.get_selected_rms_simulation_options()
-                        if rms_options.simulation_time > 0.0:
-
-                            if pf_results is not None:
-
-                                self.add_simulation(SimulationTypes.RmsDynamic_run)
-
-                                # self.add_simulation(SimulationTypes.RmsDynamic_run)
-                                self.ui.progress_label.setText('Running rms simulation...')
-                                QtGui.QGuiApplication.processEvents()
-                                self.LOCK()
-
-                                drv = sim.RmsSimulationDriver(grid=self.circuit,
-                                                              options=self.get_selected_rms_simulation_options(),
-                                                              pf_results=pf_results)
-
-                                self.session.run(drv,
-                                                 post_func=self.post_rms,
-                                                 prog_func=self.ui.progressBar.setValue,
-                                                 text_func=self.ui.progress_label.setText)
-
-                            else:
-                                info_msg('Run a power flow simulation first.\n'
-                                         'The results are needed to initialize this simulation.')
-                        else:
-                            info_msg('The simulation time is 0. Change it to a proper time in settings.')
+        _, pf_results = self.session.power_flow
 
 
-                    else:
-                        info_msg('Add a RMS Events Group even if it is empty.\n'
-                                 'Go to database -> RMS Events Group to add it.')
+        rms_options = self.get_selected_rms_simulation_options()
+        if rms_options.simulation_time > 0.0:
+
+            if pf_results is not None:
+
+                self.add_simulation(SimulationTypes.RmsDynamic_run)
+
+                # self.add_simulation(SimulationTypes.RmsDynamic_run)
+                self.ui.progress_label.setText('Running rms simulation...')
+                QtGui.QGuiApplication.processEvents()
+                self.LOCK()
+
+                drv = sim.RmsSimulationDriver(grid=self.circuit,
+                                              options=self.get_selected_rms_simulation_options(),
+                                              pf_results=pf_results)
+
+                self.session.run(drv,
+                                 post_func=self.post_rms,
+                                 prog_func=self.ui.progressBar.setValue,
+                                 text_func=self.ui.progress_label.setText)
 
             else:
-                self.show_warning_toast('Another rms simulation is running already...')
-
+                info_msg('Run a power flow simulation first.\n'
+                         'The results are needed to initialize this simulation.')
         else:
-            pass
+            info_msg('The simulation time is 0. Change it to a proper time in settings.')
+
 
     def post_rms(self) -> None:
         """
@@ -3651,78 +3808,129 @@ class SimulationsMain(TimeEventsMain):
         Run emt simulation
         :return:
         """
-        if self.circuit.valid_for_simulation():
 
-            if not self.session.is_this_running(SimulationTypes.EmtDynamic_run):
+        self.remove_simulation(SimulationTypes.EmtDynamic_run)
 
-                logger = self.circuit.check_emt_models()
-                if logger.has_errors():
-                    # Show dialogue
-                    dlg = LogsDialogue(name="EMT pre simulation check",
-                                       logger=logger)
-                    dlg.setModal(True)
-                    dlg.exec()
-                    return
-                else:
+        _, pf_results_3ph = self.session.power_flow_3ph
 
-                    self.remove_simulation(SimulationTypes.EmtDynamic_run)
+        _, pf_results = self.session.power_flow
 
-                    _, pf_results_3ph = self.session.power_flow_3ph
+        emt_options = self.get_selected_emt_simulation_options()
+        if emt_options.simulation_time > 0.0:
+            if pf_results_3ph is not None:
 
-                    _, pf_results = self.session.power_flow
+                self.add_simulation(SimulationTypes.EmtDynamic_run)
+                self.ui.progress_label.setText('Running EMT simulation...')
+                QtGui.QGuiApplication.processEvents()
+                self.LOCK()
 
-                    if not len(self.circuit.emt_events_groups) == 0:
-                        emt_options = self.get_selected_emt_simulation_options()
-                        if emt_options.simulation_time > 0.0:
-                            if pf_results_3ph is not None:
+                drv = sim.EmtSimulationDriver(grid=self.circuit,
+                                              options=self.get_selected_emt_simulation_options(),
+                                              pf_results_3ph=pf_results_3ph)
 
-                                self.add_simulation(SimulationTypes.EmtDynamic_run)
-                                self.ui.progress_label.setText('Running emt simulation...')
-                                QtGui.QGuiApplication.processEvents()
-                                self.LOCK()
+                self.session.run(drv,
+                                 post_func=self.post_emt,
+                                 prog_func=self.ui.progressBar.setValue,
+                                 text_func=self.ui.progress_label.setText)
 
-                                drv = sim.EmtSimulationDriver(grid=self.circuit,
-                                                              options=self.get_selected_emt_simulation_options(),
-                                                              pf_results_3ph=pf_results_3ph)
+            elif pf_results is not None:
 
-                                self.session.run(drv,
-                                                 post_func=self.post_emt,
-                                                 prog_func=self.ui.progressBar.setValue,
-                                                 text_func=self.ui.progress_label.setText)
+                # self.add_simulation(SimulationTypes.RmsDynamic_run)
+                self.ui.progress_label.setText(
+                    'Running EMT simulation from balanced power flow results ...')
+                QtGui.QGuiApplication.processEvents()
+                self.LOCK()
 
-                            elif pf_results is not None:
+                drv = sim.EmtSimulationDriver(grid=self.circuit,
+                                              options=self.get_selected_emt_simulation_options(),
+                                              pf_results=pf_results)
 
-                                # self.add_simulation(SimulationTypes.RmsDynamic_run)
-                                self.ui.progress_label.setText('Running emt simulation from balanced power flow results ...')
-                                QtGui.QGuiApplication.processEvents()
-                                self.LOCK()
-
-                                drv = sim.EmtSimulationDriver(grid=self.circuit,
-                                                              options=self.get_selected_emt_simulation_options(),
-                                                              pf_results=pf_results)
-
-                                self.session.run(drv,
-                                                 post_func=self.post_emt,
-                                                 prog_func=self.ui.progressBar.setValue,
-                                                 text_func=self.ui.progress_label.setText)
-
-                            else:
-                                info_msg('Run a power flow simulation first.\n'
-                                         'The results are needed to initialize this simulation.')
-
-                        else:
-                            info_msg('The simulation time is 0. Change it to a proper time in settings.')
-
-                    else:
-                        info_msg('Add an EMT Events Group even if it is empty.\n'
-                                 'Go to database -> EMT Events Group to add it.')
-
+                self.session.run(drv,
+                                 post_func=self.post_emt,
+                                 prog_func=self.ui.progressBar.setValue,
+                                 text_func=self.ui.progress_label.setText)
 
             else:
-                self.show_warning_toast('Another EMT simulation is running already...')
+                info_msg('Run a power flow simulation first.\n'
+                         'The results are needed to initialize this simulation.')
 
         else:
-            pass
+            info_msg('The simulation time is 0. Change it to a proper time in settings.')
+
+
+
+        # if self.circuit.valid_for_simulation():
+        #
+        #     if not self.session.is_this_running(SimulationTypes.EmtDynamic_run):
+        #
+        #         logger = self.circuit.check_emt_models()
+        #         if logger.has_errors():
+        #             # Show dialogue
+        #             dlg = LogsDialogue(name="EMT pre simulation check",
+        #                                logger=logger)
+        #             dlg.setModal(True)
+        #             dlg.exec()
+        #             return
+        #         else:
+        #
+        #             self.remove_simulation(SimulationTypes.EmtDynamic_run)
+        #
+        #             _, pf_results_3ph = self.session.power_flow_3ph
+        #
+        #             _, pf_results = self.session.power_flow
+        #
+        #             if not len(self.circuit.emt_events_groups) == 0:
+        #                 emt_options = self.get_selected_emt_simulation_options()
+        #                 if emt_options.simulation_time > 0.0:
+        #                     if pf_results_3ph is not None:
+        #
+        #                         self.add_simulation(SimulationTypes.EmtDynamic_run)
+        #                         self.ui.progress_label.setText('Running emt simulation...')
+        #                         QtGui.QGuiApplication.processEvents()
+        #                         self.LOCK()
+        #
+        #                         drv = sim.EmtSimulationDriver(grid=self.circuit,
+        #                                                       options=self.get_selected_emt_simulation_options(),
+        #                                                       pf_results_3ph=pf_results_3ph)
+        #
+        #                         self.session.run(drv,
+        #                                          post_func=self.post_emt,
+        #                                          prog_func=self.ui.progressBar.setValue,
+        #                                          text_func=self.ui.progress_label.setText)
+        #
+        #                     elif pf_results is not None:
+        #
+        #                         # self.add_simulation(SimulationTypes.RmsDynamic_run)
+        #                         self.ui.progress_label.setText('Running emt simulation from balanced power flow results ...')
+        #                         QtGui.QGuiApplication.processEvents()
+        #                         self.LOCK()
+        #
+        #                         drv = sim.EmtSimulationDriver(grid=self.circuit,
+        #                                                       options=self.get_selected_emt_simulation_options(),
+        #                                                       pf_results=pf_results)
+        #
+        #                         self.session.run(drv,
+        #                                          post_func=self.post_emt,
+        #                                          prog_func=self.ui.progressBar.setValue,
+        #                                          text_func=self.ui.progress_label.setText)
+        #
+        #                     else:
+        #                         info_msg('Run a power flow simulation first.\n'
+        #                                  'The results are needed to initialize this simulation.')
+        #
+        #                 else:
+        #                     info_msg('The simulation time is 0. Change it to a proper time in settings.')
+        #
+        #             else:
+        #                 info_msg('Add an EMT Events Group even if it is empty.\n'
+        #                          'Go to database -> EMT Events Group to add it.')
+        #
+        #
+        #     else:
+        #         self.show_warning_toast('Another EMT simulation is running already...')
+        #
+        # else:
+        #     pass
 
     def post_emt(self) -> None:
         """
@@ -3854,37 +4062,48 @@ class SimulationsMain(TimeEventsMain):
 
             if not self.session.is_this_running(SimulationTypes.RmsSmallSignal_run):
 
-                _, pf_results = self.session.power_flow
-
-                if pf_results is not None:
-
-                    self.add_simulation(SimulationTypes.RmsSmallSignal_run)
-
-                    self.LOCK()
-
-                    # Compile the grid
-                    self.ui.progress_label.setText('Compiling the grid...')
-                    QtGui.QGuiApplication.processEvents()
-
-                    # get the small signal stability analysis simulation options from the GUI
-                    options = self.get_selected_rms_small_signal_stability_options()
-                    rms_options = self.get_selected_rms_simulation_options()
-
-                    self.ui.progress_label.setText('Performing Small Signal Stability analysis...')
-
-                    drv = sim.SmallSignalStabilityRmsDriver(grid=self.circuit,
-                                                            rms_options=rms_options,
-                                                            sss_options=options,
-                                                            pf_results=pf_results)
-
-                    self.session.run(drv,
-                                     post_func=self.post_rms_small_signal_stability,
-                                     prog_func=self.ui.progressBar.setValue,
-                                     text_func=self.ui.progress_label.setText)
-
+                logger = self.circuit.check_rms_models()
+                if logger.has_errors():
+                    # Show dialogue
+                    dlg = LogsDialogue(name="Small-signal stability RMS pre simulation check",
+                                       logger=logger)
+                    dlg.setModal(True)
+                    dlg.exec()
+                    return
                 else:
-                    info_msg('Run a power flow simulation first.\n'
-                             'The results are needed to initialize this simulation.')
+
+                    _, pf_results = self.session.power_flow
+
+                    if pf_results is not None:
+
+                        self.add_simulation(SimulationTypes.RmsSmallSignal_run)
+
+                        self.LOCK()
+
+                        # Compile the grid
+                        self.ui.progress_label.setText('Compiling the grid...')
+                        QtGui.QGuiApplication.processEvents()
+
+                        # get the small signal stability analysis simulation options from the GUI
+                        options = self.get_selected_rms_small_signal_stability_options()
+                        rms_options = self.get_selected_rms_simulation_options()
+
+                        self.ui.progress_label.setText('Performing Small Signal Stability analysis...')
+
+                        drv = sim.SmallSignalStabilityRmsDriver(grid=self.circuit,
+                                                                rms_options=rms_options,
+                                                                sss_options=options,
+                                                                pf_results=pf_results)
+
+                        self.session.run(drv,
+                                         post_func=self.post_rms_small_signal_stability,
+                                         prog_func=self.ui.progressBar.setValue,
+                                         text_func=self.ui.progress_label.setText)
+
+                    else:
+                        info_msg('Run a power flow simulation first.\n'
+                                 'The results are needed to initialize this simulation.')
+
             else:
                 self.show_warning_toast('Another Small Signal stability analysis simulation is running already...')
 
@@ -3922,37 +4141,47 @@ class SimulationsMain(TimeEventsMain):
 
             if not self.session.is_this_running(SimulationTypes.EmtSmallSignal_run):
 
-                _, pf_results = self.session.power_flow_3ph
-
-                if pf_results is not None:
-
-                    self.add_simulation(SimulationTypes.EmtSmallSignal_run)
-
-                    self.LOCK()
-
-                    # Compile the grid
-                    self.ui.progress_label.setText('Compiling the grid...')
-                    QtGui.QGuiApplication.processEvents()
-
-                    # get the small signal stability analysis simulation options from the GUI
-                    options = self.get_selected_emt_small_signal_stability_options()
-                    rms_options = self.get_selected_emt_simulation_options()
-
-                    self.ui.progress_label.setText('Performing Small Signal Stability analysis...')
-
-                    drv = sim.SmallSignalStabilityEmtDriver(grid=self.circuit,
-                                                            rms_options=rms_options,
-                                                            sss_options=options,
-                                                            pf_results=pf_results)
-
-                    self.session.run(drv,
-                                     post_func=self.post_emt_small_signal_stability,
-                                     prog_func=self.ui.progressBar.setValue,
-                                     text_func=self.ui.progress_label.setText)
-
+                logger = self.circuit.check_emt_models()
+                if logger.has_errors():
+                    # Show dialogue
+                    dlg = LogsDialogue(name="Small-signal stability EMT pre simulation check",
+                                       logger=logger)
+                    dlg.setModal(True)
+                    dlg.exec()
+                    return
                 else:
-                    info_msg('Run a power flow simulation first.\n'
-                             'The results are needed to initialize this simulation.')
+
+                    _, pf_results = self.session.power_flow_3ph
+
+                    if pf_results is not None:
+
+                        self.add_simulation(SimulationTypes.EmtSmallSignal_run)
+
+                        self.LOCK()
+
+                        # Compile the grid
+                        self.ui.progress_label.setText('Compiling the grid...')
+                        QtGui.QGuiApplication.processEvents()
+
+                        # get the small signal stability analysis simulation options from the GUI
+                        options = self.get_selected_emt_small_signal_stability_options()
+                        rms_options = self.get_selected_emt_simulation_options()
+
+                        self.ui.progress_label.setText('Performing Small Signal Stability analysis...')
+
+                        drv = sim.SmallSignalStabilityEmtDriver(grid=self.circuit,
+                                                                rms_options=rms_options,
+                                                                sss_options=options,
+                                                                pf_results=pf_results)
+
+                        self.session.run(drv,
+                                         post_func=self.post_emt_small_signal_stability,
+                                         prog_func=self.ui.progressBar.setValue,
+                                         text_func=self.ui.progress_label.setText)
+
+                    else:
+                        info_msg('Run a power flow simulation first.\n'
+                                 'The results are needed to initialize this simulation.')
             else:
                 self.show_warning_toast('Another Small Signal stability analysis simulation is running already...')
 

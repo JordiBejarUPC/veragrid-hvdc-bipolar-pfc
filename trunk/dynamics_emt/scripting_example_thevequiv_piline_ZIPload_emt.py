@@ -35,7 +35,7 @@ from VeraGridEngine.Utils.Symbolic.block import Block, find_name_in_block as fin
 
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
-from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlowDriver3Ph
+from VeraGridEngine.Simulations.PowerFlow3ph.power_flow_driver_3ph import PowerFlowDriver3Ph
 
 
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
@@ -249,7 +249,7 @@ BENCHMARK_COMPILED_COLD_WARM = read_env_flag("VERAGRID_EMT_BENCHMARK_COMPILED_CO
 BENCHMARK_ALL_SOLVERS_COLD_WARM = read_env_flag("VERAGRID_EMT_BENCHMARK_ALL_SOLVERS_COLD_WARM", False)
 DENSE_THRESHOLD = 0
 SOLVER_VERBOSE = read_env_flag("VERAGRID_EMT_SOLVER_VERBOSE", False)
-CHOSEN_INIT_METHOD = os.environ.get("VERAGRID_EMT_INIT_METHOD", "AUTO").strip().upper()
+CHOSEN_INIT_METHOD = os.environ.get("VERAGRID_EMT_INIT_METHOD", "PSEUDOTRANSIENT").strip().upper()
 PLOT_CASE_NAME = "thevequiv_piline_zipload"
 
 SOLVER_TYPE_MAP = {

@@ -32,7 +32,8 @@ def constant(var_factory: VarFactory, item_name: str = "") -> Block:
         algebraic_eqs=[y - param],
         out_vars=[y],
         event_dict={param: var_factory.add_const(0.0)},
-        name="const"
+        name="const",
+        is_decomposable=False
     )
 
     return blk
@@ -57,7 +58,8 @@ def gain(var_factory: VarFactory, item_name: str = "") -> Block:
         out_vars=[y],
         in_vars=inputs,
         event_dict={gain_param: var_factory.add_const(0.0)},
-        name="gain"
+        name="gain",
+        is_decomposable=False
     )
     return blk
 
@@ -99,7 +101,8 @@ def adder(var_factory: VarFactory, item_name: str = "") -> Block:
         algebraic_eqs=[y - expr],
         in_vars=inputs,
         out_vars=[y],
-        name="sum"
+        name="sum",
+        is_decomposable=False
     )
 
     return blk
@@ -122,7 +125,8 @@ def substract(var_factory: VarFactory, item_name: str = "") -> Block:
         algebraic_eqs=[y - expr],
         in_vars=inputs,
         out_vars=[y],
-        name="substraction"
+        name="substraction",
+        is_decomposable=False
     )
 
     return blk
@@ -146,7 +150,8 @@ def product(var_factory: VarFactory, item_name: str = "") -> Block:
         algebraic_eqs=[y - expr],
         in_vars=inputs,
         out_vars=[y],
-        name="product"
+        name="product",
+        is_decomposable=False
     )
 
     return blk
@@ -170,7 +175,8 @@ def divide(var_factory: VarFactory, item_name: str = "") -> Block:
         algebraic_eqs=[y - expr],
         in_vars=inputs,
         out_vars=[y],
-        name="divide"
+        name="divide",
+        is_decomposable=False
     )
 
     return blk
@@ -193,7 +199,8 @@ def absolut(var_factory: VarFactory, item_name: str = "") -> Block:
         algebraic_eqs=[y - expr],
         in_vars=inputs,
         out_vars=[y],
-        name="abs"
+        name="abs",
+        is_decomposable=False
     )
 
     return blk
@@ -208,7 +215,7 @@ def integrator(var_factory: VarFactory, u: sym.Var | sym.Const, name: str = "x")
     :return:
     """
     x = var_factory.add_var(name)
-    blk = Block(state_vars=[x], state_eqs=[u])
+    blk = Block(state_vars=[x], state_eqs=[u], is_decomposable=False)
     return x, blk
 
 
@@ -229,7 +236,35 @@ def pi_controller(var_factory: VarFactory, err: sym.Var, kp: float, ki: float, n
     return Block(name="",
                  children=[blk_kp, blk_int, blk_ki, blk_sum],
                  in_vars=[err],
-                 out_vars=[u])
+                 out_vars=[u],
+                 is_decomposable=False)
+
+
+def signal_pair(var_factory: VarFactory, item_name: str = "") -> Tuple[Block, Block]:
+    """
+    Create a signal pair: one block with an input port and one block with
+    an output port that share the same variable. When an external output
+    is connected to the input block, the output block exposes the same
+    variable automatically.
+
+    :param var_factory:
+    :param item_name:
+    :return: (input_block, output_block)
+    """
+    v = var_factory.add_var("signal_" + item_name)
+
+    blk_in = Block(
+        in_vars=[v],
+        name="From" + item_name
+    )
+
+    blk_out = Block(
+        algebraic_vars=[v],
+        out_vars=[v],
+        name="To" + item_name
+    )
+
+    return blk_in, blk_out
 
 
 def generic(var_factory: VarFactory, 

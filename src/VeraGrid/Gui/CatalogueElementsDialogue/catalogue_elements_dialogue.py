@@ -343,6 +343,22 @@ class CatalogueElementsSelectionDialogue(QtWidgets.QDialog):
                                         unique_key='rms:get_transformer2w_rms_template',
                                         function_ptr=tem.get_transformer2w_rms)
                         )
+        actions.append(CatalogueAction(kind=CatalogueActionKind.AddRmsTemplate,
+                                       args=(self._circuit.var_factory,),
+                                       name='GFM VSC',
+                                       voltage_text='',
+                                       power_text='',
+                                       unique_key='rms:build_vsc_rms',
+                                       function_ptr=tem.build_vsc_rms)
+                       )
+        # actions.append(CatalogueAction(kind=CatalogueActionKind.AddRmsTemplate,
+        #                                args=(self._circuit.var_factory,),
+        #                                name='DC PV source',
+        #                                voltage_text='',
+        #                                power_text='',
+        #                                unique_key='rms:DCPVSourceAveraged',
+        #                                function_ptr=tem.DCPVSourceAveraged)
+        #                )
         return actions
 
     def build_emt_actions(self) -> List[CatalogueAction]:
@@ -600,6 +616,14 @@ class CatalogueElementsSelectionDialogue(QtWidgets.QDialog):
             voltage_text='', power_text='',
             unique_key='emt:get_pv_avm_boost_grid_following_emt_template:abc',
             function_ptr=tem.get_pv_avm_boost_grid_following_emt_template)
+        )
+        actions.append(CatalogueAction(
+            kind=CatalogueActionKind.AddEmtTemplate,
+            args=(self._circuit.var_factory,),
+            name='VSC Grid-Forming (GFM)',
+            voltage_text='', power_text='',
+            unique_key='emt:get_gfm_emt_template',
+            function_ptr=tem.get_gfm_emt_template)
         )
         return actions
 

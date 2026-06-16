@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import os
+from time import perf_counter
 from typing import List, Tuple, Union, Callable, Iterable
 
 import networkx as nx
@@ -20,7 +21,8 @@ from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
 from VeraGridEngine.IO.file_system import tiles_path
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Simulations import PowerFlowResults, ContinuationPowerFlowResults, PowerFlowTimeSeriesResults
-from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
+from VeraGridEngine.Simulations.PowerFlow3ph.power_flow_results_3ph import PowerFlowResults3Ph
+from VeraGridEngine.Simulations.PowerFlow3ph.power_flow_ts_results_3ph import PowerFlowTimeSeriesResults3Ph
 from VeraGridEngine.Simulations.StateEstimation.state_estimation_results import StateEstimationResults
 from VeraGridEngine.Utils.progress_bar import print_progress_bar
 from VeraGridEngine.basic_structures import Logger
@@ -51,7 +53,7 @@ from VeraGrid.Gui.dynamic_events_editor_dialog import collect_block_runtime_even
 from VeraGrid.Gui.Diagrams.MapWidget.Substation.substation_graphic_item import SubstationGraphicItem
 from VeraGrid.Gui.ShortCircuitEditor.short_circuit_selector import ShortCircuitSelector
 from VeraGrid.Gui.general_dialogues import (CheckListDialogue, StartEndSelectionDialogue,
-                                            InputNumberDialogue, LogsDialogue)
+                                            InputNumberDialogue)
 
 ALL_EDITORS = Union[SchematicWidget, GridMapWidget, BaseDiagramWidget]
 ALL_EDITORS_NONE = Union[None, SchematicWidget, GridMapWidget]
@@ -96,29 +98,77 @@ class VideoExportWorker(QtCore.QThread):
         Run function
         :return:
         """
-        # start recording...
-        w, h = self.diagram.start_video_recording(fname=self.filename, fps=self.fps, logger=self.logger)
+        total_start_time: float = perf_counter()
+        colour_elapsed_time: float = 0.0
+        capture_elapsed_time: float = 0.0
+        write_elapsed_time: float = 0.0
+        frame_count: int = max(self.end_idx - self.start_idx, 0)
 
-        # paint and capture
-        for t_idx in range(self.start_idx, self.end_idx):
-            self.grid_colour_function(
-                self.diagram,  # diagram
-                self.current_study,  # current_study
-                t_idx,  # t_idx
-                False  # allow_popups
+        # Mark export mode explicitly so the diagram can skip non-visual work.
+        self.diagram.set_video_export_active(True)
+
+        try:
+            # Start the encoder only once before the frame loop begins.
+            w, h = self.diagram.start_video_recording(fname=self.filename, fps=self.fps, logger=self.logger)
+
+            # Recolour the diagram for each simulation step and then capture it.
+            for t_idx in range(self.start_idx, self.end_idx):
+                colour_start_time: float = perf_counter()
+                self.grid_colour_function(
+                    self.diagram,
+                    self.current_study,
+                    t_idx,
+                    False
+                )
+                colour_end_time: float = perf_counter()
+                colour_elapsed_time += colour_end_time - colour_start_time
+
+                frame_capture_elapsed_time: float
+                frame_write_elapsed_time: float
+                frame_capture_elapsed_time, frame_write_elapsed_time = self.diagram.capture_video_frame_timed(
+                    w=w,
+                    h=h,
+                    logger=self.logger
+                )
+                capture_elapsed_time += frame_capture_elapsed_time
+                write_elapsed_time += frame_write_elapsed_time
+
+                self.progress_text.emit(f"Saving frame {t_idx} / {self.end_idx}")
+                self.progress_signal.emit(t_idx / self.end_idx)
+
+                print_progress_bar(t_idx + 1, self.end_idx)
+
+            # Finalize the encoder after all frames have been flushed.
+            self.diagram.end_video_recording()
+
+            self.logger.add_info(f"Video saved to {self.filename}")
+            total_end_time: float = perf_counter()
+            total_elapsed_time: float = total_end_time - total_start_time
+            other_elapsed_time: float = total_elapsed_time - colour_elapsed_time - capture_elapsed_time - write_elapsed_time
+
+            self.logger.add_info(
+                "Video export timing "
+                f"frames={frame_count}, "
+                f"total={total_elapsed_time * 1000.0:.1f} ms, "
+                f"colour={colour_elapsed_time * 1000.0:.1f} ms, "
+                f"capture={capture_elapsed_time * 1000.0:.1f} ms, "
+                f"write={write_elapsed_time * 1000.0:.1f} ms, "
+                f"other={other_elapsed_time * 1000.0:.1f} ms"
             )
 
-            self.diagram.capture_video_frame(w=w, h=h, logger=self.logger)
+            if frame_count > 0:
+                self.logger.add_info(
+                    "Video export timing per frame "
+                    f"colour={colour_elapsed_time * 1000.0 / frame_count:.1f} ms, "
+                    f"capture={capture_elapsed_time * 1000.0 / frame_count:.1f} ms, "
+                    f"write={write_elapsed_time * 1000.0 / frame_count:.1f} ms"
+                )
+            else:
+                pass
 
-            self.progress_text.emit(f"Saving frame {t_idx} / {self.end_idx}")
-            self.progress_signal.emit(t_idx / self.end_idx)
-
-            print_progress_bar(t_idx + 1, self.end_idx)
-
-        # finalize
-        self.diagram.end_video_recording()
-
-        self.logger.add_info(f"Video saved to {self.filename}")
+        finally:
+            # Always restore the interactive colouring mode even after export failures.
+            self.diagram.set_video_export_active(False)
 
         self.done_signal.emit()
 
@@ -565,7 +615,15 @@ class DiagramsMain(CompiledArraysMain):
             max_branch_width=max_branch_width,
             min_bus_width=min_bus_width,
             max_bus_width=max_bus_width,
-            cmap=cmap
+            cmap=cmap,
+            gen_p=results.gen_p,
+            gen_q=results.gen_q,
+            gen_names=results.gen_names,
+            battery_p=results.battery_p,
+            battery_q=results.battery_q,
+            battery_names=results.batt_names,
+            shunt_q=results.shunt_q,
+            shunt_names=results.sh_names
         )
 
     def pf_3ph_colouring(self, diagram_widget: ALL_EDITORS,
@@ -642,7 +700,19 @@ class DiagramsMain(CompiledArraysMain):
             max_branch_width=max_branch_width,
             min_bus_width=min_bus_width,
             max_bus_width=max_bus_width,
-            cmap=cmap)
+            cmap=cmap,
+            gen_q_a=results.gen_q_A,
+            gen_q_b=results.gen_q_B,
+            gen_q_c=results.gen_q_C,
+            gen_names=results.gen_names,
+            battery_q_a=results.battery_q_A,
+            battery_q_b=results.battery_q_B,
+            battery_q_c=results.battery_q_C,
+            battery_names=results.batt_names,
+            shunt_q_a=results.shunt_q_A,
+            shunt_q_b=results.shunt_q_B,
+            shunt_q_c=results.shunt_q_C,
+            shunt_names=results.sh_names)
 
     def se_colouring(self, diagram_widget: ALL_EDITORS,
                      results: StateEstimationResults,
@@ -697,7 +767,15 @@ class DiagramsMain(CompiledArraysMain):
             max_branch_width=max_branch_width,
             min_bus_width=min_bus_width,
             max_bus_width=max_bus_width,
-            cmap=cmap
+            cmap=cmap,
+            gen_p=None,
+            gen_q=results.gen_q,
+            gen_names=results.gen_names,
+            battery_p=None,
+            battery_q=results.battery_q,
+            battery_names=results.batt_names,
+            shunt_q=results.shunt_q,
+            shunt_names=results.sh_names
         )
 
     def pf_ts_colouring(self, t_idx: int,
@@ -745,7 +823,105 @@ class DiagramsMain(CompiledArraysMain):
                                              max_branch_width=max_branch_width,
                                              min_bus_width=min_bus_width,
                                              max_bus_width=max_bus_width,
-                                             cmap=cmap)
+                                             cmap=cmap,
+                                             gen_p=results.gen_p[t_idx, :],
+                                             gen_q=results.gen_q[t_idx, :],
+                                             gen_names=results.gen_names,
+                                             battery_p=results.battery_p[t_idx, :],
+                                             battery_q=results.battery_q[t_idx, :],
+                                             battery_names=results.batt_names,
+                                             shunt_q=results.shunt_q[t_idx, :],
+                                             shunt_names=results.sh_names,
+                                             t_idx=t_idx)
+
+    def pf_3ph_ts_colouring(self, t_idx: int,
+                            diagram_widget: ALL_EDITORS,
+                            results: PowerFlowTimeSeriesResults3Ph, cmap: Colormaps,
+                            use_flow_based_width: bool = False,
+                            min_branch_width: int = 2,
+                            max_branch_width: int = 5,
+                            min_bus_width: int = 2,
+                            max_bus_width: int = 5):
+        """
+
+        :param t_idx:
+        :param diagram_widget:
+        :param results:
+        :param cmap:
+        :param use_flow_based_width:
+        :param min_branch_width:
+        :param max_branch_width:
+        :param min_bus_width:
+        :param max_bus_width:
+        :return:
+        """
+        bus_active = self.circuit.get_bus_actives(t_idx=t_idx)
+        br_active = self.circuit.get_branch_actives(t_idx=t_idx, add_vsc=False, add_hvdc=False, add_switch=True)
+        hvdc_active = self.circuit.get_hvdc_actives(t_idx=t_idx)
+        vsc_active = self.circuit.get_vsc_actives(t_idx=t_idx)
+
+        return diagram_widget.colour_results_3ph(
+            SbusA=results.Sbus_A[t_idx, :],
+            SbusB=results.Sbus_B[t_idx, :],
+            SbusC=results.Sbus_C[t_idx, :],
+            voltagesA=results.voltage_A[t_idx, :],
+            voltagesB=results.voltage_B[t_idx, :],
+            voltagesC=results.voltage_C[t_idx, :],
+            bus_active=bus_active,
+            types=results.bus_types,
+            SfA=results.Sf_A[t_idx, :],
+            SfB=results.Sf_B[t_idx, :],
+            SfC=results.Sf_C[t_idx, :],
+            StA=results.St_A[t_idx, :],
+            StB=results.St_B[t_idx, :],
+            StC=results.St_C[t_idx, :],
+            loadingsA=results.loading_A[t_idx, :],
+            loadingsB=results.loading_B[t_idx, :],
+            loadingsC=results.loading_C[t_idx, :],
+            lossesA=results.losses_A[t_idx, :],
+            lossesB=results.losses_B[t_idx, :],
+            lossesC=results.losses_C[t_idx, :],
+            br_active=br_active,
+            ma=results.tap_module[t_idx, :],
+            tau=results.tap_angle[t_idx, :],
+            hvdc_PfA=results.Pf_hvdc_A[t_idx, :],
+            hvdc_PfB=results.Pf_hvdc_B[t_idx, :],
+            hvdc_PfC=results.Pf_hvdc_C[t_idx, :],
+            hvdc_PtA=results.Pt_hvdc_A[t_idx, :],
+            hvdc_PtB=results.Pt_hvdc_B[t_idx, :],
+            hvdc_PtC=results.Pt_hvdc_C[t_idx, :],
+            hvdc_losses=results.losses_hvdc[t_idx, :],
+            hvdc_loading=results.loading_hvdc[t_idx, :],
+            hvdc_active=hvdc_active,
+            vsc_Pf=results.Pfp_vsc[t_idx, :],
+            vsc_PtA=results.St_vsc_A[t_idx, :].real,
+            vsc_PtB=results.St_vsc_B[t_idx, :].real,
+            vsc_PtC=results.St_vsc_C[t_idx, :].real,
+            vsc_QtA=results.St_vsc_A[t_idx, :].imag,
+            vsc_QtB=results.St_vsc_B[t_idx, :].imag,
+            vsc_QtC=results.St_vsc_C[t_idx, :].imag,
+            vsc_losses=results.losses_vsc[t_idx, :],
+            vsc_loading=results.loading_vsc[t_idx, :],
+            vsc_active=vsc_active,
+            loading_label='loading',
+            use_flow_based_width=use_flow_based_width,
+            min_branch_width=min_branch_width,
+            max_branch_width=max_branch_width,
+            min_bus_width=min_bus_width,
+            max_bus_width=max_bus_width,
+            cmap=cmap,
+            gen_q_a=results.gen_q_A[t_idx, :],
+            gen_q_b=results.gen_q_B[t_idx, :],
+            gen_q_c=results.gen_q_C[t_idx, :],
+            gen_names=results.gen_names,
+            battery_q_a=results.battery_q_A[t_idx, :],
+            battery_q_b=results.battery_q_B[t_idx, :],
+            battery_q_c=results.battery_q_C[t_idx, :],
+            battery_names=results.batt_names,
+            shunt_q_a=results.shunt_q_A[t_idx, :],
+            shunt_q_b=results.shunt_q_B[t_idx, :],
+            shunt_q_c=results.shunt_q_C[t_idx, :],
+            shunt_names=results.sh_names)
 
     def cpf_colouring(self, diagram_widget: ALL_EDITORS,
                       results: ContinuationPowerFlowResults, cmap: Colormaps,
@@ -998,7 +1174,15 @@ class DiagramsMain(CompiledArraysMain):
                                              max_branch_width=max_branch_width,
                                              min_bus_width=min_bus_width,
                                              max_bus_width=max_bus_width,
-                                             cmap=cmap)
+                                             cmap=cmap,
+                                             gen_p=results.generator_power,
+                                             gen_q=results.generator_reactive_power,
+                                             gen_names=results.generator_names,
+                                             battery_p=results.battery_power,
+                                             battery_q=None,
+                                             battery_names=results.battery_names,
+                                             shunt_q=results.shunt_like_reactive_power,
+                                             shunt_names=results.shunt_like_names)
 
     def opf_ts_colouring(self, t_idx: int,
                          diagram_widget: ALL_EDITORS,
@@ -1051,7 +1235,16 @@ class DiagramsMain(CompiledArraysMain):
                                              max_branch_width=max_branch_width,
                                              min_bus_width=min_bus_width,
                                              max_bus_width=max_bus_width,
-                                             cmap=cmap)
+                                             cmap=cmap,
+                                             gen_p=results.generator_power[t_idx, :],
+                                             gen_q=results.generator_reactive_power[t_idx, :],
+                                             gen_names=results.generator_names,
+                                             battery_p=results.battery_power[t_idx, :],
+                                             battery_q=None,
+                                             battery_names=results.battery_names,
+                                             shunt_q=results.shunt_like_reactive_power[t_idx, :],
+                                             shunt_names=results.shunt_like_names,
+                                             t_idx=t_idx)
 
     def ntc_colouring(self, diagram_widget: ALL_EDITORS,
                       results: sim.OptimalNetTransferCapacityResults, cmap: Colormaps,
@@ -1418,28 +1611,53 @@ class DiagramsMain(CompiledArraysMain):
         hvdc_active = self.circuit.get_hvdc_actives(t_idx=t_idx)
         vsc_active = self.circuit.get_vsc_actives(t_idx=t_idx)
 
-        return diagram_widget.colour_results(Sbus=np.zeros(nbus, dtype=complex),
-                                             voltages=np.ones(nbus, dtype=complex),
-                                             bus_active=bus_active,
-                                             Sf=np.zeros(nbr, dtype=complex),
-                                             St=np.zeros(nbr, dtype=complex),
-                                             loadings=np.zeros(nbr, dtype=complex),
-                                             br_active=br_active,
-                                             hvdc_active=hvdc_active,
-                                             hvdc_loading=np.zeros(nhvdc, dtype=float),
-                                             hvdc_Pf=np.zeros(nhvdc, dtype=float),
-                                             hvdc_Pt=np.zeros(nhvdc, dtype=float),
-                                             vsc_active=vsc_active,
-                                             vsc_loading=np.zeros(nvsc, dtype=float),
-                                             vsc_Pf=np.zeros(nvsc, dtype=float),
-                                             vsc_Pt=np.zeros(nvsc, dtype=float),
-                                             vsc_Qt=np.zeros(nvsc, dtype=float),
-                                             use_flow_based_width=use_flow_based_width,
-                                             min_branch_width=min_branch_width,
-                                             max_branch_width=max_branch_width,
-                                             min_bus_width=min_bus_width,
-                                             max_bus_width=max_bus_width,
-                                             cmap=cmap)
+        if isinstance(diagram_widget, SchematicWidget):
+            return diagram_widget.colour_results(Sbus=np.zeros(nbus, dtype=complex),
+                                                 voltages=np.ones(nbus, dtype=complex),
+                                                 bus_active=bus_active,
+                                                 Sf=np.zeros(nbr, dtype=complex),
+                                                 St=np.zeros(nbr, dtype=complex),
+                                                 loadings=np.zeros(nbr, dtype=complex),
+                                                 br_active=br_active,
+                                                 hvdc_active=hvdc_active,
+                                                 hvdc_loading=np.zeros(nhvdc, dtype=float),
+                                                 hvdc_Pf=np.zeros(nhvdc, dtype=float),
+                                                 hvdc_Pt=np.zeros(nhvdc, dtype=float),
+                                                 vsc_active=vsc_active,
+                                                 vsc_loading=np.zeros(nvsc, dtype=float),
+                                                 vsc_Pf=np.zeros(nvsc, dtype=float),
+                                                 vsc_Pt=np.zeros(nvsc, dtype=float),
+                                                 vsc_Qt=np.zeros(nvsc, dtype=float),
+                                                 use_flow_based_width=use_flow_based_width,
+                                                 min_branch_width=min_branch_width,
+                                                 max_branch_width=max_branch_width,
+                                                 min_bus_width=min_bus_width,
+                                                 max_bus_width=max_bus_width,
+                                                 cmap=cmap,
+                                                 apply_bus_result_coloring=False)
+        else:
+            return diagram_widget.colour_results(Sbus=np.zeros(nbus, dtype=complex),
+                                                 voltages=np.ones(nbus, dtype=complex),
+                                                 bus_active=bus_active,
+                                                 Sf=np.zeros(nbr, dtype=complex),
+                                                 St=np.zeros(nbr, dtype=complex),
+                                                 loadings=np.zeros(nbr, dtype=complex),
+                                                 br_active=br_active,
+                                                 hvdc_active=hvdc_active,
+                                                 hvdc_loading=np.zeros(nhvdc, dtype=float),
+                                                 hvdc_Pf=np.zeros(nhvdc, dtype=float),
+                                                 hvdc_Pt=np.zeros(nhvdc, dtype=float),
+                                                 vsc_active=vsc_active,
+                                                 vsc_loading=np.zeros(nvsc, dtype=float),
+                                                 vsc_Pf=np.zeros(nvsc, dtype=float),
+                                                 vsc_Pt=np.zeros(nvsc, dtype=float),
+                                                 vsc_Qt=np.zeros(nvsc, dtype=float),
+                                                 use_flow_based_width=use_flow_based_width,
+                                                 min_branch_width=min_branch_width,
+                                                 max_branch_width=max_branch_width,
+                                                 min_bus_width=min_bus_width,
+                                                 max_bus_width=max_bus_width,
+                                                 cmap=cmap)
 
     def grid_colour_function(self,
                              diagram_widget: ALL_EDITORS,
@@ -1506,6 +1724,23 @@ class DiagramsMain(CompiledArraysMain):
                                      max_branch_width=max_branch_width,
                                      min_bus_width=min_bus_width,
                                      max_bus_width=max_bus_width)
+
+            else:
+                if allow_popups:
+                    self.show_warning_toast(f"{current_study} does not have values for the snapshot")
+
+        elif current_study == sim.PowerFlowTimeSeriesDriver3Ph.tpe.value:
+            if t_idx is not None:
+                _, results = self.session.power_flow_3ph_ts
+                self.pf_3ph_ts_colouring(t_idx=t_idx,
+                                         diagram_widget=diagram_widget,
+                                         results=results,
+                                         cmap=cmap,
+                                         use_flow_based_width=use_flow_based_width,
+                                         min_branch_width=min_branch_width,
+                                         max_branch_width=max_branch_width,
+                                         min_bus_width=min_bus_width,
+                                         max_bus_width=max_bus_width)
 
             else:
                 if allow_popups:
@@ -1829,6 +2064,33 @@ class DiagramsMain(CompiledArraysMain):
         mdl = DiagramsModel(self.diagram_widgets_list)
         self.ui.diagramsListView.setModel(mdl)
 
+    @staticmethod
+    def _validate_diagram_widget_entry(diagram_widget: object) -> DIAGRAM_WIDGETS:
+        """
+        Ensure the diagram widgets list only stores GUI widgets.
+
+        :param diagram_widget: candidate list entry
+        :return: validated widget
+        """
+        if isinstance(diagram_widget, (SchematicWidget, GridMapWidget)):
+            return diagram_widget
+        else:
+            raise TypeError(
+                "diagram_widgets_list only accepts SchematicWidget or GridMapWidget entries, "
+                f"got {type(diagram_widget).__name__}"
+            )
+
+    def _append_diagram_widget(self, diagram_widget: object) -> DIAGRAM_WIDGETS:
+        """
+        Append a validated diagram widget to the tracked widgets list.
+
+        :param diagram_widget: candidate list entry
+        :return: validated widget
+        """
+        widget = self._validate_diagram_widget_entry(diagram_widget=diagram_widget)
+        self.diagram_widgets_list.append(widget)
+        return widget
+
     def _create_widget_from_diagram(self, diagram: dev.SchematicDiagram | dev.MapDiagram) -> ALL_EDITORS:
         """
         Create a diagram widget from a stored diagram object.
@@ -1863,7 +2125,7 @@ class DiagramsMain(CompiledArraysMain):
 
     def _ensure_diagram_widget_at_index(self, index: int) -> ALL_EDITORS_NONE:
         """
-        Materialize and cache a diagram widget if the entry is still deferred.
+        Return the diagram widget stored at the requested index.
 
         :param index: diagram row index
         :return: diagram widget or None
@@ -1876,19 +2138,6 @@ class DiagramsMain(CompiledArraysMain):
         entry = self.diagram_widgets_list[index]
         if isinstance(entry, (SchematicWidget, GridMapWidget)):
             return entry
-        elif isinstance(entry, (dev.SchematicDiagram, dev.MapDiagram)):
-            widget = self._create_widget_from_diagram(diagram=entry)
-            self.diagram_widgets_list[index] = widget
-
-            mdl = self.ui.diagramsListView.model()
-            if mdl is not None:
-                idx = mdl.index(index, 0)
-                mdl.dataChanged.emit(idx, idx, [QtCore.Qt.ItemDataRole.DisplayRole,
-                                                QtCore.Qt.ItemDataRole.DecorationRole])
-            else:
-                pass
-
-            return widget
         else:
             return None
 
@@ -2220,12 +2469,8 @@ class DiagramsMain(CompiledArraysMain):
         self.diagram_widgets_list.clear()
         self.remove_all_diagram_widgets()
 
-        for i, diagram in enumerate(self.circuit.diagrams):
-            if i == 0:
-                self.diagram_widgets_list.append(self._create_widget_from_diagram(diagram=diagram))
-            else:
-                # Defer heavy widget instantiation until the user selects the diagram.
-                self.diagram_widgets_list.append(diagram)
+        for diagram in self.circuit.diagrams:
+            self._append_diagram_widget(self._create_widget_from_diagram(diagram=diagram))
 
         self.set_diagrams_list_view()
 
@@ -2322,7 +2567,7 @@ class DiagramsMain(CompiledArraysMain):
         self.show_info_toast(f"{diagram.name} added")
 
     def add_diagram_widget_and_diagram(self,
-                                       diagram_widget: ALL_EDITORS,
+                                       diagram_widget: DIAGRAM_WIDGETS,
                                        diagram: Union[dev.SchematicDiagram, dev.MapDiagram]):
         """
         Add diagram widget, it also adds the diagram to the circuit for later
@@ -2331,7 +2576,7 @@ class DiagramsMain(CompiledArraysMain):
         """
 
         # add the widget pointer
-        self.diagram_widgets_list.append(diagram_widget)
+        self._append_diagram_widget(diagram_widget)
 
         # add the diagram to the circuit
         self.circuit.add_diagram(diagram)
@@ -2879,11 +3124,12 @@ class DiagramsMain(CompiledArraysMain):
                 else:
                     pass
                 # after creating a new events group or not, open eitherway the Events dialogue
+                rms_event_parameters, mode_parameter_uids = collect_block_runtime_event_parameters(target_device.rms_model)
                 rms_events_dialog = DynamicEventDialogue(circuit=self.circuit,
-                                                         parameters_list=[var for var in
-                                                                      target_device.rms_model.event_dict.keys()],
+                                                         parameters_list=rms_event_parameters,
                                                          target_device_name=target_device.type_name + ": " + target_device.name,
-                                                         mode=mode)
+                                                         mode=mode,
+                                                         mode_parameter_uids=mode_parameter_uids)
 
                 if rms_events_dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
 
@@ -3327,8 +3573,6 @@ class DiagramsMain(CompiledArraysMain):
             if diagram != caller:
                 if isinstance(diagram, (SchematicWidget, GridMapWidget)):
                     diagram.delete_element_utility_function(device=api_obj, propagate=False)
-                elif isinstance(diagram, (dev.SchematicDiagram, dev.MapDiagram)):
-                    diagram.delete_device(device=api_obj)
                 else:
                     pass
 

@@ -28,7 +28,7 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
-from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlowDriver3Ph
+from VeraGridEngine.Simulations.PowerFlow3ph.power_flow_driver_3ph import PowerFlowDriver3Ph
 
 
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
@@ -163,8 +163,8 @@ set_emt_model(device=load, model=load_mdl, var_factory= grid.var_factory)
 # # external mapping
 # big_gen1 = Block(children=[gen_mdl])
 #
-# big_gen1.external_mapping.update({VarPowerFlowRefferenceType.P: gen_mdl.out_vars[0]})
-# big_gen1.external_mapping.update({VarPowerFlowRefferenceType.Q: gen_mdl.out_vars[1]})
+# big_gen1.external_mapping.update({VarPowerFlowReferenceType.P: gen_mdl.out_vars[0]})
+# big_gen1.external_mapping.update({VarPowerFlowReferenceType.Q: gen_mdl.out_vars[1]})
 #
 # # attach emt models to Veragrid objects
 # line0.emt_model= line_mdl

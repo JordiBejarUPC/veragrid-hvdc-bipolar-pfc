@@ -16,7 +16,7 @@ import numba as nb
 
 from typing import Any, Dict, Mapping, Union, List, Sequence, Tuple, Set, Optional
 
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import VarPowerFlowReferenceType
 
 
 NUMBER = Union[int, float, complex]
@@ -435,7 +435,7 @@ class Var(Expr):
     __slots__ = ("name", "_ref", "_network_conn", "_shared_ref", "uid", "non_mutable_uid", "diff_var", "base_var", "_origin_var")
 
     def __init__(self, name: str,
-                 reference: VarPowerFlowRefferenceType | None = None,
+                 reference: VarPowerFlowReferenceType | None = None,
                  network_conn: bool = False,
                  shared_reference: SharedVarReferenceType | None = None,
                  non_mutable_uid: int | None = None,
@@ -455,7 +455,7 @@ class Var(Expr):
         super().__init__(uid=uid)
         self.non_mutable_uid: int = _new_uid() if uid is None else uid
         self.name: str = name
-        self._ref: VarPowerFlowRefferenceType | None = reference
+        self._ref: VarPowerFlowReferenceType | None = reference
         self._network_conn: bool = network_conn
         self._shared_ref: SharedVarReferenceType | None = shared_reference
 
@@ -593,8 +593,15 @@ class Var(Expr):
     def shared_ref(self) -> SharedVarReferenceType | None:
         return self._shared_ref
 
+    @shared_ref.setter
+    def shared_ref(self, val: SharedVarReferenceType) -> None:
+        if isinstance(val, SharedVarReferenceType):
+            self._shared_ref = val
+        else:
+            raise ValueError(f"RMS model cannot accept {val}")
+
     @property
-    def ref(self) -> VarPowerFlowRefferenceType | None:
+    def ref(self) -> VarPowerFlowReferenceType | None:
         return self._ref
 
     def _diff1(self, var: Var | str, dt: Var | None = None) -> Expr:
@@ -1090,8 +1097,8 @@ class UnOp(Expr):
 # Functional nodes
 # ----------------------------------------------------------------------------------------------------------------------
 @nb.njit
-def heaviside_num(x: float) -> float:
-    return 0.0 if x <= 0 else 1.0
+def heaviside_num(x):
+    return (x > 0) * 1.0
 
 
 def get_namespace() -> Dict[str, Any]:

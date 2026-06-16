@@ -6,38 +6,94 @@ import pytest
 from PySide6 import QtWidgets
 
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import BlockItem, DynamicBlockEditorGUI
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import register_saved_emt_model_vars_for_device
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
-from VeraGridEngine.enumerations import DeviceType, DynamicSimulationMode, VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import DeviceType, DynamicSimulationMode, VarPowerFlowReferenceType
 
 pytestmark = pytest.mark.filterwarnings("error")
 
 
 class _BusStub:
-    __slots__ = ("name", "is_dc", "emt_model")
+    __slots__ = ("name", "is_dc", "emt_model", "_connected_emt_models", "_pending_emt_devices")
 
     def __init__(self, name: str, is_dc: bool, emt_model: Block) -> None:
         self.name = name
         self.is_dc = is_dc
         self.emt_model = emt_model
+        self._connected_emt_models: list[object] = list()
+        self._pending_emt_devices: list[object] = list()
+
+    def add_or_replace_emt_model_connected(self,
+                                           device: object,
+                                           emt_model: Block,
+                                           side: object,
+                                           device_tpe: DeviceType) -> None:
+        self.remove_emt_model_connected_for_device(device=device, side=side)
+
+        class _Record:
+            __slots__ = ("_device", "_model", "_side", "_device_tpe")
+
+            def __init__(self, device: object, model: Block, side: object, device_tpe: DeviceType) -> None:
+                self._device = device
+                self._model = model
+                self._side = side
+                self._device_tpe = device_tpe
+
+            def get_device(self) -> object:
+                return self._device
+
+            def get_model(self) -> Block:
+                return self._model
+
+            def get_side(self) -> object:
+                return self._side
+
+            def get_device_tpe(self) -> DeviceType:
+                return self._device_tpe
+
+        self._connected_emt_models.append(_Record(device, emt_model, side, device_tpe))
+
+    def remove_emt_model_connected_for_device(self, device: object, side: object | None = None) -> None:
+        self._connected_emt_models = [
+            record for record in self._connected_emt_models
+            if not (record.get_device() is device and (side is None or record.get_side() == side))
+        ]
+
+    def get_emt_models_connected(self) -> list[object]:
+        return list(self._connected_emt_models)
+
+    def get_pending_emt_devices(self) -> list[object]:
+        return list(self._pending_emt_devices)
+
+    def remove_pending_emt_device(self, device: object) -> None:
+        self._pending_emt_devices = [pending for pending in self._pending_emt_devices if pending is not device]
 
 
 class _InjectionStub:
-    __slots__ = ("name", "bus", "rms_template", "emt_template", "emt_model", "device_type")
+    __slots__ = ("name", "bus", "rms_template", "_emt_template", "emt_model", "device_type")
 
     def __init__(self, name: str, bus: _BusStub, emt_template: EmtModelTemplate, device_type: DeviceType) -> None:
         self.name = name
         self.bus = bus
         self.rms_template = None
-        self.emt_template = emt_template
+        self._emt_template = emt_template
         self.emt_model = emt_template.block
         self.device_type = device_type
 
+    @property
+    def emt_template(self) -> EmtModelTemplate | None:
+        return self._emt_template
+
+    @emt_template.setter
+    def emt_template(self, val: EmtModelTemplate | None) -> None:
+        self._emt_template = val
+
 
 class _BranchStub:
-    __slots__ = ("name", "bus_from", "bus_to", "rms_template", "emt_template", "emt_model", "device_type")
+    __slots__ = ("name", "bus_from", "bus_to", "rms_template", "_emt_template", "emt_model", "device_type")
 
     def __init__(self,
                  name: str,
@@ -49,9 +105,17 @@ class _BranchStub:
         self.bus_from = bus_from
         self.bus_to = bus_to
         self.rms_template = None
-        self.emt_template = emt_template
+        self._emt_template = emt_template
         self.emt_model = emt_template.block
         self.device_type = device_type
+
+    @property
+    def emt_template(self) -> EmtModelTemplate | None:
+        return self._emt_template
+
+    @emt_template.setter
+    def emt_template(self, val: EmtModelTemplate | None) -> None:
+        self._emt_template = val
 
 
 def _get_app() -> QtWidgets.QApplication:
@@ -62,7 +126,7 @@ def _get_app() -> QtWidgets.QApplication:
         return app
 
 
-def _make_var(name: str, reference: VarPowerFlowRefferenceType) -> Var:
+def _make_var(name: str, reference: VarPowerFlowReferenceType) -> Var:
     return Var(name=name, reference=reference)
 
 
@@ -71,10 +135,10 @@ def _make_ac_bus(name: str) -> _BusStub:
         name=name,
         is_dc=False,
         emt_model=Block(external_mapping={
-            VarPowerFlowRefferenceType.v_N: _make_var(f"v_N_{name}", VarPowerFlowRefferenceType.v_N),
-            VarPowerFlowRefferenceType.v_A: _make_var(f"v_A_{name}", VarPowerFlowRefferenceType.v_A),
-            VarPowerFlowRefferenceType.v_B: _make_var(f"v_B_{name}", VarPowerFlowRefferenceType.v_B),
-            VarPowerFlowRefferenceType.v_C: _make_var(f"v_C_{name}", VarPowerFlowRefferenceType.v_C),
+            VarPowerFlowReferenceType.v_N: _make_var(f"v_N_{name}", VarPowerFlowReferenceType.v_N),
+            VarPowerFlowReferenceType.v_A: _make_var(f"v_A_{name}", VarPowerFlowReferenceType.v_A),
+            VarPowerFlowReferenceType.v_B: _make_var(f"v_B_{name}", VarPowerFlowReferenceType.v_B),
+            VarPowerFlowReferenceType.v_C: _make_var(f"v_C_{name}", VarPowerFlowReferenceType.v_C),
         }),
     )
 
@@ -84,12 +148,12 @@ def _make_dc_bus(name: str) -> _BusStub:
         name=name,
         is_dc=True,
         emt_model=Block(external_mapping={
-            VarPowerFlowRefferenceType.Vdc: _make_var(f"Vdc_{name}", VarPowerFlowRefferenceType.Vdc),
+            VarPowerFlowReferenceType.Vdc: _make_var(f"Vdc_{name}", VarPowerFlowReferenceType.Vdc),
         }),
     )
 
 
-def _make_template(mapping_refs: list[VarPowerFlowRefferenceType]) -> EmtModelTemplate:
+def _make_template(mapping_refs: list[VarPowerFlowReferenceType]) -> EmtModelTemplate:
     template = EmtModelTemplate(name="stub_template")
     template.block = Block(external_mapping={
         reference: _make_var(f"templ_{reference.value}", reference)
@@ -145,22 +209,22 @@ def test_emt_branch_connection_specs_expose_bus_domain_interface_for_ac_branch()
     bus_from = _make_ac_bus("Bus From")
     bus_to = _make_ac_bus("Bus To")
     template = _make_template([
-        VarPowerFlowRefferenceType.vf_N,
-        VarPowerFlowRefferenceType.vf_A,
-        VarPowerFlowRefferenceType.vf_B,
-        VarPowerFlowRefferenceType.vf_C,
-        VarPowerFlowRefferenceType.vt_N,
-        VarPowerFlowRefferenceType.vt_A,
-        VarPowerFlowRefferenceType.vt_B,
-        VarPowerFlowRefferenceType.vt_C,
-        VarPowerFlowRefferenceType.if_N,
-        VarPowerFlowRefferenceType.if_A,
-        VarPowerFlowRefferenceType.if_B,
-        VarPowerFlowRefferenceType.if_C,
-        VarPowerFlowRefferenceType.it_N,
-        VarPowerFlowRefferenceType.it_A,
-        VarPowerFlowRefferenceType.it_B,
-        VarPowerFlowRefferenceType.it_C,
+        VarPowerFlowReferenceType.vf_N,
+        VarPowerFlowReferenceType.vf_A,
+        VarPowerFlowReferenceType.vf_B,
+        VarPowerFlowReferenceType.vf_C,
+        VarPowerFlowReferenceType.vt_N,
+        VarPowerFlowReferenceType.vt_A,
+        VarPowerFlowReferenceType.vt_B,
+        VarPowerFlowReferenceType.vt_C,
+        VarPowerFlowReferenceType.if_N,
+        VarPowerFlowReferenceType.if_A,
+        VarPowerFlowReferenceType.if_B,
+        VarPowerFlowReferenceType.if_C,
+        VarPowerFlowReferenceType.it_N,
+        VarPowerFlowReferenceType.it_A,
+        VarPowerFlowReferenceType.it_B,
+        VarPowerFlowReferenceType.it_C,
     ])
     branch = _BranchStub("Line 1", bus_from, bus_to, template, DeviceType.LineDevice)
     editor = _build_editor(branch)
@@ -168,22 +232,22 @@ def test_emt_branch_connection_specs_expose_bus_domain_interface_for_ac_branch()
     specs = editor._build_emt_branch_connection_specs()
 
     assert [spec.reference for spec in specs] == [
-        VarPowerFlowRefferenceType.vf_N,
-        VarPowerFlowRefferenceType.vf_A,
-        VarPowerFlowRefferenceType.vf_B,
-        VarPowerFlowRefferenceType.vf_C,
-        VarPowerFlowRefferenceType.if_N,
-        VarPowerFlowRefferenceType.if_A,
-        VarPowerFlowRefferenceType.if_B,
-        VarPowerFlowRefferenceType.if_C,
-        VarPowerFlowRefferenceType.vt_N,
-        VarPowerFlowRefferenceType.vt_A,
-        VarPowerFlowRefferenceType.vt_B,
-        VarPowerFlowRefferenceType.vt_C,
-        VarPowerFlowRefferenceType.it_N,
-        VarPowerFlowRefferenceType.it_A,
-        VarPowerFlowRefferenceType.it_B,
-        VarPowerFlowRefferenceType.it_C,
+        VarPowerFlowReferenceType.vf_N,
+        VarPowerFlowReferenceType.vf_A,
+        VarPowerFlowReferenceType.vf_B,
+        VarPowerFlowReferenceType.vf_C,
+        VarPowerFlowReferenceType.if_N,
+        VarPowerFlowReferenceType.if_A,
+        VarPowerFlowReferenceType.if_B,
+        VarPowerFlowReferenceType.if_C,
+        VarPowerFlowReferenceType.vt_N,
+        VarPowerFlowReferenceType.vt_A,
+        VarPowerFlowReferenceType.vt_B,
+        VarPowerFlowReferenceType.vt_C,
+        VarPowerFlowReferenceType.it_N,
+        VarPowerFlowReferenceType.it_A,
+        VarPowerFlowReferenceType.it_B,
+        VarPowerFlowReferenceType.it_C,
     ]
     assert [spec.visible_name for spec in specs] == [
         "vf_N_Bus_From",
@@ -211,14 +275,14 @@ def test_emt_branch_connection_specs_expose_bus_domain_interface_for_ac_dc_branc
     bus_from = _make_ac_bus("AC Bus")
     bus_to = _make_dc_bus("DC Bus")
     template = _make_template([
-        VarPowerFlowRefferenceType.v_A,
-        VarPowerFlowRefferenceType.v_B,
-        VarPowerFlowRefferenceType.v_C,
-        VarPowerFlowRefferenceType.Vdc,
-        VarPowerFlowRefferenceType.i_A,
-        VarPowerFlowRefferenceType.i_B,
-        VarPowerFlowRefferenceType.i_C,
-        VarPowerFlowRefferenceType.Idc,
+        VarPowerFlowReferenceType.v_A,
+        VarPowerFlowReferenceType.v_B,
+        VarPowerFlowReferenceType.v_C,
+        VarPowerFlowReferenceType.Vdc,
+        VarPowerFlowReferenceType.i_A,
+        VarPowerFlowReferenceType.i_B,
+        VarPowerFlowReferenceType.i_C,
+        VarPowerFlowReferenceType.Idc,
     ])
     branch = _BranchStub("VSC 1", bus_from, bus_to, template, DeviceType.VscDevice)
     editor = _build_editor(branch)
@@ -226,16 +290,16 @@ def test_emt_branch_connection_specs_expose_bus_domain_interface_for_ac_dc_branc
     specs = editor._build_emt_branch_connection_specs()
 
     assert [spec.reference for spec in specs] == [
-        VarPowerFlowRefferenceType.vf_N,
-        VarPowerFlowRefferenceType.vf_A,
-        VarPowerFlowRefferenceType.vf_B,
-        VarPowerFlowRefferenceType.vf_C,
-        VarPowerFlowRefferenceType.if_N,
-        VarPowerFlowRefferenceType.if_A,
-        VarPowerFlowRefferenceType.if_B,
-        VarPowerFlowRefferenceType.if_C,
-        VarPowerFlowRefferenceType.Vt_dc,
-        VarPowerFlowRefferenceType.It_dc,
+        VarPowerFlowReferenceType.vf_N,
+        VarPowerFlowReferenceType.vf_A,
+        VarPowerFlowReferenceType.vf_B,
+        VarPowerFlowReferenceType.vf_C,
+        VarPowerFlowReferenceType.if_N,
+        VarPowerFlowReferenceType.if_A,
+        VarPowerFlowReferenceType.if_B,
+        VarPowerFlowReferenceType.if_C,
+        VarPowerFlowReferenceType.Vt_dc,
+        VarPowerFlowReferenceType.It_dc,
     ]
     assert [spec.visible_name for spec in specs] == [
         "vf_N_AC_Bus",
@@ -256,12 +320,12 @@ def test_emt_branch_connection_specs_expose_bus_domain_interface_for_ac_dc_branc
 def test_emt_injection_connection_specs_expose_bus_domain_interface_for_ac_injection() -> None:
     bus = _make_ac_bus("Gen Bus")
     template = _make_template([
-        VarPowerFlowRefferenceType.v_A,
-        VarPowerFlowRefferenceType.v_B,
-        VarPowerFlowRefferenceType.v_C,
-        VarPowerFlowRefferenceType.i_A,
-        VarPowerFlowRefferenceType.i_B,
-        VarPowerFlowRefferenceType.i_C,
+        VarPowerFlowReferenceType.v_A,
+        VarPowerFlowReferenceType.v_B,
+        VarPowerFlowReferenceType.v_C,
+        VarPowerFlowReferenceType.i_A,
+        VarPowerFlowReferenceType.i_B,
+        VarPowerFlowReferenceType.i_C,
     ])
     injection = _InjectionStub("Gen 1", bus, template, DeviceType.GeneratorDevice)
     editor = _build_editor(injection)
@@ -269,14 +333,14 @@ def test_emt_injection_connection_specs_expose_bus_domain_interface_for_ac_injec
     specs = editor._build_emt_injection_connection_specs()
 
     assert [spec.reference for spec in specs] == [
-        VarPowerFlowRefferenceType.v_N,
-        VarPowerFlowRefferenceType.v_A,
-        VarPowerFlowRefferenceType.v_B,
-        VarPowerFlowRefferenceType.v_C,
-        VarPowerFlowRefferenceType.i_N,
-        VarPowerFlowRefferenceType.i_A,
-        VarPowerFlowRefferenceType.i_B,
-        VarPowerFlowRefferenceType.i_C,
+        VarPowerFlowReferenceType.v_N,
+        VarPowerFlowReferenceType.v_A,
+        VarPowerFlowReferenceType.v_B,
+        VarPowerFlowReferenceType.v_C,
+        VarPowerFlowReferenceType.i_N,
+        VarPowerFlowReferenceType.i_A,
+        VarPowerFlowReferenceType.i_B,
+        VarPowerFlowReferenceType.i_C,
     ]
     assert [spec.visible_name for spec in specs] == [
         "v_N_Gen_Bus",
@@ -295,8 +359,8 @@ def test_emt_injection_connection_specs_expose_bus_domain_interface_for_ac_injec
 def test_emt_injection_connection_specs_expose_bus_domain_interface_for_dc_injection() -> None:
     bus = _make_dc_bus("DC Load Bus")
     template = _make_template([
-        VarPowerFlowRefferenceType.Vdc,
-        VarPowerFlowRefferenceType.Idc,
+        VarPowerFlowReferenceType.Vdc,
+        VarPowerFlowReferenceType.Idc,
     ])
     injection = _InjectionStub("DC Load 1", bus, template, DeviceType.LoadDevice)
     editor = _build_editor(injection)
@@ -304,8 +368,8 @@ def test_emt_injection_connection_specs_expose_bus_domain_interface_for_dc_injec
     specs = editor._build_emt_injection_connection_specs()
 
     assert [spec.reference for spec in specs] == [
-        VarPowerFlowRefferenceType.Vdc,
-        VarPowerFlowRefferenceType.Idc,
+        VarPowerFlowReferenceType.Vdc,
+        VarPowerFlowReferenceType.Idc,
     ]
     assert [spec.visible_name for spec in specs] == [
         "Vdc_DC_Load_Bus",
@@ -324,15 +388,56 @@ def test_removing_connection_block_removes_saved_root_interface_variable() -> No
     editor._materialize_connection_specs(editor._build_emt_injection_connection_specs())
     editor.add_connection_items()
 
-    assert VarPowerFlowRefferenceType.v_N in editor.main_block.external_mapping
+    assert VarPowerFlowReferenceType.v_N in editor.main_block.external_mapping
     assert any(var.name == "v_N_Removal_Bus" for var in editor.main_block.in_vars)
 
     neutral_item = _find_connection_block_item(editor, "v_N_Removal_Bus")
     editor.remove_item(neutral_item)
 
-    assert VarPowerFlowRefferenceType.v_N not in editor.main_block.external_mapping
+    assert VarPowerFlowReferenceType.v_N not in editor.main_block.external_mapping
     assert all(var.name != "v_N_Removal_Bus" for var in editor.main_block.in_vars)
     assert editor.get_block_from_main_block(neutral_item.subsys.uid) is None
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
+def test_apply_changes_rebinds_saved_emt_injection_bus_voltage_uids() -> None:
+    bus = _make_ac_bus("Gen Bus")
+    template = _make_template(list())
+    injection = _InjectionStub("Gen 1", bus, template, DeviceType.GeneratorDevice)
+    editor = _build_editor(injection)
+    original_model = injection.emt_model
+
+    editor._materialize_connection_specs(editor._build_emt_injection_connection_specs())
+    register_saved_emt_model_vars_for_device(device=injection, var_factory=editor.var_factory)
+    editor.apply_changes()
+
+    assert injection.emt_template is None
+    assert injection.emt_model is original_model
+    assert editor.has_unapplied_changes is False
+    assert editor.changes_applied is True
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
+def test_apply_changes_rebinds_saved_emt_branch_bus_voltage_uids() -> None:
+    bus_from = _make_ac_bus("Bus From")
+    bus_to = _make_ac_bus("Bus To")
+    template = _make_template(list())
+    branch = _BranchStub("Line 1", bus_from, bus_to, template, DeviceType.LineDevice)
+    editor = _build_editor(branch)
+    original_model = branch.emt_model
+
+    editor._materialize_connection_specs(editor._build_emt_branch_connection_specs())
+    register_saved_emt_model_vars_for_device(device=branch, var_factory=editor.var_factory)
+    editor.apply_changes()
+
+    assert branch.emt_template is None
+    assert branch.emt_model is original_model
+    assert editor.has_unapplied_changes is False
+    assert editor.changes_applied is True
 
     editor.has_unapplied_changes = False
     editor.close()

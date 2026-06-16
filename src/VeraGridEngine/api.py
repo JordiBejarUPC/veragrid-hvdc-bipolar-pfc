@@ -41,6 +41,21 @@ def open_file(filename: Union[str, List[str]],
         raise Exception("File open error")
     return drv.circuit
 
+def open_multiverse(filename: Union[str, List[str]],
+              options: FileOpenOptions | None = None) -> MultiVerse:
+    """
+    Open file
+    :param filename: name of the file (.veragrid, .ejson, .m, .xml, .zip, etc.) or list of files (.xml, .zip)
+    :param options: FileOpenOptions instance (optional)
+    :return: MultiVerse instance
+    """
+    drv = FileOpen(file_name=filename, options=options)
+    drv.open()
+    if drv.multiverse is None:
+        raise Exception("No multiverse found :(")
+    else:
+        return drv.multiverse
+
 
 def save_file(grid: MultiCircuit, filename: str, drivers_to_save: List[DriverToSave] | None = None):
     """
@@ -58,15 +73,18 @@ def save_file(grid: MultiCircuit, filename: str, drivers_to_save: List[DriverToS
     ).save()
 
 
-def save_multiverse(mv: MultiVerse, filename: str):
+def save_multiverse(mv: MultiVerse, filename: str, drivers_to_save: List[DriverToSave] | None = None):
     """
     Save file
     :param mv: MultiVerse instance
     :param filename: name of the file (.veragrid)
+    :param drivers_to_save: List of drivers to save, this structure can be obtained from driver.get_save_data()
     """
     save_veragrid_multiverse(
         file_name=filename,
-        options=FileSavingOptions(),
+        options=FileSavingOptions(
+            sessions_data=list() if drivers_to_save is None else drivers_to_save,
+        ),
         multiverse=mv
     )
 
@@ -170,6 +188,45 @@ def power_flow3ph(grid: MultiCircuit,
     driver = PowerFlowDriver3Ph(grid=grid, options=options, engine=engine)
 
     driver.run()
+
+    return driver.results
+
+
+def power_flow3ph_ts(grid: MultiCircuit,
+                     options: PowerFlowOptions | None = None,
+                     time_indices: Union[IntVec, None] = None,
+                     clustering_results: Union[ClusteringResults, None] = None,
+                     auto_expand: bool = True,
+                     engine=EngineType.VeraGrid) -> PowerFlowTimeSeriesResults3Ph:
+    """
+    Run three-phase power flow on the time series.
+
+    :param grid: MultiCircuit instance.
+    :param options: PowerFlowOptions instance (optional).
+    :param time_indices: Array of time indices to simulate, if ``None`` all are used.
+    :param clustering_results: ClusteringResults (optional).
+    :param auto_expand: If true the clustering results are expanded if clustering_results is provided.
+    :param engine: Engine to run with.
+    :return: Three-phase time-series power-flow results.
+    """
+    if options is None:
+        options = PowerFlowOptions()
+    else:
+        pass
+
+    ti = grid.get_all_time_indices() if time_indices is None else time_indices
+
+    driver = PowerFlowTimeSeriesDriver3Ph(grid=grid,
+                                          options=options,
+                                          time_indices=ti,
+                                          clustering_results=clustering_results,
+                                          engine=engine)
+    driver.run()
+
+    if auto_expand and clustering_results is not None:
+        driver.results.expand_clustered_results()
+    else:
+        pass
 
     return driver.results
 

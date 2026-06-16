@@ -54,33 +54,30 @@ for package in packages:
 
 package_data = {'VeraGridEngine': ['LICENSE.txt', 'setup.py'], }
 
-dependencies = ['setuptools>=41.0.1',
-                'wheel>=0.37.2',
-                "numpy>=2.2.0",
+dependencies = ["numpy>=2.2.0",
                 "autograd>=1.7.0",
-                "scipy>=1.0.0",
-                "networkx>=2.1",
+                "scipy>=1.10.0",
+                "networkx>=3.6.1",
                 "pandas>=2.2.3",
                 "highspy>=1.8.0",
                 "xlwt>=1.3.0",
-                "xlrd>=1.1.0",
+                "xlrd>=2.0.2",
                 "matplotlib>=3.10.0",
-                "openpyxl>=2.4.9",
-                "chardet>=3.0.4",  # for the psse files character detection
+                "openpyxl>=3.1.5",
+                "chardet>=5.2.0",  # for the psse files character detection
                 "scikit-learn>=1.5.0",
-                "geopy>=1.16",
-                "pytest>=7.2",
+                "geopy>=2.4.1",
                 "h5py>=3.12.0",
                 "numba>=0.61",  # to compile routines natively
-                'pyproj',
-                'pulp>=3.3.0',
-                'pyarrow>=15',
+                "pyproj>=3.7.2",
+                "pulp>=3.3.0",
+                "pyarrow>=23.0.1",
                 "windpowerlib>=0.2.2",
-                "pvlib>=0.11",
-                "rdflib",
+                "pvlib>=0.14.0",
+                "rdflib>=7.5.0",
                 "pymoo>=0.6",
-                "websockets",
-                "brotli",
+                "websockets>=9.1",
+                "brotli>=1.2.0",
                 "opencv-python>=4.10.0.84",
                 "fmpy>=0.3.22"
                 ]

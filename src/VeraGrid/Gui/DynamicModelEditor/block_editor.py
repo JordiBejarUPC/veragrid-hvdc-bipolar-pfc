@@ -203,6 +203,11 @@ class Ui_BlockEditorWindow(object):
 
         self.horizontalLayout_2.addItem(self.horizontalSpacer_3)
 
+        self.validateConsistencyButton = QPushButton(self.frame_2)
+        self.validateConsistencyButton.setObjectName(u"validateConsistencyButton")
+
+        self.horizontalLayout_2.addWidget(self.validateConsistencyButton)
+
         self.doItButton = QPushButton(self.frame_2)
         self.doItButton.setObjectName(u"doItButton")
 
@@ -260,6 +265,10 @@ class Ui_BlockEditorWindow(object):
         self.toolBox.setItemText(self.toolBox.indexOf(self.page_3), QCoreApplication.translate("BlockEditorWindow", u"Equations", None))
         self.currently_editing_object_label.setText(QCoreApplication.translate("BlockEditorWindow", u"Device:", None))
         self.deviceLabel.setText(QCoreApplication.translate("BlockEditorWindow", u"dev", None))
+        self.validateConsistencyButton.setText(QCoreApplication.translate("BlockEditorWindow", u"Validate model consistency", None))
+#if QT_CONFIG(tooltip)
+        self.validateConsistencyButton.setToolTip(QCoreApplication.translate("BlockEditorWindow", u"<html><head/><body><p><span style=\" font-weight:700;\">Model consistency validation</span></p><p>Run an informational validation of the edited model structure, mappings, initialization, and port connectivity. This check reports issues but does not block saving the model.</p></body></html>", None))
+#endif // QT_CONFIG(tooltip)
         self.doItButton.setText(QCoreApplication.translate("BlockEditorWindow", u"Do it!", None))
         self.toolBar.setWindowTitle(QCoreApplication.translate("BlockEditorWindow", u"toolBar", None))
     # retranslateUi

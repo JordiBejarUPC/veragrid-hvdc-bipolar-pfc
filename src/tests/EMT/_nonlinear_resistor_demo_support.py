@@ -16,8 +16,8 @@ from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
 from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbolicSolver
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
-from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlowDriver3Ph
-from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
+from VeraGridEngine.Simulations.PowerFlow3ph.power_flow_driver_3ph import PowerFlowDriver3Ph
+from VeraGridEngine.Simulations.PowerFlow3ph.power_flow_results_3ph import PowerFlowResults3Ph
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_grounding_link_emt_template
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_rlc_combo_emt_template
@@ -31,7 +31,7 @@ from VeraGridEngine.enumerations import EmtInitializationMethod
 from VeraGridEngine.enumerations import EmtSolverTypes
 from VeraGridEngine.enumerations import ShuntConnectionType
 from VeraGridEngine.enumerations import SolverType
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import VarPowerFlowReferenceType
 
 
 class NonlinearResistorEmtCaseResults:
@@ -367,12 +367,12 @@ def run_nonlinear_resistor_case(enable_plots: bool = True) -> NonlinearResistorE
     time_vector: np.ndarray = simulation_outputs[0]
     y_hist: np.ndarray = simulation_outputs[1]
 
-    load_i_n_var: Var = load_device.emt_model.external_mapping[VarPowerFlowRefferenceType.i_N]
-    resistor_i_n_var: Var = nonlinear_ground.emt_model.external_mapping[VarPowerFlowRefferenceType.i_N]
-    source_ground_i_n_var: Var = source_ground.emt_model.external_mapping[VarPowerFlowRefferenceType.i_N]
-    line_it_n_var: Var = line.emt_model.external_mapping[VarPowerFlowRefferenceType.it_N]
-    line_if_n_var: Var = line.emt_model.external_mapping[VarPowerFlowRefferenceType.if_N]
-    bus_v_n_var: Var = load_bus.emt_model.external_mapping[VarPowerFlowRefferenceType.v_N]
+    load_i_n_var: Var = load_device.emt_model.external_mapping[VarPowerFlowReferenceType.i_N]
+    resistor_i_n_var: Var = nonlinear_ground.emt_model.external_mapping[VarPowerFlowReferenceType.i_N]
+    source_ground_i_n_var: Var = source_ground.emt_model.external_mapping[VarPowerFlowReferenceType.i_N]
+    line_it_n_var: Var = line.emt_model.external_mapping[VarPowerFlowReferenceType.it_N]
+    line_if_n_var: Var = line.emt_model.external_mapping[VarPowerFlowReferenceType.if_N]
+    bus_v_n_var: Var = load_bus.emt_model.external_mapping[VarPowerFlowReferenceType.v_N]
 
     time_values: np.ndarray = np.asarray(time_vector, dtype=float)
     bus_v_n_trace: np.ndarray = np.asarray(y_hist[:, problem.get_var_idx(bus_v_n_var)], dtype=float)

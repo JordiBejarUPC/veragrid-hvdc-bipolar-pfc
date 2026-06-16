@@ -10,14 +10,14 @@ from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
 from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbolicSolver
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
-from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlowDriver3Ph
+from VeraGridEngine.Simulations.PowerFlow3ph.power_flow_driver_3ph import PowerFlowDriver3Ph
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_rlc_combo_emt_template
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template_with_ref
 from VeraGridEngine.Templates.Emt.transformer_emt_template import get_transformer_emt_template
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
-from VeraGridEngine.enumerations import DynamicIntegrationMethod, EmtInitializationMethod, EmtSolverTypes, ShuntConnectionType, SolverType, VarPowerFlowRefferenceType, WindingType
+from VeraGridEngine.enumerations import DynamicIntegrationMethod, EmtInitializationMethod, EmtSolverTypes, ShuntConnectionType, SolverType, VarPowerFlowReferenceType, WindingType
 from trunk.dynamics_emt.support.emt_plot_exports import get_plot_results_directory
 
 import VeraGridEngine.api as gce
@@ -239,10 +239,10 @@ def run_transformer_neutral_case(enable_plots: bool = True) -> Dict[str, object]
     i_load_a = np.conj(s_load_a / v_load_an) if abs(v_load_an) > 1.0e-12 else 0.0 + 0.0j
     i_load_n = -i_load_a
 
-    transformer_it_n_var = transformer.emt_model.external_mapping[VarPowerFlowRefferenceType.it_N]
-    load_i_n_var = load.emt_model.external_mapping[VarPowerFlowRefferenceType.i_N]
-    transformer_it_a_var = transformer.emt_model.external_mapping[VarPowerFlowRefferenceType.it_A]
-    load_i_a_var = load.emt_model.external_mapping[VarPowerFlowRefferenceType.i_A]
+    transformer_it_n_var = transformer.emt_model.external_mapping[VarPowerFlowReferenceType.it_N]
+    load_i_n_var = load.emt_model.external_mapping[VarPowerFlowReferenceType.i_N]
+    transformer_it_a_var = transformer.emt_model.external_mapping[VarPowerFlowReferenceType.it_A]
+    load_i_a_var = load.emt_model.external_mapping[VarPowerFlowReferenceType.i_A]
 
     traces: Dict[str, object] = dict({
         "time": time_values,

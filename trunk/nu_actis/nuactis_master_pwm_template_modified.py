@@ -9,7 +9,7 @@ from VeraGridEngine.Utils.Symbolic import symbolic as sym
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.procedural_logic import picdro, sampled_value
-from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import DeviceType, VarPowerFlowReferenceType
 from VeraGridEngine.Templates.Rms.vsc_gfl import pll_transform_rms
 from trunk.nu_actis.nuactis_modulator_template import get_nuactis_modulator_rms_template
 
@@ -20,10 +20,10 @@ def get_masterpwm_model_emt_template(vf: VarFactory, name: str = 'MasterPWM_Mode
 
     # --- In vars ---
     bindings = {} if bindings is None else bindings
-    Vmf = bindings.get("Vmf", vf.add_var("Vmf_" + name, VarPowerFlowRefferenceType.Vmf))
-    Vaf = bindings.get("Vaf", vf.add_var("Vaf_" + name, VarPowerFlowRefferenceType.Vaf))
-    Vmt = bindings.get("Vmt", vf.add_var("Vmt_" + name, VarPowerFlowRefferenceType.Vmt))
-    Vat = bindings.get("Vat", vf.add_var("Vat_" + name, VarPowerFlowRefferenceType.Vat))
+    Vmf = bindings.get("Vmf", vf.add_var("Vmf_" + name, VarPowerFlowReferenceType.Vmf))
+    Vaf = bindings.get("Vaf", vf.add_var("Vaf_" + name, VarPowerFlowReferenceType.Vaf))
+    Vmt = bindings.get("Vmt", vf.add_var("Vmt_" + name, VarPowerFlowReferenceType.Vmt))
+    Vat = bindings.get("Vat", vf.add_var("Vat_" + name, VarPowerFlowReferenceType.Vat))
     uDC = bindings.get("uDC", vf.add_var("Vdc_" + name)) # from the DC bus
 
     # --- Parameters ---
@@ -454,11 +454,11 @@ def get_masterpwm_model_emt_template(vf: VarFactory, name: str = 'MasterPWM_Mode
         name='MasterPWM_Model'
     )
     templ.block.external_mapping = {
-        VarPowerFlowRefferenceType.Vmf: Vmf,
-        VarPowerFlowRefferenceType.Vaf: Vaf,
-        VarPowerFlowRefferenceType.Vmt: Vmt,
-        VarPowerFlowRefferenceType.Vat: Vat,
-        VarPowerFlowRefferenceType.Vdc: uDC,
+        VarPowerFlowReferenceType.Vmf: Vmf,
+        VarPowerFlowReferenceType.Vaf: Vaf,
+        VarPowerFlowReferenceType.Vmt: Vmt,
+        VarPowerFlowReferenceType.Vat: Vat,
+        VarPowerFlowReferenceType.Vdc: uDC,
     }
     templ.block.internal_vars = {
         "P_act": P_act,
@@ -597,15 +597,15 @@ def build_trafo_master_block(vfactory: VarFactory, name: str = "") -> RmsModelTe
     )
 
     block.external_mapping = {
-        VarPowerFlowRefferenceType.Vmf: vm_f,
-        VarPowerFlowRefferenceType.Vaf: va_f,
-        VarPowerFlowRefferenceType.Vmt: vm_t,
-        VarPowerFlowRefferenceType.Vat: va_t,
-        VarPowerFlowRefferenceType.Vdc: vdc,
-        VarPowerFlowRefferenceType.Pf: pf_vsc,
-        VarPowerFlowRefferenceType.Pt: pt_vsc,
-        VarPowerFlowRefferenceType.Qt: qt_vsc,
-        VarPowerFlowRefferenceType.Im: im_out,
+        VarPowerFlowReferenceType.Vmf: vm_f,
+        VarPowerFlowReferenceType.Vaf: va_f,
+        VarPowerFlowReferenceType.Vmt: vm_t,
+        VarPowerFlowReferenceType.Vat: va_t,
+        VarPowerFlowReferenceType.Vdc: vdc,
+        VarPowerFlowReferenceType.Pf: pf_vsc,
+        VarPowerFlowReferenceType.Pt: pt_vsc,
+        VarPowerFlowReferenceType.Qt: qt_vsc,
+        VarPowerFlowReferenceType.Im: im_out,
     }
 
     templ._block = block
