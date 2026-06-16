@@ -112,12 +112,20 @@ def _add_type8_transformers(circuit: MultiCircuit,
         if bus_from is None or bus_to is None:
             continue
 
-        tap_module = 1.0
+        raw_tap_module = 1.0
         tap_phase = 0.0
         current_tap = row.get_current_tap()
         if current_tap is not None:
-            if current_tap.sending_side_voltage > 0.0 and current_tap.receiving_side_voltage > 0.0:
-                tap_module = current_tap.receiving_side_voltage / current_tap.sending_side_voltage
+            nominal_tap = row.get_nominal_tap()
+            if (nominal_tap is not None
+                    and current_tap.sending_side_voltage > 0.0
+                    and current_tap.receiving_side_voltage > 0.0
+                    and nominal_tap.sending_side_voltage > 0.0
+                    and nominal_tap.receiving_side_voltage > 0.0):
+                current_ratio = current_tap.sending_side_voltage / current_tap.receiving_side_voltage
+                nominal_ratio = nominal_tap.sending_side_voltage / nominal_tap.receiving_side_voltage
+                if nominal_ratio > 0.0:
+                    raw_tap_module = current_ratio / nominal_ratio
             tap_phase = math.radians(current_tap.phase_shift_angle)
 
         regulated_bus = None
@@ -134,7 +142,7 @@ def _add_type8_transformers(circuit: MultiCircuit,
             LV=min(bus_from.Vnom, bus_to.Vnom),
             nominal_power=row.rated_apparent_power,
             rate=row.rated_apparent_power,
-            tap_module=tap_module,
+            tap_module=raw_tap_module,
             tap_phase=tap_phase,
         )
         transformer.fill_design_properties(

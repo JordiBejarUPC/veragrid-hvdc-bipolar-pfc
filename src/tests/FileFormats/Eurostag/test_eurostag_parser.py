@@ -1,7 +1,11 @@
 from pathlib import Path
 
+import numpy as np
+
 from VeraGridEngine.api import open_file
 from VeraGridEngine.IO.Eurostag import EurostagCircuit
+from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
+from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions, SolverType
 from VeraGridEngine.enumerations import TapModuleControl
 
 
@@ -63,3 +67,28 @@ def test_eurostag_circuit_keeps_parsed_record_fields() -> None:
     transformers = {tr.code: tr for tr in eurostag_grid.type8_transformers}
     assert transformers["NHVA1_NHVA2_1"].saturation_exponent == 7.0
     assert transformers["NHVA1_NHVA2_1"].get_current_leakage_impedance() == 10.0
+
+
+def test_eurostag_ieee14_import_converges() -> None:
+    folder = EUROSTAG_FIXTURES / "ieee14"
+    circuit = open_file([str(folder / "fech.ech"), str(folder / "fdta.dta")])
+
+    assert circuit.get_bus_number() == 14
+    assert circuit.get_lines_number() == 17
+    assert circuit.get_transformers2w_number() == 3
+
+    transformers = {tr.code: tr for tr in circuit.transformers2w}
+    assert np.isclose(transformers["BUS    4_BUS    7_1"].tap_module, 0.9803913043478261)
+    assert np.isclose(transformers["BUS    4_BUS    9_1"].tap_module, 0.961536231884058)
+    assert np.isclose(transformers["BUS    5_BUS    6_1"].tap_module, 0.9433768115942028)
+
+    opts = PowerFlowOptions(
+        solver_type=SolverType.NR,
+        verbose=0,
+        control_q=False,
+        retry_with_other_methods=False,
+    )
+    driver = PowerFlowDriver(circuit, opts)
+    driver.run()
+
+    assert driver.results.converged

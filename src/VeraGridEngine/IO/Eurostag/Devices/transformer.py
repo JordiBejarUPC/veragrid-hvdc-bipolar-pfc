@@ -145,6 +145,12 @@ class EurostagType8Transformer:
             return self.taps[0]
         return None
 
+    def get_nominal_tap(self) -> EurostagType8Tap | None:
+        for tap in self.taps:
+            if tap.tap_number == self.nominal_tap_number:
+                return tap
+        return self.get_current_tap()
+
     def get_current_leakage_impedance(self) -> float:
         current_tap = self.get_current_tap()
         if current_tap is None:
