@@ -1,7 +1,7 @@
 from typing import Callable
 
 from PySide6.QtCore import Qt, QRectF
-from PySide6.QtWidgets import QGraphicsView
+from PySide6.QtWidgets import QGraphicsItem, QGraphicsView
 
 import VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget as schematic_widget_module
 from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import CustomGraphicsView, SchematicWidget
@@ -219,6 +219,59 @@ class _CenterNodesWidgetStub:
         self.editor_graphics_view = _CenterNodesViewStub()
 
 
+class _PersistSelectedGraphicStub:
+    __slots__ = ("_api_object", "_pos", "_rotation", "w", "h", "_draw_labels", "_movable")
+
+    def __init__(self, api_object, x: float, y: float, movable: bool = True) -> None:
+        self._api_object = api_object
+        self._pos = type("PointStub", (), {"x": lambda self: x, "y": lambda self: y})()
+        self._rotation = 7.0
+        self.w = 30.0
+        self.h = 40.0
+        self._draw_labels = False
+        self._movable = movable
+
+    @property
+    def api_object(self):
+        return self._api_object
+
+    @property
+    def draw_labels(self):
+        return self._draw_labels
+
+    def pos(self):
+        return self._pos
+
+    def rotation(self) -> float:
+        return self._rotation
+
+    def flags(self):
+        if self._movable:
+            return QGraphicsItem.GraphicsItemFlag.ItemIsMovable
+        return QGraphicsItem.GraphicsItemFlag(0)
+
+
+class _PersistSelectedSceneStub:
+    __slots__ = ("_selected_items",)
+
+    def __init__(self, selected_items: list[object]) -> None:
+        self._selected_items = selected_items
+
+    def selectedItems(self) -> list[object]:
+        return list(self._selected_items)
+
+
+class _PersistSelectedWidgetStub:
+    __slots__ = ("diagram_scene", "calls")
+
+    def __init__(self, selected_items: list[object]) -> None:
+        self.diagram_scene = _PersistSelectedSceneStub(selected_items=selected_items)
+        self.calls: list[dict[str, object]] = list()
+
+    def update_diagram_element(self, **kwargs) -> None:
+        self.calls.append(kwargs)
+
+
 def test_schedule_branch_callbacks_after_draw_coalesces_visible_refresh(override_attrs) -> None:
     """
     Visible widgets should queue at most one branch-refresh callback.
@@ -386,3 +439,19 @@ def test_center_nodes_uses_full_scene_bounds() -> None:
     assert rect.y() == 10.0
     assert rect.width() == 240.0
     assert rect.height() == 120.0
+
+
+def test_persist_selected_item_positions_updates_all_selected_movable_items() -> None:
+    """
+    Releasing a multi-selection drag should persist every moved item position.
+    """
+    first = _PersistSelectedGraphicStub(api_object="first", x=10.0, y=20.0, movable=True)
+    second = _PersistSelectedGraphicStub(api_object="second", x=30.0, y=40.0, movable=True)
+    ignored = _PersistSelectedGraphicStub(api_object="ignored", x=50.0, y=60.0, movable=False)
+    stub = _PersistSelectedWidgetStub(selected_items=[first, second, ignored])
+
+    SchematicWidget.persist_selected_item_positions(stub)
+
+    assert len(stub.calls) == 2
+    assert [call["device"] for call in stub.calls] == ["first", "second"]
+    assert [(call["x"], call["y"]) for call in stub.calls] == [(10.0, 20.0), (30.0, 40.0)]

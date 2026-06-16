@@ -299,6 +299,7 @@ class SchematicScene(QGraphicsScene):
         #
         # nue with the rest of the actions)
         super(SchematicScene, self).mouseReleaseEvent(event)
+        self.parent_.persist_selected_item_positions()
 
 
 class CustomGraphicsView(QGraphicsView):
@@ -1511,6 +1512,31 @@ class SchematicWidget(BaseDiagramWidget):
             else:
                 # self.gui.show_warning_toast(f"Null scene for {graphic_object}, was it deleted already?")
                 pass
+
+    def persist_selected_item_positions(self) -> None:
+        """
+        Persist the final position of every selected movable diagram widget.
+        """
+        graphic_object: QGraphicsItem
+
+        for graphic_object in self.diagram_scene.selectedItems():
+            if not graphic_object.flags() & QGraphicsItem.GraphicsItemFlag.ItemIsMovable:
+                continue
+            if not hasattr(graphic_object, "api_object"):
+                continue
+
+            api_object = graphic_object.api_object
+            if api_object is None:
+                continue
+
+            self.update_diagram_element(device=api_object,
+                                        x=graphic_object.pos().x(),
+                                        y=graphic_object.pos().y(),
+                                        w=getattr(graphic_object, "w", 0.0),
+                                        h=getattr(graphic_object, "h", 0.0),
+                                        r=graphic_object.rotation(),
+                                        draw_labels=getattr(graphic_object, "draw_labels", True),
+                                        graphic_object=graphic_object)
 
     def set_selected_buses(self, buses: List[Bus]):
         """
