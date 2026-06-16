@@ -1668,6 +1668,7 @@ class SubObjectType(Enum):
     Associations = "AssociationsList"
     ListOfWires = 'ListOfWires'
     AdmittanceMatrix = "Admittance Matrix"
+    ImpedanceTripletList = "Impedance Triplet List"
     DaeBlockType = "DaeBlock"
     VarType = "VarType"
     ConstType = "ConstType"

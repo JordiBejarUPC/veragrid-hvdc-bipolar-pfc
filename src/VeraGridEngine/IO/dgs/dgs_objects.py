@@ -1556,6 +1556,11 @@ class ElmTr4(DGSElement):
         DgsProperty('pT_lv1', 'a', 'Tap Position LV1', py_name='pT_lv1'),
         DgsProperty('pT_hv0', 'a', 'Tap Position HV', py_name='pT_hv0'),
 
+        DgsProperty('ntap_h0', 'i', 'Tap position HV', py_name='ntap_h0'),
+        DgsProperty('ntap_l1', 'i', 'Tap position LV1', py_name='ntap_l1'),
+        DgsProperty('ntap_l2', 'i', 'Tap position LV2', py_name='ntap_l2'),
+        DgsProperty('ntap_l3', 'i', 'Tap position LV3', py_name='ntap_l3'),
+
         DgsProperty('i_tapini_lv3', 'i', 'Initial Tap Position LV3', py_name='i_tapini_lv3'),
         DgsProperty('i_tapini_lv2', 'i', 'Initial Tap Position LV2', py_name='i_tapini_lv2'),
         DgsProperty('i_tapini_lv1', 'i', 'Initial Tap Position LV1', py_name='i_tapini_lv1'),
@@ -1667,6 +1672,11 @@ class ElmTr4(DGSElement):
         self.i_tapini_lv2: int = 0
         self.i_tapini_lv1: int = 0
         self.i_tapini_hv0: int = 0
+
+        self.ntap_h0: int = 0
+        self.ntap_l1: int = 0
+        self.ntap_l2: int = 0
+        self.ntap_l3: int = 0
 
         self.busl3: str = ""
         self.busl2: str = ""
