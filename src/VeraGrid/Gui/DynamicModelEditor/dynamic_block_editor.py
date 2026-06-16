@@ -10825,22 +10825,137 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
 
 
+    # def add_connection_vars_rms(self):
+    #     """
+    #     Add a block with bus connection variables to connect the device
+    #     :return:
+    #     """
+    #
+    #     specs: List[ConnectionVarSpec] = list()
+    #
+    #     if isinstance(self.api_object, BranchParent):
+    #         specs = self._build_rms_branch_connection_specs()
+    #     elif isinstance(self.api_object, InjectionParent):
+    #         specs = self._build_rms_injection_connection_specs()
+    #     else:
+    #         pass
+    #
+    #     self._materialize_connection_specs(specs)
+    #
     def add_connection_vars_rms(self):
         """
         Add a block with bus connection variables to connect the device
         :return:
         """
 
-        specs: List[ConnectionVarSpec] = list()
-
         if isinstance(self.api_object, BranchParent):
-            specs = self._build_rms_branch_connection_specs()
-        elif isinstance(self.api_object, InjectionParent):
-            specs = self._build_rms_injection_connection_specs()
-        else:
-            pass
 
-        self._materialize_connection_specs(specs)
+            # connect bus variables
+            if self.api_object.bus_from.rms_model.empty():
+                initialize_bus_rms(self.api_object.bus_from, self.var_factory)
+
+            if self.api_object.device_type in [DeviceType.VscDevice]:
+                if self.api_object.bus_from.is_dc:
+                    Vdc, Vm, Va = get_bus_rms_algebraic_vars(self.api_object.bus_from.rms_model)
+                    self.main_block.in_vars.append(Vm)
+                    self.main_block.in_vars.append(Va)
+                    self.main_block.in_vars.append(Vdc)
+
+                    self.main_block.external_mapping.update(
+                        {VarPowerFlowReferenceType.Vm: Vm})
+                    self.main_block.external_mapping.update(
+                        {VarPowerFlowReferenceType.Va: Va})
+                    self.main_block.external_mapping.update(
+                        {VarPowerFlowReferenceType.Vdc: Vdc})
+
+            else:
+                if self.api_object.bus_from.rms_model.empty():
+                    initialize_bus_rms(self.api_object.bus_from, self.var_factory)
+
+                Vmf, Vaf = get_bus_rms_algebraic_vars(self.api_object.bus_from.rms_model)
+
+                if self.api_object.bus_to.rms_model.empty():
+                    initialize_bus_rms(self.api_object.bus_to, self.var_factory)
+
+                Vmt, Vat = get_bus_rms_algebraic_vars(self.api_object.bus_to.rms_model)
+
+                self.main_block.in_vars.append(Vmf)
+                self.main_block.in_vars.append(Vaf)
+                self.main_block.in_vars.append(Vmt)
+                self.main_block.in_vars.append(Vat)
+
+                self.main_block.external_mapping.update(
+                    {VarPowerFlowReferenceType.Vmf: Vmf})
+                self.main_block.external_mapping.update(
+                    {VarPowerFlowReferenceType.Vaf: Vaf})
+
+                self.main_block.external_mapping.update(
+                    {VarPowerFlowReferenceType.Vmt: Vmt})
+                self.main_block.external_mapping.update(
+                    {VarPowerFlowReferenceType.Vat: Vat})
+
+            # add connection variables
+            if self.api_object.device_type in [DeviceType.VscDevice]:
+
+                Pt = self.var_factory.add_var('net_conn_Pt', VarPowerFlowReferenceType.Pt, True)
+                Qt = self.var_factory.add_var('net_conn_Qt', VarPowerFlowReferenceType.Qt, True)
+                Qf = self.var_factory.add_var('net_conn_Qf', VarPowerFlowReferenceType.Qf, True)
+
+                self.main_block.out_vars.append(Pt)
+                self.main_block.out_vars.append(Qt)
+                self.main_block.out_vars.append(Qf)
+
+                self.main_block.external_mapping.update({VarPowerFlowReferenceType.Pt: Pt})
+                self.main_block.external_mapping.update({VarPowerFlowReferenceType.Qt: Qt})
+                self.main_block.external_mapping.update({VarPowerFlowReferenceType.Qt: Qf})
+
+            else:
+
+                Pf = self.var_factory.add_var('net_conn_Pf', VarPowerFlowReferenceType.P, True)
+                Qf = self.var_factory.add_var('net_conn_Qf', VarPowerFlowReferenceType.Q, True)
+
+                self.main_block.out_vars.append(Pf)
+                self.main_block.out_vars.append(Qf)
+
+                self.main_block.external_mapping.update({VarPowerFlowReferenceType.Pf: Pf})
+                self.main_block.external_mapping.update({VarPowerFlowReferenceType.Qf: Qf})
+
+                Pt = self.var_factory.add_var('net_conn_Pt', VarPowerFlowReferenceType.P, True)
+                Qt = self.var_factory.add_var('net_conn_Qt', VarPowerFlowReferenceType.Q, True)
+
+                self.main_block.out_vars.append(Pt)
+                self.main_block.out_vars.append(Qt)
+
+                self.main_block.external_mapping.update({VarPowerFlowReferenceType.Pt: Pt})
+                self.main_block.external_mapping.update({VarPowerFlowReferenceType.Qt: Qt})
+
+        elif isinstance(self.api_object, InjectionParent):
+
+            # connect bus variables
+            if self.api_object.bus.rms_model.empty():
+                initialize_bus_rms(self.api_object.bus, self.var_factory)
+
+            Vm, Va = get_bus_rms_algebraic_vars(self.api_object.bus.rms_model)
+            self.main_block.in_vars.append(Vm)
+            self.main_block.in_vars.append(Va)
+
+            self.main_block.external_mapping.update(
+                {VarPowerFlowReferenceType.Vm: Vm})
+            self.main_block.external_mapping.update(
+                {VarPowerFlowReferenceType.Va: Va})
+
+            # add connection variables
+            P = self.var_factory.add_var('net_conn_P', VarPowerFlowReferenceType.P, True)
+            Q = self.var_factory.add_var('net_conn_Q', VarPowerFlowReferenceType.Q, True)
+
+            self.main_block.out_vars.append(P)
+            self.main_block.out_vars.append(Q)
+
+            self.main_block.external_mapping.update({VarPowerFlowReferenceType.P: P})
+            self.main_block.external_mapping.update({VarPowerFlowReferenceType.Q: Q})
+
+
+
 
     def add_connection_items(self, blocks_list: List[BlockItem] | None = None):
         """
