@@ -152,8 +152,26 @@ class VarFactory(EditableDevice):
         else:
             v = Var(name=name, reference=reference, network_conn=network_conn, shared_reference=shared_reference, uid=uid,
                     diff_var=None, base_var=None)
+            if shared_reference is not None:
+                self.save_var_in_vars_references_dict(v, shared_reference.name)
             self._var_dict[v.non_mutable_uid] = v
             return v
+
+    def add_shared_ref_to_var(self, v: Var, shared_reference: str | SharedVarReferenceType):
+
+        if isinstance(shared_reference, str):
+            if shared_reference not in self._references_dict:
+                self.create_reference(shared_reference)
+                self._vars_references_dict[self._references_dict[shared_reference].uid] = list()
+
+            v.shared_ref = self._references_dict[shared_reference]
+            self.save_var_in_vars_references_dict(v, shared_reference)
+
+        else:
+            v.shared_ref = shared_reference
+            if shared_reference is not None:
+                self.save_var_in_vars_references_dict(v, shared_reference.name)
+
 
 
     def save_var_in_vars_references_dict(self, var:Var, reference:str):
