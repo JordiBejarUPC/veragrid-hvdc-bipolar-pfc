@@ -432,6 +432,48 @@ def test_slack_bus_split_does_not_clip_solved_residual_to_limits() -> None:
     assert np.isclose(q_gen[0], 18.55, atol=1e-12)
 
 
+def test_slack_bus_split_handles_zero_control_range() -> None:
+    """
+    Check that zero-width slack limits still report the solved bus quantity.
+    """
+    qbus: np.ndarray = np.array([12.0], dtype=float)
+    qfixed_bus: np.ndarray = np.array([0.0], dtype=float)
+    slack_bus_mask: np.ndarray = np.array([True], dtype=bool)
+    gen_bus_idx: np.ndarray = np.array([0], dtype=int)
+    qmin_gen: np.ndarray = np.array([0.0], dtype=float)
+    qmax_gen: np.ndarray = np.array([0.0], dtype=float)
+    gen_status: np.ndarray = np.array([True], dtype=bool)
+    q0_gen: np.ndarray = np.array([0.0], dtype=float)
+    batt_bus_idx: np.ndarray = np.zeros(0, dtype=int)
+    qmin_batt: np.ndarray = np.zeros(0, dtype=float)
+    qmax_batt: np.ndarray = np.zeros(0, dtype=float)
+    batt_status: np.ndarray = np.zeros(0, dtype=bool)
+    q0_batt: np.ndarray = np.zeros(0, dtype=float)
+
+    q_gen: np.ndarray
+    q_batt: np.ndarray
+    q_gen, q_batt = split_slack_bus_quantity_between_generators_and_batteries(
+        Qbus=qbus,
+        Qfixed_bus=qfixed_bus,
+        slack_bus_mask=slack_bus_mask,
+        gen_bus_idx=gen_bus_idx,
+        Qmin_gen=qmin_gen,
+        Qmax_gen=qmax_gen,
+        gen_status=gen_status,
+        Q0_gen=q0_gen,
+        batt_bus_idx=batt_bus_idx,
+        Qmin_batt=qmin_batt,
+        Qmax_batt=qmax_batt,
+        batt_status=batt_status,
+        Q0_batt=q0_batt,
+        atol=1e-12,
+    )
+
+    assert q_batt.size == 0
+    assert np.isclose(q_gen[0], 12.0, atol=1e-12)
+    assert np.isclose(q_gen[0], qbus[0], atol=1e-12)
+
+
 def test_voltage_remote_control_with_generation() -> None:
     """
     Check that a generator can perform remote voltage regulation
