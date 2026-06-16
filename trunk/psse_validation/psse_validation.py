@@ -44,9 +44,14 @@ for name in [
         tolerance=1e-5,
         solver_type=vg.SolverType.NR,
         retry_with_other_methods=False,
+        control_q=False,
+        ignore_single_node_islands=True,
         initialize_angles=True,
-        control_q=True,
-        ignore_single_node_islands=True
+        control_taps_modules=False,
+        control_taps_phase=False,
+        control_remote_voltage=False,
+        orthogonalize_controls=False,
+        apply_temperature_correction=False
     )
     results = vg.power_flow(grid, options=options)
 

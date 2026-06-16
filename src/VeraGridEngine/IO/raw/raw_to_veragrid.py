@@ -1115,10 +1115,14 @@ def get_veragrid_transformer(
                                  rate23=rate2_1,
                                  rate31=rate3_1)
 
-        # NOTE: These seem to be related to the vector group and not to the power flow tap
-        tr3w.winding1.tap_phase = np.deg2rad(psse_elm.ANG1)
-        tr3w.winding2.tap_phase = np.deg2rad(psse_elm.ANG2)
-        tr3w.winding3.tap_phase = np.deg2rad(psse_elm.ANG3)
+        # PSSe defines the winding off-nominal turns ratio (WINDVn) and phase shift (ANGn)
+        # on the *winding bus* side. In VeraGrid each winding is oriented star(bus_from) ->
+        # winding bus(bus_to) and the tap is applied on the bus_from (star) side, so the
+        # device-level tap is the inverse/negative of the PSSe winding-side values:
+        #   tap_module = 1 / WINDVn   and   tap_phase = -ANGn
+        tr3w.winding1.tap_phase = -np.deg2rad(psse_elm.ANG1)
+        tr3w.winding2.tap_phase = -np.deg2rad(psse_elm.ANG2)
+        tr3w.winding3.tap_phase = -np.deg2rad(psse_elm.ANG3)
 
         # STAT=2/3/4 means winding 1/2/3 is individually out of service
         if psse_elm.STAT == 0:
@@ -1146,23 +1150,25 @@ def get_veragrid_transformer(
         NOMV2 = psse_elm.NOMV2 if psse_elm.NOMV2 > 0 else bus_2.Vnom
         NOMV3 = psse_elm.NOMV3 if psse_elm.NOMV3 > 0 else bus_3.Vnom
 
+        # winding-bus-side off-nominal ratio in pu (per PSSe convention), inverted below
+        # because VeraGrid applies the winding tap on the star (bus_from) side.
         if psse_elm.CW == 1:
 
-            tr3w.winding1.tap_module = psse_elm.WINDV1
-            tr3w.winding2.tap_module = psse_elm.WINDV2
-            tr3w.winding3.tap_module = psse_elm.WINDV3
+            tr3w.winding1.tap_module = 1.0 / psse_elm.WINDV1
+            tr3w.winding2.tap_module = 1.0 / psse_elm.WINDV2
+            tr3w.winding3.tap_module = 1.0 / psse_elm.WINDV3
 
         elif psse_elm.CW == 2:
 
-            tr3w.winding1.tap_module = psse_elm.WINDV1 / bus_1.Vnom
-            tr3w.winding2.tap_module = psse_elm.WINDV2 / bus_2.Vnom
-            tr3w.winding3.tap_module = psse_elm.WINDV3 / bus_3.Vnom
+            tr3w.winding1.tap_module = bus_1.Vnom / psse_elm.WINDV1
+            tr3w.winding2.tap_module = bus_2.Vnom / psse_elm.WINDV2
+            tr3w.winding3.tap_module = bus_3.Vnom / psse_elm.WINDV3
 
         elif psse_elm.CW == 3:
 
-            tr3w.winding1.tap_module = psse_elm.WINDV1 / NOMV1
-            tr3w.winding2.tap_module = psse_elm.WINDV2 / NOMV2
-            tr3w.winding3.tap_module = psse_elm.WINDV3 / NOMV3
+            tr3w.winding1.tap_module = NOMV1 / psse_elm.WINDV1
+            tr3w.winding2.tap_module = NOMV2 / psse_elm.WINDV2
+            tr3w.winding3.tap_module = NOMV3 / psse_elm.WINDV3
         else:
             raise Exception('Unknown impedance combination CW=' + str(psse_elm.CZ))
 
