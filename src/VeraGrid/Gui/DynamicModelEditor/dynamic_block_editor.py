@@ -13567,7 +13567,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 # attach helper expects to repair in place. Clear only the stored
                 # template reference here and let the shared attach helper handle
                 # the bus-registry refresh at the correct stage.
-                self.api_object._emt_template = None
+                self.api_object.emt_template = None
             else:
                 pass
             if masks_are_valid:
