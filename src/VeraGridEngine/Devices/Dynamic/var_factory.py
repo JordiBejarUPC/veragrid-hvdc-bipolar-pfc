@@ -238,8 +238,14 @@ class VarFactory(EditableDevice):
             self._var_dict[var_to_subs_non_mutable_uid].uid = incoming_var_uid
             self._var_dict[var_to_subs_non_mutable_uid].name = incoming_var_name
         elif var_to_subs_non_mutable_uid in self._diff_var_dict:
-            self._var_dict[var_to_subs_non_mutable_uid].uid = incoming_var_uid
-            self._var_dict[var_to_subs_non_mutable_uid].name = incoming_var_name
+            # Differential variables are stored in the dedicated diff-variable
+            # registry. Updating the wrong dictionary leaves the propagated
+            # symbolic identity stale and breaks later validation against the
+            # live bus variables.
+            self._diff_var_dict[var_to_subs_non_mutable_uid].uid = incoming_var_uid
+            self._diff_var_dict[var_to_subs_non_mutable_uid].name = incoming_var_name
+        else:
+            pass
 
         # recursitity for previous connected vars
         if var_to_subs_non_mutable_uid in self._vars_connected_dict:

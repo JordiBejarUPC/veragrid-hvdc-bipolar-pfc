@@ -6,6 +6,7 @@ import pytest
 from PySide6 import QtWidgets
 
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import BlockItem, DynamicBlockEditorGUI
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import register_saved_emt_model_vars_for_device
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Utils.Symbolic.block import Block
@@ -333,6 +334,55 @@ def test_removing_connection_block_removes_saved_root_interface_variable() -> No
     assert VarPowerFlowReferenceType.v_N not in editor.main_block.external_mapping
     assert all(var.name != "v_N_Removal_Bus" for var in editor.main_block.in_vars)
     assert editor.get_block_from_main_block(neutral_item.subsys.uid) is None
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
+def test_apply_changes_rebinds_saved_emt_injection_bus_voltage_uids() -> None:
+    bus = _make_ac_bus("Gen Bus")
+    template = _make_template(list())
+    injection = _InjectionStub("Gen 1", bus, template, DeviceType.GeneratorDevice)
+    editor = _build_editor(injection)
+
+    editor._materialize_connection_specs(editor._build_emt_injection_connection_specs())
+    register_saved_emt_model_vars_for_device(device=injection, var_factory=editor.var_factory)
+    editor.apply_changes()
+
+    assert injection.emt_model.external_mapping[VarPowerFlowReferenceType.v_A].uid == \
+        bus.emt_model.external_mapping[VarPowerFlowReferenceType.v_A].uid
+    assert injection.emt_model.external_mapping[VarPowerFlowReferenceType.v_B].uid == \
+        bus.emt_model.external_mapping[VarPowerFlowReferenceType.v_B].uid
+    assert injection.emt_model.external_mapping[VarPowerFlowReferenceType.v_C].uid == \
+        bus.emt_model.external_mapping[VarPowerFlowReferenceType.v_C].uid
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
+def test_apply_changes_rebinds_saved_emt_branch_bus_voltage_uids() -> None:
+    bus_from = _make_ac_bus("Bus From")
+    bus_to = _make_ac_bus("Bus To")
+    template = _make_template(list())
+    branch = _BranchStub("Line 1", bus_from, bus_to, template, DeviceType.LineDevice)
+    editor = _build_editor(branch)
+
+    editor._materialize_connection_specs(editor._build_emt_branch_connection_specs())
+    register_saved_emt_model_vars_for_device(device=branch, var_factory=editor.var_factory)
+    editor.apply_changes()
+
+    assert branch.emt_model.external_mapping[VarPowerFlowReferenceType.vf_A].uid == \
+        bus_from.emt_model.external_mapping[VarPowerFlowReferenceType.v_A].uid
+    assert branch.emt_model.external_mapping[VarPowerFlowReferenceType.vf_B].uid == \
+        bus_from.emt_model.external_mapping[VarPowerFlowReferenceType.v_B].uid
+    assert branch.emt_model.external_mapping[VarPowerFlowReferenceType.vf_C].uid == \
+        bus_from.emt_model.external_mapping[VarPowerFlowReferenceType.v_C].uid
+    assert branch.emt_model.external_mapping[VarPowerFlowReferenceType.vt_A].uid == \
+        bus_to.emt_model.external_mapping[VarPowerFlowReferenceType.v_A].uid
+    assert branch.emt_model.external_mapping[VarPowerFlowReferenceType.vt_B].uid == \
+        bus_to.emt_model.external_mapping[VarPowerFlowReferenceType.v_B].uid
+    assert branch.emt_model.external_mapping[VarPowerFlowReferenceType.vt_C].uid == \
+        bus_to.emt_model.external_mapping[VarPowerFlowReferenceType.v_C].uid
 
     editor.has_unapplied_changes = False
     editor.close()

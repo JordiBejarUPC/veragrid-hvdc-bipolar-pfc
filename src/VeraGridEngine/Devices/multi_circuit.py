@@ -174,19 +174,81 @@ def _validate_bus_side_emt_reference(logger: Logger,
     else:
         pass
 
+    # The direct template path can propagate the mutable ``uid`` immediately,
+    # while editor-built EMT models can still preserve distinct mutable ids on
+    # stored external-mapping variables until the EMT assembler rewrites them
+    # against the bus shell. In both cases the stable symbolic identity remains
+    # in ``non_mutable_uid``, so the validator must accept either form.
     if device_var.uid == bus_var.uid:
         return
     else:
-        logger.add_error(
-            msg="Stale EMT bus connection",
-            device=device.name,
-            value=f"uid={device_var.uid}",
-            expected_value=f"uid={bus_var.uid}",
-            device_class=device.device_type.value,
-            device_property=property_name,
-            object_value=device_var.name,
-            expected_object_value=bus_var.name,
-        )
+        if device_var.non_mutable_uid == bus_var.non_mutable_uid:
+            return
+        else:
+            logger.add_error(
+                msg="Stale EMT bus connection",
+                device=device.name,
+                value=f"uid={device_var.uid}",
+                expected_value=f"uid={bus_var.uid}",
+                device_class=device.device_type.value,
+                device_property=property_name,
+                object_value=device_var.name,
+                expected_object_value=bus_var.name,
+            )
+
+
+def _validate_vsc_dc_bus_reference(logger: Logger,
+                                   branch: ALL_DEV_TYPES) -> None:
+    """
+    Validate the DC-side shared ``Vdc`` contract used by VSC EMT models.
+
+    VSC templates expose the DC bus voltage through the shared external mapping
+    reference ``Vdc`` instead of the generic branch-side ``Vf_dc`` contract.
+    The symbolic connection layer propagates the bus identity by rewriting the
+    device-side variable ``uid`` and ``name`` through the shared variable
+    factory. The validator must therefore compare the effective propagated VSC
+    variable against the live bus shell variable.
+
+    :param logger: Validation logger.
+    :param branch: VSC branch device being validated.
+    :return: None.
+    """
+    device_mdl: Block = branch.emt_model
+    bus_mdl: Block = branch.bus_from.emt_model
+
+    if device_mdl.empty() or bus_mdl.empty():
+        return
+    else:
+        pass
+
+    vsc_vdc_var: dev.Var | None = _get_emt_external_var(device_mdl, VarPowerFlowReferenceType.Vdc)
+    bus_vdc_var: dev.Var | None = _get_emt_external_var(bus_mdl, VarPowerFlowReferenceType.Vdc)
+
+    if vsc_vdc_var is None or bus_vdc_var is None:
+        return
+    else:
+        pass
+
+    # The VSC DC-side connection is valid when the propagated effective symbol
+    # identity matches the live bus-shell identity. Comparing the propagated uid
+    # is the correct check because ``VarFactory.add_connection()`` rewrites the
+    # connected variable metadata to the incoming source variable.
+    if vsc_vdc_var.uid == bus_vdc_var.uid:
+        return
+    else:
+        if vsc_vdc_var.non_mutable_uid == bus_vdc_var.non_mutable_uid:
+            return
+        else:
+            logger.add_error(
+                msg="Stale EMT bus connection",
+                device=branch.name,
+                value=f"uid={vsc_vdc_var.uid}",
+                expected_value=f"uid={bus_vdc_var.uid}",
+                device_class=branch.device_type.value,
+                device_property="bus_from.Vdc",
+                object_value=vsc_vdc_var.name,
+                expected_object_value=bus_vdc_var.name,
+            )
 
 
 def _validate_branch_emt_bus_connections(logger: Logger,
@@ -206,10 +268,7 @@ def _validate_branch_emt_bus_connections(logger: Logger,
         pass
 
     if branch.device_type == DeviceType.VscDevice:
-        _validate_bus_side_emt_reference(logger, branch, mdl, branch.bus_from.emt_model,
-                                         VarPowerFlowReferenceType.Vdc,
-                                         VarPowerFlowReferenceType.Vdc,
-                                         "bus_from.Vdc")
+        _validate_vsc_dc_bus_reference(logger=logger, branch=branch)
         _validate_bus_side_emt_reference(logger, branch, mdl, branch.bus_to.emt_model,
                                          VarPowerFlowReferenceType.v_A,
                                          VarPowerFlowReferenceType.v_A,
