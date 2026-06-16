@@ -1,6 +1,6 @@
 from typing import Callable
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QRectF
 from PySide6.QtWidgets import QGraphicsView
 
 import VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget as schematic_widget_module
@@ -183,6 +183,42 @@ class _WindingWidgetStub:
         return "created-winding"
 
 
+class _CenterNodesSceneStub:
+    __slots__ = ("_rect", "set_rect_calls")
+
+    def __init__(self, rect: QRectF) -> None:
+        self._rect = rect
+        self.set_rect_calls: list[QRectF] = list()
+
+    def itemsBoundingRect(self) -> QRectF:
+        return QRectF(self._rect)
+
+    def setSceneRect(self, rect: QRectF) -> None:
+        self.set_rect_calls.append(QRectF(rect))
+
+
+class _CenterNodesViewStub:
+    __slots__ = ("fit_calls", "scale_calls")
+
+    def __init__(self) -> None:
+        self.fit_calls: list[QRectF] = list()
+        self.scale_calls: list[tuple[float, float]] = list()
+
+    def fitInView(self, rect: QRectF, _mode) -> None:
+        self.fit_calls.append(QRectF(rect))
+
+    def scale(self, sx: float, sy: float) -> None:
+        self.scale_calls.append((sx, sy))
+
+
+class _CenterNodesWidgetStub:
+    __slots__ = ("diagram_scene", "editor_graphics_view")
+
+    def __init__(self, rect: QRectF) -> None:
+        self.diagram_scene = _CenterNodesSceneStub(rect=rect)
+        self.editor_graphics_view = _CenterNodesViewStub()
+
+
 def test_schedule_branch_callbacks_after_draw_coalesces_visible_refresh(override_attrs) -> None:
     """
     Visible widgets should queue at most one branch-refresh callback.
@@ -331,3 +367,22 @@ def test_add_api_winding_uses_visible_winding_terminal_bus() -> None:
     assert stub.queried_buses == [visible_bus]
     assert stub.add_api_branch_call is not None
     assert stub.add_api_branch_call["to_port"] == "terminal"
+
+
+def test_center_nodes_uses_full_scene_bounds() -> None:
+    """
+    Centering the view should use the full scene bounds, not just bus-like widgets.
+    """
+    stub = _CenterNodesWidgetStub(QRectF(10.0, 20.0, 200.0, 100.0))
+
+    SchematicWidget.center_nodes(stub, margin_factor=0.1)
+
+    assert len(stub.diagram_scene.set_rect_calls) == 1
+    assert len(stub.editor_graphics_view.fit_calls) == 1
+    assert stub.editor_graphics_view.scale_calls == [(1.0, 1.0)]
+
+    rect = stub.diagram_scene.set_rect_calls[0]
+    assert rect.x() == -10.0
+    assert rect.y() == 10.0
+    assert rect.width() == 240.0
+    assert rect.height() == 120.0

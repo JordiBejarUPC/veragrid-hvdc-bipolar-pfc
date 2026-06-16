@@ -2093,6 +2093,20 @@ class SchematicWidget(BaseDiagramWidget):
         :param elements: list of API
         """
 
+        if elements is None:
+            boundaries = self.diagram_scene.itemsBoundingRect()
+
+            if boundaries.isNull():
+                return
+
+            mx = boundaries.width() * margin_factor
+            my = boundaries.height() * margin_factor
+            boundaries.adjust(-mx, -my, mx, my)
+            self.diagram_scene.setSceneRect(boundaries)
+            self.editor_graphics_view.fitInView(boundaries, Qt.AspectRatioMode.KeepAspectRatio)
+            self.editor_graphics_view.scale(1.0, 1.0)
+            return
+
         min_x = sys.maxsize
         min_y = sys.maxsize
         max_x = -sys.maxsize
@@ -2100,12 +2114,14 @@ class SchematicWidget(BaseDiagramWidget):
         max_w = 100
         max_h = 60
 
-        if elements is None:
-            for item in self.diagram_scene.items():
-                if isinstance(item, (BusGraphicItem,
-                                     FluidNodeGraphicItem,
-                                     Transformer3WGraphicItem,
-                                     TransformerNWGraphicItem)):
+        elements_s = set(elements)
+        for item in self.diagram_scene.items():
+            if isinstance(item, (BusGraphicItem,
+                                 FluidNodeGraphicItem,
+                                 Transformer3WGraphicItem,
+                                 TransformerNWGraphicItem)):
+
+                if item.api_object in elements_s:
                     x = item.pos().x()
                     y = item.pos().y()
 
@@ -2115,24 +2131,6 @@ class SchematicWidget(BaseDiagramWidget):
                     min_y = min(min_y, y)
                     max_w = max(max_w, item.rect().width())
                     max_h = max(max_h, item.rect().height())
-        else:
-            elements_s = set(elements)
-            for item in self.diagram_scene.items():
-                if isinstance(item, (BusGraphicItem,
-                                     FluidNodeGraphicItem,
-                                     Transformer3WGraphicItem,
-                                     TransformerNWGraphicItem)):
-
-                    if item.api_object in elements_s:
-                        x = item.pos().x()
-                        y = item.pos().y()
-
-                        max_x = max(max_x, x)
-                        min_x = min(min_x, x)
-                        max_y = max(max_y, y)
-                        min_y = min(min_y, y)
-                        max_w = max(max_w, item.rect().width())
-                        max_h = max(max_h, item.rect().height())
 
         # set the limits of the view
         dx = max_x - min_x
