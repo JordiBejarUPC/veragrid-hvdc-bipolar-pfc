@@ -87,6 +87,10 @@ class _InjectionStub:
     def emt_template(self) -> EmtModelTemplate | None:
         return self._emt_template
 
+    @emt_template.setter
+    def emt_template(self, val: EmtModelTemplate | None) -> None:
+        self._emt_template = val
+
 
 class _BranchStub:
     __slots__ = ("name", "bus_from", "bus_to", "rms_template", "_emt_template", "emt_model", "device_type")
@@ -108,6 +112,10 @@ class _BranchStub:
     @property
     def emt_template(self) -> EmtModelTemplate | None:
         return self._emt_template
+
+    @emt_template.setter
+    def emt_template(self, val: EmtModelTemplate | None) -> None:
+        self._emt_template = val
 
 
 def _get_app() -> QtWidgets.QApplication:
