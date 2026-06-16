@@ -1249,6 +1249,12 @@ class SchematicWidget(BaseDiagramWidget):
         """
         if graphic_object is not None:
             self.diagram_scene.addItem(graphic_object)
+            # Newly created graphics must immediately reflect the device active state
+            # and the current GUI theme instead of waiting for a later recolour pass.
+            if isinstance(graphic_object, GenericDiagramWidget):
+                graphic_object.recolour_mode()
+            else:
+                pass
         else:
             warn("Null graphics skipped")
 

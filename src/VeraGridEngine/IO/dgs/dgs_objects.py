@@ -1202,8 +1202,6 @@ class ElmSubstat(DGSElement):
         self.sType: str = ""
         self.GPSlat: float = 0.0
         self.GPSlon: float = 0.0
-        self.cpArea: str = ""
-        self.cpZone: str = ""
 
 
 class ElmSym(DGSElement):

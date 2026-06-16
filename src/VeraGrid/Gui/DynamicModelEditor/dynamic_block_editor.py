@@ -14,9 +14,9 @@ from typing import List, Dict, Optional, Any, Set
 from PySide6 import QtWidgets, QtGui, QtCore
 from PySide6.QtWidgets import (QApplication, QHBoxLayout, QGraphicsScene, QGraphicsView, QGraphicsItem,
                                QGraphicsRectItem, QGraphicsEllipseItem, QGraphicsTextItem, QMenu, QGraphicsPathItem,
-                               QDialog, QVBoxLayout, QDialogButtonBox, QLabel, QListWidget, QWidget,
+                               QDialog, QVBoxLayout, QDialogButtonBox, QLabel, QListWidget, QWidget, QScrollArea,
                                QListWidgetItem, QFormLayout, QSpinBox, QLineEdit, QDoubleSpinBox, QTableWidget,
-                               QTableWidgetItem,
+                               QTableWidgetItem, QMessageBox,
                                QColorDialog, QPlainTextEdit, QCheckBox)
 from PySide6.QtGui import (QPen, QBrush, QPainterPath, QAction, QPainter,
                            QDropEvent, QDragEnterEvent, QDragMoveEvent, QColor)
@@ -37,6 +37,8 @@ from VeraGridEngine.enumerations import DeviceType, VarPowerFlowReferenceType, P
     DynamicSimulationMode, ShuntConnectionType, WindingType, DynamicTableModelMode
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms, get_bus_rms_algebraic_vars
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import BusEmtTemplate, get_bus_emt_template, get_bus_emt_algebraic_vars
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import register_saved_emt_model_vars_for_device, \
+    unify_saved_emt_model_root_contract, attach_emt_model_to_buses
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
@@ -78,6 +80,7 @@ from VeraGridEngine.Templates.Emt.source_emt_template import get_controlled_volt
 from VeraGridEngine.Templates.Emt.source_emt_template import get_current_source_emt_template
 from VeraGridEngine.Templates.Emt.source_emt_template import get_voltage_source_emt_template
 from VeraGridEngine.Templates.Emt.switch_emt_template import get_switch_emt_template
+from VeraGridEngine.Templates.Emt.fault_emt_template import get_fault_emt_template
 from VeraGridEngine.Templates.Emt.induction_motor_emt_template import get_induction_motor_emt_template
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_rlc_combo_emt_template
 from VeraGridEngine.Templates.Emt.load_zip_emt_template import get_load_ZIP_emt_template
@@ -106,6 +109,7 @@ from VeraGrid.Gui.DynamicModelEditor.transient_source_emt_dialog import Transien
 from VeraGrid.Gui.DynamicModelEditor.source_emt_dialog import SourceEmtDialog
 from VeraGrid.Gui.DynamicModelEditor.transformer_topology_emt_dialog import TransformerTopologyEmtDialog
 from VeraGrid.Gui.DynamicModelEditor.switch_emt_dialog import SwitchEmtDialog
+from VeraGrid.Gui.DynamicModelEditor.fault_emt_dialog import FaultEmtDialog
 from VeraGrid.Gui.Icons.icon_associations import device_type_icons
 from VeraGrid.Gui.wrappable_table_model import WrappableTableModel
 from VeraGrid.Gui.gui_functions import ComboDelegate, TextDelegate
@@ -115,7 +119,7 @@ from VeraGridEngine.Utils.Symbolic.symbolic import (symbolic_to_string, string_t
                                                     Expr, Var, Const, Comparison)
 from VeraGridEngine.Utils.Symbolic.symbolic_io import duplicate_block
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
-from VeraGridEngine.enumerations import BlockType
+from VeraGridEngine.enumerations import BlockType, EmtFaultPlacementSide, FaultType
 from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_fit_options import JMartiFitOptions
 from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_fit_workflow import build_jmarti_fit_bundle_from_frequency_samples
 from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_fit_workflow import build_jmarti_frequency_samples_from_line
@@ -455,6 +459,8 @@ def _parse_symbolic_editor_value(block: Block | None, value: Any) -> Any:
     Expr-compatible objects in init/event/mode dictionaries.
     """
     if not isinstance(value, str) or block is None:
+        if isinstance(value, (int, float)):
+            return Const(value)
         return value
 
     parsed = string_to_symbolic(value, build_block_symbol_namespace(block))
@@ -525,6 +531,872 @@ def build_block_equations_rows(blk: Block, rows: List[BlockParameterRow]):
             value_type=str,
             item_index=idx
         ))
+
+
+def collect_block_tree(root_block: Block) -> list[Block]:
+    """
+    Return one flat list with the root block and all descendants.
+
+    :param root_block: Root block that owns the edited hierarchy.
+    :return: Flat block list ordered by traversal.
+    """
+    # The validator needs one deterministic view of the whole edited hierarchy so
+    # every child block is checked exactly once.
+    collected_blocks: list[Block] = list([root_block])
+    child_block: Block
+    for child_block in root_block.children:
+        collected_blocks.extend(collect_block_tree(root_block=child_block))
+    return collected_blocks
+
+
+def format_validation_block_label(block: Block) -> str:
+    """
+    Return one user-facing label for a block.
+
+    :param block: Block to label.
+    :return: Stable human-readable label.
+    """
+    # The report should prefer the symbolic block name because it is the same
+    # identifier the user sees in the editor canvas.
+    if block.name:
+        return block.name
+    else:
+        return f"uid={block.uid}"
+
+
+def get_var_reference(var: Var) -> VarPowerFlowReferenceType | None:
+    """
+    Return the power-flow reference attached to one symbolic variable.
+
+    :param var: Symbolic variable to inspect.
+    :return: External reference enum or ``None`` when absent.
+    """
+    # The validator only relies on the typed ``Var.ref`` attribute so the logic
+    # stays explicit and refactorable without reflection helpers.
+    if isinstance(var.ref, VarPowerFlowReferenceType):
+        return var.ref
+    else:
+        return None
+
+
+def append_vars_to_name_uid_map(name_to_uids: dict[str, set[int]], vars_list: list[Var]) -> None:
+    """
+    Merge one list of variables into the duplicate-name accumulator.
+
+    :param name_to_uids: Mapping from variable name to the set of symbolic UIDs using it.
+    :param vars_list: Variables to merge.
+    :return: None.
+    """
+    # The duplicate-name rule is based on distinct symbolic variables. Reusing the
+    # same Var object in multiple collections must therefore add the same UID only.
+    var: Var
+    for var in vars_list:
+        uid_bucket: set[int] | None = name_to_uids.get(var.name, None)
+        if uid_bucket is None:
+            uid_bucket = set()
+            name_to_uids[var.name] = uid_bucket
+        else:
+            pass
+        uid_bucket.add(var.uid)
+
+
+def append_port_vars_to_phase_count(phase_counts: dict[str, int], vars_list: list[Var]) -> None:
+    """
+    Count how many EMT interface variables belong to each phase.
+
+    :param phase_counts: Mutable counter keyed by phase label.
+    :param vars_list: Variables to inspect.
+    :return: None.
+    """
+    # EMT phase validation needs the total number of ports per phase so it can
+    # distinguish a fully absent phase from a partially disconnected one.
+    var: Var
+    for var in vars_list:
+        reference: VarPowerFlowReferenceType | None = get_var_reference(var=var)
+        phase_group: str | None = get_emt_phase_group(reference=reference)
+        if phase_group is not None:
+            phase_counts[phase_group] = phase_counts[phase_group] + 1
+        else:
+            pass
+
+
+def append_missing_port_messages_for_direction(
+        missing_port_messages: list[str],
+        emt_missing_by_phase: dict[str, list[str]],
+        vars_list: list[Var],
+        node_uid: int,
+        connected_ports: set[tuple[int, int]],
+        is_input: bool,
+        mode: DynamicSimulationMode,
+) -> None:
+    """
+    Inspect one port direction and append missing-connection messages.
+
+    :param missing_port_messages: Mutable generic message list.
+    :param emt_missing_by_phase: Mutable EMT phase-bucketed message map.
+    :param vars_list: Ordered port variables for one direction.
+    :param node_uid: Diagram node UID owning the ports.
+    :param connected_ports: Connected port lookup set for the inspected direction.
+    :param is_input: Whether the inspected ports are inputs.
+    :param mode: Editor dynamic mode.
+    :return: None.
+    """
+    # Port checks are performed in port-index order because the saved diagram also
+    # stores connectivity positionally.
+    index: int
+    var: Var
+    direction_label: str = "input" if is_input else "output"
+
+    for index, var in enumerate(vars_list):
+        if (node_uid, index) in connected_ports:
+            pass
+        else:
+            message: str = f"{direction_label} '{var.name}' is not connected"
+            if mode == DynamicSimulationMode.EMT:
+                reference: VarPowerFlowReferenceType | None = get_var_reference(var=var)
+                phase_group: str | None = get_emt_phase_group(reference=reference)
+                if phase_group is not None:
+                    emt_missing_by_phase[phase_group].append(message)
+                else:
+                    missing_port_messages.append(message)
+            else:
+                missing_port_messages.append(message)
+
+
+def format_missing_port_detail(input_names: list[str], output_names: list[str]) -> str:
+    """
+    Format one grouped port-connectivity detail line.
+
+    :param input_names: Missing input port names.
+    :param output_names: Missing output port names.
+    :return: Human-readable grouped detail text. Returns an empty string when no
+        missing ports exist.
+    """
+    # Grouping missing ports by direction keeps the modal compact and makes it
+    # easier to scan one block without reading the same phrase repeatedly.
+    detail_parts: list[str] = list()
+
+    if input_names:
+        if len(input_names) == 1:
+            detail_parts.append(f"input: {input_names[0]} is not connected")
+        else:
+            detail_parts.append(f"inputs: {', '.join(input_names)} are not connected")
+    else:
+        pass
+
+    if output_names:
+        if len(output_names) == 1:
+            detail_parts.append(f"output: {output_names[0]} is not connected")
+        else:
+            detail_parts.append(f"outputs: {', '.join(output_names)} are not connected")
+    else:
+        pass
+
+    return "; ".join(detail_parts)
+
+
+def append_emt_absent_phase_note(detail_parts: list[str], phase_name: str) -> None:
+    """
+    Append one human-readable note for an EMT phase that is fully absent.
+
+    :param detail_parts: Mutable detail text parts.
+    :param phase_name: EMT phase label.
+    :return: None.
+    """
+    # A fully unconnected EMT phase is not an error in this editor workflow, but
+    # the validator should still tell the user that the phase is effectively not
+    # present in the model interface.
+    detail_parts.append(
+        f"phase {phase_name}: V and I are not connected, meaning this model has no phase {phase_name} wire"
+    )
+
+
+def format_emt_phase_connectivity_detail(
+        input_names: list[str],
+        output_names: list[str],
+        absent_phase_names: list[str],
+) -> str:
+    """
+    Format one EMT-specific connectivity detail line.
+
+    :param input_names: Missing input port names.
+    :param output_names: Missing output port names.
+    :param absent_phase_names: Fully absent EMT phases.
+    :return: Human-readable grouped detail text.
+    """
+    # EMT reports both true disconnections and intentionally absent phases so the
+    # user can distinguish interface mistakes from deliberate phase omission.
+    detail_parts: list[str] = list()
+    phase_name: str
+
+    grouped_detail: str = format_missing_port_detail(input_names=input_names, output_names=output_names)
+    if grouped_detail:
+        detail_parts.append(grouped_detail)
+    else:
+        pass
+
+    for phase_name in absent_phase_names:
+        append_emt_absent_phase_note(detail_parts=detail_parts, phase_name=phase_name)
+
+    return "; ".join(detail_parts)
+
+
+def get_phase_wire_description(phase_name: str) -> str:
+    """
+    Return one human-readable wire label for a phase.
+
+    :param phase_name: Phase label.
+    :return: Human-readable wire label used in the phase-consistency report.
+    """
+    if phase_name == "N":
+        return "neutral wire"
+    elif phase_name == "A":
+        return "phase A"
+    elif phase_name == "B":
+        return "phase B"
+    elif phase_name == "C":
+        return "phase C"
+    else:
+        return f"phase {phase_name}"
+
+
+def get_phase_table_label(phase_name: str) -> str:
+    """
+    Return the fixed table label for one EMT phase row.
+
+    :param phase_name: Phase label.
+    :return: Table label.
+    """
+    if phase_name == "N":
+        return "Neutral"
+    elif phase_name == "A":
+        return "A"
+    elif phase_name == "B":
+        return "B"
+    elif phase_name == "C":
+        return "C"
+    else:
+        return phase_name
+
+
+def get_branch_phase_table_label(side: str, phase_name: str) -> str:
+    """
+    Return the fixed table label for one EMT branch-side phase row.
+
+    :param side: Branch side identifier.
+    :param phase_name: Phase label.
+    :return: Table label.
+    """
+    side_label: str = ""
+    if side == "from":
+        side_label = "bus from"
+    elif side == "to":
+        side_label = "bus to"
+    else:
+        side_label = side
+
+    if phase_name == "N":
+        return f"N {side_label}"
+    elif phase_name == "A":
+        return f"A {side_label}"
+    elif phase_name == "B":
+        return f"B {side_label}"
+    elif phase_name == "C":
+        return f"C {side_label}"
+    else:
+        return f"{phase_name} {side_label}"
+
+
+def classify_emt_injection_phase_wire_from_refs(
+        phase_name: str,
+        refs: set[VarPowerFlowReferenceType],
+) -> tuple[bool, str]:
+    """
+    Classify one EMT injection phase using the same logic as ``Do it!``.
+
+    :param phase_name: Phase label.
+    :param refs: Connected root-interface references.
+    :return: Tuple ``(ok, detail)``.
+    """
+    # This helper intentionally mirrors the save-time EMT consistency check so the
+    # validator modal and the ``Do it!`` workflow always report the same result.
+    voltage_connected: bool = False
+    current_connected: bool = False
+
+    if phase_name == "N":
+        voltage_connected = VarPowerFlowReferenceType.v_N in refs
+        current_connected = VarPowerFlowReferenceType.i_N in refs
+    elif phase_name == "A":
+        voltage_connected = VarPowerFlowReferenceType.v_A in refs
+        current_connected = VarPowerFlowReferenceType.i_A in refs
+    elif phase_name == "B":
+        voltage_connected = VarPowerFlowReferenceType.v_B in refs
+        current_connected = VarPowerFlowReferenceType.i_B in refs
+    elif phase_name == "C":
+        voltage_connected = VarPowerFlowReferenceType.v_C in refs
+        current_connected = VarPowerFlowReferenceType.i_C in refs
+    else:
+        pass
+
+    wire_description: str = get_phase_wire_description(phase_name=phase_name)
+
+    if voltage_connected == current_connected:
+        if voltage_connected:
+            return True, f"the model has this {wire_description}"
+        else:
+            return True, f"the model has no {wire_description}"
+    elif voltage_connected:
+        return False, f"inconsistent connection of {wire_description}, only V ports are connected"
+    else:
+        return False, f"inconsistent connection of {wire_description}, only I ports are connected"
+
+
+def classify_emt_branch_phase_wire_from_refs(
+        side: str,
+        phase_name: str,
+        refs: set[VarPowerFlowReferenceType],
+) -> tuple[bool, str]:
+    """
+    Classify one EMT branch-side phase using the save-time branch logic.
+
+    :param side: Branch side identifier.
+    :param phase_name: Phase label.
+    :param refs: Connected root-interface references.
+    :return: Tuple ``(ok, detail)``.
+    """
+    # Branch EMT devices expose two independent AC-side wire contracts. Each side
+    # must therefore be evaluated with its own V/I pair set.
+    voltage_connected: bool = False
+    current_connected: bool = False
+    wire_description: str = get_phase_wire_description(phase_name=phase_name)
+    side_description: str = "bus from" if side == "from" else "bus to"
+
+    if side == "from":
+        if phase_name == "N":
+            voltage_connected = VarPowerFlowReferenceType.vf_N in refs
+            current_connected = VarPowerFlowReferenceType.if_N in refs
+        elif phase_name == "A":
+            voltage_connected = VarPowerFlowReferenceType.vf_A in refs
+            current_connected = VarPowerFlowReferenceType.if_A in refs
+        elif phase_name == "B":
+            voltage_connected = VarPowerFlowReferenceType.vf_B in refs
+            current_connected = VarPowerFlowReferenceType.if_B in refs
+        elif phase_name == "C":
+            voltage_connected = VarPowerFlowReferenceType.vf_C in refs
+            current_connected = VarPowerFlowReferenceType.if_C in refs
+        else:
+            pass
+    elif side == "to":
+        if phase_name == "N":
+            voltage_connected = VarPowerFlowReferenceType.vt_N in refs
+            current_connected = VarPowerFlowReferenceType.it_N in refs
+        elif phase_name == "A":
+            voltage_connected = VarPowerFlowReferenceType.vt_A in refs
+            current_connected = VarPowerFlowReferenceType.it_A in refs
+        elif phase_name == "B":
+            voltage_connected = VarPowerFlowReferenceType.vt_B in refs
+            current_connected = VarPowerFlowReferenceType.it_B in refs
+        elif phase_name == "C":
+            voltage_connected = VarPowerFlowReferenceType.vt_C in refs
+            current_connected = VarPowerFlowReferenceType.it_C in refs
+        else:
+            pass
+    else:
+        pass
+
+    if voltage_connected == current_connected:
+        if voltage_connected:
+            return True, f"the model has this {wire_description} on {side_description}"
+        else:
+            return True, f"the model has no {wire_description} on {side_description}"
+    elif voltage_connected:
+        return False, f"inconsistent connection of {wire_description} on {side_description}, only V ports are connected"
+    else:
+        return False, f"inconsistent connection of {wire_description} on {side_description}, only I ports are connected"
+
+
+def has_ac_emt_phase_interface_refs(refs: set[VarPowerFlowReferenceType]) -> bool:
+    """
+    Return whether one EMT interface exposes AC phase references.
+
+    :param refs: Root EMT interface references.
+    :return: ``True`` when AC N/A/B/C phase references are present.
+    """
+    # Mixed AC/DC devices such as VSCs must still expose phase consistency when
+    # the root interface contains any AC phase references, even if DC refs also exist.
+    if (VarPowerFlowReferenceType.v_N in refs or VarPowerFlowReferenceType.i_N in refs or
+            VarPowerFlowReferenceType.v_A in refs or VarPowerFlowReferenceType.i_A in refs or
+            VarPowerFlowReferenceType.v_B in refs or VarPowerFlowReferenceType.i_B in refs or
+            VarPowerFlowReferenceType.v_C in refs or VarPowerFlowReferenceType.i_C in refs or
+            VarPowerFlowReferenceType.vf_N in refs or VarPowerFlowReferenceType.if_N in refs or
+            VarPowerFlowReferenceType.vf_A in refs or VarPowerFlowReferenceType.if_A in refs or
+            VarPowerFlowReferenceType.vf_B in refs or VarPowerFlowReferenceType.if_B in refs or
+            VarPowerFlowReferenceType.vf_C in refs or VarPowerFlowReferenceType.if_C in refs or
+            VarPowerFlowReferenceType.vt_N in refs or VarPowerFlowReferenceType.it_N in refs or
+            VarPowerFlowReferenceType.vt_A in refs or VarPowerFlowReferenceType.it_A in refs or
+            VarPowerFlowReferenceType.vt_B in refs or VarPowerFlowReferenceType.it_B in refs or
+            VarPowerFlowReferenceType.vt_C in refs or VarPowerFlowReferenceType.it_C in refs):
+        return True
+    else:
+        return False
+
+
+def has_ac_emt_branch_side_refs(side: str, refs: set[VarPowerFlowReferenceType]) -> bool:
+    """
+    Return whether one EMT branch side exposes AC phase references.
+
+    :param side: Branch side identifier.
+    :param refs: Root EMT interface references.
+    :return: ``True`` when the requested side exposes AC phase references.
+    """
+    # Mixed AC/DC branch devices may expose AC wires only on one side, so the
+    # phase-consistency table must render only the side that actually has AC refs.
+    if side == "from":
+        if (VarPowerFlowReferenceType.vf_N in refs or VarPowerFlowReferenceType.if_N in refs or
+                VarPowerFlowReferenceType.vf_A in refs or VarPowerFlowReferenceType.if_A in refs or
+                VarPowerFlowReferenceType.vf_B in refs or VarPowerFlowReferenceType.if_B in refs or
+                VarPowerFlowReferenceType.vf_C in refs or VarPowerFlowReferenceType.if_C in refs):
+            return True
+        else:
+            return False
+    elif side == "to":
+        if (VarPowerFlowReferenceType.vt_N in refs or VarPowerFlowReferenceType.it_N in refs or
+                VarPowerFlowReferenceType.vt_A in refs or VarPowerFlowReferenceType.it_A in refs or
+                VarPowerFlowReferenceType.vt_B in refs or VarPowerFlowReferenceType.it_B in refs or
+                VarPowerFlowReferenceType.vt_C in refs or VarPowerFlowReferenceType.it_C in refs):
+            return True
+        else:
+            return False
+    else:
+        return False
+
+
+class ValidationRow:
+    """
+    Row of validation output associated with one block.
+    """
+
+    __slots__ = ("_block_label", "_details", "_ok")
+
+    def __init__(self, block_label: str) -> None:
+        """
+        Build one validation row.
+
+        :param block_label: Human-readable block identifier.
+        :return: None.
+        """
+        self._block_label: str = block_label
+        self._details: list[str] = list()
+        self._ok: bool = False
+
+    def get_block_label(self) -> str:
+        """
+        Return the row block label.
+
+        :return: Block label.
+        """
+        return self._block_label
+
+    def get_details(self) -> list[str]:
+        """
+        Return the detail list.
+
+        :return: Detail list.
+        """
+        return self._details
+
+    def add_detail(self, detail: str) -> None:
+        """
+        Append one detail line to the row.
+
+        :param detail: Detail to append.
+        :return: None.
+        """
+        self._details.append(detail)
+
+    def set_ok(self, val: bool) -> None:
+        """
+        Set the row semantic state.
+
+        :param val: ``True`` when the row is informationally correct.
+        :return: None.
+        """
+        self._ok = val
+
+    def is_ok(self) -> bool:
+        """
+        Return the row semantic state.
+
+        :return: ``True`` when the row is informationally correct.
+        """
+        return self._ok
+
+
+class ValidationSection:
+    """
+    Group of validation rows for one validation rule family.
+    """
+
+    __slots__ = ("_title", "_rows", "_first_column_title", "_show_issue_label")
+
+    def __init__(self, title: str, first_column_title: str = "Block", show_issue_label: bool = True) -> None:
+        """
+        Build one validation section.
+
+        :param title: Section title.
+        :param first_column_title: First table column title.
+        :param show_issue_label: Whether to show the red section issue label.
+        :return: None.
+        """
+        self._title: str = title
+        self._rows: list[ValidationRow] = list()
+        self._first_column_title: str = first_column_title
+        self._show_issue_label: bool = show_issue_label
+
+    def get_title(self) -> str:
+        """
+        Return the section title.
+
+        :return: Section title.
+        """
+        return self._title
+
+    def get_rows(self) -> list[ValidationRow]:
+        """
+        Return the section rows.
+
+        :return: Row list.
+        """
+        return self._rows
+
+    def get_first_column_title(self) -> str:
+        """
+        Return the first table column title.
+
+        :return: First table column title.
+        """
+        return self._first_column_title
+
+    def get_show_issue_label(self) -> bool:
+        """
+        Return whether the section should show the red issue label.
+
+        :return: ``True`` when the red issue label should be shown.
+        """
+        return self._show_issue_label
+
+    def get_or_create_row(self, block_label: str) -> ValidationRow:
+        """
+        Return the existing row for one block or create a new one.
+
+        :param block_label: Human-readable block identifier.
+        :return: Matching row object.
+        """
+        row: ValidationRow
+        for row in self._rows:
+            if row.get_block_label() == block_label:
+                return row
+            else:
+                pass
+
+        new_row: ValidationRow = ValidationRow(block_label=block_label)
+        self._rows.append(new_row)
+        return new_row
+
+
+class ValidationTraversalNode:
+    """
+    Recursive validation context for one block and its inherited mappings.
+    """
+
+    __slots__ = ("_block", "_effective_external_vars", "_children")
+
+    def __init__(self, block: Block, effective_external_vars: set[Var]) -> None:
+        """
+        Build one validation traversal node.
+
+        :param block: Block represented by this traversal node.
+        :param effective_external_vars: External variables visible at this hierarchy point.
+        :return: None.
+        """
+        self._block: Block = block
+        self._effective_external_vars: set[Var] = set(effective_external_vars)
+        self._children: list[ValidationTraversalNode] = list()
+
+    def get_block(self) -> Block:
+        """
+        Return the represented block.
+
+        :return: Block object.
+        """
+        return self._block
+
+    def get_effective_external_vars(self) -> set[Var]:
+        """
+        Return the inherited effective external-variable set.
+
+        :return: Effective external-variable set.
+        """
+        return self._effective_external_vars
+
+    def get_children(self) -> list["ValidationTraversalNode"]:
+        """
+        Return the recursive child traversal nodes.
+
+        :return: Child traversal nodes.
+        """
+        return self._children
+
+    def add_child(self, child_node: "ValidationTraversalNode") -> None:
+        """
+        Append one child traversal node.
+
+        :param child_node: Child traversal node.
+        :return: None.
+        """
+        self._children.append(child_node)
+
+
+def collect_local_external_vars(block: Block) -> set[Var]:
+    """
+    Collect the local external-mapping variables defined on one block.
+
+    :param block: Block to inspect.
+    :return: Local external variables.
+    """
+    # External mappings are stored as enum-to-var references. The validator only
+    # needs the visible variables, not the enum keys, for initialization checks.
+    local_external_vars: set[Var] = set()
+    mapped_var: Var | None
+    for mapped_var in block.external_mapping.values():
+        if isinstance(mapped_var, Var):
+            local_external_vars.add(mapped_var)
+        else:
+            pass
+    return local_external_vars
+
+
+def build_validation_traversal_node(block: Block, inherited_external_vars: set[Var]) -> ValidationTraversalNode:
+    """
+    Build one recursive validation traversal node from the block hierarchy.
+
+    :param block: Block to convert.
+    :param inherited_external_vars: External variables visible from parent levels.
+    :return: Recursive traversal node.
+    """
+    # The validator must remain recursive, but some templates expose usable
+    # initialization variables at the parent/root level. This traversal keeps the
+    # hierarchy while carrying the effective visible interface downward.
+    effective_external_vars: set[Var] = set(inherited_external_vars)
+    local_external_vars: set[Var] = collect_local_external_vars(block=block)
+    effective_external_vars.update(local_external_vars)
+
+    node: ValidationTraversalNode = ValidationTraversalNode(
+        block=block,
+        effective_external_vars=set(effective_external_vars),
+    )
+
+    child_block: Block
+    for child_block in block.children:
+        child_node: ValidationTraversalNode = build_validation_traversal_node(
+            block=child_block,
+            inherited_external_vars=set(effective_external_vars),
+        )
+        node.add_child(child_node=child_node)
+
+    return node
+
+
+def collect_validation_traversal_list(root_node: ValidationTraversalNode) -> list[ValidationTraversalNode]:
+    """
+    Flatten one recursive validation traversal tree.
+
+    :param root_node: Root traversal node.
+    :return: Flat traversal-node list.
+    """
+    # Most validation sections operate block by block, so the traversal tree is
+    # flattened after the effective context has already been propagated.
+    flat_nodes: list[ValidationTraversalNode] = list([root_node])
+    child_node: ValidationTraversalNode
+    for child_node in root_node.get_children():
+        flat_nodes.extend(collect_validation_traversal_list(root_node=child_node))
+    return flat_nodes
+
+
+def add_validation_detail(section: ValidationSection, block_label: str, detail: str) -> None:
+    """
+    Append one formatted validation detail to a section.
+
+    :param section: Mutable validation section.
+    :param block_label: Human-readable block identifier.
+    :param detail: One validation detail for that block.
+    :return: None.
+    """
+    # The modal groups issues by validation type and then by block so users can
+    # inspect one subsystem at a time instead of reading one mixed flat list.
+    row: ValidationRow = section.get_or_create_row(block_label=block_label)
+    row.add_detail(detail=detail)
+
+
+def add_validation_status_detail(section: ValidationSection, block_label: str, detail: str, ok: bool) -> None:
+    """
+    Append one formatted validation detail and status to a section.
+
+    :param section: Mutable validation section.
+    :param block_label: Human-readable block identifier.
+    :param detail: One validation detail for that block.
+    :param ok: Whether the row is informationally correct.
+    :return: None.
+    """
+    row: ValidationRow = section.get_or_create_row(block_label=block_label)
+    row.add_detail(detail=detail)
+    row.set_ok(val=ok)
+
+
+class ValidationSectionDialog(QDialog):
+    """
+    Dialog showing model-consistency results grouped by validation section.
+    """
+
+    __slots__ = ("_section_results",)
+
+    def __init__(self, section_results: list[ValidationSection], parent: QtWidgets.QWidget | None = None) -> None:
+        """
+        Build one structured validation dialog.
+
+        :param section_results: Ordered validation results grouped by section title.
+        :param parent: Optional Qt parent widget.
+        :return: None.
+        """
+        super().__init__(parent)
+        self._section_results: list[ValidationSection] = section_results
+        self.setWindowTitle("Model Consistency Validation")
+        self.resize(860, 620)
+
+        # The root layout stacks one visual section after another so each rule is
+        # isolated and easier to scan than a single mixed text block.
+        layout: QVBoxLayout = QVBoxLayout(self)
+
+        scroll_area: QScrollArea = QScrollArea(self)
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        layout.addWidget(scroll_area)
+
+        scroll_widget: QWidget = QWidget(scroll_area)
+        scroll_area.setWidget(scroll_widget)
+        scroll_layout: QVBoxLayout = QVBoxLayout(scroll_widget)
+
+        intro_label: QLabel = QLabel(
+            "Run an informational validation of the edited model structure, mappings, initialization, and port connectivity. "
+            "This check reports issues but does not block saving the model."
+        )
+        intro_label.setWordWrap(True)
+        scroll_layout.addWidget(intro_label)
+
+        section: ValidationSection
+        for section in self._section_results:
+            self._add_section_widget(layout=scroll_layout, section=section)
+
+        button_box: QDialogButtonBox = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok, self)
+        button_box.accepted.connect(self.accept)
+        layout.addWidget(button_box)
+
+    def _add_section_widget(self, layout: QVBoxLayout, section: ValidationSection) -> None:
+        """
+        Append one validation section to the dialog.
+
+        :param layout: Parent layout.
+        :param section: Validation section object.
+        :return: None.
+        """
+        # Each section uses a compact two-column table so the user can align the
+        # affected block name with the details that belong to it.
+        title_label: QLabel = QLabel(section.get_title())
+        title_font: QtGui.QFont = title_label.font()
+        title_font.setBold(True)
+        title_font.setPointSize(title_font.pointSize() + 1)
+        title_label.setFont(title_font)
+        layout.addWidget(title_label)
+
+        rows: list[ValidationRow] = section.get_rows()
+        if len(rows) == 0:
+            status_label: QLabel = QLabel("All good")
+            status_label.setStyleSheet("color: #027a48;")
+            layout.addWidget(status_label)
+        else:
+            if section.get_show_issue_label():
+                warning_label: QLabel = QLabel("Issues found in this section")
+                warning_label.setStyleSheet("color: #b42318;")
+                layout.addWidget(warning_label)
+            else:
+                pass
+
+            table_widget: QTableWidget = QTableWidget(self)
+            table_widget.setColumnCount(2)
+            table_widget.setHorizontalHeaderLabels([section.get_first_column_title(), "Details"])
+            table_widget.setRowCount(len(rows))
+            table_widget.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+            table_widget.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
+            table_widget.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+            table_widget.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+            table_widget.verticalHeader().setVisible(False)
+            table_widget.horizontalHeader().setStretchLastSection(True)
+            table_widget.horizontalHeader().setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+            table_widget.horizontalHeader().setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.Stretch)
+
+            row_index: int = 0
+            row: ValidationRow
+            for row in rows:
+                details_text: str = "\n".join(row.get_details())
+                block_item: QTableWidgetItem = QTableWidgetItem(row.get_block_label())
+                detail_item: QTableWidgetItem = QTableWidgetItem(details_text)
+                if row.is_ok():
+                    ok_brush: QtGui.QBrush = QtGui.QBrush(QColor("#027a48"))
+                    block_item.setForeground(ok_brush)
+                    detail_item.setForeground(ok_brush)
+                else:
+                    error_brush: QtGui.QBrush = QtGui.QBrush(QColor("#b42318"))
+                    block_item.setForeground(error_brush)
+                    detail_item.setForeground(error_brush)
+
+                table_widget.setItem(row_index, 0, block_item)
+                table_widget.setItem(row_index, 1, detail_item)
+                row_index = row_index + 1
+
+            table_widget.resizeRowsToContents()
+            table_widget.setMinimumHeight(table_widget.verticalHeader().length() + table_widget.horizontalHeader().height() + 8)
+            table_widget.setMaximumHeight(table_widget.verticalHeader().length() + table_widget.horizontalHeader().height() + 8)
+            layout.addWidget(table_widget)
+
+
+def get_emt_phase_group(reference: VarPowerFlowReferenceType | None) -> str | None:
+    """
+    Map one EMT interface reference to its phase group.
+
+    :param reference: Variable power-flow reference.
+    :return: ``N``, ``A``, ``B``, ``C`` or ``None``.
+    """
+    # The validator groups ports by phase so EMT models can treat a completely
+    # absent phase as intentional instead of as a partial connectivity failure.
+    if reference in (VarPowerFlowReferenceType.v_N, VarPowerFlowReferenceType.i_N,
+                     VarPowerFlowReferenceType.vf_N, VarPowerFlowReferenceType.if_N,
+                     VarPowerFlowReferenceType.vt_N, VarPowerFlowReferenceType.it_N):
+        return "N"
+    elif reference in (VarPowerFlowReferenceType.v_A, VarPowerFlowReferenceType.i_A,
+                       VarPowerFlowReferenceType.vf_A, VarPowerFlowReferenceType.if_A,
+                       VarPowerFlowReferenceType.vt_A, VarPowerFlowReferenceType.it_A):
+        return "A"
+    elif reference in (VarPowerFlowReferenceType.v_B, VarPowerFlowReferenceType.i_B,
+                       VarPowerFlowReferenceType.vf_B, VarPowerFlowReferenceType.if_B,
+                       VarPowerFlowReferenceType.vt_B, VarPowerFlowReferenceType.it_B):
+        return "B"
+    elif reference in (VarPowerFlowReferenceType.v_C, VarPowerFlowReferenceType.i_C,
+                       VarPowerFlowReferenceType.vf_C, VarPowerFlowReferenceType.if_C,
+                       VarPowerFlowReferenceType.vt_C, VarPowerFlowReferenceType.it_C):
+        return "C"
+    else:
+        return None
 
 
 class BlockPositionChangedCallback:
@@ -1068,7 +1940,12 @@ def copy_block_state(source_block: Block, target_block: Block) -> None:
     target_block.var_mapping = source_clone.var_mapping
     target_block.event_dict = source_clone.event_dict
     target_block.mode_dict = source_clone.mode_dict
-    target_block.diagram = source_block.diagram
+    # Persist the cloned diagram together with the cloned symbolic hierarchy so
+    # the saved block owns one self-consistent snapshot of nodes, connections,
+    # and positions after the editor closes. Reusing ``source_block.diagram``
+    # would keep the saved model tied to the live editor working copy instead of
+    # the copied block state that is meant to survive reopening.
+    target_block.diagram = source_clone.diagram
 
 
 def _initialize_editor_assigned_rms_bus_model(bus: Bus, var_factory: VarFactory) -> None:
@@ -3429,7 +4306,6 @@ class GenericBlockItem(QGraphicsRectItem):
         self.api_object = api_object
         self.position_changed_callback = position_changed_callback
 
-
         self.name_item = QGraphicsTextItem(self.subsys.name, self)
         self.name_item.setDefaultTextColor(BLOCK_TITLE)
         name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 9)
@@ -3444,12 +4320,7 @@ class GenericBlockItem(QGraphicsRectItem):
 
         self.name_item.setDefaultTextColor(BLOCK_TITLE)
 
-        self.editor_window = DynamicBlockEditorGUI(
-            var_factory=self.var_factory,
-            block=self.subsys,
-            api_object=self.api_object,
-            mode=self.mode
-        )
+        self.editor_window: DynamicBlockEditorGUI | None = None
 
         self.resize_handle: ResizeHandle | None = None
         self.resizing_from_handle = False
@@ -3496,8 +4367,24 @@ class GenericBlockItem(QGraphicsRectItem):
 
         """
 
-        items_list = list()
-        if not self.subsys.children:
+        if self.editor_window is None and self.subsys.children:
+            self.editor_window = DynamicBlockEditorGUI(
+                var_factory=self.var_factory,
+                block=self.subsys,
+                api_object=self.api_object,
+                mode=self.mode,
+            )
+
+
+        else:
+            self.editor_window = DynamicBlockEditorGUI(
+                var_factory=self.var_factory,
+                block=self.subsys,
+                api_object=self.api_object,
+                mode=self.mode,
+            )
+            items_list = list()
+
             if self.subsys.is_eq_decomposable():
                 self.editor_window.decompose_block_in_place(self.subsys)
                 self.editor_window.diagram = self.subsys.diagram
@@ -5088,6 +5975,7 @@ def build_emt_branch_bus_mask_from_refs(
 
     return mask
 
+
 class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     """
     DynamicModelEditorGUI
@@ -5165,12 +6053,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.var_factory = var_factory
         self.api_object = api_object
 
-        self.original_block: Block = block  # api_object.rms_model
-
-        self.main_block: Block = clone_block_for_editing(block)
-
-        self.diagram: BlockDiagram = self.main_block.diagram
-
         self.circuit = circuit
         self.mode = mode
         self.main_editor = main_editor
@@ -5182,6 +6064,22 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.scene: DiagramScene = DiagramScene(self)
         self.changes_applied: bool = False
         self.has_unapplied_changes: bool = False
+
+        self.original_block: Block = block  # api_object.rms_model
+
+        if not self.original_block.children and not self.original_block.empty() and self.main_editor:
+            self.main_block = Block()
+            block_to_append = clone_block_for_editing(block)
+            self.main_block.children.append(block_to_append)
+            self.main_block.in_vars = block_to_append.in_vars
+            self.main_block.out_vars = block_to_append.out_vars
+            self.main_block.external_mapping = block_to_append.external_mapping
+        else:
+            self.main_block: Block = clone_block_for_editing(block)
+
+        self.diagram: BlockDiagram = self.main_block.diagram
+
+
 
         if self.workspace_embedded:
             self.menuBar().setVisible(False)
@@ -5224,6 +6122,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             LibraryLeafSpec("C load", BlockType.C_LOAD_EMT),
             LibraryLeafSpec("DC load", BlockType.DC_LOAD_EMT),
         ])
+        common_emt_fault_blocks: List[LibraryLeafSpec] = list([
+            LibraryLeafSpec("Fault EMT", BlockType.FAULT_EMT),
+        ])
+
+        common_rms_device_blocks: List[LibraryLeafSpec] = list([
+            LibraryLeafSpec("Pll transformer", BlockType.PLL_TRANSFORM_RMS),
+            LibraryLeafSpec("Pi current controller", BlockType.PI_CURRENT_CONTROLLER),
+            LibraryLeafSpec("Pi power controller", BlockType.PI_POWER_CONTROLLER),
+            LibraryLeafSpec("Gfl converter", BlockType.GFL_CONVERTER_RMS)])
 
         device_rms_related_blocks = {
             DeviceType.GeneratorDevice: [
@@ -5233,6 +6140,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 LibraryLeafSpec("Governor", BlockType.GOV_RMS),
                 LibraryLeafSpec("Stabilizer", BlockType.STAB_RMS),
                 LibraryLeafSpec("Exciter", BlockType.EXCITER_RMS),
+
             ],
             DeviceType.LineDevice: [
                 LibraryLeafSpec("Generic", BlockType.GENERIC),
@@ -5306,12 +6214,14 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.tree_structure: Dict[str, Any] = dict()
         if mode == DynamicSimulationMode.RMS:
             self.tree_structure["Basic"] = self.build_basic_library_branch()
+            self.tree_structure["Basic_devices"] = list(common_rms_device_blocks)
             self.tree_structure["Devices"] = device_rms_related_blocks.get(api_object_device_type, dict())
 
         elif mode == DynamicSimulationMode.EMT:
             self.tree_structure["Basic"] = self.build_basic_library_branch()
             specific_emt_blocks: List[LibraryLeafSpec] = list(device_emt_related_blocks.get(api_object_device_type, list()))
             self.tree_structure["Devices"] = list(common_emt_device_blocks + specific_emt_blocks)
+            self.tree_structure["Faults"] = list(common_emt_fault_blocks)
 
         else:
             pass
@@ -5454,17 +6364,28 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.graphicsView.dropEvent = self.graphicsDropEvent
 
         self.ui.doItButton.clicked.connect(self.apply_changes)
+        self.ui.validateConsistencyButton.clicked.connect(self.show_model_consistency_validation)
         self.ui.toolBox.currentChanged.connect(self.on_side_panel_page_changed)
         self.scene.selectionChanged.connect(self.on_scene_selection_changed)
         if not self.main_block.empty() and not self.main_block.diagram.node_data:
-
-            blocks_list = list()
-            for child in self.main_block.children:
-                item = self.generate_block_item_for_block(child)
-                blocks_list.append(item)
-            self.add_connection_items(blocks_list)
-            if len(blocks_list) != 0:
-                self.connect_items(blocks_list)
+            if self.main_block.children:
+                blocks_list = list()
+                for child in self.main_block.children:
+                    item = self.generate_block_item_for_block(child)
+                    blocks_list.append(item)
+                self.add_connection_items(blocks_list)
+                if len(blocks_list) != 0:
+                    self.connect_items(blocks_list)
+            # elif not self.main_block.children and self.main_editor:
+            #     block = Block()
+            #     block.children.append(self.main_block)
+            #
+            #     blocks_list = list()
+            #     item = self.generate_block_item_for_block(self.main_block, main_editor_shell = True)
+            #     blocks_list.append(item)
+            #     self.add_connection_items(blocks_list)
+            #     if len(blocks_list) != 0:
+            #         self.connect_items(blocks_list)
 
         elif not self.main_block.diagram.node_data:
             # here we add the connection variables to the main block
@@ -7302,6 +8223,38 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 config=dict(switch_config),
             )
 
+        elif block_type == BlockType.FAULT_EMT:
+            default_fault_config: Dict[str, Any] = self._build_default_fault_emt_modal_config()
+            dialog = FaultEmtDialog(self, initial_config=default_fault_config)
+
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                fault_config = dict(default_fault_config)
+                fault_config.update(dialog.get_configuration())
+            else:
+                return None
+
+            item_name = f"fault_emt_{count}"
+            block_model = get_fault_emt_template(
+                vf=self.var_factory,
+                fault_type=fault_config["fault_type"],
+                phA=bool(fault_config["phA"]),
+                phB=bool(fault_config["phB"]),
+                phC=bool(fault_config["phC"]),
+                signal_controlled=bool(fault_config["signal_controlled"]),
+                initial_closed=bool(fault_config["initial_closed"]),
+                fault_resistance=float(fault_config["fault_resistance"]),
+                ground_resistance=float(fault_config["ground_resistance"]),
+                open_conductance=float(fault_config["open_conductance"]),
+                fault_time_constant=float(fault_config["fault_time_constant"]),
+                command_threshold=float(fault_config["command_threshold"]),
+                name=item_name,
+            ).block
+            set_modal_template_metadata(
+                block_model,
+                kind="fault_emt",
+                config=dict(fault_config),
+            )
+
         elif block_type == BlockType.RLC_COMBO_EMT:
             dialog = self._build_rlc_combo_emt_dialog()
 
@@ -7941,6 +8894,147 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             return block_item
         else:
             return None
+
+    def _build_default_fault_emt_modal_config(self) -> Dict[str, Any]:
+        """
+        Build one default persisted configuration for the EMT fault modal.
+
+        :return: Default fault configuration.
+        """
+        return dict({
+            "fault_type": FaultType.LG,
+            "placement_side": EmtFaultPlacementSide.FromSide,
+            "phA": True,
+            "phB": False,
+            "phC": False,
+            "signal_controlled": False,
+            "initial_closed": False,
+            "fault_resistance": 1.0e-4,
+            "ground_resistance": 1.0e-4,
+            "open_conductance": 1.0e-8,
+            "fault_time_constant": 1.0e-6,
+            "command_threshold": 0.5,
+        })
+
+    def _build_fault_emt_modal_tooltip(self, modal_config: Dict[str, Any]) -> str:
+        """
+        Build one compact tooltip for one EMT fault block.
+
+        :param modal_config: Persisted fault modal configuration.
+        :return: Tooltip text.
+        """
+        active_labels: List[str] = list()
+        fault_tpe_obj: object = modal_config.get("fault_type", FaultType.LG)
+        fault_tpe: FaultType
+
+        if isinstance(fault_tpe_obj, FaultType):
+            fault_tpe = fault_tpe_obj
+        else:
+            fault_tpe = FaultType.argparse(str(fault_tpe_obj))
+
+        if bool(modal_config.get("phA", False)):
+            active_labels.append("A")
+        else:
+            pass
+
+        if bool(modal_config.get("phB", False)):
+            active_labels.append("B")
+        else:
+            pass
+
+        if bool(modal_config.get("phC", False)):
+            active_labels.append("C")
+        else:
+            pass
+
+        tooltip_lines: List[str] = list(["FAULT_EMT"])
+        tooltip_lines.append(f"Type: {fault_tpe.name}")
+        tooltip_lines.append(f"Placement: {str(modal_config.get('placement_side', EmtFaultPlacementSide.FromSide))}")
+        tooltip_lines.append(f"Phases: {', '.join(active_labels)}")
+        tooltip_lines.append(f"Rf={float(modal_config.get('fault_resistance', 0.0)):.4g}")
+
+        if fault_tpe in {FaultType.LG, FaultType.LLG, FaultType.LLLG}:
+            tooltip_lines.append(f"Rg={float(modal_config.get('ground_resistance', 0.0)):.4g}")
+        else:
+            pass
+
+        tooltip_lines.append(f"Gopen={float(modal_config.get('open_conductance', 0.0)):.4g}")
+        tooltip_lines.append(f"tau={float(modal_config.get('fault_time_constant', 0.0)):.4g} s")
+
+        if bool(modal_config.get("signal_controlled", False)):
+            tooltip_lines.append("Controlled by command input")
+        else:
+            tooltip_lines.append("Controlled by EMT events")
+
+        return "\n".join(tooltip_lines)
+
+    def create_fault_emt_block_item(self, x_pos: float, y_pos: float) -> GenericBlockItem | None:
+        """
+        Create one EMT fault block configured through the fault modal.
+
+        :param x_pos: Drop x position.
+        :param y_pos: Drop y position.
+        :return: Created block item or None when the dialog is cancelled.
+        """
+        default_config: Dict[str, Any] = self._build_default_fault_emt_modal_config()
+        dialog = FaultEmtDialog(self, initial_config=default_config)
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            # The dialog returns a persisted modal payload, and the defaults fill any
+            # future optional keys so old diagrams remain rebuildable after refactors.
+            fault_config: Dict[str, Any] = dict(default_config)
+            fault_config.update(dialog.get_configuration())
+        else:
+            return None
+
+        count: int = self.block_counters.get(BlockType.FAULT_EMT, 0) + 1
+        item_name: str = f"fault_emt_{count}"
+        block_model = get_fault_emt_template(
+            vf=self.var_factory,
+            fault_type=fault_config["fault_type"],
+            placement_side=fault_config["placement_side"],
+            phA=bool(fault_config["phA"]),
+            phB=bool(fault_config["phB"]),
+            phC=bool(fault_config["phC"]),
+            signal_controlled=bool(fault_config["signal_controlled"]),
+            initial_closed=bool(fault_config["initial_closed"]),
+            fault_resistance=float(fault_config["fault_resistance"]),
+            ground_resistance=float(fault_config["ground_resistance"]),
+            open_conductance=float(fault_config["open_conductance"]),
+            fault_time_constant=float(fault_config["fault_time_constant"]),
+            command_threshold=float(fault_config["command_threshold"]),
+            name=item_name,
+        ).block
+        block_item: GenericBlockItem = GenericBlockItem(var_factory=self.var_factory,
+                                                        subsys=block_model,
+                                                        api_object=self.api_object,
+                                                        mode=self.mode,
+                                                        name=item_name,
+                                                        position_changed_callback=self._build_position_changed_callback(block_model.uid))
+
+        set_modal_template_metadata(
+            block_model,
+            kind="fault_emt",
+            config=dict(fault_config),
+        )
+
+        self.block_counters[BlockType.FAULT_EMT] = count
+        block_item.set_subsystem(block_model)
+        block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
+        block_item.build_item()
+        block_item.setToolTip(self._build_fault_emt_modal_tooltip(fault_config))
+        self.main_block.add(block_model)
+        self.scene.addItem(block_item)
+        block_item.setPos(QtCore.QPointF(x_pos, y_pos))
+        self.diagram.add_node(
+            name=item_name,
+            x=x_pos,
+            y=y_pos,
+            tpe=BlockType.FAULT_EMT.name,
+            device_uid=block_model.uid,
+        )
+        self.mark_unapplied_changes()
+        return block_item
 
     def create_rlc_combo_emt_block_item(self, x_pos: float, y_pos: float) -> GenericBlockItem | None:
         """
@@ -9316,13 +10410,16 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             BlockType.DOUBLE_EXPONENTIAL_CURRENT_SOURCE_EMT,
             BlockType.HEIDLER_CURRENT_SOURCE_EMT,
             BlockType.CIGRE_SURGE_CURRENT_SOURCE_EMT,
+            BlockType.FAULT_EMT,
             BlockType.SWITCH_EMT,
             BlockType.GROUNDING_LINK_EMT,
             BlockType.NONLINEAR_RESISTOR_EMT,
             BlockType.RLC_COMBO_EMT,
             BlockType.INDUCTION_MOTOR_EMT,
         }:
-            if payload == BlockType.SWITCH_EMT:
+            if payload == BlockType.FAULT_EMT:
+                return self.create_fault_emt_block_item(x_pos=x_pos, y_pos=y_pos)
+            elif payload == BlockType.SWITCH_EMT:
                 return self.create_switch_emt_block_item(x_pos=x_pos, y_pos=y_pos)
             elif payload == BlockType.GROUNDING_LINK_EMT:
                 return self.create_grounding_link_emt_block_item(x_pos=x_pos, y_pos=y_pos)
@@ -10644,122 +11741,81 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             return mask
 
-    def _rebuild_emt_bus_model_from_editor_mask(self, bus: Bus, mask: list[bool]) -> bool:
+    def _get_requested_emt_bus_masks_from_current_interface(self) -> tuple[bool, list[bool] | None, list[bool] | None, list[bool] | None]:
         """
-        Rebuild one EMT bus shell from the phases kept by the editor user.
+        Build the requested EMT bus masks from the currently connected editor ports.
 
-        :param bus: Bus API object.
-        :param mask: AC phase mask ordered as ``[N, A, B, C]``.
-        :return: ``True`` when the bus model was rebuilt successfully.
-        """
-        success: bool = False
+        The editor path is the source of truth for which EMT phases the user
+        kept connected. Once these masks are known, the actual bus-shell
+        creation, expansion, reconnection, and registry update are delegated to
+        the shared engine-side attachment flow.
 
-        if bus.is_dc:
-            # DC buses ignore the AC mask and are rebuilt with the DC-only
-            # EMT shell.
-            bus.emt_model = BusEmtTemplate(
-                vf=self.var_factory,
-                mask=list([False, False, False, False]),
-                is_dc=True,
-                name=f"{bus.name}_emt_template",
-            ).block
-            success = True
-        else:
-            if any(mask):
-                # AC buses are rebuilt with exactly the phase mask implied by
-                # the remaining editor ports.
-                bus.emt_model = BusEmtTemplate(
-                    vf=self.var_factory,
-                    mask=mask,
-                    is_dc=False,
-                    name=f"{bus.name}_emt_template",
-                ).block
-                success = True
-            else:
-                # Empty AC interfaces cannot define a KCL shell. This state is
-                # handled through a GUI warning instead of throwing an exception.
-                QtWidgets.QMessageBox.warning(
-                    self,
-                    "Invalid EMT bus interface",
-                    f"The EMT interface for bus '{bus.name}' has no remaining AC phases. "
-                    "Keep at least one voltage or current phase port before applying changes.",
-                )
-                success = False
-
-        return success
-
-    def _sync_emt_bus_models_from_current_interface(self) -> bool:
-        """
-        Rebuild connected EMT bus shells from the ports left in the editor.
-
-        The intended workflow is:
-        1. the editor opens with the complete editable EMT AC interface,
-        2. the user removes unneeded phases,
-        3. applying changes rebuilds the bus EMT model from the remaining
-           network ports.
-
-        :return: ``True`` when all required bus EMT models were synchronised.
+        :return: Tuple ``(success, bus_mask, from_mask, to_mask)``.
         """
         success: bool = True
-        mask: list[bool] | None = None
-        mask_from: list[bool] | None = None
-        mask_to: list[bool] | None = None
+        bus_mask: list[bool] | None = None
+        from_mask: list[bool] | None = None
+        to_mask: list[bool] | None = None
 
         if isinstance(self.api_object, InjectionParent):
             if self.api_object.bus.is_dc:
-                success = self._rebuild_emt_bus_model_from_editor_mask(
-                    bus=self.api_object.bus,
-                    mask=list([False, False, False, False]),
-                )
+                bus_mask = list([False, False, False, False])
             else:
-                mask = self._build_connected_emt_injection_bus_mask()
-                if mask is not None:
-                    success = self._rebuild_emt_bus_model_from_editor_mask(
-                        bus=self.api_object.bus,
-                        mask=mask,
-                    )
-                else:
+                bus_mask = self._build_connected_emt_injection_bus_mask()
+                if bus_mask is None:
                     success = False
-
-        elif isinstance(self.api_object, BranchParent):
-            if self.api_object.bus_from.is_dc:
-                success_from: bool = self._rebuild_emt_bus_model_from_editor_mask(
-                    bus=self.api_object.bus_from,
-                    mask=list([False, False, False, False]),
-                )
-            else:
-                mask_from = self._build_connected_emt_branch_bus_mask(side="from")
-                if mask_from is not None:
-                    success_from = self._rebuild_emt_bus_model_from_editor_mask(
-                        bus=self.api_object.bus_from,
-                        mask=mask_from,
-                    )
                 else:
-                    success_from = False
-
-            if self.api_object.bus_to.is_dc:
-                success_to: bool = self._rebuild_emt_bus_model_from_editor_mask(
-                    bus=self.api_object.bus_to,
-                    mask=list([False, False, False, False]),
-                )
-            else:
-                mask_to = self._build_connected_emt_branch_bus_mask(side="to")
-                if mask_to is not None:
-                    success_to = self._rebuild_emt_bus_model_from_editor_mask(
-                        bus=self.api_object.bus_to,
-                        mask=mask_to,
-                    )
-                else:
-                    success_to = False
-
-            success = success_from and success_to
-
+                    if any(bus_mask):
+                        pass
+                    else:
+                        QtWidgets.QMessageBox.warning(
+                            self,
+                            "Invalid EMT bus interface",
+                            f"The EMT interface for bus '{self.api_object.bus.name}' has no remaining AC phases. "
+                            "Keep at least one voltage or current phase port before applying changes.",
+                        )
+                        success = False
         else:
-            # Template editing or unsupported objects do not own concrete bus
-            # interfaces, so there is nothing to synchronise.
-            success = True
+            if isinstance(self.api_object, BranchParent):
+                if self.api_object.bus_from.is_dc:
+                    from_mask = list([False, False, False, False])
+                else:
+                    from_mask = self._build_connected_emt_branch_bus_mask(side="from")
+                    if from_mask is None:
+                        success = False
+                    else:
+                        if any(from_mask):
+                            pass
+                        else:
+                            QtWidgets.QMessageBox.warning(
+                                self,
+                                "Invalid EMT bus interface",
+                                f"The EMT interface for bus '{self.api_object.bus_from.name}' has no remaining AC phases. "
+                                "Keep at least one voltage or current phase port before applying changes.",
+                            )
+                            success = False
 
-        return success
+                if self.api_object.bus_to.is_dc:
+                    to_mask = list([False, False, False, False])
+                else:
+                    to_mask = self._build_connected_emt_branch_bus_mask(side="to")
+                    if to_mask is None:
+                        success = False
+                    else:
+                        if any(to_mask):
+                            pass
+                        else:
+                            QtWidgets.QMessageBox.warning(
+                                self,
+                                "Invalid EMT bus interface",
+                                f"The EMT interface for bus '{self.api_object.bus_to.name}' has no remaining AC phases. "
+                                "Keep at least one voltage or current phase port before applying changes.",
+                            )
+                            success = False
+            else:
+                success = True
+
+        return success, bus_mask, from_mask, to_mask
 
     def add_api_obj_mapping(self):
 
@@ -10965,6 +12021,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         expression_value = parsed_expression
 
                     self.parameters_model.set_value_from_expression(row_index, expression_value)
+                    print("")
                 except Exception as exc:
                     QtWidgets.QMessageBox.warning(
                         self,
@@ -11491,15 +12548,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param item: Scene item selected from the context menu.
         :return: None.
         """
-        if isinstance(item, GenericBlockItem):
-            item.editor_window.show()
-            item.editor_window.raise_()
-            item.editor_window.activateWindow()
-        else:
-            if isinstance(item, BlockItem):
-                self.open_block_subeditor(item)
-            else:
-                pass
+        if isinstance(item, (GenericBlockItem, BlockItem)):
+            self.open_block_subeditor(item)
 
     def open_block_subeditor(self, item: BlockItem | GenericBlockItem) -> None:
         """
@@ -11620,6 +12670,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self._modify_rlc_combo_emt_block(item, modal_config)
         elif modal_kind == "induction_motor_emt":
             self._modify_induction_motor_emt_block(item, modal_config)
+        elif modal_kind == "fault_emt":
+            self._modify_fault_emt_block(item, modal_config)
         elif modal_kind == "switch_emt":
             self._modify_switch_emt_block(item, modal_config)
         else:
@@ -12067,6 +13119,47 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         new_block = get_switch_emt_template(vf=self.var_factory, name=item.subsys.name, **switch_config).block
         self._replace_scene_block_from_template(item, new_block, "switch_emt", dict(switch_config))
 
+    def _modify_fault_emt_block(self, item: BlockItem | GenericBlockItem, modal_config: Dict[str, Any]) -> None:
+        """
+        Reconfigure one modal-created EMT fault block.
+
+        :param item: Target block item.
+        :param modal_config: Stored modal configuration.
+        :return: None.
+        """
+        initial_fault_config: Dict[str, Any] = self._build_default_fault_emt_modal_config()
+        initial_fault_config.update(modal_config)
+        dialog = FaultEmtDialog(self, initial_config=initial_fault_config)
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            fault_config: Dict[str, Any] = self._build_default_fault_emt_modal_config()
+            fault_config.update(dialog.get_configuration())
+        else:
+            return
+
+        if item.subsys is None:
+            return
+        else:
+            pass
+
+        new_block = get_fault_emt_template(
+            vf=self.var_factory,
+            fault_type=fault_config["fault_type"],
+            placement_side=fault_config["placement_side"],
+            phA=bool(fault_config["phA"]),
+            phB=bool(fault_config["phB"]),
+            phC=bool(fault_config["phC"]),
+            signal_controlled=bool(fault_config["signal_controlled"]),
+            initial_closed=bool(fault_config["initial_closed"]),
+            fault_resistance=float(fault_config["fault_resistance"]),
+            ground_resistance=float(fault_config["ground_resistance"]),
+            open_conductance=float(fault_config["open_conductance"]),
+            fault_time_constant=float(fault_config["fault_time_constant"]),
+            command_threshold=float(fault_config["command_threshold"]),
+            name=item.subsys.name,
+        ).block
+        self._replace_scene_block_from_template(item, new_block, "fault_emt", dict(fault_config))
+
     def _modify_rlc_combo_emt_block(self, item: BlockItem | GenericBlockItem, modal_config: Dict[str, Any]) -> None:
         """
         Reconfigure one modal-created EMT combined RLC shunt block.
@@ -12453,21 +13546,55 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
 
         elif self.mode == DynamicSimulationMode.EMT:
+            masks_are_valid: bool
+            requested_bus_mask: list[bool] | None
+            requested_from_mask: list[bool] | None
+            requested_to_mask: list[bool] | None
+
+            masks_are_valid, requested_bus_mask, requested_from_mask, requested_to_mask = \
+                self._get_requested_emt_bus_masks_from_current_interface()
             if self.api_object.emt_template is not None:
+                # The editor is about to overwrite the saved EMT model in place,
+                # so the reusable template pointer must be cleared. However, the
+                # generic ``emt_template = None`` setter also unregisters the
+                # current device from all bus registries immediately. That early
+                # detach does not happen in the native template-assignment flow
+                # and breaks the symbolic identity chain that the later shared
+                # attach helper expects to repair in place. Clear only the stored
+                # template reference here and let the shared attach helper handle
+                # the bus-registry refresh at the correct stage.
                 self.api_object.emt_template = None
             else:
                 pass
-            # Before copying the edited block back to the device, rebuild the
-            # connected EMT bus shells using the network ports that the user
-            # has actually kept in the editor.
-            bus_models_synchronised: bool = self._sync_emt_bus_models_from_current_interface()
-            if bus_models_synchronised:
+            if masks_are_valid:
                 # Persist only the EMT interface refs that are still wired into
                 # the edited model so the saved device contract matches the
                 # rebuilt terminal bus shells seen by the simulation builder.
                 self._prune_disconnected_emt_root_interface()
                 # Copy the validated editor state back to the owned EMT model.
                 copy_block_state(source_block=self.main_block, target_block=self.original_block)
+                # Editor copy-back can leave the saved root external mapping and
+                # the saved root input/output vars for the same EMT reference as
+                # different symbolic objects. Normalize the saved contract first
+                # so later reconnect helpers and the EMT checker operate on the
+                # same root variables.
+                unify_saved_emt_model_root_contract(device=self.api_object)
+                # The saved EMT model now owns fresh cloned symbolic variables.
+                # Register those authoritative post-copy variables in the shared
+                # VarFactory before any reconnect step tries to propagate bus-side
+                # identities through the factory connection machinery.
+                register_saved_emt_model_vars_for_device(device=self.api_object,
+                                                         var_factory=self.var_factory)
+                # The editor path now reuses the same engine-side EMT attachment
+                # workflow as the native template-assignment path. The only GUI-
+                # specific responsibility left here is determining which phase
+                # masks the user kept connected.
+                attach_emt_model_to_buses(device=self.api_object,
+                                          model=self.api_object.emt_model,
+                                          var_factory=self.var_factory,
+                                          bus_mask=requested_bus_mask,
+                                          from_mask=requested_from_mask,
+                                          to_mask=requested_to_mask)
                 # Mark the working copy as saved because the device model now
                 # contains the current editor contents.
                 self.has_unapplied_changes = False
@@ -12482,7 +13609,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     pass
             else:
                 # Do not apply the edited model if the bus interface is invalid.
-                # The warning is already emitted by the synchronisation method.
+                # The warning is already emitted by the editor mask-validation path.
                 pass
 
     def open_inspect_dialog(self):
@@ -12512,6 +13639,412 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         button_box.rejected.connect(dialog.reject)
 
         # Show dialog
+        dialog.exec()
+
+    def _build_connected_port_sets(self) -> tuple[set[tuple[int, int]], set[tuple[int, int]]]:
+        """
+        Build quick-lookup sets for connected inputs and outputs.
+
+        :return: ``(connected_inputs, connected_outputs)``.
+        """
+        # The graph diagram stores connections by node UID and port index. The
+        # validator precomputes these sets once so later checks are O(1) per port.
+        connected_inputs: set[tuple[int, int]] = set()
+        connected_outputs: set[tuple[int, int]] = set()
+        con: Any
+        for con in self.diagram.con_data.values():
+            connected_outputs.add((con.from_uid, con.port_number_from))
+            connected_inputs.add((con.to_uid, con.port_number_to))
+        return connected_inputs, connected_outputs
+
+    def _validate_equation_counts(self, section: ValidationSection, blocks: list[Block]) -> None:
+        """
+        Append state/algebraic equation-count mismatches.
+
+        :param section: Mutable grouped section results.
+        :param blocks: Blocks to validate.
+        :return: None.
+        """
+        block: Block
+        for block in blocks:
+            # The first structural consistency rule checks equation balance for
+            # each symbolic subsystem independently.
+            block_label: str = format_validation_block_label(block)
+            if len(block.state_vars) != len(block.state_eqs):
+                add_validation_detail(
+                    section=section,
+                    block_label=block_label,
+                    detail=f"state vars={len(block.state_vars)}, state eqs={len(block.state_eqs)}",
+                )
+            else:
+                pass
+
+            if len(block.algebraic_vars) != len(block.algebraic_eqs):
+                add_validation_detail(
+                    section=section,
+                    block_label=block_label,
+                    detail=f"algebraic vars={len(block.algebraic_vars)}, algebraic eqs={len(block.algebraic_eqs)}",
+                )
+            else:
+                pass
+
+    def _validate_duplicate_variable_names(self, section: ValidationSection, blocks: list[Block]) -> None:
+        """
+        Append duplicate symbolic-name issues inside each block.
+
+        :param section: Mutable grouped section results.
+        :param blocks: Blocks to validate.
+        :return: None.
+        """
+        block: Block
+        for block in blocks:
+            # Duplicate-name validation must inspect every collection that can
+            # expose symbolic variables inside one block.
+            name_to_uids: dict[str, set[int]] = dict()
+            parameter_vars: list[Var] = list(block.parameters.keys())
+            event_vars: list[Var] = list(block.event_dict.keys())
+            mode_vars: list[Var] = list(block.mode_dict.keys())
+
+            append_vars_to_name_uid_map(name_to_uids=name_to_uids, vars_list=block.state_vars)
+            append_vars_to_name_uid_map(name_to_uids=name_to_uids, vars_list=block.algebraic_vars)
+            append_vars_to_name_uid_map(name_to_uids=name_to_uids, vars_list=block.diff_vars)
+            append_vars_to_name_uid_map(name_to_uids=name_to_uids, vars_list=block.in_vars)
+            append_vars_to_name_uid_map(name_to_uids=name_to_uids, vars_list=block.out_vars)
+            append_vars_to_name_uid_map(name_to_uids=name_to_uids, vars_list=parameter_vars)
+            append_vars_to_name_uid_map(name_to_uids=name_to_uids, vars_list=event_vars)
+            append_vars_to_name_uid_map(name_to_uids=name_to_uids, vars_list=mode_vars)
+
+            # Out vars, in vars, mappings and parameter dictionaries often reuse
+            # the exact same Var object that already exists in the block state or
+            # algebraic collections. That is valid. We only flag names that map
+            # to multiple distinct symbolic variables.
+            duplicates: list[str] = sorted([name for name, uids in name_to_uids.items() if len(uids) > 1])
+            if duplicates:
+                add_validation_detail(
+                    section=section,
+                    block_label=format_validation_block_label(block),
+                    detail=f"vars: {', '.join(duplicates)}",
+                )
+            else:
+                pass
+
+    def _validate_parameter_mappings(self, section: ValidationSection, blocks: list[Block]) -> None:
+        """
+        Append parameter mapping and event-value issues.
+
+        :param section: Mutable grouped section results.
+        :param blocks: Blocks to validate.
+        :return: None.
+        """
+        block: Block
+        for block in blocks:
+            # Static parameters are only meaningful if the wider model can reach
+            # them through one of the supported mapping dictionaries.
+            mapped_vars: set[Var] = {
+                var for var in block.external_mapping.values() if isinstance(var, Var)
+            }
+            mapped_vars.update(var for var in block.api_obj_mapping.values() if isinstance(var, Var))
+            mapped_vars.update(var for var in block.event_dict.keys() if isinstance(var, Var))
+
+            unmapped_parameters: list[str] = sorted([
+                var.name for var in block.parameters.keys() if isinstance(var, Var) and var not in mapped_vars
+            ])
+            missing_event_values: list[str] = sorted([
+                var.name for var, expr in block.event_dict.items() if isinstance(var, Var) and expr is None
+            ])
+
+            if unmapped_parameters:
+                add_validation_detail(
+                    section=section,
+                    block_label=format_validation_block_label(block),
+                    detail=f"params missing mapping: {', '.join(unmapped_parameters)}",
+                )
+            else:
+                pass
+
+            if missing_event_values:
+                add_validation_detail(
+                    section=section,
+                    block_label=format_validation_block_label(block),
+                    detail=f"event params with no value: {', '.join(missing_event_values)}",
+                )
+            else:
+                pass
+
+    def _validate_variable_initialization(self, section: ValidationSection, traversal_nodes: list[ValidationTraversalNode]) -> None:
+        """
+        Append initialization issues for state, algebraic and diff variables.
+
+        :param section: Mutable grouped section results.
+        :param traversal_nodes: Recursive traversal nodes carrying effective mappings.
+        :return: None.
+        """
+        traversal_node: ValidationTraversalNode
+        for traversal_node in traversal_nodes:
+            block: Block = traversal_node.get_block()
+            # Initialization validation checks which variables can be seeded from
+            # the external interface and which ones must be seeded internally.
+            external_vars: set[Var] = traversal_node.get_effective_external_vars()
+
+            missing_init_vars: list[str] = list()
+            var: Var
+            for var in block.state_vars:
+                if var not in external_vars and var not in block.init_eqs:
+                    missing_init_vars.append(var.name)
+                else:
+                    pass
+
+            for var in block.algebraic_vars:
+                if var not in external_vars and var not in block.init_eqs:
+                    missing_init_vars.append(var.name)
+                else:
+                    pass
+
+            missing_init_vars = sorted(missing_init_vars)
+            missing_diff_init_vars: list[str] = sorted([
+                var.name
+                for var in block.diff_vars
+                if isinstance(var, Var) and var not in external_vars and var not in block.diff_init_eqs
+            ])
+
+            if missing_init_vars:
+                add_validation_detail(
+                    section=section,
+                    block_label=format_validation_block_label(block),
+                    detail=f"vars missing init/external mapping: {', '.join(missing_init_vars)}",
+                )
+            else:
+                pass
+
+            if missing_diff_init_vars:
+                add_validation_detail(
+                    section=section,
+                    block_label=format_validation_block_label(block),
+                    detail=f"diff vars missing diff init/external mapping: {', '.join(missing_diff_init_vars)}",
+                )
+            else:
+                pass
+
+    def _validate_port_connectivity(self, section: ValidationSection) -> None:
+        """
+        Append missing-port-connection issues from the saved diagram.
+
+        :param section: Mutable grouped section results.
+        :return: None.
+        """
+        connected_inputs, connected_outputs = self._build_connected_port_sets()
+        node_uid: int
+        node: Any
+
+        for node_uid, node in self.diagram.node_data.items():
+            # Each diagram node is validated against the saved symbolic interface
+            # so the report reflects exactly what the user wired in the editor.
+            block: Block | None = self.get_block_from_main_block(node.device_uid)
+            if block is None:
+                pass
+            else:
+                missing_port_messages: list[str] = list()
+                emt_missing_by_phase: dict[str, list[str]] = dict({"N": list(), "A": list(), "B": list(), "C": list()})
+                missing_input_names: list[str] = list()
+                missing_output_names: list[str] = list()
+                append_missing_port_messages_for_direction(
+                    missing_port_messages=missing_port_messages,
+                    emt_missing_by_phase=emt_missing_by_phase,
+                    vars_list=block.in_vars,
+                    node_uid=node_uid,
+                    connected_ports=connected_inputs,
+                    is_input=True,
+                    mode=self.mode,
+                )
+                append_missing_port_messages_for_direction(
+                    missing_port_messages=missing_port_messages,
+                    emt_missing_by_phase=emt_missing_by_phase,
+                    vars_list=block.out_vars,
+                    node_uid=node_uid,
+                    connected_ports=connected_outputs,
+                    is_input=False,
+                    mode=self.mode,
+                )
+
+                if self.mode == DynamicSimulationMode.EMT:
+                    # EMT allows a whole phase to be absent, but it does not allow
+                    # partially connected ports for a phase that is otherwise present.
+                    phase_total_ports_by_name: dict[str, int] = dict({"N": 0, "A": 0, "B": 0, "C": 0})
+                    append_port_vars_to_phase_count(phase_counts=phase_total_ports_by_name, vars_list=block.in_vars)
+                    append_port_vars_to_phase_count(phase_counts=phase_total_ports_by_name, vars_list=block.out_vars)
+
+                    phase_name: str
+                    phase_missing_messages: list[str]
+                    for phase_name, phase_missing_messages in emt_missing_by_phase.items():
+                        if phase_missing_messages:
+                            phase_total_ports: int = phase_total_ports_by_name[phase_name]
+                            phase_missing_count: int = len(phase_missing_messages)
+                            if phase_total_ports > 0 and phase_missing_count < phase_total_ports:
+                                missing_port_messages.extend(phase_missing_messages)
+                            else:
+                                pass
+                        else:
+                            pass
+                else:
+                    pass
+
+                port_message: str
+                for port_message in missing_port_messages:
+                    if port_message.startswith("input '") and port_message.endswith("' is not connected"):
+                        missing_input_names.append(port_message[7:-18])
+                    else:
+                        if port_message.startswith("output '") and port_message.endswith("' is not connected"):
+                            missing_output_names.append(port_message[8:-18])
+                        else:
+                            pass
+
+                if missing_input_names or missing_output_names:
+                    add_validation_detail(
+                        section=section,
+                        block_label=node.name,
+                        detail=format_missing_port_detail(
+                            input_names=missing_input_names,
+                            output_names=missing_output_names,
+                        ),
+                    )
+                else:
+                    pass
+
+    def _validate_emt_phase_consistency(self, section: ValidationSection) -> None:
+        """
+        Append EMT phase-wire consistency information for each diagram node.
+
+        :param section: Mutable grouped section results.
+        :return: None.
+        """
+        # This section reflects only the root EMT interface contract seen by the
+        # bus: one V input and one I output for each of N, A, B, and C.
+        editor_interface_refs: set[VarPowerFlowReferenceType] = self._get_connected_root_interface_refs()
+        root_interface_refs: set[VarPowerFlowReferenceType] = set()
+        root_var: Var
+        root_reference: VarPowerFlowReferenceType | None
+
+        for root_var in self.main_block.in_vars:
+            root_reference = get_var_reference(var=root_var)
+            if root_reference is not None:
+                if self._is_emt_interface_reference(root_reference):
+                    root_interface_refs.add(root_reference)
+                else:
+                    pass
+            else:
+                pass
+
+        for root_var in self.main_block.out_vars:
+            root_reference = get_var_reference(var=root_var)
+            if root_reference is not None:
+                if self._is_emt_interface_reference(root_reference):
+                    root_interface_refs.add(root_reference)
+                else:
+                    pass
+            else:
+                pass
+
+        if has_ac_emt_phase_interface_refs(refs=root_interface_refs):
+            pass
+        else:
+            return
+
+        phase_name: str
+        if isinstance(self.api_object, BranchParent):
+            side: str
+            for side in ["from", "to"]:
+                if has_ac_emt_branch_side_refs(side=side, refs=root_interface_refs):
+                    for phase_name in ["N", "A", "B", "C"]:
+                        ok_state: bool
+                        detail: str
+                        ok_state, detail = classify_emt_branch_phase_wire_from_refs(
+                            side=side,
+                            phase_name=phase_name,
+                            refs=editor_interface_refs,
+                        )
+                        add_validation_status_detail(
+                            section=section,
+                            block_label=get_branch_phase_table_label(side=side, phase_name=phase_name),
+                            detail=detail,
+                            ok=ok_state,
+                        )
+                else:
+                    pass
+        else:
+            for phase_name in ["N", "A", "B", "C"]:
+                ok_state: bool
+                detail: str
+                ok_state, detail = classify_emt_injection_phase_wire_from_refs(
+                    phase_name=phase_name,
+                    refs=editor_interface_refs,
+                )
+                add_validation_status_detail(
+                    section=section,
+                    block_label=get_phase_table_label(phase_name=phase_name),
+                    detail=detail,
+                    ok=ok_state,
+                )
+
+    def collect_model_consistency_sections(self) -> list[ValidationSection]:
+        """
+        Validate the current working model and return grouped section results.
+
+        :return: Ordered validation sections.
+        """
+        # The full validation runs as a deterministic pipeline so the dialog keeps
+        # a stable order and users can compare repeated checks easily.
+        blocks: list[Block] = collect_block_tree(root_block=self.main_block)
+        traversal_root: ValidationTraversalNode = build_validation_traversal_node(
+            block=self.main_block,
+            inherited_external_vars=set(),
+        )
+        traversal_nodes: list[ValidationTraversalNode] = collect_validation_traversal_list(root_node=traversal_root)
+        equation_section: ValidationSection = ValidationSection(title="Equation Counts")
+        duplicate_section: ValidationSection = ValidationSection(title="Repeated Variable Names")
+        parameter_section: ValidationSection = ValidationSection(title="Parameter Mappings")
+        init_section: ValidationSection = ValidationSection(title="Variable Initialization")
+        port_section: ValidationSection = ValidationSection(title="Port Connectivity")
+        phase_section: ValidationSection = ValidationSection(
+            title="Phases Consistency",
+            first_column_title="Phase",
+            show_issue_label=False,
+        )
+
+        self._validate_equation_counts(section=equation_section, blocks=blocks)
+        self._validate_duplicate_variable_names(section=duplicate_section, blocks=blocks)
+        self._validate_parameter_mappings(section=parameter_section, blocks=blocks)
+        self._validate_variable_initialization(section=init_section, traversal_nodes=traversal_nodes)
+        self._validate_port_connectivity(section=port_section)
+        if self.mode == DynamicSimulationMode.EMT:
+            self._validate_emt_phase_consistency(section=phase_section)
+        else:
+            pass
+
+        sections: list[ValidationSection] = list([
+            equation_section,
+            duplicate_section,
+            parameter_section,
+            init_section,
+            port_section,
+        ])
+
+        if self.mode == DynamicSimulationMode.EMT and len(phase_section.get_rows()) > 0:
+            sections.append(phase_section)
+        else:
+            pass
+
+        return sections
+
+    def show_model_consistency_validation(self) -> None:
+        """
+        Show the current non-blocking model consistency report.
+
+        :return: None.
+        """
+        # The dialog is informational only. It must never stop the save path, so
+        # the method only gathers messages and shows them in one modal report.
+        section_results: list[ValidationSection] = self.collect_model_consistency_sections()
+        dialog: ValidationSectionDialog = ValidationSectionDialog(section_results=section_results, parent=self)
         dialog.exec()
 
     def rebuild_scene_from_diagram(self) -> None:
@@ -12566,6 +14099,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         block_item.setToolTip(self._build_transient_source_emt_modal_tooltip(modal_config))
                     elif modal_kind == "induction_motor_emt" and modal_config is not None:
                         block_item.setToolTip(self._build_induction_motor_emt_modal_tooltip(modal_config))
+                    elif modal_kind == "fault_emt" and modal_config is not None:
+                        block_item.setToolTip(self._build_fault_emt_modal_tooltip(modal_config))
                     else:
                         pass
 
@@ -12624,6 +14159,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         item.setToolTip(self._build_transient_source_emt_modal_tooltip(modal_config))
                     elif modal_kind == "induction_motor_emt" and modal_config is not None:
                         item.setToolTip(self._build_induction_motor_emt_modal_tooltip(modal_config))
+                    elif modal_kind == "fault_emt" and modal_config is not None:
+                        item.setToolTip(self._build_fault_emt_modal_tooltip(modal_config))
                     else:
                         pass
                     brush = item.brush()
