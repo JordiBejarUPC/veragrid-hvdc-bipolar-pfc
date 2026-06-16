@@ -1053,54 +1053,86 @@ def _order_hv_mv_lv(bus_a: dev.Bus, bus_b: dev.Bus, bus_c: dev.Bus, logger: Logg
 
     return buses_sorted[0], buses_sorted[1], buses_sorted[2]
 
-def _order_tr4(bus_a: dev.Bus, bus_b: dev.Bus, bus_c: dev.Bus,bus_d: dev.Bus, logger: Logger, tr_name: str) -> Tuple[
-    dev.Bus, dev.Bus, dev.Bus, dev.Bus]:
+def _order_tr4(bus_a: dev.Bus,
+               bus_b: dev.Bus,
+               bus_c: dev.Bus,
+               bus_d: dev.Bus,
+               logger: Logger,
+               tr_name: str) -> Tuple[dev.Bus, dev.Bus, dev.Bus, dev.Bus, List[int]]:
     """
-    Order hv mv lv.
+    Order tr4 buses by voltage and return the original DGS-side indices.
 
-    :param bus_a: bus_a parameter.
-    :param bus_b: bus_b parameter.
-    :param bus_c: bus_c parameter.
-    :param logger: logger parameter.
-    :param tr_name: tr_name parameter.
-    :return: Function result.
+    DGS-side indices:
+    0 = h0
+    1 = l1
+    2 = l2
+    3 = l3
+
+    :param bus_a: First DGS-side bus.
+    :param bus_b: Second DGS-side bus.
+    :param bus_c: Third DGS-side bus.
+    :param bus_d: Fourth DGS-side bus.
+    :param logger: Logger.
+    :param tr_name: Transformer name.
+    :return: Ordered buses plus original DGS-side indices.
     """
-    va = float(bus_a.Vnom)
-    vb = float(bus_b.Vnom)
-    vc = float(bus_c.Vnom)
-    vd = float(bus_d.Vnom)
+    va: float = float(bus_a.Vnom)
+    vb: float = float(bus_b.Vnom)
+    vc: float = float(bus_c.Vnom)
+    vd: float = float(bus_d.Vnom)
 
     if va == 0.0 or vb == 0.0 or vc == 0.0 or vd == 0.0:
         logger.add_warning(
             f"one or more buses have Vnom=0.0",
             device=tr_name,
-            device_class="Transformer3W",
-            value=f"(va={va}, vb={vb}, vc={vc})"
-        )
-
-        return bus_a, bus_b, bus_c, bus_d
-
-    buses: List[dev.Bus] = list()
-    buses.append(bus_a)
-    buses.append(bus_b)
-    buses.append(bus_c)
-    buses.append(bus_d)
-    buses_sorted: List[dev.Bus] = sorted(buses, key=_bus_vnom_sort_key, reverse=True)
-
-    v0 = float(buses_sorted[0].Vnom)
-    v1 = float(buses_sorted[1].Vnom)
-    v2 = float(buses_sorted[2].Vnom)
-    v3 = float(buses_sorted[3].Vnom)
-
-    if v0 == v1 or v1 == v2 or v2 == v3:
-        logger.add_warning(
-            f"HV/MV/LV ambiguous, keeping Vnom-based ordering ",
-            device=tr_name,
             device_class="Transformer4W",
             value=f"(va={va}, vb={vb}, vc={vc}, vd={vd})"
         )
 
-    return buses_sorted[0], buses_sorted[1], buses_sorted[2], buses_sorted[3]
+        return bus_a, bus_b, bus_c, bus_d, [0, 1, 2, 3]
+    else:
+        pass
+
+    indexed_buses: List[Tuple[dev.Bus, int]] = list()
+    indexed_buses.append((bus_a, 0))
+    indexed_buses.append((bus_b, 1))
+    indexed_buses.append((bus_c, 2))
+    indexed_buses.append((bus_d, 3))
+
+    indexed_buses_sorted: List[Tuple[dev.Bus, int]] = sorted(
+        indexed_buses,
+        key=lambda item: float(item[0].Vnom),
+        reverse=True
+    )
+
+    v0: float = float(indexed_buses_sorted[0][0].Vnom)
+    v1: float = float(indexed_buses_sorted[1][0].Vnom)
+    v2: float = float(indexed_buses_sorted[2][0].Vnom)
+    v3: float = float(indexed_buses_sorted[3][0].Vnom)
+
+    if v0 == v1 or v1 == v2 or v2 == v3:
+        logger.add_warning(
+            f"HV/LV1/LV2/LV3 ambiguous, keeping Vnom-based ordering",
+            device=tr_name,
+            device_class="Transformer4W",
+            value=f"(va={va}, vb={vb}, vc={vc}, vd={vd})"
+        )
+    else:
+        pass
+
+    ordered_original_indices: List[int] = list()
+    ordered_original_indices.append(indexed_buses_sorted[0][1])
+    ordered_original_indices.append(indexed_buses_sorted[1][1])
+    ordered_original_indices.append(indexed_buses_sorted[2][1])
+    ordered_original_indices.append(indexed_buses_sorted[3][1])
+
+    return (
+        indexed_buses_sorted[0][0],
+        indexed_buses_sorted[1][0],
+        indexed_buses_sorted[2][0],
+        indexed_buses_sorted[3][0],
+        ordered_original_indices,
+    )
 
 
 
@@ -1228,6 +1260,165 @@ def _apply_tr3_winding_tap_data(
             tap_phase_min=winding.tap_changer.get_tap_phase_min(),
             tap_phase_max=winding.tap_changer.get_tap_phase_max(),
         )
+
+def _fill_tr4w_simple_values(trafo4w: dev.TransformerNW,
+                            nominal_voltages: Tuple[float, float, float, float],
+                            nominal_powers: Tuple[float, float, float, float],
+                            short_circuit_voltages: Tuple[float, float, float, float],
+                            copper_losses: Tuple[float, float, float, float],
+                            Pfe: float,
+                            I0: float,
+                            Sbase: float) -> None:
+    """
+    Fill four-winding transformer values from simplified per-winding input data.
+
+    :param trafo4w: Four-winding transformer.
+    :param nominal_voltages: DGS-side voltages in h0, l1, l2, l3 order.
+    :param nominal_powers: DGS-side powers in h0, l1, l2, l3 order.
+    :param short_circuit_voltages: DGS-side short-circuit voltages in h0, l1, l2, l3 order.
+    :param copper_losses: DGS-side copper losses in h0, l1, l2, l3 order.
+    :param ordered_original_indices: Mapping from transformer winding order to original DGS-side order.
+    :param Pfe: Shared iron-core losses in kW.
+    :param I0: Shared no-load current in percent.
+    :param Sbase: System base power in MVA.
+    :return: None.
+    """
+    for winding_index in range(4):
+        winding: dev.Winding = trafo4w.windings[winding_index]
+
+        winding.HV = nominal_voltages[winding_index]
+        winding.LV = 1.0
+
+        winding.Sn = nominal_powers[winding_index]
+        winding.rate = nominal_powers[winding_index]
+        winding.design_rate = nominal_powers[winding_index]
+
+        winding.Pcu = copper_losses[winding_index]
+        winding.Vsc = short_circuit_voltages[winding_index]
+
+    trafo4w.Pfe = Pfe
+    trafo4w.I0 = I0
+
+    trafo4w.recalculate_windings_from_definition(Sbase=Sbase)
+
+
+
+
+def _apply_tr4_winding_tap_data(
+        windings: Tuple[dev.Winding, ...],
+        current_positions: Tuple[int, int, int, int],
+        neutral_positions: Tuple[int, int, int, int],
+        minimum_positions: Tuple[int, int, int, int],
+        maximum_positions: Tuple[int, int, int, int],
+        step_percents: Tuple[float, float, float, float],
+        phase_angle_degs: Tuple[float, float, float, float],
+) -> None:
+    """
+    Apply tr4 winding tap data.
+
+    :param windings: Four transformer windings.
+    :param current_positions: Current tap positions for h0, l1, l2 and l3.
+    :param neutral_positions: Neutral tap positions for h0, l1, l2 and l3.
+    :param minimum_positions: Minimum tap positions for h0, l1, l2 and l3.
+    :param maximum_positions: Maximum tap positions for h0, l1, l2 and l3.
+    :param step_percents: Tap step percentages for h0, l1, l2 and l3.
+    :param phase_angle_degs: Tap phase angles in degrees for h0, l1, l2 and l3.
+    :return: None.
+    """
+    for winding_index in range(4):
+        winding: dev.Winding = windings[winding_index]
+
+        current_position: int = current_positions[winding_index]
+        neutral_position: int = neutral_positions[winding_index]
+        minimum_position: int = minimum_positions[winding_index]
+        maximum_position: int = maximum_positions[winding_index]
+        step_percent: float = step_percents[winding_index]
+        phase_angle_deg: float = phase_angle_degs[winding_index]
+
+        total_positions: int = maximum_position - minimum_position + 1
+        if total_positions <= 0:
+            pass
+        else:
+            tc_type: TapChangerTypes = TapChangerTypes.VoltageRegulation
+            if abs(phase_angle_deg) > 1e-12:
+                tc_type = TapChangerTypes.Symmetrical
+                if abs(abs(phase_angle_deg) % 180.0 - 90.0) < 1e-6:
+                    tc_type = TapChangerTypes.Asymmetrical
+                else:
+                    pass
+            else:
+                pass
+
+            winding.tap_changer.total_positions = total_positions
+            winding.tap_changer.neutral_position = max(0, neutral_position - minimum_position)
+            winding.tap_changer.dV = step_percent / 100.0
+            winding.tap_changer.asymmetry_angle = phase_angle_deg
+            winding.tap_changer.tc_type = tc_type
+
+            tap_position: int = current_position - minimum_position
+            if tap_position < 0:
+                tap_position = 0
+            else:
+                pass
+
+            if tap_position >= winding.tap_changer.total_positions:
+                tap_position = winding.tap_changer.total_positions - 1
+            else:
+                pass
+
+            winding.tap_changer.tap_position = tap_position
+
+            fallback_tap: float = winding.tap_changer.get_tap_module()
+            fallback_tap_min: float = winding.tap_changer.get_tap_module_min()
+            fallback_tap_max: float = winding.tap_changer.get_tap_module_max()
+
+            if tc_type == TapChangerTypes.VoltageRegulation:
+                step: float = step_percent / 100.0
+                tap: float = 1.0 + (current_position - neutral_position) * step
+                tap_min: float = 1.0 + (minimum_position - neutral_position) * step
+                tap_max: float = 1.0 + (maximum_position - neutral_position) * step
+
+                tap, tap_min, tap_max = _sanitize_tap_window(
+                    tap_value=tap,
+                    tap_min_value=tap_min,
+                    tap_max_value=tap_max,
+                    fallback_tap_value=fallback_tap,
+                    fallback_tap_min_value=fallback_tap_min,
+                    fallback_tap_max_value=fallback_tap_max,
+                )
+
+                _apply_branch_tap_state(
+                    branch=winding,
+                    tap_value=tap,
+                    tap_phase=0.0,
+                    tap_min_value=tap_min,
+                    tap_max_value=tap_max,
+                    tap_phase_min=0.0,
+                    tap_phase_max=0.0,
+                )
+            else:
+                tap_value: float
+                tap_min_value: float
+                tap_max_value: float
+
+                tap_value, tap_min_value, tap_max_value = _sanitize_tap_window(
+                    tap_value=fallback_tap,
+                    tap_min_value=fallback_tap_min,
+                    tap_max_value=fallback_tap_max,
+                    fallback_tap_value=fallback_tap,
+                    fallback_tap_min_value=fallback_tap_min,
+                    fallback_tap_max_value=fallback_tap_max,
+                )
+
+                _apply_branch_tap_state(
+                    branch=winding,
+                    tap_value=tap_value,
+                    tap_phase=winding.tap_changer.get_tap_phase(),
+                    tap_min_value=tap_min_value,
+                    tap_max_value=tap_max_value,
+                    tap_phase_min=winding.tap_changer.get_tap_phase_min(),
+                    tap_phase_max=winding.tap_changer.get_tap_phase_max(),
+                )
 
 
 def convert_dgs_to_transformer(tr2: ElmTr2,
@@ -1643,11 +1834,44 @@ def convert_dgs_to_transformer4w(tr4: ElmTr4,
         bus_c = buses[bus_ids[2]]
         bus_d = buses[bus_ids[3]]
 
-    bus_hv, bus_mv, bus_lv, bus_lv2 = _order_tr4(bus_a=bus_a, bus_b=bus_b, bus_c=bus_c, bus_d=bus_d, logger=logger, tr_name=tr4.loc_name)
+    # bus_hv, bus_lv1, bus_lv2, bus_lv3, ordered_original_indices = _order_tr4(bus_a=bus_a, bus_b=bus_b, bus_c=bus_c, bus_d=bus_d, logger=logger, tr_name=tr4.loc_name)
+
+    cubic_by_id: Dict[str, StaCubic] = dict()
+    for cubic in cubics_by_objid.get(_ref_id(tr4.ID), list()):
+        cubic_id: str | None = _ref_id(cubic.ID)
+        if cubic_id is not None and cubic_id != "":
+            cubic_by_id[cubic_id] = cubic
+        else:
+            pass
+
+    cubic_hv: StaCubic | None = _resolve_pointer_dict_value(key=tr4.bush0, mapping=cubic_by_id)
+    cubic_lv1: StaCubic | None = _resolve_pointer_dict_value(key=tr4.busl1, mapping=cubic_by_id)
+    cubic_lv2: StaCubic | None = _resolve_pointer_dict_value(key=tr4.busl2, mapping=cubic_by_id)
+    cubic_lv3: StaCubic | None = _resolve_pointer_dict_value(key=tr4.busl3, mapping=cubic_by_id)
+
+    if cubic_hv is None or cubic_lv1 is None or cubic_lv2 is None or cubic_lv3 is None:
+        raise ValueError(f"Missing one or more ElmTr4 side cubicles for transformer {tr4.ID}")
+    else:
+        pass
+
+    term_hv: str | None = _ref_id(cubic_hv.fold_id)
+    term_lv1: str | None = _ref_id(cubic_lv1.fold_id)
+    term_lv2: str | None = _ref_id(cubic_lv2.fold_id)
+    term_lv3: str | None = _ref_id(cubic_lv3.fold_id)
+
+    if term_hv is None or term_lv1 is None or term_lv2 is None or term_lv3 is None:
+        raise ValueError(f"Missing one or more ElmTr4 side terminals for transformer {tr4.ID}")
+    else:
+        pass
+
+    bus_hv: dev.Bus = bus_by_term_id[term_hv]
+    bus_lv1: dev.Bus = bus_by_term_id[term_lv1]
+    bus_lv2: dev.Bus = bus_by_term_id[term_lv2]
+    bus_lv3: dev.Bus = bus_by_term_id[term_lv3]
 
     # Graphic position not working right now
-    x = (float(bus_hv.x) + float(bus_mv.x) + float(bus_lv.x) + float(bus_lv2.x)) / 4.0
-    y = (float(bus_hv.y) + float(bus_mv.y) + float(bus_lv.y) + float(bus_lv2.y)) / 4.0
+    x = (float(bus_hv.x) + float(bus_lv1.x) + float(bus_lv2.x) + float(bus_lv3.x)) / 4.0
+    y = (float(bus_hv.y) + float(bus_lv1.y) + float(bus_lv2.y) + float(bus_lv3.y)) / 4.0
 
     transformer_name = _get_non_empty_name(tr4.loc_name, f"Transformer4W_{_ref_id(tr4.ID)}")
     transformer_name = _get_parallel_device_name(transformer_name, parallel_index, parallel_count)
@@ -1661,9 +1885,9 @@ def convert_dgs_to_transformer4w(tr4: ElmTr4,
         winding_count=4,
         buses=[
             bus_hv,
-            bus_mv,
-            bus_lv,
+            bus_lv1,
             bus_lv2,
+            bus_lv3,
         ],
         active=(int(tr4.outserv) == 0),
         Pfe=float(template.pfe),
@@ -1672,7 +1896,111 @@ def convert_dgs_to_transformer4w(tr4: ElmTr4,
         y=y,
     )
 
-    
+
+    if template.inputData == 0:
+        trafo4w.fill_tr4W_complete_values(
+            V_h0=template.un_h0,
+            V_l1=template.un_l1,
+            V_l2=template.un_l2,
+            V_l3=template.un_l3,
+
+            Sn_h0=template.sn_h0,
+            Sn_l1=template.sn_l1,
+            Sn_l2=template.sn_l2,
+            Sn_l3=template.sn_l3,
+
+            Vsc_h0l1=template.uk_h0l1,
+            Vsc_h0l2=template.uk_h0l2,
+            Vsc_h0l3=template.uk_h0l3,
+            Vsc_l1l2=template.uk_l1l2,
+            Vsc_l1l3=template.uk_l1l3,
+            Vsc_l2l3=template.uk_l2l3,
+
+            Pcu_h0l1=template.pcu_h0l1,
+            Pcu_h0l2=template.pcu_h0l2,
+            Pcu_h0l3=template.pcu_h0l3,
+            Pcu_l1l2=template.pcu_l1l2,
+            Pcu_l1l3=template.pcu_l1l3,
+            Pcu_l2l3=template.pcu_l2l3,
+
+            Pfe=template.pfe,
+            I0=template.curmag,
+            Sbase=baseMVA,
+        )
+    else:
+        _fill_tr4w_simple_values(
+            trafo4w=trafo4w,
+            nominal_voltages=(
+                template.un_h0,
+                template.un_l1,
+                template.un_l2,
+                template.un_l3,
+            ),
+            nominal_powers=(
+                template.sn_h0,
+                template.sn_l1,
+                template.sn_l2,
+                template.sn_l3,
+            ),
+            short_circuit_voltages=(
+                template.uk_h0,
+                template.uk_l1,
+                template.uk_l2,
+                template.uk_l3,
+            ),
+            copper_losses=(
+                template.pcu_h0,
+                template.pcu_l1,
+                template.pcu_l2,
+                template.pcu_l3,
+            ),
+            Pfe=template.pfe,
+            I0=template.curmag,
+            Sbase=baseMVA,
+        )
+
+    return trafo4w
+
+    _apply_tr4_winding_tap_data(
+        windings=trafo4w.windings,
+        current_positions=(
+            tr4.ntap_h0,
+            tr4.ntap_l1,
+            tr4.ntap_l2,
+            tr4.ntap_l3,
+        ),
+        neutral_positions=(
+            template.ntapneu_h0,
+            template.ntapneu_l1,
+            template.ntapneu_l2,
+            template.ntapneu_l3,
+        ),
+        minimum_positions=(
+            template.ntapmin_h0,
+            template.ntapmin_l1,
+            template.ntapmin_l2,
+            template.ntapmin_l3,
+        ),
+        maximum_positions=(
+            template.ntapmax_h0,
+            template.ntapmax_l1,
+            template.ntapmax_l2,
+            template.ntapmax_l3,
+        ),
+        step_percents=(
+            template.dutap_h0,
+            template.dutap_l1,
+            template.dutap_l2,
+            template.dutap_l3,
+        ),
+        phase_angle_degs=(
+            template.phitr_h0,
+            template.phitr_l1,
+            template.phitr_l2,
+            template.phitr_l3,
+        ),
+    )
+
 
     return trafo4w
 
