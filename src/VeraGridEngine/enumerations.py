@@ -1989,6 +1989,7 @@ class FileType(Enum):
     PyPsa = "PyPsa"
     PandaPower = "Pandapower"
     Iidm = "Iidm"
+    Eurostag = "Eurostag"
     PSSE_raw = "PSS/e raw"
     PSSE_rawx = "PSS/e rawx"
     DGS = "DGS"
