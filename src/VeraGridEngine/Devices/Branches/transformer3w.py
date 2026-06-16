@@ -456,14 +456,14 @@ class Transformer3W(PhysicalDevice):
         self._Pfe: float = 0.0
         self._I0: float = 0.0
 
-        self._winding1 = Winding(bus_from=self.bus0, idtag=w1_idtag,
-                                 bus_to=bus1,
+        self._winding1 = Winding(bus_from=bus1, idtag=w1_idtag,
+                                 bus_to=self.bus0,
                                  HV=V1, LV=1.0, name=name + "_W1")
-        self._winding2 = Winding(bus_from=self.bus0, idtag=w2_idtag,
-                                 bus_to=bus2,
+        self._winding2 = Winding(bus_from=bus2, idtag=w2_idtag,
+                                 bus_to=self.bus0,
                                  HV=V2, LV=1.0, name=name + "_W2")
-        self._winding3 = Winding(bus_from=self.bus0, idtag=w3_idtag,
-                                 bus_to=bus3,
+        self._winding3 = Winding(bus_from=bus3, idtag=w3_idtag,
+                                 bus_to=self.bus0,
                                  HV=V3, LV=1.0, name=name + "_W3")
 
         self.x = float(x)
@@ -545,7 +545,8 @@ class Transformer3W(PhysicalDevice):
     @bus1.setter
     def bus1(self, obj: Bus):
         self._bus1 = obj
-        self.winding1.bus_to = obj
+        self.winding1.bus_from = obj
+        self.winding1.bus_to = self.bus0
 
         if obj is not None:
             self.winding1.set_hv_and_lv(self.winding1.HV, self.winding1.LV)
@@ -560,7 +561,8 @@ class Transformer3W(PhysicalDevice):
     @bus2.setter
     def bus2(self, obj: Bus):
         self._bus2 = obj
-        self.winding2.bus_to = obj
+        self.winding2.bus_from = obj
+        self.winding2.bus_to = self.bus0
 
         if obj is not None:
             self.winding2.set_hv_and_lv(self.winding2.HV, self.winding2.LV)
@@ -575,7 +577,8 @@ class Transformer3W(PhysicalDevice):
     @bus3.setter
     def bus3(self, obj: Bus):
         self._bus3 = obj
-        self.winding3.bus_to = obj
+        self.winding3.bus_from = obj
+        self.winding3.bus_to = self.bus0
 
         if obj is not None:
             self.winding3.set_hv_and_lv(self.winding3.HV, self.winding3.LV)
