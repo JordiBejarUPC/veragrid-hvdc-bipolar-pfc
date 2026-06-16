@@ -75,53 +75,42 @@ def _coerce_fault_placement_side(placement_side: EmtFaultPlacementSide | str) ->
         return EmtFaultPlacementSide.argparse(str(placement_side))
 
 
-def _resolve_fault_shape(fault_type: FaultType, active_phases: List[str]) -> Tuple[List[Tuple[str, str]], bool]:
+def validate_fault_phase_selection(fault_type: FaultType | str,
+                                   phA: bool,
+                                   phB: bool,
+                                   phC: bool) -> FaultType:
     """
-    Resolve one fault type into phase-pair links and ground usage.
+    Validate that the selected active phases match one supported EMT fault topology.
 
-    :param fault_type: Requested fault type.
-    :param active_phases: Ordered active phases.
-    :return: Tuple ``(phase_pair_list, includes_ground)``.
+    :param fault_type: Requested short-circuit topology.
+    :param phA: Enable phase A.
+    :param phB: Enable phase B.
+    :param phC: Enable phase C.
+    :return: Resolved fault type.
+    :raises ValueError: If the phase mask is inconsistent with the topology.
     """
-    active_phase_set = set(active_phases)
-    phase_pair_list: List[Tuple[str, str]] = list()
-    includes_ground: bool = False
+    resolved_fault_type: FaultType = _coerce_fault_type(fault_type)
+    active_phases: List[str] = _get_active_phases(phA=phA, phB=phB, phC=phC)
 
-    if fault_type == FaultType.LG:
+    if resolved_fault_type == FaultType.LG:
         if len(active_phases) != 1:
-            raise ValueError("LG faults require exactly one enabled phase")
-        else:
-            includes_ground = True
+            raise ValueError("EMT LG faults require exactly one active phase")
+    elif resolved_fault_type == FaultType.LL:
+        if len(active_phases) != 2:
+            raise ValueError("EMT LL faults require exactly two active phases")
+    elif resolved_fault_type == FaultType.LLG:
+        if len(active_phases) != 2:
+            raise ValueError("EMT LLG faults require exactly two active phases")
+    elif resolved_fault_type == FaultType.LLL:
+        if active_phases != list(["A", "B", "C"]):
+            raise ValueError("EMT LLL faults require phases A, B and C")
+    elif resolved_fault_type == FaultType.LLLG:
+        if active_phases != list(["A", "B", "C"]):
+            raise ValueError("EMT LLLG faults require phases A, B and C")
     else:
-        if fault_type == FaultType.LL:
-            if len(active_phases) != 2:
-                raise ValueError("LL faults require exactly two enabled phases")
-            else:
-                phase_pair_list.append((active_phases[0], active_phases[1]))
-        else:
-            if fault_type == FaultType.LLG:
-                if len(active_phases) != 2:
-                    raise ValueError("LLG faults require exactly two enabled phases")
-                else:
-                    phase_pair_list.append((active_phases[0], active_phases[1]))
-                    includes_ground = True
-            else:
-                if fault_type == FaultType.LLL:
-                    if active_phase_set != {"A", "B", "C"}:
-                        raise ValueError("LLL faults require phases A, B, and C")
-                    else:
-                        phase_pair_list.extend(list([("A", "B"), ("B", "C")]))
-                else:
-                    if fault_type == FaultType.LLLG:
-                        if active_phase_set != {"A", "B", "C"}:
-                            raise ValueError("LLLG faults require phases A, B, and C")
-                        else:
-                            phase_pair_list.extend(list([("A", "B"), ("B", "C")]))
-                            includes_ground = True
-                    else:
-                        raise ValueError(f"Unsupported EMT fault type '{fault_type}'")
+        raise ValueError(f"Unsupported EMT fault type '{resolved_fault_type}'")
 
-    return phase_pair_list, includes_ground
+    return resolved_fault_type
 
 
 def _create_editor_connection_child(var: Var, is_input: bool, name: str) -> Block:
@@ -147,7 +136,6 @@ def _attach_fault_editor_diagram(root_block: Block,
                                  input_vars: List[Var],
                                  output_vars: List[Var],
                                  active_phases: List[str],
-                                 phase_pair_list: List[Tuple[str, str]],
                                  includes_ground: bool,
                                  placement_side: EmtFaultPlacementSide) -> None:
     """
@@ -157,7 +145,6 @@ def _attach_fault_editor_diagram(root_block: Block,
     :param input_vars: Public input variables.
     :param output_vars: Public output variables.
     :param active_phases: Ordered active phases.
-    :param phase_pair_list: Internal phase-to-phase fault links.
     :param includes_ground: Whether the topology includes ground links.
     :param placement_side: Whether the block sits at the branch from or to side.
     :return: None.
@@ -167,7 +154,6 @@ def _attach_fault_editor_diagram(root_block: Block,
     input_index: int
     output_index: int
     phase_index: int
-    pair_index: int
     input_var: Var
     output_var: Var
     placement_label: str = "From" if placement_side == EmtFaultPlacementSide.FromSide else "To"
@@ -207,70 +193,6 @@ def _attach_fault_editor_diagram(root_block: Block,
         )
         phase_node_blocks[phase_label] = phase_node_block
 
-        outer_input_block: Block | None = input_blocks_by_name.get(f"v_outer_{phase_label}_{root_block.name}", None)
-        inner_output_block_name: str = f"v_inner_{phase_label}_{root_block.name}"
-        inner_output_block: Block | None = None
-        child_block: Block
-
-        for child_block in root_block.children:
-            if child_block.name == inner_output_block_name:
-                inner_output_block = child_block
-            else:
-                pass
-
-        if outer_input_block is not None:
-            root_block.diagram.add_branch(
-                connectionitem_uid=uuid.uuid4().int,
-                device_uid_from=outer_input_block.uid,
-                device_uid_to=phase_node_block.uid,
-                port_number_from=0,
-                port_number_to=0,
-                color="#587291",
-            )
-        else:
-            pass
-
-        if inner_output_block is not None:
-            root_block.diagram.add_branch(
-                connectionitem_uid=uuid.uuid4().int,
-                device_uid_from=phase_node_block.uid,
-                device_uid_to=inner_output_block.uid,
-                port_number_from=0,
-                port_number_to=0,
-                color="#587291",
-            )
-        else:
-            pass
-
-    for pair_index, phase_pair in enumerate(phase_pair_list):
-        phase_a: str = phase_pair[0]
-        phase_b: str = phase_pair[1]
-        pair_block: Block = Block(name=f"Fault Branch {phase_a}-{phase_b}")
-        root_block.add(pair_block)
-        root_block.diagram.add_node(
-            name=pair_block.name,
-            x=500.0,
-            y=170.0 + 90.0 * float(pair_index),
-            tpe=BlockType.SWITCH_EMT.name,
-            device_uid=pair_block.uid,
-        )
-        root_block.diagram.add_branch(
-            connectionitem_uid=uuid.uuid4().int,
-            device_uid_from=phase_node_blocks[phase_a].uid,
-            device_uid_to=pair_block.uid,
-            port_number_from=0,
-            port_number_to=0,
-            color="#587291",
-        )
-        root_block.diagram.add_branch(
-            connectionitem_uid=uuid.uuid4().int,
-            device_uid_from=pair_block.uid,
-            device_uid_to=phase_node_blocks[phase_b].uid,
-            port_number_from=0,
-            port_number_to=0,
-            color="#587291",
-        )
-
     if includes_ground:
         ground_block: Block = Block(name="Fault Ground")
         root_block.add(ground_block)
@@ -295,6 +217,176 @@ def _attach_fault_editor_diagram(root_block: Block,
         pass
 
 
+def _build_lg_fault_equations(active_phases: List[str],
+                              phase_inner_voltage_vars: Dict[str, Var],
+                              phase_fault_current_exprs: Dict[str, Expr],
+                              g_fault_eff: Expr,
+                              algebraic_vars: List[Var],
+                              algebraic_eqs: List[Expr],
+                              vf: VarFactory,
+                              name: str) -> None:
+    """
+    Build one single-line-to-ground fault topology.
+
+    :param active_phases: Ordered active phases.
+    :param phase_inner_voltage_vars: Inner phase voltages.
+    :param phase_fault_current_exprs: Fault current accumulators by phase.
+    :param g_fault_eff: Effective grounding conductance.
+    :param algebraic_vars: Root algebraic variable list to extend.
+    :param algebraic_eqs: Root algebraic equation list to extend.
+    :param vf: EMT variable factory.
+    :param name: Symbolic block name.
+    :return: None.
+    """
+    phase_label: str = active_phases[0]
+    i_fault_var: Var = vf.add_var(f"i_fault_{phase_label}G_{name}")
+    algebraic_vars.append(i_fault_var)
+    algebraic_eqs.append(i_fault_var - g_fault_eff * phase_inner_voltage_vars[phase_label])
+    phase_fault_current_exprs[phase_label] = phase_fault_current_exprs[phase_label] + i_fault_var
+
+
+def _build_ll_fault_equations(active_phases: List[str],
+                              phase_inner_voltage_vars: Dict[str, Var],
+                              phase_fault_current_exprs: Dict[str, Expr],
+                              g_fault_eff: Expr,
+                              algebraic_vars: List[Var],
+                              algebraic_eqs: List[Expr],
+                              vf: VarFactory,
+                              name: str) -> None:
+    """
+    Build one line-to-line fault topology with one algebraic branch current.
+
+    :param active_phases: Ordered active phases.
+    :param phase_inner_voltage_vars: Inner phase voltages.
+    :param phase_fault_current_exprs: Fault current accumulators by phase.
+    :param g_fault_eff: Effective line-to-line conductance.
+    :param algebraic_vars: Root algebraic variable list to extend.
+    :param algebraic_eqs: Root algebraic equation list to extend.
+    :param vf: EMT variable factory.
+    :param name: Symbolic block name.
+    :return: None.
+    """
+    phase_a: str = active_phases[0]
+    phase_b: str = active_phases[1]
+    i_fault_var: Var = vf.add_var(f"i_fault_{phase_a}{phase_b}_{name}")
+    algebraic_vars.append(i_fault_var)
+    algebraic_eqs.append(i_fault_var - g_fault_eff * (phase_inner_voltage_vars[phase_a] - phase_inner_voltage_vars[phase_b]))
+    phase_fault_current_exprs[phase_a] = phase_fault_current_exprs[phase_a] + i_fault_var
+    phase_fault_current_exprs[phase_b] = phase_fault_current_exprs[phase_fault_current_exprs.keys().__iter__().__next__() if False else phase_b] - i_fault_var
+
+
+def _build_llg_fault_equations(active_phases: List[str],
+                               phase_inner_voltage_vars: Dict[str, Var],
+                               phase_fault_current_exprs: Dict[str, Expr],
+                               g_fault_eff: Expr,
+                               algebraic_vars: List[Var],
+                               algebraic_eqs: List[Expr],
+                               vf: VarFactory,
+                               name: str) -> None:
+    """
+    Build one line-line-ground fault topology using a grounded common node.
+
+    :param active_phases: Ordered active phases.
+    :param phase_inner_voltage_vars: Inner phase voltages.
+    :param phase_fault_current_exprs: Fault current accumulators by phase.
+    :param g_fault_eff: Effective grounding conductance.
+    :param algebraic_vars: Root algebraic variable list to extend.
+    :param algebraic_eqs: Root algebraic equation list to extend.
+    :param vf: EMT variable factory.
+    :param name: Symbolic block name.
+    :return: None.
+    """
+    fault_node_voltage_var: Var = vf.add_var(f"v_fault_node_{name}")
+    i_fault_a_var: Var = vf.add_var(f"i_fault_{active_phases[0]}N_{name}")
+    i_fault_b_var: Var = vf.add_var(f"i_fault_{active_phases[1]}N_{name}")
+
+    algebraic_vars.append(fault_node_voltage_var)
+    algebraic_vars.append(i_fault_a_var)
+    algebraic_vars.append(i_fault_b_var)
+
+    algebraic_eqs.append(i_fault_a_var - g_fault_eff * (phase_inner_voltage_vars[active_phases[0]] - fault_node_voltage_var))
+    algebraic_eqs.append(i_fault_b_var - g_fault_eff * (phase_inner_voltage_vars[active_phases[1]] - fault_node_voltage_var))
+    algebraic_eqs.append(i_fault_a_var + i_fault_b_var + g_fault_eff * fault_node_voltage_var)
+
+    phase_fault_current_exprs[active_phases[0]] = phase_fault_current_exprs[active_phases[0]] + i_fault_a_var
+    phase_fault_current_exprs[active_phases[1]] = phase_fault_current_exprs[active_phases[1]] + i_fault_b_var
+
+
+def _build_lll_fault_equations(active_phases: List[str],
+                               phase_inner_voltage_vars: Dict[str, Var],
+                               phase_fault_current_exprs: Dict[str, Expr],
+                               g_fault_eff: Expr,
+                               algebraic_vars: List[Var],
+                               algebraic_eqs: List[Expr],
+                               vf: VarFactory,
+                               name: str) -> None:
+    """
+    Build one balanced three-phase line-to-line fault using a floating common node.
+
+    This is the symmetric representation required for an ungrounded ``LLL`` fault.
+    All three phases connect with equal conductance to one floating fault node,
+    which ensures balanced phase currents and ``i_A + i_B + i_C = 0``.
+
+    :param active_phases: Ordered active phases.
+    :param phase_inner_voltage_vars: Inner phase voltages.
+    :param phase_fault_current_exprs: Fault current accumulators by phase.
+    :param g_fault_eff: Effective fault conductance.
+    :param algebraic_vars: Root algebraic variable list to extend.
+    :param algebraic_eqs: Root algebraic equation list to extend.
+    :param vf: EMT variable factory.
+    :param name: Symbolic block name.
+    :return: None.
+    """
+    fault_node_voltage_var: Var = vf.add_var(f"v_fault_node_{name}")
+    i_fault_a_var: Var = vf.add_var(f"i_fault_AN_{name}")
+    i_fault_b_var: Var = vf.add_var(f"i_fault_BN_{name}")
+    i_fault_c_var: Var = vf.add_var(f"i_fault_CN_{name}")
+
+    algebraic_vars.append(fault_node_voltage_var)
+    algebraic_vars.append(i_fault_a_var)
+    algebraic_vars.append(i_fault_b_var)
+    algebraic_vars.append(i_fault_c_var)
+
+    algebraic_eqs.append(i_fault_a_var - g_fault_eff * (phase_inner_voltage_vars["A"] - fault_node_voltage_var))
+    algebraic_eqs.append(i_fault_b_var - g_fault_eff * (phase_inner_voltage_vars["B"] - fault_node_voltage_var))
+    algebraic_eqs.append(i_fault_c_var - g_fault_eff * (phase_inner_voltage_vars["C"] - fault_node_voltage_var))
+    algebraic_eqs.append(i_fault_a_var + i_fault_b_var + i_fault_c_var)
+
+    phase_fault_current_exprs["A"] = phase_fault_current_exprs["A"] + i_fault_a_var
+    phase_fault_current_exprs["B"] = phase_fault_current_exprs["B"] + i_fault_b_var
+    phase_fault_current_exprs["C"] = phase_fault_current_exprs["C"] + i_fault_c_var
+
+
+def _build_lllg_fault_equations(active_phases: List[str],
+                                phase_inner_voltage_vars: Dict[str, Var],
+                                phase_fault_current_exprs: Dict[str, Expr],
+                                g_fault_eff: Expr,
+                                algebraic_vars: List[Var],
+                                algebraic_eqs: List[Expr],
+                                vf: VarFactory,
+                                name: str) -> None:
+    """
+    Build one balanced three-phase-to-ground fault using a grounded common node.
+
+    :param active_phases: Ordered active phases.
+    :param phase_inner_voltage_vars: Inner phase voltages.
+    :param phase_fault_current_exprs: Fault current accumulators by phase.
+    :param g_fault_eff: Effective phase-to-ground conductance.
+    :param algebraic_vars: Root algebraic variable list to extend.
+    :param algebraic_eqs: Root algebraic equation list to extend.
+    :param vf: EMT variable factory.
+    :param name: Symbolic block name.
+    :return: None.
+    """
+    phase_label: str
+
+    for phase_label in active_phases:
+        i_fault_var: Var = vf.add_var(f"i_fault_{phase_label}G_{name}")
+        algebraic_vars.append(i_fault_var)
+        algebraic_eqs.append(i_fault_var - g_fault_eff * phase_inner_voltage_vars[phase_label])
+        phase_fault_current_exprs[phase_label] = phase_fault_current_exprs[phase_label] + i_fault_var
+
+
 def get_fault_emt_template(
     vf: VarFactory,
     fault_type: FaultType | str = FaultType.LG,
@@ -304,10 +396,10 @@ def get_fault_emt_template(
     phC: bool = False,
     signal_controlled: bool = False,
     initial_closed: bool = False,
-    fault_resistance: float = 1.0e-4,
-    ground_resistance: float = 1.0e-4,
+    fault_resistance: float = 1.0e-2,
+    ground_resistance: float = 1.0e-2,
     open_conductance: float = 1.0e-8,
-    fault_time_constant: float = 1.0e-6,
+    fault_time_constant: float = 1.0e-4,
     command_threshold: float = 0.5,
     name: str = "fault_emt_template",
 ) -> EmtModelTemplate:
@@ -315,17 +407,17 @@ def get_fault_emt_template(
     Build one internal-composition EMT fault block with explicit outer/inner ports.
 
     The block is intended for use inside one parent branch composition built in the
-    dynamic block editor. It does not expose standard bus-side branch references.
-    Instead, it uses one explicit pass-through interface:
+    dynamic block editor. It uses one explicit pass-through interface:
 
     - ``v_outer_*``: incoming branch-side voltage input.
     - ``i_inner_*``: incoming downstream current input.
     - ``v_inner_*``: outgoing downstream voltage algebraic/output.
     - ``i_outer_*``: outgoing upstream current algebraic/output.
 
-    The outer/inner naming stays fixed regardless of whether the fault is placed at
-    the branch from side or to side. The parent branch composition gives those ports
-    their actual topological meaning.
+    The parent composition enforces the zero-impedance pass-through through the
+    explicit algebraic equations ``v_inner_* = v_outer_*``. The physical fault
+    current itself is algebraic, not dynamic, so it is limited by the actual line
+    and source impedances rather than one artificial very-fast first-order state.
 
     :param vf: EMT variable factory.
     :param fault_type: Requested short-circuit topology.
@@ -338,25 +430,25 @@ def get_fault_emt_template(
     :param fault_resistance: Phase-to-phase fault resistance.
     :param ground_resistance: Phase-to-ground fault resistance.
     :param open_conductance: Open-state leakage conductance.
-    :param fault_time_constant: First-order branch-current time constant.
+    :param fault_time_constant: Unused regularization compatibility parameter.
     :param command_threshold: Control threshold for the external command.
     :param name: Symbolic model name.
     :return: EMT fault template.
     """
     active_phases: List[str] = _get_active_phases(phA=phA, phB=phB, phC=phC)
-    resolved_fault_type: FaultType = _coerce_fault_type(fault_type)
+    resolved_fault_type: FaultType = validate_fault_phase_selection(
+        fault_type=fault_type,
+        phA=phA,
+        phB=phB,
+        phC=phC,
+    )
     resolved_placement_side: EmtFaultPlacementSide = _coerce_fault_placement_side(placement_side)
-    phase_pair_list: List[Tuple[str, str]]
-    includes_ground: bool
-    phase_pair_list, includes_ground = _resolve_fault_shape(fault_type=resolved_fault_type, active_phases=active_phases)
-
     templ: EmtModelTemplate = EmtModelTemplate()
     templ.tpe = DeviceType.SwitchDevice
     templ.name = name
     templ.block.name = name
     templ.block.external_mapping = dict()
 
-    # The discrete fault mode controls whether the shunt fault branches are active.
     closed_mode: Var = vf.add_var(f"fault_closed_mode_{name}")
     templ.block.mode_dict[closed_mode] = Const(1.0 if initial_closed else 0.0, name="fault_closed_mode")
 
@@ -364,13 +456,12 @@ def get_fault_emt_template(
     ground_r_var: Var = vf.add_var(f"fault_rg_{name}")
     g_open_var: Var = vf.add_var(f"fault_open_g_{name}")
     tau_var: Var = vf.add_var(f"fault_tau_{name}")
-
     templ.block.event_dict[fault_r_var] = Const(float(fault_resistance), name="fault_r")
     templ.block.event_dict[ground_r_var] = Const(float(ground_resistance), name="fault_rg")
     templ.block.event_dict[g_open_var] = Const(float(open_conductance), name="fault_open_g")
     templ.block.event_dict[tau_var] = Const(float(fault_time_constant), name="fault_tau")
 
-    g_pair_eff: Expr = closed_mode * (Const(1.0) / fault_r_var) + (Const(1.0) - closed_mode) * g_open_var
+    g_fault_eff: Expr = closed_mode * (Const(1.0) / fault_r_var) + (Const(1.0) - closed_mode) * g_open_var
     g_ground_eff: Expr = closed_mode * (Const(1.0) / ground_r_var) + (Const(1.0) - closed_mode) * g_open_var
 
     in_vars: List[Var] = list()
@@ -390,7 +481,7 @@ def get_fault_emt_template(
     if signal_controlled:
         command_input: Var = vf.add_var(f"fault_cmd_{name}")
         threshold_var: Var = vf.add_var(f"fault_cmd_threshold_{name}")
-        templ.block.event_dict[threshold_var] = Const(float(command_threshold), name="fault_cmd_threshold")
+        templ.block.event_dict[threshold_var] = vf.add_const(float(command_threshold), name="fault_cmd_threshold")
         templ.block.procedural_logic.append(
             sampled_value(output=closed_mode, source=Comparison(lhs=command_input, op=CmpOp.GE, rhs=threshold_var))
         )
@@ -400,8 +491,6 @@ def get_fault_emt_template(
 
     phase_label: str
     for phase_label in active_phases:
-        # The inner voltage is an algebraic/output variable because it defines the
-        # internal midpoint voltage that the downstream line block reads.
         v_outer_var: Var = vf.add_var(f"v_outer_{phase_label}_{name}")
         i_inner_var: Var = vf.add_var(f"i_inner_{phase_label}_{name}")
         v_inner_var: Var = vf.add_var(f"v_inner_{phase_label}_{name}")
@@ -414,63 +503,84 @@ def get_fault_emt_template(
         out_vars.append(v_inner_var)
         out_vars.append(i_outer_var)
 
-        # The internal series path is ideal, so the midpoint voltage equals the
-        # outer voltage. The fault current is added on top through the shunt path.
-        algebraic_eqs.append(v_inner_var - v_outer_var)
-
+        # The parent branch composition must impose v_inner = v_outer. The fault
+        # block itself only uses v_inner as the fault-point voltage.
         phase_outer_voltage_vars[phase_label] = v_outer_var
         phase_inner_voltage_vars[phase_label] = v_inner_var
         phase_inner_current_vars[phase_label] = i_inner_var
         phase_outer_current_vars[phase_label] = i_outer_var
-        phase_fault_current_exprs[phase_label] = Const(0.0)
+        phase_fault_current_exprs[phase_label] = vf.add_const(0.0)
 
-    phase_pair: Tuple[str, str]
-    for phase_pair in phase_pair_list:
-        phase_a: str = phase_pair[0]
-        phase_b: str = phase_pair[1]
-        pair_current_var: Var = vf.add_var(f"i_fault_{phase_a}{phase_b}_{name}")
-        pair_diff_var: Var = vf.add_diff_var(name=f"di_fault_{phase_a}{phase_b}_{name}", base_var=pair_current_var)
-        pair_voltage_drop: Expr = phase_inner_voltage_vars[phase_a] - phase_inner_voltage_vars[phase_b]
-
-        state_vars.append(pair_current_var)
-        diff_vars.append(pair_diff_var)
-        state_eqs.append((g_pair_eff * pair_voltage_drop - pair_current_var) / tau_var)
-        phase_fault_current_exprs[phase_a] = phase_fault_current_exprs[phase_a] + pair_current_var
-        phase_fault_current_exprs[phase_b] = phase_fault_current_exprs[phase_b] - pair_current_var
-
-    if includes_ground:
-        for phase_label in active_phases:
-            ground_current_var: Var = vf.add_var(f"i_fault_g_{phase_label}_{name}")
-            ground_diff_var: Var = vf.add_diff_var(name=f"di_fault_g_{phase_label}_{name}", base_var=ground_current_var)
-            phase_voltage_drop: Expr = phase_inner_voltage_vars[phase_label]
-
-            state_vars.append(ground_current_var)
-            diff_vars.append(ground_diff_var)
-            state_eqs.append((g_ground_eff * phase_voltage_drop - ground_current_var) / tau_var)
-            phase_fault_current_exprs[phase_label] = phase_fault_current_exprs[phase_label] + ground_current_var
+    if resolved_fault_type == FaultType.LG:
+        _build_lg_fault_equations(
+            active_phases=active_phases,
+            phase_inner_voltage_vars=phase_inner_voltage_vars,
+            phase_fault_current_exprs=phase_fault_current_exprs,
+            g_fault_eff=g_ground_eff,
+            algebraic_vars=algebraic_vars,
+            algebraic_eqs=algebraic_eqs,
+            vf=vf,
+            name=name,
+        )
     else:
-        pass
+        if resolved_fault_type == FaultType.LL:
+            _build_ll_fault_equations(
+                active_phases=active_phases,
+                phase_inner_voltage_vars=phase_inner_voltage_vars,
+                phase_fault_current_exprs=phase_fault_current_exprs,
+                g_fault_eff=g_fault_eff,
+                algebraic_vars=algebraic_vars,
+                algebraic_eqs=algebraic_eqs,
+                vf=vf,
+                name=name,
+            )
+        else:
+            if resolved_fault_type == FaultType.LLG:
+                _build_llg_fault_equations(
+                    active_phases=active_phases,
+                    phase_inner_voltage_vars=phase_inner_voltage_vars,
+                    phase_fault_current_exprs=phase_fault_current_exprs,
+                    g_fault_eff=g_ground_eff,
+                    algebraic_vars=algebraic_vars,
+                    algebraic_eqs=algebraic_eqs,
+                    vf=vf,
+                    name=name,
+                )
+            else:
+                if resolved_fault_type == FaultType.LLL:
+                    _build_lll_fault_equations(
+                        active_phases=active_phases,
+                        phase_inner_voltage_vars=phase_inner_voltage_vars,
+                        phase_fault_current_exprs=phase_fault_current_exprs,
+                        g_fault_eff=g_fault_eff,
+                        algebraic_vars=algebraic_vars,
+                        algebraic_eqs=algebraic_eqs,
+                        vf=vf,
+                        name=name,
+                    )
+                else:
+                    if resolved_fault_type == FaultType.LLLG:
+                        _build_lllg_fault_equations(
+                            active_phases=active_phases,
+                            phase_inner_voltage_vars=phase_inner_voltage_vars,
+                            phase_fault_current_exprs=phase_fault_current_exprs,
+                            g_fault_eff=g_ground_eff,
+                            algebraic_vars=algebraic_vars,
+                            algebraic_eqs=algebraic_eqs,
+                            vf=vf,
+                            name=name,
+                        )
+                    else:
+                        raise ValueError(f"Unsupported EMT fault type '{resolved_fault_type}'")
 
     for phase_label in active_phases:
-        # KCL at the internal split node enforces that the outer current returned
-        # to the parent branch equals downstream current plus local fault current.
+        # The parent fault port returns the downstream current plus the physical
+        # fault current that leaves the internal split node through the fault path.
         algebraic_eqs.append(
             phase_outer_current_vars[phase_label]
             - phase_inner_current_vars[phase_label]
             - phase_fault_current_exprs[phase_label]
         )
-
-    init_eqs: Dict[Var, Expr | Const] = dict()
-    diff_init_eqs: Dict[Var, Expr | Const] = dict()
-    diff_var: Var
-    state_eq: Expr
-    state_var: Var
-
-    for state_var in state_vars:
-        init_eqs[state_var] = Const(0.0)
-
-    for diff_var, state_eq in zip(diff_vars, state_eqs):
-        diff_init_eqs[diff_var] = state_eq
 
     templ.block.in_vars = in_vars
     templ.block.state_vars = state_vars
@@ -479,16 +589,15 @@ def get_fault_emt_template(
     templ.block.state_eqs = state_eqs
     templ.block.algebraic_eqs = algebraic_eqs
     templ.block.out_vars = out_vars
-    templ.block.init_eqs = init_eqs
-    templ.block.diff_init_eqs = diff_init_eqs
+    templ.block.init_eqs = dict()
+    templ.block.diff_init_eqs = dict()
 
     _attach_fault_editor_diagram(
         root_block=templ.block,
         input_vars=in_vars,
         output_vars=out_vars,
         active_phases=active_phases,
-        phase_pair_list=phase_pair_list,
-        includes_ground=includes_ground,
+        includes_ground=resolved_fault_type in {FaultType.LG, FaultType.LLG, FaultType.LLLG},
         placement_side=resolved_placement_side,
     )
     return templ
