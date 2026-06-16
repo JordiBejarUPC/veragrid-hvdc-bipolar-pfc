@@ -363,6 +363,145 @@ def _validate_injection_emt_bus_connections(logger: Logger,
                                      "bus.v_C")
 
 
+def _validate_line_emt_model_phases_present_in_static_object(logger: Logger,
+                                                             line: dev.Line) -> None:
+    """
+    Validate that each EMT terminal voltage phase present on a line model exists
+    in the static line phase mask defined by ``line.ys``.
+
+    :param logger: Validation logger.
+    :param line: Line device.
+    :return: None.
+    """
+    mdl = line.emt_model
+
+    if mdl.empty():
+        return
+    else:
+        pass
+
+    static_phase_map: dict[VarPowerFlowReferenceType, bool] = dict([
+        (VarPowerFlowReferenceType.vf_N, bool(line.ys.phN)),
+        (VarPowerFlowReferenceType.vf_A, bool(line.ys.phA)),
+        (VarPowerFlowReferenceType.vf_B, bool(line.ys.phB)),
+        (VarPowerFlowReferenceType.vf_C, bool(line.ys.phC)),
+        (VarPowerFlowReferenceType.vt_N, bool(line.ys.phN)),
+        (VarPowerFlowReferenceType.vt_A, bool(line.ys.phA)),
+        (VarPowerFlowReferenceType.vt_B, bool(line.ys.phB)),
+        (VarPowerFlowReferenceType.vt_C, bool(line.ys.phC)),
+    ])
+
+    tracked_refs: set[VarPowerFlowReferenceType] = set(static_phase_map.keys())
+
+    for in_var in mdl.in_vars:
+        if in_var.ref in tracked_refs:
+            if static_phase_map[in_var.ref]:
+                pass
+            else:
+                logger.add_error(
+                    msg="EMT model uses a phase that is not present in the static line object.",
+                    device=line.name,
+                    device_class=line.device_type.value,
+                    value=str(in_var.ref),
+                    expected_value="Phase present in line.ys",
+                )
+        else:
+            pass
+
+
+def _validate_transformer_emt_model_phases_present_in_static_object(logger: Logger,
+                                                                    transformer: dev.Transformer2W) -> None:
+    """
+    Validate that each EMT terminal voltage phase present on a transformer model exists
+    in the static transformer phase mask defined by ``transformer.phases``.
+
+    :param logger: Validation logger.
+    :param transformer: Transformer device.
+    :return: None.
+    """
+    mdl = transformer.emt_model
+
+    if mdl.empty():
+        return
+    else:
+        pass
+
+    phase_set: set[int] = set(int(phase) for phase in transformer.phases)
+    static_phase_map: dict[VarPowerFlowReferenceType, bool] = dict([
+        (VarPowerFlowReferenceType.vf_N, 0 in phase_set),
+        (VarPowerFlowReferenceType.vf_A, 1 in phase_set),
+        (VarPowerFlowReferenceType.vf_B, 2 in phase_set),
+        (VarPowerFlowReferenceType.vf_C, 3 in phase_set),
+        (VarPowerFlowReferenceType.vt_N, 0 in phase_set),
+        (VarPowerFlowReferenceType.vt_A, 1 in phase_set),
+        (VarPowerFlowReferenceType.vt_B, 2 in phase_set),
+        (VarPowerFlowReferenceType.vt_C, 3 in phase_set),
+    ])
+
+    tracked_refs: set[VarPowerFlowReferenceType] = set(static_phase_map.keys())
+
+    for in_var in mdl.in_vars:
+        if in_var.ref in tracked_refs:
+            if static_phase_map[in_var.ref]:
+                pass
+            else:
+                logger.add_error(
+                    msg="EMT model uses a phase that is not present in the static transformer object.",
+                    device=transformer.name,
+                    device_class=transformer.device_type.value,
+                    value=str(in_var.ref),
+                    expected_value="Phase present in transformer.phases",
+                )
+        else:
+            pass
+
+
+def _validate_vsc_emt_model_phases_present_in_static_object(logger: Logger,
+                                                            vsc: dev.VSC) -> None:
+    """
+    Validate that each EMT AC-side voltage phase present on a VSC model exists
+    in the static VSC phase layout.
+
+    VSC devices are treated as always having ``A/B/C`` on the AC side, and ``N``
+    only when ``bus_dc_n`` exists.
+
+    :param logger: Validation logger.
+    :param vsc: VSC device.
+    :return: None.
+    """
+    mdl = vsc.emt_model
+
+    if mdl.empty():
+        return
+    else:
+        pass
+
+    has_neutral: bool = vsc.bus_dc_n is not None
+    static_phase_map: dict[VarPowerFlowReferenceType, bool] = dict([
+        (VarPowerFlowReferenceType.vt_N, has_neutral),
+        (VarPowerFlowReferenceType.vt_A, True),
+        (VarPowerFlowReferenceType.vt_B, True),
+        (VarPowerFlowReferenceType.vt_C, True),
+    ])
+
+    tracked_refs: set[VarPowerFlowReferenceType] = set(static_phase_map.keys())
+
+    for in_var in mdl.in_vars:
+        if in_var.ref in tracked_refs:
+            if static_phase_map[in_var.ref]:
+                pass
+            else:
+                logger.add_error(
+                    msg="EMT model uses a phase that is not present in the static VSC object.",
+                    device=vsc.name,
+                    device_class=vsc.device_type.value,
+                    value=str(in_var.ref),
+                    expected_value="Phase present in VSC static layout",
+                )
+        else:
+            pass
+
+
 class MultiCircuit(Assets):
     """
     The concept of circuit should be easy enough to understand. It represents a set of
@@ -3581,6 +3720,15 @@ class MultiCircuit(Assets):
                                  device=elm.name)
             else:
                 _validate_branch_emt_bus_connections(logger=logger, branch=elm)
+                if elm.device_type == DeviceType.LineDevice:
+                    _validate_line_emt_model_phases_present_in_static_object(logger=logger, line=elm)
+                elif elm.device_type == DeviceType.Transformer2WDevice:
+                    _validate_transformer_emt_model_phases_present_in_static_object(logger=logger,
+                                                                                         transformer=elm)
+                elif elm.device_type == DeviceType.VscDevice:
+                    _validate_vsc_emt_model_phases_present_in_static_object(logger=logger, vsc=elm)
+                else:
+                    pass
 
         for elm in self.get_injection_devices_iter():
             if elm.emt_model.empty():
@@ -3589,6 +3737,13 @@ class MultiCircuit(Assets):
                                  device=elm.name)
             else:
                 _validate_injection_emt_bus_connections(logger=logger, injection=elm)
+                # TODO: add static vs dynamic validation for other types of device
+                # if elm.device_type == DeviceType.GeneratorDevice:
+                #     _validate_gen_emt_phases_present_in_static_object(logger=logger, gen=elm)
+                # elif elm.device_type == DeviceType.LoadDevice:
+                #     _validate_gen_emt_phases_present_in_static_object(logger=logger, gen=elm)
+                # else:
+                #     pass
         return logger
 
     def create_in_out_respecting_line_locations(self, line: dev.Line, bus: dev.Bus, remove_line: bool = False) -> tuple[dev.Line, dev.Line]:

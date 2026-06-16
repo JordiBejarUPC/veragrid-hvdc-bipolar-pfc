@@ -17,205 +17,6 @@ from VeraGridEngine.Utils.Symbolic.bus_emt_template import BusEmtTemplate
 from VeraGridEngine.Devices.Parents.dynamic_bus_parent import EmtBusConnectionSide, EmtBusConnectedModelRecord
 
 
-def _debug_get_var_uid(var: Any) -> str:
-    """
-    Return a readable uid label for one symbolic variable.
-
-    :param var: Symbolic variable or ``None``.
-    :return: Readable uid label.
-    """
-    if var is None:
-        return "None"
-    else:
-        return str(var.uid)
-
-
-def _debug_get_var_non_mutable_uid(var: Any) -> str:
-    """
-    Return a readable stable uid label for one symbolic variable.
-
-    :param var: Symbolic variable or ``None``.
-    :return: Readable stable uid label.
-    """
-    if var is None:
-        return "None"
-    else:
-        return str(var.non_mutable_uid)
-
-
-def _debug_dump_bus_registry(bus: Any,
-                             label: str) -> None:
-    """
-    Print the current EMT bus registry state for one bus.
-
-    :param bus: Bus to inspect.
-    :param label: Context label for the debug trace.
-    :return: None.
-    """
-    record: EmtBusConnectedModelRecord
-    entries: list[str] = list()
-
-    for record in bus.get_emt_models_connected():
-        device: Any = record.get_device()
-        model: Block = record.get_model()
-        entry_text: str = (
-            f"{device.name}:{record.get_side().name}:"
-            f"block_uid={model.uid}:"
-            f"model_id={id(model)}"
-        )
-        entries.append(entry_text)
-
-    print(f"[EMT DEBUG] {label} bus={bus.name} registry={entries}")
-
-
-def _debug_dump_bus_contract(bus: Any,
-                             label: str) -> None:
-    """
-    Print the root EMT bus contract variables for one bus.
-
-    :param bus: Bus to inspect.
-    :param label: Context label for the debug trace.
-    :return: None.
-    """
-    if bus.emt_model.empty():
-        print(f"[EMT DEBUG] {label} bus={bus.name} emt_model=EMPTY")
-    else:
-        external_mapping = bus.emt_model.external_mapping
-        v_n = external_mapping.get(VarPowerFlowReferenceType.v_N, None)
-        v_a = external_mapping.get(VarPowerFlowReferenceType.v_A, None)
-        v_b = external_mapping.get(VarPowerFlowReferenceType.v_B, None)
-        v_c = external_mapping.get(VarPowerFlowReferenceType.v_C, None)
-        v_dc = external_mapping.get(VarPowerFlowReferenceType.Vdc, None)
-        print(
-            f"[EMT DEBUG] {label} bus={bus.name} block_uid={bus.emt_model.uid} "
-            f"Vdc(uid={_debug_get_var_uid(v_dc)},nmu={_debug_get_var_non_mutable_uid(v_dc)}) "
-            f"vA(uid={_debug_get_var_uid(v_a)},nmu={_debug_get_var_non_mutable_uid(v_a)}) "
-            f"vB(uid={_debug_get_var_uid(v_b)},nmu={_debug_get_var_non_mutable_uid(v_b)}) "
-            f"vC(uid={_debug_get_var_uid(v_c)},nmu={_debug_get_var_non_mutable_uid(v_c)}) "
-            f"vN(uid={_debug_get_var_uid(v_n)},nmu={_debug_get_var_non_mutable_uid(v_n)})"
-        )
-
-
-def _debug_dump_device_contract(device: Any,
-                                label: str) -> None:
-    """
-    Print the root EMT external mapping state for one device model.
-
-    :param device: Device to inspect.
-    :param label: Context label for the debug trace.
-    :return: None.
-    """
-    if device.emt_model.empty():
-        print(f"[EMT DEBUG] {label} device={device.name} emt_model=EMPTY")
-    else:
-        external_mapping = device.emt_model.external_mapping
-        refs = [
-            VarPowerFlowReferenceType.Vdc,
-            VarPowerFlowReferenceType.v_N,
-            VarPowerFlowReferenceType.v_A,
-            VarPowerFlowReferenceType.v_B,
-            VarPowerFlowReferenceType.v_C,
-            VarPowerFlowReferenceType.vf_N,
-            VarPowerFlowReferenceType.vf_A,
-            VarPowerFlowReferenceType.vf_B,
-            VarPowerFlowReferenceType.vf_C,
-            VarPowerFlowReferenceType.vt_N,
-            VarPowerFlowReferenceType.vt_A,
-            VarPowerFlowReferenceType.vt_B,
-            VarPowerFlowReferenceType.vt_C,
-        ]
-        parts: list[str] = list()
-        ref: VarPowerFlowReferenceType
-        for ref in refs:
-            var = external_mapping.get(ref, None)
-            if var is None:
-                pass
-            else:
-                parts.append(
-                    f"{ref.name}(uid={_debug_get_var_uid(var)},nmu={_debug_get_var_non_mutable_uid(var)})"
-                )
-        print(
-            f"[EMT DEBUG] {label} device={device.name} block_uid={device.emt_model.uid} "
-            f"block_id={id(device.emt_model)} refs={parts}"
-        )
-
-
-def _debug_dump_device_root_io_alignment(device: Any,
-                                         label: str) -> None:
-    """
-    Print how one device root external-mapping contract aligns with its root IO vars.
-
-    The current editor/save bug investigation requires checking whether the root
-    external-mapping vars inspected by the precheck are the same symbolic objects
-    as the root input vars targeted by the EMT reconnect helpers.
-
-    :param device: Device to inspect.
-    :param label: Context label for the debug trace.
-    :return: None.
-    """
-    model: Block = device.emt_model
-
-    if model.empty():
-        print(f"[EMT DEBUG] {label} device={device.name} root_alignment=EMPTY")
-    else:
-        refs_to_check: list[VarPowerFlowReferenceType] = list([
-            VarPowerFlowReferenceType.Vdc,
-            VarPowerFlowReferenceType.v_N,
-            VarPowerFlowReferenceType.v_A,
-            VarPowerFlowReferenceType.v_B,
-            VarPowerFlowReferenceType.v_C,
-            VarPowerFlowReferenceType.vf_N,
-            VarPowerFlowReferenceType.vf_A,
-            VarPowerFlowReferenceType.vf_B,
-            VarPowerFlowReferenceType.vf_C,
-            VarPowerFlowReferenceType.vt_N,
-            VarPowerFlowReferenceType.vt_A,
-            VarPowerFlowReferenceType.vt_B,
-            VarPowerFlowReferenceType.vt_C,
-            VarPowerFlowReferenceType.Vf_dc,
-            VarPowerFlowReferenceType.Vt_dc,
-        ])
-        ref: VarPowerFlowReferenceType
-        parts: list[str] = list()
-        root_var = None
-        io_var = None
-
-        for ref in refs_to_check:
-            root_var = model.external_mapping.get(ref, None)
-
-            if root_var is None:
-                pass
-            else:
-                io_var = None
-
-                for io_var_candidate in model.in_vars:
-                    if io_var_candidate.ref == ref:
-                        io_var = io_var_candidate
-                    else:
-                        pass
-
-                if io_var is None:
-                    for io_var_candidate in model.out_vars:
-                        if io_var_candidate.ref == ref:
-                            io_var = io_var_candidate
-                        else:
-                            pass
-                else:
-                    pass
-
-                if io_var is None:
-                    parts.append(
-                        f"{ref.name}:root(uid={_debug_get_var_uid(root_var)},nmu={_debug_get_var_non_mutable_uid(root_var)})->io(None)"
-                    )
-                else:
-                    parts.append(
-                        f"{ref.name}:root(uid={_debug_get_var_uid(root_var)},nmu={_debug_get_var_non_mutable_uid(root_var)},id={id(root_var)})"
-                        f" io(uid={_debug_get_var_uid(io_var)},nmu={_debug_get_var_non_mutable_uid(io_var)},id={id(io_var)})"
-                    )
-
-        print(f"[EMT DEBUG] {label} device={device.name} root_alignment={parts}")
-
-
 def _has_materialized_emt_model(device: Any) -> bool:
     """
     Check whether one device already owns one materialized EMT model.
@@ -1362,69 +1163,41 @@ def connect_bus_variables_emt(device: Any,
         from_required_mask: list[bool] = list([False, False, False, False])
         to_required_mask: list[bool] = list([False, False, False, False])
 
-        if not device.bus_from.is_dc:
-            ys_phase_device_types: set[DeviceType] = set([DeviceType.LineDevice])
-            transformer_phase_device_types: set[DeviceType] = set([DeviceType.Transformer2WDevice,
-                                                                   DeviceType.WindingDevice])
-            abc_phase_device_types: set[DeviceType] = set([DeviceType.VscDevice,
-                                                           DeviceType.SeriesReactanceDevice,
-                                                           DeviceType.UpfcDevice,
-                                                           DeviceType.SwitchDevice,
-                                                           DeviceType.HVDCLineDevice,
-                                                           DeviceType.DCLineDevice])
-
-            if device.device_type in ys_phase_device_types and device.ys is not None:
-                from_required_mask[0] = bool(device.ys.phN)
-                from_required_mask[1] = bool(device.ys.phA)
-                from_required_mask[2] = bool(device.ys.phB)
-                from_required_mask[3] = bool(device.ys.phC)
+        def _get_branch_ac_phase_mask(branch_device: Any) -> list[bool]:
+            if branch_device.device_type == DeviceType.LineDevice and branch_device.ys is not None:
+                return list([
+                    bool(branch_device.ys.phN),
+                    bool(branch_device.ys.phA),
+                    bool(branch_device.ys.phB),
+                    bool(branch_device.ys.phC),
+                ])
             else:
-                if device.device_type in transformer_phase_device_types:
-                    from_required_mask[1] = True
-                    from_required_mask[2] = True
-                    from_required_mask[3] = True
+                if branch_device.device_type in [DeviceType.Transformer2WDevice, DeviceType.WindingDevice]:
+                    phase_set: set[int] = set(int(phase) for phase in branch_device.phases)
+                    return list([
+                        0 in phase_set,
+                        1 in phase_set,
+                        2 in phase_set,
+                        3 in phase_set,
+                    ])
                 else:
-                    if device.device_type in abc_phase_device_types:
-                        from_required_mask[1] = True
-                        from_required_mask[2] = True
-                        from_required_mask[3] = True
+                    if branch_device.device_type == DeviceType.VscDevice:
+                        return list([
+                            branch_device.bus_dc_n is not None,
+                            True,
+                            True,
+                            True,
+                        ])
                     else:
-                        from_required_mask[1] = True
-                        from_required_mask[2] = True
-                        from_required_mask[3] = True
+                        return list([False, True, True, True])
+
+        if not device.bus_from.is_dc:
+            from_required_mask = _get_branch_ac_phase_mask(device)
         else:
             pass
 
         if not device.bus_to.is_dc:
-            ys_phase_device_types = set([DeviceType.LineDevice])
-            transformer_phase_device_types = set([DeviceType.Transformer2WDevice,
-                                                  DeviceType.WindingDevice])
-            abc_phase_device_types = set([DeviceType.VscDevice,
-                                          DeviceType.SeriesReactanceDevice,
-                                          DeviceType.UpfcDevice,
-                                          DeviceType.SwitchDevice,
-                                          DeviceType.HVDCLineDevice,
-                                          DeviceType.DCLineDevice])
-
-            if device.device_type in ys_phase_device_types and device.ys is not None:
-                to_required_mask[0] = bool(device.ys.phN)
-                to_required_mask[1] = bool(device.ys.phA)
-                to_required_mask[2] = bool(device.ys.phB)
-                to_required_mask[3] = bool(device.ys.phC)
-            else:
-                if device.device_type in transformer_phase_device_types:
-                    to_required_mask[1] = True
-                    to_required_mask[2] = True
-                    to_required_mask[3] = True
-                else:
-                    if device.device_type in abc_phase_device_types:
-                        to_required_mask[1] = True
-                        to_required_mask[2] = True
-                        to_required_mask[3] = True
-                    else:
-                        to_required_mask[1] = True
-                        to_required_mask[2] = True
-                        to_required_mask[3] = True
+            to_required_mask = _get_branch_ac_phase_mask(device)
         else:
             pass
 
