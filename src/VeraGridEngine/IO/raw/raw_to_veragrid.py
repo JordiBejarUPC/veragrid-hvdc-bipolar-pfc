@@ -1129,13 +1129,12 @@ def get_veragrid_transformer(
                                  rate31=rate3_1)
 
         # PSSe defines the winding off-nominal turns ratio (WINDVn) and phase shift (ANGn)
-        # on the *winding bus* side. In VeraGrid each winding is oriented star(bus_from) ->
-        # winding bus(bus_to) and the tap is applied on the bus_from (star) side, so the
-        # device-level tap is the inverse/negative of the PSSe winding-side values:
-        #   tap_module = 1 / WINDVn   and   tap_phase = -ANGn
-        tr3w.winding1.tap_phase = -np.deg2rad(psse_elm.ANG1)
-        tr3w.winding2.tap_phase = -np.deg2rad(psse_elm.ANG2)
-        tr3w.winding3.tap_phase = -np.deg2rad(psse_elm.ANG3)
+        # on the winding-bus side. The windings are oriented winding-bus(bus_from) ->
+        # star(bus_to) with the tap applied on the bus_from (winding-bus) side, so the
+        # PSSe winding-side values are used directly.
+        tr3w.winding1.tap_phase = np.deg2rad(psse_elm.ANG1)
+        tr3w.winding2.tap_phase = np.deg2rad(psse_elm.ANG2)
+        tr3w.winding3.tap_phase = np.deg2rad(psse_elm.ANG3)
 
         # STAT=2/3/4 means winding 1/2/3 is individually out of service
         if psse_elm.STAT == 0:
@@ -1185,27 +1184,69 @@ def get_veragrid_transformer(
         NOMV2 = psse_elm.NOMV2 if psse_elm.NOMV2 > 0 else bus_2.Vnom
         NOMV3 = psse_elm.NOMV3 if psse_elm.NOMV3 > 0 else bus_3.Vnom
 
-        # winding-bus-side off-nominal ratio in pu (per PSSe convention), inverted below
-        # because VeraGrid applies the winding tap on the star (bus_from) side.
+        # winding-bus-side off-nominal ratio in pu (per PSSe convention), applied directly
+        # because the winding tap is on the winding-bus (bus_from) side.
         if psse_elm.CW == 1:
 
-            tr3w.winding1.tap_module = 1.0 / psse_elm.WINDV1
-            tr3w.winding2.tap_module = 1.0 / psse_elm.WINDV2
-            tr3w.winding3.tap_module = 1.0 / psse_elm.WINDV3
+            tr3w.winding1.tap_module = psse_elm.WINDV1
+            tr3w.winding2.tap_module = psse_elm.WINDV2
+            tr3w.winding3.tap_module = psse_elm.WINDV3
 
         elif psse_elm.CW == 2:
 
-            tr3w.winding1.tap_module = bus_1.Vnom / psse_elm.WINDV1
-            tr3w.winding2.tap_module = bus_2.Vnom / psse_elm.WINDV2
-            tr3w.winding3.tap_module = bus_3.Vnom / psse_elm.WINDV3
+            tr3w.winding1.tap_module = psse_elm.WINDV1 / bus_1.Vnom
+            tr3w.winding2.tap_module = psse_elm.WINDV2 / bus_2.Vnom
+            tr3w.winding3.tap_module = psse_elm.WINDV3 / bus_3.Vnom
 
         elif psse_elm.CW == 3:
 
-            tr3w.winding1.tap_module = NOMV1 / psse_elm.WINDV1
-            tr3w.winding2.tap_module = NOMV2 / psse_elm.WINDV2
-            tr3w.winding3.tap_module = NOMV3 / psse_elm.WINDV3
+            tr3w.winding1.tap_module = psse_elm.WINDV1 / NOMV1
+            tr3w.winding2.tap_module = psse_elm.WINDV2 / NOMV2
+            tr3w.winding3.tap_module = psse_elm.WINDV3 / NOMV3
         else:
             raise Exception('Unknown impedance combination CW=' + str(psse_elm.CZ))
+
+        # --------------------------------------------------------------------------------------
+        # Winding tap regulation. With COD = +-1 a winding steps its tap to hold the controlled
+        # bus (CONTn) voltage within the band [VMIn, VMAn], the tap ratio moving within
+        # [RMIn, RMAn] over NTPn discrete positions. PSSe writes the *initial* tap into WINDVn
+        # and adjusts it during the solve, so importing the regulation lets VeraGrid reproduce
+        # the regulated tap instead of staying frozen at the input value.
+        # --------------------------------------------------------------------------------------
+        winding_controls = [
+            (tr3w.winding1, psse_elm.COD1, psse_elm.CONT1, psse_elm.RMA1, psse_elm.RMI1,
+             psse_elm.VMA1, psse_elm.VMI1, psse_elm.NTP1),
+            (tr3w.winding2, psse_elm.COD2, psse_elm.CONT2, psse_elm.RMA2, psse_elm.RMI2,
+             psse_elm.VMA2, psse_elm.VMI2, psse_elm.NTP2),
+            (tr3w.winding3, psse_elm.COD3, psse_elm.CONT3, psse_elm.RMA3, psse_elm.RMI3,
+             psse_elm.VMA3, psse_elm.VMI3, psse_elm.NTP3),
+        ]
+        for w, cod, cont, rma, rmi, vma, vmi, ntp in winding_controls:
+            if cod in (1, -1):  # voltage control (negative => locked, kept fixed)
+                w.tap_module_control_mode = TapModuleControl.Vm if cod > 0 else TapModuleControl.fixed
+
+                reg_bus = psse_bus_dict.get(abs(int(cont)), None)
+                if reg_bus is not None:
+                    w.regulation_bus = reg_bus
+
+                # controlled-voltage band -> regulate towards its midpoint
+                if vma > 0.0 and vmi > 0.0:
+                    w.vset = 0.5 * (vma + vmi)
+
+                # tap-ratio limits and discrete positions. The parsed tap_module (WINDVn) is
+                # the regulator's starting position and is left untouched; only the changer
+                # ladder is configured so the solver can step it within [RMIn, RMAn].
+                if rma > 0.0 and rmi > 0.0:
+                    w.tap_module_max = rma
+                    w.tap_module_min = rmi
+                    if ntp > 1:
+                        tc = w.tap_changer
+                        tc.tc_type = TapChangerTypes.VoltageRegulation
+                        tc.total_positions = int(ntp)
+                        tc.neutral_position = int(ntp // 2)
+                        tc.normal_position = int(ntp // 2)
+                        tc.dV = (rma - rmi) / (ntp - 1)
+                        tc.recalc()
 
         tr3w.compute_delta_to_star()
 

@@ -987,16 +987,16 @@ def get_psse_transformer3w(transformer: dev.Transformer3W,
                                      transformer.winding3.contingency_factor,
                                      transformer.winding3.protection_rating_factor)
 
-    # VeraGrid stores the winding tap on the star (bus_from) side, i.e. the inverse/negative
-    # of PSSe's winding-bus-side WINDVn / ANGn. Convert back here (see raw_to_veragrid).
+    # The winding tap is stored on the winding-bus (bus_from) side, matching PSSe's
+    # winding-bus-side WINDVn / ANGn, so write the values directly (see raw_to_veragrid).
     psse_transformer.CW = 1
-    psse_transformer.WINDV1 = 1.0 / transformer.winding1.tap_module
-    psse_transformer.WINDV2 = 1.0 / transformer.winding2.tap_module
-    psse_transformer.WINDV3 = 1.0 / transformer.winding3.tap_module
+    psse_transformer.WINDV1 = transformer.winding1.tap_module
+    psse_transformer.WINDV2 = transformer.winding2.tap_module
+    psse_transformer.WINDV3 = transformer.winding3.tap_module
 
-    psse_transformer.ANG1 = -np.rad2deg(transformer.winding1.tap_phase)
-    psse_transformer.ANG2 = -np.rad2deg(transformer.winding2.tap_phase)
-    psse_transformer.ANG3 = -np.rad2deg(transformer.winding3.tap_phase)
+    psse_transformer.ANG1 = np.rad2deg(transformer.winding1.tap_phase)
+    psse_transformer.ANG2 = np.rad2deg(transformer.winding2.tap_phase)
+    psse_transformer.ANG3 = np.rad2deg(transformer.winding3.tap_phase)
 
     i, j, k, ckt = transformer.code.split("_", 3)
 
