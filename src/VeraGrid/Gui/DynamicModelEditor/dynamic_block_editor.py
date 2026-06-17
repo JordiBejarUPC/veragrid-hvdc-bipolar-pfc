@@ -4411,7 +4411,7 @@ class GenericBlockItem(QGraphicsRectItem):
 
             self.editor_window.add_connection_items(items_list)
 
-            self.editor_window.connect_items_pf(items_list)
+            self.editor_window.connect_items(items_list)
             self.editor_window.rebuild_scene_from_diagram()
         self.editor_window.show()
 
