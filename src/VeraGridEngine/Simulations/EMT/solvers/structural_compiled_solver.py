@@ -2387,6 +2387,7 @@ class StructuralCompiledSolver:
         "_sparse_factorization_manager",
         "_sparse_solver_backend_provider",
         "_cancel_checker",
+        "_progress_signal",
     ]
 
     def __init__(
