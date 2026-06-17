@@ -540,22 +540,6 @@ def get_veragrid_shunt_switched(
             value=psse_elm.MODSW,
         )
 
-    elm = dev.ControllableShunt(
-        name='Switched shunt ' + busnum_id,
-        code=busnum_id,
-        active=bool(psse_elm.STAT),
-        B=b_init,
-        step=0,
-        vset=vset,
-        vmin=float(psse_elm.VSWLO),
-        vmax=float(psse_elm.VSWHI),
-        control_mode=control_mode,
-    )
-
-    if psse_elm.SWREG > 0:
-        if psse_elm.SWREG != psse_elm.I:
-            elm.control_bus = psse_bus_dict[psse_elm.SWREG]
-
     n_list: list[int] = list()
     b_list: list[float] = list()
 
@@ -566,6 +550,29 @@ def get_veragrid_shunt_switched(
         if s == 1:
             n_list.append(n)
             b_list.append(psse_elm.get_block_admittance(i))
+
+    # Pick the discrete step whose cumulative susceptance matches the in-service
+    # initial value BINIT. The raw is a solved snapshot, so BINIT is the susceptance
+    # PSSe converged with; starting here lets a controls-off solve reproduce it
+    # (step 0 = neutral/off, step k = first k blocks on).
+    cum_b = np.insert(np.cumsum([n * b for n, b in zip(n_list, b_list)]), 0, 0.0)
+    init_step = int(np.argmin(np.abs(cum_b - psse_elm.BINIT))) if len(cum_b) > 1 else 0
+
+    elm = dev.ControllableShunt(
+        name='Switched shunt ' + busnum_id,
+        code=busnum_id,
+        active=bool(psse_elm.STAT),
+        B=b_init,
+        step=init_step,
+        vset=vset,
+        vmin=float(psse_elm.VSWLO),
+        vmax=float(psse_elm.VSWHI),
+        control_mode=control_mode,
+    )
+
+    if psse_elm.SWREG > 0:
+        if psse_elm.SWREG != psse_elm.I:
+            elm.control_bus = psse_bus_dict[psse_elm.SWREG]
 
     elm.set_blocks(n_list, b_list)
 
