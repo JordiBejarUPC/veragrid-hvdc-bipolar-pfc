@@ -28,9 +28,13 @@ import pandas as pd
 # SIMULINK_CSV_NAME: str = "simulink_results_G4L_vq_jump.csv"
 # VERAGRID_CSV_NAME: str = "veragrid_G4L_vq_step.csv"
 
-TEST_NAME: str = "vd_step"
-SIMULINK_CSV_NAME: str = "simulink_results_G4L_vd_jump.csv"
-VERAGRID_CSV_NAME: str = "veragrid_G4L_vd_step.csv"
+# TEST_NAME: str = "vd_step"
+# SIMULINK_CSV_NAME: str = "simulink_results_G4L_vd_jump.csv"
+# VERAGRID_CSV_NAME: str = "veragrid_G4L_vd_step.csv"
+
+TEST_NAME: str = "p_ref_step_no_pll"
+SIMULINK_CSV_NAME: str = "simulink_results_G4L_p_ref_no_pll.csv"
+VERAGRID_CSV_NAME: str = "veragrid_G4L_p_gfm_no_pll.csv"
 
 class TimeBase(Enum):
     """Time base selection for signal comparison.

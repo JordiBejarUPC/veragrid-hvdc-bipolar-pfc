@@ -38,6 +38,8 @@ from VeraGridEngine.enumerations import DeviceType, VarPowerFlowReferenceType, P
     DynamicSimulationMode, ShuntConnectionType, WindingType, DynamicTableModelMode
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms, get_bus_rms_algebraic_vars
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import BusEmtTemplate, get_bus_emt_template, get_bus_emt_algebraic_vars
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import register_saved_emt_model_vars_for_device, \
+    unify_saved_emt_model_root_contract, attach_emt_model_to_buses
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
@@ -1947,7 +1949,12 @@ def copy_block_state(source_block: Block, target_block: Block) -> None:
     target_block.var_mapping = source_clone.var_mapping
     target_block.event_dict = source_clone.event_dict
     target_block.mode_dict = source_clone.mode_dict
-    target_block.diagram = source_block.diagram
+    # Persist the cloned diagram together with the cloned symbolic hierarchy so
+    # the saved block owns one self-consistent snapshot of nodes, connections,
+    # and positions after the editor closes. Reusing ``source_block.diagram``
+    # would keep the saved model tied to the live editor working copy instead of
+    # the copied block state that is meant to survive reopening.
+    target_block.diagram = source_clone.diagram
 
 
 def _initialize_editor_assigned_rms_bus_model(bus: Bus, var_factory: VarFactory) -> None:
@@ -5941,6 +5948,7 @@ def build_emt_branch_bus_mask_from_refs(
         pass
 
     return mask
+
 
 class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     """
@@ -11827,122 +11835,81 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             return mask
 
-    def _rebuild_emt_bus_model_from_editor_mask(self, bus: Bus, mask: list[bool]) -> bool:
+    def _get_requested_emt_bus_masks_from_current_interface(self) -> tuple[bool, list[bool] | None, list[bool] | None, list[bool] | None]:
         """
-        Rebuild one EMT bus shell from the phases kept by the editor user.
+        Build the requested EMT bus masks from the currently connected editor ports.
 
-        :param bus: Bus API object.
-        :param mask: AC phase mask ordered as ``[N, A, B, C]``.
-        :return: ``True`` when the bus model was rebuilt successfully.
-        """
-        success: bool = False
+        The editor path is the source of truth for which EMT phases the user
+        kept connected. Once these masks are known, the actual bus-shell
+        creation, expansion, reconnection, and registry update are delegated to
+        the shared engine-side attachment flow.
 
-        if bus.is_dc:
-            # DC buses ignore the AC mask and are rebuilt with the DC-only
-            # EMT shell.
-            bus.emt_model = BusEmtTemplate(
-                vf=self.var_factory,
-                mask=list([False, False, False, False]),
-                is_dc=True,
-                name=f"{bus.name}_emt_template",
-            ).block
-            success = True
-        else:
-            if any(mask):
-                # AC buses are rebuilt with exactly the phase mask implied by
-                # the remaining editor ports.
-                bus.emt_model = BusEmtTemplate(
-                    vf=self.var_factory,
-                    mask=mask,
-                    is_dc=False,
-                    name=f"{bus.name}_emt_template",
-                ).block
-                success = True
-            else:
-                # Empty AC interfaces cannot define a KCL shell. This state is
-                # handled through a GUI warning instead of throwing an exception.
-                QtWidgets.QMessageBox.warning(
-                    self,
-                    "Invalid EMT bus interface",
-                    f"The EMT interface for bus '{bus.name}' has no remaining AC phases. "
-                    "Keep at least one voltage or current phase port before applying changes.",
-                )
-                success = False
-
-        return success
-
-    def _sync_emt_bus_models_from_current_interface(self) -> bool:
-        """
-        Rebuild connected EMT bus shells from the ports left in the editor.
-
-        The intended workflow is:
-        1. the editor opens with the complete editable EMT AC interface,
-        2. the user removes unneeded phases,
-        3. applying changes rebuilds the bus EMT model from the remaining
-           network ports.
-
-        :return: ``True`` when all required bus EMT models were synchronised.
+        :return: Tuple ``(success, bus_mask, from_mask, to_mask)``.
         """
         success: bool = True
-        mask: list[bool] | None = None
-        mask_from: list[bool] | None = None
-        mask_to: list[bool] | None = None
+        bus_mask: list[bool] | None = None
+        from_mask: list[bool] | None = None
+        to_mask: list[bool] | None = None
 
         if isinstance(self.api_object, InjectionParent):
             if self.api_object.bus.is_dc:
-                success = self._rebuild_emt_bus_model_from_editor_mask(
-                    bus=self.api_object.bus,
-                    mask=list([False, False, False, False]),
-                )
+                bus_mask = list([False, False, False, False])
             else:
-                mask = self._build_connected_emt_injection_bus_mask()
-                if mask is not None:
-                    success = self._rebuild_emt_bus_model_from_editor_mask(
-                        bus=self.api_object.bus,
-                        mask=mask,
-                    )
-                else:
+                bus_mask = self._build_connected_emt_injection_bus_mask()
+                if bus_mask is None:
                     success = False
-
-        elif isinstance(self.api_object, BranchParent):
-            if self.api_object.bus_from.is_dc:
-                success_from: bool = self._rebuild_emt_bus_model_from_editor_mask(
-                    bus=self.api_object.bus_from,
-                    mask=list([False, False, False, False]),
-                )
-            else:
-                mask_from = self._build_connected_emt_branch_bus_mask(side="from")
-                if mask_from is not None:
-                    success_from = self._rebuild_emt_bus_model_from_editor_mask(
-                        bus=self.api_object.bus_from,
-                        mask=mask_from,
-                    )
                 else:
-                    success_from = False
-
-            if self.api_object.bus_to.is_dc:
-                success_to: bool = self._rebuild_emt_bus_model_from_editor_mask(
-                    bus=self.api_object.bus_to,
-                    mask=list([False, False, False, False]),
-                )
-            else:
-                mask_to = self._build_connected_emt_branch_bus_mask(side="to")
-                if mask_to is not None:
-                    success_to = self._rebuild_emt_bus_model_from_editor_mask(
-                        bus=self.api_object.bus_to,
-                        mask=mask_to,
-                    )
-                else:
-                    success_to = False
-
-            success = success_from and success_to
-
+                    if any(bus_mask):
+                        pass
+                    else:
+                        QtWidgets.QMessageBox.warning(
+                            self,
+                            "Invalid EMT bus interface",
+                            f"The EMT interface for bus '{self.api_object.bus.name}' has no remaining AC phases. "
+                            "Keep at least one voltage or current phase port before applying changes.",
+                        )
+                        success = False
         else:
-            # Template editing or unsupported objects do not own concrete bus
-            # interfaces, so there is nothing to synchronise.
-            success = True
+            if isinstance(self.api_object, BranchParent):
+                if self.api_object.bus_from.is_dc:
+                    from_mask = list([False, False, False, False])
+                else:
+                    from_mask = self._build_connected_emt_branch_bus_mask(side="from")
+                    if from_mask is None:
+                        success = False
+                    else:
+                        if any(from_mask):
+                            pass
+                        else:
+                            QtWidgets.QMessageBox.warning(
+                                self,
+                                "Invalid EMT bus interface",
+                                f"The EMT interface for bus '{self.api_object.bus_from.name}' has no remaining AC phases. "
+                                "Keep at least one voltage or current phase port before applying changes.",
+                            )
+                            success = False
 
-        return success
+                if self.api_object.bus_to.is_dc:
+                    to_mask = list([False, False, False, False])
+                else:
+                    to_mask = self._build_connected_emt_branch_bus_mask(side="to")
+                    if to_mask is None:
+                        success = False
+                    else:
+                        if any(to_mask):
+                            pass
+                        else:
+                            QtWidgets.QMessageBox.warning(
+                                self,
+                                "Invalid EMT bus interface",
+                                f"The EMT interface for bus '{self.api_object.bus_to.name}' has no remaining AC phases. "
+                                "Keep at least one voltage or current phase port before applying changes.",
+                            )
+                            success = False
+            else:
+                success = True
+
+        return success, bus_mask, from_mask, to_mask
 
     def add_api_obj_mapping(self):
 
@@ -13673,21 +13640,55 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
 
         elif self.mode == DynamicSimulationMode.EMT:
+            masks_are_valid: bool
+            requested_bus_mask: list[bool] | None
+            requested_from_mask: list[bool] | None
+            requested_to_mask: list[bool] | None
+
+            masks_are_valid, requested_bus_mask, requested_from_mask, requested_to_mask = \
+                self._get_requested_emt_bus_masks_from_current_interface()
             if self.api_object.emt_template is not None:
+                # The editor is about to overwrite the saved EMT model in place,
+                # so the reusable template pointer must be cleared. However, the
+                # generic ``emt_template = None`` setter also unregisters the
+                # current device from all bus registries immediately. That early
+                # detach does not happen in the native template-assignment flow
+                # and breaks the symbolic identity chain that the later shared
+                # attach helper expects to repair in place. Clear only the stored
+                # template reference here and let the shared attach helper handle
+                # the bus-registry refresh at the correct stage.
                 self.api_object.emt_template = None
             else:
                 pass
-            # Before copying the edited block back to the device, rebuild the
-            # connected EMT bus shells using the network ports that the user
-            # has actually kept in the editor.
-            bus_models_synchronised: bool = self._sync_emt_bus_models_from_current_interface()
-            if bus_models_synchronised:
+            if masks_are_valid:
                 # Persist only the EMT interface refs that are still wired into
                 # the edited model so the saved device contract matches the
                 # rebuilt terminal bus shells seen by the simulation builder.
                 self._prune_disconnected_emt_root_interface()
                 # Copy the validated editor state back to the owned EMT model.
                 copy_block_state(source_block=self.main_block, target_block=self.original_block)
+                # Editor copy-back can leave the saved root external mapping and
+                # the saved root input/output vars for the same EMT reference as
+                # different symbolic objects. Normalize the saved contract first
+                # so later reconnect helpers and the EMT checker operate on the
+                # same root variables.
+                unify_saved_emt_model_root_contract(device=self.api_object)
+                # The saved EMT model now owns fresh cloned symbolic variables.
+                # Register those authoritative post-copy variables in the shared
+                # VarFactory before any reconnect step tries to propagate bus-side
+                # identities through the factory connection machinery.
+                register_saved_emt_model_vars_for_device(device=self.api_object,
+                                                         var_factory=self.var_factory)
+                # The editor path now reuses the same engine-side EMT attachment
+                # workflow as the native template-assignment path. The only GUI-
+                # specific responsibility left here is determining which phase
+                # masks the user kept connected.
+                attach_emt_model_to_buses(device=self.api_object,
+                                          model=self.api_object.emt_model,
+                                          var_factory=self.var_factory,
+                                          bus_mask=requested_bus_mask,
+                                          from_mask=requested_from_mask,
+                                          to_mask=requested_to_mask)
                 # Mark the working copy as saved because the device model now
                 # contains the current editor contents.
                 self.has_unapplied_changes = False
@@ -13702,7 +13703,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     pass
             else:
                 # Do not apply the edited model if the bus interface is invalid.
-                # The warning is already emitted by the synchronisation method.
+                # The warning is already emitted by the editor mask-validation path.
                 pass
 
     def open_inspect_dialog(self):

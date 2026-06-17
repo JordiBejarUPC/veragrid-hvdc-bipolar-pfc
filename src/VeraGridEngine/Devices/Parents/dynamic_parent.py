@@ -12,11 +12,12 @@ from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.fmu_template import FmuTemplate
 from VeraGridEngine.enumerations import (DeviceType, BuildStatus, SubObjectType, FmuTemplateDomain, FmuTemplateMode,
-                                         PrpCat)
+                                          PrpCat)
 from VeraGridEngine.Utils.Symbolic.symbolic_io import duplicate_block
 
 
-from VeraGridEngine.Utils.Symbolic.templates_common_functions import connect_bus_variables_rms, connect_bus_variables_emt
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import connect_bus_variables_rms, connect_bus_variables_emt, \
+    unregister_connected_emt_model_from_attached_buses
 
 
 
@@ -310,10 +311,17 @@ class DynamicDevice(PhysicalDevice):
             if self.auto_update_enabled:
                 # val.block.unify_blocks()
                 emt_mdl = duplicate_block(val.block, self._var_factory)
-                connect_bus_variables_emt(self, emt_mdl, self._var_factory, allow_deferred_connection=True)
+                connect_bus_variables_emt(self,
+                                          emt_mdl,
+                                          self._var_factory,
+                                          allow_deferred_connection=True)
 
                 self.emt_model = emt_mdl
         elif val is None:
+            # Clearing the template makes any previously registered bus endpoint
+            # stale because the device no longer guarantees that its current EMT
+            # model remains valid for bus-driven rebinding.
+            unregister_connected_emt_model_from_attached_buses(device=self)
             self._emt_template = None
         else:
             raise ValueError(f"EMT template cannot accept {val}")

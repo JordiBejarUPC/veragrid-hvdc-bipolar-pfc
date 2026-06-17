@@ -983,6 +983,76 @@ def test_bipolar_balanced() -> None:
     assert abs(res.Pfn_vsc[1]) < 1e-3
 
 
+def test_bipolar_vmdc_pole_to_pole() -> None:
+    """
+    A bipolar VSC with Vm_dc control regulates the POLE-TO-POLE voltage difference
+    (V[F].real - V[F_dcn].real == control_val), not the single pole-to-ground magnitude.
+    This reuses the balanced bipolar grid and asserts the difference equation directly,
+    locking the residual form and sign convention.
+    """
+    Ub = 220
+    Sb = 100
+    Rb = (Ub ** 2) / Sb
+    rlin_23 = 0.01
+    rlin_13 = 0.03
+
+    grid = gce.MultiCircuit(name="Bipolar_p2p", Sbase=Sb)
+
+    bus1 = gce.Bus(name="Bus1", Vnom=Ub, is_slack=True)
+    grid.add_bus(bus1)
+    bus2 = gce.Bus(name="Bus2", Vnom=Ub, is_dc=True)
+    grid.add_bus(bus2)
+    bus3 = gce.Bus(name="Bus3", Vnom=Ub, is_dc=True)
+    grid.add_bus(bus3)
+    bus4 = gce.Bus(name="Bus4", Vnom=Ub, is_dc=True, Vm0=1.01, Va0=3.14)
+    grid.add_bus(bus4)
+    bus5 = gce.Bus(name="Bus5", Vnom=Ub, is_dc=True, Va0=3.14)
+    grid.add_bus(bus5)
+    bus6 = gce.Bus(name="Bus6", Vnom=Ub, is_dc=True, is_grounded=True, Vm0=1e-9)
+    grid.add_bus(bus6)
+    bus7 = gce.Bus(name="Bus7", Vnom=Ub, is_dc=True, Vm0=1e-4)
+    grid.add_bus(bus7)
+    bus8 = gce.Bus(name="Bus8", Vnom=Ub, is_slack=True)
+    grid.add_bus(bus8)
+
+    grid.add_generator(bus1, gce.Generator(name='g1', vset=1.0))
+    grid.add_generator(bus8, gce.Generator(name='g8', vset=1.0))
+
+    grid.add_dc_line(gce.DcLine(name="dc_line_23", bus_from=bus2, bus_to=bus3, r=rlin_23 / Rb))
+    grid.add_dc_line(gce.DcLine(name="dc_line_45", bus_from=bus4, bus_to=bus5, r=rlin_13 / Rb))
+    grid.add_dc_line(gce.DcLine(name="dc_line_0", bus_from=bus6, bus_to=bus7, r=rlin_13 / Rb))
+
+    alpha = 1e-4
+    # VSC_1 positive pole controlled to +1, VSC_2 negative pole controlled to -1.01
+    grid.add_vsc(gce.VSC(name="VSC_1", bus_from=bus2, bus_to=bus1, bus_dc_n=bus6,
+                         alpha1=alpha, alpha2=alpha, alpha3=alpha,
+                         control1=ConverterControlType.Vm_dc, control2=ConverterControlType.Qac,
+                         control1_val=1, control2_val=0))
+    grid.add_vsc(gce.VSC(name="VSC_2", bus_from=bus4, bus_to=bus1, bus_dc_n=bus6,
+                         alpha1=alpha, alpha2=alpha, alpha3=alpha,
+                         control1=ConverterControlType.Vm_dc, control2=ConverterControlType.Qac,
+                         control1_val=-1.01, control2_val=0))
+    grid.add_vsc(gce.VSC(name="VSC_3", bus_from=bus3, bus_to=bus8, bus_dc_n=bus7,
+                         alpha1=alpha, alpha2=alpha, alpha3=alpha,
+                         control1=ConverterControlType.Pdc, control2=ConverterControlType.Qac,
+                         control1_val=30, control2_val=0))
+    grid.add_vsc(gce.VSC(name="VSC_4", bus_from=bus5, bus_to=bus8, bus_dc_n=bus7,
+                         alpha1=alpha, alpha2=alpha, alpha3=alpha,
+                         control1=ConverterControlType.Pdc, control2=ConverterControlType.Qac,
+                         control1_val=30, control2_val=0))
+
+    options = gce.PowerFlowOptions(retry_with_other_methods=False, use_stored_guess=True)
+    res = gce.power_flow(grid, options=options)
+
+    assert res.converged
+
+    # The signed pole-to-pole difference equals the Vm_dc setpoint for each bipolar converter.
+    # VSC_1: F = Bus2 (idx 1), F_dcn = Bus6 (idx 5), setpoint +1.0
+    assert np.isclose(res.voltage[1].real - res.voltage[5].real, 1.0, atol=1e-4)
+    # VSC_2: F = Bus4 (idx 3), F_dcn = Bus6 (idx 5), setpoint -1.01
+    assert np.isclose(res.voltage[3].real - res.voltage[5].real, -1.01, atol=1e-4)
+
+
 def test_bipolar_unbalanced() -> None:
     """
     Bipolar system with deliberately unbalanced pole loading
