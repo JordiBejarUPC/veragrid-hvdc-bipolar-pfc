@@ -44,7 +44,7 @@ def get_pll_transform_rms(vfactory: VarFactory, name: str = "Pll_transform_rms")
             vq: inputs[0] * sym.cos(inputs[1] - theta_phase_detect_blk),
         },
         name="Phase Detector",
-        out_vars=[vd, vq],
+        out_vars=[vd],
         in_vars=[inputs[0], inputs[1], theta_phase_detect_blk]
     )
 
@@ -71,7 +71,7 @@ def get_pll_transform_rms(vfactory: VarFactory, name: str = "Pll_transform_rms")
                                   )
 
     loop_filter_block = Block(
-        in_vars=[vd_pi_block, vq_pi_block],
+        in_vars=[vd_pi_block],
         out_vars=[omega],
         event_dict= event_dict,
         children= [PI_block],
@@ -92,7 +92,7 @@ def get_pll_transform_rms(vfactory: VarFactory, name: str = "Pll_transform_rms")
 
     # variables
     omega_vco = vfactory.add_var('omega_vco', shared_reference="omega_reference")
-    theta = vfactory.add_var(f'theta{suffix}', shared_reference="theta_reference")
+    theta = vfactory.add_var('theta', shared_reference="theta_reference")
 
     event_dict = {
         fn: vfactory.add_const(50),
@@ -105,7 +105,6 @@ def get_pll_transform_rms(vfactory: VarFactory, name: str = "Pll_transform_rms")
         name= 'VCO',
         out_vars = [theta],
         in_vars= [omega_vco],
-        children=[PI_block]
     )
 
 
