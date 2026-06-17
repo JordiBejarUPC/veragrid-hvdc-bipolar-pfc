@@ -12249,31 +12249,42 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return: Matching editor input wrapper or ``None``.
         """
         if isinstance(self.api_object, BranchParent) and self.api_object.device_type == DeviceType.VscDevice:
+            ac_side_is_from: bool = False
+            ac_side_is_to: bool = False
+
+            if self.api_object.bus_from.is_dc:
+                ac_side_is_to = True
+            else:
+                if self.api_object.bus_to.is_dc:
+                    ac_side_is_from = True
+                else:
+                    ac_side_is_from = True
+
             if model_ref == VarPowerFlowReferenceType.v_N:
-                if self.api_object.bus_from.is_dc:
+                if ac_side_is_to:
                     return interface_inputs_by_ref.get(VarPowerFlowReferenceType.vt_N, None)
-                elif self.api_object.bus_to.is_dc:
+                elif ac_side_is_from:
                     return interface_inputs_by_ref.get(VarPowerFlowReferenceType.vf_N, None)
                 else:
                     return interface_inputs_by_ref.get(VarPowerFlowReferenceType.vf_N, None)
             elif model_ref == VarPowerFlowReferenceType.v_A:
-                if self.api_object.bus_from.is_dc:
+                if ac_side_is_to:
                     return interface_inputs_by_ref.get(VarPowerFlowReferenceType.vt_A, None)
-                elif self.api_object.bus_to.is_dc:
+                elif ac_side_is_from:
                     return interface_inputs_by_ref.get(VarPowerFlowReferenceType.vf_A, None)
                 else:
                     return interface_inputs_by_ref.get(VarPowerFlowReferenceType.vf_A, None)
             elif model_ref == VarPowerFlowReferenceType.v_B:
-                if self.api_object.bus_from.is_dc:
+                if ac_side_is_to:
                     return interface_inputs_by_ref.get(VarPowerFlowReferenceType.vt_B, None)
-                elif self.api_object.bus_to.is_dc:
+                elif ac_side_is_from:
                     return interface_inputs_by_ref.get(VarPowerFlowReferenceType.vf_B, None)
                 else:
                     return interface_inputs_by_ref.get(VarPowerFlowReferenceType.vf_B, None)
             elif model_ref == VarPowerFlowReferenceType.v_C:
-                if self.api_object.bus_from.is_dc:
+                if ac_side_is_to:
                     return interface_inputs_by_ref.get(VarPowerFlowReferenceType.vt_C, None)
-                elif self.api_object.bus_to.is_dc:
+                elif ac_side_is_from:
                     return interface_inputs_by_ref.get(VarPowerFlowReferenceType.vf_C, None)
                 else:
                     return interface_inputs_by_ref.get(VarPowerFlowReferenceType.vf_C, None)
@@ -12300,31 +12311,42 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return: Matching editor output wrapper or ``None``.
         """
         if isinstance(self.api_object, BranchParent) and self.api_object.device_type == DeviceType.VscDevice:
+            ac_side_is_from: bool = False
+            ac_side_is_to: bool = False
+
+            if self.api_object.bus_from.is_dc:
+                ac_side_is_to = True
+            else:
+                if self.api_object.bus_to.is_dc:
+                    ac_side_is_from = True
+                else:
+                    ac_side_is_from = True
+
             if model_ref == VarPowerFlowReferenceType.i_N:
-                if self.api_object.bus_from.is_dc:
+                if ac_side_is_to:
                     return interface_outputs_by_ref.get(VarPowerFlowReferenceType.it_N, None)
-                elif self.api_object.bus_to.is_dc:
+                elif ac_side_is_from:
                     return interface_outputs_by_ref.get(VarPowerFlowReferenceType.if_N, None)
                 else:
                     return interface_outputs_by_ref.get(VarPowerFlowReferenceType.if_N, None)
             elif model_ref == VarPowerFlowReferenceType.i_A:
-                if self.api_object.bus_from.is_dc:
+                if ac_side_is_to:
                     return interface_outputs_by_ref.get(VarPowerFlowReferenceType.it_A, None)
-                elif self.api_object.bus_to.is_dc:
+                elif ac_side_is_from:
                     return interface_outputs_by_ref.get(VarPowerFlowReferenceType.if_A, None)
                 else:
                     return interface_outputs_by_ref.get(VarPowerFlowReferenceType.if_A, None)
             elif model_ref == VarPowerFlowReferenceType.i_B:
-                if self.api_object.bus_from.is_dc:
+                if ac_side_is_to:
                     return interface_outputs_by_ref.get(VarPowerFlowReferenceType.it_B, None)
-                elif self.api_object.bus_to.is_dc:
+                elif ac_side_is_from:
                     return interface_outputs_by_ref.get(VarPowerFlowReferenceType.if_B, None)
                 else:
                     return interface_outputs_by_ref.get(VarPowerFlowReferenceType.if_B, None)
             elif model_ref == VarPowerFlowReferenceType.i_C:
-                if self.api_object.bus_from.is_dc:
+                if ac_side_is_to:
                     return interface_outputs_by_ref.get(VarPowerFlowReferenceType.it_C, None)
-                elif self.api_object.bus_to.is_dc:
+                elif ac_side_is_from:
                     return interface_outputs_by_ref.get(VarPowerFlowReferenceType.if_C, None)
                 else:
                     return interface_outputs_by_ref.get(VarPowerFlowReferenceType.if_C, None)

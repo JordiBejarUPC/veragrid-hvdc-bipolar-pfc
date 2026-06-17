@@ -16,8 +16,7 @@ from VeraGridEngine.enumerations import (DeviceType, BuildStatus, SubObjectType,
 from VeraGridEngine.Utils.Symbolic.symbolic_io import duplicate_block
 
 
-from VeraGridEngine.Utils.Symbolic.templates_common_functions import connect_bus_variables_rms, connect_bus_variables_emt, \
-    unregister_connected_emt_model_from_attached_buses
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import connect_bus_variables_rms, connect_bus_variables_emt
 
 
 
@@ -344,7 +343,7 @@ class DynamicDevice(PhysicalDevice):
             # Clearing the native template removes the editor-facing assignment
             # and resets the runtime block to an empty shell.
             self._rms_template = None
-            self.rms_model = Block()
+            # self.rms_model = Block()
         else:
             raise ValueError(f"RMS template cannot accept {val}")
 
@@ -381,7 +380,7 @@ class DynamicDevice(PhysicalDevice):
             # Clearing the template makes any previously registered bus endpoint
             # stale because the device no longer guarantees that its current EMT
             # model remains valid for bus-driven rebinding.
-            unregister_connected_emt_model_from_attached_buses(device=self)
+            # unregister_connected_emt_model_from_attached_buses(device=self)
             self._emt_template = None
         else:
             raise ValueError(f"EMT template cannot accept {val}")
