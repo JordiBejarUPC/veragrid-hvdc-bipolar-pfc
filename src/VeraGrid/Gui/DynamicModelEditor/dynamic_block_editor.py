@@ -5619,65 +5619,65 @@ class DiagramScene(QGraphicsScene):
         :param event:
         :return:
         """
-        item: QGraphicsItem
+        # item: QGraphicsItem
 
         # scene_position: QtCore.QPointF = self.editor.ui.graphicsView.mapToScene(
         #     int(event.position().x()),
         #     int(event.position().y())
         # )
 
-        for item in self.items(event.scenePos()):
-            if isinstance(item, ConnectionItem):
-                connection: ConnectionItem = item
-                source_port: PortItem = connection.source_port
-                target_port: PortItem = connection.target_port
-
-                branching_item: BranchingItem = BranchingItem(connection.source_port.subsystem,
-                                                              connection.source_port.index)
-                branching_item.setPos(event.scenePos())
-                self.addItem(branching_item)
-
-                conn1: ConnectionItem = ConnectionItem(
-                    source_port, branching_item,
-                    diagram=self.editor.diagram
-                )
-                self.addItem(conn1)
-
-                conn2: ConnectionItem = ConnectionItem(
-                    branching_item, target_port,
-                    diagram=self.editor.diagram
-                )
-                self.addItem(conn2)
-
-                self.editor.diagram.add_branch(
-                    connectionitem_uid=conn1.uid,
-                    device_uid_from=source_port.subsystem.subsys.uid,
-                    device_uid_to=branching_item.subsystem.subsys.uid,
-                    port_number_from=source_port.index,
-                    port_number_to=0,
-                    color=conn1.pen().color().name()
-                )
-
-                self.editor.diagram.add_branch(
-                    connectionitem_uid=conn2.uid,
-                    device_uid_from=branching_item.subsystem.subsys.uid,
-                    device_uid_to=target_port.subsystem.subsys.uid,
-                    port_number_from=0,
-                    port_number_to=target_port.index,
-                    color=conn2.pen().color().name()
-                )
-
-                if source_port.connections is not None and connection in source_port.connections:
-                    source_port.connections.remove(connection)
-
-                if target_port.connections is not None and connection in target_port.connections:
-                    target_port.connections.remove(connection)
-
-                if connection.uid in self.editor.diagram.con_data:
-                    del self.editor.diagram.con_data[connection.uid]
-
-                self.removeItem(connection)
-                return
+        # for item in self.items(event.scenePos()):
+        #     if isinstance(item, ConnectionItem):
+        #         connection: ConnectionItem = item
+        #         source_port: PortItem = connection.source_port
+        #         target_port: PortItem = connection.target_port
+        #
+        #         branching_item: BranchingItem = BranchingItem(connection.source_port.subsystem,
+        #                                                       connection.source_port.index)
+        #         branching_item.setPos(event.scenePos())
+        #         self.addItem(branching_item)
+        #
+        #         conn1: ConnectionItem = ConnectionItem(
+        #             source_port, branching_item,
+        #             diagram=self.editor.diagram
+        #         )
+        #         self.addItem(conn1)
+        #
+        #         conn2: ConnectionItem = ConnectionItem(
+        #             branching_item, target_port,
+        #             diagram=self.editor.diagram
+        #         )
+        #         self.addItem(conn2)
+        #
+        #         self.editor.diagram.add_branch(
+        #             connectionitem_uid=conn1.uid,
+        #             device_uid_from=source_port.subsystem.subsys.uid,
+        #             device_uid_to=branching_item.subsystem.subsys.uid,
+        #             port_number_from=source_port.index,
+        #             port_number_to=0,
+        #             color=conn1.pen().color().name()
+        #         )
+        #
+        #         self.editor.diagram.add_branch(
+        #             connectionitem_uid=conn2.uid,
+        #             device_uid_from=branching_item.subsystem.subsys.uid,
+        #             device_uid_to=target_port.subsystem.subsys.uid,
+        #             port_number_from=0,
+        #             port_number_to=target_port.index,
+        #             color=conn2.pen().color().name()
+        #         )
+        #
+        #         if source_port.connections is not None and connection in source_port.connections:
+        #             source_port.connections.remove(connection)
+        #
+        #         if target_port.connections is not None and connection in target_port.connections:
+        #             target_port.connections.remove(connection)
+        #
+        #         if connection.uid in self.editor.diagram.con_data:
+        #             del self.editor.diagram.con_data[connection.uid]
+        #
+        #         self.removeItem(connection)
+        #         return
 
         super().mouseDoubleClickEvent(event)
 
