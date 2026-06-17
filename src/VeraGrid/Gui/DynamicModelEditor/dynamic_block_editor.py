@@ -13,7 +13,8 @@ from enum import Enum
 from typing import List, Dict, Optional, Any, Set
 from PySide6 import QtWidgets, QtGui, QtCore
 from PySide6.QtWidgets import (QApplication, QHBoxLayout, QGraphicsScene, QGraphicsView, QGraphicsItem,
-                               QGraphicsRectItem, QGraphicsEllipseItem, QGraphicsTextItem, QMenu, QGraphicsPathItem,
+                               QGraphicsRectItem, QGraphicsEllipseItem, QGraphicsPolygonItem,
+                               QGraphicsTextItem, QMenu, QGraphicsPathItem,
                                QDialog, QVBoxLayout, QDialogButtonBox, QLabel, QListWidget, QWidget, QScrollArea,
                                QListWidgetItem, QFormLayout, QSpinBox, QLineEdit, QDoubleSpinBox, QTableWidget,
                                QTableWidgetItem, QMessageBox,
@@ -146,6 +147,9 @@ WIRE_COLOR: QColor = QColor("#587291")
 WIRE_HOVER_COLOR: QColor = QColor("#cc6f2c")
 HANDLE_FILL: QColor = QColor("#36536b")
 DEFAULT_BLOCK_FILL: QColor = QColor("#d9e7f5")
+PAIRED_ITEM_FILL: QColor = QColor("#9fa8da")
+BLOCK_FILL_ALL_CONNECTED: QColor = QColor("#a5d6a7")
+BLOCK_FILL_DISCONNECTED: QColor = QColor("#ffe082")
 PORT_LABEL_COLOR: QColor = QColor("#173042")
 WIRE_ELBOW_OFFSET: float = 36.0
 PORT_LABEL_MAX_CHARS: int = 12
@@ -154,6 +158,11 @@ BLOCK_PORT_ROW_HEIGHT: float = 20.0
 BLOCK_PORT_SECTION_PADDING: float = 10.0
 BLOCK_MIN_WIDTH: float = 160.0
 BLOCK_MIN_HEIGHT: float = 70.0
+BLOCK_COMPACT_MIN_WIDTH: float = 100.0
+BLOCK_COMPACT_MIN_HEIGHT: float = 40.0
+BLOCK_COMPACT_HEADER_HEIGHT: float = 20.0
+BLOCK_COMPACT_PORT_ROW_HEIGHT: float = 14.0
+BLOCK_COMPACT_PORT_SECTION_PADDING: float = 6.0
 TEMPLATE_NODE_TYPE: str = "TEMPLATE"
 PARAMETER_VALUE_TYPE_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 500
 PARAMETER_EDITABLE_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 501
@@ -2530,6 +2539,11 @@ class ConnectionItem(QGraphicsPathItem):
             self.target_port.connections = list()
         self.target_port.connections.append(self)
 
+        if isinstance(self.source_port.subsystem, BlockItem):
+            self.source_port.subsystem._refresh_connection_color()
+        if isinstance(self.target_port.subsystem, BlockItem):
+            self.target_port.subsystem._refresh_connection_color()
+
         self.setPen(QPen(WIRE_COLOR, 2.5, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
         self.setAcceptHoverEvents(True)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, False)
@@ -4642,12 +4656,14 @@ class GenericBlockItem(QGraphicsRectItem):
         return super().itemChange(change, value)
 
 
-class PairedItem(QGraphicsRectItem):
+class PairedItem(QGraphicsPolygonItem):
     """
     A block item that is paired with another PairedItem.
-    Has the same functionality as GenericBlockItem plus the pairing feature.
-    When refresh_port_metadata is called, it also refreshes the paired item's ports.
+    Rendered as an isosceles triangle: signal_in points right, signal_out points left.
     """
+
+    _TRI_W: float = 70.0
+    _TRI_H: float = 44.0
 
     def __init__(self,
                  var_factory: VarFactory,
@@ -4657,7 +4673,7 @@ class PairedItem(QGraphicsRectItem):
                  name: str,
                  paired_item: PairedItem | None = None,
                  position_changed_callback=None):
-        super().__init__(0, 0, 100, 60)
+        super().__init__()
 
         self._paired_item: PairedItem | None = paired_item
         self.var_factory = var_factory
@@ -4667,24 +4683,18 @@ class PairedItem(QGraphicsRectItem):
         self.api_object = api_object
         self.position_changed_callback = position_changed_callback
 
+        self._is_signal_in: bool = bool(self.subsys.in_vars) and not bool(self.subsys.out_vars)
+
         self.name_item = QGraphicsTextItem(self.subsys.name, self)
         self.name_item.setDefaultTextColor(BLOCK_TITLE)
-        name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 9)
+        name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 7)
         name_font.setBold(True)
         self.name_item.setFont(name_font)
-        self.name_item.setPos(6, 4)
 
         self.inputs: List[PortItem] = list()
         self.outputs: List[PortItem] = list()
-        self.input_labels: List[QGraphicsTextItem] = list()
-        self.output_labels: List[QGraphicsTextItem] = list()
 
-        self.name_item.setDefaultTextColor(BLOCK_TITLE)
-
-        self.resize_handle: ResizeHandle | None = None
-        self.resizing_from_handle = False
-        self._suppress_resize: bool = False
-        self.setBrush(QBrush(DEFAULT_BLOCK_FILL))
+        self.setBrush(QBrush(PAIRED_ITEM_FILL))
         self.setPen(QPen(Qt.GlobalColor.transparent, 0))
         self.setFlags(
             QGraphicsItem.GraphicsItemFlag.ItemIsMovable |
@@ -4693,24 +4703,62 @@ class PairedItem(QGraphicsRectItem):
         )
         self.setAcceptHoverEvents(True)
 
-        name_font = QtGui.QFont("DejaVu Sans", 9)
-        name_font.setBold(True)
-        self.name_item.setFont(name_font)
-        self.name_item.setPos(6, 4)
-
         n_inputs = len(self.subsys.in_vars)
         n_outputs = len(self.subsys.out_vars)
 
         self.inputs = [PortItem(self, True, i, n_inputs) for i in range(n_inputs)]
         self.outputs = [PortItem(self, False, i, n_outputs) for i in range(n_outputs)]
-        self.input_labels = [self.create_port_label_item() for _ in range(n_inputs)]
-        self.output_labels = [self.create_port_label_item() for _ in range(n_outputs)]
 
         self.refresh_port_metadata()
+        self._build_polygon()
 
-        self.resize_handle = ResizeHandle(self)
+    def rect(self) -> QtCore.QRectF:
+        return self.polygon().boundingRect()
 
-        self.resize_to_content()
+    def _build_polygon(self) -> None:
+        W = self._TRI_W
+        H = self._TRI_H
+        if self._is_signal_in:
+            poly = QtGui.QPolygonF([
+                QtCore.QPointF(0.0, 0.0),
+                QtCore.QPointF(0.0, H),
+                QtCore.QPointF(W, H / 2.0),
+            ])
+        else:
+            poly = QtGui.QPolygonF([
+                QtCore.QPointF(0.0, H / 2.0),
+                QtCore.QPointF(W, 0.0),
+                QtCore.QPointF(W, H),
+            ])
+        self.setPolygon(poly)
+        self._position_name_and_ports()
+
+    def _position_name_and_ports(self) -> None:
+        W = self._TRI_W
+        H = self._TRI_H
+        half = H / 2.0
+        gap: float = 4.0
+        port_radius: float = 6.0
+
+        if self._is_signal_in:
+            if self.inputs:
+                port = self.inputs[0]
+                port.setPos(0.0, half)
+            name_x = port_radius + gap
+        else:
+            if self.outputs:
+                port = self.outputs[0]
+                port.setPos(W, half)
+            name_width = self.name_item.boundingRect().width()
+            name_x = W - port_radius - gap - name_width
+
+        name_height = self.name_item.boundingRect().height()
+        self.name_item.setPos(name_x, half - name_height / 2.0)
+
+        for port in self.inputs + self.outputs:
+            if port.connections:
+                for conn in port.connections:
+                    conn.update_path()
 
     def set_paired_item(self, paired_item: PairedItem) -> None:
         self._paired_item = paired_item
@@ -4720,115 +4768,66 @@ class PairedItem(QGraphicsRectItem):
 
     def build_item(self) -> None:
         if self.subsys is not None:
+            self._is_signal_in = bool(self.subsys.in_vars) and not bool(self.subsys.out_vars)
+
             self.name_item = QGraphicsTextItem(self.name, self)
             self.name_item.setDefaultTextColor(BLOCK_TITLE)
-            name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 9)
+            name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 7)
             name_font.setBold(True)
             self.name_item.setFont(name_font)
-            self.name_item.setPos(6, 4)
+
+            self.setBrush(QBrush(PAIRED_ITEM_FILL))
 
             n_inputs: int = len(self.subsys.in_vars)
             n_outputs: int = len(self.subsys.out_vars)
 
             self.inputs = [PortItem(self, True, i, n_inputs) for i in range(n_inputs)]
             self.outputs = [PortItem(self, False, i, n_outputs) for i in range(n_outputs)]
-            self.input_labels = [self.create_port_label_item() for _ in range(n_inputs)]
-            self.output_labels = [self.create_port_label_item() for _ in range(n_outputs)]
             self.refresh_port_metadata()
-
-            self.resize_handle = ResizeHandle(self)
-            self.resize_to_content()
+            self._build_polygon()
         else:
             pass
 
     def resize_block(self, width, height):
-        self.prepareGeometryChange()
-        min_width: float
-        min_height: float
-        min_width, min_height = self.get_minimum_block_size()
-        QGraphicsRectItem.setRect(self, 0, 0, max(width, min_width), max(height, min_height))
-        self.update_ports()
-        self.update_handle_position()
+        pass
 
     def update_handle_position(self):
-        rect = self.rect()
-        self.resizing_from_handle = False
-        self.resize_handle.setPos(rect.width(), rect.height())
-        self.resizing_from_handle = True
+        pass
 
     def paint(self,
               painter: QPainter,
               option: QtWidgets.QStyleOptionGraphicsItem,
               widget: Optional[QWidget] = None) -> None:
-        rect: QtCore.QRectF = self.rect()
-        outer_rect: QtCore.QRectF = rect.adjusted(2, 2, -2, -2)
-        shadow_rect: QtCore.QRectF = outer_rect.translated(2.5, 3.0)
-        body_rect: QtCore.QRectF = outer_rect
+        polygon: QtGui.QPolygonF = self.polygon()
+        bounds: QtCore.QRectF = polygon.boundingRect()
         border_color: QColor = BLOCK_BORDER_SELECTED if self.isSelected() else BLOCK_BORDER
         fill_color: QColor = self.brush().color()
-        body_path: QPainterPath = QPainterPath()
-        shadow_path: QPainterPath = QPainterPath()
 
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
-        shadow_path.addRoundedRect(shadow_rect, 12.0, 12.0)
+        shadow_poly = polygon.translated(2.5, 3.0)
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(QBrush(BLOCK_SHADOW))
-        painter.drawPath(shadow_path)
+        painter.drawPolygon(shadow_poly)
 
-        body_path.addRoundedRect(body_rect, 12.0, 12.0)
         painter.setBrush(QBrush(fill_color))
-        painter.drawPath(body_path)
+        painter.drawPolygon(polygon)
 
         painter.setPen(QPen(border_color, 1.6))
         painter.setBrush(Qt.BrushStyle.NoBrush)
-        painter.drawRoundedRect(body_rect, 12.0, 12.0)
+        painter.drawPolygon(polygon)
 
     def _set_rect_internal(self, w, h):
-        QGraphicsRectItem.setRect(self, 0, 0, w, h)
-        self.update_ports()
-        self.update_handle_position()
+        pass
 
     def set_rectangle(self, x, y, w, h):
-        if not self._suppress_resize:
-            self._set_rect_internal(w, h)
+        pass
 
     def get_minimum_block_size(self) -> tuple[float, float]:
-        port_rows: int = max(len(self.inputs), len(self.outputs), 1)
-        min_height: float = max(
-            BLOCK_MIN_HEIGHT,
-            BLOCK_HEADER_HEIGHT + BLOCK_PORT_SECTION_PADDING + port_rows * BLOCK_PORT_ROW_HEIGHT
-        )
-
-        name_width = len(self.subsys.name) * 7
-        max_label_length = 0
-        if self.subsys:
-            for var in self.subsys.in_vars:
-                max_label_length = max(max_label_length, len(var.name))
-            for var in self.subsys.out_vars:
-                max_label_length = max(max_label_length, len(var.name))
-
-        port_width = max_label_length * 7
-        min_width = max(BLOCK_MIN_WIDTH, name_width + 14, port_width + 28)
-
-        return min_width, min_height
+        return self._TRI_W, self._TRI_H
 
     def resize_to_content(self) -> None:
-        self.prepareGeometryChange()
-        min_width: float
-        min_height: float
-        min_width, min_height = self.get_minimum_block_size()
-        QGraphicsRectItem.setRect(self, 0, 0, min_width, min_height)
-        self.update_ports()
-        self.update_handle_position()
-
-    def create_port_label_item(self) -> QGraphicsTextItem:
-        label_item: QGraphicsTextItem = QGraphicsTextItem("", self)
-        label_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 9)
-        label_item.setFont(label_font)
-        label_item.setDefaultTextColor(PORT_LABEL_COLOR)
-        label_item.setZValue(4)
-        return label_item
+        self._build_polygon()
 
     def refresh_port_metadata(self) -> None:
         """
@@ -4837,7 +4836,6 @@ class PairedItem(QGraphicsRectItem):
         """
         i: int
         port: PortItem
-        label_item: QGraphicsTextItem
         variable_name: str
 
         if self.subsys is not None:
@@ -4849,8 +4847,6 @@ class PairedItem(QGraphicsRectItem):
 
                 variable_name = self.subsys.in_vars[i].name
                 port.setToolTip(f"Input {i}: {variable_name}")
-                label_item = self.input_labels[i]
-                label_item.setPlainText(truncate_port_label(variable_name))
 
             for i, port in enumerate(self.outputs):
                 if port.base_var is None:
@@ -4860,8 +4856,6 @@ class PairedItem(QGraphicsRectItem):
 
                 variable_name = self.subsys.out_vars[i].name
                 port.setToolTip(f"Output {i}: {variable_name}")
-                label_item = self.output_labels[i]
-                label_item.setPlainText(truncate_port_label(variable_name))
         else:
             pass
 
@@ -4872,27 +4866,7 @@ class PairedItem(QGraphicsRectItem):
             other._paired_item = self
 
     def update_ports(self):
-        for i, port in enumerate(self.inputs):
-            spacing = self.rect().height() / (len(self.inputs) + 1)
-            port.setPos(0, spacing * (i + 1))
-        for i, port in enumerate(self.outputs):
-            spacing = self.rect().height() / (len(self.outputs) + 1)
-            port.setPos(self.rect().width(), spacing * (i + 1))
-
-        for i, label_item in enumerate(self.input_labels):
-            port = self.inputs[i]
-            label_item.setPos(14.0, port.pos().y() - 8.0)
-
-        for i, label_item in enumerate(self.output_labels):
-            port = self.outputs[i]
-            label_width: float = label_item.boundingRect().width()
-            label_item.setPos(self.rect().width() - label_width - 14.0, port.pos().y() - 8.0)
-
-        self.update_handle_position()
-        for port in self.inputs + self.outputs:
-            if port.connections:
-                for conn in port.connections:
-                    conn.update_path()
+        self._position_name_and_ports()
 
     def hoverEnterEvent(self, event):
         QApplication.setOverrideCursor(Qt.CursorShape.OpenHandCursor)
@@ -4924,7 +4898,7 @@ class BlockItem(QGraphicsRectItem):
         :param name:
         :param position_changed_callback:
         """
-        super().__init__(0, 0, 100, 60)
+        super().__init__(0, 0, 80, 40)
 
         self.var_factory: VarFactory = var_factory
         self.api_object = api_object
@@ -4948,7 +4922,8 @@ class BlockItem(QGraphicsRectItem):
         )
         self.setAcceptHoverEvents(True)
         self.setPen(QPen(Qt.GlobalColor.transparent, 0))
-        self.setBrush(QBrush(DEFAULT_BLOCK_FILL))
+        self.setBrush(QBrush(BLOCK_FILL_DISCONNECTED))
+        self._refresh_connection_color()
 
 
     def set_subsystem(self, block: Block) -> None:
@@ -4969,10 +4944,10 @@ class BlockItem(QGraphicsRectItem):
         if self.subsys is not None:
             self.name_item = QGraphicsTextItem(self.name, self)
             self.name_item.setDefaultTextColor(BLOCK_TITLE)
-            name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 9)
+            name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 7)
             name_font.setBold(True)
             self.name_item.setFont(name_font)
-            self.name_item.setPos(6, 4)
+            self.name_item.setPos(4, 2)
 
             n_inputs: int = len(self.subsys.in_vars)
             n_outputs: int = len(self.subsys.out_vars)
@@ -4983,8 +4958,8 @@ class BlockItem(QGraphicsRectItem):
             self.output_labels = [self.create_port_label_item() for _ in range(n_outputs)]
             self.refresh_port_metadata()
 
-            self.resize_handle = ResizeHandle(self)
             self.resize_to_content()
+            self._refresh_connection_color()
         else:
             pass
 
@@ -4995,7 +4970,7 @@ class BlockItem(QGraphicsRectItem):
         :return:
         """
         label_item: QGraphicsTextItem = QGraphicsTextItem("", self)
-        label_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 9)
+        label_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 7)
         label_item.setFont(label_font)
         label_item.setDefaultTextColor(PORT_LABEL_COLOR)
         label_item.setZValue(4)
@@ -5009,11 +4984,11 @@ class BlockItem(QGraphicsRectItem):
         """
         port_rows: int = max(len(self.inputs), len(self.outputs), 1)
         min_height: float = max(
-            BLOCK_MIN_HEIGHT,
-            BLOCK_HEADER_HEIGHT + BLOCK_PORT_SECTION_PADDING + port_rows * BLOCK_PORT_ROW_HEIGHT
+            BLOCK_COMPACT_MIN_HEIGHT,
+            BLOCK_COMPACT_HEADER_HEIGHT + BLOCK_COMPACT_PORT_SECTION_PADDING + port_rows * BLOCK_COMPACT_PORT_ROW_HEIGHT
         )
 
-        name_width = len(self.name) * 7
+        name_width = len(self.name) * 5
         max_label_length = 0
         if self.subsys:
             for var in self.subsys.in_vars:
@@ -5021,8 +4996,8 @@ class BlockItem(QGraphicsRectItem):
             for var in self.subsys.out_vars:
                 max_label_length = max(max_label_length, len(var.name))
 
-        port_width = max_label_length * 7
-        min_width = max(BLOCK_MIN_WIDTH, name_width + 14, port_width + 28)
+        port_width = max_label_length * 5
+        min_width = max(BLOCK_COMPACT_MIN_WIDTH, name_width + 10, port_width + 20)
 
         return min_width, min_height
 
@@ -5039,6 +5014,17 @@ class BlockItem(QGraphicsRectItem):
         QGraphicsRectItem.setRect(self, 0, 0, min_width, min_height)
         self.update_ports()
         self.update_handle_position()
+
+    def _refresh_connection_color(self) -> None:
+        all_connected: bool = True
+        for port in self.inputs + self.outputs:
+            if port.connections is None:
+                all_connected = False
+                break
+        if all_connected and (len(self.inputs) + len(self.outputs)) > 0:
+            self.setBrush(QBrush(BLOCK_FILL_ALL_CONNECTED))
+        else:
+            self.setBrush(QBrush(BLOCK_FILL_DISCONNECTED))
 
     def refresh_port_metadata(self) -> None:
         """
@@ -5113,20 +5099,7 @@ class BlockItem(QGraphicsRectItem):
         painter.drawRoundedRect(body_rect, 12.0, 12.0)
 
     def resize_block(self, width: float, height: float) -> None:
-        """
-        Resize the block geometry and keep ports aligned.
-
-        :param width:
-        :param height:
-        :return:
-        """
-        self.prepareGeometryChange()
-        min_width: float
-        min_height: float
-        min_width, min_height = self.get_minimum_block_size()
-        QGraphicsRectItem.setRect(self, 0, 0, max(width, min_width), max(height, min_height))
-        self.update_ports()
-        self.update_handle_position()
+        pass
 
     def update_handle_position(self) -> None:
         """
@@ -5153,24 +5126,24 @@ class BlockItem(QGraphicsRectItem):
         port: PortItem
         input_spacing: float
         output_spacing: float
-        port_section_height: float = max(self.rect().height() - BLOCK_HEADER_HEIGHT - 8.0, 1.0)
+        port_section_height: float = max(self.rect().height() - BLOCK_COMPACT_HEADER_HEIGHT - 6.0, 1.0)
 
         for i, port in enumerate(self.inputs):
             input_spacing = port_section_height / (len(self.inputs) + 1)
-            port.setPos(0, BLOCK_HEADER_HEIGHT + input_spacing * (i + 1))
+            port.setPos(0, BLOCK_COMPACT_HEADER_HEIGHT + input_spacing * (i + 1))
 
         for i, port in enumerate(self.outputs):
             output_spacing = port_section_height / (len(self.outputs) + 1)
-            port.setPos(self.rect().width(), BLOCK_HEADER_HEIGHT + output_spacing * (i + 1))
+            port.setPos(self.rect().width(), BLOCK_COMPACT_HEADER_HEIGHT + output_spacing * (i + 1))
 
         for i, label_item in enumerate(self.input_labels):
             port = self.inputs[i]
-            label_item.setPos(14.0, port.pos().y() - 8.0)
+            label_item.setPos(10.0, port.pos().y() - 6.0)
 
         for i, label_item in enumerate(self.output_labels):
             port = self.outputs[i]
             label_width: float = label_item.boundingRect().width()
-            label_item.setPos(self.rect().width() - label_width - 14.0, port.pos().y() - 8.0)
+            label_item.setPos(self.rect().width() - label_width - 10.0, port.pos().y() - 6.0)
 
         self.update_handle_position()
 
@@ -5416,7 +5389,7 @@ class DiagramScene(QGraphicsScene):
         new_color: QColor = QColorDialog.getColor()
 
         if new_color.isValid():
-            if isinstance(item, (BlockItem, GenericBlockItem)):
+            if isinstance(item, GenericBlockItem):
                 if item.subsys is not None:
                     brush: QBrush = item.brush()
                     brush.setColor(new_color)
@@ -5515,9 +5488,10 @@ class DiagramScene(QGraphicsScene):
                 else:
                     pass
 
-                color_action: QAction = QAction("Change Color", menu)
-                color_action.triggered.connect(self.recolor_context_item)
-                menu.addAction(color_action)
+                if not isinstance(item, BlockItem):
+                    color_action: QAction = QAction("Change Color", menu)
+                    color_action.triggered.connect(self.recolor_context_item)
+                    menu.addAction(color_action)
 
                 menu.exec(event.screenPos())
                 self.context_item = None
@@ -10571,11 +10545,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             name=blk_in.name,
             position_changed_callback=self._build_position_changed_callback(blk_in.uid)
         )
-        item_in.setPos(QtCore.QPointF(x_pos - 75.0, y_pos))
+        item_in.setPos(QtCore.QPointF(x_pos - 50.0, y_pos))
         self.scene.addItem(item_in)
         self.diagram.add_node(
             name=blk_in.name,
-            x=x_pos - 75.0,
+            x=x_pos - 50.0,
             y=y_pos,
             tpe="signal_in",
             device_uid=blk_in.uid
@@ -10589,11 +10563,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             name=blk_out.name,
             position_changed_callback=self._build_position_changed_callback(blk_out.uid)
         )
-        item_out.setPos(QtCore.QPointF(x_pos + 75.0, y_pos))
+        item_out.setPos(QtCore.QPointF(x_pos + 50.0, y_pos))
         self.scene.addItem(item_out)
         self.diagram.add_node(
             name=blk_out.name,
-            x=x_pos + 75.0,
+            x=x_pos + 50.0,
             y=y_pos,
             tpe="signal_out",
             device_uid=blk_out.uid
@@ -10645,6 +10619,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 pass
         else:
             pass
+
+        if isinstance(source_port.subsystem, BlockItem):
+            source_port.subsystem._refresh_connection_color()
+        if isinstance(target_port.subsystem, BlockItem):
+            target_port.subsystem._refresh_connection_color()
 
         self.scene.removeItem(item)
 
@@ -14277,9 +14256,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         item.setToolTip(self._build_fault_emt_modal_tooltip(modal_config))
                     else:
                         pass
-                    brush = item.brush()
-                    brush.setColor(QColor(node.color))
-                    item.setBrush(brush)
+                    if not isinstance(item, PairedItem):
+                        brush = item.brush()
+                        brush.setColor(QColor(node.color))
+                        item.setBrush(brush)
 
                     uid_to_blockitem[uid] = item
 
@@ -14321,6 +14301,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     pass
             else:
                 pass
+
+        # Refresh connection-status color on all BlockItem instances
+        for block_item in uid_to_blockitem.values():
+            if isinstance(block_item, BlockItem):
+                block_item._refresh_connection_color()
 
     def mark_unapplied_changes(self) -> None:
         """
