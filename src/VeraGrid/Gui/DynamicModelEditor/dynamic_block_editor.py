@@ -4369,7 +4369,7 @@ class GenericBlockItem(QGraphicsRectItem):
             )
 
 
-        else:
+        elif self.editor_window is None and self.subsys.is_eq_decomposable():
             self.editor_window = DynamicBlockEditorGUI(
                 var_factory=self.var_factory,
                 block=self.subsys,
@@ -4378,10 +4378,10 @@ class GenericBlockItem(QGraphicsRectItem):
             )
             items_list = list()
 
-            if self.subsys.is_eq_decomposable():
-                self.editor_window.decompose_block_in_place(self.subsys)
-                self.editor_window.diagram = self.subsys.diagram
-                self.editor_window.main_block = self.subsys
+
+            self.editor_window.decompose_block_in_place(self.subsys)
+            self.editor_window.diagram = self.subsys.diagram
+            self.editor_window.main_block = self.subsys
 
             for uid, node in self.editor_window.diagram.node_data.items():
                 block_type: BlockType | None
