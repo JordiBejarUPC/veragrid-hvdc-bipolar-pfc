@@ -1013,6 +1013,7 @@ def get_veragrid_transformer(
         mf, mt = elm.get_virtual_taps()
 
         # we need to discount that PSSe includes the virtual tap inside the normal tap
+        # NOTE: may need to be `/ mf / mt` (small Va error on some radial buses); see admittance_matrices.py
         elm.tap_module = tap_module / mf * mt
 
         return elm, 2
