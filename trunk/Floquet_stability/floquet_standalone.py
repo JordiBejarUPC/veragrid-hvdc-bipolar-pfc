@@ -14,7 +14,19 @@ import numpy as np
 import scipy.sparse as sp
 import scipy.linalg as la
 import time
+import sys
+import os
 
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+SRC_ROOT = os.path.join(REPO_ROOT, 'src')
+
+if SRC_ROOT not in sys.path:
+    sys.path.insert(0, SRC_ROOT)
+
+if REPO_ROOT not in sys.path:
+    sys.path.insert(0, REPO_ROOT)
+
+from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.enumerations import DynamicIntegrationMethod, SmallSignalEmtBuildTypes
 from VeraGridEngine.Simulations.SmallSignalStabilityEmt.small_signal_stability_emt_driver import \
@@ -40,13 +52,13 @@ class _MockParam:
         self.value = value
 
 
-class EmtProblemDaeMockHunt:
+class FakeGridFloquetProblem:
     """
     Mock simulating a 50Hz pumped continuous system with 3 sub-synchronous resonance modes.
     Contains no algebraic variables to test pure ODE limit cycle stability.
     """
 
-    def __init__(self, h: float = 1e-4, f_pump: float = 50.0):
+    def __init__(self, grid: MultiCircuit, h: float = 1e-4, f_pump: float = 50.0):
         """
         Initializes the Spectral Hunt Mock.
 
@@ -54,6 +66,7 @@ class EmtProblemDaeMockHunt:
             h (float): Integration time step.
             f_pump (float): Fundamental pumping frequency in Hz.
         """
+        self.grid = grid
         self.h = h
         self.omega = 2.0 * np.pi * f_pump
         self.n_states = 6
@@ -116,24 +129,23 @@ class EmtProblemDaeMockHunt:
         A = self._get_A_cont(0.0)
         return sp.csc_matrix(np.eye(6) / h - A)
 
-    def _inject_evaluator_override(self, driver: SmallSignalStabilityEmtDriver):
-        """
-        Injects a mock limit cycle capturing the dynamic response of the system.
-        """
+    def build_limit_cycle_capture(self, target_period: float):
+        """Build a one-period trajectory and return the current driver contract tuple."""
+        steps_per_period = int(target_period / self.h)
+        t_traj = np.arange(steps_per_period + 1, dtype=np.float64) * self.h
+        y_traj = []
+        x_prev = np.array([1.0, 0.0, 1.0, 0.0, 1.0, 0.0])
 
-        def _capture_mock(h_step):
-            t_traj = np.arange(0, driver.options.target_period + h_step, h_step)
-            y_traj = []
-            x_prev = np.array([1.0, 0.0, 1.0, 0.0, 1.0, 0.0])
-            for t in t_traj:
-                A = self._get_A_cont(t)
-                x_next = np.linalg.inv(np.eye(6) - h_step * A) @ x_prev
-                y_traj.append(x_next)
-                x_prev = x_next
+        for t in t_traj:
+            A = self._get_A_cont(t)
+            x_next = np.linalg.inv(np.eye(6) - self.h * A) @ x_prev
+            y_traj.append(x_next)
+            x_prev = x_next
 
-            return np.array(y_traj), t_traj, self._jac_evaluator_mock, np.array([1.0]), 0
+        return np.array(y_traj), t_traj, self._jac_evaluator_mock, np.array([1.0]), 0
 
-        driver._capture_limit_cycle_and_evaluator = _capture_mock
+    def get_floquet_jacobian_evaluator(self, default_jacobian_evaluator=None):
+        return self._jac_evaluator_mock
 
     def get_floquet_ak_stack(self, trajectory: np.ndarray, h: float, jac_evaluator=None,
                              static_params=None) -> np.ndarray:
@@ -179,7 +191,8 @@ def run_target_validation(target_hz: float, name_tag: str):
     f_pump = 50.0
     T_period = 1.0 / f_pump
 
-    problem = EmtProblemDaeMockHunt(h=h, f_pump=f_pump)
+    grid = MultiCircuit(name="FakeFloquetGrid", Sbase=100.0, fbase=f_pump)
+    problem = FakeGridFloquetProblem(grid=grid, h=h, f_pump=f_pump)
     emt_options = EmtOptions(
         time_step=h,
         simulation_time=0.5,
@@ -195,8 +208,15 @@ def run_target_validation(target_hz: float, name_tag: str):
         build_type=SmallSignalEmtBuildTypes.Arnoldi  # We test the shift-invert on Arnoldi
     )
 
-    driver = SmallSignalStabilityEmtDriver(grid=None, problem=problem, emt_options=emt_options, options=floquet_options)
-    problem._inject_evaluator_override(driver)
+    class StandaloneFloquetDriver(SmallSignalStabilityEmtDriver):
+        def _capture_limit_cycle_and_evaluator(self, h_step: float, verbose: int = 0):
+            return self.problem.build_limit_cycle_capture(self.sss_options.target_period)
+
+    driver = StandaloneFloquetDriver(grid=grid,
+                                     pf_results=None,
+                                     emt_options=emt_options,
+                                     sss_options=floquet_options)
+    driver.problem = problem
 
     t0 = time.perf_counter()
     driver.run()
