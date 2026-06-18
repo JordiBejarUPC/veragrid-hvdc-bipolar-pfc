@@ -7,9 +7,10 @@ from PySide6 import QtWidgets
 
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import BlockItem, DynamicBlockEditorGUI
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import register_saved_emt_model_vars_for_device
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import connect_bus_variables_emt
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
-from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.Utils.Symbolic.block import Block, find_connections
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.enumerations import DeviceType, DynamicSimulationMode, VarPowerFlowReferenceType
 
@@ -108,6 +109,32 @@ class _BranchStub:
         self._emt_template = emt_template
         self.emt_model = emt_template.block
         self.device_type = device_type
+
+    @property
+    def emt_template(self) -> EmtModelTemplate | None:
+        return self._emt_template
+
+    @emt_template.setter
+    def emt_template(self, val: EmtModelTemplate | None) -> None:
+        self._emt_template = val
+
+
+class _VscBranchStub:
+    __slots__ = ("name", "bus_from", "bus_to", "rms_template", "_emt_template", "emt_model", "device_type", "bus_dc_n")
+
+    def __init__(self,
+                 name: str,
+                 bus_from: _BusStub,
+                 bus_to: _BusStub,
+                 emt_template: EmtModelTemplate) -> None:
+        self.name = name
+        self.bus_from = bus_from
+        self.bus_to = bus_to
+        self.rms_template = None
+        self._emt_template = emt_template
+        self.emt_model = emt_template.block
+        self.device_type = DeviceType.VscDevice
+        self.bus_dc_n = None
 
     @property
     def emt_template(self) -> EmtModelTemplate | None:
@@ -441,3 +468,19 @@ def test_apply_changes_rebinds_saved_emt_branch_bus_voltage_uids() -> None:
 
     editor.has_unapplied_changes = False
     editor.close()
+
+
+def test_find_connections_matches_vsc_dc_input_with_generic_dc_port() -> None:
+    bus_connection_block = Block(out_vars=list([
+        _make_var("Vdc_DC_Bus", VarPowerFlowReferenceType.Vdc),
+    ]))
+    converter_block = Block(in_vars=list([
+        _make_var("v_dc_pseudo_converter_emt", VarPowerFlowReferenceType.Vdc),
+    ]))
+
+    pairs, power_flow_pairs = find_connections(bus_connection_block, converter_block)
+
+    assert len(pairs) == 0
+    assert len(power_flow_pairs) == 1
+    assert power_flow_pairs[0][0].ref == VarPowerFlowReferenceType.Vdc
+    assert power_flow_pairs[0][1].ref == VarPowerFlowReferenceType.Vdc

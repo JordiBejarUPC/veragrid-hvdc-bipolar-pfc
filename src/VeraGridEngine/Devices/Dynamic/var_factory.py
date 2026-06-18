@@ -250,7 +250,10 @@ class VarFactory(EditableDevice):
         self._const_dict[v.uid] = v
         return v
 
-    def connect_variables_by_uid(self, var_to_subs_non_mutable_uid: int,  incoming_var_uid: int, incoming_var_name: str):
+    def connect_variables_by_uid(self,
+                                 var_to_subs_non_mutable_uid: int,
+                                 incoming_var_uid: int,
+                                 incoming_var_name: str) -> None:
 
         if var_to_subs_non_mutable_uid in self._var_dict:
             self._var_dict[var_to_subs_non_mutable_uid].uid = incoming_var_uid
