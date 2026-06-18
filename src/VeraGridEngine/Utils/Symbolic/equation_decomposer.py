@@ -62,6 +62,19 @@ class EquationDecomposer:
         for v in block.out_vars:
             processed_vars[v.non_mutable_uid] = v
 
+        # --- create connection blocks for input/output boundary ---
+        # Input blocks first so their outputs are in the producer map
+        # when equation blocks are processed.
+        connection_tpe: Dict[int, str] = {}
+        for in_var in block.in_vars:
+            in_blk = Block(
+                out_vars=[in_var],
+                name=f"input_{in_var.name}",
+                is_decomposable=False
+            )
+            child_blocks.append(in_blk)
+            connection_tpe[in_blk.uid] = BlockType.INPUT_CONN.name
+
         eq_order = self._topological_sort_block(block)
         var_to_block_output: Dict[int, sym.Var] = {}
 
@@ -123,17 +136,8 @@ class EquationDecomposer:
                     child_blocks.append(int_blk)
                 var_to_block_output[var.non_mutable_uid] = var
 
-        # --- create connection blocks for input/output boundary ---
-        connection_tpe: Dict[int, str] = {}
-        for in_var in block.in_vars:
-            in_blk = Block(
-                out_vars=[in_var],
-                name=f"input_{in_var.name}",
-                is_decomposable=False
-            )
-            child_blocks.append(in_blk)
-            connection_tpe[in_blk.uid] = BlockType.INPUT_CONN.name
-
+        # Output blocks after equation blocks so their input vars' producers
+        # (equation blocks) are already in the producer map.
         for out_var in block.out_vars:
             out_blk = Block(
                 in_vars=[out_var],
