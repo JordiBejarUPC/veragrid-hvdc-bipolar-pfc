@@ -4397,42 +4397,9 @@ class GenericBlockItem(QGraphicsRectItem):
                 api_object=self.api_object,
                 mode=self.mode,
             )
-            items_list = list()
-
-
             self.editor_window.decompose_block_in_place(self.subsys)
             self.editor_window.diagram = self.subsys.diagram
             self.editor_window.main_block = self.subsys
-
-            for uid, node in self.editor_window.diagram.node_data.items():
-                block_type: BlockType | None
-                block_model: Block | None = self.editor_window.get_block_from_main_block(node.device_uid)
-
-                if block_model is not None:
-                    if node.tpe in ("signal_in", "signal_out"):
-                        item = PairedItem(
-                            var_factory=self.var_factory,
-                            subsys=block_model,
-                            api_object=self.api_object,
-                            mode=self.mode,
-                            name=block_model.name,
-                            position_changed_callback=self.editor_window._build_position_changed_callback(block_model.uid)
-                        )
-
-                    else:
-                        item = GenericBlockItem(
-                            var_factory=self.var_factory,
-                            subsys=block_model,
-                            api_object=self.api_object,
-                            mode=self.mode,
-                            name=block_model.name,
-                            position_changed_callback=self.editor_window._build_position_changed_callback(block_model.uid)
-                        )
-                    items_list.append(item)
-
-            self.editor_window.add_connection_items(items_list)
-
-            self.editor_window.connect_items(items_list)
             self.editor_window.rebuild_scene_from_diagram()
         self.editor_window.show()
 

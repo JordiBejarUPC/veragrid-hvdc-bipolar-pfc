@@ -6,6 +6,7 @@ from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
+from VeraGridEngine.enumerations import BlockType
 
 try:
     from VeraGridEngine.Utils.Symbolic.hierarchical_layout_v2 import compute_layout as _compute_layout_v2
@@ -122,8 +123,28 @@ class EquationDecomposer:
                     child_blocks.append(int_blk)
                 var_to_block_output[var.non_mutable_uid] = var
 
+        # --- create connection blocks for input/output boundary ---
+        connection_tpe: Dict[int, str] = {}
+        for in_var in block.in_vars:
+            in_blk = Block(
+                out_vars=[in_var],
+                name=f"input_{in_var.name}",
+                is_decomposable=False
+            )
+            child_blocks.append(in_blk)
+            connection_tpe[in_blk.uid] = BlockType.INPUT_CONN.name
+
+        for out_var in block.out_vars:
+            out_blk = Block(
+                in_vars=[out_var],
+                name=f"output_{out_var.name}",
+                is_decomposable=False
+            )
+            child_blocks.append(out_blk)
+            connection_tpe[out_blk.uid] = BlockType.OUTPUT_CONN.name
+
         # --- build diagram ---
-        diagram, all_children = self._build_diagram(child_blocks, block)
+        diagram, all_children = self._build_diagram(child_blocks, block, connection_tpe)
 
         new_event_dict = dict(block.event_dict) if block.event_dict else {}
         new_mode_dict = dict(block.mode_dict) if block.mode_dict else {}
@@ -634,7 +655,8 @@ class EquationDecomposer:
     # BlockDiagram construction
     # ------------------------------------------------------------------
 
-    def _build_diagram(self, children: List[Block], parent: Block) -> Tuple[BlockDiagram, List[Block]]:
+    def _build_diagram(self, children: List[Block], parent: Block,
+                       connection_tpe: Dict[int, str] | None = None) -> Tuple[BlockDiagram, List[Block]]:
         diagram = BlockDiagram()
 
         if not children:
@@ -772,11 +794,14 @@ class EquationDecomposer:
 
         for i, blk in enumerate(children):
             x, y = positions.get(i, (80.0, 60.0))
+            tpe = from_to_tpe.get(i, "")
+            if not tpe and connection_tpe:
+                tpe = connection_tpe.get(blk.uid, tpe)
             diagram.add_node(
                 name=blk.name if blk.name else f"block_{i}",
                 x=x,
                 y=y,
-                tpe=from_to_tpe.get(i, ""),
+                tpe=tpe,
                 device_uid=blk.uid,
                 color="#C0C0C0",
             )
