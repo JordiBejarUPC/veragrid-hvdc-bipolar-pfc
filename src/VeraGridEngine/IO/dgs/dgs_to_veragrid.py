@@ -1301,7 +1301,147 @@ def _fill_tr4w_simple_values(trafo4w: dev.TransformerNW,
 
     trafo4w.recalculate_windings_from_definition(Sbase=Sbase)
 
+def _fill_tr4w_complete_values(
+    trafo4w: dev.TransformerNW, V_h0: float,V_l1: float, V_l2: float, V_l3: float,
+Sn_h0: float, Sn_l1: float, Sn_l2: float, Sn_l3: float, Vsc_h0l1: float,
+Vsc_h0l2: float, Vsc_h0l3: float, Vsc_l1l2: float, Vsc_l1l3: float,
+Vsc_l2l3: float, Pcu_h0l1: float, Pcu_h0l2: float, Pcu_h0l3: float,
+Pcu_l1l2: float, Pcu_l1l3: float, Pcu_l2l3: float, Pfe: float,
+I0: float = 0.5, Sbase: float = 100,
+) -> None:
+        """
+        Fill four-winding transformer values from simplified per-winding input data.
 
+        :param trafo4w: Four-winding transformer.
+        :param nominal_voltages: DGS-side voltages in h0, l1, l2, l3 order.
+        :param nominal_powers: DGS-side powers in h0, l1, l2, l3 order.
+        :param short_circuit_voltages: DGS-side short-circuit voltages in h0, l1, l2, l3 order.
+        :param copper_losses: DGS-side copper losses in h0, l1, l2, l3 order.
+        :param ordered_original_indices: Mapping from transformer winding order to original DGS-side order.
+        :param Pfe: Shared iron-core losses in kW.
+        :param I0: Shared no-load current in percent.
+        :param Sbase: System base power in MVA.
+        :return: None.
+        """
+        Sr_hv = Sn_h0
+
+        def get_pairwise_impedance(
+                uk: float,
+                pcu: float,
+                Sr_a: float,
+                Sr_b: float,
+        ) -> complex:
+            """
+            Returns the pairwise short-circuit impedance in p.u.
+
+            uk: short-circuit voltage in %
+            pcu: copper losses in kW
+            Sr_a, Sr_b: rated powers in MVA
+            """
+
+            Sr_pair = min(Sr_a, Sr_b)
+
+            # Total impedance magnitude
+            z_abs = (uk / 100.0) * (Sr_hv / Sr_pair)
+
+            # Resistive part
+            zr = (pcu / 1000.0) * (Sr_hv / (Sr_pair ** 2))
+
+            # Reactive part
+            zi_squared = z_abs ** 2 - zr ** 2
+
+            if zi_squared < 0.0:
+                zi = 0.0
+            else:
+                zi = math.sqrt(zi_squared)
+
+            return complex(zr, zi)
+
+        def parallel(z_a: complex, z_b: complex) -> complex:
+            if abs(z_a + z_b) < 1e-12:
+                return complex(0.0, 0.0)
+            return (z_a * z_b) / (z_a + z_b)
+
+        # Pairwise impedances
+        z_h0l1 = get_pairwise_impedance(
+            uk=Vsc_h0l1,
+            pcu=Pcu_h0l1,
+            Sr_a=Sn_h0,
+            Sr_b=Sn_l1,
+        )
+
+        z_h0l2 = get_pairwise_impedance(
+            uk=Vsc_h0l2,
+            pcu=Pcu_h0l2,
+            Sr_a=Sn_h0,
+            Sr_b=Sn_l2,
+        )
+
+        z_h0l3 = get_pairwise_impedance(
+            uk=Vsc_h0l3,
+            pcu=Pcu_h0l3,
+            Sr_a=Sn_h0,
+            Sr_b=Sn_l3,
+        )
+
+        z_l1l2 = get_pairwise_impedance(
+            uk=Vsc_l1l2,
+            pcu=Pcu_l1l2,
+            Sr_a=Sn_l1,
+            Sr_b=Sn_l2,
+        )
+
+        z_l1l3 = get_pairwise_impedance(
+            uk=Vsc_l1l3,
+            pcu=Pcu_l1l3,
+            Sr_a=Sn_l1,
+            Sr_b=Sn_l3,
+        )
+
+        z_l2l3 = get_pairwise_impedance(
+            uk=Vsc_l2l3,
+            pcu=Pcu_l2l3,
+            Sr_a=Sn_l2,
+            Sr_b=Sn_l3,
+        )
+
+        # Equivalent circuit impedances
+        k1 = z_h0l2 + z_l1l3 - z_h0l1 - z_l2l3
+        k2 = z_h0l2 + z_l1l3 - z_h0l3 - z_l1l2
+        k_2 = np.abs(k1 * k2)
+        k = math.sqrt(k_2)
+
+        z_internal_i = k1 + k
+        z_internal_j = k2 + k
+
+        z_h0 = (z_h0l1 + z_h0l3 - z_l1l3 - k) / 2.0
+        z_l1 = (z_h0l1 + z_l1l2 - z_h0l2 - k) / 2.0
+        z_l2 = (z_l1l2 + z_l2l3 - z_l1l3 - k) / 2.0
+        z_l3 = (z_l2l3 + z_h0l3 - z_h0l2 - k) / 2.0
+
+        # Equivalent internal path impedances
+        z_path_l1 = parallel(
+            z_internal_i,
+            2.0 * z_internal_j + z_internal_i,
+        )
+
+        z_path_l2 = parallel(
+            z_internal_i + z_internal_j,
+            z_internal_j + z_internal_i,
+        )
+
+        z_path_l3 = parallel(
+            z_internal_j,
+            2.0 * z_internal_i + z_internal_j,
+        )
+
+        # Add path impedance to each branch impedance
+        z_l1 += z_path_l1
+        z_l2 += z_path_l2
+        z_l3 += z_path_l3
+
+        for wind in trafo4w.windings:
+            
 
 
 def _apply_tr4_winding_tap_data(
@@ -1898,7 +2038,8 @@ def convert_dgs_to_transformer4w(tr4: ElmTr4,
 
 
     if template.inputData == 0:
-        trafo4w.fill_tr4W_complete_values(
+        _fill_tr4w_complete_values(
+            trafo4w=trafo4w,
             V_h0=template.un_h0,
             V_l1=template.un_l1,
             V_l2=template.un_l2,
