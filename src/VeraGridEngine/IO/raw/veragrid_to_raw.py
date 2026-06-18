@@ -998,6 +998,25 @@ def get_psse_transformer3w(transformer: dev.Transformer3W,
     psse_transformer.ANG2 = np.rad2deg(transformer.winding2.tap_phase)
     psse_transformer.ANG3 = np.rad2deg(transformer.winding3.tap_phase)
 
+    # Winding tap regulation (mirror of the winding_controls parsing in raw_to_veragrid).
+    # Without writing these fields the COD/CONT/RMA/RMI/VMA/VMI/NTP default to "no control",
+    # so the regulation parsed from the input RAW is lost on round-trip and the regulated bus
+    # loses its voltage lock (shifting its initial voltage).
+    for n, w in enumerate((transformer.winding1, transformer.winding2, transformer.winding3),
+                          start=1):
+        if w.tap_module_control_mode == TapModuleControl.Vm and w.regulation_bus is not None:
+            setattr(psse_transformer, f"COD{n}", 1)
+            setattr(psse_transformer, f"CONT{n}", bus_dict.get(w.regulation_bus, 0))
+            setattr(psse_transformer, f"RMA{n}", w.tap_module_max)
+            setattr(psse_transformer, f"RMI{n}", w.tap_module_min)
+            # the controlled-voltage band collapses to its midpoint (vset) on read, so write
+            # vset on both ends to reproduce it exactly.
+            setattr(psse_transformer, f"VMA{n}", w.vset)
+            setattr(psse_transformer, f"VMI{n}", w.vset)
+            setattr(psse_transformer, f"NTP{n}", int(w.tap_changer.total_positions))
+        else:
+            setattr(psse_transformer, f"COD{n}", 0)
+
     i, j, k, ckt = transformer.code.split("_", 3)
 
     psse_transformer.I = bus_dict[transformer.bus1]
