@@ -10,7 +10,7 @@ import uuid
 import re
 import copy
 from enum import Enum
-from typing import List, Dict, Optional, Any, Set, TypeAlias, cast
+from typing import List, Dict, Optional, Any, Set
 from PySide6 import QtWidgets, QtGui, QtCore
 from PySide6.QtWidgets import (QApplication, QHBoxLayout, QGraphicsScene, QGraphicsView, QGraphicsItem,
                                QGraphicsRectItem, QGraphicsEllipseItem, QGraphicsPolygonItem,
@@ -36,7 +36,7 @@ from VeraGridEngine.Devices.Injections.shunt import Shunt
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowReferenceType, ParamPowerFlowReferenceType, \
     DynamicSimulationMode, ShuntConnectionType, WindingType, DynamicTableModelMode
-from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
+from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms, get_bus_rms_algebraic_vars
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import BusEmtTemplate, get_bus_emt_template, get_bus_emt_algebraic_vars
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import register_saved_emt_model_vars_for_device, \
     unify_saved_emt_model_root_contract, attach_emt_model_to_buses
@@ -1914,42 +1914,6 @@ def clone_block_for_editing(block: Block) -> Block:
     return copy.deepcopy(block)
 
 
-def _build_block_uid_lookup(root_block: Block) -> Dict[int, Block]:
-    """
-    Build one uid-to-block lookup for one edited hierarchy.
-
-    :param root_block: Root block that owns the edited hierarchy.
-    :return: Mapping from block uid to block object.
-    """
-    block_lookup: Dict[int, Block] = dict()
-    block_item: Block
-
-    for block_item in root_block.get_all_blocks():
-        block_lookup[block_item.uid] = block_item
-
-    return block_lookup
-
-
-def _ensure_block_tree_names(block: Block, prefix: str = "block") -> None:
-    """
-    Assign stable fallback names to unnamed blocks in one hierarchy.
-
-    :param block: Root block to normalize.
-    :param prefix: Fallback name prefix.
-    :return: None.
-    """
-    child_index: int
-    child_block: Block
-
-    if not block.name:
-        block.name = f"{prefix}_{str(block.uid)[:8]}"
-    else:
-        pass
-
-    for child_index, child_block in enumerate(block.children, start=1):
-        _ensure_block_tree_names(child_block, prefix=f"{block.name}_{child_index}")
-
-
 def copy_block_state(source_block: Block, target_block: Block) -> None:
     """
     Copy the complete edited block state back into the original block instance.
@@ -2287,7 +2251,7 @@ class ResizeHandle(QGraphicsRectItem):
     Interactive resize handle attached to a block item.
     """
 
-    def __init__(self, block_item: EditorBlockGraphicsItem, size: int = 10):
+    def __init__(self, block_item: BlockItem | GenericBlockItem, size: int = 10):
         """
         Build the resize handle.
 
@@ -2299,7 +2263,7 @@ class ResizeHandle(QGraphicsRectItem):
         self.setPen(QPen(QColor("#ffffff"), 1))
         self.setCursor(Qt.CursorShape.SizeFDiagCursor)
         self.setZValue(2)
-        self.block: EditorBlockGraphicsItem = block_item
+        self.block: BlockItem = block_item
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemSendsScenePositionChanges)
         self.setAcceptHoverEvents(True)
@@ -2416,16 +2380,13 @@ class EmtTemplateWizardDialog(QDialog):
         )
 
 
-EditorBlockGraphicsItem: TypeAlias = "BlockItem | GenericBlockItem | PairedItem"
-
-
 class PortItem(QGraphicsEllipseItem):
     """
     Graphical input or output port attached to a block item.
     """
 
     def __init__(self,
-                 subsystem: EditorBlockGraphicsItem,
+                 subsystem: BlockItem | GenericBlockItem,
                  is_input: bool,
                  index: int,
                  total: int,
@@ -2445,7 +2406,7 @@ class PortItem(QGraphicsEllipseItem):
         self.setPen(QPen(PORT_BORDER, 1.5))
         self.setZValue(3)
         self.setAcceptHoverEvents(True)
-        self.subsystem: EditorBlockGraphicsItem = subsystem
+        self.subsystem: BlockItem | GenericBlockItem = subsystem
         self.is_input: bool = is_input
         self.connections: List["ConnectionItem"] | None = None
         self.index: int = index
@@ -2637,7 +2598,7 @@ class ConnectionItem(QGraphicsPathItem):
 
     def _create_elbow_items(self) -> None:
         for elbow in self.elbows:
-            elbow.setParentItem(cast(QGraphicsItem | None, None))
+            elbow.setParentItem(None)
             if elbow.scene():
                 elbow.scene().removeItem(elbow)
         self.elbows.clear()
@@ -5677,8 +5638,8 @@ class DiagramScene(QGraphicsScene):
         :param target_port:
         :return:
         """
-        source_block: EditorBlockGraphicsItem = source_port.subsystem
-        target_block: EditorBlockGraphicsItem = target_port.subsystem
+        source_block: BlockItem | GenericBlockItem = source_port.subsystem
+        target_block: BlockItem | GenericBlockItem = target_port.subsystem
 
         if source_block.subsys is not None and target_block.subsys is not None:
             connection: ConnectionItem = ConnectionItem(
@@ -6348,13 +6309,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.validateConsistencyButton.clicked.connect(self.show_model_consistency_validation)
         self.ui.toolBox.currentChanged.connect(self.on_side_panel_page_changed)
         self.scene.selectionChanged.connect(self.on_scene_selection_changed)
-        if self.mode == DynamicSimulationMode.EMT and self.main_editor:
-            self._ensure_full_emt_editor_interface()
-        else:
-            pass
-
-        _ensure_block_tree_names(self.main_block, prefix="block")
-
         if not self.main_block.empty() and not self.main_block.diagram.node_data:
 
             if self.main_block.children:
@@ -11958,615 +11912,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         return success, bus_mask, from_mask, to_mask
 
-    def _build_default_editor_emt_connection_specs(self) -> List[ConnectionVarSpec]:
-        """
-        Return the full editable EMT interface expected by the editor.
-
-        Unlike the saved EMT model root contract, this editor contract always
-        includes every potentially editable connection block for the host device
-        so reopening the editor never hides ports that the user may want to wire
-        later.
-
-        :return: Full editor EMT connection specs.
-        """
-        if isinstance(self.api_object, BranchParent):
-            return self._build_emt_branch_connection_specs()
-        elif isinstance(self.api_object, InjectionParent):
-            return self._build_emt_injection_connection_specs()
-        else:
-            return list()
-
-    def _ensure_full_emt_editor_interface(self) -> None:
-        """
-        Expand one reopened EMT main editor to the full editable root interface.
-
-        Template-assigned EMT models may save only the currently connected root
-        ports in ``in_vars``/``out_vars`` and in the saved diagram. The editor,
-        however, must always reopen with the complete editable connection-block
-        set so users can connect additional phases later.
-
-        :return: None.
-        """
-        if not self.main_editor or self.mode != DynamicSimulationMode.EMT:
-            return
-        else:
-            pass
-
-        full_specs: List[ConnectionVarSpec] = self._build_default_editor_emt_connection_specs()
-        if len(full_specs) == 0:
-            return
-        else:
-            pass
-
-        existing_input_by_ref: Dict[VarPowerFlowReferenceType, Var] = dict()
-        existing_output_by_ref: Dict[VarPowerFlowReferenceType, Var] = dict()
-        var: Var
-
-        for var in self.main_block.in_vars:
-            if isinstance(var.ref, VarPowerFlowReferenceType):
-                existing_input_by_ref[var.ref] = var
-            else:
-                pass
-
-        for var in self.main_block.out_vars:
-            if isinstance(var.ref, VarPowerFlowReferenceType):
-                existing_output_by_ref[var.ref] = var
-            else:
-                pass
-
-        # Rebuild the root interface in the editor-default order while preserving
-        # existing symbolic objects for already-saved ports and creating only the
-        # missing editor ports.
-        rebuilt_in_vars: list[Var] = list()
-        rebuilt_out_vars: list[Var] = list()
-        spec: ConnectionVarSpec
-        reused_var: Var | None
-
-        for spec in full_specs:
-            reused_var = None
-            if spec.direction == "input":
-                reused_var = existing_input_by_ref.get(spec.reference, None)
-                if reused_var is None:
-                    reused_var = self.var_factory.add_var(spec.visible_name, spec.reference, True)
-                else:
-                    reused_var.name = spec.visible_name
-                rebuilt_in_vars.append(reused_var)
-            elif spec.direction == "output":
-                reused_var = existing_output_by_ref.get(spec.reference, None)
-                if reused_var is None:
-                    reused_var = self.var_factory.add_var(spec.visible_name, spec.reference, True)
-                else:
-                    reused_var.name = spec.visible_name
-                rebuilt_out_vars.append(reused_var)
-            else:
-                raise ValueError(f"Unsupported EMT editor connection direction {spec.direction}")
-
-            self.main_block.external_mapping[spec.reference] = reused_var
-
-        self.main_block.in_vars = rebuilt_in_vars
-        self.main_block.out_vars = rebuilt_out_vars
-
-        block_lookup_before: Dict[int, Block] = _build_block_uid_lookup(self.main_block)
-        orphan_node_uids: list[int] = list()
-        node_uid: int
-        node: Any
-        mapped_block: Block | None
-        reference_var: Var | None
-
-        for node_uid, node in list(self.diagram.node_data.items()):
-            if node.tpe in {BlockType.INPUT_CONN.name, BlockType.OUTPUT_CONN.name}:
-                mapped_block = block_lookup_before.get(node.device_uid, None)
-                if mapped_block is not None:
-                    if node.tpe == BlockType.INPUT_CONN.name and len(mapped_block.out_vars) > 0:
-                        reference_var = mapped_block.out_vars[0]
-                    elif node.tpe == BlockType.OUTPUT_CONN.name and len(mapped_block.in_vars) > 0:
-                        reference_var = mapped_block.in_vars[0]
-                    else:
-                        reference_var = None
-
-                    if reference_var is None or not isinstance(reference_var.ref, VarPowerFlowReferenceType):
-                        orphan_node_uids.append(node_uid)
-                    else:
-                        pass
-                else:
-                    orphan_node_uids.append(node_uid)
-            else:
-                pass
-
-        original_node_count: int = len(self.diagram.node_data)
-
-        for node_uid in orphan_node_uids:
-            if node_uid in self.diagram.node_data:
-                del self.diagram.node_data[node_uid]
-            else:
-                pass
-
-        # Recreate the full connection-block graph so every editable EMT port is
-        # visible even when the saved model was created through template setter.
-        self._remove_existing_connection_interface_blocks_from_main_block()
-        self.add_connection_items()
-
-        # Template-assigned EMT models may arrive without any saved diagram at
-        # all. After the interface rebuild, materialize the edited model blocks
-        # themselves so the canvas still shows the actual symbolic subsystem.
-        if original_node_count == 0:
-            self._materialize_missing_non_interface_diagram_nodes()
-            self._rebuild_missing_non_interface_connections()
-        else:
-            pass
-
-    def _remove_existing_connection_interface_blocks_from_main_block(self) -> None:
-        """
-        Remove transient editor interface wrapper blocks from ``main_block``.
-
-        The editor rebuilds those wrapper blocks from the current root interface,
-        so any stale saved wrappers must be removed from the working hierarchy
-        first to keep the scene and symbolic state aligned.
-
-        :return: None.
-        """
-        kept_children: list[Block] = list()
-        child_block: Block
-        block_type: BlockType | None
-
-        for child_block in self.main_block.children:
-            block_type = None
-            if child_block.uid in self.diagram.node_data:
-                node_type_name: str = self.diagram.node_data[child_block.uid].tpe
-                if node_type_name in BlockType.__members__:
-                    block_type = BlockType[node_type_name]
-                else:
-                    pass
-            else:
-                pass
-
-            if block_type in {BlockType.INPUT_CONN, BlockType.OUTPUT_CONN}:
-                pass
-            else:
-                kept_children.append(child_block)
-
-        self.main_block.children = kept_children
-
-    def _materialize_missing_non_interface_diagram_nodes(self) -> None:
-        """
-        Add default diagram nodes for non-interface blocks missing from the diagram.
-
-        Template-assigned models can exist as symbolic children without any saved
-        diagram node positions. The editor must create those missing diagram
-        nodes so the symbolic blocks become visible on the canvas.
-
-        :return: None.
-        """
-        existing_node_uids: set[int] = set(self.diagram.node_data.keys())
-        child_block: Block
-
-        for child_block in self.main_block.children:
-            if child_block.uid in existing_node_uids:
-                pass
-            elif len(child_block.in_vars) == 1 and len(child_block.out_vars) == 0 and child_block.name.startswith("net_conn_"):
-                # Defensive guard for editor-generated output interface wrappers.
-                pass
-            elif len(child_block.in_vars) == 0 and len(child_block.out_vars) == 1 and child_block.name.startswith(("v_", "Vdc_")):
-                # Defensive guard for editor-generated input interface wrappers.
-                pass
-            else:
-                self.generate_block_item_for_block(child_block)
-
-    def _rebuild_missing_non_interface_connections(self) -> None:
-        """
-        Recreate inferred symbolic wires after auto-materializing missing blocks.
-
-        The no-diagram template-open path must rebuild the visible connection set
-        from the symbolic graph once the missing block nodes have been placed.
-
-        :return: None.
-        """
-        items_list: list[GenericBlockItem] = self._collect_non_interface_scene_items()
-
-        if len(items_list) > 0:
-            self.connect_items(items_list)
-            self._rebuild_editor_interface_graphical_connections(items_list)
-        else:
-            pass
-
-    def _collect_non_interface_scene_items(self) -> list[GenericBlockItem]:
-        """
-        Return the visible non-interface generic block items in the scene.
-
-        The reconnect pass operates only on real model blocks. The protected
-        editor interface wrappers are intentionally excluded from this list.
-
-        :return: Generic block items excluding editor interface wrappers.
-        """
-        items_list: list[GenericBlockItem] = list()
-        scene_item: QGraphicsItem
-        node_data: Any | None
-
-        for scene_item in self.scene.items():
-            if isinstance(scene_item, GenericBlockItem):
-                if scene_item.subsys is not None:
-                    node_data: Any | None = self.diagram.node_data.get(scene_item.subsys.uid, None)
-                else:
-                    node_data = None
-
-                if node_data is None:
-                    pass
-                elif node_data.tpe in {BlockType.INPUT_CONN.name, BlockType.OUTPUT_CONN.name}:
-                    pass
-                else:
-                    items_list.append(scene_item)
-            else:
-                pass
-
-        return items_list
-
-    def _rebuild_visible_symbolic_connections(self, items_list: List[GenericBlockItem]) -> None:
-        """
-        Recreate missing symbolic wires between all visible non-interface blocks.
-
-        The saved diagram may miss some graphical arrows even when the symbolic
-        block graph still carries enough metadata to infer them. Re-run the
-        visible block-pair connection discovery so the scene reflects the actual
-        symbolic connectivity.
-
-        :param items_list: Visible non-interface block items.
-        :return: None.
-        """
-        item_source: GenericBlockItem
-        item_target: GenericBlockItem
-        pairs: list[tuple[Var, Var]]
-        power_flow_pairs: list[tuple[Var, Var]]
-
-        for item_source in items_list:
-            if item_source.subsys is None:
-                pass
-            else:
-                for item_target in items_list:
-                    if item_target.subsys is None:
-                        pass
-                    else:
-                        if item_source.subsys.uid == item_target.subsys.uid:
-                            pass
-                        else:
-                            pairs, power_flow_pairs = find_connections(item_source.subsys, item_target.subsys)
-                            self._create_missing_connection_items(item_source, item_target, pairs)
-                            self._create_missing_connection_items(item_source, item_target, power_flow_pairs)
-
-    def _rebuild_editor_interface_graphical_connections(self, items_list: List[GenericBlockItem]) -> None:
-        """
-        Recreate visible wires between editor interface blocks and visible model blocks.
-
-        EMT template-open sessions can rebuild the full editor interface without a
-        saved diagram that already contains those graphical wires. The root block
-        still carries the semantic ``ref`` tags, so reconnect the visible editor
-        interface to every visible block port that exposes the same EMT root ref.
-
-        :param items_list: Visible non-interface block items.
-        :return: None.
-        """
-        interface_inputs_by_ref: Dict[VarPowerFlowReferenceType, ProtectedConnectionBlockItem] = dict()
-        interface_outputs_by_ref: Dict[VarPowerFlowReferenceType, ProtectedConnectionBlockItem] = dict()
-        scene_item: QGraphicsItem
-        node_data: Any | None
-        reference_var: Var | None
-        block_item: GenericBlockItem
-        input_index: int
-        output_index: int
-        input_var: Var
-        output_var: Var
-        protected_item: ProtectedConnectionBlockItem | None
-
-        for scene_item in self.scene.items():
-            if isinstance(scene_item, ProtectedConnectionBlockItem) and scene_item.subsys is not None:
-                node_data = self.diagram.node_data.get(scene_item.subsys.uid, None)
-
-                if node_data is None:
-                    pass
-                elif node_data.tpe == BlockType.INPUT_CONN.name:
-                    if len(scene_item.subsys.out_vars) > 0:
-                        reference_var = scene_item.subsys.out_vars[0]
-                    else:
-                        reference_var = None
-
-                    if isinstance(reference_var, Var) and isinstance(reference_var.ref, VarPowerFlowReferenceType):
-                        interface_inputs_by_ref[reference_var.ref] = scene_item
-                    else:
-                        pass
-                elif node_data.tpe == BlockType.OUTPUT_CONN.name:
-                    if len(scene_item.subsys.in_vars) > 0:
-                        reference_var = scene_item.subsys.in_vars[0]
-                    else:
-                        reference_var = None
-
-                    if isinstance(reference_var, Var) and isinstance(reference_var.ref, VarPowerFlowReferenceType):
-                        interface_outputs_by_ref[reference_var.ref] = scene_item
-                    else:
-                        pass
-                else:
-                    pass
-            else:
-                pass
-
-        for block_item in items_list:
-            if block_item.subsys is None:
-                pass
-            else:
-                for input_index, input_var in enumerate(block_item.subsys.in_vars):
-                    if isinstance(input_var.ref, VarPowerFlowReferenceType):
-                        protected_item = self._get_editor_interface_input_item_for_ref(
-                            interface_inputs_by_ref=interface_inputs_by_ref,
-                            model_ref=input_var.ref,
-                        )
-                        if protected_item is not None and len(protected_item.outputs) > 0 and input_index < len(block_item.inputs):
-                            if self._connection_exists_between_ports(protected_item.outputs[0], block_item.inputs[input_index]):
-                                pass
-                            else:
-                                connection_item: ConnectionItem = ConnectionItem(
-                                    source_port=protected_item.outputs[0],
-                                    target_port=block_item.inputs[input_index],
-                                    diagram=self.diagram,
-                                )
-                                self.scene.addItem(connection_item)
-                        else:
-                            pass
-                    else:
-                        pass
-
-                for output_index, output_var in enumerate(block_item.subsys.out_vars):
-                    if isinstance(output_var.ref, VarPowerFlowReferenceType):
-                        protected_item = self._get_editor_interface_output_item_for_ref(
-                            interface_outputs_by_ref=interface_outputs_by_ref,
-                            model_ref=output_var.ref,
-                        )
-                        if protected_item is not None and len(protected_item.inputs) > 0 and output_index < len(block_item.outputs):
-                            if self._connection_exists_between_ports(block_item.outputs[output_index], protected_item.inputs[0]):
-                                pass
-                            else:
-                                connection_item = ConnectionItem(
-                                    source_port=block_item.outputs[output_index],
-                                    target_port=protected_item.inputs[0],
-                                    diagram=self.diagram,
-                                )
-                                self.scene.addItem(connection_item)
-                        else:
-                            pass
-                    else:
-                        pass
-
-    def _get_editor_interface_input_item_for_ref(self,
-                                                 interface_inputs_by_ref: Dict[VarPowerFlowReferenceType, ProtectedConnectionBlockItem],
-                                                 model_ref: VarPowerFlowReferenceType) -> ProtectedConnectionBlockItem | None:
-        """
-        Resolve one editor input wrapper for one model-side EMT input reference.
-
-        :param interface_inputs_by_ref: Editor input wrappers keyed by editor EMT ref.
-        :param model_ref: Model-side EMT input ref.
-        :return: Matching editor input wrapper or ``None``.
-        """
-        if isinstance(self.api_object, BranchParent) and self.api_object.device_type == DeviceType.VscDevice:
-            ac_side_is_from: bool = False
-            ac_side_is_to: bool = False
-
-            if self.api_object.bus_from.is_dc:
-                ac_side_is_to = True
-            else:
-                if self.api_object.bus_to.is_dc:
-                    ac_side_is_from = True
-                else:
-                    ac_side_is_from = True
-
-            if model_ref == VarPowerFlowReferenceType.v_N:
-                if ac_side_is_to:
-                    return interface_inputs_by_ref.get(VarPowerFlowReferenceType.vt_N, None)
-                elif ac_side_is_from:
-                    return interface_inputs_by_ref.get(VarPowerFlowReferenceType.vf_N, None)
-                else:
-                    return interface_inputs_by_ref.get(VarPowerFlowReferenceType.vf_N, None)
-            elif model_ref == VarPowerFlowReferenceType.v_A:
-                if ac_side_is_to:
-                    return interface_inputs_by_ref.get(VarPowerFlowReferenceType.vt_A, None)
-                elif ac_side_is_from:
-                    return interface_inputs_by_ref.get(VarPowerFlowReferenceType.vf_A, None)
-                else:
-                    return interface_inputs_by_ref.get(VarPowerFlowReferenceType.vf_A, None)
-            elif model_ref == VarPowerFlowReferenceType.v_B:
-                if ac_side_is_to:
-                    return interface_inputs_by_ref.get(VarPowerFlowReferenceType.vt_B, None)
-                elif ac_side_is_from:
-                    return interface_inputs_by_ref.get(VarPowerFlowReferenceType.vf_B, None)
-                else:
-                    return interface_inputs_by_ref.get(VarPowerFlowReferenceType.vf_B, None)
-            elif model_ref == VarPowerFlowReferenceType.v_C:
-                if ac_side_is_to:
-                    return interface_inputs_by_ref.get(VarPowerFlowReferenceType.vt_C, None)
-                elif ac_side_is_from:
-                    return interface_inputs_by_ref.get(VarPowerFlowReferenceType.vf_C, None)
-                else:
-                    return interface_inputs_by_ref.get(VarPowerFlowReferenceType.vf_C, None)
-            elif model_ref == VarPowerFlowReferenceType.Vdc:
-                if self.api_object.bus_from.is_dc:
-                    return interface_inputs_by_ref.get(VarPowerFlowReferenceType.Vf_dc, None)
-                elif self.api_object.bus_to.is_dc:
-                    return interface_inputs_by_ref.get(VarPowerFlowReferenceType.Vt_dc, None)
-                else:
-                    return interface_inputs_by_ref.get(VarPowerFlowReferenceType.Vdc, None)
-            else:
-                return interface_inputs_by_ref.get(model_ref, None)
-        else:
-            return interface_inputs_by_ref.get(model_ref, None)
-
-    def _get_editor_interface_output_item_for_ref(self,
-                                                  interface_outputs_by_ref: Dict[VarPowerFlowReferenceType, ProtectedConnectionBlockItem],
-                                                  model_ref: VarPowerFlowReferenceType) -> ProtectedConnectionBlockItem | None:
-        """
-        Resolve one editor output wrapper for one model-side EMT output reference.
-
-        :param interface_outputs_by_ref: Editor output wrappers keyed by editor EMT ref.
-        :param model_ref: Model-side EMT output ref.
-        :return: Matching editor output wrapper or ``None``.
-        """
-        if isinstance(self.api_object, BranchParent) and self.api_object.device_type == DeviceType.VscDevice:
-            ac_side_is_from: bool = False
-            ac_side_is_to: bool = False
-
-            if self.api_object.bus_from.is_dc:
-                ac_side_is_to = True
-            else:
-                if self.api_object.bus_to.is_dc:
-                    ac_side_is_from = True
-                else:
-                    ac_side_is_from = True
-
-            if model_ref == VarPowerFlowReferenceType.i_N:
-                if ac_side_is_to:
-                    return interface_outputs_by_ref.get(VarPowerFlowReferenceType.it_N, None)
-                elif ac_side_is_from:
-                    return interface_outputs_by_ref.get(VarPowerFlowReferenceType.if_N, None)
-                else:
-                    return interface_outputs_by_ref.get(VarPowerFlowReferenceType.if_N, None)
-            elif model_ref == VarPowerFlowReferenceType.i_A:
-                if ac_side_is_to:
-                    return interface_outputs_by_ref.get(VarPowerFlowReferenceType.it_A, None)
-                elif ac_side_is_from:
-                    return interface_outputs_by_ref.get(VarPowerFlowReferenceType.if_A, None)
-                else:
-                    return interface_outputs_by_ref.get(VarPowerFlowReferenceType.if_A, None)
-            elif model_ref == VarPowerFlowReferenceType.i_B:
-                if ac_side_is_to:
-                    return interface_outputs_by_ref.get(VarPowerFlowReferenceType.it_B, None)
-                elif ac_side_is_from:
-                    return interface_outputs_by_ref.get(VarPowerFlowReferenceType.if_B, None)
-                else:
-                    return interface_outputs_by_ref.get(VarPowerFlowReferenceType.if_B, None)
-            elif model_ref == VarPowerFlowReferenceType.i_C:
-                if ac_side_is_to:
-                    return interface_outputs_by_ref.get(VarPowerFlowReferenceType.it_C, None)
-                elif ac_side_is_from:
-                    return interface_outputs_by_ref.get(VarPowerFlowReferenceType.if_C, None)
-                else:
-                    return interface_outputs_by_ref.get(VarPowerFlowReferenceType.if_C, None)
-            elif model_ref == VarPowerFlowReferenceType.Idc:
-                if self.api_object.bus_from.is_dc:
-                    return interface_outputs_by_ref.get(VarPowerFlowReferenceType.If_dc, None)
-                elif self.api_object.bus_to.is_dc:
-                    return interface_outputs_by_ref.get(VarPowerFlowReferenceType.It_dc, None)
-                else:
-                    return interface_outputs_by_ref.get(VarPowerFlowReferenceType.Idc, None)
-            else:
-                return interface_outputs_by_ref.get(model_ref, None)
-        else:
-            return interface_outputs_by_ref.get(model_ref, None)
-
-    def _create_missing_connection_items(self,
-                                         item_source: GenericBlockItem,
-                                         item_dest: GenericBlockItem,
-                                         pairs: List[tuple[Var, Var]]) -> None:
-        """
-        Create only the currently missing connection items for one block pair.
-
-        :param item_source: Source block item.
-        :param item_dest: Destination block item.
-        :param pairs: Candidate variable pairs.
-        :return: None.
-        """
-        source_var: Var
-        target_var: Var
-        source_port: PortItem | None
-        target_port: PortItem | None
-        port: PortItem
-
-        for source_var, target_var in pairs:
-            source_port = self._find_output_port_for_var(item_source=item_source, source_var=source_var)
-            target_port = self._find_input_port_for_var(item_dest=item_dest, target_var=target_var)
-
-            if source_port is not None and target_port is not None:
-                if self._connection_exists_between_ports(source_port, target_port):
-                    pass
-                else:
-                    connection = ConnectionItem(
-                        source_port=source_port,
-                        target_port=target_port,
-                        diagram=self.diagram,
-                    )
-                    self.scene.addItem(connection)
-            else:
-                pass
-
-    @staticmethod
-    def _vars_match_for_visible_connection(left_var: Var | None, right_var: Var | None) -> bool:
-        """
-        Return whether two visible port vars should be treated as the same wire.
-
-        :param left_var: First visible port variable.
-        :param right_var: Second visible port variable.
-        :return: ``True`` when the ports represent the same symbolic connection.
-        """
-        if left_var is None or right_var is None:
-            return False
-        elif left_var.uid == right_var.uid:
-            return True
-        elif left_var.shared_ref is not None and left_var.shared_ref == right_var.shared_ref:
-            return True
-        elif left_var.ref is not None and left_var.ref == right_var.ref and left_var.network_conn and right_var.network_conn:
-            return True
-        else:
-            return False
-
-    def _find_output_port_for_var(self, item_source: GenericBlockItem, source_var: Var) -> PortItem | None:
-        """
-        Find the visible output port corresponding to one symbolic variable.
-
-        :param item_source: Source item.
-        :param source_var: Source variable.
-        :return: Matching output port or ``None``.
-        """
-        port: PortItem
-        for port in item_source.outputs:
-            if self._vars_match_for_visible_connection(port.base_var, source_var):
-                return port
-            else:
-                pass
-        return None
-
-    def _find_input_port_for_var(self, item_dest: GenericBlockItem, target_var: Var) -> PortItem | None:
-        """
-        Find the visible input port corresponding to one symbolic variable.
-
-        :param item_dest: Destination item.
-        :param target_var: Target variable.
-        :return: Matching input port or ``None``.
-        """
-        port: PortItem
-        for port in item_dest.inputs:
-            if self._vars_match_for_visible_connection(port.base_var, target_var):
-                return port
-            else:
-                pass
-        return None
-
-    @staticmethod
-    def _connection_exists_between_ports(source_port: PortItem | BranchingItem,
-                                         target_port: PortItem | BranchingItem) -> bool:
-        """
-        Return whether one visible connection already exists between two ports.
-
-        :param source_port: Candidate source port.
-        :param target_port: Candidate target port.
-        :return: ``True`` when the connection is already present.
-        """
-        connection: ConnectionItem
-
-        if source_port.connections is None:
-            return False
-
-        for connection in source_port.connections:
-            if connection.source_port is source_port and connection.target_port is target_port:
-                return True
-            else:
-                pass
-
-        return False
-
     def add_api_obj_mapping(self):
 
         # Todo: add static_parameters_maping logic to add this depending on the type of device
@@ -14958,13 +14303,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     pass
             else:
                 pass
-
-        if self.mode == DynamicSimulationMode.EMT and self.main_editor:
-            visible_non_interface_items: list[GenericBlockItem] = self._collect_non_interface_scene_items()
-            self._rebuild_visible_symbolic_connections(visible_non_interface_items)
-            self._rebuild_editor_interface_graphical_connections(visible_non_interface_items)
-        else:
-            pass
 
         # Refresh connection-status color on all BlockItem instances
         for block_item in uid_to_blockitem.values():

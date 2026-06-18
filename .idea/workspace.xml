@@ -30,6 +30,7 @@
   <component name="ChangeListManager">
     <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="fix">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/DynamicModelEditor/dynamic_block_editor.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/DynamicModelEditor/dynamic_block_editor.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -171,7 +172,7 @@
     "Python tests.pytest in tests.executor": "Run",
     "Python.AnalysisDialogue.executor": "Run",
     "Python.ExecuteGridCal.executor": "Run",
-    "Python.ExecuteVeraGrid.executor": "Run",
+    "Python.ExecuteVeraGrid.executor": "Debug",
     "Python.GridCalMain.executor": "Run",
     "Python._callers.executor": "Debug",
     "Python.alex.executor": "Debug",
@@ -763,11 +764,11 @@
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.correct_icons" />
         <item itemvalue="Python tests.pytest in tests" />
         <item itemvalue="Python tests.pytest in test_small_signal_rms.py" />
         <item itemvalue="Python.ExecuteVeraGrid" />
         <item itemvalue="Python.update_gui_file" />
+        <item itemvalue="Python.correct_icons" />
       </list>
     </recent_temporary>
   </component>
@@ -2359,6 +2360,46 @@
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/SmallSignalStability/small_signal_driver.py</url>
           <line>212</line>
           <option name="timeStamp" value="2980" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/DynamicModelEditor/dynamic_block_editor.py</url>
+          <line>6409</line>
+          <option name="timeStamp" value="2981" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/DynamicModelEditor/dynamic_block_editor.py</url>
+          <line>6411</line>
+          <option name="timeStamp" value="2982" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/DynamicModelEditor/dynamic_block_editor.py</url>
+          <line>6017</line>
+          <option name="timeStamp" value="2983" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/DynamicModelEditor/dynamic_block_editor.py</url>
+          <line>6349</line>
+          <option name="timeStamp" value="2984" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/DynamicModelEditor/dynamic_block_editor.py</url>
+          <line>6355</line>
+          <option name="timeStamp" value="2985" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/DynamicModelEditor/dynamic_block_editor.py</url>
+          <line>6357</line>
+          <option name="timeStamp" value="2986" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/DynamicModelEditor/dynamic_block_editor.py</url>
+          <line>6359</line>
+          <option name="timeStamp" value="2987" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/DynamicModelEditor/dynamic_block_editor.py</url>
+          <line>6406</line>
+          <option name="timeStamp" value="2988" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
