@@ -1505,7 +1505,18 @@ def connect_vsc_emt_from(mdl1: Block, mdl2: Block, var_factory:VarFactory,is_dc_
         # ``VarPowerFlowReferenceType.Vdc`` reference itself. Matching only by
         # input reference would therefore miss this valid contract.
         bus_vdc_var: Var | None = mdl1.external_mapping.get(VarPowerFlowReferenceType.Vdc, None)
-        vsc_vdc_var: Var | None = mdl2.external_mapping.get(VarPowerFlowReferenceType.Vdc, None)
+        vsc_vdc_var: Var | None = mdl2.external_mapping.get(VarPowerFlowReferenceType.Vf_dc, None)
+
+        if vsc_vdc_var is None:
+            # Older or single-bus-style VSC templates can still expose the DC
+            # side through the generic ``Vdc`` reference. The branch editor,
+            # however, materializes the DC terminal as ``Vf_dc``/``Vt_dc``.
+            # Prefer the branch-side contract when present and fall back to the
+            # generic reference only to preserve compatibility with legacy data.
+            vsc_vdc_var = mdl2.external_mapping.get(VarPowerFlowReferenceType.Vdc, None)
+        else:
+            pass
+
         pairs: List[tuple[Var, Var]] = list()
 
         if bus_vdc_var is None:
@@ -1545,16 +1556,27 @@ def connect_vsc_emt_to(mdl1: Block, mdl2: Block, var_factory:VarFactory, is_dc_b
     :return: None
     """
     if is_dc_bus:
-        # DC bus: connect Vdc
-        dc_map = {
-            VarPowerFlowReferenceType.Vdc: VarPowerFlowReferenceType.Vdc
-        }
-        pairs = [
-            (outp, inpt)
-            for outp in mdl1.out_vars
-            for inpt in mdl2.in_vars
-            if outp.ref in dc_map and dc_map[outp.ref] == inpt.ref
-        ]
+        # DC bus: connect the bus ``Vdc`` to the branch-side VSC DC terminal.
+        # The editor and branch EMT root contract expose the ``to``-side DC
+        # voltage as ``Vt_dc``. Falling back to plain ``Vdc`` preserves support
+        # for any older template that still uses the generic reference.
+        bus_vdc_var: Var | None = mdl1.external_mapping.get(VarPowerFlowReferenceType.Vdc, None)
+        vsc_vdc_var: Var | None = mdl2.external_mapping.get(VarPowerFlowReferenceType.Vt_dc, None)
+
+        if vsc_vdc_var is None:
+            vsc_vdc_var = mdl2.external_mapping.get(VarPowerFlowReferenceType.Vdc, None)
+        else:
+            pass
+
+        pairs: List[tuple[Var, Var]] = list()
+
+        if bus_vdc_var is None:
+            pass
+        else:
+            if vsc_vdc_var is None:
+                pass
+            else:
+                pairs.append((bus_vdc_var, vsc_vdc_var))
     else:
         # AC bus: connect abc voltages
         phase_map = {
