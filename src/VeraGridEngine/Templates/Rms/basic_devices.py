@@ -44,7 +44,7 @@ def get_pll_transform_rms(vfactory: VarFactory, name: str = "Pll_transform_rms")
             vq: inputs[0] * sym.cos(inputs[1] - theta_phase_detect_blk),
         },
         name="Phase Detector",
-        out_vars=[vd],
+        out_vars=[vd, vq],
         in_vars=[inputs[0], inputs[1], theta_phase_detect_blk]
     )
 
