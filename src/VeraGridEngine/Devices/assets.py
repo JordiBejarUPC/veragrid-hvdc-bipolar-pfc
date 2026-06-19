@@ -6363,7 +6363,8 @@ class Assets:
         :param tpe:
         :return:
         """
-        return [elm for elm in self.rms_models if elm.tpe == tpe]
+        # return [elm for elm in self.rms_models if elm.tpe == tpe]
+        return [elm for elm in self.rms_models if _matches_dynamic_template_device_type(tpe, elm.tpe)]
 
     def get_loaded_rms_models_by_device_type(self, tpe: DeviceType) -> List[dev.RmsModelTemplate]:
         """
@@ -6372,7 +6373,8 @@ class Assets:
         :param tpe: Supported device type.
         :return: Matching loaded RMS templates.
         """
-        return [elm for elm in self._rms_models if elm.tpe == tpe]
+        # return [elm for elm in self._rms_models if elm.tpe == tpe]
+        return [elm for elm in self._rms_models if _matches_dynamic_template_device_type(tpe, elm.tpe)]
 
     # ------------------------------------------------------------------------------------------------------------------
     # EmtModel
