@@ -340,10 +340,20 @@
          </property>
         </spacer>
        </item>
-       <item>
-        <widget class="QPushButton" name="doItButton">
-         <property name="text">
-          <string>Do it!</string>
+        <item>
+         <widget class="QPushButton" name="validateConsistencyButton">
+          <property name="toolTip">
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Model consistency validation&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Run an informational validation of the edited model structure, mappings, initialization, and port connectivity. This check reports issues but does not block saving the model.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          </property>
+          <property name="text">
+           <string>Validate model consistency</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="doItButton">
+          <property name="text">
+           <string>Do it!</string>
          </property>
         </widget>
        </item>
@@ -380,12 +390,13 @@
    </attribute>
    <addaction name="block_editor_actionCheckModel"/>
    <addaction name="separator"/>
-   <addaction name="actionCenter"/>
-   <addaction name="actionZoom_out"/>
-   <addaction name="actionZoom_in"/>
-   <addaction name="actionSave_block_to_my_catalogue"/>
-   <addaction name="actionExport_block"/>
-  </widget>
+    <addaction name="actionCenter"/>
+    <addaction name="actionZoom_out"/>
+    <addaction name="actionZoom_in"/>
+    <addaction name="action_delete_all"/>
+    <addaction name="actionSave_block_to_my_catalogue"/>
+    <addaction name="actionExport_block"/>
+   </widget>
   <action name="block_editor_actionCheckModel">
    <property name="icon">
     <iconset resource="../Icons/icons.qrc">
@@ -443,6 +454,21 @@
    </property>
    <property name="toolTip">
     <string>Save block to my catalogue</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::MenuRole::NoRole</enum>
+   </property>
+  </action>
+  <action name="action_delete_all">
+   <property name="icon">
+    <iconset resource="../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/delete_schematic.png</normaloff>:/Icons/icons/delete_schematic.png</iconset>
+   </property>
+   <property name="text">
+    <string>Delete all</string>
+   </property>
+   <property name="toolTip">
+    <string>Delete all blocks to start from scratch.</string>
    </property>
    <property name="menuRole">
     <enum>QAction::MenuRole::NoRole</enum>

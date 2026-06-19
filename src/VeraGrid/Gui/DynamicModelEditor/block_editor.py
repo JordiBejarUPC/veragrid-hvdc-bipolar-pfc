@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'block_editor.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.7.2
+## Created by: Qt User Interface Compiler version 6.11.0
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -57,10 +57,16 @@ class Ui_BlockEditorWindow(object):
         icon4 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.DocumentSaveAs))
         self.actionSave_block_to_my_catalogue.setIcon(icon4)
         self.actionSave_block_to_my_catalogue.setMenuRole(QAction.MenuRole.NoRole)
+        self.action_delete_all = QAction(BlockEditorWindow)
+        self.action_delete_all.setObjectName(u"action_delete_all")
+        icon5 = QIcon()
+        icon5.addFile(u":/Icons/icons/delete_schematic.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.action_delete_all.setIcon(icon5)
+        self.action_delete_all.setMenuRole(QAction.MenuRole.NoRole)
         self.actionExport_block = QAction(BlockEditorWindow)
         self.actionExport_block.setObjectName(u"actionExport_block")
-        icon5 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.DocumentSave))
-        self.actionExport_block.setIcon(icon5)
+        icon6 = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.DocumentSave))
+        self.actionExport_block.setIcon(icon6)
         self.actionExport_block.setMenuRole(QAction.MenuRole.NoRole)
         self.centralwidget = QWidget(BlockEditorWindow)
         self.centralwidget.setObjectName(u"centralwidget")
@@ -232,6 +238,7 @@ class Ui_BlockEditorWindow(object):
         self.toolBar.addAction(self.actionCenter)
         self.toolBar.addAction(self.actionZoom_out)
         self.toolBar.addAction(self.actionZoom_in)
+        self.toolBar.addAction(self.action_delete_all)
         self.toolBar.addAction(self.actionSave_block_to_my_catalogue)
         self.toolBar.addAction(self.actionExport_block)
 
@@ -253,6 +260,10 @@ class Ui_BlockEditorWindow(object):
 #if QT_CONFIG(tooltip)
         self.actionSave_block_to_my_catalogue.setToolTip(QCoreApplication.translate("BlockEditorWindow", u"Save block to my catalogue", None))
 #endif // QT_CONFIG(tooltip)
+        self.action_delete_all.setText(QCoreApplication.translate("BlockEditorWindow", u"Delete all", None))
+#if QT_CONFIG(tooltip)
+        self.action_delete_all.setToolTip(QCoreApplication.translate("BlockEditorWindow", u"Delete all blocks to start from scratch.", None))
+#endif // QT_CONFIG(tooltip)
         self.actionExport_block.setText(QCoreApplication.translate("BlockEditorWindow", u"Export block", None))
 #if QT_CONFIG(tooltip)
         self.actionExport_block.setToolTip(QCoreApplication.translate("BlockEditorWindow", u"Export block", None))
@@ -265,10 +276,10 @@ class Ui_BlockEditorWindow(object):
         self.toolBox.setItemText(self.toolBox.indexOf(self.page_3), QCoreApplication.translate("BlockEditorWindow", u"Equations", None))
         self.currently_editing_object_label.setText(QCoreApplication.translate("BlockEditorWindow", u"Device:", None))
         self.deviceLabel.setText(QCoreApplication.translate("BlockEditorWindow", u"dev", None))
-        self.validateConsistencyButton.setText(QCoreApplication.translate("BlockEditorWindow", u"Validate model consistency", None))
 #if QT_CONFIG(tooltip)
         self.validateConsistencyButton.setToolTip(QCoreApplication.translate("BlockEditorWindow", u"<html><head/><body><p><span style=\" font-weight:700;\">Model consistency validation</span></p><p>Run an informational validation of the edited model structure, mappings, initialization, and port connectivity. This check reports issues but does not block saving the model.</p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
+        self.validateConsistencyButton.setText(QCoreApplication.translate("BlockEditorWindow", u"Validate model consistency", None))
         self.doItButton.setText(QCoreApplication.translate("BlockEditorWindow", u"Do it!", None))
         self.toolBar.setWindowTitle(QCoreApplication.translate("BlockEditorWindow", u"toolBar", None))
     # retranslateUi
