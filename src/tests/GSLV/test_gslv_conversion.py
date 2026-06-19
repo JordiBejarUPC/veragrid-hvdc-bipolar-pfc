@@ -184,6 +184,41 @@ def test_power_flow_ts():
     res = drv.results
 
 
+def test_controllable_shunt_conversion_preserves_step_arrays():
+    if not GSLV_AVAILABLE:
+        return
+
+    grid = vg.MultiCircuit()
+    bus = vg.Bus(name="Bus")
+    grid.add_bus(obj=bus)
+
+    shunt = vg.ControllableShunt(
+        name="Shunt",
+        number_of_steps=3,
+        step=1,
+        g_per_step=0.0,
+        b_per_step=0.0,
+        vset=1.01,
+        control_mode=vg.ShuntControlMode.Discrete,
+    )
+    shunt.g_steps = np.array([1.0, 2.0, 3.0], dtype=float)
+    shunt.b_steps = np.array([4.0, 5.0, 6.0], dtype=float)
+    grid.add_controllable_shunt(bus=bus, api_obj=shunt)
+
+    grid_gslv, _ = to_gslv(circuit=grid,
+                           use_time_series=False,
+                           time_indices=None,
+                           override_branch_controls=False,
+                           opf_results=None)
+
+    converted = grid_gslv.controllable_shunts[0]
+    assert converted.g_steps == [1.0, 2.0, 3.0]
+    assert converted.b_steps == [4.0, 5.0, 6.0]
+    assert converted.get_bmin() == 4.0
+    assert converted.get_bmax() == 6.0
+    assert converted.control_mode == pg.ShuntControlMode.Discrete
+
+
 def test_power_flow_ts_ny_activs():
     if not GSLV_AVAILABLE:
         return

@@ -1270,36 +1270,21 @@ def convert_controllable_shunt(elm: dev.ControllableShunt, bus_dict: Dict[str, "
     if not isinstance(elm.b_steps, np.ndarray):
         raise TypeError(f"ControllableShunt.b_steps must be np.ndarray, got {type(elm.b_steps)}")
 
-    raw_g_steps = np.asarray(elm.g_steps, dtype=float).reshape(-1)
-    raw_b_steps = np.asarray(elm.b_steps, dtype=float).reshape(-1)
-
-    if elm.control_mode == ShuntControlMode.Discrete:
-        if raw_g_steps.size == 0 and raw_b_steps.size == 0:
-            g_steps = np.array([float(elm.G)], dtype=float)
-            b_steps = np.array([float(elm.B)], dtype=float)
-        else:
-            g_steps = np.cumsum(raw_g_steps) if raw_g_steps.size > 0 else np.zeros(raw_b_steps.size, dtype=float)
-            b_steps = np.cumsum(raw_b_steps) if raw_b_steps.size > 0 else np.zeros(raw_g_steps.size, dtype=float)
-    else:
-        cum_g = np.insert(np.cumsum(raw_g_steps), 0, 0.0) if raw_g_steps.size > 0 else np.array([float(elm.G)])
-        cum_b = np.insert(np.cumsum(raw_b_steps), 0, 0.0) if raw_b_steps.size > 0 else np.array([float(elm.B)])
-        g_steps = np.array([min(float(cum_g.min()), float(elm.G)),
-                            max(float(cum_g.max()), float(elm.G))], dtype=float)
-        b_steps = np.array([min(float(cum_b.min()), float(elm.B)),
-                            max(float(cum_b.max()), float(elm.B))], dtype=float)
+    g_steps = np.asarray(elm.g_steps, dtype=float).reshape(-1)
+    b_steps = np.asarray(elm.b_steps, dtype=float).reshape(-1)
 
     number_of_steps = max(int(g_steps.size), int(b_steps.size), 1)
     if g_steps.size == 0:
         g_steps = np.zeros(number_of_steps, dtype=float)
-    elif g_steps.size < number_of_steps:
-        g_steps = np.pad(g_steps, (0, number_of_steps - g_steps.size), mode="edge")
+    elif b_steps.size not in (0, g_steps.size):
+        raise ValueError(f"ControllableShunt {elm.name} has mismatched step arrays")
     else:
         pass
 
     if b_steps.size == 0:
         b_steps = np.zeros(number_of_steps, dtype=float)
-    elif b_steps.size < number_of_steps:
-        b_steps = np.pad(b_steps, (0, number_of_steps - b_steps.size), mode="edge")
+    elif g_steps.size != b_steps.size:
+        raise ValueError(f"ControllableShunt {elm.name} has mismatched step arrays")
     else:
         pass
 
