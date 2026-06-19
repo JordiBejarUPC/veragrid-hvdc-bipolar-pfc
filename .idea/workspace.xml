@@ -28,9 +28,9 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="removed non used buttons from editor and fixed .ui and .py discrepancy">
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="fixed missing functions">
+      <change afterPath="$PROJECT_DIR$/src/tests/RMS/test_tuvalu_with_event.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/DynamicModelEditor/dynamic_block_editor.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/DynamicModelEditor/dynamic_block_editor.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -169,6 +169,7 @@
     "Python tests.pytest in test_copy.py.executor": "Run",
     "Python tests.pytest in test_load_save_load.py.executor": "Run",
     "Python tests.pytest in test_transformer_type.py.executor": "Run",
+    "Python tests.pytest in test_tuvalu_with_event.py.executor": "Run",
     "Python tests.pytest in tests.executor": "Run",
     "Python.AnalysisDialogue.executor": "Run",
     "Python.ExecuteGridCal.executor": "Run",
@@ -224,7 +225,7 @@
     "WebServerToolWindowFactoryState": "false",
     "codeWithMe.voiceChat.enabledByDefault": "false",
     "git-widget-placeholder": "devel__dynamics",
-    "last_opened_file_path": "/home/santi/Documentos/Git/eRoots/extended-equal-area-criterion",
+    "last_opened_file_path": "/home/marina/PycharmProjects/VeraGrid/src/tests/RMS",
     "node.js.detected.package.eslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
@@ -242,11 +243,11 @@
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/src/tests/RMS" />
       <recent name="$PROJECT_DIR$/src/trunk/dynamics" />
       <recent name="$PROJECT_DIR$/src/trunk/dynamics/Gen_Load" />
       <recent name="C:\Work\git_local\GridCal\src\tests\data\grids\RAW" />
       <recent name="$PROJECT_DIR$/src/GridCal/Gui/Diagrams/MapWidget2" />
-      <recent name="D:\SIROCO\GridCal\src\GridCal\Gui\Diagrams\MapWidget\Schema" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/src/GridCalEngine/Devices/Dynamic" />
@@ -553,31 +554,6 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="correct_icons" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="VeraGrid" />
-      <option name="ENV_FILES" value="" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/VeraGrid/Gui/Main" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="DEBUG_JUST_MY_CODE" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="RUN_TOOL" value="" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/VeraGrid/Gui/Main/correct_icons.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
     <configuration name="pyside6-designer" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
       <module name="GridCalEngine" />
       <option name="ENV_FILES" value="" />
@@ -765,6 +741,26 @@
       <option name="_new_targetType" value="&quot;PATH&quot;" />
       <method v="2" />
     </configuration>
+    <configuration name="pytest in test_tuvalu_with_event.py" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
+      <module name="VeraGrid" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="DEBUG_JUST_MY_CODE" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
+      <option name="_new_keywords" value="&quot;&quot;" />
+      <option name="_new_parameters" value="&quot;&quot;" />
+      <option name="_new_additionalArguments" value="&quot;&quot;" />
+      <option name="_new_target" value="&quot;$PROJECT_DIR$/src/tests/RMS/test_tuvalu_with_event.py&quot;" />
+      <option name="_new_targetType" value="&quot;PATH&quot;" />
+      <method v="2" />
+    </configuration>
     <configuration name="pytest in tests" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
       <module name="VeraGrid" />
       <option name="ENV_FILES" value="" />
@@ -787,19 +783,19 @@
     </configuration>
     <list>
       <item itemvalue="Python.pyside6-designer" />
-      <item itemvalue="Python.correct_icons" />
       <item itemvalue="Python.update_gui_file" />
       <item itemvalue="Python.ExecuteVeraGrid" />
+      <item itemvalue="Python tests.pytest in test_tuvalu_with_event.py" />
       <item itemvalue="Python tests.pytest in test_small_signal_rms.py" />
       <item itemvalue="Python tests.pytest in tests" />
     </list>
     <recent_temporary>
       <list>
         <item itemvalue="Python tests.pytest in tests" />
+        <item itemvalue="Python tests.pytest in test_tuvalu_with_event.py" />
         <item itemvalue="Python tests.pytest in test_small_signal_rms.py" />
         <item itemvalue="Python.ExecuteVeraGrid" />
         <item itemvalue="Python.update_gui_file" />
-        <item itemvalue="Python.correct_icons" />
       </list>
     </recent_temporary>
   </component>
@@ -1931,7 +1927,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="626" />
+    <option name="localTasksCounter" value="627" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1977,7 +1973,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Small system constructed in gridcal and Andes" />
     <MESSAGE value="complex numbers handling implemented and scripts cleaning" />
     <MESSAGE value="automatic initialization equations fixed" />
     <MESSAGE value="moved rms initialization out of the MultiCircuit" />
@@ -2002,7 +1997,8 @@
     <MESSAGE value="small fix" />
     <MESSAGE value="editor inputs fix" />
     <MESSAGE value="removed non used buttons from editor and fixed .ui and .py discrepancy" />
-    <option name="LAST_COMMIT_MESSAGE" value="removed non used buttons from editor and fixed .ui and .py discrepancy" />
+    <MESSAGE value="fixed missing functions" />
+    <option name="LAST_COMMIT_MESSAGE" value="fixed missing functions" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2393,12 +2389,12 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/DynamicModelEditor/dynamic_block_editor.py</url>
-          <line>5498</line>
+          <line>5537</line>
           <option name="timeStamp" value="2989" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/DynamicModelEditor/dynamic_block_editor.py</url>
-          <line>5499</line>
+          <line>5538</line>
           <option name="timeStamp" value="2990" />
         </line-breakpoint>
       </breakpoints>
