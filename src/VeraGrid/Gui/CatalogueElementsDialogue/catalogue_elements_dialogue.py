@@ -586,14 +586,14 @@ class CatalogueElementsSelectionDialogue(QtWidgets.QDialog):
             unique_key='emt:get_pv_avm_grid_following_emt_template:abc',
             function_ptr=tem.get_pv_avm_grid_following_emt_template)
         )
-        actions.append(CatalogueAction(
-            kind=CatalogueActionKind.AddEmtTemplate,
-            args=(self._circuit.var_factory,),
-            name='PV plant boost grid following',
-            voltage_text='', power_text='',
-            unique_key='emt:get_pv_avm_boost_grid_following_emt_template:abc',
-            function_ptr=tem.get_pv_avm_boost_grid_following_emt_template)
-        )
+        # actions.append(CatalogueAction(
+        #     kind=CatalogueActionKind.AddEmtTemplate,
+        #     args=(self._circuit.var_factory,),
+        #     name='PV plant boost grid following',
+        #     voltage_text='', power_text='',
+        #     unique_key='emt:get_pv_avm_boost_grid_following_emt_template:abc',
+        #     function_ptr=tem.get_pv_avm_boost_grid_following_emt_template)
+        # )
         actions.append(CatalogueAction(
             kind=CatalogueActionKind.AddEmtTemplate,
             args=(self._circuit.var_factory,),
