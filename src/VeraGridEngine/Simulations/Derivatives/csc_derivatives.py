@@ -2067,23 +2067,25 @@ def dVmdcDiff_dVm_csc(n_diff: int, nbus: int, i_u_vm, k_vsc_vmdc_diff, Fdcp_vsc,
 
 
 @njit()
-def dDroopvsc_dPfp_csc(n_droop: int, nvsc: int, k_vsc_pfp_droop, u_vsc_pfp) -> CSC:
+def dunit_vsc_csc(n_eq: int, nvsc: int, k_vsc_eq, u_vsc_col) -> CSC:
     """
-    Compute the d(droop equation)/dPfp block 
-    :param n_droop: number of droop equations (rows)
+    Block for a VSC equation that depends linearly (coefficient +1) on one unknown
+    Row i relates to the equation, column to the unknown 
+    To recycle some code.
+    :param n_eq: number of equations (rows)
     :param nvsc: total number of VSCs (domain size for the lookup)
-    :param k_vsc_pfp_droop: VSC index of each droop equation
-    :param u_vsc_pfp: unknown-Pfp VSC indices (column space)
+    :param k_vsc_eq: VSC index of each equation
+    :param u_vsc_col: unknown VSC indices
     :return: CSC block
     """
-    col_lookup = make_lookup(nvsc, u_vsc_pfp)
-    mat = CSC(n_droop, len(u_vsc_pfp), n_droop, False)
-    Tx = np.empty(n_droop, dtype=np.float64)
-    Ti = np.empty(n_droop, dtype=np.int32)
-    Tj = np.empty(n_droop, dtype=np.int32)
+    col_lookup = make_lookup(nvsc, u_vsc_col)
+    mat = CSC(n_eq, len(u_vsc_col), n_eq, False)
+    Tx = np.empty(n_eq, dtype=np.float64)
+    Ti = np.empty(n_eq, dtype=np.int32)
+    Tj = np.empty(n_eq, dtype=np.int32)
     nnz = 0
-    for i in range(n_droop):
-        c = col_lookup[k_vsc_pfp_droop[i]]
+    for i in range(n_eq):
+        c = col_lookup[k_vsc_eq[i]]
         if c >= 0:
             Tx[nnz] = 1.0
             Ti[nnz] = i
