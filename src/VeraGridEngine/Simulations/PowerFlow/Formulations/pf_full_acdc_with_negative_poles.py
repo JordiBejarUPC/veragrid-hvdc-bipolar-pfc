@@ -3015,8 +3015,6 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         m2[self.u_cbr_m] = self.m
         tau2[self.u_cbr_tau] = self.tau
 
-        print('\nConverged?', self.converged, '\n')
-
         return NumericPowerFlowResults(
             V=self.V,
             Scalc=Sbus,
