@@ -36,7 +36,7 @@ from VeraGridEngine.Devices.Injections.shunt import Shunt
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowReferenceType, ParamPowerFlowReferenceType, \
     DynamicSimulationMode, ShuntConnectionType, WindingType, DynamicTableModelMode
-from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
+from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms, get_bus_rms_algebraic_vars
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import BusEmtTemplate, get_bus_emt_template, get_bus_emt_algebraic_vars
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import register_saved_emt_model_vars_for_device, \
     unify_saved_emt_model_root_contract, attach_emt_model_to_buses
@@ -1992,6 +1992,47 @@ def copy_block_state(source_block: Block, target_block: Block) -> None:
     # would keep the saved model tied to the live editor working copy instead of
     # the copied block state that is meant to survive reopening.
     target_block.diagram = source_clone.diagram
+
+
+def block_requires_editor_connection_bootstrap(block: Block) -> bool:
+    """
+    Return whether one root editor block still needs its initial connection interface.
+
+    The Dynamic Model Editor can receive one RMS root block that is not strictly
+    empty anymore, yet still has no diagram nodes, no child subsystem blocks, and
+    no root input/output interface variables. In that state the editor cannot
+    rebuild an existing scene, and it also must not skip the initial connection
+    bootstrap because the user would see a blank first-open editor.
+
+    :param block: Root block being edited.
+    :return: ``True`` when the editor must create the initial connection ports.
+    """
+    has_diagram_nodes: bool = bool(block.diagram.node_data)
+    has_children: bool = bool(block.children)
+    has_root_inputs: bool = bool(block.in_vars)
+    has_root_outputs: bool = bool(block.out_vars)
+    requires_bootstrap: bool = False
+
+    # A saved or decomposed model with diagram nodes already owns explicit scene
+    # state, so the editor must rebuild from that state instead of creating a new
+    # root interface.
+    if has_diagram_nodes:
+        requires_bootstrap = False
+    else:
+        # A model with child blocks can be rebuilt directly from those children,
+        # so the connection interface should not be recreated here.
+        if has_children:
+            requires_bootstrap = False
+        else:
+            # When the root block has no scene nodes, no child blocks, and no
+            # exposed root ports, the editor has no visible interface to draw.
+            # This is the first-open RMS dead-state that must be bootstrapped.
+            if not has_root_inputs and not has_root_outputs:
+                requires_bootstrap = True
+            else:
+                requires_bootstrap = False
+
+    return requires_bootstrap
 
 
 def _initialize_editor_assigned_rms_bus_model(bus: Bus, var_factory: VarFactory) -> None:
@@ -6396,7 +6437,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         _ensure_block_tree_names(self.main_block, prefix="block")
 
-        if not self.main_block.empty() and not self.main_block.diagram.node_data:
+        requires_connection_bootstrap: bool = block_requires_editor_connection_bootstrap(self.main_block)
+
+        if not self.main_block.empty() and not self.main_block.diagram.node_data and not requires_connection_bootstrap:
             if self.main_block.children:
                 blocks_list = list()
                 for child in self.main_block.children:
@@ -6405,6 +6448,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 self.add_connection_items(blocks_list)
                 if len(blocks_list) != 0:
                     self.connect_items(blocks_list)
+                else:
+                    pass
+            else:
+                pass
             # elif not self.main_block.children and self.main_editor:
             #     block = Block()
             #     block.children.append(self.main_block)
@@ -6421,7 +6468,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             if self.main_editor:
                 self.add_connection_vars()
                 # self.add_api_obj_mapping()
+            else:
+                pass
             self.add_connection_items()
+        else:
+            pass
         self.rebuild_scene_from_diagram()
 
         # for every in variable and our variable in the main block of the editor we build a block item to connect these variables
