@@ -526,6 +526,14 @@ class EditableDevice(metaclass=EditableDeviceMeta):
             display=False,
         ),
         GCProp(
+            prop_name='selected_to_merge',
+            units='',
+            tpe=bool,
+            definition='Whether this object should be applied during diff merge.',
+            display=False,
+            editable=False,
+        ),
+        GCProp(
             prop_name='comment',
             units='',
             tpe=str,
