@@ -1283,6 +1283,7 @@ def _fill_tr4w_simple_values(trafo4w: dev.TransformerNW,
     :param Sbase: System base power in MVA.
     :return: None.
     """
+
     for winding_index in range(4):
         winding: dev.Winding = trafo4w.windings[winding_index]
 
@@ -1440,7 +1441,53 @@ I0: float = 0.5, Sbase: float = 100,
         z_l2 += z_path_l2
         z_l3 += z_path_l3
 
-        for wind in trafo4w.windings:
+        # Winding-side data in h0, l1, l2, l3 order
+        nominal_voltages = [V_h0, V_l1, V_l2, V_l3]
+        nominal_powers = [Sn_h0, Sn_l1, Sn_l2, Sn_l3]
+
+        # Use equivalent branch impedances obtained from the complete-input model
+        branch_impedances_hv_base = [z_h0, z_l1, z_l2, z_l3]
+
+        # Optional reporting fields, expressed approximately on each winding base
+        short_circuit_voltages = []
+        copper_losses = []
+
+        for z_branch, Sn_w in zip(branch_impedances_hv_base, nominal_powers):
+            # Convert from HV-winding base to each winding rated-power base
+            z_winding_base = z_branch * (Sn_w / Sr_hv)
+
+            short_circuit_voltages.append(abs(z_winding_base) * 100.0)
+            copper_losses.append(z_winding_base.real * (Sn_w ** 2 / Sn_w) * 1000.0)
+
+        # Assign winding data
+        for winding_index in range(4):
+            winding: dev.Winding = trafo4w.windings[winding_index]
+
+            z_branch = branch_impedances_hv_base[winding_index]
+
+            # Convert impedance from transformer HV-rated-power base to VeraGrid system base
+            z_system_base = z_branch * (Sbase / Sr_hv)
+
+            winding.HV = nominal_voltages[winding_index]
+            winding.LV = 1.0
+
+            winding.Sn = nominal_powers[winding_index]
+            winding.rate = nominal_powers[winding_index]
+            winding.design_rate = nominal_powers[winding_index]
+
+            winding.R = z_system_base.real
+            winding.X = z_system_base.imag
+
+            # Negative sequence is normally equal to positive sequence for passive transformer impedances
+            winding.R2 = z_system_base.real
+            winding.X2 = z_system_base.imag
+
+            winding.Pcu = copper_losses[winding_index]
+            winding.Vsc = short_circuit_voltages[winding_index]
+
+        trafo4w.Pfe = Pfe
+        trafo4w.I0 = I0
+
             
 
 
