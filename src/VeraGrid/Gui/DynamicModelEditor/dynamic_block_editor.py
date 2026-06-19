@@ -114,6 +114,7 @@ from VeraGrid.Gui.DynamicModelEditor.fault_emt_dialog import FaultEmtDialog
 from VeraGrid.Gui.Icons.icon_associations import device_type_icons
 from VeraGrid.Gui.wrappable_table_model import WrappableTableModel
 from VeraGrid.Gui.gui_functions import ComboDelegate, TextDelegate
+from VeraGrid.Gui.messages import yes_no_question
 from VeraGrid.Gui.toast_widget import ToastManager
 from VeraGridEngine.Utils.Symbolic.symbolic import (symbolic_to_string, string_to_symbolic,
                                                     get_symbolic_parser_function_names,
@@ -6060,6 +6061,14 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.actionCenter.triggered.connect(self.center_view_on_items)
         self.ui.actionZoom_in.triggered.connect(self.zoom_in_view)
         self.ui.actionZoom_out.triggered.connect(self.zoom_out_view)
+        delete_all_icon: QtGui.QIcon = QtGui.QIcon()
+        delete_all_icon.addFile(":/Icons/icons/delete_schematic.png", QtCore.QSize(), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
+        self.action_delete_all: QtGui.QAction = QtGui.QAction(self)
+        self.action_delete_all.setText("Delete all")
+        self.action_delete_all.setToolTip("Delete all blocks to start from scratch.")
+        self.action_delete_all.setIcon(delete_all_icon)
+        self.action_delete_all.triggered.connect(self.delete_all_blocks_with_confirmation)
+        self.ui.toolBar.addAction(self.action_delete_all)
         # self.ui.actionSave_block_to_my_catalogue.connect(self.save_block_to_my_catalogue)
         # self.ui.actionExport_block.connect(self.export_block)
 
@@ -13249,6 +13258,52 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return:
         """
         self.view.zoom_out()
+
+
+    def delete_all_blocks_with_confirmation(self) -> None:
+        """
+        Ask the user for confirmation before deleting the complete model body.
+
+        The operation is destructive for the internal implementation, so it must
+        follow the same GUI confirmation style used across the rest of VeraGrid.
+        Only after the user confirms the action can the editor clear all blocks
+        except for the protected connection ports.
+
+        :return: None.
+        """
+        confirmed: bool = yes_no_question(
+            text="You are going to delete the complete model and start from scratch. Are you sure?",
+            title="Delete all"
+        )
+
+        if confirmed:
+            deletable_items: List[BlockItem | GenericBlockItem] = list()
+            scene_item: QGraphicsItem
+
+            for scene_item in self.scene.items():
+                if isinstance(scene_item, ProtectedConnectionBlockItem):
+                    pass
+                else:
+                    if isinstance(scene_item, (BlockItem, GenericBlockItem)):
+                        deletable_items.append(scene_item)
+                    else:
+                        pass
+
+            deletable_item: BlockItem | GenericBlockItem
+
+            if len(deletable_items) == 0:
+                self._selected_side_block = None
+                self.refresh_active_side_panel()
+            else:
+                for deletable_item in deletable_items:
+                    self.remove_block_item(deletable_item)
+
+                self.scene.clearSelection()
+                self._selected_side_block = None
+                self.refresh_active_side_panel()
+                self.mark_unapplied_changes()
+        else:
+            pass
 
     def on_scene_selection_changed(self) -> None:
         """
