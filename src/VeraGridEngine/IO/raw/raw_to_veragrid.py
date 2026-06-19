@@ -666,10 +666,11 @@ def get_veragrid_generator(psse_elm: RawGeneratorLike, psse_bus_dict: Dict[int, 
         Qmax = psse_elm.QT
         Q = psse_elm.QG
 
-    # A generator with no reactive range (QT == QB) cannot regulate voltage. PSSe models
-    # such a machine as a fixed-Q (PQ) injection, letting its bus voltage float, so a
-    # voltage-controlling WMOD must be demoted to fixed-Q here to match.
-    if Qmax == Qmin:
+    # A non-slack generator with no reactive range (QT == QB) cannot regulate voltage.
+    # Keep the slack machine as voltage-controlled even when its reactive range is zero,
+    # because the RAW slack/reference bus still defines the system angle and voltage target.
+    bus = psse_bus_dict[psse_elm.I]
+    if Qmax == Qmin and not bus.is_slack:
         control_mode = GeneratorControlMode.Q
 
     elm = dev.Generator(

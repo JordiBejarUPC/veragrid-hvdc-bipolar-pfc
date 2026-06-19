@@ -1002,20 +1002,47 @@ def get_psse_transformer3w(transformer: dev.Transformer3W,
     # Without writing these fields the COD/CONT/RMA/RMI/VMA/VMI/NTP default to "no control",
     # so the regulation parsed from the input RAW is lost on round-trip and the regulated bus
     # loses its voltage lock (shifting its initial voltage).
-    for n, w in enumerate((transformer.winding1, transformer.winding2, transformer.winding3),
-                          start=1):
-        if w.tap_module_control_mode == TapModuleControl.Vm and w.regulation_bus is not None:
-            setattr(psse_transformer, f"COD{n}", 1)
-            setattr(psse_transformer, f"CONT{n}", bus_dict.get(w.regulation_bus, 0))
-            setattr(psse_transformer, f"RMA{n}", w.tap_module_max)
-            setattr(psse_transformer, f"RMI{n}", w.tap_module_min)
-            # the controlled-voltage band collapses to its midpoint (vset) on read, so write
-            # vset on both ends to reproduce it exactly.
-            setattr(psse_transformer, f"VMA{n}", w.vset)
-            setattr(psse_transformer, f"VMI{n}", w.vset)
-            setattr(psse_transformer, f"NTP{n}", int(w.tap_changer.total_positions))
-        else:
-            setattr(psse_transformer, f"COD{n}", 0)
+    winding1 = transformer.winding1
+    if winding1.tap_module_control_mode == TapModuleControl.Vm and winding1.regulation_bus is not None:
+        psse_transformer.COD1 = 1
+        psse_transformer.CONT1 = bus_dict.get(winding1.regulation_bus, 0)
+        psse_transformer.RMA1 = winding1.tap_module_max
+        psse_transformer.RMI1 = winding1.tap_module_min
+        # the controlled-voltage band collapses to its midpoint (vset) on read, so write
+        # vset on both ends to reproduce it exactly.
+        psse_transformer.VMA1 = winding1.vset
+        psse_transformer.VMI1 = winding1.vset
+        psse_transformer.NTP1 = int(winding1.tap_changer.total_positions)
+    else:
+        psse_transformer.COD1 = 0
+
+    winding2 = transformer.winding2
+    if winding2.tap_module_control_mode == TapModuleControl.Vm and winding2.regulation_bus is not None:
+        psse_transformer.COD2 = 1
+        psse_transformer.CONT2 = bus_dict.get(winding2.regulation_bus, 0)
+        psse_transformer.RMA2 = winding2.tap_module_max
+        psse_transformer.RMI2 = winding2.tap_module_min
+        # the controlled-voltage band collapses to its midpoint (vset) on read, so write
+        # vset on both ends to reproduce it exactly.
+        psse_transformer.VMA2 = winding2.vset
+        psse_transformer.VMI2 = winding2.vset
+        psse_transformer.NTP2 = int(winding2.tap_changer.total_positions)
+    else:
+        psse_transformer.COD2 = 0
+
+    winding3 = transformer.winding3
+    if winding3.tap_module_control_mode == TapModuleControl.Vm and winding3.regulation_bus is not None:
+        psse_transformer.COD3 = 1
+        psse_transformer.CONT3 = bus_dict.get(winding3.regulation_bus, 0)
+        psse_transformer.RMA3 = winding3.tap_module_max
+        psse_transformer.RMI3 = winding3.tap_module_min
+        # the controlled-voltage band collapses to its midpoint (vset) on read, so write
+        # vset on both ends to reproduce it exactly.
+        psse_transformer.VMA3 = winding3.vset
+        psse_transformer.VMI3 = winding3.vset
+        psse_transformer.NTP3 = int(winding3.tap_changer.total_positions)
+    else:
+        psse_transformer.COD3 = 0
 
     i, j, k, ckt = transformer.code.split("_", 3)
 
