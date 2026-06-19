@@ -1265,10 +1265,45 @@ def convert_controllable_shunt(elm: dev.ControllableShunt, bus_dict: Dict[str, "
     :param add_three_phase_data: Export explicit three-phase fields when available.
     :return: GSLV controllable shunt.
     """
-    if isinstance(elm.g_steps, np.ndarray):
-        number_of_steps: int = elm.g_steps.size()
-    else:
+    if not isinstance(elm.g_steps, np.ndarray):
         raise TypeError(f"ControllableShunt.g_steps must be np.ndarray, got {type(elm.g_steps)}")
+    if not isinstance(elm.b_steps, np.ndarray):
+        raise TypeError(f"ControllableShunt.b_steps must be np.ndarray, got {type(elm.b_steps)}")
+
+    raw_g_steps = np.asarray(elm.g_steps, dtype=float).reshape(-1)
+    raw_b_steps = np.asarray(elm.b_steps, dtype=float).reshape(-1)
+
+    if elm.control_mode == ShuntControlMode.Discrete:
+        if raw_g_steps.size == 0 and raw_b_steps.size == 0:
+            g_steps = np.array([float(elm.G)], dtype=float)
+            b_steps = np.array([float(elm.B)], dtype=float)
+        else:
+            g_steps = np.cumsum(raw_g_steps) if raw_g_steps.size > 0 else np.zeros(raw_b_steps.size, dtype=float)
+            b_steps = np.cumsum(raw_b_steps) if raw_b_steps.size > 0 else np.zeros(raw_g_steps.size, dtype=float)
+    else:
+        cum_g = np.insert(np.cumsum(raw_g_steps), 0, 0.0) if raw_g_steps.size > 0 else np.array([float(elm.G)])
+        cum_b = np.insert(np.cumsum(raw_b_steps), 0, 0.0) if raw_b_steps.size > 0 else np.array([float(elm.B)])
+        g_steps = np.array([min(float(cum_g.min()), float(elm.G)),
+                            max(float(cum_g.max()), float(elm.G))], dtype=float)
+        b_steps = np.array([min(float(cum_b.min()), float(elm.B)),
+                            max(float(cum_b.max()), float(elm.B))], dtype=float)
+
+    number_of_steps = max(int(g_steps.size), int(b_steps.size), 1)
+    if g_steps.size == 0:
+        g_steps = np.zeros(number_of_steps, dtype=float)
+    elif g_steps.size < number_of_steps:
+        g_steps = np.pad(g_steps, (0, number_of_steps - g_steps.size), mode="edge")
+    else:
+        pass
+
+    if b_steps.size == 0:
+        b_steps = np.zeros(number_of_steps, dtype=float)
+    elif b_steps.size < number_of_steps:
+        b_steps = np.pad(b_steps, (0, number_of_steps - b_steps.size), mode="edge")
+    else:
+        pass
+
+    step = min(max(int(elm.step), 0), number_of_steps - 1)
 
     sh = pg.ControllableShunt(
         nt=n_time,
@@ -1277,9 +1312,9 @@ def convert_controllable_shunt(elm: dev.ControllableShunt, bus_dict: Dict[str, "
         idtag=elm.idtag,
         code=str(elm.code),
         number_of_steps=number_of_steps,
-        step=elm.step,
-        g_per_step=elm.g_per_step,
-        b_per_step=elm.b_per_step,
+        step=step,
+        g_per_step=0.0,
+        b_per_step=0.0,
         Cost=elm.Cost,
         active=elm.active,
         G=elm.G,
@@ -1293,10 +1328,13 @@ def convert_controllable_shunt(elm: dev.ControllableShunt, bus_dict: Dict[str, "
         mttr=elm.mttr,
         capex=elm.capex,
         opex=elm.opex,
-        control_bus=None if elm.bus is None else bus_dict[elm.control_bus.idtag],
+        control_bus=None if elm.control_bus is None else bus_dict[elm.control_bus.idtag],
         control_mode=shunt_control_mode_dict[elm.control_mode],
         build_status=build_status_dict[elm.build_status],
     )
+
+    sh.g_steps = g_steps.tolist()
+    sh.b_steps = b_steps.tolist()
 
     if add_three_phase_data:
         snapshot_time_index: int | None = get_single_three_phase_snapshot_index(
@@ -1335,6 +1373,13 @@ def convert_controllable_shunt(elm: dev.ControllableShunt, bus_dict: Dict[str, "
                  time_indices=time_indices,
                  n_time=n_time,
                  default_val=elm.Cost)
+
+    fill_profile(gslv_profile=sh.Vset,
+                 gc_profile=elm.Vset_prof,
+                 use_time_series=use_time_series,
+                 time_indices=time_indices,
+                 n_time=n_time,
+                 default_val=elm.Vset)
 
     return sh
 
@@ -2846,7 +2891,8 @@ def gslv_pf(circuit: MultiCircuit,
             time_indices = [i for i in range(circuit.get_time_number())]
         else:
             time_indices = list(time_indices)
-        n_threads = 0  # max threads
+        # GSLV's batched multi-threaded PF path is not stable with controllable shunts.
+        n_threads = 1 if len(circuit.get_controllable_shunts()) > 0 else 0
     else:
         time_indices = [0]
         n_threads = 1

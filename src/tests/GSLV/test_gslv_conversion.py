@@ -184,6 +184,24 @@ def test_power_flow_ts():
     res = drv.results
 
 
+def test_power_flow_ts_ny_activs():
+    if not GSLV_AVAILABLE:
+        return
+
+    grid = vg.open_file(filename=os.path.join('data', 'grids', 'NY_activs.gridcal'))
+    options = vg.PowerFlowOptions(verbose=False, retry_with_other_methods=False)
+
+    drv = vg.PowerFlowTimeSeriesDriver(
+        grid=grid,
+        options=options,
+        engine=vg.EngineType.GSLV,
+    )
+    drv.run()
+
+    assert drv.results is not None
+    assert drv.results.voltage.shape[0] == grid.get_time_number()
+
+
 def test_power_flow_snapshot_device_active_power_results():
     """
     Verify that direct GSLV per-device active-power PF channels are mapped when
