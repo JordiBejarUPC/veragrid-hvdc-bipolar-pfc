@@ -7,7 +7,7 @@ import numpy as np
 from typing import Union, Dict, Tuple, TYPE_CHECKING
 
 import VeraGridEngine.Simulations.PowerFlow as pflw
-from VeraGridEngine.enumerations import SolverType
+from VeraGridEngine.enumerations import SolverType, GeneratorType
 from VeraGridEngine.basic_structures import Logger, ConvergenceReport
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions
@@ -15,7 +15,10 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_results import NumericPower
 from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_basic_formulation import PfBasicFormulation
 from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_full_acdc_with_negative_poles import PfAcDcWithNegativePoles
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.newton_raphson_fx import newton_raphson_fx
-from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions import split_bus_quantity
+from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions import (
+    compute_asynchronous_generator_q,
+    split_bus_quantity,
+)
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.powell_fx import powell_fx
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.levenberg_marquadt_fx import levenberg_marquardt_fx
 from VeraGridEngine.Topology.simulation_indices import SimulationIndices
@@ -29,6 +32,30 @@ from VeraGridEngine.basic_structures import CxVec, Vec
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGridEngine.Compilers.circuit_to_data import VALID_OPF_RESULTS
+
+
+def _get_generator_q_for_split(nc: NumericalCircuit, V: CxVec) -> Vec:
+    """
+    Return generator Q setpoints for result splitting, including voltage-dependent asynchronous machines.
+    """
+    q0_gen = nc.generator_data.q.copy()
+    q_async = compute_asynchronous_generator_q(V=V,
+                                               gen_bus_idx=nc.generator_data.bus_idx,
+                                               gen_active=nc.generator_data.active,
+                                               gen_types=nc.generator_data.type,
+                                               Rs=nc.generator_data.Rs,
+                                               Xs=nc.generator_data.Xs,
+                                               Xm=nc.generator_data.Xm,
+                                               Rr=nc.generator_data.Rr,
+                                               Xr=nc.generator_data.Xr,
+                                               P=nc.generator_data.p,
+                                               Snom=nc.generator_data.snom)
+
+    for gen_idx in range(nc.generator_data.nelm):
+        if nc.generator_data.active[gen_idx] and nc.generator_data.type[gen_idx] == GeneratorType.Asynchronous:
+            q0_gen[gen_idx] = q_async[gen_idx]
+
+    return q0_gen
 
 
 def __solve_island_complete_support(nc: NumericalCircuit,
@@ -930,6 +957,9 @@ def multi_island_pf_nc(nc: NumericalCircuit,
         if nc.topology_performed:
             results.voltage = nc.propagate_bus_result(results.voltage)
 
+        V_for_q = results.voltage[nc.bus_data.original_idx] if nc.topology_performed else results.voltage
+        q0_gen = _get_generator_q_for_split(nc=nc, V=V_for_q)
+
         # do the reactive power partition and store the values
         results.gen_q, results.battery_q = split_bus_quantity(
             Qbus=results.Sbus.imag,
@@ -938,7 +968,7 @@ def multi_island_pf_nc(nc: NumericalCircuit,
             Qmax_gen=nc.generator_data.qmax,
             gen_status=nc.generator_data.active,
             is_controlling=nc.generator_data.controllable,
-            Q0_gen=nc.generator_data.q,
+            Q0_gen=q0_gen,
             batt_bus_idx=nc.battery_data.bus_idx,
             Qmin_batt=nc.battery_data.qmin,
             Qmax_batt=nc.battery_data.qmax,
@@ -947,6 +977,27 @@ def multi_island_pf_nc(nc: NumericalCircuit,
             Q0_batt=nc.battery_data.q,
             atol=1e-12,
         )
+
+        if options.distributed_slack:
+            results.gen_p, results.battery_p = split_bus_quantity(
+                Qbus=results.Sbus.real,
+                gen_bus_idx=nc.generator_data.bus_idx,
+                Qmin_gen=nc.generator_data.pmin,
+                Qmax_gen=nc.generator_data.pmax,
+                gen_status=nc.generator_data.active,
+                is_controlling=nc.generator_data.active,
+                Q0_gen=nc.generator_data.p,
+                batt_bus_idx=nc.battery_data.bus_idx,
+                Qmin_batt=nc.battery_data.pmin,
+                Qmax_batt=nc.battery_data.pmax,
+                batt_status=nc.battery_data.active,
+                batt_is_controlling=nc.battery_data.active,
+                Q0_batt=nc.battery_data.p,
+                atol=1e-12,
+            )
+        else:
+            results.gen_p = nc.generator_data.p
+            results.battery_p = nc.battery_data.p
 
         return results
 
@@ -964,6 +1015,9 @@ def multi_island_pf_nc(nc: NumericalCircuit,
         if nc.topology_performed:
             results.voltage = nc.propagate_bus_result(results.voltage)
 
+        V_for_q = results.voltage[nc.bus_data.original_idx] if nc.topology_performed else results.voltage
+        q0_gen = _get_generator_q_for_split(nc=nc, V=V_for_q)
+
         # do the reactive power partition and store the values
         results.gen_q, results.battery_q = split_bus_quantity(
             Qbus=results.Sbus.imag,
@@ -972,7 +1026,7 @@ def multi_island_pf_nc(nc: NumericalCircuit,
             Qmax_gen=nc.generator_data.qmax,
             gen_status=nc.generator_data.active,
             is_controlling=nc.generator_data.controllable,
-            Q0_gen=nc.generator_data.q,
+            Q0_gen=q0_gen,
             batt_bus_idx=nc.battery_data.bus_idx,
             Qmin_batt=nc.battery_data.qmin,
             Qmax_batt=nc.battery_data.qmax,

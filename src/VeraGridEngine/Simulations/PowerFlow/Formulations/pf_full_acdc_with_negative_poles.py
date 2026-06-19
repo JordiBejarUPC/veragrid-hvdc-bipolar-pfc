@@ -22,9 +22,9 @@ from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions impo
 from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_formulation_template import PfFormulationTemplate
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions import (compute_zip_power, compute_power,
                                                                                     polar_to_rect, voltage_q_droop,
-                                                                                    solve_reactive_power)
+                                                                                    compute_asynchronous_generator_q_per_bus)
 from VeraGridEngine.enumerations import (TapPhaseControl, TapModuleControl, HvdcControlType, ConverterControlType,
-                                         ShuntControlMode, GeneratorType)
+                                         ShuntControlMode)
 from VeraGridEngine.basic_structures import Vec, IntVec, CxVec, Logger
 
 
@@ -1734,17 +1734,18 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         V = polar_to_rect(Vm_, Va_)
 
         # Asynchronous Generators --------------------------------------------------------------------------------------
-        Qag = np.zeros_like(self.S0, dtype=float)
-        for ag in range(len(self.nc.generator_data.type)):
-            if self.nc.generator_data.type[ag] == GeneratorType.Asynchronous:
-                Qag[self.nc.generator_data.bus_idx[ag]] = solve_reactive_power(u=V[self.nc.generator_data.bus_idx[ag]],
-                                                                               Rs=self.nc.generator_data.Rs[ag],
-                                                                               Xs=self.nc.generator_data.Xs[ag],
-                                                                               Xm=self.nc.generator_data.Xm[ag],
-                                                                               Rr=self.nc.generator_data.Rr[ag],
-                                                                               Xr=self.nc.generator_data.Xr[ag],
-                                                                               P=self.nc.generator_data.p[ag],
-                                                                               Sr=self.nc.generator_data.snom[ag])
+        Qag = compute_asynchronous_generator_q_per_bus(nbus=self.nc.bus_data.nbus,
+                                                       V=V,
+                                                       gen_bus_idx=self.nc.generator_data.bus_idx,
+                                                       gen_active=self.nc.generator_data.active,
+                                                       gen_types=self.nc.generator_data.type,
+                                                       Rs=self.nc.generator_data.Rs,
+                                                       Xs=self.nc.generator_data.Xs,
+                                                       Xm=self.nc.generator_data.Xm,
+                                                       Rr=self.nc.generator_data.Rr,
+                                                       Xr=self.nc.generator_data.Xr,
+                                                       P=self.nc.generator_data.p,
+                                                       Snom=self.nc.generator_data.snom)
 
         # Use V instead of Vm (not a device-centered axis). Thus avoid compute_zip_power()
         # We add self.Y0 despite it being zero
@@ -2690,7 +2691,22 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         # is ~0, so this is a no-op. For VSCs where Pt or Qt was not
         # constrained (e.g. Pac+Vm_ac), this recovers the correct value.
         Scalc_passive = compute_power(self.adm.Ybus, self.V)
-        Sbus_load = self.S0 + self.V * np.conj(self.I0) + self.V * np.conj(self.V) * np.conj(self.Y0)
+        Qag = compute_asynchronous_generator_q_per_bus(nbus=self.nc.bus_data.nbus,
+                                                       V=self.V,
+                                                       gen_bus_idx=self.nc.generator_data.bus_idx,
+                                                       gen_active=self.nc.generator_data.active,
+                                                       gen_types=self.nc.generator_data.type,
+                                                       Rs=self.nc.generator_data.Rs,
+                                                       Xs=self.nc.generator_data.Xs,
+                                                       Xm=self.nc.generator_data.Xm,
+                                                       Rr=self.nc.generator_data.Rr,
+                                                       Xr=self.nc.generator_data.Xr,
+                                                       P=self.nc.generator_data.p,
+                                                       Snom=self.nc.generator_data.snom)
+        Sbus_load = (self.S0
+                     + 1j * Qag / self.nc.Sbase
+                     + self.V * np.conj(self.I0)
+                     + self.V * np.conj(self.V) * np.conj(self.Y0))
         St_vsc_pu = make_complex(self.Pt_vsc, self.Qt_vsc)
         Sf_hvdc_pu = make_complex(self.Pf_hvdc, self.Qf_hvdc)
         St_hvdc_pu = make_complex(self.Pt_hvdc, self.Qt_hvdc)
@@ -2754,8 +2770,6 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         tau2 = self.nc.active_branch_data.tap_angle.copy()
         m2[self.u_cbr_m] = self.m
         tau2[self.u_cbr_tau] = self.tau
-
-        print('\nConverged?', self.converged, '\n')
 
         return NumericPowerFlowResults(
             V=self.V,

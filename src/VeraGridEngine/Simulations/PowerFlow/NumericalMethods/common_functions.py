@@ -7,6 +7,7 @@ import numba as nb
 import numpy as np
 from scipy.sparse import csc_matrix
 from VeraGridEngine.basic_structures import Vec, CxVec, IntVec, CscMat, CxMat, BoolVec
+from VeraGridEngine.enumerations import GeneratorType
 from typing import Tuple
 
 
@@ -113,6 +114,77 @@ def solve_reactive_power(u: complex,
     return s.imag * Sr
 
 
+def compute_asynchronous_generator_q(
+        V: CxVec,
+        gen_bus_idx: IntVec,
+        gen_active: BoolVec,
+        gen_types,
+        Rs: Vec,
+        Xs: Vec,
+        Xm: Vec,
+        Rr: Vec,
+        Xr: Vec,
+        P: Vec,
+        Snom: Vec,
+) -> Vec:
+    """
+    Compute the voltage-dependent reactive power of asynchronous generators.
+    """
+    q = np.zeros(len(gen_bus_idx), dtype=float)
+
+    for gen_idx in range(len(gen_bus_idx)):
+        bus_idx = gen_bus_idx[gen_idx]
+        if gen_active[gen_idx] and bus_idx > -1 and gen_types[gen_idx] == GeneratorType.Asynchronous:
+            q[gen_idx] = solve_reactive_power(u=V[bus_idx],
+                                              Rs=Rs[gen_idx],
+                                              Xs=Xs[gen_idx],
+                                              Xm=Xm[gen_idx],
+                                              Rr=Rr[gen_idx],
+                                              Xr=Xr[gen_idx],
+                                              P=P[gen_idx],
+                                              Sr=Snom[gen_idx])
+
+    return q
+
+
+def compute_asynchronous_generator_q_per_bus(
+        nbus: int,
+        V: CxVec,
+        gen_bus_idx: IntVec,
+        gen_active: BoolVec,
+        gen_types,
+        Rs: Vec,
+        Xs: Vec,
+        Xm: Vec,
+        Rr: Vec,
+        Xr: Vec,
+        P: Vec,
+        Snom: Vec,
+) -> Vec:
+    """
+    Compute the voltage-dependent asynchronous generator Q summed by bus.
+    """
+    q_per_bus = np.zeros(nbus, dtype=float)
+    q = compute_asynchronous_generator_q(V=V,
+                                         gen_bus_idx=gen_bus_idx,
+                                         gen_active=gen_active,
+                                         gen_types=gen_types,
+                                         Rs=Rs,
+                                         Xs=Xs,
+                                         Xm=Xm,
+                                         Rr=Rr,
+                                         Xr=Xr,
+                                         P=P,
+                                         Snom=Snom)
+
+    for gen_idx in range(len(gen_bus_idx)):
+        bus_idx = gen_bus_idx[gen_idx]
+        if bus_idx > -1:
+            q_per_bus[bus_idx] += q[gen_idx]
+
+    return q_per_bus
+
+
 def voltage_q_droop(ut: complex,
                     u_setpoint_min: float,
                     u_setpoint_max: float,
@@ -146,7 +218,7 @@ def voltage_q_droop(ut: complex,
     else:
         u = u
 
-    Q_droop = S_r * 100 / droop  # Additional reactive power for the specified voltage droop [MVAr]
+    Q_droop = S_r * 100 / (droop + 1e-20)  # Additional reactive power for the specified voltage droop [MVAr]
 
     Q = Q_setpoint * S_base - Q_droop * (u_setpoint - u)  # Actual reactive power output [MVAr]
 

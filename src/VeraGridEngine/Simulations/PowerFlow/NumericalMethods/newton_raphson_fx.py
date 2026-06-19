@@ -106,9 +106,28 @@ def newton_raphson_fx(problem: PfFormulationTemplate,
             # line search
             mu = trust0
             x_sol = x
-            while not converged and mu > tol and error >= error0:
-                error, x_sol = problem.check_error(x + dx * mu)
+            best_error = error
+            best_x = x
+            while not converged and mu > tol:
+                candidate_error, candidate_x = problem.check_error(x + dx * mu)
+                if candidate_error < best_error:
+                    best_error = candidate_error
+                    best_x = candidate_x
+
+                if candidate_error < error0:
+                    break
+
                 mu *= 0.25
+
+            if best_error >= error0:
+                logger.add_warning("Newton-Raphson line search failed to improve",
+                                   "Newton-Raphson",
+                                   value=best_error,
+                                   expected_value=f"< {error0}")
+                return problem.get_solution(elapsed=time.time() - start, iterations=iteration)
+
+            error = best_error
+            x_sol = best_x
 
             update_controls = error < (tol * 100)
             error, converged, x, f = problem.update(x=x_sol, update_controls=update_controls)
