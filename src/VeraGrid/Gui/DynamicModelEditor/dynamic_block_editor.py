@@ -5490,8 +5490,13 @@ class DiagramScene(QGraphicsScene):
                 if not item.is_input:
                     self.source_port = item
                     path: QPainterPath = QPainterPath(item.scenePos())
-                    IS_DARK = darkdetect.theme() == "Dark"
-                    pen: QPen = QPen(QColor("white"), 1, Qt.PenStyle.DashLine) if IS_DARK else QPen(Qt.PenStyle.DashLine)
+                    try:
+                        IS_DARK = darkdetect.theme() == "Dark"
+                    except ImportError:
+                        IS_DARK = False
+
+                    CURRENT_THEME_IS_DARK = IS_DARK
+                    pen: QPen = QPen(QColor("white"), 1, Qt.PenStyle.DashLine) if CURRENT_THEME_IS_DARK else QPen(QColor("black"), 1, Qt.PenStyle.DashLine)
                     self.temp_line = self.addPath(path, pen)
                     return
                 else:
@@ -5501,8 +5506,14 @@ class DiagramScene(QGraphicsScene):
 
                 self.source_port = item
                 path: QPainterPath = QPainterPath(item.scenePos())
-                IS_DARK = darkdetect.theme() == "Dark"
-                pen: QPen = QPen(QColor("white"), 1, Qt.PenStyle.DashLine) if IS_DARK else QPen(Qt.PenStyle.DashLine)
+
+                try:
+                    IS_DARK = darkdetect.theme() == "Dark"
+                except ImportError:
+                    IS_DARK = False
+
+                CURRENT_THEME_IS_DARK = IS_DARK
+                pen: QPen = QPen(QColor("white"), 1, Qt.PenStyle.DashLine) if CURRENT_THEME_IS_DARK else QPen(Qt.PenStyle.DashLine)
                 self.temp_line = self.addPath(path, pen)
                 return
 
