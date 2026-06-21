@@ -20,7 +20,7 @@ from VeraGridEngine.enumerations import DynamicIntegrationMethod, SmallSignalEmt
 from VeraGridEngine.Simulations.SmallSignalStabilityEmt.small_signal_stability_emt_driver import \
     SmallSignalStabilityEmtDriver
 from VeraGridEngine.Simulations.SmallSignalStabilityEmt.small_signal_stability_emt_options import \
-    EmtSmallSignalStabilityOptions
+    SmallSignalStabilityEmtOptions
 
 
 class _MockVar:
@@ -187,7 +187,7 @@ def run_target_validation(target_hz: float, name_tag: str):
     )
 
     # Shift-Invert Filter Active configuration
-    floquet_options = EmtSmallSignalStabilityOptions(
+    floquet_options = SmallSignalStabilityEmtOptions(
         k=2,
         target_period=T_period,
         target_frequency_hz=target_hz,

@@ -241,6 +241,7 @@ class EmtSimulationDriver(DriverTemplate):
                     h=self.options.time_step,
                     method=self.options.integration_method,
                     newton_diag_config=newton_diag_config,
+                    progress_signal=self.progress_signal,
                     cancel_checker=self.is_cancel,
                 )
 

@@ -1008,14 +1008,15 @@ class SimulationsMain(TimeEventsMain):
 
         return ops
 
-    def get_selected_emt_small_signal_stability_options(self) -> sim.EmtSmallSignalStabilityOptions:
+    def get_selected_emt_small_signal_stability_options(self) -> sim.SmallSignalStabilityEmtOptions:
         """
         Gather EMT SmallSignal simulation run options
         :return: sim.SmallSignalOptions
         """
-        ops = sim.EmtSmallSignalStabilityOptions(
+        ops = sim.SmallSignalStabilityEmtOptions(
             k=self.ui.emt_small_signal_modes_number_spinBox.value(),
             ss_assessment_time=self.ui.emt_ss_assessment_time_spinBox.value(),
+            # build_type=
         )
 
         return ops
@@ -4055,7 +4056,7 @@ class SimulationsMain(TimeEventsMain):
 
     def run_rms_small_signal_stability(self):
         """
-        Run small signal simulation
+        Run small-signal simulation RMS
         :return:
         """
         if self.circuit.valid_for_simulation():
@@ -4088,7 +4089,7 @@ class SimulationsMain(TimeEventsMain):
                         options = self.get_selected_rms_small_signal_stability_options()
                         rms_options = self.get_selected_rms_simulation_options()
 
-                        self.ui.progress_label.setText('Performing Small Signal Stability analysis...')
+                        self.ui.progress_label.setText('Performing Small-Signal Stability analysis...')
 
                         drv = sim.SmallSignalStabilityRmsDriver(grid=self.circuit,
                                                                 rms_options=rms_options,
@@ -4105,7 +4106,7 @@ class SimulationsMain(TimeEventsMain):
                                  'The results are needed to initialize this simulation.')
 
             else:
-                self.show_warning_toast('Another Small Signal stability analysis simulation is running already...')
+                self.show_warning_toast('Another Small-Signal stability analysis simulation is running already...')
 
         else:
             pass
@@ -4123,10 +4124,10 @@ class SimulationsMain(TimeEventsMain):
             self.remove_simulation(SimulationTypes.RmsSmallSignal_run)
             self.update_available_results()
 
-            self.show_info_toast("Small-signal stability analysis has finished correctly!")
+            self.show_info_toast("Small-signal stability analysis RMS has finished correctly!")
 
         else:
-            warning_msg('There are no Small Signal Stability analysis results.', 'Small Signal Stability analysis')
+            warning_msg('There are no Small-Signal Stability analysis RMS results.', 'Small-Signal Stability analysis RMS')
 
         if not self.session.is_anything_running():
             self.UNLOCK()
@@ -4134,7 +4135,7 @@ class SimulationsMain(TimeEventsMain):
 
     def run_emt_small_signal_stability(self):
         """
-        Run small signal simulation
+        Run small-signal simulation EMT
         :return:
         """
         if self.circuit.valid_for_simulation():
@@ -4163,15 +4164,15 @@ class SimulationsMain(TimeEventsMain):
                         self.ui.progress_label.setText('Compiling the grid...')
                         QtGui.QGuiApplication.processEvents()
 
-                        # get the small signal stability analysis simulation options from the GUI
-                        options = self.get_selected_emt_small_signal_stability_options()
-                        rms_options = self.get_selected_emt_simulation_options()
+                        # get the small-signal stability analysis simulation options from the GUI
+                        sss_options = self.get_selected_emt_small_signal_stability_options()
+                        emt_options = self.get_selected_emt_simulation_options()
 
-                        self.ui.progress_label.setText('Performing Small Signal Stability analysis...')
+                        self.ui.progress_label.setText('Performing Small-Signal Stability analysis...')
 
                         drv = sim.SmallSignalStabilityEmtDriver(grid=self.circuit,
-                                                                rms_options=rms_options,
-                                                                sss_options=options,
+                                                                emt_options=emt_options,
+                                                                sss_options=sss_options,
                                                                 pf_results=pf_results)
 
                         self.session.run(drv,
@@ -4183,7 +4184,7 @@ class SimulationsMain(TimeEventsMain):
                         info_msg('Run a power flow simulation first.\n'
                                  'The results are needed to initialize this simulation.')
             else:
-                self.show_warning_toast('Another Small Signal stability analysis simulation is running already...')
+                self.show_warning_toast('Another Small-Signal stability analysis EMT simulation is running already...')
 
         else:
             pass
@@ -4201,10 +4202,10 @@ class SimulationsMain(TimeEventsMain):
             self.remove_simulation(SimulationTypes.EmtSmallSignal_run)
             self.update_available_results()
 
-            self.show_info_toast("Small-signal stability analysis has finished correctly!")
+            self.show_info_toast("Small-Signal stability analysis EMT has finished correctly!")
 
         else:
-            warning_msg('There are no Small Signal Stability analysis results.', 'Small Signal Stability analysis')
+            warning_msg('There are no Small-Signal Stability analysis EMT results.', 'Small-Signal Stability analysis EMT')
 
         if not self.session.is_anything_running():
             self.UNLOCK()

@@ -10,10 +10,11 @@ import uuid
 import re
 import copy
 from enum import Enum
-from typing import List, Dict, Optional, Any, Set
+from typing import List, Dict, Optional, Any, Set, TypeAlias, cast
 from PySide6 import QtWidgets, QtGui, QtCore
 from PySide6.QtWidgets import (QApplication, QHBoxLayout, QGraphicsScene, QGraphicsView, QGraphicsItem,
-                               QGraphicsRectItem, QGraphicsEllipseItem, QGraphicsTextItem, QMenu, QGraphicsPathItem,
+                               QGraphicsRectItem, QGraphicsEllipseItem, QGraphicsPolygonItem,
+                               QGraphicsTextItem, QMenu, QGraphicsPathItem,
                                QDialog, QVBoxLayout, QDialogButtonBox, QLabel, QListWidget, QWidget, QScrollArea,
                                QListWidgetItem, QFormLayout, QSpinBox, QLineEdit, QDoubleSpinBox, QTableWidget,
                                QTableWidgetItem, QMessageBox,
@@ -37,6 +38,8 @@ from VeraGridEngine.enumerations import DeviceType, VarPowerFlowReferenceType, P
     DynamicSimulationMode, ShuntConnectionType, WindingType, DynamicTableModelMode
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms, get_bus_rms_algebraic_vars
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import BusEmtTemplate, get_bus_emt_template, get_bus_emt_algebraic_vars
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import register_saved_emt_model_vars_for_device, \
+    unify_saved_emt_model_root_contract, attach_emt_model_to_buses
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
@@ -84,7 +87,8 @@ from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_rlc_com
 from VeraGridEngine.Templates.Emt.load_zip_emt_template import get_load_ZIP_emt_template
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Utils.Symbolic.block import Block, find_connections, find_connections_pf
-from VeraGridEngine.Utils.Symbolic.equation_decomposer import EquationDecomposer
+from VeraGridEngine.Utils.Symbolic.equation_decomposer import EquationDecomposer, build_diagram, build_diagram_regular_blocks
+from VeraGridEngine.Utils.Symbolic.hierarchical_layout_v2 import compute_layout as _compute_layout_v2
 from VeraGrid.Gui.DynamicModelEditor.block_editor import Ui_BlockEditorWindow
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_utilities import create_block_of_type, create_generic_block, \
     create_emt_wizard_block
@@ -146,6 +150,9 @@ WIRE_COLOR: QColor = QColor("#587291")
 WIRE_HOVER_COLOR: QColor = QColor("#cc6f2c")
 HANDLE_FILL: QColor = QColor("#36536b")
 DEFAULT_BLOCK_FILL: QColor = QColor("#d9e7f5")
+PAIRED_ITEM_FILL: QColor = QColor("#9fa8da")
+BLOCK_FILL_ALL_CONNECTED: QColor = QColor("#a5d6a7")
+BLOCK_FILL_DISCONNECTED: QColor = QColor("#ffe082")
 PORT_LABEL_COLOR: QColor = QColor("#173042")
 WIRE_ELBOW_OFFSET: float = 36.0
 PORT_LABEL_MAX_CHARS: int = 12
@@ -154,6 +161,11 @@ BLOCK_PORT_ROW_HEIGHT: float = 20.0
 BLOCK_PORT_SECTION_PADDING: float = 10.0
 BLOCK_MIN_WIDTH: float = 160.0
 BLOCK_MIN_HEIGHT: float = 70.0
+BLOCK_COMPACT_MIN_WIDTH: float = 100.0
+BLOCK_COMPACT_MIN_HEIGHT: float = 40.0
+BLOCK_COMPACT_HEADER_HEIGHT: float = 20.0
+BLOCK_COMPACT_PORT_ROW_HEIGHT: float = 14.0
+BLOCK_COMPACT_PORT_SECTION_PADDING: float = 6.0
 TEMPLATE_NODE_TYPE: str = "TEMPLATE"
 PARAMETER_VALUE_TYPE_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 500
 PARAMETER_EDITABLE_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 501
@@ -457,6 +469,8 @@ def _parse_symbolic_editor_value(block: Block | None, value: Any) -> Any:
     Expr-compatible objects in init/event/mode dictionaries.
     """
     if not isinstance(value, str) or block is None:
+        if isinstance(value, (int, float)):
+            return Const(value)
         return value
 
     parsed = string_to_symbolic(value, build_block_symbol_namespace(block))
@@ -1900,6 +1914,42 @@ def clone_block_for_editing(block: Block) -> Block:
     return copy.deepcopy(block)
 
 
+def _build_block_uid_lookup(root_block: Block) -> Dict[int, Block]:
+    """
+    Build one uid-to-block lookup for one edited hierarchy.
+
+    :param root_block: Root block that owns the edited hierarchy.
+    :return: Mapping from block uid to block object.
+    """
+    block_lookup: Dict[int, Block] = dict()
+    block_item: Block
+
+    for block_item in root_block.get_all_blocks():
+        block_lookup[block_item.uid] = block_item
+
+    return block_lookup
+
+
+def _ensure_block_tree_names(block: Block, prefix: str = "block") -> None:
+    """
+    Assign stable fallback names to unnamed blocks in one hierarchy.
+
+    :param block: Root block to normalize.
+    :param prefix: Fallback name prefix.
+    :return: None.
+    """
+    child_index: int
+    child_block: Block
+
+    if not block.name:
+        block.name = f"{prefix}_{str(block.uid)[:8]}"
+    else:
+        pass
+
+    for child_index, child_block in enumerate(block.children, start=1):
+        _ensure_block_tree_names(child_block, prefix=f"{block.name}_{child_index}")
+
+
 def copy_block_state(source_block: Block, target_block: Block) -> None:
     """
     Copy the complete edited block state back into the original block instance.
@@ -1936,7 +1986,12 @@ def copy_block_state(source_block: Block, target_block: Block) -> None:
     target_block.var_mapping = source_clone.var_mapping
     target_block.event_dict = source_clone.event_dict
     target_block.mode_dict = source_clone.mode_dict
-    target_block.diagram = source_block.diagram
+    # Persist the cloned diagram together with the cloned symbolic hierarchy so
+    # the saved block owns one self-consistent snapshot of nodes, connections,
+    # and positions after the editor closes. Reusing ``source_block.diagram``
+    # would keep the saved model tied to the live editor working copy instead of
+    # the copied block state that is meant to survive reopening.
+    target_block.diagram = source_clone.diagram
 
 
 def _initialize_editor_assigned_rms_bus_model(bus: Bus, var_factory: VarFactory) -> None:
@@ -2232,7 +2287,7 @@ class ResizeHandle(QGraphicsRectItem):
     Interactive resize handle attached to a block item.
     """
 
-    def __init__(self, block_item: BlockItem | GenericBlockItem, size: int = 10):
+    def __init__(self, block_item: EditorBlockGraphicsItem, size: int = 10):
         """
         Build the resize handle.
 
@@ -2244,7 +2299,7 @@ class ResizeHandle(QGraphicsRectItem):
         self.setPen(QPen(QColor("#ffffff"), 1))
         self.setCursor(Qt.CursorShape.SizeFDiagCursor)
         self.setZValue(2)
-        self.block: BlockItem = block_item
+        self.block: EditorBlockGraphicsItem = block_item
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemSendsScenePositionChanges)
         self.setAcceptHoverEvents(True)
@@ -2361,13 +2416,16 @@ class EmtTemplateWizardDialog(QDialog):
         )
 
 
+EditorBlockGraphicsItem: TypeAlias = "BlockItem | GenericBlockItem | PairedItem"
+
+
 class PortItem(QGraphicsEllipseItem):
     """
     Graphical input or output port attached to a block item.
     """
 
     def __init__(self,
-                 subsystem: BlockItem | GenericBlockItem,
+                 subsystem: EditorBlockGraphicsItem,
                  is_input: bool,
                  index: int,
                  total: int,
@@ -2387,7 +2445,7 @@ class PortItem(QGraphicsEllipseItem):
         self.setPen(QPen(PORT_BORDER, 1.5))
         self.setZValue(3)
         self.setAcceptHoverEvents(True)
-        self.subsystem: BlockItem | GenericBlockItem = subsystem
+        self.subsystem: EditorBlockGraphicsItem = subsystem
         self.is_input: bool = is_input
         self.connections: List["ConnectionItem"] | None = None
         self.index: int = index
@@ -2528,6 +2586,11 @@ class ConnectionItem(QGraphicsPathItem):
             self.target_port.connections = list()
         self.target_port.connections.append(self)
 
+        if isinstance(self.source_port.subsystem, BlockItem):
+            self.source_port.subsystem._refresh_connection_color()
+        if isinstance(self.target_port.subsystem, BlockItem):
+            self.target_port.subsystem._refresh_connection_color()
+
         self.setPen(QPen(WIRE_COLOR, 2.5, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
         self.setAcceptHoverEvents(True)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, False)
@@ -2574,7 +2637,7 @@ class ConnectionItem(QGraphicsPathItem):
 
     def _create_elbow_items(self) -> None:
         for elbow in self.elbows:
-            elbow.setParentItem(None)
+            elbow.setParentItem(cast(QGraphicsItem | None, None))
             if elbow.scene():
                 elbow.scene().removeItem(elbow)
         self.elbows.clear()
@@ -4297,7 +4360,6 @@ class GenericBlockItem(QGraphicsRectItem):
         self.api_object = api_object
         self.position_changed_callback = position_changed_callback
 
-
         self.name_item = QGraphicsTextItem(self.subsys.name, self)
         self.name_item.setDefaultTextColor(BLOCK_TITLE)
         name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 9)
@@ -4312,12 +4374,7 @@ class GenericBlockItem(QGraphicsRectItem):
 
         self.name_item.setDefaultTextColor(BLOCK_TITLE)
 
-        self.editor_window = DynamicBlockEditorGUI(
-            var_factory=self.var_factory,
-            block=self.subsys,
-            api_object=self.api_object,
-            mode=self.mode
-        )
+        self.editor_window: DynamicBlockEditorGUI | None = None
 
         self.resize_handle: ResizeHandle | None = None
         self.resizing_from_handle = False
@@ -4364,42 +4421,25 @@ class GenericBlockItem(QGraphicsRectItem):
 
         """
 
-        items_list = list()
-        if not self.subsys.children:
-            if self.subsys.is_eq_decomposable():
-                self.editor_window.decompose_block_in_place(self.subsys)
-                self.editor_window.diagram = self.subsys.diagram
-                self.editor_window.main_block = self.subsys
+        if self.editor_window is None and self.subsys.children:
+            self.editor_window = DynamicBlockEditorGUI(
+                var_factory=self.var_factory,
+                block=self.subsys,
+                api_object=self.api_object,
+                mode=self.mode,
+            )
 
-            for uid, node in self.editor_window.diagram.node_data.items():
-                block_type: BlockType | None
-                block_model: Block | None = self.editor_window.get_block_from_main_block(node.device_uid)
 
-                if block_model is not None:
-                    if node.tpe in ("signal_in", "signal_out"):
-                        item = PairedItem(
-                            var_factory=self.var_factory,
-                            subsys=block_model,
-                            api_object=self.api_object,
-                            mode=self.mode,
-                            name=block_model.name,
-                            position_changed_callback=self.editor_window._build_position_changed_callback(block_model.uid)
-                        )
-
-                    else:
-                        item = GenericBlockItem(
-                            var_factory=self.var_factory,
-                            subsys=block_model,
-                            api_object=self.api_object,
-                            mode=self.mode,
-                            name=block_model.name,
-                            position_changed_callback=self.editor_window._build_position_changed_callback(block_model.uid)
-                        )
-                    items_list.append(item)
-
-            self.editor_window.add_connection_items(items_list)
-
-            self.editor_window.connect_items_pf(items_list)
+        elif self.editor_window is None and self.subsys.is_eq_decomposable():
+            self.editor_window = DynamicBlockEditorGUI(
+                var_factory=self.var_factory,
+                block=self.subsys,
+                api_object=self.api_object,
+                mode=self.mode,
+            )
+            self.editor_window.decompose_block_in_place(self.subsys)
+            self.editor_window.diagram = self.subsys.diagram
+            self.editor_window.main_block = self.subsys
             self.editor_window.rebuild_scene_from_diagram()
         self.editor_window.show()
 
@@ -4630,12 +4670,14 @@ class GenericBlockItem(QGraphicsRectItem):
         return super().itemChange(change, value)
 
 
-class PairedItem(QGraphicsRectItem):
+class PairedItem(QGraphicsPolygonItem):
     """
     A block item that is paired with another PairedItem.
-    Has the same functionality as GenericBlockItem plus the pairing feature.
-    When refresh_port_metadata is called, it also refreshes the paired item's ports.
+    Rendered as an isosceles triangle: signal_in points right, signal_out points left.
     """
+
+    _TRI_W: float = 70.0
+    _TRI_H: float = 44.0
 
     def __init__(self,
                  var_factory: VarFactory,
@@ -4645,7 +4687,7 @@ class PairedItem(QGraphicsRectItem):
                  name: str,
                  paired_item: PairedItem | None = None,
                  position_changed_callback=None):
-        super().__init__(0, 0, 100, 60)
+        super().__init__()
 
         self._paired_item: PairedItem | None = paired_item
         self.var_factory = var_factory
@@ -4655,24 +4697,18 @@ class PairedItem(QGraphicsRectItem):
         self.api_object = api_object
         self.position_changed_callback = position_changed_callback
 
+        self._is_signal_in: bool = bool(self.subsys.in_vars) and not bool(self.subsys.out_vars)
+
         self.name_item = QGraphicsTextItem(self.subsys.name, self)
         self.name_item.setDefaultTextColor(BLOCK_TITLE)
-        name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 9)
+        name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 7)
         name_font.setBold(True)
         self.name_item.setFont(name_font)
-        self.name_item.setPos(6, 4)
 
         self.inputs: List[PortItem] = list()
         self.outputs: List[PortItem] = list()
-        self.input_labels: List[QGraphicsTextItem] = list()
-        self.output_labels: List[QGraphicsTextItem] = list()
 
-        self.name_item.setDefaultTextColor(BLOCK_TITLE)
-
-        self.resize_handle: ResizeHandle | None = None
-        self.resizing_from_handle = False
-        self._suppress_resize: bool = False
-        self.setBrush(QBrush(DEFAULT_BLOCK_FILL))
+        self.setBrush(QBrush(PAIRED_ITEM_FILL))
         self.setPen(QPen(Qt.GlobalColor.transparent, 0))
         self.setFlags(
             QGraphicsItem.GraphicsItemFlag.ItemIsMovable |
@@ -4681,24 +4717,62 @@ class PairedItem(QGraphicsRectItem):
         )
         self.setAcceptHoverEvents(True)
 
-        name_font = QtGui.QFont("DejaVu Sans", 9)
-        name_font.setBold(True)
-        self.name_item.setFont(name_font)
-        self.name_item.setPos(6, 4)
-
         n_inputs = len(self.subsys.in_vars)
         n_outputs = len(self.subsys.out_vars)
 
         self.inputs = [PortItem(self, True, i, n_inputs) for i in range(n_inputs)]
         self.outputs = [PortItem(self, False, i, n_outputs) for i in range(n_outputs)]
-        self.input_labels = [self.create_port_label_item() for _ in range(n_inputs)]
-        self.output_labels = [self.create_port_label_item() for _ in range(n_outputs)]
 
         self.refresh_port_metadata()
+        self._build_polygon()
 
-        self.resize_handle = ResizeHandle(self)
+    def rect(self) -> QtCore.QRectF:
+        return self.polygon().boundingRect()
 
-        self.resize_to_content()
+    def _build_polygon(self) -> None:
+        W = self._TRI_W
+        H = self._TRI_H
+        if self._is_signal_in:
+            poly = QtGui.QPolygonF([
+                QtCore.QPointF(0.0, 0.0),
+                QtCore.QPointF(0.0, H),
+                QtCore.QPointF(W, H / 2.0),
+            ])
+        else:
+            poly = QtGui.QPolygonF([
+                QtCore.QPointF(0.0, H / 2.0),
+                QtCore.QPointF(W, 0.0),
+                QtCore.QPointF(W, H),
+            ])
+        self.setPolygon(poly)
+        self._position_name_and_ports()
+
+    def _position_name_and_ports(self) -> None:
+        W = self._TRI_W
+        H = self._TRI_H
+        half = H / 2.0
+        gap: float = 4.0
+        port_radius: float = 6.0
+
+        if self._is_signal_in:
+            if self.inputs:
+                port = self.inputs[0]
+                port.setPos(0.0, half)
+            name_x = port_radius + gap
+        else:
+            if self.outputs:
+                port = self.outputs[0]
+                port.setPos(W, half)
+            name_width = self.name_item.boundingRect().width()
+            name_x = W - port_radius - gap - name_width
+
+        name_height = self.name_item.boundingRect().height()
+        self.name_item.setPos(name_x, half - name_height / 2.0)
+
+        for port in self.inputs + self.outputs:
+            if port.connections:
+                for conn in port.connections:
+                    conn.update_path()
 
     def set_paired_item(self, paired_item: PairedItem) -> None:
         self._paired_item = paired_item
@@ -4708,115 +4782,66 @@ class PairedItem(QGraphicsRectItem):
 
     def build_item(self) -> None:
         if self.subsys is not None:
+            self._is_signal_in = bool(self.subsys.in_vars) and not bool(self.subsys.out_vars)
+
             self.name_item = QGraphicsTextItem(self.name, self)
             self.name_item.setDefaultTextColor(BLOCK_TITLE)
-            name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 9)
+            name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 7)
             name_font.setBold(True)
             self.name_item.setFont(name_font)
-            self.name_item.setPos(6, 4)
+
+            self.setBrush(QBrush(PAIRED_ITEM_FILL))
 
             n_inputs: int = len(self.subsys.in_vars)
             n_outputs: int = len(self.subsys.out_vars)
 
             self.inputs = [PortItem(self, True, i, n_inputs) for i in range(n_inputs)]
             self.outputs = [PortItem(self, False, i, n_outputs) for i in range(n_outputs)]
-            self.input_labels = [self.create_port_label_item() for _ in range(n_inputs)]
-            self.output_labels = [self.create_port_label_item() for _ in range(n_outputs)]
             self.refresh_port_metadata()
-
-            self.resize_handle = ResizeHandle(self)
-            self.resize_to_content()
+            self._build_polygon()
         else:
             pass
 
     def resize_block(self, width, height):
-        self.prepareGeometryChange()
-        min_width: float
-        min_height: float
-        min_width, min_height = self.get_minimum_block_size()
-        QGraphicsRectItem.setRect(self, 0, 0, max(width, min_width), max(height, min_height))
-        self.update_ports()
-        self.update_handle_position()
+        pass
 
     def update_handle_position(self):
-        rect = self.rect()
-        self.resizing_from_handle = False
-        self.resize_handle.setPos(rect.width(), rect.height())
-        self.resizing_from_handle = True
+        pass
 
     def paint(self,
               painter: QPainter,
               option: QtWidgets.QStyleOptionGraphicsItem,
               widget: Optional[QWidget] = None) -> None:
-        rect: QtCore.QRectF = self.rect()
-        outer_rect: QtCore.QRectF = rect.adjusted(2, 2, -2, -2)
-        shadow_rect: QtCore.QRectF = outer_rect.translated(2.5, 3.0)
-        body_rect: QtCore.QRectF = outer_rect
+        polygon: QtGui.QPolygonF = self.polygon()
+        bounds: QtCore.QRectF = polygon.boundingRect()
         border_color: QColor = BLOCK_BORDER_SELECTED if self.isSelected() else BLOCK_BORDER
         fill_color: QColor = self.brush().color()
-        body_path: QPainterPath = QPainterPath()
-        shadow_path: QPainterPath = QPainterPath()
 
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
-        shadow_path.addRoundedRect(shadow_rect, 12.0, 12.0)
+        shadow_poly = polygon.translated(2.5, 3.0)
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(QBrush(BLOCK_SHADOW))
-        painter.drawPath(shadow_path)
+        painter.drawPolygon(shadow_poly)
 
-        body_path.addRoundedRect(body_rect, 12.0, 12.0)
         painter.setBrush(QBrush(fill_color))
-        painter.drawPath(body_path)
+        painter.drawPolygon(polygon)
 
         painter.setPen(QPen(border_color, 1.6))
         painter.setBrush(Qt.BrushStyle.NoBrush)
-        painter.drawRoundedRect(body_rect, 12.0, 12.0)
+        painter.drawPolygon(polygon)
 
     def _set_rect_internal(self, w, h):
-        QGraphicsRectItem.setRect(self, 0, 0, w, h)
-        self.update_ports()
-        self.update_handle_position()
+        pass
 
     def set_rectangle(self, x, y, w, h):
-        if not self._suppress_resize:
-            self._set_rect_internal(w, h)
+        pass
 
     def get_minimum_block_size(self) -> tuple[float, float]:
-        port_rows: int = max(len(self.inputs), len(self.outputs), 1)
-        min_height: float = max(
-            BLOCK_MIN_HEIGHT,
-            BLOCK_HEADER_HEIGHT + BLOCK_PORT_SECTION_PADDING + port_rows * BLOCK_PORT_ROW_HEIGHT
-        )
-
-        name_width = len(self.subsys.name) * 7
-        max_label_length = 0
-        if self.subsys:
-            for var in self.subsys.in_vars:
-                max_label_length = max(max_label_length, len(var.name))
-            for var in self.subsys.out_vars:
-                max_label_length = max(max_label_length, len(var.name))
-
-        port_width = max_label_length * 7
-        min_width = max(BLOCK_MIN_WIDTH, name_width + 14, port_width + 28)
-
-        return min_width, min_height
+        return self._TRI_W, self._TRI_H
 
     def resize_to_content(self) -> None:
-        self.prepareGeometryChange()
-        min_width: float
-        min_height: float
-        min_width, min_height = self.get_minimum_block_size()
-        QGraphicsRectItem.setRect(self, 0, 0, min_width, min_height)
-        self.update_ports()
-        self.update_handle_position()
-
-    def create_port_label_item(self) -> QGraphicsTextItem:
-        label_item: QGraphicsTextItem = QGraphicsTextItem("", self)
-        label_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 9)
-        label_item.setFont(label_font)
-        label_item.setDefaultTextColor(PORT_LABEL_COLOR)
-        label_item.setZValue(4)
-        return label_item
+        self._build_polygon()
 
     def refresh_port_metadata(self) -> None:
         """
@@ -4825,7 +4850,6 @@ class PairedItem(QGraphicsRectItem):
         """
         i: int
         port: PortItem
-        label_item: QGraphicsTextItem
         variable_name: str
 
         if self.subsys is not None:
@@ -4837,8 +4861,6 @@ class PairedItem(QGraphicsRectItem):
 
                 variable_name = self.subsys.in_vars[i].name
                 port.setToolTip(f"Input {i}: {variable_name}")
-                label_item = self.input_labels[i]
-                label_item.setPlainText(truncate_port_label(variable_name))
 
             for i, port in enumerate(self.outputs):
                 if port.base_var is None:
@@ -4848,8 +4870,6 @@ class PairedItem(QGraphicsRectItem):
 
                 variable_name = self.subsys.out_vars[i].name
                 port.setToolTip(f"Output {i}: {variable_name}")
-                label_item = self.output_labels[i]
-                label_item.setPlainText(truncate_port_label(variable_name))
         else:
             pass
 
@@ -4860,27 +4880,7 @@ class PairedItem(QGraphicsRectItem):
             other._paired_item = self
 
     def update_ports(self):
-        for i, port in enumerate(self.inputs):
-            spacing = self.rect().height() / (len(self.inputs) + 1)
-            port.setPos(0, spacing * (i + 1))
-        for i, port in enumerate(self.outputs):
-            spacing = self.rect().height() / (len(self.outputs) + 1)
-            port.setPos(self.rect().width(), spacing * (i + 1))
-
-        for i, label_item in enumerate(self.input_labels):
-            port = self.inputs[i]
-            label_item.setPos(14.0, port.pos().y() - 8.0)
-
-        for i, label_item in enumerate(self.output_labels):
-            port = self.outputs[i]
-            label_width: float = label_item.boundingRect().width()
-            label_item.setPos(self.rect().width() - label_width - 14.0, port.pos().y() - 8.0)
-
-        self.update_handle_position()
-        for port in self.inputs + self.outputs:
-            if port.connections:
-                for conn in port.connections:
-                    conn.update_path()
+        self._position_name_and_ports()
 
     def hoverEnterEvent(self, event):
         QApplication.setOverrideCursor(Qt.CursorShape.OpenHandCursor)
@@ -4912,7 +4912,7 @@ class BlockItem(QGraphicsRectItem):
         :param name:
         :param position_changed_callback:
         """
-        super().__init__(0, 0, 100, 60)
+        super().__init__(0, 0, 80, 40)
 
         self.var_factory: VarFactory = var_factory
         self.api_object = api_object
@@ -4936,7 +4936,8 @@ class BlockItem(QGraphicsRectItem):
         )
         self.setAcceptHoverEvents(True)
         self.setPen(QPen(Qt.GlobalColor.transparent, 0))
-        self.setBrush(QBrush(DEFAULT_BLOCK_FILL))
+        self.setBrush(QBrush(BLOCK_FILL_DISCONNECTED))
+        self._refresh_connection_color()
 
 
     def set_subsystem(self, block: Block) -> None:
@@ -4957,10 +4958,10 @@ class BlockItem(QGraphicsRectItem):
         if self.subsys is not None:
             self.name_item = QGraphicsTextItem(self.name, self)
             self.name_item.setDefaultTextColor(BLOCK_TITLE)
-            name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 9)
+            name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 7)
             name_font.setBold(True)
             self.name_item.setFont(name_font)
-            self.name_item.setPos(6, 4)
+            self.name_item.setPos(4, 2)
 
             n_inputs: int = len(self.subsys.in_vars)
             n_outputs: int = len(self.subsys.out_vars)
@@ -4971,8 +4972,8 @@ class BlockItem(QGraphicsRectItem):
             self.output_labels = [self.create_port_label_item() for _ in range(n_outputs)]
             self.refresh_port_metadata()
 
-            self.resize_handle = ResizeHandle(self)
             self.resize_to_content()
+            self._refresh_connection_color()
         else:
             pass
 
@@ -4983,7 +4984,7 @@ class BlockItem(QGraphicsRectItem):
         :return:
         """
         label_item: QGraphicsTextItem = QGraphicsTextItem("", self)
-        label_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 9)
+        label_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 7)
         label_item.setFont(label_font)
         label_item.setDefaultTextColor(PORT_LABEL_COLOR)
         label_item.setZValue(4)
@@ -4997,11 +4998,11 @@ class BlockItem(QGraphicsRectItem):
         """
         port_rows: int = max(len(self.inputs), len(self.outputs), 1)
         min_height: float = max(
-            BLOCK_MIN_HEIGHT,
-            BLOCK_HEADER_HEIGHT + BLOCK_PORT_SECTION_PADDING + port_rows * BLOCK_PORT_ROW_HEIGHT
+            BLOCK_COMPACT_MIN_HEIGHT,
+            BLOCK_COMPACT_HEADER_HEIGHT + BLOCK_COMPACT_PORT_SECTION_PADDING + port_rows * BLOCK_COMPACT_PORT_ROW_HEIGHT
         )
 
-        name_width = len(self.name) * 7
+        name_width = len(self.name) * 5
         max_label_length = 0
         if self.subsys:
             for var in self.subsys.in_vars:
@@ -5009,8 +5010,8 @@ class BlockItem(QGraphicsRectItem):
             for var in self.subsys.out_vars:
                 max_label_length = max(max_label_length, len(var.name))
 
-        port_width = max_label_length * 7
-        min_width = max(BLOCK_MIN_WIDTH, name_width + 14, port_width + 28)
+        port_width = max_label_length * 5
+        min_width = max(BLOCK_COMPACT_MIN_WIDTH, name_width + 10, port_width + 20)
 
         return min_width, min_height
 
@@ -5027,6 +5028,17 @@ class BlockItem(QGraphicsRectItem):
         QGraphicsRectItem.setRect(self, 0, 0, min_width, min_height)
         self.update_ports()
         self.update_handle_position()
+
+    def _refresh_connection_color(self) -> None:
+        all_connected: bool = True
+        for port in self.inputs + self.outputs:
+            if port.connections is None:
+                all_connected = False
+                break
+        if all_connected and (len(self.inputs) + len(self.outputs)) > 0:
+            self.setBrush(QBrush(BLOCK_FILL_ALL_CONNECTED))
+        else:
+            self.setBrush(QBrush(BLOCK_FILL_DISCONNECTED))
 
     def refresh_port_metadata(self) -> None:
         """
@@ -5101,20 +5113,7 @@ class BlockItem(QGraphicsRectItem):
         painter.drawRoundedRect(body_rect, 12.0, 12.0)
 
     def resize_block(self, width: float, height: float) -> None:
-        """
-        Resize the block geometry and keep ports aligned.
-
-        :param width:
-        :param height:
-        :return:
-        """
-        self.prepareGeometryChange()
-        min_width: float
-        min_height: float
-        min_width, min_height = self.get_minimum_block_size()
-        QGraphicsRectItem.setRect(self, 0, 0, max(width, min_width), max(height, min_height))
-        self.update_ports()
-        self.update_handle_position()
+        pass
 
     def update_handle_position(self) -> None:
         """
@@ -5141,24 +5140,24 @@ class BlockItem(QGraphicsRectItem):
         port: PortItem
         input_spacing: float
         output_spacing: float
-        port_section_height: float = max(self.rect().height() - BLOCK_HEADER_HEIGHT - 8.0, 1.0)
+        port_section_height: float = max(self.rect().height() - BLOCK_COMPACT_HEADER_HEIGHT - 6.0, 1.0)
 
         for i, port in enumerate(self.inputs):
             input_spacing = port_section_height / (len(self.inputs) + 1)
-            port.setPos(0, BLOCK_HEADER_HEIGHT + input_spacing * (i + 1))
+            port.setPos(0, BLOCK_COMPACT_HEADER_HEIGHT + input_spacing * (i + 1))
 
         for i, port in enumerate(self.outputs):
             output_spacing = port_section_height / (len(self.outputs) + 1)
-            port.setPos(self.rect().width(), BLOCK_HEADER_HEIGHT + output_spacing * (i + 1))
+            port.setPos(self.rect().width(), BLOCK_COMPACT_HEADER_HEIGHT + output_spacing * (i + 1))
 
         for i, label_item in enumerate(self.input_labels):
             port = self.inputs[i]
-            label_item.setPos(14.0, port.pos().y() - 8.0)
+            label_item.setPos(10.0, port.pos().y() - 6.0)
 
         for i, label_item in enumerate(self.output_labels):
             port = self.outputs[i]
             label_width: float = label_item.boundingRect().width()
-            label_item.setPos(self.rect().width() - label_width - 14.0, port.pos().y() - 8.0)
+            label_item.setPos(self.rect().width() - label_width - 10.0, port.pos().y() - 6.0)
 
         self.update_handle_position()
 
@@ -5404,7 +5403,7 @@ class DiagramScene(QGraphicsScene):
         new_color: QColor = QColorDialog.getColor()
 
         if new_color.isValid():
-            if isinstance(item, (BlockItem, GenericBlockItem)):
+            if isinstance(item, GenericBlockItem):
                 if item.subsys is not None:
                     brush: QBrush = item.brush()
                     brush.setColor(new_color)
@@ -5503,9 +5502,10 @@ class DiagramScene(QGraphicsScene):
                 else:
                     pass
 
-                color_action: QAction = QAction("Change Color", menu)
-                color_action.triggered.connect(self.recolor_context_item)
-                menu.addAction(color_action)
+                if not isinstance(item, BlockItem):
+                    color_action: QAction = QAction("Change Color", menu)
+                    color_action.triggered.connect(self.recolor_context_item)
+                    menu.addAction(color_action)
 
                 menu.exec(event.screenPos())
                 self.context_item = None
@@ -5529,8 +5529,13 @@ class DiagramScene(QGraphicsScene):
                 if not item.is_input:
                     self.source_port = item
                     path: QPainterPath = QPainterPath(item.scenePos())
-                    IS_DARK = darkdetect.theme() == "Dark"
-                    pen: QPen = QPen(QColor("white"), 1, Qt.PenStyle.DashLine) if IS_DARK else QPen(Qt.PenStyle.DashLine)
+                    try:
+                        IS_DARK = darkdetect.theme() == "Dark"
+                    except ImportError:
+                        IS_DARK = False
+
+                    CURRENT_THEME_IS_DARK = IS_DARK
+                    pen: QPen = QPen(QColor("white"), 1, Qt.PenStyle.DashLine) if CURRENT_THEME_IS_DARK else QPen(QColor("black"), 1, Qt.PenStyle.DashLine)
                     self.temp_line = self.addPath(path, pen)
                     return
                 else:
@@ -5540,8 +5545,14 @@ class DiagramScene(QGraphicsScene):
 
                 self.source_port = item
                 path: QPainterPath = QPainterPath(item.scenePos())
-                IS_DARK = darkdetect.theme() == "Dark"
-                pen: QPen = QPen(QColor("white"), 1, Qt.PenStyle.DashLine) if IS_DARK else QPen(Qt.PenStyle.DashLine)
+
+                try:
+                    IS_DARK = darkdetect.theme() == "Dark"
+                except ImportError:
+                    IS_DARK = False
+
+                CURRENT_THEME_IS_DARK = IS_DARK
+                pen: QPen = QPen(QColor("white"), 1, Qt.PenStyle.DashLine) if CURRENT_THEME_IS_DARK else QPen(Qt.PenStyle.DashLine)
                 self.temp_line = self.addPath(path, pen)
                 return
 
@@ -5607,65 +5618,65 @@ class DiagramScene(QGraphicsScene):
         :param event:
         :return:
         """
-        item: QGraphicsItem
+        # item: QGraphicsItem
 
         # scene_position: QtCore.QPointF = self.editor.ui.graphicsView.mapToScene(
         #     int(event.position().x()),
         #     int(event.position().y())
         # )
 
-        for item in self.items(event.scenePos()):
-            if isinstance(item, ConnectionItem):
-                connection: ConnectionItem = item
-                source_port: PortItem = connection.source_port
-                target_port: PortItem = connection.target_port
-
-                branching_item: BranchingItem = BranchingItem(connection.source_port.subsystem,
-                                                              connection.source_port.index)
-                branching_item.setPos(event.scenePos())
-                self.addItem(branching_item)
-
-                conn1: ConnectionItem = ConnectionItem(
-                    source_port, branching_item,
-                    diagram=self.editor.diagram
-                )
-                self.addItem(conn1)
-
-                conn2: ConnectionItem = ConnectionItem(
-                    branching_item, target_port,
-                    diagram=self.editor.diagram
-                )
-                self.addItem(conn2)
-
-                self.editor.diagram.add_branch(
-                    connectionitem_uid=conn1.uid,
-                    device_uid_from=source_port.subsystem.subsys.uid,
-                    device_uid_to=branching_item.subsystem.subsys.uid,
-                    port_number_from=source_port.index,
-                    port_number_to=0,
-                    color=conn1.pen().color().name()
-                )
-
-                self.editor.diagram.add_branch(
-                    connectionitem_uid=conn2.uid,
-                    device_uid_from=branching_item.subsystem.subsys.uid,
-                    device_uid_to=target_port.subsystem.subsys.uid,
-                    port_number_from=0,
-                    port_number_to=target_port.index,
-                    color=conn2.pen().color().name()
-                )
-
-                if source_port.connections is not None and connection in source_port.connections:
-                    source_port.connections.remove(connection)
-
-                if target_port.connections is not None and connection in target_port.connections:
-                    target_port.connections.remove(connection)
-
-                if connection.uid in self.editor.diagram.con_data:
-                    del self.editor.diagram.con_data[connection.uid]
-
-                self.removeItem(connection)
-                return
+        # for item in self.items(event.scenePos()):
+        #     if isinstance(item, ConnectionItem):
+        #         connection: ConnectionItem = item
+        #         source_port: PortItem = connection.source_port
+        #         target_port: PortItem = connection.target_port
+        #
+        #         branching_item: BranchingItem = BranchingItem(connection.source_port.subsystem,
+        #                                                       connection.source_port.index)
+        #         branching_item.setPos(event.scenePos())
+        #         self.addItem(branching_item)
+        #
+        #         conn1: ConnectionItem = ConnectionItem(
+        #             source_port, branching_item,
+        #             diagram=self.editor.diagram
+        #         )
+        #         self.addItem(conn1)
+        #
+        #         conn2: ConnectionItem = ConnectionItem(
+        #             branching_item, target_port,
+        #             diagram=self.editor.diagram
+        #         )
+        #         self.addItem(conn2)
+        #
+        #         self.editor.diagram.add_branch(
+        #             connectionitem_uid=conn1.uid,
+        #             device_uid_from=source_port.subsystem.subsys.uid,
+        #             device_uid_to=branching_item.subsystem.subsys.uid,
+        #             port_number_from=source_port.index,
+        #             port_number_to=0,
+        #             color=conn1.pen().color().name()
+        #         )
+        #
+        #         self.editor.diagram.add_branch(
+        #             connectionitem_uid=conn2.uid,
+        #             device_uid_from=branching_item.subsystem.subsys.uid,
+        #             device_uid_to=target_port.subsystem.subsys.uid,
+        #             port_number_from=0,
+        #             port_number_to=target_port.index,
+        #             color=conn2.pen().color().name()
+        #         )
+        #
+        #         if source_port.connections is not None and connection in source_port.connections:
+        #             source_port.connections.remove(connection)
+        #
+        #         if target_port.connections is not None and connection in target_port.connections:
+        #             target_port.connections.remove(connection)
+        #
+        #         if connection.uid in self.editor.diagram.con_data:
+        #             del self.editor.diagram.con_data[connection.uid]
+        #
+        #         self.removeItem(connection)
+        #         return
 
         super().mouseDoubleClickEvent(event)
 
@@ -5677,8 +5688,8 @@ class DiagramScene(QGraphicsScene):
         :param target_port:
         :return:
         """
-        source_block: BlockItem | GenericBlockItem = source_port.subsystem
-        target_block: BlockItem | GenericBlockItem = target_port.subsystem
+        source_block: EditorBlockGraphicsItem = source_port.subsystem
+        target_block: EditorBlockGraphicsItem = target_port.subsystem
 
         if source_block.subsys is not None and target_block.subsys is not None:
             connection: ConnectionItem = ConnectionItem(
@@ -5956,6 +5967,7 @@ def build_emt_branch_bus_mask_from_refs(
 
     return mask
 
+
 class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     """
     DynamicModelEditorGUI
@@ -6033,12 +6045,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.var_factory = var_factory
         self.api_object = api_object
 
-        self.original_block: Block = block  # api_object.rms_model
-
-        self.main_block: Block = clone_block_for_editing(block)
-
-        self.diagram: BlockDiagram = self.main_block.diagram
-
         self.circuit = circuit
         self.mode = mode
         self.main_editor = main_editor
@@ -6050,6 +6056,22 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.scene: DiagramScene = DiagramScene(self)
         self.changes_applied: bool = False
         self.has_unapplied_changes: bool = False
+
+        self.original_block: Block = block  # api_object.rms_model
+
+        if not self.original_block.children and not self.original_block.empty() and self.main_editor:
+            self.main_block = Block()
+            block_to_append = clone_block_for_editing(block)
+            self.main_block.children.append(block_to_append)
+            self.main_block.in_vars = block_to_append.in_vars
+            self.main_block.out_vars = block_to_append.out_vars
+            self.main_block.external_mapping = block_to_append.external_mapping
+        else:
+            self.main_block: Block = clone_block_for_editing(block)
+
+        self.diagram: BlockDiagram = self.main_block.diagram
+
+
 
         if self.workspace_embedded:
             self.menuBar().setVisible(False)
@@ -6096,6 +6118,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             LibraryLeafSpec("Fault EMT", BlockType.FAULT_EMT),
         ])
 
+        common_rms_device_blocks: List[LibraryLeafSpec] = list([
+            LibraryLeafSpec("Pll transformer", BlockType.PLL_TRANSFORM_RMS),
+            LibraryLeafSpec("Pi current controller", BlockType.PI_CURRENT_CONTROLLER),
+            LibraryLeafSpec("Pi power controller", BlockType.PI_POWER_CONTROLLER)])
+
         device_rms_related_blocks = {
             DeviceType.GeneratorDevice: [
                 LibraryLeafSpec("Generic", BlockType.GENERIC),
@@ -6104,14 +6131,16 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 LibraryLeafSpec("Governor", BlockType.GOV_RMS),
                 LibraryLeafSpec("Stabilizer", BlockType.STAB_RMS),
                 LibraryLeafSpec("Exciter", BlockType.EXCITER_RMS),
+
+            ],
+            DeviceType.VscDevice: [
+                LibraryLeafSpec("Gfl converter", BlockType.GFL_CONVERTER_RMS),
             ],
             DeviceType.LineDevice: [
                 LibraryLeafSpec("Generic", BlockType.GENERIC),
                 LibraryLeafSpec("Line", BlockType.LINE_RMS),
             ],
-            DeviceType.VscDevice: [
-                LibraryLeafSpec("GFL VSC", BlockType.GFL_VSC_RMS),
-            ],
+
             DeviceType.LoadDevice: [
                 LibraryLeafSpec("Generic", BlockType.GENERIC),
                 LibraryLeafSpec("Load", BlockType.LOAD_RMS),
@@ -6177,6 +6206,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.tree_structure: Dict[str, Any] = dict()
         if mode == DynamicSimulationMode.RMS:
             self.tree_structure["Basic"] = self.build_basic_library_branch()
+            self.tree_structure["Basic_devices"] = list(common_rms_device_blocks)
             self.tree_structure["Devices"] = device_rms_related_blocks.get(api_object_device_type, dict())
 
         elif mode == DynamicSimulationMode.EMT:
@@ -6329,15 +6359,61 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.validateConsistencyButton.clicked.connect(self.show_model_consistency_validation)
         self.ui.toolBox.currentChanged.connect(self.on_side_panel_page_changed)
         self.scene.selectionChanged.connect(self.on_scene_selection_changed)
+        if self.mode == DynamicSimulationMode.EMT and self.main_editor:
+            self._ensure_full_emt_editor_interface()
+        else:
+            pass
+
+        _ensure_block_tree_names(self.main_block, prefix="block")
+
         if not self.main_block.empty() and not self.main_block.diagram.node_data:
 
-            blocks_list = list()
-            for child in self.main_block.children:
-                item = self.generate_block_item_for_block(child)
-                blocks_list.append(item)
-            self.add_connection_items(blocks_list)
-            if len(blocks_list) != 0:
-                self.connect_items(blocks_list)
+            if self.main_block.children:
+                blocks_list = list()
+                for child in self.main_block.children:
+                    item = self.generate_block_item_for_block(child)
+                    blocks_list.append(item)
+                self.add_connection_items(blocks_list)
+                if len(blocks_list) != 0:
+                    self.connect_items(blocks_list)
+
+            # if self.main_block.children:
+            #
+            #     # add input connection blocks
+            #     connection_tpe: Dict[int, str] = {}
+            #     all_blocks: List[Block] = list()
+            #     for in_var in self.main_block.in_vars:
+            #         in_blk = Block(
+            #             out_vars=[in_var],
+            #             name=f"input_{in_var.name}",
+            #             is_decomposable=False
+            #         )
+            #         all_blocks.append(in_blk)
+            #         connection_tpe[in_blk.uid] = BlockType.INPUT_CONN.name
+            #
+            #     # add main block children blocks
+            #     for child in self.main_block.children:
+            #         all_blocks.append(child)
+            #
+            #     # add output connection blocks
+            #     for out_var in self.main_block.out_vars:
+            #         out_blk = Block(
+            #             in_vars=[out_var],
+            #             name=f"output_{out_var.name}",
+            #             is_decomposable=False
+            #         )
+            #         all_blocks.append(out_blk)
+            #         connection_tpe[out_blk.uid] = BlockType.OUTPUT_CONN.name
+            #
+            #     # --- build diagram ---
+            #     diagram, all_children = build_diagram_regular_blocks(all_blocks, connection_tpe)
+            #
+            #     # update main block and diagram editor
+            #     self.main_block.children = all_children
+            #     self.main_block.diagram = diagram
+            #     self.diagram = diagram
+
+
 
         elif not self.main_block.diagram.node_data:
             # here we add the connection variables to the main block
@@ -8582,12 +8658,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 )
 
 
-    def generate_block_item_for_block(self, block_model: Block) -> GenericBlockItem | None:
+    def generate_block_item_for_block(self, block_model: Block,
+                                      x: float | None = None,
+                                      y: float | None = None) -> GenericBlockItem | None:
         """
         Create and place a block item in the canvas scene.
 
         :param block_model:
-
+        :param x: Optional pre-computed x position (Sugiyama layout).
+        :param y: Optional pre-computed y position (Sugiyama layout).
         :return:
         """
         item_name: str = f"{block_model.name}"
@@ -8604,7 +8683,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
             # The symbolic block has to be attached first so the graphics item can build its ports from it.
 
-            x, y = self._calculate_next_block_position(item)
+            if x is None or y is None:
+                x, y = self._calculate_next_block_position(item)
             item.setPos(QtCore.QPointF(x, y))
             self.scene.addItem(item)
 
@@ -10531,11 +10611,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             name=blk_in.name,
             position_changed_callback=self._build_position_changed_callback(blk_in.uid)
         )
-        item_in.setPos(QtCore.QPointF(x_pos - 75.0, y_pos))
+        item_in.setPos(QtCore.QPointF(x_pos - 50.0, y_pos))
         self.scene.addItem(item_in)
         self.diagram.add_node(
             name=blk_in.name,
-            x=x_pos - 75.0,
+            x=x_pos - 50.0,
             y=y_pos,
             tpe="signal_in",
             device_uid=blk_in.uid
@@ -10549,11 +10629,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             name=blk_out.name,
             position_changed_callback=self._build_position_changed_callback(blk_out.uid)
         )
-        item_out.setPos(QtCore.QPointF(x_pos + 75.0, y_pos))
+        item_out.setPos(QtCore.QPointF(x_pos + 50.0, y_pos))
         self.scene.addItem(item_out)
         self.diagram.add_node(
             name=blk_out.name,
-            x=x_pos + 75.0,
+            x=x_pos + 50.0,
             y=y_pos,
             tpe="signal_out",
             device_uid=blk_out.uid
@@ -10605,6 +10685,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 pass
         else:
             pass
+
+        if isinstance(source_port.subsystem, BlockItem):
+            source_port.subsystem._refresh_connection_color()
+        if isinstance(target_port.subsystem, BlockItem):
+            target_port.subsystem._refresh_connection_color()
 
         self.scene.removeItem(item)
 
@@ -10785,22 +10870,137 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
 
 
+    # def add_connection_vars_rms(self):
+    #     """
+    #     Add a block with bus connection variables to connect the device
+    #     :return:
+    #     """
+    #
+    #     specs: List[ConnectionVarSpec] = list()
+    #
+    #     if isinstance(self.api_object, BranchParent):
+    #         specs = self._build_rms_branch_connection_specs()
+    #     elif isinstance(self.api_object, InjectionParent):
+    #         specs = self._build_rms_injection_connection_specs()
+    #     else:
+    #         pass
+    #
+    #     self._materialize_connection_specs(specs)
+    #
     def add_connection_vars_rms(self):
         """
         Add a block with bus connection variables to connect the device
         :return:
         """
 
-        specs: List[ConnectionVarSpec] = list()
-
         if isinstance(self.api_object, BranchParent):
-            specs = self._build_rms_branch_connection_specs()
-        elif isinstance(self.api_object, InjectionParent):
-            specs = self._build_rms_injection_connection_specs()
-        else:
-            pass
 
-        self._materialize_connection_specs(specs)
+            # connect bus variables
+            if self.api_object.bus_from.rms_model.empty():
+                initialize_bus_rms(self.api_object.bus_from, self.var_factory)
+
+            if self.api_object.device_type in [DeviceType.VscDevice]:
+                if self.api_object.bus_from.is_dc:
+                    Vdc, Vm, Va = get_bus_rms_algebraic_vars(self.api_object.bus_from.rms_model)
+                    self.main_block.in_vars.append(Vm)
+                    self.main_block.in_vars.append(Va)
+                    self.main_block.in_vars.append(Vdc)
+
+                    self.main_block.external_mapping.update(
+                        {VarPowerFlowReferenceType.Vm: Vm})
+                    self.main_block.external_mapping.update(
+                        {VarPowerFlowReferenceType.Va: Va})
+                    self.main_block.external_mapping.update(
+                        {VarPowerFlowReferenceType.Vdc: Vdc})
+
+            else:
+                if self.api_object.bus_from.rms_model.empty():
+                    initialize_bus_rms(self.api_object.bus_from, self.var_factory)
+
+                Vmf, Vaf = get_bus_rms_algebraic_vars(self.api_object.bus_from.rms_model)
+
+                if self.api_object.bus_to.rms_model.empty():
+                    initialize_bus_rms(self.api_object.bus_to, self.var_factory)
+
+                Vmt, Vat = get_bus_rms_algebraic_vars(self.api_object.bus_to.rms_model)
+
+                self.main_block.in_vars.append(Vmf)
+                self.main_block.in_vars.append(Vaf)
+                self.main_block.in_vars.append(Vmt)
+                self.main_block.in_vars.append(Vat)
+
+                self.main_block.external_mapping.update(
+                    {VarPowerFlowReferenceType.Vmf: Vmf})
+                self.main_block.external_mapping.update(
+                    {VarPowerFlowReferenceType.Vaf: Vaf})
+
+                self.main_block.external_mapping.update(
+                    {VarPowerFlowReferenceType.Vmt: Vmt})
+                self.main_block.external_mapping.update(
+                    {VarPowerFlowReferenceType.Vat: Vat})
+
+            # add connection variables
+            if self.api_object.device_type in [DeviceType.VscDevice]:
+
+                Pt = self.var_factory.add_var('net_conn_Pt', VarPowerFlowReferenceType.Pt, True)
+                Qt = self.var_factory.add_var('net_conn_Qt', VarPowerFlowReferenceType.Qt, True)
+                Qf = self.var_factory.add_var('net_conn_Qf', VarPowerFlowReferenceType.Qf, True)
+
+                self.main_block.out_vars.append(Pt)
+                self.main_block.out_vars.append(Qt)
+                self.main_block.out_vars.append(Qf)
+
+                self.main_block.external_mapping.update({VarPowerFlowReferenceType.Pt: Pt})
+                self.main_block.external_mapping.update({VarPowerFlowReferenceType.Qt: Qt})
+                self.main_block.external_mapping.update({VarPowerFlowReferenceType.Qt: Qf})
+
+            else:
+
+                Pf = self.var_factory.add_var('net_conn_Pf', VarPowerFlowReferenceType.P, True)
+                Qf = self.var_factory.add_var('net_conn_Qf', VarPowerFlowReferenceType.Q, True)
+
+                self.main_block.out_vars.append(Pf)
+                self.main_block.out_vars.append(Qf)
+
+                self.main_block.external_mapping.update({VarPowerFlowReferenceType.Pf: Pf})
+                self.main_block.external_mapping.update({VarPowerFlowReferenceType.Qf: Qf})
+
+                Pt = self.var_factory.add_var('net_conn_Pt', VarPowerFlowReferenceType.P, True)
+                Qt = self.var_factory.add_var('net_conn_Qt', VarPowerFlowReferenceType.Q, True)
+
+                self.main_block.out_vars.append(Pt)
+                self.main_block.out_vars.append(Qt)
+
+                self.main_block.external_mapping.update({VarPowerFlowReferenceType.Pt: Pt})
+                self.main_block.external_mapping.update({VarPowerFlowReferenceType.Qt: Qt})
+
+        elif isinstance(self.api_object, InjectionParent):
+
+            # connect bus variables
+            if self.api_object.bus.rms_model.empty():
+                initialize_bus_rms(self.api_object.bus, self.var_factory)
+
+            Vm, Va = get_bus_rms_algebraic_vars(self.api_object.bus.rms_model)
+            self.main_block.in_vars.append(Vm)
+            self.main_block.in_vars.append(Va)
+
+            self.main_block.external_mapping.update(
+                {VarPowerFlowReferenceType.Vm: Vm})
+            self.main_block.external_mapping.update(
+                {VarPowerFlowReferenceType.Va: Va})
+
+            # add connection variables
+            P = self.var_factory.add_var('net_conn_P', VarPowerFlowReferenceType.P, True)
+            Q = self.var_factory.add_var('net_conn_Q', VarPowerFlowReferenceType.Q, True)
+
+            self.main_block.out_vars.append(P)
+            self.main_block.out_vars.append(Q)
+
+            self.main_block.external_mapping.update({VarPowerFlowReferenceType.P: P})
+            self.main_block.external_mapping.update({VarPowerFlowReferenceType.Q: Q})
+
+
+
 
     def add_connection_items(self, blocks_list: List[BlockItem] | None = None):
         """
@@ -11693,122 +11893,690 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             return mask
 
-    def _rebuild_emt_bus_model_from_editor_mask(self, bus: Bus, mask: list[bool]) -> bool:
+    def _get_requested_emt_bus_masks_from_current_interface(self) -> tuple[bool, list[bool] | None, list[bool] | None, list[bool] | None]:
         """
-        Rebuild one EMT bus shell from the phases kept by the editor user.
+        Build the requested EMT bus masks from the currently connected editor ports.
 
-        :param bus: Bus API object.
-        :param mask: AC phase mask ordered as ``[N, A, B, C]``.
-        :return: ``True`` when the bus model was rebuilt successfully.
-        """
-        success: bool = False
+        The editor path is the source of truth for which EMT phases the user
+        kept connected. Once these masks are known, the actual bus-shell
+        creation, expansion, reconnection, and registry update are delegated to
+        the shared engine-side attachment flow.
 
-        if bus.is_dc:
-            # DC buses ignore the AC mask and are rebuilt with the DC-only
-            # EMT shell.
-            bus.emt_model = BusEmtTemplate(
-                vf=self.var_factory,
-                mask=list([False, False, False, False]),
-                is_dc=True,
-                name=f"{bus.name}_emt_template",
-            ).block
-            success = True
-        else:
-            if any(mask):
-                # AC buses are rebuilt with exactly the phase mask implied by
-                # the remaining editor ports.
-                bus.emt_model = BusEmtTemplate(
-                    vf=self.var_factory,
-                    mask=mask,
-                    is_dc=False,
-                    name=f"{bus.name}_emt_template",
-                ).block
-                success = True
-            else:
-                # Empty AC interfaces cannot define a KCL shell. This state is
-                # handled through a GUI warning instead of throwing an exception.
-                QtWidgets.QMessageBox.warning(
-                    self,
-                    "Invalid EMT bus interface",
-                    f"The EMT interface for bus '{bus.name}' has no remaining AC phases. "
-                    "Keep at least one voltage or current phase port before applying changes.",
-                )
-                success = False
-
-        return success
-
-    def _sync_emt_bus_models_from_current_interface(self) -> bool:
-        """
-        Rebuild connected EMT bus shells from the ports left in the editor.
-
-        The intended workflow is:
-        1. the editor opens with the complete editable EMT AC interface,
-        2. the user removes unneeded phases,
-        3. applying changes rebuilds the bus EMT model from the remaining
-           network ports.
-
-        :return: ``True`` when all required bus EMT models were synchronised.
+        :return: Tuple ``(success, bus_mask, from_mask, to_mask)``.
         """
         success: bool = True
-        mask: list[bool] | None = None
-        mask_from: list[bool] | None = None
-        mask_to: list[bool] | None = None
+        bus_mask: list[bool] | None = None
+        from_mask: list[bool] | None = None
+        to_mask: list[bool] | None = None
 
         if isinstance(self.api_object, InjectionParent):
             if self.api_object.bus.is_dc:
-                success = self._rebuild_emt_bus_model_from_editor_mask(
-                    bus=self.api_object.bus,
-                    mask=list([False, False, False, False]),
-                )
+                bus_mask = list([False, False, False, False])
             else:
-                mask = self._build_connected_emt_injection_bus_mask()
-                if mask is not None:
-                    success = self._rebuild_emt_bus_model_from_editor_mask(
-                        bus=self.api_object.bus,
-                        mask=mask,
-                    )
-                else:
+                bus_mask = self._build_connected_emt_injection_bus_mask()
+                if bus_mask is None:
                     success = False
-
-        elif isinstance(self.api_object, BranchParent):
-            if self.api_object.bus_from.is_dc:
-                success_from: bool = self._rebuild_emt_bus_model_from_editor_mask(
-                    bus=self.api_object.bus_from,
-                    mask=list([False, False, False, False]),
-                )
-            else:
-                mask_from = self._build_connected_emt_branch_bus_mask(side="from")
-                if mask_from is not None:
-                    success_from = self._rebuild_emt_bus_model_from_editor_mask(
-                        bus=self.api_object.bus_from,
-                        mask=mask_from,
-                    )
                 else:
-                    success_from = False
-
-            if self.api_object.bus_to.is_dc:
-                success_to: bool = self._rebuild_emt_bus_model_from_editor_mask(
-                    bus=self.api_object.bus_to,
-                    mask=list([False, False, False, False]),
-                )
-            else:
-                mask_to = self._build_connected_emt_branch_bus_mask(side="to")
-                if mask_to is not None:
-                    success_to = self._rebuild_emt_bus_model_from_editor_mask(
-                        bus=self.api_object.bus_to,
-                        mask=mask_to,
-                    )
-                else:
-                    success_to = False
-
-            success = success_from and success_to
-
+                    if any(bus_mask):
+                        pass
+                    else:
+                        QtWidgets.QMessageBox.warning(
+                            self,
+                            "Invalid EMT bus interface",
+                            f"The EMT interface for bus '{self.api_object.bus.name}' has no remaining AC phases. "
+                            "Keep at least one voltage or current phase port before applying changes.",
+                        )
+                        success = False
         else:
-            # Template editing or unsupported objects do not own concrete bus
-            # interfaces, so there is nothing to synchronise.
-            success = True
+            if isinstance(self.api_object, BranchParent):
+                if self.api_object.bus_from.is_dc:
+                    from_mask = list([False, False, False, False])
+                else:
+                    from_mask = self._build_connected_emt_branch_bus_mask(side="from")
+                    if from_mask is None:
+                        success = False
+                    else:
+                        if any(from_mask):
+                            pass
+                        else:
+                            QtWidgets.QMessageBox.warning(
+                                self,
+                                "Invalid EMT bus interface",
+                                f"The EMT interface for bus '{self.api_object.bus_from.name}' has no remaining AC phases. "
+                                "Keep at least one voltage or current phase port before applying changes.",
+                            )
+                            success = False
 
-        return success
+                if self.api_object.bus_to.is_dc:
+                    to_mask = list([False, False, False, False])
+                else:
+                    to_mask = self._build_connected_emt_branch_bus_mask(side="to")
+                    if to_mask is None:
+                        success = False
+                    else:
+                        if any(to_mask):
+                            pass
+                        else:
+                            QtWidgets.QMessageBox.warning(
+                                self,
+                                "Invalid EMT bus interface",
+                                f"The EMT interface for bus '{self.api_object.bus_to.name}' has no remaining AC phases. "
+                                "Keep at least one voltage or current phase port before applying changes.",
+                            )
+                            success = False
+            else:
+                success = True
+
+        return success, bus_mask, from_mask, to_mask
+
+    def _build_default_editor_emt_connection_specs(self) -> List[ConnectionVarSpec]:
+        """
+        Return the full editable EMT interface expected by the editor.
+
+        Unlike the saved EMT model root contract, this editor contract always
+        includes every potentially editable connection block for the host device
+        so reopening the editor never hides ports that the user may want to wire
+        later.
+
+        :return: Full editor EMT connection specs.
+        """
+        if isinstance(self.api_object, BranchParent):
+            return self._build_emt_branch_connection_specs()
+        elif isinstance(self.api_object, InjectionParent):
+            return self._build_emt_injection_connection_specs()
+        else:
+            return list()
+
+    def _ensure_full_emt_editor_interface(self) -> None:
+        """
+        Expand one reopened EMT main editor to the full editable root interface.
+
+        Template-assigned EMT models may save only the currently connected root
+        ports in ``in_vars``/``out_vars`` and in the saved diagram. The editor,
+        however, must always reopen with the complete editable connection-block
+        set so users can connect additional phases later.
+
+        :return: None.
+        """
+        if not self.main_editor or self.mode != DynamicSimulationMode.EMT:
+            return
+        else:
+            pass
+
+        full_specs: List[ConnectionVarSpec] = self._build_default_editor_emt_connection_specs()
+        if len(full_specs) == 0:
+            return
+        else:
+            pass
+
+        existing_input_by_ref: Dict[VarPowerFlowReferenceType, Var] = dict()
+        existing_output_by_ref: Dict[VarPowerFlowReferenceType, Var] = dict()
+        var: Var
+
+        for var in self.main_block.in_vars:
+            if isinstance(var.ref, VarPowerFlowReferenceType):
+                existing_input_by_ref[var.ref] = var
+            else:
+                pass
+
+        for var in self.main_block.out_vars:
+            if isinstance(var.ref, VarPowerFlowReferenceType):
+                existing_output_by_ref[var.ref] = var
+            else:
+                pass
+
+        # Rebuild the root interface in the editor-default order while preserving
+        # existing symbolic objects for already-saved ports and creating only the
+        # missing editor ports.
+        rebuilt_in_vars: list[Var] = list()
+        rebuilt_out_vars: list[Var] = list()
+        spec: ConnectionVarSpec
+        reused_var: Var | None
+
+        for spec in full_specs:
+            reused_var = None
+            if spec.direction == "input":
+                reused_var = existing_input_by_ref.get(spec.reference, None)
+                if reused_var is None:
+                    reused_var = self.var_factory.add_var(spec.visible_name, spec.reference, True)
+                else:
+                    reused_var.name = spec.visible_name
+                rebuilt_in_vars.append(reused_var)
+            elif spec.direction == "output":
+                reused_var = existing_output_by_ref.get(spec.reference, None)
+                if reused_var is None:
+                    reused_var = self.var_factory.add_var(spec.visible_name, spec.reference, True)
+                else:
+                    reused_var.name = spec.visible_name
+                rebuilt_out_vars.append(reused_var)
+            else:
+                raise ValueError(f"Unsupported EMT editor connection direction {spec.direction}")
+
+            self.main_block.external_mapping[spec.reference] = reused_var
+
+        self.main_block.in_vars = rebuilt_in_vars
+        self.main_block.out_vars = rebuilt_out_vars
+
+        block_lookup_before: Dict[int, Block] = _build_block_uid_lookup(self.main_block)
+        orphan_node_uids: list[int] = list()
+        node_uid: int
+        node: Any
+        mapped_block: Block | None
+        reference_var: Var | None
+
+        for node_uid, node in list(self.diagram.node_data.items()):
+            if node.tpe in {BlockType.INPUT_CONN.name, BlockType.OUTPUT_CONN.name}:
+                mapped_block = block_lookup_before.get(node.device_uid, None)
+                if mapped_block is not None:
+                    if node.tpe == BlockType.INPUT_CONN.name and len(mapped_block.out_vars) > 0:
+                        reference_var = mapped_block.out_vars[0]
+                    elif node.tpe == BlockType.OUTPUT_CONN.name and len(mapped_block.in_vars) > 0:
+                        reference_var = mapped_block.in_vars[0]
+                    else:
+                        reference_var = None
+
+                    if reference_var is None or not isinstance(reference_var.ref, VarPowerFlowReferenceType):
+                        orphan_node_uids.append(node_uid)
+                    else:
+                        pass
+                else:
+                    orphan_node_uids.append(node_uid)
+            else:
+                pass
+
+        original_node_count: int = len(self.diagram.node_data)
+
+        for node_uid in orphan_node_uids:
+            if node_uid in self.diagram.node_data:
+                del self.diagram.node_data[node_uid]
+            else:
+                pass
+
+        # Recreate the full connection-block graph so every editable EMT port is
+        # visible even when the saved model was created through template setter.
+        self._remove_existing_connection_interface_blocks_from_main_block()
+        self.add_connection_items()
+
+        # Template-assigned EMT models may arrive without any saved diagram at
+        # all. After the interface rebuild, materialize the edited model blocks
+        # themselves so the canvas still shows the actual symbolic subsystem.
+        if original_node_count == 0:
+            self._materialize_missing_non_interface_diagram_nodes()
+            self._rebuild_missing_non_interface_connections()
+        else:
+            pass
+
+    def _remove_existing_connection_interface_blocks_from_main_block(self) -> None:
+        """
+        Remove transient editor interface wrapper blocks from ``main_block``.
+
+        The editor rebuilds those wrapper blocks from the current root interface,
+        so any stale saved wrappers must be removed from the working hierarchy
+        first to keep the scene and symbolic state aligned.
+
+        :return: None.
+        """
+        kept_children: list[Block] = list()
+        child_block: Block
+        block_type: BlockType | None
+
+        for child_block in self.main_block.children:
+            block_type = None
+            if child_block.uid in self.diagram.node_data:
+                node_type_name: str = self.diagram.node_data[child_block.uid].tpe
+                if node_type_name in BlockType.__members__:
+                    block_type = BlockType[node_type_name]
+                else:
+                    pass
+            else:
+                pass
+
+            if block_type in {BlockType.INPUT_CONN, BlockType.OUTPUT_CONN}:
+                pass
+            else:
+                kept_children.append(child_block)
+
+        self.main_block.children = kept_children
+
+    def _materialize_missing_non_interface_diagram_nodes(self) -> None:
+        """
+        Add default diagram nodes for non-interface blocks missing from the diagram.
+
+        Template-assigned models can exist as symbolic children without any saved
+        diagram node positions. The editor must create those missing diagram
+        nodes so the symbolic blocks become visible on the canvas.
+
+        :return: None.
+        """
+        existing_node_uids: set[int] = set(self.diagram.node_data.keys())
+        child_block: Block
+
+        for child_block in self.main_block.children:
+            if child_block.uid in existing_node_uids:
+                pass
+            elif len(child_block.in_vars) == 1 and len(child_block.out_vars) == 0 and child_block.name.startswith("net_conn_"):
+                # Defensive guard for editor-generated output interface wrappers.
+                pass
+            elif len(child_block.in_vars) == 0 and len(child_block.out_vars) == 1 and child_block.name.startswith(("v_", "Vdc_")):
+                # Defensive guard for editor-generated input interface wrappers.
+                pass
+            else:
+                self.generate_block_item_for_block(child_block)
+
+    def _rebuild_missing_non_interface_connections(self) -> None:
+        """
+        Recreate inferred symbolic wires after auto-materializing missing blocks.
+
+        The no-diagram template-open path must rebuild the visible connection set
+        from the symbolic graph once the missing block nodes have been placed.
+
+        :return: None.
+        """
+        items_list: list[GenericBlockItem] = self._collect_non_interface_scene_items()
+
+        if len(items_list) > 0:
+            self.connect_items(items_list)
+            self._rebuild_editor_interface_graphical_connections(items_list)
+        else:
+            pass
+
+    def _collect_non_interface_scene_items(self) -> list[GenericBlockItem]:
+        """
+        Return the visible non-interface generic block items in the scene.
+
+        The reconnect pass operates only on real model blocks. The protected
+        editor interface wrappers are intentionally excluded from this list.
+
+        :return: Generic block items excluding editor interface wrappers.
+        """
+        items_list: list[GenericBlockItem] = list()
+        scene_item: QGraphicsItem
+        node_data: Any | None
+
+        for scene_item in self.scene.items():
+            if isinstance(scene_item, GenericBlockItem):
+                if scene_item.subsys is not None:
+                    node_data: Any | None = self.diagram.node_data.get(scene_item.subsys.uid, None)
+                else:
+                    node_data = None
+
+                if node_data is None:
+                    pass
+                elif node_data.tpe in {BlockType.INPUT_CONN.name, BlockType.OUTPUT_CONN.name}:
+                    pass
+                else:
+                    items_list.append(scene_item)
+            else:
+                pass
+
+        return items_list
+
+    def _rebuild_visible_symbolic_connections(self, items_list: List[GenericBlockItem]) -> None:
+        """
+        Recreate missing symbolic wires between all visible non-interface blocks.
+
+        The saved diagram may miss some graphical arrows even when the symbolic
+        block graph still carries enough metadata to infer them. Re-run the
+        visible block-pair connection discovery so the scene reflects the actual
+        symbolic connectivity.
+
+        :param items_list: Visible non-interface block items.
+        :return: None.
+        """
+        item_source: GenericBlockItem
+        item_target: GenericBlockItem
+        pairs: list[tuple[Var, Var]]
+        power_flow_pairs: list[tuple[Var, Var]]
+
+        for item_source in items_list:
+            if item_source.subsys is None:
+                pass
+            else:
+                for item_target in items_list:
+                    if item_target.subsys is None:
+                        pass
+                    else:
+                        if item_source.subsys.uid == item_target.subsys.uid:
+                            pass
+                        else:
+                            pairs, power_flow_pairs = find_connections(item_source.subsys, item_target.subsys)
+                            self._create_missing_connection_items(item_source, item_target, pairs)
+                            self._create_missing_connection_items(item_source, item_target, power_flow_pairs)
+
+    def _rebuild_editor_interface_graphical_connections(self, items_list: List[GenericBlockItem]) -> None:
+        """
+        Recreate visible wires between editor interface blocks and visible model blocks.
+
+        EMT template-open sessions can rebuild the full editor interface without a
+        saved diagram that already contains those graphical wires. The root block
+        still carries the semantic ``ref`` tags, so reconnect the visible editor
+        interface to every visible block port that exposes the same EMT root ref.
+
+        :param items_list: Visible non-interface block items.
+        :return: None.
+        """
+        interface_inputs_by_ref: Dict[VarPowerFlowReferenceType, ProtectedConnectionBlockItem] = dict()
+        interface_outputs_by_ref: Dict[VarPowerFlowReferenceType, ProtectedConnectionBlockItem] = dict()
+        scene_item: QGraphicsItem
+        node_data: Any | None
+        reference_var: Var | None
+        block_item: GenericBlockItem
+        input_index: int
+        output_index: int
+        input_var: Var
+        output_var: Var
+        protected_item: ProtectedConnectionBlockItem | None
+
+        for scene_item in self.scene.items():
+            if isinstance(scene_item, ProtectedConnectionBlockItem) and scene_item.subsys is not None:
+                node_data = self.diagram.node_data.get(scene_item.subsys.uid, None)
+
+                if node_data is None:
+                    pass
+                elif node_data.tpe == BlockType.INPUT_CONN.name:
+                    if len(scene_item.subsys.out_vars) > 0:
+                        reference_var = scene_item.subsys.out_vars[0]
+                    else:
+                        reference_var = None
+
+                    if isinstance(reference_var, Var) and isinstance(reference_var.ref, VarPowerFlowReferenceType):
+                        interface_inputs_by_ref[reference_var.ref] = scene_item
+                    else:
+                        pass
+                elif node_data.tpe == BlockType.OUTPUT_CONN.name:
+                    if len(scene_item.subsys.in_vars) > 0:
+                        reference_var = scene_item.subsys.in_vars[0]
+                    else:
+                        reference_var = None
+
+                    if isinstance(reference_var, Var) and isinstance(reference_var.ref, VarPowerFlowReferenceType):
+                        interface_outputs_by_ref[reference_var.ref] = scene_item
+                    else:
+                        pass
+                else:
+                    pass
+            else:
+                pass
+
+        for block_item in items_list:
+            if block_item.subsys is None:
+                pass
+            else:
+                for input_index, input_var in enumerate(block_item.subsys.in_vars):
+                    if isinstance(input_var.ref, VarPowerFlowReferenceType):
+                        protected_item = self._get_editor_interface_input_item_for_ref(
+                            interface_inputs_by_ref=interface_inputs_by_ref,
+                            model_ref=input_var.ref,
+                        )
+                        if protected_item is not None and len(protected_item.outputs) > 0 and input_index < len(block_item.inputs):
+                            if self._connection_exists_between_ports(protected_item.outputs[0], block_item.inputs[input_index]):
+                                pass
+                            else:
+                                connection_item: ConnectionItem = ConnectionItem(
+                                    source_port=protected_item.outputs[0],
+                                    target_port=block_item.inputs[input_index],
+                                    diagram=self.diagram,
+                                )
+                                self.scene.addItem(connection_item)
+                        else:
+                            pass
+                    else:
+                        pass
+
+                for output_index, output_var in enumerate(block_item.subsys.out_vars):
+                    if isinstance(output_var.ref, VarPowerFlowReferenceType):
+                        protected_item = self._get_editor_interface_output_item_for_ref(
+                            interface_outputs_by_ref=interface_outputs_by_ref,
+                            model_ref=output_var.ref,
+                        )
+                        if protected_item is not None and len(protected_item.inputs) > 0 and output_index < len(block_item.outputs):
+                            if self._connection_exists_between_ports(block_item.outputs[output_index], protected_item.inputs[0]):
+                                pass
+                            else:
+                                connection_item = ConnectionItem(
+                                    source_port=block_item.outputs[output_index],
+                                    target_port=protected_item.inputs[0],
+                                    diagram=self.diagram,
+                                )
+                                self.scene.addItem(connection_item)
+                        else:
+                            pass
+                    else:
+                        pass
+
+    def _get_editor_interface_input_item_for_ref(self,
+                                                 interface_inputs_by_ref: Dict[VarPowerFlowReferenceType, ProtectedConnectionBlockItem],
+                                                 model_ref: VarPowerFlowReferenceType) -> ProtectedConnectionBlockItem | None:
+        """
+        Resolve one editor input wrapper for one model-side EMT input reference.
+
+        :param interface_inputs_by_ref: Editor input wrappers keyed by editor EMT ref.
+        :param model_ref: Model-side EMT input ref.
+        :return: Matching editor input wrapper or ``None``.
+        """
+        if isinstance(self.api_object, BranchParent) and self.api_object.device_type == DeviceType.VscDevice:
+            ac_side_is_from: bool = False
+            ac_side_is_to: bool = False
+
+            if self.api_object.bus_from.is_dc:
+                ac_side_is_to = True
+            else:
+                if self.api_object.bus_to.is_dc:
+                    ac_side_is_from = True
+                else:
+                    ac_side_is_from = True
+
+            if model_ref == VarPowerFlowReferenceType.v_N:
+                if ac_side_is_to:
+                    return interface_inputs_by_ref.get(VarPowerFlowReferenceType.vt_N, None)
+                elif ac_side_is_from:
+                    return interface_inputs_by_ref.get(VarPowerFlowReferenceType.vf_N, None)
+                else:
+                    return interface_inputs_by_ref.get(VarPowerFlowReferenceType.vf_N, None)
+            elif model_ref == VarPowerFlowReferenceType.v_A:
+                if ac_side_is_to:
+                    return interface_inputs_by_ref.get(VarPowerFlowReferenceType.vt_A, None)
+                elif ac_side_is_from:
+                    return interface_inputs_by_ref.get(VarPowerFlowReferenceType.vf_A, None)
+                else:
+                    return interface_inputs_by_ref.get(VarPowerFlowReferenceType.vf_A, None)
+            elif model_ref == VarPowerFlowReferenceType.v_B:
+                if ac_side_is_to:
+                    return interface_inputs_by_ref.get(VarPowerFlowReferenceType.vt_B, None)
+                elif ac_side_is_from:
+                    return interface_inputs_by_ref.get(VarPowerFlowReferenceType.vf_B, None)
+                else:
+                    return interface_inputs_by_ref.get(VarPowerFlowReferenceType.vf_B, None)
+            elif model_ref == VarPowerFlowReferenceType.v_C:
+                if ac_side_is_to:
+                    return interface_inputs_by_ref.get(VarPowerFlowReferenceType.vt_C, None)
+                elif ac_side_is_from:
+                    return interface_inputs_by_ref.get(VarPowerFlowReferenceType.vf_C, None)
+                else:
+                    return interface_inputs_by_ref.get(VarPowerFlowReferenceType.vf_C, None)
+            elif model_ref == VarPowerFlowReferenceType.Vdc:
+                if self.api_object.bus_from.is_dc:
+                    return interface_inputs_by_ref.get(VarPowerFlowReferenceType.Vf_dc, None)
+                elif self.api_object.bus_to.is_dc:
+                    return interface_inputs_by_ref.get(VarPowerFlowReferenceType.Vt_dc, None)
+                else:
+                    return interface_inputs_by_ref.get(VarPowerFlowReferenceType.Vdc, None)
+            else:
+                return interface_inputs_by_ref.get(model_ref, None)
+        else:
+            return interface_inputs_by_ref.get(model_ref, None)
+
+    def _get_editor_interface_output_item_for_ref(self,
+                                                  interface_outputs_by_ref: Dict[VarPowerFlowReferenceType, ProtectedConnectionBlockItem],
+                                                  model_ref: VarPowerFlowReferenceType) -> ProtectedConnectionBlockItem | None:
+        """
+        Resolve one editor output wrapper for one model-side EMT output reference.
+
+        :param interface_outputs_by_ref: Editor output wrappers keyed by editor EMT ref.
+        :param model_ref: Model-side EMT output ref.
+        :return: Matching editor output wrapper or ``None``.
+        """
+        if isinstance(self.api_object, BranchParent) and self.api_object.device_type == DeviceType.VscDevice:
+            ac_side_is_from: bool = False
+            ac_side_is_to: bool = False
+
+            if self.api_object.bus_from.is_dc:
+                ac_side_is_to = True
+            else:
+                if self.api_object.bus_to.is_dc:
+                    ac_side_is_from = True
+                else:
+                    ac_side_is_from = True
+
+            if model_ref == VarPowerFlowReferenceType.i_N:
+                if ac_side_is_to:
+                    return interface_outputs_by_ref.get(VarPowerFlowReferenceType.it_N, None)
+                elif ac_side_is_from:
+                    return interface_outputs_by_ref.get(VarPowerFlowReferenceType.if_N, None)
+                else:
+                    return interface_outputs_by_ref.get(VarPowerFlowReferenceType.if_N, None)
+            elif model_ref == VarPowerFlowReferenceType.i_A:
+                if ac_side_is_to:
+                    return interface_outputs_by_ref.get(VarPowerFlowReferenceType.it_A, None)
+                elif ac_side_is_from:
+                    return interface_outputs_by_ref.get(VarPowerFlowReferenceType.if_A, None)
+                else:
+                    return interface_outputs_by_ref.get(VarPowerFlowReferenceType.if_A, None)
+            elif model_ref == VarPowerFlowReferenceType.i_B:
+                if ac_side_is_to:
+                    return interface_outputs_by_ref.get(VarPowerFlowReferenceType.it_B, None)
+                elif ac_side_is_from:
+                    return interface_outputs_by_ref.get(VarPowerFlowReferenceType.if_B, None)
+                else:
+                    return interface_outputs_by_ref.get(VarPowerFlowReferenceType.if_B, None)
+            elif model_ref == VarPowerFlowReferenceType.i_C:
+                if ac_side_is_to:
+                    return interface_outputs_by_ref.get(VarPowerFlowReferenceType.it_C, None)
+                elif ac_side_is_from:
+                    return interface_outputs_by_ref.get(VarPowerFlowReferenceType.if_C, None)
+                else:
+                    return interface_outputs_by_ref.get(VarPowerFlowReferenceType.if_C, None)
+            elif model_ref == VarPowerFlowReferenceType.Idc:
+                if self.api_object.bus_from.is_dc:
+                    return interface_outputs_by_ref.get(VarPowerFlowReferenceType.If_dc, None)
+                elif self.api_object.bus_to.is_dc:
+                    return interface_outputs_by_ref.get(VarPowerFlowReferenceType.It_dc, None)
+                else:
+                    return interface_outputs_by_ref.get(VarPowerFlowReferenceType.Idc, None)
+            else:
+                return interface_outputs_by_ref.get(model_ref, None)
+        else:
+            return interface_outputs_by_ref.get(model_ref, None)
+
+    def _create_missing_connection_items(self,
+                                         item_source: GenericBlockItem,
+                                         item_dest: GenericBlockItem,
+                                         pairs: List[tuple[Var, Var]]) -> None:
+        """
+        Create only the currently missing connection items for one block pair.
+
+        :param item_source: Source block item.
+        :param item_dest: Destination block item.
+        :param pairs: Candidate variable pairs.
+        :return: None.
+        """
+        source_var: Var
+        target_var: Var
+        source_port: PortItem | None
+        target_port: PortItem | None
+        port: PortItem
+
+        for source_var, target_var in pairs:
+            source_port = self._find_output_port_for_var(item_source=item_source, source_var=source_var)
+            target_port = self._find_input_port_for_var(item_dest=item_dest, target_var=target_var)
+
+            if source_port is not None and target_port is not None:
+                if self._connection_exists_between_ports(source_port, target_port):
+                    pass
+                else:
+                    connection = ConnectionItem(
+                        source_port=source_port,
+                        target_port=target_port,
+                        diagram=self.diagram,
+                    )
+                    self.scene.addItem(connection)
+            else:
+                pass
+
+    @staticmethod
+    def _vars_match_for_visible_connection(left_var: Var | None, right_var: Var | None) -> bool:
+        """
+        Return whether two visible port vars should be treated as the same wire.
+
+        :param left_var: First visible port variable.
+        :param right_var: Second visible port variable.
+        :return: ``True`` when the ports represent the same symbolic connection.
+        """
+        if left_var is None or right_var is None:
+            return False
+        elif left_var.uid == right_var.uid:
+            return True
+        elif left_var.shared_ref is not None and left_var.shared_ref == right_var.shared_ref:
+            return True
+        elif left_var.ref is not None and left_var.ref == right_var.ref and left_var.network_conn and right_var.network_conn:
+            return True
+        else:
+            return False
+
+    def _find_output_port_for_var(self, item_source: GenericBlockItem, source_var: Var) -> PortItem | None:
+        """
+        Find the visible output port corresponding to one symbolic variable.
+
+        :param item_source: Source item.
+        :param source_var: Source variable.
+        :return: Matching output port or ``None``.
+        """
+        port: PortItem
+        for port in item_source.outputs:
+            if self._vars_match_for_visible_connection(port.base_var, source_var):
+                return port
+            else:
+                pass
+        return None
+
+    def _find_input_port_for_var(self, item_dest: GenericBlockItem, target_var: Var) -> PortItem | None:
+        """
+        Find the visible input port corresponding to one symbolic variable.
+
+        :param item_dest: Destination item.
+        :param target_var: Target variable.
+        :return: Matching input port or ``None``.
+        """
+        port: PortItem
+        for port in item_dest.inputs:
+            if self._vars_match_for_visible_connection(port.base_var, target_var):
+                return port
+            else:
+                pass
+        return None
+
+    @staticmethod
+    def _connection_exists_between_ports(source_port: PortItem | BranchingItem,
+                                         target_port: PortItem | BranchingItem) -> bool:
+        """
+        Return whether one visible connection already exists between two ports.
+
+        :param source_port: Candidate source port.
+        :param target_port: Candidate target port.
+        :return: ``True`` when the connection is already present.
+        """
+        connection: ConnectionItem
+
+        if source_port.connections is None:
+            return False
+
+        for connection in source_port.connections:
+            if connection.source_port is source_port and connection.target_port is target_port:
+                return True
+            else:
+                pass
+
+        return False
 
     def add_api_obj_mapping(self):
 
@@ -12014,6 +12782,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         expression_value = parsed_expression
 
                     self.parameters_model.set_value_from_expression(row_index, expression_value)
+                    print("")
                 except Exception as exc:
                     QtWidgets.QMessageBox.warning(
                         self,
@@ -12540,15 +13309,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param item: Scene item selected from the context menu.
         :return: None.
         """
-        if isinstance(item, GenericBlockItem):
-            item.editor_window.show()
-            item.editor_window.raise_()
-            item.editor_window.activateWindow()
-        else:
-            if isinstance(item, BlockItem):
-                self.open_block_subeditor(item)
-            else:
-                pass
+        if isinstance(item, (GenericBlockItem, BlockItem)):
+            self.open_block_subeditor(item)
 
     def open_block_subeditor(self, item: BlockItem | GenericBlockItem) -> None:
         """
@@ -13545,21 +14307,55 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
 
         elif self.mode == DynamicSimulationMode.EMT:
+            masks_are_valid: bool
+            requested_bus_mask: list[bool] | None
+            requested_from_mask: list[bool] | None
+            requested_to_mask: list[bool] | None
+
+            masks_are_valid, requested_bus_mask, requested_from_mask, requested_to_mask = \
+                self._get_requested_emt_bus_masks_from_current_interface()
             if self.api_object.emt_template is not None:
+                # The editor is about to overwrite the saved EMT model in place,
+                # so the reusable template pointer must be cleared. However, the
+                # generic ``emt_template = None`` setter also unregisters the
+                # current device from all bus registries immediately. That early
+                # detach does not happen in the native template-assignment flow
+                # and breaks the symbolic identity chain that the later shared
+                # attach helper expects to repair in place. Clear only the stored
+                # template reference here and let the shared attach helper handle
+                # the bus-registry refresh at the correct stage.
                 self.api_object.emt_template = None
             else:
                 pass
-            # Before copying the edited block back to the device, rebuild the
-            # connected EMT bus shells using the network ports that the user
-            # has actually kept in the editor.
-            bus_models_synchronised: bool = self._sync_emt_bus_models_from_current_interface()
-            if bus_models_synchronised:
+            if masks_are_valid:
                 # Persist only the EMT interface refs that are still wired into
                 # the edited model so the saved device contract matches the
                 # rebuilt terminal bus shells seen by the simulation builder.
                 self._prune_disconnected_emt_root_interface()
                 # Copy the validated editor state back to the owned EMT model.
                 copy_block_state(source_block=self.main_block, target_block=self.original_block)
+                # Editor copy-back can leave the saved root external mapping and
+                # the saved root input/output vars for the same EMT reference as
+                # different symbolic objects. Normalize the saved contract first
+                # so later reconnect helpers and the EMT checker operate on the
+                # same root variables.
+                unify_saved_emt_model_root_contract(device=self.api_object)
+                # The saved EMT model now owns fresh cloned symbolic variables.
+                # Register those authoritative post-copy variables in the shared
+                # VarFactory before any reconnect step tries to propagate bus-side
+                # identities through the factory connection machinery.
+                register_saved_emt_model_vars_for_device(device=self.api_object,
+                                                         var_factory=self.var_factory)
+                # The editor path now reuses the same engine-side EMT attachment
+                # workflow as the native template-assignment path. The only GUI-
+                # specific responsibility left here is determining which phase
+                # masks the user kept connected.
+                attach_emt_model_to_buses(device=self.api_object,
+                                          model=self.api_object.emt_model,
+                                          var_factory=self.var_factory,
+                                          bus_mask=requested_bus_mask,
+                                          from_mask=requested_from_mask,
+                                          to_mask=requested_to_mask)
                 # Mark the working copy as saved because the device model now
                 # contains the current editor contents.
                 self.has_unapplied_changes = False
@@ -13574,7 +14370,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     pass
             else:
                 # Do not apply the edited model if the bus interface is invalid.
-                # The warning is already emitted by the synchronisation method.
+                # The warning is already emitted by the editor mask-validation path.
                 pass
 
     def open_inspect_dialog(self):
@@ -14128,9 +14924,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         item.setToolTip(self._build_fault_emt_modal_tooltip(modal_config))
                     else:
                         pass
-                    brush = item.brush()
-                    brush.setColor(QColor(node.color))
-                    item.setBrush(brush)
+                    if not isinstance(item, PairedItem):
+                        brush = item.brush()
+                        brush.setColor(QColor(node.color))
+                        item.setBrush(brush)
 
                     uid_to_blockitem[uid] = item
 
@@ -14172,6 +14969,18 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     pass
             else:
                 pass
+
+        if self.mode == DynamicSimulationMode.EMT and self.main_editor:
+            visible_non_interface_items: list[GenericBlockItem] = self._collect_non_interface_scene_items()
+            self._rebuild_visible_symbolic_connections(visible_non_interface_items)
+            self._rebuild_editor_interface_graphical_connections(visible_non_interface_items)
+        else:
+            pass
+
+        # Refresh connection-status color on all BlockItem instances
+        for block_item in uid_to_blockitem.values():
+            if isinstance(block_item, BlockItem):
+                block_item._refresh_connection_color()
 
     def mark_unapplied_changes(self) -> None:
         """

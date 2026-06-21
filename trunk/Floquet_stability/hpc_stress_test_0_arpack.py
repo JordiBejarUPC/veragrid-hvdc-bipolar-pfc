@@ -24,7 +24,7 @@ import scipy.linalg as la
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.enumerations import DynamicIntegrationMethod,SmallSignalEmtBuildTypes
 from VeraGridEngine.Simulations.SmallSignalStabilityEmt.small_signal_stability_emt_driver import SmallSignalStabilityEmtDriver
-from VeraGridEngine.Simulations.SmallSignalStabilityEmt.small_signal_stability_emt_options import EmtSmallSignalStabilityOptions
+from VeraGridEngine.Simulations.SmallSignalStabilityEmt.small_signal_stability_emt_options import SmallSignalStabilityEmtOptions
 
 class _MockVar:
     def __init__(self, uid, name):
@@ -154,7 +154,7 @@ def run_comparison(problem, scenario_name):
     emt_options = EmtOptions(time_step=problem.h, simulation_time=0.05,
                              integration_method=DynamicIntegrationMethod.DaeBackEuler)
 
-    opts_std = EmtSmallSignalStabilityOptions(
+    opts_std = SmallSignalStabilityEmtOptions(
         k=4, target_period=0.02, max_krylov_dim=40, verbose=0,
         build_type=SmallSignalEmtBuildTypes.Arnoldi
     )
@@ -164,7 +164,7 @@ def run_comparison(problem, scenario_name):
     d_std.run()
     t_std = time.perf_counter() - t0
 
-    opts_hyb = EmtSmallSignalStabilityOptions(
+    opts_hyb = SmallSignalStabilityEmtOptions(
         k=4, target_period=0.02, max_krylov_dim=40, verbose=0, max_restarts=3,
         use_refined_ritz=False,
         prefer_ak_operator=True,
