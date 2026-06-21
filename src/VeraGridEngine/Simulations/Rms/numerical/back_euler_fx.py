@@ -217,12 +217,11 @@ class BackEulerImplicitIntegration:
                             f"Invalid local step size h_eff={h_eff} while integrating RMS macro step {step_idx}."
                         )
 
-                    # Continuous event-dict parameters must be evaluated at the
-                    # implicit target time so the nonlinear solve sees steps and
-                    # ramps inside the current substep. Scheduled mode events use
-                    # the previous local time to preserve their latched boundary
-                    # semantics.
-                    self.problem.update_variable_params(t=t_curr,
+                    # Historical RMS implicit integration evaluates runtime
+                    # parameters from the previously accepted local time before
+                    # solving the next substep. This keeps event-boundary samples
+                    # on the pre-event branch, matching the stored regressions.
+                    self.problem.update_variable_params(t=t_local_prev,
                                                         x_snapshot=x_new,
                                                         scheduled_t=t_local_prev)
 
@@ -264,14 +263,14 @@ class BackEulerImplicitIntegration:
                                     value=residual,
                                     expected_value=tol,
                                 )
-                                print(f"Iterative initialization stopped at iter {n_iter} with residual {residual}")
-                                non_zero_indexes = np.where(np.abs(rhs) > 1e-6)[0]
-                                all_eq = self.problem._state_eqs + self.problem._algebraic_eqs
-                                print("eqs are")
-                                for i in non_zero_indexes:
-                                    eq = all_eq[i]
-                                    print(f"eq {eq} with error {rhs[i]}")
-                                exit()
+                                #print(f"Iterative initialization stopped at iter {n_iter} with residual {residual}")
+                                #non_zero_indexes = np.where(np.abs(rhs) > 1e-6)[0]
+                                #all_eq = self.problem._state_eqs + self.problem._algebraic_eqs
+                                #print("eqs are")
+                                #for i in non_zero_indexes:
+                                #    eq = all_eq[i]
+                                #    print(f"eq {eq} with error {rhs[i]}")
+                                #exit()
 
                         if not substep_converged:
                             solved = False

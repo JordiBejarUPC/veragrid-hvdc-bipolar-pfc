@@ -67,7 +67,7 @@ def build_grid() -> gce.MultiCircuit:
     if gen.rms_model.empty():
         gen_model = get_complete_generator_template_rms(grid.var_factory, name=gen.name).block
         #gen_model = get_genrow_rms_template(grid.var_factory, name=gen.name).block
-        #gen_model = to_explicit(gen_model, grid.var_factory)
+        gen_model = to_explicit(gen_model, grid.var_factory)
         set_rms_model(
             device=gen,
             model=gen_model,

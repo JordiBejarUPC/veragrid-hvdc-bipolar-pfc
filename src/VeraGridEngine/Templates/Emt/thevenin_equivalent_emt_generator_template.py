@@ -291,13 +291,6 @@ def get_generator_thevenin_rl_emt_template_with_ref(
         ),
     })
 
-    templ.block.diff_init_eqs = dict({
-        d_i_A: state_eqs[0],
-        d_i_B: state_eqs[1],
-        d_i_C: state_eqs[2],
-        d_theta: state_eqs[3],
-    })
-
     # ------------------------------------------------------------------
     # Differential initialization equations:
     # these keep the standard EMT explicit-init semantics.

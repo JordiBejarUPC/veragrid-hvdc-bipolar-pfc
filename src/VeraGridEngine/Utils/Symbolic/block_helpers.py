@@ -85,7 +85,7 @@ def tf_to_block(var_factory: VarFactory,
 
     # Pure integrator-style blocks (den[0] == 0) need a derivative init that
     # matches the full numerator side of the transfer-function equation.
-    if len(den) > 1 and den[0] == 0 and y.base_var is not None:
+    if len(den) > 1 and den[0] == 0 and y.diff_var is not None:
         diff_init_eqs[y.diff_var] = rhs / den[1]
 
     block = Block()
