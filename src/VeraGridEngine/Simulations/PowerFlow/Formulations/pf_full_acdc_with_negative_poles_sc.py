@@ -1894,7 +1894,8 @@ class PfAcDcWithNegativePolesSc(PfFormulationTemplate):
                         Vpf=abs(self.V0[self.nc.vsc_data.T[vsc_i]]),
                         St_vsc_pf=self.St_vsc_pf[self.nc.vsc_data.original_idx[vsc_i]],
                         S_base_vg=self.nc.Sbase,
-                        S_rated_vsc=self.nc.vsc_data.rates[vsc_i]
+                        S_rated_vsc=self.nc.vsc_data.rates[vsc_i],
+                        vblkl=self.nc.vsc_data.min_ac_voltage[vsc_i]
                     )
 
                 elif self.nc.vsc_data.fault_control[vsc_i] == ConverterFaultControlType.Standard:
@@ -2203,7 +2204,8 @@ class PfAcDcWithNegativePolesSc(PfFormulationTemplate):
                             Vpf=abs(self.V0[self.nc.vsc_data.T[i]]),
                             St_vsc_pf=self.St_vsc_pf[self.nc.vsc_data.original_idx[i]],
                             S_base_vg=self.nc.Sbase,
-                            S_rated_vsc=self.nc.vsc_data.rates[i]
+                            S_rated_vsc=self.nc.vsc_data.rates[i],
+                            vblkl=self.nc.vsc_data.min_ac_voltage[i]
                         )
 
                     elif self.nc.vsc_data.fault_control[i] == ConverterFaultControlType.Standard:
@@ -2536,7 +2538,8 @@ class PfAcDcWithNegativePolesSc(PfFormulationTemplate):
                         Vpf=abs(self.V0[self.nc.vsc_data.T[vsc_i]]),
                         St_vsc_pf=self.St_vsc_pf[self.nc.vsc_data.original_idx[vsc_i]],
                         S_base_vg=self.nc.Sbase,
-                        S_rated_vsc=self.nc.vsc_data.rates[vsc_i]
+                        S_rated_vsc=self.nc.vsc_data.rates[vsc_i],
+                        vblkl=self.nc.vsc_data.min_ac_voltage[vsc_i]
                     )
 
                 elif self.nc.vsc_data.fault_control[vsc_i] == ConverterFaultControlType.Standard:
