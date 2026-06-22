@@ -659,10 +659,11 @@ def VscGflBuild(vfactory: VarFactory, name: str = "",
     }
     
     Im = sym.sqrt(i_d**2 + i_q**2 + vfactory.add_const(1e-11))
+    P_conv = internals["v_q_c"] * i_q + internals["v_d_c"] * i_d
     vsc_block = Block(
         algebraic_eqs=[
-            Pf_vsc + P - (a0 + a1*Im + a2*Im**2),
-            Pt_vsc + P,
+            Pf_vsc + Pt_vsc - (a0 + a1*Im + a2*Im**2),
+            Pt_vsc + P_conv,
             Qt_vsc + Q,
         ],
         algebraic_vars=[Pt_vsc, Qt_vsc, Pf_vsc],

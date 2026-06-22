@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'block_editor.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.11.0
+## Created by: Qt User Interface Compiler version 6.7.2
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -127,7 +127,7 @@ class Ui_BlockEditorWindow(object):
         self.toolBox.addItem(self.page_7, u"Library")
         self.page = QWidget()
         self.page.setObjectName(u"page")
-        self.page.setGeometry(QRect(0, 0, 459, 318))
+        self.page.setGeometry(QRect(0, 0, 98, 68))
         self.verticalLayout_7 = QVBoxLayout(self.page)
         self.verticalLayout_7.setObjectName(u"verticalLayout_7")
         self.verticalLayout_7.setContentsMargins(0, 0, 0, 0)
@@ -140,7 +140,7 @@ class Ui_BlockEditorWindow(object):
         self.toolBox.addItem(self.page, u"Variables")
         self.page_2 = QWidget()
         self.page_2.setObjectName(u"page_2")
-        self.page_2.setGeometry(QRect(0, 0, 459, 318))
+        self.page_2.setGeometry(QRect(0, 0, 98, 68))
         self.verticalLayout_8 = QVBoxLayout(self.page_2)
         self.verticalLayout_8.setObjectName(u"verticalLayout_8")
         self.verticalLayout_8.setContentsMargins(0, 0, 0, 0)
@@ -153,7 +153,7 @@ class Ui_BlockEditorWindow(object):
         self.toolBox.addItem(self.page_2, u"Parameters")
         self.page_3 = QWidget()
         self.page_3.setObjectName(u"page_3")
-        self.page_3.setGeometry(QRect(0, 0, 459, 318))
+        self.page_3.setGeometry(QRect(0, 0, 98, 68))
         self.verticalLayout_9 = QVBoxLayout(self.page_3)
         self.verticalLayout_9.setObjectName(u"verticalLayout_9")
         self.verticalLayout_9.setContentsMargins(0, 0, 0, 0)

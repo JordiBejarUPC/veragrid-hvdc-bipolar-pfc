@@ -87,7 +87,8 @@ from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_rlc_com
 from VeraGridEngine.Templates.Emt.load_zip_emt_template import get_load_ZIP_emt_template
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Utils.Symbolic.block import Block, find_connections, find_connections_pf
-from VeraGridEngine.Utils.Symbolic.equation_decomposer import EquationDecomposer
+from VeraGridEngine.Utils.Symbolic.equation_decomposer import EquationDecomposer, build_diagram, build_diagram_regular_blocks
+from VeraGridEngine.Utils.Symbolic.hierarchical_layout_v2 import compute_layout as _compute_layout_v2
 from VeraGrid.Gui.DynamicModelEditor.block_editor import Ui_BlockEditorWindow
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_utilities import create_block_of_type, create_generic_block, \
     create_emt_wizard_block
@@ -4478,42 +4479,9 @@ class GenericBlockItem(QGraphicsRectItem):
                 api_object=self.api_object,
                 mode=self.mode,
             )
-            items_list = list()
-
-
             self.editor_window.decompose_block_in_place(self.subsys)
             self.editor_window.diagram = self.subsys.diagram
             self.editor_window.main_block = self.subsys
-
-            for uid, node in self.editor_window.diagram.node_data.items():
-                block_type: BlockType | None
-                block_model: Block | None = self.editor_window.get_block_from_main_block(node.device_uid)
-
-                if block_model is not None:
-                    if node.tpe in ("signal_in", "signal_out"):
-                        item = PairedItem(
-                            var_factory=self.var_factory,
-                            subsys=block_model,
-                            api_object=self.api_object,
-                            mode=self.mode,
-                            name=block_model.name,
-                            position_changed_callback=self.editor_window._build_position_changed_callback(block_model.uid)
-                        )
-
-                    else:
-                        item = GenericBlockItem(
-                            var_factory=self.var_factory,
-                            subsys=block_model,
-                            api_object=self.api_object,
-                            mode=self.mode,
-                            name=block_model.name,
-                            position_changed_callback=self.editor_window._build_position_changed_callback(block_model.uid)
-                        )
-                    items_list.append(item)
-
-            self.editor_window.add_connection_items(items_list)
-
-            self.editor_window.connect_items(items_list)
             self.editor_window.rebuild_scene_from_diagram()
         self.editor_window.show()
 
@@ -5603,8 +5571,13 @@ class DiagramScene(QGraphicsScene):
                 if not item.is_input:
                     self.source_port = item
                     path: QPainterPath = QPainterPath(item.scenePos())
-                    IS_DARK = darkdetect.theme() == "Dark"
-                    pen: QPen = QPen(QColor("white"), 1, Qt.PenStyle.DashLine) if IS_DARK else QPen(Qt.PenStyle.DashLine)
+                    try:
+                        IS_DARK = darkdetect.theme() == "Dark"
+                    except ImportError:
+                        IS_DARK = False
+
+                    CURRENT_THEME_IS_DARK = IS_DARK
+                    pen: QPen = QPen(QColor("white"), 1, Qt.PenStyle.DashLine) if CURRENT_THEME_IS_DARK else QPen(QColor("black"), 1, Qt.PenStyle.DashLine)
                     self.temp_line = self.addPath(path, pen)
                     return
                 else:
@@ -5614,8 +5587,14 @@ class DiagramScene(QGraphicsScene):
 
                 self.source_port = item
                 path: QPainterPath = QPainterPath(item.scenePos())
-                IS_DARK = darkdetect.theme() == "Dark"
-                pen: QPen = QPen(QColor("white"), 1, Qt.PenStyle.DashLine) if IS_DARK else QPen(Qt.PenStyle.DashLine)
+
+                try:
+                    IS_DARK = darkdetect.theme() == "Dark"
+                except ImportError:
+                    IS_DARK = False
+
+                CURRENT_THEME_IS_DARK = IS_DARK
+                pen: QPen = QPen(QColor("white"), 1, Qt.PenStyle.DashLine) if CURRENT_THEME_IS_DARK else QPen(Qt.PenStyle.DashLine)
                 self.temp_line = self.addPath(path, pen)
                 return
 
@@ -6185,8 +6164,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         common_rms_device_blocks: List[LibraryLeafSpec] = list([
             LibraryLeafSpec("Pll transformer", BlockType.PLL_TRANSFORM_RMS),
             LibraryLeafSpec("Pi current controller", BlockType.PI_CURRENT_CONTROLLER),
-            LibraryLeafSpec("Pi power controller", BlockType.PI_POWER_CONTROLLER),
-            LibraryLeafSpec("Gfl converter", BlockType.GFL_CONVERTER_RMS)])
+            LibraryLeafSpec("Pi power controller", BlockType.PI_POWER_CONTROLLER)])
 
         device_rms_related_blocks = {
             DeviceType.GeneratorDevice: [
@@ -6198,13 +6176,14 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 LibraryLeafSpec("Exciter", BlockType.EXCITER_RMS),
 
             ],
+            DeviceType.VscDevice: [
+                LibraryLeafSpec("Gfl converter", BlockType.GFL_CONVERTER_RMS),
+            ],
             DeviceType.LineDevice: [
                 LibraryLeafSpec("Generic", BlockType.GENERIC),
                 LibraryLeafSpec("Line", BlockType.LINE_RMS),
             ],
-            DeviceType.VscDevice: [
-                LibraryLeafSpec("GFL VSC", BlockType.GFL_VSC_RMS),
-            ],
+
             DeviceType.LoadDevice: [
                 LibraryLeafSpec("Generic", BlockType.GENERIC),
                 LibraryLeafSpec("Load", BlockType.LOAD_RMS),
@@ -6448,13 +6427,44 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             # elif not self.main_block.children and self.main_editor:
             #     block = Block()
             #     block.children.append(self.main_block)
+
+            # if self.main_block.children:
             #
-            #     blocks_list = list()
-            #     item = self.generate_block_item_for_block(self.main_block, main_editor_shell = True)
-            #     blocks_list.append(item)
-            #     self.add_connection_items(blocks_list)
-            #     if len(blocks_list) != 0:
-            #         self.connect_items(blocks_list)
+            #     # add input connection blocks
+            #     connection_tpe: Dict[int, str] = {}
+            #     all_blocks: List[Block] = list()
+            #     for in_var in self.main_block.in_vars:
+            #         in_blk = Block(
+            #             out_vars=[in_var],
+            #             name=f"input_{in_var.name}",
+            #             is_decomposable=False
+            #         )
+            #         all_blocks.append(in_blk)
+            #         connection_tpe[in_blk.uid] = BlockType.INPUT_CONN.name
+            #
+            #     # add main block children blocks
+            #     for child in self.main_block.children:
+            #         all_blocks.append(child)
+            #
+            #     # add output connection blocks
+            #     for out_var in self.main_block.out_vars:
+            #         out_blk = Block(
+            #             in_vars=[out_var],
+            #             name=f"output_{out_var.name}",
+            #             is_decomposable=False
+            #         )
+            #         all_blocks.append(out_blk)
+            #         connection_tpe[out_blk.uid] = BlockType.OUTPUT_CONN.name
+            #
+            #     # --- build diagram ---
+            #     diagram, all_children = build_diagram_regular_blocks(all_blocks, connection_tpe)
+            #
+            #     # update main block and diagram editor
+            #     self.main_block.children = all_children
+            #     self.main_block.diagram = diagram
+            #     self.diagram = diagram
+
+
 
         elif not self.main_block.diagram.node_data:
             # here we add the connection variables to the main block
@@ -8703,12 +8713,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 )
 
 
-    def generate_block_item_for_block(self, block_model: Block) -> GenericBlockItem | None:
+    def generate_block_item_for_block(self, block_model: Block,
+                                      x: float | None = None,
+                                      y: float | None = None) -> GenericBlockItem | None:
         """
         Create and place a block item in the canvas scene.
 
         :param block_model:
-
+        :param x: Optional pre-computed x position (Sugiyama layout).
+        :param y: Optional pre-computed y position (Sugiyama layout).
         :return:
         """
         item_name: str = f"{block_model.name}"
@@ -8725,7 +8738,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
             # The symbolic block has to be attached first so the graphics item can build its ports from it.
 
-            x, y = self._calculate_next_block_position(item)
+            if x is None or y is None:
+                x, y = self._calculate_next_block_position(item)
             item.setPos(QtCore.QPointF(x, y))
             self.scene.addItem(item)
 

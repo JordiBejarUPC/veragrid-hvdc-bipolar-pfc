@@ -39,6 +39,10 @@ def ShuntLoadBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
         init_eqs={
             P: vfactory.add_const(0.0),
             Q: vfactory.add_const(0.1),
+        },
+        api_obj_mapping={
+            ParamPowerFlowReferenceType.g: g,
+            ParamPowerFlowReferenceType.b: b,
         }
     )
 

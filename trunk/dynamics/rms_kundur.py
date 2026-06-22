@@ -312,6 +312,35 @@ def rms_kundur():
 
     )
 
+    grid.add_load(bus=bus7, api_obj=load1)
+    grid.add_load(bus=bus9, api_obj=load2)
+
+    grid.add_generator(bus=bus1, api_obj=gen1)
+    grid.add_generator(bus=bus2, api_obj=gen2)
+    grid.add_generator(bus=bus3, api_obj=gen3)
+    grid.add_generator(bus=bus4, api_obj=gen4)
+
+    grid.add_line(line0)
+    grid.add_line(line1)
+    grid.add_line(line2)
+    grid.add_line(line3)
+    grid.add_line(line4)
+    grid.add_line(line5)
+    grid.add_line(line6)
+    grid.add_line(line7)
+    grid.add_line(line8)
+    grid.add_line(line9)
+    grid.add_line(line10)
+    grid.add_line(line11)
+    grid.add_line(line12)
+    grid.add_line(line13)
+    grid.add_line(trafo_G1)
+    grid.add_line(trafo_G2)
+    grid.add_line(trafo_G3)
+    grid.add_line(trafo_G4)
+
+    gce.save_file(grid=grid, filename="kundur_static_grid.veragrid")
+
 
 
 
@@ -359,6 +388,8 @@ def rms_kundur():
 
     load2_mdl.set_parameter_in_model(var_name="Pl0", new_value=-0.0999999)
     load2_mdl.set_parameter_in_model(var_name="Ql0", new_value=-0.009999999862208533)
+
+
 
     # # add rms models to api objects
     # set_rms_model(device=line0, model=line0_mdl)
