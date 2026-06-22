@@ -1,7 +1,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
-# SPDX-License-Identifier: MPL-2.001--.0-
+# SPDX-License-Identifier: MPL-2.0
 
 """
 Static EMT API-object parameter mapping.
@@ -34,7 +34,7 @@ from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGridEngine.Templates.Emt.line_matrix_conversion import build_physical_line_matrices_from_stored_admittances
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var, Expr
-from VeraGridEngine.basic_structures import Logger, Vec
+from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.enumerations import (
     ConverterControlType,
     DeviceType,
@@ -49,312 +49,291 @@ if TYPE_CHECKING:
     import VeraGridEngine.Devices as dev
     from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 
-devices_static_params_mapping: Dict[DeviceType, List[ParamPowerFlowReferenceType]] = {
-    DeviceType.LoadDevice: [
-        ParamPowerFlowReferenceType.device_active,
-        ParamPowerFlowReferenceType.injection_connection_type,
-        ParamPowerFlowReferenceType.Pl0,
-        ParamPowerFlowReferenceType.Ql0,
-        ParamPowerFlowReferenceType.Pl0_A,
-        ParamPowerFlowReferenceType.Pl0_B,
-        ParamPowerFlowReferenceType.Pl0_C,
-        ParamPowerFlowReferenceType.Ql0_A,
-        ParamPowerFlowReferenceType.Ql0_B,
-        ParamPowerFlowReferenceType.Ql0_C,
-        ParamPowerFlowReferenceType.load_g_pu,
-        ParamPowerFlowReferenceType.load_b_pu,
-        ParamPowerFlowReferenceType.load_ga_pu,
-        ParamPowerFlowReferenceType.load_gb_pu,
-        ParamPowerFlowReferenceType.load_gc_pu,
-        ParamPowerFlowReferenceType.load_ba_pu,
-        ParamPowerFlowReferenceType.load_bb_pu,
-        ParamPowerFlowReferenceType.load_bc_pu,
-        ParamPowerFlowReferenceType.load_ir_pu,
-        ParamPowerFlowReferenceType.load_ii_pu,
-        ParamPowerFlowReferenceType.load_ira_pu,
-        ParamPowerFlowReferenceType.load_irb_pu,
-        ParamPowerFlowReferenceType.load_irc_pu,
-        ParamPowerFlowReferenceType.load_iia_pu,
-        ParamPowerFlowReferenceType.load_iib_pu,
-        ParamPowerFlowReferenceType.load_iic_pu,
-        ParamPowerFlowReferenceType.load_contract_power_pu,
-        ParamPowerFlowReferenceType.Pl0,
-        ParamPowerFlowReferenceType.g,
-        ParamPowerFlowReferenceType.Pl0_A,
-        ParamPowerFlowReferenceType.Pl0_B,
-        ParamPowerFlowReferenceType.Pl0_C,
-        ParamPowerFlowReferenceType.Ql0_A,
-        ParamPowerFlowReferenceType.Ql0_B,
-        ParamPowerFlowReferenceType.Ql0_C,
-        ParamPowerFlowReferenceType.omega_base,
-    ],
-    DeviceType.StaticGeneratorDevice: [
-        ParamPowerFlowReferenceType.device_active,
-        ParamPowerFlowReferenceType.injection_connection_type,
-        ParamPowerFlowReferenceType.Pl0,
-        ParamPowerFlowReferenceType.Ql0,
-        ParamPowerFlowReferenceType.Pl0_A,
-        ParamPowerFlowReferenceType.Pl0_B,
-        ParamPowerFlowReferenceType.Pl0_C,
-        ParamPowerFlowReferenceType.Ql0_A,
-        ParamPowerFlowReferenceType.Ql0_B,
-        ParamPowerFlowReferenceType.Ql0_C,
-        ParamPowerFlowReferenceType.Pl0_A,
-        ParamPowerFlowReferenceType.Pl0_B,
-        ParamPowerFlowReferenceType.Pl0_C,
-        ParamPowerFlowReferenceType.Ql0_A,
-        ParamPowerFlowReferenceType.Ql0_B,
-        ParamPowerFlowReferenceType.Ql0_C,
-        ParamPowerFlowReferenceType.omega_base,
-        ParamPowerFlowReferenceType.static_generator_snom_mva,
-    ],
-    DeviceType.ExternalGridDevice: [
-        ParamPowerFlowReferenceType.device_active,
-        ParamPowerFlowReferenceType.injection_connection_type,
-        ParamPowerFlowReferenceType.Pl0,
-        ParamPowerFlowReferenceType.Pl0_A,
-        ParamPowerFlowReferenceType.Pl0_B,
-        ParamPowerFlowReferenceType.Pl0_C,
-        ParamPowerFlowReferenceType.Ql0_A,
-        ParamPowerFlowReferenceType.Ql0_B,
-        ParamPowerFlowReferenceType.Ql0_C,
-        ParamPowerFlowReferenceType.omega_base,
-        ParamPowerFlowReferenceType.Ql0,
-        ParamPowerFlowReferenceType.external_grid_vm_pu,
-        ParamPowerFlowReferenceType.external_grid_va_rad,
-        ParamPowerFlowReferenceType.external_grid_mode_code,
-    ],
-    DeviceType.ShuntDevice: [
-        ParamPowerFlowReferenceType.device_active,
-        ParamPowerFlowReferenceType.injection_connection_type,
-        ParamPowerFlowReferenceType.shunt_g_pu,
-        ParamPowerFlowReferenceType.shunt_b_pu,
-        ParamPowerFlowReferenceType.shunt_g0_pu,
-        ParamPowerFlowReferenceType.shunt_b0_pu,
-        ParamPowerFlowReferenceType.shunt_ga_pu,
-        ParamPowerFlowReferenceType.shunt_gb_pu,
-        ParamPowerFlowReferenceType.shunt_gc_pu,
-        ParamPowerFlowReferenceType.shunt_ba_pu,
-        ParamPowerFlowReferenceType.shunt_bb_pu,
-        ParamPowerFlowReferenceType.shunt_bc_pu,
-    ],
-    DeviceType.ControllableShuntDevice: [
-        ParamPowerFlowReferenceType.device_active,
-        ParamPowerFlowReferenceType.injection_connection_type,
-        ParamPowerFlowReferenceType.shunt_g_pu,
-        ParamPowerFlowReferenceType.shunt_b_pu,
-        ParamPowerFlowReferenceType.shunt_g0_pu,
-        ParamPowerFlowReferenceType.shunt_b0_pu,
-        ParamPowerFlowReferenceType.shunt_ga_pu,
-        ParamPowerFlowReferenceType.shunt_gb_pu,
-        ParamPowerFlowReferenceType.shunt_gc_pu,
-        ParamPowerFlowReferenceType.shunt_ba_pu,
-        ParamPowerFlowReferenceType.shunt_bb_pu,
-        ParamPowerFlowReferenceType.shunt_bc_pu,
-        ParamPowerFlowReferenceType.controllable_shunt_step,
-        ParamPowerFlowReferenceType.controllable_shunt_vset_pu,
-        ParamPowerFlowReferenceType.controllable_shunt_vmin_pu,
-        ParamPowerFlowReferenceType.controllable_shunt_vmax_pu,
-        ParamPowerFlowReferenceType.controllable_shunt_gmin_pu,
-        ParamPowerFlowReferenceType.controllable_shunt_gmax_pu,
-        ParamPowerFlowReferenceType.controllable_shunt_bmin_pu,
-        ParamPowerFlowReferenceType.controllable_shunt_bmax_pu,
-        ParamPowerFlowReferenceType.controllable_shunt_control_mode_code,
-    ],
-    DeviceType.CurrentInjectionDevice: [
-        ParamPowerFlowReferenceType.device_active,
-        ParamPowerFlowReferenceType.injection_connection_type,
-        ParamPowerFlowReferenceType.current_injection_ir_pu,
-        ParamPowerFlowReferenceType.current_injection_ii_pu,
-        ParamPowerFlowReferenceType.current_injection_ira_pu,
-        ParamPowerFlowReferenceType.current_injection_irb_pu,
-        ParamPowerFlowReferenceType.current_injection_irc_pu,
-        ParamPowerFlowReferenceType.current_injection_iia_pu,
-        ParamPowerFlowReferenceType.current_injection_iib_pu,
-        ParamPowerFlowReferenceType.current_injection_iic_pu,
-    ],
-    DeviceType.GeneratorDevice: [
-        ParamPowerFlowReferenceType.device_active,
-        ParamPowerFlowReferenceType.injection_connection_type,
-        ParamPowerFlowReferenceType.omega_base,
-        ParamPowerFlowReferenceType.fn,
-        ParamPowerFlowReferenceType.ws,
-        ParamPowerFlowReferenceType.R1,
-        ParamPowerFlowReferenceType.X1,
-        ParamPowerFlowReferenceType.X0,
-        ParamPowerFlowReferenceType.generator_p_pu,
-        ParamPowerFlowReferenceType.generator_q_pu,
-        ParamPowerFlowReferenceType.Pmin,
-        ParamPowerFlowReferenceType.Pmax,
-        ParamPowerFlowReferenceType.generator_qmin_pu,
-        ParamPowerFlowReferenceType.generator_qmax_pu,
-        ParamPowerFlowReferenceType.generator_power_factor,
-        ParamPowerFlowReferenceType.generator_vset_pu,
-        ParamPowerFlowReferenceType.generator_snom_mva,
-        ParamPowerFlowReferenceType.generator_r0_pu,
-        ParamPowerFlowReferenceType.generator_r2_pu,
-        ParamPowerFlowReferenceType.generator_x2_pu,
-        ParamPowerFlowReferenceType.generator_control_mode,
-        ParamPowerFlowReferenceType.generator_enabled_dispatch,
-        ParamPowerFlowReferenceType.generator_must_run,
-        ParamPowerFlowReferenceType.generator_use_reactive_power_curve,
-        ParamPowerFlowReferenceType.generator_device_sbase_mva,
-        ParamPowerFlowReferenceType.freq,
-    ],
-    DeviceType.BatteryDevice: [
-        ParamPowerFlowReferenceType.device_active,
-        ParamPowerFlowReferenceType.injection_connection_type,
-        ParamPowerFlowReferenceType.omega_base,
-        ParamPowerFlowReferenceType.fn,
-        ParamPowerFlowReferenceType.ws,
-        ParamPowerFlowReferenceType.R1,
-        ParamPowerFlowReferenceType.X1,
-        ParamPowerFlowReferenceType.X0,
-        ParamPowerFlowReferenceType.generator_p_pu,
-        ParamPowerFlowReferenceType.generator_q_pu,
-        ParamPowerFlowReferenceType.Pmin,
-        ParamPowerFlowReferenceType.Pmax,
-        ParamPowerFlowReferenceType.generator_qmin_pu,
-        ParamPowerFlowReferenceType.generator_qmax_pu,
-        ParamPowerFlowReferenceType.generator_power_factor,
-        ParamPowerFlowReferenceType.generator_vset_pu,
-        ParamPowerFlowReferenceType.generator_snom_mva,
-        ParamPowerFlowReferenceType.generator_r0_pu,
-        ParamPowerFlowReferenceType.generator_r2_pu,
-        ParamPowerFlowReferenceType.generator_x2_pu,
-        ParamPowerFlowReferenceType.generator_control_mode,
-        ParamPowerFlowReferenceType.generator_enabled_dispatch,
-        ParamPowerFlowReferenceType.generator_must_run,
-        ParamPowerFlowReferenceType.generator_use_reactive_power_curve,
-        ParamPowerFlowReferenceType.generator_device_sbase_mva,
-        ParamPowerFlowReferenceType.freq,
-        ParamPowerFlowReferenceType.battery_enom_mwh,
-        ParamPowerFlowReferenceType.battery_soc_0_pu,
-        ParamPowerFlowReferenceType.battery_max_soc_pu,
-        ParamPowerFlowReferenceType.battery_min_soc_pu,
-        ParamPowerFlowReferenceType.battery_charge_efficiency_pu,
-        ParamPowerFlowReferenceType.battery_discharge_efficiency_pu,
-        ParamPowerFlowReferenceType.battery_charge_per_cycle_pu,
-        ParamPowerFlowReferenceType.battery_discharge_per_cycle_pu,
-    ],
-    DeviceType.VscDevice: [
-        ParamPowerFlowReferenceType.device_active,
-        ParamPowerFlowReferenceType.branch_rate_mva,
-        ParamPowerFlowReferenceType.branch_temp_base_deg_c,
-        ParamPowerFlowReferenceType.branch_temp_oper_deg_c,
-        ParamPowerFlowReferenceType.branch_alpha_per_deg_c,
-        ParamPowerFlowReferenceType.Sbase,
-        ParamPowerFlowReferenceType.omega_base,
-        ParamPowerFlowReferenceType.converter_control_mode_1,
-        ParamPowerFlowReferenceType.converter_control_mode_2,
-        ParamPowerFlowReferenceType.converter_control_target_1,
-        ParamPowerFlowReferenceType.converter_control_target_2,
-        ParamPowerFlowReferenceType.alpha1,
-        ParamPowerFlowReferenceType.alpha2,
-        ParamPowerFlowReferenceType.alpha3,
-        ParamPowerFlowReferenceType.vsc_kdp_pu,
-        ParamPowerFlowReferenceType.vsc_min_ac_voltage_pu,
-    ],
-    DeviceType.DCLineDevice: [
-        ParamPowerFlowReferenceType.device_active,
-        ParamPowerFlowReferenceType.branch_rate_mva,
-        ParamPowerFlowReferenceType.branch_temp_base_deg_c,
-        ParamPowerFlowReferenceType.branch_temp_oper_deg_c,
-        ParamPowerFlowReferenceType.branch_alpha_per_deg_c,
-        ParamPowerFlowReferenceType.g,
-        ParamPowerFlowReferenceType.b,
-        ParamPowerFlowReferenceType.bsh,
-        ParamPowerFlowReferenceType.dc_line_r_pu,
-        ParamPowerFlowReferenceType.dc_line_length_km,
-    ],
-    DeviceType.Transformer2WDevice: [
-        ParamPowerFlowReferenceType.device_active,
-        ParamPowerFlowReferenceType.branch_rate_mva,
-        ParamPowerFlowReferenceType.branch_temp_base_deg_c,
-        ParamPowerFlowReferenceType.branch_temp_oper_deg_c,
-        ParamPowerFlowReferenceType.branch_alpha_per_deg_c,
-        ParamPowerFlowReferenceType.omega_base,
-        ParamPowerFlowReferenceType.transformer_rated_power_mva,
-        ParamPowerFlowReferenceType.transformer_winding1_rated_voltage_ll_kv,
-        ParamPowerFlowReferenceType.transformer_winding2_rated_voltage_ll_kv,
-        ParamPowerFlowReferenceType.transformer_connection_clock,
-        ParamPowerFlowReferenceType.transformer_open_circuit_current_pct,
-        ParamPowerFlowReferenceType.transformer_open_circuit_loss_kw,
-        ParamPowerFlowReferenceType.transformer_short_circuit_voltage_pct,
-        ParamPowerFlowReferenceType.transformer_short_circuit_resistance_pct,
-        ParamPowerFlowReferenceType.transformer_short_circuit_loss_kw,
-        ParamPowerFlowReferenceType.tap_module,
-        ParamPowerFlowReferenceType.transformer_nominal_voltage_ratio,
-        ParamPowerFlowReferenceType.transformer_total_voltage_ratio,
-        ParamPowerFlowReferenceType.transformer_tap_ratio,
-        ParamPowerFlowReferenceType.transformer_winding1_resistance_pu,
-        ParamPowerFlowReferenceType.transformer_winding2_resistance_pu,
-        ParamPowerFlowReferenceType.transformer_winding1_inductance_pu_s,
-        ParamPowerFlowReferenceType.transformer_winding2_inductance_pu_s,
-        ParamPowerFlowReferenceType.transformer_mutual_inductance_pu_s,
-        ParamPowerFlowReferenceType.transformer_magnetizing_conductance_pu,
-    ],
-    DeviceType.WindingDevice: [
-        ParamPowerFlowReferenceType.device_active,
-        ParamPowerFlowReferenceType.branch_rate_mva,
-        ParamPowerFlowReferenceType.branch_temp_base_deg_c,
-        ParamPowerFlowReferenceType.branch_temp_oper_deg_c,
-        ParamPowerFlowReferenceType.branch_alpha_per_deg_c,
-        ParamPowerFlowReferenceType.omega_base,
-        ParamPowerFlowReferenceType.transformer_rated_power_mva,
-        ParamPowerFlowReferenceType.transformer_winding1_rated_voltage_ll_kv,
-        ParamPowerFlowReferenceType.transformer_winding2_rated_voltage_ll_kv,
-        ParamPowerFlowReferenceType.transformer_connection_clock,
-        ParamPowerFlowReferenceType.transformer_open_circuit_current_pct,
-        ParamPowerFlowReferenceType.transformer_open_circuit_loss_kw,
-        ParamPowerFlowReferenceType.transformer_short_circuit_voltage_pct,
-        ParamPowerFlowReferenceType.transformer_short_circuit_resistance_pct,
-        ParamPowerFlowReferenceType.transformer_short_circuit_loss_kw,
-        ParamPowerFlowReferenceType.tap_module,
-        ParamPowerFlowReferenceType.transformer_nominal_voltage_ratio,
-        ParamPowerFlowReferenceType.transformer_total_voltage_ratio,
-        ParamPowerFlowReferenceType.transformer_tap_ratio,
-        ParamPowerFlowReferenceType.transformer_winding1_resistance_pu,
-        ParamPowerFlowReferenceType.transformer_winding2_resistance_pu,
-        ParamPowerFlowReferenceType.transformer_winding1_inductance_pu_s,
-        ParamPowerFlowReferenceType.transformer_winding2_inductance_pu_s,
-        ParamPowerFlowReferenceType.transformer_mutual_inductance_pu_s,
-        ParamPowerFlowReferenceType.transformer_magnetizing_conductance_pu,
-    ],
-    DeviceType.LineDevice: [
-        ParamPowerFlowReferenceType.device_active,
-        ParamPowerFlowReferenceType.branch_rate_mva,
-        ParamPowerFlowReferenceType.branch_temp_base_deg_c,
-        ParamPowerFlowReferenceType.branch_temp_oper_deg_c,
-        ParamPowerFlowReferenceType.branch_alpha_per_deg_c,
-        ParamPowerFlowReferenceType.line_length_km,
-    ],
-    DeviceType.HVDCLineDevice: [],
-    DeviceType.SeriesReactanceDevice: [],
-    DeviceType.SwitchDevice: [],
-    DeviceType.UpfcDevice: [],
-}
-
-
-def to_static_mapping_const(value: float | Const) -> Const:
-    """
-    Convert a static numerical mapping value into a symbolic constant.
-
-    :param value: Numerical value or an already-created ``Const``.
-    :return: Constant symbolic expression used by EMT parameters.
-    """
-    out: Const
-
-    if isinstance(value, Const):
-        # Existing constants are preserved so callers can pre-build symbolic
-        # constants without being wrapped a second time.
-        out = value
-    else:
-        # Static API-object values are scalar real constants. The explicit float
-        # conversion keeps parameter values homogeneous in the EMT parameter map.
-        out = Const(float(value))
-
-    return out
+# devices_static_params_mapping: Dict[DeviceType, List[ParamPowerFlowReferenceType]] = {
+#     DeviceType.LoadDevice: [
+#         ParamPowerFlowReferenceType.device_active,
+#         ParamPowerFlowReferenceType.injection_connection_type,
+#         ParamPowerFlowReferenceType.Pl0,
+#         ParamPowerFlowReferenceType.Ql0,
+#         ParamPowerFlowReferenceType.Pl0_A,
+#         ParamPowerFlowReferenceType.Pl0_B,
+#         ParamPowerFlowReferenceType.Pl0_C,
+#         ParamPowerFlowReferenceType.Ql0_A,
+#         ParamPowerFlowReferenceType.Ql0_B,
+#         ParamPowerFlowReferenceType.Ql0_C,
+#         ParamPowerFlowReferenceType.load_g_pu,
+#         ParamPowerFlowReferenceType.load_b_pu,
+#         ParamPowerFlowReferenceType.load_ga_pu,
+#         ParamPowerFlowReferenceType.load_gb_pu,
+#         ParamPowerFlowReferenceType.load_gc_pu,
+#         ParamPowerFlowReferenceType.load_ba_pu,
+#         ParamPowerFlowReferenceType.load_bb_pu,
+#         ParamPowerFlowReferenceType.load_bc_pu,
+#         ParamPowerFlowReferenceType.load_ir_pu,
+#         ParamPowerFlowReferenceType.load_ii_pu,
+#         ParamPowerFlowReferenceType.load_ira_pu,
+#         ParamPowerFlowReferenceType.load_irb_pu,
+#         ParamPowerFlowReferenceType.load_irc_pu,
+#         ParamPowerFlowReferenceType.load_iia_pu,
+#         ParamPowerFlowReferenceType.load_iib_pu,
+#         ParamPowerFlowReferenceType.load_iic_pu,
+#         ParamPowerFlowReferenceType.load_contract_power_pu,
+#         ParamPowerFlowReferenceType.Pl0,
+#         ParamPowerFlowReferenceType.g,
+#         ParamPowerFlowReferenceType.Pl0_A,
+#         ParamPowerFlowReferenceType.Pl0_B,
+#         ParamPowerFlowReferenceType.Pl0_C,
+#         ParamPowerFlowReferenceType.Ql0_A,
+#         ParamPowerFlowReferenceType.Ql0_B,
+#         ParamPowerFlowReferenceType.Ql0_C,
+#         ParamPowerFlowReferenceType.omega_base,
+#     ],
+#     DeviceType.StaticGeneratorDevice: [
+#         ParamPowerFlowReferenceType.device_active,
+#         ParamPowerFlowReferenceType.injection_connection_type,
+#         ParamPowerFlowReferenceType.Pl0,
+#         ParamPowerFlowReferenceType.Ql0,
+#         ParamPowerFlowReferenceType.Pl0_A,
+#         ParamPowerFlowReferenceType.Pl0_B,
+#         ParamPowerFlowReferenceType.Pl0_C,
+#         ParamPowerFlowReferenceType.Ql0_A,
+#         ParamPowerFlowReferenceType.Ql0_B,
+#         ParamPowerFlowReferenceType.Ql0_C,
+#         ParamPowerFlowReferenceType.Pl0_A,
+#         ParamPowerFlowReferenceType.Pl0_B,
+#         ParamPowerFlowReferenceType.Pl0_C,
+#         ParamPowerFlowReferenceType.Ql0_A,
+#         ParamPowerFlowReferenceType.Ql0_B,
+#         ParamPowerFlowReferenceType.Ql0_C,
+#         ParamPowerFlowReferenceType.omega_base,
+#         ParamPowerFlowReferenceType.static_generator_snom_mva,
+#     ],
+#     DeviceType.ExternalGridDevice: [
+#         ParamPowerFlowReferenceType.device_active,
+#         ParamPowerFlowReferenceType.injection_connection_type,
+#         ParamPowerFlowReferenceType.Pl0,
+#         ParamPowerFlowReferenceType.Pl0_A,
+#         ParamPowerFlowReferenceType.Pl0_B,
+#         ParamPowerFlowReferenceType.Pl0_C,
+#         ParamPowerFlowReferenceType.Ql0_A,
+#         ParamPowerFlowReferenceType.Ql0_B,
+#         ParamPowerFlowReferenceType.Ql0_C,
+#         ParamPowerFlowReferenceType.omega_base,
+#         ParamPowerFlowReferenceType.Ql0,
+#         ParamPowerFlowReferenceType.external_grid_vm_pu,
+#         ParamPowerFlowReferenceType.external_grid_va_rad,
+#         ParamPowerFlowReferenceType.external_grid_mode_code,
+#     ],
+#     DeviceType.ShuntDevice: [
+#         ParamPowerFlowReferenceType.device_active,
+#         ParamPowerFlowReferenceType.injection_connection_type,
+#         ParamPowerFlowReferenceType.shunt_g_pu,
+#         ParamPowerFlowReferenceType.shunt_b_pu,
+#         ParamPowerFlowReferenceType.shunt_g0_pu,
+#         ParamPowerFlowReferenceType.shunt_b0_pu,
+#         ParamPowerFlowReferenceType.shunt_ga_pu,
+#         ParamPowerFlowReferenceType.shunt_gb_pu,
+#         ParamPowerFlowReferenceType.shunt_gc_pu,
+#         ParamPowerFlowReferenceType.shunt_ba_pu,
+#         ParamPowerFlowReferenceType.shunt_bb_pu,
+#         ParamPowerFlowReferenceType.shunt_bc_pu,
+#     ],
+#     DeviceType.ControllableShuntDevice: [
+#         ParamPowerFlowReferenceType.device_active,
+#         ParamPowerFlowReferenceType.injection_connection_type,
+#         ParamPowerFlowReferenceType.shunt_g_pu,
+#         ParamPowerFlowReferenceType.shunt_b_pu,
+#         ParamPowerFlowReferenceType.shunt_g0_pu,
+#         ParamPowerFlowReferenceType.shunt_b0_pu,
+#         ParamPowerFlowReferenceType.shunt_ga_pu,
+#         ParamPowerFlowReferenceType.shunt_gb_pu,
+#         ParamPowerFlowReferenceType.shunt_gc_pu,
+#         ParamPowerFlowReferenceType.shunt_ba_pu,
+#         ParamPowerFlowReferenceType.shunt_bb_pu,
+#         ParamPowerFlowReferenceType.shunt_bc_pu,
+#         ParamPowerFlowReferenceType.controllable_shunt_step,
+#         ParamPowerFlowReferenceType.controllable_shunt_vset_pu,
+#         ParamPowerFlowReferenceType.controllable_shunt_vmin_pu,
+#         ParamPowerFlowReferenceType.controllable_shunt_vmax_pu,
+#         ParamPowerFlowReferenceType.controllable_shunt_gmin_pu,
+#         ParamPowerFlowReferenceType.controllable_shunt_gmax_pu,
+#         ParamPowerFlowReferenceType.controllable_shunt_bmin_pu,
+#         ParamPowerFlowReferenceType.controllable_shunt_bmax_pu,
+#         ParamPowerFlowReferenceType.controllable_shunt_control_mode_code,
+#     ],
+#     DeviceType.CurrentInjectionDevice: [
+#         ParamPowerFlowReferenceType.device_active,
+#         ParamPowerFlowReferenceType.injection_connection_type,
+#         ParamPowerFlowReferenceType.current_injection_ir_pu,
+#         ParamPowerFlowReferenceType.current_injection_ii_pu,
+#         ParamPowerFlowReferenceType.current_injection_ira_pu,
+#         ParamPowerFlowReferenceType.current_injection_irb_pu,
+#         ParamPowerFlowReferenceType.current_injection_irc_pu,
+#         ParamPowerFlowReferenceType.current_injection_iia_pu,
+#         ParamPowerFlowReferenceType.current_injection_iib_pu,
+#         ParamPowerFlowReferenceType.current_injection_iic_pu,
+#     ],
+#     DeviceType.GeneratorDevice: [
+#         ParamPowerFlowReferenceType.device_active,
+#         ParamPowerFlowReferenceType.injection_connection_type,
+#         ParamPowerFlowReferenceType.omega_base,
+#         ParamPowerFlowReferenceType.fn,
+#         ParamPowerFlowReferenceType.ws,
+#         ParamPowerFlowReferenceType.R1,
+#         ParamPowerFlowReferenceType.X1,
+#         ParamPowerFlowReferenceType.X0,
+#         ParamPowerFlowReferenceType.generator_p_pu,
+#         ParamPowerFlowReferenceType.generator_q_pu,
+#         ParamPowerFlowReferenceType.Pmin,
+#         ParamPowerFlowReferenceType.Pmax,
+#         ParamPowerFlowReferenceType.generator_qmin_pu,
+#         ParamPowerFlowReferenceType.generator_qmax_pu,
+#         ParamPowerFlowReferenceType.generator_power_factor,
+#         ParamPowerFlowReferenceType.generator_vset_pu,
+#         ParamPowerFlowReferenceType.generator_snom_mva,
+#         ParamPowerFlowReferenceType.generator_r0_pu,
+#         ParamPowerFlowReferenceType.generator_r2_pu,
+#         ParamPowerFlowReferenceType.generator_x2_pu,
+#         ParamPowerFlowReferenceType.generator_control_mode,
+#         ParamPowerFlowReferenceType.generator_enabled_dispatch,
+#         ParamPowerFlowReferenceType.generator_must_run,
+#         ParamPowerFlowReferenceType.generator_use_reactive_power_curve,
+#         ParamPowerFlowReferenceType.generator_device_sbase_mva,
+#         ParamPowerFlowReferenceType.freq,
+#     ],
+#     DeviceType.BatteryDevice: [
+#         ParamPowerFlowReferenceType.device_active,
+#         ParamPowerFlowReferenceType.injection_connection_type,
+#         ParamPowerFlowReferenceType.omega_base,
+#         ParamPowerFlowReferenceType.fn,
+#         ParamPowerFlowReferenceType.ws,
+#         ParamPowerFlowReferenceType.R1,
+#         ParamPowerFlowReferenceType.X1,
+#         ParamPowerFlowReferenceType.X0,
+#         ParamPowerFlowReferenceType.generator_p_pu,
+#         ParamPowerFlowReferenceType.generator_q_pu,
+#         ParamPowerFlowReferenceType.Pmin,
+#         ParamPowerFlowReferenceType.Pmax,
+#         ParamPowerFlowReferenceType.generator_qmin_pu,
+#         ParamPowerFlowReferenceType.generator_qmax_pu,
+#         ParamPowerFlowReferenceType.generator_power_factor,
+#         ParamPowerFlowReferenceType.generator_vset_pu,
+#         ParamPowerFlowReferenceType.generator_snom_mva,
+#         ParamPowerFlowReferenceType.generator_r0_pu,
+#         ParamPowerFlowReferenceType.generator_r2_pu,
+#         ParamPowerFlowReferenceType.generator_x2_pu,
+#         ParamPowerFlowReferenceType.generator_control_mode,
+#         ParamPowerFlowReferenceType.generator_enabled_dispatch,
+#         ParamPowerFlowReferenceType.generator_must_run,
+#         ParamPowerFlowReferenceType.generator_use_reactive_power_curve,
+#         ParamPowerFlowReferenceType.generator_device_sbase_mva,
+#         ParamPowerFlowReferenceType.freq,
+#         ParamPowerFlowReferenceType.battery_enom_mwh,
+#         ParamPowerFlowReferenceType.battery_soc_0_pu,
+#         ParamPowerFlowReferenceType.battery_max_soc_pu,
+#         ParamPowerFlowReferenceType.battery_min_soc_pu,
+#         ParamPowerFlowReferenceType.battery_charge_efficiency_pu,
+#         ParamPowerFlowReferenceType.battery_discharge_efficiency_pu,
+#         ParamPowerFlowReferenceType.battery_charge_per_cycle_pu,
+#         ParamPowerFlowReferenceType.battery_discharge_per_cycle_pu,
+#     ],
+#     DeviceType.VscDevice: [
+#         ParamPowerFlowReferenceType.device_active,
+#         ParamPowerFlowReferenceType.branch_rate_mva,
+#         ParamPowerFlowReferenceType.branch_temp_base_deg_c,
+#         ParamPowerFlowReferenceType.branch_temp_oper_deg_c,
+#         ParamPowerFlowReferenceType.branch_alpha_per_deg_c,
+#         ParamPowerFlowReferenceType.Sbase,
+#         ParamPowerFlowReferenceType.omega_base,
+#         ParamPowerFlowReferenceType.converter_control_mode_1,
+#         ParamPowerFlowReferenceType.converter_control_mode_2,
+#         ParamPowerFlowReferenceType.converter_control_target_1,
+#         ParamPowerFlowReferenceType.converter_control_target_2,
+#         ParamPowerFlowReferenceType.alpha1,
+#         ParamPowerFlowReferenceType.alpha2,
+#         ParamPowerFlowReferenceType.alpha3,
+#         ParamPowerFlowReferenceType.vsc_kdp_pu,
+#         ParamPowerFlowReferenceType.vsc_min_ac_voltage_pu,
+#     ],
+#     DeviceType.DCLineDevice: [
+#         ParamPowerFlowReferenceType.device_active,
+#         ParamPowerFlowReferenceType.branch_rate_mva,
+#         ParamPowerFlowReferenceType.branch_temp_base_deg_c,
+#         ParamPowerFlowReferenceType.branch_temp_oper_deg_c,
+#         ParamPowerFlowReferenceType.branch_alpha_per_deg_c,
+#         ParamPowerFlowReferenceType.g,
+#         ParamPowerFlowReferenceType.b,
+#         ParamPowerFlowReferenceType.bsh,
+#         ParamPowerFlowReferenceType.dc_line_r_pu,
+#         ParamPowerFlowReferenceType.dc_line_length_km,
+#     ],
+#     DeviceType.Transformer2WDevice: [
+#         ParamPowerFlowReferenceType.device_active,
+#         ParamPowerFlowReferenceType.branch_rate_mva,
+#         ParamPowerFlowReferenceType.branch_temp_base_deg_c,
+#         ParamPowerFlowReferenceType.branch_temp_oper_deg_c,
+#         ParamPowerFlowReferenceType.branch_alpha_per_deg_c,
+#         ParamPowerFlowReferenceType.omega_base,
+#         ParamPowerFlowReferenceType.transformer_rated_power_mva,
+#         ParamPowerFlowReferenceType.transformer_winding1_rated_voltage_ll_kv,
+#         ParamPowerFlowReferenceType.transformer_winding2_rated_voltage_ll_kv,
+#         ParamPowerFlowReferenceType.transformer_connection_clock,
+#         ParamPowerFlowReferenceType.transformer_open_circuit_current_pct,
+#         ParamPowerFlowReferenceType.transformer_open_circuit_loss_kw,
+#         ParamPowerFlowReferenceType.transformer_short_circuit_voltage_pct,
+#         ParamPowerFlowReferenceType.transformer_short_circuit_resistance_pct,
+#         ParamPowerFlowReferenceType.transformer_short_circuit_loss_kw,
+#         ParamPowerFlowReferenceType.tap_module,
+#         ParamPowerFlowReferenceType.transformer_nominal_voltage_ratio,
+#         ParamPowerFlowReferenceType.transformer_total_voltage_ratio,
+#         ParamPowerFlowReferenceType.transformer_tap_ratio,
+#         ParamPowerFlowReferenceType.transformer_winding1_resistance_pu,
+#         ParamPowerFlowReferenceType.transformer_winding2_resistance_pu,
+#         ParamPowerFlowReferenceType.transformer_winding1_inductance_pu_s,
+#         ParamPowerFlowReferenceType.transformer_winding2_inductance_pu_s,
+#         ParamPowerFlowReferenceType.transformer_mutual_inductance_pu_s,
+#         ParamPowerFlowReferenceType.transformer_magnetizing_conductance_pu,
+#     ],
+#     DeviceType.WindingDevice: [
+#         ParamPowerFlowReferenceType.device_active,
+#         ParamPowerFlowReferenceType.branch_rate_mva,
+#         ParamPowerFlowReferenceType.branch_temp_base_deg_c,
+#         ParamPowerFlowReferenceType.branch_temp_oper_deg_c,
+#         ParamPowerFlowReferenceType.branch_alpha_per_deg_c,
+#         ParamPowerFlowReferenceType.omega_base,
+#         ParamPowerFlowReferenceType.transformer_rated_power_mva,
+#         ParamPowerFlowReferenceType.transformer_winding1_rated_voltage_ll_kv,
+#         ParamPowerFlowReferenceType.transformer_winding2_rated_voltage_ll_kv,
+#         ParamPowerFlowReferenceType.transformer_connection_clock,
+#         ParamPowerFlowReferenceType.transformer_open_circuit_current_pct,
+#         ParamPowerFlowReferenceType.transformer_open_circuit_loss_kw,
+#         ParamPowerFlowReferenceType.transformer_short_circuit_voltage_pct,
+#         ParamPowerFlowReferenceType.transformer_short_circuit_resistance_pct,
+#         ParamPowerFlowReferenceType.transformer_short_circuit_loss_kw,
+#         ParamPowerFlowReferenceType.tap_module,
+#         ParamPowerFlowReferenceType.transformer_nominal_voltage_ratio,
+#         ParamPowerFlowReferenceType.transformer_total_voltage_ratio,
+#         ParamPowerFlowReferenceType.transformer_tap_ratio,
+#         ParamPowerFlowReferenceType.transformer_winding1_resistance_pu,
+#         ParamPowerFlowReferenceType.transformer_winding2_resistance_pu,
+#         ParamPowerFlowReferenceType.transformer_winding1_inductance_pu_s,
+#         ParamPowerFlowReferenceType.transformer_winding2_inductance_pu_s,
+#         ParamPowerFlowReferenceType.transformer_mutual_inductance_pu_s,
+#         ParamPowerFlowReferenceType.transformer_magnetizing_conductance_pu,
+#     ],
+#     DeviceType.LineDevice: [
+#         ParamPowerFlowReferenceType.device_active,
+#         ParamPowerFlowReferenceType.branch_rate_mva,
+#         ParamPowerFlowReferenceType.branch_temp_base_deg_c,
+#         ParamPowerFlowReferenceType.branch_temp_oper_deg_c,
+#         ParamPowerFlowReferenceType.branch_alpha_per_deg_c,
+#         ParamPowerFlowReferenceType.line_length_km,
+#     ],
+#     DeviceType.HVDCLineDevice: [],
+#     DeviceType.SeriesReactanceDevice: [],
+#     DeviceType.SwitchDevice: [],
+#     DeviceType.UpfcDevice: [],
+# }
 
 
 def add_static_mapping_warning(
@@ -397,6 +376,7 @@ def assign_api_mapping_value_if_present(
         value: float,
         logger: Logger | None,
         device_name: str,
+        problem_mapping: Dict[Var, Const] | None = None,
 ) -> bool:
     """
     Assign one static API-object value to ``mdl.parameters`` if exposed.
@@ -410,6 +390,7 @@ def assign_api_mapping_value_if_present(
     :param value: Static numerical value to assign.
     :param logger: Optional logger used to report invalid mapping contracts.
     :param device_name: Device name used in diagnostics.
+    :param problem_mapping: mapping to save parameters values in RMS problem
     :return: ``True`` if the value was assigned, ``False`` otherwise.
     """
     assigned: bool = False
@@ -425,7 +406,6 @@ def assign_api_mapping_value_if_present(
         event_dict: Dict[Var, Expr | Const] = mdl.event_dict
 
         if target in event_dict:
-
             # A target present in event_dict means the model declared a
             # runtime parameter as a static API-object parameter. That is
             # a contract error unless the caller explicitly opted into
@@ -442,7 +422,9 @@ def assign_api_mapping_value_if_present(
         else:
             # The static mapping declares the symbolic parameter target.
             # The target does not need to pre-exist in mdl.parameters.
-            mdl.parameters[target] = to_static_mapping_const(value)
+            resolved_value: Const = value if isinstance(value, Const) else Const(float(value))
+            problem_mapping[target] = resolved_value
+            # mdl.parameters[target] = resolved_value
             assigned = True
 
     return assigned
@@ -480,65 +462,6 @@ def api_mapping_has_any_key(
         has_key = False
 
     return has_key
-
-
-def boolean_to_float(value: bool) -> float:
-    """
-    Convert a static boolean into the EMT scalar convention.
-
-    :param value: Static boolean value.
-    :return: ``1.0`` when ``True``, ``0.0`` when ``False``.
-    """
-    out: float
-
-    if value:
-        out = 1.0
-    else:
-        out = 0.0
-
-    return out
-
-
-def omega_base_from_grid(grid: MultiCircuit) -> float:
-    """
-    Return the angular base frequency of the network.
-
-    :param grid: Static network model.
-    :return: Angular base frequency in rad/s.
-    """
-    return 2.0 * np.pi * float(grid.fBase)
-
-
-def frequency_base_hz_from_grid(grid: MultiCircuit) -> float:
-    """
-    Return the nominal frequency base of the network.
-
-    :param grid: Static network model.
-    :return: Nominal frequency in Hz.
-    """
-    return float(grid.fBase)
-
-
-def mw_to_pu_on_grid_base(value_mw: float, grid: MultiCircuit) -> float:
-    """
-    Convert MW-like static power to p.u. on ``grid.Sbase``.
-
-    :param value_mw: Static active-power-like quantity in MW.
-    :param grid: Static network model.
-    :return: Per-unit value on ``grid.Sbase``.
-    """
-    return float(value_mw) / float(grid.Sbase)
-
-
-def mvar_to_pu_on_grid_base(value_mvar: float, grid: MultiCircuit) -> float:
-    """
-    Convert MVAr-like static power to p.u. on ``grid.Sbase``.
-
-    :param value_mvar: Static reactive-power-like quantity in MVAr.
-    :param grid: Static network model.
-    :return: Per-unit value on ``grid.Sbase``.
-    """
-    return float(value_mvar) / float(grid.Sbase)
 
 
 def _float_or_zero(value: float | None) -> float:
@@ -657,7 +580,8 @@ def abc_to_nabc(phase_values_abc: np.ndarray) -> np.ndarray:
     return phase_values_nabc
 
 
-def get_load_power_phase_values_pu_abc(load: dev.Load, grid: MultiCircuit) -> Tuple[np.ndarray, np.ndarray]:
+def get_load_power_phase_values_pu_abc(load: dev.Load,
+                                       grid: MultiCircuit) -> Tuple[np.ndarray, np.ndarray]:
     """
     Return explicit ABC active/reactive load powers in p.u. on ``grid.Sbase``.
 
@@ -867,6 +791,7 @@ def assign_static_api_object_mapping_for_device(
         grid: MultiCircuit,
         device: ALL_DEV_TYPES,
         mdl: Block,
+        problem_mapping: Dict[Var, Const],
         logger: Logger | None,
 ) -> None:
     """
@@ -880,10 +805,11 @@ def assign_static_api_object_mapping_for_device(
     :param grid: Static network model containing base values.
     :param device: Static grid device owning the EMT model.
     :param mdl: EMT block receiving static parameter constants.
+    :param problem_mapping: Dictionary that stores each parameter with their value.
     :param logger: Optional logger used for diagnostics.
     :return: None.
     """
-    api_obj_mapping: Dict[ParamPowerFlowReferenceType, Var] = mdl.api_obj_mapping
+    api_obj_mapping: Any = mdl.api_obj_mapping
 
     if isinstance(api_obj_mapping, dict):
         if len(api_obj_mapping) == 0:
@@ -898,6 +824,7 @@ def assign_static_api_object_mapping_for_device(
                     grid=grid,
                     load=device,
                     mdl=mdl,
+                    problem_mapping=problem_mapping,
                     logger=logger,
                 )
             elif device_type == DeviceType.StaticGeneratorDevice:
@@ -905,6 +832,7 @@ def assign_static_api_object_mapping_for_device(
                     grid=grid,
                     static_generator=device,
                     mdl=mdl,
+                    problem_mapping=problem_mapping,
                     logger=logger,
                 )
             elif device_type == DeviceType.ExternalGridDevice:
@@ -912,6 +840,7 @@ def assign_static_api_object_mapping_for_device(
                     grid=grid,
                     external_grid=device,
                     mdl=mdl,
+                    problem_mapping=problem_mapping,
                     logger=logger,
                 )
             elif device_type == DeviceType.ShuntDevice:
@@ -919,6 +848,7 @@ def assign_static_api_object_mapping_for_device(
                     grid=grid,
                     shunt=device,
                     mdl=mdl,
+                    problem_mapping=problem_mapping,
                     logger=logger,
                 )
             elif device_type == DeviceType.ControllableShuntDevice:
@@ -926,6 +856,7 @@ def assign_static_api_object_mapping_for_device(
                     grid=grid,
                     controllable_shunt=device,
                     mdl=mdl,
+                    problem_mapping=problem_mapping,
                     logger=logger,
                 )
             elif device_type == DeviceType.CurrentInjectionDevice:
@@ -933,6 +864,7 @@ def assign_static_api_object_mapping_for_device(
                     grid=grid,
                     current_injection=device,
                     mdl=mdl,
+                    problem_mapping=problem_mapping,
                     logger=logger,
                 )
             elif device_type == DeviceType.GeneratorDevice:
@@ -940,6 +872,7 @@ def assign_static_api_object_mapping_for_device(
                     grid=grid,
                     generator=device,
                     mdl=mdl,
+                    problem_mapping=problem_mapping,
                     logger=logger,
                 )
             elif device_type == DeviceType.BatteryDevice:
@@ -947,6 +880,7 @@ def assign_static_api_object_mapping_for_device(
                     grid=grid,
                     battery=device,
                     mdl=mdl,
+                    problem_mapping=problem_mapping,
                     logger=logger,
                 )
             elif device_type == DeviceType.VscDevice:
@@ -954,6 +888,7 @@ def assign_static_api_object_mapping_for_device(
                     grid=grid,
                     vsc=device,
                     mdl=mdl,
+                    problem_mapping=problem_mapping,
                     logger=logger,
                 )
             elif device_type == DeviceType.DCLineDevice:
@@ -961,6 +896,7 @@ def assign_static_api_object_mapping_for_device(
                     assign_dc_line_static_api_mapping(
                         dc_line=device,
                         mdl=mdl,
+                        problem_mapping=problem_mapping,
                         logger=logger,
                     )
                 else:
@@ -978,6 +914,7 @@ def assign_static_api_object_mapping_for_device(
                         grid=grid,
                         transformer=device,
                         mdl=mdl,
+                        problem_mapping=problem_mapping,
                         logger=logger,
                     )
                 else:
@@ -995,6 +932,7 @@ def assign_static_api_object_mapping_for_device(
                         grid=grid,
                         transformer=device,
                         mdl=mdl,
+                        problem_mapping=problem_mapping,
                         logger=logger,
                     )
                 else:
@@ -1011,30 +949,35 @@ def assign_static_api_object_mapping_for_device(
                     grid=grid,
                     line=device,
                     mdl=mdl,
+                    problem_mapping=problem_mapping,
                     logger=logger,
                 )
             elif device_type == DeviceType.HVDCLineDevice:
                 assign_hvdc_line_static_api_mapping(
                     hvdc_line=device,
                     mdl=mdl,
+                    problem_mapping=problem_mapping,
                     logger=logger,
                 )
             elif device_type == DeviceType.SeriesReactanceDevice:
                 assign_series_reactance_static_api_mapping(
                     series_reactance=device,
                     mdl=mdl,
+                    problem_mapping=problem_mapping,
                     logger=logger,
                 )
             elif device_type == DeviceType.SwitchDevice:
                 assign_switch_static_api_mapping(
                     switch=device,
                     mdl=mdl,
+                    problem_mapping=problem_mapping,
                     logger=logger,
                 )
             elif device_type == DeviceType.UpfcDevice:
                 assign_upfc_static_api_mapping(
                     upfc=device,
                     mdl=mdl,
+                    problem_mapping=problem_mapping,
                     logger=logger,
                 )
             else:
@@ -1047,6 +990,7 @@ def assign_static_api_object_mapping_for_device(
                         grid=grid,
                         line=device,
                         mdl=mdl,
+                        problem_mapping=problem_mapping,
                         logger=logger,
                     )
                 else:
@@ -1214,6 +1158,7 @@ def assign_3x3_static_matrix(
         keys: List[List[ParamPowerFlowReferenceType]],
         logger: Logger | None,
         device_name: str,
+        problem_mapping: Dict[Var, Const],
 ) -> None:
     """
     Assign a 3x3 static matrix through a 3x3 API-object key matrix.
@@ -1223,6 +1168,7 @@ def assign_3x3_static_matrix(
     :param keys: API-object key matrix.
     :param logger: Optional logger.
     :param device_name: Device name used in diagnostics.
+    :param problem_mapping: mapping to save parameters values in RMS problem
     :return: None.
     """
     row_index: int = 0
@@ -1237,6 +1183,7 @@ def assign_3x3_static_matrix(
                 value=float(matrix[row_index, col_index]),
                 logger=logger,
                 device_name=device_name,
+                problem_mapping=problem_mapping,
             )
             col_index += 1
 
@@ -1570,7 +1517,7 @@ def build_line_static_matrices(
     sbase_va: float = float(grid.Sbase) * 1.0e6
     zbase: float = (voltage_base * voltage_base) / sbase_va
     ybase: float = 1.0 / zbase
-    line_template: dev.OverheadLineType | dev.UndergroundLineType | dev.SequenceLineType = line.template
+    line_template: dev.OverheadLineType | dev.SequenceLineType | dev.UndergroundLineType = line.template
 
     if isinstance(line_template, OverheadLineType):
         r_full: np.ndarray
@@ -1636,9 +1583,9 @@ def build_line_static_matrices(
 
 def validate_line_static_matrices(
         line: dev.Line,
-        r_full: Vec,
-        l_full: Vec,
-        c_full: Vec,
+        r_full: np.ndarray,
+        l_full: np.ndarray,
+        c_full: np.ndarray,
         n_active: int,
         logger: Logger | None,
 ) -> bool:
@@ -1703,6 +1650,7 @@ def assign_common_injection_static_api_mapping(
         grid: MultiCircuit,
         device: ALL_DEV_TYPES,
         mdl: Block,
+        problem_mapping: Dict[Var, Const],
         logger: Logger | None,
 ) -> None:
     """
@@ -1715,33 +1663,35 @@ def assign_common_injection_static_api_mapping(
     :param grid: Static network model.
     :param device: Injection-like static device.
     :param mdl: EMT block receiving constants.
+    :param problem_mapping: mapping to save parameters values in RMS problem
     :param logger: Optional logger.
     :return: None.
     """
     device_name: str = str(device.name)
 
-    # if the device is active or not
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowReferenceType.device_active,
-        value=boolean_to_float(bool(device.active)),
+        value=1.0 if bool(device.active) else 0.0,
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
 
-    # connection type
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowReferenceType.injection_connection_type,
         value=shunt_connection_code(device.conn),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
 
 
 def assign_common_branch_static_api_mapping(
         device: ALL_DEV_TYPES,
         mdl: Block,
+        problem_mapping: Dict[Var, Const],
         logger: Logger | None,
 ) -> None:
     """
@@ -1749,6 +1699,7 @@ def assign_common_branch_static_api_mapping(
 
     :param device: Branch-like static device.
     :param mdl: EMT block receiving constants.
+    :param problem_mapping: mapping to save parameters values in RMS problem
     :param logger: Optional logger.
     :return: None.
     """
@@ -1757,9 +1708,10 @@ def assign_common_branch_static_api_mapping(
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowReferenceType.device_active,
-        value=boolean_to_float(bool(device.active)),
+        value=1.0 if bool(device.active) else 0.0,
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -1767,6 +1719,7 @@ def assign_common_branch_static_api_mapping(
         value=float(device.rate),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -1774,6 +1727,7 @@ def assign_common_branch_static_api_mapping(
         value=float(device.temp_base),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -1781,6 +1735,7 @@ def assign_common_branch_static_api_mapping(
         value=float(device.temp_oper),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -1788,6 +1743,7 @@ def assign_common_branch_static_api_mapping(
         value=float(device.alpha),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
 
 
@@ -1795,6 +1751,7 @@ def assign_load_static_api_mapping(
         grid: MultiCircuit,
         load: dev.Load,
         mdl: Block,
+        problem_mapping: Dict[Var, Const],
         logger: Logger | None,
 ) -> None:
     """
@@ -1803,6 +1760,7 @@ def assign_load_static_api_mapping(
     :param grid: Static network model.
     :param load: Load device.
     :param mdl: Load EMT block.
+    :param problem_mapping: Dictionary that stores each parameter with their value.
     :param logger: Optional logger.
     :return: None.
     """
@@ -1823,6 +1781,7 @@ def assign_load_static_api_mapping(
         grid=grid,
         device=load,
         mdl=mdl,
+        problem_mapping=problem_mapping,
         logger=logger,
     )
 
@@ -1832,16 +1791,18 @@ def assign_load_static_api_mapping(
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowReferenceType.Pl0,
-        value=mw_to_pu_on_grid_base(float(load.P), grid),
+        value=float(load.P) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowReferenceType.Ql0,
-        value=mvar_to_pu_on_grid_base(float(load.Q), grid),
+        value=float(load.Q) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -1849,6 +1810,7 @@ def assign_load_static_api_mapping(
         value=float(phase_p_pu_abc[0]),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -1856,6 +1818,7 @@ def assign_load_static_api_mapping(
         value=float(phase_p_pu_abc[1]),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -1863,6 +1826,7 @@ def assign_load_static_api_mapping(
         value=float(phase_p_pu_abc[2]),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -1870,6 +1834,7 @@ def assign_load_static_api_mapping(
         value=float(phase_q_pu_abc[0]),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -1877,6 +1842,7 @@ def assign_load_static_api_mapping(
         value=float(phase_q_pu_abc[1]),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -1884,20 +1850,23 @@ def assign_load_static_api_mapping(
         value=float(phase_q_pu_abc[2]),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowReferenceType.load_g_pu,
-        value=mw_to_pu_on_grid_base(float(load.G), grid),
+        value=float(load.G) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowReferenceType.load_b_pu,
-        value=mvar_to_pu_on_grid_base(float(load.B), grid),
+        value=float(load.B) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -1905,6 +1874,7 @@ def assign_load_static_api_mapping(
         value=float(phase_g_pu_abc[0]),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -1912,6 +1882,7 @@ def assign_load_static_api_mapping(
         value=float(phase_g_pu_abc[1]),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -1919,6 +1890,7 @@ def assign_load_static_api_mapping(
         value=float(phase_g_pu_abc[2]),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -1926,6 +1898,7 @@ def assign_load_static_api_mapping(
         value=float(phase_b_pu_abc[0]),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -1933,6 +1906,7 @@ def assign_load_static_api_mapping(
         value=float(phase_b_pu_abc[1]),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -1940,20 +1914,23 @@ def assign_load_static_api_mapping(
         value=float(phase_b_pu_abc[2]),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowReferenceType.load_ir_pu,
-        value=mw_to_pu_on_grid_base(float(load.Ir), grid),
+        value=float(load.Ir) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowReferenceType.load_ii_pu,
-        value=mvar_to_pu_on_grid_base(float(load.Ii), grid),
+        value=float(load.Ii) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -1961,6 +1938,7 @@ def assign_load_static_api_mapping(
         value=float(phase_ir_pu_abc[0]),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -1968,6 +1946,7 @@ def assign_load_static_api_mapping(
         value=float(phase_ir_pu_abc[1]),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -1975,6 +1954,7 @@ def assign_load_static_api_mapping(
         value=float(phase_ir_pu_abc[2]),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -1982,6 +1962,7 @@ def assign_load_static_api_mapping(
         value=float(phase_ii_pu_abc[0]),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -1989,6 +1970,7 @@ def assign_load_static_api_mapping(
         value=float(phase_ii_pu_abc[1]),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -1996,13 +1978,15 @@ def assign_load_static_api_mapping(
         value=float(phase_ii_pu_abc[2]),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowReferenceType.load_contract_power_pu,
-        value=mw_to_pu_on_grid_base(float(load._contract_power), grid),
+        value=float(load._contract_power) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
 
     if load.bus.is_dc:
@@ -2024,6 +2008,7 @@ def assign_load_static_api_mapping(
             value=dc_p_value,
             logger=logger,
             device_name=device_name,
+            problem_mapping=problem_mapping,
         )
         assign_api_mapping_value_if_present(
             mdl=mdl,
@@ -2031,9 +2016,10 @@ def assign_load_static_api_mapping(
             value=dc_g_value,
             logger=logger,
             device_name=device_name,
+            problem_mapping=problem_mapping,
         )
     else:
-        omega_base: float = omega_base_from_grid(grid)
+        omega_base: float = 2.0 * np.pi * float(grid.fBase)
         p_values: np.ndarray = phase_p_pu_abc
         q_values: np.ndarray = phase_q_pu_abc
 
@@ -2048,7 +2034,6 @@ def assign_load_static_api_mapping(
             ParamPowerFlowReferenceType.Ql0_C,
         ])
 
-        # TODO: static mapping should not put anything in event_dict! allow_event_parameters_target should not exist (ALWAYS FALSE)
         phase_index: int = 0
         while phase_index < 3:
             assign_api_mapping_value_if_present(
@@ -2057,7 +2042,7 @@ def assign_load_static_api_mapping(
                 value=float(p_values[phase_index]),
                 logger=logger,
                 device_name=device_name,
-                # allow_event_parameter_target=True,
+                problem_mapping=problem_mapping,
             )
             assign_api_mapping_value_if_present(
                 mdl=mdl,
@@ -2065,7 +2050,7 @@ def assign_load_static_api_mapping(
                 value=float(q_values[phase_index]),
                 logger=logger,
                 device_name=device_name,
-                # allow_event_parameter_target=True,
+                problem_mapping=problem_mapping,
             )
             phase_index += 1
 
@@ -2075,7 +2060,7 @@ def assign_load_static_api_mapping(
             value=omega_base,
             logger=logger,
             device_name=device_name,
-            # allow_event_parameter_target=True,
+            problem_mapping=problem_mapping,
         )
 
 
@@ -2083,6 +2068,7 @@ def assign_static_generator_static_api_mapping(
         grid: MultiCircuit,
         static_generator: dev.StaticGenerator,
         mdl: Block,
+        problem_mapping: Dict[Var, Const],
         logger: Logger | None,
 ) -> None:
     """
@@ -2095,7 +2081,7 @@ def assign_static_generator_static_api_mapping(
     :return: None.
     """
     device_name: str = str(static_generator.name)
-    omega_base: float = omega_base_from_grid(grid)
+    omega_base: float = 2.0 * np.pi * float(grid.fBase)
     phase_p_pu_abc: np.ndarray
     phase_q_pu_abc: np.ndarray
 
@@ -2105,22 +2091,25 @@ def assign_static_generator_static_api_mapping(
         grid=grid,
         device=static_generator,
         mdl=mdl,
+        problem_mapping=problem_mapping,
         logger=logger,
     )
 
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowReferenceType.Pl0,
-        value=mw_to_pu_on_grid_base(float(static_generator.P), grid),
+        value=float(static_generator.P) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowReferenceType.Ql0,
-        value=mvar_to_pu_on_grid_base(float(static_generator.Q), grid),
+        value=float(static_generator.Q) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2128,6 +2117,7 @@ def assign_static_generator_static_api_mapping(
         value=float(phase_p_pu_abc[0]),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2135,6 +2125,7 @@ def assign_static_generator_static_api_mapping(
         value=float(phase_p_pu_abc[1]),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2142,6 +2133,7 @@ def assign_static_generator_static_api_mapping(
         value=float(phase_p_pu_abc[2]),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2149,6 +2141,7 @@ def assign_static_generator_static_api_mapping(
         value=float(phase_q_pu_abc[0]),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2156,6 +2149,7 @@ def assign_static_generator_static_api_mapping(
         value=float(phase_q_pu_abc[1]),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2163,6 +2157,7 @@ def assign_static_generator_static_api_mapping(
         value=float(phase_q_pu_abc[2]),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2170,6 +2165,7 @@ def assign_static_generator_static_api_mapping(
         value=float(phase_p_pu_abc[0]),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2177,6 +2173,7 @@ def assign_static_generator_static_api_mapping(
         value=float(phase_p_pu_abc[1]),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2184,6 +2181,7 @@ def assign_static_generator_static_api_mapping(
         value=float(phase_p_pu_abc[2]),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2191,6 +2189,7 @@ def assign_static_generator_static_api_mapping(
         value=float(phase_q_pu_abc[0]),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2198,6 +2197,7 @@ def assign_static_generator_static_api_mapping(
         value=float(phase_q_pu_abc[1]),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2205,6 +2205,7 @@ def assign_static_generator_static_api_mapping(
         value=float(phase_q_pu_abc[2]),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2212,6 +2213,7 @@ def assign_static_generator_static_api_mapping(
         value=omega_base,
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2219,6 +2221,7 @@ def assign_static_generator_static_api_mapping(
         value=float(static_generator.Snom),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
 
 
@@ -2226,6 +2229,7 @@ def assign_external_grid_static_api_mapping(
         grid: MultiCircuit,
         external_grid: dev.ExternalGrid,
         mdl: Block,
+        problem_mapping: Dict[Var, Const],
         logger: Logger | None,
 ) -> None:
     """
@@ -2238,7 +2242,7 @@ def assign_external_grid_static_api_mapping(
     :return: None.
     """
     device_name: str = str(external_grid.name)
-    omega_base: float = omega_base_from_grid(grid)
+    omega_base: float = 2.0 * np.pi * float(grid.fBase)
     phase_p_pu_abc: np.ndarray
     phase_q_pu_abc: np.ndarray
 
@@ -2248,15 +2252,17 @@ def assign_external_grid_static_api_mapping(
         grid=grid,
         device=external_grid,
         mdl=mdl,
+        problem_mapping=problem_mapping,
         logger=logger,
     )
 
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowReferenceType.Pl0,
-        value=mw_to_pu_on_grid_base(float(external_grid.P), grid),
+        value=float(external_grid.P) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2264,6 +2270,7 @@ def assign_external_grid_static_api_mapping(
         value=float(phase_p_pu_abc[0]),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2271,6 +2278,7 @@ def assign_external_grid_static_api_mapping(
         value=float(phase_p_pu_abc[1]),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2278,6 +2286,7 @@ def assign_external_grid_static_api_mapping(
         value=float(phase_p_pu_abc[2]),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2285,6 +2294,7 @@ def assign_external_grid_static_api_mapping(
         value=float(phase_q_pu_abc[0]),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2292,6 +2302,7 @@ def assign_external_grid_static_api_mapping(
         value=float(phase_q_pu_abc[1]),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2299,6 +2310,7 @@ def assign_external_grid_static_api_mapping(
         value=float(phase_q_pu_abc[2]),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2306,13 +2318,15 @@ def assign_external_grid_static_api_mapping(
         value=omega_base,
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowReferenceType.Ql0,
-        value=mvar_to_pu_on_grid_base(float(external_grid.Q), grid),
+        value=float(external_grid.Q) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2320,6 +2334,7 @@ def assign_external_grid_static_api_mapping(
         value=float(external_grid.Vm),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2327,6 +2342,7 @@ def assign_external_grid_static_api_mapping(
         value=float(external_grid.Va),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2334,6 +2350,7 @@ def assign_external_grid_static_api_mapping(
         value=external_grid_mode_code(external_grid.mode),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
 
 
@@ -2341,6 +2358,7 @@ def assign_shunt_static_api_mapping(
         grid: MultiCircuit,
         shunt: dev.Shunt,
         mdl: Block,
+        problem_mapping: Dict[Var, Const],
         logger: Logger | None,
 ) -> None:
     """
@@ -2362,30 +2380,31 @@ def assign_shunt_static_api_mapping(
         grid=grid,
         device=shunt,
         mdl=mdl,
+        problem_mapping=problem_mapping,
         logger=logger,
     )
 
     assign_api_mapping_value_if_present(mdl=mdl,
                                         key=ParamPowerFlowReferenceType.shunt_g_pu,
-                                        value=mw_to_pu_on_grid_base(float(shunt.G), grid),
+                                        value=float(shunt.G) / float(grid.Sbase),
                                         logger=logger,
                                         device_name=device_name
                                         )
     assign_api_mapping_value_if_present(mdl=mdl,
                                         key=ParamPowerFlowReferenceType.shunt_b_pu,
-                                        value=mvar_to_pu_on_grid_base(float(shunt.B), grid),
+                                        value=float(shunt.B) / float(grid.Sbase),
                                         logger=logger,
                                         device_name=device_name
                                         )
     assign_api_mapping_value_if_present(mdl=mdl,
                                         key=ParamPowerFlowReferenceType.shunt_g0_pu,
-                                        value=mw_to_pu_on_grid_base(float(shunt.G0), grid),
+                                        value=float(shunt.G0) / float(grid.Sbase),
                                         logger=logger,
                                         device_name=device_name
                                         )
     assign_api_mapping_value_if_present(mdl=mdl,
                                         key=ParamPowerFlowReferenceType.shunt_b0_pu,
-                                        value=mvar_to_pu_on_grid_base(float(shunt.B0), grid),
+                                        value=float(shunt.B0) / float(grid.Sbase),
                                         logger=logger,
                                         device_name=device_name
                                         )
@@ -2431,11 +2450,13 @@ def assign_controllable_shunt_static_api_mapping(
         grid: MultiCircuit,
         controllable_shunt: dev.ControllableShunt,
         mdl: Block,
+        problem_mapping: Dict[Var, Const],
         logger: Logger | None,
 ) -> None:
     """
     Assign static ControllableShunt parameters exposed by ``mdl.api_obj_mapping``.
 
+    :param problem_mapping:
     :param grid: Static network model.
     :param controllable_shunt: Controllable shunt device.
     :param mdl: EMT block.
@@ -2447,6 +2468,7 @@ def assign_controllable_shunt_static_api_mapping(
         grid=grid,
         shunt=controllable_shunt,
         mdl=mdl,
+        problem_mapping=problem_mapping,
         logger=logger,
     )
     assign_api_mapping_value_if_present(
@@ -2455,6 +2477,7 @@ def assign_controllable_shunt_static_api_mapping(
         value=float(controllable_shunt.step),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2462,6 +2485,7 @@ def assign_controllable_shunt_static_api_mapping(
         value=float(controllable_shunt.Vset),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2469,6 +2493,7 @@ def assign_controllable_shunt_static_api_mapping(
         value=float(controllable_shunt.Vmin),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2476,34 +2501,39 @@ def assign_controllable_shunt_static_api_mapping(
         value=float(controllable_shunt.Vmax),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowReferenceType.controllable_shunt_gmin_pu,
-        value=mw_to_pu_on_grid_base(float(controllable_shunt.Gmin), grid),
+        value=float(controllable_shunt.Gmin) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowReferenceType.controllable_shunt_gmax_pu,
-        value=mw_to_pu_on_grid_base(float(controllable_shunt.Gmax), grid),
+        value=float(controllable_shunt.Gmax) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowReferenceType.controllable_shunt_bmin_pu,
-        value=mvar_to_pu_on_grid_base(float(controllable_shunt.Bmin), grid),
+        value=float(controllable_shunt.Bmin) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowReferenceType.controllable_shunt_bmax_pu,
-        value=mvar_to_pu_on_grid_base(float(controllable_shunt.Bmax), grid),
+        value=float(controllable_shunt.Bmax) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2511,6 +2541,7 @@ def assign_controllable_shunt_static_api_mapping(
         value=float(controllable_shunt.control_mode.idx()),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
 
 
@@ -2518,6 +2549,7 @@ def assign_current_injection_static_api_mapping(
         grid: MultiCircuit,
         current_injection: dev.CurrentInjection,
         mdl: Block,
+        problem_mapping: Dict[Var, Const],
         logger: Logger | None,
 ) -> None:
     """
@@ -2542,18 +2574,19 @@ def assign_current_injection_static_api_mapping(
         grid=grid,
         device=current_injection,
         mdl=mdl,
+        problem_mapping=problem_mapping,
         logger=logger,
     )
 
     assign_api_mapping_value_if_present(mdl=mdl,
                                         key=ParamPowerFlowReferenceType.current_injection_ir_pu,
-                                        value=mw_to_pu_on_grid_base(float(current_injection.Ir), grid),
+                                        value=float(current_injection.Ir) / float(grid.Sbase),
                                         logger=logger,
                                         device_name=device_name
                                         )
     assign_api_mapping_value_if_present(mdl=mdl,
                                         key=ParamPowerFlowReferenceType.current_injection_ii_pu,
-                                        value=mvar_to_pu_on_grid_base(float(current_injection.Ii), grid),
+                                        value=float(current_injection.Ii) / float(grid.Sbase),
                                         logger=logger,
                                         device_name=device_name
                                         )
@@ -2599,11 +2632,13 @@ def assign_generator_static_api_mapping(
         grid: MultiCircuit,
         generator: dev.Generator,
         mdl: Block,
+        problem_mapping: Dict[Var, Const],
         logger: Logger | None,
 ) -> None:
     """
     Assign static generator parameters exposed by ``mdl.api_obj_mapping``.
 
+    :param problem_mapping:
     :param grid: Static network model.
     :param generator: Generator device.
     :param mdl: Generator EMT block.
@@ -2611,12 +2646,13 @@ def assign_generator_static_api_mapping(
     :return: None.
     """
     device_name: str = str(generator.name)
-    omega_base: float = omega_base_from_grid(grid)
+    omega_base: float = 2.0 * np.pi * float(grid.fBase)
 
     assign_common_injection_static_api_mapping(
         grid=grid,
         device=generator,
         mdl=mdl,
+        problem_mapping=problem_mapping,
         logger=logger,
     )
 
@@ -2628,13 +2664,15 @@ def assign_generator_static_api_mapping(
         value=omega_base,
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowReferenceType.fn,
-        value=frequency_base_hz_from_grid(grid),
+        value=float(grid.fBase),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2642,6 +2680,7 @@ def assign_generator_static_api_mapping(
         value=omega_base,
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2649,6 +2688,7 @@ def assign_generator_static_api_mapping(
         value=float(generator.R1),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2656,6 +2696,7 @@ def assign_generator_static_api_mapping(
         value=float(generator.X1),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2663,48 +2704,55 @@ def assign_generator_static_api_mapping(
         value=float(generator.X0),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowReferenceType.generator_p_pu,
-        value=mw_to_pu_on_grid_base(float(generator.P), grid),
+        value=float(generator.P) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowReferenceType.generator_q_pu,
-        value=mvar_to_pu_on_grid_base(float(generator.Q), grid),
+        value=float(generator.Q) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowReferenceType.Pmin,
-        value=mw_to_pu_on_grid_base(float(generator.Pmin), grid),
+        value=float(generator.Pmin) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowReferenceType.Pmax,
-        value=mw_to_pu_on_grid_base(float(generator.Pmax), grid),
+        value=float(generator.Pmax) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowReferenceType.generator_qmin_pu,
-        value=mvar_to_pu_on_grid_base(float(generator.Qmin), grid),
+        value=float(generator.Qmin) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowReferenceType.generator_qmax_pu,
-        value=mvar_to_pu_on_grid_base(float(generator.Qmax), grid),
+        value=float(generator.Qmax) / float(grid.Sbase),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2712,6 +2760,7 @@ def assign_generator_static_api_mapping(
         value=float(generator.Pf),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2719,6 +2768,7 @@ def assign_generator_static_api_mapping(
         value=float(generator.Vset),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2726,6 +2776,7 @@ def assign_generator_static_api_mapping(
         value=float(generator.Snom),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2733,6 +2784,7 @@ def assign_generator_static_api_mapping(
         value=float(generator.R0),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2740,6 +2792,7 @@ def assign_generator_static_api_mapping(
         value=float(generator.R2),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2747,34 +2800,39 @@ def assign_generator_static_api_mapping(
         value=float(generator.X2),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowReferenceType.generator_control_mode,
-        value=float(generator.control_mode.idx()),
+        value=1.0 if bool(generator.is_controlled) else 0.0,
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowReferenceType.generator_enabled_dispatch,
-        value=boolean_to_float(bool(generator.enabled_dispatch)),
+        value=1.0 if bool(generator.enabled_dispatch) else 0.0,
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowReferenceType.generator_must_run,
-        value=boolean_to_float(bool(generator.must_run)),
+        value=1.0 if bool(generator.must_run) else 0.0,
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowReferenceType.generator_use_reactive_power_curve,
-        value=boolean_to_float(bool(generator.use_reactive_power_curve)),
+        value=1.0 if bool(generator.use_reactive_power_curve) else 0.0,
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2782,6 +2840,7 @@ def assign_generator_static_api_mapping(
         value=float(generator.Sbase),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2789,6 +2848,7 @@ def assign_generator_static_api_mapping(
         value=float(generator.freq),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
 
 
@@ -2796,11 +2856,13 @@ def assign_battery_static_api_mapping(
         grid: MultiCircuit,
         battery: dev.Battery,
         mdl: Block,
+        problem_mapping: Dict[Var, Const],
         logger: Logger | None,
 ) -> None:
     """
     Assign static Battery parameters exposed by ``mdl.api_obj_mapping``.
 
+    :param problem_mapping:
     :param grid: Static network model.
     :param battery: Battery device.
     :param mdl: EMT block.
@@ -2812,6 +2874,7 @@ def assign_battery_static_api_mapping(
         grid=grid,
         generator=battery,
         mdl=mdl,
+        problem_mapping=problem_mapping,
         logger=logger,
     )
     assign_api_mapping_value_if_present(
@@ -2820,6 +2883,7 @@ def assign_battery_static_api_mapping(
         value=float(battery.Enom),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2827,6 +2891,7 @@ def assign_battery_static_api_mapping(
         value=float(battery.soc_0),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2834,6 +2899,7 @@ def assign_battery_static_api_mapping(
         value=float(battery.max_soc),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2841,6 +2907,7 @@ def assign_battery_static_api_mapping(
         value=float(battery.min_soc),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2848,6 +2915,7 @@ def assign_battery_static_api_mapping(
         value=float(battery.charge_efficiency),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2855,6 +2923,7 @@ def assign_battery_static_api_mapping(
         value=float(battery.discharge_efficiency),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2862,6 +2931,7 @@ def assign_battery_static_api_mapping(
         value=float(battery.charge_per_cycle),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2869,6 +2939,7 @@ def assign_battery_static_api_mapping(
         value=float(battery.discharge_per_cycle),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
 
 
@@ -2876,6 +2947,7 @@ def assign_vsc_static_api_mapping(
         grid: MultiCircuit,
         vsc: dev.VSC,
         mdl: Block,
+        problem_mapping: Dict[Var, Const],
         logger: Logger | None,
 ) -> None:
     """
@@ -2885,6 +2957,7 @@ def assign_vsc_static_api_mapping(
     losses are intentionally not assigned here. They are initialization data, not
     static API-object data.
 
+    :param problem_mapping:
     :param grid: Static network model.
     :param vsc: VSC device.
     :param mdl: VSC EMT block.
@@ -2892,12 +2965,40 @@ def assign_vsc_static_api_mapping(
     :return: None.
     """
     device_name: str = str(vsc.name)
-    omega_base: float = omega_base_from_grid(grid)
+    omega_base: float = 2.0 * np.pi * float(grid.fBase)
 
     assign_common_branch_static_api_mapping(
         device=vsc,
         mdl=mdl,
+        problem_mapping=problem_mapping,
         logger=logger,
+    )
+
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowReferenceType.alpha1,
+        value=float(vsc.alpha1),
+        logger=logger,
+        device_name=device_name,
+        problem_mapping=problem_mapping,
+    )
+
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowReferenceType.alpha2,
+        value=float(vsc.alpha2),
+        logger=logger,
+        device_name=device_name,
+        problem_mapping=problem_mapping,
+    )
+
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowReferenceType.alpha3,
+        value=float(vsc.alpha3),
+        logger=logger,
+        device_name=device_name,
+        problem_mapping=problem_mapping,
     )
 
     assign_api_mapping_value_if_present(
@@ -2906,6 +3007,7 @@ def assign_vsc_static_api_mapping(
         value=float(grid.Sbase),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2913,6 +3015,7 @@ def assign_vsc_static_api_mapping(
         value=omega_base,
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2920,6 +3023,7 @@ def assign_vsc_static_api_mapping(
         value=converter_control_code(vsc.control1),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2927,6 +3031,7 @@ def assign_vsc_static_api_mapping(
         value=converter_control_code(vsc.control2),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2934,6 +3039,7 @@ def assign_vsc_static_api_mapping(
         value=float(vsc.control1_val),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2941,6 +3047,7 @@ def assign_vsc_static_api_mapping(
         value=float(vsc.control2_val),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2948,6 +3055,7 @@ def assign_vsc_static_api_mapping(
         value=float(vsc.alpha1),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2955,6 +3063,7 @@ def assign_vsc_static_api_mapping(
         value=float(vsc.alpha2),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2962,6 +3071,7 @@ def assign_vsc_static_api_mapping(
         value=float(vsc.alpha3),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2969,6 +3079,7 @@ def assign_vsc_static_api_mapping(
         value=float(vsc.control1_val_droop),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -2976,12 +3087,14 @@ def assign_vsc_static_api_mapping(
         value=float(vsc.min_ac_voltage),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
 
 
 def assign_dc_line_static_api_mapping(
         dc_line: DcLine,
         mdl: Block,
+        problem_mapping: Dict[Var, Const],
         logger: Logger | None,
 ) -> None:
     """
@@ -3000,6 +3113,7 @@ def assign_dc_line_static_api_mapping(
     assign_common_branch_static_api_mapping(
         device=dc_line,
         mdl=mdl,
+        problem_mapping=problem_mapping,
         logger=logger,
     )
 
@@ -3009,6 +3123,7 @@ def assign_dc_line_static_api_mapping(
         value=conductance_value,
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -3016,6 +3131,7 @@ def assign_dc_line_static_api_mapping(
         value=0.0,
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -3023,6 +3139,7 @@ def assign_dc_line_static_api_mapping(
         value=0.0,
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -3030,6 +3147,7 @@ def assign_dc_line_static_api_mapping(
         value=resistance_value,
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -3037,6 +3155,7 @@ def assign_dc_line_static_api_mapping(
         value=float(dc_line.length),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
 
 
@@ -3044,6 +3163,7 @@ def assign_transformer2w_static_api_mapping(
         grid: MultiCircuit,
         transformer: Transformer2W,
         mdl: Block,
+        problem_mapping: Dict[Var, Const],
         logger: Logger | None,
 ) -> None:
     """
@@ -3053,16 +3173,94 @@ def assign_transformer2w_static_api_mapping(
     :param transformer: Two-winding transformer device.
     :param mdl: Transformer EMT block.
     :param logger: Optional logger.
+    :param problem_mapping:
     :return: None.
     """
+
+    vtap_f, vtap_t = transformer.get_virtual_taps()
+
     assign_common_branch_static_api_mapping(
         device=transformer,
         mdl=mdl,
+        problem_mapping=problem_mapping,
         logger=logger,
     )
+
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowReferenceType.g,
+        value=float(transformer.R / (transformer.R ** 2 + transformer.X ** 2)),
+        logger=logger,
+        device_name=transformer.name,
+        problem_mapping=problem_mapping,
+    )
+
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowReferenceType.b,
+        value=float(float(-transformer.X / (transformer.R ** 2 + transformer.X ** 2))),
+        logger=logger,
+        device_name=transformer.name,
+        problem_mapping=problem_mapping,
+    )
+
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowReferenceType.bsh,
+        value=float(transformer.B),
+        logger=logger,
+        device_name=transformer.name,
+        problem_mapping=problem_mapping,
+    )
+
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowReferenceType.gFe,
+        value=float(transformer.G),
+        logger=logger,
+        device_name=transformer.name,
+        problem_mapping=problem_mapping,
+    )
+
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowReferenceType.vtap_f,
+        value=float(vtap_f),
+        logger=logger,
+        device_name=transformer.name,
+        problem_mapping=problem_mapping,
+    )
+
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowReferenceType.vtap_t,
+        value=float(vtap_t),
+        logger=logger,
+        device_name=transformer.name,
+        problem_mapping=problem_mapping,
+    )
+
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowReferenceType.tap_module,
+        value=float(transformer.tap_module),
+        logger=logger,
+        device_name=transformer.name,
+        problem_mapping=problem_mapping,
+    )
+
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowReferenceType.transformer_tap_ratio,
+        value=float(transformer.tap_phase),
+        logger=logger,
+        device_name=transformer.name,
+        problem_mapping=problem_mapping,
+    )
+
     device_name: str = str(transformer.name)
     eps_value: float = 1.0e-12
-    omega_base: float = omega_base_from_grid(grid)
+    omega_base: float = 2.0 * np.pi * float(grid.fBase)
     sn_value: float = max(float(transformer.Sn), 1.0e-9)
     pcu_kw_value: float = max(float(transformer.Pcu), 0.0)
     pfe_kw_value: float = max(float(transformer.Pfe), 0.0)
@@ -3126,6 +3324,7 @@ def assign_transformer2w_static_api_mapping(
         value=omega_base,
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -3133,6 +3332,7 @@ def assign_transformer2w_static_api_mapping(
         value=sn_value,
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -3140,6 +3340,7 @@ def assign_transformer2w_static_api_mapping(
         value=hv_nominal_kv,
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -3147,6 +3348,7 @@ def assign_transformer2w_static_api_mapping(
         value=lv_nominal_kv,
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -3154,6 +3356,7 @@ def assign_transformer2w_static_api_mapping(
         value=float(transformer.vector_group_number),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -3161,6 +3364,7 @@ def assign_transformer2w_static_api_mapping(
         value=i0_pct_value,
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -3168,6 +3372,7 @@ def assign_transformer2w_static_api_mapping(
         value=pfe_kw_value,
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -3175,6 +3380,7 @@ def assign_transformer2w_static_api_mapping(
         value=vsc_pct_value,
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -3182,6 +3388,7 @@ def assign_transformer2w_static_api_mapping(
         value=short_circuit_resistance_pct,
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -3189,6 +3396,7 @@ def assign_transformer2w_static_api_mapping(
         value=pcu_kw_value,
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -3196,6 +3404,7 @@ def assign_transformer2w_static_api_mapping(
         value=tap_module_value,
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -3203,6 +3412,7 @@ def assign_transformer2w_static_api_mapping(
         value=nominal_voltage_ratio,
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
@@ -3210,6 +3420,7 @@ def assign_transformer2w_static_api_mapping(
         value=total_voltage_ratio,
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
 
     # ``transformer_tap_ratio`` is preserved as a legacy alias for the plain tap
@@ -3220,6 +3431,7 @@ def assign_transformer2w_static_api_mapping(
         value=tap_module_value,
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
 
     if transformer_equivalent_circuit_values_are_requested(mdl=mdl):
@@ -3269,6 +3481,7 @@ def assign_transformer2w_static_api_mapping(
                     value=r1_value,
                     logger=logger,
                     device_name=device_name,
+                    problem_mapping=problem_mapping,
                 )
                 assign_api_mapping_value_if_present(
                     mdl=mdl,
@@ -3276,6 +3489,7 @@ def assign_transformer2w_static_api_mapping(
                     value=r2_value,
                     logger=logger,
                     device_name=device_name,
+                    problem_mapping=problem_mapping,
                 )
                 assign_api_mapping_value_if_present(
                     mdl=mdl,
@@ -3283,6 +3497,7 @@ def assign_transformer2w_static_api_mapping(
                     value=l1_value,
                     logger=logger,
                     device_name=device_name,
+                    problem_mapping=problem_mapping,
                 )
                 assign_api_mapping_value_if_present(
                     mdl=mdl,
@@ -3290,6 +3505,7 @@ def assign_transformer2w_static_api_mapping(
                     value=l2_value,
                     logger=logger,
                     device_name=device_name,
+                    problem_mapping=problem_mapping,
                 )
                 assign_api_mapping_value_if_present(
                     mdl=mdl,
@@ -3297,6 +3513,7 @@ def assign_transformer2w_static_api_mapping(
                     value=mutual_inductance,
                     logger=logger,
                     device_name=device_name,
+                    problem_mapping=problem_mapping,
                 )
                 assign_api_mapping_value_if_present(
                     mdl=mdl,
@@ -3304,6 +3521,7 @@ def assign_transformer2w_static_api_mapping(
                     value=g_core,
                     logger=logger,
                     device_name=device_name,
+                    problem_mapping=problem_mapping,
                 )
     else:
         pass
@@ -3314,6 +3532,7 @@ def assign_transformer2w_static_api_mapping(
         keys=get_transformer_from_connection_keys(),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
     assign_3x3_static_matrix(
         mdl=mdl,
@@ -3321,6 +3540,7 @@ def assign_transformer2w_static_api_mapping(
         keys=get_transformer_to_connection_keys(),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
 
 
@@ -3328,6 +3548,7 @@ def assign_line_static_api_mapping(
         grid: MultiCircuit,
         line: dev.Line,
         mdl: Block,
+        problem_mapping: Dict[Var, Const],
         logger: Logger | None,
 ) -> None:
     """
@@ -3337,25 +3558,73 @@ def assign_line_static_api_mapping(
     contract. Exposed inactive-phase entries are explicitly zeroed, preserving the
     previous template semantics while allowing partial key subsets.
 
+    :param problem_mapping:
     :param grid: Static network model.
     :param line: Line-like branch device.
     :param mdl: Line EMT block.
     :param logger: Optional logger.
     :return: None.
     """
-    # todo: make sure it also works for rms
     device_name: str = str(line.name)
     assign_common_branch_static_api_mapping(
         device=line,
         mdl=mdl,
+        problem_mapping=problem_mapping,
         logger=logger,
     )
+
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowReferenceType.g,
+        value=float(line.R / (line.R ** 2 + line.X ** 2)),
+        logger=logger,
+        device_name=device_name,
+        problem_mapping=problem_mapping,
+    )
+
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowReferenceType.b,
+        value=float(float(-line.X / (line.R ** 2 + line.X ** 2))),
+        logger=logger,
+        device_name=device_name,
+        problem_mapping=problem_mapping,
+    )
+
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowReferenceType.bsh,
+        value=float(line.B),
+        logger=logger,
+        device_name=device_name,
+        problem_mapping=problem_mapping,
+    )
+
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowReferenceType.r,
+        value=float(line.R),
+        logger=logger,
+        device_name=device_name,
+        problem_mapping=problem_mapping,
+    )
+
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowReferenceType.l,
+        value=float(line.X),
+        logger=logger,
+        device_name=device_name,
+        problem_mapping=problem_mapping,
+    )
+
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowReferenceType.line_length_km,
         value=float(line.length),
         logger=logger,
         device_name=device_name,
+        problem_mapping=problem_mapping,
     )
 
     active_indices: List[int] = get_line_active_global_indices(line)
@@ -3425,6 +3694,7 @@ def assign_line_static_api_mapping(
                             value=0.0,
                             logger=logger,
                             device_name=device_name,
+                            problem_mapping=problem_mapping,
                         )
                         assign_api_mapping_value_if_present(
                             mdl=mdl,
@@ -3432,6 +3702,7 @@ def assign_line_static_api_mapping(
                             value=0.0,
                             logger=logger,
                             device_name=device_name,
+                            problem_mapping=problem_mapping,
                         )
                         assign_api_mapping_value_if_present(
                             mdl=mdl,
@@ -3439,6 +3710,7 @@ def assign_line_static_api_mapping(
                             value=0.0,
                             logger=logger,
                             device_name=device_name,
+                            problem_mapping=problem_mapping,
                         )
                         global_col += 1
 
@@ -3460,6 +3732,7 @@ def assign_line_static_api_mapping(
                             value=float(r_full[reduced_row, reduced_col]),
                             logger=logger,
                             device_name=device_name,
+                            problem_mapping=problem_mapping,
                         )
                         assign_api_mapping_value_if_present(
                             mdl=mdl,
@@ -3467,6 +3740,7 @@ def assign_line_static_api_mapping(
                             value=float(linv_full[reduced_row, reduced_col]),
                             logger=logger,
                             device_name=device_name,
+                            problem_mapping=problem_mapping,
                         )
                         assign_api_mapping_value_if_present(
                             mdl=mdl,
@@ -3474,6 +3748,7 @@ def assign_line_static_api_mapping(
                             value=float(c_full[reduced_row, reduced_col]),
                             logger=logger,
                             device_name=device_name,
+                            problem_mapping=problem_mapping,
                         )
                         reduced_col += 1
 
@@ -3485,6 +3760,7 @@ def assign_line_static_api_mapping(
 def assign_hvdc_line_static_api_mapping(
         hvdc_line: dev.HvdcLine,
         mdl: Block,
+        problem_mapping: Dict[Var, Const],
         logger: Logger | None,
 ) -> None:
     """
@@ -3507,6 +3783,7 @@ def assign_hvdc_line_static_api_mapping(
 def assign_series_reactance_static_api_mapping(
         series_reactance: dev.SeriesReactance,
         mdl: Block,
+        problem_mapping: Dict[Var, Const],
         logger: Logger | None,
 ) -> None:
     """
@@ -3517,6 +3794,7 @@ def assign_series_reactance_static_api_mapping(
 
     :param series_reactance: Series-reactance device.
     :param mdl: EMT block.
+    :param problem_mapping: Dictionary with static parameters and their values
     :param logger: Optional logger.
     :return: None.
     """
@@ -3529,28 +3807,66 @@ def assign_series_reactance_static_api_mapping(
 def assign_switch_static_api_mapping(
         switch: dev.Switch,
         mdl: Block,
+        problem_mapping: Dict[Var, Const],
         logger: Logger | None,
 ) -> None:
     """
-    Intentionally leave switch static mapping as a no-op.
+    Assign static switch parameters exposed by ``mdl.api_obj_mapping``.
 
-    Reachability exists in the EMT builder, but there is no established EMT
-    template/static-key contract for ``Switch`` yet.
+    The EMT switch template uses a closed-state conductance parameter in its
+    dynamic current equation. The static switch device exposes series
+    resistance and reactance in p.u., therefore the EMT template must receive
+    the real part of the corresponding series admittance so the reduced EMT
+    branch remains consistent with the static device data.
 
     :param switch: Switch device.
     :param mdl: EMT block.
+    :param problem_mapping: Dictionary with static parameters and their values
     :param logger: Optional logger.
     :return: None.
     """
-    if logger is None:
-        pass
+    device_name: str = str(switch.name)
+    resistance_value: float = float(switch.R)
+    reactance_value: float = float(switch.X)
+    impedance_sq_value: float = resistance_value * resistance_value + reactance_value * reactance_value
+    eps_value: float = 1.0e-12
+    conductance_value: float
+
+    # The switch still inherits the common branch static fields such as active
+    # state and rating. Those values are assigned first so the EMT branch keeps
+    # the same metadata contract as the other branch-like templates.
+    assign_common_branch_static_api_mapping(
+        device=switch,
+        mdl=mdl,
+        problem_mapping=problem_mapping,
+        logger=logger,
+    )
+
+    # The reduced EMT switch stores only a conductance, so the static R/X data
+    # must be projected to the real part of the branch admittance. The epsilon
+    # guard avoids a singular division for near-ideal static switches.
+    if impedance_sq_value > eps_value:
+        conductance_value = resistance_value / impedance_sq_value
     else:
-        pass
+        conductance_value = 1.0 / eps_value
+
+    # The EMT template explicitly requests this quantity through the static
+    # ParamPowerFlowReferenceType.g key, so the standard static API-object
+    # assignment path must populate the constant-parameter mapping.
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowReferenceType.g,
+        value=conductance_value,
+        logger=logger,
+        device_name=device_name,
+        problem_mapping=problem_mapping,
+    )
 
 
 def assign_upfc_static_api_mapping(
         upfc: dev.UPFC,
         mdl: Block,
+        problem_mapping: Dict[Var, Const],
         logger: Logger | None,
 ) -> None:
     """
@@ -3561,6 +3877,7 @@ def assign_upfc_static_api_mapping(
 
     :param upfc: UPFC device.
     :param mdl: EMT block.
+    :param problem_mapping: Dictionary with static parameters and their values
     :param logger: Optional logger.
     :return: None.
     """

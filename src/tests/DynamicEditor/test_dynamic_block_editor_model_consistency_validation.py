@@ -12,6 +12,8 @@ from PySide6 import QtWidgets
 import VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor as dynamic_block_editor_module
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import ValidationSection
+from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Utils.Symbolic.block import Block
@@ -241,7 +243,7 @@ def _set_editor_root_interface_refs(editor: DynamicBlockEditorGUI, refs: list[Va
     editor.rebuild_scene_from_diagram()
 
 
-def _build_editor(api_object: object) -> DynamicBlockEditorGUI:
+def _build_editor(api_object: ALL_DEV_TYPES) -> DynamicBlockEditorGUI:
     """
     Build one EMT dynamic block editor for validation tests.
 
@@ -253,6 +255,7 @@ def _build_editor(api_object: object) -> DynamicBlockEditorGUI:
         var_factory=VarFactory(),
         block=Block(),
         api_object=api_object,
+        circuit=MultiCircuit(),
         mode=DynamicSimulationMode.EMT,
         templates_list=list(),
         main_editor=False,

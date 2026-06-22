@@ -8,6 +8,7 @@ from typing import Dict, List, Tuple
 import numpy as np
 
 import VeraGridEngine.api as gce
+import VeraGridEngine.Templates as tem
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
@@ -952,6 +953,52 @@ def _get_var_index_by_name(problem: EmtProblemTemplate, var_name: str) -> int:
     raise KeyError(f"Variable '{var_name}' was not found")
 
 
+def add_emt_model_catalogue(grid):
+    """
+    Create default catalogue of EMT values
+    :return:
+    """
+    grid.emt_models += [
+
+        tem.get_simple_generator_emt_template(vf=grid.var_factory),
+        tem.get_generator_sauer_pai_type_emt_template(vf=grid.var_factory),
+        tem.get_governor_emt(vf=grid.var_factory),
+        tem.get_stabilizer_emt(vf=grid.var_factory),
+        tem.get_exciter_emt(vf=grid.var_factory),
+        tem.get_complete_generator_template_emt(vf=grid.var_factory),
+
+        tem.get_generator_thevenin_rl_emt_template_with_ref(vf=grid.var_factory),
+        tem.get_emt_ideal_converter(vf=grid.var_factory),
+        tem.get_full_pseudo_emt_converter(vf=grid.var_factory),
+        tem.get_switched_emt_converter(vf=grid.var_factory),
+        tem.get_bridge_2level_3ph_emt_template(vf=grid.var_factory),
+        tem.get_bridge_filter_2level_3ph_emt_template(vf=grid.var_factory),
+        tem.get_bridge_filter_control_2level_3ph_emt_template(vf=grid.var_factory),
+        tem.get_dc_load_emt_template(vf=grid.var_factory),
+        # tem.get_dc_line_emt_template(vf=self._var_factory),
+        tem.get_dc_line_with_power_input_emt_template(vf=grid.var_factory),
+        tem.get_valve_emt_template(vf=grid.var_factory),
+        tem.get_transformer_emt_template(vf=grid.var_factory),
+        tem.get_xfmr_emt_template(vf=grid.var_factory),
+        tem.get_induction_motor_single_cage_emt_template(vf=grid.var_factory),
+        tem.get_induction_motor_double_cage_emt_template(vf=grid.var_factory),
+        tem.get_bess_avm_grid_following_emt_template(vf=grid.var_factory),
+        tem.get_pv_avm_grid_following_emt_template(vf=grid.var_factory),
+        tem.get_pv_avm_boost_grid_following_emt_template(vf=grid.var_factory),
+        tem.get_gfm_emt_template(vf=grid.var_factory),
+
+        # the following are functions that generate templates depending on phases or things
+        tem.get_shunt_c_emt_template(vf=grid.var_factory, phA=True, phB=True, phC=True),
+        tem.get_shunt_l_emt_template(vf=grid.var_factory, phA=True, phB=True, phC=True),
+        tem.get_shunt_r_emt_template(vf=grid.var_factory, phA=True, phB=True, phC=True),
+        tem.get_exponential_load_emt(vf=grid.var_factory, phA=True, phB=True, phC=True),
+        tem.get_load_ZIP_emt_template(vf=grid.var_factory, phA=True, phB=True, phC=True),
+        tem.get_pi_line_emt_template(vf=grid.var_factory, phN=False, phA=True, phB=True, phC=True),
+        tem.get_bergeron_line_emt_template(vf=grid.var_factory, phN=False, phA=True, phB=True, phC=True),
+
+    ]
+
+
 def test_generic_valve_template_is_visible_for_multiple_host_types() -> None:
     """
     Verify that the EMT valve template is exposed as a generic reusable template.
@@ -959,7 +1006,7 @@ def test_generic_valve_template_is_visible_for_multiple_host_types() -> None:
     :return: None.
     """
     grid: gce.MultiCircuit = gce.MultiCircuit()
-    grid.add_emt_model_catalogue()
+    add_emt_model_catalogue(grid)
 
     vsc_templates: List[object] = grid.get_dynamic_templates_by_device_type_and_domain(DeviceType.VscDevice, FmuTemplateDomain.EMT)
     dc_line_templates: List[object] = grid.get_dynamic_templates_by_device_type_and_domain(DeviceType.DCLineDevice, FmuTemplateDomain.EMT)
