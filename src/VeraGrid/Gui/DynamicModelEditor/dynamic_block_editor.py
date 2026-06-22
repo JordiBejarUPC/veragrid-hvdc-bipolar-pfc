@@ -115,6 +115,7 @@ from VeraGrid.Gui.DynamicModelEditor.fault_emt_dialog import FaultEmtDialog
 from VeraGrid.Gui.Icons.icon_associations import device_type_icons
 from VeraGrid.Gui.wrappable_table_model import WrappableTableModel
 from VeraGrid.Gui.gui_functions import ComboDelegate, TextDelegate
+from VeraGrid.Gui.messages import yes_no_question
 from VeraGrid.Gui.toast_widget import ToastManager
 from VeraGridEngine.Utils.Symbolic.symbolic import (symbolic_to_string, string_to_symbolic,
                                                     get_symbolic_parser_function_names,
@@ -1992,6 +1993,47 @@ def copy_block_state(source_block: Block, target_block: Block) -> None:
     # would keep the saved model tied to the live editor working copy instead of
     # the copied block state that is meant to survive reopening.
     target_block.diagram = source_clone.diagram
+
+
+def block_requires_editor_connection_bootstrap(block: Block) -> bool:
+    """
+    Return whether one root editor block still needs its initial connection interface.
+
+    The Dynamic Model Editor can receive one RMS root block that is not strictly
+    empty anymore, yet still has no diagram nodes, no child subsystem blocks, and
+    no root input/output interface variables. In that state the editor cannot
+    rebuild an existing scene, and it also must not skip the initial connection
+    bootstrap because the user would see a blank first-open editor.
+
+    :param block: Root block being edited.
+    :return: ``True`` when the editor must create the initial connection ports.
+    """
+    has_diagram_nodes: bool = bool(block.diagram.node_data)
+    has_children: bool = bool(block.children)
+    has_root_inputs: bool = bool(block.in_vars)
+    has_root_outputs: bool = bool(block.out_vars)
+    requires_bootstrap: bool = False
+
+    # A saved or decomposed model with diagram nodes already owns explicit scene
+    # state, so the editor must rebuild from that state instead of creating a new
+    # root interface.
+    if has_diagram_nodes:
+        requires_bootstrap = False
+    else:
+        # A model with child blocks can be rebuilt directly from those children,
+        # so the connection interface should not be recreated here.
+        if has_children:
+            requires_bootstrap = False
+        else:
+            # When the root block has no scene nodes, no child blocks, and no
+            # exposed root ports, the editor has no visible interface to draw.
+            # This is the first-open RMS dead-state that must be bootstrapped.
+            if not has_root_inputs and not has_root_outputs:
+                requires_bootstrap = True
+            else:
+                requires_bootstrap = False
+
+    return requires_bootstrap
 
 
 def _initialize_editor_assigned_rms_bus_model(bus: Bus, var_factory: VarFactory) -> None:
@@ -6039,6 +6081,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.actionCenter.triggered.connect(self.center_view_on_items)
         self.ui.actionZoom_in.triggered.connect(self.zoom_in_view)
         self.ui.actionZoom_out.triggered.connect(self.zoom_out_view)
+        self.ui.action_delete_all.triggered.connect(self.delete_all_blocks_with_confirmation)
         # self.ui.actionSave_block_to_my_catalogue.connect(self.save_block_to_my_catalogue)
         # self.ui.actionExport_block.connect(self.export_block)
 
@@ -6366,8 +6409,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         _ensure_block_tree_names(self.main_block, prefix="block")
 
-        if not self.main_block.empty() and not self.main_block.diagram.node_data:
+        requires_connection_bootstrap: bool = block_requires_editor_connection_bootstrap(self.main_block)
 
+        if not self.main_block.empty() and not self.main_block.diagram.node_data and not requires_connection_bootstrap:
             if self.main_block.children:
                 blocks_list = list()
                 for child in self.main_block.children:
@@ -6376,6 +6420,13 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 self.add_connection_items(blocks_list)
                 if len(blocks_list) != 0:
                     self.connect_items(blocks_list)
+                else:
+                    pass
+            else:
+                pass
+            # elif not self.main_block.children and self.main_editor:
+            #     block = Block()
+            #     block.children.append(self.main_block)
 
             # if self.main_block.children:
             #
@@ -6420,7 +6471,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             if self.main_editor:
                 self.add_connection_vars()
                 # self.add_api_obj_mapping()
+            else:
+                pass
             self.add_connection_items()
+        else:
+            pass
         self.rebuild_scene_from_diagram()
 
         # for every in variable and our variable in the main block of the editor we build a block item to connect these variables
@@ -10892,112 +10947,14 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         Add a block with bus connection variables to connect the device
         :return:
         """
-
         if isinstance(self.api_object, BranchParent):
-
-            # connect bus variables
-            if self.api_object.bus_from.rms_model.empty():
-                initialize_bus_rms(self.api_object.bus_from, self.var_factory)
-
-            if self.api_object.device_type in [DeviceType.VscDevice]:
-                if self.api_object.bus_from.is_dc:
-                    Vdc, Vm, Va = get_bus_rms_algebraic_vars(self.api_object.bus_from.rms_model)
-                    self.main_block.in_vars.append(Vm)
-                    self.main_block.in_vars.append(Va)
-                    self.main_block.in_vars.append(Vdc)
-
-                    self.main_block.external_mapping.update(
-                        {VarPowerFlowReferenceType.Vm: Vm})
-                    self.main_block.external_mapping.update(
-                        {VarPowerFlowReferenceType.Va: Va})
-                    self.main_block.external_mapping.update(
-                        {VarPowerFlowReferenceType.Vdc: Vdc})
-
-            else:
-                if self.api_object.bus_from.rms_model.empty():
-                    initialize_bus_rms(self.api_object.bus_from, self.var_factory)
-
-                Vmf, Vaf = get_bus_rms_algebraic_vars(self.api_object.bus_from.rms_model)
-
-                if self.api_object.bus_to.rms_model.empty():
-                    initialize_bus_rms(self.api_object.bus_to, self.var_factory)
-
-                Vmt, Vat = get_bus_rms_algebraic_vars(self.api_object.bus_to.rms_model)
-
-                self.main_block.in_vars.append(Vmf)
-                self.main_block.in_vars.append(Vaf)
-                self.main_block.in_vars.append(Vmt)
-                self.main_block.in_vars.append(Vat)
-
-                self.main_block.external_mapping.update(
-                    {VarPowerFlowReferenceType.Vmf: Vmf})
-                self.main_block.external_mapping.update(
-                    {VarPowerFlowReferenceType.Vaf: Vaf})
-
-                self.main_block.external_mapping.update(
-                    {VarPowerFlowReferenceType.Vmt: Vmt})
-                self.main_block.external_mapping.update(
-                    {VarPowerFlowReferenceType.Vat: Vat})
-
-            # add connection variables
-            if self.api_object.device_type in [DeviceType.VscDevice]:
-
-                Pt = self.var_factory.add_var('net_conn_Pt', VarPowerFlowReferenceType.Pt, True)
-                Qt = self.var_factory.add_var('net_conn_Qt', VarPowerFlowReferenceType.Qt, True)
-                Qf = self.var_factory.add_var('net_conn_Qf', VarPowerFlowReferenceType.Qf, True)
-
-                self.main_block.out_vars.append(Pt)
-                self.main_block.out_vars.append(Qt)
-                self.main_block.out_vars.append(Qf)
-
-                self.main_block.external_mapping.update({VarPowerFlowReferenceType.Pt: Pt})
-                self.main_block.external_mapping.update({VarPowerFlowReferenceType.Qt: Qt})
-                self.main_block.external_mapping.update({VarPowerFlowReferenceType.Qt: Qf})
-
-            else:
-
-                Pf = self.var_factory.add_var('net_conn_Pf', VarPowerFlowReferenceType.P, True)
-                Qf = self.var_factory.add_var('net_conn_Qf', VarPowerFlowReferenceType.Q, True)
-
-                self.main_block.out_vars.append(Pf)
-                self.main_block.out_vars.append(Qf)
-
-                self.main_block.external_mapping.update({VarPowerFlowReferenceType.Pf: Pf})
-                self.main_block.external_mapping.update({VarPowerFlowReferenceType.Qf: Qf})
-
-                Pt = self.var_factory.add_var('net_conn_Pt', VarPowerFlowReferenceType.P, True)
-                Qt = self.var_factory.add_var('net_conn_Qt', VarPowerFlowReferenceType.Q, True)
-
-                self.main_block.out_vars.append(Pt)
-                self.main_block.out_vars.append(Qt)
-
-                self.main_block.external_mapping.update({VarPowerFlowReferenceType.Pt: Pt})
-                self.main_block.external_mapping.update({VarPowerFlowReferenceType.Qt: Qt})
-
+            specs = self._build_rms_branch_connection_specs()
         elif isinstance(self.api_object, InjectionParent):
+            specs = self._build_rms_injection_connection_specs()
+        else:
+            specs = list()
 
-            # connect bus variables
-            if self.api_object.bus.rms_model.empty():
-                initialize_bus_rms(self.api_object.bus, self.var_factory)
-
-            Vm, Va = get_bus_rms_algebraic_vars(self.api_object.bus.rms_model)
-            self.main_block.in_vars.append(Vm)
-            self.main_block.in_vars.append(Va)
-
-            self.main_block.external_mapping.update(
-                {VarPowerFlowReferenceType.Vm: Vm})
-            self.main_block.external_mapping.update(
-                {VarPowerFlowReferenceType.Va: Va})
-
-            # add connection variables
-            P = self.var_factory.add_var('net_conn_P', VarPowerFlowReferenceType.P, True)
-            Q = self.var_factory.add_var('net_conn_Q', VarPowerFlowReferenceType.Q, True)
-
-            self.main_block.out_vars.append(P)
-            self.main_block.out_vars.append(Q)
-
-            self.main_block.external_mapping.update({VarPowerFlowReferenceType.P: P})
-            self.main_block.external_mapping.update({VarPowerFlowReferenceType.Q: Q})
+        self._materialize_connection_specs(specs)
 
 
 
@@ -13261,6 +13218,52 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return:
         """
         self.view.zoom_out()
+
+
+    def delete_all_blocks_with_confirmation(self) -> None:
+        """
+        Ask the user for confirmation before deleting the complete model body.
+
+        The operation is destructive for the internal implementation, so it must
+        follow the same GUI confirmation style used across the rest of VeraGrid.
+        Only after the user confirms the action can the editor clear all blocks
+        except for the protected connection ports.
+
+        :return: None.
+        """
+        confirmed: bool = yes_no_question(
+            text="You are going to delete the complete model and start from scratch. Are you sure?",
+            title="Delete all"
+        )
+
+        if confirmed:
+            deletable_items: List[BlockItem | GenericBlockItem] = list()
+            scene_item: QGraphicsItem
+
+            for scene_item in self.scene.items():
+                if isinstance(scene_item, ProtectedConnectionBlockItem):
+                    pass
+                else:
+                    if isinstance(scene_item, (BlockItem, GenericBlockItem)):
+                        deletable_items.append(scene_item)
+                    else:
+                        pass
+
+            deletable_item: BlockItem | GenericBlockItem
+
+            if len(deletable_items) == 0:
+                self._selected_side_block = None
+                self.refresh_active_side_panel()
+            else:
+                for deletable_item in deletable_items:
+                    self.remove_block_item(deletable_item)
+
+                self.scene.clearSelection()
+                self._selected_side_block = None
+                self.refresh_active_side_panel()
+                self.mark_unapplied_changes()
+        else:
+            pass
 
     def on_scene_selection_changed(self) -> None:
         """
