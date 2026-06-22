@@ -148,6 +148,11 @@ def test_short_circuit_vsc_14buses_disconnection():
     """
     grid = vge.open_file('data/grids/ieee14_voltage_disconnection.veragrid')
 
+    for i in range(len(grid.vsc_devices)):
+        grid.vsc_devices[i].min_ac_voltage = 0.65
+
+    print()
+
     # ------------------------------------------------------------------------------------------------------------------
     #   AC/DC Power Flow under healthy conditions
     # ------------------------------------------------------------------------------------------------------------------
