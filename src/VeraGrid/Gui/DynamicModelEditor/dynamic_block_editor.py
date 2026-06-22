@@ -117,23 +117,6 @@ import VeraGrid.ThirdParty.darkdetect as darkdetect
 # from VeraGridEngine.Templates.Rms.common import create_block_of_type, create_generic_block, create_emt_wizard_block
 
 
-def set_modal_template_metadata(block: Block,
-                                kind: str,
-                                config: Dict[str, Any],
-                                modal_template_kind_attr: str,
-                                modal_template_config_attr: str) -> None:
-    """
-    Persist the modal-builder metadata on one block.
-
-    :param block: Target block.
-    :param kind: Stable modal kind key.
-    :param config: Serializable modal configuration.
-    :return: None.
-    """
-    block.__dict__[modal_template_kind_attr] = kind
-    block.__dict__[modal_template_config_attr] = copy.deepcopy(config)
-
-
 def _iter_child_blocks(block: Block) -> List[Block]:
     """
     Return all descendant blocks of one block.
@@ -177,28 +160,6 @@ def _is_load_topology_block_type(block_type: BlockType) -> bool:
     """
     return block_type in {BlockType.EXP_LOAD_EMT, BlockType.ZIP_LOAD_EMT}
 
-
-def get_modal_template_metadata(block: Block | None,
-                                modal_template_kind_attr: str,
-                                modal_template_config_attr: str) -> tuple[str | None, Dict[str, Any] | None]:
-    """
-    Return the modal-builder metadata stored on one block.
-
-    :param block: Candidate block.
-    :return: `(kind, config)` or `(None, None)` when absent.
-    """
-    if block is None:
-        return None, None
-    else:
-        pass
-
-    kind: Any = block.__dict__.get(modal_template_kind_attr, None)
-    config: Any = block.__dict__.get(modal_template_config_attr, None)
-
-    if isinstance(kind, str) and isinstance(config, dict):
-        return kind, copy.deepcopy(config)
-    else:
-        return None, None
 
 
 def _new_uid() -> int:
@@ -5441,6 +5402,8 @@ class DiagramScene(QGraphicsScene):
         self.source_port: PortItem | BranchingItem | None = None
         self.context_item: BlockItem | ConnectionItem | None = None
 
+
+
     def get_modal_template_metadata(self, block: Block | None) -> tuple[str | None, Dict[str, Any] | None]:
         """
         Forward modal metadata lookups through the owning editor configuration.
@@ -6554,35 +6517,69 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         # for every in variable and our variable in the main block of the editor we build a block item to connect these variables
 
-    def set_modal_template_metadata(self, block: Block, kind: str, config: Dict[str, Any]) -> None:
+    def set_modal_template_metadata(self, block: Block,
+                                    kind: str,
+                                    config: Dict[str, Any]) -> None:
         """
-        Persist modal metadata using the editor-owned attribute names.
+        Persist the modal-builder metadata on one block.
 
         :param block: Target block.
         :param kind: Stable modal kind key.
         :param config: Serializable modal configuration.
         :return: None.
         """
-        set_modal_template_metadata(
-            block=block,
-            kind=kind,
-            config=config,
-            modal_template_kind_attr=self.MODAL_TEMPLATE_KIND_ATTR,
-            modal_template_config_attr=self.MODAL_TEMPLATE_CONFIG_ATTR,
-        )
+        block.__dict__[self.MODAL_TEMPLATE_KIND_ATTR] = kind
+        block.__dict__[self.MODAL_TEMPLATE_CONFIG_ATTR] = copy.deepcopy(config)
+
+    # def set_modal_template_metadata(self, block: Block, kind: str, config: Dict[str, Any]) -> None:
+    #     """
+    #     Persist modal metadata using the editor-owned attribute names.
+    #
+    #     :param block: Target block.
+    #     :param kind: Stable modal kind key.
+    #     :param config: Serializable modal configuration.
+    #     :return: None.
+    #     """
+    #     set_modal_template_metadata(
+    #         block=block,
+    #         kind=kind,
+    #         config=config,
+    #         modal_template_kind_attr=self.MODAL_TEMPLATE_KIND_ATTR,
+    #         modal_template_config_attr=self.MODAL_TEMPLATE_CONFIG_ATTR,
+    #     )
 
     def get_modal_template_metadata(self, block: Block | None) -> tuple[str | None, Dict[str, Any] | None]:
         """
-        Read modal metadata using the editor-owned attribute names.
+        Return the modal-builder metadata stored on one block.
 
         :param block: Candidate block.
-        :return: Stored modal metadata.
+        :return: `(kind, config)` or `(None, None)` when absent.
         """
-        return get_modal_template_metadata(
-            block=block,
-            modal_template_kind_attr=self.MODAL_TEMPLATE_KIND_ATTR,
-            modal_template_config_attr=self.MODAL_TEMPLATE_CONFIG_ATTR,
-        )
+        if block is None:
+            return None, None
+        else:
+            pass
+
+        kind: Any = block.__dict__.get(self.MODAL_TEMPLATE_KIND_ATTR, None)
+        config: Any = block.__dict__.get(self.MODAL_TEMPLATE_CONFIG_ATTR, None)
+
+        if isinstance(kind, str) and isinstance(config, dict):
+            return kind, copy.deepcopy(config)
+        else:
+            return None, None
+
+    # def get_modal_template_metadata(self, block: Block | None) -> tuple[str | None, Dict[str, Any] | None]:
+    #     """
+    #     Read modal metadata using the editor-owned attribute names.
+    #
+    #     :param block: Candidate block.
+    #     :return: Stored modal metadata.
+    #     """
+    #     return get_modal_template_metadata(
+    #         block=block,
+    #         modal_template_kind_attr=self.MODAL_TEMPLATE_KIND_ATTR,
+    #         modal_template_config_attr=self.MODAL_TEMPLATE_CONFIG_ATTR,
+    #     )
 
     @staticmethod
     def _insert_library_leaf(branch: Dict[str, Any], category_path: tuple[str, ...], leaf: LibraryLeafSpec) -> None:
@@ -10003,8 +10000,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             static_connection_type=static_connection_type,
         )
 
-    @staticmethod
-    def _annotate_internal_grounding_link_blocks(block_model: Block) -> None:
+    def _annotate_internal_grounding_link_blocks(self, block_model: Block) -> None:
         """
         Attach modal metadata to auto-generated internal grounding-link blocks.
 

@@ -423,8 +423,9 @@ def assign_api_mapping_value_if_present(
             # The static mapping declares the symbolic parameter target.
             # The target does not need to pre-exist in mdl.parameters.
             resolved_value: Const = value if isinstance(value, Const) else Const(float(value))
-            problem_mapping[target] = resolved_value
-            # mdl.parameters[target] = resolved_value
+            if problem_mapping is not None:
+                problem_mapping[target] = resolved_value
+            mdl.parameters[target] = resolved_value
             assigned = True
 
     return assigned
@@ -791,8 +792,8 @@ def assign_static_api_object_mapping_for_device(
         grid: MultiCircuit,
         device: ALL_DEV_TYPES,
         mdl: Block,
-        problem_mapping: Dict[Var, Const],
-        logger: Logger | None,
+        problem_mapping: Dict[Var, Const] | None = None,
+        logger: Logger | None = None,
 ) -> None:
     """
     Assign static API-object parameters for one EMT device block.
@@ -809,7 +810,7 @@ def assign_static_api_object_mapping_for_device(
     :param logger: Optional logger used for diagnostics.
     :return: None.
     """
-    api_obj_mapping: Any = mdl.api_obj_mapping
+    api_obj_mapping: Dict = mdl.api_obj_mapping
 
     if isinstance(api_obj_mapping, dict):
         if len(api_obj_mapping) == 0:
