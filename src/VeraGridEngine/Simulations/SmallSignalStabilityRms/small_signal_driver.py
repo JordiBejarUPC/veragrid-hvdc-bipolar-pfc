@@ -661,7 +661,8 @@ class SmallSignalStabilityRmsDriver(DriverTemplate):
                                                                                       damping_ratios=np.empty(0),
                                                                                       conjugate_frequencies=np.empty(0),
                                                                                       state_matrix=np.empty(0),
-                                                                                      stat_vars=list())
+                                                                                      stat_vars=list(),
+                                                                                      algebraic_vars=list())
 
     def run(self) -> None:
         """
@@ -724,6 +725,7 @@ class SmallSignalStabilityRmsDriver(DriverTemplate):
                                                                        verbose=self.sss_options.verbose)
 
         state_vars = self.problem.state_vars
+        algebraic_vars = self.problem.algebraic_vars
         self.results: SmallSignalStabilityRmsResults = SmallSignalStabilityRmsResults(
             eigenvalues=eigenvalues,
             participation_factors=participation_factors,
@@ -731,6 +733,7 @@ class SmallSignalStabilityRmsDriver(DriverTemplate):
             conjugate_frequencies=conjugate_frequencies,
             state_matrix=state_matrix,
             stat_vars=state_vars,
+            algebraic_vars= algebraic_vars
         )
 
         self.toc()
