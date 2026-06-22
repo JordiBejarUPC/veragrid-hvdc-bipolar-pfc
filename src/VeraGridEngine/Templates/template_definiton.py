@@ -4,40 +4,76 @@
 # SPDX-License-Identifier: MPL-2.0
 
 from __future__ import annotations
-import inspect
-from typing import List, Callable
+from typing import List, Callable, Sequence
+from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 import VeraGridEngine.Templates.Emt as emt_templates
+
+
+class TemplateProp:
+
+    def __init__(self, name: str, units: str, descr: str, tpe, ):
+        self.name = name
+        self.units = units
+        self.descr = descr
+        self.tpe = tpe
+        self.value = None
 
 
 class TemplateDefinition:
 
-    def __init__(self, fn: Callable):
+    def __init__(self, vf, params: List[TemplateProp]):
         """
-        Constructor
-        :param fn: Function pointer
-        """
-        self.fn = fn
 
-        # Extract the function signature
-        self.sig = inspect.signature(fn)
-
-    def print(self):
+        :param vf:
+        :param params:
         """
-        Print each argument name and its type
+        self.vf = vf
+        self.params_dict = {p.name: p for p in params}
+
+    def get_value(self, name: str) -> TemplateProp:
+        """
+
+        :param name:
         :return:
         """
-        for name, param in self.sig.parameters.items():
-            print(f"Argument: {name}")
-            print(f"  - Type Hint: {param.annotation}")
-            print(f"  - Default Value: {param.default}")
-            print(f"  - Kind: {param.kind}\n")
+        prp = self.params_dict.get(name, None)
+        if prp is None:
+            raise ValueError(f"Unknown parameter: {name}")
+        else:
+            return prp.value
+
+    def eval(self) -> EmtModelTemplate:
+        raise NotImplementedError("Not implemented eval")
 
 
-def get_emt_functions_catalogue() -> List[TemplateDefinition]:
-    """
-    Generate the list of template functions
-    :return:
-    """
-    return [
-        TemplateDefinition(fn=emt_templates.get_arbitrary_waveform_voltage_source_emt_template, )
-    ]
+
+class ArbitraryWaveformVoltageSourceEmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        """
+
+        :param vf:
+        """
+        super().__init__(
+            vf,
+            params=[
+                TemplateProp("phN",  "", "", bool),
+            ]
+        )
+
+    def eval(self) -> EmtModelTemplate:
+        """
+        """
+
+        phN: bool = self.get_value("phN")
+        phA: bool = self.get_value("phN")
+        phB: bool = self.get_value("phN")
+        phC: bool = self.get_value("phN")
+        time_points: Sequence[float] = self.get_value("time_points")
+        value_points: Sequence[float] = self.get_value("value_points")
+        source_conductance_value: float = self.get_value("source_conductance_value")
+        name: str = self.get_value("name")
+
+        return emt_templates.get_arbitrary_waveform_voltage_source_emt_template(
+            self.vf, phN, phA, phB, phC, time_points, value_points, source_conductance_value, name
+        )
