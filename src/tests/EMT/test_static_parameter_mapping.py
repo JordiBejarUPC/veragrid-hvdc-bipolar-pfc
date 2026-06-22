@@ -20,7 +20,7 @@ from VeraGridEngine.Devices.Injections.current_injection import CurrentInjection
 from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Devices.Injections.shunt import Shunt
 from VeraGridEngine.Devices.Substation.bus import Bus
-from VeraGridEngine.Utils.Symbolic.static_parameter_mapping import (
+from VeraGridEngine.Devices.Dynamic.static_parameter_mapping_rms import (
     assign_api_mapping_value_if_present,
     assign_static_api_object_mapping_for_device,
 )
