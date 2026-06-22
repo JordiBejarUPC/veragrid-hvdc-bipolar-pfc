@@ -15,11 +15,11 @@ import VeraGridEngine.api as gce
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import _transformer_modal_config_allows_modify
-from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import LookupArrayLinearDialog
-from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import LookupMatrixLinearDialog
-from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import _copy_selected_table_range_to_clipboard
-from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import _parse_clipboard_grid
-from VeraGrid.Gui.DynamicModelEditor.induction_motor_emt_dialog import InductionMotorEmtLevel
+from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.lookup_table_dialog import LookupArrayLinearDialog
+from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.lookup_table_dialog import LookupMatrixLinearDialog
+from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.lookup_table_dialog import _copy_selected_table_range_to_clipboard
+from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.lookup_table_dialog import _parse_clipboard_grid
+from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.induction_motor_emt_dialog import InductionMotorEmtLevel
 from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_runtime import get_jmarti_block_fit_bundle
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Templates.BasicBlockCatalog import BasicBlockTemplateDescriptor
@@ -2179,7 +2179,7 @@ def test_lookup_matrix_linear_dialog_supports_row_copy_and_row_paste() -> None:
     print(f"DEBUG: row 1 items = {[dialog._table_widget.item(1, c).text() for c in range(3)]}")
     print(f"DEBUG: clipboard before copy = {repr(clipboard.text())}")
 
-    from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import _copy_selected_table_range_to_clipboard
+    from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.lookup_table_dialog import _copy_selected_table_range_to_clipboard
     _copy_selected_table_range_to_clipboard(dialog._table_widget)
     QtWidgets.QApplication.processEvents()
     QTest.qWait(100)

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from PySide6 import QtWidgets
 
-from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import LookupArrayLinearDialog
+from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.lookup_table_dialog import LookupArrayLinearDialog
 from VeraGridEngine.enumerations import BlockType
 
 
