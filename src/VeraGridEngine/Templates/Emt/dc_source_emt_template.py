@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+from typing import Optional
+
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Utils.Symbolic.block import Var
@@ -79,7 +81,7 @@ def get_controlled_dc_current_source_emt_template(vf: VarFactory,
 
 
 def get_dc_voltage_source_emt_template(vf: VarFactory,
-                                       source_voltage_value: float = 0.0,
+                                       source_voltage_value: Optional[float] = 0.0,
                                        source_conductance_value: float = 100.0,
                                        name: str = "dc_voltage_source_emt") -> EmtModelTemplate:
     """
@@ -102,7 +104,9 @@ def get_dc_voltage_source_emt_template(vf: VarFactory,
     i_dc: Var = vf.add_var(name=f"i_dc_{name}", reference=VarPowerFlowReferenceType.Idc)
     v_src: Var = vf.add_var(name=f"V_src_{name}")
     g_src: Var = vf.add_var(name=f"g_src_{name}")
-    templ.block.event_dict[v_src] = vf.add_const(float(source_voltage_value))
+    templ.block.event_dict[v_src] = vf.add_const(
+        None if source_voltage_value is None else float(source_voltage_value)
+    )
     templ.block.event_dict[g_src] = vf.add_const(float(source_conductance_value))
 
     templ.block.in_vars = [v_dc]
@@ -114,6 +118,7 @@ def get_dc_voltage_source_emt_template(vf: VarFactory,
         VarPowerFlowReferenceType.Idc: i_dc,
     }
     templ.block.init_eqs[i_dc] = g_src * (v_src - v_dc)
+    templ.block.init_eqs[v_src] = v_dc + i_dc / g_src
     return templ
 
 

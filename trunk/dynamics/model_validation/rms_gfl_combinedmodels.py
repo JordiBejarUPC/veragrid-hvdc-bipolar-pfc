@@ -312,13 +312,22 @@ def initialize_rms_models(grid: vge.MultiCircuit, pf_results):
     )
     set_rms_model(device=pv_gen, model=pv_model, var_factory=vf)
     for load in grid.get_loads():
+        load_bus_idx = list(grid.buses).index(load.bus)
+        load_vm0 = float(np.abs(pf_results.voltage[load_bus_idx]))
         load_model = ZIPLoadBuild(
             vfactory=vf,
             name=load.name,
             Pl0=-float(load.P) / grid.Sbase,
             Ql0=-float(load.Q) / grid.Sbase,
         ).block
+        v0 = find_name_in_block("V0", load_model)
+        if v0 is not None:
+            set_event_in_block(v0, load_vm0, vf, load_model)
+            load_model.init_eqs[v0] = sym.Const(load_vm0)
         set_rms_model(device=load, model=load_model, var_factory=vf)
+        load_vm = load_model.external_mapping[VarPowerFlowReferenceType.Vm]
+        bus_vm = load.bus.rms_model.external_mapping[VarPowerFlowReferenceType.Vm]
+        vf.add_connections([load_vm], [bus_vm])
         print(f"  + Load RMS model: {load.name}")
 
 
@@ -395,7 +404,6 @@ def plot_results(grid: vge.MultiCircuit, results, file_name: str = "rms_gfl_pv_c
             axes[0].plot(t, np.degrees(va), label="Va (deg)", linewidth=1.5)
         axes[0].set_ylabel("Bus")
         axes[0].grid(True)
-        axes[0].legend(loc="best")
 
     if pv_gen is not None:
         p = values_for(pv_gen.rms_model, f"P_{sfx}")
@@ -406,7 +414,6 @@ def plot_results(grid: vge.MultiCircuit, results, file_name: str = "rms_gfl_pv_c
             axes[1].plot(t, q, label="Q", linewidth=1.5)
         axes[1].set_ylabel("P/Q")
         axes[1].grid(True)
-        axes[1].legend(loc="best")
 
         ir = values_for(pv_gen.rms_model, f"Ir_{sfx}")
         ii = values_for(pv_gen.rms_model, f"Ii_{sfx}")
@@ -416,7 +423,6 @@ def plot_results(grid: vge.MultiCircuit, results, file_name: str = "rms_gfl_pv_c
             axes[2].plot(t, ii, label="Ii", linewidth=1.5)
         axes[2].set_ylabel("I")
         axes[2].grid(True)
-        axes[2].legend(loc="best")
 
         vdc = values_for(pv_gen.rms_model, f"Vdc_{sfx}")
         pdc = values_for(pv_gen.rms_model, "Pdc")
@@ -428,11 +434,15 @@ def plot_results(grid: vge.MultiCircuit, results, file_name: str = "rms_gfl_pv_c
     axes[3].set_ylabel("DC")
     axes[3].set_xlabel("Time (s)")
     axes[3].grid(True)
-    axes[3].legend(loc="best")
 
     for ax in axes:
         ax.axvline(x=0.10, color="red", linestyle=":", alpha=0.7)
         ax.set_xlim([0.0, t[-1]])
+
+    for ax in axes:
+        handles, labels = ax.get_legend_handles_labels()
+        if handles:
+            ax.legend(handles, labels, loc="best")
 
     plt.tight_layout()
     plt.savefig(file_name, dpi=150)
