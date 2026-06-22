@@ -4,35 +4,30 @@
 # SPDX-License-Identifier: MPL-2.0
 
 from __future__ import annotations
-from typing import List
+import inspect
+from typing import List, Callable
 import VeraGridEngine.Templates.Emt as emt_templates
-
-
-class ParamDef:
-
-    def __init__(self, name, tpe):
-        pass
-
 
 class TemplateDefinition:
 
-    def __init__(self, fn, params: List[ParamDef]):
+    def __init__(self, fn: Callable):
         self.fn = fn
-        self.params = params
+
+        # 2. Extract the signature
+        self.sig = inspect.signature(fn)
+
+    def print(self):
+        """
+        Print each argument name and its type
+        :return:
+        """
+        for name, param in self.sig.parameters.items():
+            print(f"Argument: {name}")
+            print(f"  - Type Hint: {param.annotation}")
+            print(f"  - Default Value: {param.default}")
+            print(f"  - Kind: {param.kind}\n")
 
 
-# CATALOGUE = [
-#     TemplateDefinition(
-#         fn=emt_templates.get_arbitrary_waveform_voltage_source_emt_template,
-#         params=[
-#             ParamDef("vf", VarFactory),
-#             ParamDef("phN", bool),
-#             ParamDef("phA", bool),
-#             ParamDef("phB", bool),
-#             ParamDef("phC", bool),
-#             ParamDef("time_points", Sequence[float]),
-#             ParamDef("value_points", Sequence[float]),
-#             ParamDef("source_conductance_value", float),
-#         ]
-#     )
-# ]
+CATALOGUE = [
+    TemplateDefinition(fn=emt_templates.get_arbitrary_waveform_voltage_source_emt_template,)
+]
