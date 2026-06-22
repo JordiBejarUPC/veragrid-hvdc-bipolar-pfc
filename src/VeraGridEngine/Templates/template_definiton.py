@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 
 from __future__ import annotations
-from typing import List, Callable, Sequence
+from typing import List, Callable, Sequence, Any
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 import VeraGridEngine.Templates.Emt as emt_templates
 
@@ -12,11 +12,11 @@ import VeraGridEngine.Templates.Emt as emt_templates
 class TemplateProp:
 
     def __init__(self, name: str, units: str, descr: str, tpe, ):
-        self.name = name
-        self.units = units
-        self.descr = descr
+        self.name: str = name
+        self.units: str = units
+        self.descr: str = descr
         self.tpe = tpe
-        self.value = None
+        self.value: Any = None
 
 
 class TemplateDefinition:
@@ -30,7 +30,7 @@ class TemplateDefinition:
         self.vf = vf
         self.params_dict = {p.name: p for p in params}
 
-    def get_value(self, name: str) -> TemplateProp:
+    def get_value(self, name: str) -> Any:
         """
 
         :param name:
@@ -47,33 +47,40 @@ class TemplateDefinition:
 
 
 
-class ArbitraryWaveformVoltageSourceEmtTemplate(TemplateDefinition):
-
-    def __init__(self, vf):
-        """
-
-        :param vf:
-        """
-        super().__init__(
-            vf,
-            params=[
-                TemplateProp("phN",  "", "", bool),
-            ]
-        )
-
-    def eval(self) -> EmtModelTemplate:
-        """
-        """
-
-        phN: bool = self.get_value("phN")
-        phA: bool = self.get_value("phN")
-        phB: bool = self.get_value("phN")
-        phC: bool = self.get_value("phN")
-        time_points: Sequence[float] = self.get_value("time_points")
-        value_points: Sequence[float] = self.get_value("value_points")
-        source_conductance_value: float = self.get_value("source_conductance_value")
-        name: str = self.get_value("name")
-
-        return emt_templates.get_arbitrary_waveform_voltage_source_emt_template(
-            self.vf, phN, phA, phB, phC, time_points, value_points, source_conductance_value, name
-        )
+# class ArbitraryWaveformVoltageSourceEmtTemplate(TemplateDefinition):
+#
+#     def __init__(self, vf):
+#         """
+#
+#         :param vf: variable factory.
+#         """
+#         super().__init__(
+#             vf,
+#             params=[
+#                 TemplateProp(name="phN", units="", descr="Whether neutral is active.", tpe=bool),
+#                 TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool),
+#                 TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool),
+#                 TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool),
+#                 TemplateProp(name="time_points", units="s", descr="Strictly increasing waveform times.", tpe=Sequence[float]),
+#                 TemplateProp(name="value_points", units="", descr="Matching waveform values.", tpe=Sequence[float]),
+#                 TemplateProp(name="source_conductance_value", units="Siemens", descr="Norton conductance.", tpe=float),
+#                 TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str),
+#             ]
+#         )
+#
+#     def eval(self) -> EmtModelTemplate:
+#         """
+#         """
+#
+#         phN: bool = self.get_value("phN")
+#         phA: bool = self.get_value("phN")
+#         phB: bool = self.get_value("phN")
+#         phC: bool = self.get_value("phN")
+#         time_points: Sequence[float] = self.get_value("time_points")
+#         value_points: Sequence[float] = self.get_value("value_points")
+#         source_conductance_value: float = self.get_value("source_conductance_value")
+#         name: str = self.get_value("name")
+#
+#         return get_arbitrary_waveform_voltage_source_emt_template(
+#             self.vf, phN, phA, phB, phC, time_points, value_points, source_conductance_value, name
+#         )
