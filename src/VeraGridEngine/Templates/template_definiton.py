@@ -8,6 +8,7 @@ import inspect
 from typing import List, Callable
 import VeraGridEngine.Templates.Emt as emt_templates
 
+
 class TemplateDefinition:
 
     def __init__(self, fn: Callable):
@@ -28,6 +29,11 @@ class TemplateDefinition:
             print(f"  - Kind: {param.kind}\n")
 
 
-CATALOGUE = [
-    TemplateDefinition(fn=emt_templates.get_arbitrary_waveform_voltage_source_emt_template,)
-]
+def get_emt_functions_catalogue() -> List[TemplateDefinition]:
+    """
+    Generate the list of template functions
+    :return:
+    """
+    return [
+        TemplateDefinition(fn=emt_templates.get_arbitrary_waveform_voltage_source_emt_template, )
+    ]
