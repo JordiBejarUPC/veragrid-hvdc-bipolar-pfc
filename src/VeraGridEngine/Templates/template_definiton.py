@@ -12,9 +12,13 @@ import VeraGridEngine.Templates.Emt as emt_templates
 class TemplateDefinition:
 
     def __init__(self, fn: Callable):
+        """
+        Constructor
+        :param fn: Function pointer
+        """
         self.fn = fn
 
-        # 2. Extract the signature
+        # Extract the function signature
         self.sig = inspect.signature(fn)
 
     def print(self):
