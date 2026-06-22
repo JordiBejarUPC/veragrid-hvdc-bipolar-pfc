@@ -12,6 +12,7 @@ from PySide6.QtTest import QTest
 
 import VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor as dynamic_block_editor_module
 import VeraGridEngine.api as gce
+from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import get_modal_template_metadata
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import _transformer_modal_config_allows_modify
@@ -140,6 +141,10 @@ def _build_editor(mode: DynamicSimulationMode = DynamicSimulationMode.EMT,
     """
     Build one dynamic block editor instance for GUI tests.
     """
+
+
+    if circuit is None:
+        circuit = MultiCircuit()
 
     _get_app()
     resolved_api_object = api_object if api_object is not None else _ApiStub()

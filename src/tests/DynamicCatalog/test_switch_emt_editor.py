@@ -8,6 +8,7 @@ import VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor as dynamic_block_edi
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import get_modal_template_metadata
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
+from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import BlockType, DynamicSimulationMode, DeviceType
 
@@ -34,6 +35,7 @@ def _build_editor() -> DynamicBlockEditorGUI:
         var_factory=VarFactory(),
         block=Block(),
         api_object=_ApiStub(),
+        circuit=MultiCircuit(),
         mode=DynamicSimulationMode.EMT,
         templates_list=list(),
         main_editor=False,
