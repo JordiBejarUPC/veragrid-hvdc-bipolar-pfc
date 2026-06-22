@@ -10,7 +10,7 @@ import uuid
 import re
 import copy
 from enum import Enum
-from typing import List, Dict, Optional, Any, Set, TypeAlias, cast
+from typing import List, Dict, Optional, Any, Set, cast
 from PySide6 import QtWidgets, QtGui, QtCore
 from PySide6.QtWidgets import (QApplication, QHBoxLayout, QGraphicsScene, QGraphicsView, QGraphicsItem,
                                QGraphicsRectItem, QGraphicsEllipseItem, QGraphicsPolygonItem,
@@ -110,94 +110,18 @@ from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_runtime import set_jmarti_
 from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_runtime import set_jmarti_block_runtime_data
 from dataclasses import dataclass
 
-from VeraGridEngine.Devices.Dynamic.static_parameter_mapping_rms import devices_static_params_mapping
+# from VeraGridEngine.Devices.Dynamic.static_parameter_mapping_rms import devices_static_params_mapping
 import VeraGrid.ThirdParty.darkdetect as darkdetect
+
 
 # from VeraGridEngine.Templates.Rms.common import create_block_of_type, create_generic_block, create_emt_wizard_block
 
 
-BLOCK_BORDER: QColor = QColor("#36536b")
-BLOCK_BORDER_SELECTED: QColor = QColor("#cc6f2c")
-BLOCK_TITLE: QColor = QColor("#173042")
-BLOCK_SHADOW: QColor = QColor(24, 42, 56, 45)
-INPUT_PORT_FILL: QColor = QColor("#2d7dd2")
-OUTPUT_PORT_FILL: QColor = QColor("#2a9d6f")
-PORT_BORDER: QColor = QColor("#173042")
-WIRE_COLOR: QColor = QColor("#587291")
-WIRE_HOVER_COLOR: QColor = QColor("#cc6f2c")
-HANDLE_FILL: QColor = QColor("#36536b")
-DEFAULT_BLOCK_FILL: QColor = QColor("#d9e7f5")
-PAIRED_ITEM_FILL: QColor = QColor("#9fa8da")
-BLOCK_FILL_ALL_CONNECTED: QColor = QColor("#a5d6a7")
-BLOCK_FILL_DISCONNECTED: QColor = QColor("#ffe082")
-PORT_LABEL_COLOR: QColor = QColor("#173042")
-WIRE_ELBOW_OFFSET: float = 36.0
-PORT_LABEL_MAX_CHARS: int = 12
-BLOCK_HEADER_HEIGHT: float = 30.0
-BLOCK_PORT_ROW_HEIGHT: float = 20.0
-BLOCK_PORT_SECTION_PADDING: float = 10.0
-BLOCK_MIN_WIDTH: float = 160.0
-BLOCK_MIN_HEIGHT: float = 70.0
-BLOCK_COMPACT_MIN_WIDTH: float = 100.0
-BLOCK_COMPACT_MIN_HEIGHT: float = 40.0
-BLOCK_COMPACT_HEADER_HEIGHT: float = 20.0
-BLOCK_COMPACT_PORT_ROW_HEIGHT: float = 14.0
-BLOCK_COMPACT_PORT_SECTION_PADDING: float = 6.0
-TEMPLATE_NODE_TYPE: str = "TEMPLATE"
-PARAMETER_VALUE_TYPE_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 500
-PARAMETER_EDITABLE_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 501
-LIBRARY_SEARCH_TEXT_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 502
-BLOCK_SEARCH_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 503
-MODAL_TEMPLATE_KIND_ATTR: str = "_modal_template_kind"
-MODAL_TEMPLATE_CONFIG_ATTR: str = "_modal_template_config"
-LOOKUP_ARRAY_LINEAR_DESCRIPTOR_KEYS: set[str] = {
-    "lookup_array_linear",
-    "lookup_array_linear_noclipping",
-    "lookup_array_object_linear",
-    "lookup_array_object_linear_noclipping",
-}
-INVERSE_LOOKUP_ARRAY_LINEAR_DESCRIPTOR_KEYS: set[str] = {
-    "inverse_lookup_array_linear",
-    "inverse_lookup_array_object_linear",
-}
-LOOKUP_ARRAY_SPLINE_DESCRIPTOR_KEYS: set[str] = {
-    "lookup_array_spline",
-    "lookup_array_object_spline",
-}
-LOOKUP_MATRIX_LINEAR_DESCRIPTOR_KEYS: set[str] = {
-    "lookup_matrix_linear",
-    "lookup_matrix_object_linear",
-}
-LOOKUP_MATRIX_SPLINE_DESCRIPTOR_KEYS: set[str] = {
-    "lookup_matrix_spline",
-    "lookup_matrix_object_spline",
-}
-JMARTI_MODAL_OPTION_KEYS: tuple[str, ...] = (
-    "reference_frequency_hz",
-    "use_frequency_exploration_window",
-    "exploration_low_hz",
-    "exploration_high_hz",
-    "use_delay_fit_window",
-    "delay_fit_low_hz",
-    "delay_fit_high_hz",
-    "decoupling_warning_tolerance",
-    "loewner_relative_tolerance",
-    "maximum_model_order",
-    "forced_model_order",
-    "minimum_frequency_samples",
-    "vf_max_iterations",
-    "vf_pole_shift_tolerance",
-    "vf_enforce_stable_poles",
-    "vf_stability_real_part_floor",
-    "vf_include_constant_term",
-    "vf_include_proportional_term",
-    "passivity_frequency_sample_count",
-    "passivity_minimum_real_yc_tolerance",
-    "passivity_maximum_hres_gain_tolerance",
-)
-
-
-def set_modal_template_metadata(block: Block, kind: str, config: Dict[str, Any]) -> None:
+def set_modal_template_metadata(block: Block,
+                                kind: str,
+                                config: Dict[str, Any],
+                                modal_template_kind_attr: str,
+                                modal_template_config_attr: str) -> None:
     """
     Persist the modal-builder metadata on one block.
 
@@ -206,8 +130,8 @@ def set_modal_template_metadata(block: Block, kind: str, config: Dict[str, Any])
     :param config: Serializable modal configuration.
     :return: None.
     """
-    block.__dict__[MODAL_TEMPLATE_KIND_ATTR] = kind
-    block.__dict__[MODAL_TEMPLATE_CONFIG_ATTR] = copy.deepcopy(config)
+    block.__dict__[modal_template_kind_attr] = kind
+    block.__dict__[modal_template_config_attr] = copy.deepcopy(config)
 
 
 def _iter_child_blocks(block: Block) -> List[Block]:
@@ -254,7 +178,9 @@ def _is_load_topology_block_type(block_type: BlockType) -> bool:
     return block_type in {BlockType.EXP_LOAD_EMT, BlockType.ZIP_LOAD_EMT}
 
 
-def get_modal_template_metadata(block: Block | None) -> tuple[str | None, Dict[str, Any] | None]:
+def get_modal_template_metadata(block: Block | None,
+                                modal_template_kind_attr: str,
+                                modal_template_config_attr: str) -> tuple[str | None, Dict[str, Any] | None]:
     """
     Return the modal-builder metadata stored on one block.
 
@@ -266,8 +192,8 @@ def get_modal_template_metadata(block: Block | None) -> tuple[str | None, Dict[s
     else:
         pass
 
-    kind: Any = block.__dict__.get(MODAL_TEMPLATE_KIND_ATTR, None)
-    config: Any = block.__dict__.get(MODAL_TEMPLATE_CONFIG_ATTR, None)
+    kind: Any = block.__dict__.get(modal_template_kind_attr, None)
+    config: Any = block.__dict__.get(modal_template_config_attr, None)
 
     if isinstance(kind, str) and isinstance(config, dict):
         return kind, copy.deepcopy(config)
@@ -1421,7 +1347,7 @@ class BlockPositionChangedCallback:
         self._editor.on_block_position_changed(self._block_uid, x_pos, y_pos)
 
 
-def truncate_port_label(text: str, max_chars: int = PORT_LABEL_MAX_CHARS) -> str:
+def truncate_port_label(text: str, max_chars: int) -> str:
     """
     Truncate a port label to the requested visible length.
 
@@ -1435,7 +1361,7 @@ def truncate_port_label(text: str, max_chars: int = PORT_LABEL_MAX_CHARS) -> str
         return text[:max_chars]
 
 
-def build_orthogonal_connection_path(start: QPointF, end: QPointF) -> QPainterPath:
+def build_orthogonal_connection_path(start: QPointF, end: QPointF, elbow_offset: float) -> QPainterPath:
     """
     Build an orthogonal wire path with elbow segments.
     Only adds elbows when the path changes direction.
@@ -1456,7 +1382,7 @@ def build_orthogonal_connection_path(start: QPointF, end: QPointF) -> QPainterPa
         path.lineTo(end)
         return path
 
-    offset: float = min(WIRE_ELBOW_OFFSET, abs(delta_x) / 2.0) if delta_x != 0 else WIRE_ELBOW_OFFSET
+    offset: float = min(elbow_offset, abs(delta_x) / 2.0) if delta_x != 0 else elbow_offset
     start_elbow_x: float = start.x() + offset
     end_elbow_x: float = end.x() - offset
 
@@ -1464,7 +1390,7 @@ def build_orthogonal_connection_path(start: QPointF, end: QPointF) -> QPainterPa
         path.lineTo(start_elbow_x, start.y())
         path.lineTo(start_elbow_x, end.y())
     else:
-        middle_x: float = start.x() + max(WIRE_ELBOW_OFFSET, abs(delta_x) / 2.0)
+        middle_x: float = start.x() + max(elbow_offset, abs(delta_x) / 2.0)
         path.lineTo(middle_x, start.y())
         path.lineTo(middle_x, end.y())
 
@@ -1555,7 +1481,8 @@ class OrthogonalRouter:
     def compute_path(source_pos: QPointF, target_pos: QPointF,
                      source_port: "PortItem | BranchingItem | None" = None,
                      target_port: "PortItem | BranchingItem | None" = None,
-                     scene: "QGraphicsScene | None" = None) -> QPainterPath:
+                     scene: "QGraphicsScene | None" = None,
+                     elbow_offset: float = 36.0) -> QPainterPath:
         """
         Compute an orthogonal path using A* pathfinding on a grid.
 
@@ -1567,7 +1494,7 @@ class OrthogonalRouter:
         :return: QPainterPath with orthogonal segments avoiding obstacles
         """
         if scene is None:
-            return build_orthogonal_connection_path(source_pos, target_pos)
+            return build_orthogonal_connection_path(source_pos, target_pos, elbow_offset)
 
         start_gx, start_gy = OrthogonalRouter._pos_to_grid(source_pos)
         end_gx, end_gy = OrthogonalRouter._pos_to_grid(target_pos)
@@ -1634,7 +1561,7 @@ class OrthogonalRouter:
                         else:
                             pass
 
-        fallback_path = build_orthogonal_connection_path(source_pos, target_pos)
+        fallback_path = build_orthogonal_connection_path(source_pos, target_pos, elbow_offset)
         return fallback_path
 
     @staticmethod
@@ -1698,7 +1625,7 @@ class OrthogonalRouter:
         return simplified
 
     @staticmethod
-    def compute_path_simple(source_pos: QPointF, target_pos: QPointF) -> QPainterPath:
+    def compute_path_simple(source_pos: QPointF, target_pos: QPointF, elbow_offset: float = 36.0) -> QPainterPath:
         """
         Compute a simple orthogonal path without obstacle avoidance.
 
@@ -1706,7 +1633,7 @@ class OrthogonalRouter:
         :param target_pos: End point
         :return: QPainterPath with orthogonal segments
         """
-        return build_orthogonal_connection_path(source_pos, target_pos)
+        return build_orthogonal_connection_path(source_pos, target_pos, elbow_offset)
 
 
 def remap_serialized_uids(data: Any, uid_map: Dict[int, int]) -> Any:
@@ -1878,10 +1805,10 @@ class BlockTableFilterProxyModel(QtCore.QSortFilterProxyModel):
     (Variables, Parameters, Equations).
     """
 
-    def __init__(self, parent: QtCore.QObject | None = None):
+    def __init__(self, search_role: int, parent: QtCore.QObject | None = None):
         super().__init__(parent)
         self.setFilterCaseSensitivity(QtCore.Qt.CaseSensitivity.CaseInsensitive)
-        self.setFilterRole(BLOCK_SEARCH_ROLE)
+        self.setFilterRole(search_role)
         self.setFilterKeyColumn(0)
 
 
@@ -2312,7 +2239,7 @@ class ResizeHandle(QGraphicsRectItem):
     Interactive resize handle attached to a block item.
     """
 
-    def __init__(self, block_item: EditorBlockGraphicsItem, size: int = 10):
+    def __init__(self, block_item: BlockItem | GenericBlockItem | PairedItem, size: int = 10):
         """
         Build the resize handle.
 
@@ -2320,11 +2247,12 @@ class ResizeHandle(QGraphicsRectItem):
         :param size:
         """
         super().__init__(0, 0, size, size, block_item)
-        self.setBrush(QBrush(HANDLE_FILL))
+        editor_constants = block_item.editor if block_item.editor is not None else DynamicBlockEditorGUI
+        self.setBrush(QBrush(editor_constants.HANDLE_FILL))
         self.setPen(QPen(QColor("#ffffff"), 1))
         self.setCursor(Qt.CursorShape.SizeFDiagCursor)
         self.setZValue(2)
-        self.block: EditorBlockGraphicsItem = block_item
+        self.block: BlockItem | GenericBlockItem | PairedItem = block_item
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemSendsScenePositionChanges)
         self.setAcceptHoverEvents(True)
@@ -2441,16 +2369,13 @@ class EmtTemplateWizardDialog(QDialog):
         )
 
 
-EditorBlockGraphicsItem: TypeAlias = "BlockItem | GenericBlockItem | PairedItem"
-
-
 class PortItem(QGraphicsEllipseItem):
     """
     Graphical input or output port attached to a block item.
     """
 
     def __init__(self,
-                 subsystem: EditorBlockGraphicsItem,
+                 subsystem: BlockItem | GenericBlockItem | PairedItem,
                  is_input: bool,
                  index: int,
                  total: int,
@@ -2465,12 +2390,13 @@ class PortItem(QGraphicsEllipseItem):
         :param radius:
         """
         super().__init__(-radius, -radius, 2 * radius, 2 * radius, subsystem)
-        fill_color: QColor = INPUT_PORT_FILL if is_input else OUTPUT_PORT_FILL
+        editor_constants = subsystem.editor if subsystem.editor is not None else DynamicBlockEditorGUI
+        fill_color: QColor = editor_constants.INPUT_PORT_FILL if is_input else editor_constants.OUTPUT_PORT_FILL
         self.setBrush(QBrush(fill_color))
-        self.setPen(QPen(PORT_BORDER, 1.5))
+        self.setPen(QPen(editor_constants.PORT_BORDER, 1.5))
         self.setZValue(3)
         self.setAcceptHoverEvents(True)
-        self.subsystem: EditorBlockGraphicsItem = subsystem
+        self.subsystem: BlockItem | GenericBlockItem | PairedItem = subsystem
         self.is_input: bool = is_input
         self.connections: List["ConnectionItem"] | None = None
         self.index: int = index
@@ -2529,9 +2455,10 @@ class BranchingItem(QGraphicsEllipseItem):
         :param radius:
         """
         super().__init__(-radius, -radius, 2 * radius, 2 * radius)
-        fill_color: QColor = OUTPUT_PORT_FILL
+        editor_constants = subsystem.editor if subsystem.editor is not None else DynamicBlockEditorGUI
+        fill_color: QColor = editor_constants.OUTPUT_PORT_FILL
         self.setBrush(QBrush(fill_color))
-        self.setPen(QPen(PORT_BORDER, 1.5))
+        self.setPen(QPen(editor_constants.PORT_BORDER, 1.5))
         self.setZValue(3)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable)
@@ -2580,11 +2507,15 @@ class BranchingItem(QGraphicsEllipseItem):
 class ConnectionItem(QGraphicsPathItem):
     """
     Orthogonal graphical connection between two ports.
-    Uses global OrthogonalRouter for path computation.
+    Uses the owning editor routing configuration for path computation.
     """
 
     def __init__(self, source_port: PortItem | BranchingItem, target_port: PortItem | BranchingItem,
-                 diagram=None, con_uid=None, uid=None, elbow_points: List[QPointF] = None):
+                 diagram=None,
+                 con_uid=None,
+                 uid=None,
+                 elbow_points: List[QPointF] = None,
+                 editor: DynamicBlockEditorGUI | None = None):
         """
         Build the connection item.
 
@@ -2596,6 +2527,10 @@ class ConnectionItem(QGraphicsPathItem):
         :param elbow_points: List of QPointF for editable elbow positions
         """
         super().__init__()
+        if editor is not None:
+            self.editor: DynamicBlockEditorGUI | None = editor
+        else:
+            self.editor = source_port.subsystem.editor
         self.uid: int = uid if uid is not None else _new_uid()
         self.setZValue(-1)
         self.source_port: PortItem | BranchingItem = source_port
@@ -2616,7 +2551,12 @@ class ConnectionItem(QGraphicsPathItem):
         if isinstance(self.target_port.subsystem, BlockItem):
             self.target_port.subsystem._refresh_connection_color()
 
-        self.setPen(QPen(WIRE_COLOR, 2.5, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
+        editor_constants = self.editor if self.editor is not None else DynamicBlockEditorGUI
+        self.setPen(QPen(editor_constants.WIRE_COLOR,
+                         2.5,
+                         Qt.PenStyle.SolidLine,
+                         Qt.PenCapStyle.RoundCap,
+                         Qt.PenJoinStyle.RoundJoin))
         self.setAcceptHoverEvents(True)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, False)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, True)
@@ -2654,7 +2594,8 @@ class ConnectionItem(QGraphicsPathItem):
         else:
             path = build_orthogonal_connection_path(
                 self.source_port.scenePos(),
-                self.target_port.scenePos()
+                self.target_port.scenePos(),
+                self.editor.WIRE_ELBOW_OFFSET if self.editor is not None else DynamicBlockEditorGUI.WIRE_ELBOW_OFFSET
             )
 
         path.lineTo(self.target_port.scenePos())
@@ -2860,7 +2801,8 @@ class ConnectionItem(QGraphicsPathItem):
         """
         QApplication.setOverrideCursor(Qt.CursorShape.PointingHandCursor)
         pen: QPen = self.pen()
-        pen.setColor(WIRE_HOVER_COLOR)
+        pen.setColor(
+            self.editor.WIRE_HOVER_COLOR if self.editor is not None else DynamicBlockEditorGUI.WIRE_HOVER_COLOR)
         pen.setWidthF(3.5)
         self.setPen(pen)
 
@@ -2873,7 +2815,7 @@ class ConnectionItem(QGraphicsPathItem):
         """
         QApplication.restoreOverrideCursor()
         pen: QPen = self.pen()
-        pen.setColor(WIRE_COLOR)
+        pen.setColor(self.editor.WIRE_COLOR if self.editor is not None else DynamicBlockEditorGUI.WIRE_COLOR)
         pen.setWidthF(2.5)
         self.setPen(pen)
 
@@ -2884,7 +2826,8 @@ class ElbowItem(QGraphicsEllipseItem):
         super().__init__(-radius, -radius, radius * 2, radius * 2)
         self.connection_item = connection_item
         self.index = index
-        self.setBrush(QBrush(WIRE_COLOR))
+        editor_constants = connection_item.editor if connection_item.editor is not None else DynamicBlockEditorGUI
+        self.setBrush(QBrush(editor_constants.WIRE_COLOR))
         self.setPen(QPen(QColor("#173042"), 1.5))
         self.setZValue(2)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, True)
@@ -3099,7 +3042,9 @@ class AddParameterDialog(QDialog):
         ("Static Parameter", "parameter"),
     ]
 
-    def __init__(self, api_object: ALL_DEV_TYPES, parent: Optional[QtWidgets.QWidget] = None):
+    def __init__(self, api_object: ALL_DEV_TYPES,
+                 devices_static_params_mapping: Dict[DeviceType, List[ParamPowerFlowReferenceType]],
+                 parent: Optional[QtWidgets.QWidget] = None):
         """
 
         :param api_object:
@@ -3627,6 +3572,7 @@ class EditParameterDialog(QDialog):
     }
 
     def __init__(self, api_object: ALL_DEV_TYPES,
+                 devices_static_params_mapping: Dict[DeviceType, List[ParamPowerFlowReferenceType]],
                  current_kind: BlockParameterKind,
                  parent: Optional[QtWidgets.QWidget] = None):
         """
@@ -3743,18 +3689,33 @@ class WrappableBlockTableModel(WrappableTableModel):
 
     def __init__(self,
                  var_factory: VarFactory,
-                 api_object: Any = None,
+                 parameter_value_type_role: int,
+                 parameter_editable_role: int,
+                 block_search_role: int,
+                 api_object: ALL_DEV_TYPES = None,
                  parent: Optional[QtCore.QObject] = None):
+        """
+
+        :param var_factory:
+        :param parameter_value_type_role:
+        :param parameter_editable_role:
+        :param block_search_role:
+        :param api_object:
+        :param parent:
+        """
         super().__init__(parent)
         self._table_view = parent
         self.var_factory = var_factory
-        self.api_object = api_object
+        self.api_object: ALL_DEV_TYPES = api_object
         self.block = None
         self.rows: List[BlockParameterRow] = []
         self.mode = DynamicTableModelMode.VARIABLES
         self.headers = ["Type", "Name", "Init Equation"]
         self.symbol_namespace = None
         self._value_column = 2
+        self._parameter_value_type_role: int = parameter_value_type_role
+        self._parameter_editable_role: int = parameter_editable_role
+        self._block_search_role: int = block_search_role
 
     def set_mode(self, mode: DynamicTableModelMode) -> None:
         self.mode = mode
@@ -3811,11 +3772,11 @@ class WrappableBlockTableModel(WrappableTableModel):
                     if row.kind == BlockParameterKind.FIXED_PARAMETER:
                         return row.value
                     return row.display_value
-        elif role == PARAMETER_VALUE_TYPE_ROLE and col == self._value_column:
+        elif role == self._parameter_value_type_role and col == self._value_column:
             if self.mode == DynamicTableModelMode.VARIABLES:
                 return "float" if row.value_type == float else "text"
             return self.get_python_value_type(row.value).__name__
-        elif role == PARAMETER_EDITABLE_ROLE and col == self._value_column:
+        elif role == self._parameter_editable_role and col == self._value_column:
             if self.mode == DynamicTableModelMode.PARAMETERS and row.kind == BlockParameterKind.FIXED_PARAMETER:
                 return False
             return row.editable_value
@@ -3825,7 +3786,7 @@ class WrappableBlockTableModel(WrappableTableModel):
             return QColor("#f7fafc")
         elif role == QtCore.Qt.ItemDataRole.ForegroundRole:
             return QColor("#333333")
-        elif role == BLOCK_SEARCH_ROLE:
+        elif role == self._block_search_role:
             return row.search_text
         return None
 
@@ -4381,7 +4342,8 @@ class GenericBlockItem(QGraphicsRectItem):
                  api_object,
                  mode: DynamicSimulationMode,
                  name: str,
-                 position_changed_callback=None):
+                 position_changed_callback=None,
+                 editor: DynamicBlockEditorGUI | None = None):
         """
 
         :param var_factory:
@@ -4391,6 +4353,7 @@ class GenericBlockItem(QGraphicsRectItem):
         """
         super().__init__(0, 0, 100, 60)
 
+        self.editor: DynamicBlockEditorGUI | None = editor
         self.var_factory = var_factory
         self.subsys = subsys
         self.mode = mode
@@ -4399,7 +4362,8 @@ class GenericBlockItem(QGraphicsRectItem):
         self.position_changed_callback = position_changed_callback
 
         self.name_item = QGraphicsTextItem(self.subsys.name, self)
-        self.name_item.setDefaultTextColor(BLOCK_TITLE)
+        editor_constants = self.editor if self.editor is not None else DynamicBlockEditorGUI
+        self.name_item.setDefaultTextColor(editor_constants.BLOCK_TITLE)
         name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 9)
         name_font.setBold(True)
         self.name_item.setFont(name_font)
@@ -4410,14 +4374,14 @@ class GenericBlockItem(QGraphicsRectItem):
         self.input_labels: List[QGraphicsTextItem] = list()
         self.output_labels: List[QGraphicsTextItem] = list()
 
-        self.name_item.setDefaultTextColor(BLOCK_TITLE)
+        self.name_item.setDefaultTextColor(editor_constants.BLOCK_TITLE)
 
         self.editor_window: DynamicBlockEditorGUI | None = None
 
         self.resize_handle: ResizeHandle | None = None
         self.resizing_from_handle = False
         self._suppress_resize: bool = False
-        self.setBrush(QBrush(DEFAULT_BLOCK_FILL))
+        self.setBrush(QBrush(editor_constants.DEFAULT_BLOCK_FILL))
         self.setPen(QPen(Qt.GlobalColor.transparent, 0))
         self.setFlags(
             QGraphicsItem.GraphicsItemFlag.ItemIsMovable |
@@ -4459,26 +4423,35 @@ class GenericBlockItem(QGraphicsRectItem):
         """
 
         if self.editor_window is None and self.subsys.children:
+            if self.editor is None:
+                return
             self.editor_window = DynamicBlockEditorGUI(
                 var_factory=self.var_factory,
                 block=self.subsys,
                 api_object=self.api_object,
+                circuit=self.editor.circuit,
                 mode=self.mode,
             )
 
 
         elif self.editor_window is None and self.subsys.is_eq_decomposable():
+            if self.editor is None:
+                return
             self.editor_window = DynamicBlockEditorGUI(
                 var_factory=self.var_factory,
                 block=self.subsys,
                 api_object=self.api_object,
+                circuit=self.editor.circuit,
                 mode=self.mode,
             )
             self.editor_window.decompose_block_in_place(self.subsys)
             self.editor_window.diagram = self.subsys.diagram
             self.editor_window.main_block = self.subsys
             self.editor_window.rebuild_scene_from_diagram()
-        self.editor_window.show()
+        if self.editor_window is not None:
+            self.editor_window.show()
+        else:
+            pass
 
     def set_subsystem(self, block: Block) -> None:
         """
@@ -4497,7 +4470,8 @@ class GenericBlockItem(QGraphicsRectItem):
         """
         if self.subsys is not None:
             self.name_item = QGraphicsTextItem(self.name, self)
-            self.name_item.setDefaultTextColor(BLOCK_TITLE)
+            editor_constants = self.editor if self.editor is not None else DynamicBlockEditorGUI
+            self.name_item.setDefaultTextColor(editor_constants.BLOCK_TITLE)
             name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 9)
             name_font.setBold(True)
             self.name_item.setFont(name_font)
@@ -4549,7 +4523,8 @@ class GenericBlockItem(QGraphicsRectItem):
         outer_rect: QtCore.QRectF = rect.adjusted(2, 2, -2, -2)
         shadow_rect: QtCore.QRectF = outer_rect.translated(2.5, 3.0)
         body_rect: QtCore.QRectF = outer_rect
-        border_color: QColor = BLOCK_BORDER_SELECTED if self.isSelected() else BLOCK_BORDER
+        editor_constants = self.editor if self.editor is not None else DynamicBlockEditorGUI
+        border_color: QColor = editor_constants.BLOCK_BORDER_SELECTED if self.isSelected() else editor_constants.BLOCK_BORDER
         fill_color: QColor = self.brush().color()
         body_path: QPainterPath = QPainterPath()
         shadow_path: QPainterPath = QPainterPath()
@@ -4558,7 +4533,7 @@ class GenericBlockItem(QGraphicsRectItem):
 
         shadow_path.addRoundedRect(shadow_rect, 12.0, 12.0)
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QBrush(BLOCK_SHADOW))
+        painter.setBrush(QBrush(editor_constants.BLOCK_SHADOW))
         painter.drawPath(shadow_path)
 
         body_path.addRoundedRect(body_rect, 12.0, 12.0)
@@ -4584,10 +4559,12 @@ class GenericBlockItem(QGraphicsRectItem):
 
         :return:
         """
+        editor_constants = self.editor if self.editor is not None else DynamicBlockEditorGUI
         port_rows: int = max(len(self.inputs), len(self.outputs), 1)
         min_height: float = max(
-            BLOCK_MIN_HEIGHT,
-            BLOCK_HEADER_HEIGHT + BLOCK_PORT_SECTION_PADDING + port_rows * BLOCK_PORT_ROW_HEIGHT
+            editor_constants.BLOCK_MIN_HEIGHT,
+            editor_constants.BLOCK_HEADER_HEIGHT + editor_constants.BLOCK_PORT_SECTION_PADDING +
+            port_rows * editor_constants.BLOCK_PORT_ROW_HEIGHT
         )
 
         name_width = len(self.subsys.name) * 7
@@ -4599,7 +4576,7 @@ class GenericBlockItem(QGraphicsRectItem):
                 max_label_length = max(max_label_length, len(var.name))
 
         port_width = max_label_length * 7
-        min_width = max(BLOCK_MIN_WIDTH, name_width + 14, port_width + 28)
+        min_width = max(editor_constants.BLOCK_MIN_WIDTH, name_width + 14, port_width + 28)
 
         return min_width, min_height
 
@@ -4626,7 +4603,8 @@ class GenericBlockItem(QGraphicsRectItem):
         label_item: QGraphicsTextItem = QGraphicsTextItem("", self)
         label_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 9)
         label_item.setFont(label_font)
-        label_item.setDefaultTextColor(PORT_LABEL_COLOR)
+        editor_constants = self.editor if self.editor is not None else DynamicBlockEditorGUI
+        label_item.setDefaultTextColor(editor_constants.PORT_LABEL_COLOR)
         label_item.setZValue(4)
         return label_item
 
@@ -4651,7 +4629,10 @@ class GenericBlockItem(QGraphicsRectItem):
                 variable_name = self.subsys.in_vars[i].name
                 port.setToolTip(f"Input {i}: {variable_name}")
                 label_item = self.input_labels[i]
-                label_item.setPlainText(truncate_port_label(variable_name))
+                label_item.setPlainText(truncate_port_label(
+                    variable_name,
+                    self.editor.PORT_LABEL_MAX_CHARS if self.editor is not None else DynamicBlockEditorGUI.PORT_LABEL_MAX_CHARS
+                ))
 
             for i, port in enumerate(self.outputs):
                 if port.base_var is None:
@@ -4662,7 +4643,10 @@ class GenericBlockItem(QGraphicsRectItem):
                 variable_name = self.subsys.out_vars[i].name
                 port.setToolTip(f"Output {i}: {variable_name}")
                 label_item = self.output_labels[i]
-                label_item.setPlainText(truncate_port_label(variable_name))
+                label_item.setPlainText(truncate_port_label(
+                    variable_name,
+                    self.editor.PORT_LABEL_MAX_CHARS if self.editor is not None else DynamicBlockEditorGUI.PORT_LABEL_MAX_CHARS
+                ))
         else:
             pass
 
@@ -4723,10 +4707,12 @@ class PairedItem(QGraphicsPolygonItem):
                  mode: DynamicSimulationMode,
                  name: str,
                  paired_item: PairedItem | None = None,
-                 position_changed_callback=None):
+                 position_changed_callback=None,
+                 editor: DynamicBlockEditorGUI | None = None):
         super().__init__()
 
         self._paired_item: PairedItem | None = paired_item
+        self.editor: DynamicBlockEditorGUI | None = editor
         self.var_factory = var_factory
         self.subsys = subsys
         self.mode = mode
@@ -4737,7 +4723,8 @@ class PairedItem(QGraphicsPolygonItem):
         self._is_signal_in: bool = bool(self.subsys.in_vars) and not bool(self.subsys.out_vars)
 
         self.name_item = QGraphicsTextItem(self.subsys.name, self)
-        self.name_item.setDefaultTextColor(BLOCK_TITLE)
+        editor_constants = self.editor if self.editor is not None else DynamicBlockEditorGUI
+        self.name_item.setDefaultTextColor(editor_constants.BLOCK_TITLE)
         name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 7)
         name_font.setBold(True)
         self.name_item.setFont(name_font)
@@ -4745,7 +4732,7 @@ class PairedItem(QGraphicsPolygonItem):
         self.inputs: List[PortItem] = list()
         self.outputs: List[PortItem] = list()
 
-        self.setBrush(QBrush(PAIRED_ITEM_FILL))
+        self.setBrush(QBrush(editor_constants.PAIRED_ITEM_FILL))
         self.setPen(QPen(Qt.GlobalColor.transparent, 0))
         self.setFlags(
             QGraphicsItem.GraphicsItemFlag.ItemIsMovable |
@@ -4822,12 +4809,13 @@ class PairedItem(QGraphicsPolygonItem):
             self._is_signal_in = bool(self.subsys.in_vars) and not bool(self.subsys.out_vars)
 
             self.name_item = QGraphicsTextItem(self.name, self)
-            self.name_item.setDefaultTextColor(BLOCK_TITLE)
+            editor_constants = self.editor if self.editor is not None else DynamicBlockEditorGUI
+            self.name_item.setDefaultTextColor(editor_constants.BLOCK_TITLE)
             name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 7)
             name_font.setBold(True)
             self.name_item.setFont(name_font)
 
-            self.setBrush(QBrush(PAIRED_ITEM_FILL))
+            self.setBrush(QBrush(editor_constants.PAIRED_ITEM_FILL))
 
             n_inputs: int = len(self.subsys.in_vars)
             n_outputs: int = len(self.subsys.out_vars)
@@ -4851,14 +4839,15 @@ class PairedItem(QGraphicsPolygonItem):
               widget: Optional[QWidget] = None) -> None:
         polygon: QtGui.QPolygonF = self.polygon()
         bounds: QtCore.QRectF = polygon.boundingRect()
-        border_color: QColor = BLOCK_BORDER_SELECTED if self.isSelected() else BLOCK_BORDER
+        editor_constants = self.editor if self.editor is not None else DynamicBlockEditorGUI
+        border_color: QColor = editor_constants.BLOCK_BORDER_SELECTED if self.isSelected() else editor_constants.BLOCK_BORDER
         fill_color: QColor = self.brush().color()
 
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
         shadow_poly = polygon.translated(2.5, 3.0)
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QBrush(BLOCK_SHADOW))
+        painter.setBrush(QBrush(editor_constants.BLOCK_SHADOW))
         painter.drawPolygon(shadow_poly)
 
         painter.setBrush(QBrush(fill_color))
@@ -4941,8 +4930,13 @@ class BlockItem(QGraphicsRectItem):
     Graphics item representing a symbolic block.
     """
 
-    def __init__(self, var_factory: VarFactory, name: str, api_object: ALL_DEV_TYPES | None = None,
-                 mode: DynamicSimulationMode = None, position_changed_callback=None):
+    def __init__(self,
+                 var_factory: VarFactory,
+                 name: str,
+                 api_object: ALL_DEV_TYPES | None = None,
+                 mode: DynamicSimulationMode = None,
+                 position_changed_callback=None,
+                 editor: DynamicBlockEditorGUI | None = None):
         """
         Build the graphical block item.
 
@@ -4952,6 +4946,7 @@ class BlockItem(QGraphicsRectItem):
         """
         super().__init__(0, 0, 80, 40)
 
+        self.editor: DynamicBlockEditorGUI | None = editor
         self.var_factory: VarFactory = var_factory
         self.api_object = api_object
         self.mode = mode
@@ -4974,7 +4969,8 @@ class BlockItem(QGraphicsRectItem):
         )
         self.setAcceptHoverEvents(True)
         self.setPen(QPen(Qt.GlobalColor.transparent, 0))
-        self.setBrush(QBrush(BLOCK_FILL_DISCONNECTED))
+        editor_constants = self.editor if self.editor is not None else DynamicBlockEditorGUI
+        self.setBrush(QBrush(editor_constants.BLOCK_FILL_DISCONNECTED))
         self._refresh_connection_color()
 
     def set_subsystem(self, block: Block) -> None:
@@ -4994,7 +4990,8 @@ class BlockItem(QGraphicsRectItem):
         """
         if self.subsys is not None:
             self.name_item = QGraphicsTextItem(self.name, self)
-            self.name_item.setDefaultTextColor(BLOCK_TITLE)
+            editor_constants = self.editor if self.editor is not None else DynamicBlockEditorGUI
+            self.name_item.setDefaultTextColor(editor_constants.BLOCK_TITLE)
             name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 7)
             name_font.setBold(True)
             self.name_item.setFont(name_font)
@@ -5023,7 +5020,8 @@ class BlockItem(QGraphicsRectItem):
         label_item: QGraphicsTextItem = QGraphicsTextItem("", self)
         label_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 7)
         label_item.setFont(label_font)
-        label_item.setDefaultTextColor(PORT_LABEL_COLOR)
+        editor_constants = self.editor if self.editor is not None else DynamicBlockEditorGUI
+        label_item.setDefaultTextColor(editor_constants.PORT_LABEL_COLOR)
         label_item.setZValue(4)
         return label_item
 
@@ -5033,10 +5031,12 @@ class BlockItem(QGraphicsRectItem):
 
         :return:
         """
+        editor_constants = self.editor if self.editor is not None else DynamicBlockEditorGUI
         port_rows: int = max(len(self.inputs), len(self.outputs), 1)
         min_height: float = max(
-            BLOCK_COMPACT_MIN_HEIGHT,
-            BLOCK_COMPACT_HEADER_HEIGHT + BLOCK_COMPACT_PORT_SECTION_PADDING + port_rows * BLOCK_COMPACT_PORT_ROW_HEIGHT
+            editor_constants.BLOCK_COMPACT_MIN_HEIGHT,
+            editor_constants.BLOCK_COMPACT_HEADER_HEIGHT + editor_constants.BLOCK_COMPACT_PORT_SECTION_PADDING +
+            port_rows * editor_constants.BLOCK_COMPACT_PORT_ROW_HEIGHT
         )
 
         name_width = len(self.name) * 5
@@ -5048,7 +5048,7 @@ class BlockItem(QGraphicsRectItem):
                 max_label_length = max(max_label_length, len(var.name))
 
         port_width = max_label_length * 5
-        min_width = max(BLOCK_COMPACT_MIN_WIDTH, name_width + 10, port_width + 20)
+        min_width = max(editor_constants.BLOCK_COMPACT_MIN_WIDTH, name_width + 10, port_width + 20)
 
         return min_width, min_height
 
@@ -5072,10 +5072,13 @@ class BlockItem(QGraphicsRectItem):
             if port.connections is None:
                 all_connected = False
                 break
+            else:
+                pass
+        editor_constants = self.editor if self.editor is not None else DynamicBlockEditorGUI
         if all_connected and (len(self.inputs) + len(self.outputs)) > 0:
-            self.setBrush(QBrush(BLOCK_FILL_ALL_CONNECTED))
+            self.setBrush(QBrush(editor_constants.BLOCK_FILL_ALL_CONNECTED))
         else:
-            self.setBrush(QBrush(BLOCK_FILL_DISCONNECTED))
+            self.setBrush(QBrush(editor_constants.BLOCK_FILL_DISCONNECTED))
 
     def refresh_port_metadata(self) -> None:
         """
@@ -5098,7 +5101,10 @@ class BlockItem(QGraphicsRectItem):
                 variable_name = self.subsys.in_vars[i].name
                 port.setToolTip(f"Input {i}: {variable_name}")
                 label_item = self.input_labels[i]
-                label_item.setPlainText(truncate_port_label(variable_name))
+                label_item.setPlainText(truncate_port_label(
+                    variable_name,
+                    self.editor.PORT_LABEL_MAX_CHARS if self.editor is not None else DynamicBlockEditorGUI.PORT_LABEL_MAX_CHARS
+                ))
 
             for i, port in enumerate(self.outputs):
                 if port.base_var is None:
@@ -5109,7 +5115,10 @@ class BlockItem(QGraphicsRectItem):
                 variable_name = self.subsys.out_vars[i].name
                 port.setToolTip(f"Output {i}: {variable_name}")
                 label_item = self.output_labels[i]
-                label_item.setPlainText(truncate_port_label(variable_name))
+                label_item.setPlainText(truncate_port_label(
+                    variable_name,
+                    self.editor.PORT_LABEL_MAX_CHARS if self.editor is not None else DynamicBlockEditorGUI.PORT_LABEL_MAX_CHARS
+                ))
         else:
             pass
 
@@ -5129,7 +5138,8 @@ class BlockItem(QGraphicsRectItem):
         outer_rect: QtCore.QRectF = rect.adjusted(2, 2, -2, -2)
         shadow_rect: QtCore.QRectF = outer_rect.translated(2.5, 3.0)
         body_rect: QtCore.QRectF = outer_rect
-        border_color: QColor = BLOCK_BORDER_SELECTED if self.isSelected() else BLOCK_BORDER
+        editor_constants = self.editor if self.editor is not None else DynamicBlockEditorGUI
+        border_color: QColor = editor_constants.BLOCK_BORDER_SELECTED if self.isSelected() else editor_constants.BLOCK_BORDER
         fill_color: QColor = self.brush().color()
         body_path: QPainterPath = QPainterPath()
         shadow_path: QPainterPath = QPainterPath()
@@ -5138,7 +5148,7 @@ class BlockItem(QGraphicsRectItem):
 
         shadow_path.addRoundedRect(shadow_rect, 12.0, 12.0)
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QBrush(BLOCK_SHADOW))
+        painter.setBrush(QBrush(editor_constants.BLOCK_SHADOW))
         painter.drawPath(shadow_path)
 
         body_path.addRoundedRect(body_rect, 12.0, 12.0)
@@ -5177,15 +5187,16 @@ class BlockItem(QGraphicsRectItem):
         port: PortItem
         input_spacing: float
         output_spacing: float
-        port_section_height: float = max(self.rect().height() - BLOCK_COMPACT_HEADER_HEIGHT - 6.0, 1.0)
+        editor_constants = self.editor if self.editor is not None else DynamicBlockEditorGUI
+        port_section_height: float = max(self.rect().height() - editor_constants.BLOCK_COMPACT_HEADER_HEIGHT - 6.0, 1.0)
 
         for i, port in enumerate(self.inputs):
             input_spacing = port_section_height / (len(self.inputs) + 1)
-            port.setPos(0, BLOCK_COMPACT_HEADER_HEIGHT + input_spacing * (i + 1))
+            port.setPos(0, editor_constants.BLOCK_COMPACT_HEADER_HEIGHT + input_spacing * (i + 1))
 
         for i, port in enumerate(self.outputs):
             output_spacing = port_section_height / (len(self.outputs) + 1)
-            port.setPos(self.rect().width(), BLOCK_COMPACT_HEADER_HEIGHT + output_spacing * (i + 1))
+            port.setPos(self.rect().width(), editor_constants.BLOCK_COMPACT_HEADER_HEIGHT + output_spacing * (i + 1))
 
         for i, label_item in enumerate(self.input_labels):
             port = self.inputs[i]
@@ -5430,6 +5441,15 @@ class DiagramScene(QGraphicsScene):
         self.source_port: PortItem | BranchingItem | None = None
         self.context_item: BlockItem | ConnectionItem | None = None
 
+    def get_modal_template_metadata(self, block: Block | None) -> tuple[str | None, Dict[str, Any] | None]:
+        """
+        Forward modal metadata lookups through the owning editor configuration.
+
+        :param block: Candidate block.
+        :return: Stored modal metadata.
+        """
+        return self.editor.get_modal_template_metadata(block)
+
     def change_item_fill_color(self, item: BlockItem | GenericBlockItem | ConnectionItem) -> None:
         """
         Change the color of a block or connection and persist it in the diagram.
@@ -5517,7 +5537,7 @@ class DiagramScene(QGraphicsScene):
 
                 if isinstance(item, (BlockItem, GenericBlockItem)):
                     if item.subsys is not None:
-                        modal_kind, modal_config = get_modal_template_metadata(item.subsys)
+                        modal_kind, modal_config = self.get_modal_template_metadata(item.subsys)
                     else:
                         modal_kind = None
                         modal_config = None
@@ -5611,7 +5631,7 @@ class DiagramScene(QGraphicsScene):
             if self.source_port is not None:
                 start: QPointF = self.source_port.scenePos()
                 end: QPointF = event.scenePos()
-                path: QPainterPath = build_orthogonal_connection_path(start, end)
+                path: QPainterPath = build_orthogonal_connection_path(start, end, self.editor.WIRE_ELBOW_OFFSET)
                 self.temp_line.setPath(path)
             else:
                 pass
@@ -5727,13 +5747,14 @@ class DiagramScene(QGraphicsScene):
         :param target_port:
         :return:
         """
-        source_block: EditorBlockGraphicsItem = source_port.subsystem
-        target_block: EditorBlockGraphicsItem = target_port.subsystem
+        source_block: BlockItem | GenericBlockItem | PairedItem = source_port.subsystem
+        target_block: BlockItem | GenericBlockItem | PairedItem = target_port.subsystem
 
         if source_block.subsys is not None and target_block.subsys is not None:
             connection: ConnectionItem = ConnectionItem(
                 source_port, target_port,
-                diagram=self.editor.diagram
+                diagram=self.editor.diagram,
+                editor=self.editor,
             )
 
             dst_var: Var = source_block.subsys.out_vars[source_port.index]
@@ -6014,6 +6035,85 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     """
 
     dirtyStateChanged = Signal(bool)
+    BLOCK_BORDER: QColor = QColor("#36536b")
+    BLOCK_BORDER_SELECTED: QColor = QColor("#cc6f2c")
+    BLOCK_TITLE: QColor = QColor("#173042")
+    BLOCK_SHADOW: QColor = QColor(24, 42, 56, 45)
+    INPUT_PORT_FILL: QColor = QColor("#2d7dd2")
+    OUTPUT_PORT_FILL: QColor = QColor("#2a9d6f")
+    PORT_BORDER: QColor = QColor("#173042")
+    WIRE_COLOR: QColor = QColor("#587291")
+    WIRE_HOVER_COLOR: QColor = QColor("#cc6f2c")
+    HANDLE_FILL: QColor = QColor("#36536b")
+    DEFAULT_BLOCK_FILL: QColor = QColor("#d9e7f5")
+    PAIRED_ITEM_FILL: QColor = QColor("#9fa8da")
+    BLOCK_FILL_ALL_CONNECTED: QColor = QColor("#a5d6a7")
+    BLOCK_FILL_DISCONNECTED: QColor = QColor("#ffe082")
+    PORT_LABEL_COLOR: QColor = QColor("#173042")
+    WIRE_ELBOW_OFFSET: float = 36.0
+    PORT_LABEL_MAX_CHARS: int = 12
+    BLOCK_HEADER_HEIGHT: float = 30.0
+    BLOCK_PORT_ROW_HEIGHT: float = 20.0
+    BLOCK_PORT_SECTION_PADDING: float = 10.0
+    BLOCK_MIN_WIDTH: float = 160.0
+    BLOCK_MIN_HEIGHT: float = 70.0
+    BLOCK_COMPACT_MIN_WIDTH: float = 100.0
+    BLOCK_COMPACT_MIN_HEIGHT: float = 40.0
+    BLOCK_COMPACT_HEADER_HEIGHT: float = 20.0
+    BLOCK_COMPACT_PORT_ROW_HEIGHT: float = 14.0
+    BLOCK_COMPACT_PORT_SECTION_PADDING: float = 6.0
+    TEMPLATE_NODE_TYPE: str = "TEMPLATE"
+    PARAMETER_VALUE_TYPE_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 500
+    PARAMETER_EDITABLE_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 501
+    LIBRARY_SEARCH_TEXT_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 502
+    BLOCK_SEARCH_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 503
+    MODAL_TEMPLATE_KIND_ATTR: str = "_modal_template_kind"
+    MODAL_TEMPLATE_CONFIG_ATTR: str = "_modal_template_config"
+    LOOKUP_ARRAY_LINEAR_DESCRIPTOR_KEYS: set[str] = {
+        "lookup_array_linear",
+        "lookup_array_linear_noclipping",
+        "lookup_array_object_linear",
+        "lookup_array_object_linear_noclipping",
+    }
+    INVERSE_LOOKUP_ARRAY_LINEAR_DESCRIPTOR_KEYS: set[str] = {
+        "inverse_lookup_array_linear",
+        "inverse_lookup_array_object_linear",
+    }
+    LOOKUP_ARRAY_SPLINE_DESCRIPTOR_KEYS: set[str] = {
+        "lookup_array_spline",
+        "lookup_array_object_spline",
+    }
+    LOOKUP_MATRIX_LINEAR_DESCRIPTOR_KEYS: set[str] = {
+        "lookup_matrix_linear",
+        "lookup_matrix_object_linear",
+    }
+    LOOKUP_MATRIX_SPLINE_DESCRIPTOR_KEYS: set[str] = {
+        "lookup_matrix_spline",
+        "lookup_matrix_object_spline",
+    }
+    JMARTI_MODAL_OPTION_KEYS: tuple[str, ...] = (
+        "reference_frequency_hz",
+        "use_frequency_exploration_window",
+        "exploration_low_hz",
+        "exploration_high_hz",
+        "use_delay_fit_window",
+        "delay_fit_low_hz",
+        "delay_fit_high_hz",
+        "decoupling_warning_tolerance",
+        "loewner_relative_tolerance",
+        "maximum_model_order",
+        "forced_model_order",
+        "minimum_frequency_samples",
+        "vf_max_iterations",
+        "vf_pole_shift_tolerance",
+        "vf_enforce_stable_poles",
+        "vf_stability_real_part_floor",
+        "vf_include_constant_term",
+        "vf_include_proportional_term",
+        "passivity_frequency_sample_count",
+        "passivity_minimum_real_yc_tolerance",
+        "passivity_maximum_hres_gain_tolerance",
+    )
 
     def __init__(self,
                  var_factory: VarFactory,
@@ -6099,6 +6199,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.has_unapplied_changes: bool = False
 
         self.original_block: Block = block  # api_object.rms_model
+
+        self.devices_static_params_mapping: Dict[DeviceType, List[ParamPowerFlowReferenceType]] = (
+            self.circuit.get_devices_static_params_mapping()
+        )
 
         if not self.original_block.children and not self.original_block.empty() and self.main_editor:
             self.main_block = Block()
@@ -6279,7 +6383,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         )
 
         self.library_proxy_model = LibraryTreeFilterProxyModel(
-            search_role=LIBRARY_SEARCH_TEXT_ROLE,
+            search_role=self.LIBRARY_SEARCH_TEXT_ROLE,
             parent=self.ui.libraryTreeView,
         )
         self.library_proxy_model.setSourceModel(self.library_model)
@@ -6300,6 +6404,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         self.variables_model = WrappableBlockTableModel(
             var_factory=self.var_factory,
+            parameter_value_type_role=self.PARAMETER_VALUE_TYPE_ROLE,
+            parameter_editable_role=self.PARAMETER_EDITABLE_ROLE,
+            block_search_role=self.BLOCK_SEARCH_ROLE,
             parent=self.ui.variablesTableView
         )
         self.variables_model.set_mode(DynamicTableModelMode.VARIABLES)
@@ -6308,7 +6415,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.variables_search.setPlaceholderText("Search variables...")
         self.variables_search.setClearButtonEnabled(True)
         self.ui.verticalLayout_7.insertWidget(0, self.variables_search)
-        self.variables_proxy = BlockTableFilterProxyModel(parent=self.ui.variablesTableView)
+        self.variables_proxy = BlockTableFilterProxyModel(search_role=self.BLOCK_SEARCH_ROLE,
+                                                          parent=self.ui.variablesTableView)
         self.variables_proxy.setSourceModel(self.variables_model)
         self.ui.variablesTableView.setModel(self.variables_proxy)
         self.variables_search.textChanged.connect(
@@ -6328,6 +6436,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.parameters_model = WrappableBlockTableModel(
             api_object=self.api_object,
             var_factory=self.var_factory,
+            parameter_value_type_role=self.PARAMETER_VALUE_TYPE_ROLE,
+            parameter_editable_role=self.PARAMETER_EDITABLE_ROLE,
+            block_search_role=self.BLOCK_SEARCH_ROLE,
             parent=self.ui.parametersTableView
         )
         self.parameters_model.set_mode(DynamicTableModelMode.PARAMETERS)
@@ -6336,7 +6447,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.parameters_search.setPlaceholderText("Search parameters...")
         self.parameters_search.setClearButtonEnabled(True)
         self.ui.verticalLayout_8.insertWidget(0, self.parameters_search)
-        self.parameters_proxy = BlockTableFilterProxyModel(parent=self.ui.parametersTableView)
+        self.parameters_proxy = BlockTableFilterProxyModel(search_role=self.BLOCK_SEARCH_ROLE,
+                                                           parent=self.ui.parametersTableView)
         self.parameters_proxy.setSourceModel(self.parameters_model)
         self.ui.parametersTableView.setModel(self.parameters_proxy)
         self.parameters_search.textChanged.connect(
@@ -6355,6 +6467,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         self.equations_model = WrappableBlockTableModel(
             var_factory=self.var_factory,
+            parameter_value_type_role=self.PARAMETER_VALUE_TYPE_ROLE,
+            parameter_editable_role=self.PARAMETER_EDITABLE_ROLE,
+            block_search_role=self.BLOCK_SEARCH_ROLE,
             parent=self.ui.equationsTableView
         )
         self.equations_model.set_mode(DynamicTableModelMode.EQUATIONS)
@@ -6363,7 +6478,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.equations_search.setPlaceholderText("Search equations...")
         self.equations_search.setClearButtonEnabled(True)
         self.ui.verticalLayout_9.insertWidget(0, self.equations_search)
-        self.equations_proxy = BlockTableFilterProxyModel(parent=self.ui.equationsTableView)
+        self.equations_proxy = BlockTableFilterProxyModel(search_role=self.BLOCK_SEARCH_ROLE,
+                                                          parent=self.ui.equationsTableView)
         self.equations_proxy.setSourceModel(self.equations_model)
         self.ui.equationsTableView.setModel(self.equations_proxy)
         self.equations_search.textChanged.connect(
@@ -6423,47 +6539,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     pass
             else:
                 pass
-            # elif not self.main_block.children and self.main_editor:
-            #     block = Block()
-            #     block.children.append(self.main_block)
-
-            # if self.main_block.children:
-            #
-            #     # add input connection blocks
-            #     connection_tpe: Dict[int, str] = {}
-            #     all_blocks: List[Block] = list()
-            #     for in_var in self.main_block.in_vars:
-            #         in_blk = Block(
-            #             out_vars=[in_var],
-            #             name=f"input_{in_var.name}",
-            #             is_decomposable=False
-            #         )
-            #         all_blocks.append(in_blk)
-            #         connection_tpe[in_blk.uid] = BlockType.INPUT_CONN.name
-            #
-            #     # add main block children blocks
-            #     for child in self.main_block.children:
-            #         all_blocks.append(child)
-            #
-            #     # add output connection blocks
-            #     for out_var in self.main_block.out_vars:
-            #         out_blk = Block(
-            #             in_vars=[out_var],
-            #             name=f"output_{out_var.name}",
-            #             is_decomposable=False
-            #         )
-            #         all_blocks.append(out_blk)
-            #         connection_tpe[out_blk.uid] = BlockType.OUTPUT_CONN.name
-            #
-            #     # --- build diagram ---
-            #     diagram, all_children = build_diagram_regular_blocks(all_blocks, connection_tpe)
-            #
-            #     # update main block and diagram editor
-            #     self.main_block.children = all_children
-            #     self.main_block.diagram = diagram
-            #     self.diagram = diagram
-
-
 
         elif not self.main_block.diagram.node_data:
             # here we add the connection variables to the main block
@@ -6478,6 +6553,36 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.rebuild_scene_from_diagram()
 
         # for every in variable and our variable in the main block of the editor we build a block item to connect these variables
+
+    def set_modal_template_metadata(self, block: Block, kind: str, config: Dict[str, Any]) -> None:
+        """
+        Persist modal metadata using the editor-owned attribute names.
+
+        :param block: Target block.
+        :param kind: Stable modal kind key.
+        :param config: Serializable modal configuration.
+        :return: None.
+        """
+        set_modal_template_metadata(
+            block=block,
+            kind=kind,
+            config=config,
+            modal_template_kind_attr=self.MODAL_TEMPLATE_KIND_ATTR,
+            modal_template_config_attr=self.MODAL_TEMPLATE_CONFIG_ATTR,
+        )
+
+    def get_modal_template_metadata(self, block: Block | None) -> tuple[str | None, Dict[str, Any] | None]:
+        """
+        Read modal metadata using the editor-owned attribute names.
+
+        :param block: Candidate block.
+        :return: Stored modal metadata.
+        """
+        return get_modal_template_metadata(
+            block=block,
+            modal_template_kind_attr=self.MODAL_TEMPLATE_KIND_ATTR,
+            modal_template_config_attr=self.MODAL_TEMPLATE_CONFIG_ATTR,
+        )
 
     @staticmethod
     def _insert_library_leaf(branch: Dict[str, Any], category_path: tuple[str, ...], leaf: LibraryLeafSpec) -> None:
@@ -6615,7 +6720,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         branch_item: QtGui.QStandardItem = QtGui.QStandardItem(branch_label)
         branch_item.setEditable(False)
-        branch_item.setData(" ".join((*path_tokens, branch_label)).strip(), LIBRARY_SEARCH_TEXT_ROLE)
+        branch_item.setData(" ".join((*path_tokens, branch_label)).strip(), self.LIBRARY_SEARCH_TEXT_ROLE)
         parent_item.appendRow(branch_item)
 
         if len(path_tokens) == 0:
@@ -6638,7 +6743,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 for leaf in sorted(branch_data, key=_library_leaf_label_sort_key):
                     item: QtGui.QStandardItem = QtGui.QStandardItem(leaf.label)
                     item.setEditable(False)
-                    item.setData(leaf.search_text if leaf.search_text else leaf.label, LIBRARY_SEARCH_TEXT_ROLE)
+                    item.setData(leaf.search_text if leaf.search_text else leaf.label, self.LIBRARY_SEARCH_TEXT_ROLE)
                     self._set_library_item_icon(item, leaf.payload)
                     model.register_drag_payload(item, leaf.payload)
                     branch_item.appendRow(item)
@@ -6724,14 +6829,14 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
             model = create_generic_block(self.var_factory, inputs, outputs, name)
             self.main_block.add(model)
-            item = GenericBlockItem(
-                var_factory=self.var_factory,
-                subsys=model,
-                api_object=self.api_object,
-                mode=self.mode,
-                name=model.name,
-                position_changed_callback=self._build_position_changed_callback(model.uid)
-            )
+            item = GenericBlockItem(editor=self,
+                                    var_factory=self.var_factory,
+                                    subsys=model,
+                                    api_object=self.api_object,
+                                    mode=self.mode,
+                                    name=model.name,
+                                    position_changed_callback=self._build_position_changed_callback(model.uid)
+                                    )
 
             item.setPos(QtCore.QPointF(x_pos, y_pos))
             self.scene.addItem(item)
@@ -6777,7 +6882,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                                   var_factory=self.var_factory,
                                                   block_type=block_type,
                                                   item_name=item_name)
-            block_item: GenericBlockItem = GenericBlockItem(var_factory=self.var_factory,
+            block_item: GenericBlockItem = GenericBlockItem(editor=self, var_factory=self.var_factory,
                                                             subsys=block_model,
                                                             api_object=self.api_object,
                                                             mode=self.mode,
@@ -6786,7 +6891,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                                                 block_model.uid))
 
             if block_model is not None:
-                set_modal_template_metadata(
+                self.set_modal_template_metadata(
                     block_model,
                     kind="emt_phase_wizard",
                     config=dict({
@@ -7031,7 +7136,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         block_model: Block | None = self._build_source_emt_block_model(block_type=block_type,
                                                                        item_name=item_name,
                                                                        modal_config=source_config)
-        block_item: GenericBlockItem = GenericBlockItem(var_factory=self.var_factory,
+        block_item: GenericBlockItem = GenericBlockItem(editor=self, var_factory=self.var_factory,
                                                         subsys=block_model,
                                                         api_object=self.api_object,
                                                         mode=self.mode,
@@ -7044,8 +7149,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
-        set_modal_template_metadata(block_model, kind="source_emt",
-                                    config=dict(source_config, block_type=block_type.name))
+        self.set_modal_template_metadata(block_model, kind="source_emt",
+                                         config=dict(source_config, block_type=block_type.name))
         self.block_counters[block_type] = count
         block_item.set_subsystem(block_model)
         block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
@@ -7176,7 +7281,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                                                           item_name=item_name,
                                                                           modal_config=source_config)
 
-        block_item: GenericBlockItem = GenericBlockItem(var_factory=self.var_factory,
+        block_item: GenericBlockItem = GenericBlockItem(editor=self, var_factory=self.var_factory,
                                                         subsys=block_model,
                                                         api_object=self.api_object,
                                                         mode=self.mode,
@@ -7189,8 +7294,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
-        set_modal_template_metadata(block_model, kind="dc_source_emt",
-                                    config=dict(source_config, block_type=block_type.name))
+        self.set_modal_template_metadata(block_model, kind="dc_source_emt",
+                                         config=dict(source_config, block_type=block_type.name))
         self.block_counters[block_type] = count
         block_item.set_subsystem(block_model)
         block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
@@ -7337,7 +7442,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                                                                 item_name=item_name,
                                                                                 modal_config=source_config)
 
-        block_item: GenericBlockItem = GenericBlockItem(var_factory=self.var_factory,
+        block_item: GenericBlockItem = GenericBlockItem(editor=self, var_factory=self.var_factory,
                                                         subsys=block_model,
                                                         api_object=self.api_object,
                                                         mode=self.mode,
@@ -7350,8 +7455,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
-        set_modal_template_metadata(block_model, kind="balanced_source_emt",
-                                    config=dict(source_config, block_type=block_type.name))
+        self.set_modal_template_metadata(block_model, kind="balanced_source_emt",
+                                         config=dict(source_config, block_type=block_type.name))
         self.block_counters[block_type] = count
         block_item.set_subsystem(block_model)
         block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
@@ -7503,7 +7608,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                                                                  item_name=item_name,
                                                                                  modal_config=source_config)
 
-        block_item: GenericBlockItem = GenericBlockItem(var_factory=self.var_factory,
+        block_item: GenericBlockItem = GenericBlockItem(editor=self, var_factory=self.var_factory,
                                                         subsys=block_model,
                                                         api_object=self.api_object,
                                                         mode=self.mode,
@@ -7516,8 +7621,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
-        set_modal_template_metadata(block_model, kind="arbitrary_source_emt", config=dict(source_config,
-                                                                                          block_type=block_type.name))
+        self.set_modal_template_metadata(block_model, kind="arbitrary_source_emt", config=dict(source_config,
+                                                                                               block_type=block_type.name))
         self.block_counters[block_type] = count
         block_item.set_subsystem(block_model)
         block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
@@ -7786,7 +7891,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                                                                  item_name=item_name,
                                                                                  modal_config=source_config)
 
-        block_item: GenericBlockItem = GenericBlockItem(var_factory=self.var_factory,
+        block_item: GenericBlockItem = GenericBlockItem(editor=self, var_factory=self.var_factory,
                                                         subsys=block_model,
                                                         api_object=self.api_object,
                                                         mode=self.mode,
@@ -7799,8 +7904,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
-        set_modal_template_metadata(block_model, kind="transient_source_emt",
-                                    config=dict(source_config, block_type=block_type.name))
+        self.set_modal_template_metadata(block_model, kind="transient_source_emt",
+                                         config=dict(source_config, block_type=block_type.name))
         self.block_counters[block_type] = count
         block_item.set_subsystem(block_model)
         block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
@@ -7846,7 +7951,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         options_kwargs: Dict[str, Any] = dict()
         option_key: str
 
-        for option_key in JMARTI_MODAL_OPTION_KEYS:
+        for option_key in self.JMARTI_MODAL_OPTION_KEYS:
             options_kwargs[option_key] = resolved_config[option_key]
 
         return JMartiFitOptions(**options_kwargs)
@@ -8158,7 +8263,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             block_type=BlockType.EMT_JMARTI_LINE,
             item_name=item_name,
         )
-        block_item: GenericBlockItem = GenericBlockItem(var_factory=self.var_factory,
+        block_item: GenericBlockItem = GenericBlockItem(editor=self, var_factory=self.var_factory,
                                                         subsys=block_model,
                                                         api_object=self.api_object,
                                                         mode=self.mode,
@@ -8171,7 +8276,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
-        set_modal_template_metadata(block_model, kind="jmarti_line_emt", config=modal_config)
+        self.set_modal_template_metadata(block_model, kind="jmarti_line_emt", config=modal_config)
         set_jmarti_block_fit_bundle(block_model, fit_bundle)
         set_jmarti_block_runtime_data(block_model, None)
         self.block_counters[BlockType.EMT_JMARTI_LINE] = count
@@ -8234,8 +8339,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             if block_model is None:
                 return None
 
-            set_modal_template_metadata(block_model, kind="transformer_topology_emt",
-                                        config=dict(topology_config, block_type=block_type.name))
+            self.set_modal_template_metadata(block_model, kind="transformer_topology_emt",
+                                             config=dict(topology_config, block_type=block_type.name))
 
             # The dynamic editor must not overwrite the static transformer
             # winding connection stored by the network object. The dynamic block
@@ -8262,8 +8367,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 modal_config=load_config,
             )
 
-            set_modal_template_metadata(block_model, kind="load_topology_emt",
-                                        config=dict(load_config, block_type=block_type.name))
+            self.set_modal_template_metadata(block_model, kind="load_topology_emt",
+                                             config=dict(load_config, block_type=block_type.name))
             self._annotate_internal_grounding_link_blocks(block_model)
 
             # The dynamic editor must not overwrite the static load connection.
@@ -8283,7 +8388,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             block_model = create_emt_wizard_block(phase_n, phase_a, phase_b, phase_c, self.var_factory,
                                                   block_type=block_type, item_name=item_name)
 
-            set_modal_template_metadata(
+            self.set_modal_template_metadata(
                 block_model,
                 kind="emt_phase_wizard",
                 config=dict({
@@ -8313,7 +8418,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             item_name: str = f"grounding_link_emt_{count}"
             block_model = emt_templates.get_grounding_link_emt_template(vf=self.var_factory, name=item_name,
                                                                         **template_kwargs).block
-            set_modal_template_metadata(block_model, kind="grounding_link_emt", config=dict(grounding_config))
+            self.set_modal_template_metadata(block_model, kind="grounding_link_emt", config=dict(grounding_config))
 
         elif block_type == BlockType.SWITCH_EMT:
             dialog = SwitchEmtDialog(self)
@@ -8327,7 +8432,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
             block_model = emt_templates.get_switch_emt_template(vf=self.var_factory, name=item_name,
                                                                 **switch_config).block
-            set_modal_template_metadata(
+            self.set_modal_template_metadata(
                 block_model,
                 kind="switch_emt",
                 config=dict(switch_config),
@@ -8359,7 +8464,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 command_threshold=float(fault_config["command_threshold"]),
                 name=item_name,
             ).block
-            set_modal_template_metadata(
+            self.set_modal_template_metadata(
                 block_model,
                 kind="fault_emt",
                 config=dict(fault_config),
@@ -8383,7 +8488,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
             block_model = emt_templates.get_shunt_rlc_combo_emt_template(vf=self.var_factory, name=item_name,
                                                                          **template_kwargs).block
-            set_modal_template_metadata(block_model, kind="rlc_combo_emt", config=dict(rlc_config))
+            self.set_modal_template_metadata(block_model, kind="rlc_combo_emt", config=dict(rlc_config))
             self._annotate_internal_grounding_link_blocks(block_model)
 
             # The dynamic editor must not overwrite the static injection
@@ -8412,8 +8517,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
             block_model = emt_templates.get_shunt_rlc_combo_emt_template(vf=self.var_factory, name=item_name,
                                                                          **template_kwargs).block
-            set_modal_template_metadata(block_model, kind="shunt_component_emt",
-                                        config=dict(shunt_config, block_type=block_type.name))
+            self.set_modal_template_metadata(block_model, kind="shunt_component_emt",
+                                             config=dict(shunt_config, block_type=block_type.name))
             self._annotate_internal_grounding_link_blocks(block_model)
 
             # The dynamic editor must not overwrite the static injection
@@ -8438,8 +8543,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 item_name=item_name,
                 modal_config=load_config,
             )
-            set_modal_template_metadata(block_model, kind="load_topology_emt",
-                                        config=dict(load_config, block_type=block_type.name))
+            self.set_modal_template_metadata(block_model, kind="load_topology_emt",
+                                             config=dict(load_config, block_type=block_type.name))
             self._annotate_internal_grounding_link_blocks(block_model)
 
             # The dynamic editor must not overwrite the static load connection.
@@ -8466,7 +8571,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
             block_model = emt_templates.get_grounding_link_emt_template(vf=self.var_factory, name=item_name,
                                                                         **template_kwargs).block
-            set_modal_template_metadata(block_model, kind="grounding_link_emt", config=dict(grounding_config))
+            self.set_modal_template_metadata(block_model, kind="grounding_link_emt", config=dict(grounding_config))
 
         elif block_type == BlockType.NONLINEAR_RESISTOR_EMT:
             dialog = LookupArrayLinearDialog(
@@ -8492,7 +8597,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 current_points=current_points,
                 name=item_name,
             ).block
-            set_modal_template_metadata(
+            self.set_modal_template_metadata(
                 block_model,
                 kind="nonlinear_resistor_emt",
                 config=dict({
@@ -8528,8 +8633,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             else:
                 pass
 
-            set_modal_template_metadata(block_model, kind="transformer_topology_emt",
-                                        config=dict(topology_config, block_type=block_type.name))
+            self.set_modal_template_metadata(block_model, kind="transformer_topology_emt",
+                                             config=dict(topology_config, block_type=block_type.name))
 
             # The dynamic editor must not overwrite the static transformer
             # winding connection stored by the network object.
@@ -8552,14 +8657,14 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         # no we have the name and the block
         if block_model is not None:
             self.main_block.add(block_model)
-            item = GenericBlockItem(
-                var_factory=self.var_factory,
-                subsys=block_model,
-                api_object=self.api_object,
-                mode=self.mode,
-                name=block_model.name,
-                position_changed_callback=self._build_position_changed_callback(block_model.uid)
-            )
+            item = GenericBlockItem(editor=self,
+                                    var_factory=self.var_factory,
+                                    subsys=block_model,
+                                    api_object=self.api_object,
+                                    mode=self.mode,
+                                    name=block_model.name,
+                                    position_changed_callback=self._build_position_changed_callback(block_model.uid)
+                                    )
 
             item.setPos(QtCore.QPointF(x_pos, y_pos))
             self.scene.addItem(item)
@@ -8590,7 +8695,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
         count: int = self.block_counters.get(block_type, 0) + 1
         item_name: str = f"{block_type.name}_{count}"
-        block_item: BlockItem = BlockItem(var_factory=self.var_factory, api_object=self.api_object, mode=self.mode,
+        block_item: BlockItem = BlockItem(editor=self, var_factory=self.var_factory, api_object=self.api_object,
+                                          mode=self.mode,
                                           name=item_name)
         block_model: Block | None = create_block_of_type(
             var_factory=self.var_factory,
@@ -8731,7 +8837,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 connection = ConnectionItem(
                     source_port=source_port,
                     target_port=target_port,
-                    diagram=self.diagram
+                    diagram=self.diagram,
+                    editor=self,
                 )
                 self.scene.addItem(connection)
                 self.diagram.add_branch(
@@ -8740,7 +8847,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     device_uid_to=item_dest.subsys.uid,
                     port_number_from=source_port.index,
                     port_number_to=target_port.index,
-                    color=WIRE_COLOR.name()
+                    color=self.WIRE_COLOR.name()
                 )
 
     def generate_block_item_for_block(self, block_model: Block,
@@ -8757,14 +8864,14 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         item_name: str = f"{block_model.name}"
 
         if block_model is not None:
-            item = GenericBlockItem(
-                var_factory=self.var_factory,
-                subsys=block_model,
-                api_object=self.api_object,
-                mode=self.mode,
-                name=item_name,
-                position_changed_callback=self._build_position_changed_callback(block_model.uid)
-            )
+            item = GenericBlockItem(editor=self,
+                                    var_factory=self.var_factory,
+                                    subsys=block_model,
+                                    api_object=self.api_object,
+                                    mode=self.mode,
+                                    name=item_name,
+                                    position_changed_callback=self._build_position_changed_callback(block_model.uid)
+                                    )
 
             # The symbolic block has to be attached first so the graphics item can build its ports from it.
 
@@ -8836,7 +8943,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             return None
         else:
             item_name: str = f"{var.name}"
-            block_item: ProtectedConnectionBlockItem = ProtectedConnectionBlockItem(var_factory=self.var_factory,
+            block_item: ProtectedConnectionBlockItem = ProtectedConnectionBlockItem(editor=self,
+                                                                                    var_factory=self.var_factory,
                                                                                     name=item_name)
             block_model: Block = Block()
 
@@ -8893,14 +9001,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         item_name: str = template.name
         block_model: Block = duplicate_block(template.block, var_factory=self.var_factory)
         self.main_block.add(block_model)
-        item: GenericBlockItem = GenericBlockItem(
-            var_factory=self.var_factory,
-            subsys=block_model,
-            api_object=self.api_object,
-            mode=self.mode,
-            name=item_name,
-            position_changed_callback=self._build_position_changed_callback(block_model.uid)
-        )
+        item: GenericBlockItem = GenericBlockItem(editor=self,
+                                                  var_factory=self.var_factory,
+                                                  subsys=block_model,
+                                                  api_object=self.api_object,
+                                                  mode=self.mode,
+                                                  name=item_name,
+                                                  position_changed_callback=self._build_position_changed_callback(
+                                                      block_model.uid)
+                                                  )
 
         if item_name:
             block_model.name = item_name
@@ -8913,7 +9022,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             name=item_name,
             x=x_pos,
             y=y_pos,
-            tpe=TEMPLATE_NODE_TYPE,
+            tpe=self.TEMPLATE_NODE_TYPE,
             device_uid=block_model.uid
         )
 
@@ -8954,7 +9063,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             clip=clip_enabled,
             name=item_name,
         )
-        set_modal_template_metadata(
+        self.set_modal_template_metadata(
             template.block,
             kind="lookup_array_1d",
             config=dict({
@@ -8982,7 +9091,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             item_name: str = f"switch_emt_{count}"
             block_model = emt_templates.get_switch_emt_template(vf=self.var_factory, name=item_name,
                                                                 **switch_config).block
-            block_item: GenericBlockItem = GenericBlockItem(var_factory=self.var_factory,
+            block_item: GenericBlockItem = GenericBlockItem(editor=self, var_factory=self.var_factory,
                                                             subsys=block_model,
                                                             api_object=self.api_object,
                                                             mode=self.mode,
@@ -8990,7 +9099,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                                             position_changed_callback=self._build_position_changed_callback(
                                                                 block_model.uid))
 
-            set_modal_template_metadata(
+            self.set_modal_template_metadata(
                 block_model,
                 kind="switch_emt",
                 config=dict(switch_config),
@@ -9125,7 +9234,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             command_threshold=float(fault_config["command_threshold"]),
             name=item_name,
         ).block
-        block_item: GenericBlockItem = GenericBlockItem(var_factory=self.var_factory,
+        block_item: GenericBlockItem = GenericBlockItem(editor=self, var_factory=self.var_factory,
                                                         subsys=block_model,
                                                         api_object=self.api_object,
                                                         mode=self.mode,
@@ -9133,7 +9242,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                                         position_changed_callback=self._build_position_changed_callback(
                                                             block_model.uid))
 
-        set_modal_template_metadata(
+        self.set_modal_template_metadata(
             block_model,
             kind="fault_emt",
             config=dict(fault_config),
@@ -9182,7 +9291,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         item_name: str = f"rlc_combo_emt_{count}"
         block_model = emt_templates.get_shunt_rlc_combo_emt_template(vf=self.var_factory, name=item_name,
                                                                      **template_kwargs).block
-        block_item: GenericBlockItem = GenericBlockItem(var_factory=self.var_factory,
+        block_item: GenericBlockItem = GenericBlockItem(editor=self, var_factory=self.var_factory,
                                                         subsys=block_model,
                                                         api_object=self.api_object,
                                                         mode=self.mode,
@@ -9190,7 +9299,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                                         position_changed_callback=self._build_position_changed_callback(
                                                             block_model.uid))
 
-        set_modal_template_metadata(block_model, kind="rlc_combo_emt", config=dict(rlc_config))
+        self.set_modal_template_metadata(block_model, kind="rlc_combo_emt", config=dict(rlc_config))
         self._annotate_internal_grounding_link_blocks(block_model)
 
         # The dynamic editor must not overwrite the static injection
@@ -9241,7 +9350,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             item_name=item_name,
             modal_config=induction_motor_config,
         )
-        block_item: GenericBlockItem = GenericBlockItem(var_factory=self.var_factory,
+        block_item: GenericBlockItem = GenericBlockItem(editor=self, var_factory=self.var_factory,
                                                         subsys=block_model,
                                                         api_object=self.api_object,
                                                         mode=self.mode,
@@ -9251,7 +9360,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         # Persist the modal selection so modify-template and rebuild flows can
         # recreate the same symbolic template later.
-        set_modal_template_metadata(block_model, kind="induction_motor_emt", config=dict(induction_motor_config))
+        self.set_modal_template_metadata(block_model, kind="induction_motor_emt", config=dict(induction_motor_config))
 
         self.block_counters[BlockType.INDUCTION_MOTOR_EMT] = count
         block_item.set_subsystem(block_model)
@@ -9307,7 +9416,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         block_model = emt_templates.get_shunt_rlc_combo_emt_template(vf=self.var_factory,
                                                                      name=item_name,
                                                                      **template_kwargs).block
-        block_item: GenericBlockItem = GenericBlockItem(var_factory=self.var_factory,
+        block_item: GenericBlockItem = GenericBlockItem(editor=self, var_factory=self.var_factory,
                                                         subsys=block_model,
                                                         api_object=self.api_object,
                                                         mode=self.mode,
@@ -9315,8 +9424,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                                         position_changed_callback=self._build_position_changed_callback(
                                                             block_model.uid))
 
-        set_modal_template_metadata(block_model, kind="shunt_component_emt",
-                                    config=dict(shunt_config, block_type=block_type.name))
+        self.set_modal_template_metadata(block_model, kind="shunt_component_emt",
+                                         config=dict(shunt_config, block_type=block_type.name))
         self._annotate_internal_grounding_link_blocks(block_model)
 
         # The dynamic editor must not overwrite the static injection
@@ -9369,7 +9478,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             item_name=item_name,
             modal_config=load_config,
         )
-        block_item: GenericBlockItem = GenericBlockItem(var_factory=self.var_factory,
+        block_item: GenericBlockItem = GenericBlockItem(editor=self, var_factory=self.var_factory,
                                                         subsys=block_model,
                                                         api_object=self.api_object,
                                                         mode=self.mode,
@@ -9382,8 +9491,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
-        set_modal_template_metadata(block_model, kind="load_topology_emt",
-                                    config=dict(load_config, block_type=block_type.name))
+        self.set_modal_template_metadata(block_model, kind="load_topology_emt",
+                                         config=dict(load_config, block_type=block_type.name))
         self._annotate_internal_grounding_link_blocks(block_model)
 
         # The dynamic editor must not overwrite the static load connection.
@@ -9434,7 +9543,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         item_name: str = f"grounding_link_emt_{count}"
         block_model = emt_templates.get_grounding_link_emt_template(vf=self.var_factory, name=item_name,
                                                                     **template_kwargs).block
-        block_item: GenericBlockItem = GenericBlockItem(var_factory=self.var_factory,
+        block_item: GenericBlockItem = GenericBlockItem(editor=self, var_factory=self.var_factory,
                                                         subsys=block_model,
                                                         api_object=self.api_object,
                                                         mode=self.mode,
@@ -9442,7 +9551,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                                         position_changed_callback=self._build_position_changed_callback(
                                                             block_model.uid))
 
-        set_modal_template_metadata(block_model, kind="grounding_link_emt", config=dict(grounding_config))
+        self.set_modal_template_metadata(block_model, kind="grounding_link_emt", config=dict(grounding_config))
 
         self.block_counters[BlockType.GROUNDING_LINK_EMT] = count
         block_item.set_subsystem(block_model)
@@ -9492,7 +9601,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             current_points=current_points,
             name=item_name,
         ).block
-        block_item: GenericBlockItem = GenericBlockItem(var_factory=self.var_factory,
+        block_item: GenericBlockItem = GenericBlockItem(editor=self, var_factory=self.var_factory,
                                                         subsys=block_model,
                                                         api_object=self.api_object,
                                                         mode=self.mode,
@@ -9500,7 +9609,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                                         position_changed_callback=self._build_position_changed_callback(
                                                             block_model.uid))
 
-        set_modal_template_metadata(
+        self.set_modal_template_metadata(
             block_model,
             kind="nonlinear_resistor_emt",
             config=dict({
@@ -9558,7 +9667,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             item_name=item_name,
             modal_config=topology_config,
         )
-        block_item: GenericBlockItem = GenericBlockItem(var_factory=self.var_factory,
+        block_item: GenericBlockItem = GenericBlockItem(editor=self, var_factory=self.var_factory,
                                                         subsys=block_model,
                                                         api_object=self.api_object,
                                                         mode=self.mode,
@@ -9571,8 +9680,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
-        set_modal_template_metadata(block_model, kind="transformer_topology_emt",
-                                    config=dict(topology_config, block_type=block_type.name))
+        self.set_modal_template_metadata(block_model, kind="transformer_topology_emt",
+                                         config=dict(topology_config, block_type=block_type.name))
 
         # The dynamic editor must not overwrite the static transformer winding
         # connection stored by the network object.
@@ -9916,7 +10025,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         for child_block in _iter_child_blocks(block_model):
             if child_block.name.endswith("_grounding_link"):
-                set_modal_template_metadata(child_block, kind="grounding_link_emt", config=grounding_config)
+                self.set_modal_template_metadata(child_block, kind="grounding_link_emt", config=grounding_config)
             else:
                 pass
 
@@ -10368,7 +10477,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             y_points=y_points,
             name=item_name,
         )
-        set_modal_template_metadata(
+        self.set_modal_template_metadata(
             template.block,
             kind="lookup_array_inverse",
             config=dict({
@@ -10408,7 +10517,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             y_points=y_points,
             name=item_name,
         )
-        set_modal_template_metadata(
+        self.set_modal_template_metadata(
             template.block,
             kind="lookup_array_spline",
             config=dict({
@@ -10449,7 +10558,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             z_matrix=z_matrix,
             name=item_name,
         )
-        set_modal_template_metadata(
+        self.set_modal_template_metadata(
             template.block,
             kind="lookup_matrix_linear",
             config=dict({
@@ -10491,7 +10600,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             z_matrix=z_matrix,
             name=item_name,
         )
-        set_modal_template_metadata(
+        self.set_modal_template_metadata(
             template.block,
             kind="lookup_matrix_spline",
             config=dict({
@@ -10621,15 +10730,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         elif isinstance(payload, BlockType):
             return self.create_block_item_mix(block_type=payload, x_pos=x_pos, y_pos=y_pos)
         elif isinstance(payload, BasicBlockTemplateDescriptor):
-            if payload.template_key in LOOKUP_ARRAY_LINEAR_DESCRIPTOR_KEYS:
+            if payload.template_key in self.LOOKUP_ARRAY_LINEAR_DESCRIPTOR_KEYS:
                 return self.create_lookup_array_linear_descriptor_item(payload, x_pos, y_pos)
-            elif payload.template_key in INVERSE_LOOKUP_ARRAY_LINEAR_DESCRIPTOR_KEYS:
+            elif payload.template_key in self.INVERSE_LOOKUP_ARRAY_LINEAR_DESCRIPTOR_KEYS:
                 return self.create_inverse_lookup_array_linear_descriptor_item(payload, x_pos, y_pos)
-            elif payload.template_key in LOOKUP_ARRAY_SPLINE_DESCRIPTOR_KEYS:
+            elif payload.template_key in self.LOOKUP_ARRAY_SPLINE_DESCRIPTOR_KEYS:
                 return self.create_lookup_array_spline_descriptor_item(payload, x_pos, y_pos)
-            elif payload.template_key in LOOKUP_MATRIX_LINEAR_DESCRIPTOR_KEYS:
+            elif payload.template_key in self.LOOKUP_MATRIX_LINEAR_DESCRIPTOR_KEYS:
                 return self.create_lookup_matrix_linear_descriptor_item(payload, x_pos, y_pos)
-            elif payload.template_key in LOOKUP_MATRIX_SPLINE_DESCRIPTOR_KEYS:
+            elif payload.template_key in self.LOOKUP_MATRIX_SPLINE_DESCRIPTOR_KEYS:
                 return self.create_lookup_matrix_spline_descriptor_item(payload, x_pos, y_pos)
             else:
                 template: EmtModelTemplate = load_basic_block_catalog_template(payload, self.var_factory)
@@ -10705,14 +10814,14 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.main_block.add(blk_in)
         self.main_block.add(blk_out)
 
-        item_in = PairedItem(
-            var_factory=self.var_factory,
-            subsys=blk_in,
-            api_object=self.api_object,
-            mode=self.mode,
-            name=blk_in.name,
-            position_changed_callback=self._build_position_changed_callback(blk_in.uid)
-        )
+        item_in = PairedItem(editor=self,
+                             var_factory=self.var_factory,
+                             subsys=blk_in,
+                             api_object=self.api_object,
+                             mode=self.mode,
+                             name=blk_in.name,
+                             position_changed_callback=self._build_position_changed_callback(blk_in.uid)
+                             )
         item_in.setPos(QtCore.QPointF(x_pos - 50.0, y_pos))
         self.scene.addItem(item_in)
         self.diagram.add_node(
@@ -10723,14 +10832,14 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             device_uid=blk_in.uid
         )
 
-        item_out = PairedItem(
-            var_factory=self.var_factory,
-            subsys=blk_out,
-            api_object=self.api_object,
-            mode=self.mode,
-            name=blk_out.name,
-            position_changed_callback=self._build_position_changed_callback(blk_out.uid)
-        )
+        item_out = PairedItem(editor=self,
+                              var_factory=self.var_factory,
+                              subsys=blk_out,
+                              api_object=self.api_object,
+                              mode=self.mode,
+                              name=blk_out.name,
+                              position_changed_callback=self._build_position_changed_callback(blk_out.uid)
+                              )
         item_out.setPos(QtCore.QPointF(x_pos + 50.0, y_pos))
         self.scene.addItem(item_out)
         self.diagram.add_node(
@@ -12320,6 +12429,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                     source_port=protected_item.outputs[0],
                                     target_port=block_item.inputs[input_index],
                                     diagram=self.diagram,
+                                    editor=self,
                                 )
                                 self.scene.addItem(connection_item)
                         else:
@@ -12343,6 +12453,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                     source_port=block_item.outputs[output_index],
                                     target_port=protected_item.inputs[0],
                                     diagram=self.diagram,
+                                    editor=self,
                                 )
                                 self.scene.addItem(connection_item)
                         else:
@@ -12506,6 +12617,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         source_port=source_port,
                         target_port=target_port,
                         diagram=self.diagram,
+                        editor=self,
                     )
                     self.scene.addItem(connection)
             else:
@@ -12713,7 +12825,12 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         block = self.parameters_model.block
 
         api_object = self.parameters_model.api_object
-        dialog: EditParameterDialog = EditParameterDialog(api_object, row_data.kind, self)
+        dialog: EditParameterDialog = EditParameterDialog(
+            api_object=api_object,
+            devices_static_params_mapping=self.devices_static_params_mapping,
+            current_kind=row_data.kind,
+            parent=self
+        )
 
         if dialog.exec() == QDialog.DialogCode.Accepted:
             try:
@@ -13017,7 +13134,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return:
         """
         api_object = self.parameters_model.api_object
-        dialog: AddParameterDialog = AddParameterDialog(api_object, self)
+        dialog: AddParameterDialog = AddParameterDialog(
+            api_object=api_object,
+            devices_static_params_mapping=self.devices_static_params_mapping,
+            parent=self
+        )
 
         if dialog.exec() == QDialog.DialogCode.Accepted:
             try:
@@ -13386,6 +13507,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 var_factory=self.var_factory,
                 block=item.subsys,
                 api_object=self.api_object,
+                circuit=self.circuit,
                 mode=self.mode,
                 modal=False,
             )
@@ -13440,7 +13562,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
-        modal_kind, modal_config = get_modal_template_metadata(item.subsys)
+        modal_kind, modal_config = self.get_modal_template_metadata(item.subsys)
 
         if modal_kind is None or modal_config is None:
             return
@@ -13520,11 +13642,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             target_block.diagram = source_clone.diagram
         else:
             target_block.diagram = preserved_diagram
-        set_modal_template_metadata(target_block, modal_kind, modal_config)
+        self.set_modal_template_metadata(target_block, modal_kind, modal_config)
         set_jmarti_block_fit_bundle(target_block, None)
         set_jmarti_block_runtime_data(target_block, None)
 
-        if get_modal_template_metadata(source_clone)[0] == "jmarti_line_emt":
+        if self.get_modal_template_metadata(source_clone)[0] == "jmarti_line_emt":
             set_jmarti_block_fit_bundle(target_block, get_jmarti_block_fit_bundle(source_clone))
             set_jmarti_block_runtime_data(target_block, get_jmarti_block_runtime_data(source_clone))
         else:
@@ -13580,7 +13702,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         updated_config = dict(modal_config)
         updated_config["x_points"] = x_points
         updated_config["y_points"] = y_points
-        self._replace_scene_block_from_template(item, new_block, str(get_modal_template_metadata(item.subsys)[0]),
+        self._replace_scene_block_from_template(item, new_block, str(self.get_modal_template_metadata(item.subsys)[0]),
                                                 updated_config)
 
     def _modify_lookup_matrix_like_block(self, item: BlockItem | GenericBlockItem, modal_config: Dict[str, Any],
@@ -13622,7 +13744,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         updated_config["x_points"] = x_points
         updated_config["y_points"] = y_points
         updated_config["z_matrix"] = z_matrix
-        self._replace_scene_block_from_template(item, new_block, str(get_modal_template_metadata(item.subsys)[0]),
+        self._replace_scene_block_from_template(item, new_block, str(self.get_modal_template_metadata(item.subsys)[0]),
                                                 updated_config)
 
     def _modify_emt_phase_wizard_block(self, item: BlockItem | GenericBlockItem, modal_config: Dict[str, Any]) -> None:
@@ -14923,15 +15045,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             if block_model is not None:
 
                 if block_type == BlockType.INPUT_CONN or block_type == BlockType.OUTPUT_CONN:
-                    block_item: ProtectedConnectionBlockItem = ProtectedConnectionBlockItem(
-                        var_factory=self.var_factory,
-                        name=node.name,
-                    )
+                    block_item: ProtectedConnectionBlockItem = ProtectedConnectionBlockItem(editor=self,
+                                                                                            var_factory=self.var_factory,
+                                                                                            name=node.name,
+                                                                                            )
                     block_item.set_subsystem(block_model)
                     block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
                     block_item.build_item()
 
-                    modal_kind, modal_config = get_modal_template_metadata(block_model)
+                    modal_kind, modal_config = self.get_modal_template_metadata(block_model)
                     if modal_kind == "jmarti_line_emt" and modal_config is not None:
                         block_item.setToolTip(self._build_jmarti_modal_tooltip(modal_config))
                     elif modal_kind == "source_emt" and modal_config is not None:
@@ -14967,31 +15089,33 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
                 else:
                     if node.tpe in ("signal_in", "signal_out"):
-                        item = PairedItem(
-                            var_factory=self.var_factory,
-                            subsys=block_model,
-                            api_object=self.api_object,
-                            mode=self.mode,
-                            name=block_model.name,
-                            position_changed_callback=self._build_position_changed_callback(block_model.uid)
-                        )
+                        item = PairedItem(editor=self,
+                                          var_factory=self.var_factory,
+                                          subsys=block_model,
+                                          api_object=self.api_object,
+                                          mode=self.mode,
+                                          name=block_model.name,
+                                          position_changed_callback=self._build_position_changed_callback(
+                                              block_model.uid)
+                                          )
                         suffix = block_model.name.replace("From_", "").replace("To_", "")
                         if node.tpe == "signal_in":
                             signal_in_items[suffix] = item
                         else:
                             signal_out_items[suffix] = item
                     else:
-                        item = GenericBlockItem(
-                            var_factory=self.var_factory,
-                            subsys=block_model,
-                            api_object=self.api_object,
-                            mode=self.mode,
-                            name=block_model.name,
-                            position_changed_callback=self._build_position_changed_callback(block_model.uid)
-                        )
+                        item = GenericBlockItem(editor=self,
+                                                var_factory=self.var_factory,
+                                                subsys=block_model,
+                                                api_object=self.api_object,
+                                                mode=self.mode,
+                                                name=block_model.name,
+                                                position_changed_callback=self._build_position_changed_callback(
+                                                    block_model.uid)
+                                                )
                     self.scene.addItem(item)
                     item.setPos(QPointF(node.x, node.y))
-                    modal_kind, modal_config = get_modal_template_metadata(block_model)
+                    modal_kind, modal_config = self.get_modal_template_metadata(block_model)
                     if modal_kind == "jmarti_line_emt" and modal_config is not None:
                         item.setToolTip(self._build_jmarti_modal_tooltip(modal_config))
                     elif modal_kind == "source_emt" and modal_config is not None:
@@ -15045,7 +15169,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         src_port, dst_port,
                         diagram=self.diagram,
                         con_uid=uid,
-                        elbow_points=elbow_points
+                        elbow_points=elbow_points,
+                        editor=self,
                     )
 
                     pen: QPen = connection.pen()
@@ -15210,6 +15335,7 @@ if __name__ == "__main__":
         var_factory=vf,
         block=bl,
         api_object=device,
+        circuit=MultiCircuit(),
     )
     window.show()
     app.exec_()
