@@ -1186,9 +1186,13 @@ def test_bipolar_unbalanced() -> None:
     # VSC_5 enforces Vm_ac = 1.0 at Bus14
     assert np.isclose(abs(res.voltage[13]), 1.0, atol=1e-4)
 
-    # Pdc setpoints honored on VSC_3 and VSC_4 (positive-pole DC injection)
-    assert np.isclose(res.Pfp_vsc[2], 19.6, atol=1e-4)
-    assert np.isclose(res.Pfp_vsc[3], -2.8, atol=1e-4)
+    # Check if the power Pdc is properly split between Pfp and Pfn
+    # The equation is Pdc = Pfp + Pfn, also equal to Pdc = (Vfp - Vfn) x (Pfp / Vfp)
+    for k, fp, fn, setp in ((2, 2, 6, 19.6), (3, 4, 6, -2.8)):
+        Vfp = res.voltage[fp].real
+        Vfn = res.voltage[fn].real
+        assert np.isclose((Vfp - Vfn) * (res.Pfp_vsc[k] / Vfp), setp, atol=1e-4)
+        assert np.isclose(res.Pfp_vsc[k] + res.Pfn_vsc[k], setp, atol=1e-4)
 
     # Imbalance forces non-zero return-cable voltage drop on the negative side
     assert abs(res.voltage[9].real) > 1e-3  # Bus10
@@ -1197,6 +1201,92 @@ def test_bipolar_unbalanced() -> None:
     # Monopolar VSC_5 absorbs ~load + losses from the negative pole
     s_to_vsc5 = res.St_vsc[4]
     assert np.isclose(s_to_vsc5.real, -40.0, atol=1e-3)
+
+
+def test_bipolar_pdc_symbolic_jacobian() -> None:
+    """
+    The bipolar Pdc control equation Pfp + Pfn - Pdc_set = 0, equal to
+    (Vfp - Vfn) * (Pfp / Vfp) has an analytic block in the symbolic Jacobian 
+    which must match with the one computed with autodiff
+    """
+    from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
+    from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_full_acdc_with_negative_poles import (
+        PfAcDcWithNegativePoles)
+    from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.newton_raphson_fx import newton_raphson_fx
+    from VeraGridEngine.Utils.Sparse.csc2 import mat_to_scipy
+
+    class SymbolicJacForm(PfAcDcWithNegativePoles):
+        """Same formulation, but Newton-Raphson uses the analytic (symbolic) Jacobian."""
+        def Jacobian(self, autodiff: bool = True):
+            return super().Jacobian(autodiff=False)
+
+    Ub, Sb, Rb = 220, 100, (220 ** 2) / 100
+    grid = gce.MultiCircuit(name="Bipolar_pdc_sym", Sbase=Sb)
+    b_ac1 = gce.Bus(name="ac1", Vnom=Ub, is_slack=True)
+    b_ac2 = gce.Bus(name="ac2", Vnom=Ub, is_slack=True)
+    b_dcp1 = gce.Bus(name="dcp1", Vnom=Ub, is_dc=True)
+    b_dcp2 = gce.Bus(name="dcp2", Vnom=Ub, is_dc=True)
+    # Grounded metallic return references the common-mode DC level (else only the pole-to-pole
+    # difference is pinned and the absolute DC voltage is a null-space direction).
+    b_n1 = gce.Bus(name="n1", Vnom=Ub, is_dc=True, is_grounded=True, Vm0=1e-9)
+    b_n2 = gce.Bus(name="n2", Vnom=Ub, is_dc=True, Vm0=1e-4)
+    for b in (b_ac1, b_ac2, b_dcp1, b_dcp2, b_n1, b_n2):
+        grid.add_bus(b)
+    grid.add_generator(b_ac1, gce.Generator(vset=1.0))
+    grid.add_generator(b_ac2, gce.Generator(vset=1.0))
+    grid.add_dc_line(gce.DcLine(bus_from=b_dcp1, bus_to=b_dcp2, r=0.01 / Rb))
+    grid.add_dc_line(gce.DcLine(bus_from=b_n1, bus_to=b_n2, r=0.01 / Rb))
+    al = 1e-4
+    # VSC_1 sets the pole voltage, VSC_2 is bipolar under Pdc control (the equation under test)
+    grid.add_vsc(gce.VSC(name="VSC_1", bus_from=b_dcp1, bus_to=b_ac1, bus_dc_n=b_n1,
+                         alpha1=al, alpha2=al, alpha3=al,
+                         control1=ConverterControlType.Vm_dc, control2=ConverterControlType.Qac,
+                         control1_val=1.0, control2_val=0.0))
+    grid.add_vsc(gce.VSC(name="VSC_2", bus_from=b_dcp2, bus_to=b_ac2, bus_dc_n=b_n2,
+                         alpha1=al, alpha2=al, alpha3=al,
+                         control1=ConverterControlType.Pdc, control2=ConverterControlType.Qac,
+                         control1_val=25.0, control2_val=0.0))
+
+    options = gce.PowerFlowOptions(retry_with_other_methods=False, use_stored_guess=True)
+
+    # Build the formulation directly and compare the two Jacobians on the Pdc rows.
+    nc = compile_numerical_circuit_at(grid, t_idx=None)
+    logger = gce.Logger()
+    S0 = nc.get_power_injections_pu()
+    I0 = nc.get_current_injections_pu()
+    Y0 = nc.get_admittance_injections_pu()
+    Qmax, Qmin = nc.get_reactive_power_limits()
+    p = PfAcDcWithNegativePoles(V0=nc.bus_data.Vbus.copy(), S0=S0, I0=I0, Y0=-Y0,
+                                Qmin=Qmin, Qmax=Qmax, nc=nc, options=options, logger=logger)
+    assert len(p.k_vsc_pdc) == 1  # VSC_2 is the bipolar Pdc converter
+
+    # Testing the Jacobian shapes
+    Ja = mat_to_scipy(p.Jacobian(autodiff=True)).toarray()
+    Js = mat_to_scipy(p.Jacobian(autodiff=False)).toarray()
+    assert Ja.shape == Js.shape and Ja.shape[0] == Ja.shape[1]
+
+    off = (len(p.i_k_p) + len(p.i_k_q) + nc.nvsc + len(p.k_vsc_has_dc_n)
+           + len(p.k_vsc_i) + len(p.k_vsc_pfp_droop))
+    pdc_rows = slice(off, off + len(p.k_vsc_pdc))
+    assert np.abs(Ja[pdc_rows]).max() > 1e-6  # the Pdc rows should carry real entries
+    assert np.abs(Ja[pdc_rows] - Js[pdc_rows]).max() < 1e-5  # analytic similar to autodiff
+
+    # Start with linear solution. NR iterates from that seed
+    res_auto = gce.power_flow(grid, options=options)
+    seed = gce.power_flow(grid, options=gce.PowerFlowOptions(solver_type=SolverType.Linear)).voltage
+    p_sym = SymbolicJacForm(V0=seed.copy(), S0=S0, I0=I0, Y0=-Y0,
+                            Qmin=Qmin, Qmax=Qmax, nc=nc, options=options, logger=gce.Logger())
+    sol = newton_raphson_fx(problem=p_sym, tol=1e-10, max_iter=30, verbose=0, logger=gce.Logger())
+
+    assert res_auto.converged
+    assert bool(sol.converged)
+    assert sol.iterations > 0
+    assert np.allclose(sol.V, res_auto.voltage, atol=1e-5)
+    assert np.isclose(sol.Pfp_vsc[1] + sol.Pfn_vsc[1], 25.0, atol=1e-4)
+    # The equivalent (Vfp - Vfn) * (Pfp / Vfp) form
+    Vfp = sol.V[3].real  # dcp2
+    Vfn = sol.V[5].real  # n2
+    assert np.isclose((Vfp - Vfn) * (sol.Pfp_vsc[1] / Vfp), 25.0, atol=1e-4)
 
 
 def test_bipolar_with_load() -> None:
