@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
+from VeraGridEngine.Templates.template_definiton import TemplateDefinition, TemplateProp
 from VeraGridEngine.Utils.Symbolic.block import Expr, Var
 from VeraGridEngine.Utils.Symbolic import symbolic as sym
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowReferenceType
@@ -47,6 +48,94 @@ def _build_external_mapping(v_a: Var, v_b: Var, v_c: Var, i_a: Var, i_b: Var, i_
         VarPowerFlowReferenceType.i_B: i_b,
         VarPowerFlowReferenceType.i_C: i_c,
     }
+
+
+class Balanced3phCurrentSourceEmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(vf, params=[
+            TemplateProp(name="amplitude_value", units="", descr="Common phase amplitude.", tpe=float),
+            TemplateProp(name="frequency_hz", units="Hz", descr="Common sinusoidal frequency.", tpe=float),
+            TemplateProp(name="phase_a_deg", units="deg", descr="Phase-A angle offset in degrees.", tpe=float),
+            TemplateProp(name="offset_value", units="", descr="Common phase offset.", tpe=float),
+            TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str),
+        ])
+
+    def eval(self) -> EmtModelTemplate:
+        return get_balanced_3ph_current_source_emt_template(
+            self.vf,
+            self.get_value("amplitude_value"),
+            self.get_value("frequency_hz"),
+            self.get_value("phase_a_deg"),
+            self.get_value("offset_value"),
+            self.get_value("name"),
+        )
+
+
+class ControlledBalanced3phCurrentSourceEmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(vf, params=[
+            TemplateProp(name="frequency_hz", units="Hz", descr="Common sinusoidal frequency.", tpe=float),
+            TemplateProp(name="phase_a_deg", units="deg", descr="Phase-A angle offset in degrees.", tpe=float),
+            TemplateProp(name="offset_value", units="", descr="Common phase offset.", tpe=float),
+            TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str),
+        ])
+
+    def eval(self) -> EmtModelTemplate:
+        return get_controlled_balanced_3ph_current_source_emt_template(
+            self.vf,
+            self.get_value("frequency_hz"),
+            self.get_value("phase_a_deg"),
+            self.get_value("offset_value"),
+            self.get_value("name"),
+        )
+
+
+class Balanced3phVoltageSourceEmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(vf, params=[
+            TemplateProp(name="amplitude_value", units="", descr="Common phase amplitude.", tpe=float),
+            TemplateProp(name="frequency_hz", units="Hz", descr="Common sinusoidal frequency.", tpe=float),
+            TemplateProp(name="phase_a_deg", units="deg", descr="Phase-A angle offset in degrees.", tpe=float),
+            TemplateProp(name="offset_value", units="", descr="Common phase offset.", tpe=float),
+            TemplateProp(name="source_conductance_value", units="Siemens", descr="Norton conductance.", tpe=float),
+            TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str),
+        ])
+
+    def eval(self) -> EmtModelTemplate:
+        return get_balanced_3ph_voltage_source_emt_template(
+            self.vf,
+            self.get_value("amplitude_value"),
+            self.get_value("frequency_hz"),
+            self.get_value("phase_a_deg"),
+            self.get_value("offset_value"),
+            self.get_value("source_conductance_value"),
+            self.get_value("name"),
+        )
+
+
+class ControlledBalanced3phVoltageSourceEmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(vf, params=[
+            TemplateProp(name="frequency_hz", units="Hz", descr="Common sinusoidal frequency.", tpe=float),
+            TemplateProp(name="phase_a_deg", units="deg", descr="Phase-A angle offset in degrees.", tpe=float),
+            TemplateProp(name="offset_value", units="", descr="Common phase offset.", tpe=float),
+            TemplateProp(name="source_conductance_value", units="Siemens", descr="Norton conductance.", tpe=float),
+            TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str),
+        ])
+
+    def eval(self) -> EmtModelTemplate:
+        return get_controlled_balanced_3ph_voltage_source_emt_template(
+            self.vf,
+            self.get_value("frequency_hz"),
+            self.get_value("phase_a_deg"),
+            self.get_value("offset_value"),
+            self.get_value("source_conductance_value"),
+            self.get_value("name"),
+        )
 
 
 def get_balanced_3ph_current_source_emt_template(vf: VarFactory,

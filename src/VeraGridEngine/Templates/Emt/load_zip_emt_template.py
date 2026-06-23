@@ -18,8 +18,31 @@ from VeraGridEngine.Templates.Emt.load_RLC_emt_template import (
     wrap_delta_referenced_load_emt_template,
     wrap_ground_referenced_load_emt_template,
 )
+from VeraGridEngine.Templates.template_definiton import TemplateDefinition, TemplateProp
 from VeraGridEngine.Utils.Symbolic.block import Expr, Var
 from VeraGridEngine.enumerations import DeviceType, ParamPowerFlowReferenceType, ShuntConnectionType, VarPowerFlowReferenceType
+
+
+class LoadZipEmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(vf, params=[
+            TemplateProp(name="phA", units="", descr="True when phase A is active.", tpe=bool),
+            TemplateProp(name="phB", units="", descr="True when phase B is active.", tpe=bool),
+            TemplateProp(name="phC", units="", descr="True when phase C is active.", tpe=bool),
+            TemplateProp(name="connection_type", units="", descr="Optional explicit star connection topology.", tpe=ShuntConnectionType | None),
+            TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str),
+        ])
+
+    def eval(self) -> EmtModelTemplate:
+        return get_load_ZIP_emt_template(
+            self.vf,
+            self.get_value("phA"),
+            self.get_value("phB"),
+            self.get_value("phC"),
+            self.get_value("connection_type"),
+            self.get_value("name"),
+        )
 
 
 def _get_voltage_reference(phase_label: str) -> VarPowerFlowReferenceType:

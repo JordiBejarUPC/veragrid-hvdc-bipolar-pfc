@@ -11,8 +11,133 @@ from typing import Dict, List, Tuple
 
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
+from VeraGridEngine.Templates.template_definiton import TemplateDefinition, TemplateProp
 from VeraGridEngine.Utils.Symbolic.block import Block, Expr, Var
 from VeraGridEngine.enumerations import BlockType, DeviceType, ParamPowerFlowReferenceType, ShuntConnectionType, VarPowerFlowReferenceType
+
+
+class GroundingLinkEmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(vf, params=[
+            TemplateProp(name="include_r", units="", descr="Include the resistor branch.", tpe=bool),
+            TemplateProp(name="include_l", units="", descr="Include the inductor branch.", tpe=bool),
+            TemplateProp(name="include_c", units="", descr="Include the capacitor branch.", tpe=bool),
+            TemplateProp(name="solid_connection", units="", descr="Build a solid grounding connection.", tpe=bool),
+            TemplateProp(name="nested", units="", descr="Hide the external mapping for nested composition use.", tpe=bool),
+            TemplateProp(name="direct_r_value", units="Ohm", descr="Optional direct resistor value in ohms.", tpe=float | None),
+            TemplateProp(name="direct_l_value", units="H", descr="Optional direct inductance value in henries.", tpe=float | None),
+            TemplateProp(name="direct_c_value", units="F", descr="Optional direct capacitance value in farads.", tpe=float | None),
+            TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str),
+        ])
+
+    def eval(self) -> EmtModelTemplate:
+        return get_grounding_link_emt_template(
+            self.vf,
+            self.get_value("include_r"),
+            self.get_value("include_l"),
+            self.get_value("include_c"),
+            self.get_value("solid_connection"),
+            self.get_value("nested"),
+            self.get_value("direct_r_value"),
+            self.get_value("direct_l_value"),
+            self.get_value("direct_c_value"),
+            self.get_value("name"),
+        )
+
+
+class ShuntREmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(vf, params=[
+            TemplateProp(name="phA", units="", descr="Bool. True if the load has phase A, else False.", tpe=bool),
+            TemplateProp(name="phB", units="", descr="Bool. True if the load has phase B, else False.", tpe=bool),
+            TemplateProp(name="phC", units="", descr="Bool. True if the load has phase C, else False.", tpe=bool),
+            TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str),
+        ])
+
+    def eval(self) -> EmtModelTemplate:
+        return get_shunt_r_emt_template(
+            self.vf,
+            self.get_value("phA"),
+            self.get_value("phB"),
+            self.get_value("phC"),
+            self.get_value("name"),
+        )
+
+
+class ShuntLEmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(vf, params=[
+            TemplateProp(name="phA", units="", descr="True when phase A is active.", tpe=bool),
+            TemplateProp(name="phB", units="", descr="True when phase B is active.", tpe=bool),
+            TemplateProp(name="phC", units="", descr="True when phase C is active.", tpe=bool),
+            TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str),
+        ])
+
+    def eval(self) -> EmtModelTemplate:
+        return get_shunt_l_emt_template(
+            self.vf,
+            self.get_value("phA"),
+            self.get_value("phB"),
+            self.get_value("phC"),
+            self.get_value("name"),
+        )
+
+
+class ShuntCEmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(vf, params=[
+            TemplateProp(name="phA", units="", descr="True when phase A is active.", tpe=bool),
+            TemplateProp(name="phB", units="", descr="True when phase B is active.", tpe=bool),
+            TemplateProp(name="phC", units="", descr="True when phase C is active.", tpe=bool),
+            TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str),
+        ])
+
+    def eval(self) -> EmtModelTemplate:
+        return get_shunt_c_emt_template(
+            self.vf,
+            self.get_value("phA"),
+            self.get_value("phB"),
+            self.get_value("phC"),
+            self.get_value("name"),
+        )
+
+
+class ShuntRlcComboEmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(vf, params=[
+            TemplateProp(name="include_r", units="", descr="Include the resistor branch.", tpe=bool),
+            TemplateProp(name="include_l", units="", descr="Include the inductor branch.", tpe=bool),
+            TemplateProp(name="include_c", units="", descr="Include the capacitor branch.", tpe=bool),
+            TemplateProp(name="phA", units="", descr="Enable phase A.", tpe=bool),
+            TemplateProp(name="phB", units="", descr="Enable phase B.", tpe=bool),
+            TemplateProp(name="phC", units="", descr="Enable phase C.", tpe=bool),
+            TemplateProp(name="connection_type", units="", descr="Requested star connection type.", tpe=ShuntConnectionType),
+            TemplateProp(name="direct_r_value", units="Ohm", descr="Optional direct resistor value in ohms.", tpe=float | None),
+            TemplateProp(name="direct_l_value", units="H", descr="Optional direct inductance value in henries.", tpe=float | None),
+            TemplateProp(name="direct_c_value", units="F", descr="Optional direct capacitance value in farads.", tpe=float | None),
+            TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str),
+        ])
+
+    def eval(self) -> EmtModelTemplate:
+        return get_shunt_rlc_combo_emt_template(
+            self.vf,
+            self.get_value("include_r"),
+            self.get_value("include_l"),
+            self.get_value("include_c"),
+            self.get_value("phA"),
+            self.get_value("phB"),
+            self.get_value("phC"),
+            self.get_value("connection_type"),
+            self.get_value("direct_r_value"),
+            self.get_value("direct_l_value"),
+            self.get_value("direct_c_value"),
+            self.get_value("name"),
+        )
 
 
 def _get_active_phases(phA: bool, phB: bool, phC: bool) -> List[str]:
