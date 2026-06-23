@@ -91,7 +91,7 @@ class Ui_DynamicEditorWorkspaceWindow(object):
         self.frame_2.setFrameShadow(QFrame.Shadow.Raised)
         self.horizontalLayout_2 = QHBoxLayout(self.frame_2)
         self.horizontalLayout_2.setObjectName(u"horizontalLayout_2")
-        self.horizontalLayout_2.setContentsMargins(0, 0, 0, 0)
+        self.horizontalLayout_2.setContentsMargins(6, 0, 0, 0)
         self.searchInTreeLineEdit = QLineEdit(self.frame_2)
         self.searchInTreeLineEdit.setObjectName(u"searchInTreeLineEdit")
 
