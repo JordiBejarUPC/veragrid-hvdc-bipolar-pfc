@@ -4,33 +4,57 @@
 # SPDX-License-Identifier: MPL-2.0
 
 from __future__ import annotations
-from typing import List, Callable, Sequence, Any
+from typing import Sequence, Any, Union, Type
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
-import VeraGridEngine.Templates.Emt as emt_templates
 
+
+TEMPLATEPROP_TYPES = Union[
+    Type[int],
+    Type[bool],
+    Type[float],
+    Type[str],
+    Type[Sequence]
+]
 
 class TemplateProp:
+    """
+    property representing a template input
+    """
 
-    def __init__(self, name: str, units: str, descr: str, tpe, ):
+    __slots__ = (
+        "name",
+        "units",
+        "descr",
+        "tpe",
+        "display",
+        "editable",
+        "value",
+
+    )
+
+    def __init__(self, name: str, units: str, descr: str, tpe: TEMPLATEPROP_TYPES):
         self.name: str = name
         self.units: str = units
         self.descr: str = descr
-        self.tpe = tpe
+        self.tpe: TEMPLATEPROP_TYPES = tpe
+        self.display: bool = True
+        self.editable: bool = True
         self.value: Any = None
 
 
 class TemplateDefinition:
 
-    def __init__(self, vf, params: List[TemplateProp]):
+    def __init__(self, vf, params):
         """
 
         :param vf:
         :param params:
         """
         self.vf = vf
+        self.params = params
         self.params_dict = {p.name: p for p in params}
 
-    def get_value(self, name: str) -> Any:
+    def get_value(self, name: str) -> EmtModelTemplate:
         """
 
         :param name:
@@ -42,7 +66,7 @@ class TemplateDefinition:
         else:
             return prp.value
 
-    def eval(self) -> EmtModelTemplate:
+    def eval(self) -> Any:
         raise NotImplementedError("Not implemented eval")
 
 

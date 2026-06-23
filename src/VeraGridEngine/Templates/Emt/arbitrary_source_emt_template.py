@@ -15,7 +15,8 @@ from VeraGridEngine.Utils.Symbolic import symbolic as sym
 from VeraGridEngine.Utils.Symbolic.symbolic import CmpOp
 from VeraGridEngine.Utils.Symbolic.symbolic import Comparison
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowReferenceType
-from VeraGridEngine.Templates.template_definiton import TemplateDefinition, TemplateProp
+from VeraGridEngine.Templates.template_definition import TemplateDefinition, TemplateProp
+
 
 
 def _get_active_nabc_labels(phN: bool, phA: bool, phB: bool, phC: bool) -> List[str]:
@@ -193,9 +194,9 @@ class ArbitraryWaveformCurrentSourceEmtTemplate(TemplateDefinition):
         """
 
         phN: bool = self.get_value("phN")
-        phA: bool = self.get_value("phN")
-        phB: bool = self.get_value("phN")
-        phC: bool = self.get_value("phN")
+        phA: bool = self.get_value("phA")
+        phB: bool = self.get_value("phB")
+        phC: bool = self.get_value("phC")
         time_points: Sequence[float] = self.get_value("time_points")
         value_points: Sequence[float] = self.get_value("value_points")
         name: str = self.get_value("name")

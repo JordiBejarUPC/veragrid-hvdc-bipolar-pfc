@@ -133,6 +133,8 @@ from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_runtime import get_jmarti_
 from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_runtime import get_jmarti_block_runtime_data
 from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_runtime import set_jmarti_block_fit_bundle
 from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_runtime import set_jmarti_block_runtime_data
+from VeraGrid.Gui.DynamicModelEditor.dyn_template_editor_dialogue import DynTemplatesEditorDialog
+
 from dataclasses import dataclass
 
 # from VeraGridEngine.Devices.Dynamic.static_parameter_mapping_rms import devices_static_params_mapping
@@ -1922,21 +1924,31 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param y_pos: Drop y position.
         :return: Created block item or ``None`` when the dialog is cancelled.
         """
-        dialog = ArbitrarySourceEmtDialog(block_type=block_type, parent=self,
-                                          initial_config=self._build_default_arbitrary_source_emt_modal_config(
-                                              block_type))
-
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            source_config: Dict[str, Any] = dict(self._build_default_arbitrary_source_emt_modal_config(block_type),
-                                                 **dialog.get_configuration())
-        else:
-            return None
 
         count: int = self.block_counters.get(block_type, 0) + 1
         item_name: str = f"{block_type.name}_{count}"
-        block_model: Block | None = self._build_arbitrary_source_emt_block_model(block_type=block_type,
-                                                                                 item_name=item_name,
-                                                                                 modal_config=source_config)
+
+        if block_type == BlockType.ARBITRARY_WAVEFORM_CURRENT_SOURCE_EMT:
+            template_builder = emt_templates.ArbitraryWaveformCurrentSourceEmtTemplate(vf=self.var_factory)
+            dialog = DynTemplatesEditorDialog(template_builder.params)
+            dialog.exec()
+            template = template_builder.eval()
+            block_model = template.block
+
+
+        else:
+
+            dialog = ArbitrarySourceEmtDialog(block_type=block_type, parent=self,
+                                              initial_config=self._build_default_arbitrary_source_emt_modal_config(
+                                                  block_type))
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                source_config: Dict[str, Any] = dict(self._build_default_arbitrary_source_emt_modal_config(block_type),
+                                                     **dialog.get_configuration())
+
+
+            block_model: Block | None = self._build_arbitrary_source_emt_block_model(block_type=block_type,
+                                                                                     item_name=item_name,
+                                                                                     modal_config=source_config)
 
         block_item: GenericBlockItem = GenericBlockItem(editor=self, var_factory=self.var_factory,
                                                         subsys=block_model,
