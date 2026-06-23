@@ -4,9 +4,10 @@
 # SPDX-License-Identifier: MPL-2.0
 
 from __future__ import annotations
-from typing import List, Callable, Sequence, Any
+from typing import List, Any, Union
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
-import VeraGridEngine.Templates.Emt as emt_templates
+from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
+
 
 
 class TemplateProp:
@@ -42,7 +43,7 @@ class TemplateDefinition:
         else:
             return prp.value
 
-    def eval(self) -> EmtModelTemplate:
+    def eval(self) -> Union[EmtModelTemplate|RmsModelTemplate]:
         raise NotImplementedError("Not implemented eval")
 
 
