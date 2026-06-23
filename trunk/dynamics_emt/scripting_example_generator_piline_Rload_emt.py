@@ -44,7 +44,7 @@ from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import St
 from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import StructuralCompiledSolver
 
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonTraceCollector
-from VeraGridEngine.enumerations import DynamicIntegrationMethod, EmtSolverTypes, ShuntConnectionType
+from VeraGridEngine.enumerations import DynamicIntegrationMethod, EmtSolverTypes, ShuntConnectionType, EmtInitializationMethod
 import VeraGridEngine.api as gce
 
 ###########################################################################################################################
@@ -248,10 +248,12 @@ if CHOSEN_SOLVER not in SOLVER_TYPE_MAP:
     raise ValueError(f"Solver '{CHOSEN_SOLVER}' no reconocido. Usa SYMBOLIC, AD, VECTORIZED o COMPILED.")
 
 options = EmtOptions(time_step = 5e-6, # 5e-7,
-                     simulation_time =  0.04,  #5e-6*10, # s
+                     simulation_time =  5,  #5e-6*10, # s
                      tolerance = 1e-6,
                      solver_type = SOLVER_TYPE_MAP[CHOSEN_SOLVER],
                      integration_method = DynamicIntegrationMethod.DaeTrapezoidal,
+                     initialization_method=EmtInitializationMethod.Explicit,
+                     # initialization_method=EmtInitializationMethod.PseudoTransient,
                      verbose = 1)
 
 
@@ -506,7 +508,6 @@ plt.xlabel("Time")
 plt.ylabel("Voltage [p.u.]")
 plt.legend(loc='upper left')
 plt.grid(True)
-plt.legend()
 
 plt.subplot(2, 1, 2)
 plt.plot(tme, v_A_1_plt[:len(tme)], label='Voltage phase A bus 1', color='blue')
@@ -517,7 +518,6 @@ plt.xlabel("Time")
 plt.ylabel("Voltage [p.u.]")
 plt.legend(loc='upper left')
 plt.grid(True)
-plt.legend()
 
 plt.tight_layout()
 print("Generating plots...")
@@ -537,7 +537,6 @@ plt.xlabel("Time")
 plt.ylabel("Theta generator")
 plt.legend(loc='upper left')
 plt.grid(True)
-plt.legend()
 #
 plt.subplot(2, 1, 2)
 plt.plot(tme, omega_plt[:len(tme)], label='Speed generator [rad/s]', color='blue')
@@ -546,7 +545,6 @@ plt.xlabel("Time")
 plt.ylabel("Omega generator [rad/s]")
 plt.legend(loc='upper left')
 plt.grid(True)
-plt.legend()
 
 plt.tight_layout()
 print("Generating plots...")
@@ -580,7 +578,6 @@ plt.xlabel("Time")
 plt.ylabel("Current generator")
 plt.legend(loc='upper left')
 plt.grid(True)
-plt.legend()
 
 plt.subplot(2, 2, 2)
 # SIGNS IN LOAD ARE FLIPPED. FOR SIGN CONVENTION CURRENTS LEAVE INJECTIONS SO IN THE CASE OF THE LOAD
@@ -593,7 +590,6 @@ plt.xlabel("Time")
 plt.ylabel("Current load")
 plt.legend(loc='upper left')
 plt.grid(True)
-plt.legend()
 
 plt.tight_layout()
 print("Generating plots...")
@@ -669,7 +665,6 @@ plt.xlabel("Time")
 plt.ylabel("power generator")
 plt.legend(loc='upper left')
 plt.grid(True)
-plt.legend()
 
 plt.subplot(2, 2, 2)
 plt.plot(tme, Tm_gen_plt[:len(tme)], label='Mechanical torque Tm from generator', color='blue')
@@ -679,7 +674,6 @@ plt.xlabel("Time")
 plt.ylabel("torque generator")
 plt.legend(loc='upper left')
 plt.grid(True)
-plt.legend()
 
 # plt.subplot(2, 2, 3)
 # plt.plot(tme, et_gen_plt[:len(tme)], label='PI error at generator', color='blue')
@@ -722,7 +716,6 @@ plt.xlabel("Time")
 plt.ylabel("dq0 currents generator")
 plt.legend(loc='upper left')
 plt.grid(True)
-plt.legend()
 
 plt.subplot(2, 2, 2)
 plt.plot(tme, i_f_gen_plt[:len(tme)], label='Field current in the generator', color='purple')
@@ -731,7 +724,6 @@ plt.xlabel("Time")
 plt.ylabel("Field current")
 plt.legend(loc='upper left')
 plt.grid(True)
-plt.legend()
 
 plt.subplot(2, 2, 3)
 plt.plot(tme, v_d_gen_plt[:len(tme)], label='Voltage in the d axis generator', color='blue')
@@ -742,7 +734,6 @@ plt.xlabel("Time")
 plt.ylabel("dq0 Voltages generator")
 plt.legend(loc='upper left')
 plt.grid(True)
-plt.legend()
 
 plt.subplot(2, 2, 4)
 plt.plot(tme, v_f_gen_plt[:len(tme)], label='Field voltage in the generator', color='purple')
@@ -751,7 +742,6 @@ plt.xlabel("Time")
 plt.ylabel("Field voltage")
 plt.legend(loc='upper left')
 plt.grid(True)
-plt.legend()
 
 plt.tight_layout()
 print("Generating plots...")
@@ -784,7 +774,6 @@ plt.xlabel("Time")
 plt.ylabel("Current generator")
 plt.legend(loc='upper left')
 plt.grid(True)
-plt.legend()
 
 plt.subplot(2, 2, 2)
 # SIGNS IN LOAD ARE FLIPPED. FOR SIGN CONVENTION CURRENTS LEAVE INJECTIONS SO IN THE CASE OF THE LOAD
@@ -797,7 +786,6 @@ plt.xlabel("Time")
 plt.ylabel("Current load")
 plt.legend(loc='upper left')
 plt.grid(True)
-plt.legend()
 
 plt.subplot(2, 2, 3)
 plt.plot(tme, i_f_A_line_plt[:len(tme)], label='Current FROM phase A from line', color='blue')
@@ -808,7 +796,6 @@ plt.xlabel("Time")
 plt.ylabel("Current from")
 plt.legend(loc='upper left')
 plt.grid(True)
-plt.legend()
 
 plt.subplot(2, 2, 4)
 # SIGNS IN LOAD ARE FLIPPED. FOR SIGN CONVENTION CURRENTS LEAVE INJECTIONS SO IN THE CASE OF THE LOAD

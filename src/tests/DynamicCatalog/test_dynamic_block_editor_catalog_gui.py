@@ -12,14 +12,14 @@ from PySide6.QtTest import QTest
 
 import VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor as dynamic_block_editor_module
 import VeraGridEngine.api as gce
+from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
-from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import get_modal_template_metadata
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import _transformer_modal_config_allows_modify
-from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import LookupArrayLinearDialog
-from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import LookupMatrixLinearDialog
-from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import _copy_selected_table_range_to_clipboard
-from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import _parse_clipboard_grid
-from VeraGrid.Gui.DynamicModelEditor.induction_motor_emt_dialog import InductionMotorEmtLevel
+from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.lookup_table_dialog import LookupArrayLinearDialog
+from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.lookup_table_dialog import LookupMatrixLinearDialog
+from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.lookup_table_dialog import _copy_selected_table_range_to_clipboard
+from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.lookup_table_dialog import _parse_clipboard_grid
+from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.induction_motor_emt_dialog import InductionMotorEmtLevel
 from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_runtime import get_jmarti_block_fit_bundle
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Templates.BasicBlockCatalog import BasicBlockTemplateDescriptor
@@ -140,6 +140,10 @@ def _build_editor(mode: DynamicSimulationMode = DynamicSimulationMode.EMT,
     """
     Build one dynamic block editor instance for GUI tests.
     """
+
+
+    if circuit is None:
+        circuit = MultiCircuit()
 
     _get_app()
     resolved_api_object = api_object if api_object is not None else _ApiStub()
@@ -629,7 +633,7 @@ def test_lookup_array_linear_modal_created_block_supports_modify_template(overri
     updated_item = editor.get_scene_item_by_block_uid(block_item.subsys.uid)
     assert updated_item is not None
 
-    modal_kind, modal_config = get_modal_template_metadata(updated_item.subsys)
+    modal_kind, modal_config = editor.get_modal_template_metadata(updated_item.subsys)
     assert modal_kind == "lookup_array_1d"
     assert modal_config is not None
     assert modal_config["x_points"] == [0.0, 2.0, 4.0]
@@ -666,7 +670,7 @@ def test_emt_phase_wizard_block_supports_modify_template(override_attrs) -> None
     block_item = editor.create_library_payload_item(BlockType.EMT_PI_LINE, 10.0, 20.0)
     assert block_item is not None
 
-    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    modal_kind, modal_config = editor.get_modal_template_metadata(block_item.subsys)
     assert modal_kind == "emt_phase_wizard"
     assert modal_config is not None
     assert modal_config["phase_b"] is False
@@ -674,7 +678,7 @@ def test_emt_phase_wizard_block_supports_modify_template(override_attrs) -> None
     override_attrs.setattr(dynamic_block_editor_module, "EmtTemplateWizardDialog", _ModifyDialogStub)
     editor.modify_scene_item_template(block_item)
 
-    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    modal_kind, modal_config = editor.get_modal_template_metadata(block_item.subsys)
     assert modal_kind == "emt_phase_wizard"
     assert modal_config is not None
     assert modal_config["phase_b"] is True
@@ -754,7 +758,7 @@ def test_jmarti_line_emt_block_supports_modal_configuration_and_modify_template(
     block_item = editor.create_library_payload_item(BlockType.EMT_JMARTI_LINE, 10.0, 20.0)
     assert block_item is not None
 
-    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    modal_kind, modal_config = editor.get_modal_template_metadata(block_item.subsys)
     assert modal_kind == "jmarti_line_emt"
     assert modal_config is not None
     assert modal_config["block_type"] == BlockType.EMT_JMARTI_LINE.name
@@ -767,7 +771,7 @@ def test_jmarti_line_emt_block_supports_modal_configuration_and_modify_template(
     override_attrs.setattr(dynamic_block_editor_module, "JMartiLineEmtDialog", _ModifyDialogStub)
     editor.modify_scene_item_template(block_item)
 
-    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    modal_kind, modal_config = editor.get_modal_template_metadata(block_item.subsys)
     assert modal_kind == "jmarti_line_emt"
     assert modal_config is not None
     assert modal_config["block_type"] == BlockType.EMT_JMARTI_LINE.name
@@ -816,7 +820,7 @@ def test_emt_source_blocks_are_exposed_and_created_from_source_modal(override_at
     ):
         block_item = editor.create_library_payload_item(block_type, 10.0, 20.0)
         assert block_item is not None
-        modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+        modal_kind, modal_config = editor.get_modal_template_metadata(block_item.subsys)
         assert modal_kind == "source_emt"
         assert modal_config is not None
         assert modal_config["block_type"] == block_type.name
@@ -861,7 +865,7 @@ def test_emt_dc_source_blocks_are_exposed_and_created_from_dc_source_modal(overr
     ):
         block_item = editor.create_library_payload_item(block_type, 10.0, 20.0)
         assert block_item is not None
-        modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+        modal_kind, modal_config = editor.get_modal_template_metadata(block_item.subsys)
         assert modal_kind == "dc_source_emt"
         assert modal_config is not None
         assert modal_config["block_type"] == block_type.name
@@ -907,7 +911,7 @@ def test_emt_balanced_source_blocks_are_exposed_and_created_from_balanced_source
     ):
         block_item = editor.create_library_payload_item(block_type, 10.0, 20.0)
         assert block_item is not None
-        modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+        modal_kind, modal_config = editor.get_modal_template_metadata(block_item.subsys)
         assert modal_kind == "balanced_source_emt"
         assert modal_config is not None
         assert modal_config["block_type"] == block_type.name
@@ -954,7 +958,7 @@ def test_emt_arbitrary_source_blocks_are_exposed_and_created_from_arbitrary_sour
     ):
         block_item = editor.create_library_payload_item(block_type, 10.0, 20.0)
         assert block_item is not None
-        modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+        modal_kind, modal_config = editor.get_modal_template_metadata(block_item.subsys)
         assert modal_kind == "arbitrary_source_emt"
         assert modal_config is not None
         assert modal_config["block_type"] == block_type.name
@@ -1030,7 +1034,7 @@ def test_emt_transient_source_blocks_are_exposed_and_created_from_transient_sour
     ):
         block_item = editor.create_library_payload_item(block_type, 10.0, 20.0)
         assert block_item is not None
-        modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+        modal_kind, modal_config = editor.get_modal_template_metadata(block_item.subsys)
         assert modal_kind == "transient_source_emt"
         assert modal_config is not None
         assert modal_config["block_type"] == block_type.name
@@ -1102,7 +1106,7 @@ def test_jmarti_line_emt_block_builds_sequence_fit_and_persists_diagnostics(over
     assert block_item is not None
     assert get_jmarti_block_fit_bundle(block_item.subsys) is not None
 
-    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    modal_kind, modal_config = editor.get_modal_template_metadata(block_item.subsys)
     assert modal_kind == "jmarti_line_emt"
     assert modal_config is not None
     assert modal_config["fit_ready"] is True
@@ -1196,7 +1200,7 @@ def test_jmarti_line_emt_block_builds_fit_from_imported_npz(override_attrs, tmp_
     assert block_item is not None
     assert get_jmarti_block_fit_bundle(block_item.subsys) is not None
 
-    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    modal_kind, modal_config = editor.get_modal_template_metadata(block_item.subsys)
     assert modal_kind == "jmarti_line_emt"
     assert modal_config is not None
     assert modal_config["fit_ready"] is True
@@ -1306,7 +1310,7 @@ def test_simple_r_emt_shunt_block_is_created_and_supports_modify_template(overri
     assert block_item is not None
     assert dialog_component_kinds == ["R"]
 
-    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    modal_kind, modal_config = editor.get_modal_template_metadata(block_item.subsys)
     assert modal_kind == "shunt_component_emt"
     assert modal_config is not None
     assert modal_config["block_type"] == BlockType.R_LOAD_EMT.name
@@ -1319,7 +1323,7 @@ def test_simple_r_emt_shunt_block_is_created_and_supports_modify_template(overri
     override_attrs.setattr(dynamic_block_editor_module, "ShuntComponentEmtDialog", _ModifyDialogStub)
     editor.modify_scene_item_template(block_item)
 
-    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    modal_kind, modal_config = editor.get_modal_template_metadata(block_item.subsys)
     assert modal_kind == "shunt_component_emt"
     assert modal_config is not None
     assert modal_config["phB"] is True
@@ -1380,7 +1384,7 @@ def test_simple_r_emt_shunt_block_supports_delta_configuration(override_attrs) -
     block_item = editor.create_library_payload_item(BlockType.R_LOAD_EMT, 10.0, 20.0)
     assert block_item is not None
 
-    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    modal_kind, modal_config = editor.get_modal_template_metadata(block_item.subsys)
     assert modal_kind == "shunt_component_emt"
     assert modal_config is not None
     assert modal_config["connection_type"] == ShuntConnectionType.Delta
@@ -1453,7 +1457,7 @@ def test_exponential_load_emt_block_is_created_and_supports_modify_template(over
     block_item = editor.create_library_payload_item(BlockType.EXP_LOAD_EMT, 10.0, 20.0)
     assert block_item is not None
 
-    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    modal_kind, modal_config = editor.get_modal_template_metadata(block_item.subsys)
     assert modal_kind == "load_topology_emt"
     assert modal_config is not None
     assert modal_config["block_type"] == BlockType.EXP_LOAD_EMT.name
@@ -1465,7 +1469,7 @@ def test_exponential_load_emt_block_is_created_and_supports_modify_template(over
     override_attrs.setattr(dynamic_block_editor_module, "LoadTopologyEmtDialog", _ModifyDialogStub)
     editor.modify_scene_item_template(block_item)
 
-    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    modal_kind, modal_config = editor.get_modal_template_metadata(block_item.subsys)
     assert modal_kind == "load_topology_emt"
     assert modal_config is not None
     assert modal_config["phB"] is True
@@ -1514,7 +1518,7 @@ def test_zip_load_emt_block_supports_delta_configuration(override_attrs) -> None
     block_item = editor.create_library_payload_item(BlockType.ZIP_LOAD_EMT, 10.0, 20.0)
     assert block_item is not None
 
-    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    modal_kind, modal_config = editor.get_modal_template_metadata(block_item.subsys)
     assert modal_kind == "load_topology_emt"
     assert modal_config is not None
     assert modal_config["block_type"] == BlockType.ZIP_LOAD_EMT.name
@@ -1544,7 +1548,7 @@ def test_transformer_emt_block_inherits_topology_from_transformer_device_without
     block_item = editor.create_library_payload_item(BlockType.TRAFO_EMT, 10.0, 20.0)
     assert block_item is not None
 
-    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    modal_kind, modal_config = editor.get_modal_template_metadata(block_item.subsys)
     assert modal_kind == "transformer_topology_emt"
     assert modal_config is not None
     assert modal_config["conn_f"] == WindingType.Delta
@@ -1562,7 +1566,7 @@ def test_transformer_emt_block_inherits_topology_from_transformer_device_without
     updated_item = editor.get_scene_item_by_block_uid(block_item.subsys.uid)
     assert updated_item is not None
 
-    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    modal_kind, modal_config = editor.get_modal_template_metadata(block_item.subsys)
     assert modal_kind == "transformer_topology_emt"
     assert modal_config is not None
     assert modal_config["conn_f"] == WindingType.GroundedStar
@@ -1594,7 +1598,7 @@ def test_xfmr_emt_block_inherits_topology_from_transformer_device_without_modal(
     block_item = editor.create_library_payload_item(BlockType.XFMR_TRANSFORMER, 10.0, 20.0)
     assert block_item is not None
 
-    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    modal_kind, modal_config = editor.get_modal_template_metadata(block_item.subsys)
     assert modal_kind == "transformer_topology_emt"
     assert modal_config is not None
     assert modal_config["conn_f"] == WindingType.Delta
@@ -1610,7 +1614,7 @@ def test_xfmr_emt_block_inherits_topology_from_transformer_device_without_modal(
     updated_item = editor.get_scene_item_by_block_uid(block_item.subsys.uid)
     assert updated_item is not None
 
-    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    modal_kind, modal_config = editor.get_modal_template_metadata(block_item.subsys)
     assert modal_kind == "transformer_topology_emt"
     assert modal_config is not None
     assert modal_config["conn_f"] == WindingType.GroundedStar
@@ -1645,7 +1649,7 @@ def test_transformer_type_emt_editor_exposes_transformer_blocks_and_inherits_hv_
     block_item = editor.create_library_payload_item(BlockType.TRAFO_EMT, 10.0, 20.0)
     assert block_item is not None
 
-    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    modal_kind, modal_config = editor.get_modal_template_metadata(block_item.subsys)
     assert modal_kind == "transformer_topology_emt"
     assert modal_config is not None
     assert modal_config["conn_f"] == WindingType.Delta
@@ -1671,7 +1675,7 @@ def test_transformer_type_emt_editor_inherits_zigzag_without_modal(override_attr
     block_item = editor.create_library_payload_item(BlockType.TRAFO_EMT, 10.0, 20.0)
     assert block_item is not None
 
-    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    modal_kind, modal_config = editor.get_modal_template_metadata(block_item.subsys)
     assert modal_kind == "transformer_topology_emt"
     assert modal_config is not None
     assert modal_config["conn_f"] == WindingType.ZigZag
@@ -1705,7 +1709,7 @@ def test_transformer_emt_block_falls_back_to_manual_dialog_without_device_topolo
     block_item = editor.create_library_payload_item(BlockType.TRAFO_EMT, 10.0, 20.0)
 
     assert block_item is not None
-    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    modal_kind, modal_config = editor.get_modal_template_metadata(block_item.subsys)
     assert modal_kind == "transformer_topology_emt"
     assert modal_config is not None
     assert modal_config["conn_f"] == WindingType.Delta
@@ -1806,7 +1810,7 @@ def test_rlc_combo_emt_block_is_created_and_supports_modify_template(override_at
         "base_frequency_hz": 60.0,
     }
 
-    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    modal_kind, modal_config = editor.get_modal_template_metadata(block_item.subsys)
     assert modal_kind == "rlc_combo_emt"
     assert modal_config is not None
     assert modal_config["include_c"] is False
@@ -1823,7 +1827,7 @@ def test_rlc_combo_emt_block_is_created_and_supports_modify_template(override_at
     expected_inductance = 18.0 / (2.0 * math.pi * circuit.fBase)
     expected_capacitance = 1.0 / (2.0 * math.pi * circuit.fBase * 220.0)
 
-    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    modal_kind, modal_config = editor.get_modal_template_metadata(block_item.subsys)
     assert modal_kind == "rlc_combo_emt"
     assert modal_config is not None
     assert modal_config["include_c"] is True
@@ -1893,7 +1897,7 @@ def test_induction_motor_emt_block_is_created_and_supports_modify_template(overr
         dict({"level": InductionMotorEmtLevel.SINGLE_CAGE.name}),
     ])
 
-    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    modal_kind, modal_config = editor.get_modal_template_metadata(block_item.subsys)
     assert modal_kind == "induction_motor_emt"
     assert modal_config is not None
     assert modal_config["level"] == InductionMotorEmtLevel.SINGLE_CAGE.name
@@ -1907,7 +1911,7 @@ def test_induction_motor_emt_block_is_created_and_supports_modify_template(overr
     original_block_uid: int = block_item.subsys.uid
     editor.modify_scene_item_template(block_item)
 
-    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    modal_kind, modal_config = editor.get_modal_template_metadata(block_item.subsys)
     assert modal_kind == "induction_motor_emt"
     assert modal_config is not None
     assert modal_config["level"] == InductionMotorEmtLevel.DOUBLE_CAGE.name
@@ -1982,7 +1986,7 @@ def test_grounding_link_emt_block_is_created_and_supports_modify_template(overri
     block_item = editor.create_library_payload_item(BlockType.GROUNDING_LINK_EMT, 10.0, 20.0)
     assert block_item is not None
 
-    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    modal_kind, modal_config = editor.get_modal_template_metadata(block_item.subsys)
     assert modal_kind == "grounding_link_emt"
     assert modal_config is not None
     assert modal_config["include_l"] is True
@@ -1992,7 +1996,7 @@ def test_grounding_link_emt_block_is_created_and_supports_modify_template(overri
     override_attrs.setattr(dynamic_block_editor_module, "GroundingLinkEmtDialog", _ModifyDialogStub)
     editor.modify_scene_item_template(block_item)
 
-    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    modal_kind, modal_config = editor.get_modal_template_metadata(block_item.subsys)
     assert modal_kind == "grounding_link_emt"
     assert modal_config is not None
     assert modal_config["include_c"] is True
@@ -2041,7 +2045,7 @@ def test_nonlinear_resistor_emt_block_is_created_and_supports_modify_template(ov
     block_item = editor.create_library_payload_item(BlockType.NONLINEAR_RESISTOR_EMT, 10.0, 20.0)
     assert block_item is not None
 
-    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    modal_kind, modal_config = editor.get_modal_template_metadata(block_item.subsys)
     assert modal_kind == "nonlinear_resistor_emt"
     assert modal_config is not None
     assert modal_config["voltage_points"] == [0.0, 1.0, 1.5]
@@ -2052,7 +2056,7 @@ def test_nonlinear_resistor_emt_block_is_created_and_supports_modify_template(ov
     override_attrs.setattr(dynamic_block_editor_module, "LookupArrayLinearDialog", _ModifyDialogStub)
     editor.modify_scene_item_template(block_item)
 
-    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    modal_kind, modal_config = editor.get_modal_template_metadata(block_item.subsys)
     assert modal_kind == "nonlinear_resistor_emt"
     assert modal_config is not None
     assert modal_config["voltage_points"] == [0.0, 1.2, 1.8]
@@ -2175,7 +2179,7 @@ def test_lookup_matrix_linear_dialog_supports_row_copy_and_row_paste() -> None:
     print(f"DEBUG: row 1 items = {[dialog._table_widget.item(1, c).text() for c in range(3)]}")
     print(f"DEBUG: clipboard before copy = {repr(clipboard.text())}")
 
-    from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import _copy_selected_table_range_to_clipboard
+    from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.lookup_table_dialog import _copy_selected_table_range_to_clipboard
     _copy_selected_table_range_to_clipboard(dialog._table_widget)
     QtWidgets.QApplication.processEvents()
     QTest.qWait(100)

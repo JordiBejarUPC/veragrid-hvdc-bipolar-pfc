@@ -6,8 +6,8 @@ from PySide6 import QtWidgets
 
 import VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor as dynamic_block_editor_module
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
-from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import get_modal_template_metadata
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
+from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import BlockType, DynamicSimulationMode, DeviceType
 
@@ -34,6 +34,7 @@ def _build_editor() -> DynamicBlockEditorGUI:
         var_factory=VarFactory(),
         block=Block(),
         api_object=_ApiStub(),
+        circuit=MultiCircuit(),
         mode=DynamicSimulationMode.EMT,
         templates_list=list(),
         main_editor=False,
@@ -168,7 +169,7 @@ def test_modify_template_updates_switch_block_in_place(override_attrs) -> None:
     override_attrs.setattr(dynamic_block_editor_module, "SwitchEmtDialog", _ModifyDialogStub)
     editor.modify_scene_item_template(block_item)
 
-    modal_kind, modal_config = get_modal_template_metadata(block_item.subsys)
+    modal_kind, modal_config = editor.get_modal_template_metadata(block_item.subsys)
     assert modal_kind == "switch_emt"
     assert modal_config is not None
     assert bool(modal_config["signal_controlled"])

@@ -64,7 +64,7 @@ from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import (
 #     get_load_power_phase_values_pu_abc,
 #     get_shunt_phase_values_pu_abc,
 # )
-from VeraGridEngine.Utils.Symbolic.static_parameter_mapping_rms import (
+from VeraGridEngine.Devices.Dynamic.static_parameter_mapping_rms import (
     abc_to_nabc,
     assign_static_api_object_mapping_for_device,
     get_load_power_phase_values_pu_abc,
@@ -4721,40 +4721,40 @@ class EmtProblemDae(EmtProblemTemplate):
             if _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowReferenceType.v_N) is not None:
                 V_N = self.power_flow_results_3ph.voltage_N[bus_index]
                 v_N: float = np.sqrt(2.0) * np.imag(V_N)
-                # d_v_N: float = omega_base * np.sqrt(2.0) * np.real(V_N)
+                d_v_N: float = omega_base * np.sqrt(2.0) * np.real(V_N)
 
                 self.set_init_guess_and_preserve_post_init(mdl, VarPowerFlowReferenceType.v_N, v_N)
-                # self.set_diff_init_guess(mdl, VarPowerFlowReferenceType.d_v_N, d_v_N)
+                self.set_diff_init_guess(mdl, VarPowerFlowReferenceType.d_v_N, d_v_N)
             else:
                 pass
 
             if _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowReferenceType.v_A) is not None:
                 V_A = self.power_flow_results_3ph.voltage_A[bus_index]
                 v_A: float = np.sqrt(2.0) * np.imag(V_A)
-                # d_v_A: float = omega_base * np.sqrt(2.0) * np.real(V_A)
+                d_v_A: float = omega_base * np.sqrt(2.0) * np.real(V_A)
 
                 self.set_init_guess_and_preserve_post_init(mdl, VarPowerFlowReferenceType.v_A, v_A)
-                # self.set_diff_init_guess(mdl, VarPowerFlowReferenceType.d_v_A, d_v_A)
+                self.set_diff_init_guess(mdl, VarPowerFlowReferenceType.d_v_A, d_v_A)
             else:
                 pass
 
             if _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowReferenceType.v_B) is not None:
                 V_B = self.power_flow_results_3ph.voltage_B[bus_index]
                 v_B: float = np.sqrt(2.0) * np.imag(V_B)
-                # d_v_B: float = omega_base * np.sqrt(2.0) * np.real(V_B)
+                d_v_B: float = omega_base * np.sqrt(2.0) * np.real(V_B)
 
                 self.set_init_guess_and_preserve_post_init(mdl, VarPowerFlowReferenceType.v_B, v_B)
-                # self.set_diff_init_guess(mdl, VarPowerFlowReferenceType.d_v_B, d_v_B)
+                self.set_diff_init_guess(mdl, VarPowerFlowReferenceType.d_v_B, d_v_B)
             else:
                 pass
 
             if _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowReferenceType.v_C) is not None:
                 V_C = self.power_flow_results_3ph.voltage_C[bus_index]
                 v_C: float = np.sqrt(2.0) * np.imag(V_C)
-                # d_v_C: float = omega_base * np.sqrt(2.0) * np.real(V_C)
+                d_v_C: float = omega_base * np.sqrt(2.0) * np.real(V_C)
 
                 self.set_init_guess_and_preserve_post_init(mdl, VarPowerFlowReferenceType.v_C, v_C)
-                # self.set_diff_init_guess(mdl, VarPowerFlowReferenceType.d_v_C, d_v_C)
+                self.set_diff_init_guess(mdl, VarPowerFlowReferenceType.d_v_C, d_v_C)
             else:
                 pass
 
@@ -5506,7 +5506,12 @@ class EmtProblemDae(EmtProblemTemplate):
             "B": self.power_flow_results_3ph.voltage_B,
             "C": self.power_flow_results_3ph.voltage_C,
         }
-        voltage_to_dict = voltage_from_dict
+        voltage_to_dict = {
+            "N": self.power_flow_results_3ph.voltage_N,
+            "A": self.power_flow_results_3ph.voltage_A,
+            "B": self.power_flow_results_3ph.voltage_B,
+            "C": self.power_flow_results_3ph.voltage_C,
+        }
 
         sf_array_dict = {
             "N": None,

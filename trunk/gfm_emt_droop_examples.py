@@ -23,9 +23,8 @@ Run:  ``.venv/bin/python trunk/gfm_emt_droop_examples.py``
 
 from __future__ import annotations
 
-import os
+import os,sys
 from typing import Any, Dict, List, Tuple, cast
-
 import numpy as np
 import matplotlib
 

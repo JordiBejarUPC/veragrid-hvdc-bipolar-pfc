@@ -189,11 +189,11 @@ print(res.get_branch_df())
 params_mapping = dict()
 
 options = RmsOptions(time_step=0.001,
-                     simulation_time=1,
+                     simulation_time=5,
                      tolerance=1e-6,
                      integration_method=DynamicIntegrationMethod.DaeBackEuler,
-                     # initialization_method=RmsInitializationMethod.Explicit,
-                     initialization_method=RmsInitializationMethod.PseudoTransient,
+                     initialization_method=RmsInitializationMethod.Explicit,
+                     # initialization_method=RmsInitializationMethod.PseudoTransient,
                      use_init_values=False,
                      max_iter=1000,
                      verbose=0)

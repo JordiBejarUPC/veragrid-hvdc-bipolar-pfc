@@ -5,10 +5,74 @@
 
 from __future__ import annotations
 
+from typing import Optional
+
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
+from VeraGridEngine.Templates.template_definiton import TemplateDefinition, TemplateProp
 from VeraGridEngine.Utils.Symbolic.block import Var
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowReferenceType
+
+
+class DcCurrentSourceEmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(vf, params=[
+            TemplateProp(name="source_current_value", units="", descr="Fixed injected DC current.", tpe=float),
+            TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str),
+        ])
+
+    def eval(self) -> EmtModelTemplate:
+        return get_dc_current_source_emt_template(
+            self.vf,
+            self.get_value("source_current_value"),
+            self.get_value("name"),
+        )
+
+
+class ControlledDcCurrentSourceEmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(vf, params=[
+            TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str),
+        ])
+
+    def eval(self) -> EmtModelTemplate:
+        return get_controlled_dc_current_source_emt_template(self.vf, self.get_value("name"))
+
+
+class DcVoltageSourceEmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(vf, params=[
+            TemplateProp(name="source_voltage_value", units="", descr="Fixed source voltage.", tpe=Optional[float]),
+            TemplateProp(name="source_conductance_value", units="Siemens", descr="Norton conductance.", tpe=float),
+            TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str),
+        ])
+
+    def eval(self) -> EmtModelTemplate:
+        return get_dc_voltage_source_emt_template(
+            self.vf,
+            self.get_value("source_voltage_value"),
+            self.get_value("source_conductance_value"),
+            self.get_value("name"),
+        )
+
+
+class ControlledDcVoltageSourceEmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(vf, params=[
+            TemplateProp(name="source_conductance_value", units="Siemens", descr="Norton conductance.", tpe=float),
+            TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str),
+        ])
+
+    def eval(self) -> EmtModelTemplate:
+        return get_controlled_dc_voltage_source_emt_template(
+            self.vf,
+            self.get_value("source_conductance_value"),
+            self.get_value("name"),
+        )
 
 
 def get_dc_current_source_emt_template(vf: VarFactory,
@@ -79,7 +143,7 @@ def get_controlled_dc_current_source_emt_template(vf: VarFactory,
 
 
 def get_dc_voltage_source_emt_template(vf: VarFactory,
-                                       source_voltage_value: float = 0.0,
+                                       source_voltage_value: Optional[float] = 0.0,
                                        source_conductance_value: float = 100.0,
                                        name: str = "dc_voltage_source_emt") -> EmtModelTemplate:
     """
@@ -102,7 +166,9 @@ def get_dc_voltage_source_emt_template(vf: VarFactory,
     i_dc: Var = vf.add_var(name=f"i_dc_{name}", reference=VarPowerFlowReferenceType.Idc)
     v_src: Var = vf.add_var(name=f"V_src_{name}")
     g_src: Var = vf.add_var(name=f"g_src_{name}")
-    templ.block.event_dict[v_src] = vf.add_const(float(source_voltage_value))
+    templ.block.event_dict[v_src] = vf.add_const(
+        None if source_voltage_value is None else float(source_voltage_value)
+    )
     templ.block.event_dict[g_src] = vf.add_const(float(source_conductance_value))
 
     templ.block.in_vars = [v_dc]
@@ -114,6 +180,7 @@ def get_dc_voltage_source_emt_template(vf: VarFactory,
         VarPowerFlowReferenceType.Idc: i_dc,
     }
     templ.block.init_eqs[i_dc] = g_src * (v_src - v_dc)
+    templ.block.init_eqs[v_src] = v_dc + i_dc / g_src
     return templ
 
 

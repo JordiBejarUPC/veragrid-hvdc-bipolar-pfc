@@ -13,7 +13,7 @@ import VeraGridEngine.api as gce
 
 def test_simulate_tuvalu():
     """
-   This test opens the Tuvalu grid with an event applyed and runs a rms simulation
+   This test opens the Tuvalu grid with an event applied and runs a rms simulation
     """
 
     folder = os.path.join('data', 'grids')

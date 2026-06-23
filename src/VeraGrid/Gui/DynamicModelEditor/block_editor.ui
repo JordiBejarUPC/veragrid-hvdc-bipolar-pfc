@@ -393,6 +393,7 @@
    <addaction name="actionCenter"/>
    <addaction name="actionZoom_out"/>
    <addaction name="actionZoom_in"/>
+   <addaction name="action_delete_all"/>
   </widget>
   <action name="block_editor_actionCheckModel">
    <property name="icon">
@@ -437,6 +438,21 @@
    </property>
    <property name="text">
     <string>Zoom out</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::MenuRole::NoRole</enum>
+   </property>
+  </action>
+  <action name="action_delete_all">
+   <property name="icon">
+    <iconset resource="../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/delete_schematic.png</normaloff>:/Icons/icons/delete_schematic.png</iconset>
+   </property>
+   <property name="text">
+    <string>Delete all</string>
+   </property>
+   <property name="toolTip">
+    <string>Delete all blocks to start from scratch.</string>
    </property>
    <property name="menuRole">
     <enum>QAction::MenuRole::NoRole</enum>

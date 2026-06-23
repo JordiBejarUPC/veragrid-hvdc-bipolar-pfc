@@ -232,7 +232,7 @@ def add_pv_irradiance_events(grid: vg.MultiCircuit, events_group: RmsEventsGroup
             )
             added += 1
 
-        restore = False
+        restore = True
         if restore:
             grid.add_rms_event(
                 RmsEvent(
@@ -272,6 +272,21 @@ def initialize_pv_prated_from_snapshot(grid: vg.MultiCircuit) -> int:
         gen.rms_model.event_dict[prated_var].value = p0
         configured += 1
         print(f"Initialized PV '{gen.name}' Prated from snapshot P0={p0:.6f} pu")
+
+    return configured
+
+
+def disable_pv_voltage_control_for_snapshot_pf(grid: vg.MultiCircuit) -> int:
+    configured = 0
+
+    for gen in grid.get_generators():
+        tech_names = [name.lower() for name in get_technology_names(gen)]
+        if not any("pv" in name for name in tech_names):
+            continue
+
+        gen.is_controlled = False
+        #gen.Q = 0.0
+        configured += 1
 
     return configured
 
@@ -442,10 +457,26 @@ def main() -> int:
     print(f"Loading Tuvalu base grid: {base_grid_path}")
     grid = vg.open_file(str(base_grid_path))
 
-    print("Using base-grid snapshot values (no time-series profile population)")
+    profiles_excel = repo_root.parent / "Tuvalu" / "data" / "profiles_and_scenarios.xlsx"
+    demand_excel = repo_root.parent / "Tuvalu" / "data" / "plant_data" / "combined_output_hand_corrected.xlsx"
+    if profiles_excel.exists() and demand_excel.exists():
+        print("Populating time-series profiles and applying max-PV snapshot")
+        populator = TuvaluGridPopulator(
+            grid=grid,
+            profiles_and_scenarios_excel=profiles_excel,
+            demand_excel=demand_excel,
+            profile_steps=24,
+        )
+        populator.populate()
+        apply_profile_snapshot(grid=grid)
+    else:
+        print("Using base-grid snapshot values (Tuvalu profile inputs not found)")
 
     initialize_tuvalu_rms_models(grid)
     print_load_pl0_snapshot(grid=grid, stage="after initialize_tuvalu_rms_models")
+
+    n_pv_pq = disable_pv_voltage_control_for_snapshot_pf(grid)
+    print(f"PV generators set to PQ mode for snapshot PF: {n_pv_pq}")
 
     print("Running snapshot power flow...")
     pf_driver = vg.PowerFlowDriver(
@@ -470,7 +501,7 @@ def main() -> int:
 
     print("Running RMS dynamic simulation...")
     rms_options = vg.RmsOptions(
-        simulation_time=1.0,
+        simulation_time=2.0,
         time_step=0.01,
         max_iter=60,
         tolerance=1e-6,

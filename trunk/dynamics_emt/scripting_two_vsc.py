@@ -12,7 +12,6 @@ configuration pointing to ``trunk.dynamics_emt.scripting_two_vsc``.
 
 from __future__ import annotations
 
-import os
 import sys
 from enum import Enum
 from pathlib import Path
@@ -76,7 +75,7 @@ from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_te
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template_with_ref
 from VeraGridEngine.Utils.Symbolic.block import Block, Var, find_name_in_block
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
-from VeraGridEngine.Utils.Symbolic.static_parameter_mapping_rms import converter_control_code
+from VeraGridEngine.Devices.Dynamic.static_parameter_mapping_rms import converter_control_code
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
 from VeraGridEngine.enumerations import (
     BranchImpedanceMode,
