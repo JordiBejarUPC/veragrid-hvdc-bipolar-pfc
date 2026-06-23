@@ -17,9 +17,8 @@ from PySide6.QtGui import (QAction, QBrush, QColor, QConicalGradient,
     QPainter, QPalette, QPixmap, QRadialGradient,
     QTransform)
 from PySide6.QtWidgets import (QApplication, QFrame, QHBoxLayout, QHeaderView,
-    QLineEdit, QMainWindow, QPushButton, QSizePolicy,
-    QSplitter, QToolBar, QTreeView, QVBoxLayout,
-    QWidget)
+    QLineEdit, QMainWindow, QSizePolicy, QSplitter,
+    QToolBar, QTreeView, QVBoxLayout, QWidget)
 from VeraGrid.Gui.Icons.icons_rc import *
 
 class Ui_DynamicEditorWorkspaceWindow(object):
@@ -97,14 +96,6 @@ class Ui_DynamicEditorWorkspaceWindow(object):
 
         self.horizontalLayout_2.addWidget(self.searchInTreeLineEdit)
 
-        self.searchInTreeButton = QPushButton(self.frame_2)
-        self.searchInTreeButton.setObjectName(u"searchInTreeButton")
-        icon7 = QIcon()
-        icon7.addFile(u":/Icons/icons/magnifying_glass.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.searchInTreeButton.setIcon(icon7)
-
-        self.horizontalLayout_2.addWidget(self.searchInTreeButton)
-
 
         self.verticalLayout_2.addWidget(self.frame_2)
 
@@ -169,7 +160,7 @@ class Ui_DynamicEditorWorkspaceWindow(object):
 #endif // QT_CONFIG(tooltip)
         self.actionValidate.setText(QCoreApplication.translate("DynamicEditorWorkspaceWindow", u"Validate", None))
         self.actionview_tree.setText(QCoreApplication.translate("DynamicEditorWorkspaceWindow", u"view tree", None))
-        self.searchInTreeButton.setText("")
+        self.searchInTreeLineEdit.setPlaceholderText(QCoreApplication.translate("DynamicEditorWorkspaceWindow", u"Type to search the device", None))
         self.toolBar.setWindowTitle(QCoreApplication.translate("DynamicEditorWorkspaceWindow", u"toolBar", None))
     # retranslateUi
 

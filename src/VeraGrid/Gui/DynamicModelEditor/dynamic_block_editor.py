@@ -691,10 +691,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.libraryTreeView.setHeaderHidden(False)
         self.ui.libraryTreeView.setUniformRowHeights(True)
 
-        self.ui.librarySearchButton.setIcon(QtGui.QIcon(":/Icons/icons/magnifying_glass.png"))
         self.ui.librarySearchLineEdit.setVisible(True)
         self.ui.librarySearchLineEdit.setClearButtonEnabled(True)
-        self.ui.librarySearchButton.clicked.connect(self.focus_library_search)
         self.ui.librarySearchLineEdit.textChanged.connect(self.on_library_search_text_changed)
         self.library_find_shortcut = QtGui.QShortcut(QtGui.QKeySequence.StandardKey.Find, self)
         self.library_find_shortcut.activated.connect(self.focus_library_search)

@@ -77,8 +77,8 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         self.ui.treeView.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
         self.ui.treeView.doubleClicked.connect(self._on_tree_double_clicked)
         self.ui.treeView.customContextMenuRequested.connect(self._show_tree_context_menu)
+        self.ui.searchInTreeLineEdit.setClearButtonEnabled(True)
         self.ui.searchInTreeLineEdit.textChanged.connect(self._apply_tree_filter)
-        self.ui.searchInTreeButton.clicked.connect(self._expand_tree_matches)
 
     def get_open_workspaces(self) -> list["DynamicEditorWorkspaceWindow"]:
         """

@@ -74,16 +74,9 @@
             <number>0</number>
            </property>
            <item>
-            <widget class="QLineEdit" name="searchInTreeLineEdit"/>
-           </item>
-           <item>
-            <widget class="QPushButton" name="searchInTreeButton">
-             <property name="text">
-              <string/>
-             </property>
-             <property name="icon">
-              <iconset resource="../Icons/icons.qrc">
-               <normaloff>:/Icons/icons/magnifying_glass.png</normaloff>:/Icons/icons/magnifying_glass.png</iconset>
+            <widget class="QLineEdit" name="searchInTreeLineEdit">
+             <property name="placeholderText">
+              <string>Type to search the device</string>
              </property>
             </widget>
            </item>
