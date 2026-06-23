@@ -5701,7 +5701,11 @@ def _apply_elmtow_tower_coupling(dgs_grid: DgsCircuit,
                     api_line.set_circuit_idx(val=circuit_idx, obj=ohl_type)
                     api_line.apply_template(obj=ohl_type, Sbase=baseMVA, freq=frequency, logger=logger)
                 except ValueError as e:
-                    logger.add_warning(str(e), device_class="ElmLne", device=api_line.name)
+                    logger.add_warning(
+                        str(e).strip() or "Failed to apply tower template.",
+                        device_class="ElmLne",
+                        device=api_line.name
+                    )
 
 
 def dgs_to_circuit(path: str,
