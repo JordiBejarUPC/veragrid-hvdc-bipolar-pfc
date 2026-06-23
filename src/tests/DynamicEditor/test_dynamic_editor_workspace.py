@@ -8,6 +8,7 @@ from VeraGrid.Gui.DynamicModelEditor.dyn_editor_multiwindow_engine import build_
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_window import DynamicEditorWorkspaceWindow
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_window import get_open_dynamic_editor_workspaces
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_window import reset_dynamic_editor_workspaces_for_tests
+from VeraGrid.Session.dynamic_editor_workspace_session import DynamicEditorWorkspaceSession
 from VeraGridEngine.enumerations import DynamicSimulationMode
 
 import VeraGridEngine.api as gce
@@ -31,11 +32,16 @@ def _build_load_entry():
     return circuit, load, entry
 
 
+def _build_workspace() -> DynamicEditorWorkspaceWindow:
+    session = DynamicEditorWorkspaceSession()
+    return DynamicEditorWorkspaceWindow(session=session)
+
+
 def test_workspace_reuses_existing_tab_and_remembers_last_mode() -> None:
     _get_app()
     reset_dynamic_editor_workspaces_for_tests()
     circuit, load, _entry = _build_load_entry()
-    workspace = DynamicEditorWorkspaceWindow()
+    workspace = _build_workspace()
 
     rms_page = workspace.open_dynamic_editor_for(
         load,
@@ -69,7 +75,7 @@ def test_workspace_reuses_existing_tab_and_remembers_last_mode() -> None:
 def test_tree_is_searchable_and_double_click_opens_rms() -> None:
     _get_app()
     circuit, load, entry = _build_load_entry()
-    workspace = DynamicEditorWorkspaceWindow()
+    workspace = _build_workspace()
 
     workspace.open_dynamic_editor_for(load, circuit, preferred_mode=DynamicSimulationMode.RMS)
     proxy_model = workspace.ui.treeView.model()
@@ -99,7 +105,7 @@ def test_workspace_detaches_and_reattaches_tabs_between_windows() -> None:
     _get_app()
     reset_dynamic_editor_workspaces_for_tests()
     circuit, load, _entry = _build_load_entry()
-    workspace = DynamicEditorWorkspaceWindow()
+    workspace = _build_workspace()
 
     rms_page = workspace.open_dynamic_editor_for(
         load,

@@ -58,7 +58,7 @@ from VeraGrid.Gui.DeviceEditors.TowerBuilder.LineBuilderDialogue import TowerBui
 from VeraGrid.Gui.GridReduce.grid_reduce import GridReduceDialogue
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_window import DynamicEditorWorkspaceWindow
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_window import get_open_dynamic_editor_workspaces
+from VeraGrid.Session.dynamic_editor_workspace_session import DynamicEditorWorkspaceSession
 from VeraGrid.Gui.Diagrams.SchematicWidget.diagram_bus_selection_dialogue import DiagramBusSelectorDialogue
 from VeraGrid.Gui.Diagrams.generic_graphics import is_dark_mode
 from VeraGrid.Gui.python_console import PythonConsole
@@ -153,6 +153,7 @@ class BaseMainGui(QMainWindow):
         self.stuff_running_now: List[SimulationTypes] = list()
 
         self.session: SimulationSession = SimulationSession(name='GUI session')
+        self.dynamic_editor_workspace_session: DynamicEditorWorkspaceSession = DynamicEditorWorkspaceSession()
 
         self._file_name = ''
 
@@ -252,11 +253,6 @@ class BaseMainGui(QMainWindow):
         self.about_msg_window: Union[AboutDialogueGuiGUI, None] = None
         self.tower_builder_window: Union[TowerBuilderGUI, None] = None
         self.rms_model_Editor_window: Union[DynamicBlockEditorGUI, None] = None
-        # Dynamic (RMS/EMT) model editor workspaces are top-level QMainWindows
-        # Rooting them here keeps them out of the cyclic collector; 
-        # Needed to avoid macos GUI crashing issues
-        # We use a list because there can be multiple dynamic windows at once
-        self.dynamic_editor_windows: List[DynamicEditorWorkspaceWindow] = list()
         self.investment_checks_diag: Union[CheckListDialogue, None] = None
         self.new_se_dlg: Union[CheckListDialogue, None] = None
         self.contingency_checks_diag: Union[CheckListDialogue, None] = None
@@ -414,20 +410,19 @@ class BaseMainGui(QMainWindow):
         for i in (0, 1, 2):
             gc.collect(generation=i)
 
-    def retain_dynamic_editor_windows(self) -> None:
+    def create_dynamic_editor_workspace(self, show_tree: bool = False) -> DynamicEditorWorkspaceWindow:
         """
-        Keep a strong reference from the main window to every open dynamic
-        (RMS/EMT) model editor workspace.
+        Create one dynamic-editor workspace owned by this main GUI.
 
-        These windows are otherwise referenced only by the editor's singleton
-        manager and by internal signal/lambda cycles. A root reference here keeps
-        their lifetime out of Python's cyclic garbage collector, which on macOS
-        can run on a worker thread and destroy the window (NSWindow).
-        Windows are only added (never dropped here)
+        :param show_tree: Whether the workspace should show its device tree.
+        :return: Newly created workspace window.
         """
-        for workspace in get_open_dynamic_editor_workspaces():
-            if workspace not in self.dynamic_editor_windows:
-                self.dynamic_editor_windows.append(workspace)
+        workspace = DynamicEditorWorkspaceWindow(session=self.dynamic_editor_workspace_session)
+        workspace.set_tree_visible(show_tree)
+        workspace.show()
+        workspace.raise_()
+        workspace.activateWindow()
+        return workspace
 
     def get_simulation_threads(self) -> List[GcThread]:
         """

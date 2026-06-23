@@ -12,445 +12,12 @@ from PySide6 import QtCore, QtGui, QtWidgets
 from VeraGrid.Gui.DynamicModelEditor.dyn_editor_multiwindow_engine import DetachableEditorTabWidget
 from VeraGrid.Gui.DynamicModelEditor.dyn_editor_multiwindow_engine import DynamicEditorEntry
 from VeraGrid.Gui.DynamicModelEditor.dyn_editor_multiwindow_engine import build_dynamic_editor_entry
-from VeraGrid.Gui.DynamicModelEditor.dyn_editor_multiwindow_engine import get_block_for_entry
-from VeraGrid.Gui.DynamicModelEditor.dyn_editor_multiwindow_engine import get_templates_for_entry
 from VeraGrid.Gui.DynamicModelEditor.dyn_editor_multiwindow_engine import iter_dynamic_editor_entries
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace import Ui_DynamicEditorWorkspaceWindow
 from VeraGrid.Gui.gui_functions import add_menu_entry
+from VeraGrid.Session.dynamic_editor_workspace_session import DynamicEditorWorkspaceSession
 from VeraGridEngine.enumerations import DynamicSimulationMode
-
-
-_ACTIVE_DYNAMIC_EDITOR_SESSIONS: list["DynamicEditorWorkspaceSession"] = list()
-
-
-def _get_page_entry(page: QtWidgets.QWidget | None) -> DynamicEditorEntry | None:
-    """
-    Return the cached dynamic-editor entry stored on one page widget.
-
-    :param page: Candidate workspace page.
-    :return: Cached entry or ``None`` when unavailable.
-    """
-    if page is None:
-        return None
-    entry = getattr(page, "_dynamic_editor_entry", None)
-    if isinstance(entry, DynamicEditorEntry):
-        return entry
-    return None
-
-
-def _get_page_mode(page: QtWidgets.QWidget | None) -> DynamicSimulationMode | None:
-    """
-    Return the cached dynamic-editor mode stored on one page widget.
-
-    :param page: Candidate workspace page.
-    :return: Cached mode or ``None`` when unavailable.
-    """
-    if page is None:
-        return None
-    mode = getattr(page, "_dynamic_editor_mode", None)
-    if isinstance(mode, DynamicSimulationMode):
-        return mode
-    return None
-
-
-class DynamicEditorWorkspaceSession(QtCore.QObject):
-    """
-    Shared state for one family of detachable workspace windows.
-    """
-
-    def __init__(self) -> None:
-        """
-        Initialize the shared session state for one workspace family.
-
-        :return: None.
-        """
-        super().__init__()
-        self._open_workspaces: list[DynamicEditorWorkspaceWindow] = list()
-        self._session_pages: dict[str, DynamicBlockEditorGUI] = dict()
-        self._last_mode_by_key_base: dict[str, DynamicSimulationMode] = dict()
-        self._last_active_workspace: DynamicEditorWorkspaceWindow | None = None
-        self._pending_drag_page: DynamicBlockEditorGUI | None = None
-        self._pending_drag_workspace: DynamicEditorWorkspaceWindow | None = None
-        self._retained_workspaces: list[DynamicEditorWorkspaceWindow] = list()
-        self._retained_pages: list[DynamicBlockEditorGUI] = list()
-
-    def register_workspace(self, workspace: "DynamicEditorWorkspaceWindow") -> None:
-        """
-        Register one live workspace window in this shared session.
-
-        :param workspace: Workspace to register.
-        :return: None.
-        """
-        if workspace not in self._open_workspaces:
-            self._open_workspaces.append(workspace)
-        if workspace not in self._retained_workspaces:
-            self._retained_workspaces.append(workspace)
-        self._last_active_workspace = workspace
-        if self not in _ACTIVE_DYNAMIC_EDITOR_SESSIONS:
-            _ACTIVE_DYNAMIC_EDITOR_SESSIONS.append(self)
-
-    def unregister_workspace(self, workspace: "DynamicEditorWorkspaceWindow") -> None:
-        """
-        Remove one workspace window from this shared session.
-
-        :param workspace: Workspace to unregister.
-        :return: None.
-        """
-        if workspace in self._open_workspaces:
-            self._open_workspaces.remove(workspace)
-        if self._last_active_workspace is workspace:
-            self._last_active_workspace = self._open_workspaces[-1] if self._open_workspaces else None
-        if len(self._open_workspaces) == 0 and self in _ACTIVE_DYNAMIC_EDITOR_SESSIONS:
-            _ACTIVE_DYNAMIC_EDITOR_SESSIONS.remove(self)
-
-    def get_open_workspaces(self) -> list["DynamicEditorWorkspaceWindow"]:
-        """
-        Return the currently open workspaces belonging to this session.
-
-        :return: Open workspaces for this session.
-        """
-        return list(self._open_workspaces)
-
-    def get_last_active_workspace(self) -> "DynamicEditorWorkspaceWindow | None":
-        """
-        Return the workspace that should receive newly opened editor tabs.
-
-        :return: Preferred workspace or ``None`` when no window is open.
-        """
-        if self._last_active_workspace is not None:
-            return self._last_active_workspace
-        if len(self._open_workspaces) > 0:
-            return self._open_workspaces[-1]
-        return None
-
-    def reset_for_tests(self) -> None:
-        """
-        Close every workspace and clear all retained session state.
-
-        :return: None.
-        """
-        for workspace in list(self._open_workspaces):
-            workspace.close()
-            workspace.deleteLater()
-
-        app: QtWidgets.QApplication | None = QtWidgets.QApplication.instance()
-        if app is not None:
-            app.processEvents()
-
-        self._open_workspaces.clear()
-        self._session_pages.clear()
-        self._last_mode_by_key_base.clear()
-        self._last_active_workspace = None
-        self._pending_drag_page = None
-        self._pending_drag_workspace = None
-        self._retained_workspaces.clear()
-        self._retained_pages.clear()
-        if self in _ACTIVE_DYNAMIC_EDITOR_SESSIONS:
-            _ACTIVE_DYNAMIC_EDITOR_SESSIONS.remove(self)
-
-    def workspace_for_page(self, page: QtWidgets.QWidget) -> "DynamicEditorWorkspaceWindow | None":
-        """
-        Locate the workspace that currently owns one editor page.
-
-        :param page: Page to resolve.
-        :return: Owning workspace or ``None``.
-        """
-        window = page.window()
-        if isinstance(window, DynamicEditorWorkspaceWindow) and window.session is self and window.index_of_page(page) >= 0:
-            return window
-
-        workspace: DynamicEditorWorkspaceWindow
-        for workspace in self._open_workspaces:
-            if workspace.index_of_page(page) >= 0:
-                return workspace
-
-        return None
-
-    def note_page_activated(self, page: QtWidgets.QWidget) -> None:
-        """
-        Record the active page so reopen operations reuse the right mode and window.
-
-        :param page: Newly activated page.
-        :return: None.
-        """
-        entry = _get_page_entry(page)
-        mode = _get_page_mode(page)
-        workspace = self.workspace_for_page(page)
-        if entry is not None and mode is not None:
-            self._last_mode_by_key_base[entry.key_base] = mode
-        if workspace is not None:
-            self._last_active_workspace = workspace
-
-    def build_page_tab_title(self, page: QtWidgets.QWidget) -> str:
-        """
-        Build the tab title shown for one page, including dirty-state marker.
-
-        :param page: Page whose title will be shown.
-        :return: User-facing tab title.
-        """
-        if isinstance(page, DynamicBlockEditorGUI):
-            title = page.get_dynamic_editor_display_title()
-        else:
-            title = page.windowTitle() or "Dynamic object"
-        if getattr(page, "has_unapplied_changes", False):
-            return f"* {title}"
-        return title
-
-    def refresh_open_page_title(self, page: QtWidgets.QWidget) -> None:
-        """
-        Refresh the tab title for one open page if its workspace is still alive.
-
-        :param page: Page whose title should be refreshed.
-        :return: None.
-        """
-        workspace = self.workspace_for_page(page)
-        if workspace is not None:
-            workspace.set_page_tab_title(page, self.build_page_tab_title(page))
-
-    def connect_page_signals(self, page: DynamicBlockEditorGUI) -> None:
-        """
-        Connect long-lived page signals needed by the workspace session.
-
-        :param page: Editor page whose signals will be connected.
-        :return: None.
-        """
-        page.dirtyStateChanged.connect(self._on_page_dirty_state_changed)
-
-    def _on_page_dirty_state_changed(self, _dirty: bool) -> None:
-        """
-        Refresh the sender page title after its dirty state changes.
-
-        :param _dirty: New dirty-state flag emitted by the page.
-        :return: None.
-        """
-        page = self.sender()
-        if isinstance(page, QtWidgets.QWidget):
-            self.refresh_open_page_title(page)
-
-    def create_workspace(self, global_pos: QtCore.QPoint | None = None) -> "DynamicEditorWorkspaceWindow":
-        """
-        Create, show, and register a new workspace window for this session.
-
-        :param global_pos: Optional top-left window position.
-        :return: Newly created workspace window.
-        """
-        workspace = DynamicEditorWorkspaceWindow(session=self)
-        if global_pos is not None:
-            workspace.move(global_pos)
-        workspace.show()
-        workspace.raise_()
-        workspace.activateWindow()
-        return workspace
-
-    def resolve_workspace(
-        self,
-        preferred_workspace: "DynamicEditorWorkspaceWindow | None" = None,
-    ) -> "DynamicEditorWorkspaceWindow":
-        """
-        Return the workspace that should receive a newly opened editor page.
-
-        :param preferred_workspace: Explicit target workspace, if any.
-        :return: Workspace that should host the new page.
-        """
-        if preferred_workspace is not None:
-            self._last_active_workspace = preferred_workspace
-            return preferred_workspace
-        workspace = self.get_last_active_workspace()
-        if workspace is not None:
-            return workspace
-        return self.create_workspace()
-
-    def resolve_mode(
-        self,
-        entry: DynamicEditorEntry,
-        preferred_mode: DynamicSimulationMode | None = None,
-    ) -> DynamicSimulationMode:
-        """
-        Choose the dynamic mode to open for one entry.
-
-        :param entry: Entry being opened.
-        :param preferred_mode: Explicit requested mode, if any.
-        :return: Mode that should be opened.
-        """
-        if preferred_mode is not None:
-            return preferred_mode
-        last_mode = self._last_mode_by_key_base.get(entry.key_base, None)
-        if last_mode is not None and last_mode in entry.available_modes:
-            return last_mode
-        if DynamicSimulationMode.RMS in entry.available_modes:
-            return DynamicSimulationMode.RMS
-        return entry.available_modes[0]
-
-    def create_page(self, entry: DynamicEditorEntry, mode: DynamicSimulationMode) -> DynamicBlockEditorGUI:
-        """
-        Instantiate one embedded block editor for the requested entry and mode.
-
-        :param entry: Entry being edited.
-        :param mode: Dynamic mode to open.
-        :return: Newly created embedded editor page.
-        """
-        page = DynamicBlockEditorGUI(
-            var_factory=entry.circuit.var_factory,
-            block=get_block_for_entry(entry, mode),
-            api_object=entry.api_object,
-            mode=mode,
-            templates_list=get_templates_for_entry(entry, mode),
-            circuit=entry.circuit,
-            main_editor=True,
-            modal=False,
-            workspace_embedded=True,
-        )
-        page._dynamic_editor_entry = entry
-        page._dynamic_editor_mode = mode
-        self.connect_page_signals(page)
-        self._retained_pages.append(page)
-        return page
-
-    def open_entry(
-        self,
-        entry: DynamicEditorEntry,
-        preferred_mode: DynamicSimulationMode | None = None,
-        target_workspace: "DynamicEditorWorkspaceWindow | None" = None,
-    ) -> DynamicBlockEditorGUI:
-        """
-        Open one entry in the session, reusing an existing page when possible.
-
-        :param entry: Entry to open.
-        :param preferred_mode: Explicit requested mode, if any.
-        :param target_workspace: Preferred destination workspace.
-        :return: Open editor page for the requested entry.
-        """
-        mode = self.resolve_mode(entry, preferred_mode)
-        session_key = entry.session_key(mode)
-        existing_page = self._session_pages.get(session_key, None)
-        if existing_page is not None:
-            workspace = self.workspace_for_page(existing_page)
-            if workspace is None:
-                self.unregister_page(existing_page)
-            else:
-                workspace.editor_tabs.setCurrentWidget(existing_page)
-                workspace.showNormal()
-                workspace.raise_()
-                workspace.activateWindow()
-                self.note_page_activated(existing_page)
-                return existing_page
-
-        workspace = self.resolve_workspace(target_workspace)
-        page = self.create_page(entry, mode)
-        self._session_pages[session_key] = page
-        self._last_mode_by_key_base[entry.key_base] = mode
-        workspace.add_editor_page(page, self.build_page_tab_title(page), activate=True)
-        self._last_active_workspace = workspace
-        return page
-
-    def open_dynamic_editor_for(
-        self,
-        api_object: Any,
-        circuit: Any,
-        preferred_mode: DynamicSimulationMode | None = None,
-        target_workspace: "DynamicEditorWorkspaceWindow | None" = None,
-    ) -> DynamicBlockEditorGUI | None:
-        """
-        Build and open the dynamic-editor entry for one API object.
-
-        :param api_object: Device or template to edit.
-        :param circuit: Circuit that owns the device.
-        :param preferred_mode: Explicit requested mode, if any.
-        :param target_workspace: Preferred destination workspace.
-        :return: Open editor page or ``None`` when no dynamic editor exists.
-        """
-        entry = build_dynamic_editor_entry(api_object, circuit)
-        if entry is None:
-            return None
-        return self.open_entry(entry, preferred_mode=preferred_mode, target_workspace=target_workspace)
-
-    def unregister_page(self, page: QtWidgets.QWidget) -> None:
-        """
-        Forget one page in the session registries.
-
-        :param page: Page being removed.
-        :return: None.
-        """
-        entry = _get_page_entry(page)
-        mode = _get_page_mode(page)
-        if entry is not None and mode is not None:
-            self._session_pages.pop(entry.session_key(mode), None)
-
-        if self._pending_drag_page is page:
-            self._pending_drag_page = None
-            self._pending_drag_workspace = None
-
-    def handle_tab_drag_started(self, workspace: "DynamicEditorWorkspaceWindow", index: int) -> None:
-        """
-        Remember which page started a detach or reattach drag gesture.
-
-        :param workspace: Source workspace.
-        :param index: Dragged tab index.
-        :return: None.
-        """
-        page = workspace.page_at(index)
-        if isinstance(page, DynamicBlockEditorGUI):
-            self._pending_drag_page = page
-            self._pending_drag_workspace = workspace
-
-    def handle_tab_detach(self, global_pos: QtCore.QPoint) -> None:
-        """
-        Move the dragged page into a newly created workspace window.
-
-        :param global_pos: Screen position where the new window should appear.
-        :return: None.
-        """
-        page = self._pending_drag_page
-        source_workspace = self._pending_drag_workspace
-        if page is None or source_workspace is None:
-            return
-
-        source_workspace.remove_page(page)
-        new_workspace = self.create_workspace(global_pos)
-        if source_workspace._current_circuit is not None:
-            new_workspace._set_workspace_circuit(source_workspace._current_circuit)
-        new_workspace.add_editor_page(page, self.build_page_tab_title(page), activate=True)
-        if source_workspace.editor_tabs.count() == 0:
-            source_workspace.close()
-        self._last_active_workspace = new_workspace
-        self._pending_drag_page = None
-        self._pending_drag_workspace = None
-
-    def handle_tab_reattach(
-        self,
-        target_workspace: "DynamicEditorWorkspaceWindow",
-        target_index: int,
-    ) -> None:
-        """
-        Move the dragged page into another existing workspace window.
-
-        :param target_workspace: Destination workspace.
-        :param target_index: Destination tab index.
-        :return: None.
-        """
-        page = self._pending_drag_page
-        source_workspace = self._pending_drag_workspace
-        if page is None or source_workspace is None:
-            return
-
-        if source_workspace is target_workspace:
-            self._pending_drag_page = None
-            self._pending_drag_workspace = None
-            return
-
-        if source_workspace._current_circuit is not None:
-            target_workspace._set_workspace_circuit(source_workspace._current_circuit)
-        source_workspace.remove_page(page)
-        target_workspace.add_editor_page(page, self.build_page_tab_title(page), activate=True, insert_index=target_index)
-        if source_workspace.editor_tabs.count() == 0:
-            source_workspace.close()
-        target_workspace.showNormal()
-        target_workspace.raise_()
-        target_workspace.activateWindow()
-        self._last_active_workspace = target_workspace
-        self._pending_drag_page = None
-        self._pending_drag_workspace = None
 
 
 class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
@@ -460,18 +27,18 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
 
     def __init__(
         self,
+        session: DynamicEditorWorkspaceSession,
         parent: QtWidgets.QWidget | None = None,
-        session: DynamicEditorWorkspaceSession | None = None,
     ) -> None:
         """
         Initialize one dynamic-editor workspace window.
 
+        :param session: Shared workspace session.
         :param parent: Optional Qt parent widget.
-        :param session: Optional shared workspace session.
         :return: None.
         """
         super().__init__(parent)
-        self.__session = session if session is not None else DynamicEditorWorkspaceSession()
+        self.__session = session
         self._current_circuit: Any | None = None
         self._tree_model = QtGui.QStandardItemModel(self)
         self._tree_proxy = QtCore.QSortFilterProxyModel(self)
@@ -923,7 +490,22 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         :param global_pos: Screen position for the new window.
         :return: None.
         """
-        self.session.handle_tab_detach(global_pos)
+        page, source_workspace = self.session.get_pending_tab_drag()
+        if page is None or source_workspace is None:
+            return
+
+        source_workspace.remove_page(page)
+        new_workspace = DynamicEditorWorkspaceWindow(session=self.session)
+        if source_workspace._current_circuit is not None:
+            new_workspace._set_workspace_circuit(source_workspace._current_circuit)
+        new_workspace.move(global_pos)
+        new_workspace.show()
+        new_workspace.raise_()
+        new_workspace.activateWindow()
+        new_workspace.add_editor_page(page, self.session.build_page_tab_title(page), activate=True)
+        if source_workspace.editor_tabs.count() == 0:
+            source_workspace.close()
+        self.session.clear_pending_tab_drag()
 
     def _on_tab_reattach_requested(self, _global_pos: QtCore.QPoint | int, target_index: int) -> None:
         """
@@ -933,7 +515,24 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         :param target_index: Destination tab index.
         :return: None.
         """
-        self.session.handle_tab_reattach(self, target_index)
+        page, source_workspace = self.session.get_pending_tab_drag()
+        if page is None or source_workspace is None:
+            return
+
+        if source_workspace is self:
+            self.session.clear_pending_tab_drag()
+            return
+
+        if source_workspace._current_circuit is not None:
+            self._set_workspace_circuit(source_workspace._current_circuit)
+        source_workspace.remove_page(page)
+        self.add_editor_page(page, self.session.build_page_tab_title(page), activate=True, insert_index=target_index)
+        if source_workspace.editor_tabs.count() == 0:
+            source_workspace.close()
+        self.showNormal()
+        self.raise_()
+        self.activateWindow()
+        self.session.clear_pending_tab_drag()
 
     def _on_current_tab_changed(self, index: int) -> None:
         """
@@ -1095,11 +694,19 @@ def get_open_dynamic_editor_workspaces() -> list[DynamicEditorWorkspaceWindow]:
 
     :return: Flattened list of open workspace windows.
     """
-    workspaces: list[DynamicEditorWorkspaceWindow] = list()
-    session: DynamicEditorWorkspaceSession
-    for session in _ACTIVE_DYNAMIC_EDITOR_SESSIONS:
-        workspaces.extend(session.get_open_workspaces())
-    return workspaces
+    owner = _get_dynamic_editor_session_owner()
+    if owner is not None:
+        return owner.dynamic_editor_workspace_session.get_open_workspaces()
+
+    app = QtWidgets.QApplication.instance()
+    if app is None:
+        return list()
+
+    return [
+        widget
+        for widget in app.topLevelWidgets()
+        if isinstance(widget, DynamicEditorWorkspaceWindow)
+    ]
 
 
 def reset_dynamic_editor_workspaces_for_tests() -> None:
@@ -1108,8 +715,14 @@ def reset_dynamic_editor_workspaces_for_tests() -> None:
 
     :return: None.
     """
+    sessions: list[DynamicEditorWorkspaceSession] = list()
+    workspace: DynamicEditorWorkspaceWindow
+    for workspace in get_open_dynamic_editor_workspaces():
+        if workspace.session not in sessions:
+            sessions.append(workspace.session)
+
     session: DynamicEditorWorkspaceSession
-    for session in list(_ACTIVE_DYNAMIC_EDITOR_SESSIONS):
+    for session in sessions:
         session.reset_for_tests()
 
 
@@ -1119,11 +732,35 @@ def _get_last_active_dynamic_editor_workspace() -> DynamicEditorWorkspaceWindow 
 
     :return: Last active workspace or ``None``.
     """
-    session: DynamicEditorWorkspaceSession
-    for session in reversed(_ACTIVE_DYNAMIC_EDITOR_SESSIONS):
-        workspace = session.get_last_active_workspace()
-        if workspace is not None:
-            return workspace
+    owner = _get_dynamic_editor_session_owner()
+    if owner is not None:
+        return owner.dynamic_editor_workspace_session.get_last_active_workspace()
+
+    workspaces = get_open_dynamic_editor_workspaces()
+    if len(workspaces) > 0:
+        return workspaces[-1]
+    return None
+
+
+def _get_dynamic_editor_session_owner() -> Any | None:
+    """
+    Return the main GUI object that owns the dynamic-editor workspace session.
+
+    :return: Main GUI owner or ``None`` when unavailable.
+    """
+    app = QtWidgets.QApplication.instance()
+    if app is None:
+        return None
+
+    active_window = app.activeWindow()
+    if active_window is not None and hasattr(active_window, "dynamic_editor_workspace_session"):
+        return active_window
+
+    widget: QtWidgets.QWidget
+    for widget in app.topLevelWidgets():
+        if hasattr(widget, "dynamic_editor_workspace_session"):
+            return widget
+
     return None
 
 
@@ -1147,11 +784,11 @@ def open_dynamic_editor(
 
     workspace = target_workspace if target_workspace is not None else _get_last_active_dynamic_editor_workspace()
     if workspace is None:
-        workspace = DynamicEditorWorkspaceWindow()
-        workspace.set_tree_visible(show_tree)
-        workspace.show()
-        workspace.raise_()
-        workspace.activateWindow()
+        owner = _get_dynamic_editor_session_owner()
+        if owner is not None:
+            workspace = owner.create_dynamic_editor_workspace(show_tree=show_tree)
+        else:
+            raise RuntimeError("DynamicEditorWorkspaceWindow requires a BaseMainGui-owned session")
     else:
         workspace.set_tree_visible(show_tree)
 

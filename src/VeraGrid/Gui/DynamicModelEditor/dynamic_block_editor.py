@@ -813,7 +813,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         self.ui.doItButton.clicked.connect(self.apply_changes)
 
-        self.ui.toolBox.currentChanged.connect(self.on_side_panel_page_changed)
+        self.ui.toolBox.currentChanged.connect(self.handle_side_panel_page_changed)
         self.scene.selectionChanged.connect(self.on_scene_selection_changed)
         if self.mode == DynamicSimulationMode.EMT and self.main_editor:
             self._ensure_full_emt_editor_interface()
@@ -7780,7 +7780,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.refresh_active_side_panel()
 
     @QtCore.Slot(int)
-    def on_side_panel_page_changed(self, index: int) -> None:
+    def handle_side_panel_page_changed(self, index: int) -> None:
         """
         Refresh only the side panel that just became visible.
 
@@ -9709,7 +9709,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return: None.
         """
         try:
-            self.ui.toolBox.currentChanged.disconnect(self.on_side_panel_page_changed)
+            self.ui.toolBox.currentChanged.disconnect(self.handle_side_panel_page_changed)
         except (RuntimeError, TypeError):
             pass
 
