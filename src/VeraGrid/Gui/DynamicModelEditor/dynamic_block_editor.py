@@ -461,8 +461,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         if modal:
             self.setWindowModality(QtCore.Qt.WindowModality.WindowModal)
 
-        # set object label
+        # # set object label
+        # self.deviceLabel = QLabel()
         self.ui.deviceLabel.setText(api_object.name if api_object is not None else "")
+        # self.ui.toolBar.addWidget(self.deviceLabel)
 
         self.block_role: int = int(QtCore.Qt.ItemDataRole.UserRole) + 300
         self.mime_type: str = "application/x-veragrid-dynamics-block"
@@ -471,13 +473,13 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         self.ui.splitter.setStretchFactor(0, 6)
         self.ui.splitter.setStretchFactor(1, 10)
-        self.ui.block_editor_actionCheckModel.triggered.connect(self.open_inspect_dialog)
-        self.ui.actionCenter.triggered.connect(self.center_view_on_items)
-        self.ui.actionZoom_in.triggered.connect(self.zoom_in_view)
-        self.ui.actionZoom_out.triggered.connect(self.zoom_out_view)
-        self.ui.action_delete_all.triggered.connect(self.delete_all_blocks_with_confirmation)
-        # self.ui.actionSave_block_to_my_catalogue.connect(self.save_block_to_my_catalogue)
-        # self.ui.actionExport_block.connect(self.export_block)
+
+        # self.ui.block_editor_actionCheckModel.triggered.connect(self.open_inspect_dialog)
+        # self.ui.actionCenter.triggered.connect(self.center_view_on_items)
+        # self.ui.actionZoom_in.triggered.connect(self.zoom_in_view)
+        # self.ui.actionZoom_out.triggered.connect(self.zoom_out_view)
+        # self.ui.action_delete_all.triggered.connect(self.delete_all_blocks_with_confirmation)
+        # self.ui.actionValidate.triggered.connect(self.show_model_consistency_validation)
 
         self.var_factory = var_factory
         self.api_object = api_object
@@ -810,7 +812,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.graphicsView.dropEvent = self.graphicsDropEvent
 
         self.ui.doItButton.clicked.connect(self.apply_changes)
-        self.ui.validateConsistencyButton.clicked.connect(self.show_model_consistency_validation)
+
         self.ui.toolBox.currentChanged.connect(self.on_side_panel_page_changed)
         self.scene.selectionChanged.connect(self.on_scene_selection_changed)
         if self.mode == DynamicSimulationMode.EMT and self.main_editor:
