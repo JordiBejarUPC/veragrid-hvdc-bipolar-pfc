@@ -14,7 +14,6 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.terminal_item import BarTerminalItem,
 from VeraGrid.Gui.DeviceEditors.LineEditor.line_device_editor import LineDeviceEditorDialog
 from VeraGrid.Gui.messages import yes_no_question, warning_msg
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template import LineGraphicTemplateItem
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_window import open_dynamic_editor
 from VeraGridEngine.Devices.Branches.line import Line, SequenceLineType
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.enumerations import DynamicSimulationMode
@@ -246,16 +245,16 @@ class LineGraphicItem(LineGraphicTemplateItem):
         Open the unified dynamic editor workspace for this generator.
         """
 
-        open_dynamic_editor(api_object=self.api_object, circuit=self.editor.circuit,
-                            preferred_mode=DynamicSimulationMode.RMS)
+        self.editor.gui.open_dynamic_editor(api_object=self.api_object, circuit=self.editor.circuit,
+                                            preferred_mode=DynamicSimulationMode.RMS)
 
     def edit_dynamic_emt(self):
         """
         Open the unified dynamic editor workspace for this generator.
         """
 
-        open_dynamic_editor(api_object=self.api_object, circuit=self.editor.circuit,
-                            preferred_mode=DynamicSimulationMode.EMT)
+        self.editor.gui.open_dynamic_editor(api_object=self.api_object, circuit=self.editor.circuit,
+                                            preferred_mode=DynamicSimulationMode.EMT)
 
     def add_to_catalogue(self):
         """

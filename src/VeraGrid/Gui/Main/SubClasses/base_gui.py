@@ -24,7 +24,7 @@ from VeraGrid.Gui.scenario_tree_model import ScenarioTreeModel
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.multiverse import MultiVerse
 import VeraGridEngine.Simulations as sim
-from VeraGridEngine.enumerations import EngineType, DeviceType, SimulationTypes
+from VeraGridEngine.enumerations import EngineType, DeviceType, SimulationTypes, DynamicSimulationMode
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
 from VeraGridEngine.DataStructures.numerical_circuit import NumericalCircuit
@@ -424,6 +424,40 @@ class BaseMainGui(QMainWindow):
         workspace.raise_()
         workspace.activateWindow()
         return workspace
+
+    def open_dynamic_editor(
+        self,
+        api_object,
+        circuit,
+        preferred_mode: DynamicSimulationMode | None = None,
+        target_workspace: DynamicEditorWorkspaceWindow | None = None,
+        show_tree: bool = False,
+    ) -> DynamicBlockEditorGUI | None:
+        """
+        Open one dynamic editor in this main GUI workspace session.
+
+        :param api_object: Device or template to edit.
+        :param circuit: Circuit that owns the device.
+        :param preferred_mode: Explicit requested mode, if any.
+        :param target_workspace: Preferred destination workspace.
+        :param show_tree: Whether the destination workspace should show its tree panel.
+        :return: Open editor page or ``None`` when no dynamic editor exists.
+        """
+        workspace = target_workspace if target_workspace is not None else self.dynamic_editor_workspace_session.get_last_active_workspace()
+        if workspace is None:
+            workspace = self.create_dynamic_editor_workspace(show_tree=show_tree)
+        else:
+            workspace.set_tree_visible(show_tree)
+            workspace.show()
+            workspace.raise_()
+            workspace.activateWindow()
+
+        return workspace.open_dynamic_editor_for(
+            api_object=api_object,
+            circuit=circuit,
+            preferred_mode=preferred_mode,
+            target_workspace=workspace,
+        )
 
     def get_simulation_threads(self) -> List[GcThread]:
         """

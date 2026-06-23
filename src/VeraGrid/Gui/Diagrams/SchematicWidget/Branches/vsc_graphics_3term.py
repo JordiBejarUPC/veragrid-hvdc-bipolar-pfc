@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, List, Union, cast, Any
 from PySide6.QtCore import Qt, QPoint, QRectF, QPointF
 from PySide6.QtGui import QIcon, QPixmap, QPainter, QPen, QBrush, QColor, QCursor, QTransform, QFont
 from PySide6.QtWidgets import QMenu, QGraphicsItem, QGraphicsRectItem, QGraphicsSceneMouseEvent
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_window import open_dynamic_editor
 
 from VeraGrid.Gui.DeviceEditors.VscEditor.vsc_device_editor import VscDeviceEditorDialog
 from VeraGrid.Gui.gui_functions import add_menu_entry
@@ -216,7 +215,7 @@ class VscGraphicItem3Term(GenericDiagramWidget, QGraphicsRectItem):
 
         :return: ``True`` when the editor was opened.
         """
-        dlg = VscDeviceEditorDialog(api_object=self.api_object, circuit=self.editor.circuit)
+        dlg = VscDeviceEditorDialog(api_object=self.api_object, circuit=self.editor.circuit, main_gui=self.editor.gui)
         if dlg.exec():
             return True
         else:
@@ -878,15 +877,15 @@ class VscGraphicItem3Term(GenericDiagramWidget, QGraphicsRectItem):
         Open the unified dynamic editor workspace for this generator.
         """
 
-        open_dynamic_editor(api_object=self.api_object,
-                            circuit=self.editor.circuit,
-                            preferred_mode=DynamicSimulationMode.RMS)
+        self.editor.gui.open_dynamic_editor(api_object=self.api_object,
+                                            circuit=self.editor.circuit,
+                                            preferred_mode=DynamicSimulationMode.RMS)
 
     def edit_dynamic_emt(self):
         """
         Open the unified dynamic editor workspace for this generator.
         """
 
-        open_dynamic_editor(api_object=self.api_object,
-                            circuit=self.editor.circuit,
-                            preferred_mode=DynamicSimulationMode.EMT)
+        self.editor.gui.open_dynamic_editor(api_object=self.api_object,
+                                            circuit=self.editor.circuit,
+                                            preferred_mode=DynamicSimulationMode.EMT)

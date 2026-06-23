@@ -12,7 +12,6 @@ from VeraGrid.Gui.gui_functions import add_menu_entry
 from VeraGrid.Gui.Diagrams.SchematicWidget.terminal_item import BarTerminalItem, RoundTerminalItem
 from VeraGridEngine.Devices.Branches.series_reactance import SeriesReactance
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template import LineGraphicTemplateItem
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_window import open_dynamic_editor
 from VeraGridEngine.enumerations import DynamicSimulationMode
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
@@ -158,15 +157,15 @@ class SeriesReactanceGraphicItem(LineGraphicTemplateItem):
         Open the unified dynamic editor workspace for this generator.
         """
 
-        open_dynamic_editor(api_object=self.api_object,
-                            circuit=self.editor.circuit,
-                            preferred_mode=DynamicSimulationMode.RMS)
+        self.editor.gui.open_dynamic_editor(api_object=self.api_object,
+                                            circuit=self.editor.circuit,
+                                            preferred_mode=DynamicSimulationMode.RMS)
 
     def edit_dynamic_emt(self):
         """
         Open the unified dynamic editor workspace for this generator.
         """
 
-        open_dynamic_editor(api_object=self.api_object,
-                            circuit=self.editor.circuit,
-                            preferred_mode=DynamicSimulationMode.EMT)
+        self.editor.gui.open_dynamic_editor(api_object=self.api_object,
+                                            circuit=self.editor.circuit,
+                                            preferred_mode=DynamicSimulationMode.EMT)

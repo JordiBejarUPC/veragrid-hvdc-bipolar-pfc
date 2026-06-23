@@ -12,6 +12,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 from VeraGrid.Gui.DynamicModelEditor.detachable_editor_tabs_widget import DetachableEditorTabWidget
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace import Ui_DynamicEditorWorkspaceWindow
+from VeraGrid.Gui.Icons.icon_associations import device_type_icons
 from VeraGrid.Gui.gui_functions import add_menu_entry
 from VeraGrid.Session.dynamic_editor_entries import DynamicEditorEntry
 from VeraGrid.Session.dynamic_editor_entries import build_dynamic_editor_entry
@@ -284,6 +285,7 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
             if group_item is None:
                 group_item = QtGui.QStandardItem(entry.type_label)
                 group_item.setEditable(False)
+                self._set_device_tree_item_icon(group_item, entry.type_label)
                 groups[entry.type_label] = group_item
                 root.appendRow(group_item)
 
@@ -291,9 +293,23 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
             item.setEditable(False)
             item.setData(entry, QtCore.Qt.ItemDataRole.UserRole)
             item.setToolTip(entry.display_name)
+            self._set_device_tree_item_icon(item, entry.type_label)
             group_item.appendRow(item)
 
         self._apply_tree_filter(self.ui.searchInTreeLineEdit.text())
+
+    def _set_device_tree_item_icon(self, item: QtGui.QStandardItem, icon_key: str) -> None:
+        """
+        Set the tree icon for one device item when an icon association exists.
+
+        :param item: Tree item that may receive an icon.
+        :param icon_key: Key used to look up the icon resource path.
+        :return: None.
+        """
+        icon_path = device_type_icons.get(icon_key, None)
+        if icon_path is None:
+            return
+        item.setIcon(QtGui.QIcon(QtGui.QPixmap(icon_path)))
 
     @staticmethod
     def _entry_sort_key(entry: DynamicEditorEntry) -> tuple[str, str]:
@@ -686,115 +702,3 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
 
         current_title = self.editor_tabs.tabText(self.editor_tabs.currentIndex())
         self.setWindowTitle(f"Dynamic Editor - {current_title}")
-
-
-def get_open_dynamic_editor_workspaces() -> list[DynamicEditorWorkspaceWindow]:
-    """
-    Return every open dynamic-editor workspace across all active sessions.
-
-    :return: Flattened list of open workspace windows.
-    """
-    owner = _get_dynamic_editor_session_owner()
-    if owner is not None:
-        return owner.dynamic_editor_workspace_session.get_open_workspaces()
-
-    app = QtWidgets.QApplication.instance()
-    if app is None:
-        return list()
-
-    return [
-        widget
-        for widget in app.topLevelWidgets()
-        if isinstance(widget, DynamicEditorWorkspaceWindow)
-    ]
-
-
-def reset_dynamic_editor_workspaces_for_tests() -> None:
-    """
-    Close every tracked workspace and clear global session state.
-
-    :return: None.
-    """
-    sessions: list[DynamicEditorWorkspaceSession] = list()
-    workspace: DynamicEditorWorkspaceWindow
-    for workspace in get_open_dynamic_editor_workspaces():
-        if workspace.session not in sessions:
-            sessions.append(workspace.session)
-
-    session: DynamicEditorWorkspaceSession
-    for session in sessions:
-        session.reset_for_tests()
-
-
-def _get_last_active_dynamic_editor_workspace() -> DynamicEditorWorkspaceWindow | None:
-    """
-    Return the most recently active dynamic-editor workspace, if any.
-
-    :return: Last active workspace or ``None``.
-    """
-    owner = _get_dynamic_editor_session_owner()
-    if owner is not None:
-        return owner.dynamic_editor_workspace_session.get_last_active_workspace()
-
-    workspaces = get_open_dynamic_editor_workspaces()
-    if len(workspaces) > 0:
-        return workspaces[-1]
-    return None
-
-
-def _get_dynamic_editor_session_owner() -> Any | None:
-    """
-    Return the main GUI object that owns the dynamic-editor workspace session.
-
-    :return: Main GUI owner or ``None`` when unavailable.
-    """
-    app = QtWidgets.QApplication.instance()
-    if app is None:
-        return None
-
-    active_window = app.activeWindow()
-    if active_window is not None and hasattr(active_window, "dynamic_editor_workspace_session"):
-        return active_window
-
-    widget: QtWidgets.QWidget
-    for widget in app.topLevelWidgets():
-        if hasattr(widget, "dynamic_editor_workspace_session"):
-            return widget
-
-    return None
-
-
-def open_dynamic_editor(
-    api_object: Any,
-    circuit: Any,
-    preferred_mode: DynamicSimulationMode | None = None,
-    target_workspace: DynamicEditorWorkspaceWindow | None = None,
-    show_tree: bool = False,
-) -> DynamicBlockEditorGUI | None:
-    """
-    Open one dynamic editor, optionally reusing an existing workspace.
-
-    :param api_object: Device or template to edit.
-    :param circuit: Circuit that owns the device.
-    :param preferred_mode: Explicit requested mode, if any.
-    :param target_workspace: Preferred destination workspace.
-    :param show_tree: Whether the destination workspace should show its tree panel.
-    :return: Open editor page or ``None`` when no dynamic editor exists.
-    """
-
-    workspace = target_workspace if target_workspace is not None else _get_last_active_dynamic_editor_workspace()
-    if workspace is None:
-        owner = _get_dynamic_editor_session_owner()
-        if owner is not None:
-            workspace = owner.create_dynamic_editor_workspace(show_tree=show_tree)
-        else:
-            raise RuntimeError("DynamicEditorWorkspaceWindow requires a BaseMainGui-owned session")
-    else:
-        workspace.set_tree_visible(show_tree)
-
-    return workspace.open_dynamic_editor_for(
-        api_object=api_object,
-        circuit=circuit,
-        preferred_mode=preferred_mode,
-        target_workspace=workspace,
-    )

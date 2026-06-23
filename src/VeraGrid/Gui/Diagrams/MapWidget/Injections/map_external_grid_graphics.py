@@ -9,7 +9,6 @@ from PySide6 import QtWidgets
 from VeraGrid.Gui.gui_functions import add_menu_entry
 from VeraGridEngine.Devices.Injections.external_grid import ExternalGrid
 from VeraGrid.Gui.Diagrams.MapWidget.Injections.map_injections_template_graphics import MapInjectionTemplateGraphicItem
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_window import open_dynamic_editor
 from VeraGridEngine.enumerations import  DynamicSimulationMode
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
@@ -69,8 +68,8 @@ class MapExternalGridGraphicItem(MapInjectionTemplateGraphicItem):
             self.editor.gui.show_error_toast("The graphic has no API object!")
 
     def edit_rms(self):
-        open_dynamic_editor(api_object=self.api_object, circuit=self.editor.circuit,
-                            preferred_mode=DynamicSimulationMode.RMS)
+        self.editor.gui.open_dynamic_editor(api_object=self.api_object, circuit=self.editor.circuit,
+                                            preferred_mode=DynamicSimulationMode.RMS)
 
     def edit_emt(self):
         """
@@ -79,5 +78,5 @@ class MapExternalGridGraphicItem(MapInjectionTemplateGraphicItem):
         :return: None.
         """
 
-        open_dynamic_editor(api_object=self.api_object, circuit=self.editor.circuit,
-                            preferred_mode=DynamicSimulationMode.EMT)
+        self.editor.gui.open_dynamic_editor(api_object=self.api_object, circuit=self.editor.circuit,
+                                            preferred_mode=DynamicSimulationMode.EMT)

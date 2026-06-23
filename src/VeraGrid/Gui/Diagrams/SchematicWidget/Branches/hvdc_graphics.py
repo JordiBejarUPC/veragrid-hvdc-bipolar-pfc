@@ -12,7 +12,6 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.terminal_item import BarTerminalItem,
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template import LineGraphicTemplateItem
 from VeraGridEngine.Devices.Branches.hvdc_line import HvdcLine
 from VeraGrid.Gui.messages import yes_no_question
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_window import open_dynamic_editor
 from VeraGridEngine.enumerations import DynamicSimulationMode
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
@@ -182,15 +181,15 @@ class HvdcGraphicItem(LineGraphicTemplateItem):
         Open the unified dynamic editor workspace for this generator.
         """
 
-        open_dynamic_editor(api_object=self.api_object,
-                            circuit=self.editor.circuit,
-                            preferred_mode=DynamicSimulationMode.RMS)
+        self.editor.gui.open_dynamic_editor(api_object=self.api_object,
+                                            circuit=self.editor.circuit,
+                                            preferred_mode=DynamicSimulationMode.RMS)
 
     def edit_dynamic_emt(self):
         """
         Open the unified dynamic editor workspace for this generator.
         """
 
-        open_dynamic_editor(api_object=self.api_object,
-                            circuit=self.editor.circuit,
-                            preferred_mode=DynamicSimulationMode.EMT)
+        self.editor.gui.open_dynamic_editor(api_object=self.api_object,
+                                            circuit=self.editor.circuit,
+                                            preferred_mode=DynamicSimulationMode.EMT)

@@ -2,11 +2,9 @@ from __future__ import annotations
 
 import sys
 
-from PySide6 import QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_window import DynamicEditorWorkspaceWindow
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_window import get_open_dynamic_editor_workspaces
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_window import reset_dynamic_editor_workspaces_for_tests
 from VeraGrid.Session.dynamic_editor_entries import build_dynamic_editor_entry
 from VeraGrid.Session.dynamic_editor_workspace_session import DynamicEditorWorkspaceSession
 from VeraGridEngine.enumerations import DynamicSimulationMode
@@ -37,9 +35,30 @@ def _build_workspace() -> DynamicEditorWorkspaceWindow:
     return DynamicEditorWorkspaceWindow(session=session)
 
 
+def _reset_dynamic_editor_workspaces() -> None:
+    """
+    Close every dynamic-editor workspace that may still be alive in the test Qt process.
+
+    :return: None.
+    """
+    app = QtWidgets.QApplication.instance()
+    if app is None:
+        return
+
+    sessions: list[DynamicEditorWorkspaceSession] = list()
+    widget: QtWidgets.QWidget
+    for widget in app.topLevelWidgets():
+        if isinstance(widget, DynamicEditorWorkspaceWindow) and widget.session not in sessions:
+            sessions.append(widget.session)
+
+    session: DynamicEditorWorkspaceSession
+    for session in sessions:
+        session.reset_for_tests()
+
+
 def test_workspace_reuses_existing_tab_and_remembers_last_mode() -> None:
     _get_app()
-    reset_dynamic_editor_workspaces_for_tests()
+    _reset_dynamic_editor_workspaces()
     circuit, load, _entry = _build_load_entry()
     workspace = _build_workspace()
 
@@ -69,11 +88,12 @@ def test_workspace_reuses_existing_tab_and_remembers_last_mode() -> None:
     reopened = workspace.open_dynamic_editor_for(load, circuit)
     assert reopened is emt_page
 
-    reset_dynamic_editor_workspaces_for_tests()
+    _reset_dynamic_editor_workspaces()
 
 
 def test_tree_is_searchable_and_double_click_opens_rms() -> None:
     _get_app()
+    _reset_dynamic_editor_workspaces()
     circuit, load, entry = _build_load_entry()
     workspace = _build_workspace()
 
@@ -98,12 +118,43 @@ def test_tree_is_searchable_and_double_click_opens_rms() -> None:
     assert workspace.current_page() is not None
     assert workspace.get_current_block_editor() is not None
 
-    reset_dynamic_editor_workspaces_for_tests()
+    _reset_dynamic_editor_workspaces()
+
+
+def test_tree_displays_device_icons() -> None:
+    """
+    Verify that the dynamic-editor tree shows device icons on both group and device rows.
+
+    :return: None.
+    """
+    _get_app()
+    _reset_dynamic_editor_workspaces()
+    circuit, load, _entry = _build_load_entry()
+    workspace = _build_workspace()
+
+    workspace.open_dynamic_editor_for(load, circuit, preferred_mode=DynamicSimulationMode.RMS)
+    proxy_model = workspace.ui.treeView.model()
+    assert proxy_model is not None
+
+    parent_index = proxy_model.index(0, 0)
+    device_index = proxy_model.index(0, 0, parent_index)
+    assert parent_index.isValid()
+    assert device_index.isValid()
+
+    parent_icon = proxy_model.data(parent_index, QtCore.Qt.ItemDataRole.DecorationRole)
+    device_icon = proxy_model.data(device_index, QtCore.Qt.ItemDataRole.DecorationRole)
+
+    assert isinstance(parent_icon, QtGui.QIcon)
+    assert isinstance(device_icon, QtGui.QIcon)
+    assert not parent_icon.isNull()
+    assert not device_icon.isNull()
+
+    _reset_dynamic_editor_workspaces()
 
 
 def test_workspace_detaches_and_reattaches_tabs_between_windows() -> None:
     _get_app()
-    reset_dynamic_editor_workspaces_for_tests()
+    _reset_dynamic_editor_workspaces()
     circuit, load, _entry = _build_load_entry()
     workspace = _build_workspace()
 
@@ -124,7 +175,7 @@ def test_workspace_detaches_and_reattaches_tabs_between_windows() -> None:
     workspace._on_tab_drag_started(emt_index)
     workspace._on_tab_detach_requested(workspace.pos())
 
-    assert len(get_open_dynamic_editor_workspaces()) == 2
+    assert len(workspace.get_open_workspaces()) == 2
     detached_workspace = workspace.workspace_for_page(emt_page)
     assert detached_workspace is not None
     assert detached_workspace is not workspace
@@ -137,4 +188,4 @@ def test_workspace_detaches_and_reattaches_tabs_between_windows() -> None:
     assert workspace.workspace_for_page(emt_page) is workspace
     assert workspace.ui.editorTabs.count() == 2
 
-    reset_dynamic_editor_workspaces_for_tests()
+    _reset_dynamic_editor_workspaces()
