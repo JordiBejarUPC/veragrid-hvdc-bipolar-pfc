@@ -25,7 +25,6 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.slot_geometry import (Schema
 from VeraGridEngine.Devices.Diagrams.schematic_layout import (build_default_branch_route,
                                                               parse_schematic_route_kind)
 from VeraGridEngine.enumerations import SchematicRouteKind, DynamicSimulationMode
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_manager import open_dynamic_editor
 
 
 from VeraGridEngine.Devices.types import INJECTION_DEVICE_TYPES
@@ -547,7 +546,7 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         """
         self.parent.delete_child(self)
 
-    def get_associated_widgets(self) -> List[GenericDiagramWidget | QGraphicsLineItem]:
+    def get_associated_widgets(self) -> List["GenericDiagramWidget" | "QGraphicsLineItem"]:
         """
         Get a list of all associated graphics
         :return:
@@ -1649,15 +1648,15 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         Open the unified dynamic editor workspace for this generator.
         """
 
-        open_dynamic_editor(api_object=self.api_object,
-                            circuit=self.editor.circuit,
-                            preferred_mode=DynamicSimulationMode.RMS)
+        self.editor.gui.open_dynamic_editor(api_object=self.api_object,
+                                            circuit=self.editor.circuit,
+                                            preferred_mode=DynamicSimulationMode.RMS)
 
     def edit_dynamic_emt(self):
         """
         Open the unified dynamic editor workspace for this generator.
         """
 
-        open_dynamic_editor(api_object=self.api_object,
-                            circuit=self.editor.circuit,
-                            preferred_mode=DynamicSimulationMode.EMT)
+        self.editor.gui.open_dynamic_editor(api_object=self.api_object,
+                                            circuit=self.editor.circuit,
+                                            preferred_mode=DynamicSimulationMode.EMT)
