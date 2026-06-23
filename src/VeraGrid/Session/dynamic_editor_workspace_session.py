@@ -9,10 +9,10 @@ from typing import Any, TYPE_CHECKING
 
 from PySide6 import QtCore, QtWidgets
 
-from VeraGrid.Gui.DynamicModelEditor.dyn_editor_multiwindow_engine import DynamicEditorEntry
-from VeraGrid.Gui.DynamicModelEditor.dyn_editor_multiwindow_engine import build_dynamic_editor_entry
-from VeraGrid.Gui.DynamicModelEditor.dyn_editor_multiwindow_engine import get_block_for_entry
-from VeraGrid.Gui.DynamicModelEditor.dyn_editor_multiwindow_engine import get_templates_for_entry
+from VeraGrid.Session.dynamic_editor_entries import DynamicEditorEntry
+from VeraGrid.Session.dynamic_editor_entries import build_dynamic_editor_entry
+from VeraGrid.Session.dynamic_editor_entries import get_block_for_entry
+from VeraGrid.Session.dynamic_editor_entries import get_templates_for_entry
 from VeraGridEngine.enumerations import DynamicSimulationMode
 
 if TYPE_CHECKING:

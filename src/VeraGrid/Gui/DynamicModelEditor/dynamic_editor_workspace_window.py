@@ -9,13 +9,13 @@ from typing import Any
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from VeraGrid.Gui.DynamicModelEditor.dyn_editor_multiwindow_engine import DetachableEditorTabWidget
-from VeraGrid.Gui.DynamicModelEditor.dyn_editor_multiwindow_engine import DynamicEditorEntry
-from VeraGrid.Gui.DynamicModelEditor.dyn_editor_multiwindow_engine import build_dynamic_editor_entry
-from VeraGrid.Gui.DynamicModelEditor.dyn_editor_multiwindow_engine import iter_dynamic_editor_entries
+from VeraGrid.Gui.DynamicModelEditor.detachable_editor_tabs_widget import DetachableEditorTabWidget
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace import Ui_DynamicEditorWorkspaceWindow
 from VeraGrid.Gui.gui_functions import add_menu_entry
+from VeraGrid.Session.dynamic_editor_entries import DynamicEditorEntry
+from VeraGrid.Session.dynamic_editor_entries import build_dynamic_editor_entry
+from VeraGrid.Session.dynamic_editor_entries import iter_dynamic_editor_entries
 from VeraGrid.Session.dynamic_editor_workspace_session import DynamicEditorWorkspaceSession
 from VeraGridEngine.enumerations import DynamicSimulationMode
 
