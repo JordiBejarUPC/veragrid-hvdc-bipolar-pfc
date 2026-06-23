@@ -1350,13 +1350,33 @@ class Generator(InjectionParent):
         return self._control_mode
 
     @control_mode.setter
-    def control_mode(self, val: GeneratorControlMode) -> None:
+    def control_mode(self, val: GeneratorControlMode | str | bool) -> None:
         """
         Set control mode
         :param val:
         :return:
         """
-        self._control_mode = val
+        if isinstance(val, GeneratorControlMode):
+            self._control_mode = val
+            return
+
+        if isinstance(val, bool):
+            self._control_mode = GeneratorControlMode.V if val else GeneratorControlMode.Q
+            return
+
+        if isinstance(val, str):
+            parsed = GeneratorControlMode.argparse(val)
+
+            if isinstance(parsed, GeneratorControlMode):
+                self._control_mode = parsed
+                return
+
+            for mode in GeneratorControlMode:
+                if val == mode.value:
+                    self._control_mode = mode
+                    return
+
+        raise TypeError(f"Unsupported generator control mode: {val!r}")
 
     @property
     def Pf(self) -> float:

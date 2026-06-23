@@ -413,7 +413,12 @@ def _get_injection_result_index(device_name: str,
     :param lookup: Result name lookup.
     :return: Resolved result index.
     """
-    return lookup.get(device_name, fallback_index)
+    normalized_name: str = str(device_name).strip()
+
+    if normalized_name:
+        return lookup.get(normalized_name, fallback_index)
+    else:
+        return fallback_index
 
 
 def _has_single_phase_explicit_injection_results(gen_p: Vec | None,
@@ -4177,18 +4182,27 @@ class SchematicWidget(BaseDiagramWidget):
         :return: Lookup from device name to result index.
         """
         lookup: dict[str, int] = dict()
-        index: int
+        counts: dict[str, int] = dict()
 
         if names is None:
             pass
         else:
-            for index, name in enumerate(names):
-                name_str: str = str(name)
+            for name in names:
+                name_str: str = str(name).strip()
 
-                if name_str in lookup:
-                    pass
+                if name_str:
+                    counts[name_str] = counts.get(name_str, 0) + 1
                 else:
+                    pass
+
+            for index, name in enumerate(names):
+                name_str = str(name).strip()
+
+                # Ambiguous or blank result names cannot identify a unique device.
+                if name_str and counts.get(name_str, 0) == 1:
                     lookup[name_str] = index
+                else:
+                    pass
 
         return lookup
 
@@ -4518,41 +4532,29 @@ class SchematicWidget(BaseDiagramWidget):
             if graphic_object is None:
                 pass
             else:
-                result_index: int | None = generator_lookup.get(generator.name, None)
+                result_index: int = _get_injection_result_index(
+                    device_name=generator.name,
+                    fallback_index=index,
+                    lookup=generator_lookup,
+                )
                 qa: float | None = None
                 qb: float | None = None
                 qc: float | None = None
 
-                if result_index is None:
-                    if gen_q_a is not None and index < len(gen_q_a):
-                        qa = float(gen_q_a[index])
-                    else:
-                        pass
-
-                    if gen_q_b is not None and index < len(gen_q_b):
-                        qb = float(gen_q_b[index])
-                    else:
-                        pass
-
-                    if gen_q_c is not None and index < len(gen_q_c):
-                        qc = float(gen_q_c[index])
-                    else:
-                        pass
+                if gen_q_a is not None and result_index < len(gen_q_a):
+                    qa = float(gen_q_a[result_index])
                 else:
-                    if gen_q_a is not None and result_index < len(gen_q_a):
-                        qa = float(gen_q_a[result_index])
-                    else:
-                        pass
+                    pass
 
-                    if gen_q_b is not None and result_index < len(gen_q_b):
-                        qb = float(gen_q_b[result_index])
-                    else:
-                        pass
+                if gen_q_b is not None and result_index < len(gen_q_b):
+                    qb = float(gen_q_b[result_index])
+                else:
+                    pass
 
-                    if gen_q_c is not None and result_index < len(gen_q_c):
-                        qc = float(gen_q_c[result_index])
-                    else:
-                        pass
+                if gen_q_c is not None and result_index < len(gen_q_c):
+                    qc = float(gen_q_c[result_index])
+                else:
+                    pass
 
                 self._apply_three_phase_injection_result(graphic_object=graphic_object,
                                                          device_name=generator.name,
@@ -4585,41 +4587,29 @@ class SchematicWidget(BaseDiagramWidget):
             if graphic_object is None:
                 pass
             else:
-                result_index: int | None = battery_lookup.get(battery.name, None)
+                result_index: int = _get_injection_result_index(
+                    device_name=battery.name,
+                    fallback_index=index,
+                    lookup=battery_lookup,
+                )
                 qa: float | None = None
                 qb: float | None = None
                 qc: float | None = None
 
-                if result_index is None:
-                    if battery_q_a is not None and index < len(battery_q_a):
-                        qa = float(battery_q_a[index])
-                    else:
-                        pass
-
-                    if battery_q_b is not None and index < len(battery_q_b):
-                        qb = float(battery_q_b[index])
-                    else:
-                        pass
-
-                    if battery_q_c is not None and index < len(battery_q_c):
-                        qc = float(battery_q_c[index])
-                    else:
-                        pass
+                if battery_q_a is not None and result_index < len(battery_q_a):
+                    qa = float(battery_q_a[result_index])
                 else:
-                    if battery_q_a is not None and result_index < len(battery_q_a):
-                        qa = float(battery_q_a[result_index])
-                    else:
-                        pass
+                    pass
 
-                    if battery_q_b is not None and result_index < len(battery_q_b):
-                        qb = float(battery_q_b[result_index])
-                    else:
-                        pass
+                if battery_q_b is not None and result_index < len(battery_q_b):
+                    qb = float(battery_q_b[result_index])
+                else:
+                    pass
 
-                    if battery_q_c is not None and result_index < len(battery_q_c):
-                        qc = float(battery_q_c[result_index])
-                    else:
-                        pass
+                if battery_q_c is not None and result_index < len(battery_q_c):
+                    qc = float(battery_q_c[result_index])
+                else:
+                    pass
 
                 self._apply_three_phase_injection_result(graphic_object=graphic_object,
                                                          device_name=battery.name,
@@ -4652,41 +4642,29 @@ class SchematicWidget(BaseDiagramWidget):
             if graphic_object is None:
                 pass
             else:
-                result_index: int | None = shunt_lookup.get(shunt_like_device.name, None)
+                result_index: int = _get_injection_result_index(
+                    device_name=shunt_like_device.name,
+                    fallback_index=index,
+                    lookup=shunt_lookup,
+                )
                 qa: float | None = None
                 qb: float | None = None
                 qc: float | None = None
 
-                if result_index is None:
-                    if shunt_q_a is not None and index < len(shunt_q_a):
-                        qa = float(shunt_q_a[index])
-                    else:
-                        pass
-
-                    if shunt_q_b is not None and index < len(shunt_q_b):
-                        qb = float(shunt_q_b[index])
-                    else:
-                        pass
-
-                    if shunt_q_c is not None and index < len(shunt_q_c):
-                        qc = float(shunt_q_c[index])
-                    else:
-                        pass
+                if shunt_q_a is not None and result_index < len(shunt_q_a):
+                    qa = float(shunt_q_a[result_index])
                 else:
-                    if shunt_q_a is not None and result_index < len(shunt_q_a):
-                        qa = float(shunt_q_a[result_index])
-                    else:
-                        pass
+                    pass
 
-                    if shunt_q_b is not None and result_index < len(shunt_q_b):
-                        qb = float(shunt_q_b[result_index])
-                    else:
-                        pass
+                if shunt_q_b is not None and result_index < len(shunt_q_b):
+                    qb = float(shunt_q_b[result_index])
+                else:
+                    pass
 
-                    if shunt_q_c is not None and result_index < len(shunt_q_c):
-                        qc = float(shunt_q_c[result_index])
-                    else:
-                        pass
+                if shunt_q_c is not None and result_index < len(shunt_q_c):
+                    qc = float(shunt_q_c[result_index])
+                else:
+                    pass
 
                 if isinstance(shunt_like_device, ControllableShunt):
                     tooltip_title: str = "Controllable shunt 3ph results"
