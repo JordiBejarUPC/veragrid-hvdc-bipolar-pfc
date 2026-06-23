@@ -9,7 +9,7 @@ from PySide6.QtWidgets import QMenu
 from VeraGrid.Gui.gui_functions import add_menu_entry
 from VeraGrid.Gui.Diagrams.SchematicWidget.terminal_item import BarTerminalItem, RoundTerminalItem
 from VeraGrid.Gui.DeviceEditors.VscEditor.vsc_device_editor import VscDeviceEditorDialog
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_manager import open_dynamic_editor
+from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_window import open_dynamic_editor
 from VeraGridEngine.Devices.Branches.vsc import VSC
 from VeraGridEngine.enumerations import TapModuleControl, DynamicSimulationMode
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template import LineGraphicTemplateItem

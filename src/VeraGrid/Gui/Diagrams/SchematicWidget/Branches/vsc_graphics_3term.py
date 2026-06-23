@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, List, Union, cast, Any
 from PySide6.QtCore import Qt, QPoint, QRectF, QPointF
 from PySide6.QtGui import QIcon, QPixmap, QPainter, QPen, QBrush, QColor, QCursor, QTransform, QFont
 from PySide6.QtWidgets import QMenu, QGraphicsItem, QGraphicsRectItem, QGraphicsSceneMouseEvent
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_manager import open_dynamic_editor
+from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_window import open_dynamic_editor
 
 from VeraGrid.Gui.DeviceEditors.VscEditor.vsc_device_editor import VscDeviceEditorDialog
 from VeraGrid.Gui.gui_functions import add_menu_entry

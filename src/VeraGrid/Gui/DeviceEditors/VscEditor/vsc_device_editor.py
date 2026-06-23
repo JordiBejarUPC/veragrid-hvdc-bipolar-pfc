@@ -10,7 +10,7 @@ from PySide6 import QtWidgets
 
 from VeraGrid.Gui.DeviceEditors.TemplateDeviceEditor.template_device_editor import TemplateDeviceEditor
 from VeraGrid.Gui.DeviceEditors.VscEditor.vsc_editor_widget import Ui_VscDeviceEditorWidget
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_manager import open_dynamic_editor
+from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_window import open_dynamic_editor
 from VeraGridEngine.Devices.Branches.vsc import VSC
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit

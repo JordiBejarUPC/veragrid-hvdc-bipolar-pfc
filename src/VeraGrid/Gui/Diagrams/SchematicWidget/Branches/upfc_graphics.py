@@ -13,7 +13,7 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.terminal_item import BarTerminalItem
 from VeraGridEngine.Devices.Branches.upfc import UPFC
 from VeraGridEngine.enumerations import TapModuleControl
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template import LineGraphicTemplateItem
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_manager import open_dynamic_editor
+from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_window import open_dynamic_editor
 from VeraGridEngine.enumerations import DynamicSimulationMode
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking

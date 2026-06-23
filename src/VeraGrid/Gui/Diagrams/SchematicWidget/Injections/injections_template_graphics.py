@@ -25,7 +25,7 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.slot_geometry import (Schema
 from VeraGridEngine.Devices.Diagrams.schematic_layout import (build_default_branch_route,
                                                               parse_schematic_route_kind)
 from VeraGridEngine.enumerations import SchematicRouteKind, DynamicSimulationMode
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_manager import open_dynamic_editor
+from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_window import open_dynamic_editor
 
 
 from VeraGridEngine.Devices.types import INJECTION_DEVICE_TYPES

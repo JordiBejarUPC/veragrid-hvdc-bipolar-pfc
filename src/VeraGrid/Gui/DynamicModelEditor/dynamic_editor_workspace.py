@@ -26,7 +26,7 @@ class Ui_DynamicEditorWorkspaceWindow(object):
     def setupUi(self, DynamicEditorWorkspaceWindow):
         if not DynamicEditorWorkspaceWindow.objectName():
             DynamicEditorWorkspaceWindow.setObjectName(u"DynamicEditorWorkspaceWindow")
-        DynamicEditorWorkspaceWindow.resize(830, 467)
+        DynamicEditorWorkspaceWindow.resize(1094, 603)
         self.block_editor_actionCheckModel = QAction(DynamicEditorWorkspaceWindow)
         self.block_editor_actionCheckModel.setObjectName(u"block_editor_actionCheckModel")
         icon = QIcon()

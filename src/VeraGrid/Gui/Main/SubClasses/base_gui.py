@@ -58,7 +58,7 @@ from VeraGrid.Gui.DeviceEditors.TowerBuilder.LineBuilderDialogue import TowerBui
 from VeraGrid.Gui.GridReduce.grid_reduce import GridReduceDialogue
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_window import DynamicEditorWorkspaceWindow
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_manager import DynamicEditorWorkspaceManager
+from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_window import get_open_dynamic_editor_workspaces
 from VeraGrid.Gui.Diagrams.SchematicWidget.diagram_bus_selection_dialogue import DiagramBusSelectorDialogue
 from VeraGrid.Gui.Diagrams.generic_graphics import is_dark_mode
 from VeraGrid.Gui.python_console import PythonConsole
@@ -425,7 +425,7 @@ class BaseMainGui(QMainWindow):
         can run on a worker thread and destroy the window (NSWindow).
         Windows are only added (never dropped here)
         """
-        for workspace in DynamicEditorWorkspaceManager.instance().get_open_workspaces():
+        for workspace in get_open_dynamic_editor_workspaces():
             if workspace not in self.dynamic_editor_windows:
                 self.dynamic_editor_windows.append(workspace)
 
