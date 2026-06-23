@@ -9170,6 +9170,17 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     phase_total_ports_by_name: dict[str, int] = dict({"N": 0, "A": 0, "B": 0, "C": 0})
                     append_port_vars_to_phase_count(phase_counts=phase_total_ports_by_name, vars_list=block.in_vars)
                     append_port_vars_to_phase_count(phase_counts=phase_total_ports_by_name, vars_list=block.out_vars)
+                    root_connected_interface_refs: set[VarPowerFlowReferenceType] = self._get_connected_root_interface_refs()
+                    root_injection_mask: list[bool] = build_emt_injection_bus_mask_from_refs(refs=root_connected_interface_refs)
+                    root_branch_from_mask: list[bool] = build_emt_branch_bus_mask_from_refs(
+                        refs=root_connected_interface_refs,
+                        side="from",
+                    )
+                    root_branch_to_mask: list[bool] = build_emt_branch_bus_mask_from_refs(
+                        refs=root_connected_interface_refs,
+                        side="to",
+                    )
+                    phase_index_by_name: dict[str, int] = dict({"N": 0, "A": 1, "B": 2, "C": 3})
 
                     phase_name: str
                     phase_missing_messages: list[str]
@@ -9177,10 +9188,79 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         if phase_missing_messages:
                             phase_total_ports: int = phase_total_ports_by_name[phase_name]
                             phase_missing_count: int = len(phase_missing_messages)
-                            if phase_total_ports > 0 and phase_missing_count < phase_total_ports:
-                                missing_port_messages.extend(phase_missing_messages)
+                            phase_index: int = phase_index_by_name[phase_name]
+                            phase_is_fully_absent_at_root: bool = False
+                            root_reference: VarPowerFlowReferenceType | None = None
+
+                            if block in self.main_block.in_vars or block in self.main_block.out_vars:
+                                root_reference = get_var_reference(var=block)
                             else:
+                                if node.tpe == BlockType.INPUT_CONN.name or node.tpe == BlockType.OUTPUT_CONN.name:
+                                    reference_var: Var | None = None
+
+                                    if node.tpe == BlockType.INPUT_CONN.name and len(block.out_vars) > 0:
+                                        reference_var = block.out_vars[0]
+                                    else:
+                                        if node.tpe == BlockType.OUTPUT_CONN.name and len(block.in_vars) > 0:
+                                            reference_var = block.in_vars[0]
+                                        else:
+                                            reference_var = None
+
+                                    if reference_var is not None:
+                                        root_reference = get_var_reference(var=reference_var)
+                                    else:
+                                        root_reference = None
+                                else:
+                                    root_reference = None
+
+                            if root_reference is not None:
+                                if root_reference in {
+                                    VarPowerFlowReferenceType.v_N,
+                                    VarPowerFlowReferenceType.v_A,
+                                    VarPowerFlowReferenceType.v_B,
+                                    VarPowerFlowReferenceType.v_C,
+                                    VarPowerFlowReferenceType.i_N,
+                                    VarPowerFlowReferenceType.i_A,
+                                    VarPowerFlowReferenceType.i_B,
+                                    VarPowerFlowReferenceType.i_C,
+                                }:
+                                    phase_is_fully_absent_at_root = not root_injection_mask[phase_index]
+                                else:
+                                    if root_reference in {
+                                        VarPowerFlowReferenceType.vf_N,
+                                        VarPowerFlowReferenceType.vf_A,
+                                        VarPowerFlowReferenceType.vf_B,
+                                        VarPowerFlowReferenceType.vf_C,
+                                        VarPowerFlowReferenceType.if_N,
+                                        VarPowerFlowReferenceType.if_A,
+                                        VarPowerFlowReferenceType.if_B,
+                                        VarPowerFlowReferenceType.if_C,
+                                    }:
+                                        phase_is_fully_absent_at_root = not root_branch_from_mask[phase_index]
+                                    else:
+                                        if root_reference in {
+                                            VarPowerFlowReferenceType.vt_N,
+                                            VarPowerFlowReferenceType.vt_A,
+                                            VarPowerFlowReferenceType.vt_B,
+                                            VarPowerFlowReferenceType.vt_C,
+                                            VarPowerFlowReferenceType.it_N,
+                                            VarPowerFlowReferenceType.it_A,
+                                            VarPowerFlowReferenceType.it_B,
+                                            VarPowerFlowReferenceType.it_C,
+                                        }:
+                                            phase_is_fully_absent_at_root = not root_branch_to_mask[phase_index]
+                                        else:
+                                            phase_is_fully_absent_at_root = False
+                            else:
+                                phase_is_fully_absent_at_root = False
+
+                            if phase_is_fully_absent_at_root:
                                 pass
+                            else:
+                                if phase_total_ports > 0 and phase_missing_count < phase_total_ports:
+                                    missing_port_messages.extend(phase_missing_messages)
+                                else:
+                                    pass
                         else:
                             pass
                 else:
@@ -9195,6 +9275,68 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                             missing_output_names.append(port_message[8:-18])
                         else:
                             pass
+
+                if self.mode == DynamicSimulationMode.EMT:
+                    if node.tpe == BlockType.INPUT_CONN.name or node.tpe == BlockType.OUTPUT_CONN.name:
+                        root_connected_interface_refs: set[VarPowerFlowReferenceType] = self._get_connected_root_interface_refs()
+                        root_injection_mask: list[bool] = build_emt_injection_bus_mask_from_refs(
+                            refs=root_connected_interface_refs,
+                        )
+                        root_branch_from_mask: list[bool] = build_emt_branch_bus_mask_from_refs(
+                            refs=root_connected_interface_refs,
+                            side="from",
+                        )
+                        root_branch_to_mask: list[bool] = build_emt_branch_bus_mask_from_refs(
+                            refs=root_connected_interface_refs,
+                            side="to",
+                        )
+                        protected_reference: VarPowerFlowReferenceType | None = None
+                        skip_protected_root_row: bool = False
+
+                        if node.tpe == BlockType.INPUT_CONN.name and len(block.out_vars) > 0:
+                            protected_reference = get_var_reference(var=block.out_vars[0])
+                        else:
+                            if node.tpe == BlockType.OUTPUT_CONN.name and len(block.in_vars) > 0:
+                                protected_reference = get_var_reference(var=block.in_vars[0])
+                            else:
+                                protected_reference = None
+
+                        if protected_reference in {VarPowerFlowReferenceType.v_N, VarPowerFlowReferenceType.i_N}:
+                            skip_protected_root_row = not root_injection_mask[0]
+                        elif protected_reference in {VarPowerFlowReferenceType.v_A, VarPowerFlowReferenceType.i_A}:
+                            skip_protected_root_row = not root_injection_mask[1]
+                        elif protected_reference in {VarPowerFlowReferenceType.v_B, VarPowerFlowReferenceType.i_B}:
+                            skip_protected_root_row = not root_injection_mask[2]
+                        elif protected_reference in {VarPowerFlowReferenceType.v_C, VarPowerFlowReferenceType.i_C}:
+                            skip_protected_root_row = not root_injection_mask[3]
+                        elif protected_reference in {VarPowerFlowReferenceType.vf_N, VarPowerFlowReferenceType.if_N}:
+                            skip_protected_root_row = not root_branch_from_mask[0]
+                        elif protected_reference in {VarPowerFlowReferenceType.vf_A, VarPowerFlowReferenceType.if_A}:
+                            skip_protected_root_row = not root_branch_from_mask[1]
+                        elif protected_reference in {VarPowerFlowReferenceType.vf_B, VarPowerFlowReferenceType.if_B}:
+                            skip_protected_root_row = not root_branch_from_mask[2]
+                        elif protected_reference in {VarPowerFlowReferenceType.vf_C, VarPowerFlowReferenceType.if_C}:
+                            skip_protected_root_row = not root_branch_from_mask[3]
+                        elif protected_reference in {VarPowerFlowReferenceType.vt_N, VarPowerFlowReferenceType.it_N}:
+                            skip_protected_root_row = not root_branch_to_mask[0]
+                        elif protected_reference in {VarPowerFlowReferenceType.vt_A, VarPowerFlowReferenceType.it_A}:
+                            skip_protected_root_row = not root_branch_to_mask[1]
+                        elif protected_reference in {VarPowerFlowReferenceType.vt_B, VarPowerFlowReferenceType.it_B}:
+                            skip_protected_root_row = not root_branch_to_mask[2]
+                        elif protected_reference in {VarPowerFlowReferenceType.vt_C, VarPowerFlowReferenceType.it_C}:
+                            skip_protected_root_row = not root_branch_to_mask[3]
+                        else:
+                            skip_protected_root_row = False
+
+                        if skip_protected_root_row:
+                            missing_input_names = list()
+                            missing_output_names = list()
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    pass
 
                 if missing_input_names or missing_output_names:
                     add_validation_detail(

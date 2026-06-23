@@ -88,39 +88,47 @@ def append_port_vars_to_phase_count(phase_counts: dict[str, int], vars_list: lis
 
 
 def append_missing_port_messages_for_direction(
-        direction_name: str,
+        missing_port_messages: list[str],
+        emt_missing_by_phase: dict[str, list[str]],
         vars_list: list[Var],
-        missing_input_names: list[str],
-        missing_output_names: list[str],
+        node_uid: int,
+        connected_ports: set[tuple[int, int]],
+        is_input: bool,
+        mode: object,
 ) -> None:
     """
     Append missing-port labels for one port direction.
 
-    :param direction_name: Human-facing direction label.
+    :param missing_port_messages: Mutable flat missing-port message list.
+    :param emt_missing_by_phase: Mutable EMT missing-port lookup by phase.
     :param vars_list: Candidate port variables.
-    :param missing_input_names: Mutable missing-input list.
-    :param missing_output_names: Mutable missing-output list.
+    :param node_uid: Diagram node uid.
+    :param connected_ports: Connected port lookup set for this direction.
+    :param is_input: Whether the candidate list is for inputs.
+    :param mode: Current dynamic simulation mode.
     :return: None.
     """
+    direction_label: str = "input" if is_input else "output"
+    port_index: int = 0
     var: Var
     reference: VarPowerFlowReferenceType | None
-    label: str
+    phase_name: str | None
+    message: str
 
     for var in vars_list:
-        if var.connections:
+        if (node_uid, port_index) in connected_ports:
             pass
         else:
+            message = f"{direction_label} '{var.name}' is not connected"
             reference = get_var_reference(var=var)
+            phase_name = get_emt_phase_group(reference=reference)
 
-            if reference is not None:
-                label = f"{direction_name} {reference.name}"
+            if phase_name is not None and str(mode).endswith("EMT"):
+                emt_missing_by_phase[phase_name].append(message)
             else:
-                label = f"{direction_name} {var.name}"
+                missing_port_messages.append(message)
 
-            if direction_name == "Input":
-                missing_input_names.append(label)
-            else:
-                missing_output_names.append(label)
+        port_index = port_index + 1
 
 
 def format_missing_port_detail(input_names: list[str], output_names: list[str]) -> str:
@@ -157,7 +165,10 @@ def append_emt_absent_phase_note(detail_parts: list[str], phase_name: str) -> No
     :param phase_name: Phase group label.
     :return: None.
     """
-    detail_parts.append(f"{phase_name}: absent by design")
+    if phase_name == "N":
+        detail_parts.append("the model has no neutral wire")
+    else:
+        detail_parts.append(f"the model has no phase {phase_name}")
 
 
 def format_emt_phase_connectivity_detail(
@@ -182,12 +193,26 @@ def format_emt_phase_connectivity_detail(
     else:
         pass
 
-    grouped_detail: str = format_missing_port_detail(input_names=input_names, output_names=output_names)
+    if len(input_names) > 0 and len(output_names) > 0:
+        detail_parts = list()
+        append_emt_absent_phase_note(detail_parts=detail_parts, phase_name=phase_name)
+        return True, " | ".join(detail_parts)
+    else:
+        pass
 
     if len(input_names) == 0 and len(output_names) == 0:
-        return True, grouped_detail
+        if phase_name == "N":
+            return True, "the model has this neutral wire"
+        else:
+            return True, f"the model has this phase {phase_name}"
     else:
-        return False, grouped_detail
+        if len(input_names) > 0 and len(output_names) == 0:
+            return False, f"inconsistent connection of phase {phase_name}, only I ports are connected"
+        else:
+            if len(input_names) == 0 and len(output_names) > 0:
+                return False, f"inconsistent connection of phase {phase_name}, only V ports are connected"
+            else:
+                return False, format_missing_port_detail(input_names=input_names, output_names=output_names)
 
 
 def get_phase_wire_description(phase_name: str) -> str:
@@ -198,13 +223,13 @@ def get_phase_wire_description(phase_name: str) -> str:
     :return: Human-facing phase description.
     """
     if phase_name == "N":
-        return "Neutral wire"
+        return "Neutral"
     elif phase_name == "A":
-        return "Phase A wire"
+        return "A"
     elif phase_name == "B":
-        return "Phase B wire"
+        return "B"
     elif phase_name == "C":
-        return "Phase C wire"
+        return "C"
     else:
         return phase_name
 
@@ -228,13 +253,12 @@ def get_branch_phase_table_label(side: str, phase_name: str) -> str:
     :return: Table row label.
     """
     if side == "from":
-        side_label: str = "From"
-    elif side == "to":
-        side_label = "To"
+        return f"{phase_name} bus from"
     else:
-        side_label = side
-
-    return f"{side_label} {get_phase_wire_description(phase_name=phase_name)}"
+        if side == "to":
+            return f"{phase_name} bus to"
+        else:
+            return f"{phase_name} {side}"
 
 
 def classify_emt_injection_phase_wire_from_refs(
@@ -374,6 +398,22 @@ def has_ac_emt_phase_interface_refs(refs: set[VarPowerFlowReferenceType]) -> boo
         VarPowerFlowReferenceType.i_A,
         VarPowerFlowReferenceType.i_B,
         VarPowerFlowReferenceType.i_C,
+        VarPowerFlowReferenceType.vf_N,
+        VarPowerFlowReferenceType.vf_A,
+        VarPowerFlowReferenceType.vf_B,
+        VarPowerFlowReferenceType.vf_C,
+        VarPowerFlowReferenceType.if_N,
+        VarPowerFlowReferenceType.if_A,
+        VarPowerFlowReferenceType.if_B,
+        VarPowerFlowReferenceType.if_C,
+        VarPowerFlowReferenceType.vt_N,
+        VarPowerFlowReferenceType.vt_A,
+        VarPowerFlowReferenceType.vt_B,
+        VarPowerFlowReferenceType.vt_C,
+        VarPowerFlowReferenceType.it_N,
+        VarPowerFlowReferenceType.it_A,
+        VarPowerFlowReferenceType.it_B,
+        VarPowerFlowReferenceType.it_C,
     )
 
     for phase_ref in ac_phase_refs:
