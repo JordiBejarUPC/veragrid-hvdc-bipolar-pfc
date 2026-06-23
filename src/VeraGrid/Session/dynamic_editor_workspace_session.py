@@ -17,6 +17,7 @@ from VeraGridEngine.enumerations import DynamicSimulationMode
 
 if TYPE_CHECKING:
     from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
+    from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_window import DynamicEditorWorkspaceWindow
 
 
 def _get_page_entry(page: QtWidgets.QWidget | None) -> DynamicEditorEntry | None:

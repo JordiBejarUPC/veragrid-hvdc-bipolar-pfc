@@ -303,6 +303,7 @@ class BaseMainGui(QMainWindow):
         self.ui.actionAuto_rate_branches.triggered.connect(self.auto_rate_branches)
         self.ui.actionDetect_transformers.triggered.connect(self.detect_transformers)
         self.ui.actionLaunch_data_analysis_tool.triggered.connect(self.display_grid_analysis)
+        self.ui.actionShow_dynamic_models_editor.triggered.connect(self.display_dynamic_models_editor)
         self.ui.actionOnline_documentation.triggered.connect(self.show_online_docs)
         self.ui.actionReport_a_bug.triggered.connect(self.report_a_bug)
 
@@ -1119,6 +1120,23 @@ class BaseMainGui(QMainWindow):
 
         self.analysis_dialogue.resize(int(1.61 * 600.0), 600)
         self.analysis_dialogue.show()
+
+    def display_dynamic_models_editor(self):
+        """
+        Display the dynamic models editor workspace with the tree panel visible.
+
+        :return: None.
+        """
+        workspace = self.dynamic_editor_workspace_session.get_last_active_workspace()
+        if workspace is None:
+            workspace = self.create_dynamic_editor_workspace(show_tree=True)
+        else:
+            workspace.set_tree_visible(True)
+            workspace.show()
+            workspace.raise_()
+            workspace.activateWindow()
+
+        workspace._set_workspace_circuit(self.circuit)
 
     def change_circuit_base(self):
         """

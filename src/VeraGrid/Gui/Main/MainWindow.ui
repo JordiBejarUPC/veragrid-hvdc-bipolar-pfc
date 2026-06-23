@@ -349,8 +349,8 @@
                            <rect>
                             <x>0</x>
                             <y>0</y>
-                            <width>382</width>
-                            <height>360</height>
+                            <width>262</width>
+                            <height>362</height>
                            </rect>
                           </property>
                           <attribute name="icon">
@@ -744,8 +744,8 @@
                            <rect>
                             <x>0</x>
                             <y>0</y>
-                            <width>396</width>
-                            <height>322</height>
+                            <width>174</width>
+                            <height>240</height>
                            </rect>
                           </property>
                           <attribute name="icon">
@@ -895,8 +895,8 @@
                            <rect>
                             <x>0</x>
                             <y>0</y>
-                            <width>396</width>
-                            <height>322</height>
+                            <width>124</width>
+                            <height>244</height>
                            </rect>
                           </property>
                           <attribute name="icon">
@@ -2364,7 +2364,15 @@
               <property name="toolTip">
                <string/>
               </property>
-              <widget class="QWidget" name="toolBox_3Page1" native="true">
+              <widget class="QWidget" name="toolBox_3Page1">
+               <property name="geometry">
+                <rect>
+                 <x>0</x>
+                 <y>0</y>
+                 <width>98</width>
+                 <height>85</height>
+                </rect>
+               </property>
                <attribute name="icon">
                 <iconset resource="../Icons/icons.qrc">
                  <normaloff>:/Icons/icons/plot.png</normaloff>:/Icons/icons/plot.png</iconset>
@@ -2412,7 +2420,15 @@
                 </item>
                </layout>
               </widget>
-              <widget class="QWidget" name="toolBox_3Page2" native="true">
+              <widget class="QWidget" name="toolBox_3Page2">
+               <property name="geometry">
+                <rect>
+                 <x>0</x>
+                 <y>0</y>
+                 <width>98</width>
+                 <height>88</height>
+                </rect>
+               </property>
                <attribute name="icon">
                 <iconset resource="../Icons/icons.qrc">
                  <normaloff>:/Icons/icons/load_add.png</normaloff>:/Icons/icons/load_add.png</iconset>
@@ -10978,6 +10994,7 @@ QProgressBar::chunk{
    <addaction name="actionAutoatic_layout"/>
    <addaction name="actionDelete_selected"/>
    <addaction name="separator"/>
+   <addaction name="actionShow_dynamic_models_editor"/>
    <addaction name="actionLaunch_data_analysis_tool"/>
    <addaction name="actionai_chat"/>
   </widget>
@@ -12798,6 +12815,18 @@ QProgressBar::chunk{
    </property>
    <property name="text">
     <string>Veragrid Scenario</string>
+   </property>
+  </action>
+  <action name="actionShow_dynamic_models_editor">
+   <property name="icon">
+    <iconset resource="../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/dyn_edit.png</normaloff>:/Icons/icons/dyn_edit.png</iconset>
+   </property>
+   <property name="text">
+    <string>Show dynamic models editor</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::MenuRole::NoRole</enum>
    </property>
   </action>
  </widget>
