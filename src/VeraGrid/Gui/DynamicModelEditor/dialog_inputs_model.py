@@ -8,14 +8,15 @@ import datetime
 import math
 
 import numpy as np
-from typing import Any, Dict, List, Union, Sequence, get_origin
-from collections.abc import Sequence as ABCSequence
+from typing import Any, Dict, List, Union, get_origin
+from collections.abc import Sequence
 from PySide6 import QtCore, QtWidgets, QtGui
 from typing import Callable
 from VeraGrid.Gui.gui_functions import (IntDelegate, ComboDelegate, TextDelegate, FloatDelegate, ColorPickerDelegate,
                                         ComplexDelegate, DateTimeDelegate, SequenceDelegate)
 from VeraGrid.Gui.wrappable_table_model import WrappableTableModel
 from VeraGridEngine.Templates.template_definition import TemplateProp, TEMPLATEPROP_TYPES
+from VeraGridEngine.basic_structures import Vec
 
 
 class DialogInpModel(WrappableTableModel):
@@ -82,6 +83,7 @@ class DialogInpModel(WrappableTableModel):
         for i in range(self.c):
 
             tpe = self.attribute_types[i]
+            origin = get_origin(tpe)
 
             if tpe is bool:
                 delegate = ComboDelegate(self.parent, [True, False], ['True', 'False'])
@@ -98,7 +100,7 @@ class DialogInpModel(WrappableTableModel):
             elif tpe is complex:
                 delegate = ComplexDelegate(self.parent)
                 F(i, delegate)
-            elif get_origin(tpe) is ABCSequence:
+            elif origin is Sequence or origin is list:
                 delegate = SequenceDelegate(self.parent)
                 F(i, delegate)
 
@@ -177,7 +179,7 @@ class DialogInpModel(WrappableTableModel):
             val = self.property_list[attr_idx].value
 
             if role == QtCore.Qt.ItemDataRole.DisplayRole:
-                if isinstance(val, list) and val and hasattr(val[0], 'time'):
+                if isinstance(val, (list, tuple)) and len(val) > 0 and isinstance(val[0], np.ndarray):
                     return f"Waveform ({len(val)} pts)"
                 if val is None:
                     return ""
@@ -187,7 +189,7 @@ class DialogInpModel(WrappableTableModel):
 
         return None
 
-    def setData(self, index: QtCore.QModelIndex, value: Union[float, str], role: Union[int, None] = None) -> bool:
+    def setData(self, index: QtCore.QModelIndex, value, role=None) -> bool:
         if len(self.property_list) == 0:
             return True
 
@@ -199,12 +201,17 @@ class DialogInpModel(WrappableTableModel):
         prop = self.property_list[attr_idx]
 
         if self.attributes[attr_idx] not in self.non_editable_attributes:
-            value2 = value
-
             try:
-                prop.value = value2
+                prop.value = value
             except ValueError as e:
                 self.report_error(str(e))
+                return True
+
+        self.dataChanged.emit(
+            index,
+            index,
+            [QtCore.Qt.ItemDataRole.DisplayRole, QtCore.Qt.ItemDataRole.EditRole]
+        )
 
         return True
 

@@ -64,6 +64,6 @@ from VeraGridEngine.Templates.Emt.pv_emt_template import (get_pv_grid_following_
                                                           get_pv_avm_boost_grid_following_emt_template)
 from VeraGridEngine.Templates.Emt.vsc_gfm_emt import get_gfm_emt_template
 from VeraGridEngine.Templates.Emt.empty_emt_template import get_empty_emt_template
-from VeraGridEngine.Templates.Emt.arbitrary_source_emt_template import ArbitraryWaveformCurrentSourceEmtTemplate
+from VeraGridEngine.Templates.Emt.arbitrary_source_emt_template import ArbitraryWaveformVoltageSourceEmtTemplate, ArbitraryWaveformCurrentSourceEmtTemplate
 
 

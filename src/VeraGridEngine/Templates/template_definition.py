@@ -6,6 +6,7 @@
 from __future__ import annotations
 from typing import Sequence, Any, Union, Type
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
+from VeraGridEngine.basic_structures import Vec
 
 
 TEMPLATEPROP_TYPES = Union[
@@ -13,7 +14,7 @@ TEMPLATEPROP_TYPES = Union[
     Type[bool],
     Type[float],
     Type[str],
-    Type[Sequence]
+    Type[Sequence[Vec]]
 ]
 
 class TemplateProp:

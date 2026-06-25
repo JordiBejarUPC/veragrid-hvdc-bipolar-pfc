@@ -1925,30 +1925,25 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return: Created block item or ``None`` when the dialog is cancelled.
         """
 
+
         count: int = self.block_counters.get(block_type, 0) + 1
         item_name: str = f"{block_type.name}_{count}"
 
-        if block_type == BlockType.ARBITRARY_WAVEFORM_CURRENT_SOURCE_EMT:
+        template_builder = None
+
+        if block_type == BlockType.ARBITRARY_WAVEFORM_VOLTAGE_SOURCE_EMT:
+            template_builder = emt_templates.ArbitraryWaveformVoltageSourceEmtTemplate(vf=self.var_factory)
+
+        elif block_type == BlockType.ARBITRARY_WAVEFORM_CURRENT_SOURCE_EMT:
             template_builder = emt_templates.ArbitraryWaveformCurrentSourceEmtTemplate(vf=self.var_factory)
+
+        if template_builder is not None:
+
             dialog = DynTemplatesEditorDialog(template_builder.params)
             dialog.exec()
             template = template_builder.eval()
             block_model = template.block
 
-
-        else:
-
-            dialog = ArbitrarySourceEmtDialog(block_type=block_type, parent=self,
-                                              initial_config=self._build_default_arbitrary_source_emt_modal_config(
-                                                  block_type))
-            if dialog.exec() == QDialog.DialogCode.Accepted:
-                source_config: Dict[str, Any] = dict(self._build_default_arbitrary_source_emt_modal_config(block_type),
-                                                     **dialog.get_configuration())
-
-
-            block_model: Block | None = self._build_arbitrary_source_emt_block_model(block_type=block_type,
-                                                                                     item_name=item_name,
-                                                                                     modal_config=source_config)
 
         block_item: GenericBlockItem = GenericBlockItem(editor=self, var_factory=self.var_factory,
                                                         subsys=block_model,
@@ -1958,18 +1953,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                                         position_changed_callback=self._build_position_changed_callback(
                                                             block_model.uid))
 
-        if block_model is None:
-            return None
-        else:
-            pass
-
-        self.set_modal_template_metadata(block_model, kind="arbitrary_source_emt", config=dict(source_config,
-                                                                                               block_type=block_type.name))
         self.block_counters[block_type] = count
         block_item.set_subsystem(block_model)
         block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
         block_item.build_item()
-        block_item.setToolTip(self._build_arbitrary_source_emt_modal_tooltip(source_config))
         self.main_block.add(block_model)
         self.scene.addItem(block_item)
         block_item.setPos(QtCore.QPointF(x_pos, y_pos))

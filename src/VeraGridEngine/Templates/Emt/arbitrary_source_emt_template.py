@@ -16,6 +16,7 @@ from VeraGridEngine.Utils.Symbolic.symbolic import CmpOp
 from VeraGridEngine.Utils.Symbolic.symbolic import Comparison
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowReferenceType
 from VeraGridEngine.Templates.template_definition import TemplateDefinition, TemplateProp
+from VeraGridEngine.basic_structures import Vec
 
 
 
@@ -182,9 +183,7 @@ class ArbitraryWaveformCurrentSourceEmtTemplate(TemplateDefinition):
                 TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool),
                 TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool),
                 TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool),
-                TemplateProp(name="time_points", units="s", descr="Strictly increasing waveform times.",
-                             tpe=Sequence[float]),
-                TemplateProp(name="value_points", units="", descr="Matching waveform values.", tpe=Sequence[float]),
+                TemplateProp(name="waveform", units="", descr="waveform points (value, time)", tpe=Sequence[Vec]),
                 TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str),
             ]
         )
@@ -197,9 +196,15 @@ class ArbitraryWaveformCurrentSourceEmtTemplate(TemplateDefinition):
         phA: bool = self.get_value("phA")
         phB: bool = self.get_value("phB")
         phC: bool = self.get_value("phC")
-        time_points: Sequence[float] = self.get_value("time_points")
-        value_points: Sequence[float] = self.get_value("value_points")
+        waveform: Sequence[Vec] = self.get_value("waveform")
         name: str = self.get_value("name")
+
+        time_points = list()
+        value_points = list()
+        for point in waveform:
+            time_points.append(point[0])
+            value_points.append(point[1])
+
 
         return get_arbitrary_waveform_current_source_emt_template(
             self.vf, phN, phA, phB, phC, time_points, value_points, name
@@ -286,8 +291,7 @@ class ArbitraryWaveformVoltageSourceEmtTemplate(TemplateDefinition):
                 TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool),
                 TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool),
                 TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool),
-                TemplateProp(name="time_points", units="s", descr="Strictly increasing waveform times.", tpe=Sequence[float]),
-                TemplateProp(name="value_points", units="", descr="Matching waveform values.", tpe=Sequence[float]),
+                TemplateProp(name="waveform", units="", descr="waveform points (value, time)", tpe=Sequence[Vec]),
                 TemplateProp(name="source_conductance_value", units="Siemens", descr="Norton conductance.", tpe=float),
                 TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str),
             ]
@@ -301,10 +305,15 @@ class ArbitraryWaveformVoltageSourceEmtTemplate(TemplateDefinition):
         phA: bool = self.get_value("phN")
         phB: bool = self.get_value("phN")
         phC: bool = self.get_value("phN")
-        time_points: Sequence[float] = self.get_value("time_points")
-        value_points: Sequence[float] = self.get_value("value_points")
+        waveform: Sequence[Vec] = self.get_value("waveform")
         source_conductance_value: float = self.get_value("source_conductance_value")
         name: str = self.get_value("name")
+
+        time_points = list()
+        value_points = list()
+        for point in waveform:
+            time_points.append(point[0])
+            value_points.append(point[1])
 
         return get_arbitrary_waveform_voltage_source_emt_template(
             self.vf, phN, phA, phB, phC, time_points, value_points, source_conductance_value, name

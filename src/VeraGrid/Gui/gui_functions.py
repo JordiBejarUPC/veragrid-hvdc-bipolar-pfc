@@ -1538,8 +1538,8 @@ class WaveformEditorDialog(QtWidgets.QDialog):
         for p in points:
             row = self.table.rowCount()
             self.table.insertRow(row)
-            self.table.setItem(row, 0, QtWidgets.QTableWidgetItem(str(p.time)))
-            self.table.setItem(row, 1, QtWidgets.QTableWidgetItem(str(p.value)))
+            self.table.setItem(row, 0, QtWidgets.QTableWidgetItem(str(p[0])))
+            self.table.setItem(row, 1, QtWidgets.QTableWidgetItem(str(p[1])))
         self.update_plot()
 
     def get_points(self):
@@ -1551,36 +1551,44 @@ class WaveformEditorDialog(QtWidgets.QDialog):
                 try:
                     t = float(t_item.text())
                     v = float(v_item.text())
-                    points.append(WaveformPoint(t, v))
+                    points.append(np.array([t, v], dtype=np.float64))
                 except ValueError:
                     pass
         return points
 
 
-class SequenceDelegate(QtWidgets.QItemDelegate):
-    commitData = QtCore.Signal(object)
+class SequenceDelegate(QtWidgets.QStyledItemDelegate):
 
     def __init__(self, parent):
-        QtWidgets.QItemDelegate.__init__(self, parent)
+        QtWidgets.QStyledItemDelegate.__init__(self, parent)
 
-    def createEditor(self, parent, option, index):
-        editor = QtWidgets.QPushButton("Edit waveform", parent)
-        editor.clicked.connect(lambda: self.commitData.emit(editor))
-        return editor
+    def paint(self, painter, option, index):
+        painter.save()
 
-    def setEditorData(self, editor, index):
-        editor.blockSignals(True)
-        val = index.model().data(index, role=QtCore.Qt.ItemDataRole.EditRole)
-        if val is None:
-            editor.setText("Edit waveform")
+        btn_option = QtWidgets.QStyleOptionButton()
+        btn_option.rect = option.rect
+
+        val = index.model().data(index, QtCore.Qt.ItemDataRole.EditRole)
+        if val is not None and len(val) > 0:
+            btn_option.text = f"Edit waveform ({len(val)} pts)"
         else:
-            editor.setText(f"Edit waveform ({len(val)} pts)")
-        editor.blockSignals(False)
+            btn_option.text = "Edit waveform"
 
-    def setModelData(self, editor, model, index):
-        dialog = WaveformEditorDialog(self.parent())
-        current = index.model().data(index, role=QtCore.Qt.ItemDataRole.EditRole)
-        if current is not None:
-            dialog.set_points(current)
-        if dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
-            model.setData(index, dialog.get_points())
+        QtWidgets.QApplication.style().drawControl(
+            QtWidgets.QStyle.CE_PushButton, btn_option, painter
+        )
+
+        painter.restore()
+
+    def editorEvent(self, event, model, option, index):
+        if event.type() == QtCore.QEvent.Type.MouseButtonRelease:
+            if not (index.flags() & QtCore.Qt.ItemFlag.ItemIsEditable):
+                return False
+            dialog = WaveformEditorDialog(self.parent())
+            current = index.model().data(index, QtCore.Qt.ItemDataRole.EditRole)
+            if current is not None:
+                dialog.set_points(current)
+            if dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                model.setData(index, dialog.get_points())
+            return True
+        return False
