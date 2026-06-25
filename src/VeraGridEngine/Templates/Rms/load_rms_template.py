@@ -65,8 +65,8 @@ def get_load_rms_template(
     templ.block.children.append(block)
 
     templ.block.external_mapping = {
-        VarPowerFlowReferenceType.Va: inputs[0],
-        VarPowerFlowReferenceType.Vm: inputs[1],
+        VarPowerFlowReferenceType.Va: inputs[1],
+        VarPowerFlowReferenceType.Vm: inputs[0],
         VarPowerFlowReferenceType.P: Pl,
         VarPowerFlowReferenceType.Q: Ql
     }
