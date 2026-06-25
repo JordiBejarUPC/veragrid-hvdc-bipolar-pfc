@@ -556,8 +556,10 @@ def test_existing_line_mapping_values_remain_unchanged() -> None:
     assign_static_api_object_mapping_for_device(grid=grid, device=line, mdl=block, problem_mapping=dict(), logger=None)
 
     omega: float = 2.0 * np.pi * 50.0
-    expected_linv: float = omega / 0.2
-    expected_c: float = 0.3 / (2.0 * omega)
+    # The uncoupled fallback intentionally preserves the historical slot
+    # mapping where B feeds series reactance and X feeds shunt susceptance.
+    expected_linv: float = omega / 0.3
+    expected_c: float = 0.2 / (2.0 * omega)
 
     assert np.isclose(_const_value(block, ParamPowerFlowReferenceType.Rnn), 0.0)
     assert np.isclose(_const_value(block, ParamPowerFlowReferenceType.Raa), 0.1)

@@ -315,7 +315,8 @@ def test_library_search_button_and_shortcut_filter_basic_catalog() -> None:
     limit_label = descriptor_by_key["limit"].display_label
 
     assert editor.ui.librarySearchLineEdit.isVisible()
-    QTest.mouseClick(editor.ui.librarySearchButton, QtCore.Qt.MouseButton.LeftButton)
+    editor.ui.librarySearchLineEdit.clearFocus()
+    QTest.keyClick(editor, QtCore.Qt.Key.Key_F, QtCore.Qt.KeyboardModifier.ControlModifier)
     QtWidgets.QApplication.processEvents()
     QTest.qWait(100)
 
