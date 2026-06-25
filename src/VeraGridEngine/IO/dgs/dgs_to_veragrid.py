@@ -2138,7 +2138,8 @@ def convert_dgs_staticgen_to_gen(elmgenstat: ElmGenstat,
         P=float(elmgenstat.pgini),
         vset=float(elmgenstat.usetp),
         Snom=float(elmgenstat.sgn),
-        active=not bool(elmgenstat.outserv)
+        active=not bool(elmgenstat.outserv),
+        is_static_generator=True
     )
 
     return bus, gen

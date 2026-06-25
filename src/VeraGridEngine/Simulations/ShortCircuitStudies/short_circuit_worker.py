@@ -829,6 +829,10 @@ def short_circuit_vsc(nc: NumericalCircuit,
         dynamic_async_gen = np.zeros(len(nc.generator_data.bus_idx), dtype=bool)
         dynamic_async_p = np.zeros(shape=nbus, dtype=complex)
         dynamic_async_pf = np.zeros(shape=nbus, dtype=complex)
+        static_gen_from_generator_scheduled = np.zeros(shape=nbus, dtype=complex)
+        static_gen_from_generator_pf = np.zeros(shape=nbus, dtype=complex)
+        static_gen_from_generator_buses = set()
+        regular_gen_buses = set()
         gen_idx = nc.generator_data.original_idx
         valid_gen_buses = set()
         q_async_pf = compute_asynchronous_generator_q(V=V_pf,
@@ -847,6 +851,14 @@ def short_circuit_vsc(nc: NumericalCircuit,
                 continue
 
             gen_bus = bus_gen_idx[gen_i]
+            if nc.generator_data.is_static_generator[gen_i]:
+                static_gen_from_generator_buses.add(gen_bus)
+                static_gen_from_generator_scheduled[gen_bus] += (
+                    nc.generator_data.p[gen_i] + 1j * nc.generator_data.q[gen_i]
+                ) / nc.Sbase
+                continue
+
+            regular_gen_buses.add(gen_bus)
             zgen = nc.generator_data.r1[gen_i] + 1j * nc.generator_data.x1[gen_i]
 
             if np.isfinite(zgen) and (abs(zgen) > 1e-12 or nc.bus_data.is_dc[gen_bus]):
@@ -873,7 +885,15 @@ def short_circuit_vsc(nc: NumericalCircuit,
                 )
 
         S0_non_gen = S0 - nc.generator_data.get_injections_per_bus() / nc.Sbase
+        S0_static_gen = nc.load_data.get_static_generator_injections_per_bus() / nc.Sbase
+        S0_non_static_gen = S0_non_gen - S0_static_gen
         S0_gen = S_pf / nc.Sbase - S0_non_gen - I0 - Y0
+
+        for gen_bus in static_gen_from_generator_buses:
+            if gen_bus in regular_gen_buses:
+                static_gen_from_generator_pf[gen_bus] = static_gen_from_generator_scheduled[gen_bus]
+            else:
+                static_gen_from_generator_pf[gen_bus] = S0_gen[gen_bus]
 
         for gen_bus in invalid_gen_buses:
             if gen_bus in valid_gen_buses:
@@ -884,15 +904,15 @@ def short_circuit_vsc(nc: NumericalCircuit,
                 non_norton_gen_pf[gen_bus] = S0_gen[gen_bus]
                 invalid_gen_linear[gen_bus] = non_dynamic_pf + dynamic_async_p[gen_bus]
 
-        S0_gen_valid = S0_gen - non_norton_gen_pf
+        S0_gen_valid = S0_gen - non_norton_gen_pf - static_gen_from_generator_pf
 
         if constz:
-            S0_linear = invalid_gen_linear.copy()
+            S0_linear = S0_static_gen + static_gen_from_generator_pf + invalid_gen_linear
             I0_linear = np.zeros(shape=nbus, dtype=complex)  # Add generator's norton
-            Y0_linear = - np.conj(S0_non_gen / (np.conj(V_pf) * V_pf)) - I0 / V_pf - Y0 + Ygen + Yfault
+            Y0_linear = - np.conj(S0_non_static_gen / (np.conj(V_pf) * V_pf)) - I0 / V_pf - Y0 + Ygen + Yfault
 
         else:
-            S0_linear = S0_non_gen + invalid_gen_linear
+            S0_linear = S0_non_gen + static_gen_from_generator_pf + invalid_gen_linear
             I0_linear = np.zeros(shape=nbus, dtype=complex)  # Add generator's norton
             Y0_linear = - I0 / V_pf - Y0 + Ygen + Yfault
 
@@ -928,6 +948,21 @@ def short_circuit_vsc(nc: NumericalCircuit,
                                          trust=options.trust_radius,
                                          verbose=options.verbose,
                                          logger=logger)
+
+            convergence_value = (
+                f"error={solution.norm_f:.6g}, "
+                f"iterations={solution.iterations}, "
+                f"elapsed={solution.elapsed:.6g} s"
+            )
+            if solution.converged:
+                logger.add_info(msg="Short-circuit VSC Newton-Raphson converged",
+                                device=f"Island {i}",
+                                value=convergence_value)
+            else:
+                logger.add_warning(msg="Short-circuit VSC Newton-Raphson did not converge",
+                                   device=f"Island {i}",
+                                   value=convergence_value,
+                                   expected_value=f"error <= {options.tolerance}")
 
             # merge the results from this island
             pf_results.apply_from_island(
