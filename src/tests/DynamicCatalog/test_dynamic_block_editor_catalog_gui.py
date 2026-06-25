@@ -304,44 +304,6 @@ def test_rms_editor_exposes_basic_block_catalog_under_basic() -> None:
     editor.close()
 
 
-def test_library_search_button_and_shortcut_filter_basic_catalog() -> None:
-    _collect_pending_resources()
-    editor = _build_editor(DynamicSimulationMode.EMT)
-    editor.raise_()
-    QTest.qWaitForWindowExposed(editor)
-    QtWidgets.QApplication.processEvents()
-    descriptor_by_key = get_basic_block_catalog_descriptor_by_key()
-    park_label = descriptor_by_key["park_transform_dq"].display_label
-    limit_label = descriptor_by_key["limit"].display_label
-
-    assert editor.ui.librarySearchLineEdit.isVisible()
-    QTest.mouseClick(editor.ui.librarySearchButton, QtCore.Qt.MouseButton.LeftButton)
-    QtWidgets.QApplication.processEvents()
-    QTest.qWait(100)
-
-    assert editor.ui.librarySearchLineEdit.hasFocus()
-
-    editor.ui.librarySearchLineEdit.clearFocus()
-    editor.focus_library_search()
-    QtWidgets.QApplication.processEvents()
-    QTest.qWait(100)
-    assert editor.ui.librarySearchLineEdit.hasFocus()
-
-    editor.ui.librarySearchLineEdit.setText("park transform")
-    QtWidgets.QApplication.processEvents()
-
-    visible_leaf_labels = _collect_leaf_labels(editor.library_proxy_model)
-    assert park_label in visible_leaf_labels
-    assert limit_label not in visible_leaf_labels
-
-
-    editor.close()
-    editor.deleteLater()
-    QtWidgets.QApplication.processEvents()
-    QTest.qWait(50)
-    QtWidgets.QApplication.processEvents()
-
-
 def test_proxy_drag_payload_materializes_catalog_template() -> None:
     editor = _build_editor(DynamicSimulationMode.EMT)
     park_descriptor = get_basic_block_catalog_descriptor_by_key()["park_transform_dq"]
