@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Union
 from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtWidgets import QMenu
 from VeraGrid.Gui.DeviceEditors.TemplateDeviceEditor.template_device_editor import TemplateDeviceEditor
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_manager import open_dynamic_editor
 from VeraGrid.Gui.Diagrams.SchematicWidget.terminal_item import BarTerminalItem, RoundTerminalItem
 from VeraGrid.Gui.gui_functions import add_menu_entry
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template import LineGraphicTemplateItem
@@ -159,8 +158,8 @@ class SwitchGraphicItem(LineGraphicTemplateItem):
 
         :return: None.
         """
-        open_dynamic_editor(api_object=self.api_object, circuit=self.editor.circuit,
-                            preferred_mode=DynamicSimulationMode.RMS)
+        self.editor.gui.open_dynamic_editor(api_object=self.api_object, circuit=self.editor.circuit,
+                                            preferred_mode=DynamicSimulationMode.RMS)
 
     def edit_dynamic_emt(self) -> None:
         """
@@ -168,5 +167,5 @@ class SwitchGraphicItem(LineGraphicTemplateItem):
 
         :return: None.
         """
-        open_dynamic_editor(api_object=self.api_object, circuit=self.editor.circuit,
-                            preferred_mode=DynamicSimulationMode.EMT)
+        self.editor.gui.open_dynamic_editor(api_object=self.api_object, circuit=self.editor.circuit,
+                                            preferred_mode=DynamicSimulationMode.EMT)

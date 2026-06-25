@@ -298,6 +298,22 @@ def _get_row_detail_map(section: ValidationSection) -> dict[str, list[str]]:
     return detail_map
 
 
+def _get_section_row_labels(section: ValidationSection) -> list[str]:
+    """
+    Return one ordered list of row labels from the section.
+
+    :param section: Validation section.
+    :return: Row labels.
+    """
+    row_labels: list[str] = list()
+    row = None
+
+    for row in section.get_rows():
+        row_labels.append(row.get_block_label())
+
+    return row_labels
+
+
 def _connect_root_interface_ref(editor: DynamicBlockEditorGUI, reference: VarPowerFlowReferenceType) -> None:
     """
     Mark one protected EMT interface block as connected for validation tests.
@@ -496,4 +512,38 @@ def test_validation_phase_consistency_shows_only_ac_side_for_mixed_branch() -> N
         "B bus from",
         "C bus from",
     ]
+    editor.close()
+
+
+def test_validation_port_connectivity_skips_absent_protected_emt_phase_pair() -> None:
+    """
+    Ensure absent protected EMT phase pairs do not appear as port errors.
+
+    :return: None.
+    """
+    bus: _BusStub = _make_ac_bus("Load Bus")
+    template: EmtModelTemplate = _make_template(list([
+        VarPowerFlowReferenceType.v_N,
+        VarPowerFlowReferenceType.v_A,
+        VarPowerFlowReferenceType.v_B,
+        VarPowerFlowReferenceType.v_C,
+        VarPowerFlowReferenceType.i_N,
+        VarPowerFlowReferenceType.i_A,
+        VarPowerFlowReferenceType.i_B,
+        VarPowerFlowReferenceType.i_C,
+    ]))
+    injection: _InjectionStub = _InjectionStub("Load 1", bus, template, DeviceType.LoadDevice)
+    editor: DynamicBlockEditorGUI = _build_editor(injection)
+
+    _connect_root_interface_ref(editor, VarPowerFlowReferenceType.v_A)
+    _connect_root_interface_ref(editor, VarPowerFlowReferenceType.i_A)
+    _connect_root_interface_ref(editor, VarPowerFlowReferenceType.v_B)
+
+    sections: list[ValidationSection] = editor.collect_model_consistency_sections()
+    port_section: ValidationSection | None = _get_section_by_title(sections, "Port Connectivity")
+    assert port_section is not None
+
+    row_labels: list[str] = _get_section_row_labels(port_section)
+    assert "v_N_Load Bus" not in row_labels
+    assert "net_conn_i_N_Load 1" not in row_labels
     editor.close()

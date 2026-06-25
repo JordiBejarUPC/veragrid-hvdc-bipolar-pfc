@@ -687,6 +687,9 @@ def veragrid_object_to_json(elm: ALL_DEV_TYPES,
         elif prop.tpe == SubObjectType.LineLocations:
             data[name] = obj.to_list()
 
+        elif prop.tpe == SubObjectType.ImpedanceTripletList:
+            data[name] = obj.to_list()
+
         elif prop.tpe == SubObjectType.ListOfWires:
             data[name] = obj.to_list()
 
@@ -1485,6 +1488,13 @@ def parse_object_type_from_json(template_elm: ALL_DEV_TYPES,
                                     list_of_wires: dev.ListOfWires = elm.get_snapshot_value(prop=gc_prop)
                                     list_of_wires.parse(data=property_value,
                                                         wire_dict=elements_dict_by_type[DeviceType.WireDevice])
+
+
+                                elif gc_prop.tpe == SubObjectType.ImpedanceTripletList:
+
+                                    # get the line locations object and fill it with the json data
+                                    impedance_triplet_list: dev.ImpedanceTripletList = elm.get_snapshot_value(prop=gc_prop)
+                                    impedance_triplet_list.parse(data=property_value)
 
                                 elif gc_prop.tpe == SubObjectType.TapChanger:
 
