@@ -1722,51 +1722,25 @@ class DiagramScene(QGraphicsScene):
         else:
             pass
 
-    def modify_context_item_template(self) -> None:
-        if self.context_item is not None:
-            self.editor.modify_scene_item_template(self.context_item)
-        else:
-            pass
-
     def contextMenuEvent(self, event: QtWidgets.QGraphicsSceneContextMenuEvent) -> None:
         item: QGraphicsItem
         for item in self.items(event.scenePos()):
-            if isinstance(item, (BlockItem, GenericBlockItem, ConnectionItem)):
+            if isinstance(item, (GenericBlockItem, ConnectionItem)):
                 menu: QMenu = QMenu()
-                self.context_item = item
+                if item is not None:
+                    self.context_item = item
 
-                if isinstance(item, (BlockItem, GenericBlockItem)):
-                    if item.subsys is not None:
-                        modal_kind, modal_config = self.get_modal_template_metadata(item.subsys)
-                    else:
-                        modal_kind = None
-                        modal_config = None
-
-                    if _transformer_modal_config_allows_modify(modal_kind, modal_config):
-                        modify_action: QAction = QAction("Modify Template", menu)
-                        modify_action.triggered.connect(self.modify_context_item_template)
-                        menu.addAction(modify_action)
-                    else:
-                        pass
-                else:
-                    pass
-
-                if not isinstance(item, ProtectedConnectionBlockItem):
                     remove_action: QAction = QAction("Remove", menu)
                     remove_action.triggered.connect(self.remove_context_item)
                     menu.addAction(remove_action)
-                else:
-                    pass
 
-                if not isinstance(item, BlockItem):
                     color_action: QAction = QAction("Change Color", menu)
                     color_action.triggered.connect(self.recolor_context_item)
                     menu.addAction(color_action)
-                else:
-                    pass
 
-                menu.exec(event.screenPos())
-                self.context_item = None
+
+                    menu.exec(event.screenPos())
+                    self.context_item = None
                 return
             else:
                 pass
