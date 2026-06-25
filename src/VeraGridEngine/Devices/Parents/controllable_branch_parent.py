@@ -63,7 +63,6 @@ class ControllableBranchParent(BranchParent):
             definition='Total positive sequence resistance.',
             old_names=['R1', 'Rl'],
             cat=[PrpCat.PF, PrpCat.PF3],
-            dyn_ref=ParamPowerFlowReferenceType.g,
         ),
         GCProp(
             prop_name='X',
@@ -72,7 +71,6 @@ class ControllableBranchParent(BranchParent):
             definition='Total positive sequence reactance.',
             old_names=['X1', 'Xl'],
             cat=[PrpCat.PF, PrpCat.PF3],
-            dyn_ref=ParamPowerFlowReferenceType.b,
         ),
         GCProp(
             prop_name='G',
