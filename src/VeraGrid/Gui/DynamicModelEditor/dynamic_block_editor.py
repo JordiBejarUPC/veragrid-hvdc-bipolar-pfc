@@ -6,15 +6,12 @@
 from __future__ import annotations
 
 import math
-import uuid
+
 import re
 import copy
-from enum import Enum
-from typing import List, Dict, Optional, Any, Set, cast
+from typing import List, Dict, Optional, Any
 from PySide6 import QtWidgets, QtGui, QtCore
-from PySide6.QtWidgets import (QApplication, QHBoxLayout, QGraphicsScene, QGraphicsView, QGraphicsItem,
-                               QGraphicsRectItem, QGraphicsEllipseItem, QGraphicsPolygonItem,
-                               QGraphicsTextItem, QMenu, QGraphicsPathItem,
+from PySide6.QtWidgets import (QGraphicsItem, QMenu, QGraphicsPathItem,
                                QDialog, QVBoxLayout, QDialogButtonBox, QLabel, QListWidget, QWidget, QScrollArea,
                                QListWidgetItem, QFormLayout, QSpinBox, QLineEdit, QDoubleSpinBox, QTableWidget,
                                QTableWidgetItem, QColorDialog, QPlainTextEdit, QCheckBox)
@@ -68,22 +65,16 @@ from VeraGridEngine.Utils.Symbolic.block import Block, find_connections, find_co
 from VeraGridEngine.Utils.Symbolic.equation_decomposer import EquationDecomposer
 from VeraGrid.Gui.DynamicModelEditor.block_editor import Ui_BlockEditorWindow
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_dialogs import AddBlockVariableDialog, AddEquationDialog, \
-    AddParameterDialog, EmtTemplateWizardDialog, ExpressionTextEditorDialog, ExpressionValidationHighlighter, \
-    GenericBlockDialog
+    AddParameterDialog, EmtTemplateWizardDialog, ExpressionTextEditorDialog, GenericBlockDialog
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics import BlockItem, BlockPositionChangedCallback, \
-    BranchingItem, ConnectionItem, DiagramScene, ElbowItem, GenericBlockItem, GraphicsView, Node, \
-    OrthogonalRouter, PairedItem, PortItem, ProtectedConnectionBlockItem, ResizeHandle, \
-    _transformer_modal_config_allows_modify
+    BranchingItem, ConnectionItem, DiagramScene, GenericBlockItem, GraphicsView, PairedItem, PortItem, ProtectedConnectionBlockItem
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_library import LibraryLeafSpec, SignalPairPayload, \
-    _library_leaf_label_sort_key, is_supported_library_payload
+    _library_leaf_label_sort_key
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_models import BlockParameterKind, BlockParameterRow, \
-    BlockTableFilterProxyModel, BlockValueDelegate, DynamicsLibraryTreeModel, EditParameterDialog, InspectModel, \
+    BlockTableFilterProxyModel, DynamicsLibraryTreeModel, EditParameterDialog, InspectModel, \
     LibraryTreeFilterProxyModel, WrappableBlockTableModel, _build_block_uid_lookup, \
-    _ensure_block_tree_names, _new_uid, add_variable_to_block, block_namespace_contains_name, \
-    block_requires_editor_connection_bootstrap, build_block_symbol_namespace, build_equations_rows, \
-    build_parameters_rows, build_variables_rows, clone_block_for_editing, clone_template_diagram, \
-    copy_block_state, initialize_connected_bus_models_for_editor_assignment, is_valid_symbol_name, \
-    remap_serialized_uids, update_source_dict
+    _ensure_block_tree_names, add_variable_to_block, block_namespace_contains_name, \
+    block_requires_editor_connection_bootstrap, build_block_symbol_namespace, clone_block_for_editing, copy_block_state, initialize_connected_bus_models_for_editor_assignment, is_valid_symbol_name
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_validation import ValidationSection, ValidationSectionDialog, \
     ValidationTraversalNode, add_validation_detail, add_validation_status_detail, \
     append_missing_port_messages_for_direction, append_port_vars_to_phase_count, append_vars_to_name_uid_map, \
@@ -96,27 +87,12 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_utilities import create_bloc
     create_emt_wizard_block
 from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.lookup_table_dialog import LookupArrayLinearDialog
 from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.lookup_table_dialog import LookupMatrixLinearDialog
-from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.grounding_link_emt_dialog import GroundingLinkEmtDialog
 from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.jmarti_line_emt_dialog import JMartiLineEmtDialog
-from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.induction_motor_emt_dialog import InductionMotorEmtDialog
-from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.induction_motor_emt_dialog import InductionMotorEmtLevel
-from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.induction_motor_emt_dialog import coerce_induction_motor_emt_level
-from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.induction_motor_emt_dialog import get_induction_motor_emt_level_label
-from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.induction_motor_emt_dialog import get_induction_motor_emt_template_level
-from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.load_topology_emt_dialog import LoadTopologyEmtDialog
-from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.rlc_combo_emt_dialog import RlcComboEmtDialog
 from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.shunt_component_emt_dialog import ShuntComponentEmtDialog
-from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.arbitrary_source_emt_dialog import ArbitrarySourceEmtDialog
-from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.balanced_source_emt_dialog import BalancedSourceEmtDialog
-from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.dc_source_emt_dialog import DcSourceEmtDialog
-from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.transient_source_emt_dialog import TransientSourceEmtDialog
-from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.source_emt_dialog import SourceEmtDialog
 from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.transformer_topology_emt_dialog import TransformerTopologyEmtDialog
-from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.switch_emt_dialog import SwitchEmtDialog
 from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.fault_emt_dialog import FaultEmtDialog
 from VeraGrid.Gui.Icons.icon_associations import device_type_icons
-from VeraGrid.Gui.wrappable_table_model import WrappableTableModel
-from VeraGrid.Gui.gui_functions import ComboDelegate, TextDelegate
+
 from VeraGrid.Gui.messages import yes_no_question
 from VeraGrid.Gui.toast_widget import ToastManager
 from VeraGridEngine.Utils.Symbolic.symbolic import (symbolic_to_string, string_to_symbolic,
@@ -133,13 +109,11 @@ from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_runtime import get_jmarti_
 from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_runtime import get_jmarti_block_runtime_data
 from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_runtime import set_jmarti_block_fit_bundle
 from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_runtime import set_jmarti_block_runtime_data
+from VeraGrid.Gui.DynamicModelEditor.dyn_template_editor_dialogue import DynTemplatesEditorDialog
+
 from dataclasses import dataclass
 
-# from VeraGridEngine.Devices.Dynamic.static_parameter_mapping_rms import devices_static_params_mapping
 import VeraGrid.ThirdParty.darkdetect as darkdetect
-
-
-# from VeraGridEngine.Templates.Rms.common import create_block_of_type, create_generic_block, create_emt_wizard_block
 
 
 def _iter_child_blocks(block: Block) -> List[Block]:
@@ -473,13 +447,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         self.ui.splitter.setStretchFactor(0, 6)
         self.ui.splitter.setStretchFactor(1, 10)
-
-        # self.ui.block_editor_actionCheckModel.triggered.connect(self.open_inspect_dialog)
-        # self.ui.actionCenter.triggered.connect(self.center_view_on_items)
-        # self.ui.actionZoom_in.triggered.connect(self.zoom_in_view)
-        # self.ui.actionZoom_out.triggered.connect(self.zoom_out_view)
-        # self.ui.action_delete_all.triggered.connect(self.delete_all_blocks_with_confirmation)
-        # self.ui.actionValidate.triggered.connect(self.show_model_consistency_validation)
 
         self.var_factory = var_factory
         self.api_object = api_object
@@ -848,8 +815,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             pass
         self.rebuild_scene_from_diagram()
 
-        # for every in variable and our variable in the main block of the editor we build a block item to connect these variables
-
     def set_modal_template_metadata(self, block: Block,
                                     kind: str,
                                     config: Dict[str, Any]) -> None:
@@ -864,22 +829,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         block.__dict__[self.MODAL_TEMPLATE_KIND_ATTR] = kind
         block.__dict__[self.MODAL_TEMPLATE_CONFIG_ATTR] = copy.deepcopy(config)
 
-    # def set_modal_template_metadata(self, block: Block, kind: str, config: Dict[str, Any]) -> None:
-    #     """
-    #     Persist modal metadata using the editor-owned attribute names.
-    #
-    #     :param block: Target block.
-    #     :param kind: Stable modal kind key.
-    #     :param config: Serializable modal configuration.
-    #     :return: None.
-    #     """
-    #     set_modal_template_metadata(
-    #         block=block,
-    #         kind=kind,
-    #         config=config,
-    #         modal_template_kind_attr=self.MODAL_TEMPLATE_KIND_ATTR,
-    #         modal_template_config_attr=self.MODAL_TEMPLATE_CONFIG_ATTR,
-    #     )
+
 
     def get_modal_template_metadata(self, block: Block | None) -> tuple[str | None, Dict[str, Any] | None]:
         """
@@ -901,18 +851,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             return None, None
 
-    # def get_modal_template_metadata(self, block: Block | None) -> tuple[str | None, Dict[str, Any] | None]:
-    #     """
-    #     Read modal metadata using the editor-owned attribute names.
-    #
-    #     :param block: Candidate block.
-    #     :return: Stored modal metadata.
-    #     """
-    #     return get_modal_template_metadata(
-    #         block=block,
-    #         modal_template_kind_attr=self.MODAL_TEMPLATE_KIND_ATTR,
-    #         modal_template_config_attr=self.MODAL_TEMPLATE_CONFIG_ATTR,
-    #     )
 
     @staticmethod
     def _insert_library_leaf(branch: Dict[str, Any], category_path: tuple[str, ...], leaf: LibraryLeafSpec) -> None:
@@ -1261,186 +1199,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             return None
 
-    @staticmethod
-    def _build_default_source_emt_modal_config(block_type: BlockType,
-                                               phase_n: bool = False,
-                                               phase_a: bool = True,
-                                               phase_b: bool = True,
-                                               phase_c: bool = True) -> Dict[str, Any]:
-        """
-        Build one default persisted configuration for one EMT source modal.
-
-        :param block_type: Source block type.
-        :param phase_n: Whether neutral is active.
-        :param phase_a: Whether phase A is active.
-        :param phase_b: Whether phase B is active.
-        :param phase_c: Whether phase C is active.
-        :return: Default source configuration.
-        """
-        return dict({
-            "block_type": block_type.name,
-            "phase_n": bool(phase_n),
-            "phase_a": bool(phase_a),
-            "phase_b": bool(phase_b),
-            "phase_c": bool(phase_c),
-            "source_frequency_hz": 50.0,
-            "source_phase_amplitudes": dict({"N": 0.0, "A": 1.0, "B": 1.0, "C": 1.0}),
-            "source_phase_angle_deg": dict({"N": 0.0, "A": 0.0, "B": -120.0, "C": 120.0}),
-            "source_phase_offsets": dict({"N": 0.0, "A": 0.0, "B": 0.0, "C": 0.0}),
-            "source_conductance_value": 100.0,
-        })
-
-    @staticmethod
-    def _extract_source_emt_phase_tuple(modal_config: Dict[str, Any]) -> tuple[bool, bool, bool, bool]:
-        """
-        Return the ordered phase tuple stored in one EMT source modal configuration.
-
-        :param modal_config: Persisted source modal configuration.
-        :return: ``(phase_n, phase_a, phase_b, phase_c)``.
-        """
-        return (
-            bool(modal_config.get("phase_n", False)),
-            bool(modal_config.get("phase_a", True)),
-            bool(modal_config.get("phase_b", True)),
-            bool(modal_config.get("phase_c", True)),
-        )
-
-    @staticmethod
-    def _build_source_emt_modal_tooltip(modal_config: Dict[str, Any]) -> str:
-        """
-        Build one compact tooltip for one EMT source block.
-
-        :param modal_config: Persisted source modal configuration.
-        :return: Tooltip text.
-        """
-        active_labels: List[str] = list()
-        source_phase_amplitudes: Dict[str, Any] = dict(modal_config.get("source_phase_amplitudes", dict()))
-        source_phase_angle_deg: Dict[str, Any] = dict(modal_config.get("source_phase_angle_deg", dict()))
-        source_phase_offsets: Dict[str, Any] = dict(modal_config.get("source_phase_offsets", dict()))
-
-        if bool(modal_config.get("phase_n", False)):
-            active_labels.append("N")
-        if bool(modal_config.get("phase_a", False)):
-            active_labels.append("A")
-        if bool(modal_config.get("phase_b", False)):
-            active_labels.append("B")
-        if bool(modal_config.get("phase_c", False)):
-            active_labels.append("C")
-
-        tooltip_lines: List[str] = [str(modal_config.get("block_type", "EMT source"))]
-        tooltip_lines.append(f"Phases: {', '.join(active_labels)}")
-        tooltip_lines.append(f"f={float(modal_config.get('source_frequency_hz', 0.0)):.4g} Hz")
-
-        if str(modal_config.get("block_type", "")) in {
-            BlockType.VOLTAGE_SOURCE_EMT.name,
-            BlockType.CURRENT_SOURCE_EMT.name,
-        }:
-            tooltip_lines.append(
-                "Amplitudes: "
-                + ", ".join(
-                    f"{phase_label}={float(source_phase_amplitudes.get(phase_label, 0.0)):.4g}"
-                    for phase_label in active_labels
-                )
-            )
-        else:
-            tooltip_lines.append("Amplitude controlled by command inputs")
-
-        tooltip_lines.append(
-            "Phase [deg]: "
-            + ", ".join(
-                f"{phase_label}={float(source_phase_angle_deg.get(phase_label, 0.0)):.4g}"
-                for phase_label in active_labels
-            )
-        )
-        tooltip_lines.append(
-            "Offset: "
-            + ", ".join(
-                f"{phase_label}={float(source_phase_offsets.get(phase_label, 0.0)):.4g}"
-                for phase_label in active_labels
-            )
-        )
-
-        if str(modal_config.get("block_type", "")) in {
-            BlockType.VOLTAGE_SOURCE_EMT.name,
-            BlockType.CONTROLLED_VOLTAGE_SOURCE_EMT.name,
-        }:
-            tooltip_lines.append(f"g={float(modal_config.get('source_conductance_value', 0.0)):.4g}")
-
-        return "\n".join(tooltip_lines)
-
-    def _build_source_emt_block_model(self,
-                                      block_type: BlockType,
-                                      item_name: str,
-                                      modal_config: Dict[str, Any]) -> Block | None:
-        """
-        Build one EMT source block model from one modal configuration.
-
-        :param block_type: Source block type.
-        :param item_name: Symbolic block name.
-        :param modal_config: Source modal configuration.
-        :return: Built symbolic block or ``None``.
-        """
-        phase_n, phase_a, phase_b, phase_c = self._extract_source_emt_phase_tuple(modal_config)
-        source_phase_amplitudes: Dict[str, float] = dict(modal_config.get("source_phase_amplitudes", dict()))
-        source_phase_angle_deg: Dict[str, float] = dict(modal_config.get("source_phase_angle_deg", dict()))
-        source_phase_offsets: Dict[str, float] = dict(modal_config.get("source_phase_offsets", dict()))
-        source_frequency_hz: float = float(modal_config.get("source_frequency_hz", 50.0))
-        source_conductance_value: float = float(modal_config.get("source_conductance_value", 100.0))
-
-        if block_type == BlockType.VOLTAGE_SOURCE_EMT:
-            return emt_templates.get_voltage_source_emt_template(
-                vf=self.var_factory,
-                phN=phase_n,
-                phA=phase_a,
-                phB=phase_b,
-                phC=phase_c,
-                amplitude_values=source_phase_amplitudes,
-                frequency_hz=source_frequency_hz,
-                phase_angle_deg=source_phase_angle_deg,
-                offset_values=source_phase_offsets,
-                source_conductance_value=source_conductance_value,
-                name=item_name,
-            ).block
-        elif block_type == BlockType.CURRENT_SOURCE_EMT:
-            return emt_templates.get_current_source_emt_template(
-                vf=self.var_factory,
-                phN=phase_n,
-                phA=phase_a,
-                phB=phase_b,
-                phC=phase_c,
-                amplitude_values=source_phase_amplitudes,
-                frequency_hz=source_frequency_hz,
-                phase_angle_deg=source_phase_angle_deg,
-                offset_values=source_phase_offsets,
-                name=item_name,
-            ).block
-        elif block_type == BlockType.CONTROLLED_VOLTAGE_SOURCE_EMT:
-            return emt_templates.get_controlled_voltage_source_emt_template(
-                vf=self.var_factory,
-                phN=phase_n,
-                phA=phase_a,
-                phB=phase_b,
-                phC=phase_c,
-                frequency_hz=source_frequency_hz,
-                phase_angle_deg=source_phase_angle_deg,
-                offset_values=source_phase_offsets,
-                source_conductance_value=source_conductance_value,
-                name=item_name,
-            ).block
-        elif block_type == BlockType.CONTROLLED_CURRENT_SOURCE_EMT:
-            return emt_templates.get_controlled_current_source_emt_template(
-                vf=self.var_factory,
-                phN=phase_n,
-                phA=phase_a,
-                phB=phase_b,
-                phC=phase_c,
-                frequency_hz=source_frequency_hz,
-                phase_angle_deg=source_phase_angle_deg,
-                offset_values=source_phase_offsets,
-                name=item_name,
-            ).block
-        else:
-            return None
 
     def create_source_emt_block_item(self, block_type: BlockType, x_pos: float,
                                      y_pos: float) -> GenericBlockItem | None:
@@ -1452,20 +1210,36 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param y_pos: Drop y position.
         :return: Created block item or ``None`` when the dialog is cancelled.
         """
-        dialog = SourceEmtDialog(block_type=block_type, parent=self,
-                                 initial_config=self._build_default_source_emt_modal_config(block_type))
 
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            source_config: Dict[str, Any] = dict(self._build_default_source_emt_modal_config(block_type),
-                                                 **dialog.get_configuration())
-        else:
-            return None
 
         count: int = self.block_counters.get(block_type, 0) + 1
         item_name: str = f"{block_type.name}_{count}"
-        block_model: Block | None = self._build_source_emt_block_model(block_type=block_type,
-                                                                       item_name=item_name,
-                                                                       modal_config=source_config)
+
+        template_builder = None
+        name = ""
+
+        if block_type == BlockType.VOLTAGE_SOURCE_EMT:
+            template_builder = emt_templates.VoltageSourceEmtTemplate(vf=self.var_factory)
+            name = "EMT voltage source"
+
+        elif block_type == BlockType.CURRENT_SOURCE_EMT:
+            template_builder = emt_templates.CurrentSourceEmtTemplate(vf=self.var_factory)
+            name = "EMT current source"
+
+        elif block_type == BlockType.CONTROLLED_VOLTAGE_SOURCE_EMT:
+            template_builder = emt_templates.ControlledVoltageSourceEmtTemplate(vf=self.var_factory)
+            name = "EMT controlled voltage source"
+
+        elif block_type == BlockType.CONTROLLED_CURRENT_SOURCE_EMT:
+            template_builder = emt_templates.ControlledCurrentSourceEmtTemplate(vf=self.var_factory)
+            name = "EMT controlled current source"
+
+        if template_builder is not None:
+            dialog = DynTemplatesEditorDialog(name, template_builder.params)
+            dialog.exec()
+            template = template_builder.eval()
+            block_model = template.block
+
         block_item: GenericBlockItem = GenericBlockItem(editor=self, var_factory=self.var_factory,
                                                         subsys=block_model,
                                                         api_object=self.api_object,
@@ -1474,18 +1248,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                                         position_changed_callback=self._build_position_changed_callback(
                                                             block_model.uid))
 
-        if block_model is None:
-            return None
-        else:
-            pass
-
-        self.set_modal_template_metadata(block_model, kind="source_emt",
-                                         config=dict(source_config, block_type=block_type.name))
         self.block_counters[block_type] = count
         block_item.set_subsystem(block_model)
         block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
         block_item.build_item()
-        block_item.setToolTip(self._build_source_emt_modal_tooltip(source_config))
         self.main_block.add(block_model)
         self.scene.addItem(block_item)
         block_item.setPos(QtCore.QPointF(x_pos, y_pos))
@@ -1498,93 +1264,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         )
         self.mark_unapplied_changes()
         return block_item
-
-    @staticmethod
-    def _build_default_dc_source_emt_modal_config(block_type: BlockType) -> Dict[str, Any]:
-        """
-        Build one default persisted configuration for one EMT DC source modal.
-
-        :param block_type: DC source block type.
-        :return: Default DC source configuration.
-        """
-        default_value: float = 1.0 if block_type in {
-            BlockType.DC_VOLTAGE_SOURCE_EMT,
-            BlockType.CONTROLLED_DC_VOLTAGE_SOURCE_EMT,
-        } else 0.0
-        return dict({
-            "block_type": block_type.name,
-            "source_value": default_value,
-            "source_conductance_value": 100.0,
-        })
-
-    @staticmethod
-    def _build_dc_source_emt_modal_tooltip(modal_config: Dict[str, Any]) -> str:
-        """
-        Build one compact tooltip for one EMT DC source block.
-
-        :param modal_config: Persisted DC source modal configuration.
-        :return: Tooltip text.
-        """
-        tooltip_lines: List[str] = [str(modal_config.get("block_type", "EMT DC source"))]
-
-        if str(modal_config.get("block_type", "")) in {
-            BlockType.DC_VOLTAGE_SOURCE_EMT.name,
-            BlockType.CONTROLLED_DC_VOLTAGE_SOURCE_EMT.name,
-        }:
-            tooltip_lines.append(f"V={float(modal_config.get('source_value', 0.0)):.4g}")
-            tooltip_lines.append(f"g={float(modal_config.get('source_conductance_value', 0.0)):.4g}")
-        else:
-            tooltip_lines.append(f"I={float(modal_config.get('source_value', 0.0)):.4g}")
-
-        if str(modal_config.get("block_type", "")) in {
-            BlockType.CONTROLLED_DC_VOLTAGE_SOURCE_EMT.name,
-            BlockType.CONTROLLED_DC_CURRENT_SOURCE_EMT.name,
-        }:
-            tooltip_lines.append("Controlled by command input")
-
-        return "\n".join(tooltip_lines)
-
-    def _build_dc_source_emt_block_model(self,
-                                         block_type: BlockType,
-                                         item_name: str,
-                                         modal_config: Dict[str, Any]) -> Block | None:
-        """
-        Build one EMT DC source block model from one modal configuration.
-
-        :param block_type: DC source block type.
-        :param item_name: Symbolic block name.
-        :param modal_config: DC source modal configuration.
-        :return: Built symbolic block or ``None``.
-        """
-        source_value: float = float(modal_config.get("source_value", 0.0))
-        source_conductance_value: float = float(modal_config.get("source_conductance_value", 100.0))
-
-        if block_type == BlockType.DC_VOLTAGE_SOURCE_EMT:
-            return emt_templates.get_dc_voltage_source_emt_template(
-                vf=self.var_factory,
-                source_voltage_value=source_value,
-                source_conductance_value=source_conductance_value,
-                name=item_name,
-            ).block
-        elif block_type == BlockType.DC_CURRENT_SOURCE_EMT:
-            return emt_templates.get_dc_current_source_emt_template(
-                vf=self.var_factory,
-                source_current_value=source_value,
-                name=item_name,
-            ).block
-        elif block_type == BlockType.CONTROLLED_DC_VOLTAGE_SOURCE_EMT:
-            return emt_templates.get_controlled_dc_voltage_source_emt_template(
-                vf=self.var_factory,
-                source_conductance_value=source_conductance_value,
-                name=item_name,
-            ).block
-        elif block_type == BlockType.CONTROLLED_DC_CURRENT_SOURCE_EMT:
-            return emt_templates.get_controlled_dc_current_source_emt_template(
-                vf=self.var_factory,
-                name=item_name,
-            ).block
-        else:
-            return None
 
     def create_dc_source_emt_block_item(self, block_type: BlockType, x_pos: float,
                                         y_pos: float) -> GenericBlockItem | None:
@@ -1596,20 +1275,37 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param y_pos: Drop y position.
         :return: Created block item or ``None`` when the dialog is cancelled.
         """
-        dialog = DcSourceEmtDialog(block_type=block_type, parent=self,
-                                   initial_config=self._build_default_dc_source_emt_modal_config(block_type))
-
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            source_config: Dict[str, Any] = dict(self._build_default_dc_source_emt_modal_config(block_type),
-                                                 **dialog.get_configuration())
-        else:
-            return None
 
         count: int = self.block_counters.get(block_type, 0) + 1
         item_name: str = f"{block_type.name}_{count}"
-        block_model: Block | None = self._build_dc_source_emt_block_model(block_type=block_type,
-                                                                          item_name=item_name,
-                                                                          modal_config=source_config)
+
+        template_builder = None
+        name = ""
+
+        if block_type == BlockType.DC_VOLTAGE_SOURCE_EMT:
+            template_builder = emt_templates.DcVoltageSourceEmtTemplate(vf=self.var_factory)
+            name = "EMT dc voltage source"
+
+        elif block_type == BlockType.DC_CURRENT_SOURCE_EMT:
+            template_builder = emt_templates.DcCurrentSourceEmtTemplate(vf=self.var_factory)
+            name = "EMT dc current source"
+
+        elif block_type == BlockType.CONTROLLED_DC_VOLTAGE_SOURCE_EMT:
+            template_builder = emt_templates.ControlledDcVoltageSourceEmtTemplate(vf=self.var_factory)
+            name = "EMT controlled dc voltage source"
+
+        elif block_type == BlockType.CONTROLLED_DC_CURRENT_SOURCE_EMT:
+            template_builder = emt_templates.ControlledDcCurrentSourceEmtTemplate(vf=self.var_factory)
+            name = "EMT controlled dc current source"
+
+
+        if template_builder is not None:
+
+            dialog = DynTemplatesEditorDialog(name, template_builder.params)
+            dialog.exec()
+            template = template_builder.eval()
+            block_model = template.block
+
 
         block_item: GenericBlockItem = GenericBlockItem(editor=self, var_factory=self.var_factory,
                                                         subsys=block_model,
@@ -1619,18 +1315,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                                         position_changed_callback=self._build_position_changed_callback(
                                                             block_model.uid))
 
-        if block_model is None:
-            return None
-        else:
-            pass
-
-        self.set_modal_template_metadata(block_model, kind="dc_source_emt",
-                                         config=dict(source_config, block_type=block_type.name))
         self.block_counters[block_type] = count
         block_item.set_subsystem(block_model)
         block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
         block_item.build_item()
-        block_item.setToolTip(self._build_dc_source_emt_modal_tooltip(source_config))
         self.main_block.add(block_model)
         self.scene.addItem(block_item)
         block_item.setPos(QtCore.QPointF(x_pos, y_pos))
@@ -1643,108 +1331,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         )
         self.mark_unapplied_changes()
         return block_item
-
-    @staticmethod
-    def _build_default_balanced_source_emt_modal_config(block_type: BlockType) -> Dict[str, Any]:
-        """
-        Build one default persisted configuration for one balanced EMT source modal.
-
-        :param block_type: Balanced source block type.
-        :return: Default balanced source configuration.
-        """
-        return dict({
-            "block_type": block_type.name,
-            "source_amplitude": 1.0,
-            "source_frequency_hz": 50.0,
-            "source_phase_a_deg": 0.0,
-            "source_offset": 0.0,
-            "source_conductance_value": 100.0,
-        })
-
-    @staticmethod
-    def _build_balanced_source_emt_modal_tooltip(modal_config: Dict[str, Any]) -> str:
-        """
-        Build one compact tooltip for one balanced EMT source block.
-
-        :param modal_config: Persisted balanced source modal configuration.
-        :return: Tooltip text.
-        """
-        tooltip_lines: List[str] = [str(modal_config.get("block_type", "Balanced EMT source"))]
-        tooltip_lines.append(f"A={float(modal_config.get('source_amplitude', 0.0)):.4g}")
-        tooltip_lines.append(f"f={float(modal_config.get('source_frequency_hz', 0.0)):.4g} Hz")
-        tooltip_lines.append(f"phiA={float(modal_config.get('source_phase_a_deg', 0.0)):.4g} deg")
-        tooltip_lines.append(f"offset={float(modal_config.get('source_offset', 0.0)):.4g}")
-
-        if str(modal_config.get("block_type", "")) in {
-            BlockType.BALANCED_3PH_VOLTAGE_SOURCE_EMT.name,
-            BlockType.CONTROLLED_BALANCED_3PH_VOLTAGE_SOURCE_EMT.name,
-        }:
-            tooltip_lines.append(f"g={float(modal_config.get('source_conductance_value', 0.0)):.4g}")
-
-        if str(modal_config.get("block_type", "")) in {
-            BlockType.CONTROLLED_BALANCED_3PH_VOLTAGE_SOURCE_EMT.name,
-            BlockType.CONTROLLED_BALANCED_3PH_CURRENT_SOURCE_EMT.name,
-        }:
-            tooltip_lines.append("Amplitude controlled by command input")
-
-        return "\n".join(tooltip_lines)
-
-    def _build_balanced_source_emt_block_model(self,
-                                               block_type: BlockType,
-                                               item_name: str,
-                                               modal_config: Dict[str, Any]) -> Block | None:
-        """
-        Build one balanced EMT source block model from one modal configuration.
-
-        :param block_type: Balanced source block type.
-        :param item_name: Symbolic block name.
-        :param modal_config: Balanced source modal configuration.
-        :return: Built symbolic block or ``None``.
-        """
-        source_amplitude: float = float(modal_config.get("source_amplitude", 1.0))
-        source_frequency_hz: float = float(modal_config.get("source_frequency_hz", 50.0))
-        source_phase_a_deg: float = float(modal_config.get("source_phase_a_deg", 0.0))
-        source_offset: float = float(modal_config.get("source_offset", 0.0))
-        source_conductance_value: float = float(modal_config.get("source_conductance_value", 100.0))
-
-        if block_type == BlockType.BALANCED_3PH_VOLTAGE_SOURCE_EMT:
-            return emt_templates.get_balanced_3ph_voltage_source_emt_template(
-                vf=self.var_factory,
-                amplitude_value=source_amplitude,
-                frequency_hz=source_frequency_hz,
-                phase_a_deg=source_phase_a_deg,
-                offset_value=source_offset,
-                source_conductance_value=source_conductance_value,
-                name=item_name,
-            ).block
-        elif block_type == BlockType.BALANCED_3PH_CURRENT_SOURCE_EMT:
-            return emt_templates.get_balanced_3ph_current_source_emt_template(
-                vf=self.var_factory,
-                amplitude_value=source_amplitude,
-                frequency_hz=source_frequency_hz,
-                phase_a_deg=source_phase_a_deg,
-                offset_value=source_offset,
-                name=item_name,
-            ).block
-        elif block_type == BlockType.CONTROLLED_BALANCED_3PH_VOLTAGE_SOURCE_EMT:
-            return emt_templates.get_controlled_balanced_3ph_voltage_source_emt_template(
-                vf=self.var_factory,
-                frequency_hz=source_frequency_hz,
-                phase_a_deg=source_phase_a_deg,
-                offset_value=source_offset,
-                source_conductance_value=source_conductance_value,
-                name=item_name,
-            ).block
-        elif block_type == BlockType.CONTROLLED_BALANCED_3PH_CURRENT_SOURCE_EMT:
-            return emt_templates.get_controlled_balanced_3ph_current_source_emt_template(
-                vf=self.var_factory,
-                frequency_hz=source_frequency_hz,
-                phase_a_deg=source_phase_a_deg,
-                offset_value=source_offset,
-                name=item_name,
-            ).block
-        else:
-            return None
 
     def create_balanced_source_emt_block_item(self, block_type: BlockType, x_pos: float,
                                               y_pos: float) -> GenericBlockItem | None:
@@ -1756,21 +1342,36 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param y_pos: Drop y position.
         :return: Created block item or ``None`` when the dialog is cancelled.
         """
-        dialog = BalancedSourceEmtDialog(block_type=block_type, parent=self,
-                                         initial_config=self._build_default_balanced_source_emt_modal_config(
-                                             block_type))
 
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            source_config: Dict[str, Any] = dict(self._build_default_balanced_source_emt_modal_config(block_type),
-                                                 **dialog.get_configuration())
-        else:
-            return None
+
 
         count: int = self.block_counters.get(block_type, 0) + 1
         item_name: str = f"{block_type.name}_{count}"
-        block_model: Block | None = self._build_balanced_source_emt_block_model(block_type=block_type,
-                                                                                item_name=item_name,
-                                                                                modal_config=source_config)
+
+        template_builder = None
+        name = ""
+        if block_type == BlockType.BALANCED_3PH_VOLTAGE_SOURCE_EMT:
+            template_builder = emt_templates.Balanced3phVoltageSourceEmtTemplate(vf=self.var_factory)
+            name = "EMT balanced 3ph voltage source"
+
+        elif block_type == BlockType.BALANCED_3PH_CURRENT_SOURCE_EMT:
+            template_builder = emt_templates.Balanced3phCurrentSourceEmtTemplate(vf=self.var_factory)
+            name = "EMT balanced 3ph current source"
+
+
+        elif block_type == BlockType.CONTROLLED_BALANCED_3PH_VOLTAGE_SOURCE_EMT:
+            template_builder = emt_templates.ControlledBalanced3phVoltageSourceEmtTemplate(vf=self.var_factory)
+            name = "EMT controlled balanced 3ph voltage source"
+
+        elif block_type == BlockType.CONTROLLED_BALANCED_3PH_CURRENT_SOURCE_EMT:
+            template_builder = emt_templates.Balanced3phCurrentSourceEmtTemplate(vf=self.var_factory)
+            name = "EMT controlled balanced 3ph current source"
+
+        if template_builder is not None:
+            dialog = DynTemplatesEditorDialog(name, template_builder.params)
+            dialog.exec()
+            template = template_builder.eval()
+            block_model = template.block
 
         block_item: GenericBlockItem = GenericBlockItem(editor=self, var_factory=self.var_factory,
                                                         subsys=block_model,
@@ -1780,18 +1381,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                                         position_changed_callback=self._build_position_changed_callback(
                                                             block_model.uid))
 
-        if block_model is None:
-            return None
-        else:
-            pass
-
-        self.set_modal_template_metadata(block_model, kind="balanced_source_emt",
-                                         config=dict(source_config, block_type=block_type.name))
         self.block_counters[block_type] = count
         block_item.set_subsystem(block_model)
         block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
         block_item.build_item()
-        block_item.setToolTip(self._build_balanced_source_emt_modal_tooltip(source_config))
         self.main_block.add(block_model)
         self.scene.addItem(block_item)
         block_item.setPos(QtCore.QPointF(x_pos, y_pos))
@@ -1804,113 +1397,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         )
         self.mark_unapplied_changes()
         return block_item
-
-    @staticmethod
-    def _build_default_arbitrary_source_emt_modal_config(block_type: BlockType) -> Dict[str, Any]:
-        """
-        Build one default persisted configuration for one arbitrary-waveform EMT source modal.
-
-        :param block_type: Arbitrary source block type.
-        :return: Default arbitrary source configuration.
-        """
-        return dict({
-            "block_type": block_type.name,
-            "phase_n": False,
-            "phase_a": True,
-            "phase_b": False,
-            "phase_c": False,
-            "time_points": [0.0, 0.02, 0.04],
-            "value_points": [0.0, 1.0, 0.0],
-            "source_conductance_value": 100.0,
-        })
-
-    @staticmethod
-    def _extract_arbitrary_source_emt_phase_tuple(modal_config: Dict[str, Any]) -> tuple[bool, bool, bool, bool]:
-        """
-        Return the ordered phase tuple stored in one arbitrary EMT source modal configuration.
-
-        :param modal_config: Persisted arbitrary source modal configuration.
-        :return: ``(phase_n, phase_a, phase_b, phase_c)``.
-        """
-        return (
-            bool(modal_config.get("phase_n", False)),
-            bool(modal_config.get("phase_a", True)),
-            bool(modal_config.get("phase_b", False)),
-            bool(modal_config.get("phase_c", False)),
-        )
-
-    @staticmethod
-    def _build_arbitrary_source_emt_modal_tooltip(modal_config: Dict[str, Any]) -> str:
-        """
-        Build one compact tooltip for one arbitrary-waveform EMT source block.
-
-        :param modal_config: Persisted arbitrary source modal configuration.
-        :return: Tooltip text.
-        """
-        active_labels: List[str] = list()
-
-        if bool(modal_config.get("phase_n", False)):
-            active_labels.append("N")
-        if bool(modal_config.get("phase_a", False)):
-            active_labels.append("A")
-        if bool(modal_config.get("phase_b", False)):
-            active_labels.append("B")
-        if bool(modal_config.get("phase_c", False)):
-            active_labels.append("C")
-
-        tooltip_lines: List[str] = [str(modal_config.get("block_type", "Arbitrary EMT source"))]
-        tooltip_lines.append(f"Phases: {', '.join(active_labels)}")
-        tooltip_lines.append(f"Waveform points: {len(list(modal_config.get('time_points', list())))}")
-
-        if str(modal_config.get("block_type", "")) == BlockType.ARBITRARY_WAVEFORM_VOLTAGE_SOURCE_EMT.name:
-            tooltip_lines.append(f"g={float(modal_config.get('source_conductance_value', 0.0)):.4g}")
-
-        return "\n".join(tooltip_lines)
-
-    def _build_arbitrary_source_emt_block_model(self,
-                                                block_type: BlockType,
-                                                item_name: str,
-                                                modal_config: Dict[str, Any]) -> Block | None:
-        """
-        Build one arbitrary-waveform EMT source block from one modal configuration.
-
-        :param block_type: Arbitrary source block type.
-        :param item_name: Symbolic block name.
-        :param modal_config: Arbitrary source modal configuration.
-        :return: Built symbolic block or ``None``.
-        """
-        phase_n, phase_a, phase_b, phase_c = self._extract_arbitrary_source_emt_phase_tuple(modal_config)
-        time_points: List[float] = list(
-            float(value) for value in modal_config.get("time_points", list([0.0, 0.02, 0.04])))
-        value_points: List[float] = list(
-            float(value) for value in modal_config.get("value_points", list([0.0, 1.0, 0.0])))
-        source_conductance_value: float = float(modal_config.get("source_conductance_value", 100.0))
-
-        if block_type == BlockType.ARBITRARY_WAVEFORM_VOLTAGE_SOURCE_EMT:
-            return emt_templates.get_arbitrary_waveform_voltage_source_emt_template(
-                vf=self.var_factory,
-                phN=phase_n,
-                phA=phase_a,
-                phB=phase_b,
-                phC=phase_c,
-                time_points=time_points,
-                value_points=value_points,
-                source_conductance_value=source_conductance_value,
-                name=item_name,
-            ).block
-        elif block_type == BlockType.ARBITRARY_WAVEFORM_CURRENT_SOURCE_EMT:
-            return emt_templates.get_arbitrary_waveform_current_source_emt_template(
-                vf=self.var_factory,
-                phN=phase_n,
-                phA=phase_a,
-                phB=phase_b,
-                phC=phase_c,
-                time_points=time_points,
-                value_points=value_points,
-                name=item_name,
-            ).block
-        else:
-            return None
 
     def create_arbitrary_source_emt_block_item(self, block_type: BlockType, x_pos: float,
                                                y_pos: float) -> GenericBlockItem | None:
@@ -1922,21 +1408,29 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param y_pos: Drop y position.
         :return: Created block item or ``None`` when the dialog is cancelled.
         """
-        dialog = ArbitrarySourceEmtDialog(block_type=block_type, parent=self,
-                                          initial_config=self._build_default_arbitrary_source_emt_modal_config(
-                                              block_type))
 
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            source_config: Dict[str, Any] = dict(self._build_default_arbitrary_source_emt_modal_config(block_type),
-                                                 **dialog.get_configuration())
-        else:
-            return None
 
         count: int = self.block_counters.get(block_type, 0) + 1
         item_name: str = f"{block_type.name}_{count}"
-        block_model: Block | None = self._build_arbitrary_source_emt_block_model(block_type=block_type,
-                                                                                 item_name=item_name,
-                                                                                 modal_config=source_config)
+
+        template_builder = None
+        name = ""
+
+        if block_type == BlockType.ARBITRARY_WAVEFORM_VOLTAGE_SOURCE_EMT:
+            template_builder = emt_templates.ArbitraryWaveformVoltageSourceEmtTemplate(vf=self.var_factory)
+            name = "EMT arbitrary waveform voltage source"
+
+        elif block_type == BlockType.ARBITRARY_WAVEFORM_CURRENT_SOURCE_EMT:
+            template_builder = emt_templates.ArbitraryWaveformCurrentSourceEmtTemplate(vf=self.var_factory)
+            name = "EMT arbitrary waveform current source"
+
+        if template_builder is not None:
+
+            dialog = DynTemplatesEditorDialog(name, template_builder.params)
+            dialog.exec()
+            template = template_builder.eval()
+            block_model = template.block
+
 
         block_item: GenericBlockItem = GenericBlockItem(editor=self, var_factory=self.var_factory,
                                                         subsys=block_model,
@@ -1946,18 +1440,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                                         position_changed_callback=self._build_position_changed_callback(
                                                             block_model.uid))
 
-        if block_model is None:
-            return None
-        else:
-            pass
-
-        self.set_modal_template_metadata(block_model, kind="arbitrary_source_emt", config=dict(source_config,
-                                                                                               block_type=block_type.name))
         self.block_counters[block_type] = count
         block_item.set_subsystem(block_model)
         block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
         block_item.build_item()
-        block_item.setToolTip(self._build_arbitrary_source_emt_modal_tooltip(source_config))
         self.main_block.add(block_model)
         self.scene.addItem(block_item)
         block_item.setPos(QtCore.QPointF(x_pos, y_pos))
@@ -1971,230 +1457,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.mark_unapplied_changes()
         return block_item
 
-    @staticmethod
-    def _build_default_transient_source_emt_modal_config(block_type: BlockType) -> Dict[str, Any]:
-        """
-        Build one default persisted configuration for one transient EMT source modal.
-
-        :param block_type: Transient source block type.
-        :return: Default transient source configuration.
-        """
-        return dict({
-            "block_type": block_type.name,
-            "phase_n": False,
-            "phase_a": True,
-            "phase_b": False,
-            "phase_c": False,
-            "initial_value": 0.0,
-            "final_value": 1.0,
-            "step_time_s": 0.02,
-            "start_time_s": 0.01,
-            "end_time_s": 0.03,
-            "source_conductance_value": 100.0,
-            "amplitude_value": 1.0,
-            "alpha_value": 100.0,
-            "beta_value": 5000.0,
-            "delay_s": 0.0,
-            "peak_value": 1.0,
-            "front_time_s": 1.0e-4,
-            "tail_time_s": 5.0e-4,
-            "order_value": 4.0,
-            "a_value": 1000.0,
-            "b_value": 10000.0,
-            "n_value": 2.0,
-            "tn_s": 1.0e-4,
-            "i1_value": 1.0,
-            "t1_s": 5.0e-4,
-            "i2_value": 0.5,
-            "t2_s": 2.0e-4,
-        })
-
-    @staticmethod
-    def _extract_transient_source_emt_phase_tuple(modal_config: Dict[str, Any]) -> tuple[bool, bool, bool, bool]:
-        """
-        Return the ordered phase tuple stored in one transient EMT source modal configuration.
-
-        :param modal_config: Persisted transient source modal configuration.
-        :return: ``(phase_n, phase_a, phase_b, phase_c)``.
-        """
-        return (
-            bool(modal_config.get("phase_n", False)),
-            bool(modal_config.get("phase_a", True)),
-            bool(modal_config.get("phase_b", False)),
-            bool(modal_config.get("phase_c", False)),
-        )
-
-    @staticmethod
-    def _build_transient_source_emt_modal_tooltip(modal_config: Dict[str, Any]) -> str:
-        """
-        Build one compact tooltip for one transient EMT source block.
-
-        :param modal_config: Persisted transient source modal configuration.
-        :return: Tooltip text.
-        """
-        active_labels: List[str] = list()
-
-        if bool(modal_config.get("phase_n", False)):
-            active_labels.append("N")
-        if bool(modal_config.get("phase_a", False)):
-            active_labels.append("A")
-        if bool(modal_config.get("phase_b", False)):
-            active_labels.append("B")
-        if bool(modal_config.get("phase_c", False)):
-            active_labels.append("C")
-
-        tooltip_lines: List[str] = [str(modal_config.get("block_type", "Transient EMT source"))]
-        tooltip_lines.append(f"Phases: {', '.join(active_labels)}")
-
-        if str(modal_config.get("block_type", "")) in {
-            BlockType.STEP_VOLTAGE_SOURCE_EMT.name,
-            BlockType.STEP_CURRENT_SOURCE_EMT.name,
-        }:
-            tooltip_lines.append(
-                f"{float(modal_config.get('initial_value', 0.0)):.4g} -> {float(modal_config.get('final_value', 0.0)):.4g} at {float(modal_config.get('step_time_s', 0.0)):.4g}s"
-            )
-        elif str(modal_config.get("block_type", "")) in {
-            BlockType.RAMP_VOLTAGE_SOURCE_EMT.name,
-            BlockType.RAMP_CURRENT_SOURCE_EMT.name,
-        }:
-            tooltip_lines.append(
-                f"{float(modal_config.get('initial_value', 0.0)):.4g} -> {float(modal_config.get('final_value', 0.0)):.4g} from {float(modal_config.get('start_time_s', 0.0)):.4g}s to {float(modal_config.get('end_time_s', 0.0)):.4g}s"
-            )
-        elif str(modal_config.get("block_type", "")) == BlockType.DOUBLE_EXPONENTIAL_CURRENT_SOURCE_EMT.name:
-            tooltip_lines.append(
-                f"A={float(modal_config.get('amplitude_value', 0.0)):.4g}, alpha={float(modal_config.get('alpha_value', 0.0)):.4g}, beta={float(modal_config.get('beta_value', 0.0)):.4g}"
-            )
-        elif str(modal_config.get("block_type", "")) == BlockType.HEIDLER_CURRENT_SOURCE_EMT.name:
-            tooltip_lines.append(
-                f"peak={float(modal_config.get('peak_value', 0.0)):.4g}, tf={float(modal_config.get('front_time_s', 0.0)):.4g}s, tt={float(modal_config.get('tail_time_s', 0.0)):.4g}s"
-            )
-        else:
-            tooltip_lines.append(
-                f"tn={float(modal_config.get('tn_s', 0.0)):.4g}s, I1={float(modal_config.get('i1_value', 0.0)):.4g}, I2={float(modal_config.get('i2_value', 0.0)):.4g}"
-            )
-
-        if str(modal_config.get("block_type", "")) in {
-            BlockType.STEP_VOLTAGE_SOURCE_EMT.name,
-            BlockType.RAMP_VOLTAGE_SOURCE_EMT.name,
-        }:
-            tooltip_lines.append(f"g={float(modal_config.get('source_conductance_value', 0.0)):.4g}")
-
-        return "\n".join(tooltip_lines)
-
-    def _build_transient_source_emt_block_model(self,
-                                                block_type: BlockType,
-                                                item_name: str,
-                                                modal_config: Dict[str, Any]) -> Block | None:
-        """
-        Build one transient EMT source block from one modal configuration.
-
-        :param block_type: Transient source block type.
-        :param item_name: Symbolic block name.
-        :param modal_config: Transient source modal configuration.
-        :return: Built symbolic block or ``None``.
-        """
-        phase_n, phase_a, phase_b, phase_c = self._extract_transient_source_emt_phase_tuple(modal_config)
-
-        if block_type == BlockType.STEP_VOLTAGE_SOURCE_EMT:
-            return emt_templates.get_step_voltage_source_emt_template(
-                vf=self.var_factory,
-                phN=phase_n,
-                phA=phase_a,
-                phB=phase_b,
-                phC=phase_c,
-                initial_value=float(modal_config.get("initial_value", 0.0)),
-                final_value=float(modal_config.get("final_value", 1.0)),
-                step_time_s=float(modal_config.get("step_time_s", 0.02)),
-                source_conductance_value=float(modal_config.get("source_conductance_value", 100.0)),
-                name=item_name,
-            ).block
-        elif block_type == BlockType.STEP_CURRENT_SOURCE_EMT:
-            return emt_templates.get_step_current_source_emt_template(
-                vf=self.var_factory,
-                phN=phase_n,
-                phA=phase_a,
-                phB=phase_b,
-                phC=phase_c,
-                initial_value=float(modal_config.get("initial_value", 0.0)),
-                final_value=float(modal_config.get("final_value", 1.0)),
-                step_time_s=float(modal_config.get("step_time_s", 0.02)),
-                name=item_name,
-            ).block
-        elif block_type == BlockType.RAMP_VOLTAGE_SOURCE_EMT:
-            return emt_templates.get_ramp_voltage_source_emt_template(
-                vf=self.var_factory,
-                phN=phase_n,
-                phA=phase_a,
-                phB=phase_b,
-                phC=phase_c,
-                initial_value=float(modal_config.get("initial_value", 0.0)),
-                final_value=float(modal_config.get("final_value", 1.0)),
-                start_time_s=float(modal_config.get("start_time_s", 0.01)),
-                end_time_s=float(modal_config.get("end_time_s", 0.03)),
-                source_conductance_value=float(modal_config.get("source_conductance_value", 100.0)),
-                name=item_name,
-            ).block
-        elif block_type == BlockType.RAMP_CURRENT_SOURCE_EMT:
-            return emt_templates.get_ramp_current_source_emt_template(
-                vf=self.var_factory,
-                phN=phase_n,
-                phA=phase_a,
-                phB=phase_b,
-                phC=phase_c,
-                initial_value=float(modal_config.get("initial_value", 0.0)),
-                final_value=float(modal_config.get("final_value", 1.0)),
-                start_time_s=float(modal_config.get("start_time_s", 0.01)),
-                end_time_s=float(modal_config.get("end_time_s", 0.03)),
-                name=item_name,
-            ).block
-        elif block_type == BlockType.DOUBLE_EXPONENTIAL_CURRENT_SOURCE_EMT:
-            return emt_templates.get_double_exponential_current_source_emt_template(
-                vf=self.var_factory,
-                phN=phase_n,
-                phA=phase_a,
-                phB=phase_b,
-                phC=phase_c,
-                amplitude_value=float(modal_config.get("amplitude_value", 1.0)),
-                alpha_value=float(modal_config.get("alpha_value", 100.0)),
-                beta_value=float(modal_config.get("beta_value", 5000.0)),
-                delay_s=float(modal_config.get("delay_s", 0.0)),
-                name=item_name,
-            ).block
-        elif block_type == BlockType.HEIDLER_CURRENT_SOURCE_EMT:
-            return emt_templates.get_heidler_current_source_emt_template(
-                vf=self.var_factory,
-                phN=phase_n,
-                phA=phase_a,
-                phB=phase_b,
-                phC=phase_c,
-                peak_value=float(modal_config.get("peak_value", 1.0)),
-                front_time_s=float(modal_config.get("front_time_s", 1.0e-4)),
-                tail_time_s=float(modal_config.get("tail_time_s", 5.0e-4)),
-                order_value=float(modal_config.get("order_value", 4.0)),
-                delay_s=float(modal_config.get("delay_s", 0.0)),
-                name=item_name,
-            ).block
-        elif block_type == BlockType.CIGRE_SURGE_CURRENT_SOURCE_EMT:
-            return emt_templates.get_cigre_surge_current_source_emt_template(
-                vf=self.var_factory,
-                phN=phase_n,
-                phA=phase_a,
-                phB=phase_b,
-                phC=phase_c,
-                a_value=float(modal_config.get("a_value", 1000.0)),
-                b_value=float(modal_config.get("b_value", 10000.0)),
-                n_value=float(modal_config.get("n_value", 2.0)),
-                tn_s=float(modal_config.get("tn_s", 1.0e-4)),
-                i1_value=float(modal_config.get("i1_value", 1.0)),
-                t1_s=float(modal_config.get("t1_s", 5.0e-4)),
-                i2_value=float(modal_config.get("i2_value", 0.5)),
-                t2_s=float(modal_config.get("t2_s", 2.0e-4)),
-                delay_s=float(modal_config.get("delay_s", 0.0)),
-                name=item_name,
-            ).block
-        else:
-            return None
-
     def create_transient_source_emt_block_item(self, block_type: BlockType, x_pos: float,
                                                y_pos: float) -> GenericBlockItem | None:
         """
@@ -2205,21 +1467,46 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param y_pos: Drop y position.
         :return: Created block item or ``None`` when the dialog is cancelled.
         """
-        dialog = TransientSourceEmtDialog(block_type=block_type, parent=self,
-                                          initial_config=self._build_default_transient_source_emt_modal_config(
-                                              block_type))
-
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            source_config: Dict[str, Any] = dict(self._build_default_transient_source_emt_modal_config(block_type),
-                                                 **dialog.get_configuration())
-        else:
-            return None
 
         count: int = self.block_counters.get(block_type, 0) + 1
         item_name: str = f"{block_type.name}_{count}"
-        block_model: Block | None = self._build_transient_source_emt_block_model(block_type=block_type,
-                                                                                 item_name=item_name,
-                                                                                 modal_config=source_config)
+
+        template_builder = None
+        name = ""
+
+        if block_type == BlockType.STEP_VOLTAGE_SOURCE_EMT:
+            template_builder = emt_templates.StepVoltageSourceEmtTemplate(vf=self.var_factory)
+            name = "EMT step voltage source"
+
+        elif block_type == BlockType.STEP_CURRENT_SOURCE_EMT:
+            template_builder = emt_templates.StepCurrentSourceEmtTemplate(vf=self.var_factory)
+            name = "EMT step current source"
+
+        elif block_type == BlockType.RAMP_VOLTAGE_SOURCE_EMT:
+            template_builder = emt_templates.RampVoltageSourceEmtTemplate(vf=self.var_factory)
+            name = "EMT ramp voltage source"
+
+        elif block_type == BlockType.RAMP_CURRENT_SOURCE_EMT:
+            template_builder = emt_templates.RampCurrentSourceEmtTemplate(vf=self.var_factory)
+            name = "EMT ramp current source"
+
+        elif block_type == BlockType.DOUBLE_EXPONENTIAL_CURRENT_SOURCE_EMT:
+            template_builder = emt_templates.DoubleExponentialCurrentSourceEmtTemplate(vf=self.var_factory)
+            name = "EMT double exponential current source"
+
+        elif block_type == BlockType.HEIDLER_CURRENT_SOURCE_EMT:
+            template_builder = emt_templates.HeidlerCurrentSourceEmtTemplate(vf=self.var_factory)
+            name = "EMT heidler current source"
+
+        elif block_type == BlockType.CIGRE_SURGE_CURRENT_SOURCE_EMT:
+            template_builder = emt_templates.CigreSurgeCurrentSourceEmtTemplate(vf=self.var_factory)
+            name = "EMT cigre surge current source"
+
+        if template_builder is not None:
+            dialog = DynTemplatesEditorDialog(name, template_builder.params)
+            dialog.exec()
+            template = template_builder.eval()
+            block_model = template.block
 
         block_item: GenericBlockItem = GenericBlockItem(editor=self, var_factory=self.var_factory,
                                                         subsys=block_model,
@@ -2229,18 +1516,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                                         position_changed_callback=self._build_position_changed_callback(
                                                             block_model.uid))
 
-        if block_model is None:
-            return None
-        else:
-            pass
-
-        self.set_modal_template_metadata(block_model, kind="transient_source_emt",
-                                         config=dict(source_config, block_type=block_type.name))
         self.block_counters[block_type] = count
         block_item.set_subsystem(block_model)
         block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
         block_item.build_item()
-        block_item.setToolTip(self._build_transient_source_emt_modal_tooltip(source_config))
         self.main_block.add(block_model)
         self.scene.addItem(block_item)
         block_item.setPos(QtCore.QPointF(x_pos, y_pos))
@@ -2646,6 +1925,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 item_name, inputs, outputs = dialog.get_values()
                 block_model = create_generic_block(self.var_factory, inputs, outputs, item_name)
 
+        # if block_type == BlockType.TRAFO_EMT:
         elif block_type in {BlockType.TRAFO_EMT, BlockType.XFMR_TRANSFORMER}:
             topology_config: Dict[str, Any] | None = self._resolve_transformer_topology_configuration()
 
@@ -2682,30 +1962,30 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 pass
 
 
-        elif block_type in {BlockType.EXP_LOAD_EMT, BlockType.ZIP_LOAD_EMT}:
-            dialog = self._build_load_topology_emt_dialog(block_type=block_type)
-
-            if dialog.exec() == QDialog.DialogCode.Accepted:
-                load_config = dialog.get_configuration()
-            else:
-                return None
-
-            item_name: str = f"{block_type.name}_{count}"
-            block_model = self._build_load_topology_emt_block_model(
-                block_type=block_type,
-                item_name=item_name,
-                modal_config=load_config,
-            )
-
-            self.set_modal_template_metadata(block_model, kind="load_topology_emt",
-                                             config=dict(load_config, block_type=block_type.name))
-            self._annotate_internal_grounding_link_blocks(block_model)
-
-            # The dynamic editor must not overwrite the static load connection.
-            if isinstance(self.api_object, InjectionParent):
-                pass
-            else:
-                pass
+        # elif block_type in {BlockType.EXP_LOAD_EMT, BlockType.ZIP_LOAD_EMT}:
+        #     dialog = self._build_load_topology_emt_dialog(block_type=block_type)
+        #
+        #     if dialog.exec() == QDialog.DialogCode.Accepted:
+        #         load_config = dialog.get_configuration()
+        #     else:
+        #         return None
+        #
+        #     item_name: str = f"{block_type.name}_{count}"
+        #     block_model = self._build_load_topology_emt_block_model(
+        #         block_type=block_type,
+        #         item_name=item_name,
+        #         modal_config=load_config,
+        #     )
+        #
+        #     self.set_modal_template_metadata(block_model, kind="load_topology_emt",
+        #                                      config=dict(load_config, block_type=block_type.name))
+        #     self._annotate_internal_grounding_link_blocks(block_model)
+        #
+        #     # The dynamic editor must not overwrite the static load connection.
+        #     if isinstance(self.api_object, InjectionParent):
+        #         pass
+        #     else:
+        #         pass
 
         elif block_type == BlockType.EMT_PI_LINE or block_type == BlockType.EMT_BERGERON_LINE:
             dialog = EmtTemplateWizardDialog(self)
@@ -2731,42 +2011,42 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             )
 
 
-        elif block_type == BlockType.GROUNDING_LINK_EMT:
-            dialog = self._build_grounding_link_emt_dialog()
+        # elif block_type == BlockType.GROUNDING_LINK_EMT:
+        #     dialog = self._build_grounding_link_emt_dialog()
+        #
+        #     if dialog.exec() == QDialog.DialogCode.Accepted:
+        #         grounding_config = dialog.get_configuration()
+        #     else:
+        #         return None
+        #
+        #     try:
+        #         template_kwargs = self._build_grounding_link_emt_template_kwargs(grounding_config)
+        #     except ValueError as exc:
+        #         QtWidgets.QMessageBox.warning(self, "Grounding Link", str(exc))
+        #         return None
+        #
+        #     item_name: str = f"grounding_link_emt_{count}"
+        #     block_model = emt_templates.get_grounding_link_emt_template(vf=self.var_factory, name=item_name,
+        #                                                                 **template_kwargs).block
+        #     self.set_modal_template_metadata(block_model, kind="grounding_link_emt", config=dict(grounding_config))
 
-            if dialog.exec() == QDialog.DialogCode.Accepted:
-                grounding_config = dialog.get_configuration()
-            else:
-                return None
-
-            try:
-                template_kwargs = self._build_grounding_link_emt_template_kwargs(grounding_config)
-            except ValueError as exc:
-                QtWidgets.QMessageBox.warning(self, "Grounding Link", str(exc))
-                return None
-
-            item_name: str = f"grounding_link_emt_{count}"
-            block_model = emt_templates.get_grounding_link_emt_template(vf=self.var_factory, name=item_name,
-                                                                        **template_kwargs).block
-            self.set_modal_template_metadata(block_model, kind="grounding_link_emt", config=dict(grounding_config))
-
-        elif block_type == BlockType.SWITCH_EMT:
-            dialog = SwitchEmtDialog(self)
-
-            if dialog.exec() == QDialog.DialogCode.Accepted:
-                switch_config = dialog.get_switch_configuration()
-            else:
-                return None
-
-            item_name: str = f"switch_emt_{count}"
-
-            block_model = emt_templates.get_switch_emt_template(vf=self.var_factory, name=item_name,
-                                                                **switch_config).block
-            self.set_modal_template_metadata(
-                block_model,
-                kind="switch_emt",
-                config=dict(switch_config),
-            )
+        # elif block_type == BlockType.SWITCH_EMT:
+        #     dialog = SwitchEmtDialog(self)
+        #
+        #     if dialog.exec() == QDialog.DialogCode.Accepted:
+        #         switch_config = dialog.get_switch_configuration()
+        #     else:
+        #         return None
+        #
+        #     item_name: str = f"switch_emt_{count}"
+        #
+        #     block_model = emt_templates.get_switch_emt_template(vf=self.var_factory, name=item_name,
+        #                                                         **switch_config).block
+        #     self.set_modal_template_metadata(
+        #         block_model,
+        #         kind="switch_emt",
+        #         config=dict(switch_config),
+        #     )
 
         elif block_type == BlockType.FAULT_EMT:
             default_fault_config: Dict[str, Any] = self._build_default_fault_emt_modal_config()
@@ -2800,33 +2080,33 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 config=dict(fault_config),
             )
 
-        elif block_type == BlockType.RLC_COMBO_EMT:
-            dialog = self._build_rlc_combo_emt_dialog()
-
-            if dialog.exec() == QDialog.DialogCode.Accepted:
-                rlc_config = dialog.get_configuration()
-            else:
-                return None
-
-            try:
-                template_kwargs = self._build_rlc_combo_emt_template_kwargs(rlc_config)
-            except ValueError as exc:
-                QtWidgets.QMessageBox.warning(self, "RLC Combo", str(exc))
-                return None
-
-            item_name: str = f"rlc_combo_emt_{count}"
-
-            block_model = emt_templates.get_shunt_rlc_combo_emt_template(vf=self.var_factory, name=item_name,
-                                                                         **template_kwargs).block
-            self.set_modal_template_metadata(block_model, kind="rlc_combo_emt", config=dict(rlc_config))
-            self._annotate_internal_grounding_link_blocks(block_model)
-
-            # The dynamic editor must not overwrite the static injection
-            # connection. The EMT block stores its own symbolic topology.
-            if isinstance(self.api_object, InjectionParent):
-                pass
-            else:
-                pass
+        # elif block_type == BlockType.RLC_COMBO_EMT:
+        #     dialog = self._build_rlc_combo_emt_dialog()
+        #
+        #     if dialog.exec() == QDialog.DialogCode.Accepted:
+        #         rlc_config = dialog.get_configuration()
+        #     else:
+        #         return None
+        #
+        #     try:
+        #         template_kwargs = self._build_rlc_combo_emt_template_kwargs(rlc_config)
+        #     except ValueError as exc:
+        #         QtWidgets.QMessageBox.warning(self, "RLC Combo", str(exc))
+        #         return None
+        #
+        #     item_name: str = f"rlc_combo_emt_{count}"
+        #
+        #     block_model = emt_templates.get_shunt_rlc_combo_emt_template(vf=self.var_factory, name=item_name,
+        #                                                                  **template_kwargs).block
+        #     self.set_modal_template_metadata(block_model, kind="rlc_combo_emt", config=dict(rlc_config))
+        #     self._annotate_internal_grounding_link_blocks(block_model)
+        #
+        #     # The dynamic editor must not overwrite the static injection
+        #     # connection. The EMT block stores its own symbolic topology.
+        #     if isinstance(self.api_object, InjectionParent):
+        #         pass
+        #     else:
+        #         pass
 
         elif block_type in {BlockType.R_LOAD_EMT, BlockType.L_LOAD_EMT, BlockType.C_LOAD_EMT}:
             dialog = self._build_shunt_component_emt_dialog(block_type=block_type)
@@ -2858,50 +2138,50 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             else:
                 pass
 
-        elif _is_load_topology_block_type(BlockType):
-            dialog = self._build_load_topology_emt_dialog(block_type=block_type)
+        # elif _is_load_topology_block_type(BlockType):
+        #     dialog = self._build_load_topology_emt_dialog(block_type=block_type)
+        #
+        #     if dialog.exec() == QDialog.DialogCode.Accepted:
+        #         load_config = dialog.get_configuration()
+        #     else:
+        #         return None
+        #
+        #     item_name: str = f"{block_type.name}_{count}"
+        #
+        #     block_model = self._build_load_topology_emt_block_model(
+        #         block_type=block_type,
+        #         item_name=item_name,
+        #         modal_config=load_config,
+        #     )
+        #     self.set_modal_template_metadata(block_model, kind="load_topology_emt",
+        #                                      config=dict(load_config, block_type=block_type.name))
+        #     self._annotate_internal_grounding_link_blocks(block_model)
+        #
+        #     # The dynamic editor must not overwrite the static load connection.
+        #     if isinstance(self.api_object, InjectionParent):
+        #         pass
+        #     else:
+        #         pass
 
-            if dialog.exec() == QDialog.DialogCode.Accepted:
-                load_config = dialog.get_configuration()
-            else:
-                return None
-
-            item_name: str = f"{block_type.name}_{count}"
-
-            block_model = self._build_load_topology_emt_block_model(
-                block_type=block_type,
-                item_name=item_name,
-                modal_config=load_config,
-            )
-            self.set_modal_template_metadata(block_model, kind="load_topology_emt",
-                                             config=dict(load_config, block_type=block_type.name))
-            self._annotate_internal_grounding_link_blocks(block_model)
-
-            # The dynamic editor must not overwrite the static load connection.
-            if isinstance(self.api_object, InjectionParent):
-                pass
-            else:
-                pass
-
-        elif block_type == BlockType.GROUNDING_LINK_EMT:
-            dialog = self._build_grounding_link_emt_dialog()
-
-            if dialog.exec() == QDialog.DialogCode.Accepted:
-                grounding_config = dialog.get_configuration()
-            else:
-                return None
-
-            try:
-                template_kwargs = self._build_grounding_link_emt_template_kwargs(grounding_config)
-            except ValueError as exc:
-                QtWidgets.QMessageBox.warning(self, "Grounding Link", str(exc))
-                return None
-
-            item_name: str = f"grounding_link_emt_{count}"
-
-            block_model = emt_templates.get_grounding_link_emt_template(vf=self.var_factory, name=item_name,
-                                                                        **template_kwargs).block
-            self.set_modal_template_metadata(block_model, kind="grounding_link_emt", config=dict(grounding_config))
+        # elif block_type == BlockType.GROUNDING_LINK_EMT:
+        #     dialog = self._build_grounding_link_emt_dialog()
+        #
+        #     if dialog.exec() == QDialog.DialogCode.Accepted:
+        #         grounding_config = dialog.get_configuration()
+        #     else:
+        #         return None
+        #
+        #     try:
+        #         template_kwargs = self._build_grounding_link_emt_template_kwargs(grounding_config)
+        #     except ValueError as exc:
+        #         QtWidgets.QMessageBox.warning(self, "Grounding Link", str(exc))
+        #         return None
+        #
+        #     item_name: str = f"grounding_link_emt_{count}"
+        #
+        #     block_model = emt_templates.get_grounding_link_emt_template(vf=self.var_factory, name=item_name,
+        #                                                                 **template_kwargs).block
+        #     self.set_modal_template_metadata(block_model, kind="grounding_link_emt", config=dict(grounding_config))
 
         elif block_type == BlockType.NONLINEAR_RESISTOR_EMT:
             dialog = LookupArrayLinearDialog(
@@ -3413,46 +2693,44 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param y_pos: Drop y position.
         :return: Created block item or None when the dialog is cancelled.
         """
-        dialog = SwitchEmtDialog(self)
 
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            switch_config = dialog.get_switch_configuration()
-            count: int = self.block_counters.get(BlockType.SWITCH_EMT, 0) + 1
-            item_name: str = f"switch_emt_{count}"
-            block_model = emt_templates.get_switch_emt_template(vf=self.var_factory, name=item_name,
-                                                                **switch_config).block
-            block_item: GenericBlockItem = GenericBlockItem(editor=self, var_factory=self.var_factory,
-                                                            subsys=block_model,
-                                                            api_object=self.api_object,
-                                                            mode=self.mode,
-                                                            name=item_name,
-                                                            position_changed_callback=self._build_position_changed_callback(
-                                                                block_model.uid))
+        count: int = self.block_counters.get(BlockType.SWITCH_EMT, 0) + 1
+        item_name: str = f"{BlockType.SWITCH_EMT.name}_{count}"
 
-            self.set_modal_template_metadata(
-                block_model,
-                kind="switch_emt",
-                config=dict(switch_config),
-            )
+        template_builder = None
 
-            self.block_counters[BlockType.SWITCH_EMT] = count
-            block_item.set_subsystem(block_model)
-            block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
-            block_item.build_item()
-            self.main_block.add(block_model)
-            self.scene.addItem(block_item)
-            block_item.setPos(QtCore.QPointF(x_pos, y_pos))
-            self.diagram.add_node(
-                name=item_name,
-                x=x_pos,
-                y=y_pos,
-                tpe=BlockType.SWITCH_EMT.name,
-                device_uid=block_model.uid,
-            )
-            self.mark_unapplied_changes()
-            return block_item
-        else:
-            return None
+        template_builder = emt_templates.SwitchEmtTemplate(vf=self.var_factory)
+
+        if template_builder is not None:
+            dialog = DynTemplatesEditorDialog(template_builder.params)
+            dialog.exec()
+            template = template_builder.eval()
+            block_model = template.block
+
+        block_item: GenericBlockItem = GenericBlockItem(editor=self, var_factory=self.var_factory,
+                                                        subsys=block_model,
+                                                        api_object=self.api_object,
+                                                        mode=self.mode,
+                                                        name=item_name,
+                                                        position_changed_callback=self._build_position_changed_callback(
+                                                            block_model.uid))
+
+        self.block_counters[BlockType.SWITCH_EMT] = count
+        block_item.set_subsystem(block_model)
+        block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
+        block_item.build_item()
+        self.main_block.add(block_model)
+        self.scene.addItem(block_item)
+        block_item.setPos(QtCore.QPointF(x_pos, y_pos))
+        self.diagram.add_node(
+            name=item_name,
+            x=x_pos,
+            y=y_pos,
+            tpe=BlockType.SWITCH_EMT.name,
+            device_uid=block_model.uid,
+        )
+        self.mark_unapplied_changes()
+        return block_item
 
     def _build_default_fault_emt_modal_config(self) -> Dict[str, Any]:
         """
@@ -3604,23 +2882,20 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param y_pos: Drop y position.
         :return: Created block item or None when the dialog is cancelled.
         """
-        dialog = self._build_rlc_combo_emt_dialog()
-
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            rlc_config = dialog.get_configuration()
-        else:
-            return None
-
-        try:
-            template_kwargs = self._build_rlc_combo_emt_template_kwargs(rlc_config)
-        except ValueError as exc:
-            QtWidgets.QMessageBox.warning(self, "RLC Combo", str(exc))
-            return None
 
         count: int = self.block_counters.get(BlockType.RLC_COMBO_EMT, 0) + 1
         item_name: str = f"rlc_combo_emt_{count}"
-        block_model = emt_templates.get_shunt_rlc_combo_emt_template(vf=self.var_factory, name=item_name,
-                                                                     **template_kwargs).block
+
+        template_builder = None
+
+        template_builder = emt_templates.ShuntRlcComboEmtTemplate(vf=self.var_factory)
+
+        if template_builder is not None:
+            dialog = DynTemplatesEditorDialog(template_builder.params)
+            dialog.exec()
+            template = template_builder.eval()
+            block_model = template.block
+
         block_item: GenericBlockItem = GenericBlockItem(editor=self, var_factory=self.var_factory,
                                                         subsys=block_model,
                                                         api_object=self.api_object,
@@ -3628,16 +2903,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                                         name=item_name,
                                                         position_changed_callback=self._build_position_changed_callback(
                                                             block_model.uid))
-
-        self.set_modal_template_metadata(block_model, kind="rlc_combo_emt", config=dict(rlc_config))
-        self._annotate_internal_grounding_link_blocks(block_model)
-
-        # The dynamic editor must not overwrite the static injection
-        # connection. The EMT block stores its own symbolic topology.
-        if isinstance(self.api_object, InjectionParent):
-            pass
-        else:
-            pass
 
         self.block_counters[BlockType.RLC_COMBO_EMT] = count
         block_item.set_subsystem(block_model)
@@ -3656,6 +2921,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.mark_unapplied_changes()
         return block_item
 
+
     def create_induction_motor_emt_block_item(self, x_pos: float, y_pos: float) -> GenericBlockItem | None:
         """
         Create one induction-motor EMT block configured through its modal.
@@ -3664,22 +2930,21 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param y_pos: Drop y position.
         :return: Created block item or None when the dialog is cancelled.
         """
-        # The modal runs before block creation so the selected template level becomes
-        # part of the initial symbolic build and persisted metadata from the start.
-        default_config: Dict[str, Any] = self._build_default_induction_motor_emt_modal_config()
-        dialog: InductionMotorEmtDialog = self._build_induction_motor_emt_dialog(initial_config=default_config)
-
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            induction_motor_config: Dict[str, Any] = dialog.get_configuration()
-        else:
-            return None
-
         count: int = self.block_counters.get(BlockType.INDUCTION_MOTOR_EMT, 0) + 1
-        item_name: str = f"induction_motor_emt_{count}"
-        block_model: Block = self._build_induction_motor_emt_block_model(
-            item_name=item_name,
-            modal_config=induction_motor_config,
-        )
+        item_name: str =  f"induction_motor_emt_{count}"
+
+        template_builder = None
+
+        template_builder = emt_templates.InductionMotorEmtTemplate(vf=self.var_factory)
+
+        if template_builder is not None:
+
+            dialog = DynTemplatesEditorDialog(template_builder.params)
+            dialog.exec()
+            template = template_builder.eval()
+            block_model = template.block
+
+
         block_item: GenericBlockItem = GenericBlockItem(editor=self, var_factory=self.var_factory,
                                                         subsys=block_model,
                                                         api_object=self.api_object,
@@ -3688,18 +2953,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                                         position_changed_callback=self._build_position_changed_callback(
                                                             block_model.uid))
 
-        # Persist the modal selection so modify-template and rebuild flows can
-        # recreate the same symbolic template later.
-        self.set_modal_template_metadata(block_model, kind="induction_motor_emt", config=dict(induction_motor_config))
-
         self.block_counters[BlockType.INDUCTION_MOTOR_EMT] = count
         block_item.set_subsystem(block_model)
         block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
         block_item.build_item()
-        block_item.setToolTip(self._build_induction_motor_emt_modal_tooltip(induction_motor_config))
-
-        # The scene item, main block, and persisted diagram must all be updated
-        # together so later rebuilds and apply/save operations stay consistent.
         self.main_block.add(block_model)
         self.scene.addItem(block_item)
         block_item.setPos(QtCore.QPointF(x_pos, y_pos))
@@ -3794,20 +3051,26 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param y_pos: Drop y position.
         :return: Created block item or None when the dialog is cancelled.
         """
-        dialog = self._build_load_topology_emt_dialog(block_type=block_type)
-
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            load_config = dialog.get_configuration()
-        else:
-            return None
 
         count: int = self.block_counters.get(block_type, 0) + 1
         item_name: str = f"{block_type.name}_{count}"
-        block_model = self._build_load_topology_emt_block_model(
-            block_type=block_type,
-            item_name=item_name,
-            modal_config=load_config,
-        )
+
+        template_builder = None
+
+        if block_type == BlockType.EXP_LOAD_EMT:
+            template_builder = emt_templates.ExponentialLoadEmtTemplate(vf=self.var_factory)
+
+        elif block_type == BlockType.ZIP_LOAD_EMT:
+            template_builder = emt_templates.LoadZIPEmtTemplate(vf=self.var_factory)
+
+        if template_builder is not None:
+
+            dialog = DynTemplatesEditorDialog(template_builder.params)
+            dialog.exec()
+            template = template_builder.eval()
+            block_model = template.block
+
+
         block_item: GenericBlockItem = GenericBlockItem(editor=self, var_factory=self.var_factory,
                                                         subsys=block_model,
                                                         api_object=self.api_object,
@@ -3815,21 +3078,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                                         name=item_name,
                                                         position_changed_callback=self._build_position_changed_callback(
                                                             block_model.uid))
-
-        if block_model is None:
-            return None
-        else:
-            pass
-
-        self.set_modal_template_metadata(block_model, kind="load_topology_emt",
-                                         config=dict(load_config, block_type=block_type.name))
-        self._annotate_internal_grounding_link_blocks(block_model)
-
-        # The dynamic editor must not overwrite the static load connection.
-        if isinstance(self.api_object, InjectionParent):
-            pass
-        else:
-            pass
 
         self.block_counters[block_type] = count
         block_item.set_subsystem(block_model)
@@ -3848,6 +3096,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.mark_unapplied_changes()
         return block_item
 
+
+
     def create_grounding_link_emt_block_item(self, x_pos: float, y_pos: float) -> GenericBlockItem | None:
         """
         Create one modal-configured EMT grounding-link block.
@@ -3856,32 +3106,26 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param y_pos: Drop y position.
         :return: Created block item or None when the dialog is cancelled.
         """
-        dialog = self._build_grounding_link_emt_dialog()
-
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            grounding_config = dialog.get_configuration()
-        else:
-            return None
-
-        try:
-            template_kwargs = self._build_grounding_link_emt_template_kwargs(grounding_config)
-        except ValueError as exc:
-            QtWidgets.QMessageBox.warning(self, "Grounding Link", str(exc))
-            return None
 
         count: int = self.block_counters.get(BlockType.GROUNDING_LINK_EMT, 0) + 1
         item_name: str = f"grounding_link_emt_{count}"
-        block_model = emt_templates.get_grounding_link_emt_template(vf=self.var_factory, name=item_name,
-                                                                    **template_kwargs).block
+        template_builder = None
+
+        template_builder = emt_templates.GroundingLinkEmtTemplate(vf=self.var_factory)
+
+        if template_builder is not None:
+            dialog = DynTemplatesEditorDialog(template_builder.params)
+            dialog.exec()
+            template = template_builder.eval()
+            block_model = template.block
+
         block_item: GenericBlockItem = GenericBlockItem(editor=self, var_factory=self.var_factory,
                                                         subsys=block_model,
                                                         api_object=self.api_object,
                                                         mode=self.mode,
                                                         name=item_name,
                                                         position_changed_callback=self._build_position_changed_callback(
-                                                            block_model.uid))
-
-        self.set_modal_template_metadata(block_model, kind="grounding_link_emt", config=dict(grounding_config))
+                                                        block_model.uid))
 
         self.block_counters[BlockType.GROUNDING_LINK_EMT] = count
         block_item.set_subsystem(block_model)
@@ -3899,6 +3143,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         )
         self.mark_unapplied_changes()
         return block_item
+
+
 
     def create_nonlinear_resistor_emt_block_item(self, x_pos: float, y_pos: float) -> GenericBlockItem | None:
         """
@@ -4063,123 +3309,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             else:
                 return None
 
-    def _build_rlc_combo_emt_dialog(self,
-                                    initial_config: Dict[str, Any] | None = None) -> RlcComboEmtDialog:
-        """
-        Build the modal dialog used by the EMT combined RLC workflow.
-
-        :param initial_config: Optional persisted modal configuration.
-        :return: Configured dialog instance.
-        """
-        nominal_voltage_kv, base_power_mva, base_frequency_hz = self._get_rlc_combo_base_values()
-        static_connection_type: ShuntConnectionType | None = None
-        allow_static_device_values: bool = False
-
-        if isinstance(self.api_object, (Load, Shunt, ControllableShunt)):
-            static_connection_type = self.api_object.conn
-            allow_static_device_values = True
-        elif isinstance(self.api_object, InjectionParent):
-            static_connection_type = self.api_object.conn
-        else:
-            pass
-
-        resolved_config: Dict[str, Any] | None = None
-        if initial_config is not None:
-            resolved_config = dict(initial_config)
-        else:
-            resolved_config = dict()
-
-        if "use_static_device_values" not in resolved_config and "use_static_load_values" in resolved_config:
-            resolved_config["use_static_device_values"] = resolved_config["use_static_load_values"]
-        else:
-            pass
-
-        return RlcComboEmtDialog(
-            self,
-            initial_config=resolved_config,
-            allow_static_device_values=allow_static_device_values,
-            static_connection_type=static_connection_type,
-            nominal_voltage_kv=nominal_voltage_kv,
-            base_power_mva=base_power_mva,
-            base_frequency_hz=base_frequency_hz,
-        )
-
-    @staticmethod
-    def _build_default_induction_motor_emt_modal_config(
-            level: InductionMotorEmtLevel = InductionMotorEmtLevel.SINGLE_CAGE) -> Dict[str, Any]:
-        """
-        Build the default persisted configuration for one induction-motor EMT modal.
-
-        :param level: Default template level.
-        :return: Default induction-motor modal configuration.
-        """
-        return dict({"level": level.name})
-
-    def _build_induction_motor_emt_dialog(self,
-                                          initial_config: Dict[str, Any] | None = None) -> InductionMotorEmtDialog:
-        """
-        Build the modal dialog used by the induction-motor EMT workflow.
-
-        :param initial_config: Optional persisted modal configuration.
-        :return: Configured dialog instance.
-        """
-        dialog_config: Dict[str, Any]
-        if initial_config is None:
-            dialog_config = self._build_default_induction_motor_emt_modal_config()
-        else:
-            dialog_config = dict(initial_config)
-
-        return InductionMotorEmtDialog(
-            self,
-            initial_config=dialog_config,
-        )
-
-    @staticmethod
-    def _build_induction_motor_emt_modal_tooltip(modal_config: Dict[str, Any]) -> str:
-        """
-        Build one compact tooltip for one induction-motor EMT block.
-
-        :param modal_config: Persisted induction-motor modal configuration.
-        :return: Tooltip text.
-        """
-        level: InductionMotorEmtLevel = coerce_induction_motor_emt_level(
-            modal_config.get("level", InductionMotorEmtLevel.SINGLE_CAGE.name)
-        )
-        return "Induction motor EMT\n" + get_induction_motor_emt_level_label(level)
-
-    def _build_induction_motor_emt_block_model(self,
-                                               item_name: str,
-                                               modal_config: Dict[str, Any]) -> Block:
-        """
-        Build one induction-motor EMT block model from one modal configuration.
-
-        :param item_name: Symbolic block name.
-        :param modal_config: Induction-motor modal configuration.
-        :return: Built symbolic block.
-        """
-        level: InductionMotorEmtLevel = coerce_induction_motor_emt_level(
-            modal_config.get("level", InductionMotorEmtLevel.SINGLE_CAGE.name)
-        )
-        template_level: int = get_induction_motor_emt_template_level(level)
-        return emt_templates.get_induction_motor_emt_template(vf=self.var_factory, level=template_level,
-                                                              name=item_name).block
-
-    def _build_grounding_link_emt_dialog(self,
-                                         initial_config: Dict[str, Any] | None = None) -> GroundingLinkEmtDialog:
-        """
-        Build the modal dialog used by the EMT grounding-link workflow.
-
-        :param initial_config: Optional persisted modal configuration.
-        :return: Configured dialog instance.
-        """
-        nominal_voltage_kv, base_power_mva, base_frequency_hz = self._get_rlc_combo_base_values()
-        return GroundingLinkEmtDialog(
-            self,
-            initial_config=initial_config,
-            nominal_voltage_kv=nominal_voltage_kv,
-            base_power_mva=base_power_mva,
-            base_frequency_hz=base_frequency_hz,
-        )
 
     def _build_shunt_component_emt_dialog(self,
                                           block_type: BlockType,
@@ -4281,56 +3410,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             initial_config=resolved_config,
             static_from_connection=static_from_connection if force_static_connection else None,
             static_to_connection=static_to_connection if force_static_connection else None,
-        )
-
-    @staticmethod
-    def _get_load_topology_dialog_title(block_type: BlockType) -> str:
-        """
-        Return the dialog title for one EMT load-topology block.
-
-        :param block_type: ``EXP_LOAD_EMT`` or ``ZIP_LOAD_EMT``.
-        :return: Window title.
-        """
-        if block_type == BlockType.EXP_LOAD_EMT:
-            return "Configure EMT Exponential Load"
-        elif block_type == BlockType.ZIP_LOAD_EMT:
-            return "Configure EMT ZIP Load"
-        else:
-            raise ValueError(f"Unsupported EMT load-topology block type '{block_type.name}'")
-
-    def _build_load_topology_emt_dialog(self,
-                                        block_type: BlockType,
-                                        initial_config: Dict[str, Any] | None = None) -> LoadTopologyEmtDialog:
-        """
-        Build the modal dialog used by one EMT load-topology block.
-
-        :param block_type: ``EXP_LOAD_EMT`` or ``ZIP_LOAD_EMT``.
-        :param initial_config: Optional persisted modal configuration.
-        :return: Configured dialog instance.
-        """
-        resolved_config: Dict[str, Any] | None = None
-        static_connection_type: ShuntConnectionType | None = None
-        allow_static_device_values: bool = False
-
-        if initial_config is not None:
-            resolved_config = dict(initial_config)
-        else:
-            resolved_config = dict()
-
-        if isinstance(self.api_object, Load):
-            static_connection_type = self.api_object.conn
-            allow_static_device_values = True
-        elif isinstance(self.api_object, InjectionParent):
-            static_connection_type = self.api_object.conn
-        else:
-            pass
-
-        return LoadTopologyEmtDialog(
-            title=self._get_load_topology_dialog_title(block_type),
-            parent=self,
-            initial_config=resolved_config,
-            allow_static_device_values=allow_static_device_values,
-            static_connection_type=static_connection_type,
         )
 
     def _annotate_internal_grounding_link_blocks(self, block_model: Block) -> None:
@@ -4493,41 +3572,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             "direct_c_value": direct_c_value,
         })
 
-    def _build_rlc_combo_emt_template_kwargs(self, modal_config: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Convert one modal configuration into the EMT template builder arguments.
-
-        ``Physical R/L/C`` values are forwarded directly. ``R + Reactances`` is
-        converted into the physical inductance and capacitance expected by the
-        current EMT child templates.
-
-        :param modal_config: Raw modal configuration.
-        :return: Template-builder keyword arguments.
-        :raises ValueError: If the modal configuration is not numerically valid.
-        """
-        template_kwargs: Dict[str, Any] = dict(self._build_rlc_direct_values_from_modal_config(modal_config))
-        if "solid_connection" in template_kwargs:
-            del template_kwargs["solid_connection"]
-        else:
-            pass
-        template_kwargs.update({
-            "phA": bool(modal_config.get("phA", True)),
-            "phB": bool(modal_config.get("phB", True)),
-            "phC": bool(modal_config.get("phC", True)),
-            "connection_type": modal_config.get("connection_type", ShuntConnectionType.GroundedStar),
-        })
-
-        return template_kwargs
-
-    def _build_grounding_link_emt_template_kwargs(self, modal_config: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Convert one grounding-link modal configuration into template arguments.
-
-        :param modal_config: Raw modal configuration.
-        :return: Template-builder keyword arguments.
-        """
-        return self._build_rlc_direct_values_from_modal_config(modal_config)
-
     def _build_shunt_component_emt_template_kwargs(self,
                                                    block_type: BlockType,
                                                    modal_config: Dict[str, Any]) -> Dict[str, Any]:
@@ -4597,46 +3641,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         })
         return template_kwargs
 
-    def _build_load_topology_emt_block_model(self,
-                                             block_type: BlockType,
-                                             item_name: str,
-                                             modal_config: Dict[str, Any]) -> Block | None:
-        """
-        Build one EMT load block with explicit neutral/ground topology.
-
-        :param block_type: ``EXP_LOAD_EMT`` or ``ZIP_LOAD_EMT``.
-        :param item_name: Symbolic block name.
-        :param modal_config: Modal configuration.
-        :return: Block model or ``None``.
-        """
-        ph_a: bool = bool(modal_config.get("phA", True))
-        ph_b: bool = bool(modal_config.get("phB", True))
-        ph_c: bool = bool(modal_config.get("phC", True))
-        connection_type = modal_config.get("connection_type", ShuntConnectionType.GroundedStar)
-
-        if block_type == BlockType.EXP_LOAD_EMT:
-            block_model = emt_templates.get_exponential_load_emt(
-                vf=self.var_factory,
-                phA=ph_a,
-                phB=ph_b,
-                phC=ph_c,
-                connection_type=connection_type,
-                name=item_name,
-            ).block
-        elif block_type == BlockType.ZIP_LOAD_EMT:
-            block_model = emt_templates.get_load_ZIP_emt_template(
-                vf=self.var_factory,
-                phA=ph_a,
-                phB=ph_b,
-                phC=ph_c,
-                connection_type=connection_type,
-                name=item_name,
-            ).block
-        else:
-            raise ValueError(f"Unsupported EMT load-topology block type '{block_type.name}'")
-
-        block_model.name = item_name
-        return block_model
 
     def _build_transformer_topology_emt_block_model(self,
                                                     block_type: BlockType,
@@ -4760,23 +3764,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 reference,
                 f"net_conn_{reference.value}_{safe_bus_name}_{self.api_object.name}",
             ))
-
-    def _sync_rlc_combo_load_base_values(self, template_kwargs: Dict[str, Any]) -> None:
-        """
-        Preserve the legacy hook without mutating static objects.
-
-        The dynamic editor must not write EMT-derived values back into the static
-        network model. This hook therefore remains as a no-op so existing call
-        sites can keep their workflow shape while shunt parameters are now owned
-        either by ``api_obj_mapping`` or by ``event_dict`` inside the EMT block.
-
-        :param template_kwargs: Resolved EMT template arguments.
-        :return: None.
-        """
-        if len(template_kwargs) >= 0:
-            pass
-        else:
-            pass
 
     def create_inverse_lookup_array_linear_descriptor_item(self,
                                                            descriptor: BasicBlockTemplateDescriptor,
@@ -7879,875 +6866,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         block.diagram = decomposed.diagram
         block.uid = preserved_uid
 
-    def modify_scene_item_template(self, item: BlockItem | GenericBlockItem | ConnectionItem) -> None:
-        """
-        Reopen the modal configuration of a block item when metadata is available.
-
-        :param item: Scene item selected from the context menu.
-        :return: None.
-        """
-        if not isinstance(item, (BlockItem, GenericBlockItem)) or item.subsys is None:
-            return
-        else:
-            pass
-
-        modal_kind, modal_config = self.get_modal_template_metadata(item.subsys)
-
-        if modal_kind is None or modal_config is None:
-            return
-        else:
-            pass
-
-        if modal_kind == "lookup_array_1d":
-            self._modify_lookup_array_like_block(item, modal_config, build_lookup_array_linear_runtime_template)
-        elif modal_kind == "lookup_array_inverse":
-            self._modify_lookup_array_like_block(item, modal_config, build_inverse_lookup_array_linear_runtime_template)
-        elif modal_kind == "lookup_array_spline":
-            self._modify_lookup_array_like_block(item, modal_config, build_lookup_array_spline_runtime_template)
-        elif modal_kind == "jmarti_line_emt":
-            self._modify_jmarti_line_emt_block(item, modal_config)
-        elif modal_kind == "source_emt":
-            self._modify_source_emt_block(item, modal_config)
-        elif modal_kind == "dc_source_emt":
-            self._modify_dc_source_emt_block(item, modal_config)
-        elif modal_kind == "balanced_source_emt":
-            self._modify_balanced_source_emt_block(item, modal_config)
-        elif modal_kind == "arbitrary_source_emt":
-            self._modify_arbitrary_source_emt_block(item, modal_config)
-        elif modal_kind == "transient_source_emt":
-            self._modify_transient_source_emt_block(item, modal_config)
-        elif modal_kind == "emt_phase_wizard":
-            self._modify_emt_phase_wizard_block(item, modal_config)
-        elif modal_kind == "lookup_matrix_linear":
-            self._modify_lookup_matrix_like_block(item, modal_config, build_lookup_matrix_linear_runtime_template)
-        elif modal_kind == "lookup_matrix_spline":
-            self._modify_lookup_matrix_like_block(item, modal_config, build_lookup_matrix_spline_runtime_template)
-        elif modal_kind == "grounding_link_emt":
-            self._modify_grounding_link_emt_block(item, modal_config)
-        elif modal_kind == "nonlinear_resistor_emt":
-            self._modify_nonlinear_resistor_emt_block(item, modal_config)
-        elif modal_kind == "load_topology_emt":
-            self._modify_load_topology_emt_block(item, modal_config)
-        elif modal_kind == "transformer_topology_emt":
-            self._modify_transformer_topology_emt_block(item, modal_config)
-        elif modal_kind == "shunt_component_emt":
-            self._modify_shunt_component_emt_block(item, modal_config)
-        elif modal_kind == "rlc_combo_emt":
-            self._modify_rlc_combo_emt_block(item, modal_config)
-        elif modal_kind == "induction_motor_emt":
-            self._modify_induction_motor_emt_block(item, modal_config)
-        elif modal_kind == "fault_emt":
-            self._modify_fault_emt_block(item, modal_config)
-        elif modal_kind == "switch_emt":
-            self._modify_switch_emt_block(item, modal_config)
-        else:
-            pass
-
-    def _replace_scene_block_from_template(self, item: BlockItem | GenericBlockItem, new_block: Block, modal_kind: str,
-                                           modal_config: Dict[str, Any]) -> None:
-        """
-        Replace one scene block contents while preserving its identity and diagram node.
-
-        :param item: Existing scene block item.
-        :param new_block: Newly built block contents.
-        :param modal_kind: Modal kind metadata key.
-        :param modal_config: Modal configuration metadata.
-        :return: None.
-        """
-        if item.subsys is None:
-            return
-        else:
-            pass
-
-        target_block: Block = item.subsys
-        preserved_uid: int = target_block.uid
-        preserved_diagram = target_block.diagram
-        source_clone: Block = clone_block_for_editing(new_block)
-        source_clone.uid = preserved_uid
-        copy_block_state(source_block=source_clone, target_block=target_block)
-        target_block.uid = preserved_uid
-
-        if source_clone.diagram.node_data:
-            target_block.diagram = source_clone.diagram
-        else:
-            target_block.diagram = preserved_diagram
-        self.set_modal_template_metadata(target_block, modal_kind, modal_config)
-        set_jmarti_block_fit_bundle(target_block, None)
-        set_jmarti_block_runtime_data(target_block, None)
-
-        if self.get_modal_template_metadata(source_clone)[0] == "jmarti_line_emt":
-            set_jmarti_block_fit_bundle(target_block, get_jmarti_block_fit_bundle(source_clone))
-            set_jmarti_block_runtime_data(target_block, get_jmarti_block_runtime_data(source_clone))
-        else:
-            pass
-
-        self.rebuild_scene_from_diagram()
-        self.select_block_by_uid(preserved_uid)
-        self.mark_unapplied_changes()
-
-    def _modify_lookup_array_like_block(self, item: BlockItem | GenericBlockItem, modal_config: Dict[str, Any],
-                                        builder) -> None:
-        """
-        Reconfigure one modal-created 1D lookup block.
-
-        :param item: Target block item.
-        :param modal_config: Stored modal configuration.
-        :param builder: Lookup builder callable.
-        :return: None.
-        """
-        dialog = LookupArrayLinearDialog(
-            block_label=str(modal_config["display_label"]),
-            initial_points=list(zip(modal_config["x_points"], modal_config["y_points"])),
-            parent=self,
-        )
-
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            x_points, y_points = dialog.get_points()
-        else:
-            return
-
-        if item.subsys is None:
-            return
-        else:
-            pass
-
-        descriptor_key: str = str(modal_config["descriptor_key"])
-        if builder is build_lookup_array_linear_runtime_template:
-            new_block = builder(
-                vf=self.var_factory,
-                x_points=x_points,
-                y_points=y_points,
-                clip=descriptor_key not in {"lookup_array_linear_noclipping", "lookup_array_object_linear_noclipping"},
-                name=item.subsys.name,
-            ).block
-        else:
-            new_block = builder(
-                vf=self.var_factory,
-                x_points=x_points,
-                y_points=y_points,
-                name=item.subsys.name,
-            ).block
-
-        updated_config = dict(modal_config)
-        updated_config["x_points"] = x_points
-        updated_config["y_points"] = y_points
-        self._replace_scene_block_from_template(item, new_block, str(self.get_modal_template_metadata(item.subsys)[0]),
-                                                updated_config)
-
-    def _modify_lookup_matrix_like_block(self, item: BlockItem | GenericBlockItem, modal_config: Dict[str, Any],
-                                         builder) -> None:
-        """
-        Reconfigure one modal-created 2D lookup block.
-
-        :param item: Target block item.
-        :param modal_config: Stored modal configuration.
-        :param builder: Lookup builder callable.
-        :return: None.
-        """
-        dialog = LookupMatrixLinearDialog(
-            block_label=str(modal_config["display_label"]),
-            initial_x_points=modal_config["x_points"],
-            initial_y_points=modal_config["y_points"],
-            initial_z_matrix=modal_config["z_matrix"],
-            parent=self,
-        )
-
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            x_points, y_points, z_matrix = dialog.get_matrix_data()
-        else:
-            return
-
-        if item.subsys is None:
-            return
-        else:
-            pass
-
-        new_block = builder(
-            vf=self.var_factory,
-            x_points=x_points,
-            y_points=y_points,
-            z_matrix=z_matrix,
-            name=item.subsys.name,
-        ).block
-        updated_config = dict(modal_config)
-        updated_config["x_points"] = x_points
-        updated_config["y_points"] = y_points
-        updated_config["z_matrix"] = z_matrix
-        self._replace_scene_block_from_template(item, new_block, str(self.get_modal_template_metadata(item.subsys)[0]),
-                                                updated_config)
-
-    def _modify_emt_phase_wizard_block(self, item: BlockItem | GenericBlockItem, modal_config: Dict[str, Any]) -> None:
-        """
-        Reconfigure one modal-created EMT phase-wizard block.
-
-        :param item: Target block item.
-        :param modal_config: Stored modal configuration.
-        :return: None.
-        """
-        if str(modal_config.get("block_type", "")) == BlockType.EMT_JMARTI_LINE.name:
-            migrated_config: Dict[str, Any] = self._build_default_jmarti_line_modal_config(
-                phase_n=bool(modal_config.get("phase_n", False)),
-                phase_a=bool(modal_config.get("phase_a", True)),
-                phase_b=bool(modal_config.get("phase_b", True)),
-                phase_c=bool(modal_config.get("phase_c", True)),
-            )
-            self._modify_jmarti_line_emt_block(item, migrated_config)
-            return
-        else:
-            pass
-
-        initial_values = (
-            bool(modal_config.get("phase_n", False)),
-            bool(modal_config.get("phase_a", True)),
-            bool(modal_config.get("phase_b", True)),
-            bool(modal_config.get("phase_c", True)),
-        )
-        dialog = EmtTemplateWizardDialog(self, initial_values=initial_values)
-
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            phase_n, phase_a, phase_b, phase_c = dialog.get_values()
-        else:
-            return
-
-        if item.subsys is None:
-            return
-        else:
-            pass
-
-        block_type_name: str = str(modal_config["block_type"])
-        block_type = BlockType[block_type_name]
-
-        if _get_shunt_component_kind(block_type) is not None:
-            migrated_config: Dict[str, Any] = dict({
-                "block_type": block_type.name,
-                "phA": bool(modal_config.get("phase_a", True)),
-                "phB": bool(modal_config.get("phase_b", True)),
-                "phC": bool(modal_config.get("phase_c", True)),
-                "connection_type": (
-                    ShuntConnectionType.NeutralStar
-                    if bool(modal_config.get("phase_n", False))
-                    else ShuntConnectionType.GroundedStar
-                ),
-                "input_mode": "physical",
-                "include_r": block_type == BlockType.R_LOAD_EMT,
-                "include_l": block_type == BlockType.L_LOAD_EMT,
-                "include_c": block_type == BlockType.C_LOAD_EMT,
-                "resistance_ohm": 1.0,
-                "inductive_value": 0.01,
-                "capacitive_value": 1.0e-6,
-            })
-            self._modify_shunt_component_emt_block(item, migrated_config)
-            return
-        elif _is_load_topology_block_type(block_type):
-            migrated_config = dict({
-                "block_type": block_type.name,
-                "phA": bool(modal_config.get("phase_a", True)),
-                "phB": bool(modal_config.get("phase_b", True)),
-                "phC": bool(modal_config.get("phase_c", True)),
-                "connection_type": (
-                    ShuntConnectionType.NeutralStar
-                    if bool(modal_config.get("phase_n", False))
-                    else ShuntConnectionType.GroundedStar
-                ),
-            })
-            self._modify_load_topology_emt_block(item, migrated_config)
-            return
-        else:
-            pass
-
-        new_block = create_emt_wizard_block(
-            phase_n,
-            phase_a,
-            phase_b,
-            phase_c,
-            self.var_factory,
-            block_type=block_type,
-            item_name=item.subsys.name,
-        )
-
-        if new_block is None:
-            return
-        else:
-            pass
-
-        updated_config = dict(modal_config)
-        updated_config["phase_n"] = phase_n
-        updated_config["phase_a"] = phase_a
-        updated_config["phase_b"] = phase_b
-        updated_config["phase_c"] = phase_c
-        self._replace_scene_block_from_template(item, new_block, "emt_phase_wizard", updated_config)
-
-    def _modify_jmarti_line_emt_block(self, item: BlockItem | GenericBlockItem, modal_config: Dict[str, Any]) -> None:
-        """
-        Reconfigure one modal-created EMT J_Marti line block.
-
-        :param item: Target block item.
-        :param modal_config: Stored modal configuration.
-        :return: None.
-        """
-        dialog = JMartiLineEmtDialog(self, initial_config=modal_config)
-
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            updated_config, fit_bundle = self._apply_jmarti_line_fit_configuration(dialog.get_configuration())
-        else:
-            return
-
-        if item.subsys is None:
-            return
-        else:
-            pass
-
-        phase_n, phase_a, phase_b, phase_c = self._extract_jmarti_phase_tuple(updated_config)
-        new_block = create_emt_wizard_block(
-            phase_n,
-            phase_a,
-            phase_b,
-            phase_c,
-            self.var_factory,
-            block_type=BlockType.EMT_JMARTI_LINE,
-            item_name=item.subsys.name,
-        )
-
-        if new_block is None:
-            return
-        else:
-            pass
-
-        set_jmarti_block_fit_bundle(new_block, fit_bundle)
-        set_jmarti_block_runtime_data(new_block, None)
-        self._replace_scene_block_from_template(item, new_block, "jmarti_line_emt", updated_config)
-
-    def _modify_source_emt_block(self, item: BlockItem | GenericBlockItem, modal_config: Dict[str, Any]) -> None:
-        """
-        Reconfigure one modal-created EMT source block.
-
-        :param item: Target block item.
-        :param modal_config: Stored modal configuration.
-        :return: None.
-        """
-        block_type: BlockType = BlockType[str(modal_config["block_type"])]
-        dialog = SourceEmtDialog(block_type=block_type, parent=self, initial_config=modal_config)
-
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            updated_config: Dict[str, Any] = dict(self._build_default_source_emt_modal_config(block_type),
-                                                  **dialog.get_configuration(), block_type=block_type.name)
-        else:
-            return
-
-        if item.subsys is None:
-            return
-        else:
-            pass
-
-        new_block: Block | None = self._build_source_emt_block_model(block_type=block_type, item_name=item.subsys.name,
-                                                                     modal_config=updated_config)
-
-        if new_block is None:
-            return
-        else:
-            pass
-
-        self._replace_scene_block_from_template(item, new_block, "source_emt", updated_config)
-
-    def _modify_dc_source_emt_block(self, item: BlockItem | GenericBlockItem, modal_config: Dict[str, Any]) -> None:
-        """
-        Reconfigure one modal-created EMT DC source block.
-
-        :param item: Target block item.
-        :param modal_config: Stored modal configuration.
-        :return: None.
-        """
-        block_type: BlockType = BlockType[str(modal_config["block_type"])]
-        dialog = DcSourceEmtDialog(block_type=block_type, parent=self, initial_config=modal_config)
-
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            updated_config: Dict[str, Any] = dict(self._build_default_dc_source_emt_modal_config(block_type),
-                                                  **dialog.get_configuration(), block_type=block_type.name)
-        else:
-            return
-
-        if item.subsys is None:
-            return
-        else:
-            pass
-
-        new_block: Block | None = self._build_dc_source_emt_block_model(block_type=block_type,
-                                                                        item_name=item.subsys.name,
-                                                                        modal_config=updated_config)
-
-        if new_block is None:
-            return
-        else:
-            pass
-
-        self._replace_scene_block_from_template(item, new_block, "dc_source_emt", updated_config)
-
-    def _modify_balanced_source_emt_block(self, item: BlockItem | GenericBlockItem,
-                                          modal_config: Dict[str, Any]) -> None:
-        """
-        Reconfigure one modal-created balanced EMT source block.
-
-        :param item: Target block item.
-        :param modal_config: Stored modal configuration.
-        :return: None.
-        """
-        block_type: BlockType = BlockType[str(modal_config["block_type"])]
-        dialog = BalancedSourceEmtDialog(block_type=block_type, parent=self, initial_config=modal_config)
-
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            updated_config: Dict[str, Any] = dict(self._build_default_balanced_source_emt_modal_config(block_type),
-                                                  **dialog.get_configuration(), block_type=block_type.name)
-        else:
-            return
-
-        if item.subsys is None:
-            return
-        else:
-            pass
-
-        new_block: Block | None = self._build_balanced_source_emt_block_model(block_type=block_type,
-                                                                              item_name=item.subsys.name,
-                                                                              modal_config=updated_config)
-
-        if new_block is None:
-            return
-        else:
-            pass
-
-        self._replace_scene_block_from_template(item, new_block, "balanced_source_emt", updated_config)
-
-    def _modify_arbitrary_source_emt_block(self, item: BlockItem | GenericBlockItem,
-                                           modal_config: Dict[str, Any]) -> None:
-        """
-        Reconfigure one modal-created arbitrary-waveform EMT source block.
-
-        :param item: Target block item.
-        :param modal_config: Stored modal configuration.
-        :return: None.
-        """
-        block_type: BlockType = BlockType[str(modal_config["block_type"])]
-        dialog = ArbitrarySourceEmtDialog(block_type=block_type, parent=self, initial_config=modal_config)
-
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            updated_config: Dict[str, Any] = dict(self._build_default_arbitrary_source_emt_modal_config(block_type),
-                                                  **dialog.get_configuration(), block_type=block_type.name)
-        else:
-            return
-
-        if item.subsys is None:
-            return
-        else:
-            pass
-
-        new_block: Block | None = self._build_arbitrary_source_emt_block_model(block_type=block_type,
-                                                                               item_name=item.subsys.name,
-                                                                               modal_config=updated_config)
-
-        if new_block is None:
-            return
-        else:
-            pass
-
-        self._replace_scene_block_from_template(item, new_block, "arbitrary_source_emt", updated_config)
-
-    def _modify_transient_source_emt_block(self, item: BlockItem | GenericBlockItem,
-                                           modal_config: Dict[str, Any]) -> None:
-        """
-        Reconfigure one modal-created transient EMT source block.
-
-        :param item: Target block item.
-        :param modal_config: Stored modal configuration.
-        :return: None.
-        """
-        block_type: BlockType = BlockType[str(modal_config["block_type"])]
-        dialog = TransientSourceEmtDialog(block_type=block_type, parent=self, initial_config=modal_config)
-
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            updated_config: Dict[str, Any] = dict(self._build_default_transient_source_emt_modal_config(block_type),
-                                                  **dialog.get_configuration(), block_type=block_type.name)
-        else:
-            return
-
-        if item.subsys is None:
-            return
-        else:
-            pass
-
-        new_block: Block | None = self._build_transient_source_emt_block_model(block_type=block_type,
-                                                                               item_name=item.subsys.name,
-                                                                               modal_config=updated_config)
-
-        if new_block is None:
-            return
-        else:
-            pass
-
-        self._replace_scene_block_from_template(item, new_block, "transient_source_emt", updated_config)
-
-    def _modify_switch_emt_block(self, item: BlockItem | GenericBlockItem, modal_config: Dict[str, Any]) -> None:
-        """
-        Reconfigure one modal-created EMT switch block.
-
-        :param item: Target block item.
-        :param modal_config: Stored modal configuration.
-        :return: None.
-        """
-        dialog = SwitchEmtDialog(self, initial_config=modal_config)
-
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            switch_config = dialog.get_switch_configuration()
-        else:
-            return
-
-        if item.subsys is None:
-            return
-        else:
-            pass
-
-        new_block = emt_templates.get_switch_emt_template(vf=self.var_factory, name=item.subsys.name,
-                                                          **switch_config).block
-        self._replace_scene_block_from_template(item, new_block, "switch_emt", dict(switch_config))
-
-    def _modify_fault_emt_block(self, item: BlockItem | GenericBlockItem, modal_config: Dict[str, Any]) -> None:
-        """
-        Reconfigure one modal-created EMT fault block.
-
-        :param item: Target block item.
-        :param modal_config: Stored modal configuration.
-        :return: None.
-        """
-        initial_fault_config: Dict[str, Any] = self._build_default_fault_emt_modal_config()
-        initial_fault_config.update(modal_config)
-        dialog = FaultEmtDialog(self, initial_config=initial_fault_config)
-
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            fault_config: Dict[str, Any] = self._build_default_fault_emt_modal_config()
-            fault_config.update(dialog.get_configuration())
-        else:
-            return
-
-        if item.subsys is None:
-            return
-        else:
-            pass
-
-        new_block = emt_templates.get_fault_emt_template(
-            vf=self.var_factory,
-            fault_type=fault_config["fault_type"],
-            placement_side=fault_config["placement_side"],
-            phA=bool(fault_config["phA"]),
-            phB=bool(fault_config["phB"]),
-            phC=bool(fault_config["phC"]),
-            signal_controlled=bool(fault_config["signal_controlled"]),
-            initial_closed=bool(fault_config["initial_closed"]),
-            fault_resistance=float(fault_config["fault_resistance"]),
-            ground_resistance=float(fault_config["ground_resistance"]),
-            open_conductance=float(fault_config["open_conductance"]),
-            fault_time_constant=float(fault_config["fault_time_constant"]),
-            command_threshold=float(fault_config["command_threshold"]),
-            name=item.subsys.name,
-        ).block
-        self._replace_scene_block_from_template(item, new_block, "fault_emt", dict(fault_config))
-
-    def _modify_rlc_combo_emt_block(self, item: BlockItem | GenericBlockItem, modal_config: Dict[str, Any]) -> None:
-        """
-        Reconfigure one modal-created EMT combined RLC shunt block.
-
-        :param item: Target block item.
-        :param modal_config: Stored modal configuration.
-        :return: None.
-        """
-        dialog = self._build_rlc_combo_emt_dialog(initial_config=modal_config)
-
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            rlc_config = dialog.get_configuration()
-        else:
-            return
-
-        try:
-            template_kwargs = self._build_rlc_combo_emt_template_kwargs(rlc_config)
-        except ValueError as exc:
-            QtWidgets.QMessageBox.warning(self, "RLC Combo", str(exc))
-            return
-
-        if item.subsys is None:
-            return
-        else:
-            pass
-
-        # The dynamic editor must not overwrite the static injection
-        # connection. The EMT block stores its own symbolic topology.
-        if isinstance(self.api_object, InjectionParent):
-            pass
-        else:
-            pass
-
-        new_block = emt_templates.get_shunt_rlc_combo_emt_template(vf=self.var_factory, name=item.subsys.name,
-                                                                   **template_kwargs).block
-        self._annotate_internal_grounding_link_blocks(new_block)
-        self._replace_scene_block_from_template(item, new_block, "rlc_combo_emt", dict(rlc_config))
-
-    def _modify_induction_motor_emt_block(self, item: BlockItem | GenericBlockItem,
-                                          modal_config: Dict[str, Any]) -> None:
-        """
-        Reconfigure one modal-created induction-motor EMT block.
-
-        :param item: Target block item.
-        :param modal_config: Stored modal configuration.
-        :return: None.
-        """
-        # Reopen the same modal with the stored configuration so template edits use
-        # the exact persisted state instead of inferring anything from the block.
-        dialog: InductionMotorEmtDialog = self._build_induction_motor_emt_dialog(initial_config=modal_config)
-
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            induction_motor_config: Dict[str, Any] = dialog.get_configuration()
-        else:
-            return
-
-        if item.subsys is None:
-            return
-        else:
-            pass
-
-        new_block: Block = self._build_induction_motor_emt_block_model(
-            item_name=item.subsys.name,
-            modal_config=induction_motor_config,
-        )
-        self._replace_scene_block_from_template(item, new_block, "induction_motor_emt", dict(induction_motor_config))
-
-    def _modify_grounding_link_emt_block(self, item: BlockItem | GenericBlockItem,
-                                         modal_config: Dict[str, Any]) -> None:
-        """
-        Reconfigure one modal-created EMT grounding-link block.
-
-        :param item: Target block item.
-        :param modal_config: Stored modal configuration.
-        :return: None.
-        """
-        dialog = self._build_grounding_link_emt_dialog(initial_config=modal_config)
-
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            grounding_config = dialog.get_configuration()
-        else:
-            return
-
-        try:
-            template_kwargs = self._build_grounding_link_emt_template_kwargs(grounding_config)
-        except ValueError as exc:
-            QtWidgets.QMessageBox.warning(self, "Grounding Link", str(exc))
-            return
-
-        if item.subsys is None:
-            return
-        else:
-            pass
-
-        nested_variant: bool = len(item.subsys.external_mapping) == 0
-        new_block = emt_templates.get_grounding_link_emt_template(
-            vf=self.var_factory,
-            name=item.subsys.name,
-            nested=nested_variant,
-            **template_kwargs,
-        ).block
-        self._replace_scene_block_from_template(item, new_block, "grounding_link_emt", dict(grounding_config))
-
-    def _modify_nonlinear_resistor_emt_block(self, item: BlockItem | GenericBlockItem,
-                                             modal_config: Dict[str, Any]) -> None:
-        """
-        Reconfigure one modal-created nonlinear resistor EMT block.
-
-        :param item: Target block item.
-        :param modal_config: Stored modal configuration.
-        :return: None.
-        """
-        initial_points = list(zip(
-            list(float(value) for value in modal_config.get("voltage_points", [0.0, 1.0, 2.0])),
-            list(float(value) for value in modal_config.get("current_points", [0.0, 10.0, 20.0])),
-        ))
-        dialog = LookupArrayLinearDialog(
-            block_label="Nonlinear resistor EMT V-I curve",
-            initial_points=initial_points,
-            parent=self,
-            x_label="V",
-            y_label="I",
-            preview_enabled=True,
-            preview_title="Nonlinear resistor EMT V-I curve",
-        )
-
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            voltage_points, current_points = dialog.get_points()
-        else:
-            return
-
-        if item.subsys is None:
-            return
-        else:
-            pass
-
-        new_block = emt_templates.get_nonlinear_resistor_emt_template(
-            vf=self.var_factory,
-            voltage_points=voltage_points,
-            current_points=current_points,
-            name=item.subsys.name,
-        ).block
-        self._replace_scene_block_from_template(
-            item,
-            new_block,
-            "nonlinear_resistor_emt",
-            dict({
-                "voltage_points": voltage_points,
-                "current_points": current_points,
-            }),
-        )
-
-    def _modify_load_topology_emt_block(self, item: BlockItem | GenericBlockItem, modal_config: Dict[str, Any]) -> None:
-        """
-        Reconfigure one modal-created EMT load-topology block.
-
-        :param item: Target block item.
-        :param modal_config: Stored modal configuration.
-        :return: None.
-        """
-        block_type_name: str = str(modal_config.get("block_type", ""))
-        block_type: BlockType = BlockType[block_type_name]
-        dialog = self._build_load_topology_emt_dialog(block_type=block_type, initial_config=modal_config)
-
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            load_config = dialog.get_configuration()
-        else:
-            return
-
-        if item.subsys is None:
-            return
-        else:
-            pass
-
-        new_block = self._build_load_topology_emt_block_model(
-            block_type=block_type,
-            item_name=item.subsys.name,
-            modal_config=load_config,
-        )
-        if new_block is None:
-            return
-        else:
-            pass
-
-        self._annotate_internal_grounding_link_blocks(new_block)
-
-        # The dynamic editor must not overwrite the static load connection.
-        if isinstance(self.api_object, InjectionParent):
-            pass
-        else:
-            pass
-
-        self._replace_scene_block_from_template(
-            item,
-            new_block,
-            "load_topology_emt",
-            dict(load_config, block_type=block_type.name),
-        )
-
-    def _modify_transformer_topology_emt_block(self, item: BlockItem | GenericBlockItem,
-                                               modal_config: Dict[str, Any]) -> None:
-        """
-        Reconfigure one modal-created EMT transformer block.
-
-        :param item: Target block item.
-        :param modal_config: Stored modal configuration.
-        :return: None.
-        """
-        block_type_name: str = str(modal_config.get("block_type", ""))
-        block_type: BlockType = BlockType[block_type_name]
-        topology_config: Dict[str, Any] | None = self._resolve_transformer_topology_configuration()
-
-        if topology_config is None:
-            dialog = self._build_transformer_topology_emt_dialog(block_type=block_type, initial_config=modal_config)
-
-            if dialog.exec() == QDialog.DialogCode.Accepted:
-                topology_config = dialog.get_configuration()
-                topology_config["allow_modify_template"] = True
-            else:
-                return
-        else:
-            topology_config = dict(topology_config)
-
-        if item.subsys is None:
-            return
-        else:
-            pass
-
-        # The dynamic editor must not overwrite the static transformer winding
-        # connection stored by the network object.
-        if isinstance(self.api_object, BranchParent):
-            pass
-        else:
-            pass
-
-        new_block = self._build_transformer_topology_emt_block_model(
-            block_type=block_type,
-            item_name=item.subsys.name,
-            modal_config=topology_config,
-        )
-        if new_block is None:
-            return
-        else:
-            pass
-
-        self._replace_scene_block_from_template(
-            item,
-            new_block,
-            "transformer_topology_emt",
-            dict(topology_config, block_type=block_type.name),
-        )
-
-    def _modify_shunt_component_emt_block(self, item: BlockItem | GenericBlockItem,
-                                          modal_config: Dict[str, Any]) -> None:
-        """
-        Reconfigure one modal-created simple EMT shunt block.
-
-        :param item: Target block item.
-        :param modal_config: Stored modal configuration.
-        :return: None.
-        """
-        block_type_name: str = str(modal_config.get("block_type", ""))
-        block_type: BlockType = BlockType[block_type_name]
-        dialog = self._build_shunt_component_emt_dialog(block_type=block_type, initial_config=modal_config)
-
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            shunt_config = dialog.get_configuration()
-        else:
-            return
-
-        try:
-            template_kwargs = self._build_shunt_component_emt_template_kwargs(block_type=block_type,
-                                                                              modal_config=shunt_config)
-        except ValueError as exc:
-            QtWidgets.QMessageBox.warning(self, "EMT Shunt", str(exc))
-            return
-
-        if item.subsys is None:
-            return
-        else:
-            pass
-
-        # The dynamic editor must not overwrite the static injection
-        # connection. The EMT block stores its own symbolic topology.
-        if isinstance(self.api_object, InjectionParent):
-            pass
-        else:
-            pass
-
-        new_block = emt_templates.get_shunt_rlc_combo_emt_template(vf=self.var_factory, name=item.subsys.name,
-                                                                   **template_kwargs).block
-        self._annotate_internal_grounding_link_blocks(new_block)
-        self._replace_scene_block_from_template(
-            item,
-            new_block,
-            "shunt_component_emt",
-            dict(shunt_config, block_type=block_type.name),
-        )
-
     def get_scene_item_by_block_uid(self, block_uid: int) -> BlockItem | GenericBlockItem | None:
         """
         Find the visible scene item representing a block uid.
@@ -9524,26 +7642,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
                     block_item.build_item()
 
-                    modal_kind, modal_config = self.get_modal_template_metadata(block_model)
-                    if modal_kind == "jmarti_line_emt" and modal_config is not None:
-                        block_item.setToolTip(self._build_jmarti_modal_tooltip(modal_config))
-                    elif modal_kind == "source_emt" and modal_config is not None:
-                        block_item.setToolTip(self._build_source_emt_modal_tooltip(modal_config))
-                    elif modal_kind == "dc_source_emt" and modal_config is not None:
-                        block_item.setToolTip(self._build_dc_source_emt_modal_tooltip(modal_config))
-                    elif modal_kind == "balanced_source_emt" and modal_config is not None:
-                        block_item.setToolTip(self._build_balanced_source_emt_modal_tooltip(modal_config))
-                    elif modal_kind == "arbitrary_source_emt" and modal_config is not None:
-                        block_item.setToolTip(self._build_arbitrary_source_emt_modal_tooltip(modal_config))
-                    elif modal_kind == "transient_source_emt" and modal_config is not None:
-                        block_item.setToolTip(self._build_transient_source_emt_modal_tooltip(modal_config))
-                    elif modal_kind == "induction_motor_emt" and modal_config is not None:
-                        block_item.setToolTip(self._build_induction_motor_emt_modal_tooltip(modal_config))
-                    elif modal_kind == "fault_emt" and modal_config is not None:
-                        block_item.setToolTip(self._build_fault_emt_modal_tooltip(modal_config))
-                    else:
-                        pass
-
                     self.scene.addItem(block_item)
                     block_item.setPos(QPointF(node.x, node.y))
 
@@ -9586,25 +7684,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                                 )
                     self.scene.addItem(item)
                     item.setPos(QPointF(node.x, node.y))
-                    modal_kind, modal_config = self.get_modal_template_metadata(block_model)
-                    if modal_kind == "jmarti_line_emt" and modal_config is not None:
-                        item.setToolTip(self._build_jmarti_modal_tooltip(modal_config))
-                    elif modal_kind == "source_emt" and modal_config is not None:
-                        item.setToolTip(self._build_source_emt_modal_tooltip(modal_config))
-                    elif modal_kind == "dc_source_emt" and modal_config is not None:
-                        item.setToolTip(self._build_dc_source_emt_modal_tooltip(modal_config))
-                    elif modal_kind == "balanced_source_emt" and modal_config is not None:
-                        item.setToolTip(self._build_balanced_source_emt_modal_tooltip(modal_config))
-                    elif modal_kind == "arbitrary_source_emt" and modal_config is not None:
-                        item.setToolTip(self._build_arbitrary_source_emt_modal_tooltip(modal_config))
-                    elif modal_kind == "transient_source_emt" and modal_config is not None:
-                        item.setToolTip(self._build_transient_source_emt_modal_tooltip(modal_config))
-                    elif modal_kind == "induction_motor_emt" and modal_config is not None:
-                        item.setToolTip(self._build_induction_motor_emt_modal_tooltip(modal_config))
-                    elif modal_kind == "fault_emt" and modal_config is not None:
-                        item.setToolTip(self._build_fault_emt_modal_tooltip(modal_config))
-                    else:
-                        pass
+
                     if not isinstance(item, PairedItem):
                         brush = item.brush()
                         brush.setColor(QColor(node.color))

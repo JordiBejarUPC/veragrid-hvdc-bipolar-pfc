@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
-from VeraGridEngine.Templates.template_definiton import TemplateDefinition, TemplateProp
+from VeraGridEngine.Templates.template_definition import TemplateDefinition, TemplateProp
 from VeraGridEngine.enumerations import ParamPowerFlowReferenceType, VarPowerFlowReferenceType, DeviceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import Block
@@ -65,8 +65,8 @@ def get_load_rms_template(
     templ.block.children.append(block)
 
     templ.block.external_mapping = {
-        VarPowerFlowReferenceType.Va: inputs[0],
-        VarPowerFlowReferenceType.Vm: inputs[1],
+        VarPowerFlowReferenceType.Va: inputs[1],
+        VarPowerFlowReferenceType.Vm: inputs[0],
         VarPowerFlowReferenceType.P: Pl,
         VarPowerFlowReferenceType.Q: Ql
     }
