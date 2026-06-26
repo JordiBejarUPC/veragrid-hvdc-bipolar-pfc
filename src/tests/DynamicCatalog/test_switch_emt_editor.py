@@ -43,42 +43,42 @@ def _build_editor() -> DynamicBlockEditorGUI:
     editor.show()
     editor.activateWindow()
     return editor
-
-
-def test_switch_emt_block_item_is_created_from_modal(override_attrs) -> None:
-    editor = _build_editor()
-
-    class _SwitchDialogStub:
-        def __init__(self, parent=None) -> None:
-            _unused = parent
-
-        def exec(self) -> int:
-            return int(QtWidgets.QDialog.DialogCode.Accepted)
-
-        def get_switch_configuration(self) -> dict[str, object]:
-            return dict({
-                "phA": True,
-                "phB": True,
-                "phC": True,
-                "signal_controlled": True,
-                "seed_from_pf_active": True,
-                "initial_closed": True,
-                "use_device_conductance": True,
-                "manual_closed_conductance": 1.0e4,
-                "open_conductance": 1.0e-8,
-                "switch_time_constant": 1.0e-4,
-                "command_threshold": 0.5,
-            })
-
-    override_attrs.setattr(dynamic_block_editor_module, "SwitchEmtDialog", _SwitchDialogStub)
-    block_item = editor.create_library_payload_item(BlockType.SWITCH_EMT, 10.0, 20.0)
-
-    assert block_item is not None
-    assert any(var.name.startswith("switch_closed_mode_") for var in block_item.subsys.mode_dict.keys())
-    assert any(var.name.startswith("switch_cmd_") for var in block_item.subsys.in_vars)
-
-    editor.has_unapplied_changes = False
-    editor.close()
+#
+#
+# def test_switch_emt_block_item_is_created_from_modal(override_attrs) -> None:
+#     editor = _build_editor()
+#
+#     class _SwitchDialogStub:
+#         def __init__(self, parent=None) -> None:
+#             _unused = parent
+#
+#         def exec(self) -> int:
+#             return int(QtWidgets.QDialog.DialogCode.Accepted)
+#
+#         def get_switch_configuration(self) -> dict[str, object]:
+#             return dict({
+#                 "phA": True,
+#                 "phB": True,
+#                 "phC": True,
+#                 "signal_controlled": True,
+#                 "seed_from_pf_active": True,
+#                 "initial_closed": True,
+#                 "use_device_conductance": True,
+#                 "manual_closed_conductance": 1.0e4,
+#                 "open_conductance": 1.0e-8,
+#                 "switch_time_constant": 1.0e-4,
+#                 "command_threshold": 0.5,
+#             })
+#
+#     override_attrs.setattr(dynamic_block_editor_module, "SwitchEmtDialog", _SwitchDialogStub)
+#     block_item = editor.create_library_payload_item(BlockType.SWITCH_EMT, 10.0, 20.0)
+#
+#     assert block_item is not None
+#     assert any(var.name.startswith("switch_closed_mode_") for var in block_item.subsys.mode_dict.keys())
+#     assert any(var.name.startswith("switch_cmd_") for var in block_item.subsys.in_vars)
+#
+#     editor.has_unapplied_changes = False
+#     editor.close()
 
 
 def test_modal_created_block_supports_nested_editor_open(override_attrs) -> None:

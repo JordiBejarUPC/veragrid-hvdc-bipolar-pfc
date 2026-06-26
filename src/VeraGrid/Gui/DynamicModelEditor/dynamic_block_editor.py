@@ -6,15 +6,12 @@
 from __future__ import annotations
 
 import math
-import uuid
+
 import re
 import copy
-from enum import Enum
-from typing import List, Dict, Optional, Any, Set, cast
+from typing import List, Dict, Optional, Any
 from PySide6 import QtWidgets, QtGui, QtCore
-from PySide6.QtWidgets import (QApplication, QHBoxLayout, QGraphicsScene, QGraphicsView, QGraphicsItem,
-                               QGraphicsRectItem, QGraphicsEllipseItem, QGraphicsPolygonItem,
-                               QGraphicsTextItem, QMenu, QGraphicsPathItem,
+from PySide6.QtWidgets import (QGraphicsItem, QMenu, QGraphicsPathItem,
                                QDialog, QVBoxLayout, QDialogButtonBox, QLabel, QListWidget, QWidget, QScrollArea,
                                QListWidgetItem, QFormLayout, QSpinBox, QLineEdit, QDoubleSpinBox, QTableWidget,
                                QTableWidgetItem, QColorDialog, QPlainTextEdit, QCheckBox)
@@ -68,22 +65,16 @@ from VeraGridEngine.Utils.Symbolic.block import Block, find_connections, find_co
 from VeraGridEngine.Utils.Symbolic.equation_decomposer import EquationDecomposer
 from VeraGrid.Gui.DynamicModelEditor.block_editor import Ui_BlockEditorWindow
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_dialogs import AddBlockVariableDialog, AddEquationDialog, \
-    AddParameterDialog, EmtTemplateWizardDialog, ExpressionTextEditorDialog, ExpressionValidationHighlighter, \
-    GenericBlockDialog
+    AddParameterDialog, EmtTemplateWizardDialog, ExpressionTextEditorDialog, GenericBlockDialog
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics import BlockItem, BlockPositionChangedCallback, \
-    BranchingItem, ConnectionItem, DiagramScene, ElbowItem, GenericBlockItem, GraphicsView, Node, \
-    OrthogonalRouter, PairedItem, PortItem, ProtectedConnectionBlockItem, ResizeHandle, \
-    _transformer_modal_config_allows_modify
+    BranchingItem, ConnectionItem, DiagramScene, GenericBlockItem, GraphicsView, PairedItem, PortItem, ProtectedConnectionBlockItem
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_library import LibraryLeafSpec, SignalPairPayload, \
-    _library_leaf_label_sort_key, is_supported_library_payload
+    _library_leaf_label_sort_key
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_models import BlockParameterKind, BlockParameterRow, \
-    BlockTableFilterProxyModel, BlockValueDelegate, DynamicsLibraryTreeModel, EditParameterDialog, InspectModel, \
+    BlockTableFilterProxyModel, DynamicsLibraryTreeModel, EditParameterDialog, InspectModel, \
     LibraryTreeFilterProxyModel, WrappableBlockTableModel, _build_block_uid_lookup, \
-    _ensure_block_tree_names, _new_uid, add_variable_to_block, block_namespace_contains_name, \
-    block_requires_editor_connection_bootstrap, build_block_symbol_namespace, build_equations_rows, \
-    build_parameters_rows, build_variables_rows, clone_block_for_editing, clone_template_diagram, \
-    copy_block_state, initialize_connected_bus_models_for_editor_assignment, is_valid_symbol_name, \
-    remap_serialized_uids, update_source_dict
+    _ensure_block_tree_names, add_variable_to_block, block_namespace_contains_name, \
+    block_requires_editor_connection_bootstrap, build_block_symbol_namespace, clone_block_for_editing, copy_block_state, initialize_connected_bus_models_for_editor_assignment, is_valid_symbol_name
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_validation import ValidationSection, ValidationSectionDialog, \
     ValidationTraversalNode, add_validation_detail, add_validation_status_detail, \
     append_missing_port_messages_for_direction, append_port_vars_to_phase_count, append_vars_to_name_uid_map, \
@@ -122,11 +113,7 @@ from VeraGrid.Gui.DynamicModelEditor.dyn_template_editor_dialogue import DynTemp
 
 from dataclasses import dataclass
 
-# from VeraGridEngine.Devices.Dynamic.static_parameter_mapping_rms import devices_static_params_mapping
 import VeraGrid.ThirdParty.darkdetect as darkdetect
-
-
-# from VeraGridEngine.Templates.Rms.common import create_block_of_type, create_generic_block, create_emt_wizard_block
 
 
 def _iter_child_blocks(block: Block) -> List[Block]:
@@ -460,13 +447,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         self.ui.splitter.setStretchFactor(0, 6)
         self.ui.splitter.setStretchFactor(1, 10)
-
-        # self.ui.block_editor_actionCheckModel.triggered.connect(self.open_inspect_dialog)
-        # self.ui.actionCenter.triggered.connect(self.center_view_on_items)
-        # self.ui.actionZoom_in.triggered.connect(self.zoom_in_view)
-        # self.ui.actionZoom_out.triggered.connect(self.zoom_out_view)
-        # self.ui.action_delete_all.triggered.connect(self.delete_all_blocks_with_confirmation)
-        # self.ui.actionValidate.triggered.connect(self.show_model_consistency_validation)
 
         self.var_factory = var_factory
         self.api_object = api_object
@@ -834,8 +814,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
         self.rebuild_scene_from_diagram()
-
-        # for every in variable and our variable in the main block of the editor we build a block item to connect these variables
 
     def set_modal_template_metadata(self, block: Block,
                                     kind: str,
