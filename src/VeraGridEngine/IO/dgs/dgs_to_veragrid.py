@@ -7,6 +7,7 @@ import math
 import numpy as np
 from typing import Dict, List, Set, Tuple, TypeVar
 
+from VeraGridEngine import BusGraphicType
 from VeraGridEngine.enumerations import (
     ExternalGridMode,
     SwitchGraphicType,
@@ -573,6 +574,11 @@ def convert_dgs_to_bus(elmterm: ElmTerm,
         xpos=float(x) * 5,
         ypos=float(-y) * 5,
         active=(int(elmterm.outserv or 0) == 0),
+        graphic_type=(
+            BusGraphicType.BusBar
+            if int(elmterm.iUsage or 0) == 0
+            else BusGraphicType.Connectivity
+        ),
     )
 
     if float(elmterm.vtarget) > 0.0:
