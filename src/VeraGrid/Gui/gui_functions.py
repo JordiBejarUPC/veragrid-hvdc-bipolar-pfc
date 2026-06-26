@@ -1392,3 +1392,203 @@ def create_menu_button(parent,
             toolbar.removeAction(action)
 
     return button
+
+
+class WaveformPoint:
+    __slots__ = ("time", "value")
+
+    def __init__(self, time: float, value: float):
+        self.time = time
+        self.value = value
+
+    def __repr__(self):
+        return f"WaveformPoint({self.time}, {self.value})"
+
+
+class WaveformEditorDialog(QtWidgets.QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Waveform editor")
+        self.setMinimumSize(600, 500)
+
+        layout = QtWidgets.QVBoxLayout(self)
+
+        button_layout = QtWidgets.QHBoxLayout()
+        self.add_btn = QtWidgets.QPushButton("Add point")
+        self.delete_btn = QtWidgets.QPushButton("Delete point")
+        self.up_btn = QtWidgets.QPushButton("Move up")
+        self.down_btn = QtWidgets.QPushButton("Move down")
+
+        self.add_btn.clicked.connect(self.add_point)
+        self.delete_btn.clicked.connect(self.delete_point)
+        self.up_btn.clicked.connect(self.move_up)
+        self.down_btn.clicked.connect(self.move_down)
+
+        button_layout.addWidget(self.add_btn)
+        button_layout.addWidget(self.delete_btn)
+        button_layout.addWidget(self.up_btn)
+        button_layout.addWidget(self.down_btn)
+        layout.addLayout(button_layout)
+
+        self.table = QtWidgets.QTableWidget(0, 2)
+        self.table.setHorizontalHeaderLabels(["time", "value"])
+        self.table.horizontalHeader().setStretchLastSection(True)
+        self.table.setSelectionBehavior(QtWidgets.QTableWidget.SelectionBehavior.SelectRows)
+        layout.addWidget(self.table)
+
+        try:
+            from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
+            from matplotlib.figure import Figure
+            self.figure = Figure()
+            self.canvas = FigureCanvasQTAgg(self.figure)
+            self.ax = self.figure.add_subplot(111)
+            layout.addWidget(self.canvas)
+        except Exception:
+            self.canvas = None
+            self.ax = None
+
+        button_box = QtWidgets.QDialogButtonBox(
+            QtWidgets.QDialogButtonBox.StandardButton.Ok | QtWidgets.QDialogButtonBox.StandardButton.Cancel
+        )
+        button_box.accepted.connect(self.accept)
+        button_box.rejected.connect(self.reject)
+        layout.addWidget(button_box)
+
+    def add_point(self):
+        row = self.table.rowCount()
+        self.table.insertRow(row)
+        self.table.setItem(row, 0, QtWidgets.QTableWidgetItem("0.0"))
+        self.table.setItem(row, 1, QtWidgets.QTableWidgetItem("0.0"))
+        self.update_plot()
+
+    def delete_point(self):
+        rows = sorted(set(i.row() for i in self.table.selectedIndexes()), reverse=True)
+        for r in rows:
+            self.table.removeRow(r)
+        self.update_plot()
+
+    def move_up(self):
+        rows = sorted(set(i.row() for i in self.table.selectedIndexes()))
+        if len(rows) == 0 or rows[0] == 0:
+            return
+        for r in rows:
+            self.swap_rows(r, r - 1)
+        self.update_plot()
+
+    def move_down(self):
+        rows = sorted(set(i.row() for i in self.table.selectedIndexes()), reverse=True)
+        if len(rows) == 0 or rows[-1] == self.table.rowCount() - 1:
+            return
+        for r in rows:
+            self.swap_rows(r, r + 1)
+        self.update_plot()
+
+    def swap_rows(self, r1: int, r2: int):
+        t1 = self.table.item(r1, 0)
+        v1 = self.table.item(r1, 1)
+        t2 = self.table.item(r2, 0)
+        v2 = self.table.item(r2, 1)
+
+        if t1 is None:
+            t1 = QtWidgets.QTableWidgetItem("0.0")
+            self.table.setItem(r1, 0, t1)
+        if v1 is None:
+            v1 = QtWidgets.QTableWidgetItem("0.0")
+            self.table.setItem(r1, 1, v1)
+        if t2 is None:
+            t2 = QtWidgets.QTableWidgetItem("0.0")
+            self.table.setItem(r2, 0, t2)
+        if v2 is None:
+            v2 = QtWidgets.QTableWidgetItem("0.0")
+            self.table.setItem(r2, 1, v2)
+
+        t1_text = t1.text()
+        v1_text = v1.text()
+        t1.setText(t2.text())
+        v1.setText(v2.text())
+        t2.setText(t1_text)
+        v2.setText(v1_text)
+
+    def update_plot(self):
+        if self.canvas is None:
+            return
+
+        times = []
+        values = []
+        for row in range(self.table.rowCount()):
+            t_item = self.table.item(row, 0)
+            v_item = self.table.item(row, 1)
+            if t_item is not None and v_item is not None:
+                try:
+                    times.append(float(t_item.text()))
+                    values.append(float(v_item.text()))
+                except ValueError:
+                    pass
+
+        self.ax.clear()
+        if times:
+            self.ax.plot(times, values, "o-")
+            self.ax.set_xlabel("time")
+            self.ax.set_ylabel("value")
+            self.ax.grid(True)
+        self.canvas.draw_idle()
+
+    def set_points(self, points):
+        self.table.setRowCount(0)
+        for p in points:
+            row = self.table.rowCount()
+            self.table.insertRow(row)
+            self.table.setItem(row, 0, QtWidgets.QTableWidgetItem(str(p[0])))
+            self.table.setItem(row, 1, QtWidgets.QTableWidgetItem(str(p[1])))
+        self.update_plot()
+
+    def get_points(self):
+        points = []
+        for row in range(self.table.rowCount()):
+            t_item = self.table.item(row, 0)
+            v_item = self.table.item(row, 1)
+            if t_item is not None and v_item is not None:
+                try:
+                    t = float(t_item.text())
+                    v = float(v_item.text())
+                    points.append(np.array([t, v], dtype=np.float64))
+                except ValueError:
+                    pass
+        return points
+
+
+class SequenceDelegate(QtWidgets.QStyledItemDelegate):
+
+    def __init__(self, parent):
+        QtWidgets.QStyledItemDelegate.__init__(self, parent)
+
+    def paint(self, painter, option, index):
+        painter.save()
+
+        btn_option = QtWidgets.QStyleOptionButton()
+        btn_option.rect = option.rect
+
+        val = index.model().data(index, QtCore.Qt.ItemDataRole.EditRole)
+        if val is not None and len(val) > 0:
+            btn_option.text = f"Edit waveform ({len(val)} pts)"
+        else:
+            btn_option.text = "Edit waveform"
+
+        QtWidgets.QApplication.style().drawControl(
+            QtWidgets.QStyle.CE_PushButton, btn_option, painter
+        )
+
+        painter.restore()
+
+    def editorEvent(self, event, model, option, index):
+        if event.type() == QtCore.QEvent.Type.MouseButtonRelease:
+            if not (index.flags() & QtCore.Qt.ItemFlag.ItemIsEditable):
+                return False
+            dialog = WaveformEditorDialog(self.parent())
+            current = index.model().data(index, QtCore.Qt.ItemDataRole.EditRole)
+            if current is not None:
+                dialog.set_points(current)
+            if dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                model.setData(index, dialog.get_points())
+            return True
+        return False
