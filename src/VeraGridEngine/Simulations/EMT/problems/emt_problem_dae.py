@@ -5912,17 +5912,17 @@ class EmtProblemDae(EmtProblemTemplate):
                     if abs(vt_ph) <= 1e-12:
                         i_t = 0.0 + 0.0j
                     else:
-                        i_t = np.conj(st_phase_total / vt_ph)
+                        i_t = np.conj(st_total / vt_ph)
                 else:
                     if abs(vf_ph) <= 1e-12:
                         i_f = 0.0 + 0.0j
                     else:
-                        i_f = np.conj(sf_phase_total / vf_ph)
+                        i_f = np.conj(sf_total / vf_ph)
 
                     if abs(vt_ph) <= 1e-12:
                         i_t = 0.0 + 0.0j
                     else:
-                        i_t = np.conj(st_phase_total / vt_ph)
+                        i_t = np.conj(st_total / vt_ph)
 
                 i_f0: float = np.sqrt(2.0) * np.imag(i_f)
                 i_t0: float = np.sqrt(2.0) * np.imag(i_t)
@@ -6154,12 +6154,12 @@ class EmtProblemDae(EmtProblemTemplate):
                 if abs(vf_ph) <= 1e-12:
                     i_f = 0.0 + 0.0j
                 else:
-                    i_f = np.conj(s_f_phase / vf_ph)
+                    i_f = np.conj(s_f_3ph / vf_ph)
 
                 if abs(vt_ph) <= 1e-12:
                     i_t = 0.0 + 0.0j
                 else:
-                    i_t = np.conj(s_t_phase / vt_ph)
+                    i_t = np.conj(s_t_3ph / vt_ph)
 
             elif ph == "B":
                 vf_ph = v_f_bus * np.exp(-1j * alpha)
@@ -6168,12 +6168,12 @@ class EmtProblemDae(EmtProblemTemplate):
                 if abs(vf_ph) <= 1e-12:
                     i_f = 0.0 + 0.0j
                 else:
-                    i_f = np.conj(s_f_phase / vf_ph)
+                    i_f = np.conj(s_f_3ph / vf_ph)
 
                 if abs(vt_ph) <= 1e-12:
                     i_t = 0.0 + 0.0j
                 else:
-                    i_t = np.conj(s_t_phase / vt_ph)
+                    i_t = np.conj(s_t_3ph / vt_ph)
 
             elif ph == "C":
                 vf_ph = v_f_bus * np.exp(+1j * alpha)
@@ -6182,12 +6182,12 @@ class EmtProblemDae(EmtProblemTemplate):
                 if abs(vf_ph) <= 1e-12:
                     i_f = 0.0 + 0.0j
                 else:
-                    i_f = np.conj(s_f_phase / vf_ph)
+                    i_f = np.conj(s_f_3ph / vf_ph)
 
                 if abs(vt_ph) <= 1e-12:
                     i_t = 0.0 + 0.0j
                 else:
-                    i_t = np.conj(s_t_phase / vt_ph)
+                    i_t = np.conj(s_t_3ph / vt_ph)
 
             else:
                 raise ValueError(f"Unsupported phase label in Bergeron runtime: {ph}")
@@ -6375,12 +6375,12 @@ class EmtProblemDae(EmtProblemTemplate):
                 if abs(vf_ph) <= 1.0e-12:
                     i_f = 0.0 + 0.0j
                 else:
-                    i_f = np.conj(s_f_phase / vf_ph)
+                    i_f = np.conj(s_f_3ph / vf_ph)
 
                 if abs(vt_ph) <= 1.0e-12:
                     i_t = 0.0 + 0.0j
                 else:
-                    i_t = np.conj(s_t_phase / vt_ph)
+                    i_t = np.conj(s_t_3ph / vt_ph)
 
             v_f0_phasor_red[phase_index] = vf_ph
             v_t0_phasor_red[phase_index] = vt_ph
