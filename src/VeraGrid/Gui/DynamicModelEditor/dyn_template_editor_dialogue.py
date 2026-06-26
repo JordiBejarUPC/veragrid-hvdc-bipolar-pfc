@@ -19,11 +19,11 @@ class DynTemplatesEditorDialog(QDialog):
     Dynamic templates editor dialogue
     """
 
-    def __init__(self, property_list: List[TemplateProp]):
+    def __init__(self, name: str, property_list: List[TemplateProp]):
         QtWidgets.QDialog.__init__(self)
         self.setObjectName("self")
         self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.NoContextMenu)
-        self.setWindowTitle("Template properties")
+        self.setWindowTitle("Edit "+name+" Template")
         self.setMinimumSize(600, 400)
         self.property_list = property_list
 

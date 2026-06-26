@@ -1459,30 +1459,16 @@ def build_uncoupled_line_static_matrices(
     """
     Build uncoupled fallback line matrices.
 
-    This preserves the historical fallback used when no tower/template matrix is
-    available. The historical code uses ``X = line.B`` and ``B = line.X`` in
-    this fallback; that convention is preserved here to avoid a hidden numerical
-    behavior change in the mapping refactor.
+    This fallback uses the physical branch quantities directly when no
+    tower/template matrix is available.
 
     :param line: Line-like branch device.
     :param omega_base: Base angular frequency.
     :return: Tuple ``(R, L, C)`` in EMT per-unit form.
     """
     r_value: float = float(line.R)
-
-    # Historical fallback naming intentionally preserved for the common case.
-    # Some saved grids still rely on ``line.B`` feeding the series-reactance slot.
-    # However, when that historical slot is zero while the direct line reactance is
-    # non-zero, the EMT pi-line becomes singular and loses all series dynamics.
-    # In that narrow case we prefer the physical direct interpretation.
-    x_value: float = float(line.B)
-    b_value: float = float(line.X)
-
-    if abs(x_value) <= 1.0e-15 and abs(float(line.X)) > 1.0e-15:
-        x_value = float(line.X)
-        b_value = float(line.B)
-    else:
-        pass
+    x_value: float = float(line.X)
+    b_value: float = float(line.B)
 
     r_full: np.ndarray = np.zeros((3, 3), dtype=np.float64)
     x_full: np.ndarray = np.zeros((3, 3), dtype=np.float64)
@@ -1556,13 +1542,41 @@ def build_line_static_matrices(
         bsh_full: np.ndarray = np.imag(y_pu)
         c_full = (bsh_full / (omega_base + 1.0e-20)) / 2.0
     else:
-        r_full: np.ndarray
-        l_full: np.ndarray
-        c_full: np.ndarray
-        r_full, l_full, c_full = build_uncoupled_line_static_matrices(
-            line=line,
-            omega_base=omega_base,
-        )
+        line_ys_matrix: np.ndarray = line.ys.values
+        line_ysh_matrix: np.ndarray = line.ysh.values
+        active_indices: List[int] = get_line_active_global_indices(line)
+        matrix_size: int = int(line_ys_matrix.shape[0])
+
+        if matrix_size > 0 and int(line_ysh_matrix.shape[0]) == matrix_size:
+            if matrix_size == 4 and len(active_indices) > 0:
+                reduced_selector: np.ndarray = np.array(active_indices, dtype=int)
+                ys_reduced: np.ndarray = line_ys_matrix[np.ix_(reduced_selector, reduced_selector)]
+                ysh_reduced: np.ndarray = line_ysh_matrix[np.ix_(reduced_selector, reduced_selector)]
+            else:
+                ys_reduced = line_ys_matrix
+                ysh_reduced = line_ysh_matrix
+
+            try:
+                z_pu: np.ndarray = np.linalg.inv(ys_reduced)
+            except np.linalg.LinAlgError:
+                z_pu = np.linalg.pinv(ys_reduced)
+
+            ysh_pu: np.ndarray = ysh_reduced
+            r_full = np.real(z_pu)
+            x_full: np.ndarray = np.imag(z_pu)
+            l_full = x_full / (omega_base + 1.0e-20)
+            bsh_full: np.ndarray = np.imag(ysh_pu)
+            c_full = (bsh_full / (omega_base + 1.0e-20)) / 2.0
+        else:
+            r_full = np.ndarray((0, 0), dtype=np.float64)
+            l_full = np.ndarray((0, 0), dtype=np.float64)
+            c_full = np.ndarray((0, 0), dtype=np.float64)
+
+        if r_full.size <= 0 or l_full.size <= 0 or c_full.size <= 0:
+            r_full, l_full, c_full = build_uncoupled_line_static_matrices(
+                line=line,
+                omega_base=omega_base,
+            )
 
     active_indices: List[int] = get_line_active_global_indices(line)
     matrix_size: int = int(r_full.shape[0])
