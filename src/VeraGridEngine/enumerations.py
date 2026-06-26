@@ -2496,6 +2496,8 @@ class ResultTypes(Enum):
     VscLosses = 'Vsc losses'
     VscPowerFromPositive = 'Vsc power "from" positive pole'
     VscPowerFromNegative = 'Vsc power "from" negative pole'
+    VscPdc = 'Vsc Pdc'
+    VscVdc = 'Vsc Vdc'
     VscLoading = 'Vsc loading'
 
     VscPowerTo = 'Vsc power "to"'
