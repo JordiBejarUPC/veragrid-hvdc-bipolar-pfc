@@ -98,6 +98,7 @@ from VeraGridEngine.Utils.Symbolic.symbolic import (symbolic_to_string, string_t
                                                     get_symbolic_parser_function_names,
                                                     Expr, Var, Const, Comparison)
 from VeraGridEngine.Utils.Symbolic.symbolic_io import duplicate_block
+from VeraGridEngine.Utils.Symbolic.bus_rms_template import get_bus_rms_algebraic_vars
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
 from VeraGridEngine.enumerations import BlockType, EmtFaultPlacementSide, FaultType
 from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_fit_options import JMartiFitOptions
@@ -303,17 +304,17 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     """
 
     dirtyStateChanged = Signal(bool)
-    BLOCK_BORDER: QColor = QColor("#36536b")
+    BLOCK_BORDER: QColor = QColor("#202124")
     BLOCK_BORDER_SELECTED: QColor = QColor("#cc6f2c")
     BLOCK_TITLE: QColor = QColor("#173042")
     BLOCK_SHADOW: QColor = QColor(24, 42, 56, 45)
     INPUT_PORT_FILL: QColor = QColor("#2d7dd2")
     OUTPUT_PORT_FILL: QColor = QColor("#2a9d6f")
     PORT_BORDER: QColor = QColor("#173042")
-    WIRE_COLOR: QColor = QColor("#587291")
+    WIRE_COLOR: QColor = QColor("#000000")
     WIRE_HOVER_COLOR: QColor = QColor("#cc6f2c")
     HANDLE_FILL: QColor = QColor("#36536b")
-    DEFAULT_BLOCK_FILL: QColor = QColor("#d9e7f5")
+    DEFAULT_BLOCK_FILL: QColor = QColor("#f5fdff")
     PAIRED_ITEM_FILL: QColor = QColor("#9fa8da")
     BLOCK_FILL_ALL_CONNECTED: QColor = QColor("#a5d6a7")
     BLOCK_FILL_DISCONNECTED: QColor = QColor("#ffe082")
@@ -4186,6 +4187,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             source_port.subsystem._refresh_connection_color()
         if isinstance(target_port.subsystem, BlockItem):
             target_port.subsystem._refresh_connection_color()
+
+        if isinstance(source_port, PortItem):
+            source_port._update_port_visibility()
+        if isinstance(target_port, PortItem):
+            target_port._update_port_visibility()
 
         self.scene.removeItem(item)
 
