@@ -8996,9 +8996,15 @@ class Assets:
 
             for elm in elms:  # for each device type
                 lst: List[ParamPowerFlowReferenceType] = list()
-                for prop in elm.LOCAL_PROPERTY_DECLARATIONS:
+                # The dynamic mapping contract must include inherited schema
+                # declarations because many static-to-dynamic references live in
+                # shared parent classes such as InjectionParent, LoadParent,
+                # BranchParent and ShuntParent.
+                for prop in elm.CLASS_PROPERTY_DECLARATIONS:
                     if prop.dyn_ref is not None:
                         lst.append(prop.dyn_ref)
+                    else:
+                        pass
                 data[elm.device_type] = lst
 
         return data

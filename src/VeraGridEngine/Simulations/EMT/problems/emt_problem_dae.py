@@ -58,18 +58,18 @@ from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import (
     EmtBoundaryUpdateProtocol,
     EmtProblemTemplate,
 )
-# from VeraGridEngine.Utils.Symbolic.static_parameter_mapping import (
-#     abc_to_nabc,
-#     assign_static_api_object_mapping_for_device,
-#     get_load_power_phase_values_pu_abc,
-#     get_shunt_phase_values_pu_abc,
-# )
-from VeraGridEngine.Devices.Dynamic.static_parameter_mapping_rms import (
+from VeraGridEngine.Devices.Dynamic.static_parameter_mapping import (
     abc_to_nabc,
     assign_static_api_object_mapping_for_device,
     get_load_power_phase_values_pu_abc,
     get_shunt_phase_values_pu_abc,
 )
+# from VeraGridEngine.Devices.Dynamic.static_parameter_mapping_rms import (
+#     abc_to_nabc,
+#     assign_static_api_object_mapping_for_device,
+#     get_load_power_phase_values_pu_abc,
+#     get_shunt_phase_values_pu_abc,
+# )
 
 
 def _tic() -> float:

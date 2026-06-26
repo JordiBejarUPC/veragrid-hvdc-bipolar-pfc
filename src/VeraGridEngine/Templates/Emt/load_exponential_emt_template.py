@@ -11,6 +11,7 @@ import numpy as np
 
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
+from VeraGridEngine.Templates.template_definition import TemplateDefinition, TemplateProp
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import (
     _get_active_phases,
     _get_delta_branch_specs,
@@ -18,7 +19,7 @@ from VeraGridEngine.Templates.Emt.load_RLC_emt_template import (
     wrap_delta_referenced_load_emt_template,
     wrap_ground_referenced_load_emt_template,
 )
-from VeraGridEngine.Templates.template_definiton import TemplateDefinition, TemplateProp
+from VeraGridEngine.Templates.template_definition import TemplateDefinition, TemplateProp
 from VeraGridEngine.Utils.Symbolic.block import Expr, Var
 from VeraGridEngine.Utils.Symbolic.symbolic import abs as symbolic_abs
 from VeraGridEngine.enumerations import DeviceType, ParamPowerFlowReferenceType, ShuntConnectionType, VarPowerFlowReferenceType
@@ -87,6 +88,33 @@ def _get_api_power_references(phase_label: str) -> Tuple[ParamPowerFlowReference
                 raise ValueError(f"Unsupported phase label '{phase_label}'")
 
     return p_reference, q_reference
+
+
+# ---
+class ExponentialLoadEmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(
+            vf,
+            params=[
+                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool),
+                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool),
+                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool),
+                TemplateProp(name="connection_type", units="", descr="Star connection topology.", tpe=ShuntConnectionType),
+                TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str),
+            ]
+        )
+
+    def eval(self) -> EmtModelTemplate:
+        phA: bool = self.get_value("phA")
+        phB: bool = self.get_value("phB")
+        phC: bool = self.get_value("phC")
+        connection_type: ShuntConnectionType | None = self.get_value("connection_type")
+        name: str = self.get_value("name")
+
+        return get_exponential_load_emt(
+            self.vf, phA, phB, phC, connection_type, name
+        )
 
 
 def get_exponential_load_emt(
