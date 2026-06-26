@@ -90,7 +90,6 @@ from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.lookup_table_dialog import
 from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.jmarti_line_emt_dialog import JMartiLineEmtDialog
 from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.shunt_component_emt_dialog import ShuntComponentEmtDialog
 from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.transformer_topology_emt_dialog import TransformerTopologyEmtDialog
-from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.fault_emt_dialog import FaultEmtDialog
 from VeraGrid.Gui.Icons.icon_associations import device_type_icons
 
 from VeraGrid.Gui.messages import yes_no_question
@@ -110,7 +109,6 @@ from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_runtime import get_jmarti_
 from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_runtime import set_jmarti_block_fit_bundle
 from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_runtime import set_jmarti_block_runtime_data
 from VeraGrid.Gui.DynamicModelEditor.dyn_template_editor_dialogue import DynTemplatesEditorDialog
-
 from dataclasses import dataclass
 
 import VeraGrid.ThirdParty.darkdetect as darkdetect
@@ -2048,15 +2046,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         #         config=dict(switch_config),
         #     )
 
-        elif block_type == BlockType.FAULT_EMT:
-            default_fault_config: Dict[str, Any] = self._build_default_fault_emt_modal_config()
-            dialog = FaultEmtDialog(self, initial_config=default_fault_config)
-
-            if dialog.exec() == QDialog.DialogCode.Accepted:
-                fault_config = dict(default_fault_config)
-                fault_config.update(dialog.get_configuration())
-            else:
-                return None
+        # elif block_type == BlockType.FAULT_EMT:
+        #     default_fault_config: Dict[str, Any] = self._build_default_fault_emt_modal_config()
+        #     dialog = FaultEmtDialog(self, initial_config=default_fault_config)
+        #
+        #     if dialog.exec() == QDialog.DialogCode.Accepted:
+        #         fault_config = dict(default_fault_config)
+        #         fault_config.update(dialog.get_configuration())
+        #     else:
+        #         return None
 
             item_name = f"fault_emt_{count}"
             block_model = emt_templates.get_fault_emt_template(
@@ -2813,35 +2811,23 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param y_pos: Drop y position.
         :return: Created block item or None when the dialog is cancelled.
         """
-        default_config: Dict[str, Any] = self._build_default_fault_emt_modal_config()
-        dialog = FaultEmtDialog(self, initial_config=default_config)
-
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            # The dialog returns a persisted modal payload, and the defaults fill any
-            # future optional keys so old diagrams remain rebuildable after refactors.
-            fault_config: Dict[str, Any] = dict(default_config)
-            fault_config.update(dialog.get_configuration())
-        else:
-            return None
 
         count: int = self.block_counters.get(BlockType.FAULT_EMT, 0) + 1
-        item_name: str = f"fault_emt_{count}"
-        block_model = emt_templates.get_fault_emt_template(
-            vf=self.var_factory,
-            fault_type=fault_config["fault_type"],
-            placement_side=fault_config["placement_side"],
-            phA=bool(fault_config["phA"]),
-            phB=bool(fault_config["phB"]),
-            phC=bool(fault_config["phC"]),
-            signal_controlled=bool(fault_config["signal_controlled"]),
-            initial_closed=bool(fault_config["initial_closed"]),
-            fault_resistance=float(fault_config["fault_resistance"]),
-            ground_resistance=float(fault_config["ground_resistance"]),
-            open_conductance=float(fault_config["open_conductance"]),
-            fault_time_constant=float(fault_config["fault_time_constant"]),
-            command_threshold=float(fault_config["command_threshold"]),
-            name=item_name,
-        ).block
+        item_name: str = f"{BlockType.FAULT_EMT.name}_{count}"
+
+        template_builder = None
+        name = ""
+
+        template_builder = emt_templates.FaultEmtTemplate(vf=self.var_factory)
+        name = "EMT fault"
+
+        if template_builder is not None:
+            dialog = DynTemplatesEditorDialog(name, template_builder.params)
+            dialog.exec()
+            template = template_builder.eval()
+            block_model = template.block
+
+
         block_item: GenericBlockItem = GenericBlockItem(editor=self, var_factory=self.var_factory,
                                                         subsys=block_model,
                                                         api_object=self.api_object,
@@ -2850,17 +2836,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                                         position_changed_callback=self._build_position_changed_callback(
                                                             block_model.uid))
 
-        self.set_modal_template_metadata(
-            block_model,
-            kind="fault_emt",
-            config=dict(fault_config),
-        )
-
         self.block_counters[BlockType.FAULT_EMT] = count
         block_item.set_subsystem(block_model)
         block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
         block_item.build_item()
-        block_item.setToolTip(self._build_fault_emt_modal_tooltip(fault_config))
         self.main_block.add(block_model)
         self.scene.addItem(block_item)
         block_item.setPos(QtCore.QPointF(x_pos, y_pos))
@@ -2873,6 +2852,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         )
         self.mark_unapplied_changes()
         return block_item
+
 
     def create_rlc_combo_emt_block_item(self, x_pos: float, y_pos: float) -> GenericBlockItem | None:
         """
@@ -3223,26 +3203,46 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param y_pos: Drop y position.
         :return: Created block item or None when the dialog is cancelled.
         """
-        topology_config: Dict[str, Any] | None = self._resolve_transformer_topology_configuration()
-
-        if topology_config is None:
-            dialog = self._build_transformer_topology_emt_dialog(block_type=block_type)
-
-            if dialog.exec() == QDialog.DialogCode.Accepted:
-                topology_config = dialog.get_configuration()
-                topology_config["allow_modify_template"] = True
-            else:
-                return None
-        else:
-            topology_config = dict(topology_config)
 
         count: int = self.block_counters.get(block_type, 0) + 1
         item_name: str = f"{block_type.name}_{count}"
-        block_model = self._build_transformer_topology_emt_block_model(
-            block_type=block_type,
-            item_name=item_name,
-            modal_config=topology_config,
-        )
+
+        topology_config: Dict[str, Any] | None = self._resolve_transformer_topology_configuration()
+
+        if block_type == BlockType.TRAFO_EMT:
+
+
+            # if topology_config is None:
+            name = "EMT tansformer"
+            template_builder = emt_templates.TransformerEmtTemplate(vf=self.var_factory)
+            dialog = DynTemplatesEditorDialog(name, template_builder.params)
+            dialog.exec()
+            template = template_builder.eval()
+            block_model = template.block
+
+            print("")
+
+            # else:
+            #     conn_f = topology_config.get("conn_f", WindingType.GroundedStar)
+            #     conn_t = topology_config.get("conn_t", WindingType.GroundedStar)
+            #     block_model = emt_templates.get_transformer_emt_template(self.var_factory, conn_f, conn_t).block
+
+
+        elif block_type == BlockType.XFMR_TRANSFORMER:
+
+            # if topology_config is None:
+            name = "XFMR tansformer"
+            template_builder = emt_templates.XfmrEmtTemplate(vf=self.var_factory)
+            dialog = DynTemplatesEditorDialog(name, template_builder.params)
+            dialog.exec()
+            template = template_builder.eval()
+            block_model = template.block
+
+            # else:
+            #     conn_f = topology_config.get("conn_f", WindingType.GroundedStar)
+            #     conn_t = topology_config.get("conn_t", WindingType.GroundedStar)
+            #     block_model = emt_templates.get_xfmr_emt_template(self.var_factory, conn_f, conn_t).block
+
         block_item: GenericBlockItem = GenericBlockItem(editor=self, var_factory=self.var_factory,
                                                         subsys=block_model,
                                                         api_object=self.api_object,
@@ -3250,21 +3250,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                                         name=item_name,
                                                         position_changed_callback=self._build_position_changed_callback(
                                                             block_model.uid))
-
-        if block_model is None:
-            return None
-        else:
-            pass
-
-        self.set_modal_template_metadata(block_model, kind="transformer_topology_emt",
-                                         config=dict(topology_config, block_type=block_type.name))
-
-        # The dynamic editor must not overwrite the static transformer winding
-        # connection stored by the network object.
-        if isinstance(self.api_object, BranchParent):
-            pass
-        else:
-            pass
 
         self.block_counters[block_type] = count
         block_item.set_subsystem(block_model)
@@ -3365,8 +3350,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
     def _build_transformer_topology_emt_dialog(self,
                                                block_type: BlockType,
-                                               initial_config: Dict[
-                                                                   str, Any] | None = None) -> TransformerTopologyEmtDialog:
+                                               initial_config: Dict[str, Any] | None = None
+                                               ) -> TransformerTopologyEmtDialog:
         """
         Build the modal dialog used by one EMT transformer block.
 
@@ -3374,44 +3359,24 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param initial_config: Optional persisted modal configuration.
         :return: Configured dialog instance.
         """
-        resolved_config: Dict[str, Any]
-        force_static_connection: bool = False
-        if initial_config is not None:
-            resolved_config = dict(initial_config)
-        else:
-            auto_config: Dict[str, Any] | None = self._resolve_transformer_topology_configuration()
 
-            if auto_config is not None:
-                resolved_config = auto_config
-            else:
-                resolved_config = dict({
-                    "conn_f": WindingType.GroundedStar,
-                    "conn_t": WindingType.GroundedStar,
-                })
+        resolved_config = {
+            "conn_f": WindingType.GroundedStar,
+            "conn_t": WindingType.GroundedStar,
+        }
 
-        static_from_connection: WindingType | None = None
-        static_to_connection: WindingType | None = None
-        auto_config = self._resolve_transformer_topology_configuration()
-        if auto_config is not None:
-            static_from_connection = auto_config.get("conn_f", None)
-            static_to_connection = auto_config.get("conn_t", None)
-            if isinstance(self.api_object, (Transformer2W, TransformerType)):
-                resolved_config["conn_f"] = static_from_connection
-                resolved_config["conn_t"] = static_to_connection
-                force_static_connection = True
-            else:
-                pass
-        else:
-            pass
+        force_static_connection = isinstance(self.api_object, (Transformer2W, TransformerType))
+
+        static_from_connection = None
+        static_to_connection = None
 
         return TransformerTopologyEmtDialog(
             title=self._get_transformer_topology_dialog_title(block_type),
             parent=self,
             initial_config=resolved_config,
-            static_from_connection=static_from_connection if force_static_connection else None,
-            static_to_connection=static_to_connection if force_static_connection else None,
+            static_from_connection=static_from_connection,
+            static_to_connection=static_to_connection,
         )
-
     def _annotate_internal_grounding_link_blocks(self, block_model: Block) -> None:
         """
         Attach modal metadata to auto-generated internal grounding-link blocks.
@@ -3645,7 +3610,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     def _build_transformer_topology_emt_block_model(self,
                                                     block_type: BlockType,
                                                     item_name: str,
-                                                    modal_config: Dict[str, Any]) -> Block | None:
+                                                    conn_f: WindingType,
+                                                    conn_t: WindingType,
+                                                    ) -> Block | None:
         """
         Build one EMT transformer block with explicit winding topology.
 
@@ -3654,8 +3621,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param modal_config: Modal configuration.
         :return: Block model or ``None``.
         """
-        conn_f = modal_config.get("conn_f", WindingType.GroundedStar)
-        conn_t = modal_config.get("conn_t", WindingType.GroundedStar)
+        conn_f = conn_f
+        conn_t = conn_t
+
+
 
         if block_type == BlockType.TRAFO_EMT:
             block_model = create_block_of_type(
@@ -4412,19 +4381,98 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     #
     #     self._materialize_connection_specs(specs)
     #
+    # def add_connection_vars_rms(self):
+    #     """
+    #     Add a block with bus connection variables to connect the device
+    #     :return:
+    #     """
+    #     if isinstance(self.api_object, BranchParent):
+    #         specs = self._build_rms_branch_connection_specs()
+    #     elif isinstance(self.api_object, InjectionParent):
+    #         specs = self._build_rms_injection_connection_specs()
+    #     else:
+    #         specs = list()
+    #
+    #     self._materialize_connection_specs(specs)
+    #
     def add_connection_vars_rms(self):
         """
         Add a block with bus connection variables to connect the device
         :return:
         """
-        if isinstance(self.api_object, BranchParent):
-            specs = self._build_rms_branch_connection_specs()
-        elif isinstance(self.api_object, InjectionParent):
-            specs = self._build_rms_injection_connection_specs()
-        else:
-            specs = list()
 
-        self._materialize_connection_specs(specs)
+        if isinstance(self.api_object, BranchParent):
+
+            # connect bus variables
+            if self.api_object.bus_from.rms_model.empty():
+                initialize_bus_rms(self.api_object.bus_from, self.var_factory)
+
+            Vmf, Vaf = get_bus_rms_algebraic_vars(self.api_object.bus_from.rms_model)
+
+            if self.api_object.bus_to.rms_model.empty():
+                initialize_bus_rms(self.api_object.bus_to, self.var_factory)
+
+            Vmt, Vat = get_bus_rms_algebraic_vars(self.api_object.bus_to.rms_model)
+
+            self.main_block.in_vars.append(Vmf)
+            self.main_block.in_vars.append(Vaf)
+            self.main_block.in_vars.append(Vmt)
+            self.main_block.in_vars.append(Vat)
+
+            self.main_block.external_mapping.update(
+                {VarPowerFlowReferenceType.Vmf: Vmf})
+            self.main_block.external_mapping.update(
+                {VarPowerFlowReferenceType.Vaf: Vaf})
+
+            self.main_block.external_mapping.update(
+                {VarPowerFlowReferenceType.Vmt: Vmt})
+            self.main_block.external_mapping.update(
+                {VarPowerFlowReferenceType.Vat: Vat})
+
+            # add connection variables
+            Pf = self.var_factory.add_var('net_conn_Pf', VarPowerFlowReferenceType.P, True)
+            Qf = self.var_factory.add_var('net_conn_Qf', VarPowerFlowReferenceType.Q, True)
+
+            self.main_block.out_vars.append(Pf)
+            self.main_block.out_vars.append(Qf)
+
+            self.main_block.external_mapping.update({VarPowerFlowReferenceType.Pf: Pf})
+            self.main_block.external_mapping.update({VarPowerFlowReferenceType.Qf: Qf})
+
+            Pt = self.var_factory.add_var('net_conn_Pt', VarPowerFlowReferenceType.P, True)
+            Qt = self.var_factory.add_var('net_conn_Qt', VarPowerFlowReferenceType.Q, True)
+
+            self.main_block.out_vars.append(Pt)
+            self.main_block.out_vars.append(Qt)
+
+            self.main_block.external_mapping.update({VarPowerFlowReferenceType.Pt: Pt})
+            self.main_block.external_mapping.update({VarPowerFlowReferenceType.Qt: Qt})
+
+        elif isinstance(self.api_object, InjectionParent):
+
+            # connect bus variables
+            if self.api_object.bus.rms_model.empty():
+                initialize_bus_rms(self.api_object.bus, self.var_factory)
+
+            Vm, Va = get_bus_rms_algebraic_vars(self.api_object.bus.rms_model)
+            self.main_block.in_vars.append(Vm)
+            self.main_block.in_vars.append(Va)
+
+            self.main_block.external_mapping.update(
+                {VarPowerFlowReferenceType.Vm: Vm})
+            self.main_block.external_mapping.update(
+                {VarPowerFlowReferenceType.Va: Va})
+
+            # add connection variables
+            P = self.var_factory.add_var('net_conn_P', VarPowerFlowReferenceType.P, True)
+            Q = self.var_factory.add_var('net_conn_Q', VarPowerFlowReferenceType.Q, True)
+
+            self.main_block.out_vars.append(P)
+            self.main_block.out_vars.append(Q)
+
+            self.main_block.external_mapping.update({VarPowerFlowReferenceType.P: P})
+            self.main_block.external_mapping.update({VarPowerFlowReferenceType.Q: Q})
+
 
     def add_connection_items(self, blocks_list: List[BlockItem] | None = None):
         """

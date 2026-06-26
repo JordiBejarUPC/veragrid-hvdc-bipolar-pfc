@@ -952,27 +952,37 @@ class GenericBlockItem(QGraphicsRectItem):
               painter: QPainter,
               option: QtWidgets.QStyleOptionGraphicsItem,
               widget: Optional[QWidget] = None) -> None:
+
         rect: QtCore.QRectF = self.rect()
         outer_rect: QtCore.QRectF = rect.adjusted(2, 2, -2, -2)
         shadow_rect: QtCore.QRectF = outer_rect.translated(2.5, 3.0)
         body_rect: QtCore.QRectF = outer_rect
+
         editor_constants = _get_editor_constants(self.editor)
-        border_color: QColor = editor_constants.BLOCK_BORDER_SELECTED if self.isSelected() else editor_constants.BLOCK_BORDER
+
+        border_color: QColor = (
+            editor_constants.BLOCK_BORDER_SELECTED
+            if self.isSelected()
+            else editor_constants.BLOCK_BORDER
+        )
+
         fill_color: QColor = self.brush().color()
-        body_path: QPainterPath = QPainterPath()
-        shadow_path: QPainterPath = QPainterPath()
 
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-        shadow_path.addRoundedRect(shadow_rect, 12.0, 12.0)
+
+        # shadow
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(QBrush(editor_constants.BLOCK_SHADOW))
-        painter.drawPath(shadow_path)
-        body_path.addRoundedRect(body_rect, 12.0, 12.0)
+        painter.drawRect(shadow_rect)
+
+        # body
         painter.setBrush(QBrush(fill_color))
-        painter.drawPath(body_path)
+        painter.drawRect(body_rect)
+
+        # delimiter
         painter.setPen(QPen(border_color, 1.6))
         painter.setBrush(Qt.BrushStyle.NoBrush)
-        painter.drawRoundedRect(body_rect, 12.0, 12.0)
+        painter.drawRect(body_rect)
 
     def _set_rect_internal(self, w, h):
         QGraphicsRectItem.setRect(self, 0, 0, w, h)
@@ -1388,8 +1398,8 @@ class BlockItem(QGraphicsRectItem):
             n_outputs: int = len(self.subsys.out_vars)
             self.inputs = [PortItem(self, True, i, n_inputs) for i in range(n_inputs)]
             self.outputs = [PortItem(self, False, i, n_outputs) for i in range(n_outputs)]
-            self.input_labels = [self.create_port_label_item() for _ in range(n_inputs)]
-            self.output_labels = [self.create_port_label_item() for _ in range(n_outputs)]
+            # self.input_labels = [self.create_port_label_item() for _ in range(n_inputs)]
+            # self.output_labels = [self.create_port_label_item() for _ in range(n_outputs)]
             self.refresh_port_metadata()
 
             self.resize_to_content()
@@ -1464,8 +1474,8 @@ class BlockItem(QGraphicsRectItem):
                     pass
                 variable_name = self.subsys.in_vars[i].name
                 port.setToolTip(f"Input {i}: {variable_name}")
-                label_item = self.input_labels[i]
-                label_item.setPlainText(truncate_port_label(variable_name, _get_editor_constants(self.editor).PORT_LABEL_MAX_CHARS))
+                # label_item = self.input_labels[i]
+                # label_item.setPlainText(truncate_port_label(variable_name, _get_editor_constants(self.editor).PORT_LABEL_MAX_CHARS))
 
             for i, port in enumerate(self.outputs):
                 if port.base_var is None:
@@ -1474,8 +1484,8 @@ class BlockItem(QGraphicsRectItem):
                     pass
                 variable_name = self.subsys.out_vars[i].name
                 port.setToolTip(f"Output {i}: {variable_name}")
-                label_item = self.output_labels[i]
-                label_item.setPlainText(truncate_port_label(variable_name, _get_editor_constants(self.editor).PORT_LABEL_MAX_CHARS))
+                # label_item = self.output_labels[i]
+                # label_item.setPlainText(truncate_port_label(variable_name, _get_editor_constants(self.editor).PORT_LABEL_MAX_CHARS))
         else:
             pass
 

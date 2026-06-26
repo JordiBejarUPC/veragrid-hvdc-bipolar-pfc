@@ -14,6 +14,7 @@ from VeraGridEngine.enumerations import (
 )
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
+from VeraGridEngine.Templates.template_definition import TemplateDefinition, TemplateProp
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_grounding_link_emt_template
 from VeraGridEngine.Templates.Emt.transformer_emt_template import _attach_transformer_editor_diagram
 from VeraGridEngine.Utils.Symbolic.block import Block, Var, Expr
@@ -888,3 +889,24 @@ def get_xfmr_emt_template(
     )
 
     return templ
+
+
+class XfmrEmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(
+            vf,
+            params=[
+                TemplateProp(name="conn_f", units="", descr="From-side winding connection.", tpe=WindingType),
+                TemplateProp(name="conn_t", units="", descr="To-side winding connection.", tpe=WindingType),
+                TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str),
+            ]
+        )
+
+    def eval(self) -> EmtModelTemplate:
+        return get_xfmr_emt_template(
+            self.vf,
+            conn_f=self.get_value("conn_f"),
+            conn_t=self.get_value("conn_t"),
+            name=self.get_value("name"),
+        )
