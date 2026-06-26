@@ -1216,21 +1216,26 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         item_name: str = f"{block_type.name}_{count}"
 
         template_builder = None
+        name = ""
 
         if block_type == BlockType.VOLTAGE_SOURCE_EMT:
             template_builder = emt_templates.VoltageSourceEmtTemplate(vf=self.var_factory)
+            name = "EMT voltage source"
 
         elif block_type == BlockType.CURRENT_SOURCE_EMT:
             template_builder = emt_templates.CurrentSourceEmtTemplate(vf=self.var_factory)
+            name = "EMT current source"
 
         elif block_type == BlockType.CONTROLLED_VOLTAGE_SOURCE_EMT:
             template_builder = emt_templates.ControlledVoltageSourceEmtTemplate(vf=self.var_factory)
+            name = "EMT controlled voltage source"
 
         elif block_type == BlockType.CONTROLLED_CURRENT_SOURCE_EMT:
             template_builder = emt_templates.ControlledCurrentSourceEmtTemplate(vf=self.var_factory)
+            name = "EMT controlled current source"
 
         if template_builder is not None:
-            dialog = DynTemplatesEditorDialog(template_builder.params)
+            dialog = DynTemplatesEditorDialog(name, template_builder.params)
             dialog.exec()
             template = template_builder.eval()
             block_model = template.block
@@ -1275,23 +1280,28 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         item_name: str = f"{block_type.name}_{count}"
 
         template_builder = None
+        name = ""
 
         if block_type == BlockType.DC_VOLTAGE_SOURCE_EMT:
             template_builder = emt_templates.DcVoltageSourceEmtTemplate(vf=self.var_factory)
+            name = "EMT dc voltage source"
 
         elif block_type == BlockType.DC_CURRENT_SOURCE_EMT:
             template_builder = emt_templates.DcCurrentSourceEmtTemplate(vf=self.var_factory)
+            name = "EMT dc current source"
 
         elif block_type == BlockType.CONTROLLED_DC_VOLTAGE_SOURCE_EMT:
             template_builder = emt_templates.ControlledDcVoltageSourceEmtTemplate(vf=self.var_factory)
+            name = "EMT controlled dc voltage source"
 
         elif block_type == BlockType.CONTROLLED_DC_CURRENT_SOURCE_EMT:
             template_builder = emt_templates.ControlledDcCurrentSourceEmtTemplate(vf=self.var_factory)
+            name = "EMT controlled dc current source"
 
 
         if template_builder is not None:
 
-            dialog = DynTemplatesEditorDialog(template_builder.params)
+            dialog = DynTemplatesEditorDialog(name, template_builder.params)
             dialog.exec()
             template = template_builder.eval()
             block_model = template.block
@@ -1339,22 +1349,26 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         item_name: str = f"{block_type.name}_{count}"
 
         template_builder = None
-
+        name = ""
         if block_type == BlockType.BALANCED_3PH_VOLTAGE_SOURCE_EMT:
             template_builder = emt_templates.Balanced3phVoltageSourceEmtTemplate(vf=self.var_factory)
+            name = "EMT balanced 3ph voltage source"
 
         elif block_type == BlockType.BALANCED_3PH_CURRENT_SOURCE_EMT:
             template_builder = emt_templates.Balanced3phCurrentSourceEmtTemplate(vf=self.var_factory)
+            name = "EMT balanced 3ph current source"
 
 
         elif block_type == BlockType.CONTROLLED_BALANCED_3PH_VOLTAGE_SOURCE_EMT:
             template_builder = emt_templates.ControlledBalanced3phVoltageSourceEmtTemplate(vf=self.var_factory)
+            name = "EMT controlled balanced 3ph voltage source"
 
         elif block_type == BlockType.CONTROLLED_BALANCED_3PH_CURRENT_SOURCE_EMT:
             template_builder = emt_templates.Balanced3phCurrentSourceEmtTemplate(vf=self.var_factory)
+            name = "EMT controlled balanced 3ph current source"
 
         if template_builder is not None:
-            dialog = DynTemplatesEditorDialog(template_builder.params)
+            dialog = DynTemplatesEditorDialog(name, template_builder.params)
             dialog.exec()
             template = template_builder.eval()
             block_model = template.block
@@ -1400,16 +1414,19 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         item_name: str = f"{block_type.name}_{count}"
 
         template_builder = None
+        name = ""
 
         if block_type == BlockType.ARBITRARY_WAVEFORM_VOLTAGE_SOURCE_EMT:
             template_builder = emt_templates.ArbitraryWaveformVoltageSourceEmtTemplate(vf=self.var_factory)
+            name = "EMT arbitrary waveform voltage source"
 
         elif block_type == BlockType.ARBITRARY_WAVEFORM_CURRENT_SOURCE_EMT:
             template_builder = emt_templates.ArbitraryWaveformCurrentSourceEmtTemplate(vf=self.var_factory)
+            name = "EMT arbitrary waveform current source"
 
         if template_builder is not None:
 
-            dialog = DynTemplatesEditorDialog(template_builder.params)
+            dialog = DynTemplatesEditorDialog(name, template_builder.params)
             dialog.exec()
             template = template_builder.eval()
             block_model = template.block
@@ -1455,30 +1472,38 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         item_name: str = f"{block_type.name}_{count}"
 
         template_builder = None
+        name = ""
 
         if block_type == BlockType.STEP_VOLTAGE_SOURCE_EMT:
             template_builder = emt_templates.StepVoltageSourceEmtTemplate(vf=self.var_factory)
+            name = "EMT step voltage source"
 
         elif block_type == BlockType.STEP_CURRENT_SOURCE_EMT:
             template_builder = emt_templates.StepCurrentSourceEmtTemplate(vf=self.var_factory)
+            name = "EMT step current source"
 
         elif block_type == BlockType.RAMP_VOLTAGE_SOURCE_EMT:
             template_builder = emt_templates.RampVoltageSourceEmtTemplate(vf=self.var_factory)
+            name = "EMT ramp voltage source"
 
         elif block_type == BlockType.RAMP_CURRENT_SOURCE_EMT:
             template_builder = emt_templates.RampCurrentSourceEmtTemplate(vf=self.var_factory)
+            name = "EMT ramp current source"
 
         elif block_type == BlockType.DOUBLE_EXPONENTIAL_CURRENT_SOURCE_EMT:
             template_builder = emt_templates.DoubleExponentialCurrentSourceEmtTemplate(vf=self.var_factory)
+            name = "EMT double exponential current source"
 
         elif block_type == BlockType.HEIDLER_CURRENT_SOURCE_EMT:
             template_builder = emt_templates.HeidlerCurrentSourceEmtTemplate(vf=self.var_factory)
+            name = "EMT heidler current source"
 
         elif block_type == BlockType.CIGRE_SURGE_CURRENT_SOURCE_EMT:
             template_builder = emt_templates.CigreSurgeCurrentSourceEmtTemplate(vf=self.var_factory)
+            name = "EMT cigre surge current source"
 
         if template_builder is not None:
-            dialog = DynTemplatesEditorDialog(template_builder.params)
+            dialog = DynTemplatesEditorDialog(name, template_builder.params)
             dialog.exec()
             template = template_builder.eval()
             block_model = template.block
