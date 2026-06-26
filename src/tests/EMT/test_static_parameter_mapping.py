@@ -20,7 +20,7 @@ from VeraGridEngine.Devices.Injections.current_injection import CurrentInjection
 from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Devices.Injections.shunt import Shunt
 from VeraGridEngine.Devices.Substation.bus import Bus
-from VeraGridEngine.Devices.Dynamic.static_parameter_mapping_rms import (
+from VeraGridEngine.Devices.Dynamic.static_parameter_mapping import (
     assign_api_mapping_value_if_present,
     assign_static_api_object_mapping_for_device,
 )
@@ -533,7 +533,7 @@ def test_transformer_ratio_key_semantics_are_not_ambiguous() -> None:
 
 
 def test_existing_line_mapping_values_remain_unchanged() -> None:
-    """Historical line EMT matrix values must keep their existing values."""
+    """Uncoupled line EMT matrix values must use direct line reactance and shunt."""
     grid: SimpleNamespace = _make_grid(fbase=50.0)
     bus_from: Bus = Bus(name="from", Vnom=20.0)
     bus_to: Bus = Bus(name="to", Vnom=20.0)
@@ -556,10 +556,8 @@ def test_existing_line_mapping_values_remain_unchanged() -> None:
     assign_static_api_object_mapping_for_device(grid=grid, device=line, mdl=block, problem_mapping=dict(), logger=None)
 
     omega: float = 2.0 * np.pi * 50.0
-    # The uncoupled fallback intentionally preserves the historical slot
-    # mapping where B feeds series reactance and X feeds shunt susceptance.
-    expected_linv: float = omega / 0.3
-    expected_c: float = 0.2 / (2.0 * omega)
+    expected_linv: float = omega / 0.2
+    expected_c: float = 0.3 / (2.0 * omega)
 
     assert np.isclose(_const_value(block, ParamPowerFlowReferenceType.Rnn), 0.0)
     assert np.isclose(_const_value(block, ParamPowerFlowReferenceType.Raa), 0.1)
