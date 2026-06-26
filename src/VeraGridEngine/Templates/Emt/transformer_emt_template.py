@@ -147,6 +147,8 @@ def get_transformer_emt_template(
     :return: EMT transformer model template.
     """
 
+    name = "transformer_emt_template"
+
     templ: EmtModelTemplate = EmtModelTemplate()
     templ.tpe = DeviceType.Transformer2WDevice
     templ.name = name
