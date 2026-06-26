@@ -7,7 +7,6 @@ import math
 import numpy as np
 from typing import Dict, List, Set, Tuple, TypeVar
 
-from VeraGridEngine import BusGraphicType
 from VeraGridEngine.enumerations import (
     ExternalGridMode,
     SwitchGraphicType,
@@ -18,7 +17,8 @@ from VeraGridEngine.enumerations import (
     ConverterControlType,
     ConverterFaultControlType,
     GeneratorType,
-    GeneratorControlMode
+    GeneratorControlMode,
+    BusGraphicType
 )
 import VeraGridEngine.Devices as dev
 from VeraGridEngine.Devices.Branches.wire import Wire
