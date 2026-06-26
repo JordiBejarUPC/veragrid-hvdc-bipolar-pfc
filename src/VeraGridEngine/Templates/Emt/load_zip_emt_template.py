@@ -19,7 +19,7 @@ from VeraGridEngine.Templates.Emt.load_RLC_emt_template import (
     wrap_delta_referenced_load_emt_template,
     wrap_ground_referenced_load_emt_template,
 )
-from VeraGridEngine.Templates.template_definiton import TemplateDefinition, TemplateProp
+from VeraGridEngine.Templates.template_definition import TemplateDefinition, TemplateProp
 from VeraGridEngine.Utils.Symbolic.block import Expr, Var
 from VeraGridEngine.enumerations import DeviceType, ParamPowerFlowReferenceType, ShuntConnectionType, VarPowerFlowReferenceType
 
