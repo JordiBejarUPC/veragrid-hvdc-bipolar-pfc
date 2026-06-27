@@ -251,6 +251,7 @@ class ConfigurationMain(ResultsMain):
                 "apply_impedance_tolerances": self.ui.apply_impedance_tolerances_checkBox,
                 "add_pf_report": self.ui.addPowerFlowReportCheckBox,
                 "initialize_angles": self.ui.initialize_pf_angles_checkBox,
+                "controls_start_tolerance": self.ui.controls_start_tolerance_spinBox
             },
             "state_estimation": {
                 "solver": self.ui.se_solver_comboBox,
