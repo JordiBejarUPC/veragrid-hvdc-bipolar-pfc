@@ -45,6 +45,13 @@ class SignalPairPayload:
     (one input, one output) sharing the same variable.
     """
 
+@dataclass(frozen=True)
+class SumItemPayload:
+    """
+    Marker payload for the signal pair tool that creates two connected blocks
+    (one input, one output) sharing the same variable.
+    """
+
 
 @dataclass(frozen=True)
 class LibraryLeafSpec:

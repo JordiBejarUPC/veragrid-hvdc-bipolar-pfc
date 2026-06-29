@@ -14,8 +14,9 @@ from PySide6.QtWidgets import QApplication, QColorDialog, QGraphicsEllipseItem, 
 import VeraGrid.ThirdParty.darkdetect as darkdetect
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
+from VeraGridEngine.enumerations import BlockType
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.symbolic import Var
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, BinOp, UnOp
 from VeraGridEngine.enumerations import DynamicSimulationMode
 
 if TYPE_CHECKING:
@@ -30,7 +31,7 @@ class _EditorGraphicsDefaults:
     INPUT_PORT_FILL: QColor = QColor("#2d7dd2")
     OUTPUT_PORT_FILL: QColor = QColor("#2a9d6f")
     PORT_BORDER: QColor = QColor("#173042")
-    WIRE_COLOR: QColor = QColor("#000000")
+    WIRE_COLOR: QColor = QColor("#202124")
     WIRE_HOVER_COLOR: QColor = QColor("#cc6f2c")
     HANDLE_FILL: QColor = QColor("#36536b")
     DEFAULT_BLOCK_FILL: QColor = QColor("#f5fdff")
@@ -381,7 +382,7 @@ class ResizeHandle(QGraphicsRectItem):
 
 class PortItem(QGraphicsPolygonItem):
     def __init__(self,
-                 subsystem: "BlockItem | GenericBlockItem | PairedItem",
+                 subsystem: "BlockItem | GenericBlockItem | PairedItem | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem",
                  is_input: bool,
                  index: int,
                  total: int,
@@ -407,7 +408,7 @@ class PortItem(QGraphicsPolygonItem):
         self.setPen(QPen(QColor("#202124"), 1.2))
         self.setZValue(3)
         self.setAcceptHoverEvents(True)
-        self.subsystem: BlockItem | GenericBlockItem | PairedItem = subsystem
+        self.subsystem: "BlockItem | GenericBlockItem | PairedItem | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem" = subsystem
         self.is_input: bool = is_input
         self.connections: List["ConnectionItem"] | None = None
         self.index: int = index
@@ -1486,7 +1487,6 @@ class BlockItem(QGraphicsRectItem):
             name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 7)
             name_font.setBold(True)
             self.name_item.setFont(name_font)
-            self.name_item.setPos(4, 2)
 
             n_inputs: int = len(self.subsys.in_vars)
             n_outputs: int = len(self.subsys.out_vars)
@@ -1538,6 +1538,18 @@ class BlockItem(QGraphicsRectItem):
         QGraphicsRectItem.setRect(self, 0, 0, min_width, min_height)
         self.update_ports()
         self.update_handle_position()
+        self._center_name()
+
+    def _center_name(self) -> None:
+        if self.name_item is None:
+            return
+        rect = self.rect()
+        text_width = self.name_item.boundingRect().width()
+        text_height = self.name_item.boundingRect().height()
+        self.name_item.setPos(
+            (rect.width() - text_width) / 2,
+            (rect.height() - text_height) / 2,
+        )
 
     def _refresh_connection_color(self) -> None:
         pass
@@ -1665,6 +1677,336 @@ class BlockItem(QGraphicsRectItem):
 class ProtectedConnectionBlockItem(BlockItem):
     pass
 
+
+class RoundBaseArithmeticOpItem(QGraphicsEllipseItem):
+    def __init__(self,
+                 subsys: Block,
+                 var_factory: VarFactory,
+                 block_type: BlockType, 
+                 editor: "DynamicBlockEditorGUI | None" = None,
+                 position_changed_callback = None):
+        size = 48.0
+        super().__init__(-size / 2, -size / 2, size, size)
+        self.block_type: BlockType = block_type
+        self.subsys: Block = subsys
+        self.var_factory: VarFactory = var_factory
+        self.editor: "DynamicBlockEditorGUI | None" = editor
+        self.inputs: List[PortItem] = list()
+        self.outputs: List[PortItem] = list()
+        self.input_labels: List[QGraphicsTextItem] = list()
+        self._input_signs: List[str] = list()
+
+        n_inputs = len(self.subsys.in_vars)
+        if n_inputs > 3:
+            raise ValueError("SumItem only supports up to 3 input ports")
+        n_outputs = len(self.subsys.out_vars)
+        for i in range(n_inputs):
+            port = PortItem(self, True, i, n_inputs)
+            self.inputs.append(port)
+            label = QGraphicsTextItem("", self)
+            label_font = QtGui.QFont("DejaVu Sans", 8)
+            label.setFont(label_font)
+            label.setDefaultTextColor(QColor("#173042"))
+            self.input_labels.append(label)
+
+        for i in range(n_outputs):
+            port = PortItem(self, False, i, n_outputs)
+            self.outputs.append(port)
+
+
+        self._analyze_input_signs()
+        self.update_ports()
+
+        self.setPen(QPen(QColor("#202124"), 1.6))
+        self.setBrush(QBrush(QColor("#f5fdff")))
+        self.setZValue(2)
+        self.setFlags(
+            QGraphicsItem.GraphicsItemFlag.ItemIsMovable |
+            QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
+            QGraphicsItem.GraphicsItemFlag.ItemSendsScenePositionChanges
+        )
+        self.setAcceptHoverEvents(True)
+
+    def _walk_sum_expr(self, expr: Expr, sign: int, result: Dict[int, int]) -> None:
+        if isinstance(expr, Var):
+            result[expr.uid] = sign
+        elif isinstance(expr, BinOp):
+            if expr.op == "+":
+                self._walk_sum_expr(expr.left, sign, result)
+                self._walk_sum_expr(expr.right, sign, result)
+            elif expr.op == "-":
+                self._walk_sum_expr(expr.left, sign, result)
+                self._walk_sum_expr(expr.right, -sign, result)
+        elif isinstance(expr, UnOp):
+            if expr.op == "-":
+                self._walk_sum_expr(expr.operand, -sign, result)
+
+    def _walk_product_expr(self, expr: Expr, label: str, result: Dict[int, str]) -> None:
+        if isinstance(expr, Var):
+            result[expr.uid] = label
+        elif isinstance(expr, BinOp):
+            if expr.op == "*":
+                self._walk_product_expr(expr.left, "x", result)
+                self._walk_product_expr(expr.right, "x", result)
+            elif expr.op == "/":
+                self._walk_product_expr(expr.left, "x", result)
+                self._walk_product_expr(expr.right, "/", result)
+        elif isinstance(expr, UnOp):
+            self._walk_product_expr(expr.operand, label, result)
+
+    def _analyze_input_signs(self) -> None:
+        self._input_signs = list()
+        if not self.subsys.algebraic_eqs:
+            return
+
+        eq = self.subsys.algebraic_eqs[0]
+        if not isinstance(eq, BinOp) or eq.op != "-":
+            return
+
+        out_var = self.subsys.algebraic_vars[0]
+
+        if isinstance(eq.left, Var) and eq.left.uid == out_var.uid:
+            expr = eq.right
+        elif isinstance(eq.right, Var) and eq.right.uid == out_var.uid:
+            expr = eq.left
+        else:
+            expr = eq.right
+
+        if self.block_type == BlockType.SUM:
+            sign_map: Dict[int, int] = dict()
+            self._walk_sum_expr(expr, 1, sign_map)
+            for var in self.subsys.in_vars:
+                s = sign_map.get(var.uid, 1)
+                self._input_signs.append("+" if s >= 0 else "-")
+
+        elif self.block_type == BlockType.PRODUCT:
+            label_map: Dict[int, str] = dict()
+            self._walk_product_expr(expr, "x", label_map)
+            for var in self.subsys.in_vars:
+                self._input_signs.append(label_map.get(var.uid, "x"))
+
+    def update_ports(self) -> None:
+        rect = self.rect()
+        cx = rect.center().x()
+        cy = rect.center().y()
+        top = rect.top()
+        left = rect.left()
+        bottom = rect.bottom()
+        right = rect.right()
+
+        n_inputs = len(self.inputs)
+
+        if n_inputs == 1:
+            self.inputs[0].setRotation(0)
+            self.inputs[0].setPos(left, cy)
+        elif n_inputs == 2:
+            self.inputs[0].setRotation(90)
+            self.inputs[0].setPos(cx, top)
+            self.inputs[1].setRotation(0)
+            self.inputs[1].setPos(left, cy)
+        elif n_inputs == 3:
+            self.inputs[0].setRotation(90)
+            self.inputs[0].setPos(cx, top)
+            self.inputs[1].setRotation(0)
+            self.inputs[1].setPos(left, cy)
+            self.inputs[2].setRotation(-90)
+            self.inputs[2].setPos(cx, bottom)
+
+        for i, port in enumerate(self.outputs):
+            port.setRotation(0)
+            port.setPos(right, cy)
+
+        for i, label in enumerate(self.input_labels):
+            if i < len(self._input_signs):
+                label.setPlainText(self._input_signs[i])
+            port = self.inputs[i]
+
+            tw = label.boundingRect().width()
+            th = label.boundingRect().height()
+
+            if n_inputs == 1:
+                label.setPos(port.pos().x(), port.pos().y() - th / 2)
+            elif n_inputs == 2:
+                if i == 0:
+                    label.setPos(port.pos().x() - tw / 2, port.pos().y())
+                else:
+                    label.setPos(port.pos().x(), port.pos().y() - th / 2)
+            elif n_inputs == 3:
+                if i == 0:
+                    label.setPos(port.pos().x() - tw / 2, port.pos().y())
+                elif i == 1:
+                    label.setPos(port.pos().x(), port.pos().y() - th / 2)
+                else:
+                    label.setPos(port.pos().x() - tw / 2, port.pos().y() - th)
+
+    def paint(self,
+              painter: QPainter,
+              option: QtWidgets.QStyleOptionGraphicsItem,
+              widget: Optional[QWidget] = None) -> None:
+        rect = self.rect()
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        painter.setBrush(QBrush(QColor("#f5fdff")))
+        painter.setPen(QPen(QColor("#202124"), 1.6))
+        painter.drawEllipse(rect)
+
+    def itemChange(self, change: QGraphicsItem.GraphicsItemChange, value: Any) -> Any:
+        if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:
+            for port in self.inputs + self.outputs:
+                if port.connections:
+                    for conn in port.connections:
+                        conn.update_path()
+            return super().itemChange(change, value)
+        else:
+            return super().itemChange(change, value)
+
+
+class RectBaseArithmeticOpItem(QGraphicsRectItem):
+    def __init__(self,
+                 subsys: Block,
+                 var_factory: VarFactory,
+                 block_type: BlockType,
+                 editor: "DynamicBlockEditorGUI | None" = None,
+                 position_changed_callback=None):
+        n_inputs = len(subsys.in_vars)
+        n_outputs = len(subsys.out_vars)
+        width = 50.0
+        height = max(60.0, n_inputs * 28.0)
+        super().__init__(0, 0, width, height)
+        self.block_type: BlockType = block_type
+        self.subsys: Block = subsys
+        self.var_factory: VarFactory = var_factory
+        self.editor: "DynamicBlockEditorGUI | None" = editor
+        self.inputs: List[PortItem] = list()
+        self.outputs: List[PortItem] = list()
+        self.input_labels: List[QGraphicsTextItem] = list()
+        self._input_signs: List[str] = list()
+
+        for i in range(n_inputs):
+            port = PortItem(self, True, i, n_inputs)
+            self.inputs.append(port)
+            label = QGraphicsTextItem("", self)
+            label_font = QtGui.QFont("DejaVu Sans", 8)
+            label.setFont(label_font)
+            label.setDefaultTextColor(QColor("#173042"))
+            self.input_labels.append(label)
+
+        for i in range(n_outputs):
+            port = PortItem(self, False, i, n_outputs)
+            self.outputs.append(port)
+
+        self._analyze_input_signs()
+        self.update_ports()
+
+        self.setPen(QPen(QColor("#202124"), 1.6))
+        self.setBrush(QBrush(QColor("#f5fdff")))
+        self.setZValue(2)
+        self.setFlags(
+            QGraphicsItem.GraphicsItemFlag.ItemIsMovable |
+            QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
+            QGraphicsItem.GraphicsItemFlag.ItemSendsScenePositionChanges
+        )
+        self.setAcceptHoverEvents(True)
+
+    def _walk_sum_expr(self, expr: Expr, sign: int, result: Dict[int, int]) -> None:
+        if isinstance(expr, Var):
+            result[expr.uid] = sign
+        elif isinstance(expr, BinOp):
+            if expr.op == "+":
+                self._walk_sum_expr(expr.left, sign, result)
+                self._walk_sum_expr(expr.right, sign, result)
+            elif expr.op == "-":
+                self._walk_sum_expr(expr.left, sign, result)
+                self._walk_sum_expr(expr.right, -sign, result)
+        elif isinstance(expr, UnOp):
+            if expr.op == "-":
+                self._walk_sum_expr(expr.operand, -sign, result)
+
+    def _walk_product_expr(self, expr: Expr, label: str, result: Dict[int, str]) -> None:
+        if isinstance(expr, Var):
+            result[expr.uid] = label
+        elif isinstance(expr, BinOp):
+            if expr.op == "*":
+                self._walk_product_expr(expr.left, "x", result)
+                self._walk_product_expr(expr.right, "x", result)
+            elif expr.op == "/":
+                self._walk_product_expr(expr.left, "x", result)
+                self._walk_product_expr(expr.right, "/", result)
+        elif isinstance(expr, UnOp):
+            self._walk_product_expr(expr.operand, label, result)
+
+    def _analyze_input_signs(self) -> None:
+        self._input_signs = list()
+        if not self.subsys.algebraic_eqs:
+            return
+
+        eq = self.subsys.algebraic_eqs[0]
+        if not isinstance(eq, BinOp) or eq.op != "-":
+            return
+
+        out_var = self.subsys.algebraic_vars[0]
+
+        if isinstance(eq.left, Var) and eq.left.uid == out_var.uid:
+            expr = eq.right
+        elif isinstance(eq.right, Var) and eq.right.uid == out_var.uid:
+            expr = eq.left
+        else:
+            expr = eq.right
+
+        if self.block_type == BlockType.SUM:
+            sign_map: Dict[int, int] = dict()
+            self._walk_sum_expr(expr, 1, sign_map)
+            for var in self.subsys.in_vars:
+                s = sign_map.get(var.uid, 1)
+                self._input_signs.append("+" if s >= 0 else "-")
+
+        elif self.block_type == BlockType.PRODUCT:
+            label_map: Dict[int, str] = dict()
+            self._walk_product_expr(expr, "x", label_map)
+            for var in self.subsys.in_vars:
+                self._input_signs.append(label_map.get(var.uid, "x"))
+
+    def update_ports(self) -> None:
+        rect = self.rect()
+        w = rect.width()
+        h = rect.height()
+        n_inputs = len(self.inputs)
+
+        for i, port in enumerate(self.inputs):
+            spacing = h / (n_inputs + 1)
+            port.setRotation(0)
+            port.setPos(0, spacing * (i + 1))
+
+        for i, port in enumerate(self.outputs):
+            port.setRotation(0)
+            port.setPos(w, h / 2)
+
+        for i, label in enumerate(self.input_labels):
+            if i < len(self._input_signs):
+                label.setPlainText(self._input_signs[i])
+            port = self.inputs[i]
+            tw = label.boundingRect().width()
+            th = label.boundingRect().height()
+            label.setPos(port.pos().x() + 2.0, port.pos().y() - th / 2)
+
+    def paint(self,
+              painter: QPainter,
+              option: QtWidgets.QStyleOptionGraphicsItem,
+              widget: Optional[QWidget] = None) -> None:
+        rect = self.rect()
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        painter.setBrush(QBrush(QColor("#f5fdff")))
+        painter.setPen(QPen(QColor("#202124"), 1.6))
+        painter.drawRoundedRect(rect, 6.0, 6.0)
+
+    def itemChange(self, change: QGraphicsItem.GraphicsItemChange, value: Any) -> Any:
+        if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:
+            for port in self.inputs + self.outputs:
+                if port.connections:
+                    for conn in port.connections:
+                        conn.update_path()
+            return super().itemChange(change, value)
+        else:
+            return super().itemChange(change, value)
 
 class GraphicsView(QGraphicsView):
     ZOOM_FACTOR: float = 1.15
@@ -1810,7 +2152,7 @@ class DiagramScene(QGraphicsScene):
     def contextMenuEvent(self, event: QtWidgets.QGraphicsSceneContextMenuEvent) -> None:
         item: QGraphicsItem
         for item in self.items(event.scenePos()):
-            if isinstance(item, (GenericBlockItem, ConnectionItem)):
+            if isinstance(item, (GenericBlockItem, ConnectionItem, RoundBaseArithmeticOpItem, RectBaseArithmeticOpItem)):
                 menu: QMenu = QMenu()
                 if item is not None:
                     self.context_item = item
@@ -1926,7 +2268,8 @@ class DiagramScene(QGraphicsScene):
                 source_block.refresh_port_metadata()
             else:
                 self.editor.var_factory.add_connection(target_input_var, dst_var)
-                target_block.refresh_port_metadata()
+                if not isinstance(target_block, (RoundBaseArithmeticOpItem, RectBaseArithmeticOpItem)):
+                    target_block.refresh_port_metadata()
             self.addItem(connection)
 
             self.editor.diagram.add_branch(

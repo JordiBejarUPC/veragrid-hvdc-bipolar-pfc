@@ -345,6 +345,10 @@ class IntDelegate(QtWidgets.QItemDelegate):
         """
         editor.blockSignals(True)
         val = int(index.model().data(index, role=QtCore.Qt.ItemDataRole.DisplayRole))
+        # try:
+        #     val = int(index.model().data(index, role=QtCore.Qt.ItemDataRole.DisplayRole))
+        # except ValueError:
+        #     val = 1
         editor.setValue(val)
         editor.blockSignals(False)
 
