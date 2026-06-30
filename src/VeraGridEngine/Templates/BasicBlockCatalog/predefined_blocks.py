@@ -5,8 +5,11 @@
 
 from __future__ import annotations
 
-from typing import Tuple,  Sequence
+from typing import Tuple, Sequence, List
+
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
+from VeraGridEngine.Templates.template_definition import TemplateDefinition, TemplateProp
+from VeraGridEngine.basic_structures import Vec
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
 from VeraGridEngine.Utils.Symbolic.block import Block
 
@@ -80,28 +83,136 @@ def variable(var_factory: VarFactory, name: str = "variable_", vartype: str = "v
     return y, blk
 
 
-def adder(var_factory: VarFactory, item_name: str = "") -> Block:
+
+class AdderTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(
+            vf,
+            params=[
+                TemplateProp(name="minuend_inputs", units="", descr="Number of positive (added) inputs.", tpe=int, value=0),
+                TemplateProp(name="subtrahend_inputs", units="", descr="Number of negative (subtracted) inputs.", tpe=int, value=0)
+            ]
+        )
+
+    def eval(self) -> Block:
+        minuend_inputs: int = self.get_value("minuend_inputs")
+        subtrahend_inputs: int = self.get_value("subtrahend_inputs")
+
+        return adder(self.vf, minuend_inputs, subtrahend_inputs)
+
+
+
+
+
+def adder(var_factory: VarFactory, minuend_inputs: int = 1, subtrahend_inputs: int = 1) -> Block:
     """
 
     :param var_factory:
     :param item_name:
+    :param minuend_inputs:
+    :param subtrahend_inputs:
     :return:
     """
-    inputs = [var_factory.add_var("sum_in_1_" + item_name),
-              var_factory.add_var("sum_in_2_" + item_name)]  # will not be specified if inputs can be more than 2
-    y = var_factory.add_var("sum_out_" + item_name)
+    equation: sym.Expr | None = None
+    inputs: List[sym.Var] = list()
 
-    expr: sym.Expr = inputs[0]
-    for i, inpt in enumerate(inputs):
-        if i > 0:
-            expr += inpt
+    for i in range(minuend_inputs):
+        if not equation:
+            var = var_factory.add_var("add_" + str(i))
+            inputs.append(var)
+            equation = var
+
+        else:
+            var = var_factory.add_var("add_" + str(i))
+            inputs.append(var)
+            equation += var
+
+    for i in range(subtrahend_inputs):
+        if not equation:
+            var = var_factory.add_var("subtract_" + str(i))
+            inputs.append(var)
+            equation = - var
+        else:
+            var = var_factory.add_var("subtract_" + str(i))
+            inputs.append(var)
+            equation -= var
+
+
+    y = var_factory.add_var("sum_out_")
+
 
     blk = Block(
         algebraic_vars=[y],
-        algebraic_eqs=[y - expr],
+        algebraic_eqs=[y - equation],
         in_vars=inputs,
         out_vars=[y],
         name="sum",
+        is_decomposable=False
+    )
+
+    return blk
+
+class ProductTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(
+            vf,
+            params=[
+                TemplateProp(name="divident_inputs", units="", descr="Number of dividend (multiplied) inputs.", tpe=int, value=1),
+                TemplateProp(name="divisor_inputs", units="", descr="Number of divisor (divided) inputs.", tpe=int, value=1)
+            ]
+        )
+
+    def eval(self) -> Block:
+        divident_inputs: int = self.get_value("divident_inputs")
+        divisor_inputs: int = self.get_value("divisor_inputs")
+
+        return product(self.vf, divident_inputs, divisor_inputs)
+
+def product(var_factory: VarFactory, divident_inputs: int = 1, divisor_inputs: int = 1) -> Block:
+    """
+
+    :param var_factory:
+    :param item_name:
+    :param divident_inputs:
+    :param divisor_inputs:
+    :return:
+    """
+    equation: sym.Expr | None = None
+    inputs: List[sym.Var] = list()
+
+    for i in range(divident_inputs):
+        if equation is None:
+            var = var_factory.add_var("mul_" + str(i))
+            inputs.append(var)
+            equation = var
+
+        else:
+            var = var_factory.add_var("mul_" + str(i))
+            inputs.append(var)
+            equation *= var
+
+    for i in range(divisor_inputs):
+        if equation is None:
+            var = var_factory.add_var("div_" + str(i))
+            inputs.append(var)
+            equation = 1 / var
+        else:
+            var = var_factory.add_var("div_" + str(i))
+            inputs.append(var)
+            equation /= var
+
+
+    y = var_factory.add_var("prod_out_")
+
+
+    blk = Block(
+        algebraic_vars=[y],
+        algebraic_eqs=[y - equation],
+        in_vars=inputs,
+        out_vars=[y],
+        name="product",
         is_decomposable=False
     )
 
@@ -132,7 +243,7 @@ def substract(var_factory: VarFactory, item_name: str = "") -> Block:
     return blk
 
 
-def product(var_factory: VarFactory, item_name: str = "") -> Block:
+def product_2(var_factory: VarFactory, item_name: str = "") -> Block:
     """
 
     :param var_factory:
@@ -286,3 +397,4 @@ def generic(var_factory: VarFactory,
 
 
     return blk
+

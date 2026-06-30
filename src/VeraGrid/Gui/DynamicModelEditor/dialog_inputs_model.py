@@ -12,11 +12,11 @@ from typing import Any, Dict, List, Union, get_origin
 from collections.abc import Sequence
 from PySide6 import QtCore, QtWidgets, QtGui
 from typing import Callable
-from VeraGrid.Gui.gui_functions import (IntDelegate, ComboDelegate, TextDelegate, FloatDelegate, ColorPickerDelegate,
-                                        ComplexDelegate, DateTimeDelegate, SequenceDelegate)
+from VeraGrid.Gui.gui_functions import (IntDelegate, ComboDelegate, TextDelegate, FloatDelegate,
+                                        ComplexDelegate, SequenceDelegate, WindingTypeDelegate)
 from VeraGrid.Gui.wrappable_table_model import WrappableTableModel
 from VeraGridEngine.Templates.template_definition import TemplateProp, TEMPLATEPROP_TYPES
-from VeraGridEngine.basic_structures import Vec
+from VeraGridEngine.enumerations import WindingType
 
 
 class DialogInpModel(WrappableTableModel):
@@ -100,6 +100,11 @@ class DialogInpModel(WrappableTableModel):
             elif tpe is complex:
                 delegate = ComplexDelegate(self.parent)
                 F(i, delegate)
+
+            elif tpe is WindingType:
+                delegate = WindingTypeDelegate(self.parent)
+                F(i, delegate)
+
             elif origin is Sequence or origin is list:
                 delegate = SequenceDelegate(self.parent)
                 F(i, delegate)

@@ -14,7 +14,7 @@ from VeraGridEngine.data_logger import DataLogger
 from VeraGridEngine.IO.cim.cgmes.cgmes_circuit import CgmesCircuit, CGMES_ASSETS
 from VeraGridEngine.Devices.Branches.line_locations import LineLocations
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
-from VeraGridEngine.enumerations import SimulationTypes
+from VeraGridEngine.enumerations import SimulationTypes, WindingType
 from VeraGrid.Gui.font_config import MENU_FONT_SIZE
 
 if TYPE_CHECKING:
@@ -345,6 +345,10 @@ class IntDelegate(QtWidgets.QItemDelegate):
         """
         editor.blockSignals(True)
         val = int(index.model().data(index, role=QtCore.Qt.ItemDataRole.DisplayRole))
+        # try:
+        #     val = int(index.model().data(index, role=QtCore.Qt.ItemDataRole.DisplayRole))
+        # except ValueError:
+        #     val = 1
         editor.setValue(val)
         editor.blockSignals(False)
 
@@ -1592,3 +1596,47 @@ class SequenceDelegate(QtWidgets.QStyledItemDelegate):
                 model.setData(index, dialog.get_points())
             return True
         return False
+
+class WindingTypeDelegate(QtWidgets.QItemDelegate):
+    commitData = QtCore.Signal(object)
+
+    def __init__(self, parent: QtWidgets.QTableView):
+        QtWidgets.QItemDelegate.__init__(self, parent)
+
+        self._items = [
+            ("Grounded Star (Yg)", WindingType.GroundedStar),
+            ("Neutral Star (Yn)", WindingType.NeutralStar),
+            ("Floating Star (Y)", WindingType.FloatingStar),
+            ("Delta", WindingType.Delta),
+            ("ZigZag (Z)", WindingType.ZigZag),
+        ]
+
+    @QtCore.Slot()
+    def currentIndexChanged(self) -> None:
+        self.commitData.emit(self.sender())
+
+    def createEditor(self, parent, option, index: QtCore.QModelIndex):
+        combo = QtWidgets.QComboBox(parent)
+        for label, _ in self._items:
+            combo.addItem(label)
+        combo.currentIndexChanged.connect(self.currentIndexChanged)
+        return combo
+
+    def setEditorData(self, editor: QtWidgets.QComboBox, index: QtCore.QModelIndex):
+        editor.blockSignals(True)
+        val = index.model().data(index, role=QtCore.Qt.ItemDataRole.DisplayRole)
+        labels = [label for label, _ in self._items]
+        try:
+            idx = labels.index(val)
+            editor.setCurrentIndex(idx)
+        except ValueError:
+            pass
+        editor.blockSignals(False)
+
+    def setModelData(self,
+                     editor: QtWidgets.QComboBox,
+                     model: QtCore.QAbstractItemModel,
+                     index: QtCore.QModelIndex):
+        idx = editor.currentIndex()
+        if 0 <= idx < len(self._items):
+            model.setData(index, self._items[idx][1])

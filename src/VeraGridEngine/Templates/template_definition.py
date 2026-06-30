@@ -7,6 +7,8 @@ from __future__ import annotations
 from typing import Sequence, Any, Union, Type
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.basic_structures import Vec
+from VeraGridEngine.enumerations import WindingType
+
 
 
 TEMPLATEPROP_TYPES = Union[
@@ -14,7 +16,8 @@ TEMPLATEPROP_TYPES = Union[
     Type[bool],
     Type[float],
     Type[str],
-    Type[Sequence[Vec]]
+    Type[Sequence[Vec]],
+    Type[WindingType]
 ]
 
 class TemplateProp:
@@ -33,14 +36,14 @@ class TemplateProp:
 
     )
 
-    def __init__(self, name: str, units: str, descr: str, tpe: TEMPLATEPROP_TYPES):
+    def __init__(self, name: str, units: str, descr: str, tpe: TEMPLATEPROP_TYPES, value: Any = None):
         self.name: str = name
         self.units: str = units
         self.descr: str = descr
         self.tpe: TEMPLATEPROP_TYPES = tpe
         self.display: bool = True
         self.editable: bool = True
-        self.value: Any = None
+        self.value: Any = value
 
 
 class TemplateDefinition:
@@ -55,7 +58,7 @@ class TemplateDefinition:
         self.params = params
         self.params_dict = {p.name: p for p in params}
 
-    def get_value(self, name: str) -> EmtModelTemplate:
+    def get_value(self, name: str) -> Any:
         """
 
         :param name:
