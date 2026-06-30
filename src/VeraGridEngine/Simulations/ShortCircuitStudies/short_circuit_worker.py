@@ -758,6 +758,8 @@ def short_circuit_vsc(nc: NumericalCircuit,
                       V_pf: CxVec,
                       S_pf: CxVec,
                       St_vsc_pf: CxVec,
+                      Pfp_vsc_pf: Vec | None,
+                      Pfn_vsc_pf: Vec | None,
                       Z_fault: CxVec,
                       fault_bus: int,
                       options: PowerFlowOptions,
@@ -907,9 +909,11 @@ def short_circuit_vsc(nc: NumericalCircuit,
         S0_gen_valid = S0_gen - non_norton_gen_pf - static_gen_from_generator_pf
 
         if constz:
-            S0_linear = S0_static_gen + static_gen_from_generator_pf + invalid_gen_linear
+            static_gen_linear = S0_static_gen + static_gen_from_generator_pf
+            S0_linear = invalid_gen_linear
             I0_linear = np.zeros(shape=nbus, dtype=complex)  # Add generator's norton
-            Y0_linear = - np.conj(S0_non_static_gen / (np.conj(V_pf) * V_pf)) - I0 / V_pf - Y0 + Ygen + Yfault
+            Y0_linear = (- np.conj((S0_non_static_gen + static_gen_linear) / (np.conj(V_pf) * V_pf))
+                         - I0 / V_pf - Y0 + Ygen + Yfault)
 
         else:
             S0_linear = S0_non_gen + static_gen_from_generator_pf + invalid_gen_linear
@@ -934,6 +938,8 @@ def short_circuit_vsc(nc: NumericalCircuit,
                                                 I0=I0_linear,
                                                 Y0=Y0_linear,
                                                 St_vsc_pf=St_vsc_pf,
+                                                Pfp_vsc_pf=Pfp_vsc_pf,
+                                                Pfn_vsc_pf=Pfn_vsc_pf,
                                                 Qmin=Qmin,
                                                 Qmax=Qmax,
                                                 nc=nc,

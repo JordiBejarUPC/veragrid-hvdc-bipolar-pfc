@@ -9,7 +9,7 @@ import numpy as np
 
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
-from VeraGridEngine.basic_structures import CxVec
+from VeraGridEngine.basic_structures import CxVec, Vec
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults, PowerFlowOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlowResults3Ph
 from VeraGridEngine.Simulations.OPF.opf_results import OptimalPowerFlowResults
@@ -384,6 +384,8 @@ class ShortCircuitDriver(DriverTemplate):
                                  V_pf: CxVec,
                                  S_pf: CxVec,
                                  St_vsc_pf: CxVec,
+                                 Pfp_vsc_pf: Vec | None,
+                                 Pfn_vsc_pf: Vec | None,
                                  Z_fault: CxVec,
                                  fault_bus: int,
                                  options: PowerFlowOptions,
@@ -398,6 +400,8 @@ class ShortCircuitDriver(DriverTemplate):
                                      V_pf=V_pf,
                                      S_pf=S_pf,
                                      St_vsc_pf=St_vsc_pf,
+                                     Pfp_vsc_pf=Pfp_vsc_pf,
+                                     Pfn_vsc_pf=Pfn_vsc_pf,
                                      Z_fault=Z_fault,
                                      fault_bus=fault_bus,
                                      options=options,
@@ -553,6 +557,8 @@ class ShortCircuitDriver(DriverTemplate):
                                         V_pf=self.pf_results.voltage[island.bus_data.original_idx],
                                         S_pf=self.pf_results.Sbus[island.bus_data.original_idx],
                                         St_vsc_pf=self.pf_results.St_vsc[island.vsc_data.original_idx],
+                                        Pfp_vsc_pf=self.pf_results.Pfp_vsc[island.vsc_data.original_idx],
+                                        Pfn_vsc_pf=self.pf_results.Pfn_vsc[island.vsc_data.original_idx],
                                         Z_fault=Zf[island.bus_data.original_idx],
                                         fault_bus=island_bus_index,
                                         options=self.pf_options,

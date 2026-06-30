@@ -575,6 +575,8 @@ def calc_autodiff_jacobian(func: Callable[[Vec], Vec], x: Vec, h=1e-8) -> CSC:
 class PfAcDcWithNegativePolesSc(PfFormulationTemplate):
 
     def __init__(self, V0: CxVec, S0: CxVec, I0: CxVec, Y0: CxVec, St_vsc_pf: CxVec,
+                 Pfp_vsc_pf: Vec | None,
+                 Pfn_vsc_pf: Vec | None,
                  Qmin: Vec, Qmax: Vec,
                  nc: NumericalCircuit,
                  options: PowerFlowOptions,
@@ -588,6 +590,8 @@ class PfAcDcWithNegativePolesSc(PfFormulationTemplate):
         :param I0: Set current injections
         :param Y0: Set admittance injections
         :param St_vsc_pf: Converters St coming from a previous power flow
+        :param Pfp_vsc_pf: Converters Pfp coming from a previous power flow
+        :param Pfn_vsc_pf: Converters Pfn coming from a previous power flow
         :param nc: NumericalCircuit
         :param options: PowerFlowOptions
         :param logger: Logger (modified in-place)
@@ -604,6 +608,8 @@ class PfAcDcWithNegativePolesSc(PfFormulationTemplate):
         # We move Y0 to Ybus diagonal to improve convergence, so self.Y0 set to zeros
         self.Y0: CxVec = np.zeros_like(Y0)
         self.St_vsc_pf: CxVec = St_vsc_pf
+        self.Pfp_vsc_pf: Vec = np.zeros(nc.vsc_data.nelm) if Pfp_vsc_pf is None else Pfp_vsc_pf
+        self.Pfn_vsc_pf: Vec = np.zeros(nc.vsc_data.nelm) if Pfn_vsc_pf is None else Pfn_vsc_pf
         if sc_async_gen_q_mask is None:
             self.sc_async_gen_q_mask = np.zeros(nc.generator_data.nelm, dtype=bool)
         else:
@@ -690,6 +696,7 @@ class PfAcDcWithNegativePolesSc(PfFormulationTemplate):
         self.Pfn_vsc[self.k_vsc_pfn] = self.vsc_pfn_set / self.nc.Sbase
         self.Pt_vsc[self.k_vsc_pt] = self.vsc_pt_set / self.nc.Sbase
         self.Qt_vsc[self.k_vsc_qt] = self.vsc_qt_set / self.nc.Sbase
+        self._set_fault_vsc_power_flow_guess()
 
         # Admittance ---------------------------------------------------------------------------------------------------
         self.adm = compute_admittances_fast(
@@ -754,6 +761,20 @@ class PfAcDcWithNegativePolesSc(PfFormulationTemplate):
         vpf = abs(self.V0[ac_bus])
         scale = abs(V[ac_bus]) ** 2 / (vpf * vpf + 1e-20)
         return self.St_vsc_pf[self.nc.vsc_data.original_idx[vsc_i]] / self.nc.Sbase * scale
+
+    def _set_fault_vsc_power_flow_guess(self) -> None:
+        """
+        Initialize fault-controlled VSC P/Q unknowns from the prefault power-flow solution.
+        """
+        for vsc_i in self.u_vsc_pt:
+            if (self.nc.vsc_data.control1[vsc_i] == ConverterControlType.Fault1
+                    and self.nc.vsc_data.control2[vsc_i] == ConverterControlType.Fault2):
+                pf_idx = self.nc.vsc_data.original_idx[vsc_i]
+                st_pf = self.St_vsc_pf[pf_idx] / self.nc.Sbase
+                self.Pt_vsc[vsc_i] = st_pf.real
+                self.Qt_vsc[vsc_i] = st_pf.imag
+                self.Pfp_vsc[vsc_i] = self.Pfp_vsc_pf[pf_idx] / self.nc.Sbase
+                self.Pfn_vsc[vsc_i] = self.Pfn_vsc_pf[pf_idx] / self.nc.Sbase
 
     def _update_Qlim_indices(self, i_u_vm: IntVec, i_k_q: IntVec) -> None:
         """
