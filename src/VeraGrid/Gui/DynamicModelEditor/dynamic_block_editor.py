@@ -2937,8 +2937,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         template_builder = emt_templates.ShuntRlcComboEmtTemplate(vf=self.var_factory)
 
+        name = "EMT RLC combo"
+
         if template_builder is not None:
-            dialog = DynTemplatesEditorDialog(template_builder.params)
+            dialog = DynTemplatesEditorDialog(name, template_builder.params)
             dialog.exec()
             template = template_builder.eval()
             block_model = template.block
