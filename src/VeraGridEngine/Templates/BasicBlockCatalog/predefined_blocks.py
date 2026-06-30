@@ -370,7 +370,7 @@ def signal_pair(var_factory: VarFactory, item_name: str = "") -> Tuple[Block, Bl
     )
 
     blk_out = Block(
-        algebraic_vars=[v],
+        # algebraic_vars=[v],
         out_vars=[v],
         name="To" + item_name
     )

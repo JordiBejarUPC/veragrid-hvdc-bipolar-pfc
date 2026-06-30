@@ -1413,6 +1413,16 @@ class PairedItem(QGraphicsPolygonItem):
     def hoverLeaveEvent(self, event):
         QApplication.restoreOverrideCursor()
 
+    def contextMenuEvent(self, event):
+        if not self._is_signal_in and self._paired_item is not None:
+            menu = QMenu()
+            duplicate_action = QAction("Duplicate", menu)
+            duplicate_action.triggered.connect(lambda: duplicate_paired_item(self))
+            menu.addAction(duplicate_action)
+            menu.exec(event.screenPos())
+        else:
+            super().contextMenuEvent(event)
+
     def itemChange(self, change, value):
         if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:
             if self.position_changed_callback is not None:
@@ -1430,6 +1440,49 @@ class PairedItem(QGraphicsPolygonItem):
         else:
             pass
         return super().itemChange(change, value)
+
+
+def duplicate_paired_item(original: PairedItem) -> PairedItem | None:
+    if original.editor is None or original._is_signal_in or original._paired_item is None:
+        return None
+
+    editor = original.editor
+    from_item = original._paired_item
+    var_factory = original.var_factory
+
+    shared_var = var_factory.add_var("var_to")
+    shared_var.uid = from_item.subsys.in_vars[0].uid
+
+    blk_new = Block(
+        # algebraic_vars=[shared_var],
+        out_vars=[shared_var],
+        name=original.name,
+    )
+
+    editor.main_block.add(blk_new)
+
+    new_item = PairedItem(
+        editor=editor,
+        var_factory=var_factory,
+        subsys=blk_new,
+        api_object=original.api_object,
+        mode=original.mode,
+        name=blk_new.name,
+        paired_item=from_item,
+        position_changed_callback=editor._build_position_changed_callback(blk_new.uid),
+    )
+    new_item.setPos(original.pos() + QPointF(0.0, 80.0))
+    editor.scene.addItem(new_item)
+    editor.diagram.add_node(
+        name=blk_new.name,
+        x=original.pos().x(),
+        y=original.pos().y() + 80.0,
+        tpe="signal_out",
+        device_uid=blk_new.uid,
+    )
+
+    editor.mark_unapplied_changes()
+    return new_item
 
 
 class BlockItem(QGraphicsRectItem):
