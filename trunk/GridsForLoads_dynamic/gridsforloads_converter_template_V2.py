@@ -14,7 +14,6 @@ from VeraGridEngine.Utils.procedural_logic import hard_saturation, sampled_value
 from VeraGridEngine.enumerations import VarPowerFlowReferenceType, DeviceType
 
 
-
 def get_trafo_grid_connection_G4L(vf: VarFactory, name: str = "G4L_transformer") -> EmtModelTemplate:
     """
     Equivalent transformer where the load is connected.
@@ -228,8 +227,6 @@ def get_grid_side_converter_GFL(vf: VarFactory, name: str = "G4L_grid_side_conve
     event_dict = {
         Linv_f: vf.add_const(omega_base / X_f_pu),
         R_f: vf.add_const(R_f_pu),
-
-
     }
 
     # grid connection voltages
@@ -556,18 +553,24 @@ def get_grid_side_converter_control_GFL(vf: VarFactory, name: str = "G4L_grid_si
                             ]
 
     # CONNECT VARIABLES BETWEEN CHILDREN
-    # Use the PLL angle for abc->dq measurements so the PLL regulates the same
-    # frame used to compute v_d/v_q. Keep the VSM angle only for the voltage
-    # synthesis/current-loop command frame.
-    vf.add_connection(clark_park_transforms_mdl.in_vars[6], PLL_mdl.out_vars[0])
+    # phase_vsm
+    vf.add_connection(clark_park_transforms_mdl.in_vars[6], VSM_mdl.out_vars[0])
     vf.add_connection(current_loop_mdl.in_vars[4], VSM_mdl.out_vars[0])
     # bus voltages into PLL
     vf.add_connection(PLL_mdl.in_vars[0], clark_park_transforms_mdl.in_vars[0]) # VA
     vf.add_connection(PLL_mdl.in_vars[1], clark_park_transforms_mdl.in_vars[1]) # VB
     vf.add_connection(PLL_mdl.in_vars[2], clark_park_transforms_mdl.in_vars[2]) # VC
+    # bus voltages into VSM for steady-state phase offset initialization
+    vf.add_connection(VSM_mdl.in_vars[3], clark_park_transforms_mdl.in_vars[0]) # VA
+    vf.add_connection(VSM_mdl.in_vars[4], clark_park_transforms_mdl.in_vars[1]) # VB
+    vf.add_connection(VSM_mdl.in_vars[5], clark_park_transforms_mdl.in_vars[2]) # VC
     # vf.add_connection(PLL_mdl.in_vars[3], clark_park_transforms_mdl.in_vars[3])
     # vf.add_connection(PLL_mdl.in_vars[4], clark_park_transforms_mdl.in_vars[4])
     # vf.add_connection(PLL_mdl.in_vars[5], clark_park_transforms_mdl.in_vars[5])
+    # measured currents into VSM for steady-state phase offset initialization
+    vf.add_connection(VSM_mdl.in_vars[6], clark_park_transforms_mdl.in_vars[3]) # iA
+    vf.add_connection(VSM_mdl.in_vars[7], clark_park_transforms_mdl.in_vars[4]) # iB
+    vf.add_connection(VSM_mdl.in_vars[8], clark_park_transforms_mdl.in_vars[5]) # iC
     # omega VSM
     vf.add_connection(current_loop_mdl.in_vars[5], VSM_mdl.out_vars[1])
     # theta pll
@@ -848,10 +851,16 @@ def get_VSM_GFL(vf: VarFactory, name: str = "G4L_VSM") -> EmtModelTemplate:
     # omega pll
     w_pll = vf.add_var(name=f"w_pll_{name}")
     theta_pll = vf.add_var(name=f"theta_pll_{name}")
+    v_A = vf.add_var(name=f"v_A_{name}", reference=VarPowerFlowReferenceType.v_A)
+    v_B = vf.add_var(name=f"v_B_{name}", reference=VarPowerFlowReferenceType.v_B)
+    v_C = vf.add_var(name=f"v_C_{name}", reference=VarPowerFlowReferenceType.v_C)
+    i_A = vf.add_var(name=f"i_A_{name}", reference=VarPowerFlowReferenceType.i_A)
+    i_B = vf.add_var(name=f"i_B_{name}", reference=VarPowerFlowReferenceType.i_B)
+    i_C = vf.add_var(name=f"i_C_{name}", reference=VarPowerFlowReferenceType.i_C)
 
     P_ref = vf.add_var(name=f"P_ref_{name}")
 
-    inputs =[theta_pll, w_pll, Pac]
+    inputs =[theta_pll, w_pll, Pac, v_A, v_B, v_C, i_A, i_B, i_C]
 
     # outputs
     phase_vsm = vf.add_var(name=f"phase_vsm_{name}")
@@ -894,6 +903,39 @@ def get_VSM_GFL(vf: VarFactory, name: str = "G4L_VSM") -> EmtModelTemplate:
     y = vf.add_var(name=f"y_{name}")
     dy = vf.add_diff_var(name=f"dy_{name}", base_var=y)
 
+    alpha = (1 / 3) * (2 * v_A - v_B - v_C)
+    beta = (1 / 3) * (-np.sqrt(3) * v_B + np.sqrt(3) * v_C)
+    theta_v = sym.atan2(-beta, alpha)
+    alpha_i = (1 / 3) * (2 * i_A - i_B - i_C)
+    beta_i = (1 / 3) * (-np.sqrt(3) * i_B + np.sqrt(3) * i_C)
+    i_q0 = alpha_i * cos(theta_v) - beta_i * sin(theta_v)
+    i_d0 = alpha_i * sin(theta_v) + beta_i * cos(theta_v)
+    v_mag = sym.sqrt(alpha * alpha + beta * beta)
+
+    # Reconstruct the steady-state VSM angle offset from the initialized
+    # operating-point voltage and current so the converter dq frame starts from
+    # the same electrical operating point as the virtual admittance block.
+    v_q_ref_init = vf.add_const(np.sqrt(2))
+    v_d_ref_init = vf.add_const(0.0)
+    # Simulink uses Zvirtual = 0.2 on the standard 3ph p.u. impedance base.
+    # VeraGrid EMT phase/current signals use an impedance base that is 1/3 of
+    # the standard one, so the equivalent EMT p.u. impedance is 3 * 0.2 = 0.6.
+    z_virtual = 0.6
+    r_l_virtual = 0.1
+    lv_expr = z_virtual / omega_expr
+    rv_expr = z_virtual * r_l_virtual
+    Xv = vf.add_const(lv_expr * omega_expr)
+    Rv = vf.add_const(rv_expr)
+    D = sym.max(Rv * Rv + Xv * Xv, eps)
+    c0_q = (Rv * v_q_ref_init - Xv * v_d_ref_init) / D
+    c0_d = (Xv * v_q_ref_init + Rv * v_d_ref_init) / D
+    c1_q = Rv * v_mag / D
+    c1_d = Xv * v_mag / D
+    a_q = c0_q - i_q0
+    a_d = c0_d - i_d0
+    delta_raw = sym.atan2(a_d, a_q) - sym.atan2(c1_d, c1_q)
+    delta_vsm0 = sym.atan2(sin(delta_raw), cos(delta_raw))
+
 
     templ.block = Block(
         # --------------------------------------------------------------------------------------
@@ -921,7 +963,7 @@ def get_VSM_GFL(vf: VarFactory, name: str = "G4L_VSM") -> EmtModelTemplate:
         init_eqs={
             x: c0,
             y: vf.add_const(1.0),
-            phase_vsm: theta_pll ,
+            phase_vsm: theta_v + delta_vsm0,
             omega_vsm: omega_ref,
         },
         diff_init_eqs={
@@ -933,6 +975,12 @@ def get_VSM_GFL(vf: VarFactory, name: str = "G4L_VSM") -> EmtModelTemplate:
 
     templ.block.external_mapping = {
         VarPowerFlowReferenceType.P: Pac,
+        VarPowerFlowReferenceType.v_A: v_A,
+        VarPowerFlowReferenceType.v_B: v_B,
+        VarPowerFlowReferenceType.v_C: v_C,
+        VarPowerFlowReferenceType.i_A: i_A,
+        VarPowerFlowReferenceType.i_B: i_B,
+        VarPowerFlowReferenceType.i_C: i_C,
     }
 
     return templ
@@ -971,7 +1019,10 @@ def get_virtual_admittance_GFL(vf: VarFactory, name: str = "G4L_Virtual_admittan
     # parameters virtual admittance
     Vac_expr = np.sqrt(2 / 3)
     omega_ref_expr = 2 * np.pi * 50
-    Zvirtual = 1 #0.6 #0.2
+    # Simulink uses Zvirtual = 0.2 on the standard 3ph p.u. impedance base.
+    # VeraGrid EMT phase/current signals use an impedance base that is 1/3 of
+    # the standard one, so the equivalent EMT p.u. impedance is 3 * 0.2 = 0.6.
+    Zvirtual = 0.6
     R_L = 0.1
     Lv = vf.add_const(Zvirtual / omega_ref_expr)
     Rv = vf.add_const(Zvirtual * R_L)
@@ -1153,8 +1204,10 @@ def get_current_limiter_GFL(vf: VarFactory, name: str = "G4L_current_limiter") -
     inputs = [i_q, i_d]
 
     # Output order remains:
-    # i_q_lim = vf.add_var(name=f"i_q_lim_{name}")
-    # i_d_lim = vf.add_var(name=f"i_d_lim_{name}")
+    # output 0 = i_q_lim
+    # output 1 = i_d_lim
+    i_q_lim = vf.add_var(name=f"i_q_lim_{name}")
+    i_d_lim = vf.add_var(name=f"i_d_lim_{name}")
 
     i_q_lim_mode = vf.add_var(name=f"i_q_lim_mode_{name}")
     i_d_lim_mode = vf.add_var(name=f"i_d_lim_mode_{name}")
@@ -1188,16 +1241,19 @@ def get_current_limiter_GFL(vf: VarFactory, name: str = "G4L_current_limiter") -
         diff_vars=[],
 
         algebraic_eqs=[
-            # i_q_lim - i_q_lim_mode,
-            # i_d_lim - i_d_lim_mode,
+            i_q_lim - i_q_lim_mode,
+            i_d_lim - i_d_lim_mode,
         ],
-        # algebraic_vars=[i_q_lim, i_d_lim],
-        algebraic_vars=[],
+        algebraic_vars=[i_q_lim, i_d_lim],
 
         in_vars=inputs,
-        out_vars=[i_q_lim_mode, i_d_lim_mode],
+        out_vars=[i_q_lim, i_d_lim],
 
         init_eqs={
+            # Initialization is before the procedural update, and the operating
+            # point should match the unsaturated current request.
+            i_q_lim: i_q,
+            i_d_lim: i_d,
         },
 
         mode_dict={
@@ -1322,8 +1378,9 @@ def get_current_loop_GFL(vf: VarFactory, name: str = "G4L_current_loop") -> EmtM
             # y_d + (err_d * Kp_cc + x_e_d), # from simulink model
             y_q - (err_q * Kp_cc + x_e_q), # CORRECT SIGN CONV
             y_d - (err_d * Kp_cc + x_e_d), # CORRECT SIGN CONV
-            # v_con_q - (v_ffw_q + y_q - omega_pll * L_f * i_d), # from simulink model
-            v_con_q - (v_ffw_q + y_q + omega_pll * L_f * i_d), # CORRECT SIGN CONV
+            # Simulink q-axis current loop subtracts the cross-coupling term
+            # ``omega * L_f * i_d`` from the PI + feedforward sum.
+            v_con_q - (v_ffw_q + y_q - omega_pll * L_f * i_d),
             # v_con_d - (v_ffw_d + y_d + omega_pll * L_f * i_q), # from simulink model
             v_con_d - (v_ffw_d + y_d - omega_pll * L_f * i_q), # CORRECT SIGN CONV
             # transform qd to abc
@@ -1350,11 +1407,11 @@ def get_current_loop_GFL(vf: VarFactory, name: str = "G4L_current_loop") -> EmtM
             # v_con_d: v_d,
             # v_con_q: v_q - R_f_pu*i_q - omega_pll*L_f*i_d,
             # v_con_d: v_d - R_f_pu*i_d + omega_pll*L_f*i_q,
-            v_con_q: v_q + R_f_pu * i_q + omega_pll * L_f * i_d,
+            v_con_q: v_q + R_f_pu * i_q - omega_pll * L_f * i_d,
             v_con_d: v_d + R_f_pu * i_d - omega_pll * L_f * i_q,
             # y_q: v_ffw_q - v_con_q,
             # y_d: v_con_d - v_ffw_d,
-            y_q: v_con_q - v_ffw_q - omega_pll * L_f * i_d,
+            y_q: v_con_q - v_ffw_q + omega_pll * L_f * i_d,
             y_d: v_con_d - v_ffw_d + omega_pll * L_f * i_q,
             x_e_q: y_q - Kp_cc * err_q,
             x_e_d: y_d - Kp_cc * err_d,

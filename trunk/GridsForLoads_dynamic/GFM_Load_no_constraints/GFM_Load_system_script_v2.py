@@ -138,6 +138,24 @@ def try_get_init_diff_value(problem: EmtProblemDae, name: str):
         return None
 
 
+def try_get_init_runtime_param_value(problem: EmtProblemDae, name: str):
+    try:
+        param = None
+        for candidate in problem.get_variable_parameters():
+            if candidate.name == name:
+                param = candidate
+            else:
+                pass
+
+        if param is None:
+            return None
+        else:
+            idx = problem.uid2idx_event_params[param.uid]
+            return problem.event_params_values[idx]
+    except Exception:
+        return None
+
+
 def print_series_summary(problem: EmtProblemDae, y_arr: np.ndarray, name: str):
     series = try_get_series(problem, y_arr, name)
     if series is None:
@@ -534,7 +552,7 @@ init_diagnostic_names = [
     "v_dc_G4L_load_side_converter",
     "i_q_G4L_clark_park_transforms_qd",
     "i_q_out_VA_G4L_Virtual_admittance",
-    "i_q_lim_mode_G4L_current_limiter",
+    "i_q_lim_G4L_current_limiter",
     "theta_pll_G4L_PLL",
     "phase_vsm_G4L_VSM",
     "omega_vsm_G4L_VSM",
@@ -553,6 +571,30 @@ if theta_pll_init is not None and phase_vsm_init is not None:
     delta_vsm_init = float(wrap_to_pi(float(phase_vsm_init) - float(theta_pll_init)))
     init_diagnostics["delta_vsm_init"] = delta_vsm_init
     print(f"  delta_vsm_init = {delta_vsm_init}")
+
+init_runtime_param_names = [
+    "theta_pll_mode_G4L_PLL",
+    "i_dc_mode_G4L_grid_side_converter",
+    "i_dc_L_mode_G4L_load_side_converter_control",
+    "v_con_A_mode_G4L_current_loop",
+    "v_con_B_mode_G4L_current_loop",
+    "v_con_C_mode_G4L_current_loop",
+    "i_q_lim_mode_G4L_current_limiter",
+    "i_d_lim_mode_G4L_current_limiter",
+]
+
+print("Initial runtime parameter diagnostics")
+for name in init_runtime_param_names:
+    value = try_get_init_runtime_param_value(problem, name)
+    print(f"  {name} = {value}")
+
+theta_pll_init_runtime = try_get_init_runtime_param_value(problem, "theta_pll_mode_G4L_PLL")
+theta_pll_init_state = try_get_init_value(problem, "theta_pll_G4L_PLL")
+if theta_pll_init_runtime is None or theta_pll_init_state is None:
+    print("  theta_pll_mode_minus_theta_pll = unavailable")
+else:
+    theta_diff = float(wrap_to_pi(float(theta_pll_init_runtime) - float(theta_pll_init_state)))
+    print(f"  theta_pll_mode_minus_theta_pll = {theta_diff}")
 
 i_dc_init = init_diagnostics["i_dc_G4L_grid_side_converter"]
 i_dc_L_init = init_diagnostics["i_dc_L_G4L_load_side_converter_control"]
@@ -638,11 +680,11 @@ for name in [
     "i_cap_dc_G4L_load_side_converter",
     "v_dc_G4L_load_side_converter",
     "i_q_out_VA_G4L_Virtual_admittance",
-    "i_q_lim_mode_G4L_current_limiter",
+    "i_q_lim_G4L_current_limiter",
     "i_q_G4L_clark_park_transforms_qd",
     "err_q_G4L_current_loop",
     "i_d_out_VA_G4L_Virtual_admittance",
-    "i_d_lim_mode_G4L_current_limiter",
+    "i_d_lim_G4L_current_limiter",
     "i_d_G4L_clark_park_transforms_qd",
     "err_d_G4L_current_loop",
     "err_q_G4L_Virtual_admittance",
@@ -758,7 +800,7 @@ if axes_va[2].lines:
 fig_currents, axes_currents = plt.subplots(2, 1, figsize=(14, 8), sharex=True)
 for name in [
     "i_q_out_VA_G4L_Virtual_admittance",
-    "i_q_lim_mode_G4L_current_limiter",
+    "i_q_lim_G4L_current_limiter",
     "i_q_G4L_clark_park_transforms_qd",
     "err_q_G4L_current_loop",
 ]:
@@ -770,7 +812,7 @@ if axes_currents[0].lines:
 
 for name in [
     "i_d_out_VA_G4L_Virtual_admittance",
-    "i_d_lim_mode_G4L_current_limiter",
+    "i_d_lim_G4L_current_limiter",
     "i_d_G4L_clark_park_transforms_qd",
     "err_d_G4L_current_loop",
 ]:
@@ -945,13 +987,13 @@ if axes_si_overview[2].lines:
 
 plot_scaled_with_tracking(axes_si_overview[3], t_arr, problem, y_arr, "i_q_out_VA_G4L_Virtual_admittance",
                           Ibase_vg, "i_q_out_VA [A]", negate=True, linestyle="-")
-plot_scaled_with_tracking(axes_si_overview[3], t_arr, problem, y_arr, "i_q_lim_mode_G4L_current_limiter",
+plot_scaled_with_tracking(axes_si_overview[3], t_arr, problem, y_arr, "i_q_lim_G4L_current_limiter",
                           Ibase_vg, "i_q_lim [A]", negate=True, linestyle="-")
 plot_scaled_with_tracking(axes_si_overview[3], t_arr, problem, y_arr, "i_q_G4L_clark_park_transforms_qd",
                           Ibase_vg, "i_q_meas [A]", negate=True, linestyle="-")
 plot_scaled_with_tracking(axes_si_overview[3], t_arr, problem, y_arr, "i_d_out_VA_G4L_Virtual_admittance",
                           Ibase_vg, "i_d_out_VA [A]", negate=True, linestyle="--")
-plot_scaled_with_tracking(axes_si_overview[3], t_arr, problem, y_arr, "i_d_lim_mode_G4L_current_limiter",
+plot_scaled_with_tracking(axes_si_overview[3], t_arr, problem, y_arr, "i_d_lim_G4L_current_limiter",
                           Ibase_vg, "i_d_lim [A]", negate=True, linestyle="--")
 plot_scaled_with_tracking(axes_si_overview[3], t_arr, problem, y_arr, "i_d_G4L_clark_park_transforms_qd",
                           Ibase_vg, "i_d_meas [A]", negate=True, linestyle="--")
@@ -1035,7 +1077,7 @@ if axes_si_va[2].lines:
 fig_si_currents, axes_si_currents = plt.subplots(2, 1, figsize=(14, 8), sharex=True)
 plot_scaled_with_tracking(axes_si_currents[0], t_arr, problem, y_arr, "i_q_out_VA_G4L_Virtual_admittance",
                           Ibase_vg, "i_q_out_VA [A]", negate=True)
-plot_scaled_with_tracking(axes_si_currents[0], t_arr, problem, y_arr, "i_q_lim_mode_G4L_current_limiter",
+plot_scaled_with_tracking(axes_si_currents[0], t_arr, problem, y_arr, "i_q_lim_G4L_current_limiter",
                           Ibase_vg, "i_q_lim [A]", negate=True)
 plot_scaled_with_tracking(axes_si_currents[0], t_arr, problem, y_arr, "i_q_G4L_clark_park_transforms_qd",
                           Ibase_vg, "i_q_meas [A]", negate=True)
@@ -1049,7 +1091,7 @@ if axes_si_currents[0].lines:
 
 plot_scaled_with_tracking(axes_si_currents[1], t_arr, problem, y_arr, "i_d_out_VA_G4L_Virtual_admittance",
                           Ibase_vg, "i_d_out_VA [A]", negate=True)
-plot_scaled_with_tracking(axes_si_currents[1], t_arr, problem, y_arr, "i_d_lim_mode_G4L_current_limiter",
+plot_scaled_with_tracking(axes_si_currents[1], t_arr, problem, y_arr, "i_d_lim_G4L_current_limiter",
                           Ibase_vg, "i_d_lim [A]", negate=True)
 plot_scaled_with_tracking(axes_si_currents[1], t_arr, problem, y_arr, "i_d_G4L_clark_park_transforms_qd",
                           Ibase_vg, "i_d_meas [A]", negate=True)
@@ -1069,8 +1111,8 @@ err_q_pu = get_series_with_tracking("err_q_G4L_Virtual_admittance")
 err_d_pu = get_series_with_tracking("err_d_G4L_Virtual_admittance")
 i_q_out_va_pu = get_series_with_tracking("i_q_out_VA_G4L_Virtual_admittance")
 i_d_out_va_pu = get_series_with_tracking("i_d_out_VA_G4L_Virtual_admittance")
-i_q_lim_pu = get_series_with_tracking("i_q_lim_mode_G4L_current_limiter")
-i_d_lim_pu = get_series_with_tracking("i_d_lim_mode_G4L_current_limiter")
+i_q_lim_pu = get_series_with_tracking("i_q_lim_G4L_current_limiter")
+i_d_lim_pu = get_series_with_tracking("i_d_lim_G4L_current_limiter")
 i_q_meas_pu = get_series_with_tracking("i_q_G4L_clark_park_transforms_qd")
 i_d_meas_pu = get_series_with_tracking("i_d_G4L_clark_park_transforms_qd")
 
@@ -1269,6 +1311,13 @@ def add_csv_array(column_name: str, series):
 add_csv_series("vA_Bus1_kV", "v_A_Bus1_emt_template", V_phase_rms_base / 1000.0)
 add_csv_series("vB_Bus1_kV", "v_B_Bus1_emt_template", V_phase_rms_base / 1000.0)
 add_csv_series("vC_Bus1_kV", "v_C_Bus1_emt_template", V_phase_rms_base / 1000.0)
+# Simulink exports converter terminal voltages measured at the converter-side
+# AC terminals. In this VeraGrid model those are the same electrical node as
+# the grid-side converter AC input voltages, which coincide with the PCC bus
+# shell variables exposed by the assembled EMT network.
+add_csv_series("vA_conv_kV", "v_A_Bus1_emt_template", V_phase_rms_base / 1000.0)
+add_csv_series("vB_conv_kV", "v_B_Bus1_emt_template", V_phase_rms_base / 1000.0)
+add_csv_series("vC_conv_kV", "v_C_Bus1_emt_template", V_phase_rms_base / 1000.0)
 add_csv_series("iA_grid_A_sim_sign", "i_f_A_G4L_grid_side_converter", Ibase_vg, negate=True)
 add_csv_series("iB_grid_A_sim_sign", "i_f_B_G4L_grid_side_converter", Ibase_vg, negate=True)
 add_csv_series("iC_grid_A_sim_sign", "i_f_C_G4L_grid_side_converter", Ibase_vg, negate=True)
@@ -1276,8 +1325,8 @@ add_csv_series("vq_V", "v_q_G4L_clark_park_transforms_qd", V_phase_rms_base)
 add_csv_series("vd_V", "v_d_G4L_clark_park_transforms_qd", V_phase_rms_base)
 add_csv_series("iq_va_A_sim_sign", "i_q_out_VA_G4L_Virtual_admittance", Ibase_vg, negate=True)
 add_csv_series("id_va_A_sim_sign", "i_d_out_VA_G4L_Virtual_admittance", Ibase_vg, negate=True)
-add_csv_series("iq_lim_A_sim_sign", "i_q_lim_mode_G4L_current_limiter", Ibase_vg, negate=True)
-add_csv_series("id_lim_A_sim_sign", "i_d_lim_mode_G4L_current_limiter", Ibase_vg, negate=True)
+add_csv_series("iq_lim_A_sim_sign", "i_q_lim_G4L_current_limiter", Ibase_vg, negate=True)
+add_csv_series("id_lim_A_sim_sign", "i_d_lim_G4L_current_limiter", Ibase_vg, negate=True)
 add_csv_series("iq_meas_A_sim_sign", "i_q_G4L_clark_park_transforms_qd", Ibase_vg, negate=True)
 add_csv_series("id_meas_A_sim_sign", "i_d_G4L_clark_park_transforms_qd", Ibase_vg, negate=True)
 add_csv_series("Pac_bus_MW_sim_sign", "Pac_bus_G4L_grid_side_converter", Sb_va / 1e6, negate=True)

@@ -4876,12 +4876,19 @@ class EmtProblemDae(EmtProblemTemplate):
         """
         a = np.exp(1j * 2.0 * np.pi / 3.0)
 
-        V1 = (VA + a * VB + (a * a) * VC) / 3.0
-        I1 = (IA + a * IB + (a * a) * IC) / 3.0
+        # Build the balanced positive-sequence voltage from the PF bus phasors.
+        V1: complex = (VA + a * VB + (a * a) * VC) / 3.0
+        I1: complex = (IA + a * IB + (a * a) * IC) / 3.0
 
         phi_V = float(np.angle(V1))
         phi_I = float(np.angle(I1))
-        ang = phi_I - phi_V
+
+        # VSC EMT templates interpret ``phi`` in the converter-delivered-power
+        # convention while the PF branch current uses the network branch
+        # convention. Shifting by ``pi`` preserves the seeded current states and
+        # branch/KCL signs while making the analytical VSC power initialization
+        # consistent with positive converter export.
+        ang = phi_I - phi_V + np.pi
         phi = float(np.arctan2(np.sin(ang), np.cos(ang)))
 
         external_mapping: Optional[Dict[Any, Var]] = _get_external_mapping(mdl)
@@ -5913,16 +5920,19 @@ class EmtProblemDae(EmtProblemTemplate):
                         i_t = 0.0 + 0.0j
                     else:
                         i_t = np.conj(st_total / vt_ph)
+                        # i_t = np.conj(st_phase_total / vt_ph)
                 else:
                     if abs(vf_ph) <= 1e-12:
                         i_f = 0.0 + 0.0j
                     else:
                         i_f = np.conj(sf_total / vf_ph)
+                        # i_f = np.conj(sf_phase_total / vf_ph)
 
                     if abs(vt_ph) <= 1e-12:
                         i_t = 0.0 + 0.0j
                     else:
                         i_t = np.conj(st_total / vt_ph)
+                        # i_t = np.conj(st_phase_total / vt_ph)
 
                 i_f0: float = np.sqrt(2.0) * np.imag(i_f)
                 i_t0: float = np.sqrt(2.0) * np.imag(i_t)
@@ -6154,12 +6164,12 @@ class EmtProblemDae(EmtProblemTemplate):
                 if abs(vf_ph) <= 1e-12:
                     i_f = 0.0 + 0.0j
                 else:
-                    i_f = np.conj(s_f_3ph / vf_ph)
+                    i_f = np.conj(s_f_phase / vf_ph)
 
                 if abs(vt_ph) <= 1e-12:
                     i_t = 0.0 + 0.0j
                 else:
-                    i_t = np.conj(s_t_3ph / vt_ph)
+                    i_t = np.conj(s_t_phase / vt_ph)
 
             elif ph == "B":
                 vf_ph = v_f_bus * np.exp(-1j * alpha)
@@ -6168,12 +6178,12 @@ class EmtProblemDae(EmtProblemTemplate):
                 if abs(vf_ph) <= 1e-12:
                     i_f = 0.0 + 0.0j
                 else:
-                    i_f = np.conj(s_f_3ph / vf_ph)
+                    i_f = np.conj(s_f_phase / vf_ph)
 
                 if abs(vt_ph) <= 1e-12:
                     i_t = 0.0 + 0.0j
                 else:
-                    i_t = np.conj(s_t_3ph / vt_ph)
+                    i_t = np.conj(s_t_phase / vt_ph)
 
             elif ph == "C":
                 vf_ph = v_f_bus * np.exp(+1j * alpha)
@@ -6182,12 +6192,12 @@ class EmtProblemDae(EmtProblemTemplate):
                 if abs(vf_ph) <= 1e-12:
                     i_f = 0.0 + 0.0j
                 else:
-                    i_f = np.conj(s_f_3ph / vf_ph)
+                    i_f = np.conj(s_f_phase / vf_ph)
 
                 if abs(vt_ph) <= 1e-12:
                     i_t = 0.0 + 0.0j
                 else:
-                    i_t = np.conj(s_t_3ph / vt_ph)
+                    i_t = np.conj(s_t_phase / vt_ph)
 
             else:
                 raise ValueError(f"Unsupported phase label in Bergeron runtime: {ph}")
@@ -6375,12 +6385,12 @@ class EmtProblemDae(EmtProblemTemplate):
                 if abs(vf_ph) <= 1.0e-12:
                     i_f = 0.0 + 0.0j
                 else:
-                    i_f = np.conj(s_f_3ph / vf_ph)
+                    i_f = np.conj(s_f_phase / vf_ph)
 
                 if abs(vt_ph) <= 1.0e-12:
                     i_t = 0.0 + 0.0j
                 else:
-                    i_t = np.conj(s_t_3ph / vt_ph)
+                    i_t = np.conj(s_t_phase / vt_ph)
 
             v_f0_phasor_red[phase_index] = vf_ph
             v_t0_phasor_red[phase_index] = vt_ph
@@ -7185,6 +7195,17 @@ class EmtProblemDae(EmtProblemTemplate):
         self._initialize_mode_event_state()
         from VeraGridEngine.Utils.procedural_logic import build_boundary_updater_from_block
         self._block_boundary_updater = build_boundary_updater_from_block(self)
+
+        if self._block_boundary_updater is None:
+            pass
+        else:
+            x0: np.ndarray = self.get_x0()
+
+            # Procedural outputs such as sampled modes and saturations are
+            # retained runtime parameters. Their startup value must come from
+            # evaluating the procedural logic on the initialized operating
+            # point, not only from the generic mode_dict seed.
+            self._block_boundary_updater.initialize_modes(float(t0), x0, self._event_params_values)
 
     def emt_boundary_update(
             self,
