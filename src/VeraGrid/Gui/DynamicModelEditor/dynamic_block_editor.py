@@ -422,10 +422,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         if modal:
             self.setWindowModality(QtCore.Qt.WindowModality.WindowModal)
 
-        # # set object label
-        # self.deviceLabel = QLabel()
         self.ui.deviceLabel.setText(api_object.name if api_object is not None else "")
-        # self.ui.toolBar.addWidget(self.deviceLabel)
 
         self.block_role: int = int(QtCore.Qt.ItemDataRole.UserRole) + 300
         self.mime_type: str = "application/x-veragrid-dynamics-block"
@@ -437,6 +434,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         self.var_factory = var_factory
         self.api_object = api_object
+        self.original_block: Block = block  # api_object.rms_model
 
         self.circuit: MultiCircuit = circuit
         self.mode = mode
@@ -450,11 +448,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.setWindowTitle(f"Dynamic Model Editor [{self.mode.name}]")
         self.block_counters: Dict[BlockType, int] = dict()
         self.scene: DiagramScene = DiagramScene(self)
-        self.library= DynamicEditorLibrary(self.api_object, self.mode, self.templates_list)
         self.changes_applied: bool = False
         self.has_unapplied_changes: bool = False
 
-        self.original_block: Block = block  # api_object.rms_model
 
         self.devices_static_params_mapping: Dict[DeviceType, List[ParamPowerFlowReferenceType]] = (
             self.circuit.get_devices_static_params_mapping()
@@ -477,6 +473,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
+        # library
+        self.library = DynamicEditorLibrary(self.api_object, self.mode, self.templates_list)
         self.library_proxy_model = LibraryTreeFilterProxyModel(
             search_role=self.LIBRARY_SEARCH_TEXT_ROLE,
             parent=self.ui.libraryTreeView,
@@ -734,11 +732,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             drag_token = bytes(mime_data.data(self.mime_type)).decode("utf-8")
             payload = self.library.library_model.get_drag_payload(drag_token)
 
-            if isinstance(payload, BlockType):
-                return payload
-            elif isinstance(payload, BasicBlockTemplateDescriptor):
-                return payload
-            elif isinstance(payload, (RmsModelTemplate, EmtModelTemplate, FmuTemplate)):
+            if isinstance(payload, (BlockType, BasicBlockTemplateDescriptor, RmsModelTemplate, EmtModelTemplate, FmuTemplate)):
                 return payload
             else:
                 return None
@@ -754,6 +748,17 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
 
         return BlockPositionChangedCallback(self, block_uid)
+
+    # def create_item_from_blocktype(self,
+    #                                 payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate,
+    #                                 x_pos: float,
+    #                                 y_pos: float) -> GenericBlockItem | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem | None:
+    #     """
+    #     Materialize one library payload on the diagram scene.
+    #     """
+
+
+
 
     def create_generic_block_item(self, block_type: BlockType, x_pos, y_pos) -> GenericBlockItem | None:
         """
@@ -1661,334 +1666,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             if dialog.exec() == QDialog.DialogCode.Accepted:
                 item_name, inputs, outputs = dialog.get_values()
                 block_model = create_generic_block(self.var_factory, inputs, outputs, item_name)
-
-        # if block_type == BlockType.TRAFO_EMT:
-        elif block_type in {BlockType.TRAFO_EMT, BlockType.XFMR_TRANSFORMER}:
-            topology_config: Dict[str, Any] | None = self._resolve_transformer_topology_configuration()
-
-            if topology_config is None:
-                dialog = self._build_transformer_topology_emt_dialog(block_type=block_type)
-
-                if dialog.exec() == QDialog.DialogCode.Accepted:
-                    topology_config = dialog.get_configuration()
-                    topology_config["allow_modify_template"] = True
-                else:
-                    return None
-            else:
-                topology_config = dict(topology_config)
-
-            item_name: str = f"{block_type.name}_{count}"
-            block_model = self._build_transformer_topology_emt_block_model(
-                block_type=block_type,
-                item_name=item_name,
-                modal_config=topology_config,
-            )
-            if block_model is None:
-                return None
-
-            self.set_modal_template_metadata(block_model, kind="transformer_topology_emt",
-                                             config=dict(topology_config, block_type=block_type.name))
-
-            # The dynamic editor must not overwrite the static transformer
-            # winding connection stored by the network object. The dynamic block
-            # keeps its own modal configuration and must follow the static device
-            # contract during template assignment.
-            if isinstance(self.api_object, BranchParent):
-                pass
-            else:
-                pass
-
-
-        # elif block_type in {BlockType.EXP_LOAD_EMT, BlockType.ZIP_LOAD_EMT}:
-        #     dialog = self._build_load_topology_emt_dialog(block_type=block_type)
-        #
-        #     if dialog.exec() == QDialog.DialogCode.Accepted:
-        #         load_config = dialog.get_configuration()
-        #     else:
-        #         return None
-        #
-        #     item_name: str = f"{block_type.name}_{count}"
-        #     block_model = self._build_load_topology_emt_block_model(
-        #         block_type=block_type,
-        #         item_name=item_name,
-        #         modal_config=load_config,
-        #     )
-        #
-        #     self.set_modal_template_metadata(block_model, kind="load_topology_emt",
-        #                                      config=dict(load_config, block_type=block_type.name))
-        #     self._annotate_internal_grounding_link_blocks(block_model)
-        #
-        #     # The dynamic editor must not overwrite the static load connection.
-        #     if isinstance(self.api_object, InjectionParent):
-        #         pass
-        #     else:
-        #         pass
-
-        elif block_type == BlockType.EMT_PI_LINE or block_type == BlockType.EMT_BERGERON_LINE:
-            dialog = EmtTemplateWizardDialog(self)
-            if dialog.exec() == QDialog.DialogCode.Accepted:
-                phase_n, phase_a, phase_b, phase_c = dialog.get_values()
-            else:
-                return None
-
-            item_name: str = f"{block_type.name}_{count}"
-            block_model = create_emt_wizard_block(phase_n, phase_a, phase_b, phase_c, self.var_factory,
-                                                  block_type=block_type, item_name=item_name)
-
-            self.set_modal_template_metadata(
-                block_model,
-                kind="emt_phase_wizard",
-                config=dict({
-                    "block_type": block_type.name,
-                    "phase_n": phase_n,
-                    "phase_a": phase_a,
-                    "phase_b": phase_b,
-                    "phase_c": phase_c,
-                }),
-            )
-
-
-        # elif block_type == BlockType.GROUNDING_LINK_EMT:
-        #     dialog = self._build_grounding_link_emt_dialog()
-        #
-        #     if dialog.exec() == QDialog.DialogCode.Accepted:
-        #         grounding_config = dialog.get_configuration()
-        #     else:
-        #         return None
-        #
-        #     try:
-        #         template_kwargs = self._build_grounding_link_emt_template_kwargs(grounding_config)
-        #     except ValueError as exc:
-        #         QtWidgets.QMessageBox.warning(self, "Grounding Link", str(exc))
-        #         return None
-        #
-        #     item_name: str = f"grounding_link_emt_{count}"
-        #     block_model = emt_templates.get_grounding_link_emt_template(vf=self.var_factory, name=item_name,
-        #                                                                 **template_kwargs).block
-        #     self.set_modal_template_metadata(block_model, kind="grounding_link_emt", config=dict(grounding_config))
-
-        # elif block_type == BlockType.SWITCH_EMT:
-        #     dialog = SwitchEmtDialog(self)
-        #
-        #     if dialog.exec() == QDialog.DialogCode.Accepted:
-        #         switch_config = dialog.get_switch_configuration()
-        #     else:
-        #         return None
-        #
-        #     item_name: str = f"switch_emt_{count}"
-        #
-        #     block_model = emt_templates.get_switch_emt_template(vf=self.var_factory, name=item_name,
-        #                                                         **switch_config).block
-        #     self.set_modal_template_metadata(
-        #         block_model,
-        #         kind="switch_emt",
-        #         config=dict(switch_config),
-        #     )
-
-        # elif block_type == BlockType.FAULT_EMT:
-        #     default_fault_config: Dict[str, Any] = self._build_default_fault_emt_modal_config()
-        #     dialog = FaultEmtDialog(self, initial_config=default_fault_config)
-        #
-        #     if dialog.exec() == QDialog.DialogCode.Accepted:
-        #         fault_config = dict(default_fault_config)
-        #         fault_config.update(dialog.get_configuration())
-        #     else:
-        #         return None
-
-        # item_name = f"fault_emt_{count}"
-        # block_model = emt_templates.get_fault_emt_template(
-        #     vf=self.var_factory,
-        #     fault_type=fault_config["fault_type"],
-        #     phA=bool(fault_config["phA"]),
-        #     phB=bool(fault_config["phB"]),
-        #     phC=bool(fault_config["phC"]),
-        #     signal_controlled=bool(fault_config["signal_controlled"]),
-        #     initial_closed=bool(fault_config["initial_closed"]),
-        #     fault_resistance=float(fault_config["fault_resistance"]),
-        #     ground_resistance=float(fault_config["ground_resistance"]),
-        #     open_conductance=float(fault_config["open_conductance"]),
-        #     fault_time_constant=float(fault_config["fault_time_constant"]),
-        #     command_threshold=float(fault_config["command_threshold"]),
-        #     name=item_name,
-        # ).block
-        # self.set_modal_template_metadata(
-        #     block_model,
-        #     kind="fault_emt",
-        #     config=dict(fault_config),
-        # )
-
-        # elif block_type == BlockType.RLC_COMBO_EMT:
-        #     dialog = self._build_rlc_combo_emt_dialog()
-        #
-        #     if dialog.exec() == QDialog.DialogCode.Accepted:
-        #         rlc_config = dialog.get_configuration()
-        #     else:
-        #         return None
-        #
-        #     try:
-        #         template_kwargs = self._build_rlc_combo_emt_template_kwargs(rlc_config)
-        #     except ValueError as exc:
-        #         QtWidgets.QMessageBox.warning(self, "RLC Combo", str(exc))
-        #         return None
-        #
-        #     item_name: str = f"rlc_combo_emt_{count}"
-        #
-        #     block_model = emt_templates.get_shunt_rlc_combo_emt_template(vf=self.var_factory, name=item_name,
-        #                                                                  **template_kwargs).block
-        #     self.set_modal_template_metadata(block_model, kind="rlc_combo_emt", config=dict(rlc_config))
-        #     self._annotate_internal_grounding_link_blocks(block_model)
-        #
-        #     # The dynamic editor must not overwrite the static injection
-        #     # connection. The EMT block stores its own symbolic topology.
-        #     if isinstance(self.api_object, InjectionParent):
-        #         pass
-        #     else:
-        #         pass
-
-        elif block_type in {BlockType.R_LOAD_EMT, BlockType.L_LOAD_EMT, BlockType.C_LOAD_EMT}:
-            dialog = self._build_shunt_component_emt_dialog(block_type=block_type)
-
-            if dialog.exec() == QDialog.DialogCode.Accepted:
-                shunt_config = dialog.get_configuration()
-            else:
-                return None
-
-            try:
-                template_kwargs = self._build_shunt_component_emt_template_kwargs(block_type=block_type,
-                                                                                  modal_config=shunt_config)
-            except ValueError as exc:
-                QtWidgets.QMessageBox.warning(self, "EMT Shunt", str(exc))
-                return None
-
-            item_name: str = f"{block_type.name}_{count}"
-
-            block_model = emt_templates.get_shunt_rlc_combo_emt_template(vf=self.var_factory, name=item_name,
-                                                                         **template_kwargs).block
-            self.set_modal_template_metadata(block_model, kind="shunt_component_emt",
-                                             config=dict(shunt_config, block_type=block_type.name))
-            self._annotate_internal_grounding_link_blocks(block_model)
-
-            # The dynamic editor must not overwrite the static injection
-            # connection. The EMT block stores its own symbolic topology.
-            if isinstance(self.api_object, InjectionParent):
-                pass
-            else:
-                pass
-
-        # elif _is_load_topology_block_type(BlockType):
-        #     dialog = self._build_load_topology_emt_dialog(block_type=block_type)
-        #
-        #     if dialog.exec() == QDialog.DialogCode.Accepted:
-        #         load_config = dialog.get_configuration()
-        #     else:
-        #         return None
-        #
-        #     item_name: str = f"{block_type.name}_{count}"
-        #
-        #     block_model = self._build_load_topology_emt_block_model(
-        #         block_type=block_type,
-        #         item_name=item_name,
-        #         modal_config=load_config,
-        #     )
-        #     self.set_modal_template_metadata(block_model, kind="load_topology_emt",
-        #                                      config=dict(load_config, block_type=block_type.name))
-        #     self._annotate_internal_grounding_link_blocks(block_model)
-        #
-        #     # The dynamic editor must not overwrite the static load connection.
-        #     if isinstance(self.api_object, InjectionParent):
-        #         pass
-        #     else:
-        #         pass
-
-        # elif block_type == BlockType.GROUNDING_LINK_EMT:
-        #     dialog = self._build_grounding_link_emt_dialog()
-        #
-        #     if dialog.exec() == QDialog.DialogCode.Accepted:
-        #         grounding_config = dialog.get_configuration()
-        #     else:
-        #         return None
-        #
-        #     try:
-        #         template_kwargs = self._build_grounding_link_emt_template_kwargs(grounding_config)
-        #     except ValueError as exc:
-        #         QtWidgets.QMessageBox.warning(self, "Grounding Link", str(exc))
-        #         return None
-        #
-        #     item_name: str = f"grounding_link_emt_{count}"
-        #
-        #     block_model = emt_templates.get_grounding_link_emt_template(vf=self.var_factory, name=item_name,
-        #                                                                 **template_kwargs).block
-        #     self.set_modal_template_metadata(block_model, kind="grounding_link_emt", config=dict(grounding_config))
-
-        elif block_type == BlockType.NONLINEAR_RESISTOR_EMT:
-            dialog = LookupArrayLinearDialog(
-                block_label="Nonlinear resistor EMT V-I curve",
-                initial_points=list([(0.0, 0.0), (1.0, 0.1), (1.5, 1.0), (2.0, 10.0)]),
-                parent=self,
-                x_label="V",
-                y_label="I",
-                preview_enabled=True,
-                preview_title="Nonlinear resistor EMT V-I curve",
-            )
-
-            if dialog.exec() == QDialog.DialogCode.Accepted:
-                voltage_points, current_points = dialog.get_points()
-            else:
-                return None
-
-            item_name: str = f"nonlinear_resistor_emt_{count}"
-
-            block_model = emt_templates.get_nonlinear_resistor_emt_template(
-                vf=self.var_factory,
-                voltage_points=voltage_points,
-                current_points=current_points,
-                name=item_name,
-            ).block
-            self.set_modal_template_metadata(
-                block_model,
-                kind="nonlinear_resistor_emt",
-                config=dict({
-                    "voltage_points": voltage_points,
-                    "current_points": current_points,
-                }),
-            )
-
-        elif block_type == BlockType.NONLINEAR_RESISTOR_EMT:
-            topology_config: Dict[str, Any] | None = self._resolve_transformer_topology_configuration()
-
-            if topology_config is None:
-                dialog = self._build_transformer_topology_emt_dialog(block_type=block_type)
-
-                if dialog.exec() == QDialog.DialogCode.Accepted:
-                    topology_config = dialog.get_configuration()
-                    topology_config["allow_modify_template"] = True
-                else:
-                    return None
-            else:
-                topology_config = dict(topology_config)
-
-            item_name: str = f"{block_type.name}_{count}"
-
-            block_model = self._build_transformer_topology_emt_block_model(
-                block_type=block_type,
-                item_name=item_name,
-                modal_config=topology_config,
-            )
-
-            if block_model is None:
-                return None
-            else:
-                pass
-
-            self.set_modal_template_metadata(block_model, kind="transformer_topology_emt",
-                                             config=dict(topology_config, block_type=block_type.name))
-
-            # The dynamic editor must not overwrite the static transformer
-            # winding connection stored by the network object.
-            if isinstance(self.api_object, BranchParent):
-                pass
-            else:
-                pass
 
         else:
 
@@ -3631,6 +3308,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
         Materialize one library payload on the diagram scene.
         """
+        # if isinstance(payload, BlockType):
+        #     return create_item
 
         if isinstance(payload, BlockType) and payload == BlockType.FROM_GOTO:
             items = self.create_signal_pair_item(x_pos=x_pos, y_pos=y_pos)
@@ -3644,6 +3323,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         elif isinstance(payload, BlockType) and payload == BlockType.GENERIC:
             return self.create_generic_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
+
         elif isinstance(payload, BlockType) and payload in {
             BlockType.EMT_PI_LINE,
             BlockType.EMT_BERGERON_LINE,
@@ -3690,9 +3370,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 return self.create_jmarti_line_emt_block_item(x_pos=x_pos, y_pos=y_pos)
             elif payload == BlockType.INDUCTION_MOTOR_EMT:
                 return self.create_induction_motor_emt_block_item(x_pos=x_pos, y_pos=y_pos)
-            # Source EMT blocks share the same creation dialog, so the payload
-            # is first classified by its concrete source family before building
-            # the corresponding editor block.
+
             elif payload in {
                 BlockType.VOLTAGE_SOURCE_EMT,
                 BlockType.CURRENT_SOURCE_EMT,
@@ -7659,7 +7337,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 x_pos=scene_position.x(),
                 y_pos=scene_position.y(),
             )
-
             if block_item is not None:
                 event.acceptProposedAction()
             else:
