@@ -1039,6 +1039,7 @@ class EquationDecomposer:
             "abs": sym.abs, "asin": sym.asin, "acos": sym.acos,
             "atan": sym.atan, "sinh": sym.sinh, "cosh": sym.cosh,
             "floor": sym.floor, "ceil": sym.ceil, "heaviside": sym.heaviside,
+            "rand": sym.rand,
         }
 
         if expr.op in func_map:
@@ -1148,4 +1149,3 @@ class EquationDecomposer:
                 return i
         blk.in_vars.append(var)
         return len(blk.in_vars) - 1
-

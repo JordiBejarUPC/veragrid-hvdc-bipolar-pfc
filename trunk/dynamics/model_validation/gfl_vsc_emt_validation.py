@@ -15,7 +15,7 @@ from matplotlib import pyplot as plt
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src')))
 
-from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.Utils.Symbolic.block import Block, Const
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
 from VeraGridEngine.Templates.Emt.vsc_gfl_emt import VscGflEmtBuild
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
@@ -90,6 +90,26 @@ def set_event_value_in_block(name: str, block: Block, value: float) -> bool:
             return True
 
     return False
+
+
+def set_problem_runtime_value(problem, block: Block, name: str, value: float) -> None:
+    var = find_name_in_block(name, block)
+    problem.set_internal_runtime_if_exists(block, name, value)
+    if var is None:
+        return
+
+    uid2idx = getattr(problem, "_uid2idx_event_params", getattr(problem, "uid2idx_event_params", {}))
+    if var.uid not in uid2idx:
+        return
+
+    idx = uid2idx[var.uid]
+    value_float = float(value)
+    problem._event_params_values[idx] = value_float
+    problem._event_parameters_eqs[idx] = Const(value_float)
+    if hasattr(problem, "_runtime_all_eqs_source"):
+        problem._runtime_all_eqs_source[idx] = Const(value_float)
+    if hasattr(problem, "_runtime_parameter_eqs0"):
+        problem._runtime_parameter_eqs0[idx] = Const(value_float)
 
 
 PLOT_OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "gfl_vsc_emt_validation_plots")
@@ -403,18 +423,26 @@ def build_gfl_vsc_first_step_guess(problem, vsc_model: Block, measurement_bus: g
 
     theta_old = x_old[problem.get_var_idx(var("theta"))]
     omega_old = x_old[problem.get_var_idx(var("omega"))]
-    vg_d_old = x_old[problem.get_var_idx(var("vg_d"))]
     va = value(bus_var("A"))
     vb = value(bus_var("B"))
     vc = value(bus_var("C"))
     sqrt3 = np.sqrt(3.0)
 
-    def park_d(theta_value: float) -> float:
-        return (1.0 / 3.0) * (
-            2.0 * np.cos(theta_value) * va
-            + (-np.cos(theta_value) - sqrt3 * np.sin(theta_value)) * vb
-            + (-np.cos(theta_value) + sqrt3 * np.sin(theta_value)) * vc
+    def park_dq(theta_value: float) -> tuple[float, float]:
+        theta_park = -theta_value - 0.5 * np.pi
+        cos_t = np.cos(theta_park)
+        sin_t = np.sin(theta_park)
+        d_axis = (1.0 / 3.0) * (
+            2.0 * cos_t * va
+            + (-cos_t - sqrt3 * sin_t) * vb
+            + (-cos_t + sqrt3 * sin_t) * vc
         )
+        q_axis = (1.0 / 3.0) * (
+            2.0 * sin_t * va
+            + (-sin_t + sqrt3 * cos_t) * vb
+            + (-sin_t - sqrt3 * cos_t) * vc
+        )
+        return d_axis, q_axis
 
     theta = value(var("theta"))
     omega = value(var("omega"))
@@ -423,16 +451,18 @@ def build_gfl_vsc_first_step_guess(problem, vsc_model: Block, measurement_bus: g
     pll_kp = runtime_or_default("Kp_pll", PLL_KP)
     xi_pll_old = old_x_value("xi_PLL")
     for _ in range(8):
-        vg_d_iter = park_d(theta)
+        vg_d_iter, _ = park_dq(theta)
+        pll_error_iter = vg_d_iter
         f1 = theta - theta_old - h * omega_base * omega
-        f2 = omega - (1.0 + pll_kp * vg_d_iter + pll_ki * (xi_pll_old + h * vg_d_iter))
+        f2 = omega - (1.0 + pll_kp * pll_error_iter + pll_ki * (xi_pll_old + h * pll_error_iter))
         if max(abs(f1), abs(f2)) < 1.0e-14:
             break
         eps = 1.0e-7
-        vg_d_eps = park_d(theta + eps)
+        vg_d_eps, _ = park_dq(theta + eps)
+        pll_error_eps = vg_d_eps
         df1_dtheta = 1.0
         df1_domega = -h * omega_base
-        df2_dtheta = -(pll_kp + h * pll_ki) * (vg_d_eps - vg_d_iter) / eps
+        df2_dtheta = -(pll_kp + h * pll_ki) * (pll_error_eps - pll_error_iter) / eps
         df2_domega = 1.0
         det = df1_dtheta * df2_domega - df1_domega * df2_dtheta
         if abs(det) < 1.0e-18:
@@ -444,25 +474,26 @@ def build_gfl_vsc_first_step_guess(problem, vsc_model: Block, measurement_bus: g
 
     set_value("theta", theta)
     set_value("omega", omega)
-    cos_t = np.cos(theta)
-    sin_t = np.sin(theta)
+    theta_pll_park = -theta - 0.5 * np.pi
+    cos_v = np.cos(theta_pll_park)
+    sin_v = np.sin(theta_pll_park)
     vg_d = (1.0 / 3.0) * (
-        2.0 * cos_t * va
-        + (-cos_t - sqrt3 * sin_t) * vb
-        + (-cos_t + sqrt3 * sin_t) * vc
+        2.0 * cos_v * va
+        + (-cos_v - sqrt3 * sin_v) * vb
+        + (-cos_v + sqrt3 * sin_v) * vc
     )
     vg_q = (1.0 / 3.0) * (
-        2.0 * sin_t * va
-        + (-sin_t + sqrt3 * cos_t) * vb
-        + (-sin_t - sqrt3 * cos_t) * vc
+        2.0 * sin_v * va
+        + (-sin_v + sqrt3 * cos_v) * vb
+        + (-sin_v - sqrt3 * cos_v) * vc
     )
 
     i_d = value(var("i_d"))
     i_q = value(var("i_q"))
     r = runtime_or_default("R", 0.1)
-    l = runtime_or_default("L", 0.1)
-    p = 1.5 * (vg_q * i_q + vg_d * i_d)
-    q = 1.5 * (vg_q * i_d - vg_d * i_q)
+    l = runtime_or_default("L", vsc_filter_l)
+    p = 0.5 * (vg_d * i_d + vg_q * i_q)
+    q = 0.5 * (vg_q * i_d - vg_d * i_q)
     if var("u_Pac_ctrl") is not None:
         active_ctrl_input_name = "u_Pac_ctrl"
         active_ctrl_input = runtime_or_x("P_ref") - p
@@ -486,7 +517,7 @@ def build_gfl_vsc_first_step_guess(problem, vsc_model: Block, measurement_bus: g
         reactive_ctrl_kp = runtime_or_default("Kp_pol", 0.05)
     else:
         reactive_ctrl_input_name = "u_Vac_ctrl"
-        reactive_ctrl_input = runtime_or_x("Vm_ac_ref") - vg_q
+        reactive_ctrl_input = runtime_or_x("Vm_ac_ref") - vg_d
         reactive_ctrl_ki = runtime_or_default("Ki_vac", 2.0)
         reactive_ctrl_kp = runtime_or_default("Kp_vac", 0.1)
 
@@ -501,19 +532,20 @@ def build_gfl_vsc_first_step_guess(problem, vsc_model: Block, measurement_bus: g
     dt_iq = dx_for("i_q")
     v_d_c = vg_d + r * i_d - omega * l * i_q + l * dt_id
     v_q_c = vg_q + r * i_q - omega * l * i_d + l * dt_iq
-    y_vd_hat = v_d_c - (vg_d + l * omega * i_q)
-    y_vq_hat = v_q_c - (vg_q - l * omega * i_d)
+    y_vd_hat = v_d_c - (vg_d - l * omega * i_q)
+    y_vq_hat = v_q_c - (vg_q + l * omega * i_d)
 
     set_value("vg_d", vg_d)
     set_value("vg_q", vg_q)
     d_vg_d = (vg_d - x_old[problem.get_var_idx(var("vg_d"))]) / h
     d_vg_q = (vg_q - x_old[problem.get_var_idx(var("vg_q"))]) / h
-    set_value("u_PLL_pi", vg_d)
-    set_value("xi_PLL", xi_pll_old + h * vg_d)
+    pll_error = vg_d
+    set_value("u_PLL_pi", pll_error)
+    set_value("xi_PLL", xi_pll_old + h * pll_error)
     set_derivative("vg_d", d_vg_d)
     set_derivative("vg_q", d_vg_q)
     set_derivative("u_PLL_pi", d_vg_d)
-    set_derivative("xi_PLL", vg_d)
+    set_derivative("xi_PLL", pll_error)
     set_value("P", p)
     set_value("Q", q)
     set_value("Pt_vsc", -p)
@@ -541,8 +573,8 @@ def build_gfl_vsc_first_step_guess(problem, vsc_model: Block, measurement_bus: g
     id_max = np.sqrt(max(i_max * i_max - max(i_q, i_q_ref) ** 2, 1.0e-5))
     i_d_ref_sat = min(max(i_d_ref, -id_max), id_max)
     i_q_ref_sat = min(max(i_q_ref, -i_max), i_max)
-    u_vd_hat = i_d_ref_sat - i_d
-    u_vq_hat = i_q_ref_sat - i_q
+    u_vd_hat = i_d - i_d_ref_sat
+    u_vq_hat = i_q - i_q_ref_sat
     set_value("u_vd_hat", u_vd_hat)
     set_value("u_vq_hat", u_vq_hat)
     d_u_vd_hat = (u_vd_hat - old_x_value("u_vd_hat")) / h
@@ -555,18 +587,18 @@ def build_gfl_vsc_first_step_guess(problem, vsc_model: Block, measurement_bus: g
     set_derivative("y_vq_hat", d_y_vq_hat)
     y_vd_hat = old_x_value("y_vd_hat") + h * d_y_vd_hat
     y_vq_hat = old_x_value("y_vq_hat") + h * d_y_vq_hat
-    v_d_c = y_vd_hat + vg_d + l * omega * i_q
-    v_q_c = y_vq_hat + vg_q - l * omega * i_d
+    v_d_c = y_vd_hat + vg_d - l * omega * i_q
+    v_q_c = y_vq_hat + vg_q + l * omega * i_d
     set_value("y_vd_hat", y_vd_hat)
     set_value("y_vq_hat", y_vq_hat)
     set_value("v_d_c", v_d_c)
     set_value("v_q_c", v_q_c)
 
-    dt_id = (v_d_c - vg_d - r * i_d + omega * l * i_q) / l
+    dt_id = (v_d_c - vg_d - r * i_d - omega * l * i_q) / l
     i_d = x_old[problem.get_var_idx(var("i_d"))] + h * dt_id
-    v_q_c = y_vq_hat + vg_q - l * omega * i_d
-    p = 1.5 * (vg_q * i_q + vg_d * i_d)
-    q = 1.5 * (vg_q * i_d - vg_d * i_q)
+    v_q_c = y_vq_hat + vg_q + l * omega * i_d
+    p = 0.5 * (vg_d * i_d + vg_q * i_q)
+    q = 0.5 * (vg_q * i_d - vg_d * i_q)
     set_value("i_d", i_d)
     set_derivative("i_d", dt_id)
     set_value("v_q_c", v_q_c)
@@ -575,15 +607,15 @@ def build_gfl_vsc_first_step_guess(problem, vsc_model: Block, measurement_bus: g
     set_value("Pt_vsc", -p)
     set_value("Qt_vsc", -q)
 
-    ia = i_d * cos_t + i_q * sin_t
-    ib = (-0.5 * i_d - sqrt3 * 0.5 * i_q) * cos_t + (sqrt3 * 0.5 * i_d - 0.5 * i_q) * sin_t
-    ic = (-0.5 * i_d + sqrt3 * 0.5 * i_q) * cos_t + (-sqrt3 * 0.5 * i_d - 0.5 * i_q) * sin_t
-    set_value("ia_i", ia)
-    set_value("ib_i", ib)
-    set_value("ic_i", ic)
-    set_value("i_a", ia)
-    set_value("i_b", ib)
-    set_value("i_c", ic)
+    cos_t = np.cos(theta_pll_park)
+    sin_t = np.sin(theta_pll_park)
+    vq_inv = v_q_c
+    va_cmd = v_d_c * cos_t + vq_inv * sin_t
+    vb_cmd = (-0.5 * v_d_c - sqrt3 * 0.5 * vq_inv) * cos_t + (sqrt3 * 0.5 * v_d_c - 0.5 * vq_inv) * sin_t
+    vc_cmd = (-0.5 * v_d_c + sqrt3 * 0.5 * vq_inv) * cos_t + (-sqrt3 * 0.5 * v_d_c - 0.5 * vq_inv) * sin_t
+    set_value("va_v", va_cmd)
+    set_value("vb_v", vb_cmd)
+    set_value("vc_v", vc_cmd)
     return x, dx
 
 
@@ -607,20 +639,25 @@ for bus in grid.buses:
 
 # Define AC lines
 line12 = gce.Line(name="line 1-2", bus_from=bus1, bus_to=bus2,
-                  r=0.029585798816568046, x=0.07100591715976332, b=0.03,
+                  r=3.0 * 0.029585798816568046, x=3.0 * 0.07100591715976332, b=0.03 / 3.0,
                   rate=900.0)
 line23 = gce.Line(name="line 2-3", bus_from=bus2, bus_to=bus3,
-                  r=0.029585798816568046, x=0.07100591715976332, b=0.03,
+                  r=3.0 * 0.029585798816568046, x=3.0 * 0.07100591715976332, b=0.03 / 3.0,
                   rate=900.0)
+vsc_filter_l = line12.X
 
 # Select control modes for the VSC
 PF_CONTROL1_MODE = ConverterControlType.Vm_dc
 CONTROL1_MODE = ConverterControlType.Pac
 CONTROL2_MODE = ConverterControlType.Qac
+FREEZE_VSC_VOLTAGE_SOURCE = False
+DEBUG_PI_LINE_INIT = False
 Q_CONTROL_KP_POL = 0.02
-Q_CONTROL_KI_POL = 0.6
-PLL_KP = 0.0002
-PLL_KI = 0.02
+Q_CONTROL_KI_POL = 0.3
+CURRENT_CONTROL_KP_ICL = 1.0
+CURRENT_CONTROL_KI_ICL = 20.0
+PLL_KP = 0.01
+PLL_KI = 0.05
 
 # Define VSCs with the selected control modes
 vsc1 = gce.VSC(name='VSC1', bus_from=bus_dc, bus_to=bus1, rate=100, alpha1=0.0, alpha2=0.0, alpha3=0.0,
@@ -631,7 +668,7 @@ vsc1 = gce.VSC(name='VSC1', bus_from=bus_dc, bus_to=bus1, rate=100, alpha1=0.0, 
 gen1 = gce.Generator(name='Gen1', P=5.0, vset=1.00, Snom=grid.Sbase, freq=50.0, r1=0.001, x1=1.7)
 
 # DC source feeding the VSC DC bus.
-gen3 = gce.Generator(name='DC Source', P=1.0, vset=1.03)
+gen3 = gce.Generator(name='DC Source', P=3.0, vset=1.03)
 grid.add_generator(bus=bus_dc, api_obj=gen3)
 
 ###############
@@ -682,7 +719,12 @@ line23_mdl = get_pi_line_emt_template(vf=grid.var_factory, name="Pi23").block
 genrow_mdl1 = get_generator_thevenin_rl_emt_template_with_ref(grid.var_factory).block
 
 # Build VSC EMT model with the same control modes used in the VSC device
-vsc_mdl = VscGflEmtBuild(grid.var_factory, control1=CONTROL1_MODE, control2=CONTROL2_MODE).block
+vsc_mdl = VscGflEmtBuild(
+    grid.var_factory,
+    control1=CONTROL1_MODE,
+    control2=CONTROL2_MODE,
+    frozen_voltage_source=FREEZE_VSC_VOLTAGE_SOURCE,
+).block
 dc_source = get_dc_voltage_source_emt_template(
     vf=grid.var_factory,
     source_voltage_value=1.03,
@@ -697,22 +739,86 @@ set_emt_model(device=gen3, model=dc_source, var_factory=grid.var_factory)
 set_emt_model(device=vsc1, model=vsc_mdl, var_factory=grid.var_factory)
 
 grid.var_factory.add_connections(
+    vsc_mdl.in_vars[0:3],
+    [find_name_in_block('v_A', bus1.emt_model), find_name_in_block('v_B', bus1.emt_model), find_name_in_block('v_C', bus1.emt_model)],
+)
+
+grid.var_factory.add_connections(
     [find_name_in_block('vg_A', vsc_mdl), find_name_in_block('vg_B', vsc_mdl), find_name_in_block('vg_C', vsc_mdl)],
     [find_name_in_block('v_A', bus2.emt_model), find_name_in_block('v_B', bus2.emt_model), find_name_in_block('v_C', bus2.emt_model)],
 )
 grid.var_factory.add_connections(
     [find_name_in_block('i_line_A', vsc_mdl), find_name_in_block('i_line_B', vsc_mdl), find_name_in_block('i_line_C', vsc_mdl)],
-    [find_name_in_block('if_Pi12_A', line12_mdl), find_name_in_block('if_Pi12_B', line12_mdl), find_name_in_block('if_Pi12_C', line12_mdl)],
+    [find_name_in_block('it_Pi12_A', line12_mdl), find_name_in_block('it_Pi12_B', line12_mdl), find_name_in_block('it_Pi12_C', line12_mdl)],
 )
 
 set_event_value_in_block('Vdc_ref', vsc_mdl, abs(res.voltage[grid.buses.index(vsc1.bus_from)]))
-set_event_value_in_block('Vm_ac_ref', vsc_mdl, np.sqrt(2.0) * abs(res.voltage[grid.buses.index(bus2)]))
-set_event_value_in_block('P_ref', vsc_mdl, -float(np.real(res.St_vsc[0]) / grid.Sbase))
-set_event_value_in_block('Q_ref', vsc_mdl, -float(np.imag(res.St_vsc[0]) / grid.Sbase))
+vm_ac_ref_bus = bus1 if FREEZE_VSC_VOLTAGE_SOURCE else bus2
+set_event_value_in_block('Vm_ac_ref', vsc_mdl, np.sqrt(2.0) * abs(res.voltage[grid.buses.index(vm_ac_ref_bus)]))
+line12_idx = grid.lines.index(line12)
+line12_s = complex(res.St[line12_idx]) / grid.Sbase
+P_Q_REF_SCALE = 1.0
+p_ref0 = float(P_Q_REF_SCALE * np.real(line12_s))
+q_ref0 = float(P_Q_REF_SCALE * np.imag(line12_s))
+set_event_value_in_block('P_ref', vsc_mdl, p_ref0)
+set_event_value_in_block('Q_ref', vsc_mdl, q_ref0)
+def pf_voltage_abc(bus):
+    v_complex = complex(res.voltage[grid.buses.index(bus)])
+    v_peak = np.sqrt(2.0) * abs(v_complex)
+    v_angle = np.angle(v_complex)
+    return (
+        v_peak * np.sin(v_angle),
+        v_peak * np.sin(v_angle - 2.0 * np.pi / 3.0),
+        v_peak * np.sin(v_angle + 2.0 * np.pi / 3.0),
+    )
+
+
+def park_dq_value(theta_value, va_value, vb_value, vc_value):
+    cos_t = np.cos(theta_value)
+    sin_t = np.sin(theta_value)
+    vd_value = (1.0 / 3.0) * (
+        2.0 * cos_t * va_value
+        + (-cos_t - np.sqrt(3.0) * sin_t) * vb_value
+        + (-cos_t + np.sqrt(3.0) * sin_t) * vc_value
+    )
+    vq_value = (1.0 / 3.0) * (
+        2.0 * sin_t * va_value
+        + (-sin_t + np.sqrt(3.0) * cos_t) * vb_value
+        + (-sin_t - np.sqrt(3.0) * cos_t) * vc_value
+    )
+    return vd_value, vq_value
+
+
+va_pcc0, vb_pcc0, vc_pcc0 = pf_voltage_abc(bus2)
+best_theta_ref = 0.0
+best_abs_d_ref = None
+for theta_candidate in np.linspace(-np.pi, np.pi, 40001):
+    vd_candidate, vq_candidate = park_dq_value(theta_candidate, va_pcc0, vb_pcc0, vc_pcc0)
+    if vq_candidate > 0.0 and (best_abs_d_ref is None or abs(vd_candidate) < best_abs_d_ref):
+        best_abs_d_ref = abs(vd_candidate)
+        best_theta_ref = theta_candidate
+
+va_conv0, vb_conv0, vc_conv0 = pf_voltage_abc(bus1)
+vd_c_ref0, vq_c_ref0 = park_dq_value(best_theta_ref, va_conv0, vb_conv0, vc_conv0)
+vq_ref0 = park_dq_value(best_theta_ref, va_pcc0, vb_pcc0, vc_pcc0)[1]
+id_ref0 = 2.0 * q_ref0 / vq_ref0
+iq_ref0 = 2.0 * p_ref0 / vq_ref0
+if FREEZE_VSC_VOLTAGE_SOURCE:
+    set_event_value_in_block('v_d_c_ref', vsc_mdl, vd_c_ref0)
+    set_event_value_in_block('v_q_c_ref', vsc_mdl, vq_c_ref0)
+    set_event_value_in_block('Vm_ac_ref', vsc_mdl, vq_c_ref0)
+    print(
+        "PF Bus1 frozen VSC command: "
+        f"vd_c_ref={vd_c_ref0: .9e}, vq_c_ref={vq_c_ref0: .9e}, "
+        f"id_ref={id_ref0: .9e}, iq_ref={iq_ref0: .9e}"
+    )
 set_event_value_in_block('Kp_pol', vsc_mdl, Q_CONTROL_KP_POL)
 set_event_value_in_block('Ki_pol', vsc_mdl, Q_CONTROL_KI_POL)
+set_event_value_in_block('Kp_icl', vsc_mdl, CURRENT_CONTROL_KP_ICL)
+set_event_value_in_block('Ki_icl', vsc_mdl, CURRENT_CONTROL_KI_ICL)
 set_event_value_in_block('Kp_pll', vsc_mdl, PLL_KP)
 set_event_value_in_block('Ki_pll', vsc_mdl, PLL_KI)
+set_event_value_in_block('L', vsc_mdl, vsc_filter_l)
 
 V_src = find_name_in_block('V_src_dc_voltage_source', gen3.emt_model)
 
@@ -727,20 +833,20 @@ else:
     ref_var = find_name_in_block('P_ref', vsc_mdl)
     print(f"Using P_ref for control mode {CONTROL1_MODE}")
 
-event1 = EmtEvent(device=gen3, parameter=V_src, time=.2, value=0.3)
-event2 = EmtEvent(device=vsc1, parameter=ref_var, time=.2, value=0.1)
-event3 = EmtEvent(device=vsc1, parameter=ref_var, time=.25, value=1.03)
+#event1 = EmtEvent(device=gen3, parameter=V_src, time=.2, value=0.3)
+#event2 = EmtEvent(device=vsc1, parameter=ref_var, time=.2, value=0.1)
+#event3 = EmtEvent(device=vsc1, parameter=ref_var, time=.25, value=1.03)
 #grid.add_emt_event(event1)
 #grid.add_emt_event(event2)
 #grid.add_emt_event(event3)
 
 options = EmtOptions(time_step=0.0001,  # EMT requires smaller time step
-                     simulation_time=0.1,
+                     simulation_time=7.0,
                      tolerance=1e-6,
                      integration_method=DynamicIntegrationMethod.DaeBackEuler,
                      solver_type=EmtSolverTypes.StructuralAD,
                      initialization_method=EmtInitializationMethod.Explicit,
-                     verbose=0)
+                     verbose=1)
 print(f"EMT initialization method: {options.initialization_method!r}")
 
 problem = EmtProblemDae(grid=grid,
@@ -748,13 +854,30 @@ problem = EmtProblemDae(grid=grid,
                         pf_results=res)
 newton_trace = NewtonTraceCollector()
 problem.set_newton_trace_collector(newton_trace)
+print(f"Active grid EMT events: {len(grid.emt_events)}")
 
 
 def seed_gfl_vsc_initial_guess(problem, vsc, pf_results, converter_bus, grid_bus):
     bus_names = [bus.name for bus in grid.buses]
+    vsc_working_model = problem._working_emt_models.get(str(vsc.idtag), vsc.emt_model)
 
     def value_of(var):
         return problem.get_x0()[problem.get_var_idx(var)]
+
+    def set_runtime_value(name, value):
+        problem.set_internal_runtime_if_exists(vsc_working_model, name, value)
+        var = find_name_in_block(name, vsc_working_model)
+        if var is None:
+            return
+        idx = problem.uid2idx_event_params.get(var.uid, None)
+        if idx is None:
+            return
+        const_value = grid.var_factory.add_const(float(value))
+        problem.event_params_values[idx] = float(value)
+        problem._event_parameters_eqs[idx] = const_value
+        problem._runtime_parameter_eqs0[idx] = const_value
+        if hasattr(problem, "_runtime_all_eqs_source"):
+            problem._runtime_all_eqs_source[idx] = const_value
 
     v_a_var = find_name_in_block('v_A', grid_bus.emt_model)
     v_b_var = find_name_in_block('v_B', grid_bus.emt_model)
@@ -784,21 +907,18 @@ def seed_gfl_vsc_initial_guess(problem, vsc, pf_results, converter_bus, grid_bus
 
     vpk = float(best_q)
 
-    p0 = -float(np.real(pf_results.St_vsc[0]) / grid.Sbase)
-    q0 = -float(np.imag(pf_results.St_vsc[0]) / grid.Sbase)
-    theta0 = float(best_theta)
+    theta0 = float(-best_theta)
+    theta_park0 = -theta0
     vd0 = 0.0
     vq0 = vpk
-    iq0 = (2.0 / 3.0) * p0 / vq0
-    id0 = (2.0 / 3.0) * q0 / vq0
 
-    l0 = 0.1
+    l0 = vsc_filter_l
     omega0 = 1.0
     vc_a0 = value_of(find_name_in_block('v_A', converter_bus.emt_model))
     vc_b0 = value_of(find_name_in_block('v_B', converter_bus.emt_model))
     vc_c0 = value_of(find_name_in_block('v_C', converter_bus.emt_model))
-    cos_t = np.cos(theta0)
-    sin_t = np.sin(theta0)
+    cos_t = np.cos(theta_park0)
+    sin_t = np.sin(theta_park0)
     vd_c0 = (1.0 / 3.0) * (
         2.0 * cos_t * vc_a0
         + (-cos_t - np.sqrt(3.0) * sin_t) * vc_b0
@@ -809,9 +929,23 @@ def seed_gfl_vsc_initial_guess(problem, vsc, pf_results, converter_bus, grid_bus
         + (-sin_t + np.sqrt(3.0) * cos_t) * vc_b0
         + (-sin_t - np.sqrt(3.0) * cos_t) * vc_c0
     )
-    ia_line0 = value_of(find_name_in_block('if_Pi12_A', line12_mdl))
-    ib_line0 = value_of(find_name_in_block('if_Pi12_B', line12_mdl))
-    ic_line0 = value_of(find_name_in_block('if_Pi12_C', line12_mdl))
+    if FREEZE_VSC_VOLTAGE_SOURCE:
+        vd_c0 = vd_c_ref0
+        vq_c0 = vq_c_ref0
+    ia_from0 = value_of(find_name_in_block('if_Pi12_A', line12_mdl))
+    ib_from0 = value_of(find_name_in_block('if_Pi12_B', line12_mdl))
+    ic_from0 = value_of(find_name_in_block('if_Pi12_C', line12_mdl))
+    ia_vsc0 = -ia_from0
+    ib_vsc0 = -ib_from0
+    ic_vsc0 = -ic_from0
+    p_conv0 = -(vc_a0 * ia_vsc0 + vc_b0 * ib_vsc0 + vc_c0 * ic_vsc0) / 3.0
+    vdc0 = value_of(find_name_in_block('v_DC', bus_dc.emt_model))
+    i_dc0 = p_conv0 / vdc0
+    ia_line0 = value_of(find_name_in_block('it_Pi12_A', line12_mdl))
+    ib_line0 = value_of(find_name_in_block('it_Pi12_B', line12_mdl))
+    ic_line0 = value_of(find_name_in_block('it_Pi12_C', line12_mdl))
+    cos_t = np.cos(theta_park0)
+    sin_t = np.sin(theta_park0)
     id0 = (1.0 / 3.0) * (
         2.0 * cos_t * ia_line0
         + (-cos_t - np.sqrt(3.0) * sin_t) * ib_line0
@@ -822,14 +956,23 @@ def seed_gfl_vsc_initial_guess(problem, vsc, pf_results, converter_bus, grid_bus
         + (-sin_t + np.sqrt(3.0) * cos_t) * ib_line0
         + (-sin_t - np.sqrt(3.0) * cos_t) * ic_line0
     )
-    vd_hat0 = vd_c0 - (vd0 + l0 * omega0 * iq0)
-    vq_hat0 = vq_c0 - (vq0 - l0 * omega0 * id0)
+    p0 = 0.5 * (vq0 * iq0 + vd0 * id0)
+    q0 = 0.5 * (vq0 * id0 - vd0 * iq0)
+    vd_hat0 = vd_c0 - (vd0 - l0 * omega0 * iq0)
+    vq_hat0 = vq_c0 - (vq0 + l0 * omega0 * id0)
 
     values = {
         'P': p0,
         'Q': q0,
+        'P_f': p0,
+        'Q_f': q0,
         'Pt_vsc': -p0,
         'Qt_vsc': -q0,
+        'i_a_f': ia_vsc0,
+        'i_b_f': ib_vsc0,
+        'i_c_f': ic_vsc0,
+        'i_dc': i_dc0,
+        'P_conv': p_conv0,
         'theta': theta0,
         'omega': omega0,
         'xi_PLL': 0.0,
@@ -843,8 +986,14 @@ def seed_gfl_vsc_initial_guess(problem, vsc, pf_results, converter_bus, grid_bus
         'i_q_ref': iq0,
         'v_d_c': vd_c0,
         'v_q_c': vq_c0,
+        'va_v': vc_a0,
+        'vb_v': vc_b0,
+        'vc_v': vc_c0,
         'y_vd_hat': vd_hat0,
         'y_vq_hat': vq_hat0,
+        'u_Pac_ctrl': 0.0,
+        'u_Pdc_ctrl': 0.0,
+        'u_Qac_ctrl': 0.0,
         'u_Vdc_ctrl': 0.0,
         'u_Vac_ctrl': 0.0,
         'u_PLL_pi': vd0,
@@ -852,11 +1001,23 @@ def seed_gfl_vsc_initial_guess(problem, vsc, pf_results, converter_bus, grid_bus
         'u_vq_hat': 0.0,
     }
     for name, value in values.items():
-        var = find_name_in_block(name, vsc.emt_model)
+        var = find_name_in_block(name, vsc_working_model)
         if var is not None:
             problem.init_guess[var.uid] = float(value)
 
-    theta_var = find_name_in_block('theta', vsc.emt_model)
+    dc_source_values = {
+        'i_dc_dc_voltage_source': i_dc0,
+        'V_src_dc_voltage_source': vdc0 + i_dc0 / 100.0,
+    }
+    for name, value in dc_source_values.items():
+        var = find_name_in_block(name, dc_source)
+        if var is not None:
+            if var.uid in problem._uid2idx_vars:
+                problem.init_guess[var.uid] = float(value)
+            elif var.uid in problem.uid2idx_event_params:
+                problem.event_params_values[problem.uid2idx_event_params[var.uid]] = float(value)
+
+    theta_var = find_name_in_block('theta', vsc_working_model)
     if theta_var is not None and theta_var.diff_var is not None:
         problem.diff_init_guess[theta_var.diff_var.uid] = 2.0 * np.pi * grid.fBase * omega0
     theta_diff_var = find_name_in_block('dt_1_theta', vsc.emt_model)
@@ -870,21 +1031,22 @@ def seed_gfl_vsc_initial_guess(problem, vsc, pf_results, converter_bus, grid_bus
         if 'theta' in state_var.name and state_var.diff_var is not None:
             problem.diff_init_guess[state_var.diff_var.uid] = 2.0 * np.pi * grid.fBase * omega0
 
-    problem.set_internal_runtime_if_exists(
-        vsc.emt_model,
-        'Vdc_ref',
-        float(abs(pf_results.voltage[bus_names.index(vsc.bus_from.name)])),
-    )
-    problem.set_internal_runtime_if_exists(vsc.emt_model, 'Vm_ac_ref', vq0)
-    problem.set_internal_runtime_if_exists(vsc.emt_model, 'P_ref', p0)
-    problem.set_internal_runtime_if_exists(vsc.emt_model, 'Q_ref', q0)
-    problem.set_internal_runtime_if_exists(vsc.emt_model, 'Kp_pol', Q_CONTROL_KP_POL)
-    problem.set_internal_runtime_if_exists(vsc.emt_model, 'Ki_pol', Q_CONTROL_KI_POL)
-    problem.set_internal_runtime_if_exists(vsc.emt_model, 'Kp_pll', PLL_KP)
-    problem.set_internal_runtime_if_exists(vsc.emt_model, 'Ki_pll', PLL_KI)
+    set_runtime_value('Vdc_ref', float(abs(pf_results.voltage[bus_names.index(vsc.bus_from.name)])))
+    set_runtime_value('Vm_ac_ref', vq0)
+    set_runtime_value('P_ref', p0)
+    set_runtime_value('Q_ref', q0)
+    set_runtime_value('Kp_pol', Q_CONTROL_KP_POL)
+    set_runtime_value('Ki_pol', Q_CONTROL_KI_POL)
+    set_runtime_value('Kp_icl', CURRENT_CONTROL_KP_ICL)
+    set_runtime_value('Ki_icl', CURRENT_CONTROL_KI_ICL)
+    set_runtime_value('Kp_pll', PLL_KP)
+    set_runtime_value('Ki_pll', PLL_KI)
+    set_runtime_value('L', vsc_filter_l)
+    return None
 
 
 seed_gfl_vsc_initial_guess(problem, vsc1, res, bus1, bus2)
+problem.set_events_group(None)
 refresh_initial_derivatives_from_residuals(problem)
 seed_vsc_theta_dx0(problem, vsc_mdl)
 print_vsc_control_inputs(problem, vsc_mdl)
@@ -911,6 +1073,116 @@ for line_name, line_mdl in (("line12", line12_mdl), ("line23", line23_mdl)):
     print(f"  {line_name}: " + ", ".join(parts))
 
 
+def print_pi_line_initial_consistency(problem, line, line_mdl, pf_results, label):
+    x0 = problem.get_x0()
+    omega_base = 2.0 * np.pi * grid.fBase
+    alpha = 2.0 * np.pi / 3.0
+    line_suffix = label.replace("line", "Pi")
+    line_idx = grid.lines.index(line)
+    vf_base = complex(pf_results.voltage[grid.buses.index(line.bus_from)])
+    vt_base = complex(pf_results.voltage[grid.buses.index(line.bus_to)])
+    sf_static = complex(pf_results.Sf[line_idx]) / grid.Sbase
+    st_static = complex(pf_results.St[line_idx]) / grid.Sbase
+    sf_phase = sf_static / 3.0
+    st_phase = st_static / 3.0
+    z_series = complex(line.R, line.X)
+    b_half = line.B / 2.0
+    g_damp = 1.0e-5
+    s_series_sum = 0.0 + 0.0j
+    s_from_terminal_sum = 0.0 + 0.0j
+    s_to_terminal_sum = 0.0 + 0.0j
+
+    print(f"Pi-line initial consistency diagnostic: {label}")
+    for phase, rot in (("A", 1.0 + 0.0j), ("B", np.exp(-1j * alpha)), ("C", np.exp(1j * alpha))):
+        vf = vf_base * rot
+        vt = vt_base * rot
+        i_f_pf = np.conj(sf_phase / vf)
+        i_t_pf = np.conj(st_phase / vt)
+        i_ser_pf = (vf - vt) / z_series
+        i_cap_f_pf = 1j * b_half * vf
+        i_cap_t_pf = 1j * b_half * vt
+        i_from_terminal_pf = i_ser_pf + i_cap_f_pf
+        i_to_terminal_pf = -i_ser_pf + i_cap_t_pf
+
+        s_series_sum += vf * np.conj(i_ser_pf)
+        s_from_terminal_sum += vf * np.conj(i_from_terminal_pf)
+        s_to_terminal_sum += vt * np.conj(i_to_terminal_pf)
+
+        vf_var = find_name_in_block(f"v_{phase}", line.bus_from.emt_model)
+        vt_var = find_name_in_block(f"v_{phase}", line.bus_to.emt_model)
+        if_var = find_name_in_block(f"if_{line_suffix}_{phase}", line_mdl)
+        it_var = find_name_in_block(f"it_{line_suffix}_{phase}", line_mdl)
+        i_ser_var = find_name_in_block(f"i_ser_{line_suffix}_{phase}", line_mdl)
+        i_cap_f_var = find_name_in_block(f"i_cap_f_{line_suffix}_{phase}", line_mdl)
+        i_cap_t_var = find_name_in_block(f"i_cap_t_{line_suffix}_{phase}", line_mdl)
+        d_vf_var = find_name_in_block(f"d_vf_{phase}", line_mdl)
+        d_vt_var = find_name_in_block(f"d_vt_{phase}", line_mdl)
+
+        vf0 = x0[problem.get_var_idx(vf_var)]
+        vt0 = x0[problem.get_var_idx(vt_var)]
+        if0 = x0[problem.get_var_idx(if_var)]
+        it0 = x0[problem.get_var_idx(it_var)]
+        i_ser0 = x0[problem.get_var_idx(i_ser_var)]
+        i_cap_f0 = x0[problem.get_var_idx(i_cap_f_var)]
+        i_cap_t0 = x0[problem.get_var_idx(i_cap_t_var)]
+        d_vf_idx = problem.uid2idx_event_params.get(d_vf_var.uid, None)
+        d_vt_idx = problem.uid2idx_event_params.get(d_vt_var.uid, None)
+        d_vf0 = problem.event_params_values[d_vf_idx] if d_vf_idx is not None else np.nan
+        d_vt0 = problem.event_params_values[d_vt_idx] if d_vt_idx is not None else np.nan
+
+        i_ser_from = if0 - i_cap_f0 - g_damp * vf0
+        i_ser_to = -it0 + i_cap_t0 + g_damp * vt0
+        rhs_di = (vf0 - vt0 - line.R * i_ser0) / (line.X / omega_base)
+        expected = {
+            "vf": np.sqrt(2.0) * np.imag(vf),
+            "vt": np.sqrt(2.0) * np.imag(vt),
+            "if": np.sqrt(2.0) * np.imag(i_f_pf),
+            "it": np.sqrt(2.0) * np.imag(i_t_pf),
+            "iser": np.sqrt(2.0) * np.imag(i_ser_pf),
+            "icapf": np.sqrt(2.0) * np.imag(i_cap_f_pf),
+            "icapt": np.sqrt(2.0) * np.imag(i_cap_t_pf),
+            "diser": omega_base * np.sqrt(2.0) * np.real(i_ser_pf),
+            "dvf": omega_base * np.sqrt(2.0) * np.real(vf),
+            "dvt": omega_base * np.sqrt(2.0) * np.real(vt),
+        }
+        print(
+            f"  {phase}: if0={if0: .9e}, it0={it0: .9e}, i_ser0={i_ser0: .9e}, "
+            f"i_ser_from={i_ser_from: .9e}, i_ser_to={i_ser_to: .9e}"
+        )
+        print(
+            f"     expected if={expected['if']: .9e}, it={expected['it']: .9e}, "
+            f"iser={expected['iser']: .9e}, icapf={expected['icapf']: .9e}, icapt={expected['icapt']: .9e}"
+        )
+        print(
+            f"     caps x0: icapf={i_cap_f0: .9e}, icapt={i_cap_t0: .9e}; "
+            f"dv: x0 f/t={d_vf0: .9e}/{d_vt0: .9e}, expected={expected['dvf']: .9e}/{expected['dvt']: .9e}"
+        )
+        print(
+            f"     di_ser rhs={rhs_di: .9e}, expected d(iser)={expected['diser']: .9e}, "
+            f"rhs-error={rhs_di - expected['diser']: .9e}"
+        )
+
+    print(
+        f"  static PF totals: Sf={sf_static.real: .9e}+j{sf_static.imag: .9e}, "
+        f"St={st_static.real: .9e}+j{st_static.imag: .9e}"
+    )
+    print(
+        f"  direct-Z abc sum: series-from={s_series_sum.real: .9e}+j{s_series_sum.imag: .9e}, "
+        f"terminal-from={s_from_terminal_sum.real: .9e}+j{s_from_terminal_sum.imag: .9e}, "
+        f"terminal-to={s_to_terminal_sum.real: .9e}+j{s_to_terminal_sum.imag: .9e}"
+    )
+    print(
+        f"  direct-Z errors: terminal-from-Sf={s_from_terminal_sum - sf_static: .9e}, "
+        f"terminal-to-St={s_to_terminal_sum - st_static: .9e}"
+    )
+    print("  expected values above use balanced per-phase currents from total static PF powers")
+
+
+if DEBUG_PI_LINE_INIT:
+    print_pi_line_initial_consistency(problem, line12, line12_mdl, res, "line12")
+    print_pi_line_initial_consistency(problem, line23, line23_mdl, res, "line23")
+
+
 
 solver = build_emt_solver(
     options=options,
@@ -925,6 +1197,7 @@ print_q_control_initialization(problem, vsc_mdl, "true x0", problem.get_x0())
 print_top_residuals_at_t0(
     solver,
     problem,
+    states_override=problem.get_x0(),
 )
 print_vsc_residuals_at_t0(
     solver,
@@ -965,9 +1238,15 @@ v_A_bus2 = find_name_in_block("v_A", bus2.emt_model)
 v_B_bus2 = find_name_in_block("v_B", bus2.emt_model)
 v_C_bus2 = find_name_in_block("v_C", bus2.emt_model)
 
-i_A_vsc = find_name_in_block("i_a", vsc_mdl)
-i_B_vsc = find_name_in_block("i_b", vsc_mdl)
-i_C_vsc = find_name_in_block("i_c", vsc_mdl)
+i_A_vsc = find_name_in_block("i_a_f", vsc_mdl)
+i_B_vsc = find_name_in_block("i_b_f", vsc_mdl)
+i_C_vsc = find_name_in_block("i_c_f", vsc_mdl)
+i_A_line12_from = find_name_in_block("if_Pi12_A", line12_mdl)
+i_B_line12_from = find_name_in_block("if_Pi12_B", line12_mdl)
+i_C_line12_from = find_name_in_block("if_Pi12_C", line12_mdl)
+i_A_line12_to = find_name_in_block("it_Pi12_A", line12_mdl)
+i_B_line12_to = find_name_in_block("it_Pi12_B", line12_mdl)
+i_C_line12_to = find_name_in_block("it_Pi12_C", line12_mdl)
 
 P = find_name_in_block('P', vsc_mdl)
 Q = find_name_in_block('Q', vsc_mdl)
@@ -982,6 +1261,8 @@ i_d_ref_vsc = find_name_in_block('i_d_ref', vsc_mdl)
 i_q_ref_vsc = find_name_in_block('i_q_ref', vsc_mdl)
 v_d_c_vsc = find_name_in_block('v_d_c', vsc_mdl)
 v_q_c_vsc = find_name_in_block('v_q_c', vsc_mdl)
+y_vd_hat_vsc = find_name_in_block('y_vd_hat', vsc_mdl)
+y_vq_hat_vsc = find_name_in_block('y_vq_hat', vsc_mdl)
 u_vdc_ctrl = find_name_in_block('u_Vdc_ctrl', vsc_mdl)
 u_pac_ctrl = find_name_in_block('u_Pac_ctrl', vsc_mdl)
 u_pdc_ctrl = find_name_in_block('u_Pdc_ctrl', vsc_mdl)
@@ -1073,6 +1354,56 @@ def print_trace_diagnostics(title: str, items: list[tuple[str, object]]) -> None
 
 pre_event = t < 0.19
 if np.any(pre_event):
+    print("Closed-loop first-step controller table:")
+    table_vars = [
+        ("t", None),
+        ("i_d", i_d_vsc),
+        ("i_d_ref", i_d_ref_vsc),
+        ("err_d", None),
+        ("vd_hat", y_vd_hat_vsc),
+        ("v_d_c", v_d_c_vsc),
+        ("i_q", i_q_vsc),
+        ("i_q_ref", i_q_ref_vsc),
+        ("err_q", None),
+        ("vq_hat", y_vq_hat_vsc),
+        ("v_q_c", v_q_c_vsc),
+        ("Q", Q),
+        ("P", P),
+    ]
+    header = " ".join(f"{label:>12s}" for label, _ in table_vars)
+    print(header)
+    n_table = min(20, len(t))
+    for row_idx in range(n_table):
+        row_values = []
+        for label, var in table_vars:
+            if label == "t":
+                value = t[row_idx]
+            elif label == "err_d":
+                value = y[row_idx, problem.get_var_idx(i_d_ref_vsc)] - y[row_idx, problem.get_var_idx(i_d_vsc)]
+            elif label == "err_q":
+                value = y[row_idx, problem.get_var_idx(i_q_ref_vsc)] - y[row_idx, problem.get_var_idx(i_q_vsc)]
+            else:
+                value = y[row_idx, problem.get_var_idx(var)]
+            row_values.append(f"{value:12.5e}")
+        print(" ".join(row_values))
+
+    print("Closed-loop sampled controller table:")
+    print(header)
+    sampled_rows = np.unique(np.linspace(0, len(t) - 1, min(16, len(t)), dtype=int))
+    for row_idx in sampled_rows:
+        row_values = []
+        for label, var in table_vars:
+            if label == "t":
+                value = t[row_idx]
+            elif label == "err_d":
+                value = y[row_idx, problem.get_var_idx(i_d_ref_vsc)] - y[row_idx, problem.get_var_idx(i_d_vsc)]
+            elif label == "err_q":
+                value = y[row_idx, problem.get_var_idx(i_q_ref_vsc)] - y[row_idx, problem.get_var_idx(i_q_vsc)]
+            else:
+                value = y[row_idx, problem.get_var_idx(var)]
+            row_values.append(f"{value:12.5e}")
+        print(" ".join(row_values))
+
     for label, var in [("Vdc", Vdc), ("Vdc_ref", vdc_ref_var), ("Vm_ac_ref", vm_ac_ref_var), ("Q_ref", q_ref_var), ("u_Vdc_ctrl", u_vdc_ctrl), ("u_Vac_ctrl", u_vac_ctrl), ("u_Qac_ctrl", u_qac_ctrl), ("P", P), ("Q", Q), ("theta", theta_vsc), ("omega", omega_vsc), ("v_d_g", v_d_g), ("v_q_g", v_q_g), ("i_d", i_d_vsc), ("i_q", i_q_vsc), ("i_d_ref", i_d_ref_vsc), ("i_q_ref", i_q_ref_vsc), ("v_d_c", v_d_c_vsc), ("v_q_c", v_q_c_vsc)]:
         full_trace = trace_or_runtime_constant(var)
         if full_trace is None:
@@ -1083,9 +1414,9 @@ if np.any(pre_event):
         print(f"  {label}: t0={trace[0]:.6e}, min={np.min(trace):.6e}, max={np.max(trace):.6e}")
         print(f"  {label} first samples: {trace[:5]}")
 
-    p_calc = 1.5 * (
-        y[pre_event, problem.get_var_idx(v_q_g)] * y[pre_event, problem.get_var_idx(i_q_vsc)]
-        + y[pre_event, problem.get_var_idx(v_d_g)] * y[pre_event, problem.get_var_idx(i_d_vsc)]
+    p_calc = 0.5 * (
+        y[pre_event, problem.get_var_idx(v_d_g)] * y[pre_event, problem.get_var_idx(i_d_vsc)]
+        + y[pre_event, problem.get_var_idx(v_q_g)] * y[pre_event, problem.get_var_idx(i_q_vsc)]
     )
     print(f"  P equation calc first samples: {p_calc[:5]}")
     print(f"  P trace minus calc first samples: {(y[pre_event, problem.get_var_idx(P)] - p_calc)[:5]}")
@@ -1170,6 +1501,95 @@ if np.any(pre_event):
     best_d_rms, best_label = min(convention_scores, key=lambda item: item[0])
     print(f"  best d-axis cancellation: {best_label} (d_rms={best_d_rms: .9e})")
 
+    va_b1_trace = y[:, problem.get_var_idx(v_A_bus1)]
+    vb_b1_trace = y[:, problem.get_var_idx(v_B_bus1)]
+    vc_b1_trace = y[:, problem.get_var_idx(v_C_bus1)]
+    ia_from_trace = y[:, problem.get_var_idx(i_A_line12_from)]
+    ib_from_trace = y[:, problem.get_var_idx(i_B_line12_from)]
+    ic_from_trace = y[:, problem.get_var_idx(i_C_line12_from)]
+    ia_to_trace = y[:, problem.get_var_idx(i_A_line12_to)]
+    ib_to_trace = y[:, problem.get_var_idx(i_B_line12_to)]
+    ic_to_trace = y[:, problem.get_var_idx(i_C_line12_to)]
+
+    p_abc_from = (va_b1_trace * ia_from_trace + vb_b1_trace * ib_from_trace + vc_b1_trace * ic_from_trace) / 3.0
+    q_abc_from = (1.0 / (3.0 * np.sqrt(3.0))) * (
+        (va_b1_trace - vb_b1_trace) * ic_from_trace
+        + (vb_b1_trace - vc_b1_trace) * ia_from_trace
+        + (vc_b1_trace - va_b1_trace) * ib_from_trace
+    )
+    p_abc_to = (va_pcc_trace * ia_to_trace + vb_pcc_trace * ib_to_trace + vc_pcc_trace * ic_to_trace) / 3.0
+    q_abc_to = (1.0 / (3.0 * np.sqrt(3.0))) * (
+        (va_pcc_trace - vb_pcc_trace) * ic_to_trace
+        + (vb_pcc_trace - vc_pcc_trace) * ia_to_trace
+        + (vc_pcc_trace - va_pcc_trace) * ib_to_trace
+    )
+    ia_vsc_trace = y[:, problem.get_var_idx(i_A_vsc)]
+    ib_vsc_trace = y[:, problem.get_var_idx(i_B_vsc)]
+    ic_vsc_trace = y[:, problem.get_var_idx(i_C_vsc)]
+    kcl_a = ia_vsc_trace + ia_from_trace
+    kcl_b = ib_vsc_trace + ib_from_trace
+    kcl_c = ic_vsc_trace + ic_from_trace
+    p_vsc_ac = (va_b1_trace * ia_vsc_trace + vb_b1_trace * ib_vsc_trace + vc_b1_trace * ic_vsc_trace) / 3.0
+    q_vsc_ac = (1.0 / (3.0 * np.sqrt(3.0))) * (
+        (va_b1_trace - vb_b1_trace) * ic_vsc_trace
+        + (vb_b1_trace - vc_b1_trace) * ia_vsc_trace
+        + (vc_b1_trace - va_b1_trace) * ib_vsc_trace
+    )
+    print("VSC current/KCL diagnostic:")
+    print(
+        f"  max |i_vsc + if_line12|: A={np.max(np.abs(kcl_a[pre_event])): .9e}, "
+        f"B={np.max(np.abs(kcl_b[pre_event])): .9e}, C={np.max(np.abs(kcl_c[pre_event])): .9e}"
+    )
+    print(f"  kcl first samples A/B/C: {kcl_a[pre_event][:5]}, {kcl_b[pre_event][:5]}, {kcl_c[pre_event][:5]}")
+    print(f"  VSC abc P first samples: {p_vsc_ac[pre_event][:5]}")
+    print(f"  line from abc P first samples: {p_abc_from[pre_event][:5]}")
+    print(f"  VSC + line from P first samples: {(p_vsc_ac + p_abc_from)[pre_event][:5]}")
+    print(f"  VSC abc Q first samples: {q_vsc_ac[pre_event][:5]}")
+    print(f"  line from abc Q first samples: {q_abc_from[pre_event][:5]}")
+    print(f"  VSC + line from Q first samples: {(q_vsc_ac + q_abc_from)[pre_event][:5]}")
+    p_model = y[:, problem.get_var_idx(P)]
+    q_model = y[:, problem.get_var_idx(Q)]
+    print("P/Q abc-vs-dq convention diagnostic:")
+    for label, p_abc, q_abc in (("B1/line12-from", p_abc_from, q_abc_from), ("B2/line12-to", p_abc_to, q_abc_to)):
+        print(
+            f"  model-vs-{label}: P_rms_err={np.sqrt(np.mean((p_model[pre_event] - p_abc[pre_event]) ** 2)): .9e}, "
+            f"P_neg_rms_err={np.sqrt(np.mean((p_model[pre_event] + p_abc[pre_event]) ** 2)): .9e}, "
+            f"Q_rms_err={np.sqrt(np.mean((q_model[pre_event] - q_abc[pre_event]) ** 2)): .9e}, "
+            f"Q_neg_rms_err={np.sqrt(np.mean((q_model[pre_event] + q_abc[pre_event]) ** 2)): .9e}"
+        )
+        print(f"  {label} abc P first samples: {p_abc[pre_event][:5]}")
+        print(f"  {label} abc Q first samples: {q_abc[pre_event][:5]}")
+    print(f"  model P first samples: {p_model[pre_event][:5]}")
+    print(f"  model Q first samples: {q_model[pre_event][:5]}")
+
+    voltage_candidates = [
+        ("v(theta)", *park_dq_from_abc(theta_trace, va_pcc_trace, vb_pcc_trace, vc_pcc_trace)),
+        ("v(-theta)", *park_dq_from_abc(-theta_trace, va_pcc_trace, vb_pcc_trace, vc_pcc_trace)),
+    ]
+    current_candidates = [
+        ("i(theta)", *park_dq_from_abc(theta_trace, ia_from_trace, ib_from_trace, ic_from_trace)),
+        ("i(-theta)", *park_dq_from_abc(-theta_trace, ia_from_trace, ib_from_trace, ic_from_trace)),
+    ]
+    candidate_rows = []
+    for v_label, vd_trace, vq_trace in voltage_candidates:
+        for i_label, id_trace, iq_trace in current_candidates:
+            for id_sign, iq_sign in ((1.0, 1.0), (1.0, -1.0), (-1.0, 1.0), (-1.0, -1.0)):
+                id_eff = id_sign * id_trace
+                iq_eff = iq_sign * iq_trace
+                p_dq = 0.5 * (vd_trace * id_eff + vq_trace * iq_eff)
+                q_dq = 0.5 * (vd_trace * iq_eff - vq_trace * id_eff)
+                p_err = float(np.sqrt(np.mean((p_dq[pre_event] - p_abc_from[pre_event]) ** 2)))
+                q_err = float(np.sqrt(np.mean((q_dq[pre_event] - q_abc_from[pre_event]) ** 2)))
+                q_neg_err = float(np.sqrt(np.mean((q_dq[pre_event] + q_abc_from[pre_event]) ** 2)))
+                candidate_rows.append((p_err + min(q_err, q_neg_err), p_err, q_err, q_neg_err, v_label, i_label, id_sign, iq_sign))
+    candidate_rows.sort(key=lambda row: row[0])
+    print("  best dq P/Q reconstruction candidates:")
+    for _, p_err, q_err, q_neg_err, v_label, i_label, id_sign, iq_sign in candidate_rows[:8]:
+        print(
+            f"    {v_label}, {i_label}, id_sign={id_sign:+.0f}, iq_sign={iq_sign:+.0f}: "
+            f"P_rms_err={p_err: .9e}, Q_rms_err={q_err: .9e}, Q_neg_rms_err={q_neg_err: .9e}"
+        )
+
 # Plot 1: Bus 1 Three-phase voltages
 plt.figure(figsize=(10, 6))
 plt.plot(t, y[:, problem.get_var_idx(v_A_bus1)], label="v_A (pu)", color='r')
@@ -1225,7 +1645,52 @@ plt.tight_layout()
 plt.title(f'VSC GFL Power (EMT): {CONTROL1_MODE.value} + {CONTROL2_MODE.value}')
 save_and_show_or_close_plot("vsc_power.png")
 
-# Plot 5: VSC outer-loop generated current references
+# Plot 5: VSC model P/Q versus abc instantaneous P/Q
+ia_from_trace = y[:, problem.get_var_idx(i_A_line12_from)]
+ib_from_trace = y[:, problem.get_var_idx(i_B_line12_from)]
+ic_from_trace = y[:, problem.get_var_idx(i_C_line12_from)]
+ia_to_trace = y[:, problem.get_var_idx(i_A_line12_to)]
+ib_to_trace = y[:, problem.get_var_idx(i_B_line12_to)]
+ic_to_trace = y[:, problem.get_var_idx(i_C_line12_to)]
+va_b1_trace = y[:, problem.get_var_idx(v_A_bus1)]
+vb_b1_trace = y[:, problem.get_var_idx(v_B_bus1)]
+vc_b1_trace = y[:, problem.get_var_idx(v_C_bus1)]
+va_pcc_trace = y[:, problem.get_var_idx(v_A_bus2)]
+vb_pcc_trace = y[:, problem.get_var_idx(v_B_bus2)]
+vc_pcc_trace = y[:, problem.get_var_idx(v_C_bus2)]
+p_abc_from_trace = (va_b1_trace * ia_from_trace + vb_b1_trace * ib_from_trace + vc_b1_trace * ic_from_trace) / 3.0
+q_abc_from_trace = (1.0 / (3.0 * np.sqrt(3.0))) * (
+    (va_b1_trace - vb_b1_trace) * ic_from_trace
+    + (vb_b1_trace - vc_b1_trace) * ia_from_trace
+    + (vc_b1_trace - va_b1_trace) * ib_from_trace
+)
+p_abc_to_trace = (va_pcc_trace * ia_to_trace + vb_pcc_trace * ib_to_trace + vc_pcc_trace * ic_to_trace) / 3.0
+q_abc_to_trace = (1.0 / (3.0 * np.sqrt(3.0))) * (
+    (va_pcc_trace - vb_pcc_trace) * ic_to_trace
+    + (vb_pcc_trace - vc_pcc_trace) * ia_to_trace
+    + (vc_pcc_trace - va_pcc_trace) * ib_to_trace
+)
+fig, axes = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
+axes[0].plot(t, y[:, problem.get_var_idx(P)], label="P model", color='tab:red')
+axes[0].plot(t, p_abc_from_trace, label="P abc B1/from", color='tab:red', linestyle='--')
+axes[0].plot(t, p_abc_to_trace, label="P abc B2/to", color='tab:orange', linestyle=':')
+axes[0].set_ylabel("P (pu)")
+axes[0].legend(loc='upper right')
+axes[0].grid(True)
+axes[1].plot(t, y[:, problem.get_var_idx(Q)], label="Q model", color='tab:blue')
+axes[1].plot(t, q_abc_from_trace, label="Q abc B1/from", color='tab:blue', linestyle='--')
+axes[1].plot(t, q_abc_to_trace, label="Q abc B2/to", color='tab:cyan', linestyle=':')
+axes[1].plot(t, -q_abc_to_trace, label="-Q abc B2/to", color='tab:purple', linestyle='-.')
+axes[1].set_xlabel("Time (s)")
+axes[1].set_ylabel("Q (pu)")
+axes[1].legend(loc='upper right')
+axes[1].grid(True)
+axes[1].set_xlim([0, xlim])
+fig.suptitle(f'VSC P/Q Model vs abc: {CONTROL1_MODE.value} + {CONTROL2_MODE.value}')
+fig.tight_layout()
+save_and_show_or_close_plot("vsc_power_model_vs_abc.png")
+
+# Plot 6: VSC outer-loop generated current references
 plt.figure(figsize=(10, 6))
 plt.plot(t, y[:, problem.get_var_idx(i_d_ref_vsc)], label="i_d_ref from Qac loop", color='tab:blue')
 plt.plot(t, y[:, problem.get_var_idx(i_d_vsc)], label="i_d actual", color='tab:blue', linestyle='--')
@@ -1240,7 +1705,7 @@ plt.tight_layout()
 plt.title(f'VSC Outer-Loop Current References: {CONTROL1_MODE.value} + {CONTROL2_MODE.value}')
 save_and_show_or_close_plot("vsc_outer_loop_current_refs.png")
 
-# Plot 6: VSC outer-loop errors and controlled quantities
+# Plot 7: VSC outer-loop errors and controlled quantities
 vdc_ref_trace = trace_or_runtime_constant(vdc_ref_var)
 p_ref_trace = trace_or_runtime_constant(p_ref_var)
 vm_ac_ref_trace = trace_or_runtime_constant(vm_ac_ref_var)
@@ -1278,7 +1743,7 @@ fig.suptitle(f'VSC Outer-Loop Errors: {CONTROL1_MODE.value} + {CONTROL2_MODE.val
 fig.tight_layout()
 save_and_show_or_close_plot("vsc_outer_loop_errors.png")
 
-# Plot 7: VSC grid voltage in dq frame
+# Plot 8: VSC grid voltage in dq frame
 plt.figure(figsize=(10, 6))
 plt.plot(t, y[:, problem.get_var_idx(v_d_g)], label="v_d_g", color='tab:blue')
 plt.plot(t, y[:, problem.get_var_idx(v_q_g)], label="v_q_g", color='tab:orange')
@@ -1292,7 +1757,7 @@ plt.tight_layout()
 plt.title(f'VSC Grid Voltage dq Frame: {CONTROL1_MODE.value} + {CONTROL2_MODE.value}')
 save_and_show_or_close_plot("vsc_grid_voltage_dq.png")
 
-# Plot 8: PLL d-axis error and frequency
+# Plot 9: PLL d-axis error and frequency
 fig, ax_vd = plt.subplots(figsize=(10, 6))
 ax_omega = ax_vd.twinx()
 line_vd, = ax_vd.plot(t, y[:, problem.get_var_idx(v_d_g)], label="v_d_g", color='tab:blue')
@@ -1311,7 +1776,7 @@ fig.tight_layout()
 plt.title(f'PLL d-Axis Error and Frequency: {CONTROL1_MODE.value} + {CONTROL2_MODE.value}')
 save_and_show_or_close_plot("vsc_pll_vd_omega.png")
 
-# Plot 9: PLL/Park convention candidates at PCC
+# Plot 10: PLL/Park convention candidates at PCC
 theta_trace = y[:, problem.get_var_idx(theta_vsc)]
 va_pcc_trace = y[:, problem.get_var_idx(v_A_bus2)]
 vb_pcc_trace = y[:, problem.get_var_idx(v_B_bus2)]
@@ -1340,7 +1805,7 @@ fig.suptitle(f'PLL/Park Convention Candidates at PCC: {CONTROL1_MODE.value} + {C
 fig.tight_layout()
 save_and_show_or_close_plot("vsc_pll_park_convention_candidates.png")
 
-# Plot 10: PLL angle and frequency
+# Plot 11: PLL angle and frequency
 fig, axes = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
 axes[0].plot(t, y[:, problem.get_var_idx(theta_vsc)], label="theta", color='tab:blue')
 axes[0].set_ylabel("theta (rad)")
@@ -1357,7 +1822,7 @@ fig.suptitle(f'VSC PLL Angle and Frequency: {CONTROL1_MODE.value} + {CONTROL2_MO
 fig.tight_layout()
 save_and_show_or_close_plot("vsc_pll_theta_omega.png")
 
-# Plot 11: PLL related variables
+# Plot 12: PLL related variables
 pll_plot_items = [
     ("theta", theta_vsc, None, False, "rad"),
     ("dt(theta)", dt_theta_vsc, theta_vsc, False, "rad/s"),
@@ -1397,7 +1862,7 @@ fig.suptitle(f'VSC PLL Related Variables: {CONTROL1_MODE.value} + {CONTROL2_MODE
 fig.tight_layout()
 save_and_show_or_close_plot("vsc_pll_all_variables.png")
 
-# Plot 12: DC Voltage
+# Plot 13: DC Voltage
 plt.figure(figsize=(10, 6))
 plt.plot(t, y[:, problem.get_var_idx(Vdc)], label="Vdc (pu)", color='b')
 plt.legend(loc='upper right')

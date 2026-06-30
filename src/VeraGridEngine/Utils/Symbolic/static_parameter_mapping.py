@@ -1511,10 +1511,9 @@ def build_uncoupled_line_static_matrices(
     """
     Build uncoupled fallback line matrices.
 
-    This preserves the historical fallback used when no tower/template matrix is
-    available. The historical code uses ``X = line.B`` and ``B = line.X`` in
-    this fallback; that convention is preserved here to avoid a hidden numerical
-    behavior change in the mapping refactor.
+    This fallback is used when no tower/template matrix is available, so the
+    ordinary line fields must keep their power-flow meaning: ``X`` is the series
+    reactance and ``B`` is the total shunt susceptance.
 
     :param line: Line-like branch device.
     :param omega_base: Base angular frequency.
@@ -1522,19 +1521,8 @@ def build_uncoupled_line_static_matrices(
     """
     r_value: float = float(line.R)
 
-    # Historical fallback naming intentionally preserved for the common case.
-    # Some saved grids still rely on ``line.B`` feeding the series-reactance slot.
-    # However, when that historical slot is zero while the direct line reactance is
-    # non-zero, the EMT pi-line becomes singular and loses all series dynamics.
-    # In that narrow case we prefer the physical direct interpretation.
-    x_value: float = float(line.B)
-    b_value: float = float(line.X)
-
-    if abs(x_value) <= 1.0e-15 and abs(float(line.X)) > 1.0e-15:
-        x_value = float(line.X)
-        b_value = float(line.B)
-    else:
-        pass
+    x_value: float = float(line.X)
+    b_value: float = float(line.B)
 
     r_full: np.ndarray = np.zeros((3, 3), dtype=np.float64)
     x_full: np.ndarray = np.zeros((3, 3), dtype=np.float64)
