@@ -1203,8 +1203,10 @@ class GenericBlockItem(QGraphicsRectItem):
 
 
 class PairedItem(QGraphicsPolygonItem):
-    _TRI_W: float = 70.0
-    _TRI_H: float = 44.0
+    _LABEL_W: float = 70.0
+    _LABEL_H: float = 28.0
+    _NOTCH_DEPTH: float = 6.0
+    _TIP_BASE: float = 20.0
 
     def __init__(self,
                  var_factory: VarFactory,
@@ -1235,7 +1237,7 @@ class PairedItem(QGraphicsPolygonItem):
 
         self.inputs: List[PortItem] = list()
         self.outputs: List[PortItem] = list()
-        self.setBrush(QBrush(editor_constants.PAIRED_ITEM_FILL))
+        self.setBrush(QBrush(editor_constants.DEFAULT_BLOCK_FILL))
         self.setPen(QPen(Qt.GlobalColor.transparent, 0))
         self.setFlags(
             QGraphicsItem.GraphicsItemFlag.ItemIsMovable |
@@ -1256,47 +1258,56 @@ class PairedItem(QGraphicsPolygonItem):
         return self.polygon().boundingRect()
 
     def _build_polygon(self) -> None:
-        w = self._TRI_W
-        h = self._TRI_H
+        w = self._LABEL_W
+        h = self._LABEL_H
+        notch = self._NOTCH_DEPTH
+        tip = self._TIP_BASE
+        half = h / 2.0
         if self._is_signal_in:
             poly = QtGui.QPolygonF([
-                QtCore.QPointF(0.0, 0.0),
-                QtCore.QPointF(0.0, h),
-                QtCore.QPointF(w, h / 2.0),
+                QtCore.QPointF(w, 0.0),
+                QtCore.QPointF(tip, 0.0),
+                QtCore.QPointF(0.0, half),
+                QtCore.QPointF(tip, h),
+                QtCore.QPointF(w, h),
+                QtCore.QPointF(w - notch, half),
             ])
         else:
             poly = QtGui.QPolygonF([
-                QtCore.QPointF(0.0, h / 2.0),
-                QtCore.QPointF(w, 0.0),
-                QtCore.QPointF(w, h),
+                QtCore.QPointF(0.0, 0.0),
+                QtCore.QPointF(w - tip, 0.0),
+                QtCore.QPointF(w, half),
+                QtCore.QPointF(w - tip, h),
+                QtCore.QPointF(0.0, h),
+                QtCore.QPointF(notch, half),
             ])
         self.setPolygon(poly)
         self._position_name_and_ports()
 
     def _position_name_and_ports(self) -> None:
-        w = self._TRI_W
-        h = self._TRI_H
+        w = self._LABEL_W
+        h = self._LABEL_H
+        notch = self._NOTCH_DEPTH
+        tip = self._TIP_BASE
         half = h / 2.0
-        gap: float = 4.0
-        port_radius: float = 6.0
 
         if self._is_signal_in:
             if self.inputs:
                 port = self.inputs[0]
                 port.setPos(0.0, half)
-            else:
-                pass
-            name_x = port_radius + gap
+            body_left = tip
+            body_right = w - notch
         else:
             if self.outputs:
                 port = self.outputs[0]
                 port.setPos(w, half)
-            else:
-                pass
-            name_width = self.name_item.boundingRect().width()
-            name_x = w - port_radius - gap - name_width
+            body_left = notch
+            body_right = w - tip
 
+        body_width = body_right - body_left
+        name_width = self.name_item.boundingRect().width()
         name_height = self.name_item.boundingRect().height()
+        name_x = body_left + (body_width - name_width) / 2.0
         self.name_item.setPos(name_x, half - name_height / 2.0)
 
         port: PortItem
@@ -1305,8 +1316,6 @@ class PairedItem(QGraphicsPolygonItem):
                 conn: ConnectionItem
                 for conn in port.connections:
                     conn.update_path()
-            else:
-                pass
 
     def set_paired_item(self, paired_item: "PairedItem") -> None:
         self._paired_item = paired_item
@@ -1324,7 +1333,7 @@ class PairedItem(QGraphicsPolygonItem):
             name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 7)
             name_font.setBold(True)
             self.name_item.setFont(name_font)
-            self.setBrush(QBrush(editor_constants.PAIRED_ITEM_FILL))
+            self.setBrush(QBrush(editor_constants.DEFAULT_BLOCK_FILL))
 
             n_inputs: int = len(self.subsys.in_vars)
             n_outputs: int = len(self.subsys.out_vars)
@@ -1368,7 +1377,7 @@ class PairedItem(QGraphicsPolygonItem):
         pass
 
     def get_minimum_block_size(self) -> tuple[float, float]:
-        return self._TRI_W, self._TRI_H
+        return self._LABEL_W, self._LABEL_H
 
     def resize_to_content(self) -> None:
         self._build_polygon()
