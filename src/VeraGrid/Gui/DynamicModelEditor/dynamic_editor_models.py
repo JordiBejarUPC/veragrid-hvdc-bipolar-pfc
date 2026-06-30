@@ -27,7 +27,7 @@ from VeraGrid.Gui.gui_functions import ComboDelegate, TextDelegate
 from VeraGrid.Gui.wrappable_table_model import WrappableTableModel
 from VeraGridEngine.enumerations import DeviceType, DynamicSimulationMode, DynamicTableModelMode, \
     ParamPowerFlowReferenceType, VarPowerFlowReferenceType
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_library import SignalPairPayload, is_supported_library_payload
+from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_library import is_supported_library_payload
 
 
 def _new_uid() -> int:
@@ -885,99 +885,7 @@ class InspectModel(QWidget):
         for submodel in model.children:
             self.refresh_lists(submodel, clear=False)
 
-
-class DynamicsLibraryTreeModel(QtGui.QStandardItemModel):
-    __slots__ = ("_block_role", "_mime_type", "_drag_token_role", "_drag_payloads")
-
-    def __init__(self, block_role: int, mime_type: str):
-        super().__init__()
-        self._block_role = block_role
-        self._mime_type = mime_type
-        self._drag_token_role = block_role + 1
-        self._drag_payloads: Dict[str, object] = dict()
-
-        self.setHorizontalHeaderLabels(["Models Library"])
-
-    def register_drag_payload(self, item: QtGui.QStandardItem, payload: object) -> None:
-        token: str = str(_new_uid())
-        self._drag_payloads[token] = payload
-        item.setData(payload, self._block_role)
-        item.setData(token, self._drag_token_role)
-
-    def get_drag_payload(self, token: str) -> object | None:
-        return self._drag_payloads.get(token, None)
-
-    def flags(self, index: QtCore.QModelIndex) -> QtCore.Qt.ItemFlag:
-        if index.isValid():
-            item: QtGui.QStandardItem | None = self.itemFromIndex(index)
-            if item is not None:
-                item_data: object = item.data(self._block_role)
-                if is_supported_library_payload(item_data):
-                    return (QtCore.Qt.ItemFlag.ItemIsEnabled
-                            | QtCore.Qt.ItemFlag.ItemIsSelectable
-                            | QtCore.Qt.ItemFlag.ItemIsDragEnabled)
-                else:
-                    return QtCore.Qt.ItemFlag.ItemIsEnabled | QtCore.Qt.ItemFlag.ItemIsSelectable
-            else:
-                return QtCore.Qt.ItemFlag.ItemIsEnabled
-        else:
-            return QtCore.Qt.ItemFlag.ItemIsEnabled
-
-    def mimeTypes(self) -> List[str]:
-        return [self._mime_type]
-
-    def supportedDragActions(self) -> QtCore.Qt.DropAction:
-        return QtCore.Qt.DropAction.CopyAction
-
-    def mimeData(self, indexes: List[QtCore.QModelIndex]) -> QtCore.QMimeData:
-        mime_data: QtCore.QMimeData = QtCore.QMimeData()
-
-        index: QtCore.QModelIndex
-        for index in indexes:
-            if index.isValid():
-                item: QtGui.QStandardItem | None = self.itemFromIndex(index)
-                if item is not None:
-                    item_token: object = item.data(self._drag_token_role)
-                    item_data: object = item.data(self._block_role)
-                    if isinstance(item_token, str) and is_supported_library_payload(item_data):
-                        mime_data.setData(self._mime_type, QtCore.QByteArray(item_token.encode("utf-8")))
-                        return mime_data
-                    else:
-                        pass
-                else:
-                    pass
-            else:
-                pass
-
-        return mime_data
-
-
-class LibraryTreeFilterProxyModel(QtCore.QSortFilterProxyModel):
-    __slots__ = ("_search_role",)
-
-    def __init__(self, search_role: int, parent: QtCore.QObject | None = None):
-        super().__init__(parent)
-        self._search_role = search_role
-        self.setRecursiveFilteringEnabled(True)
-        self.setAutoAcceptChildRows(True)
-        self.setFilterCaseSensitivity(QtCore.Qt.CaseSensitivity.CaseInsensitive)
-        self.setFilterRole(search_role)
-        self.setFilterKeyColumn(0)
-
-    def mimeData(self, indexes: List[QtCore.QModelIndex]) -> QtCore.QMimeData:
-        source_model: QtCore.QAbstractItemModel | None = self.sourceModel()
-        if isinstance(source_model, DynamicsLibraryTreeModel):
-            source_indexes: List[QtCore.QModelIndex] = [self.mapToSource(index) for index in indexes if index.isValid()]
-            return source_model.mimeData(source_indexes)
-        else:
-            return super().mimeData(indexes)
-
-    def supportedDragActions(self) -> QtCore.Qt.DropAction:
-        source_model: QtCore.QAbstractItemModel | None = self.sourceModel()
-        if isinstance(source_model, DynamicsLibraryTreeModel):
-            return source_model.supportedDragActions()
-        else:
-            return super().supportedDragActions()
+# this class in cynamic_editor_library
 
 
 class BlockTableFilterProxyModel(QtCore.QSortFilterProxyModel):
@@ -1325,3 +1233,4 @@ def add_variable_to_block(block: Block,
         block.mode_dict[var] = Const(parameter_value, name=var.name)
     else:
         raise ValueError(f"Unknown var_type {var_type}")
+
