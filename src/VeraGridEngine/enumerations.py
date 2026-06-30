@@ -4296,6 +4296,9 @@ class BlockType(Enum):
     this class contains the existing types of blocks
     """
 
+    # tools
+    FROM_GOTO = "FROM_GOTO"
+
     # inputs and outputs
     INPUT_CONN = "Bus Connection"
     OUTPUT_CONN = "EXTERNAL_MAPPING"

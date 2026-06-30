@@ -274,7 +274,7 @@ def _find_scene_block_item(editor: DynamicBlockEditorGUI, block_uid: int):
 
 def test_emt_editor_exposes_basic_block_catalog_under_basic() -> None:
     editor = _build_editor(DynamicSimulationMode.EMT)
-    source_model = editor.library_model
+    source_model = editor.library.library_model
     basic_item = source_model.invisibleRootItem().child(0)
     native_item = basic_item.child(0)
 
@@ -282,8 +282,8 @@ def test_emt_editor_exposes_basic_block_catalog_under_basic() -> None:
     assert basic_item.rowCount() == 1
     assert native_item.text() == "Native"
     assert native_item.child(0).text() == "Arithmetic"
-    assert _find_index_by_label(editor.library_model, "Scaling and Products").isValid()
-    assert not _find_index_by_label(editor.library_model, "Arithmetic and Products").isValid()
+    assert _find_index_by_label(editor.library.library_model, "Scaling and Products").isValid()
+    assert not _find_index_by_label(editor.library.library_model, "Arithmetic and Products").isValid()
     assert _count_descriptor_leaves(editor, native_item) == 545
 
     editor.close()
@@ -291,7 +291,7 @@ def test_emt_editor_exposes_basic_block_catalog_under_basic() -> None:
 
 def test_rms_editor_exposes_basic_block_catalog_under_basic() -> None:
     editor = _build_editor(DynamicSimulationMode.RMS)
-    source_model = editor.library_model
+    source_model = editor.library.library_model
     basic_item = source_model.invisibleRootItem().child(0)
     native_item = basic_item.child(0)
 
@@ -346,7 +346,7 @@ def test_proxy_drag_payload_materializes_catalog_template() -> None:
     editor = _build_editor(DynamicSimulationMode.EMT)
     park_descriptor = get_basic_block_catalog_descriptor_by_key()["park_transform_dq"]
     park_label = park_descriptor.display_label
-    source_index = _find_index_by_label(editor.library_model, park_label)
+    source_index = _find_index_by_label(editor.library.library_model, park_label)
 
     assert source_index.isValid()
 
@@ -773,7 +773,7 @@ def test_line_emt_editor_exposes_jmarti_device_block() -> None:
     bus1 = gce.Bus(name="BusLineDevice1", Vnom=13.8)
     line = gce.Line(name="LineDeviceGui", bus_from=bus0, bus_to=bus1)
     editor = _build_editor(DynamicSimulationMode.EMT, api_object=line, circuit=circuit)
-    leaf_labels = _collect_leaf_labels(editor.library_model)
+    leaf_labels = _collect_leaf_labels(editor.library.library_model)
 
     assert "Emt pi line" in leaf_labels
     assert "Emt Bergeron line" in leaf_labels
