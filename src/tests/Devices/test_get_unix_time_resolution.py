@@ -14,8 +14,8 @@ def test_get_unix_time_round_trip_resolution_independent():
 
     for unit in ("ns", "us"):
         a = Assets()
-        a._time_profile = pd.to_datetime(epoch, unit="s").as_unit(unit)
-        assert a._time_profile.dtype == np.dtype(f"datetime64[{unit}]")
+        a.time_profile = pd.to_datetime(epoch, unit="s").as_unit(unit)
+        assert a.time_profile.dtype == np.dtype(f"datetime64[{unit}]")
         np.testing.assert_array_equal(a.get_unix_time(), epoch)
 
 
