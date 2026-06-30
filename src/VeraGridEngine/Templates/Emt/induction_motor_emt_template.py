@@ -1037,8 +1037,8 @@ class InductionMotorEmtTemplate(TemplateDefinition):
         super().__init__(
             vf,
             params=[
-                TemplateProp(name="level", units="", descr="Model fidelity level (2=single-cage, 3=double-cage).", tpe=int),
-                TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str),
+                TemplateProp(name="level", units="", descr="Model fidelity level (2=single-cage, 3=double-cage).", tpe=int, value=2),
+                TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str, value="induction_motor_emt_template"),
             ]
         )
 

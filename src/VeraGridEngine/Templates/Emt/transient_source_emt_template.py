@@ -285,14 +285,14 @@ class StepCurrentSourceEmtTemplate(TemplateDefinition):
         super().__init__(
             vf,
             params=[
-                TemplateProp(name="phN", units="", descr="Whether neutral is active.", tpe=bool),
-                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool),
-                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool),
-                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool),
-                TemplateProp(name="initial_value", units="", descr="Value before the step.", tpe=float),
-                TemplateProp(name="final_value", units="", descr="Value after the step.", tpe=float),
-                TemplateProp(name="step_time_s", units="s", descr="Step time in seconds.", tpe=float),
-                TemplateProp(name="name", units="", descr="Symbolic block name.", tpe=str),
+                TemplateProp(name="phN", units="", descr="Whether neutral is active.", tpe=bool, value=False),
+                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool, value=True),
+                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool, value=False),
+                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool, value=False),
+                TemplateProp(name="initial_value", units="", descr="Value before the step.", tpe=float, value=0.0),
+                TemplateProp(name="final_value", units="", descr="Value after the step.", tpe=float, value=1.0),
+                TemplateProp(name="step_time_s", units="s", descr="Step time in seconds.", tpe=float, value=0.02),
+                TemplateProp(name="name", units="", descr="Symbolic block name.", tpe=str, value="step_current_source_emt"),
             ]
         )
 
@@ -364,15 +364,15 @@ class StepVoltageSourceEmtTemplate(TemplateDefinition):
         super().__init__(
             vf,
             params=[
-                TemplateProp(name="phN", units="", descr="Whether neutral is active.", tpe=bool),
-                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool),
-                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool),
-                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool),
-                TemplateProp(name="initial_value", units="", descr="Value before the step.", tpe=float),
-                TemplateProp(name="final_value", units="", descr="Value after the step.", tpe=float),
-                TemplateProp(name="step_time_s", units="s", descr="Step time in seconds.", tpe=float),
-                TemplateProp(name="source_conductance_value", units="S", descr="Norton conductance.", tpe=float),
-                TemplateProp(name="name", units="", descr="Symbolic block name.", tpe=str),
+                TemplateProp(name="phN", units="", descr="Whether neutral is active.", tpe=bool, value=False),
+                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool, value=True),
+                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool, value=False),
+                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool, value=False),
+                TemplateProp(name="initial_value", units="", descr="Value before the step.", tpe=float, value=0.0),
+                TemplateProp(name="final_value", units="", descr="Value after the step.", tpe=float, value=1.0),
+                TemplateProp(name="step_time_s", units="s", descr="Step time in seconds.", tpe=float, value=0.02),
+                TemplateProp(name="source_conductance_value", units="S", descr="Norton conductance.", tpe=float, value=100.0),
+                TemplateProp(name="name", units="", descr="Symbolic block name.", tpe=str, value="step_voltage_source_emt"),
             ]
         )
 
@@ -450,15 +450,15 @@ class RampCurrentSourceEmtTemplate(TemplateDefinition):
         super().__init__(
             vf,
             params=[
-                TemplateProp(name="phN", units="", descr="Whether neutral is active.", tpe=bool),
-                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool),
-                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool),
-                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool),
-                TemplateProp(name="initial_value", units="", descr="Value before the ramp.", tpe=float),
-                TemplateProp(name="final_value", units="", descr="Value after the ramp.", tpe=float),
-                TemplateProp(name="start_time_s", units="s", descr="Ramp start time in seconds.", tpe=float),
-                TemplateProp(name="end_time_s", units="s", descr="Ramp end time in seconds.", tpe=float),
-                TemplateProp(name="name", units="", descr="Symbolic block name.", tpe=str),
+                TemplateProp(name="phN", units="", descr="Whether neutral is active.", tpe=bool, value=False),
+                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool, value=True),
+                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool, value=False),
+                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool, value=False),
+                TemplateProp(name="initial_value", units="", descr="Value before the ramp.", tpe=float, value=0.0),
+                TemplateProp(name="final_value", units="", descr="Value after the ramp.", tpe=float, value=1.0),
+                TemplateProp(name="start_time_s", units="s", descr="Ramp start time in seconds.", tpe=float, value=0.01),
+                TemplateProp(name="end_time_s", units="s", descr="Ramp end time in seconds.", tpe=float, value=0.03),
+                TemplateProp(name="name", units="", descr="Symbolic block name.", tpe=str, value="ramp_current_source_emt"),
             ]
         )
 
@@ -524,16 +524,16 @@ class RampVoltageSourceEmtTemplate(TemplateDefinition):
         super().__init__(
             vf,
             params=[
-                TemplateProp(name="phN", units="", descr="Whether neutral is active.", tpe=bool),
-                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool),
-                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool),
-                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool),
-                TemplateProp(name="initial_value", units="", descr="Value before the ramp.", tpe=float),
-                TemplateProp(name="final_value", units="", descr="Value after the ramp.", tpe=float),
-                TemplateProp(name="start_time_s", units="s", descr="Ramp start time in seconds.", tpe=float),
-                TemplateProp(name="end_time_s", units="s", descr="Ramp end time in seconds.", tpe=float),
-                TemplateProp(name="source_conductance_value", units="S", descr="Norton conductance.", tpe=float),
-                TemplateProp(name="name", units="", descr="Symbolic block name.", tpe=str),
+                TemplateProp(name="phN", units="", descr="Whether neutral is active.", tpe=bool, value=False),
+                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool, value=True),
+                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool, value=False),
+                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool, value=False),
+                TemplateProp(name="initial_value", units="", descr="Value before the ramp.", tpe=float, value=0.0),
+                TemplateProp(name="final_value", units="", descr="Value after the ramp.", tpe=float, value=1.0),
+                TemplateProp(name="start_time_s", units="s", descr="Ramp start time in seconds.", tpe=float, value=0.01),
+                TemplateProp(name="end_time_s", units="s", descr="Ramp end time in seconds.", tpe=float, value=0.03),
+                TemplateProp(name="source_conductance_value", units="S", descr="Norton conductance.", tpe=float, value=100.0),
+                TemplateProp(name="name", units="", descr="Symbolic block name.", tpe=str, value="ramp_voltage_source_emt"),
             ]
         )
 
@@ -603,15 +603,15 @@ class DoubleExponentialCurrentSourceEmtTemplate(TemplateDefinition):
         super().__init__(
             vf,
             params=[
-                TemplateProp(name="phN", units="", descr="Whether neutral is active.", tpe=bool),
-                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool),
-                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool),
-                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool),
-                TemplateProp(name="amplitude_value", units="", descr="Overall amplitude scale.", tpe=float),
-                TemplateProp(name="alpha_value", units="", descr="Slow exponential coefficient.", tpe=float),
-                TemplateProp(name="beta_value", units="", descr="Fast exponential coefficient.", tpe=float),
-                TemplateProp(name="delay_s", units="s", descr="Emission delay in seconds.", tpe=float),
-                TemplateProp(name="name", units="", descr="Symbolic block name.", tpe=str),
+                TemplateProp(name="phN", units="", descr="Whether neutral is active.", tpe=bool, value=False),
+                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool, value=True),
+                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool, value=False),
+                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool, value=False),
+                TemplateProp(name="amplitude_value", units="", descr="Overall amplitude scale.", tpe=float, value=1.0),
+                TemplateProp(name="alpha_value", units="", descr="Slow exponential coefficient.", tpe=float, value=100.0),
+                TemplateProp(name="beta_value", units="", descr="Fast exponential coefficient.", tpe=float, value=5000.0),
+                TemplateProp(name="delay_s", units="s", descr="Emission delay in seconds.", tpe=float, value=0.0),
+                TemplateProp(name="name", units="", descr="Symbolic block name.", tpe=str, value="double_exponential_current_source_emt"),
             ]
         )
 
@@ -677,16 +677,16 @@ class HeidlerCurrentSourceEmtTemplate(TemplateDefinition):
         super().__init__(
             vf,
             params=[
-                TemplateProp(name="phN", units="", descr="Whether neutral is active.", tpe=bool),
-                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool),
-                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool),
-                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool),
-                TemplateProp(name="peak_value", units="", descr="Peak-current scale.", tpe=float),
-                TemplateProp(name="front_time_s", units="s", descr="Front-time parameter in seconds.", tpe=float),
-                TemplateProp(name="tail_time_s", units="s", descr="Tail-time parameter in seconds.", tpe=float),
-                TemplateProp(name="order_value", units="", descr="Heidler order exponent.", tpe=float),
-                TemplateProp(name="delay_s", units="s", descr="Emission delay in seconds.", tpe=float),
-                TemplateProp(name="name", units="", descr="Symbolic block name.", tpe=str),
+                TemplateProp(name="phN", units="", descr="Whether neutral is active.", tpe=bool, value=False),
+                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool, value=True),
+                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool, value=False),
+                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool, value=False),
+                TemplateProp(name="peak_value", units="", descr="Peak-current scale.", tpe=float, value=1.0),
+                TemplateProp(name="front_time_s", units="s", descr="Front-time parameter in seconds.", tpe=float, value=1.0e-4),
+                TemplateProp(name="tail_time_s", units="s", descr="Tail-time parameter in seconds.", tpe=float, value=5.0e-4),
+                TemplateProp(name="order_value", units="", descr="Heidler order exponent.", tpe=float, value=4.0),
+                TemplateProp(name="delay_s", units="s", descr="Emission delay in seconds.", tpe=float, value=0.0),
+                TemplateProp(name="name", units="", descr="Symbolic block name.", tpe=str, value="heidler_current_source_emt"),
             ]
         )
 
@@ -756,20 +756,20 @@ class CigreSurgeCurrentSourceEmtTemplate(TemplateDefinition):
         super().__init__(
             vf,
             params=[
-                TemplateProp(name="phN", units="", descr="Whether neutral is active.", tpe=bool),
-                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool),
-                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool),
-                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool),
-                TemplateProp(name="a_value", units="", descr="Front linear coefficient.", tpe=float),
-                TemplateProp(name="b_value", units="", descr="Front nonlinear coefficient.", tpe=float),
-                TemplateProp(name="n_value", units="", descr="Front exponent.", tpe=float),
-                TemplateProp(name="tn_s", units="s", descr="Front-to-tail transition time in seconds.", tpe=float),
-                TemplateProp(name="i1_value", units="", descr="First tail amplitude.", tpe=float),
-                TemplateProp(name="t1_s", units="s", descr="First tail time constant in seconds.", tpe=float),
-                TemplateProp(name="i2_value", units="", descr="Second tail amplitude.", tpe=float),
-                TemplateProp(name="t2_s", units="s", descr="Second tail time constant in seconds.", tpe=float),
-                TemplateProp(name="delay_s", units="s", descr="Emission delay in seconds.", tpe=float),
-                TemplateProp(name="name", units="", descr="Symbolic block name.", tpe=str),
+                TemplateProp(name="phN", units="", descr="Whether neutral is active.", tpe=bool, value=False),
+                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool, value=True),
+                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool, value=False),
+                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool, value=False),
+                TemplateProp(name="a_value", units="", descr="Front linear coefficient.", tpe=float, value=1000.0),
+                TemplateProp(name="b_value", units="", descr="Front nonlinear coefficient.", tpe=float, value=10000.0),
+                TemplateProp(name="n_value", units="", descr="Front exponent.", tpe=float, value=2.0),
+                TemplateProp(name="tn_s", units="s", descr="Front-to-tail transition time in seconds.", tpe=float, value=1.0e-4),
+                TemplateProp(name="i1_value", units="", descr="First tail amplitude.", tpe=float, value=1.0),
+                TemplateProp(name="t1_s", units="s", descr="First tail time constant in seconds.", tpe=float, value=5.0e-4),
+                TemplateProp(name="i2_value", units="", descr="Second tail amplitude.", tpe=float, value=0.5),
+                TemplateProp(name="t2_s", units="s", descr="Second tail time constant in seconds.", tpe=float, value=2.0e-4),
+                TemplateProp(name="delay_s", units="s", descr="Emission delay in seconds.", tpe=float, value=0.0),
+                TemplateProp(name="name", units="", descr="Symbolic block name.", tpe=str, value="cigre_surge_current_source_emt"),
             ]
         )
 

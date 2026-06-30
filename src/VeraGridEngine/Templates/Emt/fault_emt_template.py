@@ -24,17 +24,17 @@ class FaultEmtTemplate(TemplateDefinition):
         super().__init__(vf, params=[
             TemplateProp(name="fault_type", units="", descr="Requested short-circuit topology.", tpe=FaultType | str),
             TemplateProp(name="placement_side", units="", descr="Placement side inside the composed branch.", tpe=EmtFaultPlacementSide | str),
-            TemplateProp(name="phA", units="", descr="Enable phase A.", tpe=bool),
-            TemplateProp(name="phB", units="", descr="Enable phase B.", tpe=bool),
-            TemplateProp(name="phC", units="", descr="Enable phase C.", tpe=bool),
-            TemplateProp(name="signal_controlled", units="", descr="If True, expose one control input and procedural logic.", tpe=bool),
-            TemplateProp(name="initial_closed", units="", descr="Initial fault status.", tpe=bool),
-            TemplateProp(name="fault_resistance", units="Ohm", descr="Phase-to-phase fault resistance.", tpe=float),
-            TemplateProp(name="ground_resistance", units="Ohm", descr="Phase-to-ground fault resistance.", tpe=float),
-            TemplateProp(name="open_conductance", units="Siemens", descr="Open-state leakage conductance.", tpe=float),
-            TemplateProp(name="fault_time_constant", units="s", descr="Unused regularization compatibility parameter.", tpe=float),
-            TemplateProp(name="command_threshold", units="", descr="Control threshold for the external command.", tpe=float),
-            TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str),
+            TemplateProp(name="phA", units="", descr="Enable phase A.", tpe=bool, value=True),
+            TemplateProp(name="phB", units="", descr="Enable phase B.", tpe=bool, value=False),
+            TemplateProp(name="phC", units="", descr="Enable phase C.", tpe=bool, value=False),
+            TemplateProp(name="signal_controlled", units="", descr="If True, expose one control input and procedural logic.", tpe=bool, value=False),
+            TemplateProp(name="initial_closed", units="", descr="Initial fault status.", tpe=bool, value=False),
+            TemplateProp(name="fault_resistance", units="Ohm", descr="Phase-to-phase fault resistance.", tpe=float, value=1.0e-2),
+            TemplateProp(name="ground_resistance", units="Ohm", descr="Phase-to-ground fault resistance.", tpe=float, value=1.0e-2),
+            TemplateProp(name="open_conductance", units="Siemens", descr="Open-state leakage conductance.", tpe=float, value=1.0e-8),
+            TemplateProp(name="fault_time_constant", units="s", descr="Unused regularization compatibility parameter.", tpe=float, value=1.0e-4),
+            TemplateProp(name="command_threshold", units="", descr="Control threshold for the external command.", tpe=float, value=0.5),
+            TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str, value="fault_emt_template"),
         ])
 
     def eval(self) -> EmtModelTemplate:

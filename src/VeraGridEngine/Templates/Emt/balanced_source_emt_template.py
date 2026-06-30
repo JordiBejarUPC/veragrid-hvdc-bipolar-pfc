@@ -59,11 +59,11 @@ class Balanced3phCurrentSourceEmtTemplate(TemplateDefinition):
         super().__init__(
             vf,
             params=[
-                TemplateProp(name="amplitude_value", units="A", descr="Common phase amplitude.", tpe=float),
-                TemplateProp(name="frequency_hz", units="Hz", descr="Common sinusoidal frequency.", tpe=float),
-                TemplateProp(name="phase_a_deg", units="deg", descr="Phase-A angle offset.", tpe=float),
-                TemplateProp(name="offset_value", units="A", descr="Common phase offset.", tpe=float),
-                TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str),
+                TemplateProp(name="amplitude_value", units="A", descr="Common phase amplitude.", tpe=float, value=1.0),
+                TemplateProp(name="frequency_hz", units="Hz", descr="Common sinusoidal frequency.", tpe=float, value=50.0),
+                TemplateProp(name="phase_a_deg", units="deg", descr="Phase-A angle offset.", tpe=float, value=0.0),
+                TemplateProp(name="offset_value", units="A", descr="Common phase offset.", tpe=float, value=0.0),
+                TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str, value="balanced_3ph_current_source_emt"),
             ]
         )
 
@@ -144,10 +144,10 @@ class ControlledBalanced3phCurrentSourceEmtTemplate(TemplateDefinition):
         super().__init__(
             vf,
             params=[
-                TemplateProp(name="frequency_hz", units="Hz", descr="Common sinusoidal frequency.", tpe=float),
-                TemplateProp(name="phase_a_deg", units="deg", descr="Phase-A angle offset.", tpe=float),
-                TemplateProp(name="offset_value", units="A", descr="Common phase offset.", tpe=float),
-                TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str),
+                TemplateProp(name="frequency_hz", units="Hz", descr="Common sinusoidal frequency.", tpe=float, value=50.0),
+                TemplateProp(name="phase_a_deg", units="deg", descr="Phase-A angle offset.", tpe=float, value=0.0),
+                TemplateProp(name="offset_value", units="A", descr="Common phase offset.", tpe=float, value=0.0),
+                TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str, value="controlled_balanced_3ph_current_source_emt"),
             ]
         )
 
@@ -224,12 +224,12 @@ class Balanced3phVoltageSourceEmtTemplate(TemplateDefinition):
         super().__init__(
             vf,
             params=[
-                TemplateProp(name="amplitude_value", units="V", descr="Common phase amplitude.", tpe=float),
-                TemplateProp(name="frequency_hz", units="Hz", descr="Common sinusoidal frequency.", tpe=float),
-                TemplateProp(name="phase_a_deg", units="deg", descr="Phase-A angle offset.", tpe=float),
-                TemplateProp(name="offset_value", units="V", descr="Common phase offset.", tpe=float),
-                TemplateProp(name="source_conductance_value", units="S", descr="Norton conductance.", tpe=float),
-                TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str),
+                TemplateProp(name="amplitude_value", units="V", descr="Common phase amplitude.", tpe=float, value=1.0),
+                TemplateProp(name="frequency_hz", units="Hz", descr="Common sinusoidal frequency.", tpe=float, value=50.0),
+                TemplateProp(name="phase_a_deg", units="deg", descr="Phase-A angle offset.", tpe=float, value=0.0),
+                TemplateProp(name="offset_value", units="V", descr="Common phase offset.", tpe=float, value=0.0),
+                TemplateProp(name="source_conductance_value", units="S", descr="Norton conductance.", tpe=float, value=100.0),
+                TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str, value="balanced_3ph_voltage_source_emt"),
             ]
         )
 
@@ -319,11 +319,11 @@ class ControlledBalanced3phVoltageSourceEmtTemplate(TemplateDefinition):
         super().__init__(
             vf,
             params=[
-                TemplateProp(name="frequency_hz", units="Hz", descr="Common sinusoidal frequency.", tpe=float),
-                TemplateProp(name="phase_a_deg", units="deg", descr="Phase-A angle offset.", tpe=float),
-                TemplateProp(name="offset_value", units="V", descr="Common phase offset.", tpe=float),
-                TemplateProp(name="source_conductance_value", units="S", descr="Norton conductance.", tpe=float),
-                TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str),
+                TemplateProp(name="frequency_hz", units="Hz", descr="Common sinusoidal frequency.", tpe=float, value=50.0),
+                TemplateProp(name="phase_a_deg", units="deg", descr="Phase-A angle offset.", tpe=float, value=0.0),
+                TemplateProp(name="offset_value", units="V", descr="Common phase offset.", tpe=float, value=0.0),
+                TemplateProp(name="source_conductance_value", units="S", descr="Norton conductance.", tpe=float, value=100.0),
+                TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str, value="controlled_balanced_3ph_voltage_source_emt"),
             ]
         )
 
