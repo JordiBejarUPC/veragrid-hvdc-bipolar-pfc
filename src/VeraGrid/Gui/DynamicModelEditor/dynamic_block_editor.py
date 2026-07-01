@@ -11,8 +11,8 @@ import re
 import copy
 from typing import List, Dict, Optional, Any
 from PySide6 import QtWidgets, QtGui, QtCore
-from PySide6.QtWidgets import (QGraphicsItem, QMenu, QDialog, QVBoxLayout, QDialogButtonBox, QLineEdit)
-from PySide6.QtGui import (QPen, QBrush, QAction, QDropEvent, QDragEnterEvent, QDragMoveEvent, QColor)
+from PySide6.QtWidgets import (QGraphicsItem, QMenu, QApplication, QWidget, QDialog, QVBoxLayout, QDialogButtonBox, QLineEdit, QGraphicsRectItem, QGraphicsTextItem)
+from PySide6.QtGui import (QPen, QBrush, QAction, QPainter, QDropEvent, QDragEnterEvent, QDragMoveEvent, QColor)
 from PySide6.QtCore import Qt, QPointF, Signal
 
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
@@ -62,7 +62,7 @@ from VeraGrid.Gui.DynamicModelEditor.block_editor import Ui_BlockEditorWindow
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_dialogs import AddBlockVariableDialog, AddEquationDialog, \
     AddParameterDialog, EmtTemplateWizardDialog, ExpressionTextEditorDialog, GenericBlockDialog
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics import BlockItem, BlockPositionChangedCallback, \
-    BranchingItem, ConnectionItem, DiagramScene, GenericBlockItem, RoundBaseArithmeticOpItem, RectBaseArithmeticOpItem, \
+    BranchingItem, ConnectionItem, DiagramScene, RoundBaseArithmeticOpItem, RectBaseArithmeticOpItem, \
     GraphicsView, PairedItem, PortItem, ProtectedConnectionBlockItem
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_library import DynamicEditorLibrary, LibraryTreeFilterProxyModel
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_models import BlockParameterKind, BlockParameterRow, \
@@ -281,6 +281,442 @@ def build_emt_branch_bus_mask_from_refs(
         pass
 
     return mask
+
+
+# Todo: maby this should be defined in utilities, because it is used in dynamic_block_editor.py and dynamic_editor_graphics.py
+
+
+
+def truncate_port_label(text: str, max_chars: int) -> str:
+    if len(text) <= max_chars:
+        return text
+    else:
+        return text[:max_chars]
+
+
+class _EditorGraphicsDefaults:
+    BLOCK_BORDER: QColor = QColor("#202124")
+    BLOCK_BORDER_SELECTED: QColor = QColor("#cc6f2c")
+    BLOCK_TITLE: QColor = QColor("#173042")
+    BLOCK_SHADOW: QColor = QColor(24, 42, 56, 45)
+    INPUT_PORT_FILL: QColor = QColor("#2d7dd2")
+    OUTPUT_PORT_FILL: QColor = QColor("#2a9d6f")
+    PORT_BORDER: QColor = QColor("#173042")
+    WIRE_COLOR: QColor = QColor("#202124")
+    WIRE_HOVER_COLOR: QColor = QColor("#cc6f2c")
+    HANDLE_FILL: QColor = QColor("#36536b")
+    DEFAULT_BLOCK_FILL: QColor = QColor("#f5fdff")
+    PAIRED_ITEM_FILL: QColor = QColor("#9fa8da")
+    BLOCK_FILL_ALL_CONNECTED: QColor = QColor("#a5d6a7")
+    BLOCK_FILL_DISCONNECTED: QColor = QColor("#ffe082")
+    PORT_LABEL_COLOR: QColor = QColor("#173042")
+    WIRE_ELBOW_OFFSET: float = 36.0
+    PORT_LABEL_MAX_CHARS: int = 12
+    BLOCK_HEADER_HEIGHT: float = 30.0
+    BLOCK_PORT_ROW_HEIGHT: float = 20.0
+    BLOCK_PORT_SECTION_PADDING: float = 10.0
+    BLOCK_MIN_WIDTH: float = 160.0
+    BLOCK_MIN_HEIGHT: float = 70.0
+    BLOCK_COMPACT_MIN_WIDTH: float = 100.0
+    BLOCK_COMPACT_MIN_HEIGHT: float = 40.0
+    BLOCK_COMPACT_HEADER_HEIGHT: float = 20.0
+    BLOCK_COMPACT_PORT_ROW_HEIGHT: float = 14.0
+    BLOCK_COMPACT_PORT_SECTION_PADDING: float = 6.0
+
+
+def _get_editor_constants(editor: "DynamicBlockEditorGUI | None") -> type[_EditorGraphicsDefaults] | DynamicBlockEditorGUI:
+    if editor is not None:
+        return editor
+    else:
+        return _EditorGraphicsDefaults
+
+
+
+class ResizeHandle(QGraphicsRectItem):
+    def __init__(self, block_item: GenericBlockItem, size: int = 10):
+        super().__init__(0, 0, size, size, block_item)
+        editor_constants = _get_editor_constants(block_item.editor)
+        self.setBrush(QBrush(editor_constants.HANDLE_FILL))
+        self.setPen(QPen(QColor("#ffffff"), 1))
+        self.setCursor(Qt.CursorShape.SizeFDiagCursor)
+        self.setZValue(2)
+        self.block: GenericBlockItem = block_item
+        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable)
+        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemSendsScenePositionChanges)
+        self.setAcceptHoverEvents(True)
+
+class GenericBlockItem(QGraphicsRectItem):
+    def __init__(self,
+                 var_factory: VarFactory,
+                 subsys: Block,
+                 circuit: MultiCircuit,
+                 api_object,
+                 mode: DynamicSimulationMode,
+                 name: str,
+                 position_changed_callback=None,
+                 editor: "DynamicBlockEditorGUI | None" = None):
+        super().__init__(0, 0, 100, 60)
+
+        self.var_factory = var_factory
+        self.subsys = subsys
+        self.circuit = circuit
+        self.mode = mode
+        self.name: str = name
+        self.api_object = api_object
+        self.position_changed_callback = position_changed_callback
+
+        self.name_item = QGraphicsTextItem(self.subsys.name, self)
+        self.editor: DynamicBlockEditorGUI | None = editor
+        editor_constants = _get_editor_constants(self.editor)
+        self.name_item.setDefaultTextColor(editor_constants.BLOCK_TITLE)
+        name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 9)
+        name_font.setBold(True)
+        self.name_item.setFont(name_font)
+        self.update_name_position()
+
+        self.inputs: List[PortItem] = list()
+        self.outputs: List[PortItem] = list()
+        self.input_labels: List[QGraphicsTextItem] = list()
+        self.output_labels: List[QGraphicsTextItem] = list()
+
+        self.name_item.setDefaultTextColor(editor_constants.BLOCK_TITLE)
+
+
+        self.resize_handle: ResizeHandle | None = None
+        self.resizing_from_handle = False
+        self._suppress_resize: bool = False
+        self.setBrush(QBrush(editor_constants.DEFAULT_BLOCK_FILL))
+        self.setPen(QPen(Qt.GlobalColor.transparent, 0))
+        self.setFlags(
+            QGraphicsItem.GraphicsItemFlag.ItemIsMovable |
+            QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
+            QGraphicsItem.GraphicsItemFlag.ItemSendsScenePositionChanges
+        )
+        self.setAcceptHoverEvents(True)
+
+        name_font = QtGui.QFont("DejaVu Sans", 9)
+        name_font.setBold(True)
+        self.name_item.setFont(name_font)
+        self.update_name_position()
+
+        n_inputs = len(self.subsys.in_vars)
+        n_outputs = len(self.subsys.out_vars)
+        self.inputs = [PortItem(self, True, i, n_inputs) for i in range(n_inputs)]
+        self.outputs = [PortItem(self, False, i, n_outputs) for i in range(n_outputs)]
+        self.input_labels = [self.create_port_label_item() for _ in range(n_inputs)]
+        self.output_labels = [self.create_port_label_item() for _ in range(n_outputs)]
+
+        self.refresh_port_metadata()
+        self.resize_handle = ResizeHandle(self)
+        self.resize_to_content()
+
+    def mouseDoubleClickEvent(self, event):
+
+        """
+               opens the editor
+               Parameters
+               ----------
+               event :
+
+               Returns
+               -------
+
+
+               """
+
+        if self.editor is None and self.subsys.is_eq_decomposable():
+            self.editor = DynamicBlockEditorGUI(
+                var_factory=self.var_factory,
+                block=self.subsys,
+                api_object=self.api_object,
+                circuit=self.circuit,
+                mode=self.mode,
+            )
+            if self.editor is not None:
+                self.editor.decompose_block_in_place(self.subsys)
+                self.editor.diagram = self.subsys.diagram
+                self.editor.main_block = self.subsys
+                self.editor.rebuild_scene_from_diagram()
+                self.editor.show()
+
+        elif self.editor is None:
+            self.editor = DynamicBlockEditorGUI(
+                var_factory=self.var_factory,
+                block=self.subsys,
+                api_object=self.api_object,
+                circuit=self.circuit,
+                mode=self.mode,
+            )
+            if self.editor is not None:
+                self.editor.show()
+
+        elif self.editor is not None:
+            self.editor.show()
+        else:
+            pass
+
+        # if self.editor_window is None and self.subsys.children:
+        #     if self.editor is None:
+        #         return
+        #     else:
+        #         pass
+        #     from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
+        #     self.editor_window = DynamicBlockEditorGUI(
+        #         var_factory=self.var_factory,
+        #         block=self.subsys,
+        #         api_object=self.api_object,
+        #         circuit=self.editor.circuit,
+        #         mode=self.mode,
+        #     )
+        # elif self.editor_window is None and self.subsys.is_eq_decomposable():
+        #     if self.editor is None:
+        #         return
+        #     else:
+        #         pass
+        #     from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
+        #     self.editor_window = DynamicBlockEditorGUI(
+        #         var_factory=self.var_factory,
+        #         block=self.subsys,
+        #         api_object=self.api_object,
+        #         circuit=self.editor.circuit,
+        #         mode=self.mode,
+        #     )
+        #     self.editor_window.decompose_block_in_place(self.subsys)
+        #     self.editor_window.diagram = self.subsys.diagram
+        #     self.editor_window.main_block = self.subsys
+        #     self.editor_window.rebuild_scene_from_diagram()
+        # else:
+        #     pass
+        #
+        # if self.editor_window is not None:
+        #     self.editor_window.show()
+        # else:
+        #     pass
+
+    def set_subsystem(self, block: Block) -> None:
+        self.subsys = block
+
+    def build_item(self) -> None:
+        if self.subsys is not None:
+            self.name_item = QGraphicsTextItem(self.name, self)
+            editor_constants = _get_editor_constants(self.editor)
+            self.name_item.setDefaultTextColor(editor_constants.BLOCK_TITLE)
+            name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 9)
+            name_font.setBold(True)
+            self.name_item.setFont(name_font)
+            self.update_name_position()
+
+            n_inputs: int = len(self.subsys.in_vars)
+            n_outputs: int = len(self.subsys.out_vars)
+            self.inputs = [PortItem(self, True, i, n_inputs) for i in range(n_inputs)]
+            self.outputs = [PortItem(self, False, i, n_outputs) for i in range(n_outputs)]
+            self.input_labels = [self.create_port_label_item() for _ in range(n_inputs)]
+            self.output_labels = [self.create_port_label_item() for _ in range(n_outputs)]
+            self.refresh_port_metadata()
+            self.resize_handle = ResizeHandle(self)
+            self.resize_to_content()
+        else:
+            pass
+
+    def resize_block(self, width, height):
+        self.prepareGeometryChange()
+        min_width: float
+        min_height: float
+        min_width, min_height = self.get_minimum_block_size()
+        QGraphicsRectItem.setRect(self, 0, 0, max(width, min_width), max(height, min_height))
+        self.update_ports()
+        self.update_handle_position()
+        self.update_name_position()
+
+    def update_handle_position(self):
+        rect = self.rect()
+        self.resizing_from_handle = False
+        self.resize_handle.setPos(rect.width(), rect.height())
+        self.resizing_from_handle = True
+
+    def update_name_position(self):
+        if self.name_item is None:
+            return
+
+        rect = self.rect()
+
+        text_width = self.name_item.boundingRect().width()
+
+        x = (rect.width() - text_width) / 2
+        y = rect.height() + 5
+
+        self.name_item.setPos(x, y)
+
+    def paint(self,
+              painter: QPainter,
+              option: QtWidgets.QStyleOptionGraphicsItem,
+              widget: Optional[QWidget] = None) -> None:
+
+        rect: QtCore.QRectF = self.rect()
+        outer_rect: QtCore.QRectF = rect.adjusted(2, 2, -2, -2)
+        shadow_rect: QtCore.QRectF = outer_rect.translated(2.5, 3.0)
+        body_rect: QtCore.QRectF = outer_rect
+
+        editor_constants = _get_editor_constants(self.editor)
+
+        border_color: QColor = (
+            editor_constants.BLOCK_BORDER_SELECTED
+            if self.isSelected()
+            else editor_constants.BLOCK_BORDER
+        )
+
+        fill_color: QColor = self.brush().color()
+
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+
+        radius = 4.0
+
+        # body
+        painter.setBrush(QBrush(fill_color))
+        painter.drawRoundedRect(body_rect, radius, radius)
+
+        # delimiter
+        painter.setPen(QPen(border_color, 1.6))
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.drawRoundedRect(body_rect, radius, radius)
+
+    def _set_rect_internal(self, w, h):
+        QGraphicsRectItem.setRect(self, 0, 0, w, h)
+        self.update_ports()
+        self.update_handle_position()
+
+    def set_rectangle(self, x, y, w, h):
+        if not self._suppress_resize:
+            self._set_rect_internal(w, h)
+        else:
+            pass
+
+    def get_minimum_block_size(self) -> tuple[float, float]:
+        editor_constants = _get_editor_constants(self.editor)
+        port_rows: int = max(len(self.inputs), len(self.outputs), 1)
+        min_height: float = max(
+            editor_constants.BLOCK_MIN_HEIGHT,
+            editor_constants.BLOCK_HEADER_HEIGHT + editor_constants.BLOCK_PORT_SECTION_PADDING +
+            port_rows * editor_constants.BLOCK_PORT_ROW_HEIGHT
+        )
+
+        input_label_width = 0.0
+        for label in self.input_labels:
+            input_label_width = max(input_label_width, label.boundingRect().width())
+
+        output_label_width = 0.0
+        for label in self.output_labels:
+            output_label_width = max(output_label_width, label.boundingRect().width())
+
+        name_width = self.name_item.boundingRect().width()
+        padding = 28.0
+
+        min_width = max(
+            editor_constants.BLOCK_MIN_WIDTH,
+            input_label_width + output_label_width + name_width + padding
+        )
+        return min_width, min_height
+
+    def resize_to_content(self) -> None:
+        self.prepareGeometryChange()
+        min_width: float
+        min_height: float
+        min_width, min_height = self.get_minimum_block_size()
+        QGraphicsRectItem.setRect(self, 0, 0, min_width, min_height)
+        self.update_ports()
+        self.update_handle_position()
+        self.update_name_position()
+
+    def create_port_label_item(self) -> QGraphicsTextItem:
+        label_item: QGraphicsTextItem = QGraphicsTextItem("", self)
+        label_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 9)
+        label_item.setFont(label_font)
+        label_item.setDefaultTextColor(_get_editor_constants(self.editor).PORT_LABEL_COLOR)
+        label_item.setZValue(4)
+        return label_item
+
+    def refresh_port_metadata(self) -> None:
+        if self.subsys is not None:
+            i: int
+            port: PortItem
+            label_item: QGraphicsTextItem
+            variable_name: str
+            for i, port in enumerate(self.inputs):
+                if port.base_var is None:
+                    port.base_var = self.subsys.in_vars[i]
+                else:
+                    pass
+                variable_name = self.subsys.in_vars[i].name
+                port.setToolTip(f"Input {i}: {variable_name}")
+                label_item = self.input_labels[i]
+                label_item.setPlainText(truncate_port_label(variable_name, _get_editor_constants(self.editor).PORT_LABEL_MAX_CHARS))
+
+            for i, port in enumerate(self.outputs):
+                if port.base_var is None:
+                    port.base_var = self.subsys.out_vars[i]
+                else:
+                    pass
+                variable_name = self.subsys.out_vars[i].name
+                port.setToolTip(f"Output {i}: {variable_name}")
+                label_item = self.output_labels[i]
+                label_item.setPlainText(truncate_port_label(variable_name, _get_editor_constants(self.editor).PORT_LABEL_MAX_CHARS))
+        else:
+            pass
+
+    def update_ports(self):
+        i: int
+        port: PortItem
+        for i, port in enumerate(self.inputs):
+            spacing = self.rect().height() / (len(self.inputs) + 1)
+            port.setPos(0, spacing * (i + 1))
+        for i, port in enumerate(self.outputs):
+            spacing = self.rect().height() / (len(self.outputs) + 1)
+            port.setPos(self.rect().width(), spacing * (i + 1))
+
+        label_item: QGraphicsTextItem
+        for i, label_item in enumerate(self.input_labels):
+            port = self.inputs[i]
+            label_item.setPos(14.0, port.pos().y() - 8.0)
+
+        for i, label_item in enumerate(self.output_labels):
+            port = self.outputs[i]
+            label_width: float = label_item.boundingRect().width()
+            label_item.setPos(self.rect().width() - label_width - 14.0, port.pos().y() - 8.0)
+
+        self.update_handle_position()
+        for port in self.inputs + self.outputs:
+            if port.connections:
+                conn: ConnectionItem
+                for conn in port.connections:
+                    conn.update_path()
+            else:
+                pass
+
+    def hoverEnterEvent(self, event):
+        QApplication.setOverrideCursor(Qt.CursorShape.OpenHandCursor)
+
+    def hoverLeaveEvent(self, event):
+        QApplication.restoreOverrideCursor()
+
+    def itemChange(self, change, value):
+        if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:
+            if self.position_changed_callback is not None:
+                self.position_changed_callback(value.x(), value.y())
+            else:
+                pass
+            port: PortItem
+            for port in self.inputs + self.outputs:
+                if port.connections:
+                    conn: ConnectionItem
+                    for conn in port.connections:
+                        conn.update_path()
+                else:
+                    pass
+        else:
+            pass
+        return super().itemChange(change, value)
+
+
 
 
 class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
@@ -636,14 +1072,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             else:
                 pass
 
+        elif not self.main_block.empty() and # només té in_vars i out_vars
+
         # Build items for models with graphical info
         elif not self.main_block.diagram.node_data:
             # here we add the connection variables to the main block
             if self.main_editor:
                 self.add_connection_vars()
                 # self.add_api_obj_mapping()
-            else:
-                pass
+
             self.add_connection_items()
         else:
             pass
@@ -770,8 +1207,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             template = template_builder.eval()
             block_model = template.block
 
-        block_item: GenericBlockItem = GenericBlockItem(editor=self, var_factory=self.var_factory,
+        block_item: GenericBlockItem = GenericBlockItem(var_factory=self.var_factory,
                                                         subsys=block_model,
+                                                        circuit=self.circuit,
                                                         api_object=self.api_object,
                                                         mode=self.mode,
                                                         name=item_name,
@@ -815,9 +1253,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
             model = create_generic_block(self.var_factory, inputs, outputs, name)
             self.main_block.add(model)
-            item = GenericBlockItem(editor=self,
-                                    var_factory=self.var_factory,
+            item = GenericBlockItem(var_factory=self.var_factory,
                                     subsys=model,
+                                    circuit=self.circuit,
                                     api_object=self.api_object,
                                     mode=self.mode,
                                     name=model.name,
@@ -941,8 +1379,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                                   var_factory=self.var_factory,
                                                   block_type=block_type,
                                                   item_name=item_name)
-            block_item: GenericBlockItem = GenericBlockItem(editor=self, var_factory=self.var_factory,
+            block_item: GenericBlockItem = GenericBlockItem(var_factory=self.var_factory,
                                                             subsys=block_model,
+                                                            circuit=self.circuit,
                                                             api_object=self.api_object,
                                                             mode=self.mode,
                                                             name=item_name,
@@ -1336,8 +1775,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             block_type=BlockType.EMT_JMARTI_LINE,
             item_name=item_name,
         )
-        block_item: GenericBlockItem = GenericBlockItem(editor=self, var_factory=self.var_factory,
+        block_item: GenericBlockItem = GenericBlockItem(var_factory=self.var_factory,
                                                         subsys=block_model,
+                                                        circuit=self.circuit,
                                                         api_object=self.api_object,
                                                         mode=self.mode,
                                                         name=item_name,
@@ -1403,9 +1843,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         # no we have the name and the block
         if block_model is not None:
             self.main_block.add(block_model)
-            item = GenericBlockItem(editor=self,
-                                    var_factory=self.var_factory,
+            item = GenericBlockItem(var_factory=self.var_factory,
                                     subsys=block_model,
+                                    circuit = self.circuit,
                                     api_object=self.api_object,
                                     mode=self.mode,
                                     name=block_model.name,
@@ -1610,9 +2050,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         item_name: str = f"{block_model.name}"
 
         if block_model is not None:
-            item = GenericBlockItem(editor=self,
-                                    var_factory=self.var_factory,
+            item = GenericBlockItem(var_factory=self.var_factory,
                                     subsys=block_model,
+                                    circuit=self.circuit,
                                     api_object=self.api_object,
                                     mode=self.mode,
                                     name=item_name,
@@ -1747,9 +2187,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         item_name: str = template.name
         block_model: Block = duplicate_block(template.block, var_factory=self.var_factory)
         self.main_block.add(block_model)
-        item: GenericBlockItem = GenericBlockItem(editor=self,
-                                                  var_factory=self.var_factory,
+        item: GenericBlockItem = GenericBlockItem(var_factory=self.var_factory,
                                                   subsys=block_model,
+                                                  circuit=self.circuit,
                                                   api_object=self.api_object,
                                                   mode=self.mode,
                                                   name=item_name,
@@ -1863,8 +2303,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         block_model = emt_templates.get_shunt_rlc_combo_emt_template(vf=self.var_factory,
                                                                      name=item_name,
                                                                      **template_kwargs).block
-        block_item: GenericBlockItem = GenericBlockItem(editor=self, var_factory=self.var_factory,
+        block_item: GenericBlockItem = GenericBlockItem(var_factory=self.var_factory,
                                                         subsys=block_model,
+                                                        circuit=self.circuit,
                                                         api_object=self.api_object,
                                                         mode=self.mode,
                                                         name=item_name,
@@ -1932,8 +2373,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             current_points=current_points,
             name=item_name,
         ).block
-        block_item: GenericBlockItem = GenericBlockItem(editor=self, var_factory=self.var_factory,
+        block_item: GenericBlockItem = GenericBlockItem(var_factory=self.var_factory,
                                                         subsys=block_model,
+                                                        circuit=self.circuit,
                                                         api_object=self.api_object,
                                                         mode=self.mode,
                                                         name=item_name,
@@ -5346,7 +5788,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
-        editor_window: DynamicBlockEditorGUI | None = item.editor_window
+        editor_window: DynamicBlockEditorGUI | None = item.editor
 
         if editor_window is None:
             editor_window = DynamicBlockEditorGUI(
@@ -5357,7 +5799,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 mode=self.mode,
                 modal=False,
             )
-            item.editor_window = editor_window
+            item.editor = editor_window
         else:
             pass
 
@@ -6210,9 +6652,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         else:
                             signal_out_items[suffix] = item
                     else:
-                        item = GenericBlockItem(editor=self,
-                                                var_factory=self.var_factory,
+                        item = GenericBlockItem(var_factory=self.var_factory,
                                                 subsys=block_model,
+                                                circuit=self.circuit,
                                                 api_object=self.api_object,
                                                 mode=self.mode,
                                                 name=block_model.name,
