@@ -1334,6 +1334,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         elif block_model is not None and len(block_model.in_vars) > 3:
             rect_base_op_item: RectBaseArithmeticOpItem = RectBaseArithmeticOpItem(var_factory=self.var_factory,
                                                                                    subsys=block_model,
+                                                                                   block_type=block_type,
                                                                                    editor=self,
                                                                                    position_changed_callback=self._build_position_changed_callback(
                                                                                        block_model.uid))
