@@ -467,6 +467,8 @@ class ConfigurationMain(ResultsMain):
         ret = fcn.get_pointer_lambda(gui_instance=self)()
 
         if fcn.call_gui and ret is not None:
-            if hasattr(ret, "show"):
+            if isinstance(ret, QtWidgets.QWidget):
                 self.plugin_windows_list.append(ret)  # This avoids the window to be garbage collected and be displayed
                 ret.show()
+            else:
+                pass

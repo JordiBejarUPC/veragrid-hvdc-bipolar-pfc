@@ -1525,23 +1525,40 @@ class SchematicWidget(BaseDiagramWidget):
         graphic_object: QGraphicsItem
 
         for graphic_object in self.diagram_scene.selectedItems():
-            if not graphic_object.flags() & QGraphicsItem.GraphicsItemFlag.ItemIsMovable:
-                continue
-            if not hasattr(graphic_object, "api_object"):
-                continue
+            if graphic_object.flags() & QGraphicsItem.GraphicsItemFlag.ItemIsMovable:
+                if isinstance(graphic_object, GenericDiagramWidget):
+                    api_object = graphic_object.api_object
+                else:
+                    api_object = None
+            else:
+                api_object = None
 
-            api_object = graphic_object.api_object
-            if api_object is None:
-                continue
+            if api_object is not None and isinstance(graphic_object, GenericDiagramWidget):
+                # Only the resizable diagram widgets persist their stored width and
+                # height. All other movable graphics only need the new position.
+                if isinstance(graphic_object,
+                              (BusGraphicItem,
+                               FluidNodeGraphicItem,
+                               InjectionTemplateGraphicItem,
+                               Transformer3WGraphicItem,
+                               TransformerNWGraphicItem,
+                               VscGraphicItem3Term)):
+                    width_value: float = float(graphic_object.w)
+                    height_value: float = float(graphic_object.h)
+                else:
+                    width_value = 0.0
+                    height_value = 0.0
 
-            self.update_diagram_element(device=api_object,
-                                        x=graphic_object.pos().x(),
-                                        y=graphic_object.pos().y(),
-                                        w=getattr(graphic_object, "w", 0.0),
-                                        h=getattr(graphic_object, "h", 0.0),
-                                        r=graphic_object.rotation(),
-                                        draw_labels=getattr(graphic_object, "draw_labels", True),
-                                        graphic_object=graphic_object)
+                self.update_diagram_element(device=api_object,
+                                            x=graphic_object.pos().x(),
+                                            y=graphic_object.pos().y(),
+                                            w=width_value,
+                                            h=height_value,
+                                            r=graphic_object.rotation(),
+                                            draw_labels=graphic_object.draw_labels,
+                                            graphic_object=graphic_object)
+            else:
+                pass
 
     def set_selected_buses(self, buses: List[Bus]):
         """
@@ -3919,13 +3936,13 @@ class SchematicWidget(BaseDiagramWidget):
                                                       branch.get_max_bus_nominal_voltage())
                 graphic_object.setToolTipText(tooltip)
                 graphic_object.set_colour(color, width, Qt.PenStyle.SolidLine)
-                if hasattr(graphic_object, 'set_arrows_with_power'):
+                if isinstance(graphic_object, LineGraphicTemplateItem):
                     graphic_object.set_arrows_with_power(Sf=arrow_sf, St=arrow_st)
             else:
                 width = graphic_object.pen_width
                 graphic_object.set_pen(QPen(QColor(115, 115, 115, 255), width, Qt.PenStyle.DashLine))
                 graphic_object.setToolTipText("")
-                if hasattr(graphic_object, 'set_arrows_with_power'):
+                if isinstance(graphic_object, LineGraphicTemplateItem):
                     graphic_object.set_arrows_with_power(Sf=None, St=None)
 
         self._sync_multiwinding_transformer_result_colours()
@@ -5574,28 +5591,28 @@ class SchematicWidget(BaseDiagramWidget):
             if graphical_obj.api_object is not None:
 
                 if use_api_color:
-                    if hasattr(graphical_obj.api_object, 'color'):
-                        color_hex = graphical_obj.api_object.color
-                        color = QColor(color_hex)
-                        if isinstance(graphical_obj, BusGraphicItem):
-                            brush = QBrush(color)
-                            graphical_obj.set_tile_color(brush)
+                    if isinstance(graphical_obj, BusGraphicItem):
+                        color = QColor(graphical_obj.api_object.color)
+                        brush = QBrush(color)
+                        graphical_obj.set_tile_color(brush)
 
-                        elif isinstance(graphical_obj, (TransformerGraphicItem, LineGraphicItem)):
+                    elif isinstance(graphical_obj, (TransformerGraphicItem, LineGraphicItem)):
+                        color = QColor(graphical_obj.api_object.color)
+                        w = graphical_obj.pen_width
 
-                            w = graphical_obj.pen_width
+                        if graphical_obj.api_object.active:  # TODO: gather the property at the time step too
+                            style = Qt.PenStyle.SolidLine
+                        else:
+                            style = Qt.PenStyle.DashLine
 
-                            if graphical_obj.api_object.active:  # TODO: gather the property at the time step too
-                                style = Qt.PenStyle.SolidLine
-                            else:
-                                style = Qt.PenStyle.DashLine
-
-                            graphical_obj.set_colour(color, w=w, style=style)
+                        graphical_obj.set_colour(color, w=w, style=style)
+                    else:
+                        pass
 
                 else:
                     graphical_obj.recolour_mode()
 
-    def _get_selected(self) -> List[GenericDiagramWidget | QGraphicsItem]:
+    def get_selected(self) -> List[GenericDiagramWidget | QGraphicsItem]:
         """
         Get selection
         :return: List of EditableDevice, QGraphicsItem
@@ -5607,7 +5624,7 @@ class SchematicWidget(BaseDiagramWidget):
         Get a list of the API objects from the selection
         :return: List[EditableDevice]
         """
-        return [e.api_object for e in self._get_selected() if hasattr(e, 'api_object')]
+        return [e.api_object for e in self.get_selected() if isinstance(e, GenericDiagramWidget)]
 
     def create_schematic_from_selection(self) -> SchematicDiagram:
         """
@@ -5618,7 +5635,7 @@ class SchematicWidget(BaseDiagramWidget):
 
         # first pass (only buses)
         bus_dict = dict()
-        for item in self._get_selected():
+        for item in self.get_selected():
             if isinstance(item, BusGraphicItem):
                 # check that the bus is in the original diagram
                 location = self.diagram.query_point(item.api_object)

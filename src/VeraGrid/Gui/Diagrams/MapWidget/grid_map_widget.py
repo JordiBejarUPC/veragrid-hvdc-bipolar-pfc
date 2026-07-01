@@ -336,7 +336,7 @@ class GridMapWidget(BaseDiagramWidget):
         """
         return self.map.diagram_scene
 
-    def _get_selected(self) -> List[ALL_MAP_GRAPHICS | QGraphicsItem]:
+    def get_selected(self) -> List[ALL_MAP_GRAPHICS | QGraphicsItem]:
         """
         Get selection
         :return: List of ALL_MAP_GRAPHICS
@@ -348,7 +348,7 @@ class GridMapWidget(BaseDiagramWidget):
         Get a list of the API objects from the selection
         :return: List[EditableDevice]
         """
-        return [e.api_object for e in self._get_selected()]
+        return [e.api_object for e in self.get_selected()]
 
     def _get_selected_line_containers(self) -> List[MAP_BRANCH_GRAPHIC_TYPES]:
         """
@@ -410,8 +410,10 @@ class GridMapWidget(BaseDiagramWidget):
         """
         selected_substations = list()
         for item in self.diagram_scene.selectedItems():
-            if hasattr(item, 'api_object') and isinstance(item, SubstationGraphicItem):
+            if isinstance(item, SubstationGraphicItem):
                 selected_substations.append((item.api_object, item))
+            else:
+                pass
         return selected_substations
 
     def get_selected_generators_tuple(self) -> List[Tuple[Generator, MapGeneratorGraphicItem]]:
@@ -422,8 +424,10 @@ class GridMapWidget(BaseDiagramWidget):
         """
         selected_generators = list()
         for item in self.diagram_scene.selectedItems():
-            if hasattr(item, 'api_object') and isinstance(item, MapGeneratorGraphicItem):
+            if isinstance(item, MapGeneratorGraphicItem):
                 selected_generators.append((item.api_object, item))
+            else:
+                pass
         return selected_generators
 
     def get_selected_line_locations_tuple(self) -> List[Tuple[LineLocation, LineLocationGraphicItem]]:
@@ -434,8 +438,10 @@ class GridMapWidget(BaseDiagramWidget):
         """
         selected_line_locations = list()
         for item in self.diagram_scene.selectedItems():
-            if hasattr(item, 'api_object') and isinstance(item, LineLocationGraphicItem):
+            if isinstance(item, LineLocationGraphicItem):
                 selected_line_locations.append((item.api_object, item))
+            else:
+                pass
         return selected_line_locations
 
     def add_to_scene(self, graphic_object: ALL_MAP_GRAPHICS = None) -> None:
@@ -451,9 +457,13 @@ class GridMapWidget(BaseDiagramWidget):
         Remove item from the diagram scene
         :param graphic_object: Graphic object associated
         """
-        api_object = getattr(graphic_object, 'api_object', None)
-        if api_object is not None and isinstance(graphic_object, GenericDiagramWidget):
-            self.graphics_manager.delete_device(api_object)
+        if isinstance(graphic_object, GenericDiagramWidget):
+            if graphic_object.api_object is not None:
+                self.graphics_manager.delete_device(graphic_object.api_object)
+            else:
+                pass
+        else:
+            pass
         self.diagram_scene.removeItem(graphic_object)
 
     def clear(self) -> None:
@@ -2542,7 +2552,7 @@ class GridMapWidget(BaseDiagramWidget):
         from the waypoint.
         """
         # Get selected items
-        selected_items = self._get_selected()
+        selected_items = self.get_selected()
 
         # Find the substation and waypoint in the selection
         list_sel_substations = self.get_selected_substations_tuple()
@@ -2557,6 +2567,12 @@ class GridMapWidget(BaseDiagramWidget):
         # Get the line container from the waypoint
         original_line_container = list_sel_waypoint[0][1].line_container
         line_api = original_line_container.api_object
+        if not isinstance(line_api, Line):
+            self.gui.show_error_toast(message="The selected waypoint does not belong to an AC line.")
+            return
+        else:
+            pass
+        line_code_text: str = line_api.code if isinstance(line_api.code, str) else ""
 
         # Get the API objects
         substation_api, substation_graphic = list_sel_substations[0]
@@ -2581,10 +2597,9 @@ class GridMapWidget(BaseDiagramWidget):
 
         # --- Safely evaluate line_api.code ---
         code_list = []  # Default to empty list
-        if hasattr(line_api, 'code') and line_api.code and isinstance(line_api.code,
-                                                                      str):  # Check if it exists, is not empty, and is a string
+        if line_code_text:
             try:
-                evaluated_code = ast.literal_eval(line_api.code)
+                evaluated_code = ast.literal_eval(line_code_text)
                 # Ensure it's a list or treat as single item if string
                 if isinstance(evaluated_code, list):
                     code_list = evaluated_code
@@ -2594,8 +2609,8 @@ class GridMapWidget(BaseDiagramWidget):
             except (ValueError, SyntaxError, TypeError):
                 # Handle cases where the string is not a valid literal
                 # If it doesn't look like a list, treat the original string as the code
-                if not line_api.code.strip().startswith('[') and not line_api.code.strip().endswith(']'):
-                    code_list = [line_api.code]
+                if not line_code_text.strip().startswith('[') and not line_code_text.strip().endswith(']'):
+                    code_list = [line_code_text]
 
         # Modify the code list
         new_code_list = [f"{subcode}_Junction" for subcode in code_list]
@@ -2723,16 +2738,16 @@ class GridMapWidget(BaseDiagramWidget):
 
         # --- Safely evaluate line_api.code for line1 ---
         code_list_for_line1 = []  # Default to empty list
-        if hasattr(line_api, 'code') and line_api.code and isinstance(line_api.code, str):
+        if line_code_text:
             try:
-                evaluated_code = ast.literal_eval(line_api.code)
+                evaluated_code = ast.literal_eval(line_code_text)
                 if isinstance(evaluated_code, list):
                     code_list_for_line1 = evaluated_code
                 elif isinstance(evaluated_code, str):
                     code_list_for_line1 = [evaluated_code]
             except (ValueError, SyntaxError, TypeError):
-                if not line_api.code.strip().startswith('[') and not line_api.code.strip().endswith(']'):
-                    code_list_for_line1 = [line_api.code]
+                if not line_code_text.strip().startswith('[') and not line_code_text.strip().endswith(']'):
+                    code_list_for_line1 = [line_code_text]
 
         # Modify the code list
         line1_modified_code_list = [f"{subcode}_1" for subcode in code_list_for_line1]
@@ -2759,15 +2774,6 @@ class GridMapWidget(BaseDiagramWidget):
                      active=line_api.active)
         line1.color = line_api.color
 
-        # SPV: Never use hasattr, we work very hard for type consistency
-        # # Copy other properties from the original line
-        # if hasattr(line_api, 'color'):
-        #     line1.color = line_api.color
-        # if hasattr(line_api, 'tags') and line_api.tags:
-        #     line1.tags = line_api.tags.copy() if isinstance(line_api.tags, list) else line_api.tags
-        # if hasattr(line_api, 'active'):
-        #     line1.active = line_api.active
-
         # Preserve waypoints for line 1 (from start to waypoint)
         # Add all waypoints from the original line up to the waypoint
         for i in range(waypoint_idx):
@@ -2780,16 +2786,16 @@ class GridMapWidget(BaseDiagramWidget):
 
         # --- Safely evaluate line_api.code for line2 ---
         code_list_for_line2 = []  # Default to empty list
-        if hasattr(line_api, 'code') and line_api.code and isinstance(line_api.code, str):
+        if line_code_text:
             try:
-                evaluated_code = ast.literal_eval(line_api.code)
+                evaluated_code = ast.literal_eval(line_code_text)
                 if isinstance(evaluated_code, list):
                     code_list_for_line2 = evaluated_code
                 elif isinstance(evaluated_code, str):
                     code_list_for_line2 = [evaluated_code]
             except (ValueError, SyntaxError, TypeError):
-                if not line_api.code.strip().startswith('[') and not line_api.code.strip().endswith(']'):
-                    code_list_for_line2 = [line_api.code]
+                if not line_code_text.strip().startswith('[') and not line_code_text.strip().endswith(']'):
+                    code_list_for_line2 = [line_code_text]
 
         # Modify the code list
         line2_modified_code_list = [f"{subcode}_2" for subcode in code_list_for_line2]
@@ -2820,15 +2826,6 @@ class GridMapWidget(BaseDiagramWidget):
             line2.apply_template(line_api.template, Sbase=self.circuit.Sbase, freq=self.circuit.fBase)
 
         line2.color = line_api.color
-
-        # SPV: never use hasattr, we work very hard for type consistency
-        # Copy other properties from the original line
-        # if hasattr(line_api, 'color'):
-        #     line2.color = line_api.color
-        # if hasattr(line_api, 'tags') and line_api.tags:
-        #     line2.tags = line_api.tags.copy() if isinstance(line_api.tags, list) else line_api.tags
-        # if hasattr(line_api, 'active'):
-        #     line2.active = line_api.active
 
         # Preserve waypoints for line 2 (from waypoint to end)
         # Add all remaining waypoints from the original line after the waypoint
@@ -2866,15 +2863,6 @@ class GridMapWidget(BaseDiagramWidget):
             connection_line.apply_template(line_api.template, Sbase=self.circuit.Sbase, freq=self.circuit.fBase)
 
         connection_line.color = line_api.color
-
-        # SPV: never use hasattr, we work very hard for type consistency
-        # # Copy other properties from the original line
-        # if hasattr(line_api, 'color'):
-        #     connection_line.color = line_api.color
-        # if hasattr(line_api, 'tags') and line_api.tags:
-        #     connection_line.tags = line_api.tags.copy() if isinstance(line_api.tags, list) else line_api.tags
-        # if hasattr(line_api, 'active'):
-        #     connection_line.active = line_api.active
 
         # No waypoints needed for the connection line - it will go directly from one substation to the other
 

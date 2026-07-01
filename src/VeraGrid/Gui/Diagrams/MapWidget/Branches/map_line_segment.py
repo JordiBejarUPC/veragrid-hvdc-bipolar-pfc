@@ -14,7 +14,7 @@ from PySide6.QtWidgets import QGraphicsLineItem, QGraphicsSceneMouseEvent
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template import ArrowHead
 from VeraGrid.Gui.gui_functions import add_menu_entry
 from VeraGrid.Gui.messages import yes_no_question
-from VeraGrid.Gui.Diagrams.generic_graphics import ACTIVE, DEACTIVATED, OTHER
+from VeraGrid.Gui.Diagrams.generic_graphics import ACTIVE, DEACTIVATED, OTHER, GenericDiagramWidget
 
 from VeraGridEngine.Devices.types import BRANCH_TYPES, ALL_DEV_TYPES
 from VeraGridEngine.enumerations import DeviceType
@@ -309,14 +309,17 @@ class MapLineSegment(QGraphicsLineItem):
         substation_counter = 0
         line_counter = 0
 
-        for graphic_obj in self.editor._get_selected():
-            if hasattr(graphic_obj, 'api_object'):
-                if hasattr(graphic_obj.api_object, 'device_type'):
-                    if graphic_obj.api_object.device_type == DeviceType.SubstationDevice:
-                        has_substation = True
-                        substation_counter += 1
-                    elif graphic_obj.api_object.device_type == DeviceType.LineDevice:
-                        line_counter += 1
+        for graphic_obj in self.editor.get_selected():
+            if isinstance(graphic_obj, GenericDiagramWidget):
+                if graphic_obj.api_object.device_type == DeviceType.SubstationDevice:
+                    has_substation = True
+                    substation_counter += 1
+                elif graphic_obj.api_object.device_type == DeviceType.LineDevice:
+                    line_counter += 1
+                else:
+                    pass
+            else:
+                pass
 
         if line_counter > 1:
 

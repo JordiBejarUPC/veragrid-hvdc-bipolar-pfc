@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (QGraphicsEllipseItem, QMenu,
                                QGraphicsSceneMouseEvent)
 from VeraGrid.Gui.gui_functions import add_menu_entry
 from VeraGrid.Gui.DeviceEditors.TemplateDeviceEditor.template_device_editor import TemplateDeviceEditor
+from VeraGrid.Gui.Diagrams.generic_graphics import GenericDiagramWidget
 from VeraGrid.Gui.Diagrams.MapWidget.Substation.node_template import NodeTemplate
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.types import INJECTION_DEVICE_TYPES
@@ -265,14 +266,17 @@ class MapInjectionTemplateGraphicItem(NodeTemplate, QGraphicsEllipseItem):
         ss_counter = 0
         gen_counter = 0
 
-        for graphic_obj in self.editor._get_selected():
-            if hasattr(graphic_obj, 'api_object'):
-                if hasattr(graphic_obj.api_object, 'device_type'):
-                    if graphic_obj.api_object.device_type == DeviceType.SubstationDevice:
-                        has_substation = True
-                        ss_counter += 1
-                    elif graphic_obj.api_object.device_type == DeviceType.GeneratorDevice:
-                        gen_counter += 1
+        for graphic_obj in self.editor.get_selected():
+            if isinstance(graphic_obj, GenericDiagramWidget):
+                if graphic_obj.api_object.device_type == DeviceType.SubstationDevice:
+                    has_substation = True
+                    ss_counter += 1
+                elif graphic_obj.api_object.device_type == DeviceType.GeneratorDevice:
+                    gen_counter += 1
+                else:
+                    pass
+            else:
+                pass
         if ss_counter == 1 and gen_counter > 0:
             menu.addSeparator()
 

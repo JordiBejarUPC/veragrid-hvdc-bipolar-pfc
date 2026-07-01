@@ -396,9 +396,12 @@ class SimulationsMain(TimeEventsMain):
 
         for drv in self.get_simulations():
             if drv is not None:
-                if hasattr(drv, 'results'):
-                    if drv.results is not None:
-                        lst.append(drv)
+                if drv.results is not None:
+                    lst.append(drv)
+                else:
+                    pass
+            else:
+                pass
 
         return lst
 
@@ -872,13 +875,16 @@ class SimulationsMain(TimeEventsMain):
         current_study_name = self.ui.available_results_to_color_comboBox.currentText()
         drv_dict = {driver.tpe.value: driver for driver in self.get_available_drivers()}
         drv = drv_dict.get(current_study_name, None)
-        if drv is not None and hasattr(drv, 'time_indices'):
-            if drv.time_indices is not None:
-                if len(drv.time_indices):
-                    a = drv.time_indices[0]
-                    b = drv.time_indices[-1]
-                    self.ui.diagram_step_slider.setRange(a, b)
-                    self.ui.diagram_step_slider.setValue(a)
+        if drv is not None:
+            if drv.results is not None:
+                if drv.results.time_indices is not None:
+                    if len(drv.results.time_indices):
+                        a = drv.results.time_indices[0]
+                        b = drv.results.time_indices[-1]
+                        self.ui.diagram_step_slider.setRange(a, b)
+                        self.ui.diagram_step_slider.setValue(a)
+                    else:
+                        self.setup_time_sliders()
                 else:
                     self.setup_time_sliders()
             else:
