@@ -599,7 +599,8 @@ class Assets:
         :return:
         """
         if self.has_time_series:
-            return self._time_profile.values.astype(np.int64) // 10 ** 9
+            # resolution-independent: time_profile may be datetime64[ns] or [us] depending on pandas
+            return ((self._time_profile - pd.Timestamp("1970-01-01")) // pd.Timedelta("1s")).values.astype(np.int64)
         else:
             return np.zeros(0, dtype=np.int64)
 
