@@ -344,17 +344,31 @@ def refresh_row_search_cache(row: BlockParameterRow) -> None:
 
 
 class BlockValueDelegate(QtWidgets.QStyledItemDelegate):
+
     def createEditor(self,
                      parent: QtWidgets.QWidget,
                      option: QtWidgets.QStyleOptionViewItem,
                      index: QtCore.QModelIndex) -> QtWidgets.QWidget | None:
+        """
+
+        :param parent:
+        :param option:
+        :param index:
+        :return:
+        """
         model = index.model()
         if isinstance(model, QtCore.QSortFilterProxyModel):
             source_index = model.mapToSource(index)
             source_model = model.sourceModel()
-            row = source_model.get_row(source_index.row()) if hasattr(source_model, "get_row") else None
+            if isinstance(source_model, WrappableBlockTableModel):
+                row = source_model.get_row(source_index.row())
+            else:
+                row = None
         else:
-            row = model.get_row(index.row()) if hasattr(model, "get_row") else None
+            if isinstance(model, WrappableBlockTableModel):
+                row = model.get_row(index.row())
+            else:
+                row = None
         if row is None:
             return QLineEdit(parent)
 
@@ -1233,4 +1247,3 @@ def add_variable_to_block(block: Block,
         block.mode_dict[var] = Const(parameter_value, name=var.name)
     else:
         raise ValueError(f"Unknown var_type {var_type}")
-

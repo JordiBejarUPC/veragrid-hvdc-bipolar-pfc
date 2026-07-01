@@ -26,13 +26,23 @@ from VeraGridEngine.data_logger import DataLogger
 from VeraGrid.Gui.python_console import PythonConsole
 
 
-def clear_qt_layout(layout):
+def clear_qt_layout(layout: QtWidgets.QLayout) -> None:
     """
     Remove all widgets from a layout object
     :param layout:
     """
-    for i in reversed(range(layout.count())):
-        layout.itemAt(i).widget().deleteLater()
+    while layout.count():
+        item = layout.takeAt(0)
+        widget = item.widget()
+        child_layout = item.layout()
+
+        if child_layout is not None:
+            clear_qt_layout(child_layout)
+            child_layout.deleteLater()
+        elif widget is not None:
+            # Fully detach the widget now so stale layout items do not outlive it.
+            widget.setParent(None)
+            widget.deleteLater()
 
 
 ########################################################################################################################

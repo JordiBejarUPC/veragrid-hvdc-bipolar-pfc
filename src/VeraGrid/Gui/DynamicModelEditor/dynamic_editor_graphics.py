@@ -569,7 +569,7 @@ class ConnectionItem(QGraphicsPathItem):
             self.scene().addItem(elbow)
             self.elbows.append(elbow)
 
-    def _on_elbow_moved(self, index: int, new_pos: QPointF) -> None:
+    def on_elbow_moved(self, index: int, new_pos: QPointF) -> None:
         if index < 0 or index >= len(self.elbows):
             return
         else:
@@ -877,7 +877,7 @@ class ElbowItem(QGraphicsEllipseItem):
 
     def mouseMoveEvent(self, event):
         super().mouseMoveEvent(event)
-        self.connection_item._on_elbow_moved(self.index, self.scenePos())
+        self.connection_item.on_elbow_moved(self.index, self.scenePos())
 
 
 class GenericBlockItem(QGraphicsRectItem):
@@ -981,6 +981,25 @@ class GenericBlockItem(QGraphicsRectItem):
             self.editor_window.show()
         else:
             pass
+
+    def close_editor_window(self) -> None:
+        """
+        Close the floating child editor associated with this block item.
+
+        :return: None.
+        """
+        editor_window: DynamicBlockEditorGUI | None = self.editor_window
+        if editor_window is None:
+            return
+        else:
+            pass
+
+        # Clear the back-reference first so later scene teardown cannot reuse
+        # an editor window that is already on the way out.
+        self.editor_window = None
+        editor_window.prepare_to_delete()
+        editor_window.close()
+        editor_window.deleteLater()
 
     def set_subsystem(self, block: Block) -> None:
         self.subsys = block
@@ -1738,6 +1757,25 @@ class BlockItem(QGraphicsRectItem):
             return super().itemChange(change, value)
         else:
             return super().itemChange(change, value)
+
+    def close_editor_window(self) -> None:
+        """
+        Close the floating child editor associated with this block item.
+
+        :return: None.
+        """
+        editor_window: DynamicBlockEditorGUI | None = self.editor_window
+        if editor_window is None:
+            return
+        else:
+            pass
+
+        # Clear the back-reference first so later scene teardown cannot reuse
+        # an editor window that is already on the way out.
+        self.editor_window = None
+        editor_window.prepare_to_delete()
+        editor_window.close()
+        editor_window.deleteLater()
 
 
 class ProtectedConnectionBlockItem(BlockItem):

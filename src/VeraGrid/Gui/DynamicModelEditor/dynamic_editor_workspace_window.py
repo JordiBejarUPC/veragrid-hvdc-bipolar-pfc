@@ -97,7 +97,7 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         """
         return self.__session
 
-    def workspace_for_page(self, page: QtWidgets.QWidget) -> "DynamicEditorWorkspaceWindow | None":
+    def workspace_for_page(self, page: DynamicBlockEditorGUI) -> "DynamicEditorWorkspaceWindow | None":
         """
         Return the workspace in this session that owns one page.
 
@@ -106,7 +106,7 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         """
         return self.session.workspace_for_page(page)
 
-    def note_page_activated(self, page: QtWidgets.QWidget) -> None:
+    def note_page_activated(self, page: DynamicBlockEditorGUI) -> None:
         """
         Forward page-activation bookkeeping to the shared session.
 
@@ -564,7 +564,7 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
 
     def add_editor_page(
         self,
-        page: QtWidgets.QWidget,
+        page: DynamicBlockEditorGUI,
         tab_title: str,
         activate: bool = True,
         insert_index: int = -1,
@@ -588,7 +588,7 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
 
         self._refresh_window_title()
 
-    def index_of_page(self, page: QtWidgets.QWidget) -> int:
+    def index_of_page(self, page: DynamicBlockEditorGUI) -> int:
         """
         Return the tab index for one page, or ``-1`` when absent.
 
@@ -597,7 +597,7 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         """
         return self.editor_tabs.indexOf(page)
 
-    def page_at(self, index: int) -> QtWidgets.QWidget | None:
+    def page_at(self, index: int) -> DynamicBlockEditorGUI | None:
         """
         Return the page at one tab index.
 
@@ -606,9 +606,13 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         """
         if index < 0 or index >= self.editor_tabs.count():
             return None
-        return self.editor_tabs.widget(index)
+        page = self.editor_tabs.widget(index)
+        if isinstance(page, DynamicBlockEditorGUI):
+            return page
+        else:
+            return None
 
-    def current_page(self) -> QtWidgets.QWidget | None:
+    def current_page(self) -> DynamicBlockEditorGUI | None:
         """
         Return the currently selected tab page.
 
@@ -616,7 +620,7 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         """
         return self.page_at(self.editor_tabs.currentIndex())
 
-    def remove_page(self, page: QtWidgets.QWidget) -> None:
+    def remove_page(self, page: DynamicBlockEditorGUI) -> None:
         """
         Remove one page from the tab widget.
 
@@ -652,12 +656,12 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         if page is None:
             return
 
-        can_close = True
-        if hasattr(page, "can_close_editor"):
-            can_close = bool(page.can_close_editor(self))
-        if not can_close:
+        if not bool(page.can_close_editor(self)):
             return
 
+        # The workspace only hosts dynamic block editors, so teardown can call
+        # the page lifecycle directly without reflective guards.
+        page.prepare_to_delete()
         self.session.unregister_page(page)
         self.remove_page(page)
         page.deleteLater()
@@ -676,14 +680,17 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
             page = self.page_at(index)
             if page is None:
                 continue
-            if hasattr(page, "can_close_editor") and not bool(page.can_close_editor(self)):
+            if not bool(page.can_close_editor(self)):
                 event.ignore()
                 return
+            else:
+                pass
 
         pages = [self.page_at(index) for index in range(self.editor_tabs.count())]
         for page in pages:
             if page is None:
                 continue
+            page.prepare_to_delete()
             self.session.unregister_page(page)
 
         self.session.unregister_workspace(self)
