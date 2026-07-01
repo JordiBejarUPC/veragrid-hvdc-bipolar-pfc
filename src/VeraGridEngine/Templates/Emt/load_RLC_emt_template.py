@@ -250,15 +250,15 @@ class GroundingLinkEmtTemplate(TemplateDefinition):
         super().__init__(
             vf,
             params=[
-                TemplateProp(name="include_r", units="", descr="Include the resistor branch.", tpe=bool),
-                TemplateProp(name="include_l", units="", descr="Include the inductor branch.", tpe=bool),
-                TemplateProp(name="include_c", units="", descr="Include the capacitor branch.", tpe=bool),
-                TemplateProp(name="solid_connection", units="", descr="Solid (direct) grounding connection.", tpe=bool),
-                TemplateProp(name="nested", units="", descr="Whether the template is nested inside another template.", tpe=bool),
-                TemplateProp(name="direct_r_value", units="Ohm", descr="Direct resistance value.", tpe=float),
-                TemplateProp(name="direct_l_value", units="H", descr="Direct inductance value.", tpe=float),
-                TemplateProp(name="direct_c_value", units="F", descr="Direct capacitance value.", tpe=float),
-                TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str),
+                TemplateProp(name="include_r", units="", descr="Include the resistor branch.", tpe=bool, value=False),
+                TemplateProp(name="include_l", units="", descr="Include the inductor branch.", tpe=bool, value=False),
+                TemplateProp(name="include_c", units="", descr="Include the capacitor branch.", tpe=bool, value=False),
+                TemplateProp(name="solid_connection", units="", descr="Solid (direct) grounding connection.", tpe=bool, value=False),
+                TemplateProp(name="nested", units="", descr="Whether the template is nested inside another template.", tpe=bool, value=False),
+                TemplateProp(name="direct_r_value", units="Ohm", descr="Direct resistance value.", tpe=float, value=None),
+                TemplateProp(name="direct_l_value", units="H", descr="Direct inductance value.", tpe=float, value=None),
+                TemplateProp(name="direct_c_value", units="F", descr="Direct capacitance value.", tpe=float, value=None),
+                TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str, value="grounding_link_emt"),
             ]
         )
 
@@ -1367,17 +1367,17 @@ class ShuntRlcComboEmtTemplate(TemplateDefinition):
         super().__init__(
             vf,
             params=[
-                TemplateProp(name="include_r", units="", descr="Include the resistor branch.", tpe=bool),
-                TemplateProp(name="include_l", units="", descr="Include the inductor branch.", tpe=bool),
-                TemplateProp(name="include_c", units="", descr="Include the capacitor branch.", tpe=bool),
-                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool),
-                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool),
-                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool),
-                TemplateProp(name="connection_type", units="", descr="Star connection topology.", tpe=ShuntConnectionType),
-                TemplateProp(name="direct_r_value", units="Ohm", descr="Direct resistance value.", tpe=float),
-                TemplateProp(name="direct_l_value", units="H", descr="Direct inductance value.", tpe=float),
-                TemplateProp(name="direct_c_value", units="F", descr="Direct capacitance value.", tpe=float),
-                TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str),
+                TemplateProp(name="include_r", units="", descr="Include the resistor branch.", tpe=bool, value=False),
+                TemplateProp(name="include_l", units="", descr="Include the inductor branch.", tpe=bool, value=False),
+                TemplateProp(name="include_c", units="", descr="Include the capacitor branch.", tpe=bool, value=False),
+                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool, value=True),
+                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool, value=True),
+                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool, value=True),
+                TemplateProp(name="connection_type", units="", descr="Star connection topology.", tpe=ShuntConnectionType, value=ShuntConnectionType.GroundedStar),
+                TemplateProp(name="direct_r_value", units="Ohm", descr="Direct resistance value.", tpe=float, value=None),
+                TemplateProp(name="direct_l_value", units="H", descr="Direct inductance value.", tpe=float, value=None),
+                TemplateProp(name="direct_c_value", units="F", descr="Direct capacitance value.", tpe=float, value=None),
+                TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str, value="RLC_combo_emt"),
             ]
         )
 

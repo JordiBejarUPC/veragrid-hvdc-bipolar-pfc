@@ -489,9 +489,9 @@ class TransformerEmtTemplate(TemplateDefinition):
         super().__init__(
             vf,
             params=[
-                TemplateProp(name="conn_f", units="", descr="From-side winding connection.", tpe=WindingType),
-                TemplateProp(name="conn_t", units="", descr="To-side winding connection.", tpe=WindingType),
-                TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str),
+                TemplateProp(name="conn_f", units="", descr="From-side winding connection.", tpe=WindingType, value=None),
+                TemplateProp(name="conn_t", units="", descr="To-side winding connection.", tpe=WindingType, value=None),
+                TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str, value="transformer_emt_template"),
             ]
         )
 

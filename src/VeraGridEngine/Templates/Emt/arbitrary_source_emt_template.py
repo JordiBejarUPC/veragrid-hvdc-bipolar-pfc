@@ -173,25 +173,22 @@ class ArbitraryWaveformCurrentSourceEmtTemplate(TemplateDefinition):
 
     def __init__(self, vf):
         """
-
+        
         :param vf:
         """
         super().__init__(
             vf,
             params=[
-                TemplateProp(name="phN", units="", descr="Whether neutral is active.", tpe=bool),
-                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool),
-                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool),
-                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool),
-                TemplateProp(name="waveform", units="", descr="waveform points (value, time)", tpe=Sequence[Vec]),
-                TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str),
+                TemplateProp(name="phN", units="", descr="Whether neutral is active.", tpe=bool, value=False),
+                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool, value=True),
+                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool, value=False),
+                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool, value=False),
+                TemplateProp(name="waveform", units="", descr="waveform points (value, time)", tpe=Sequence[Vec], value=None),
+                TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str, value="arbitrary_waveform_current_source_emt"),
             ]
         )
 
     def eval(self) -> EmtModelTemplate:
-        """
-        """
-
         phN: bool = self.get_value("phN")
         phA: bool = self.get_value("phA")
         phB: bool = self.get_value("phB")
@@ -281,30 +278,27 @@ class ArbitraryWaveformVoltageSourceEmtTemplate(TemplateDefinition):
 
     def __init__(self, vf):
         """
-
+        
         :param vf: variable factory.
         """
         super().__init__(
             vf,
             params=[
-                TemplateProp(name="phN", units="", descr="Whether neutral is active.", tpe=bool),
-                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool),
-                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool),
-                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool),
-                TemplateProp(name="waveform", units="", descr="waveform points (value, time)", tpe=Sequence[Vec]),
-                TemplateProp(name="source_conductance_value", units="Siemens", descr="Norton conductance.", tpe=float),
-                TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str),
+                TemplateProp(name="phN", units="", descr="Whether neutral is active.", tpe=bool, value=False),
+                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool, value=True),
+                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool, value=False),
+                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool, value=False),
+                TemplateProp(name="waveform", units="", descr="waveform points (value, time)", tpe=Sequence[Vec], value=None),
+                TemplateProp(name="source_conductance_value", units="Siemens", descr="Norton conductance.", tpe=float, value=100.0),
+                TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str, value="arbitrary_waveform_voltage_source_emt"),
             ]
         )
 
     def eval(self) -> EmtModelTemplate:
-        """
-        """
-
         phN: bool = self.get_value("phN")
-        phA: bool = self.get_value("phN")
-        phB: bool = self.get_value("phN")
-        phC: bool = self.get_value("phN")
+        phA: bool = self.get_value("phA")
+        phB: bool = self.get_value("phB")
+        phC: bool = self.get_value("phC")
         waveform: Sequence[Vec] = self.get_value("waveform")
         source_conductance_value: float = self.get_value("source_conductance_value")
         name: str = self.get_value("name")

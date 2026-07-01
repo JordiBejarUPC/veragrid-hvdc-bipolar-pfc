@@ -174,15 +174,15 @@ class CurrentSourceEmtTemplate(TemplateDefinition):
         super().__init__(
             vf,
             params=[
-                TemplateProp(name="phN", units="", descr="Whether neutral is active.", tpe=bool),
-                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool),
-                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool),
-                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool),
-                TemplateProp(name="amplitude_values", units="", descr="Optional sinusoidal amplitudes by phase label.", tpe=dict),
-                TemplateProp(name="frequency_hz", units="Hz", descr="Common sinusoidal frequency.", tpe=float),
-                TemplateProp(name="phase_angle_deg", units="", descr="Optional phase offsets in degrees by phase label.", tpe=dict),
-                TemplateProp(name="offset_values", units="", descr="Optional DC offsets by phase label.", tpe=dict),
-                TemplateProp(name="name", units="", descr="Symbolic block name.", tpe=str),
+                TemplateProp(name="phN", units="", descr="Whether neutral is active.", tpe=bool, value=False),
+                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool, value=True),
+                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool, value=True),
+                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool, value=True),
+                TemplateProp(name="amplitude_values", units="", descr="Optional sinusoidal amplitudes by phase label.", tpe=dict, value=None),
+                TemplateProp(name="frequency_hz", units="Hz", descr="Common sinusoidal frequency.", tpe=float, value=50.0),
+                TemplateProp(name="phase_angle_deg", units="", descr="Optional phase offsets in degrees by phase label.", tpe=dict, value=None),
+                TemplateProp(name="offset_values", units="", descr="Optional DC offsets by phase label.", tpe=dict, value=None),
+                TemplateProp(name="name", units="", descr="Symbolic block name.", tpe=str, value="current_source_emt"),
             ]
         )
 
@@ -286,14 +286,14 @@ class ControlledCurrentSourceEmtTemplate(TemplateDefinition):
         super().__init__(
             vf,
             params=[
-                TemplateProp(name="phN", units="", descr="Whether neutral is active.", tpe=bool),
-                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool),
-                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool),
-                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool),
-                TemplateProp(name="frequency_hz", units="Hz", descr="Common sinusoidal frequency.", tpe=float),
-                TemplateProp(name="phase_angle_deg", units="", descr="Optional phase offsets in degrees by phase label.", tpe=dict),
-                TemplateProp(name="offset_values", units="", descr="Optional DC offsets by phase label.", tpe=dict),
-                TemplateProp(name="name", units="", descr="Symbolic block name.", tpe=str),
+                TemplateProp(name="phN", units="", descr="Whether neutral is active.", tpe=bool, value=False),
+                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool, value=True),
+                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool, value=True),
+                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool, value=True),
+                TemplateProp(name="frequency_hz", units="Hz", descr="Common sinusoidal frequency.", tpe=float, value=50.0),
+                TemplateProp(name="phase_angle_deg", units="", descr="Optional phase offsets in degrees by phase label.", tpe=dict, value=None),
+                TemplateProp(name="offset_values", units="", descr="Optional DC offsets by phase label.", tpe=dict, value=None),
+                TemplateProp(name="name", units="", descr="Symbolic block name.", tpe=str, value="controlled_current_source_emt"),
             ]
         )
 
@@ -393,16 +393,16 @@ class VoltageSourceEmtTemplate(TemplateDefinition):
         super().__init__(
             vf,
             params=[
-                TemplateProp(name="phN", units="", descr="Whether neutral is active.", tpe=bool),
-                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool),
-                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool),
-                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool),
-                TemplateProp(name="amplitude_values", units="", descr="Optional sinusoidal amplitudes by phase label.", tpe=dict),
-                TemplateProp(name="frequency_hz", units="Hz", descr="Common sinusoidal frequency.", tpe=float),
-                TemplateProp(name="phase_angle_deg", units="", descr="Optional phase offsets in degrees by phase label.", tpe=dict),
-                TemplateProp(name="offset_values", units="", descr="Optional DC offsets by phase label.", tpe=dict),
-                TemplateProp(name="source_conductance_value", units="S", descr="Common Norton conductance.", tpe=float),
-                TemplateProp(name="name", units="", descr="Symbolic block name.", tpe=str),
+                TemplateProp(name="phN", units="", descr="Whether neutral is active.", tpe=bool, value=False),
+                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool, value=True),
+                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool, value=True),
+                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool, value=True),
+                TemplateProp(name="amplitude_values", units="", descr="Optional sinusoidal amplitudes by phase label.", tpe=dict, value=None),
+                TemplateProp(name="frequency_hz", units="Hz", descr="Common sinusoidal frequency.", tpe=float, value=50.0),
+                TemplateProp(name="phase_angle_deg", units="", descr="Optional phase offsets in degrees by phase label.", tpe=dict, value=None),
+                TemplateProp(name="offset_values", units="", descr="Optional DC offsets by phase label.", tpe=dict, value=None),
+                TemplateProp(name="source_conductance_value", units="S", descr="Common Norton conductance.", tpe=float, value=0.0),
+                TemplateProp(name="name", units="", descr="Symbolic block name.", tpe=str, value="voltage_source_emt"),
             ]
         )
 
@@ -511,15 +511,15 @@ class ControlledVoltageSourceEmtTemplate(TemplateDefinition):
         super().__init__(
             vf,
             params=[
-                TemplateProp(name="phN", units="", descr="Whether neutral is active.", tpe=bool),
-                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool),
-                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool),
-                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool),
-                TemplateProp(name="frequency_hz", units="Hz", descr="Common sinusoidal frequency.", tpe=float),
-                TemplateProp(name="phase_angle_deg", units="", descr="Optional phase offsets in degrees by phase label.", tpe=dict),
-                TemplateProp(name="offset_values", units="", descr="Optional DC offsets by phase label.", tpe=dict),
-                TemplateProp(name="source_conductance_value", units="S", descr="Common Norton conductance.", tpe=float),
-                TemplateProp(name="name", units="", descr="Symbolic block name.", tpe=str),
+                TemplateProp(name="phN", units="", descr="Whether neutral is active.", tpe=bool, value=False),
+                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool, value=True),
+                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool, value=True),
+                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool, value=True),
+                TemplateProp(name="frequency_hz", units="Hz", descr="Common sinusoidal frequency.", tpe=float, value=50.0),
+                TemplateProp(name="phase_angle_deg", units="", descr="Optional phase offsets in degrees by phase label.", tpe=dict, value=None),
+                TemplateProp(name="offset_values", units="", descr="Optional DC offsets by phase label.", tpe=dict, value=None),
+                TemplateProp(name="source_conductance_value", units="S", descr="Common Norton conductance.", tpe=float, value=0.0),
+                TemplateProp(name="name", units="", descr="Symbolic block name.", tpe=str, value="controlled_voltage_source_emt"),
             ]
         )
 

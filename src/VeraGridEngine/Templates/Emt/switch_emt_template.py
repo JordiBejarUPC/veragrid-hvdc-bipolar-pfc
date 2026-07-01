@@ -105,18 +105,18 @@ class SwitchEmtTemplate(TemplateDefinition):
         super().__init__(
             vf,
             params=[
-                TemplateProp(name="phA", units="", descr="Enable phase A.", tpe=bool),
-                TemplateProp(name="phB", units="", descr="Enable phase B.", tpe=bool),
-                TemplateProp(name="phC", units="", descr="Enable phase C.", tpe=bool),
-                TemplateProp(name="signal_controlled", units="", descr="If True, expose one control input and procedural logic.", tpe=bool),
-                TemplateProp(name="seed_from_pf_active", units="", descr="If True, seed the closed/open mode from Switch.active.", tpe=bool),
-                TemplateProp(name="initial_closed", units="", descr="Default closed state when PF seeding is disabled.", tpe=bool),
-                TemplateProp(name="use_device_conductance", units="", descr="If True, use the switch static R/X to derive the closed conductance.", tpe=bool),
-                TemplateProp(name="manual_closed_conductance", units="S", descr="Manual closed conductance fallback.", tpe=float),
-                TemplateProp(name="open_conductance", units="S", descr="Open-state leakage conductance.", tpe=float),
-                TemplateProp(name="switch_time_constant", units="s", descr="First-order current time constant.", tpe=float),
-                TemplateProp(name="command_threshold", units="", descr="Control threshold for the external command.", tpe=float),
-                TemplateProp(name="name", units="", descr="Symbolic model name.", tpe=str),
+                TemplateProp(name="phA", units="", descr="Enable phase A.", tpe=bool, value=True),
+                TemplateProp(name="phB", units="", descr="Enable phase B.", tpe=bool, value=True),
+                TemplateProp(name="phC", units="", descr="Enable phase C.", tpe=bool, value=True),
+                TemplateProp(name="signal_controlled", units="", descr="If True, expose one control input and procedural logic.", tpe=bool, value=False),
+                TemplateProp(name="seed_from_pf_active", units="", descr="If True, seed the closed/open mode from Switch.active.", tpe=bool, value=True),
+                TemplateProp(name="initial_closed", units="", descr="Default closed state when PF seeding is disabled.", tpe=bool, value=True),
+                TemplateProp(name="use_device_conductance", units="", descr="If True, use the switch static R/X to derive the closed conductance.", tpe=bool, value=True),
+                TemplateProp(name="manual_closed_conductance", units="S", descr="Manual closed conductance fallback.", tpe=float, value=1.0e4),
+                TemplateProp(name="open_conductance", units="S", descr="Open-state leakage conductance.", tpe=float, value=1.0e-8),
+                TemplateProp(name="switch_time_constant", units="s", descr="First-order current time constant.", tpe=float, value=1.0e-4),
+                TemplateProp(name="command_threshold", units="", descr="Control threshold for the external command.", tpe=float, value=0.5),
+                TemplateProp(name="name", units="", descr="Symbolic model name.", tpe=str, value="switch_emt_template"),
             ]
         )
 

@@ -23,8 +23,8 @@ class DcCurrentSourceEmtTemplate(TemplateDefinition):
         super().__init__(
             vf,
             params=[
-                TemplateProp(name="source_current_value", units="A", descr="Fixed injected DC current.", tpe=float),
-                TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str),
+                TemplateProp(name="source_current_value", units="A", descr="Fixed injected DC current.", tpe=float, value=0.0),
+                TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str, value="dc_current_source_emt"),
             ]
         )
 
@@ -81,7 +81,7 @@ class ControlledDcCurrentSourceEmtTemplate(TemplateDefinition):
         super().__init__(
             vf,
             params=[
-                TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str),
+                TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str, value="controlled_dc_current_source_emt"),
             ]
         )
 
@@ -134,9 +134,9 @@ class DcVoltageSourceEmtTemplate(TemplateDefinition):
         super().__init__(
             vf,
             params=[
-                TemplateProp(name="source_voltage_value", units="V", descr="Fixed source voltage.", tpe=float),
-                TemplateProp(name="source_conductance_value", units="S", descr="Norton conductance.", tpe=float),
-                TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str),
+                TemplateProp(name="source_voltage_value", units="V", descr="Fixed source voltage.", tpe=float, value=0.0),
+                TemplateProp(name="source_conductance_value", units="S", descr="Norton conductance.", tpe=float, value=100.0),
+                TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str, value="dc_voltage_source_emt"),
             ]
         )
 
@@ -201,8 +201,8 @@ class ControlledDcVoltageSourceEmtTemplate(TemplateDefinition):
         super().__init__(
             vf,
             params=[
-                TemplateProp(name="source_conductance_value", units="S", descr="Norton conductance.", tpe=float),
-                TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str),
+                TemplateProp(name="source_conductance_value", units="S", descr="Norton conductance.", tpe=float, value=100.0),
+                TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str, value="controlled_dc_voltage_source_emt"),
             ]
         )
 

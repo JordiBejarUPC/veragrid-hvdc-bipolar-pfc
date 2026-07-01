@@ -96,11 +96,11 @@ class LoadZIPEmtTemplate(TemplateDefinition):
         super().__init__(
             vf,
             params=[
-                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool),
-                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool),
-                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool),
-                TemplateProp(name="connection_type", units="", descr="Star connection topology.", tpe=ShuntConnectionType),
-                TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str),
+                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool, value=True),
+                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool, value=True),
+                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool, value=True),
+                TemplateProp(name="connection_type", units="", descr="Star connection topology.", tpe=ShuntConnectionType, value=None),
+                TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str, value="ZIP_Load_EMT_3ph"),
             ]
         )
 
