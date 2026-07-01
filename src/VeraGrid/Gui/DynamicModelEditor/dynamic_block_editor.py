@@ -1069,10 +1069,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     self.connect_items(blocks_list)
                 else:
                     pass
-            else:
-                pass
+            elif not self.main_block.children and not self.main_block.is_eq_decomposable():
+                self.add_connection_items()
 
-        elif not self.main_block.empty() and # només té in_vars i out_vars
 
         # Build items for models with graphical info
         elif not self.main_block.diagram.node_data:
