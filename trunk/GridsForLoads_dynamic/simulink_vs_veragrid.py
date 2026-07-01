@@ -7,10 +7,42 @@ from typing import Callable, Optional
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+
+THETA_WRAP_PERIOD_RAD: float = 2.0 * np.pi
 # power reference change in the GFM controller
-TEST_NAME: str = "p_ref_step_v4"
-SIMULINK_CSV_NAME: str = "simulink_results_G4L_p_ref.csv"
-VERAGRID_CSV_NAME: str = "veragrid_G4L_p_gfm_v4.csv"
+# TEST_NAME: str = "p_ref_step_v3_2pref"
+# SIMULINK_CSV_NAME: str = "simulink_results_G4L_p_ref_2events.csv"
+# VERAGRID_CSV_NAME: str = "veragrid_G4L_p_gfm_v3_2pref.csv"
+# EVENT_TIMES_S: list[float] = [1.0, 1.5]
+# EVENT_WINDOW_HALF_WIDTH_S: float = 0.025
+# STEADY_STATE_WINDOWS: list[tuple[str, float, float, str]] = [
+#     ("pre_event", 0.25, 0.30, "Before first event"),
+#     ("post_event_1", 1.25, 1.30, "After first event"),
+#     ("post_event_2", 1.75, 1.80, "After second event"),
+# ]
+# stairs
+# TEST_NAME: str = "p_ref_step_v3_stair"
+# SIMULINK_CSV_NAME: str = "simulink_results_G4L_p_ref_stair.csv"
+# VERAGRID_CSV_NAME: str = "veragrid_G4L_p_gfm_v3_2pref.csv"
+# EVENT_TIMES_S: list[float] = [1.0, 1.5]
+# EVENT_WINDOW_HALF_WIDTH_S: float = 0.025
+# STEADY_STATE_WINDOWS: list[tuple[str, float, float, str]] = [
+#     ("pre_event", 0.25, 0.30, "Before first event"),
+#     ("post_event_1", 1.25, 1.30, "After first event"),
+#     ("post_event_2", 1.75, 1.80, "After second event"),
+# ]
+TEST_NAME: str = "p_ref_step_v4_noVA"
+SIMULINK_CSV_NAME: str = "simulink_results_G4L_p_ref_noVA.csv"
+VERAGRID_CSV_NAME: str = "veragrid_G4L_p_gfm_noVA.csv"
+EVENT_TIMES_S: list[float] = [1.0, 1.5]
+EVENT_WINDOW_HALF_WIDTH_S: float = 0.025
+STEADY_STATE_WINDOWS: list[tuple[str, float, float, str]] = [
+    ("pre_event", 0.25, 0.30, "Before first event"),
+    ("post_event_1", 1.25, 1.30, "After first event"),
+    ("post_event_2", 1.75, 1.80, "After second event"),
+]
+
+
 # V2
 # TEST_NAME: str = "p_ref_step_v2"
 # SIMULINK_CSV_NAME: str = "simulink_results_G4L_p_ref.csv"
@@ -196,6 +228,25 @@ def wrap_to_pi(angle: pd.Series | np.ndarray) -> pd.Series | np.ndarray:
     return np.arctan2(np.sin(angle), np.cos(angle))
 
 
+def wrap_to_2pi(angle: pd.Series | np.ndarray) -> pd.Series | np.ndarray:
+    """Wrap angles to ``[0, 2*pi)``.
+
+    :param angle: Input angle series or array in radians.
+    :return: Wrapped angle with the same shape.
+    """
+    return np.mod(angle, THETA_WRAP_PERIOD_RAD)
+
+
+def _theta_pll_veragrid_signal(dataframe: pd.DataFrame) -> pd.Series:
+    """Return the VeraGrid theta PLL signal wrapped to ``[0, 2*pi)``.
+
+    :param dataframe: Source dataframe.
+    :return: Theta PLL series.
+    """
+    theta_values: pd.Series = pd.to_numeric(dataframe["theta_pll"], errors="coerce")
+    return pd.Series(wrap_to_2pi(theta_values.to_numpy(dtype=float)), index=theta_values.index)
+
+
 def _signal_magnitude(dataframe: pd.DataFrame, q_column: str, d_column: str) -> pd.Series:
     """Return the Euclidean magnitude of one qd signal pair.
 
@@ -254,6 +305,32 @@ def create_plot_groups() -> list[PlotGroup]:
     """
     groups: list[PlotGroup] = list()
 
+    groups.append(
+        PlotGroup(
+            "Bus0 AC voltages",
+            "bus0_ac_voltages",
+            list(
+                [
+                    SignalSpec("Bus0 Va", "vabc_bus0_1", "vA_Bus0_kV", "kV", simulink_scale=1.0 / 1000.0),
+                    SignalSpec("Bus0 Vb", "vabc_bus0_2", "vB_Bus0_kV", "kV", simulink_scale=1.0 / 1000.0),
+                    SignalSpec("Bus0 Vc", "vabc_bus0_3", "vC_Bus0_kV", "kV", simulink_scale=1.0 / 1000.0),
+                ]
+            ),
+        )
+    )
+    groups.append(
+        PlotGroup(
+            "Bus0 AC currents",
+            "bus0_ac_currents",
+            list(
+                [
+                    SignalSpec("Bus0 Ia", "iabc_bus0_1", "iA_Bus0_A", "A", veragrid_scale=-1.0),
+                    SignalSpec("Bus0 Ib", "iabc_bus0_2", "iB_Bus0_A", "A", veragrid_scale=-1.0),
+                    SignalSpec("Bus0 Ic", "iabc_bus0_3", "iC_Bus0_A", "A", veragrid_scale=-1.0),
+                ]
+            ),
+        )
+    )
     groups.append(
         PlotGroup(
             "AC voltages",
@@ -425,11 +502,29 @@ def create_plot_groups() -> list[PlotGroup]:
     )
     groups.append(
         PlotGroup(
-            "PLL and VSM",
-            "pll_vsm",
+            "PLL frequency",
+            "pll_frequency",
             list(
                 [
                     SignalSpec("omega pll", "omega_pll", "w_pll", "rad/s"),
+                ]
+            ),
+        )
+    )
+    groups.append(
+        PlotGroup(
+            "PLL and phase angles",
+            "pll_phase_angles",
+            list(
+                [
+                    SignalSpec(
+                        "theta pll",
+                        "phase_pll",
+                        "theta_pll",
+                        "rad",
+                        veragrid_columns=["theta_pll"],
+                        veragrid_transform=_theta_pll_veragrid_signal,
+                    ),
                     SignalSpec(
                         "delta from vdq",
                         "Vd",
@@ -813,7 +908,7 @@ def save_group_plot(
         print(f"Skipping plot for group '{group.title}' because no mapped signals were available.")
         return
     else:
-        figure, axes = plt.subplots(2, 1, figsize=(12, 8), sharex=True, constrained_layout=True)
+        figure, axes = plt.subplots(2, 1, figsize=(12, 8), sharex=True)
         upper_axis = axes[0]
         lower_axis = axes[1]
 
@@ -833,17 +928,42 @@ def save_group_plot(
     lower_axis.set_xlabel("Time [s]")
     upper_axis.grid(True)
     lower_axis.grid(True)
-    upper_axis.legend(loc="best")
-    lower_axis.legend(loc="best")
+    upper_axis.legend(loc="upper right")
+    lower_axis.legend(loc="upper right")
 
     sanitized_test_name: str = sanitize_file_name(test_name)
     output_path: Path = output_folder / f"{sanitize_file_name(group.file_stem)}_{sanitized_test_name}.png"
+    figure.tight_layout()
     figure.savefig(output_path, dpi=150)
     plt.close(figure)
     print(f"Saved plot: {output_path}")
 
 
-def save_window_overlay_plot(
+def _set_axis_limits_from_window(axis: plt.Axes, series_list: list[np.ndarray]) -> None:
+    """Set compact y-limits from already windowed data.
+
+    :param axis: Axis to update.
+    :param series_list: Windowed series to inspect.
+    :return: None.
+    """
+    finite_series: list[np.ndarray] = [series[np.isfinite(series)] for series in series_list if series.size > 0]
+    finite_series = [series for series in finite_series if series.size > 0]
+    if len(finite_series) == 0:
+        return
+
+    values: np.ndarray = np.concatenate(finite_series)
+    min_value: float = float(np.min(values))
+    max_value: float = float(np.max(values))
+
+    if np.isclose(min_value, max_value):
+        padding: float = max(abs(min_value) * 0.05, 1.0e-6)
+    else:
+        padding = 0.05 * (max_value - min_value)
+
+    axis.set_ylim(min_value - padding, max_value + padding)
+
+
+def save_steady_state_overlay_plot(
     output_folder: Path,
     file_stem: str,
     title: str,
@@ -852,7 +972,7 @@ def save_window_overlay_plot(
     window_start: float,
     window_end: float,
 ) -> None:
-    """Save one focused overlay plot on a selected time window.
+    """Save one focused overlay plot on a steady-state time window.
 
     :param output_folder: Output folder.
     :param file_stem: Output file stem.
@@ -871,28 +991,36 @@ def save_window_overlay_plot(
         print(f"Skipping focused plot for '{title}' because the selected window is empty.")
         return
 
-    figure, axis = plt.subplots(1, 1, figsize=(12, 5), constrained_layout=True)
+    figure, axis = plt.subplots(1, 1, figsize=(12, 5))
+
+    plotted_series: list[np.ndarray] = list()
 
     signal: SignalSpec
     simulink_values: np.ndarray
     veragrid_values: np.ndarray
     error_values: np.ndarray
     for signal, simulink_values, veragrid_values, error_values in plot_rows:
-        axis.plot(common_time[window_mask], simulink_values[window_mask], linestyle="--", label=f"Simulink - {signal.name}")
-        axis.plot(common_time[window_mask], veragrid_values[window_mask], linestyle="-", label=f"VeraGrid - {signal.name}")
+        simulink_window: np.ndarray = simulink_values[window_mask]
+        veragrid_window: np.ndarray = veragrid_values[window_mask]
+        axis.plot(common_time[window_mask], simulink_window, linestyle="--", label=f"Simulink - {signal.name}")
+        axis.plot(common_time[window_mask], veragrid_window, linestyle="-", label=f"VeraGrid - {signal.name}")
+        plotted_series.append(simulink_window)
+        plotted_series.append(veragrid_window)
 
     axis.set_title(title)
     axis.set_xlabel("Time [s]")
     axis.grid(True)
-    axis.legend(loc="best")
+    axis.legend(loc="upper right")
+    _set_axis_limits_from_window(axis, plotted_series)
 
     output_path: Path = output_folder / f"{sanitize_file_name(file_stem)}.png"
+    figure.tight_layout()
     figure.savefig(output_path, dpi=150)
     plt.close(figure)
     print(f"Saved plot: {output_path}")
 
 
-def save_dual_window_overlay_plot(
+def save_dual_steady_state_overlay_plot(
     output_folder: Path,
     file_stem: str,
     title: str,
@@ -902,7 +1030,7 @@ def save_dual_window_overlay_plot(
     window_start: float,
     window_end: float,
 ) -> None:
-    """Save one figure with voltage and current overlays on a selected time window.
+    """Save one figure with voltage and current overlays on a steady-state window.
 
     :param output_folder: Output folder.
     :param file_stem: Output file stem.
@@ -922,31 +1050,44 @@ def save_dual_window_overlay_plot(
         print(f"Skipping dual focused plot for '{title}' because the selected window is empty.")
         return
 
-    figure, axes = plt.subplots(2, 1, figsize=(12, 9), sharex=True, constrained_layout=True)
+    figure, axes = plt.subplots(2, 1, figsize=(12, 9), sharex=True)
     voltage_axis = axes[0]
     current_axis = axes[1]
+    voltage_series: list[np.ndarray] = list()
+    current_series: list[np.ndarray] = list()
 
     signal: SignalSpec
     simulink_values: np.ndarray
     veragrid_values: np.ndarray
     error_values: np.ndarray
     for signal, simulink_values, veragrid_values, error_values in voltage_rows:
-        voltage_axis.plot(common_time[window_mask], simulink_values[window_mask], linestyle="--", label=f"Simulink - {signal.name}")
-        voltage_axis.plot(common_time[window_mask], veragrid_values[window_mask], linestyle="-", label=f"VeraGrid - {signal.name}")
+        simulink_window: np.ndarray = simulink_values[window_mask]
+        veragrid_window: np.ndarray = veragrid_values[window_mask]
+        voltage_axis.plot(common_time[window_mask], simulink_window, linestyle="--", label=f"Simulink - {signal.name}")
+        voltage_axis.plot(common_time[window_mask], veragrid_window, linestyle="-", label=f"VeraGrid - {signal.name}")
+        voltage_series.append(simulink_window)
+        voltage_series.append(veragrid_window)
 
     for signal, simulink_values, veragrid_values, error_values in current_rows:
-        current_axis.plot(common_time[window_mask], simulink_values[window_mask], linestyle="--", label=f"Simulink - {signal.name}")
-        current_axis.plot(common_time[window_mask], veragrid_values[window_mask], linestyle="-", label=f"VeraGrid - {signal.name}")
+        simulink_window: np.ndarray = simulink_values[window_mask]
+        veragrid_window: np.ndarray = veragrid_values[window_mask]
+        current_axis.plot(common_time[window_mask], simulink_window, linestyle="--", label=f"Simulink - {signal.name}")
+        current_axis.plot(common_time[window_mask], veragrid_window, linestyle="-", label=f"VeraGrid - {signal.name}")
+        current_series.append(simulink_window)
+        current_series.append(veragrid_window)
 
     voltage_axis.set_title(f"{title} - AC voltages")
     current_axis.set_title(f"{title} - AC currents")
     current_axis.set_xlabel("Time [s]")
     voltage_axis.grid(True)
     current_axis.grid(True)
-    voltage_axis.legend(loc="best")
-    current_axis.legend(loc="best")
+    voltage_axis.legend(loc="upper right")
+    current_axis.legend(loc="upper right")
+    _set_axis_limits_from_window(voltage_axis, voltage_series)
+    _set_axis_limits_from_window(current_axis, current_series)
 
     output_path: Path = output_folder / f"{sanitize_file_name(file_stem)}.png"
+    figure.tight_layout()
     figure.savefig(output_path, dpi=150)
     plt.close(figure)
     print(f"Saved plot: {output_path}")
@@ -1048,8 +1189,21 @@ def run_comparison() -> None:
 
     plot_groups: list[PlotGroup] = create_plot_groups()
     results: list[ComparisonResult] = list()
+    bus0_voltage_rows: list[tuple[SignalSpec, np.ndarray, np.ndarray, np.ndarray]] = list()
+    bus0_current_rows: list[tuple[SignalSpec, np.ndarray, np.ndarray, np.ndarray]] = list()
     ac_voltage_rows: list[tuple[SignalSpec, np.ndarray, np.ndarray, np.ndarray]] = list()
     ac_current_rows: list[tuple[SignalSpec, np.ndarray, np.ndarray, np.ndarray]] = list()
+
+    if len(EVENT_TIMES_S) > 0:
+        print("Configured events:")
+        for event_index, event_time_s in enumerate(EVENT_TIMES_S, start=1):
+            print(f"  Event {event_index}: t = {event_time_s:.6f} s")
+    else:
+        print("Configured events: none")
+
+    print("Configured steady-state windows:")
+    for window_label, window_start, window_end, window_title in STEADY_STATE_WINDOWS:
+        print(f"  {window_label}: {window_start:.3f} s to {window_end:.3f} s ({window_title})")
 
     # Process each group by extracting source signals, interpolating to the common
     # time vector, plotting overlays and errors, and collecting metrics.
@@ -1097,65 +1251,50 @@ def run_comparison() -> None:
         else:
             pass
 
+        if group.title == "Bus0 AC voltages":
+            bus0_voltage_rows = list(plot_rows)
+        else:
+            pass
+
         if group.title == "AC currents":
             ac_current_rows = list(plot_rows)
         else:
             pass
 
-        if group.title == "AC voltages":
-            save_window_overlay_plot(
-                output_folder=output_folder,
-                file_stem=f"{group.file_stem}_pre_event_window",
-                title="AC voltages before event (0.25 s to 0.30 s)",
-                common_time=common_time,
-                plot_rows=plot_rows,
-                window_start=0.25,
-                window_end=0.30,
-            )
-        else:
-            pass
-
-        if group.title == "AC currents":
-            save_window_overlay_plot(
-                output_folder=output_folder,
-                file_stem=f"{group.file_stem}_pre_event_window",
-                title="AC currents before event (0.25 s to 0.30 s)",
-                common_time=common_time,
-                plot_rows=plot_rows,
-                window_start=0.25,
-                window_end=0.30,
-            )
-        else:
-            pass
-
-        if len(ac_voltage_rows) > 0 and len(ac_current_rows) > 0:
-            pass
+        if group.title == "Bus0 AC currents":
+            bus0_current_rows = list(plot_rows)
         else:
             pass
 
     if len(ac_voltage_rows) > 0 and len(ac_current_rows) > 0:
-        save_dual_window_overlay_plot(
-            output_folder=output_folder,
-            file_stem="ac_voltage_current_pre_event_window",
-            title="Before event (0.25 s to 0.30 s)",
-            common_time=common_time,
-            voltage_rows=ac_voltage_rows,
-            current_rows=ac_current_rows,
-            window_start=0.25,
-            window_end=0.30,
-        )
-        save_dual_window_overlay_plot(
-            output_folder=output_folder,
-            file_stem="ac_voltage_current_post_event_window",
-            title="After event (1.25 s to 1.30 s)",
-            common_time=common_time,
-            voltage_rows=ac_voltage_rows,
-            current_rows=ac_current_rows,
-            window_start=1.25,
-            window_end=1.30,
-        )
+        for window_label, window_start, window_end, window_title in STEADY_STATE_WINDOWS:
+            save_dual_steady_state_overlay_plot(
+                output_folder=output_folder,
+                file_stem=f"bus1_ac_voltage_current_{window_label}_window",
+                title=f"Bus1 {window_title} ({window_start:.3f} s to {window_end:.3f} s)",
+                common_time=common_time,
+                voltage_rows=ac_voltage_rows,
+                current_rows=ac_current_rows,
+                window_start=window_start,
+                window_end=window_end,
+            )
     else:
-        print("Skipping combined AC voltage/current window plots because voltage or current overlays are unavailable.")
+        print("Skipping Bus1 combined voltage/current steady-state plots because voltage or current overlays are unavailable.")
+
+    if len(bus0_voltage_rows) > 0 and len(bus0_current_rows) > 0:
+        for window_label, window_start, window_end, window_title in STEADY_STATE_WINDOWS:
+            save_dual_steady_state_overlay_plot(
+                output_folder=output_folder,
+                file_stem=f"bus0_ac_voltage_current_{window_label}_window",
+                title=f"Bus0 {window_title} ({window_start:.3f} s to {window_end:.3f} s)",
+                common_time=common_time,
+                voltage_rows=bus0_voltage_rows,
+                current_rows=bus0_current_rows,
+                window_start=window_start,
+                window_end=window_end,
+            )
+    else:
+        print("Skipping Bus0 combined voltage/current steady-state plots because voltage or current overlays are unavailable.")
 
     save_summary_csv(output_folder, results, test_name)
     print("Comparison complete.")

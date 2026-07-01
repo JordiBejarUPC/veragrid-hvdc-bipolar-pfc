@@ -351,7 +351,8 @@ print(f"Selected EMT test: {selected_test}")
 ## Active power reference change (GFM controller)
 t_P_GFM = 1.0
 d_P_GFM = -0.4
-
+t_P_GFM_2 = 1.5
+d_P_GFM_2 = -0.8
 ## Deviation of frequency with a Rate-of-Change-of-Frequency (ROCOF)
 # The Thevenin source frequency event is applied as an absolute scale target,
 # with a ramp from t_omega to t_omega_end.
@@ -416,6 +417,7 @@ if selected_test == TEST_NONE:
 elif selected_test == TEST_P_GFM:
     events_to_add = [
         EmtEvent(device=load, parameter=P_ref, time=t_P_GFM, value=d_P_GFM, group=events_group),
+        EmtEvent(device=load, parameter=P_ref, time=t_P_GFM_2, value=d_P_GFM_2, group=events_group),
     ]
 elif selected_test == TEST_ROCOF:
     if t_omega_end <= t_omega:
@@ -1290,7 +1292,8 @@ for ax in axes_si_pll:
     ax.set_xlabel("Time [s]")
 
 csv_suffix = TEST_CSV_SUFFIX.get(selected_test, selected_test)
-csv_path = os.path.join(REPO_ROOT, "trunk", "GridsForLoads_dynamic", f"veragrid_G4L_{csv_suffix}_v3.csv")
+# csv_path = os.path.join(REPO_ROOT, "trunk", "GridsForLoads_dynamic", f"veragrid_G4L_{csv_suffix}_v3.csv")
+csv_path = os.path.join(REPO_ROOT, "trunk", "GridsForLoads_dynamic", f"veragrid_G4L_{csv_suffix}_v3_2pref.csv")
 plot_output_folder = get_plot_output_folder(csv_suffix)
 csv_columns = {"time_s": t_arr}
 
@@ -1307,7 +1310,12 @@ def add_csv_array(column_name: str, series):
     if series is not None:
         csv_columns[column_name] = series
 
-
+add_csv_series("vA_Bus0_kV", "v_A_Bus0_emt_template", V_phase_rms_base / 1000.0)
+add_csv_series("vB_Bus0_kV", "v_B_Bus0_emt_template", V_phase_rms_base / 1000.0)
+add_csv_series("vC_Bus0_kV", "v_C_Bus0_emt_template", V_phase_rms_base / 1000.0)
+add_csv_series("iA_Bus0_A", "i_A_emt_thevenin_eq_generator_template", Ibase_vg)
+add_csv_series("iB_Bus0_A", "i_B_emt_thevenin_eq_generator_template", Ibase_vg)
+add_csv_series("iC_Bus0_A", "i_C_emt_thevenin_eq_generator_template", Ibase_vg)
 add_csv_series("vA_Bus1_kV", "v_A_Bus1_emt_template", V_phase_rms_base / 1000.0)
 add_csv_series("vB_Bus1_kV", "v_B_Bus1_emt_template", V_phase_rms_base / 1000.0)
 add_csv_series("vC_Bus1_kV", "v_C_Bus1_emt_template", V_phase_rms_base / 1000.0)
