@@ -1528,12 +1528,19 @@ class SchematicWidget(BaseDiagramWidget):
             if graphic_object.flags() & QGraphicsItem.GraphicsItemFlag.ItemIsMovable:
                 if isinstance(graphic_object, GenericDiagramWidget):
                     api_object = graphic_object.api_object
+                    draw_labels_value: bool = graphic_object.draw_labels
                 else:
-                    api_object = None
+                    try:
+                        api_object = graphic_object.api_object
+                        draw_labels_value = graphic_object.draw_labels
+                    except AttributeError:
+                        api_object = None
+                        draw_labels_value = True
             else:
                 api_object = None
+                draw_labels_value = True
 
-            if api_object is not None and isinstance(graphic_object, GenericDiagramWidget):
+            if api_object is not None:
                 # Only the resizable diagram widgets persist their stored width and
                 # height. All other movable graphics only need the new position.
                 if isinstance(graphic_object,
@@ -1555,7 +1562,7 @@ class SchematicWidget(BaseDiagramWidget):
                                             w=width_value,
                                             h=height_value,
                                             r=graphic_object.rotation(),
-                                            draw_labels=graphic_object.draw_labels,
+                                            draw_labels=draw_labels_value,
                                             graphic_object=graphic_object)
             else:
                 pass
