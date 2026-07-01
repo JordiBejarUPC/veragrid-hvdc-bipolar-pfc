@@ -621,6 +621,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         requires_connection_bootstrap: bool = block_requires_editor_connection_bootstrap(self.main_block)
 
         # Automatically build items for models with no graphical info
+        # if not self.main_block.empty() and not self.main_block.diagram.node_data:
         if not self.main_block.empty() and not self.main_block.diagram.node_data and not requires_connection_bootstrap:
             if self.main_block.children:
                 blocks_list = list()
