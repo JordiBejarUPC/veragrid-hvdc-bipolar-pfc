@@ -45,6 +45,32 @@ from VeraGridEngine.enumerations import (DeviceType, AvailableTransferMode, Solv
                                          DynamicSimulationMode)
 
 
+def get_valid_controls_start_tolerance_index(tolerance_idx: int,
+                                             controls_start_tolerance_idx: int,
+                                             controls_start_tolerance_min_idx: int) -> int:
+    """
+    Keep the controls activation tolerance above the solver tolerance.
+
+    :param tolerance_idx: Solver tolerance exponent shown as ``1e-idx``
+    :param controls_start_tolerance_idx: Controls activation exponent shown as ``1e-idx``
+    :param controls_start_tolerance_min_idx: Minimum exponent allowed by the GUI spin box
+    :return: Valid controls activation exponent
+    """
+    if controls_start_tolerance_idx > tolerance_idx:
+        # The GUI stores exponents, so ``tol * 100`` means subtracting two decades.
+        adjusted_idx: int = tolerance_idx - 2
+
+        # Clamp to the spin box minimum because the GUI cannot represent values larger than ``1e-1``.
+        if adjusted_idx < controls_start_tolerance_min_idx:
+            adjusted_idx = controls_start_tolerance_min_idx
+        else:
+            pass
+
+        return adjusted_idx
+    else:
+        return controls_start_tolerance_idx
+
+
 class SimulationsMain(TimeEventsMain):
     """
     SimulationsMain
@@ -340,6 +366,8 @@ class SimulationsMain(TimeEventsMain):
         self.ui.contingency_filter_by_comboBox.currentTextChanged.connect(self.modify_contingency_filter_mode)
         self.ui.available_results_to_color_comboBox.currentTextChanged.connect(self.changed_study)
         self.ui.mip_framework_comboBox.currentTextChanged.connect(self.update_available_mip_solvers)
+        self.ui.tolerance_spinBox.valueChanged.connect(self.adjust_controls_start_tolerance)
+        self.ui.controls_start_tolerance_spinBox.valueChanged.connect(self.adjust_controls_start_tolerance)
 
         # button
         self.ui.find_automatic_precission_Button.clicked.connect(self.automatic_pf_precision)
@@ -932,8 +960,10 @@ class SimulationsMain(TimeEventsMain):
         Gather power flow run options
         :return: sim.PowerFlowOptions
         """
+        self.adjust_controls_start_tolerance()
 
         tolerance = 1.0 / (10.0 ** self.ui.tolerance_spinBox.value())
+        controls_start_tolerance = 1.0 / (10.0 ** self.ui.controls_start_tolerance_spinBox.value())
 
         if self.ui.apply_impedance_tolerances_checkBox.isChecked():
             branch_impedance_tolerance_mode = BranchImpedanceMode.Upper
@@ -945,6 +975,7 @@ class SimulationsMain(TimeEventsMain):
             retry_with_other_methods=self.ui.helm_retry_checkBox.isChecked(),
             verbose=self.ui.verbositySpinBox.value(),
             tolerance=tolerance,
+            controls_start_tolerance=controls_start_tolerance,
             max_iter=self.ui.max_iterations_spinBox.value(),
             control_q=self.ui.control_q_checkBox.isChecked(),
             control_taps_phase=self.ui.control_tap_phase_checkBox.isChecked(),
@@ -962,6 +993,28 @@ class SimulationsMain(TimeEventsMain):
         )
 
         return ops
+
+    def adjust_controls_start_tolerance(self, value: int | None = None) -> None:
+        """
+        Keep the controls activation tolerance consistent with the solver tolerance.
+
+        :param value: Qt signal payload, unused
+        :return: Nothing
+        """
+        del value
+
+        tolerance_idx: int = self.ui.tolerance_spinBox.value()
+        controls_start_tolerance_idx: int = self.ui.controls_start_tolerance_spinBox.value()
+        adjusted_idx: int = get_valid_controls_start_tolerance_index(
+            tolerance_idx=tolerance_idx,
+            controls_start_tolerance_idx=controls_start_tolerance_idx,
+            controls_start_tolerance_min_idx=self.ui.controls_start_tolerance_spinBox.minimum(),
+        )
+
+        if adjusted_idx != controls_start_tolerance_idx:
+            self.ui.controls_start_tolerance_spinBox.setValue(adjusted_idx)
+        else:
+            pass
 
     def get_selected_rms_simulation_options(self) -> sim.RmsOptions:
         """

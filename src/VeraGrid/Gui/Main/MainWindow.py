@@ -1839,7 +1839,7 @@ class Ui_mainWindow(object):
         self.toolBox_3.setMinimumSize(QSize(240, 0))
         self.toolBox_3Page1 = QWidget()
         self.toolBox_3Page1.setObjectName(u"toolBox_3Page1")
-        self.toolBox_3Page1.setGeometry(QRect(0, 0, 98, 85))
+        self.toolBox_3Page1.setGeometry(QRect(0, 0, 274, 526))
         self.verticalLayout_28 = QVBoxLayout(self.toolBox_3Page1)
         self.verticalLayout_28.setObjectName(u"verticalLayout_28")
         self.verticalLayout_28.setContentsMargins(0, 0, 6, 0)
@@ -1862,7 +1862,7 @@ class Ui_mainWindow(object):
         self.toolBox_3.addItem(self.toolBox_3Page1, icon120, u"Results")
         self.toolBox_3Page2 = QWidget()
         self.toolBox_3Page2.setObjectName(u"toolBox_3Page2")
-        self.toolBox_3Page2.setGeometry(QRect(0, 0, 98, 88))
+        self.toolBox_3Page2.setGeometry(QRect(0, 0, 86, 88))
         self.verticalLayout_44 = QVBoxLayout(self.toolBox_3Page2)
         self.verticalLayout_44.setObjectName(u"verticalLayout_44")
         self.verticalLayout_44.setContentsMargins(0, 0, 6, 0)
@@ -2665,7 +2665,22 @@ class Ui_mainWindow(object):
         self.max_iterations_spinBox.setMaximum(1000)
         self.max_iterations_spinBox.setValue(40)
 
-        self.gridLayout_22.addWidget(self.max_iterations_spinBox, 10, 1, 1, 2)
+        self.gridLayout_22.addWidget(self.max_iterations_spinBox, 11, 1, 1, 2)
+
+        self.find_automatic_precission_Button = QPushButton(self.frame_19)
+        self.find_automatic_precission_Button.setObjectName(u"find_automatic_precission_Button")
+        self.find_automatic_precission_Button.setMaximumSize(QSize(50, 16777215))
+
+        self.gridLayout_22.addWidget(self.find_automatic_precission_Button, 8, 2, 1, 1)
+
+        self.verticalSpacer_10 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+
+        self.gridLayout_22.addItem(self.verticalSpacer_10, 14, 0, 1, 1)
+
+        self.label_6 = QLabel(self.frame_19)
+        self.label_6.setObjectName(u"label_6")
+
+        self.gridLayout_22.addWidget(self.label_6, 11, 0, 1, 1)
 
         self.frame_47 = QFrame(self.frame_19)
         self.frame_47.setObjectName(u"frame_47")
@@ -2741,38 +2756,7 @@ class Ui_mainWindow(object):
         self.gridLayout_38.addWidget(self.temperature_correction_checkBox, 5, 0, 1, 1)
 
 
-        self.gridLayout_22.addWidget(self.frame_47, 12, 0, 1, 3)
-
-        self.solver_comboBox = QComboBox(self.frame_19)
-        self.solver_comboBox.setObjectName(u"solver_comboBox")
-        self.solver_comboBox.setMinimumSize(QSize(200, 0))
-
-        self.gridLayout_22.addWidget(self.solver_comboBox, 0, 1, 1, 2)
-
-        self.verbositySpinBox = QSpinBox(self.frame_19)
-        self.verbositySpinBox.setObjectName(u"verbositySpinBox")
-        self.verbositySpinBox.setMaximum(2)
-
-        self.gridLayout_22.addWidget(self.verbositySpinBox, 11, 1, 1, 2)
-
-        self.find_automatic_precission_Button = QPushButton(self.frame_19)
-        self.find_automatic_precission_Button.setObjectName(u"find_automatic_precission_Button")
-        self.find_automatic_precission_Button.setMaximumSize(QSize(50, 16777215))
-
-        self.gridLayout_22.addWidget(self.find_automatic_precission_Button, 8, 2, 1, 1)
-
-        self.label_23 = QLabel(self.frame_19)
-        self.label_23.setObjectName(u"label_23")
-
-        self.gridLayout_22.addWidget(self.label_23, 11, 0, 1, 1)
-
-        self.tolerance_spinBox = QSpinBox(self.frame_19)
-        self.tolerance_spinBox.setObjectName(u"tolerance_spinBox")
-        self.tolerance_spinBox.setMinimum(1)
-        self.tolerance_spinBox.setMaximum(15)
-        self.tolerance_spinBox.setValue(4)
-
-        self.gridLayout_22.addWidget(self.tolerance_spinBox, 8, 1, 1, 1)
+        self.gridLayout_22.addWidget(self.frame_47, 13, 0, 1, 3)
 
         self.muSpinBox = QDoubleSpinBox(self.frame_19)
         self.muSpinBox.setObjectName(u"muSpinBox")
@@ -2782,31 +2766,60 @@ class Ui_mainWindow(object):
         self.muSpinBox.setSingleStep(0.100000000000000)
         self.muSpinBox.setValue(1.000000000000000)
 
-        self.gridLayout_22.addWidget(self.muSpinBox, 9, 1, 1, 2)
+        self.gridLayout_22.addWidget(self.muSpinBox, 10, 1, 1, 2)
 
-        self.label_6 = QLabel(self.frame_19)
-        self.label_6.setObjectName(u"label_6")
+        self.verbositySpinBox = QSpinBox(self.frame_19)
+        self.verbositySpinBox.setObjectName(u"verbositySpinBox")
+        self.verbositySpinBox.setMaximum(2)
 
-        self.gridLayout_22.addWidget(self.label_6, 10, 0, 1, 1)
+        self.gridLayout_22.addWidget(self.verbositySpinBox, 12, 1, 1, 2)
+
+        self.label_2 = QLabel(self.frame_19)
+        self.label_2.setObjectName(u"label_2")
+
+        self.gridLayout_22.addWidget(self.label_2, 0, 0, 1, 1)
+
+        self.label_11 = QLabel(self.frame_19)
+        self.label_11.setObjectName(u"label_11")
+
+        self.gridLayout_22.addWidget(self.label_11, 10, 0, 1, 1)
+
+        self.tolerance_spinBox = QSpinBox(self.frame_19)
+        self.tolerance_spinBox.setObjectName(u"tolerance_spinBox")
+        self.tolerance_spinBox.setMinimum(1)
+        self.tolerance_spinBox.setMaximum(15)
+        self.tolerance_spinBox.setValue(4)
+
+        self.gridLayout_22.addWidget(self.tolerance_spinBox, 8, 1, 1, 1)
+
+        self.solver_comboBox = QComboBox(self.frame_19)
+        self.solver_comboBox.setObjectName(u"solver_comboBox")
+        self.solver_comboBox.setMinimumSize(QSize(200, 0))
+
+        self.gridLayout_22.addWidget(self.solver_comboBox, 0, 1, 1, 2)
+
+        self.label_23 = QLabel(self.frame_19)
+        self.label_23.setObjectName(u"label_23")
+
+        self.gridLayout_22.addWidget(self.label_23, 12, 0, 1, 1)
 
         self.label_5 = QLabel(self.frame_19)
         self.label_5.setObjectName(u"label_5")
 
         self.gridLayout_22.addWidget(self.label_5, 8, 0, 1, 1)
 
-        self.verticalSpacer_10 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+        self.label_16 = QLabel(self.frame_19)
+        self.label_16.setObjectName(u"label_16")
 
-        self.gridLayout_22.addItem(self.verticalSpacer_10, 13, 0, 1, 1)
+        self.gridLayout_22.addWidget(self.label_16, 9, 0, 1, 1)
 
-        self.label_11 = QLabel(self.frame_19)
-        self.label_11.setObjectName(u"label_11")
+        self.controls_start_tolerance_spinBox = QSpinBox(self.frame_19)
+        self.controls_start_tolerance_spinBox.setObjectName(u"controls_start_tolerance_spinBox")
+        self.controls_start_tolerance_spinBox.setMinimum(1)
+        self.controls_start_tolerance_spinBox.setMaximum(15)
+        self.controls_start_tolerance_spinBox.setValue(2)
 
-        self.gridLayout_22.addWidget(self.label_11, 9, 0, 1, 1)
-
-        self.label_2 = QLabel(self.frame_19)
-        self.label_2.setObjectName(u"label_2")
-
-        self.gridLayout_22.addWidget(self.label_2, 0, 0, 1, 1)
+        self.gridLayout_22.addWidget(self.controls_start_tolerance_spinBox, 9, 1, 1, 2)
 
 
         self.gridLayout_24.addWidget(self.frame_19, 2, 0, 1, 3)
@@ -6353,6 +6366,11 @@ class Ui_mainWindow(object):
 #endif // QT_CONFIG(tooltip)
         self.max_iterations_spinBox.setSuffix(QCoreApplication.translate("mainWindow", u" iterations", None))
 #if QT_CONFIG(tooltip)
+        self.find_automatic_precission_Button.setToolTip(QCoreApplication.translate("mainWindow", u"Find the tolerance that best represents the load values for power flow", None))
+#endif // QT_CONFIG(tooltip)
+        self.find_automatic_precission_Button.setText(QCoreApplication.translate("mainWindow", u"Find", None))
+        self.label_6.setText(QCoreApplication.translate("mainWindow", u"Max. iterations", None))
+#if QT_CONFIG(tooltip)
         self.control_remote_voltage_checkBox.setToolTip(QCoreApplication.translate("mainWindow", u"General switch for generators remote voltage control", None))
 #endif // QT_CONFIG(tooltip)
         self.control_remote_voltage_checkBox.setText(QCoreApplication.translate("mainWindow", u"Control remote voltage", None))
@@ -6402,26 +6420,27 @@ class Ui_mainWindow(object):
 #endif // QT_CONFIG(tooltip)
         self.temperature_correction_checkBox.setText(QCoreApplication.translate("mainWindow", u"Apply temperature correction", None))
 #if QT_CONFIG(tooltip)
+        self.muSpinBox.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>Factor that multiplies each increment solution. </p><p>In practice this is used to slow down troublesome solutions.</p></body></html>", None))
+#endif // QT_CONFIG(tooltip)
+        self.muSpinBox.setSuffix(QCoreApplication.translate("mainWindow", u" p.u.", None))
+#if QT_CONFIG(tooltip)
         self.verbositySpinBox.setToolTip(QCoreApplication.translate("mainWindow", u"Level of console information. 0: None, 1: some information, 2: all the information", None))
 #endif // QT_CONFIG(tooltip)
-#if QT_CONFIG(tooltip)
-        self.find_automatic_precission_Button.setToolTip(QCoreApplication.translate("mainWindow", u"Find the tolerance that best represents the load values for power flow", None))
-#endif // QT_CONFIG(tooltip)
-        self.find_automatic_precission_Button.setText(QCoreApplication.translate("mainWindow", u"Find", None))
-        self.label_23.setText(QCoreApplication.translate("mainWindow", u"Verbosity", None))
+        self.label_2.setText(QCoreApplication.translate("mainWindow", u"Solver", None))
+        self.label_11.setText(QCoreApplication.translate("mainWindow", u"Trust radius", None))
 #if QT_CONFIG(tooltip)
         self.tolerance_spinBox.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>Error tolerance of the method</p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
         self.tolerance_spinBox.setSuffix(QCoreApplication.translate("mainWindow", u" p.u.", None))
         self.tolerance_spinBox.setPrefix(QCoreApplication.translate("mainWindow", u"1e-", None))
-#if QT_CONFIG(tooltip)
-        self.muSpinBox.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>Factor that multiplies each increment solution. </p><p>In practice this is used to slow down troublesome solutions.</p></body></html>", None))
-#endif // QT_CONFIG(tooltip)
-        self.muSpinBox.setSuffix(QCoreApplication.translate("mainWindow", u" p.u.", None))
-        self.label_6.setText(QCoreApplication.translate("mainWindow", u"Max. iterations", None))
+        self.label_23.setText(QCoreApplication.translate("mainWindow", u"Verbosity", None))
         self.label_5.setText(QCoreApplication.translate("mainWindow", u"Tolerance", None))
-        self.label_11.setText(QCoreApplication.translate("mainWindow", u"Trust radius", None))
-        self.label_2.setText(QCoreApplication.translate("mainWindow", u"Solver", None))
+        self.label_16.setText(QCoreApplication.translate("mainWindow", u"Controls apply after", None))
+#if QT_CONFIG(tooltip)
+        self.controls_start_tolerance_spinBox.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>VeraGrid does not have an &quot;outer loop&quot;<br/>Instead, in iterative numerical methods (Newton-Raphson, Levenberg-Marquardt, Powell Dog Leg) the controls apply after a certain error threshold has been reached.</p></body></html>", None))
+#endif // QT_CONFIG(tooltip)
+        self.controls_start_tolerance_spinBox.setSuffix(QCoreApplication.translate("mainWindow", u" p.u.", None))
+        self.controls_start_tolerance_spinBox.setPrefix(QCoreApplication.translate("mainWindow", u"1e-", None))
         self.settingsTabWidget.setTabText(self.settingsTabWidget.indexOf(self.pf_tab), QCoreApplication.translate("mainWindow", u"Pf", None))
 #if QT_CONFIG(tooltip)
         self.settingsTabWidget.setTabToolTip(self.settingsTabWidget.indexOf(self.pf_tab), QCoreApplication.translate("mainWindow", u"Power flow settings", None))
