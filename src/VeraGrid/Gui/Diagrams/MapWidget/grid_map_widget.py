@@ -456,6 +456,20 @@ class GridMapWidget(BaseDiagramWidget):
             self.graphics_manager.delete_device(api_object)
         self.diagram_scene.removeItem(graphic_object)
 
+    def clear(self) -> None:
+        """
+        Clear the map diagram scene and graphics registry.
+        """
+        super().clear()
+        self.diagram_scene.clear()
+
+    def prepare_to_delete(self) -> None:
+        """
+        Stop map-specific background work before widget destruction.
+        """
+        self.map.tile_src.shutdown()
+        super().prepare_to_delete()
+
     def remove_element(self,
                        device: ALL_DEV_TYPES,
                        graphic_object: ALL_MAP_GRAPHICS = None,

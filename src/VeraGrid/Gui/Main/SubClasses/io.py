@@ -826,16 +826,6 @@ class IoMain(ScenariosMain):
             self.save_file_thread_object.done_signal.connect(self.UNLOCK)
             self.save_file_thread_object.done_signal.connect(self.post_file_save)
 
-            # The cyclic garbage collector is process-global: whichever thread crosses the
-            # allocation threshold runs it. If it fires inside the save worker thread it will
-            # finalize orphaned Qt graphics objects (e.g. QGraphicsTextItem diagram labels)
-            # off the main thread, mutating the QGraphicsScene/QGraphicsView owned by the main
-            # thread and corrupting the heap -> segmentation fault when saving a model with
-            # diagrams. Disable automatic GC from the main thread now so no collection can run
-            # on the worker; it is re-enabled on the main thread in post_file_save(). Reference
-            # counting still frees non-cyclic garbage in the meantime.
-            gc.disable()
-
             # thread start
             self.save_file_thread_object.start()
 

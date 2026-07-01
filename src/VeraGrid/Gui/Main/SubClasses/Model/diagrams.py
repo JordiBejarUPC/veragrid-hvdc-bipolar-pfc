@@ -2091,6 +2091,18 @@ class DiagramsMain(CompiledArraysMain):
         self.diagram_widgets_list.append(widget)
         return widget
 
+    def dispose_diagram_widget(self, widget: DIAGRAM_WIDGETS) -> None:
+        """
+        Clear and queue one diagram widget for Qt-side destruction.
+        """
+        widget.prepare_to_delete()
+
+        # Queue Qt-side destruction on the main thread after clearing scene items now.
+        # This avoids orphaned QGraphics objects surviving until later GC/finalization.
+        self.ui.schematic_layout.removeWidget(widget)
+        widget.setParent(None)
+        widget.deleteLater()
+
     def _create_widget_from_diagram(self, diagram: dev.SchematicDiagram | dev.MapDiagram) -> ALL_EDITORS:
         """
         Create a diagram widget from a stored diagram object.
@@ -2466,6 +2478,9 @@ class DiagramsMain(CompiledArraysMain):
         Create as Widgets the diagrams stored in the circuit
         :return:
         """
+        for widget in self.diagram_widgets_list:
+            self.dispose_diagram_widget(widget)
+
         self.diagram_widgets_list.clear()
         self.remove_all_diagram_widgets()
 
@@ -2608,6 +2623,7 @@ class DiagramsMain(CompiledArraysMain):
             widget = self.diagram_widgets_list.pop(row)
             if isinstance(widget, (SchematicWidget, GridMapWidget)):
                 self.circuit.remove_diagram(widget.diagram)
+                self.dispose_diagram_widget(widget)
 
         # Remove currently shown widget and rebuild list view selection.
         self.remove_all_diagram_widgets()
@@ -2642,6 +2658,9 @@ class DiagramsMain(CompiledArraysMain):
         """
         Remove all diagrams and their widgets
         """
+        for widget in self.diagram_widgets_list:
+            self.dispose_diagram_widget(widget)
+
         self.diagram_widgets_list.clear()
         self.remove_all_diagram_widgets()
         self.ui.diagramsListView.setModel(None)

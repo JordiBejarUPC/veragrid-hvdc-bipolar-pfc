@@ -722,6 +722,19 @@ class BaseDiagramWidget(QSplitter):
         """
         self.graphics_manager.clear()
 
+    def prepare_to_delete(self) -> None:
+        """
+        Release widget-owned state before the Qt widget itself is destroyed.
+        """
+        self.clear()
+        self.object_editor_table.setModel(None)
+        self.api_object = None
+        self.results_dictionary.clear()
+
+        if self._video is not None:
+            self._video.release()
+            self._video = None
+
     def set_data(self, diagram: SchematicDiagram):
         """
         Set the diagram layout and redraw.
