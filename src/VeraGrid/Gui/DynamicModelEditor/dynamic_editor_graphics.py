@@ -1088,18 +1088,22 @@ class GenericBlockItem(QGraphicsRectItem):
             editor_constants.BLOCK_HEADER_HEIGHT + editor_constants.BLOCK_PORT_SECTION_PADDING +
             port_rows * editor_constants.BLOCK_PORT_ROW_HEIGHT
         )
-        name_width = len(self.subsys.name) * 7
-        max_label_length = 0
-        if self.subsys:
-            var: Var
-            for var in self.subsys.in_vars:
-                max_label_length = max(max_label_length, len(var.name))
-            for var in self.subsys.out_vars:
-                max_label_length = max(max_label_length, len(var.name))
-        else:
-            pass
-        port_width = max_label_length * 7
-        min_width = max(editor_constants.BLOCK_MIN_WIDTH, name_width + 14, port_width + 28)
+
+        input_label_width = 0.0
+        for label in self.input_labels:
+            input_label_width = max(input_label_width, label.boundingRect().width())
+
+        output_label_width = 0.0
+        for label in self.output_labels:
+            output_label_width = max(output_label_width, label.boundingRect().width())
+
+        name_width = self.name_item.boundingRect().width()
+        padding = 28.0
+
+        min_width = max(
+            editor_constants.BLOCK_MIN_WIDTH,
+            input_label_width + output_label_width + name_width + padding
+        )
         return min_width, min_height
 
     def resize_to_content(self) -> None:
