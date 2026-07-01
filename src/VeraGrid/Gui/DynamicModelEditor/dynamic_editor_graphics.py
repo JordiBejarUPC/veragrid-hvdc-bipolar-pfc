@@ -2248,13 +2248,14 @@ class DiagramScene(QGraphicsScene):
                 if not item.is_input:
                     self.source_port = item
                     path: QPainterPath = QPainterPath(item.scenePos())
-                    try:
-                        is_dark = darkdetect.theme() == "Dark"
-                    except ImportError:
-                        is_dark = False
-
-                    pen: QPen = QPen(QColor("white"), 1, Qt.PenStyle.DashLine) if is_dark else QPen(
-                        QColor("black"), 1, Qt.PenStyle.DashLine)
+                    # try:
+                    #     is_dark = darkdetect.theme() == "Dark"
+                    # except ImportError:
+                    #     is_dark = False
+                    #
+                    # pen: QPen = QPen(QColor("white"), 1, Qt.PenStyle.DashLine) if is_dark else QPen(
+                    #     QColor("black"), 1, Qt.PenStyle.DashLine)
+                    pen: QPen = QPen(QColor("black"), 1, Qt.PenStyle.DashLine)
                     self.temp_line = self.addPath(path, pen)
                     return
                 else:
