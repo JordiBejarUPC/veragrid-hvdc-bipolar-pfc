@@ -3,6 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
+import gc
 import os
 import pathlib
 from typing import Union, List, Callable
@@ -825,6 +826,16 @@ class IoMain(ScenariosMain):
             self.save_file_thread_object.done_signal.connect(self.UNLOCK)
             self.save_file_thread_object.done_signal.connect(self.post_file_save)
 
+            # The cyclic garbage collector is process-global: whichever thread crosses the
+            # allocation threshold runs it. If it fires inside the save worker thread it will
+            # finalize orphaned Qt graphics objects (e.g. QGraphicsTextItem diagram labels)
+            # off the main thread, mutating the QGraphicsScene/QGraphicsView owned by the main
+            # thread and corrupting the heap -> segmentation fault when saving a model with
+            # diagrams. Disable automatic GC from the main thread now so no collection can run
+            # on the worker; it is re-enabled on the main thread in post_file_save(). Reference
+            # counting still frees non-cyclic garbage in the meantime.
+            gc.disable()
+
             # thread start
             self.save_file_thread_object.start()
 
@@ -842,6 +853,11 @@ class IoMain(ScenariosMain):
 
         :return: None.
         """
+        # Re-enable the cyclic GC that was disabled in save_file_now() before the worker
+        # thread started. This slot runs on the main thread (queued from done_signal), so any
+        # collection it now allows will finalize Qt objects on the correct thread.
+        gc.enable()
+
         if self.save_file_thread_object.logger is not None:
             if len(self.save_file_thread_object.logger) > 0:
                 dlg = LogsDialogue('Save file logger', self.save_file_thread_object.logger)
