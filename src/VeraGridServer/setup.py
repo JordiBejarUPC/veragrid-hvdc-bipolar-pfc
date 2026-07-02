@@ -12,13 +12,26 @@ https://github.com/pypa/sampleproject
 # Always prefer setuptools over distutils
 from pathlib import Path
 from setuptools import setup, find_packages
-
 from VeraGridServer.__version__ import __VeraGridServer_VERSION__
 
 description = 'VeraGrid is a Power Systems simulation program intended for professional use and research'
-SRC_ROOT = Path(__file__).resolve().parent
-REPO_ROOT = SRC_ROOT.parents[1]
-long_description = (REPO_ROOT / 'README.md').read_text(encoding='utf-8')
+
+
+def read_long_description() -> str:
+    src_root = Path(__file__).resolve().parent
+
+    for candidate in (
+        src_root / 'README.md',
+        src_root.parent / 'README.md',
+        src_root.parent.parent / 'README.md',
+    ):
+        if candidate.exists():
+            return candidate.read_text(encoding='utf-8')
+
+    return description
+
+
+long_description = read_long_description()
 
 pkgs_to_exclude = ['docs', 'research', 'tests', 'tutorials', 'VeraGridEngine']
 

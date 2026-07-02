@@ -7009,3 +7009,4 @@ class Ui_mainWindow(object):
         self.menuEvents.setTitle(QCoreApplication.translate("mainWindow", u"Events", None))
         self.toolBar.setWindowTitle(QCoreApplication.translate("mainWindow", u"toolBar", None))
     # retranslateUi
+

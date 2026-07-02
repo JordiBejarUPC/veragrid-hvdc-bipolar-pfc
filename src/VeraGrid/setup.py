@@ -12,18 +12,41 @@ https://github.com/pypa/sampleproject
 # Always prefer setuptools over distutils
 from pathlib import Path
 from setuptools import setup, find_packages
-
 from VeraGrid.__version__ import __VeraGrid_VERSION__
 
 description = 'VeraGrid is a Power Systems simulation program intended for professional use and research'
 
-SRC_ROOT = Path(__file__).resolve().parent
-REPO_ROOT = SRC_ROOT.parents[1]
-long_description = (REPO_ROOT / 'README.md').read_text(encoding='utf-8')
+
+def get_package_prefix() -> str:
+    src_root = Path(__file__).resolve().parent
+    if (src_root / 'VeraGrid' / '__init__.py').exists():
+        return 'VeraGrid.'
+
+    return ''
+
+
+def package_name(relative_name: str) -> str:
+    return get_package_prefix() + relative_name
+
+def read_long_description() -> str:
+    src_root = Path(__file__).resolve().parent
+
+    for candidate in (
+        src_root / 'README.md',
+        src_root.parent / 'README.md',
+        src_root.parent.parent / 'README.md',
+    ):
+        if candidate.exists():
+            return candidate.read_text(encoding='utf-8')
+
+    return description
+
+
+long_description = read_long_description()
 
 pkgs_to_exclude = ['docs', 'research', 'tests', 'tutorials', 'VeraGridEngine']
 
-packages = find_packages(exclude=pkgs_to_exclude)
+packages = find_packages(where=str(Path(__file__).resolve().parent), exclude=pkgs_to_exclude)
 
 # ... so we have to do the filtering ourselves
 packages2 = list()
@@ -38,9 +61,9 @@ for package in packages:
         packages2.append(package)
 
 package_data = {
-    'Gui.AiAgent.knowledge': ['*.md'],
-    'Gui.translations': ['*.qm'],
-    'data': [
+    package_name('Gui.AiAgent.knowledge'): ['*.md'],
+    package_name('Gui.translations'): ['*.qm'],
+    package_name('data'): [
         'cables.csv',
         'transformers.csv',
         'wires.csv',
