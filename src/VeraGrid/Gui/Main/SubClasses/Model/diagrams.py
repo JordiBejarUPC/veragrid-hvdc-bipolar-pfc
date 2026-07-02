@@ -2803,8 +2803,12 @@ class DiagramsMain(CompiledArraysMain):
                 f_name = str(os.path.join(self.project_directory, self.ui.grid_name_line_edit.text()))
 
                 # call dialog to select the file
-                filename, type_selected = QtWidgets.QFileDialog.getSaveFileName(self, 'Save image file',
-                                                                                f_name, files_types)
+                filename, type_selected = QtWidgets.QFileDialog.getSaveFileName(
+                    self,
+                    self.tr('Save image file'),
+                    f_name,
+                    self.tr(files_types),
+                )
 
                 if filename != "":
                     if 'svg' in type_selected:
@@ -2834,8 +2838,12 @@ class DiagramsMain(CompiledArraysMain):
                     f_name = str(os.path.join(self.project_directory, self.ui.grid_name_line_edit.text()))
 
                     # call dialog to select the file
-                    filename, type_selected = QtWidgets.QFileDialog.getSaveFileName(self, 'Save video file',
-                                                                                    f_name, files_types)
+                    filename, type_selected = QtWidgets.QFileDialog.getSaveFileName(
+                        self,
+                        self.tr('Save video file'),
+                        f_name,
+                        self.tr(files_types),
+                    )
 
                     if filename != "":
                         if type_selected == "MP4 (*.mp4)" and not filename.endswith('.mp4'):

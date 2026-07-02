@@ -2486,6 +2486,16 @@ class Ui_mainWindow(object):
 
         self.gridLayout.addWidget(self.label_24, 7, 0, 1, 2)
 
+        self.language_label = QLabel(self.frame_25)
+        self.language_label.setObjectName(u"language_label")
+
+        self.gridLayout.addWidget(self.language_label, 8, 0, 1, 2)
+
+        self.language_combo_box = QComboBox(self.frame_25)
+        self.language_combo_box.setObjectName(u"language_combo_box")
+
+        self.gridLayout.addWidget(self.language_combo_box, 8, 2, 1, 1)
+
         self.dark_mode_checkBox = QCheckBox(self.frame_25)
         self.dark_mode_checkBox.setObjectName(u"dark_mode_checkBox")
 
@@ -6343,6 +6353,7 @@ class Ui_mainWindow(object):
         self.engineComboBox.setToolTip(QCoreApplication.translate("mainWindow", u"Engine to be used when available", None))
 #endif // QT_CONFIG(tooltip)
         self.label_24.setText(QCoreApplication.translate("mainWindow", u"Engine", None))
+        self.language_label.setText(QCoreApplication.translate("mainWindow", u"Language", None))
         self.dark_mode_checkBox.setText(QCoreApplication.translate("mainWindow", u"Dark mode", None))
 #if QT_CONFIG(tooltip)
         self.settingsTabWidget.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>Settings for state estimation.</p></body></html>", None))
@@ -6998,4 +7009,3 @@ class Ui_mainWindow(object):
         self.menuEvents.setTitle(QCoreApplication.translate("mainWindow", u"Events", None))
         self.toolBar.setWindowTitle(QCoreApplication.translate("mainWindow", u"toolBar", None))
     # retranslateUi
-

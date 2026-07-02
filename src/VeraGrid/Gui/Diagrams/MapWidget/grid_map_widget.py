@@ -176,28 +176,36 @@ class SelectionDialog(QDialog):
 
     def __init__(self, branch: MAP_BRANCH_GRAPHIC_TYPES, vnom: float, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Waiting for Selection")
+        self.setWindowTitle(self.tr("Waiting for Selection"))
         self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
 
         layout = QVBoxLayout()
 
         # Add instructions
-        instruction_label = QLabel(f"Click on a substation to reconnect branch {branch.api_object.name}")
+        instruction_label = QLabel(
+            self.tr("Click on a substation to reconnect branch {branch_name}").format(
+                branch_name=branch.api_object.name,
+            )
+        )
         instruction_label.setWordWrap(True)
         layout.addWidget(instruction_label)
 
         # Add more detailed instructions
-        detail_label = QLabel(f"The substation should have a compatible voltage level ({vnom} kV)")
+        detail_label = QLabel(
+            self.tr("The substation should have a compatible voltage level ({voltage} kV)").format(
+                voltage=vnom,
+            )
+        )
         detail_label.setWordWrap(True)
         layout.addWidget(detail_label)
 
         # Add a status label that will be updated
-        self.status_label = QLabel("Waiting for selection...")
+        self.status_label = QLabel(self.tr("Waiting for selection..."))
         self.status_label.setWordWrap(True)
         layout.addWidget(self.status_label)
 
         # Add a cancel button
-        cancel_button = QPushButton("Cancel")
+        cancel_button = QPushButton(self.tr("Cancel"))
         cancel_button.clicked.connect(self.reject)
         layout.addWidget(cancel_button)
 
@@ -2322,8 +2330,8 @@ class GridMapWidget(BaseDiagramWidget):
         if len(selected_lines) != 1 or len(selected_substations) != 1:
             msg = QMessageBox()
             msg.setIcon(QMessageBox.Icon.Information)
-            msg.setText("Please select exactly one line and one substation.")
-            msg.setWindowTitle("Selection Error")
+            msg.setText(self.tr("Please select exactly one line and one substation."))
+            msg.setWindowTitle(self.tr("Selection Error"))
             msg.exec()
             return
 
@@ -2351,10 +2359,16 @@ class GridMapWidget(BaseDiagramWidget):
         if suitable_bus is None:
             msg = QMessageBox()
             msg.setIcon(QMessageBox.Icon.Warning)
-            msg.setText(f"No suitable voltage level ({vnom:.2f} kV) found in substation \"{substation_api.name}\".")
+            msg.setText(
+                self.tr("No suitable voltage level ({voltage:.2f} kV) found in substation \"{substation_name}\".").format(
+                    voltage=vnom,
+                    substation_name=substation_api.name,
+                )
+            )
             msg.setInformativeText(
-                "The line cannot be connected. Please ensure the target substation has a bus with a matching nominal voltage.")
-            msg.setWindowTitle("Connection Error")
+                self.tr("The line cannot be connected. Please ensure the target substation has a bus with a matching nominal voltage.")
+            )
+            msg.setWindowTitle(self.tr("Connection Error"))
             msg.exec()
             return
 
@@ -2902,10 +2916,27 @@ class GridMapWidget(BaseDiagramWidget):
         # Notify the user
         msg = QMessageBox()
         msg.setIcon(QMessageBox.Icon.Information)
-        msg.setText(f"T-joint connection created between {substation_api.name} and {line_api.name}.")
+        msg.setText(
+            self.tr("T-joint connection created between {substation_name} and {line_name}.").format(
+                substation_name=substation_api.name,
+                line_name=line_api.name,
+            )
+        )
         msg.setInformativeText(
-            f"Waypoint replaced with new substation '{new_substation.name}'.\nOriginal line split into two segments:\n- {line1.name}: {length1:.2f} km\n- {line2.name}: {length2:.2f} km\nNew connection line: {distance:.2f} km")
-        msg.setWindowTitle("Operation Successful")
+            self.tr("Waypoint replaced with new substation '{substation_name}'.\n"
+                    "Original line split into two segments:\n"
+                    "- {line1_name}: {length1:.2f} km\n"
+                    "- {line2_name}: {length2:.2f} km\n"
+                    "New connection line: {distance:.2f} km").format(
+                substation_name=new_substation.name,
+                line1_name=line1.name,
+                line2_name=line2.name,
+                length1=length1,
+                length2=length2,
+                distance=distance,
+            )
+        )
+        msg.setWindowTitle(self.tr("Operation Successful"))
         msg.exec()
 
     def change_line_connection(self):

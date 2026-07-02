@@ -117,10 +117,10 @@ class ConfigurationMain(ResultsMain):
         # plugins
         self.plugins_info = PluginsInfo()
 
-        # The language widgets live in the existing general-settings grid so the
-        # option is available in the main GUI without adding a separate settings page.
-        self.language_label: QtWidgets.QLabel = QtWidgets.QLabel(self.ui.frame_25)
-        self.language_combo_box: QtWidgets.QComboBox = QtWidgets.QComboBox(self.ui.frame_25)
+        # The language widgets are declared in MainWindow.ui and only need
+        # runtime population and signal wiring here.
+        self.language_label: QtWidgets.QLabel = self.ui.language_label
+        self.language_combo_box: QtWidgets.QComboBox = self.ui.language_combo_box
         self.create_language_controls()
 
         # check boxes
@@ -138,21 +138,10 @@ class ConfigurationMain(ResultsMain):
 
     def create_language_controls(self) -> None:
         """
-        Create the language selector embedded in the main settings grid.
-
-        The control is created in Python instead of editing the large generated
-        UI so the change stays localized and easier to maintain.
+        Initialize the language selector embedded in the main settings grid.
 
         :returns: None.
         """
-        self.language_label.setObjectName("language_label")
-        self.language_combo_box.setObjectName("language_combo_box")
-
-        # Reuse the existing two-column settings layout so the new control lines
-        # up with the rest of the general project settings.
-        self.ui.gridLayout.addWidget(self.language_label, 8, 0, 1, 2)
-        self.ui.gridLayout.addWidget(self.language_combo_box, 8, 2, 1, 1)
-
         self.refresh_language_combo_box_texts()
         self.language_combo_box.currentIndexChanged.connect(self.language_selection_changed)
 

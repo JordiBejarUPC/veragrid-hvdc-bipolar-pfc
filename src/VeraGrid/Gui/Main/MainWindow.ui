@@ -3797,6 +3797,16 @@
                 </property>
                </widget>
               </item>
+              <item row="8" column="0" colspan="2">
+               <widget class="QLabel" name="language_label">
+                <property name="text">
+                 <string>Language</string>
+                </property>
+               </widget>
+              </item>
+              <item row="8" column="2">
+               <widget class="QComboBox" name="language_combo_box"/>
+              </item>
               <item row="9" column="0" colspan="2">
                <widget class="QCheckBox" name="dark_mode_checkBox">
                 <property name="text">
