@@ -68,7 +68,12 @@ from VeraGrid.Gui.FileDialogues.PsseDialogue.psse_import import PsseImportDialog
 from VeraGrid.Gui.ProceduralGrid.procedural_grid import ProceduralGridWindow
 from VeraGrid.Gui.AiAgent.ai_chat_dialogue import AiChatDialogue, AiBackendState
 from VeraGrid.Gui.AiAgent.ai_backend import ProviderType
-from VeraGrid.Gui.i18n import ApplicationTranslator
+from VeraGrid.Gui.i18n import (
+    ActionShortcutState,
+    ApplicationTranslator,
+    collect_action_shortcut_states,
+    restore_action_shortcut_states,
+)
 from VeraGridEngine.IO.file_system import get_create_veragrid_folder
 from VeraGrid.Gui.general_dialogues import LogsDialogue
 
@@ -142,6 +147,9 @@ class BaseMainGui(QMainWindow):
         QMainWindow.__init__(self, parent)
         self.ui = Ui_mainWindow()
         self.ui.setupUi(self)
+        # Cache the source-language shortcuts once so language changes do not overwrite them
+        # with translated shortcut strings that Qt may parse differently or drop entirely.
+        self._action_shortcut_states: list[ActionShortcutState] = collect_action_shortcut_states(self)
 
         # Declare circuit
         # self.circuit: MultiCircuit = MultiCircuit()
@@ -347,6 +355,7 @@ class BaseMainGui(QMainWindow):
 
         if event.type() == QtCore.QEvent.Type.LanguageChange:
             self.ui.retranslateUi(self)
+            restore_action_shortcut_states(self, self._action_shortcut_states)
             self.refresh_runtime_translations()
         else:
             pass

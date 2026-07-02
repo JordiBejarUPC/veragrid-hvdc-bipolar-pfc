@@ -5,7 +5,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Iterable
 
-from PySide6.QtCore import QLibraryInfo, QLocale, QTranslator
+from PySide6.QtCore import QObject, QLibraryInfo, QLocale, QTranslator
+from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import QApplication
 
 from VeraGridEngine.IO.file_system import get_create_veragrid_folder
@@ -56,6 +57,25 @@ class InstalledTranslations:
         """
         self.app_translator: QTranslator | None = None
         self.qtbase_translator: QTranslator | None = None
+
+
+class ActionShortcutState:
+    """
+    Stable source-language shortcut snapshot for one QAction.
+    """
+
+    __slots__ = ("action_name", "shortcut_texts")
+
+    def __init__(self, action_name: str, shortcut_texts: list[str]) -> None:
+        """
+        Store one action shortcut definition.
+
+        :param action_name: QObject name of the QAction.
+        :param shortcut_texts: Shortcut sequences in portable text form.
+        :returns: None.
+        """
+        self.action_name: str = action_name
+        self.shortcut_texts: list[str] = shortcut_texts
 
 
 class ApplicationTranslator:
@@ -152,6 +172,82 @@ class ApplicationTranslator:
             self._installed_translations.qtbase_translator = None
         else:
             pass
+
+
+def collect_action_shortcut_states(parent: QObject) -> list[ActionShortcutState]:
+    """
+    Capture the source-defined shortcuts of every named action below one Qt object.
+
+    Qt Designer exports shortcuts as translatable strings. Some translated
+    catalogs change the sequence syntax enough for Qt to drop the shortcut on
+    retranslation, so the source values are captured once and later restored.
+
+    :param parent: Qt object owning the actions.
+    :returns: Saved shortcut states for actions that define shortcuts.
+    """
+    action_states: list[ActionShortcutState] = list()
+    action: QAction
+
+    for action in parent.findChildren(QAction):
+        shortcut_texts: list[str] = list()
+        shortcut: QKeySequence
+
+        if len(action.objectName()) == 0:
+            pass
+        else:
+            for shortcut in action.shortcuts():
+                shortcut_text: str = shortcut.toString(QKeySequence.SequenceFormat.PortableText)
+                if len(shortcut_text) > 0:
+                    shortcut_texts.append(shortcut_text)
+                else:
+                    pass
+
+            if len(shortcut_texts) > 0:
+                action_states.append(
+                    ActionShortcutState(
+                        action_name=action.objectName(),
+                        shortcut_texts=shortcut_texts,
+                    )
+                )
+            else:
+                pass
+
+    return action_states
+
+
+def restore_action_shortcut_states(
+    parent: QObject,
+    action_states: list[ActionShortcutState],
+) -> None:
+    """
+    Restore previously captured source shortcuts after a UI retranslation.
+
+    :param parent: Qt object owning the actions.
+    :param action_states: Source shortcut states to restore.
+    :returns: None.
+    """
+    action_state: ActionShortcutState
+
+    for action_state in action_states:
+        action: QAction | None = parent.findChild(QAction, action_state.action_name)
+        shortcut_text: str
+        shortcuts: list[QKeySequence] = list()
+
+        if action is None:
+            pass
+        else:
+            for shortcut_text in action_state.shortcut_texts:
+                shortcuts.append(
+                    QKeySequence.fromString(
+                        shortcut_text,
+                        QKeySequence.SequenceFormat.PortableText,
+                    )
+                )
+
+            if len(shortcuts) > 0:
+                action.setShortcuts(shortcuts)
+            else:
+                pass
 
 
 def get_translations_directory() -> Path:
