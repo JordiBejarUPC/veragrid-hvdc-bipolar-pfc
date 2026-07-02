@@ -2707,7 +2707,9 @@ def build_dynamics_tree_model(tree_data: Dict[DeviceType, Dict[ALL_DEV_TYPES, Dy
     model: DynamicsDeviceTreeModel = DynamicsDeviceTreeModel(var_role=var_role,
                                                              mime_type=mime_type,
                                                              state_key_role=state_key_role)
-    model.setHorizontalHeaderLabels(["Dynamics results"])
+    model.setHorizontalHeaderLabels(
+        [QtCore.QCoreApplication.translate("DynamicsResultsHandler", "Dynamics results")]
+    )
 
     # The invisible root is Qt's insertion point for first-level tree nodes.
     root_item: QtGui.QStandardItem = model.invisibleRootItem()
@@ -4219,7 +4221,9 @@ class DynamicsResultsHandler:
 
         # The Qt model is treated as a projection of the handler state so every CRUD operation remains explicit.
         self.plots_model.clear()
-        self.plots_model.setHorizontalHeaderLabels(["Dynamic plots"])
+        self.plots_model.setHorizontalHeaderLabels(
+            [QtCore.QCoreApplication.translate("DynamicsResultsHandler", "Dynamic plots")]
+        )
 
         root_item: QtGui.QStandardItem = self.plots_model.invisibleRootItem()
         group: DynamicsPlotGroup

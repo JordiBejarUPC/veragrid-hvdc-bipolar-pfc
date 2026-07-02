@@ -78,7 +78,9 @@ class DataBaseTableMain(DiagramsMain):
         )
         self.ui.goToTsPointComboBox.setModel(ts_search_points_mdl)
 
-        self.ui.smart_search_lineEdit.setPlaceholderText("Type the object name or a smart filter expression ...")
+        self.ui.smart_search_lineEdit.setPlaceholderText(
+            self.tr("Type the object name or a smart filter expression ...")
+        )
 
         self.prop_filter_dict, prop_filter_mdl = gf.enums_to_icons_model(
             [

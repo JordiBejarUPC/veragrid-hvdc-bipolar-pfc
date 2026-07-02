@@ -261,7 +261,7 @@ class DiagramsMain(CompiledArraysMain):
         if 'fivethirtyeight' in plt.style.available:
             self.ui.plt_style_comboBox.setCurrentText('fivethirtyeight')
 
-        self.ui.diagramSearchLineEdit.setPlaceholderText("Type to search in the current diagram")
+        self.ui.diagramSearchLineEdit.setPlaceholderText(self.tr("Type to search in the current diagram"))
 
         # configure matplotlib for pandas time series
         register_matplotlib_converters()
@@ -417,8 +417,9 @@ class DiagramsMain(CompiledArraysMain):
 
                 # if the ask, checkbox is checked, then ask
                 if self.ui.ask_before_appliying_layout_checkBox.isChecked():
-                    reply = QtWidgets.QMessageBox.question(self, 'Message',
-                                                           'Are you sure that you want to try an automatic layout?',
+                    reply = QtWidgets.QMessageBox.question(self,
+                                                           self.tr("Message"),
+                                                           self.tr("Are you sure that you want to try an automatic layout?"),
                                                            QtWidgets.QMessageBox.StandardButton.Yes,
                                                            QtWidgets.QMessageBox.StandardButton.No)
 
