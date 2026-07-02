@@ -452,12 +452,17 @@ class IoMain(ScenariosMain):
                     # scenario. Reassigning through self.circuit would rebuild a fresh
                     # single-root MultiVerse and discard the loaded multiverse information.
                     self.multiverse = self.open_file_thread_object.multiverse
-                    self.ui.activeScenarioLabel.setText(f"Current: {self.circuit.name}")
+                    if self.circuit is not None:
+                        self.ui.activeScenarioLabel.setText(f"Current: {self.circuit.name}")
                     self.file_name = self.open_file_thread_object.file_name
 
                 elif self.open_file_thread_object.circuit is not None:
                     self.circuit = self.open_file_thread_object.circuit
                     self.file_name = self.open_file_thread_object.file_name
+
+                if self.circuit is None:
+                    self.show_error_toast("No grid to load :(")
+                    return
 
                 if self.circuit.has_diagrams():
                     # create the diagrams that came with the file

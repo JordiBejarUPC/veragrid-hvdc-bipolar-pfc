@@ -380,8 +380,11 @@ class BaseMainGui(QMainWindow):
 
     @circuit.setter
     def circuit(self, val: MultiCircuit):
-        self.multiverse.current_model = val
-        self.multiverse.base_model = val
+        if isinstance(val, MultiCircuit):
+            self.multiverse.current_model = val
+            self.multiverse.base_model = val
+        else:
+            print("Setting circuit with None...")
 
     @property
     def file_name(self) -> str:
