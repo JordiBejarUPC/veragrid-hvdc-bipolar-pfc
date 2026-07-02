@@ -5,32 +5,32 @@
     <message>
         <location filename="../AboutDialogue/about_gui.ui" line="14" />
         <source>About VeraGrid</source>
-        <translation>About VeraGrid</translation>
+        <translation>Σχετικά με το VeraGrid</translation>
     </message>
     <message>
         <location filename="../AboutDialogue/about_gui.ui" line="40" />
         <source>About</source>
-        <translation>About</translation>
+        <translation>Για</translation>
     </message>
     <message>
         <location filename="../AboutDialogue/about_gui.ui" line="49" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align="justify"&gt;&lt;span style=" font-weight:600;"&gt;VeraGrid&lt;/span&gt; has been carefully crafted since 2015 to serve as a platform for research and consultancy. Visit &lt;a href="https://www.eroots.tech/"&gt;&lt;span style=" text-decoration: underline; color:#26a269;"&gt;eRoots&lt;/span&gt;&lt;/a&gt; for more details. The source of VeraGrid can be found &lt;a href="https://github.com/SanPen/VeraGrid"&gt;&lt;span style=" text-decoration: underline; color:#26a269;"&gt;here.&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align="justify"&gt;&lt;span style=" font-weight:600;"&gt;VeraGrid&lt;/span&gt; has been carefully crafted since 2015 to serve as a platform for research and consultancy. Visit &lt;a href="https://www.eroots.tech/"&gt;&lt;span style=" text-decoration: underline; color:#26a269;"&gt;eRoots&lt;/span&gt;&lt;/a&gt; for more details. The source of VeraGrid can be found &lt;a href="https://github.com/SanPen/VeraGrid"&gt;&lt;span style=" text-decoration: underline; color:#26a269;"&gt;here.&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align="justify"&gt;&lt;span style=" font-weight:600;"&gt;VeraGrid&lt;/span&gt;έχει δημιουργηθεί προσεκτικά από το 2015 για να χρησιμεύσει ως πλατφόρμα για έρευνα και παροχή συμβουλών. Επίσκεψη&lt;a href="https://www.eroots.tech/"&gt;&lt;span style=" text-decoration: underline; color:#26a269;"&gt;eRoots&lt;/span&gt;&lt;/a&gt;για περισσότερες λεπτομέρειες. Μπορείτε να βρείτε την πηγή του VeraGrid&lt;a href="https://github.com/SanPen/VeraGrid"&gt;&lt;span style=" text-decoration: underline; color:#26a269;"&gt;εδώ.&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../AboutDialogue/about_gui.ui" line="112" />
         <source>version</source>
-        <translation>version</translation>
+        <translation>εκδοχή</translation>
     </message>
     <message>
         <location filename="../AboutDialogue/about_gui.ui" line="128" />
         <source>Copyright</source>
-        <translation>Copyright</translation>
+        <translation>Πνευματική ιδιοκτησία</translation>
     </message>
     <message>
         <location filename="../AboutDialogue/about_gui.ui" line="164" />
         <source>Contributors</source>
-        <translation>Contributors</translation>
+        <translation>Συνεισφέροντες</translation>
     </message>
     <message>
         <location filename="../AboutDialogue/about_gui.ui" line="170" />
@@ -40,32 +40,32 @@
     <message>
         <location filename="../AboutDialogue/about_gui.ui" line="184" />
         <source>Libraries</source>
-        <translation>Libraries</translation>
+        <translation>Βιβλιοθήκες</translation>
     </message>
     <message>
         <location filename="../AboutDialogue/about_gui.ui" line="190" />
         <source>Copy the table</source>
-        <translation>Copy the table</translation>
+        <translation>Αντιγράψτε τον πίνακα</translation>
     </message>
     <message>
         <location filename="../AboutDialogue/about_gui.ui" line="210" />
         <source>Update VeraGrid. If you are on windows don't do this.</source>
-        <translation>Update VeraGrid. If you are on windows don't do this.</translation>
+        <translation>Ενημέρωση VeraGrid. Εάν είστε σε Windows μην το κάνετε αυτό.</translation>
     </message>
     <message>
         <location filename="../AboutDialogue/about_gui.ui" line="254" />
         <source>Optional libraries</source>
-        <translation>Optional libraries</translation>
+        <translation>Προαιρετικές βιβλιοθήκες</translation>
     </message>
     <message>
         <location filename="../AboutDialogue/about_gui.ui" line="264" />
         <source>License</source>
-        <translation>License</translation>
+        <translation>Αδεια</translation>
     </message>
     <message>
         <location filename="../AboutDialogue/about_gui.ui" line="270" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align="justify"&gt;This program comes with absolutelly no warranty. This is free software, and you are welcome to redistribute it under the conditions set by the license. VeraGrid is licensed under the &lt;a href="https://www.mozilla.org/en-US/MPL/2.0/"&gt;&lt;span style=" text-decoration: underline; color:#26a269;"&gt;Mozilla Public License V2&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align="justify"&gt;This program comes with absolutelly no warranty. This is free software, and you are welcome to redistribute it under the conditions set by the license. VeraGrid is licensed under the &lt;a href="https://www.mozilla.org/en-US/MPL/2.0/"&gt;&lt;span style=" text-decoration: underline; color:#26a269;"&gt;Mozilla Public License V2&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align="justify"&gt;Αυτό το πρόγραμμα έρχεται με καμία απολύτως εγγύηση. Αυτό είναι δωρεάν λογισμικό και μπορείτε να το αναδιανείμετε υπό τους όρους που ορίζονται από την άδεια χρήσης. Το VeraGrid αδειοδοτείται βάσει του&lt;a href="https://www.mozilla.org/en-US/MPL/2.0/"&gt;&lt;span style=" text-decoration: underline; color:#26a269;"&gt;Δημόσια άδεια Mozilla V2&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../AboutDialogue/about_gui.ui" line="291" />
@@ -92,26 +92,24 @@ li.checked::marker { content: "\2612"; }
 &lt;p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;&lt;span style=" font-size:11pt;"&gt;| networkx     | BSD                                      |&lt;/span&gt;&lt;/p&gt;
 &lt;p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;&lt;span style=" font-size:11pt;"&gt;+--------------+------------------------------------------+&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0//EN" "http://www.w3.org/TR/REC-html40/strict.dtd"&gt;
-&lt;html&gt;&lt;head&gt;&lt;meta name="qrichtext" content="1" /&gt;&lt;meta charset="utf-8" /&gt;&lt;style type="text/css"&gt;
-p, li { white-space: pre-wrap; }
+&lt;html&gt;&lt;head&gt;&lt;meta name="qrichtext" content="1" /&gt;&lt;meta charset="utf-8" /&gt;&lt;style type="text/css"&gt;p, li { white-space: pre-wrap; }
 hr { height: 1px; border-width: 0; }
-li.unchecked::marker { content: "\2610"; }
-li.checked::marker { content: "\2612"; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=" font-family:'Cousine'; font-size:10pt; font-weight:400; font-style:normal;"&gt;
+li.μη επιλεγμένο::marker { content: "\2610"; }
+li.checked::marker { content: "\2612"; }&lt;/style&gt;&lt;/head&gt;&lt;body style=" font-family:'Cousine'; font-size:10pt; font-weight:400; font-style:normal;"&gt;
 &lt;p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;&lt;span style=" font-size:11pt;"&gt;+==============+==========================================+&lt;/span&gt;&lt;/p&gt;
-&lt;p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;&lt;span style=" font-size:11pt;"&gt;| Package      | License                                  |&lt;/span&gt;&lt;/p&gt;
+&lt;p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;&lt;span style=" font-size:11pt;"&gt;| Πακέτο | Άδεια |&lt;/span&gt;&lt;/p&gt;
 &lt;p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;&lt;span style=" font-size:11pt;"&gt;+==============+==========================================+&lt;/span&gt;&lt;/p&gt;
-&lt;p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;&lt;span style=" font-size:11pt;"&gt;| setuptools   | MIT                                      |&lt;/span&gt;&lt;/p&gt;
+&lt;p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;&lt;span style=" font-size:11pt;"&gt;| ρυθμιστικά εργαλεία | MIT |&lt;/span&gt;&lt;/p&gt;
 &lt;p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;&lt;span style=" font-size:11pt;"&gt;+--------------+------------------------------------------+&lt;/span&gt;&lt;/p&gt;
-&lt;p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;&lt;span style=" font-size:11pt;"&gt;| wheel        | MIT                                      |&lt;/span&gt;&lt;/p&gt;
+&lt;p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;&lt;span style=" font-size:11pt;"&gt;| τροχός | MIT |&lt;/span&gt;&lt;/p&gt;
 &lt;p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;&lt;span style=" font-size:11pt;"&gt;+--------------+------------------------------------------+&lt;/span&gt;&lt;/p&gt;
-&lt;p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;&lt;span style=" font-size:11pt;"&gt;| PySide6      | LGPL                                     |&lt;/span&gt;&lt;/p&gt;
+&lt;p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;&lt;span style=" font-size:11pt;"&gt;| PySide6 | LGPL |&lt;/span&gt;&lt;/p&gt;
 &lt;p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;&lt;span style=" font-size:11pt;"&gt;+--------------+------------------------------------------+&lt;/span&gt;&lt;/p&gt;
-&lt;p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;&lt;span style=" font-size:11pt;"&gt;| numpy        | BSD                                      |&lt;/span&gt;&lt;/p&gt;
+&lt;p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;&lt;span style=" font-size:11pt;"&gt;| μουντός | BSD |&lt;/span&gt;&lt;/p&gt;
 &lt;p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;&lt;span style=" font-size:11pt;"&gt;+--------------+------------------------------------------+&lt;/span&gt;&lt;/p&gt;
-&lt;p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;&lt;span style=" font-size:11pt;"&gt;| scipy        | BSD                                      |&lt;/span&gt;&lt;/p&gt;
+&lt;p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;&lt;span style=" font-size:11pt;"&gt;| scipy | BSD |&lt;/span&gt;&lt;/p&gt;
 &lt;p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;&lt;span style=" font-size:11pt;"&gt;+--------------+------------------------------------------+&lt;/span&gt;&lt;/p&gt;
-&lt;p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;&lt;span style=" font-size:11pt;"&gt;| networkx     | BSD                                      |&lt;/span&gt;&lt;/p&gt;
+&lt;p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;&lt;span style=" font-size:11pt;"&gt;| δίκτυοx | BSD |&lt;/span&gt;&lt;/p&gt;
 &lt;p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;&lt;span style=" font-size:11pt;"&gt;+--------------+------------------------------------------+&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
 </context>
@@ -120,123 +118,123 @@ li.checked::marker { content: "\2612"; }
     <message>
         <location filename="../AiAgent/ai_chat_gui.ui" line="14" />
         <source>AI dialogue</source>
-        <translation>AI dialogue</translation>
+        <translation>Διάλογος AI</translation>
     </message>
     <message>
         <location filename="../AiAgent/ai_chat_gui.ui" line="36" />
         <source>Dialogue</source>
-        <translation>Dialogue</translation>
+        <translation>Διάλογος</translation>
     </message>
     <message>
         <location filename="../AiAgent/ai_chat_gui.ui" line="141" />
         <source>Ask about the active VeraGrid project, the selected study or the current network model.</source>
-        <translation>Ask about the active VeraGrid project, the selected study or the current network model.</translation>
+        <translation>Ρωτήστε για το ενεργό έργο VeraGrid, την επιλεγμένη μελέτη ή το τρέχον μοντέλο δικτύου.</translation>
     </message>
     <message>
         <location filename="../AiAgent/ai_chat_gui.ui" line="173" />
         <source>Clear chat</source>
-        <translation>Clear chat</translation>
+        <translation>Εκκαθάριση συνομιλίας</translation>
     </message>
     <message>
         <location filename="../AiAgent/ai_chat_gui.ui" line="186" />
         <source>Ready.</source>
-        <translation>Ready.</translation>
+        <translation>Ετοιμος.</translation>
     </message>
     <message>
         <location filename="../AiAgent/ai_chat_gui.ui" line="196" />
         <source>Send</source>
-        <translation>Send</translation>
+        <translation>Στέλνω</translation>
     </message>
     <message>
         <location filename="../AiAgent/ai_chat_gui.ui" line="207" />
         <source>Settings</source>
-        <translation>Settings</translation>
+        <translation>Ρυθμίσεις</translation>
     </message>
     <message>
         <location filename="../AiAgent/ai_chat_gui.ui" line="219" />
         <source>Local AI</source>
-        <translation>Local AI</translation>
+        <translation>Τοπικό AI</translation>
     </message>
     <message>
         <location filename="../AiAgent/ai_chat_gui.ui" line="248" />
         <source>/path/to/model.gguf or /path/to/models</source>
-        <translation>/path/to/model.gguf or /path/to/models</translation>
+        <translation>/path/to/model.gguf ή /path/to/models</translation>
     </message>
     <message>
         <location filename="../AiAgent/ai_chat_gui.ui" line="274" />
         <source>Local AI settings</source>
-        <translation>Local AI settings</translation>
+        <translation>Τοπικές ρυθμίσεις AI</translation>
     </message>
     <message>
         <location filename="../AiAgent/ai_chat_gui.ui" line="284" />
         <source>Scan</source>
-        <translation>Scan</translation>
+        <translation>Σάρωση</translation>
     </message>
     <message>
         <location filename="../AiAgent/ai_chat_gui.ui" line="291" />
         <source>GGUF model</source>
-        <translation>GGUF model</translation>
+        <translation>Μοντέλο GGUF</translation>
     </message>
     <message>
         <location filename="../AiAgent/ai_chat_gui.ui" line="298" />
         <source>Model path</source>
-        <translation>Model path</translation>
+        <translation>Μοντέλο διαδρομής</translation>
     </message>
     <message>
         <location filename="../AiAgent/ai_chat_gui.ui" line="305" />
         <location filename="../AiAgent/ai_chat_gui.ui" line="567" />
         <source>Timeout [s]</source>
-        <translation>Timeout [s]</translation>
+        <translation>Χρονικό όριο [s]</translation>
     </message>
     <message>
         <location filename="../AiAgent/ai_chat_gui.ui" line="312" />
         <source>Context tokens</source>
-        <translation>Context tokens</translation>
+        <translation>Διακριτικά περιβάλλοντος</translation>
     </message>
     <message>
         <location filename="../AiAgent/ai_chat_gui.ui" line="335" />
         <source>Completion tokens</source>
-        <translation>Completion tokens</translation>
+        <translation>Μαρκάρια ολοκλήρωσης</translation>
     </message>
     <message>
         <location filename="../AiAgent/ai_chat_gui.ui" line="358" />
         <source>GPU layers</source>
-        <translation>GPU layers</translation>
+        <translation>Επίπεδα GPU</translation>
     </message>
     <message>
         <location filename="../AiAgent/ai_chat_gui.ui" line="378" />
         <source>Temperature</source>
-        <translation>Temperature</translation>
+        <translation>Θερμοκρασία</translation>
     </message>
     <message>
         <location filename="../AiAgent/ai_chat_gui.ui" line="404" />
         <source>Top p</source>
-        <translation>Top p</translation>
+        <translation>Κορυφή σελ</translation>
     </message>
     <message>
         <location filename="../AiAgent/ai_chat_gui.ui" line="430" />
         <source>History messages</source>
-        <translation>History messages</translation>
+        <translation>Μηνύματα ιστορίας</translation>
     </message>
     <message>
         <location filename="../AiAgent/ai_chat_gui.ui" line="450" />
         <source>History chars</source>
-        <translation>History chars</translation>
+        <translation>Χαρακτήρες ιστορίας</translation>
     </message>
     <message>
         <location filename="../AiAgent/ai_chat_gui.ui" line="473" />
         <source>Grounding chars</source>
-        <translation>Grounding chars</translation>
+        <translation>Χαρακτήρες γείωσης</translation>
     </message>
     <message>
         <location filename="../AiAgent/ai_chat_gui.ui" line="505" />
         <source>Remote AI</source>
-        <translation>Remote AI</translation>
+        <translation>Τηλεχειριστήριο AI</translation>
     </message>
     <message>
         <location filename="../AiAgent/ai_chat_gui.ui" line="511" />
         <source>API key</source>
-        <translation>API key</translation>
+        <translation>Κλειδί API</translation>
     </message>
     <message>
         <location filename="../AiAgent/ai_chat_gui.ui" line="550" />
@@ -246,47 +244,47 @@ li.checked::marker { content: "\2612"; }
     <message>
         <location filename="../AiAgent/ai_chat_gui.ui" line="560" />
         <source>Leave empty for unauthenticated endpoints</source>
-        <translation>Leave empty for unauthenticated endpoints</translation>
+        <translation>Αφήστε κενό για μη επαληθευμένα τελικά σημεία</translation>
     </message>
     <message>
         <location filename="../AiAgent/ai_chat_gui.ui" line="574" />
         <source>API provider</source>
-        <translation>API provider</translation>
+        <translation>Πάροχος API</translation>
     </message>
     <message>
         <location filename="../AiAgent/ai_chat_gui.ui" line="581" />
         <source>Model</source>
-        <translation>Model</translation>
+        <translation>Μοντέλο</translation>
     </message>
     <message>
         <location filename="../AiAgent/ai_chat_gui.ui" line="598" />
         <source>API AI settings</source>
-        <translation>API AI settings</translation>
+        <translation>Ρυθμίσεις API AI</translation>
     </message>
     <message>
         <location filename="../AiAgent/ai_chat_gui.ui" line="605" />
         <source>Base URL</source>
-        <translation>Base URL</translation>
+        <translation>Βασική διεύθυνση URL</translation>
     </message>
     <message>
         <location filename="../AiAgent/ai_chat_gui.ui" line="615" />
         <source>Refresh</source>
-        <translation>Refresh</translation>
+        <translation>Φρεσκάρω</translation>
     </message>
 </context>
 <context>
     <name>AiChatDialogue</name>
     <message>
         <source>VeraGrid AI dialogue</source>
-        <translation>VeraGrid AI dialogue</translation>
+        <translation>Διάλογος VeraGrid AI</translation>
     </message>
     <message>
         <source>Pick or type a GGUF file name</source>
-        <translation>Pick or type a GGUF file name</translation>
+        <translation>Επιλέξτε ή πληκτρολογήστε ένα όνομα αρχείου GGUF</translation>
     </message>
     <message>
         <source>Provider model name</source>
-        <translation>Provider model name</translation>
+        <translation>Όνομα μοντέλου παρόχου</translation>
     </message>
     <message>
         <source>VeraGrid AI</source>
@@ -294,75 +292,75 @@ li.checked::marker { content: "\2612"; }
     </message>
     <message>
         <source>Scan the configured path for GGUF files.</source>
-        <translation>Scan the configured path for GGUF files.</translation>
+        <translation>Σαρώστε τη διαμορφωμένη διαδρομή για αρχεία GGUF.</translation>
     </message>
     <message>
         <source>API key</source>
-        <translation>API key</translation>
+        <translation>Κλειδί API</translation>
     </message>
     <message>
         <source>Leave empty for unauthenticated endpoints</source>
-        <translation>Leave empty for unauthenticated endpoints</translation>
+        <translation>Αφήστε κενό για μη επαληθευμένα τελικά σημεία</translation>
     </message>
     <message>
         <source>Query the configured backend for models.</source>
-        <translation>Query the configured backend for models.</translation>
+        <translation>Ερώτηση για το διαμορφωμένο backend για μοντέλα.</translation>
     </message>
     <message>
         <source>Type a message before sending.</source>
-        <translation>Type a message before sending.</translation>
+        <translation>Πληκτρολογήστε ένα μήνυμα πριν στείλετε.</translation>
     </message>
     <message>
         <source>Resolve the pending tool approval or clear the chat first.</source>
-        <translation>Resolve the pending tool approval or clear the chat first.</translation>
+        <translation>Επιλύστε την εκκρεμή έγκριση του εργαλείου ή διαγράψτε πρώτα τη συνομιλία.</translation>
     </message>
     <message>
         <source>Stopping AI turn...</source>
-        <translation>Stopping AI turn...</translation>
+        <translation>Διακοπή στροφής AI...</translation>
     </message>
     <message>
         <source>There is no running AI turn to stop.</source>
-        <translation>There is no running AI turn to stop.</translation>
+        <translation>Δεν υπάρχει στροφή AI για διακοπή.</translation>
     </message>
     <message>
         <source>Running simulation and analyzing the results...</source>
-        <translation>Running simulation and analyzing the results...</translation>
+        <translation>Εκτέλεση προσομοίωσης και ανάλυση των αποτελεσμάτων...</translation>
     </message>
     <message>
         <source>There is no pending tool call to approve.</source>
-        <translation>There is no pending tool call to approve.</translation>
+        <translation>Δεν υπάρχει κλήση εργαλείου σε εκκρεμότητα για έγκριση.</translation>
     </message>
     <message>
         <source>Wait for the current AI turn to finish.</source>
-        <translation>Wait for the current AI turn to finish.</translation>
+        <translation>Περιμένετε να τελειώσει η τρέχουσα στροφή AI.</translation>
     </message>
     <message>
         <source>Running AI turn...</source>
-        <translation>Running AI turn...</translation>
+        <translation>Εκτέλεση στροφής AI...</translation>
     </message>
     <message>
         <source>Generating response</source>
-        <translation>Generating response</translation>
+        <translation>Δημιουργία ανταπόκρισης</translation>
     </message>
     <message>
         <source>Running AI turn</source>
-        <translation>Running AI turn</translation>
+        <translation>Εκτέλεση στροφής AI</translation>
     </message>
     <message>
         <source>Stop</source>
-        <translation>Stop</translation>
+        <translation>Στάση</translation>
     </message>
     <message>
         <source>Send</source>
-        <translation>Send</translation>
+        <translation>Στέλνω</translation>
     </message>
     <message>
         <source>You</source>
-        <translation>You</translation>
+        <translation>Εσείς</translation>
     </message>
     <message>
         <source>Tool</source>
-        <translation>Tool</translation>
+        <translation>Εργαλείο</translation>
     </message>
 </context>
 <context>
@@ -375,27 +373,27 @@ li.checked::marker { content: "\2612"; }
     <message>
         <location filename="../DynamicModelEditor/block_editor.ui" line="116" />
         <source>Library</source>
-        <translation>Library</translation>
+        <translation>Βιβλιοθήκη</translation>
     </message>
     <message>
         <location filename="../DynamicModelEditor/block_editor.ui" line="155" />
         <source>Search basic blocks</source>
-        <translation>Search basic blocks</translation>
+        <translation>Αναζήτηση βασικών μπλοκ</translation>
     </message>
     <message>
         <location filename="../DynamicModelEditor/block_editor.ui" line="181" />
         <source>Variables</source>
-        <translation>Variables</translation>
+        <translation>Μεταβλητές</translation>
     </message>
     <message>
         <location filename="../DynamicModelEditor/block_editor.ui" line="215" />
         <source>Parameters</source>
-        <translation>Parameters</translation>
+        <translation>Παράμετροι</translation>
     </message>
     <message>
         <location filename="../DynamicModelEditor/block_editor.ui" line="249" />
         <source>Equations</source>
-        <translation>Equations</translation>
+        <translation>Εξισώσεις</translation>
     </message>
 </context>
 <context>
@@ -403,22 +401,22 @@ li.checked::marker { content: "\2612"; }
     <message>
         <location filename="../CatalogueElementsDialogue/catalogue_elements_gui.ui" line="6" />
         <source>Add catalogue elements</source>
-        <translation>Add catalogue elements</translation>
+        <translation>Προσθήκη στοιχείων καταλόγου</translation>
     </message>
     <message>
         <location filename="../CatalogueElementsDialogue/catalogue_elements_gui.ui" line="18" />
         <source>Select the catalogue elements to add</source>
-        <translation>Select the catalogue elements to add</translation>
+        <translation>Επιλέξτε τα στοιχεία του καταλόγου που θέλετε να προσθέσετε</translation>
     </message>
     <message>
         <location filename="../CatalogueElementsDialogue/catalogue_elements_gui.ui" line="46" />
         <source>Select all</source>
-        <translation>Select all</translation>
+        <translation>Επιλέξτε όλα</translation>
     </message>
     <message>
         <location filename="../CatalogueElementsDialogue/catalogue_elements_gui.ui" line="53" />
         <source>Select none</source>
-        <translation>Select none</translation>
+        <translation>Επιλέξτε κανένα</translation>
     </message>
 </context>
 <context>
@@ -426,57 +424,57 @@ li.checked::marker { content: "\2612"; }
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_export_gui.ui" line="14" />
         <source>CGMES Export</source>
-        <translation>CGMES Export</translation>
+        <translation>CGMES Εξαγωγή</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_export_gui.ui" line="35" />
         <source>Profiles to export</source>
-        <translation>Profiles to export</translation>
+        <translation>Προφίλ προς εξαγωγή</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_export_gui.ui" line="101" />
         <source>Select the CGMES boundary set (single zip file)</source>
-        <translation>Select the CGMES boundary set (single zip file)</translation>
+        <translation>Επιλέξτε το σύνολο ορίων CGMES (ένα αρχείο zip)</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_export_gui.ui" line="104" />
         <source>Select</source>
-        <translation>Select</translation>
+        <translation>Επιλέγω</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_export_gui.ui" line="111" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If active the CGMEs mapping will be:&lt;/p&gt;&lt;p&gt;GeographicalRegion &amp;lt;-&amp;gt; Area&lt;/p&gt;&lt;p&gt;SubGeographicalRegion &amp;lt;-&amp;gt; Zone&lt;/p&gt;&lt;p&gt;Otherwise:&lt;/p&gt;&lt;p&gt;GeographicalRegion &amp;lt;-&amp;gt; Country&lt;/p&gt;&lt;p&gt;SubGeographicalRegion &amp;lt;-&amp;gt; Community&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If active the CGMEs mapping will be:&lt;/p&gt;&lt;p&gt;GeographicalRegion &amp;lt;-&amp;gt; Area&lt;/p&gt;&lt;p&gt;SubGeographicalRegion &amp;lt;-&amp;gt; Zone&lt;/p&gt;&lt;p&gt;Otherwise:&lt;/p&gt;&lt;p&gt;GeographicalRegion &amp;lt;-&amp;gt; Country&lt;/p&gt;&lt;p&gt;SubGeographicalRegion &amp;lt;-&amp;gt; Community&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Εάν είναι ενεργή, η αντιστοίχιση CGME θα είναι:&lt;/p&gt;&lt;p&gt;GeographicalRegion &lt;-&gt; Περιοχή&lt;/p&gt;&lt;p&gt;SubGeographicalRegion &lt;-&gt; Ζώνη&lt;/p&gt;&lt;p&gt;Αλλιώς:&lt;/p&gt;&lt;p&gt;GeographicalRegion &lt;-&gt; Χώρα&lt;/p&gt;&lt;p&gt;SubGeographicalRegion &lt;-&gt; Κοινότητα&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_export_gui.ui" line="114" />
         <source>Map regions like raw files</source>
-        <translation>Map regions like raw files</translation>
+        <translation>Χαρτογραφήστε περιοχές όπως ακατέργαστα αρχεία</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_export_gui.ui" line="121" />
         <source>One file per profile</source>
-        <translation>One file per profile</translation>
+        <translation>Ένα αρχείο ανά προφίλ</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_export_gui.ui" line="128" />
         <source>Export version</source>
-        <translation>Export version</translation>
+        <translation>Έκδοση εξαγωγής</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_export_gui.ui" line="142" />
         <source>Export mode</source>
-        <translation>Export mode</translation>
+        <translation>Λειτουργία εξαγωγής</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_export_gui.ui" line="152" />
         <source>Time slot</source>
-        <translation>Time slot</translation>
+        <translation>Χρονική θυρίδα</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_export_gui.ui" line="172" />
         <source>Snapshot</source>
-        <translation>Snapshot</translation>
+        <translation>Στιγμιότυπο</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_export_gui.ui" line="221" />
@@ -486,22 +484,22 @@ li.checked::marker { content: "\2612"; }
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_export_gui.ui" line="228" />
         <source>Boundary set</source>
-        <translation>Boundary set</translation>
+        <translation>Σύνολο ορίων</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_export_gui.ui" line="235" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Converters and DC lines in CGMES are attempted to be converted to the simplified HvdcLine objects in VeraGrid&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Converters and DC lines in CGMES are attempted to be converted to the simplified HvdcLine objects in VeraGrid&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Οι μετατροπείς και οι γραμμές DC στο CGMES επιχειρούν να μετατραπούν στα απλοποιημένα αντικείμενα HvdcLine στο VeraGrid&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_export_gui.ui" line="238" />
         <source>Treat DC equipement as HvdcLines</source>
-        <translation>Treat DC equipement as HvdcLines</translation>
+        <translation>Αντιμετωπίστε τον εξοπλισμό DC ως HvdcLines</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_export_gui.ui" line="273" />
         <source>Path of the CGMES default boundary set (single zip file)</source>
-        <translation>Path of the CGMES default boundary set (single zip file)</translation>
+        <translation>Διαδρομή του προεπιλεγμένου συνόλου ορίων CGMES (ένα αρχείο zip)</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_export_gui.ui" line="276" />
@@ -511,7 +509,7 @@ li.checked::marker { content: "\2612"; }
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_export_gui.ui" line="283" />
         <source>Export</source>
-        <translation>Export</translation>
+        <translation>Εξαγωγή</translation>
     </message>
 </context>
 <context>
@@ -519,53 +517,53 @@ li.checked::marker { content: "\2612"; }
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_import_gui.ui" line="14" />
         <source>CGMES Import</source>
-        <translation>CGMES Import</translation>
+        <translation>CGMES Εισαγωγή</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_import_gui.ui" line="26" />
         <source>CGMES Version</source>
-        <translation>CGMES Version</translation>
+        <translation>Έκδοση CGMES</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_import_gui.ui" line="36" />
         <source>Topology Mode</source>
-        <translation>Topology Mode</translation>
+        <translation>Λειτουργία Τοπολογίας</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_import_gui.ui" line="46" />
         <source>Recovery Mode</source>
-        <translation>Recovery Mode</translation>
+        <translation>Λειτουργία ανάκτησης</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_import_gui.ui" line="56" />
         <source>Map areas like RAW (Region→Area, SubRegion→Zone)</source>
-        <translation>Map areas like RAW (Region→Area, SubRegion→Zone)</translation>
+        <translation>Περιοχές χάρτη όπως RAW (Περιοχή→ Περιοχή, SubRegion→Ζώνη)</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_import_gui.ui" line="63" />
         <source>Try mapping DC network to HVDC line devices</source>
-        <translation>Try mapping DC network to HVDC line devices</translation>
+        <translation>Δοκιμάστε να αντιστοιχίσετε το δίκτυο DC σε συσκευές γραμμής HVDC</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_import_gui.ui" line="70" />
         <source>Create one busbar section per connectivity node</source>
-        <translation>Create one busbar section per connectivity node</translation>
+        <translation>Δημιουργήστε ένα τμήμα ζυγού ανά κόμβο συνδεσιμότητας</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_import_gui.ui" line="90" />
         <source>Import</source>
-        <translation>Import</translation>
+        <translation>Εισαγωγή</translation>
     </message>
 </context>
 <context>
     <name>CgmesOptionsSelector</name>
     <message>
         <source>CGMES Version:</source>
-        <translation>CGMES Version:</translation>
+        <translation>Έκδοση CGMES:</translation>
     </message>
     <message>
         <source>Accept</source>
-        <translation>Accept</translation>
+        <translation>Αποδέχομαι</translation>
     </message>
 </context>
 <context>
@@ -580,7 +578,7 @@ li.checked::marker { content: "\2612"; }
     </message>
     <message>
         <source>English</source>
-        <translation>αγγλικός</translation>
+        <translation>Αγγλικός</translation>
     </message>
     <message>
         <source>Español</source>
@@ -596,7 +594,7 @@ li.checked::marker { content: "\2612"; }
     </message>
     <message>
         <source>Chinese</source>
-        <translation>κινέζικα</translation>
+        <translation>Κινέζικα</translation>
     </message>
     <message>
         <source>German</source>
@@ -604,30 +602,30 @@ li.checked::marker { content: "\2612"; }
     </message>
     <message>
         <source>Catalan</source>
-        <translation>καταλανικά</translation>
+        <translation>Καταλανικά</translation>
     </message>
-<message><source>Basque</source><translation>Βάσκος</translation></message><message><source>Galician</source><translation>Γαλικιανός</translation></message><message><source>Tongan</source><translation>Τόνγκα</translation></message><message><source>Tuvaluan</source><translation>Τουβαλουανό</translation></message><message><source>Arabic</source><translation>αραβικός</translation></message><message><source>Italian</source><translation>ιταλικά</translation></message><message><source>Greek</source><translation>ελληνικά</translation></message><message><source>Dutch</source><translation>Ολλανδός</translation></message></context>
+<message><source>Basque</source><translation>Βάσκος</translation></message><message><source>Galician</source><translation>Γαλικιανός</translation></message><message><source>Tongan</source><translation>Τόνγκα</translation></message><message><source>Tuvaluan</source><translation>Τουβαλουανό</translation></message><message><source>Arabic</source><translation>Αραβικός</translation></message><message><source>Italian</source><translation>Ιταλικά</translation></message><message><source>Greek</source><translation>Ελληνικά</translation></message><message><source>Dutch</source><translation>Ολλανδός</translation></message></context>
 <context>
     <name>ControllableShuntEditorDialog</name>
     <message>
         <location filename="../DeviceEditors/ControllableShuntEditor/controllable_shunt_editor_gui.ui" line="14" />
         <source>Controllable shunt editor</source>
-        <translation>Controllable shunt editor</translation>
+        <translation>Ελεγχόμενο πρόγραμμα επεξεργασίας shunt</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/ControllableShuntEditor/controllable_shunt_editor_gui.ui" line="25" />
         <source>Add</source>
-        <translation>Add</translation>
+        <translation>Προσθέτω</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/ControllableShuntEditor/controllable_shunt_editor_gui.ui" line="32" />
         <source>Delete</source>
-        <translation>Delete</translation>
+        <translation>Διαγράφω</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/ControllableShuntEditor/controllable_shunt_editor_gui.ui" line="52" />
         <source>Done</source>
-        <translation>Done</translation>
+        <translation>Γινώμενος</translation>
     </message>
 </context>
 <context>
@@ -635,37 +633,37 @@ li.checked::marker { content: "\2612"; }
     <message>
         <location filename="../DeviceEditors/DcLineEditor/dc_line_editor_gui.ui" line="14" />
         <source>Line editor</source>
-        <translation>Line editor</translation>
+        <translation>Επεξεργαστής γραμμής</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/DcLineEditor/dc_line_editor_gui.ui" line="20" />
         <source>Available templates</source>
-        <translation>Available templates</translation>
+        <translation>Διαθέσιμα πρότυπα</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/DcLineEditor/dc_line_editor_gui.ui" line="30" />
         <source>Load template values</source>
-        <translation>Load template values</translation>
+        <translation>Φόρτωση τιμών προτύπου</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/DcLineEditor/dc_line_editor_gui.ui" line="44" />
         <source>L: Line length [km]</source>
-        <translation>L: Line length [km]</translation>
+        <translation>L: Μήκος γραμμής [km]</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/DcLineEditor/dc_line_editor_gui.ui" line="64" />
         <source>Imax: Max. current [kA]</source>
-        <translation>Imax: Max. current [kA]</translation>
+        <translation>Imax: Μέγ. τρέχον [kA]</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/DcLineEditor/dc_line_editor_gui.ui" line="81" />
         <source>R: Resistance [Ohm/km]</source>
-        <translation>R: Resistance [Ohm/km]</translation>
+        <translation>R: Αντίσταση [Ωμ/χλμ]</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/DcLineEditor/dc_line_editor_gui.ui" line="98" />
         <source>Accept</source>
-        <translation>Accept</translation>
+        <translation>Αποδέχομαι</translation>
     </message>
 </context>
 <context>
@@ -673,27 +671,27 @@ li.checked::marker { content: "\2612"; }
     <message>
         <location filename="../FileDialogues/DgsDialogue/dgs_export_gui.ui" line="14" />
         <source>DGS Export</source>
-        <translation>DGS Export</translation>
+        <translation>DGS Εξαγωγή</translation>
     </message>
     <message>
         <location filename="../FileDialogues/DgsDialogue/dgs_export_gui.ui" line="35" />
         <source>Export mode</source>
-        <translation>Export mode</translation>
+        <translation>Λειτουργία εξαγωγής</translation>
     </message>
     <message>
         <location filename="../FileDialogues/DgsDialogue/dgs_export_gui.ui" line="45" />
         <source>Time slot</source>
-        <translation>Time slot</translation>
+        <translation>Χρονική θυρίδα</translation>
     </message>
     <message>
         <location filename="../FileDialogues/DgsDialogue/dgs_export_gui.ui" line="65" />
         <source>Snapshot</source>
-        <translation>Snapshot</translation>
+        <translation>Στιγμιότυπο</translation>
     </message>
     <message>
         <location filename="../FileDialogues/DgsDialogue/dgs_export_gui.ui" line="72" />
         <source>Export</source>
-        <translation>Export</translation>
+        <translation>Εξαγωγή</translation>
     </message>
 </context>
 <context>
@@ -701,22 +699,22 @@ li.checked::marker { content: "\2612"; }
     <message>
         <location filename="../FileDialogues/DgsDialogue/dgs_import_gui.ui" line="14" />
         <source>DGS Import</source>
-        <translation>DGS Import</translation>
+        <translation>DGS Εισαγωγή</translation>
     </message>
     <message>
         <location filename="../FileDialogues/DgsDialogue/dgs_import_gui.ui" line="26" />
         <source>Use VSC model for controllable injections</source>
-        <translation>Use VSC model for controllable injections</translation>
+        <translation>Χρησιμοποιήστε το μοντέλο VSC για ελεγχόμενες ενέσεις</translation>
     </message>
     <message>
         <location filename="../FileDialogues/DgsDialogue/dgs_import_gui.ui" line="33" />
         <source>Use dynamic information (when available)</source>
-        <translation>Use dynamic information (when available)</translation>
+        <translation>Χρήση δυναμικών πληροφοριών (όταν είναι διαθέσιμες)</translation>
     </message>
     <message>
         <location filename="../FileDialogues/DgsDialogue/dgs_import_gui.ui" line="53" />
         <source>Import</source>
-        <translation>Import</translation>
+        <translation>Εισαγωγή</translation>
     </message>
 </context>
 <context>
@@ -731,17 +729,17 @@ li.checked::marker { content: "\2612"; }
         <location filename="../SubstationDesigner/substation_designer_gui.ui" line="14" />
         <location filename="../SyncDialogue/sync_gui.ui" line="14" />
         <source>Dialog</source>
-        <translation>Dialog</translation>
+        <translation>Διάλογος</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LoadDesigner/load_designer_ui.ui" line="60" />
         <source>Definition by peak points</source>
-        <translation>Definition by peak points</translation>
+        <translation>Ορισμός με σημεία αιχμής</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LoadDesigner/load_designer_ui.ui" line="102" />
         <source>Night valley</source>
-        <translation>Night valley</translation>
+        <translation>Νυχτερινή κοιλάδα</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LoadDesigner/load_designer_ui.ui" line="120" />
@@ -749,80 +747,80 @@ li.checked::marker { content: "\2612"; }
         <location filename="../DeviceEditors/LoadDesigner/load_designer_ui.ui" line="224" />
         <location filename="../DeviceEditors/LoadDesigner/load_designer_ui.ui" line="276" />
         <source> MW</source>
-        <translation> MW</translation>
+        <translation>MW</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LoadDesigner/load_designer_ui.ui" line="154" />
         <source>Morning Peak</source>
-        <translation>Morning Peak</translation>
+        <translation>Πρωινή κορυφή</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LoadDesigner/load_designer_ui.ui" line="206" />
         <source>Afternoon valley</source>
-        <translation>Afternoon valley</translation>
+        <translation>Απογευματινή κοιλάδα</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LoadDesigner/load_designer_ui.ui" line="258" />
         <source>Evening Peak</source>
-        <translation>Evening Peak</translation>
+        <translation>Βραδινή κορυφή</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LoadDesigner/load_designer_ui.ui" line="356" />
         <source>Definition by data points</source>
-        <translation>Definition by data points</translation>
+        <translation>Ορισμός από σημεία δεδομένων</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CoordinatesInput/coordinates_input_gui.ui" line="72" />
         <source>Bus longitude</source>
-        <translation>Bus longitude</translation>
+        <translation>Γεωγραφικό μήκος λεωφορείου</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CoordinatesInput/coordinates_input_gui.ui" line="82" />
         <source>Load file</source>
-        <translation>Load file</translation>
+        <translation>Φόρτωση αρχείου</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CoordinatesInput/coordinates_input_gui.ui" line="96" />
         <location filename="../SubstationDesigner/substation_designer_gui.ui" line="133" />
         <source>Name</source>
-        <translation>Name</translation>
+        <translation>Ονομα</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CoordinatesInput/coordinates_input_gui.ui" line="116" />
         <source>Bus y position</source>
-        <translation>Bus y position</translation>
+        <translation>Θέση λεωφορείου</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CoordinatesInput/coordinates_input_gui.ui" line="149" />
         <location filename="../SubstationDesigner/substation_designer_gui.ui" line="40" />
         <source>Code</source>
-        <translation>Code</translation>
+        <translation>Κώδικας</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CoordinatesInput/coordinates_input_gui.ui" line="156" />
         <source>Bus latitude</source>
-        <translation>Bus latitude</translation>
+        <translation>Γεωγραφικό πλάτος λεωφορείου</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CoordinatesInput/coordinates_input_gui.ui" line="163" />
         <source>Bus x position</source>
-        <translation>Bus x position</translation>
+        <translation>Λεωφορείο x θέση</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CoordinatesInput/coordinates_input_gui.ui" line="170" />
         <source>Match mathod:</source>
-        <translation>Match mathod:</translation>
+        <translation>Μέθοδος αγώνα:</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CoordinatesInput/coordinates_input_gui.ui" line="184" />
         <source>Assigning magnitudes</source>
-        <translation>Assigning magnitudes</translation>
+        <translation>Εκχώρηση μεγεθών</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CoordinatesInput/coordinates_input_gui.ui" line="256" />
         <location filename="../FileDialogues/ProfilesInput/profiles_from_data_gui.ui" line="390" />
         <source>Do it!</source>
-        <translation>Do it!</translation>
+        <translation>Κάντο!</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CoordinatesInput/coordinates_input_gui.ui" line="262" />
@@ -830,113 +828,113 @@ li.checked::marker { content: "\2612"; }
         <location filename="../FileDialogues/ProfilesInput/profiles_from_models_gui.ui" line="172" />
         <location filename="../ProceduralGrid/procedural_grid_ui.ui" line="233" />
         <source>Accept</source>
-        <translation>Accept</translation>
+        <translation>Αποδέχομαι</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CoordinatesInput/coordinates_input_gui.ui" line="273" />
         <source>Match</source>
-        <translation>Match</translation>
+        <translation>Αγώνας</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ProfilesInput/profiles_from_data_gui.ui" line="66" />
         <source>Import file</source>
-        <translation>Import file</translation>
+        <translation>Εισαγωγή αρχείου</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ProfilesInput/profiles_from_data_gui.ui" line="80" />
         <source>Plot selected profile</source>
-        <translation>Plot selected profile</translation>
+        <translation>Σχεδιάστε το επιλεγμένο προφίλ</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ProfilesInput/profiles_from_data_gui.ui" line="107" />
         <source>Units</source>
-        <translation>Units</translation>
+        <translation>Μονάδες</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ProfilesInput/profiles_from_data_gui.ui" line="142" />
         <source>Transform the input profile names</source>
-        <translation>Transform the input profile names</translation>
+        <translation>Μετατρέψτε τα ονόματα των προφίλ εισαγωγής</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ProfilesInput/profiles_from_data_gui.ui" line="218" />
         <source>Automatic link profiles to objects based on their name</source>
-        <translation>Automatic link profiles to objects based on their name</translation>
+        <translation>Αυτόματη σύνδεση προφίλ σε αντικείμενα με βάση το όνομά τους</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ProfilesInput/profiles_from_data_gui.ui" line="232" />
         <source>Auto-link string simmilarity</source>
-        <translation>Auto-link string simmilarity</translation>
+        <translation>Ομοιότητα συμβολοσειράς αυτόματης σύνδεσης</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ProfilesInput/profiles_from_data_gui.ui" line="251" />
         <source>Random-link profiles and objects</source>
-        <translation>Random-link profiles and objects</translation>
+        <translation>Προφίλ και αντικείμενα τυχαίας σύνδεσης</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ProfilesInput/profiles_from_data_gui.ui" line="265" />
         <source>Assign profile to all objects</source>
-        <translation>Assign profile to all objects</translation>
+        <translation>Εκχωρήστε προφίλ σε όλα τα αντικείμενα</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ProfilesInput/profiles_from_data_gui.ui" line="279" />
         <source>Assign profile to object selection</source>
-        <translation>Assign profile to object selection</translation>
+        <translation>Αντιστοίχιση προφίλ στην επιλογή αντικειμένου</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ProfilesInput/profiles_from_data_gui.ui" line="330" />
         <source>Set multiplier</source>
-        <translation>Set multiplier</translation>
+        <translation>Ορισμός πολλαπλασιαστή</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ProfilesInput/profiles_from_data_gui.ui" line="344" />
         <source>The profiles for the unassigned objects are set to zero, otherwise they are not set and they remain the default value form the snapshot</source>
-        <translation>The profiles for the unassigned objects are set to zero, otherwise they are not set and they remain the default value form the snapshot</translation>
+        <translation>Τα προφίλ για τα μη εκχωρημένα αντικείμενα ορίζονται στο μηδέν, διαφορετικά δεν ορίζονται και παραμένουν η προεπιλεγμένη τιμή από το στιγμιότυπο</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ProfilesInput/profiles_from_data_gui.ui" line="347" />
         <source>Set unassigned to zero</source>
-        <translation>Set unassigned to zero</translation>
+        <translation>Ορίστε το μη εκχωρημένο στο μηδέν</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ProfilesInput/profiles_from_data_gui.ui" line="370" />
         <source>Check if you want the profiles to be normalized on the base object property</source>
-        <translation>Check if you want the profiles to be normalized on the base object property</translation>
+        <translation>Ελέγξτε εάν θέλετε τα προφίλ να είναι κανονικοποιημένα στην ιδιότητα αντικειμένου βάσης</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ProfilesInput/profiles_from_data_gui.ui" line="373" />
         <source>normalized</source>
-        <translation>normalized</translation>
+        <translation>κανονικοποιημένη</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ProfilesInput/profiles_from_data_gui.ui" line="407" />
         <source>Clear selection</source>
-        <translation>Clear selection</translation>
+        <translation>Εκκαθάριση επιλογής</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ProfilesInput/profiles_from_models_gui.ui" line="47" />
         <location filename="../GridMerge/grid_merge_gui.ui" line="53" />
         <source>Add</source>
-        <translation>Add</translation>
+        <translation>Προσθέτω</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ProfilesInput/profiles_from_models_gui.ui" line="58" />
         <source>Clear</source>
-        <translation>Clear</translation>
+        <translation>Σαφής</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ProfilesInput/profiles_from_models_gui.ui" line="149" />
         <source>If checked, the objects are match using the code property, otherwise the idtag property is used</source>
-        <translation>If checked, the objects are match using the code property, otherwise the idtag property is used</translation>
+        <translation>Εάν είναι επιλεγμένο, τα αντικείμενα ταιριάζουν χρησιμοποιώντας την ιδιότητα κώδικα, διαφορετικά χρησιμοποιείται η ιδιότητα idtag</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ProfilesInput/profiles_from_models_gui.ui" line="152" />
         <source>Match using code</source>
-        <translation>Match using code</translation>
+        <translation>Ταίριασμα με χρήση κώδικα</translation>
     </message>
     <message>
         <location filename="../GridMerge/grid_diff_gui.ui" line="14" />
         <source>Grid Diff</source>
-        <translation>Grid Diff</translation>
+        <translation>Διαφορά πλέγματος</translation>
     </message>
     <message>
         <location filename="../GridMerge/grid_diff_gui.ui" line="44" />
@@ -946,109 +944,109 @@ li.checked::marker { content: "\2612"; }
     <message>
         <location filename="../GridMerge/grid_diff_gui.ui" line="82" />
         <source>Open the base circuit to compare with</source>
-        <translation>Open the base circuit to compare with</translation>
+        <translation>Ανοίξτε το κύκλωμα βάσης για σύγκριση</translation>
     </message>
     <message>
         <location filename="../GridMerge/grid_diff_gui.ui" line="85" />
         <source>Open base</source>
-        <translation>Open base</translation>
+        <translation>Ανοιχτή βάση</translation>
     </message>
     <message>
         <location filename="../GridMerge/grid_diff_gui.ui" line="105" />
         <source>Save the differentiated grid</source>
-        <translation>Save the differentiated grid</translation>
+        <translation>Αποθηκεύστε το διαφοροποιημένο πλέγμα</translation>
     </message>
     <message>
         <location filename="../GridMerge/grid_diff_gui.ui" line="108" />
         <source>Save diff</source>
-        <translation>Save diff</translation>
+        <translation>Αποθήκευση διαφοράς</translation>
     </message>
     <message>
         <location filename="../GridMerge/grid_merge_gui.ui" line="14" />
         <source>Grid Merge</source>
-        <translation>Grid Merge</translation>
+        <translation>Συγχώνευση Πλέγματος</translation>
     </message>
     <message>
         <location filename="../GridMerge/grid_merge_gui.ui" line="50" />
         <source>The elements of the grid will be added with new idtags. This is useful in the case you want to compose a new grid from grids that are the same.</source>
-        <translation>The elements of the grid will be added with new idtags. This is useful in the case you want to compose a new grid from grids that are the same.</translation>
+        <translation>Τα στοιχεία του πλέγματος θα προστεθούν με νέα idtags. Αυτό είναι χρήσιμο στην περίπτωση που θέλετε να συνθέσετε ένα νέο πλέγμα από πλέγματα που είναι ίδια.</translation>
     </message>
     <message>
         <location filename="../GridMerge/grid_merge_gui.ui" line="73" />
         <source>Aply the selected changes</source>
-        <translation>Aply the selected changes</translation>
+        <translation>Εφαρμόστε τις επιλεγμένες αλλαγές</translation>
     </message>
     <message>
         <location filename="../GridMerge/grid_merge_gui.ui" line="76" />
         <source>Merge</source>
-        <translation>Merge</translation>
+        <translation>Συγχώνευση</translation>
     </message>
     <message>
         <location filename="../ProceduralGrid/map_warning_ui.ui" line="20" />
         <source>Please select a Map diagram before expanding the grid.</source>
-        <translation>Please select a Map diagram before expanding the grid.</translation>
+        <translation>Επιλέξτε ένα διάγραμμα χάρτη πριν αναπτύξετε το πλέγμα.</translation>
     </message>
     <message>
         <location filename="../ProceduralGrid/map_warning_ui.ui" line="27" />
         <location filename="../ProceduralGrid/voltage_warning_ui.ui" line="41" />
         <source>OK</source>
-        <translation>OK</translation>
+        <translation>ΕΝΤΑΞΕΙ</translation>
     </message>
     <message>
         <location filename="../ProceduralGrid/procedural_grid_ui.ui" line="14" />
         <source>Procedural grid expansion</source>
-        <translation>Procedural grid expansion</translation>
+        <translation>Διαδικαστική επέκταση πλέγματος</translation>
     </message>
     <message>
         <location filename="../ProceduralGrid/procedural_grid_ui.ui" line="55" />
         <source>Procedural grid method</source>
-        <translation>Procedural grid method</translation>
+        <translation>Μέθοδος διαδικαστικού πλέγματος</translation>
     </message>
     <message>
         <location filename="../ProceduralGrid/procedural_grid_ui.ui" line="65" />
         <source>Substation to connect</source>
-        <translation>Substation to connect</translation>
+        <translation>Υποσταθμός για σύνδεση</translation>
     </message>
     <message>
         <location filename="../ProceduralGrid/procedural_grid_ui.ui" line="75" />
         <source> Substations</source>
-        <translation> Substations</translation>
+        <translation>Υποσταθμοί</translation>
     </message>
     <message>
         <location filename="../ProceduralGrid/procedural_grid_ui.ui" line="91" />
         <source>Compute the N closest candiate substations</source>
-        <translation>Compute the N closest candiate substations</translation>
+        <translation>Υπολογίστε τους N πλησιέστερους υποψήφιους υποσταθμούς</translation>
     </message>
     <message>
         <location filename="../ProceduralGrid/procedural_grid_ui.ui" line="94" />
         <source>Get candiates</source>
-        <translation>Get candiates</translation>
+        <translation>Πάρτε υποψηφίους</translation>
     </message>
     <message>
         <location filename="../ProceduralGrid/procedural_grid_ui.ui" line="101" />
         <source>Connection substation candidates</source>
-        <translation>Connection substation candidates</translation>
+        <translation>Υποψήφιοι υποσταθμοί σύνδεσης</translation>
     </message>
     <message>
         <location filename="../ProceduralGrid/procedural_grid_ui.ui" line="108" />
         <source>List of subations that can be connected to the selected substations</source>
-        <translation>List of subations that can be connected to the selected substations</translation>
+        <translation>Λίστα υποσταθμών που μπορούν να συνδεθούν με τους επιλεγμένους υποσταθμούς</translation>
     </message>
     <message>
         <location filename="../ProceduralGrid/procedural_grid_ui.ui" line="197" />
         <location filename="../ProceduralGrid/procedural_grid_ui.ui" line="200" />
         <source>Preview</source>
-        <translation>Preview</translation>
+        <translation>Πρεμιέρα</translation>
     </message>
     <message>
         <location filename="../ProceduralGrid/procedural_grid_ui.ui" line="230" />
         <source>Create Grid</source>
-        <translation>Create Grid</translation>
+        <translation>Δημιουργία Πλέγματος</translation>
     </message>
     <message>
         <location filename="../ProceduralGrid/voltage_warning_ui.ui" line="20" />
         <source>The following substations have voltage levels not present in the grid:</source>
-        <translation>The following substations have voltage levels not present in the grid:</translation>
+        <translation>Οι ακόλουθοι υποσταθμοί έχουν επίπεδα τάσης που δεν υπάρχουν στο δίκτυο:</translation>
     </message>
     <message>
         <location filename="../SubstationDesigner/substation_designer_gui.ui" line="25" />
@@ -1059,17 +1057,17 @@ li.checked::marker { content: "\2612"; }
     <message>
         <location filename="../SubstationDesigner/substation_designer_gui.ui" line="52" />
         <source>Latitude</source>
-        <translation>Latitude</translation>
+        <translation>Γεωγραφικό πλάτος</translation>
     </message>
     <message>
         <location filename="../SubstationDesigner/substation_designer_gui.ui" line="121" />
         <source>Longitude</source>
-        <translation>Longitude</translation>
+        <translation>Γεωγραφικό μήκος</translation>
     </message>
     <message>
         <location filename="../SubstationDesigner/substation_designer_gui.ui" line="175" />
         <source>Add voltage level</source>
-        <translation>Add voltage level</translation>
+        <translation>Προσθέστε επίπεδο τάσης</translation>
     </message>
     <message>
         <location filename="../SubstationDesigner/substation_designer_gui.ui" line="178" />
@@ -1079,7 +1077,7 @@ li.checked::marker { content: "\2612"; }
     <message>
         <location filename="../SubstationDesigner/substation_designer_gui.ui" line="190" />
         <source>Remove voltage level</source>
-        <translation>Remove voltage level</translation>
+        <translation>Αφαιρέστε το επίπεδο τάσης</translation>
     </message>
     <message>
         <location filename="../SubstationDesigner/substation_designer_gui.ui" line="193" />
@@ -1089,58 +1087,58 @@ li.checked::marker { content: "\2612"; }
     <message>
         <location filename="../SubstationDesigner/substation_designer_gui.ui" line="224" />
         <source>Create substation</source>
-        <translation>Create substation</translation>
+        <translation>Δημιουργία υποσταθμού</translation>
     </message>
     <message>
         <location filename="../SubstationDesigner/substation_designer_gui.ui" line="227" />
         <source>Create</source>
-        <translation>Create</translation>
+        <translation>Δημιουργώ</translation>
     </message>
     <message>
         <location filename="../SubstationDesigner/substation_designer_gui.ui" line="242" />
         <source>Voltage levels</source>
-        <translation>Voltage levels</translation>
+        <translation>Επίπεδα τάσης</translation>
     </message>
     <message>
         <location filename="../SyncDialogue/sync_gui.ui" line="72" />
         <source>Accept selected</source>
-        <translation>Accept selected</translation>
+        <translation>Αποδοχή επιλεγμένων</translation>
     </message>
     <message>
         <location filename="../SyncDialogue/sync_gui.ui" line="86" />
         <source>Reject selected changes</source>
-        <translation>Reject selected changes</translation>
+        <translation>Απόρριψη επιλεγμένων αλλαγών</translation>
     </message>
     <message>
         <location filename="../SyncDialogue/sync_gui.ui" line="113" />
         <source>Process all changes as especified</source>
-        <translation>Process all changes as especified</translation>
+        <translation>Επεξεργαστείτε όλες τις αλλαγές όπως ορίζεται</translation>
     </message>
     <message>
         <location filename="../SyncDialogue/sync_gui.ui" line="116" />
         <location filename="../SystemScaler/system_scaler_ui.ui" line="188" />
         <source>Do it</source>
-        <translation>Do it</translation>
+        <translation>Κάντε το</translation>
     </message>
     <message>
         <location filename="../SystemScaler/system_scaler_ui.ui" line="14" />
         <source>System Scaler</source>
-        <translation>System Scaler</translation>
+        <translation>Scaler συστήματος</translation>
     </message>
     <message>
         <location filename="../SystemScaler/system_scaler_ui.ui" line="133" />
         <source>Add scaling checkpoint</source>
-        <translation>Add scaling checkpoint</translation>
+        <translation>Προσθήκη σημείου ελέγχου κλιμάκωσης</translation>
     </message>
     <message>
         <location filename="../SystemScaler/system_scaler_ui.ui" line="147" />
         <source>Remove scaling checkpoint</source>
-        <translation>Remove scaling checkpoint</translation>
+        <translation>Αφαιρέστε το σημείο ελέγχου κλιμάκωσης</translation>
     </message>
     <message>
         <location filename="../SystemScaler/system_scaler_ui.ui" line="174" />
         <source>Plot the proposed scaling</source>
-        <translation>Plot the proposed scaling</translation>
+        <translation>Σχεδιάστε την προτεινόμενη κλίμακα</translation>
     </message>
 </context>
 <context>
@@ -1148,12 +1146,12 @@ li.checked::marker { content: "\2612"; }
     <message>
         <location filename="../DynamicModelEditor/dynamic_editor_workspace.ui" line="14" />
         <source>Dynamic Editor Workspace</source>
-        <translation>Dynamic Editor Workspace</translation>
+        <translation>Χώρος εργασίας Dynamic Editor</translation>
     </message>
     <message>
         <location filename="../DynamicModelEditor/dynamic_editor_workspace.ui" line="79" />
         <source>Type to search the device</source>
-        <translation>Type to search the device</translation>
+        <translation>Πληκτρολογήστε για αναζήτηση στη συσκευή</translation>
     </message>
     <message>
         <location filename="../DynamicModelEditor/dynamic_editor_workspace.ui" line="126" />
@@ -1168,77 +1166,77 @@ li.checked::marker { content: "\2612"; }
     <message>
         <location filename="../DynamicModelEditor/dynamic_editor_workspace.ui" line="160" />
         <source>Inspect model</source>
-        <translation>Inspect model</translation>
+        <translation>Επιθεωρήστε το μοντέλο</translation>
     </message>
     <message>
         <location filename="../DynamicModelEditor/dynamic_editor_workspace.ui" line="172" />
         <source>Center</source>
-        <translation>Center</translation>
+        <translation>Κέντρο</translation>
     </message>
     <message>
         <location filename="../DynamicModelEditor/dynamic_editor_workspace.ui" line="184" />
         <source>Zoom in</source>
-        <translation>Zoom in</translation>
+        <translation>Μεγέθυνση</translation>
     </message>
     <message>
         <location filename="../DynamicModelEditor/dynamic_editor_workspace.ui" line="196" />
         <source>Zoom out</source>
-        <translation>Zoom out</translation>
+        <translation>Σμίκρυνση</translation>
     </message>
     <message>
         <location filename="../DynamicModelEditor/dynamic_editor_workspace.ui" line="211" />
         <source>Delete all</source>
-        <translation>Delete all</translation>
+        <translation>Διαγραφή όλων</translation>
     </message>
     <message>
         <location filename="../DynamicModelEditor/dynamic_editor_workspace.ui" line="214" />
         <source>Delete all blocks to start from scratch.</source>
-        <translation>Delete all blocks to start from scratch.</translation>
+        <translation>Διαγράψτε όλα τα μπλοκ για να ξεκινήσετε από την αρχή.</translation>
     </message>
     <message>
         <location filename="../DynamicModelEditor/dynamic_editor_workspace.ui" line="226" />
         <source>Validate</source>
-        <translation>Validate</translation>
+        <translation>Επικυρώνω</translation>
     </message>
     <message>
         <location filename="../DynamicModelEditor/dynamic_editor_workspace.ui" line="238" />
         <source>view tree</source>
-        <translation>view tree</translation>
+        <translation>θέα δέντρο</translation>
     </message>
 </context>
 <context>
     <name>DynamicsResultsHandler</name>
     <message>
         <source>X-Y plot slot</source>
-        <translation>X-Y plot slot</translation>
+        <translation>Υποδοχή πλοκής X-Y</translation>
     </message>
     <message>
         <source>Choose whether to place the dropped signal on the X axis or Y axis.</source>
-        <translation>Choose whether to place the dropped signal on the X axis or Y axis.</translation>
+        <translation>Επιλέξτε εάν θα τοποθετήσετε το πεσμένο σήμα στον άξονα X ή στον άξονα Y.</translation>
     </message>
     <message>
         <source>X axis</source>
-        <translation>X axis</translation>
+        <translation>Άξονας Χ</translation>
     </message>
     <message>
         <source>Y axis</source>
-        <translation>Y axis</translation>
+        <translation>Άξονας Υ</translation>
     </message>
     <message>
         <source>Cancel</source>
-        <translation>Cancel</translation>
+        <translation>Ματαίωση</translation>
     </message>
     <message>
         <source>This X-Y plot already has X and Y signals. Replace X, replace Y, or cancel?</source>
-        <translation>This X-Y plot already has X and Y signals. Replace X, replace Y, or cancel?</translation>
+        <translation>Αυτή η γραφική παράσταση X-Y έχει ήδη σήματα X και Y. Αντικατάσταση X, αντικατάσταση Y ή ακύρωση;</translation>
     </message>
     <message>
         <source>Replace X</source>
-        <translation>Replace X</translation>
+        <translation>Αντικαταστήστε το X</translation>
     </message>
     <message>
         <source>Replace Y</source>
-        <translation>Replace Y</translation>
+        <translation>Αντικαταστήστε το Υ</translation>
     </message>
 </context>
 <context>
@@ -1246,75 +1244,75 @@ li.checked::marker { content: "\2612"; }
     <message>
         <location filename="../FileDialogues/ProfilesInput/excel_sheet_selection.ui" line="20" />
         <source>Excel sheet selection</source>
-        <translation>Excel sheet selection</translation>
+        <translation>Επιλογή φύλλου Excel</translation>
     </message>
 </context>
 <context>
     <name>FileTypeSelector</name>
     <message>
         <source>Format:</source>
-        <translation>Format:</translation>
+        <translation>Σχήμα και διάταξις βιβλίου:</translation>
     </message>
     <message>
         <source>Accept</source>
-        <translation>Accept</translation>
+        <translation>Αποδέχομαι</translation>
     </message>
 </context>
 <context>
     <name>FmuTemplateEditorDialog</name>
     <message>
         <source>FMU Template Editor</source>
-        <translation>FMU Template Editor</translation>
+        <translation>Επεξεργαστής προτύπων FMU</translation>
     </message>
     <message>
         <source>Browse...</source>
-        <translation>Browse...</translation>
+        <translation>Ξεφυλλίζω...</translation>
     </message>
     <message>
         <source>Choose an FMU archive to load its metadata and build the visual block.</source>
-        <translation>Choose an FMU archive to load its metadata and build the visual block.</translation>
+        <translation>Επιλέξτε ένα αρχείο FMU για να φορτώσετε τα μεταδεδομένα του και να δημιουργήσετε το οπτικό μπλοκ.</translation>
     </message>
     <message>
         <source>Name</source>
-        <translation>Name</translation>
+        <translation>Ονομα</translation>
     </message>
     <message>
         <source>FMU file</source>
-        <translation>FMU file</translation>
+        <translation>αρχείο FMU</translation>
     </message>
     <message>
         <source>Device type</source>
-        <translation>Device type</translation>
+        <translation>Τύπος συσκευής</translation>
     </message>
     <message>
         <source>Domain</source>
-        <translation>Domain</translation>
+        <translation>Πεδίο ορισμού</translation>
     </message>
     <message>
         <source>Mode</source>
-        <translation>Mode</translation>
+        <translation>Τρόπος</translation>
     </message>
     <message>
         <source>Metadata</source>
-        <translation>Metadata</translation>
+        <translation>Μεταδεδομένα</translation>
     </message>
     <message>
         <source>Select FMU file</source>
-        <translation>Select FMU file</translation>
+        <translation>Επιλέξτε αρχείο FMU</translation>
     </message>
     <message>
         <source>FMU files (*.fmu)</source>
-        <translation>FMU files (*.fmu)</translation>
+        <translation>Αρχεία FMU (*.fmu)</translation>
     </message>
     <message>
         <source>FMU file not found:
 {path}</source>
-        <translation>FMU file not found:
+        <translation>Το αρχείο FMU δεν βρέθηκε:
 {path}</translation>
     </message>
     <message>
         <source>Choose an FMU file first.</source>
-        <translation>Choose an FMU file first.</translation>
+        <translation>Επιλέξτε πρώτα ένα αρχείο FMU.</translation>
     </message>
 </context>
 <context>
@@ -1322,12 +1320,12 @@ li.checked::marker { content: "\2612"; }
     <message>
         <location filename="../DeviceEditors/GeneratorEditor/generator_editor_gui.ui" line="14" />
         <source>Reactive power curve editor</source>
-        <translation>Reactive power curve editor</translation>
+        <translation>Επεξεργαστής καμπύλης άεργου ισχύος</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/GeneratorEditor/generator_editor_gui.ui" line="75" />
         <source>Add</source>
-        <translation>Add</translation>
+        <translation>Προσθέτω</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/GeneratorEditor/generator_editor_gui.ui" line="95" />
@@ -1339,99 +1337,99 @@ li.checked::marker { content: "\2612"; }
     <name>IoMain</name>
     <message>
         <source>The file type {file_extension} is not accepted :(</source>
-        <translation>The file type {file_extension} is not accepted :(</translation>
+        <translation>Ο τύπος αρχείου {file_extension} δεν είναι αποδεκτός :(</translation>
     </message>
     <message>
         <source>Message</source>
-        <translation>Message</translation>
+        <translation>Μήνυμα</translation>
     </message>
     <message>
         <source>Are you sure that you want to quit the current grid and open a new one?
  If the process is cancelled the grid will remain.</source>
-        <translation>Are you sure that you want to quit the current grid and open a new one?
- If the process is cancelled the grid will remain.</translation>
+        <translation>Είστε βέβαιοι ότι θέλετε να κλείσετε το τρέχον πλέγμα και να ανοίξετε ένα νέο;
+ Εάν η διαδικασία ακυρωθεί, το πλέγμα θα παραμείνει.</translation>
     </message>
     <message>
         <source>Are you sure that you want to quit the current grid and create a new one?</source>
-        <translation>Are you sure that you want to quit the current grid and create a new one?</translation>
+        <translation>Είστε βέβαιοι ότι θέλετε να κλείσετε το τρέχον πλέγμα και να δημιουργήσετε ένα νέο;</translation>
     </message>
     <message>
         <source>There is a file being processed now.</source>
-        <translation>There is a file being processed now.</translation>
+        <translation>Υπάρχει ένα αρχείο υπό επεξεργασία τώρα.</translation>
     </message>
     <message>
         <source>Formats ({files_types})</source>
-        <translation>Formats ({files_types})</translation>
+        <translation>Μορφές ({files_types})</translation>
     </message>
     <message>
         <source>The file does not exist :( 
  {file_name}</source>
-        <translation>The file does not exist :( 
+        <translation>Το αρχείο δεν υπάρχει :( 
  {file_name}</translation>
     </message>
     <message>
         <source>File opening</source>
-        <translation>File opening</translation>
+        <translation>Άνοιγμα αρχείου</translation>
     </message>
     <message>
         <source>No grid to load :(</source>
-        <translation>No grid to load :(</translation>
+        <translation>Δεν υπάρχει πλέγμα για φόρτωση :(</translation>
     </message>
     <message>
         <source>Current: {circuit_name}</source>
-        <translation>Current: {circuit_name}</translation>
+        <translation>Τρέχον: {circuit_name}</translation>
     </message>
     <message>
         <source>The grid is quite big, no diagram is automatically created</source>
-        <translation>The grid is quite big, no diagram is automatically created</translation>
+        <translation>Το πλέγμα είναι αρκετά μεγάλο, δεν δημιουργείται αυτόματα διάγραμμα</translation>
     </message>
     <message>
         <source>Sessions</source>
-        <translation>Sessions</translation>
+        <translation>Συνεδρίες</translation>
     </message>
     <message>
         <source>Show Rosetta</source>
-        <translation>Show Rosetta</translation>
+        <translation>Εμφάνιση Rosetta</translation>
     </message>
     <message>
         <source>Do you want to open the Rosetta CGMES browser?</source>
-        <translation>Do you want to open the Rosetta CGMES browser?</translation>
+        <translation>Θέλετε να ανοίξετε το πρόγραμμα περιήγησης Rosetta CGMES;</translation>
     </message>
     <message>
         <source>Open CGMES file logger</source>
-        <translation>Open CGMES file logger</translation>
+        <translation>Ανοίξτε το αρχείο καταγραφής CGMES</translation>
     </message>
     <message>
         <source>Open file logger</source>
-        <translation>Open file logger</translation>
+        <translation>Άνοιγμα αρχείου καταγραφής</translation>
     </message>
     <message>
         <source>Error while loading the file(s)</source>
-        <translation>Error while loading the file(s)</translation>
+        <translation>Σφάλμα κατά τη φόρτωση των αρχείων</translation>
     </message>
     <message>
         <source>{name} {version} requires VeraGrid {veragrid_version}</source>
-        <translation>{name} {version} requires VeraGrid {veragrid_version}</translation>
+        <translation>{name} {version} απαιτεί VeraGrid {veragrid_version}</translation>
     </message>
     <message>
         <source>Plugin install</source>
-        <translation>Plugin install</translation>
+        <translation>Εγκατάσταση πρόσθετου</translation>
     </message>
     <message>
         <source>There is already a plugin: {plugin_name} {plugin_version}. The new plugin is {new_version}. Install?</source>
-        <translation>There is already a plugin: {plugin_name} {plugin_version}. The new plugin is {new_version}. Install?</translation>
+        <translation>Υπάρχει ήδη ένα πρόσθετο: {plugin_name} {plugin_version}. Το νέο πρόσθετο είναι το {new_version}. Εγκαθιστώ;</translation>
     </message>
     <message>
         <source>{name} {version} installed!</source>
-        <translation>{name} {version} installed!</translation>
+        <translation>Εγκαταστάθηκε το {name} {version}!</translation>
     </message>
     <message>
         <source>There is no manifest :(</source>
-        <translation>There is no manifest :(</translation>
+        <translation>Δεν υπάρχει μανιφέστο :(</translation>
     </message>
     <message>
         <source>Does not seem to be a plugin :/</source>
-        <translation>Does not seem to be a plugin :/</translation>
+        <translation>Δεν φαίνεται να είναι πρόσθετο :/</translation>
     </message>
     <message>
         <source>CSV (*.csv)</source>
@@ -1439,31 +1437,31 @@ li.checked::marker { content: "\2612"; }
     </message>
     <message>
         <source>Open CSV file</source>
-        <translation>Open CSV file</translation>
+        <translation>Ανοίξτε το αρχείο CSV</translation>
     </message>
     <message>
         <source>Grid merge</source>
-        <translation>Grid merge</translation>
+        <translation>Συγχώνευση πλέγματος</translation>
     </message>
     <message>
         <source>How do you want to represent the merged grid?</source>
-        <translation>How do you want to represent the merged grid?</translation>
+        <translation>Πώς θέλετε να αντιπροσωπεύσετε το συγχωνευμένο πλέγμα;</translation>
     </message>
     <message>
         <source>Create new diagram</source>
-        <translation>Create new diagram</translation>
+        <translation>Δημιουργία νέου διαγράμματος</translation>
     </message>
     <message>
         <source>Add to current diagram</source>
-        <translation>Add to current diagram</translation>
+        <translation>Προσθήκη στο τρέχον διάγραμμα</translation>
     </message>
     <message>
         <source>No schematic diagram was selected...</source>
-        <translation>No schematic diagram was selected...</translation>
+        <translation>Δεν επιλέχθηκε σχηματικό διάγραμμα...</translation>
     </message>
     <message>
         <source>Save file</source>
-        <translation>Save file</translation>
+        <translation>Αποθήκευση αρχείου</translation>
     </message>
     <message>
         <source>VeraGrid zip (*.veragrid)</source>
@@ -1472,24 +1470,24 @@ li.checked::marker { content: "\2612"; }
     <message>
         <source>There is a saving procedure running.
 Cancel and retry?</source>
-        <translation>There is a saving procedure running.
-Cancel and retry?</translation>
+        <translation>Εκτελείται μια διαδικασία αποθήκευσης.
+Ακύρωση και προσπάθεια επανάληψης;</translation>
     </message>
     <message>
         <source>There is a file being processed..</source>
-        <translation>There is a file being processed..</translation>
+        <translation>Υπάρχει ένα αρχείο υπό επεξεργασία..</translation>
     </message>
     <message>
         <source>Save file logger</source>
-        <translation>Save file logger</translation>
+        <translation>Αποθήκευση αρχείου καταγραφής</translation>
     </message>
     <message>
         <source>Are you sure that you want to delete the current grid and replace it?</source>
-        <translation>Are you sure that you want to delete the current grid and replace it?</translation>
+        <translation>Είστε βέβαιοι ότι θέλετε να διαγράψετε το τρέχον πλέγμα και να το αντικαταστήσετε;</translation>
     </message>
     <message>
         <source>Model v. {model_version}</source>
-        <translation>Model v. {model_version}</translation>
+        <translation>Μοντέλο v. {model_version}</translation>
     </message>
     <message>
         <source>idtag. {idtag}</source>
@@ -1497,119 +1495,119 @@ Cancel and retry?</translation>
     </message>
     <message>
         <source>Random grid {bus_count} buses</source>
-        <translation>Random grid {bus_count} buses</translation>
+        <translation>Τυχαίο πλέγμα {bus_count} λεωφορεία</translation>
     </message>
     <message>
         <source>Grid generated randomly using the RPGM algorithm.</source>
-        <translation>Grid generated randomly using the RPGM algorithm.</translation>
+        <translation>Πλέγμα που δημιουργήθηκε τυχαία χρησιμοποιώντας τον αλγόριθμο RPGM.</translation>
     </message>
     <message>
         <source>Excel file (*.xlsx)</source>
-        <translation>Excel file (*.xlsx)</translation>
+        <translation>Αρχείο Excel (*.xlsx)</translation>
     </message>
     <message>
         <source>profiles of </source>
-        <translation>profiles of </translation>
+        <translation>προφίλ του</translation>
     </message>
     <message>
         <source>There are no profiles!</source>
-        <translation>There are no profiles!</translation>
+        <translation>Δεν υπάρχουν προφίλ!</translation>
     </message>
     <message>
         <source>Export object profiles</source>
-        <translation>Export object profiles</translation>
+        <translation>Εξαγωγή προφίλ αντικειμένων</translation>
     </message>
     <message>
         <source>Zip file (*.zip)</source>
-        <translation>Zip file (*.zip)</translation>
+        <translation>Αρχείο zip (*.zip)</translation>
     </message>
     <message>
         <source>Results of </source>
-        <translation>Results of </translation>
+        <translation>Αποτελέσματα του</translation>
     </message>
     <message>
         <source>There are no results available :/</source>
-        <translation>There are no results available :/</translation>
+        <translation>Δεν υπάρχουν διαθέσιμα αποτελέσματα :/</translation>
     </message>
     <message>
         <source>Export all</source>
-        <translation>Export all</translation>
+        <translation>Εξαγωγή όλων</translation>
     </message>
     <message>
         <source>Done!</source>
-        <translation>Done!</translation>
+        <translation>Γινώμενος!</translation>
     </message>
     <message>
         <source>Results parsing</source>
-        <translation>Results parsing</translation>
+        <translation>Ανάλυση αποτελεσμάτων</translation>
     </message>
     <message>
         <source>Loaded '{study_name}' results from disk</source>
-        <translation>Loaded '{study_name}' results from disk</translation>
+        <translation>Τα αποτελέσματα "{study_name}" φορτώθηκαν από το δίσκο</translation>
     </message>
     <message>
         <source>No file driver declared :/</source>
-        <translation>No file driver declared :/</translation>
+        <translation>Δεν δηλώθηκε πρόγραμμα οδήγησης αρχείου :/</translation>
     </message>
     <message>
         <source>Select a driver inside a session</source>
-        <translation>Select a driver inside a session</translation>
+        <translation>Επιλέξτε ένα πρόγραμμα οδήγησης μέσα σε μια περίοδο λειτουργίας</translation>
     </message>
     <message>
         <source>Driver load from disk</source>
-        <translation>Driver load from disk</translation>
+        <translation>Φόρτωση προγράμματος οδήγησης από το δίσκο</translation>
     </message>
     <message>
         <source>Load results from disk</source>
-        <translation>Load results from disk</translation>
+        <translation>Φόρτωση αποτελεσμάτων από το δίσκο</translation>
     </message>
     <message>
         <source>Formats (*.json)</source>
-        <translation>Formats (*.json)</translation>
+        <translation>Μορφές (*.json)</translation>
     </message>
     <message>
         <source>Open file</source>
-        <translation>Open file</translation>
+        <translation>Άνοιγμα αρχείου</translation>
     </message>
     <message>
         <source>Contingencies import</source>
-        <translation>Contingencies import</translation>
+        <translation>Εισαγωγή απρόβλεπτων</translation>
     </message>
     <message>
         <source>JSON file (*.json)</source>
-        <translation>JSON file (*.json)</translation>
+        <translation>Αρχείο JSON (*.json)</translation>
     </message>
     <message>
         <source>Catalogue added!</source>
-        <translation>Catalogue added!</translation>
+        <translation>Προστέθηκε κατάλογος!</translation>
     </message>
     <message>
         <source>Load catalogue</source>
-        <translation>Load catalogue</translation>
+        <translation>Φόρτωση καταλόγου</translation>
     </message>
     <message>
         <source>Open catalogue logger</source>
-        <translation>Open catalogue logger</translation>
+        <translation>Άνοιγμα καταγραφικού καταλόγου</translation>
     </message>
     <message>
         <source>Catalogue loaded!</source>
-        <translation>Catalogue loaded!</translation>
+        <translation>Ο κατάλογος φορτώθηκε!</translation>
     </message>
     <message>
         <source>Catalogue file (*.xlsx)</source>
-        <translation>Catalogue file (*.xlsx)</translation>
+        <translation>Αρχείο καταλόγου (*.xlsx)</translation>
     </message>
     <message>
         <source>Catalogue Excel file (*.xlsx)</source>
-        <translation>Catalogue Excel file (*.xlsx)</translation>
+        <translation>Αρχείο Excel καταλόγου (*.xlsx)</translation>
     </message>
     <message>
         <source>Save catalogue</source>
-        <translation>Save catalogue</translation>
+        <translation>Αποθήκευση καταλόγου</translation>
     </message>
     <message>
         <source>Catalogue saved!</source>
-        <translation>Catalogue saved!</translation>
+        <translation>Ο κατάλογος αποθηκεύτηκε!</translation>
     </message>
     <message>
         <source>CIM (*.xml)</source>
@@ -1617,19 +1615,19 @@ Cancel and retry?</translation>
     </message>
     <message>
         <source>Export to CIM</source>
-        <translation>Export to CIM</translation>
+        <translation>Εξαγωγή σε CIM</translation>
     </message>
     <message>
         <source>Power Grid Models (*.pgm)</source>
-        <translation>Power Grid Models (*.pgm)</translation>
+        <translation>Μοντέλα ηλεκτρικού δικτύου (*.pgm)</translation>
     </message>
     <message>
         <source>Export to Power Grid Models</source>
-        <translation>Export to Power Grid Models</translation>
+        <translation>Εξαγωγή σε μοντέλα ηλεκτρικού δικτύου</translation>
     </message>
     <message>
         <source>Power Grid Models not installed :/</source>
-        <translation>Power Grid Models not installed :/</translation>
+        <translation>Μη εγκατεστημένα μοντέλα ηλεκτρικού δικτύου :/</translation>
     </message>
     <message>
         <source>Electrical Json V3 (*.ejson3)</source>
@@ -1637,7 +1635,7 @@ Cancel and retry?</translation>
     </message>
     <message>
         <source>Export to JSON</source>
-        <translation>Export to JSON</translation>
+        <translation>Εξαγωγή σε JSON</translation>
     </message>
     <message>
         <source>VeraGrid HDF5 (*.gch5)</source>
@@ -1645,7 +1643,7 @@ Cancel and retry?</translation>
     </message>
     <message>
         <source>Export to VeraGrid HDF5</source>
-        <translation>Export to VeraGrid HDF5</translation>
+        <translation>Εξαγωγή σε VeraGrid HDF5</translation>
     </message>
     <message>
         <source>Excel (*.xlsx)</source>
@@ -1653,7 +1651,7 @@ Cancel and retry?</translation>
     </message>
     <message>
         <source>Export to Microsoft Excel</source>
-        <translation>Export to Microsoft Excel</translation>
+        <translation>Εξαγωγή στο Microsoft Excel</translation>
     </message>
     <message>
         <source>Sqlite (*.sqlite)</source>
@@ -1661,7 +1659,7 @@ Cancel and retry?</translation>
     </message>
     <message>
         <source>Export to Sqlite</source>
-        <translation>Export to Sqlite</translation>
+        <translation>Εξαγωγή σε Sqlite</translation>
     </message>
     <message>
         <source>VeraGrid (*.veragrid)</source>
@@ -1669,7 +1667,7 @@ Cancel and retry?</translation>
     </message>
     <message>
         <source>Export VeraGrid scenario</source>
-        <translation>Export VeraGrid scenario</translation>
+        <translation>Εξαγωγή σεναρίου VeraGrid</translation>
     </message>
 </context>
 <context>
@@ -1677,58 +1675,58 @@ Cancel and retry?</translation>
     <message>
         <location filename="../DeviceEditors/LineEditor/line_editor_gui.ui" line="14" />
         <source>Line editor</source>
-        <translation>Line editor</translation>
+        <translation>Επεξεργαστής γραμμής</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LineEditor/line_editor_gui.ui" line="20" />
         <source>Available templates</source>
-        <translation>Available templates</translation>
+        <translation>Διαθέσιμα πρότυπα</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LineEditor/line_editor_gui.ui" line="57" />
         <source>Load template values</source>
-        <translation>Load template values</translation>
+        <translation>Φόρτωση τιμών προτύπου</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LineEditor/line_editor_gui.ui" line="74" />
         <source>Circuit index:</source>
-        <translation>Circuit index:</translation>
+        <translation>Ευρετήριο κυκλώματος:</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LineEditor/line_editor_gui.ui" line="91" />
         <source>L: Line length</source>
-        <translation>L: Line length</translation>
+        <translation>L: Μήκος γραμμής</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LineEditor/line_editor_gui.ui" line="98" />
         <source> km</source>
-        <translation> km</translation>
+        <translation>χλμ</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LineEditor/line_editor_gui.ui" line="111" />
         <source>R: Resistance</source>
-        <translation>R: Resistance</translation>
+        <translation>R: Αντίσταση</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LineEditor/line_editor_gui.ui" line="118" />
         <location filename="../DeviceEditors/LineEditor/line_editor_gui.ui" line="158" />
         <source> Ω/km</source>
-        <translation> Ω/km</translation>
+        <translation>Ω/χλμ</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LineEditor/line_editor_gui.ui" line="131" />
         <source>Imax: Max. current</source>
-        <translation>Imax: Max. current</translation>
+        <translation>Imax: Μέγ. ρεύμα</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LineEditor/line_editor_gui.ui" line="138" />
         <source> kA</source>
-        <translation> kA</translation>
+        <translation>kA</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LineEditor/line_editor_gui.ui" line="151" />
         <source>X: Inductance</source>
-        <translation>X: Inductance</translation>
+        <translation>Χ: Επαγωγή</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LineEditor/line_editor_gui.ui" line="171" />
@@ -1738,17 +1736,17 @@ Cancel and retry?</translation>
     <message>
         <location filename="../DeviceEditors/LineEditor/line_editor_gui.ui" line="178" />
         <source> uS/Km</source>
-        <translation> uS/Km</translation>
+        <translation>uS/χλμ</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LineEditor/line_editor_gui.ui" line="212" />
         <source>Apply to profiles</source>
-        <translation>Apply to profiles</translation>
+        <translation>Εφαρμογή σε προφίλ</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LineEditor/line_editor_gui.ui" line="235" />
         <source>Accept</source>
-        <translation>Accept</translation>
+        <translation>Αποδέχομαι</translation>
     </message>
 </context>
 <context>
@@ -1757,37 +1755,37 @@ Cancel and retry?</translation>
         <location filename="../Analysis/analysis_gui.ui" line="20" />
         <location filename="../Analysis/analysis_gui.ui" line="140" />
         <source>Grid Health Dashboard</source>
-        <translation>Grid Health Dashboard</translation>
+        <translation>Πίνακας ελέγχου υγείας πλέγματος</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="133" />
         <source>SCORING DASHBOARD</source>
-        <translation>SCORING DASHBOARD</translation>
+        <translation>ΠΙΝΑΚΑΣ ΒΑΘΜΟΛΟΓΙΑΣ</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="150" />
         <source>One dashboard for structural issues, numerical conditioning and sigma stability margin. Review what is wrong, fix safe items and export a decision-ready report.</source>
-        <translation>One dashboard for structural issues, numerical conditioning and sigma stability margin. Review what is wrong, fix safe items and export a decision-ready report.</translation>
+        <translation>Ένας πίνακας οργάνων για δομικά ζητήματα, αριθμητική ρύθμιση και περιθώριο σταθερότητας σίγμα. Ελέγξτε τι είναι λάθος, διορθώστε ασφαλή στοιχεία και εξάγετε μια αναφορά έτοιμη για λήψη αποφάσεων.</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="157" />
         <source>Grid</source>
-        <translation>Grid</translation>
+        <translation>Πλέγμα</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="184" />
         <source>Refresh Score</source>
-        <translation>Refresh Score</translation>
+        <translation>Ανανέωση βαθμολογίας</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="191" />
         <source>Fix Safe Issues</source>
-        <translation>Fix Safe Issues</translation>
+        <translation>Διορθώστε ζητήματα ασφαλείας</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="198" />
         <source>Export Report</source>
-        <translation>Export Report</translation>
+        <translation>Έκθεση εξαγωγής</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="246" />
@@ -1801,7 +1799,7 @@ Cancel and retry?</translation>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="249" />
         <source>Overall Score</source>
-        <translation>Overall Score</translation>
+        <translation>Συνολική βαθμολογία</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="258" />
@@ -1821,17 +1819,17 @@ Cancel and retry?</translation>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="281" />
         <source>Grade --</source>
-        <translation>Grade --</translation>
+        <translation>Βαθμός --</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="303" />
         <source>Score blends issue severity with sigma stability margin.</source>
-        <translation>Score blends issue severity with sigma stability margin.</translation>
+        <translation>Η βαθμολογία συνδυάζει τη σοβαρότητα του ζητήματος με το περιθώριο σταθερότητας σίγμα.</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="340" />
         <source>Total Findings</source>
-        <translation>Total Findings</translation>
+        <translation>Σύνολο ευρημάτων</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="350" />
@@ -1843,27 +1841,27 @@ Cancel and retry?</translation>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="360" />
         <source>All messages included in the current score.</source>
-        <translation>All messages included in the current score.</translation>
+        <translation>Όλα τα μηνύματα περιλαμβάνονται στην τρέχουσα βαθμολογία.</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="397" />
         <source>Critical Issues</source>
-        <translation>Critical Issues</translation>
+        <translation>Κρίσιμα Θέματα</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="417" />
         <source>Errors and divergences deserve first attention.</source>
-        <translation>Errors and divergences deserve first attention.</translation>
+        <translation>Τα λάθη και οι αποκλίσεις αξίζουν την πρώτη προσοχή.</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="454" />
         <source>Auto-Fix Ready</source>
-        <translation>Auto-Fix Ready</translation>
+        <translation>Έτοιμο για αυτόματη διόρθωση</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="474" />
         <source>Safe corrections available from the dashboard.</source>
-        <translation>Safe corrections available from the dashboard.</translation>
+        <translation>Διατίθενται ασφαλείς διορθώσεις από τον πίνακα ελέγχου.</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="511" />
@@ -1873,17 +1871,17 @@ Cancel and retry?</translation>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="531" />
         <source>Minimum stability distance from the sigma boundary.</source>
-        <translation>Minimum stability distance from the sigma boundary.</translation>
+        <translation>Ελάχιστη απόσταση σταθερότητας από το όριο σίγμα.</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="562" />
         <source>How To Use This Dashboard</source>
-        <translation>How To Use This Dashboard</translation>
+        <translation>Πώς να χρησιμοποιήσετε αυτόν τον πίνακα ελέγχου</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="572" />
         <source>Use the dashboard sections below to review the executive overview, detailed findings, action narrative, sigma stability view and threshold controls.</source>
-        <translation>Use the dashboard sections below to review the executive overview, detailed findings, action narrative, sigma stability view and threshold controls.</translation>
+        <translation>Χρησιμοποιήστε τις παρακάτω ενότητες του πίνακα εργαλείων για να ελέγξετε την επισκόπηση της εκτελεστικής λειτουργίας, τα λεπτομερή ευρήματα, την αφήγηση ενεργειών, την προβολή σταθερότητας σίγμα και τα στοιχεία ελέγχου ορίου.</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="630" />
@@ -1896,151 +1894,151 @@ Cancel and retry?</translation>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="633" />
         <source>Findings</source>
-        <translation>Findings</translation>
+        <translation>Ευρήματα</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="653" />
         <source>Filter by severity, auto-fix support or free text.</source>
-        <translation>Filter by severity, auto-fix support or free text.</translation>
+        <translation>Φιλτράρισμα κατά σοβαρότητα, υποστήριξη αυτόματης επιδιόρθωσης ή δωρεάν κείμενο.</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="673" />
         <source>Only auto-fixable</source>
-        <translation>Only auto-fixable</translation>
+        <translation>Μόνο αυτόματη επιδιόρθωση</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="680" />
         <source>Search message, device, property or value</source>
-        <translation>Search message, device, property or value</translation>
+        <translation>Αναζήτηση μηνύματος, συσκευής, ιδιοκτησίας ή αξίας</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="737" />
         <source>What Needs Attention</source>
-        <translation>What Needs Attention</translation>
+        <translation>Τι Χρειάζεται Προσοχή</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="798" />
         <source>Sigma Stability</source>
-        <translation>Sigma Stability</translation>
+        <translation>Σταθερότητα Sigma</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="818" />
         <source>Sigma analysis pending.</source>
-        <translation>Sigma analysis pending.</translation>
+        <translation>Η ανάλυση Sigma εκκρεμεί.</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="875" />
         <source>Assessment Controls</source>
-        <translation>Assessment Controls</translation>
+        <translation>Έλεγχοι αξιολόγησης</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="885" />
         <source>Adjust the guardrails used by the diagnostics, then refresh the score to compare scenarios before exporting the report.</source>
-        <translation>Adjust the guardrails used by the diagnostics, then refresh the score to compare scenarios before exporting the report.</translation>
+        <translation>Προσαρμόστε τα προστατευτικά κιγκλιδώματα που χρησιμοποιούνται από τα διαγνωστικά και, στη συνέχεια, ανανεώστε τη βαθμολογία για να συγκρίνετε σενάρια πριν από την εξαγωγή της αναφοράς.</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="931" />
         <source>Active power imbalance (%)</source>
-        <translation>Active power imbalance (%)</translation>
+        <translation>Ανισορροπία ενεργού ισχύος (%)</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="951" />
         <source>Generator Vset range (min / max)</source>
-        <translation>Generator Vset range (min / max)</translation>
+        <translation>Εύρος Vset γεννήτριας (ελάχ. / μέγιστο)</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="994" />
         <source>Transformer tap module (min / max)</source>
-        <translation>Transformer tap module (min / max)</translation>
+        <translation>Μονάδα βρύσης μετασχηματιστή (ελάχ. / μέγιστο)</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="1037" />
         <source>Virtual tap tolerance (%)</source>
-        <translation>Virtual tap tolerance (%)</translation>
+        <translation>Εικονική ανοχή πατήματος (%)</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="1057" />
         <source>Line voltage mismatch tolerance (%)</source>
-        <translation>Line voltage mismatch tolerance (%)</translation>
+        <translation>Ανοχή ασυμφωνίας τάσης γραμμής (%)</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="1077" />
         <source>Transformer Vcc (%) min / max</source>
-        <translation>Transformer Vcc (%) min / max</translation>
+        <translation>Μετασχηματιστής Vcc (%) ελάχ. / μέγ</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="1116" />
         <source>Apply safe fixes to time-series profiles too</source>
-        <translation>Apply safe fixes to time-series profiles too</translation>
+        <translation>Εφαρμόστε ασφαλείς επιδιορθώσεις και σε προφίλ χρονοσειρών</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="1163" />
         <location filename="../SigmaAnalysis/sigma_analysis_gui.ui" line="71" />
         <source>Actions</source>
-        <translation>Actions</translation>
+        <translation>Δράσεις</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="1175" />
         <source>Main</source>
-        <translation>Main</translation>
+        <translation>Κύριος</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="1189" />
         <source>Refresh score</source>
-        <translation>Refresh score</translation>
+        <translation>Ανανέωση βαθμολογίας</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="1194" />
         <source>Fix safe issues</source>
-        <translation>Fix safe issues</translation>
+        <translation>Διορθώστε προβλήματα ασφαλείας</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="1199" />
         <source>Export issues only</source>
-        <translation>Export issues only</translation>
+        <translation>Μόνο ζητήματα εξαγωγής</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="1204" />
         <source>Export full report</source>
-        <translation>Export full report</translation>
+        <translation>Εξαγωγή πλήρους αναφοράς</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="1209" />
         <source>Copy sigma table</source>
-        <translation>Copy sigma table</translation>
+        <translation>Αντιγραφή πίνακα σίγμα</translation>
     </message>
     <message>
         <location filename="../ContingencyPlanner/contingency_planner_gui.ui" line="14" />
         <source>Contingency planner</source>
-        <translation>Contingency planner</translation>
+        <translation>Σχεδιαστής έκτακτης ανάγκης</translation>
     </message>
     <message>
         <location filename="../ContingencyPlanner/contingency_planner_gui.ui" line="69" />
         <location filename="../ContingencyPlanner/contingency_planner_gui.ui" line="215" />
         <source>Max</source>
-        <translation>Max</translation>
+        <translation>Μέγ</translation>
     </message>
     <message>
         <location filename="../ContingencyPlanner/contingency_planner_gui.ui" line="76" />
         <location filename="../ContingencyPlanner/contingency_planner_gui.ui" line="110" />
         <source> kV</source>
-        <translation> kV</translation>
+        <translation>kV</translation>
     </message>
     <message>
         <location filename="../ContingencyPlanner/contingency_planner_gui.ui" line="86" />
         <location filename="../ContingencyPlanner/contingency_planner_gui.ui" line="208" />
         <source>Min</source>
-        <translation>Min</translation>
+        <translation>Ελάχ</translation>
     </message>
     <message>
         <location filename="../ContingencyPlanner/contingency_planner_gui.ui" line="93" />
         <source>Add branches</source>
-        <translation>Add branches</translation>
+        <translation>Προσθέστε κλαδιά</translation>
     </message>
     <message>
         <location filename="../ContingencyPlanner/contingency_planner_gui.ui" line="103" />
         <source>Filter branches by voltage</source>
-        <translation>Filter branches by voltage</translation>
+        <translation>Φιλτράρετε τους κλάδους κατά τάση</translation>
     </message>
     <message>
         <location filename="../ContingencyPlanner/contingency_planner_gui.ui" line="151" />
@@ -2049,7 +2047,7 @@ Cancel and retry?</translation>
         <location filename="../DeviceEditors/GeneratorEditor/WindPowerWizard/wind_power_wizard_gui.ui" line="169" />
         <location filename="../GridGenerator/grid_generator_gui.ui" line="55" />
         <source> MW</source>
-        <translation> MW</translation>
+        <translation>MW</translation>
     </message>
     <message>
         <location filename="../ContingencyPlanner/contingency_planner_gui.ui" line="161" />
@@ -2061,34 +2059,34 @@ Cancel and retry?</translation>
     <message>
         <location filename="../ContingencyPlanner/contingency_planner_gui.ui" line="174" />
         <source>Contingency power</source>
-        <translation>Contingency power</translation>
+        <translation>Ισχύς έκτακτης ανάγκης</translation>
     </message>
     <message>
         <location filename="../ContingencyPlanner/contingency_planner_gui.ui" line="181" />
         <source>Add Injections</source>
-        <translation>Add Injections</translation>
+        <translation>Προσθέστε ενέσεις</translation>
     </message>
     <message>
         <location filename="../ContingencyPlanner/contingency_planner_gui.ui" line="188" />
         <source>Filter by power</source>
-        <translation>Filter by power</translation>
+        <translation>Φιλτράρισμα με ρεύμα</translation>
     </message>
     <message>
         <location filename="../ContingencyPlanner/contingency_planner_gui.ui" line="259" />
         <source>N-</source>
-        <translation>N-</translation>
+        <translation>Ν-</translation>
     </message>
     <message>
         <location filename="../ContingencyPlanner/contingency_planner_gui.ui" line="272" />
         <source>Automatically generate the all the N-x contingencies following the settings below</source>
-        <translation>Automatically generate the all the N-x contingencies following the settings below</translation>
+        <translation>Δημιουργήστε αυτόματα όλα τα απρόβλεπτα N-x ακολουθώντας τις παρακάτω ρυθμίσεις</translation>
     </message>
     <message>
         <location filename="../ContingencyPlanner/contingency_planner_gui.ui" line="275" />
         <location filename="../DeviceEditors/GeneratorEditor/SolarPowerWizard/solar_power_wizard_gui.ui" line="156" />
         <location filename="../DeviceEditors/GeneratorEditor/WindPowerWizard/wind_power_wizard_gui.ui" line="77" />
         <source>Generate</source>
-        <translation>Generate</translation>
+        <translation>Παράγω</translation>
     </message>
     <message>
         <location filename="../ContingencyPlanner/contingency_planner_gui.ui" line="292" />
@@ -2097,7 +2095,7 @@ Cancel and retry?</translation>
         <location filename="../GridGenerator/grid_generator_gui.ui" line="630" />
         <location filename="../SigmaAnalysis/sigma_analysis_gui.ui" line="85" />
         <source>Copy to clipboard</source>
-        <translation>Copy to clipboard</translation>
+        <translation>Αντιγραφή στο πρόχειρο</translation>
     </message>
     <message>
         <location filename="../ContingencyPlanner/contingency_planner_gui.ui" line="301" />
@@ -2106,23 +2104,23 @@ Cancel and retry?</translation>
         <location filename="../GridGenerator/grid_generator_gui.ui" line="639" />
         <location filename="../SigmaAnalysis/sigma_analysis_gui.ui" line="94" />
         <source>Save</source>
-        <translation>Save</translation>
+        <translation>Εκτός</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/GeneratorEditor/SolarPowerWizard/solar_power_wizard_gui.ui" line="14" />
         <source>Solar power wizard</source>
-        <translation>Solar power wizard</translation>
+        <translation>Μάγος ηλιακής ενέργειας</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/GeneratorEditor/SolarPowerWizard/solar_power_wizard_gui.ui" line="49" />
         <source>Site data</source>
-        <translation>Site data</translation>
+        <translation>Δεδομένα τοποθεσίας</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/GeneratorEditor/SolarPowerWizard/solar_power_wizard_gui.ui" line="63" />
         <location filename="../DeviceEditors/GeneratorEditor/WindPowerWizard/wind_power_wizard_gui.ui" line="139" />
         <source>Longitude</source>
-        <translation>Longitude</translation>
+        <translation>Γεωγραφικό μήκος</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/GeneratorEditor/SolarPowerWizard/solar_power_wizard_gui.ui" line="70" />
@@ -2130,147 +2128,147 @@ Cancel and retry?</translation>
         <location filename="../DeviceEditors/GeneratorEditor/WindPowerWizard/wind_power_wizard_gui.ui" line="123" />
         <location filename="../DeviceEditors/GeneratorEditor/WindPowerWizard/wind_power_wizard_gui.ui" line="146" />
         <source> deg</source>
-        <translation> deg</translation>
+        <translation>deg</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/GeneratorEditor/SolarPowerWizard/solar_power_wizard_gui.ui" line="128" />
         <location filename="../DeviceEditors/GeneratorEditor/WindPowerWizard/wind_power_wizard_gui.ui" line="116" />
         <source>Latitude</source>
-        <translation>Latitude</translation>
+        <translation>Γεωγραφικό πλάτος</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/GeneratorEditor/SolarPowerWizard/solar_power_wizard_gui.ui" line="135" />
         <location filename="../DeviceEditors/GeneratorEditor/WindPowerWizard/wind_power_wizard_gui.ui" line="162" />
         <source>Power</source>
-        <translation>Power</translation>
+        <translation>Εξουσία</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/GeneratorEditor/SolarPowerWizard/solar_power_wizard_gui.ui" line="142" />
         <source>Bus</source>
-        <translation>Bus</translation>
+        <translation>Λεωφορείο</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/GeneratorEditor/SolarPowerWizard/solar_power_wizard_gui.ui" line="149" />
         <source>Generator</source>
-        <translation>Generator</translation>
+        <translation>Γεννήτρια</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/GeneratorEditor/SolarPowerWizard/solar_power_wizard_gui.ui" line="173" />
         <source>Plot data</source>
-        <translation>Plot data</translation>
+        <translation>Στοιχεία σχεδίου</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/GeneratorEditor/SolarPowerWizard/solar_power_wizard_gui.ui" line="200" />
         <location filename="../DeviceEditors/GeneratorEditor/WindPowerWizard/wind_power_wizard_gui.ui" line="278" />
         <location filename="../GridGenerator/grid_generator_gui.ui" line="612" />
         <source>Accept</source>
-        <translation>Accept</translation>
+        <translation>Αποδέχομαι</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/GeneratorEditor/WindPowerWizard/wind_power_wizard_gui.ui" line="14" />
         <source>Wind power wizard</source>
-        <translation>Wind power wizard</translation>
+        <translation>Οδηγός αιολικής ενέργειας</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/GeneratorEditor/WindPowerWizard/wind_power_wizard_gui.ui" line="61" />
         <source>Turbine library</source>
-        <translation>Turbine library</translation>
+        <translation>Βιβλιοθήκη τουρμπίνας</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/GeneratorEditor/WindPowerWizard/wind_power_wizard_gui.ui" line="67" />
         <source>Template</source>
-        <translation>Template</translation>
+        <translation>Περίγραμμα</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/GeneratorEditor/WindPowerWizard/wind_power_wizard_gui.ui" line="84" />
         <source>Plot design curves</source>
-        <translation>Plot design curves</translation>
+        <translation>Καμπύλες σχεδίασης οικοπέδου</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/GeneratorEditor/WindPowerWizard/wind_power_wizard_gui.ui" line="103" />
         <source>Site and model</source>
-        <translation>Site and model</translation>
+        <translation>Ιστοσελίδα και μοντέλο</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/GeneratorEditor/WindPowerWizard/wind_power_wizard_gui.ui" line="109" />
         <source>Wind turbine data</source>
-        <translation>Wind turbine data</translation>
+        <translation>Δεδομένα ανεμογεννητριών</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/GeneratorEditor/WindPowerWizard/wind_power_wizard_gui.ui" line="182" />
         <source>Hub height</source>
-        <translation>Hub height</translation>
+        <translation>Ύψος πλήμνης</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/GeneratorEditor/WindPowerWizard/wind_power_wizard_gui.ui" line="189" />
         <location filename="../DeviceEditors/GeneratorEditor/WindPowerWizard/wind_power_wizard_gui.ui" line="212" />
         <source> m</source>
-        <translation> m</translation>
+        <translation>m</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/GeneratorEditor/WindPowerWizard/wind_power_wizard_gui.ui" line="205" />
         <source>Roughness</source>
-        <translation>Roughness</translation>
+        <translation>Τραχύτητα</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/GeneratorEditor/WindPowerWizard/wind_power_wizard_gui.ui" line="258" />
         <source>Plot</source>
-        <translation>Plot</translation>
+        <translation>Οικόπεδο</translation>
     </message>
     <message>
         <location filename="../FileDialogues/LoadCatalogue/SelectComponents.ui" line="14" />
         <source>Dialog</source>
-        <translation>Dialog</translation>
+        <translation>Διάλογος</translation>
     </message>
     <message>
         <location filename="../FileDialogues/LoadCatalogue/SelectComponents.ui" line="33" />
         <source>Transformer</source>
-        <translation>Transformer</translation>
+        <translation>Μετασχηματιστής</translation>
     </message>
     <message>
         <location filename="../FileDialogues/LoadCatalogue/SelectComponents.ui" line="43" />
         <source>Line</source>
-        <translation>Line</translation>
+        <translation>Γραμμή</translation>
     </message>
     <message>
         <location filename="../FileDialogues/LoadCatalogue/SelectComponents.ui" line="53" />
         <source>Substation</source>
-        <translation>Substation</translation>
+        <translation>Μικρός σταθμός</translation>
     </message>
     <message>
         <location filename="../FileDialogues/LoadCatalogue/SelectComponents.ui" line="63" />
         <source>Cable</source>
-        <translation>Cable</translation>
+        <translation>Καλώδιο</translation>
     </message>
     <message>
         <location filename="../FileDialogues/LoadCatalogue/SelectComponents.ui" line="73" />
         <source>Turbine</source>
-        <translation>Turbine</translation>
+        <translation>Τουρμπίνα</translation>
     </message>
     <message>
         <location filename="../FileDialogues/LoadCatalogue/SelectComponents.ui" line="83" />
         <source>(Only one may be selected at a time.)</source>
-        <translation>(Only one may be selected at a time.)</translation>
+        <translation>(Μόνο ένα μπορεί να επιλεγεί κάθε φορά.)</translation>
     </message>
     <message>
         <location filename="../FileDialogues/LoadCatalogue/SelectComponents.ui" line="95" />
         <source>Insert Catalogue Component</source>
-        <translation>Insert Catalogue Component</translation>
+        <translation>Εισαγωγή στοιχείου καταλόγου</translation>
     </message>
     <message>
         <location filename="../FileDialogues/LoadCatalogue/SelectComponents.ui" line="102" />
         <source>Reactor</source>
-        <translation>Reactor</translation>
+        <translation>Αντιδραστήρας</translation>
     </message>
     <message>
         <location filename="../FileDialogues/LoadCatalogue/SelectComponents.ui" line="112" />
         <source>Switchgear</source>
-        <translation>Switchgear</translation>
+        <translation>Διακόπτης</translation>
     </message>
     <message>
         <location filename="../FileDialogues/LoadCatalogue/SelectComponents.ui" line="122" />
         <source>Please select the component data to add to the catalogue:</source>
-        <translation>Please select the component data to add to the catalogue:</translation>
+        <translation>Παρακαλούμε επιλέξτε τα στοιχεία των στοιχείων που θέλετε να προσθέσετε στον κατάλογο:</translation>
     </message>
     <message>
         <location filename="../GridGenerator/grid_generator_gui.ui" line="14" />
@@ -2281,80 +2279,80 @@ Cancel and retry?</translation>
     <message>
         <location filename="../GridGenerator/grid_generator_gui.ui" line="191" />
         <source>Graph</source>
-        <translation>Graph</translation>
+        <translation>Γραφική παράσταση</translation>
     </message>
     <message>
         <location filename="../GridGenerator/grid_generator_gui.ui" line="198" />
         <location filename="../GridGenerator/grid_generator_gui.ui" line="218" />
         <location filename="../GridGenerator/grid_generator_gui.ui" line="245" />
         <source> p.u./km</source>
-        <translation> p.u./km</translation>
+        <translation>p.u./km</translation>
     </message>
     <message>
         <location filename="../GridGenerator/grid_generator_gui.ui" line="211" />
         <source>Grid power</source>
-        <translation>Grid power</translation>
+        <translation>Ισχύς δικτύου</translation>
     </message>
     <message>
         <location filename="../GridGenerator/grid_generator_gui.ui" line="231" />
         <source>Number of nodes</source>
-        <translation>Number of nodes</translation>
+        <translation>Αριθμός κόμβων</translation>
     </message>
     <message>
         <location filename="../GridGenerator/grid_generator_gui.ui" line="238" />
         <source>Susceptance (B)</source>
-        <translation>Susceptance (B)</translation>
+        <translation>Ευαισθησία (Β)</translation>
     </message>
     <message>
         <location filename="../GridGenerator/grid_generator_gui.ui" line="277" />
         <source>Resistance (R)</source>
-        <translation>Resistance (R)</translation>
+        <translation>Αντίσταση (R)</translation>
     </message>
     <message>
         <location filename="../GridGenerator/grid_generator_gui.ui" line="300" />
         <source>Expansion ratio</source>
-        <translation>Expansion ratio</translation>
+        <translation>Αναλογία επέκτασης</translation>
     </message>
     <message>
         <location filename="../GridGenerator/grid_generator_gui.ui" line="307" />
         <source> nodes</source>
-        <translation> nodes</translation>
+        <translation>κόμβους</translation>
     </message>
     <message>
         <location filename="../GridGenerator/grid_generator_gui.ui" line="446" />
         <source>Devices</source>
-        <translation>Devices</translation>
+        <translation>Συσκευές</translation>
     </message>
     <message>
         <location filename="../GridGenerator/grid_generator_gui.ui" line="453" />
         <source>Load nodes</source>
-        <translation>Load nodes</translation>
+        <translation>Φόρτωση κόμβων</translation>
     </message>
     <message>
         <location filename="../GridGenerator/grid_generator_gui.ui" line="479" />
         <source>Generation nodes</source>
-        <translation>Generation nodes</translation>
+        <translation>Κόμβοι γενιάς</translation>
     </message>
     <message>
         <location filename="../GridGenerator/grid_generator_gui.ui" line="486" />
         <source>Reactance(X) </source>
-        <translation>Reactance(X) </translation>
+        <translation>Αντίδραση (X)</translation>
     </message>
     <message>
         <location filename="../GridGenerator/grid_generator_gui.ui" line="493" />
         <source>Power factor</source>
-        <translation>Power factor</translation>
+        <translation>Συντελεστής ισχύος</translation>
     </message>
     <message>
         <location filename="../GridGenerator/grid_generator_gui.ui" line="576" />
         <location filename="../GridGenerator/grid_generator_gui.ui" line="579" />
         <source>Preview</source>
-        <translation>Preview</translation>
+        <translation>Πρεμιέρα</translation>
     </message>
     <message>
         <location filename="../GridGenerator/grid_generator_gui.ui" line="609" />
         <source>Create Grid</source>
-        <translation>Create Grid</translation>
+        <translation>Δημιουργία Πλέγματος</translation>
     </message>
 </context>
 <context>
@@ -2362,27 +2360,27 @@ Cancel and retry?</translation>
     <message>
         <location filename="../FileDialogues/MatpowerDialogue/matpower_export_gui.ui" line="14" />
         <source>MATPOWER Export</source>
-        <translation>MATPOWER Export</translation>
+        <translation>MATPOWER Εξαγωγή</translation>
     </message>
     <message>
         <location filename="../FileDialogues/MatpowerDialogue/matpower_export_gui.ui" line="35" />
         <source>Export mode</source>
-        <translation>Export mode</translation>
+        <translation>Λειτουργία εξαγωγής</translation>
     </message>
     <message>
         <location filename="../FileDialogues/MatpowerDialogue/matpower_export_gui.ui" line="45" />
         <source>Time slot</source>
-        <translation>Time slot</translation>
+        <translation>Χρονική θυρίδα</translation>
     </message>
     <message>
         <location filename="../FileDialogues/MatpowerDialogue/matpower_export_gui.ui" line="65" />
         <source>Snapshot</source>
-        <translation>Snapshot</translation>
+        <translation>Στιγμιότυπο</translation>
     </message>
     <message>
         <location filename="../FileDialogues/MatpowerDialogue/matpower_export_gui.ui" line="72" />
         <source>Export</source>
-        <translation>Export</translation>
+        <translation>Εξαγωγή</translation>
     </message>
 </context>
 <context>
@@ -2390,47 +2388,47 @@ Cancel and retry?</translation>
     <message>
         <location filename="../FileDialogues/PsseDialogue/psse_export_gui.ui" line="14" />
         <source>PSS/e Export</source>
-        <translation>PSS/e Export</translation>
+        <translation>PSS/e Εξαγωγή</translation>
     </message>
     <message>
         <location filename="../FileDialogues/PsseDialogue/psse_export_gui.ui" line="35" />
         <source>Export mode</source>
-        <translation>Export mode</translation>
+        <translation>Λειτουργία εξαγωγής</translation>
     </message>
     <message>
         <location filename="../FileDialogues/PsseDialogue/psse_export_gui.ui" line="45" />
         <source>File format</source>
-        <translation>File format</translation>
+        <translation>Μορφή αρχείου</translation>
     </message>
     <message>
         <location filename="../FileDialogues/PsseDialogue/psse_export_gui.ui" line="55" />
         <source>Export version</source>
-        <translation>Export version</translation>
+        <translation>Έκδοση εξαγωγής</translation>
     </message>
     <message>
         <location filename="../FileDialogues/PsseDialogue/psse_export_gui.ui" line="65" />
         <source>Topology mapping</source>
-        <translation>Topology mapping</translation>
+        <translation>Χαρτογράφηση τοπολογίας</translation>
     </message>
     <message>
         <location filename="../FileDialogues/PsseDialogue/psse_export_gui.ui" line="72" />
         <source>Map substations to PSS/e nodes (34+ only)</source>
-        <translation>Map substations to PSS/e nodes (34+ only)</translation>
+        <translation>Χαρτογράφηση υποσταθμών σε κόμβους PSS/e (μόνο 34+)</translation>
     </message>
     <message>
         <location filename="../FileDialogues/PsseDialogue/psse_export_gui.ui" line="79" />
         <source>Time slot</source>
-        <translation>Time slot</translation>
+        <translation>Χρονική θυρίδα</translation>
     </message>
     <message>
         <location filename="../FileDialogues/PsseDialogue/psse_export_gui.ui" line="99" />
         <source>Snapshot</source>
-        <translation>Snapshot</translation>
+        <translation>Στιγμιότυπο</translation>
     </message>
     <message>
         <location filename="../FileDialogues/PsseDialogue/psse_export_gui.ui" line="106" />
         <source>Export</source>
-        <translation>Export</translation>
+        <translation>Εξαγωγή</translation>
     </message>
 </context>
 <context>
@@ -2438,42 +2436,42 @@ Cancel and retry?</translation>
     <message>
         <location filename="../FileDialogues/PsseDialogue/psse_import_gui.ui" line="14" />
         <source>PSS/e Import</source>
-        <translation>PSS/e Import</translation>
+        <translation>PSS/e Εισαγωγή</translation>
     </message>
     <message>
         <location filename="../FileDialogues/PsseDialogue/psse_import_gui.ui" line="35" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Use &amp;quot;I_J_ckt&amp;quot; insetad of &lt;/p&gt;&lt;p&gt;&amp;quot;I_Iname_VI_J_Jname_VJ_ckt&amp;quot;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Use &amp;quot;I_J_ckt&amp;quot; insetad of &lt;/p&gt;&lt;p&gt;&amp;quot;I_Iname_VI_J_Jname_VJ_ckt&amp;quot;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Χρησιμοποιήστε το "I_J_ckt" insetad of&lt;/p&gt;&lt;p&gt;"I_Iname_VI_J_Jname_VJ_ckt"&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../FileDialogues/PsseDialogue/psse_import_gui.ui" line="38" />
         <source>Use short branch names</source>
-        <translation>Use short branch names</translation>
+        <translation>Χρησιμοποιήστε σύντομα ονόματα υποκαταστημάτων</translation>
     </message>
     <message>
         <location filename="../FileDialogues/PsseDialogue/psse_import_gui.ui" line="45" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;PSS/e taps might not come adjusted &lt;/p&gt;&lt;p&gt;to the specified tap positions, &lt;/p&gt;&lt;p&gt;Do you want to adjust them?&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;PSS/e taps might not come adjusted &lt;/p&gt;&lt;p&gt;to the specified tap positions, &lt;/p&gt;&lt;p&gt;Do you want to adjust them?&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Τα πατήματα PSS/e ενδέχεται να μην προσαρμοστούν&lt;/p&gt;&lt;p&gt;στις καθορισμένες θέσεις βρύσης,&lt;/p&gt;&lt;p&gt;Θέλετε να τα προσαρμόσετε;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../FileDialogues/PsseDialogue/psse_import_gui.ui" line="48" />
         <source>Adjust taps to integer positions</source>
-        <translation>Adjust taps to integer positions</translation>
+        <translation>Προσαρμόστε τα πατήματα σε ακέραιες θέσεις</translation>
     </message>
     <message>
         <location filename="../FileDialogues/PsseDialogue/psse_import_gui.ui" line="55" />
         <source>Import</source>
-        <translation>Import</translation>
+        <translation>Εισαγωγή</translation>
     </message>
     <message>
         <location filename="../FileDialogues/PsseDialogue/psse_import_gui.ui" line="75" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;PSS/e does not handle the difference of nominal &lt;/p&gt;&lt;p&gt;voltage between the bus and the transformer (the vitual tap) &lt;/p&gt;&lt;p&gt;If checked, this will make the transformer nominal voltages &lt;/p&gt;&lt;p&gt;equal to the buses nominal voltage to behave like PSS/e&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;PSS/e does not handle the difference of nominal &lt;/p&gt;&lt;p&gt;voltage between the bus and the transformer (the vitual tap) &lt;/p&gt;&lt;p&gt;If checked, this will make the transformer nominal voltages &lt;/p&gt;&lt;p&gt;equal to the buses nominal voltage to behave like PSS/e&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Το PSS/e δεν χειρίζεται τη διαφορά ονομαστικής&lt;/p&gt;&lt;p&gt;τάση μεταξύ του διαύλου και του μετασχηματιστή (η ζωτική βρύση)&lt;/p&gt;&lt;p&gt;Εάν επιλεγεί, αυτό θα κάνει τον μετασχηματιστή ονομαστικές τάσεις&lt;/p&gt;&lt;p&gt;ίση με την ονομαστική τάση των διαύλων για να συμπεριφέρονται όπως PSS/e&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../FileDialogues/PsseDialogue/psse_import_gui.ui" line="78" />
         <source>Flatten viatual taps</source>
-        <translation>Flatten viatual taps</translation>
+        <translation>Ισιώνετε τις στρόφιγγες</translation>
     </message>
 </context>
 <context>
@@ -2481,181 +2479,181 @@ Cancel and retry?</translation>
     <message>
         <location filename="../GridReduce/grid_reduce_gui.ui" line="14" />
         <source>Grid Merge</source>
-        <translation>Grid Merge</translation>
+        <translation>Συγχώνευση Πλέγματος</translation>
     </message>
     <message>
         <location filename="../GridReduce/grid_reduce_gui.ui" line="68" />
         <source>Reduce / Keep</source>
-        <translation>Reduce / Keep</translation>
+        <translation>Μείωση / Διατήρηση</translation>
     </message>
     <message>
         <location filename="../GridReduce/grid_reduce_gui.ui" line="75" />
         <source>Method</source>
-        <translation>Method</translation>
+        <translation>Μέθοδος</translation>
     </message>
     <message>
         <location filename="../GridReduce/grid_reduce_gui.ui" line="95" />
         <source>Copy the reduction indices as a list</source>
-        <translation>Copy the reduction indices as a list</translation>
+        <translation>Αντιγράψτε τους δείκτες μείωσης ως λίστα</translation>
     </message>
     <message>
         <location filename="../GridReduce/grid_reduce_gui.ui" line="109" />
         <source>Reduce the grid using the selected method</source>
-        <translation>Reduce the grid using the selected method</translation>
+        <translation>Μειώστε το πλέγμα χρησιμοποιώντας την επιλεγμένη μέθοδο</translation>
     </message>
     <message>
         <location filename="../GridReduce/grid_reduce_gui.ui" line="112" />
         <source>Reduce</source>
-        <translation>Reduce</translation>
+        <translation>Περιορίζω</translation>
     </message>
 </context>
 <context>
     <name>ResultsMain</name>
     <message>
         <source>Delete driver</source>
-        <translation>Delete driver</translation>
+        <translation>Διαγραφή προγράμματος οδήγησης</translation>
     </message>
     <message>
         <source>Rename group</source>
-        <translation>Rename group</translation>
+        <translation>Μετονομασία ομάδας</translation>
     </message>
     <message>
         <source>Rename variable</source>
-        <translation>Rename variable</translation>
+        <translation>Μετονομασία μεταβλητής</translation>
     </message>
     <message>
         <source>Rename dynamic plot</source>
-        <translation>Rename dynamic plot</translation>
+        <translation>Μετονομασία δυναμικής πλοκής</translation>
     </message>
     <message>
         <source>Plot name</source>
-        <translation>Plot name</translation>
+        <translation>Όνομα οικοπέδου</translation>
     </message>
     <message>
         <source>The plot group name is empty or already exists.</source>
-        <translation>The plot group name is empty or already exists.</translation>
+        <translation>Το όνομα της ομάδας γραφικής παράστασης είναι κενό ή υπάρχει ήδη.</translation>
     </message>
     <message>
         <source>Select a plot group first.</source>
-        <translation>Select a plot group first.</translation>
+        <translation>Επιλέξτε πρώτα μια ομάδα πλοκών.</translation>
     </message>
     <message>
         <source>There are no RMS dynamics results loaded.</source>
-        <translation>There are no RMS dynamics results loaded.</translation>
+        <translation>Δεν έχουν φορτωθεί αποτελέσματα δυναμικής RMS.</translation>
     </message>
     <message>
         <source>Rename dynamic variable</source>
-        <translation>Rename dynamic variable</translation>
+        <translation>Μετονομασία δυναμικής μεταβλητής</translation>
     </message>
     <message>
         <source>Variable name</source>
-        <translation>Variable name</translation>
+        <translation>Όνομα μεταβλητής</translation>
     </message>
     <message>
         <source>The variable name is empty or could not be changed.</source>
-        <translation>The variable name is empty or could not be changed.</translation>
+        <translation>Το όνομα της μεταβλητής είναι κενό ή δεν ήταν δυνατό να αλλάξει.</translation>
     </message>
     <message>
         <source>New dynamic plot</source>
-        <translation>New dynamic plot</translation>
+        <translation>Νέα δυναμική πλοκή</translation>
     </message>
     <message>
         <source>Plot mode</source>
-        <translation>Plot mode</translation>
+        <translation>Λειτουργία σχεδίασης</translation>
     </message>
     <message>
         <source>Time Series (Y vs Time)</source>
-        <translation>Time Series (Y vs Time)</translation>
+        <translation>Χρονοσειρά (Y vs Time)</translation>
     </message>
     <message>
         <source>X-Y Plot (Y vs X)</source>
-        <translation>X-Y Plot (Y vs X)</translation>
+        <translation>Οικόπεδο X-Y (Y vs X)</translation>
     </message>
     <message>
         <source>The selected dynamic plot entry could not be deleted.</source>
-        <translation>The selected dynamic plot entry could not be deleted.</translation>
+        <translation>Δεν ήταν δυνατή η διαγραφή της επιλεγμένης καταχώρισης δυναμικής γραφικής παράστασης.</translation>
     </message>
     <message>
         <source>Select a plot group or variable first.</source>
-        <translation>Select a plot group or variable first.</translation>
+        <translation>Επιλέξτε πρώτα μια ομάδα γραφικών ή μια μεταβλητή.</translation>
     </message>
     <message>
         <source>The selected dynamic plot entry could not be plotted.</source>
-        <translation>The selected dynamic plot entry could not be plotted.</translation>
+        <translation>Δεν ήταν δυνατή η γραφική παράσταση της επιλεγμένης καταχώρισης δυναμικής γραφικής παράστασης.</translation>
     </message>
     <message>
         <source>There are {columns} columns, the plot might take a lot to render.
 Are you ok with potentially waiting a lot?</source>
-        <translation>There are {columns} columns, the plot might take a lot to render.
-Are you ok with potentially waiting a lot?</translation>
+        <translation>Υπάρχουν στήλες {columns}, η πλοκή μπορεί να χρειαστεί πολύ για να αποδοθεί.
+Είσαι εντάξει με το ενδεχόμενο να περιμένεις πολύ;</translation>
     </message>
     <message>
         <source>Plot</source>
-        <translation>Plot</translation>
+        <translation>Οικόπεδο</translation>
     </message>
     <message>
         <source>Export results</source>
-        <translation>Export results</translation>
+        <translation>Εξαγωγή αποτελεσμάτων</translation>
     </message>
     <message>
         <source>CSV (*.csv);;Excel files (*.xlsx)</source>
-        <translation>CSV (*.csv);;Excel files (*.xlsx)</translation>
+        <translation>CSV (*.csv);;Αρχεία Excel (*.xlsx)</translation>
     </message>
     <message>
         <source> is not valid :(</source>
-        <translation> is not valid :(</translation>
+        <translation>δεν ισχύει :(</translation>
     </message>
     <message>
         <source>There is no profile displayed, please display one</source>
-        <translation>There is no profile displayed, please display one</translation>
+        <translation>Δεν εμφανίζεται κανένα προφίλ, εμφανίστε ένα</translation>
     </message>
     <message>
         <source>Copy profile to clipboard</source>
-        <translation>Copy profile to clipboard</translation>
+        <translation>Αντιγραφή προφίλ στο πρόχειρο</translation>
     </message>
     <message>
         <source>Copied!</source>
-        <translation>Copied!</translation>
+        <translation>Αντιγράφηκε!</translation>
     </message>
     <message>
         <source>Filter parse</source>
-        <translation>Filter parse</translation>
+        <translation>Ανάλυση φίλτρου</translation>
     </message>
     <message>
         <source>Do you want to delete the results driver {study_name}?</source>
-        <translation>Do you want to delete the results driver {study_name}?</translation>
+        <translation>Θέλετε να διαγράψετε το πρόγραμμα οδήγησης αποτελεσμάτων {study_name};</translation>
     </message>
     <message>
         <source>Message</source>
-        <translation>Message</translation>
+        <translation>Μήνυμα</translation>
     </message>
     <message>
         <source>Are you sure that you want to overwrite the generation, batteries and load snapshot values with the OPF results?</source>
-        <translation>Are you sure that you want to overwrite the generation, batteries and load snapshot values with the OPF results?</translation>
+        <translation>Είστε βέβαιοι ότι θέλετε να αντικαταστήσετε τις τιμές παραγωγής, μπαταριών και στιγμιότυπου φορτίου με τα αποτελέσματα OPF;</translation>
     </message>
     <message>
         <source>Overwrite profiles with OPF results</source>
-        <translation>Overwrite profiles with OPF results</translation>
+        <translation>Αντικαταστήστε τα προφίλ με αποτελέσματα OPF</translation>
     </message>
     <message>
         <source>P snapshot set from the OPF results</source>
-        <translation>P snapshot set from the OPF results</translation>
+        <translation>Σύνολο στιγμιότυπου από τα αποτελέσματα OPF</translation>
     </message>
     <message>
         <source>The OPF time series has no results :(</source>
-        <translation>The OPF time series has no results :(</translation>
+        <translation>Η χρονολογική σειρά OPF δεν έχει αποτελέσματα :(</translation>
     </message>
     <message>
         <source>Are you sure that you want to overwrite the generation, batteries and load profiles with the OPF time series results?</source>
-        <translation>Are you sure that you want to overwrite the generation, batteries and load profiles with the OPF time series results?</translation>
+        <translation>Είστε βέβαιοι ότι θέλετε να αντικαταστήσετε τα προφίλ παραγωγής, μπαταριών και φόρτωσης με τα αποτελέσματα της χρονολογικής σειράς OPF;</translation>
     </message>
     <message>
         <source>P profiles set from the OPF results</source>
-        <translation>P profiles set from the OPF results</translation>
+        <translation>Σετ προφίλ P από τα αποτελέσματα OPF</translation>
     </message>
     <message>
         <source>Export logs</source>
-        <translation>Export logs</translation>
+        <translation>Εξαγωγή αρχείων καταγραφής</translation>
     </message>
 </context>
 <context>
@@ -2668,23 +2666,23 @@ Are you ok with potentially waiting a lot?</translation>
     <message>
         <location filename="../FileDialogues/RosetaExplorer/roseta_explorer.ui" line="99" />
         <source>Data</source>
-        <translation>Data</translation>
+        <translation>Δεδομένα</translation>
     </message>
     <message>
         <location filename="../FileDialogues/RosetaExplorer/roseta_explorer.ui" line="128" />
         <source>Tree view</source>
-        <translation>Tree view</translation>
+        <translation>Θέα δέντρου</translation>
     </message>
     <message>
         <location filename="../FileDialogues/RosetaExplorer/roseta_explorer.ui" line="161" />
         <location filename="../FileDialogues/RosetaExplorer/roseta_explorer.ui" line="324" />
         <source>Filter</source>
-        <translation>Filter</translation>
+        <translation>Φίλτρο</translation>
     </message>
     <message>
         <location filename="../FileDialogues/RosetaExplorer/roseta_explorer.ui" line="179" />
         <source>Table view</source>
-        <translation>Table view</translation>
+        <translation>Προβολή πίνακα</translation>
     </message>
     <message>
         <location filename="../FileDialogues/RosetaExplorer/roseta_explorer.ui" line="243" />
@@ -2694,27 +2692,27 @@ Are you ok with potentially waiting a lot?</translation>
     <message>
         <location filename="../FileDialogues/RosetaExplorer/roseta_explorer.ui" line="346" />
         <source>Logger</source>
-        <translation>Logger</translation>
+        <translation>Κόπτων δέντρα διά ξυλείαν</translation>
     </message>
     <message>
         <location filename="../FileDialogues/RosetaExplorer/roseta_explorer.ui" line="364" />
         <source>Python</source>
-        <translation>Python</translation>
+        <translation>Πύθων</translation>
     </message>
     <message>
         <location filename="../FileDialogues/RosetaExplorer/roseta_explorer.ui" line="395" />
         <source>Cancel process</source>
-        <translation>Cancel process</translation>
+        <translation>Ακύρωση διαδικασίας</translation>
     </message>
     <message>
         <location filename="../FileDialogues/RosetaExplorer/roseta_explorer.ui" line="521" />
         <source>File</source>
-        <translation>File</translation>
+        <translation>Αρχείο</translation>
     </message>
     <message>
         <location filename="../FileDialogues/RosetaExplorer/roseta_explorer.ui" line="533" />
         <source>Save logs</source>
-        <translation>Save logs</translation>
+        <translation>Αποθήκευση αρχείων καταγραφής</translation>
     </message>
 </context>
 <context>
@@ -2722,522 +2720,503 @@ Are you ok with potentially waiting a lot?</translation>
     <message>
         <source>VeraGrid internal commands.
 </source>
-        <translation>VeraGrid internal commands.
-</translation>
+        <translation>VeraGrid εσωτερικές εντολές.</translation>
     </message>
     <message>
         <source>If a command is unavailable is because the study has not been executed yet.</source>
-        <translation>If a command is unavailable is because the study has not been executed yet.</translation>
+        <translation>Εάν μια εντολή δεν είναι διαθέσιμη, οφείλεται στο ότι η μελέτη δεν έχει εκτελεστεί ακόμη.</translation>
     </message>
     <message>
         <source>
 
 clc():	clear the console.</source>
-        <translation>
-
-clc():	clear the console.</translation>
+        <translation>clc(): διαγράψτε την κονσόλα.</translation>
     </message>
     <message>
         <source>
 
 App functions:</source>
-        <translation>
-
-App functions:</translation>
+        <translation>Λειτουργίες εφαρμογής:</translation>
     </message>
     <message>
         <source>	app.new_project(): Clear all.</source>
-        <translation>	app.new_project(): Clear all.</translation>
+        <translation>app.new_project(): Εκκαθάριση όλων.</translation>
     </message>
     <message>
         <source>	app.open_file(): Prompt to load VeraGrid compatible file</source>
-        <translation>	app.open_file(): Prompt to load VeraGrid compatible file</translation>
+        <translation>app.open_file(): Προτροπή για φόρτωση συμβατού αρχείου VeraGrid</translation>
     </message>
     <message>
         <source>	app.save_file(): Prompt to save VeraGrid file</source>
-        <translation>	app.save_file(): Prompt to save VeraGrid file</translation>
+        <translation>app.save_file(): Προτροπή για αποθήκευση του αρχείου VeraGrid</translation>
     </message>
     <message>
         <source>	app.export_diagram(): Prompt to export the diagram in png.</source>
-        <translation>	app.export_diagram(): Prompt to export the diagram in png.</translation>
+        <translation>app.export_diagram(): Προτροπή για εξαγωγή του διαγράμματος σε png.</translation>
     </message>
     <message>
         <source>	app.create_schematic_from_api(): Create the schematic from the circuit information.</source>
-        <translation>	app.create_schematic_from_api(): Create the schematic from the circuit information.</translation>
+        <translation>app.create_schematic_from_api(): Δημιουργήστε το σχηματικό από τις πληροφορίες του κυκλώματος.</translation>
     </message>
     <message>
         <source>	app.adjust_all_node_width(): Adjust the width of all the nodes according to their name.</source>
-        <translation>	app.adjust_all_node_width(): Adjust the width of all the nodes according to their name.</translation>
+        <translation>app.adjust_all_node_width(): Προσαρμόστε το πλάτος όλων των κόμβων σύμφωνα με το όνομά τους.</translation>
     </message>
     <message>
         <source>	app.numerical_circuit: get compilation of the assets.</source>
-        <translation>	app.numerical_circuit: get compilation of the assets.</translation>
+        <translation>app.numerical_circuit: λάβετε τη συλλογή των στοιχείων.</translation>
     </message>
     <message>
         <source>	app.islands: get compilation of the assets split into the topological islands.</source>
-        <translation>	app.islands: get compilation of the assets split into the topological islands.</translation>
+        <translation>app.islands: λάβετε τη συλλογή των στοιχείων ενεργητικού που χωρίζονται στα τοπολογικά νησιά.</translation>
     </message>
     <message>
         <source>
 
 Circuit functions:</source>
-        <translation>
-
-Circuit functions:</translation>
+        <translation>Λειτουργίες κυκλώματος:</translation>
     </message>
     <message>
         <source>	app.circuit.plot_graph(): Plot a graph in a Matplotlib window. Call plt.show() after.</source>
-        <translation>	app.circuit.plot_graph(): Plot a graph in a Matplotlib window. Call plt.show() after.</translation>
+        <translation>app.circuit.plot_graph(): Σχεδιάστε ένα γράφημα σε ένα παράθυρο Matplotlib. Καλέστε το plt.show() μετά.</translation>
     </message>
     <message>
         <source>
 
 Power flow results:</source>
-        <translation>
-
-Power flow results:</translation>
+        <translation>Αποτελέσματα ροής ισχύος:</translation>
     </message>
     <message>
         <source>	app.session.power_flow.voltage:	 the nodal voltages in per unit</source>
-        <translation>	app.session.power_flow.voltage:	 the nodal voltages in per unit</translation>
+        <translation>app.session.power_flow.voltage: οι κομβικές τάσεις ανά μονάδα</translation>
     </message>
     <message>
         <source>	app.session.power_flow.current:	 the branch currents in per unit</source>
-        <translation>	app.session.power_flow.current:	 the branch currents in per unit</translation>
+        <translation>app.session.power_flow.current: τα ρεύματα διακλάδωσης ανά μονάδα</translation>
     </message>
     <message>
         <source>	app.session.power_flow.loading:	 the branch loading in %</source>
-        <translation>	app.session.power_flow.loading:	 the branch loading in %</translation>
+        <translation>app.session.power_flow.loading: η φόρτωση κλάδου σε %</translation>
     </message>
     <message>
         <source>	app.session.power_flow.losses:	 the branch losses in per unit</source>
-        <translation>	app.session.power_flow.losses:	 the branch losses in per unit</translation>
+        <translation>app.session.power_flow.losses: οι απώλειες κλάδου ανά μονάδα</translation>
     </message>
     <message>
         <source>	app.session.power_flow.power:	 the nodal power Injections in per unit</source>
-        <translation>	app.session.power_flow.power:	 the nodal power Injections in per unit</translation>
+        <translation>app.session.power_flow.power: η κομβική ισχύς Ενέσεις ανά μονάδα</translation>
     </message>
     <message>
         <source>	app.session.power_flow.Sf:	 the branch power Injections in per unit at the "from" side</source>
-        <translation>	app.session.power_flow.Sf:	 the branch power Injections in per unit at the "from" side</translation>
+        <translation>app.session.power_flow.Sf: η ισχύς διακλάδωσης Ενέσεις ανά μονάδα στην πλευρά "από"</translation>
     </message>
     <message>
         <source>	app.session.power_flow.St:	 the branch power Injections in per unit at the "to" side</source>
-        <translation>	app.session.power_flow.St:	 the branch power Injections in per unit at the "to" side</translation>
+        <translation>app.session.power_flow.St: η ισχύς διακλάδωσης Ενέσεις ανά μονάδα στην πλευρά "προς"</translation>
     </message>
     <message>
         <source>
 
 Short circuit results:</source>
-        <translation>
-
-Short circuit results:</translation>
+        <translation>Αποτελέσματα βραχυκυκλώματος:</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.voltage:	 the nodal voltages in per unit</source>
-        <translation>	app.session.short_circuit.voltage:	 the nodal voltages in per unit</translation>
+        <translation>app.session.short_circuit.voltage: οι κομβικές τάσεις ανά μονάδα</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.current:	 the branch currents in per unit</source>
-        <translation>	app.session.short_circuit.current:	 the branch currents in per unit</translation>
+        <translation>app.session.short_circuit.current: τα ρεύματα διακλάδωσης ανά μονάδα</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.loading:	 the branch loading in %</source>
-        <translation>	app.session.short_circuit.loading:	 the branch loading in %</translation>
+        <translation>app.session.short_circuit.loading: η φόρτωση κλάδου σε %</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.losses:	 the branch losses in per unit</source>
-        <translation>	app.session.short_circuit.losses:	 the branch losses in per unit</translation>
+        <translation>app.session.short_circuit.losses: οι απώλειες κλάδου ανά μονάδα</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.power:	 the nodal power Injections in per unit</source>
-        <translation>	app.session.short_circuit.power:	 the nodal power Injections in per unit</translation>
+        <translation>app.session.short_circuit.power: η κομβική ισχύς Ενέσεις ανά μονάδα</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.power_from:	 the branch power Injections in per unit at the "from" side</source>
-        <translation>	app.session.short_circuit.power_from:	 the branch power Injections in per unit at the "from" side</translation>
+        <translation>app.session.short_circuit.power_from: η ισχύς διακλάδωσης Ενέσεις ανά μονάδα στην πλευρά "από"</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.power_to:	 the branch power Injections in per unit at the "to" side</source>
-        <translation>	app.session.short_circuit.power_to:	 the branch power Injections in per unit at the "to" side</translation>
+        <translation>app.session.short_circuit.power_to: η ισχύς διακλάδωσης Ενέσεις ανά μονάδα στην πλευρά "προς"</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.short_circuit_power:	 Short circuit power in MVA of the grid nodes</source>
-        <translation>	app.session.short_circuit.short_circuit_power:	 Short circuit power in MVA of the grid nodes</translation>
+        <translation>app.session.short_circuit.short_circuit_power: Ισχύς βραχυκυκλώματος σε MVA των κόμβων δικτύου</translation>
     </message>
     <message>
         <source>
 
 Optimal power flow results:</source>
-        <translation>
-
-Optimal power flow results:</translation>
+        <translation>Βέλτιστα αποτελέσματα ροής ισχύος:</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.voltage:	 the nodal voltages angles in rad</source>
-        <translation>	app.session.optimal_power_flow.voltage:	 the nodal voltages angles in rad</translation>
+        <translation>app.session.optimal_power_flow.voltage: οι γωνίες των κομβικών τάσεων σε rad</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.load_shedding:	 the branch loading in %</source>
-        <translation>	app.session.optimal_power_flow.load_shedding:	 the branch loading in %</translation>
+        <translation>app.session.optimal_power_flow.load_shedding: η φόρτωση του κλάδου σε %</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.losses:	 the branch losses in per unit</source>
-        <translation>	app.session.optimal_power_flow.losses:	 the branch losses in per unit</translation>
+        <translation>app.session.optimal_power_flow.losses: οι απώλειες κλάδου ανά μονάδα</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.Sbus:	 the nodal power Injections in MW</source>
-        <translation>	app.session.optimal_power_flow.Sbus:	 the nodal power Injections in MW</translation>
+        <translation>app.session.optimal_power_flow.Sbus: οι κομβικές εγχύσεις ισχύος στο MW</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.Sf:	 the branch power Sf</source>
-        <translation>	app.session.optimal_power_flow.Sf:	 the branch power Sf</translation>
+        <translation>app.session.optimal_power_flow.Sf: η ισχύς διακλάδωσης Sf</translation>
     </message>
     <message>
         <source>
 
 Time series power flow results:</source>
-        <translation>
-
-Time series power flow results:</translation>
+        <translation>Αποτελέσματα ροής ισχύος χρονοσειράς:</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.time:	 Profiles time index (pandas DateTimeIndex object)</source>
-        <translation>	app.session.power_flow_ts.time:	 Profiles time index (pandas DateTimeIndex object)</translation>
+        <translation>app.session.power_flow_ts.time: Ευρετήριο χρόνου προφίλ (αντικείμενο pandas DateTimeIndex)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.load_profiles:	 Load profiles matrix (row: time, col: node)</source>
-        <translation>	app.session.power_flow_ts.load_profiles:	 Load profiles matrix (row: time, col: node)</translation>
+        <translation>app.session.power_flow_ts.load_profiles: Φόρτωση μήτρας προφίλ (σειρά: χρόνος, στήλη: κόμβος)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.gen_profiles:	 Generation profiles matrix (row: time, col: node)</source>
-        <translation>	app.session.power_flow_ts.gen_profiles:	 Generation profiles matrix (row: time, col: node)</translation>
+        <translation>app.session.power_flow_ts.gen_profiles: Πίνακας προφίλ γενιάς (σειρά: χρόνος, στήλη: κόμβος)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.voltages:	 nodal voltages results matrix (row: time, col: node)</source>
-        <translation>	app.session.power_flow_ts.voltages:	 nodal voltages results matrix (row: time, col: node)</translation>
+        <translation>app.session.power_flow_ts.voltages: κομβική μήτρα αποτελεσμάτων τάσεων (σειρά: χρόνος, στήλη: κόμβος)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.currents:	 Branches currents results matrix (row: time, col: branch)</source>
-        <translation>	app.session.power_flow_ts.currents:	 Branches currents results matrix (row: time, col: branch)</translation>
+        <translation>app.session.power_flow_ts.currents: Πίνακας αποτελεσμάτων ρευμάτων διακλαδώσεων (σειρά: χρόνος, στήλη: κλάδος)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.loadings:	 Branches loadings results matrix (row: time, col: branch)</source>
-        <translation>	app.session.power_flow_ts.loadings:	 Branches loadings results matrix (row: time, col: branch)</translation>
+        <translation>app.session.power_flow_ts.loadings: Πίνακας αποτελεσμάτων φόρτωσης διακλαδώσεων (σειρά: χρόνος, στήλη: κλάδος)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.losses:	 Branches losses results matrix (row: time, col: branch)</source>
-        <translation>	app.session.power_flow_ts.losses:	 Branches losses results matrix (row: time, col: branch)</translation>
+        <translation>app.session.power_flow_ts.losses: Πίνακας αποτελεσμάτων απωλειών κλάδων (σειρά: χρόνος, στήλη: κλάδος)</translation>
     </message>
     <message>
         <source>
 
 Voltage stability power flow results:</source>
-        <translation>
-
-Voltage stability power flow results:</translation>
+        <translation>Αποτελέσματα ροής ισχύος σταθερότητας τάσης:</translation>
     </message>
     <message>
         <source>	app.session.continuation_power_flow.voltage:	 Voltage values for every power multiplication factor.</source>
-        <translation>	app.session.continuation_power_flow.voltage:	 Voltage values for every power multiplication factor.</translation>
+        <translation>app.session.continuation_power_flow.voltage: Τιμές τάσης για κάθε συντελεστή πολλαπλασιασμού ισχύος.</translation>
     </message>
     <message>
         <source>	app.session.continuation_power_flow.lambda:	 Value of power multiplication factor applied</source>
-        <translation>	app.session.continuation_power_flow.lambda:	 Value of power multiplication factor applied</translation>
+        <translation>app.session.continuation_power_flow.lambda: Εφαρμόστηκε η τιμή του συντελεστή πολλαπλασιασμού ισχύος</translation>
     </message>
     <message>
         <source>	app.session.continuation_power_flow.Sf:	 Power values for every power multiplication factor.</source>
-        <translation>	app.session.continuation_power_flow.Sf:	 Power values for every power multiplication factor.</translation>
+        <translation>app.session.continuation_power_flow.Sf: Τιμές ισχύος για κάθε συντελεστή πολλαπλασιασμού ισχύος.</translation>
     </message>
     <message>
         <source>
 
 Monte Carlo power flow results:</source>
-        <translation>
-
-Monte Carlo power flow results:</translation>
+        <translation>Αποτελέσματα ροής ισχύος στο Μόντε Κάρλο:</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.V_avg:	 nodal voltage average result.</source>
-        <translation>	app.session.stochastic_power_flow.V_avg:	 nodal voltage average result.</translation>
+        <translation>app.session.stochastic_power_flow.V_avg: μέσο αποτέλεσμα κομβικής τάσης.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.I_avg:	 branch current average result.</source>
-        <translation>	app.session.stochastic_power_flow.I_avg:	 branch current average result.</translation>
+        <translation>app.session.stochastic_power_flow.I_avg: υποκατάστημα τρέχον μέσο αποτέλεσμα.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.Loading_avg:	 branch loading average result.</source>
-        <translation>	app.session.stochastic_power_flow.Loading_avg:	 branch loading average result.</translation>
+        <translation>app.session.stochastic_power_flow.Loading_avg: μέσο αποτέλεσμα φόρτωσης κλάδου.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.Losses_avg:	 branch losses average result.</source>
-        <translation>	app.session.stochastic_power_flow.Losses_avg:	 branch losses average result.</translation>
+        <translation>app.session.stochastic_power_flow.Losses_avg: μέσο αποτέλεσμα απωλειών υποκαταστημάτων.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.V_std:	 nodal voltage standard deviation result.</source>
-        <translation>	app.session.stochastic_power_flow.V_std:	 nodal voltage standard deviation result.</translation>
+        <translation>app.session.stochastic_power_flow.V_std: αποτέλεσμα τυπικής απόκλισης κομβικής τάσης.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.I_std:	 branch current standard deviation result.</source>
-        <translation>	app.session.stochastic_power_flow.I_std:	 branch current standard deviation result.</translation>
+        <translation>app.session.stochastic_power_flow.I_std: αποτέλεσμα τυπικής απόκλισης ρεύματος διακλάδωσης.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.Loading_std:	 branch loading standard deviation result.</source>
-        <translation>	app.session.stochastic_power_flow.Loading_std:	 branch loading standard deviation result.</translation>
+        <translation>app.session.stochastic_power_flow.Loading_std: αποτέλεσμα τυπικής απόκλισης φόρτωσης κλάδου.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.Losses_std:	 branch losses standard deviation result.</source>
-        <translation>	app.session.stochastic_power_flow.Losses_std:	 branch losses standard deviation result.</translation>
+        <translation>app.session.stochastic_power_flow.Losses_std: Απώλειες κλάδου αποτέλεσμα τυπικής απόκλισης.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.V_avg_series:	 nodal voltage average series.</source>
-        <translation>	app.session.stochastic_power_flow.V_avg_series:	 nodal voltage average series.</translation>
+        <translation>app.session.stochastic_power_flow.V_avg_series: κομβική σειρά μέσης τάσης.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.V_std_series:	 branch current standard deviation series.</source>
-        <translation>	app.session.stochastic_power_flow.V_std_series:	 branch current standard deviation series.</translation>
+        <translation>app.session.stochastic_power_flow.V_std_series: διακλάδωση τρέχουσας σειράς τυπικής απόκλισης.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.error_series:	 Monte Carlo error series (the convergence value).</source>
-        <translation>	app.session.stochastic_power_flow.error_series:	 Monte Carlo error series (the convergence value).</translation>
+        <translation>app.session.stochastic_power_flow.error_series: Σειρά σφαλμάτων Monte Carlo (η τιμή σύγκλισης).</translation>
     </message>
     <message>
         <source>The same for app.latin_hypercube_sampling</source>
-        <translation>The same for app.latin_hypercube_sampling</translation>
+        <translation>Το ίδιο και για το app.latin_hypercube_sampling</translation>
     </message>
     <message>
         <source> does not exist :/</source>
-        <translation> does not exist :/</translation>
+        <translation>δεν υπαρχει :/</translation>
     </message>
     <message>
         <source>Open script</source>
-        <translation>Open script</translation>
+        <translation>Ανοίξτε το σενάριο</translation>
     </message>
     <message>
         <source>Are you sure you want to clear source code?</source>
-        <translation>Are you sure you want to clear source code?</translation>
+        <translation>Είστε βέβαιοι ότι θέλετε να διαγράψετε τον πηγαίο κώδικα;</translation>
     </message>
     <message>
         <source>Clear source code</source>
-        <translation>Clear source code</translation>
+        <translation>Διαγράψτε τον πηγαίο κώδικα</translation>
     </message>
     <message>
         <source>Please enter a name for the script</source>
-        <translation>Please enter a name for the script</translation>
+        <translation>Εισαγάγετε ένα όνομα για το σενάριο</translation>
     </message>
     <message>
         <source>Save script</source>
-        <translation>Save script</translation>
+        <translation>Αποθήκευση σεναρίου</translation>
     </message>
     <message>
         <source>Do you want to delete {path}?</source>
-        <translation>Do you want to delete {path}?</translation>
+        <translation>Θέλετε να διαγράψετε το {path};</translation>
     </message>
     <message>
         <source>Delete source code file</source>
-        <translation>Delete source code file</translation>
+        <translation>Διαγραφή αρχείου πηγαίου κώδικα</translation>
     </message>
     <message>
         <source>Delete</source>
-        <translation>Delete</translation>
+        <translation>Διαγράφω</translation>
     </message>
 </context>
 <context>
     <name>ServerMain</name>
     <message>
         <source>Server config file was erroneous, wrote a new one</source>
-        <translation>Server config file was erroneous, wrote a new one</translation>
+        <translation>Το αρχείο διαμόρφωσης διακομιστή ήταν λανθασμένο, έγραψε ένα νέο</translation>
     </message>
     <message>
         <source>The server connection is running, are you sure that you want to stop it?</source>
-        <translation>The server connection is running, are you sure that you want to stop it?</translation>
+        <translation>Η σύνδεση διακομιστή εκτελείται, είστε βέβαιοι ότι θέλετε να τη διακόψετε;</translation>
     </message>
     <message>
         <source>Stop Server</source>
-        <translation>Stop Server</translation>
+        <translation>Διακοπή διακομιστή</translation>
     </message>
     <message>
         <source>Could not connect to the server :/</source>
-        <translation>Could not connect to the server :/</translation>
+        <translation>Δεν ήταν δυνατή η σύνδεση με τον διακομιστή :/</translation>
     </message>
     <message>
         <source>Connected!</source>
-        <translation>Connected!</translation>
+        <translation>Συνδεδεμένος!</translation>
     </message>
     <message>
         <source>Results received!</source>
-        <translation>Results received!</translation>
+        <translation>Λήφθηκαν τα αποτελέσματα!</translation>
     </message>
 </context>
 <context>
     <name>ShortCircuitSelector</name>
     <message>
         <source>Short Circuit Configuration</source>
-        <translation>Short Circuit Configuration</translation>
+        <translation>Διαμόρφωση βραχυκυκλώματος</translation>
     </message>
     <message>
         <source>Custom</source>
-        <translation>Custom</translation>
+        <translation>Εθιμο</translation>
     </message>
     <message>
         <source>Typical value</source>
-        <translation>Typical value</translation>
+        <translation>Τυπική τιμή</translation>
     </message>
     <message>
         <source>Solid 3ph fault</source>
-        <translation>Solid 3ph fault</translation>
+        <translation>Στερεό σφάλμα 3 ωρών</translation>
     </message>
     <message>
         <source>Near-bolted three-phase fault</source>
-        <translation>Near-bolted three-phase fault</translation>
+        <translation>Σχεδόν βιδωμένο τριφασικό σφάλμα</translation>
     </message>
     <message>
         <source>Solid phase ground fault</source>
-        <translation>Solid phase ground fault</translation>
+        <translation>Σφάλμα γείωσης στερεάς φάσης</translation>
     </message>
     <message>
         <source>Near-bolted phase-to-ground fault</source>
-        <translation>Near-bolted phase-to-ground fault</translation>
+        <translation>Σφάλμα φάσης προς γείωση σχεδόν βιδωμένο</translation>
     </message>
     <message>
         <source>Metallic conductor conductor contact</source>
-        <translation>Metallic conductor conductor contact</translation>
+        <translation>Επαφή αγωγού μεταλλικού αγωγού</translation>
     </message>
     <message>
         <source>Low-impedance metallic conductor-to-conductor short</source>
-        <translation>Low-impedance metallic conductor-to-conductor short</translation>
+        <translation>Μεταλλικό βραχυκύκλωμα αγωγού προς αγωγό χαμηλής αντίστασης</translation>
     </message>
     <message>
         <source>Excavator touching underground cable</source>
-        <translation>Excavator touching underground cable</translation>
+        <translation>Εκσκαφέας που αγγίζει το υπόγειο καλώδιο</translation>
     </message>
     <message>
         <source>Direct mechanical strike on underground cable</source>
-        <translation>Direct mechanical strike on underground cable</translation>
+        <translation>Άμεσο μηχανικό χτύπημα σε υπόγειο καλώδιο</translation>
     </message>
     <message>
         <source>Excavator damaging cable partial arc</source>
-        <translation>Excavator damaging cable partial arc</translation>
+        <translation>Μερικό τόξο καταστροφής καλωδίου εκσκαφέα</translation>
     </message>
     <message>
         <source>Cable damage with partial contact and arcing</source>
-        <translation>Cable damage with partial contact and arcing</translation>
+        <translation>Ζημιά καλωδίου με μερική επαφή και τόξο</translation>
     </message>
     <message>
         <source>Crane or machinery overhead arc</source>
-        <translation>Crane or machinery overhead arc</translation>
+        <translation>Υπερυψωμένο τόξο γερανού ή μηχανημάτων</translation>
     </message>
     <message>
         <source>Arc from machinery approaching overhead line</source>
-        <translation>Arc from machinery approaching overhead line</translation>
+        <translation>Τόξο από μηχανήματα που πλησιάζει την εναέρια γραμμή</translation>
     </message>
     <message>
         <source>Tree branch touching overhead line</source>
-        <translation>Tree branch touching overhead line</translation>
+        <translation>Κλαδί δέντρου που αγγίζει την εναέρια γραμμή</translation>
     </message>
     <message>
         <source>Typical vegetation high-impedance fault</source>
-        <translation>Typical vegetation high-impedance fault</translation>
+        <translation>Τυπικό ρήγμα βλάστησης υψηλής αντίστασης</translation>
     </message>
     <message>
         <source>Wet tree or wet vegetation contact</source>
-        <translation>Wet tree or wet vegetation contact</translation>
+        <translation>Επαφή υγρού δέντρου ή υγρής βλάστησης</translation>
     </message>
     <message>
         <source>Vegetation contact with lower resistance due to moisture</source>
-        <translation>Vegetation contact with lower resistance due to moisture</translation>
+        <translation>Επαφή της βλάστησης με χαμηλότερη αντίσταση λόγω υγρασίας</translation>
     </message>
     <message>
         <source>Dry tree or dry branch contact</source>
-        <translation>Dry tree or dry branch contact</translation>
+        <translation>Επαφή ξηρού δέντρου ή ξηρού κλαδιού</translation>
     </message>
     <message>
         <source>Dry vegetation high-impedance fault</source>
-        <translation>Dry vegetation high-impedance fault</translation>
+        <translation>Σφάλμα ξηρής βλάστησης υψηλής αντίστασης</translation>
     </message>
     <message>
         <source>Downed conductor on wet soil</source>
-        <translation>Downed conductor on wet soil</translation>
+        <translation>Πεσμένος αγωγός σε βρεγμένο έδαφος</translation>
     </message>
     <message>
         <source>Downed conductor on relatively conductive ground</source>
-        <translation>Downed conductor on relatively conductive ground</translation>
+        <translation>Πεσμένος αγωγός σε σχετικά αγώγιμο έδαφος</translation>
     </message>
     <message>
         <source>Downed conductor on gravel</source>
-        <translation>Downed conductor on gravel</translation>
+        <translation>Πεσμένος αγωγός σε χαλίκι</translation>
     </message>
     <message>
         <source>Downed conductor on gravel or ballast</source>
-        <translation>Downed conductor on gravel or ballast</translation>
+        <translation>Πεσμένος αγωγός σε χαλίκι ή έρμα</translation>
     </message>
     <message>
         <source>Downed conductor on asphalt or concrete</source>
-        <translation>Downed conductor on asphalt or concrete</translation>
+        <translation>Πεσμένος αγωγός σε άσφαλτο ή σκυρόδεμα</translation>
     </message>
     <message>
         <source>Downed conductor on poorly conductive surface</source>
-        <translation>Downed conductor on poorly conductive surface</translation>
+        <translation>Πεσμένος αγωγός σε κακώς αγώγιμη επιφάνεια</translation>
     </message>
     <message>
         <source>Insulator contamination or leakage fault</source>
-        <translation>Insulator contamination or leakage fault</translation>
+        <translation>Μόλυνση μονωτή ή σφάλμα διαρροής</translation>
     </message>
     <message>
         <source>Leakage-type high-impedance fault</source>
-        <translation>Leakage-type high-impedance fault</translation>
+        <translation>Σφάλμα υψηλής σύνθετης αντίστασης τύπου διαρροής</translation>
     </message>
     <message>
         <source>Generic arcing phase ground fault</source>
-        <translation>Generic arcing phase ground fault</translation>
+        <translation>Γενικό σφάλμα γείωσης φάσης τόξου</translation>
     </message>
     <message>
         <source>Simple resistive arc approximation</source>
-        <translation>Simple resistive arc approximation</translation>
+        <translation>Απλή προσέγγιση ωμικού τόξου</translation>
     </message>
     <message>
         <source>Severe high resistance transmission fault</source>
-        <translation>Severe high resistance transmission fault</translation>
+        <translation>Σοβαρό σφάλμα μετάδοσης υψηλής αντίστασης</translation>
     </message>
     <message>
         <source>High-resistance EHV fault scenario</source>
-        <translation>High-resistance EHV fault scenario</translation>
+        <translation>Σενάριο σφάλματος EHV υψηλής αντίστασης</translation>
     </message>
     <message>
         <source>phases</source>
-        <translation>phases</translation>
+        <translation>φάσεις</translation>
     </message>
     <message>
         <source>abc</source>
-        <translation>abc</translation>
+        <translation>αλφάβητο</translation>
     </message>
     <message>
         <source>a</source>
-        <translation>a</translation>
+        <translation>ένα</translation>
     </message>
     <message>
         <source>b</source>
-        <translation>b</translation>
+        <translation>σι</translation>
     </message>
     <message>
         <source>c</source>
-        <translation>c</translation>
+        <translation>ντο</translation>
     </message>
     <message>
         <source>ab</source>
-        <translation>ab</translation>
+        <translation>αβ</translation>
     </message>
     <message>
         <source>bc</source>
-        <translation>bc</translation>
+        <translation>π.Χ</translation>
     </message>
     <message>
         <source>ca</source>
-        <translation>ca</translation>
+        <translation>περ</translation>
     </message>
     <message>
         <source>sequences</source>
-        <translation>sequences</translation>
+        <translation>ακολουθίες</translation>
     </message>
 </context>
 <context>
@@ -3245,23 +3224,23 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../ShortCircuitEditor/short_circuit_selector_gui.ui" line="14" />
         <source>Short circuit definition</source>
-        <translation>Short circuit definition</translation>
+        <translation>Ορισμός βραχυκυκλώματος</translation>
     </message>
     <message>
         <location filename="../ShortCircuitEditor/short_circuit_selector_gui.ui" line="35" />
         <source>Accept</source>
-        <translation>Accept</translation>
+        <translation>Αποδέχομαι</translation>
     </message>
     <message>
         <location filename="../ShortCircuitEditor/short_circuit_selector_gui.ui" line="42" />
         <source>Fault reactance (often dismissed)</source>
-        <translation>Fault reactance (often dismissed)</translation>
+        <translation>Αντίδραση σφάλματος (συχνά απορρίπτεται)</translation>
     </message>
     <message>
         <location filename="../ShortCircuitEditor/short_circuit_selector_gui.ui" line="45" />
         <location filename="../ShortCircuitEditor/short_circuit_selector_gui.ui" line="87" />
         <source> Ohm</source>
-        <translation> Ohm</translation>
+        <translation>Ωμ</translation>
     </message>
     <message>
         <location filename="../ShortCircuitEditor/short_circuit_selector_gui.ui" line="61" />
@@ -3272,27 +3251,27 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../ShortCircuitEditor/short_circuit_selector_gui.ui" line="84" />
         <source>Fault resistance</source>
-        <translation>Fault resistance</translation>
+        <translation>Αντίσταση σε σφάλμα</translation>
     </message>
     <message>
         <location filename="../ShortCircuitEditor/short_circuit_selector_gui.ui" line="100" />
         <source>Fault type</source>
-        <translation>Fault type</translation>
+        <translation>Τύπος σφάλματος</translation>
     </message>
     <message>
         <location filename="../ShortCircuitEditor/short_circuit_selector_gui.ui" line="107" />
         <source>Method</source>
-        <translation>Method</translation>
+        <translation>Μέθοδος</translation>
     </message>
     <message>
         <location filename="../ShortCircuitEditor/short_circuit_selector_gui.ui" line="133" />
         <source>Fault method</source>
-        <translation>Fault method</translation>
+        <translation>Μέθοδος σφάλματος</translation>
     </message>
     <message>
         <location filename="../ShortCircuitEditor/short_circuit_selector_gui.ui" line="140" />
         <source>Phases</source>
-        <translation>Phases</translation>
+        <translation>Φάσεις</translation>
     </message>
     <message>
         <location filename="../ShortCircuitEditor/short_circuit_selector_gui.ui" line="147" />
@@ -3302,22 +3281,22 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../ShortCircuitEditor/short_circuit_selector_gui.ui" line="154" />
         <source>X</source>
-        <translation>X</translation>
+        <translation>Χ</translation>
     </message>
 </context>
 <context>
     <name>SubstationDesigner</name>
     <message>
         <source>Substation maker</source>
-        <translation>Substation maker</translation>
+        <translation>Κατασκευαστής υποσταθμού</translation>
     </message>
     <message>
         <source>Substation {number}</source>
-        <translation>Substation {number}</translation>
+        <translation>Υποσταθμός {number}</translation>
     </message>
     <message>
         <source>There are no voltage levels, so no substation will be created, ok?</source>
-        <translation>There are no voltage levels, so no substation will be created, ok?</translation>
+        <translation>Δεν υπάρχουν επίπεδα τάσης, άρα δεν θα δημιουργηθεί υποσταθμός, εντάξει;</translation>
     </message>
 </context>
 <context>
@@ -3325,47 +3304,47 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../DeviceEditors/TemplateDeviceEditor/template_device_editor_gui.ui" line="14" />
         <source>Device editor</source>
-        <translation>Device editor</translation>
+        <translation>Επεξεργαστής συσκευής</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/TemplateDeviceEditor/template_device_editor_gui.ui" line="40" />
         <source>Properties</source>
-        <translation>Properties</translation>
+        <translation>Σκηνικά θέατρου</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/TemplateDeviceEditor/template_device_editor_gui.ui" line="68" />
         <source>Filter</source>
-        <translation>Filter</translation>
+        <translation>Φίλτρο</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/TemplateDeviceEditor/template_device_editor_gui.ui" line="97" />
         <source>Time step</source>
-        <translation>Time step</translation>
+        <translation>Χρονικό βήμα</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/TemplateDeviceEditor/template_device_editor_gui.ui" line="117" />
         <source>Snapshot</source>
-        <translation>Snapshot</translation>
+        <translation>Στιγμιότυπο</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/TemplateDeviceEditor/template_device_editor_gui.ui" line="132" />
         <source>Profiles</source>
-        <translation>Profiles</translation>
+        <translation>Προφίλ</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/TemplateDeviceEditor/template_device_editor_gui.ui" line="208" />
         <source>Associations</source>
-        <translation>Associations</translation>
+        <translation>Σωματεία</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/TemplateDeviceEditor/template_device_editor_gui.ui" line="223" />
         <source>Association</source>
-        <translation>Association</translation>
+        <translation>Σχέση</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/TemplateDeviceEditor/template_device_editor_gui.ui" line="240" />
         <source>Units</source>
-        <translation>Units</translation>
+        <translation>Μονάδες</translation>
     </message>
 </context>
 <context>
@@ -3373,82 +3352,82 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../DeviceEditors/TowerBuilder/tower_builder.ui" line="19" />
         <source>Tower creation</source>
-        <translation>Tower creation</translation>
+        <translation>Δημιουργία πύργου</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/TowerBuilder/tower_builder.ui" line="76" />
         <source>Name</source>
-        <translation>Name</translation>
+        <translation>Ονομα</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/TowerBuilder/tower_builder.ui" line="86" />
         <source>Voltage</source>
-        <translation>Voltage</translation>
+        <translation>Δυναμικό</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/TowerBuilder/tower_builder.ui" line="93" />
         <source> kV</source>
-        <translation> kV</translation>
+        <translation>kV</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/TowerBuilder/tower_builder.ui" line="112" />
         <source>Frequency</source>
-        <translation>Frequency</translation>
+        <translation>Συχνότητα</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/TowerBuilder/tower_builder.ui" line="119" />
         <source> Hz</source>
-        <translation> Hz</translation>
+        <translation>Hz</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/TowerBuilder/tower_builder.ui" line="132" />
         <source>Earth resistivity</source>
-        <translation>Earth resistivity</translation>
+        <translation>Αντίσταση της γης</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/TowerBuilder/tower_builder.ui" line="139" />
         <source> Ω/m^3</source>
-        <translation> Ω/m^3</translation>
+        <translation>Ω/m^3</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/TowerBuilder/tower_builder.ui" line="205" />
         <source>Wire catalogue</source>
-        <translation>Wire catalogue</translation>
+        <translation>Κατάλογος καλωδίων</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/TowerBuilder/tower_builder.ui" line="265" />
         <source>Wire composition</source>
-        <translation>Wire composition</translation>
+        <translation>Σύνθεση σύρματος</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/TowerBuilder/tower_builder.ui" line="272" />
         <source>Add wire</source>
-        <translation>Add wire</translation>
+        <translation>Προσθέστε σύρμα</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/TowerBuilder/tower_builder.ui" line="286" />
         <source>Delete wire</source>
-        <translation>Delete wire</translation>
+        <translation>Διαγραφή καλωδίου</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/TowerBuilder/tower_builder.ui" line="362" />
         <source>Matrix</source>
-        <translation>Matrix</translation>
+        <translation>Μήτρα</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/TowerBuilder/tower_builder.ui" line="417" />
         <source>Tower</source>
-        <translation>Tower</translation>
+        <translation>Πύργος</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/TowerBuilder/tower_builder.ui" line="454" />
         <source>Compute matrices</source>
-        <translation>Compute matrices</translation>
+        <translation>Υπολογίστε πίνακες</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/TowerBuilder/tower_builder.ui" line="487" />
         <source>Accept</source>
-        <translation>Accept</translation>
+        <translation>Αποδέχομαι</translation>
     </message>
 </context>
 <context>
@@ -3456,109 +3435,109 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../DeviceEditors/Transformer3wEditor/transformer3w_editor_gui.ui" line="14" />
         <source>Transformer editor</source>
-        <translation>Transformer editor</translation>
+        <translation>Επεξεργαστής μετασχηματιστή</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/Transformer3wEditor/transformer3w_editor_gui.ui" line="20" />
         <source>Name:</source>
-        <translation>Name:</translation>
+        <translation>Ονομα:</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/Transformer3wEditor/transformer3w_editor_gui.ui" line="27" />
         <source>Pfe: Iron losses [kW]</source>
-        <translation>Pfe: Iron losses [kW]</translation>
+        <translation>Pfe: Απώλειες σιδήρου [kW]</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/Transformer3wEditor/transformer3w_editor_gui.ui" line="46" />
         <source>Winding 1</source>
-        <translation>Winding 1</translation>
+        <translation>Περιέλιξη 1</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/Transformer3wEditor/transformer3w_editor_gui.ui" line="52" />
         <location filename="../DeviceEditors/Transformer3wEditor/transformer3w_editor_gui.ui" line="136" />
         <location filename="../DeviceEditors/Transformer3wEditor/transformer3w_editor_gui.ui" line="220" />
         <source>Bus voltage: N/A</source>
-        <translation>Bus voltage: N/A</translation>
+        <translation>Τάση διαύλου: N/A</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/Transformer3wEditor/transformer3w_editor_gui.ui" line="59" />
         <source>V1: Nominal voltage [kV]</source>
-        <translation>V1: Nominal voltage [kV]</translation>
+        <translation>V1: Ονομαστική τάση [kV]</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/Transformer3wEditor/transformer3w_editor_gui.ui" line="76" />
         <source>Sn1: Nominal power [MVA]</source>
-        <translation>Sn1: Nominal power [MVA]</translation>
+        <translation>Sn1: Ονομαστική ισχύς [MVA]</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/Transformer3wEditor/transformer3w_editor_gui.ui" line="93" />
         <source>Pcu 1-2: Copper losses [kW]</source>
-        <translation>Pcu 1-2: Copper losses [kW]</translation>
+        <translation>Pcu 1-2: Απώλειες χαλκού [kW]</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/Transformer3wEditor/transformer3w_editor_gui.ui" line="110" />
         <source>Vsc 1-2: Short circuit voltage [%]</source>
-        <translation>Vsc 1-2: Short circuit voltage [%]</translation>
+        <translation>Vsc 1-2: Τάση βραχυκυκλώματος [%]</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/Transformer3wEditor/transformer3w_editor_gui.ui" line="130" />
         <source>Winding 2</source>
-        <translation>Winding 2</translation>
+        <translation>Περιέλιξη 2</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/Transformer3wEditor/transformer3w_editor_gui.ui" line="143" />
         <source>V2: Nominal voltage [kV]</source>
-        <translation>V2: Nominal voltage [kV]</translation>
+        <translation>V2: Ονομαστική τάση [kV]</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/Transformer3wEditor/transformer3w_editor_gui.ui" line="160" />
         <source>Sn2: Nominal power [MVA]</source>
-        <translation>Sn2: Nominal power [MVA]</translation>
+        <translation>Sn2: Ονομαστική ισχύς [MVA]</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/Transformer3wEditor/transformer3w_editor_gui.ui" line="177" />
         <source>Pcu 2-3: Copper losses [kW]</source>
-        <translation>Pcu 2-3: Copper losses [kW]</translation>
+        <translation>Pcu 2-3: Απώλειες χαλκού [kW]</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/Transformer3wEditor/transformer3w_editor_gui.ui" line="194" />
         <source>Vsc 2-3: Short circuit voltage [%]</source>
-        <translation>Vsc 2-3: Short circuit voltage [%]</translation>
+        <translation>Vsc 2-3: Τάση βραχυκυκλώματος [%]</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/Transformer3wEditor/transformer3w_editor_gui.ui" line="214" />
         <source>Winding 3</source>
-        <translation>Winding 3</translation>
+        <translation>Περιέλιξη 3</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/Transformer3wEditor/transformer3w_editor_gui.ui" line="227" />
         <source>V3: Nominal voltage [kV]</source>
-        <translation>V3: Nominal voltage [kV]</translation>
+        <translation>V3: Ονομαστική τάση [kV]</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/Transformer3wEditor/transformer3w_editor_gui.ui" line="244" />
         <source>Sn3: Nominal power [MVA]</source>
-        <translation>Sn3: Nominal power [MVA]</translation>
+        <translation>Sn3: Ονομαστική ισχύς [MVA]</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/Transformer3wEditor/transformer3w_editor_gui.ui" line="261" />
         <source>Pcu 3-1: Copper losses [kW]</source>
-        <translation>Pcu 3-1: Copper losses [kW]</translation>
+        <translation>Pcu 3-1: Απώλειες χαλκού [kW]</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/Transformer3wEditor/transformer3w_editor_gui.ui" line="278" />
         <source>Vsc 3-1: Short circuit voltage [%]</source>
-        <translation>Vsc 3-1: Short circuit voltage [%]</translation>
+        <translation>Vsc 3-1: Τάση βραχυκυκλώματος [%]</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/Transformer3wEditor/transformer3w_editor_gui.ui" line="310" />
         <source>I0: No load current [%]</source>
-        <translation>I0: No load current [%]</translation>
+        <translation>I0: Χωρίς ρεύμα φόρτωσης [%]</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/Transformer3wEditor/transformer3w_editor_gui.ui" line="364" />
         <source>Accept</source>
-        <translation>Accept</translation>
+        <translation>Αποδέχομαι</translation>
     </message>
 </context>
 <context>
@@ -3566,77 +3545,77 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../DeviceEditors/TransformerEditor/transformer_editor_gui.ui" line="14" />
         <source>Transformer editor</source>
-        <translation>Transformer editor</translation>
+        <translation>Επεξεργαστής μετασχηματιστή</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/TransformerEditor/transformer_editor_gui.ui" line="20" />
         <source>Suitable templates</source>
-        <translation>Suitable templates</translation>
+        <translation>Κατάλληλα πρότυπα</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/TransformerEditor/transformer_editor_gui.ui" line="34" />
         <source>Sn: Nominal power [MVA]</source>
-        <translation>Sn: Nominal power [MVA]</translation>
+        <translation>Sn: Ονομαστική ισχύς [MVA]</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/TransformerEditor/transformer_editor_gui.ui" line="51" />
         <source>Pcu: Copper losses [kW]</source>
-        <translation>Pcu: Copper losses [kW]</translation>
+        <translation>Pcu: Απώλειες χαλκού [kW]</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/TransformerEditor/transformer_editor_gui.ui" line="68" />
         <source>Pfe: Iron losses [kW]</source>
-        <translation>Pfe: Iron losses [kW]</translation>
+        <translation>Pfe: Απώλειες σιδήρου [kW]</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/TransformerEditor/transformer_editor_gui.ui" line="85" />
         <source>I0: No load current [%]</source>
-        <translation>I0: No load current [%]</translation>
+        <translation>I0: Χωρίς ρεύμα φόρτωσης [%]</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/TransformerEditor/transformer_editor_gui.ui" line="102" />
         <source>Vsc: Short circuit voltage [%]</source>
-        <translation>Vsc: Short circuit voltage [%]</translation>
+        <translation>Vsc: Τάση βραχυκυκλώματος [%]</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/TransformerEditor/transformer_editor_gui.ui" line="126" />
         <source>Tap changer type</source>
-        <translation>Tap changer type</translation>
+        <translation>Πατήστε τον τύπο αλλαγής</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/TransformerEditor/transformer_editor_gui.ui" line="136" />
         <source>Asymmetry angle (deg)</source>
-        <translation>Asymmetry angle (deg)</translation>
+        <translation>Γωνία ασυμμετρίας (μοίρες)</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/TransformerEditor/transformer_editor_gui.ui" line="153" />
         <source>Total positions</source>
-        <translation>Total positions</translation>
+        <translation>Σύνολο θέσεων</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/TransformerEditor/transformer_editor_gui.ui" line="167" />
         <source>Neutral position</source>
-        <translation>Neutral position</translation>
+        <translation>Ουδέτερη θέση</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/TransformerEditor/transformer_editor_gui.ui" line="181" />
         <source>Tap position</source>
-        <translation>Tap position</translation>
+        <translation>Θέση πατήματος</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/TransformerEditor/transformer_editor_gui.ui" line="195" />
         <source>Voltage increment per position</source>
-        <translation>Voltage increment per position</translation>
+        <translation>Αύξηση τάσης ανά θέση</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/TransformerEditor/transformer_editor_gui.ui" line="255" />
         <source>Load template values</source>
-        <translation>Load template values</translation>
+        <translation>Φόρτωση τιμών προτύπου</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/TransformerEditor/transformer_editor_gui.ui" line="299" />
         <source>Accept</source>
-        <translation>Accept</translation>
+        <translation>Αποδέχομαι</translation>
     </message>
 </context>
 <context>
@@ -3644,27 +3623,27 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../FileDialogues/UcteDialogue/ucte_export_gui.ui" line="14" />
         <source>UCTE Export</source>
-        <translation>UCTE Export</translation>
+        <translation>UCTE Εξαγωγή</translation>
     </message>
     <message>
         <location filename="../FileDialogues/UcteDialogue/ucte_export_gui.ui" line="35" />
         <source>Export mode</source>
-        <translation>Export mode</translation>
+        <translation>Λειτουργία εξαγωγής</translation>
     </message>
     <message>
         <location filename="../FileDialogues/UcteDialogue/ucte_export_gui.ui" line="45" />
         <source>Time slot</source>
-        <translation>Time slot</translation>
+        <translation>Χρονική θυρίδα</translation>
     </message>
     <message>
         <location filename="../FileDialogues/UcteDialogue/ucte_export_gui.ui" line="65" />
         <source>Snapshot</source>
-        <translation>Snapshot</translation>
+        <translation>Στιγμιότυπο</translation>
     </message>
     <message>
         <location filename="../FileDialogues/UcteDialogue/ucte_export_gui.ui" line="72" />
         <source>Export</source>
-        <translation>Export</translation>
+        <translation>Εξαγωγή</translation>
     </message>
 </context>
 <context>
@@ -3675,15 +3654,15 @@ Monte Carlo power flow results:</translation>
     </message>
     <message>
         <source>Are you sure that you want to exit VeraGrid?</source>
-        <translation>Are you sure that you want to exit VeraGrid?</translation>
+        <translation>Είστε βέβαιοι ότι θέλετε να βγείτε από το VeraGrid;</translation>
     </message>
     <message>
         <source>Close</source>
-        <translation>Close</translation>
+        <translation>Κοντά</translation>
     </message>
     <message>
         <source>No effect, select diagrams or database</source>
-        <translation>No effect, select diagrams or database</translation>
+        <translation>Χωρίς εφέ, επιλέξτε διαγράμματα ή βάση δεδομένων</translation>
     </message>
 </context>
 <context>
@@ -3696,47 +3675,47 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../DeviceEditors/VscEditor/vsc_editor_widget.ui" line="29" />
         <source>AC bus</source>
-        <translation>AC bus</translation>
+        <translation>AC λεωφορείο</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/VscEditor/vsc_editor_widget.ui" line="43" />
         <source>DC+ bus</source>
-        <translation>DC+ bus</translation>
+        <translation>λεωφορείο DC+</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/VscEditor/vsc_editor_widget.ui" line="57" />
         <source>DC- bus</source>
-        <translation>DC- bus</translation>
+        <translation>DC- λεωφορείο</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/VscEditor/vsc_editor_widget.ui" line="71" />
         <source>Control 1</source>
-        <translation>Control 1</translation>
+        <translation>Έλεγχος 1</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/VscEditor/vsc_editor_widget.ui" line="85" />
         <source>Control 2</source>
-        <translation>Control 2</translation>
+        <translation>Έλεγχος 2</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/VscEditor/vsc_editor_widget.ui" line="99" />
         <source>Fault control</source>
-        <translation>Fault control</translation>
+        <translation>Έλεγχος σφαλμάτων</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/VscEditor/vsc_editor_widget.ui" line="118" />
         <source>Refresh summary</source>
-        <translation>Refresh summary</translation>
+        <translation>Ανανέωση περίληψης</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/VscEditor/vsc_editor_widget.ui" line="125" />
         <source>Open RMS editor</source>
-        <translation>Open RMS editor</translation>
+        <translation>Ανοίξτε τον επεξεργαστή RMS</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/VscEditor/vsc_editor_widget.ui" line="132" />
         <source>Open EMT editor</source>
-        <translation>Open EMT editor</translation>
+        <translation>Ανοίξτε τον επεξεργαστή EMT</translation>
     </message>
 </context>
 <context>
@@ -3750,74 +3729,74 @@ Monte Carlo power flow results:</translation>
         <location filename="../Main/MainWindow.ui" line="86" />
         <location filename="../Main/MainWindow.ui" line="10882" />
         <source>Model</source>
-        <translation>Model</translation>
+        <translation>Μοντέλο</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="127" />
         <location filename="../Main/MainWindow.ui" line="257" />
         <location filename="../Main/MainWindow.ui" line="294" />
         <source>Diagrams</source>
-        <translation>Diagrams</translation>
+        <translation>Διαγράμματα</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="260" />
         <source>Diagrams settings and control</source>
-        <translation>Diagrams settings and control</translation>
+        <translation>Ρυθμίσεις και έλεγχος διαγραμμάτων</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="338" />
         <source>List of available diagrams</source>
-        <translation>List of available diagrams</translation>
+        <translation>Λίστα διαθέσιμων διαγραμμάτων</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="361" />
         <source>Map settings</source>
-        <translation>Map settings</translation>
+        <translation>Ρυθμίσεις χάρτη</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="388" />
         <source>Map tile provider</source>
-        <translation>Map tile provider</translation>
+        <translation>Πάροχος πλακιδίων χάρτη</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="395" />
         <source>Map tile provides (map background)</source>
-        <translation>Map tile provides (map background)</translation>
+        <translation>Το πλακίδιο χάρτη παρέχει (φόντο χάρτη)</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="408" />
         <source>Preset</source>
-        <translation>Preset</translation>
+        <translation>Προκαθορισμένη</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="436" />
         <source>Apply country meaningful sizes</source>
-        <translation>Apply country meaningful sizes</translation>
+        <translation>Εφαρμόστε μεγέθη με νόημα χώρας</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="450" />
         <source>Apply region meaningful sizes</source>
-        <translation>Apply region meaningful sizes</translation>
+        <translation>Εφαρμόστε σημαντικά μεγέθη περιοχής</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="464" />
         <source>Apply municipality meaningful sizes</source>
-        <translation>Apply municipality meaningful sizes</translation>
+        <translation>Εφαρμογή δημοτικών μεγεθών με νόημα</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="478" />
         <source>Apply street meaningful sizes</source>
-        <translation>Apply street meaningful sizes</translation>
+        <translation>Εφαρμόστε μεγέθη με νόημα δρόμου</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="501" />
         <source>Node size</source>
-        <translation>Node size</translation>
+        <translation>Μέγεθος κόμβου</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="529" />
         <source>Maximum node / substation sizes</source>
-        <translation>Maximum node / substation sizes</translation>
+        <translation>Μέγιστα μεγέθη κόμβων / υποσταθμών</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="532" />
@@ -3826,196 +3805,196 @@ Monte Carlo power flow results:</translation>
         <location filename="../Main/MainWindow.ui" line="644" />
         <location filename="../Main/MainWindow.ui" line="685" />
         <source> px</source>
-        <translation> px</translation>
+        <translation>px</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="554" />
         <source>Minimum node / substation sizes</source>
-        <translation>Minimum node / substation sizes</translation>
+        <translation>Ελάχιστα μεγέθη κόμβων / υποσταθμών</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="588" />
         <source>Branch size</source>
-        <translation>Branch size</translation>
+        <translation>Μέγεθος κλαδιού</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="616" />
         <source>Minimum branch sizes</source>
-        <translation>Minimum branch sizes</translation>
+        <translation>Ελάχιστα μεγέθη κλαδιών</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="641" />
         <source>Maximum branch sizes</source>
-        <translation>Maximum branch sizes</translation>
+        <translation>Μέγιστα μεγέθη κλαδιών</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="675" />
         <source>Arrow size</source>
-        <translation>Arrow size</translation>
+        <translation>Μέγεθος βέλους</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="682" />
         <source>Branch arrow sizes</source>
-        <translation>Branch arrow sizes</translation>
+        <translation>Μεγέθη βελών κλάδων</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="707" />
         <source>Width based on flow</source>
-        <translation>Width based on flow</translation>
+        <translation>Πλάτος με βάση τη ροή</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="717" />
         <source>Redraw the map or schematic with the new parameters</source>
-        <translation>Redraw the map or schematic with the new parameters</translation>
+        <translation>Σχεδιάστε ξανά τον χάρτη ή το σχηματικό με τις νέες παραμέτρους</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="720" />
         <source>Redraw</source>
-        <translation>Redraw</translation>
+        <translation>Επανασχεδιασμός</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="756" />
         <source>Schematic settings</source>
-        <translation>Schematic settings</translation>
+        <translation>Σχηματικές ρυθμίσεις</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="783" />
         <source>Default voltage</source>
-        <translation>Default voltage</translation>
+        <translation>Προεπιλεγμένη τάση</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="790" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Bus default voltage&lt;/span&gt;&lt;/p&gt;&lt;p&gt;This is the voltage that drag&amp;amp;drop buses have when they are created from the schematic.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Bus default voltage&lt;/span&gt;&lt;/p&gt;&lt;p&gt;This is the voltage that drag&amp;amp;drop buses have when they are created from the schematic.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Προεπιλεγμένη τάση διαύλου&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Αυτή είναι η τάση που έχουν οι δίαυλοι drag&amp;drop όταν δημιουργούνται από το σχηματικό.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="793" />
         <source> kV</source>
-        <translation> kV</translation>
+        <translation>kV</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="809" />
         <source>Node expansion factor</source>
-        <translation>Node expansion factor</translation>
+        <translation>Συντελεστής επέκτασης κόμβου</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="816" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;When expanding or contracting the distances between nodes, this is the factor that applies.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;When expanding or contracting the distances between nodes, this is the factor that applies.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Κατά την επέκταση ή τη συστολή των αποστάσεων μεταξύ των κόμβων, αυτός είναι ο παράγοντας που ισχύει.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="838" />
         <location filename="../Main/MainWindow.ui" line="862" />
         <source>Ask before running the automatic grid layout. This is because you might have a layout already and ruin it accidentally.</source>
-        <translation>Ask before running the automatic grid layout. This is because you might have a layout already and ruin it accidentally.</translation>
+        <translation>Ρωτήστε πριν εκτελέσετε την αυτόματη διάταξη πλέγματος. Αυτό συμβαίνει επειδή μπορεί να έχετε ήδη μια διάταξη και να την καταστρέψετε κατά λάθος.</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="841" />
         <source>Layout algorithm 
 (mark to ask)</source>
-        <translation>Layout algorithm 
-(mark to ask)</translation>
+        <translation>Αλγόριθμος διάταξης 
+(σημαδέψτε για να ρωτήσετε)</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="855" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Algorithm to use for the automatic &lt;/p&gt;&lt;p&gt;layout of the grid nodes&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Algorithm to use for the automatic &lt;/p&gt;&lt;p&gt;layout of the grid nodes&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Αλγόριθμος που θα χρησιμοποιηθεί για την αυτόματη&lt;/p&gt;&lt;p&gt;διάταξη των κόμβων του πλέγματος&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="865" />
         <source>Use the objects' color</source>
-        <translation>Use the objects' color</translation>
+        <translation>Χρησιμοποιήστε το χρώμα των αντικειμένων</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="907" />
         <location filename="../Main/MainWindow.ui" line="3588" />
         <location filename="../Main/MainWindow.ui" line="5817" />
         <source>General settings</source>
-        <translation>General settings</translation>
+        <translation>Γενικές ρυθμίσεις</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="940" />
         <source>Palette</source>
-        <translation>Palette</translation>
+        <translation>Παλέτα</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="947" />
         <source>Select the colour palette</source>
-        <translation>Select the colour palette</translation>
+        <translation>Επιλέξτε την παλέτα χρωμάτων</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="954" />
         <source>Export resolution</source>
-        <translation>Export resolution</translation>
+        <translation>Εξαγωγή ανάλυσης</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="961" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Resolution factor.&lt;/p&gt;&lt;p&gt;1K = 1920 x 1080 pixels&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Resolution factor.&lt;/p&gt;&lt;p&gt;1K = 1920 x 1080 pixels&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Συντελεστής ανάλυσης.&lt;/p&gt;&lt;p&gt;1K = 1920 x 1080 pixel&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="964" />
         <source> K</source>
-        <translation> K</translation>
+        <translation>Κ</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="980" />
         <source>Video FPS</source>
-        <translation>Video FPS</translation>
+        <translation>FPS βίντεο</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="987" />
         <source>Video frames per second</source>
-        <translation>Video frames per second</translation>
+        <translation>Καρέ βίντεο ανά δευτερόλεπτο</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="990" />
         <source> FPS</source>
-        <translation> FPS</translation>
+        <translation>FPS</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="1006" />
         <source>Plotting style</source>
-        <translation>Plotting style</translation>
+        <translation>Στυλ σχεδίασης</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="1013" />
         <source>MatPlotlib plot styles to choose from</source>
-        <translation>MatPlotlib plot styles to choose from</translation>
+        <translation>MatPlotlib στυλ σχεδίασης για να διαλέξετε</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="1067" />
         <source>Available results</source>
-        <translation>Available results</translation>
+        <translation>Διαθέσιμα αποτελέσματα</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="1080" />
         <source>Color the grid with the selected study</source>
-        <translation>Color the grid with the selected study</translation>
+        <translation>Χρωματίστε το πλέγμα με την επιλεγμένη μελέτη</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="1118" />
         <location filename="../Main/MainWindow.ui" line="1516" />
         <location filename="../Main/MainWindow.ui" line="2206" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Time slider&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Move this time slider to select the appropriate time slot to view.&lt;/p&gt;&lt;p&gt;The first position sets the snapshot values, the rest attend to the time series values.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Time slider&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Move this time slider to select the appropriate time slot to view.&lt;/p&gt;&lt;p&gt;The first position sets the snapshot values, the rest attend to the time series values.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Ρυθμιστικό χρόνου&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Μετακινήστε αυτό το ρυθμιστικό χρόνου για να επιλέξετε το κατάλληλο χρονικό διάστημα για προβολή.&lt;/p&gt;&lt;p&gt;Η πρώτη θέση ορίζει τις τιμές στιγμιότυπου, ενώ οι υπόλοιπες παρακολουθούν τις τιμές χρονοσειρών.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="1133" />
         <location filename="../Main/MainWindow.ui" line="1532" />
         <location filename="../Main/MainWindow.ui" line="2275" />
         <source>Snapshot</source>
-        <translation>Snapshot</translation>
+        <translation>Στιγμιότυπο</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="1154" />
         <source>Scenarios</source>
-        <translation>Scenarios</translation>
+        <translation>Σενάρια</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="1157" />
         <source>Scenarios selection and control</source>
-        <translation>Scenarios selection and control</translation>
+        <translation>Επιλογή και έλεγχος σεναρίων</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="1204" />
@@ -4032,452 +4011,452 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="1219" />
         <source>Variations</source>
-        <translation>Variations</translation>
+        <translation>Παραλλαγές</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="1222" />
         <source>Results variations control</source>
-        <translation>Results variations control</translation>
+        <translation>Έλεγχος παραλλαγών αποτελεσμάτων</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="1263" />
         <source>Database</source>
-        <translation>Database</translation>
+        <translation>Βάση δεδομένων</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="1346" />
         <source>Objects</source>
-        <translation>Objects</translation>
+        <translation>Αντικείμενα</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="1397" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Type anything to search on the name property. &lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;For more advanced searches you can compose a filter expression:&lt;/p&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Subjects:&lt;/span&gt;&lt;/p&gt;&lt;p&gt;col, idx, val, colobj, idxobj&lt;/p&gt;&lt;p&gt;colobj and idxobj allow accessing the objects that may be represented at the index or the columns. With these you can access their internal properties for filtering.&lt;/p&gt;&lt;p&gt;If none is specified idxobj is taken&lt;/p&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Operators:&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&amp;gt;, &amp;lt;, &amp;gt;=, &amp;lt;=, !=, =, like, notlike, starts, ends&lt;/p&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Examples:&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Filter all object names that are similar to 'alba' and their Vnom property &amp;gt; 200&lt;/p&gt;&lt;p&gt;-&amp;gt; idx&lt;span style=" font-style:italic;"&gt;obj.name like alba and idxobj.Vnom &amp;gt; 200&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=" font-style:italic;"&gt;Equivalently:&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=" font-style:italic;"&gt;-&amp;gt; name like alba and Vnom &amp;gt; 200&lt;/span&gt;&lt;/p&gt;&lt;p&gt;[Enter] to search &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Type anything to search on the name property. &lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;For more advanced searches you can compose a filter expression:&lt;/p&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Subjects:&lt;/span&gt;&lt;/p&gt;&lt;p&gt;col, idx, val, colobj, idxobj&lt;/p&gt;&lt;p&gt;colobj and idxobj allow accessing the objects that may be represented at the index or the columns. With these you can access their internal properties for filtering.&lt;/p&gt;&lt;p&gt;If none is specified idxobj is taken&lt;/p&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Operators:&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&amp;gt;, &amp;lt;, &amp;gt;=, &amp;lt;=, !=, =, like, notlike, starts, ends&lt;/p&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Examples:&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Filter all object names that are similar to 'alba' and their Vnom property &amp;gt; 200&lt;/p&gt;&lt;p&gt;-&amp;gt; idx&lt;span style=" font-style:italic;"&gt;obj.name like alba and idxobj.Vnom &amp;gt; 200&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=" font-style:italic;"&gt;Equivalently:&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=" font-style:italic;"&gt;-&amp;gt; name like alba and Vnom &amp;gt; 200&lt;/span&gt;&lt;/p&gt;&lt;p&gt;[Enter] to search &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Πληκτρολογήστε οτιδήποτε για αναζήτηση στην ιδιότητα ονόματος.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;Για πιο σύνθετες αναζητήσεις, μπορείτε να συνθέσετε μια έκφραση φίλτρου:&lt;/p&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Θέματα:&lt;/span&gt;&lt;/p&gt;&lt;p&gt;col, idx, val, colobj, idxobj&lt;/p&gt;&lt;p&gt;Τα colobj και idxobj επιτρέπουν την πρόσβαση στα αντικείμενα που μπορεί να αναπαρασταθούν στο ευρετήριο ή στις στήλες. Με αυτά μπορείτε να έχετε πρόσβαση στις εσωτερικές τους ιδιότητες για φιλτράρισμα.&lt;/p&gt;&lt;p&gt;Εάν δεν έχει καθοριστεί κανένα, λαμβάνεται το idxobj&lt;/p&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Χειριστές:&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&gt;, &lt;, &gt;=, &lt;=, !=, =, όπως, μη μου αρέσει, αρχίζει, τελειώνει&lt;/p&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Παραδείγματα:&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Φιλτράρετε όλα τα ονόματα αντικειμένων που είναι παρόμοια με το 'alba' και την ιδιότητά τους Vnom &gt; 200&lt;/p&gt;&lt;p&gt;-&gt; idx&lt;span style=" font-style:italic;"&gt;obj.name όπως alba και idxobj.Vnom &gt; 200&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=" font-style:italic;"&gt;Ισοδύναμα:&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=" font-style:italic;"&gt;-&gt; όνομα όπως alba και Vnom &gt; 200&lt;/span&gt;&lt;/p&gt;&lt;p&gt;[Enter] για αναζήτηση&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="1404" />
         <source>Smart filter</source>
-        <translation>Smart filter</translation>
+        <translation>Έξυπνο φίλτρο</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="1434" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Histogram&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Run the histogram analysis of the selected data structure&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Histogram&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Run the histogram analysis of the selected data structure&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Ιστόγραμμα&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Εκτελέστε την ανάλυση ιστογράμματος της επιλεγμένης δομής δεδομένων&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="1481" />
         <source>Select the time series point to search</source>
-        <translation>Select the time series point to search</translation>
+        <translation>Επιλέξτε το σημείο χρονοσειράς για αναζήτηση</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="1488" />
         <source>Search and navigate to the selected time series point</source>
-        <translation>Search and navigate to the selected time series point</translation>
+        <translation>Αναζήτηση και πλοήγηση στο επιλεγμένο σημείο χρονοσειράς</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="1502" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Snapshot&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Assign the values of the selected time step into the snapshot&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Snapshot&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Assign the values of the selected time step into the snapshot&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Στιγμιότυπο&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Αντιστοιχίστε τις τιμές του επιλεγμένου χρονικού βήματος στο στιγμιότυπο&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="1555" />
         <source>Add new object</source>
-        <translation>Add new object</translation>
+        <translation>Προσθήκη νέου αντικειμένου</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="1569" />
         <source>Delete selection</source>
-        <translation>Delete selection</translation>
+        <translation>Διαγραφή επιλογής</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="1591" />
         <source>Associations</source>
-        <translation>Associations</translation>
+        <translation>Σωματεία</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="1701" />
         <source>Time series</source>
-        <translation>Time series</translation>
+        <translation>Χρονικές σειρές</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="1746" />
         <source>Magnitude with profile</source>
-        <translation>Magnitude with profile</translation>
+        <translation>Μέγεθος με προφίλ</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="1753" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Create profiles&lt;/span&gt;&lt;/p&gt;&lt;p&gt;This will create all the object's profiles&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Create profiles&lt;/span&gt;&lt;/p&gt;&lt;p&gt;This will create all the object's profiles&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Δημιουργία προφίλ&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Αυτό θα δημιουργήσει όλα τα προφίλ του αντικειμένου&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="1767" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Delete profiles&lt;/span&gt;&lt;/p&gt;&lt;p&gt;This will delete all the profiles and leave the snapshot.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Delete profiles&lt;/span&gt;&lt;/p&gt;&lt;p&gt;This will delete all the profiles and leave the snapshot.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Διαγραφή προφίλ&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Αυτό θα διαγράψει όλα τα προφίλ και θα αφήσει το στιγμιότυπο.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="1781" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Import profiles&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Import from data in CSV or Excel files&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Import profiles&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Import from data in CSV or Excel files&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Εισαγωγή προφίλ&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Εισαγωγή από δεδομένα σε αρχεία CSV ή Excel&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="1798" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Import profiles from grid models. &lt;/span&gt;&lt;/p&gt;&lt;p&gt;This is, load many individual grids in any of the supported VeraGrid formats and take the operational data from them, aplying them to all the profiles.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Import profiles from grid models. &lt;/span&gt;&lt;/p&gt;&lt;p&gt;This is, load many individual grids in any of the supported VeraGrid formats and take the operational data from them, aplying them to all the profiles.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Εισαγωγή προφίλ από μοντέλα πλέγματος.&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Αυτό σημαίνει, φορτώστε πολλά μεμονωμένα πλέγματα σε οποιαδήποτε από τις υποστηριζόμενες μορφές VeraGrid και λάβετε τα λειτουργικά δεδομένα από αυτά, εφαρμόζοντάς τα σε όλα τα προφίλ.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="1815" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Time series  crop to the selected time interval&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Time series  crop to the selected time interval&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Περικοπή χρονοσειρών στο επιλεγμένο χρονικό διάστημα&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="1832" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Time series crop to the clusteres time indices.&lt;/p&gt;&lt;p&gt;For that you need cluster simulation in memory&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Time series crop to the clusteres time indices.&lt;/p&gt;&lt;p&gt;For that you need cluster simulation in memory&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Οι χρονολογικές σειρές περικόπτονται στους δείκτες χρόνου των συστάδων.&lt;/p&gt;&lt;p&gt;Για αυτό χρειάζεστε προσομοίωση συμπλέγματος στη μνήμη&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="1862" />
         <source>Plot the selected object's profile</source>
-        <translation>Plot the selected object's profile</translation>
+        <translation>Σχεδιάστε το προφίλ του επιλεγμένου αντικειμένου</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="1913" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Copy data&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Copy displayed profile&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Copy data&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Copy displayed profile&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Αντιγραφή δεδομένων&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Αντιγράψτε το εμφανιζόμενο προφίλ&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="1930" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Paste data&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Paste clipboard into the displayed profile&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Paste data&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Paste clipboard into the displayed profile&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Επικόλληση δεδομένων&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Επικολλήστε το πρόχειρο στο εμφανιζόμενο προφίλ&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="1944" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Copy profile&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Copy the current profile into the profile selected by the drop-down selector&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Copy profile&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Copy the current profile into the profile selected by the drop-down selector&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Αντιγραφή προφίλ&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Αντιγράψτε το τρέχον προφίλ στο προφίλ που έχει επιλεγεί από τον αναπτυσσόμενο επιλογέα&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="1964" />
         <source>Profile where to copy the current profile</source>
-        <translation>Profile where to copy the current profile</translation>
+        <translation>Προφίλ όπου μπορείτε να αντιγράψετε το τρέχον προφίλ</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="1984" />
         <source>Add value to the profile</source>
-        <translation>Add value to the profile</translation>
+        <translation>Προσθέστε αξία στο προφίλ</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="1998" />
         <source>Subtract value from the profile</source>
-        <translation>Subtract value from the profile</translation>
+        <translation>Αφαιρέστε τιμή από το προφίλ</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="2012" />
         <source>Multiply the profile by a value</source>
-        <translation>Multiply the profile by a value</translation>
+        <translation>Πολλαπλασιάστε το προφίλ με μια τιμή</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="2026" />
         <source>Divide the profile by a value</source>
-        <translation>Divide the profile by a value</translation>
+        <translation>Διαιρέστε το προφίλ με μια τιμή</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="2040" />
         <source>Set the value to all or to the selection</source>
-        <translation>Set the value to all or to the selection</translation>
+        <translation>Ορίστε την τιμή σε όλα ή στην επιλογή</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="2083" />
         <source>Compiled arrays</source>
-        <translation>Compiled arrays</translation>
+        <translation>Μεταγλωττισμένοι πίνακες</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="2132" />
         <source>Export simulation data</source>
-        <translation>Export simulation data</translation>
+        <translation>Εξαγωγή δεδομένων προσομοίωσης</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="2152" />
         <source>Update the islands dispayed</source>
-        <translation>Update the islands dispayed</translation>
+        <translation>Ενημερώστε τα νησιά που καταβλήθηκαν</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="2192" />
         <source>Copy to data frame to clipboard in array format</source>
-        <translation>Copy to data frame to clipboard in array format</translation>
+        <translation>Αντιγραφή στο πλαίσιο δεδομένων στο πρόχειρο σε μορφή πίνακα</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="2235" />
         <source>Plot values</source>
-        <translation>Plot values</translation>
+        <translation>Τιμές οικοπέδου</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="2258" />
         <source>Copy array to clipboard</source>
-        <translation>Copy array to clipboard</translation>
+        <translation>Αντιγραφή πίνακα στο πρόχειρο</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="2294" />
         <source>Comments</source>
-        <translation>Comments</translation>
+        <translation>Σχόλια</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="2300" />
         <source>Write here some comments about the grid</source>
-        <translation>Write here some comments about the grid</translation>
+        <translation>Γράψτε εδώ μερικά σχόλια για το πλέγμα</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="2316" />
         <location filename="../Main/MainWindow.ui" line="2381" />
         <location filename="../Main/MainWindow.ui" line="12664" />
         <source>Results</source>
-        <translation>Results</translation>
+        <translation>Αποτελέσματα</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="2437" />
         <source>Saved results in this file</source>
-        <translation>Saved results in this file</translation>
+        <translation>Αποθηκευμένα αποτελέσματα σε αυτό το αρχείο</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="2493" />
         <source>Tables</source>
-        <translation>Tables</translation>
+        <translation>Πίνακες</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="2577" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Subjects:&lt;/span&gt;&lt;/p&gt;&lt;p&gt;col, idx, val, colobj, idxobj&lt;/p&gt;&lt;p&gt;colobj and idxobj allow accessing the objects that may be represented at the index or the columns. With these you can access their internal properties for filtering.&lt;/p&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Operators:&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&amp;gt;, &amp;lt;, &amp;gt;=, &amp;lt;=, !=, =, like, notlike, starts, ends&lt;/p&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Examples:&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=" font-style:italic;"&gt;The columns should not be column1 or column2, the values should be &amp;gt; 5 and the index be like ab of mn&lt;/span&gt;&lt;/p&gt;&lt;p&gt;-&amp;gt; &lt;span style=" font-style:italic;"&gt;col != [column1, column2] and val &amp;gt; 5 or idx like [ab, mn]&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=" font-style:italic;"&gt;Filter the table values that are between 0.5 and 20&lt;/span&gt;&lt;/p&gt;&lt;p&gt;-&amp;gt; &lt;span style=" font-style:italic;"&gt;val &amp;gt; 0.5 and val &amp;lt; 20.0&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Subjects:&lt;/span&gt;&lt;/p&gt;&lt;p&gt;col, idx, val, colobj, idxobj&lt;/p&gt;&lt;p&gt;colobj and idxobj allow accessing the objects that may be represented at the index or the columns. With these you can access their internal properties for filtering.&lt;/p&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Operators:&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&amp;gt;, &amp;lt;, &amp;gt;=, &amp;lt;=, !=, =, like, notlike, starts, ends&lt;/p&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Examples:&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=" font-style:italic;"&gt;The columns should not be column1 or column2, the values should be &amp;gt; 5 and the index be like ab of mn&lt;/span&gt;&lt;/p&gt;&lt;p&gt;-&amp;gt; &lt;span style=" font-style:italic;"&gt;col != [column1, column2] and val &amp;gt; 5 or idx like [ab, mn]&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=" font-style:italic;"&gt;Filter the table values that are between 0.5 and 20&lt;/span&gt;&lt;/p&gt;&lt;p&gt;-&amp;gt; &lt;span style=" font-style:italic;"&gt;val &amp;gt; 0.5 and val &amp;lt; 20.0&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Θέματα:&lt;/span&gt;&lt;/p&gt;&lt;p&gt;col, idx, val, colobj, idxobj&lt;/p&gt;&lt;p&gt;Τα colobj και idxobj επιτρέπουν την πρόσβαση στα αντικείμενα που μπορεί να αναπαρασταθούν στο ευρετήριο ή στις στήλες. Με αυτά μπορείτε να έχετε πρόσβαση στις εσωτερικές τους ιδιότητες για φιλτράρισμα.&lt;/p&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Χειριστές:&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&gt;, &lt;, &gt;=, &lt;=, !=, =, όπως, μη μου αρέσει, αρχίζει, τελειώνει&lt;/p&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Παραδείγματα:&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=" font-style:italic;"&gt;Οι στήλες δεν πρέπει να είναι στήλη 1 ή στήλη 2, οι τιμές πρέπει να είναι &gt; 5 και ο δείκτης να είναι σαν ab του mn&lt;/span&gt;&lt;/p&gt;&lt;p&gt;-&gt;&lt;span style=" font-style:italic;"&gt;col != [στήλη1, στήλη2] και val &gt; 5 ή idx όπως [ab, mn]&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=" font-style:italic;"&gt;Φιλτράρετε τις τιμές του πίνακα που είναι μεταξύ 0,5 και 20&lt;/span&gt;&lt;/p&gt;&lt;p&gt;-&gt;&lt;span style=" font-style:italic;"&gt;val &gt; 0,5 και val &lt; 20,0&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="2584" />
         <location filename="../Main/MainWindow.ui" line="2818" />
         <source>Smart search</source>
-        <translation>Smart search</translation>
+        <translation>Έξυπνη αναζήτηση</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="2618" />
         <source>Transpose the results</source>
-        <translation>Transpose the results</translation>
+        <translation>Μεταφέρετε τα αποτελέσματα</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="2632" />
         <source>Results as cummulative density functions</source>
-        <translation>Results as cummulative density functions</translation>
+        <translation>Αποτελέσματα ως συναρτήσεις αθροιστικής πυκνότητας</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="2649" />
         <source>Results as absolute values</source>
-        <translation>Results as absolute values</translation>
+        <translation>Τα αποτελέσματα ως απόλυτες τιμές</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="2666" />
         <source>Stacked plot</source>
-        <translation>Stacked plot</translation>
+        <translation>Στοιβαγμένο οικόπεδο</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="2683" />
         <source>Copy to data frame to clipboard</source>
-        <translation>Copy to data frame to clipboard</translation>
+        <translation>Αντιγραφή στο πλαίσιο δεδομένων στο πρόχειρο</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="2697" />
         <source>Copy data in numpy format to clipboard</source>
-        <translation>Copy data in numpy format to clipboard</translation>
+        <translation>Αντιγράψτε δεδομένα σε μορφή numpy στο πρόχειρο</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="2711" />
         <location filename="../Main/MainWindow.ui" line="10784" />
         <source>Export data</source>
-        <translation>Export data</translation>
+        <translation>Εξαγωγή δεδομένων</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="2725" />
         <source>Plot the data in a separated window</source>
-        <translation>Plot the data in a separated window</translation>
+        <translation>Σχεδιάστε τα δεδομένα σε ένα ξεχωριστό παράθυρο</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="2763" />
         <source>Dynamics</source>
-        <translation>Dynamics</translation>
+        <translation>Δυναμική</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="2811" />
         <source>Type the search term</source>
-        <translation>Type the search term</translation>
+        <translation>Πληκτρολογήστε τον όρο αναζήτησης</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="2832" />
         <source>Open the RMS pre-simulation dynamic plot editor</source>
-        <translation>Open the RMS pre-simulation dynamic plot editor</translation>
+        <translation>Ανοίξτε το πρόγραμμα επεξεργασίας δυναμικής γραφικής παράστασης πριν από την προσομοίωση RMS</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="2835" />
         <source>RMS plots</source>
-        <translation>RMS plots</translation>
+        <translation>Οικόπεδα RMS</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="2842" />
         <source>Open the EMT pre-simulation dynamic plot editor</source>
-        <translation>Open the EMT pre-simulation dynamic plot editor</translation>
+        <translation>Ανοίξτε το πρόγραμμα επεξεργασίας δυναμικής γραφικής παράστασης πριν από την προσομοίωση EMT</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="2845" />
         <source>EMT plots</source>
-        <translation>EMT plots</translation>
+        <translation>Οικόπεδα EMT</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="2865" />
         <source>Add new plot</source>
-        <translation>Add new plot</translation>
+        <translation>Προσθήκη νέας πλοκής</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="2879" />
         <source>Remove selected plot</source>
-        <translation>Remove selected plot</translation>
+        <translation>Αφαίρεση επιλεγμένου σχεδίου</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="2893" />
         <source>Display selected plot</source>
-        <translation>Display selected plot</translation>
+        <translation>Εμφάνιση επιλεγμένης πλοκής</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="2938" />
         <source>Drag and drop the Var to the desired plot. Double click to plot directly.</source>
-        <translation>Drag and drop the Var to the desired plot. Double click to plot directly.</translation>
+        <translation>Σύρετε και αποθέστε το Var στην επιθυμητή γραφική παράσταση. Κάντε διπλό κλικ για να σχεδιάσετε απευθείας.</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="3009" />
         <source>Logs</source>
-        <translation>Logs</translation>
+        <translation>κούτσουρα</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="3052" />
         <source>Save the logs to a file</source>
-        <translation>Save the logs to a file</translation>
+        <translation>Αποθηκεύστε τα αρχεία καταγραφής σε ένα αρχείο</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="3081" />
         <source>Report</source>
-        <translation>Report</translation>
+        <translation>Εκθεση</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="3106" />
         <source>Scripting</source>
-        <translation>Scripting</translation>
+        <translation>Σενάριο</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="3191" />
         <source>New script, will delete the existing code.</source>
-        <translation>New script, will delete the existing code.</translation>
+        <translation>Νέο σενάριο, θα διαγράψει τον υπάρχοντα κώδικα.</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="3205" />
         <source>Save the current source code</source>
-        <translation>Save the current source code</translation>
+        <translation>Αποθηκεύστε τον τρέχοντα πηγαίο κώδικα</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="3226" />
         <source>Name of the source code file</source>
-        <translation>Name of the source code file</translation>
+        <translation>Όνομα του αρχείου πηγαίου κώδικα</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="3240" />
         <source>Run the source code in the console</source>
-        <translation>Run the source code in the console</translation>
+        <translation>Εκτελέστε τον πηγαίο κώδικα στην κονσόλα</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="3306" />
         <source>Python console</source>
-        <translation>Python console</translation>
+        <translation>Κονσόλα Python</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="3379" />
         <source>Clear the console</source>
-        <translation>Clear the console</translation>
+        <translation>Καθαρίστε την κονσόλα</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="3407" />
         <source>Source code</source>
-        <translation>Source code</translation>
+        <translation>Πηγαίος κώδικας</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="3449" />
         <source>Settings</source>
-        <translation>Settings</translation>
+        <translation>Ρυθμίσεις</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="3672" />
         <source>Frequency</source>
-        <translation>Frequency</translation>
+        <translation>Συχνότητα</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="3679" />
         <source>Snapshot time</source>
-        <translation>Snapshot time</translation>
+        <translation>Ώρα στιγμιότυπου</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="3710" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;System frequency&lt;/span&gt;&lt;/p&gt;&lt;p&gt;This only has an effect in the program when computing lines' per-unit impedance from ohm values.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;System frequency&lt;/span&gt;&lt;/p&gt;&lt;p&gt;This only has an effect in the program when computing lines' per-unit impedance from ohm values.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Συχνότητα συστήματος&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Αυτό έχει επίδραση στο πρόγραμμα μόνο κατά τον υπολογισμό της σύνθετης αντίστασης ανά μονάδα γραμμών από τιμές ωμ.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="3713" />
         <source> Hz</source>
-        <translation> Hz</translation>
+        <translation>Hz</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="3739" />
         <source>Base power</source>
-        <translation>Base power</translation>
+        <translation>Ισχύς βάσης</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="3746" />
         <source>Name of the grid model</source>
-        <translation>Name of the grid model</translation>
+        <translation>Όνομα του μοντέλου πλέγματος</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="3760" />
         <source>Grid name</source>
-        <translation>Grid name</translation>
+        <translation>Όνομα πλέγματος</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="3767" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Base power&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Despite all the bibliography, changing this number to anything other than 100 MVA, might change the meaning of what sensible per-unit voltage are.&lt;/p&gt;&lt;p&gt;So, don't touch it. To have power in kW, use the option at the loads, geneerators, etc.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Base power&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Despite all the bibliography, changing this number to anything other than 100 MVA, might change the meaning of what sensible per-unit voltage are.&lt;/p&gt;&lt;p&gt;So, don't touch it. To have power in kW, use the option at the loads, geneerators, etc.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Ισχύς βάσης&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Παρά όλη τη βιβλιογραφία, η αλλαγή αυτού του αριθμού σε οτιδήποτε άλλο εκτός από 100 MVA, μπορεί να αλλάξει την έννοια του τι είναι λογική τάση ανά μονάδα.&lt;/p&gt;&lt;p&gt;Επομένως, μην το αγγίζετε. Για να έχετε ισχύ στο kW, χρησιμοποιήστε την επιλογή στα φορτία, γεννήτριες κ.λπ.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="3770" />
         <source> MVA</source>
-        <translation> MVA</translation>
+        <translation>MVA</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="3789" />
         <source>Engine to be used when available</source>
-        <translation>Engine to be used when available</translation>
+        <translation>Κινητήρας για χρήση όταν είναι διαθέσιμος</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="3796" />
         <source>Engine</source>
-        <translation>Engine</translation>
+        <translation>Μηχανή</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="3803" />
         <source>Language</source>
-        <translation>Language</translation>
+        <translation>Γλώσσα</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="3813" />
         <source>Dark mode</source>
-        <translation>Dark mode</translation>
+        <translation>Σκοτεινή λειτουργία</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="3842" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Settings for state estimation.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Settings for state estimation.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Ρυθμίσεις για την εκτίμηση κατάστασης.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="3879" />
         <location filename="../Main/MainWindow.ui" line="3889" />
         <source>Power flow settings</source>
-        <translation>Power flow settings</translation>
+        <translation>Ρυθμίσεις ροής ισχύος</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="3886" />
@@ -4487,7 +4466,7 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="3962" />
         <source>Power flow</source>
-        <translation>Power flow</translation>
+        <translation>Ροή ισχύος</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4102" />
@@ -4497,222 +4476,222 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="4174" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Theoretically PTDF and LODF values should be in the range (-1, 1)&lt;br/&gt;However, this is not true in general for any grid due to the existence of antennas.&lt;br/&gt;With this option the values are truncated to the range (-1, 1)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Theoretically PTDF and LODF values should be in the range (-1, 1)&lt;br/&gt;However, this is not true in general for any grid due to the existence of antennas.&lt;br/&gt;With this option the values are truncated to the range (-1, 1)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Θεωρητικά οι τιμές PTDF και LODF θα πρέπει να είναι στην περιοχή (-1, 1)&lt;br/&gt;Αυτό όμως δεν ισχύει γενικά για κανένα πλέγμα λόγω της ύπαρξης κεραιών.&lt;br/&gt;Με αυτήν την επιλογή οι τιμές περικόπτονται στο εύρος (-1, 1)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4177" />
         <source>Correct nonsense values</source>
-        <translation>Correct nonsense values</translation>
+        <translation>Διορθώστε τις ανοησίες</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4187" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;With this option, the PTDF is computed such that the slack effects are distributed&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;With this option, the PTDF is computed such that the slack effects are distributed&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Με αυτήν την επιλογή, το PTDF υπολογίζεται έτσι ώστε τα εφέ χαλαρότητας να κατανέμονται&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4190" />
         <location filename="../Main/MainWindow.ui" line="4415" />
         <source>Distributed slack</source>
-        <translation>Distributed slack</translation>
+        <translation>Κατανεμημένη χαλαρότητα</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4200" />
         <source>Threshold under which sensitivities are ignored when the PTDF is converted to sparse</source>
-        <translation>Threshold under which sensitivities are ignored when the PTDF is converted to sparse</translation>
+        <translation>Όριο κάτω από το οποίο οι ευαισθησίες αγνοούνται όταν το PTDF μετατρέπεται σε αραιό</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4219" />
         <source>LODF threshold</source>
-        <translation>LODF threshold</translation>
+        <translation>κατώφλι LODF</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4263" />
         <source>Threshold under which sensitivities are ignored when the LODF is converted to sparse</source>
-        <translation>Threshold under which sensitivities are ignored when the LODF is converted to sparse</translation>
+        <translation>Όριο κάτω από το οποίο οι ευαισθησίες αγνοούνται όταν το LODF μετατρέπεται σε αραιό</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4282" />
         <source>PTDF threshold</source>
-        <translation>PTDF threshold</translation>
+        <translation>όριο PTDF</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4308" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Maximum numberof iterations to use.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;Tipical values: &lt;/p&gt;&lt;p&gt;Newton Raphson: 5&lt;/p&gt;&lt;p&gt;Levenberg-Marquards: 20&lt;/p&gt;&lt;p&gt;Fast decoupled: 10&lt;/p&gt;&lt;p&gt;Others: 20&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Maximum numberof iterations to use.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;Tipical values: &lt;/p&gt;&lt;p&gt;Newton Raphson: 5&lt;/p&gt;&lt;p&gt;Levenberg-Marquards: 20&lt;/p&gt;&lt;p&gt;Fast decoupled: 10&lt;/p&gt;&lt;p&gt;Others: 20&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Μέγιστος αριθμός επαναλήψεων προς χρήση.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;Τυπικές τιμές:&lt;/p&gt;&lt;p&gt;Νιούτον Ράφσον: 5&lt;/p&gt;&lt;p&gt;Levenberg-Marquards: 20&lt;/p&gt;&lt;p&gt;Γρήγορη αποσύνδεση: 10&lt;/p&gt;&lt;p&gt;Άλλα: 20&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4311" />
         <source> iterations</source>
-        <translation> iterations</translation>
+        <translation>επαναλήψεις</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4333" />
         <source>Find the tolerance that best represents the load values for power flow</source>
-        <translation>Find the tolerance that best represents the load values for power flow</translation>
+        <translation>Βρείτε την ανοχή που αντιπροσωπεύει καλύτερα τις τιμές φορτίου για τη ροή ισχύος</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4336" />
         <source>Find</source>
-        <translation>Find</translation>
+        <translation>Εύρημα</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4356" />
         <source>Max. iterations</source>
-        <translation>Max. iterations</translation>
+        <translation>Μέγ. επαναλήψεις</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4372" />
         <source>General switch for generators remote voltage control</source>
-        <translation>General switch for generators remote voltage control</translation>
+        <translation>Γενικός διακόπτης για τηλεχειριστήριο τάσης γεννητριών</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4375" />
         <source>Control remote voltage</source>
-        <translation>Control remote voltage</translation>
+        <translation>Ελέγξτε την τάση του τηλεχειριστηρίου</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4382" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If the selected method does not converge, try a list of methods that may help&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If the selected method does not converge, try a list of methods that may help&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Εάν η επιλεγμένη μέθοδος δεν συγκλίνει, δοκιμάστε μια λίστα μεθόδων που μπορεί να σας βοηθήσουν&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4385" />
         <source>Retry with other methods</source>
-        <translation>Retry with other methods</translation>
+        <translation>Δοκιμάστε ξανά με άλλες μεθόδους</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4395" />
         <source>General switch for branches tap module control</source>
-        <translation>General switch for branches tap module control</translation>
+        <translation>Γενικός διακόπτης για κλαδιά χειρισμός μονάδας βρύσης</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4398" />
         <source>Control tap module</source>
-        <translation>Control tap module</translation>
+        <translation>Έλεγχος της μονάδας βρύσης</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4405" />
         <source>Apply impedance tolerances</source>
-        <translation>Apply impedance tolerances</translation>
+        <translation>Εφαρμόστε ανοχές σύνθετης αντίστασης</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4412" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If active, the slack power is distributed among the generators according to their installed power &amp;quot;Snom&amp;quot;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If active, the slack power is distributed among the generators according to their installed power &amp;quot;Snom&amp;quot;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Εάν είναι ενεργή, η χαλαρή ισχύς κατανέμεται μεταξύ των γεννητριών σύμφωνα με την εγκατεστημένη ισχύ τους "Snom"&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4422" />
         <source>If checked, the power flow solution is initialized with a linear (so called DC) power flow first</source>
-        <translation>If checked, the power flow solution is initialized with a linear (so called DC) power flow first</translation>
+        <translation>Εάν είναι επιλεγμένο, η λύση ροής ισχύος αρχικοποιείται με μια γραμμική (ονομαζόμενη DC) ροή ισχύος πρώτα</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4425" />
         <source>Initialize angles</source>
-        <translation>Initialize angles</translation>
+        <translation>Αρχικοποίηση γωνιών</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4432" />
         <source>If active, the islands of a single node are ignored.</source>
-        <translation>If active, the islands of a single node are ignored.</translation>
+        <translation>Εάν είναι ενεργά, τα νησιά ενός μεμονωμένου κόμβου αγνοούνται.</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4435" />
         <source>Ignore single node islands</source>
-        <translation>Ignore single node islands</translation>
+        <translation>Αγνοήστε τα μονοκομματικά νησιά</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4445" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If active, the Vm0 and Va0 properties of the bus objects are used to initialize the power flow simulation.&lt;/p&gt;&lt;p&gt;If you need this it is a sign of grid ill conditioning by something else like incorrect impedances of too much loading, specially reactive power that cannot be transported.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If active, the Vm0 and Va0 properties of the bus objects are used to initialize the power flow simulation.&lt;/p&gt;&lt;p&gt;If you need this it is a sign of grid ill conditioning by something else like incorrect impedances of too much loading, specially reactive power that cannot be transported.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Εάν είναι ενεργές, οι ιδιότητες Vm0 και Va0 των αντικειμένων διαύλου χρησιμοποιούνται για την προετοιμασία της προσομοίωσης ροής ισχύος.&lt;/p&gt;&lt;p&gt;Εάν το χρειάζεστε, είναι σημάδι κακής προετοιμασίας του δικτύου από κάτι άλλο, όπως λανθασμένες σύνθετες αντιστάσεις υπερβολικής φόρτισης, ειδικά άεργου ισχύος που δεν μπορεί να μεταφερθεί.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4448" />
         <source>Use voltage guess</source>
-        <translation>Use voltage guess</translation>
+        <translation>Χρησιμοποιήστε εικασία τάσης</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4455" />
         <location filename="../Main/MainWindow.ui" line="5901" />
         <source>Add a results report in the logs</source>
-        <translation>Add a results report in the logs</translation>
+        <translation>Προσθέστε μια αναφορά αποτελεσμάτων στα αρχεία καταγραφής</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4458" />
         <location filename="../Main/MainWindow.ui" line="5904" />
         <source>Add report</source>
-        <translation>Add report</translation>
+        <translation>Προσθήκη αναφοράς</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4465" />
         <source>General switch for reactive power limits control</source>
-        <translation>General switch for reactive power limits control</translation>
+        <translation>Γενικός διακόπτης για έλεγχο ορίων άεργου ισχύος</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4468" />
         <location filename="../Main/MainWindow.ui" line="5801" />
         <source>Control Q limits</source>
-        <translation>Control Q limits</translation>
+        <translation>Έλεγχος ορίων Q</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4475" />
         <source>General switch for branches tap phase control</source>
-        <translation>General switch for branches tap phase control</translation>
+        <translation>Γενικός διακόπτης για διακλαδώσεις έλεγχος φάσης βρύσης</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4478" />
         <source>Control tap phase</source>
-        <translation>Control tap phase</translation>
+        <translation>Έλεγχος φάσης βρύσης</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4485" />
         <source>If checked, the controls are adjusted to their closest tap</source>
-        <translation>If checked, the controls are adjusted to their closest tap</translation>
+        <translation>Εάν είναι επιλεγμένο, τα χειριστήρια προσαρμόζονται στο πλησιέστερο πάτημά τους</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4488" />
         <source>Orthogonalize controls</source>
-        <translation>Orthogonalize controls</translation>
+        <translation>Ορθογώνια στοιχεία ελέγχου</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4495" />
         <source>Correct the branches resistance using the temperature</source>
-        <translation>Correct the branches resistance using the temperature</translation>
+        <translation>Διορθώστε την αντίσταση των κλαδιών χρησιμοποιώντας τη θερμοκρασία</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4498" />
         <source>Apply temperature correction</source>
-        <translation>Apply temperature correction</translation>
+        <translation>Εφαρμόστε διόρθωση θερμοκρασίας</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4508" />
         <location filename="../Main/MainWindow.ui" line="5760" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Factor that multiplies each increment solution. &lt;/p&gt;&lt;p&gt;In practice this is used to slow down troublesome solutions.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Factor that multiplies each increment solution. &lt;/p&gt;&lt;p&gt;In practice this is used to slow down troublesome solutions.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Συντελεστής που πολλαπλασιάζει κάθε αύξουσα λύση.&lt;/p&gt;&lt;p&gt;Στην πράξη αυτό χρησιμοποιείται για να επιβραδύνει ενοχλητικές λύσεις.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4511" />
         <location filename="../Main/MainWindow.ui" line="4560" />
         <location filename="../Main/MainWindow.ui" line="4613" />
         <source> p.u.</source>
-        <translation> p.u.</translation>
+        <translation>p.u.</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4533" />
         <source>Level of console information. 0: None, 1: some information, 2: all the information</source>
-        <translation>Level of console information. 0: None, 1: some information, 2: all the information</translation>
+        <translation>Επίπεδο πληροφοριών κονσόλας. 0: Κανένα, 1: μερικές πληροφορίες, 2: όλες οι πληροφορίες</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4543" />
         <location filename="../Main/MainWindow.ui" line="5085" />
         <location filename="../Main/MainWindow.ui" line="8318" />
         <source>Solver</source>
-        <translation>Solver</translation>
+        <translation>Διαλύτης</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4550" />
         <location filename="../Main/MainWindow.ui" line="5785" />
         <source>Trust radius</source>
-        <translation>Trust radius</translation>
+        <translation>Ακτίνα εμπιστοσύνης</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4557" />
@@ -4721,7 +4700,7 @@ Monte Carlo power flow results:</translation>
         <location filename="../Main/MainWindow.ui" line="7877" />
         <location filename="../Main/MainWindow.ui" line="8528" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Error tolerance of the method&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Error tolerance of the method&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Ανοχή σφάλματος της μεθόδου&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4563" />
@@ -4733,12 +4712,12 @@ Monte Carlo power flow results:</translation>
         <location filename="../Main/MainWindow.ui" line="9791" />
         <location filename="../Main/MainWindow.ui" line="10053" />
         <source>1e-</source>
-        <translation>1e-</translation>
+        <translation>1ε-</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4589" />
         <source>Verbosity</source>
-        <translation>Verbosity</translation>
+        <translation>Πολυλογία</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4596" />
@@ -4747,22 +4726,22 @@ Monte Carlo power flow results:</translation>
         <location filename="../Main/MainWindow.ui" line="7813" />
         <location filename="../Main/MainWindow.ui" line="8311" />
         <source>Tolerance</source>
-        <translation>Tolerance</translation>
+        <translation>Ανοχή</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4603" />
         <source>Controls apply after</source>
-        <translation>Controls apply after</translation>
+        <translation>Οι έλεγχοι ισχύουν μετά</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4610" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;VeraGrid does not have an &amp;quot;outer loop&amp;quot;&lt;br/&gt;Instead, in iterative numerical methods (Newton-Raphson, Levenberg-Marquardt, Powell Dog Leg) the controls apply after a certain error threshold has been reached.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;VeraGrid does not have an &amp;quot;outer loop&amp;quot;&lt;br/&gt;Instead, in iterative numerical methods (Newton-Raphson, Levenberg-Marquardt, Powell Dog Leg) the controls apply after a certain error threshold has been reached.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Το VeraGrid δεν έχει "εξωτερικό βρόχο"&lt;br/&gt;Αντίθετα, σε επαναληπτικές αριθμητικές μεθόδους (Newton-Raphson, Levenberg-Marquardt, Powell Dog Leg) οι έλεγχοι εφαρμόζονται αφού επιτευχθεί ένα συγκεκριμένο όριο σφάλματος.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4636" />
         <source>Continuation power flow settings</source>
-        <translation>Continuation power flow settings</translation>
+        <translation>Ρυθμίσεις συνεχούς ροής ισχύος</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4643" />
@@ -4772,64 +4751,64 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="4646" />
         <source>Continuation power flow related settings</source>
-        <translation>Continuation power flow related settings</translation>
+        <translation>Ρυθμίσεις που σχετίζονται με τη συνεχή ροή ισχύος</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4677" />
         <source>Stop at</source>
-        <translation>Stop at</translation>
+        <translation>Σταματήστε στο</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4684" />
         <source>Refer to the NTC areas (Linear tab)</source>
-        <translation>Refer to the NTC areas (Linear tab)</translation>
+        <translation>Ανατρέξτε στις περιοχές NTC (Καρτέλα Γραμμική)</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4764" />
         <source>Now</source>
-        <translation>Now</translation>
+        <translation>Τώρα</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4771" />
         <source>Use departure and target points from time series</source>
-        <translation>Use departure and target points from time series</translation>
+        <translation>Χρησιμοποιήστε τα σημεία αναχώρησης και στόχου από χρονοσειρές</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4781" />
         <source>Available transfer capacity</source>
-        <translation>Available transfer capacity</translation>
+        <translation>Διαθέσιμη χωρητικότητα μεταφοράς</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4795" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Lambda factor&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Lambda factor&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Παράγοντας λάμδα&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4802" />
         <location filename="../Main/MainWindow.ui" line="4998" />
         <source>Max. Iterations</source>
-        <translation>Max. Iterations</translation>
+        <translation>Μέγ. Επαναλήψεις</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4809" />
         <source>Target</source>
-        <translation>Target</translation>
+        <translation>Στόχος</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4911" />
         <location filename="../Main/MainWindow.ui" line="11194" />
         <source>Continuation power flow</source>
-        <translation>Continuation power flow</translation>
+        <translation>Συνεχής ροή ισχύος</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4929" />
         <source>Simulation mode</source>
-        <translation>Simulation mode</translation>
+        <translation>Λειτουργία προσομοίωσης</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4936" />
         <source>Increase system loading</source>
-        <translation>Increase system loading</translation>
+        <translation>Αυξήστε τη φόρτωση του συστήματος</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4980" />
@@ -4839,39 +4818,39 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="5008" />
         <source>Observability analysis</source>
-        <translation>Observability analysis</translation>
+        <translation>Ανάλυση παρατηρησιμότητας</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5078" />
         <source>Fixed slack</source>
-        <translation>Fixed slack</translation>
+        <translation>Διορθώθηκε η χαλάρωση</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5180" />
         <location filename="../Main/MainWindow.ui" line="12520" />
         <source>State estimation</source>
-        <translation>State estimation</translation>
+        <translation>Εκτίμηση του κράτους</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5232" />
         <source>Prefer correct</source>
-        <translation>Prefer correct</translation>
+        <translation>Προτιμήστε το σωστό</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5239" />
         <source>Add pseudo measurements</source>
-        <translation>Add pseudo measurements</translation>
+        <translation>Προσθέστε ψευδομετρήσεις</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5246" />
         <source>Measurements profiling</source>
-        <translation>Measurements profiling</translation>
+        <translation>Μετρήσεις προφίλ</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5270" />
         <location filename="../Main/MainWindow.ui" line="5280" />
         <source>Optimal power flow settings</source>
-        <translation>Optimal power flow settings</translation>
+        <translation>Βέλτιστες ρυθμίσεις ροής ισχύος</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5277" />
@@ -4881,218 +4860,218 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="5292" />
         <source>Linear settings</source>
-        <translation>Linear settings</translation>
+        <translation>Γραμμικές ρυθμίσεις</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5304" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Choose the time grouping to possibly shorten the solution time.&lt;/p&gt;&lt;p&gt;This splits the time series by week, month, etc. and the subproblems are solved sequentially.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Choose the time grouping to possibly shorten the solution time.&lt;/p&gt;&lt;p&gt;This splits the time series by week, month, etc. and the subproblems are solved sequentially.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Επιλέξτε την ομαδοποίηση χρόνου για να συντομεύσετε πιθανώς τον χρόνο λύσης.&lt;/p&gt;&lt;p&gt;Αυτό χωρίζει τις χρονοσειρές ανά εβδομάδα, μήνα κ.λπ. και τα υποπροβλήματα επιλύονται διαδοχικά.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5317" />
         <source>Consider per-area generation spinning reserve</source>
-        <translation>Consider per-area generation spinning reserve</translation>
+        <translation>Εξετάστε το περιστρεφόμενο απόθεμα παραγωγής ανά περιοχή</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5320" />
         <source>Spinning reserve</source>
-        <translation>Spinning reserve</translation>
+        <translation>Περιστρεφόμενη ρεζέρβα</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5333" />
         <source>Instead of using the generation, loads cost for dispatching, use the GLSK (Generation, Load Shift Keys)</source>
-        <translation>Instead of using the generation, loads cost for dispatching, use the GLSK (Generation, Load Shift Keys)</translation>
+        <translation>Αντί να χρησιμοποιείτε την παραγωγή, φορτώνει το κόστος αποστολής, χρησιμοποιήστε το GLSK (Generation, Load Shift Keys)</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5336" />
         <source>Use GSLK as costs</source>
-        <translation>Use GSLK as costs</translation>
+        <translation>Χρησιμοποιήστε το GSLK ως κόστος</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5349" />
         <source>MIP framework</source>
-        <translation>MIP framework</translation>
+        <translation>πλαίσιο MIP</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5362" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Choose the zonal grouping.&lt;br/&gt;When All (Copper plate) is selected, the branch restrictions are ignored&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Choose the zonal grouping.&lt;br/&gt;When All (Copper plate) is selected, the branch restrictions are ignored&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Επιλέξτε τη χωρική ομαδοποίηση.&lt;br/&gt;Όταν είναι επιλεγμένο το All (Copper plate), οι περιορισμοί διακλάδωσης αγνοούνται&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5375" />
         <source>Choose the external mixed integer framework</source>
-        <translation>Choose the external mixed integer framework</translation>
+        <translation>Επιλέξτε το εξωτερικό μικτό ακέραιο πλαίσιο</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5388" />
         <source>Time grouping</source>
-        <translation>Time grouping</translation>
+        <translation>Ομαδοποίηση χρόνου</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5421" />
         <source>Consider generation minimum up/down time</source>
-        <translation>Consider generation minimum up/down time</translation>
+        <translation>Εξετάστε τον ελάχιστο χρόνο παραγωγής πάνω/κάτω</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5424" />
         <source>Consider min up/down time</source>
-        <translation>Consider min up/down time</translation>
+        <translation>Λάβετε υπόψη τον ελάχιστο χρόνο ανόδου/καθόδου</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5437" />
         <source>When checked, the branch losses will be aproximated by a factor r * rate / (V^2)</source>
-        <translation>When checked, the branch losses will be aproximated by a factor r * rate / (V^2)</translation>
+        <translation>Όταν επιλεγεί, οι απώλειες υποκαταστημάτων θα προσεγγιστούν κατά συντελεστή r * ποσοστό / (V^2)</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5440" />
         <source>Approximate losses</source>
-        <translation>Approximate losses</translation>
+        <translation>Απώλειες κατά προσέγγιση</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5453" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select how the generation dispatch should behave&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select how the generation dispatch should behave&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Επιλέξτε πώς πρέπει να συμπεριφέρεται η αποστολή παραγωγής&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5466" />
         <source>Contingency tolerance</source>
-        <translation>Contingency tolerance</translation>
+        <translation>Ανοχή έκτακτης ανάγκης</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5479" />
         <source>LODF matrix tolerance choosing contingencies</source>
-        <translation>LODF matrix tolerance choosing contingencies</translation>
+        <translation>Ανοχή μήτρας LODF επιλογή απρόβλεπτων</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5501" />
         <source>Consider the contingencies when dispatching</source>
-        <translation>Consider the contingencies when dispatching</translation>
+        <translation>Λάβετε υπόψη τα απρόβλεπτα κατά την αποστολή</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5504" />
         <source>Compute contingencies</source>
-        <translation>Compute contingencies</translation>
+        <translation>Υπολογίστε απρόβλεπτα</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5517" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The program will save the MIP formulation and be displayed in the text tab of the results&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The program will save the MIP formulation and be displayed in the text tab of the results&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Το πρόγραμμα θα αποθηκεύσει τη διατύπωση MIP και θα εμφανιστεί στην καρτέλα κειμένου των αποτελεσμάτων&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5520" />
         <source>Report MIP formulation</source>
-        <translation>Report MIP formulation</translation>
+        <translation>Αναφορά σύνθεσης MIP</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5533" />
         <source>Fix infeasible problems and rey with the relaxed problem. Applies to OPF and NTC</source>
-        <translation>Fix infeasible problems and rey with the relaxed problem. Applies to OPF and NTC</translation>
+        <translation>Διορθώστε ανέφικτα προβλήματα και αντιμετωπίστε το χαλαρό πρόβλημα. Ισχύει για OPF και NTC</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5536" />
         <source>Fix infeasibilities and retry</source>
-        <translation>Fix infeasibilities and retry</translation>
+        <translation>Διορθώστε τις αδυναμίες και δοκιμάστε ξανά</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5549" />
         <source>Consider generation ramps</source>
-        <translation>Consider generation ramps</translation>
+        <translation>Εξετάστε τις ράμπες παραγωγής</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5552" />
         <source>Consider ramps</source>
-        <translation>Consider ramps</translation>
+        <translation>Εξετάστε τις ράμπες</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5565" />
         <source>Dispatch mode</source>
-        <translation>Dispatch mode</translation>
+        <translation>Λειτουργία αποστολής</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5578" />
         <source>Choose the external mixed integer programming solver</source>
-        <translation>Choose the external mixed integer programming solver</translation>
+        <translation>Επιλέξτε τον εξωτερικό λύτη προγραμματισμού μεικτού ακέραιου αριθμού</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5591" />
         <source>Zone grouping</source>
-        <translation>Zone grouping</translation>
+        <translation>Ομαδοποίηση ζωνών</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5607" />
         <source>Nonlinear settings</source>
-        <translation>Nonlinear settings</translation>
+        <translation>Μη γραμμικές ρυθμίσεις</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5632" />
         <source>Interior point solver maximum number of iterations</source>
-        <translation>Interior point solver maximum number of iterations</translation>
+        <translation>Μέγιστος αριθμός επαναλήψεων επίλυσης εσωτερικών σημείων</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5635" />
         <source>Iterations</source>
-        <translation>Iterations</translation>
+        <translation>Επαναλήψεις</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5648" />
         <source>Initialize the interior point OPF with the power flow solution</source>
-        <translation>Initialize the interior point OPF with the power flow solution</translation>
+        <translation>Αρχικοποιήστε το εσωτερικό σημείο OPF με τη λύση ροής ισχύος</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5651" />
         <source>Initialize with power flow</source>
-        <translation>Initialize with power flow</translation>
+        <translation>Εκκίνηση με τη ροή ισχύος</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5674" />
         <source>Number of iterations of the method</source>
-        <translation>Number of iterations of the method</translation>
+        <translation>Αριθμός επαναλήψεων της μεθόδου</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5703" />
         <source>Interior point solver tolerance</source>
-        <translation>Interior point solver tolerance</translation>
+        <translation>Ανοχή επίλυσης εσωτερικών σημείων</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5744" />
         <source>Interior point solver method</source>
-        <translation>Interior point solver method</translation>
+        <translation>Μέθοδος επίλυσης εσωτερικών σημείων</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5747" />
         <source>IPS method</source>
-        <translation>IPS method</translation>
+        <translation>Μέθοδος IPS</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5782" />
         <source>Interior point trust radius</source>
-        <translation>Interior point trust radius</translation>
+        <translation>Εσωτερική ακτίνα εμπιστοσύνης σημείου</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5798" />
         <source>General switch for reactive power limits control in the nonlinear optimal power flow</source>
-        <translation>General switch for reactive power limits control in the nonlinear optimal power flow</translation>
+        <translation>Γενικός διακόπτης για έλεγχο ορίων άεργου ισχύος στη μη γραμμική βέλτιστη ροή ισχύος</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5829" />
         <source>Verbosity level</source>
-        <translation>Verbosity level</translation>
+        <translation>Επίπεδο πολυλογίας</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5842" />
         <location filename="../Main/MainWindow.ui" line="6118" />
         <source>Skip generation limits</source>
-        <translation>Skip generation limits</translation>
+        <translation>Παράβλεψη ορίων παραγωγής</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5855" />
         <source>Verbose</source>
-        <translation>Verbose</translation>
+        <translation>Πολύλογος</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5875" />
         <source>Choose the optimal power flow method</source>
-        <translation>Choose the optimal power flow method</translation>
+        <translation>Επιλέξτε τη βέλτιστη μέθοδο ροής ισχύος</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5888" />
@@ -5101,17 +5080,17 @@ Monte Carlo power flow results:</translation>
         <location filename="../Main/MainWindow.ui" line="9749" />
         <location filename="../Main/MainWindow.ui" line="9814" />
         <source>Method</source>
-        <translation>Method</translation>
+        <translation>Μέθοδος</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="6057" />
         <source>Optimal Power Flow</source>
-        <translation>Optimal Power Flow</translation>
+        <translation>Βέλτιστη ροή ισχύος</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="6068" />
         <source>Net transfer capacity settings</source>
-        <translation>Net transfer capacity settings</translation>
+        <translation>Ρυθμίσεις καθαρής χωρητικότητας μεταφοράς</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="6075" />
@@ -5121,53 +5100,53 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="6078" />
         <source>Network transfer capacity related settings</source>
-        <translation>Network transfer capacity related settings</translation>
+        <translation>Ρυθμίσεις που σχετίζονται με τη χωρητικότητα μεταφοράς δικτύου</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="6089" />
         <source>Optimization</source>
-        <translation>Optimization</translation>
+        <translation>Βελτιστοποίηση</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="6100" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This criteria springs from the ACER (Agency for the Cooperation for Energy Regulators).&lt;/p&gt;&lt;p&gt;It determines that a branch is only relevant to be considered in a NTC calculation if the flow due to the exchange is over a percentage (70%) &lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;A branch is monitored only if:&lt;/p&gt;&lt;p&gt;(branch_rate * 70%) / branch_alpha &amp;lt;= total exchange rating&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This criteria springs from the ACER (Agency for the Cooperation for Energy Regulators).&lt;/p&gt;&lt;p&gt;It determines that a branch is only relevant to be considered in a NTC calculation if the flow due to the exchange is over a percentage (70%) &lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;A branch is monitored only if:&lt;/p&gt;&lt;p&gt;(branch_rate * 70%) / branch_alpha &amp;lt;= total exchange rating&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Αυτό το κριτήριο προέρχεται από τον ACER (Agency for the Cooperation for Energy Regulators).&lt;/p&gt;&lt;p&gt;Καθορίζει ότι ένας κλάδος είναι σχετικός να ληφθεί υπόψη σε έναν υπολογισμό NTC μόνο εάν η ροή λόγω της ανταλλαγής είναι πάνω από ένα ποσοστό (70%)&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;Ένα υποκατάστημα παρακολουθείται μόνο εάν:&lt;/p&gt;&lt;p&gt;(branch_rate * 70%) / branch_alpha &lt;= συνολική αξιολόγηση ανταλλαγής&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="6103" />
         <source>Branch rating contribution (ACER)</source>
-        <translation>Branch rating contribution (ACER)</translation>
+        <translation>Συνεισφορά αξιολόγησης υποκαταστήματος (ACER)</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="6115" />
         <source>If activated, the generation limits are not considered</source>
-        <translation>If activated, the generation limits are not considered</translation>
+        <translation>Εάν ενεργοποιηθεί, τα όρια παραγωγής δεν λαμβάνονται υπόψη</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="6133" />
         <location filename="../Main/MainWindow.ui" line="7476" />
         <source> MW</source>
-        <translation> MW</translation>
+        <translation>MW</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="6157" />
         <source>If checked, the NTC optimization will use the system declared contingencies</source>
-        <translation>If checked, the NTC optimization will use the system declared contingencies</translation>
+        <translation>Εάν επιλεγεί, η βελτιστοποίηση NTC θα χρησιμοποιήσει τα απρόβλεπτα που δηλώθηκαν από το σύστημα</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="6160" />
         <source>Consider constingencies</source>
-        <translation>Consider constingencies</translation>
+        <translation>Σκεφτείτε έκτακτα γεγονότα</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="6172" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;A branch is monitored solely based on its contribution to the inter-area excahge sensitivity. Therefore a branch is selected if it's alpha value is greater than the set alpha %&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;A branch is monitored solely based on its contribution to the inter-area excahge sensitivity. Therefore a branch is selected if it's alpha value is greater than the set alpha %&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Ένα υποκατάστημα παρακολουθείται αποκλειστικά με βάση τη συμβολή του στην ευαισθησία εξαγωγής μεταξύ των περιοχών. Επομένως επιλέγεται ένας κλάδος εάν η τιμή του άλφα είναι μεγαλύτερη από το σύνολο άλφα %&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="6175" />
         <source>Branch exchange sensitivity (α)</source>
-        <translation>Branch exchange sensitivity (α)</translation>
+        <translation>Ευαισθησία ανταλλαγής κλάδων (α)</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="6190" />
@@ -5179,12 +5158,12 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="6273" />
         <source>Determine the branches that enter the optimization</source>
-        <translation>Determine the branches that enter the optimization</translation>
+        <translation>Προσδιορίστε τους κλάδους που εισέρχονται στη βελτιστοποίηση</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="6276" />
         <source>Branch monitoring selection criteria</source>
-        <translation>Branch monitoring selection criteria</translation>
+        <translation>Κριτήρια επιλογής παρακολούθησης υποκαταστημάτων</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="6325" />
@@ -5192,90 +5171,90 @@ Monte Carlo power flow results:</translation>
         <location filename="../Main/MainWindow.ui" line="12655" />
         <location filename="../Main/MainWindow.ui" line="12682" />
         <source>Contingencies</source>
-        <translation>Contingencies</translation>
+        <translation>Απρόβλεπτα</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="6337" />
         <source>Minimum exchange contribution (Alpha)</source>
-        <translation>Minimum exchange contribution (Alpha)</translation>
+        <translation>Ελάχιστη συνεισφορά ανταλλαγής (Alpha)</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="6358" />
         <location filename="../Main/MainWindow.ui" line="6361" />
         <source>Transmission reliability margin (TRM)</source>
-        <translation>Transmission reliability margin (TRM)</translation>
+        <translation>Περιθώριο αξιοπιστίας μετάδοσης (TRM)</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="6373" />
         <source>More strict NTC Formulation: No slacks of any type and specific monitoring criteria</source>
-        <translation>More strict NTC Formulation: No slacks of any type and specific monitoring criteria</translation>
+        <translation>Πιο αυστηρό σκεύασμα NTC: Δεν υπάρχουν λάστιχα οποιουδήποτε τύπου και συγκεκριμένα κριτήρια παρακολούθησης</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="6376" />
         <source>Strict formulation</source>
-        <translation>Strict formulation</translation>
+        <translation>Αυστηρή σύνθεση</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="6391" />
         <location filename="../Main/MainWindow.ui" line="6728" />
         <source>General</source>
-        <translation>General</translation>
+        <translation>Γενικός</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="6415" />
         <source>Loading threshold to report</source>
-        <translation>Loading threshold to report</translation>
+        <translation>Όριο φόρτωσης για αναφορά</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="6427" />
         <source>Transfer method</source>
-        <translation>Transfer method</translation>
+        <translation>Μέθοδος μεταφοράς</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="6557" />
         <source>Linear</source>
-        <translation>Linear</translation>
+        <translation>Γραμμικός</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="6574" />
         <source>Transfer sensitivity threshold</source>
-        <translation>Transfer sensitivity threshold</translation>
+        <translation>Όριο ευαισθησίας μεταφοράς</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="6586" />
         <source>n-1 sensibility consideration</source>
-        <translation>n-1 sensibility consideration</translation>
+        <translation>n-1 θεώρηση ευαισθησίας</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="6614" />
         <source>Threshold used to discard insensitive branches</source>
-        <translation>Threshold used to discard insensitive branches</translation>
+        <translation>Κατώφλι που χρησιμοποιείται για την απόρριψη μη ευαίσθητων κλαδιών</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="6638" />
         <source>Use existing power flow values for the contingency initialization in the net transfer capacity and contingency simulations</source>
-        <translation>Use existing power flow values for the contingency initialization in the net transfer capacity and contingency simulations</translation>
+        <translation>Χρησιμοποιήστε τις υπάρχουσες τιμές ροής ισχύος για την εκκίνηση έκτακτης ανάγκης στην καθαρή χωρητικότητα μεταφοράς και στις προσομοιώσεις έκτακτης ανάγκης</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="6641" />
         <source>Use power flow values for initialization</source>
-        <translation>Use power flow values for initialization</translation>
+        <translation>Χρησιμοποιήστε τιμές ροής ισχύος για αρχικοποίηση</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="6696" />
         <location filename="../Main/MainWindow.ui" line="6940" />
         <source>Select the solver in the OPF tab and the areas in the areas tab</source>
-        <translation>Select the solver in the OPF tab and the areas in the areas tab</translation>
+        <translation>Επιλέξτε τον λύτη στην καρτέλα OPF και τις περιοχές στην καρτέλα περιοχές</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="6699" />
         <source>Net transfer capacity</source>
-        <translation>Net transfer capacity</translation>
+        <translation>Καθαρή ικανότητα μεταφοράς</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="6707" />
         <source>Nodal capacity hosting options</source>
-        <translation>Nodal capacity hosting options</translation>
+        <translation>Επιλογές φιλοξενίας κομβικής χωρητικότητας</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="6714" />
@@ -5285,33 +5264,33 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="6717" />
         <source>Nodal hosting capacity related settings</source>
-        <translation>Nodal hosting capacity related settings</translation>
+        <translation>Ρυθμίσεις που σχετίζονται με τη χωρητικότητα φιλοξενίας κόμβων</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="6739" />
         <location filename="../Main/MainWindow.ui" line="6757" />
         <source>If the sense is positive, the algorithm will assess the maximum generation capacity in the selected nodes. If it is negative it will asses the maximum loading capacity in the selected nodes.</source>
-        <translation>If the sense is positive, the algorithm will assess the maximum generation capacity in the selected nodes. If it is negative it will asses the maximum loading capacity in the selected nodes.</translation>
+        <translation>Εάν η αίσθηση είναι θετική, ο αλγόριθμος θα αξιολογήσει τη μέγιστη ικανότητα παραγωγής στους επιλεγμένους κόμβους. Εάν είναι αρνητικό, θα υπολογίσει τη μέγιστη χωρητικότητα φόρτωσης στους επιλεγμένους κόμβους.</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="6745" />
         <source>Sense</source>
-        <translation>Sense</translation>
+        <translation>Εννοια</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="6790" />
         <source>Optimization method to use</source>
-        <translation>Optimization method to use</translation>
+        <translation>Μέθοδος βελτιστοποίησης προς χρήση</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="6943" />
         <source>Nodal hosting capacity</source>
-        <translation>Nodal hosting capacity</translation>
+        <translation>Κομβική ικανότητα φιλοξενίας</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="6964" />
         <source>Area transfer settings</source>
-        <translation>Area transfer settings</translation>
+        <translation>Ρυθμίσεις μεταφοράς περιοχής</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="6971" />
@@ -5321,102 +5300,102 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="6974" />
         <source>Area, Zone, etc related settings</source>
-        <translation>Area, Zone, etc related settings</translation>
+        <translation>Σχετικές ρυθμίσεις περιοχής, ζώνης κ.λπ</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="7081" />
         <source>Transfer configuration</source>
-        <translation>Transfer configuration</translation>
+        <translation>Διαμόρφωση μεταφοράς</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="7126" />
         <source>From</source>
-        <translation>From</translation>
+        <translation>Από</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="7149" />
         <source>To</source>
-        <translation>To</translation>
+        <translation>Να</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="7170" />
         <source>Contingencies settings</source>
-        <translation>Contingencies settings</translation>
+        <translation>Ρυθμίσεις απρόβλεπτων</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="7177" />
         <source>Con</source>
-        <translation>Con</translation>
+        <translation>Απατώ</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="7180" />
         <source>Contingencies related settings</source>
-        <translation>Contingencies related settings</translation>
+        <translation>Ρυθμίσεις που σχετίζονται με απρόβλεπτα</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="7207" />
         <source>Contingency filter</source>
-        <translation>Contingency filter</translation>
+        <translation>Φίλτρο έκτακτης ανάγκης</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="7220" />
         <source>Filter by</source>
-        <translation>Filter by</translation>
+        <translation>Φιλτράρισμα κατά</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="7236" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Filter contingencies&lt;/span&gt;&lt;/p&gt;&lt;p&gt;This option allows you to only consider the contingencies that fall in ceratain groupings such as Area, Zone or Country. The filtering is performed based on the information stored in the Buses.&lt;/p&gt;&lt;p&gt;This is highly discouraged. We trully advise you to not to filter the contingencies and select All Contingencies. Use this feature at your own risk.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Filter contingencies&lt;/span&gt;&lt;/p&gt;&lt;p&gt;This option allows you to only consider the contingencies that fall in ceratain groupings such as Area, Zone or Country. The filtering is performed based on the information stored in the Buses.&lt;/p&gt;&lt;p&gt;This is highly discouraged. We trully advise you to not to filter the contingencies and select All Contingencies. Use this feature at your own risk.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Φιλτράρετε απρόβλεπτα&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Αυτή η επιλογή σάς επιτρέπει να λαμβάνετε υπόψη μόνο τα απρόοπτα που εμπίπτουν σε ορισμένες ομάδες όπως Περιοχή, Ζώνη ή Χώρα. Το φιλτράρισμα πραγματοποιείται με βάση τις πληροφορίες που είναι αποθηκευμένες στα Λεωφορεία.&lt;/p&gt;&lt;p&gt;Αυτό αποθαρρύνεται ιδιαίτερα. Σας συμβουλεύουμε ειλικρινά να μην φιλτράρετε τα απρόβλεπτα και να επιλέξετε Όλα τα απρόβλεπτα. Χρησιμοποιήστε αυτή τη δυνατότητα με δική σας ευθύνη.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="7419" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Dead band over the SRAP rating.&lt;/p&gt;&lt;p&gt;If greater than zero, the SRAP is investigated for values over the branch protections rating until the specified value.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Dead band over the SRAP rating.&lt;/p&gt;&lt;p&gt;If greater than zero, the SRAP is investigated for values over the branch protections rating until the specified value.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Νεκρή μπάντα πάνω από τη βαθμολογία SRAP.&lt;/p&gt;&lt;p&gt;Εάν είναι μεγαλύτερο από μηδέν, το SRAP διερευνάται για τιμές πάνω από την βαθμολογία προστασίας διακλάδωσης μέχρι την καθορισμένη τιμή.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="7422" />
         <source>SRAP dead band</source>
-        <translation>SRAP dead band</translation>
+        <translation>SRAP νεκρή μπάντα</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="7436" />
         <source>SRAP limit</source>
-        <translation>SRAP limit</translation>
+        <translation>Όριο SRAP</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="7443" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If checked the SRAP objective solution is the branch nominal rate. Otherwise, the objective rating is the contingency rating.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If checked the SRAP objective solution is the branch nominal rate. Otherwise, the objective rating is the contingency rating.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Εάν επιλεγεί η αντικειμενική λύση SRAP είναι ο ονομαστικός συντελεστής κλάδου. Διαφορετικά, η αντικειμενική βαθμολογία είναι η βαθμολογία έκτακτης ανάγκης.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="7446" />
         <source>Revert to nominal rating</source>
-        <translation>Revert to nominal rating</translation>
+        <translation>Επιστροφή στην ονομαστική βαθμολογία</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="7453" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Activate SRAP (Sistema de reducción automática de potencia)&lt;/p&gt;&lt;p&gt;It is a mechanism that helps avoiding considering a contingency if it would be eventually resolved by nearby generation shifting.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Activate SRAP (Sistema de reducción automática de potencia)&lt;/p&gt;&lt;p&gt;It is a mechanism that helps avoiding considering a contingency if it would be eventually resolved by nearby generation shifting.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Ενεργοποίηση SRAP (Sistema de reducción automática de potencia)&lt;/p&gt;&lt;p&gt;Είναι ένας μηχανισμός που βοηθά στην αποφυγή της εξέτασης ενός απρόβλεπτου εάν τελικά θα επιλυόταν με μια κοντινή αλλαγή γενιάς.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="7456" />
         <source>Use SRAP</source>
-        <translation>Use SRAP</translation>
+        <translation>Χρησιμοποιήστε το SRAP</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="7463" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If checked, a massive posibly intractable report is generated.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If checked, a massive posibly intractable report is generated.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Εάν επιλεγεί, δημιουργείται μια τεράστια, πιθανώς δυσεπίλυτη αναφορά.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="7466" />
         <source>Detailed report</source>
-        <translation>Detailed report</translation>
+        <translation>Αναλυτική αναφορά</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="7473" />
         <source>Maximum overload power that is solvable using the SRAP technique.</source>
-        <translation>Maximum overload power that is solvable using the SRAP technique.</translation>
+        <translation>Μέγιστη ισχύς υπερφόρτωσης που επιλύεται χρησιμοποιώντας την τεχνική SRAP.</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="7505" />
@@ -5428,17 +5407,17 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="7518" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Amount of contingency loading with respect to the base situation loading that triggers the report of the contingency. This is specially useful when we want to avoig reporting contingencies that are not significant with respect to the base situation.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Amount of contingency loading with respect to the base situation loading that triggers the report of the contingency. This is specially useful when we want to avoig reporting contingencies that are not significant with respect to the base situation.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Ποσότητα φόρτωσης έκτακτης ανάγκης σε σχέση με τη φόρτωση της βασικής κατάστασης που ενεργοποιεί την αναφορά του απρόβλεπτου. Αυτό είναι ιδιαίτερα χρήσιμο όταν θέλουμε να αποφύγουμε απρόβλεπτα στοιχεία αναφοράς που δεν είναι σημαντικά σε σχέση με τη βασική κατάσταση.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="7521" />
         <source>Contingency dead band</source>
-        <translation>Contingency dead band</translation>
+        <translation>Νεκρή ζώνη έκτακτης ανάγκης</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="7528" />
         <source>Maximum number of generation nodes to participate in the SRAP</source>
-        <translation>Maximum number of generation nodes to participate in the SRAP</translation>
+        <translation>Μέγιστος αριθμός κόμβων παραγωγής για συμμετοχή στο SRAP</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="7531" />
@@ -5448,7 +5427,7 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="7538" />
         <source>Contingency engine</source>
-        <translation>Contingency engine</translation>
+        <translation>Κινητήρας έκτακτης ανάγκης</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="7588" />
@@ -5458,7 +5437,7 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="7591" />
         <source>Rms simulation settings</source>
-        <translation>Rms simulation settings</translation>
+        <translation>Ρυθμίσεις προσομοίωσης Rms</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="7669" />
@@ -5473,7 +5452,7 @@ Monte Carlo power flow results:</translation>
         <location filename="../Main/MainWindow.ui" line="8381" />
         <location filename="../Main/MainWindow.ui" line="8503" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Initial time for the simulation. &lt;/p&gt;&lt;p&gt;In practice this is used to slow down troublesome solutions.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Initial time for the simulation. &lt;/p&gt;&lt;p&gt;In practice this is used to slow down troublesome solutions.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Αρχικός χρόνος για την προσομοίωση.&lt;/p&gt;&lt;p&gt;Στην πράξη αυτό χρησιμοποιείται για να επιβραδύνει ενοχλητικές λύσεις.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="7739" />
@@ -5482,42 +5461,42 @@ Monte Carlo power flow results:</translation>
         <location filename="../Main/MainWindow.ui" line="8384" />
         <location filename="../Main/MainWindow.ui" line="8506" />
         <source> s</source>
-        <translation> s</translation>
+        <translation>μικρό</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="7761" />
         <location filename="../Main/MainWindow.ui" line="8420" />
         <source>Assessment time</source>
-        <translation>Assessment time</translation>
+        <translation>Χρόνος αξιολόγησης</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="7799" />
         <location filename="../Main/MainWindow.ui" line="8413" />
         <source>Initialization</source>
-        <translation>Initialization</translation>
+        <translation>Αρχικοποίηση</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="7806" />
         <location filename="../Main/MainWindow.ui" line="8440" />
         <source>Time step</source>
-        <translation>Time step</translation>
+        <translation>Χρονικό βήμα</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="7870" />
         <location filename="../Main/MainWindow.ui" line="8406" />
         <source>Integration</source>
-        <translation>Integration</translation>
+        <translation>Ολοκλήρωση</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="7899" />
         <source>s</source>
-        <translation>s</translation>
+        <translation>μικρό</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="7921" />
         <location filename="../Main/MainWindow.ui" line="8547" />
         <source>Simulation time</source>
-        <translation>Simulation time</translation>
+        <translation>Χρόνος προσομοίωσης</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="7970" />
@@ -5529,25 +5508,25 @@ Monte Carlo power flow results:</translation>
         <location filename="../Main/MainWindow.ui" line="8242" />
         <location filename="../Main/MainWindow.ui" line="8246" />
         <source>trapezoid</source>
-        <translation>trapezoid</translation>
+        <translation>τραπεζοειδές</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="8023" />
         <location filename="../Main/MainWindow.ui" line="8251" />
         <source>implicit euler</source>
-        <translation>implicit euler</translation>
+        <translation>σιωπηρός euler</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="8044" />
         <location filename="../Main/MainWindow.ui" line="8561" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Number of modes.&lt;br/&gt;If zero, all modes are included and the calculation is done using dense matrices.&lt;br/&gt;If a number of modes greater than zero is given the calculation is sparse.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Number of modes.&lt;br/&gt;If zero, all modes are included and the calculation is done using dense matrices.&lt;br/&gt;If a number of modes greater than zero is given the calculation is sparse.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Αριθμός τρόπων λειτουργίας.&lt;br/&gt;Εάν είναι μηδέν, περιλαμβάνονται όλοι οι τρόποι λειτουργίας και ο υπολογισμός γίνεται χρησιμοποιώντας πυκνούς πίνακες.&lt;br/&gt;Εάν δοθεί ένας αριθμός τρόπων λειτουργίας μεγαλύτερος από το μηδέν, ο υπολογισμός είναι αραιός.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="8051" />
         <location filename="../Main/MainWindow.ui" line="8568" />
         <source>Modes</source>
-        <translation>Modes</translation>
+        <translation>Λειτουργίες</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="8186" />
@@ -5562,7 +5541,7 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="8645" />
         <source>Machine-learning related settings</source>
-        <translation>Machine-learning related settings</translation>
+        <translation>Ρυθμίσεις που σχετίζονται με τη μηχανική μάθηση</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="8652" />
@@ -5572,68 +5551,68 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="8655" />
         <source>Machine learning related settings</source>
-        <translation>Machine learning related settings</translation>
+        <translation>Ρυθμίσεις που σχετίζονται με τη μηχανική εκμάθηση</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="8673" />
         <source>Objective function</source>
-        <translation>Objective function</translation>
+        <translation>Αντικειμενική λειτουργία</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="8837" />
         <source>Minimum form capacity</source>
-        <translation>Minimum form capacity</translation>
+        <translation>Ελάχιστη χωρητικότητα φόρμας</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="8893" />
         <source>Node grouping</source>
-        <translation>Node grouping</translation>
+        <translation>Ομαδοποίηση κόμβων</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="8903" />
         <source>In adequecy and simple dispatch indicated the minimum share of total firm capacity of the system to be in desirable, less is penalized</source>
-        <translation>In adequecy and simple dispatch indicated the minimum share of total firm capacity of the system to be in desirable, less is penalized</translation>
+        <translation>Σε επάρκεια και απλή αποστολή υποδεικνύεται ότι το ελάχιστο μερίδιο της συνολικής σταθερής ικανότητας του συστήματος είναι επιθυμητό, ​​λιγότερο τιμωρείται</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="8922" />
         <source>Number of maximum evaluations for the optimization methods</source>
-        <translation>Number of maximum evaluations for the optimization methods</translation>
+        <translation>Αριθμός μέγιστων αξιολογήσεων για τις μεθόδους βελτιστοποίησης</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="8925" />
         <source> x number of investments</source>
-        <translation> x number of investments</translation>
+        <translation>x αριθμός επενδύσεων</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="9004" />
         <location filename="../Main/MainWindow.ui" line="11995" />
         <source>Clustering</source>
-        <translation>Clustering</translation>
+        <translation>Ομαδοποίηση</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="9017" />
         <source>Nodal distances</source>
-        <translation>Nodal distances</translation>
+        <translation>Κομβικές αποστάσεις</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="9024" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Number of clusters, this affects all the simulations that deal with clustering&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Number of clusters, this affects all the simulations that deal with clustering&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Αριθμός συμπλεγμάτων, αυτό επηρεάζει όλες τις προσομοιώσεις που ασχολούνται με την ομαδοποίηση&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="9027" />
         <source> Clusters</source>
-        <translation> Clusters</translation>
+        <translation>Συστάδες</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="9043" />
         <source>Maximum evaluations</source>
-        <translation>Maximum evaluations</translation>
+        <translation>Μέγιστες αξιολογήσεις</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="9077" />
         <source>Máximum standard deviation to determine the groups</source>
-        <translation>Máximum standard deviation to determine the groups</translation>
+        <translation>Μέγιστη τυπική απόκλιση για τον προσδιορισμό των ομάδων</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="9080" />
@@ -5643,196 +5622,196 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="9096" />
         <source>Min. group size</source>
-        <translation>Min. group size</translation>
+        <translation>Ελάχ. μέγεθος ομάδας</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="9103" />
         <source>Select the investment evaluation method</source>
-        <translation>Select the investment evaluation method</translation>
+        <translation>Επιλέξτε τη μέθοδο αξιολόγησης της επένδυσης</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="9110" />
         <source>Minimum size of the group</source>
-        <translation>Minimum size of the group</translation>
+        <translation>Ελάχιστο μέγεθος ομάδας</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="9116" />
         <source> elements</source>
-        <translation> elements</translation>
+        <translation>στοιχεία</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="9174" />
         <source>Investment evaluation</source>
-        <translation>Investment evaluation</translation>
+        <translation>Αξιολόγηση επένδυσης</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="9184" />
         <source>Number of clusters</source>
-        <translation>Number of clusters</translation>
+        <translation>Αριθμός συστάδων</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="9290" />
         <source>Number of islands produced until the analysis stops</source>
-        <translation>Number of islands produced until the analysis stops</translation>
+        <translation>Αριθμός νησιών που παράγονται μέχρι να σταματήσει η ανάλυση</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="9331" />
         <source>Reliability evaluation method</source>
-        <translation>Reliability evaluation method</translation>
+        <translation>Μέθοδος αξιολόγησης αξιοπιστίας</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="9338" />
         <source>Maximum number of samples</source>
-        <translation>Maximum number of samples</translation>
+        <translation>Μέγιστος αριθμός δειγμάτων</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="9396" />
         <source>Reliability</source>
-        <translation>Reliability</translation>
+        <translation>Αξιοπιστία</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="9406" />
         <location filename="../Main/MainWindow.ui" line="9742" />
         <source>Samples</source>
-        <translation>Samples</translation>
+        <translation>Δείγματα</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="9455" />
         <source>Cascading</source>
-        <translation>Cascading</translation>
+        <translation>Καταρράκτη</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="9652" />
         <location filename="../Main/MainWindow.ui" line="11179" />
         <source>Stochastic power flow</source>
-        <translation>Stochastic power flow</translation>
+        <translation>Στοχαστική ροή ισχύος</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="9662" />
         <source>Maximum number of Monte Carlo samples</source>
-        <translation>Maximum number of Monte Carlo samples</translation>
+        <translation>Μέγιστος αριθμός δειγμάτων Monte Carlo</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="9678" />
         <source>Aditional islands until stop</source>
-        <translation>Aditional islands until stop</translation>
+        <translation>Επιπλέον νησιά μέχρι στάση</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="9685" />
         <source>Voltage variance</source>
-        <translation>Voltage variance</translation>
+        <translation>Διακύμανση τάσης</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="9756" />
         <source>Stochastic power flow method</source>
-        <translation>Stochastic power flow method</translation>
+        <translation>Μέθοδος στοχαστικής ροής ισχύος</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="9788" />
         <source>Monte Carlo variance until stop</source>
-        <translation>Monte Carlo variance until stop</translation>
+        <translation>Διακύμανση του Μόντε Κάρλο μέχρι τη διακοπή</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="9838" />
         <source>Topology settings</source>
-        <translation>Topology settings</translation>
+        <translation>Ρυθμίσεις τοπολογίας</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="9845" />
         <source>Tplgy</source>
-        <translation>Tplgy</translation>
+        <translation>Τπλγύ</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="9848" />
         <source>Topology related settings</source>
-        <translation>Topology related settings</translation>
+        <translation>Ρυθμίσεις σχετικές με την τοπολογία</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="9967" />
         <location filename="../Main/MainWindow.ui" line="12412" />
         <source>Grid reduction</source>
-        <translation>Grid reduction</translation>
+        <translation>Μείωση πλέγματος</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="10030" />
         <source>Select branch types to reduce</source>
-        <translation>Select branch types to reduce</translation>
+        <translation>Επιλέξτε τύπους υποκαταστημάτων για μείωση</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="10040" />
         <source>Filter by r+x under threshold</source>
-        <translation>Filter by r+x under threshold</translation>
+        <translation>Φιλτράρισμα κατά r+x κάτω από το όριο</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="10050" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Exponent of the threshold to use.&lt;/p&gt;&lt;p&gt;threshold = 1x10^-factor&lt;/p&gt;&lt;p&gt;i.e.&lt;/p&gt;&lt;p&gt;factor=3&lt;/p&gt;&lt;p&gt;threshold = 1e-3&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Exponent of the threshold to use.&lt;/p&gt;&lt;p&gt;threshold = 1x10^-factor&lt;/p&gt;&lt;p&gt;i.e.&lt;/p&gt;&lt;p&gt;factor=3&lt;/p&gt;&lt;p&gt;threshold = 1e-3&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Εκθέτης του ορίου προς χρήση.&lt;/p&gt;&lt;p&gt;κατώφλι = 1x10^-συντελεστής&lt;/p&gt;&lt;p&gt;δηλ.&lt;/p&gt;&lt;p&gt;παράγοντας=3&lt;/p&gt;&lt;p&gt;κατώφλι = 1e-3&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="10179" />
         <source>Branch rating</source>
-        <translation>Branch rating</translation>
+        <translation>Βαθμολογία κλάδου</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="10251" />
         <source>Branch rating factor</source>
-        <translation>Branch rating factor</translation>
+        <translation>Συντελεστής βαθμολογίας κλάδου</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="10258" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Factor to aply to the branch calculated power to use as rating&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Factor to aply to the branch calculated power to use as rating&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Συντελεστής για εφαρμογή στον κλάδο υπολογιζόμενης ισχύος για χρήση ως βαθμολογία&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="10277" />
         <source>override values</source>
-        <translation>override values</translation>
+        <translation>υπερισχύουν των τιμών</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="10304" />
         <source>File settings</source>
-        <translation>File settings</translation>
+        <translation>Ρυθμίσεις αρχείου</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="10311" />
         <location filename="../Main/MainWindow.ui" line="10763" />
         <source>File</source>
-        <translation>File</translation>
+        <translation>Αρχείο</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="10314" />
         <source>File related settings</source>
-        <translation>File related settings</translation>
+        <translation>Ρυθμίσεις σχετικές με το αρχείο</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="10335" />
         <source>If checked, the results are stored inside the VeraGrid file in a compressed format.</source>
-        <translation>If checked, the results are stored inside the VeraGrid file in a compressed format.</translation>
+        <translation>Εάν επιλεγεί, τα αποτελέσματα αποθηκεύονται μέσα στο αρχείο VeraGrid σε συμπιεσμένη μορφή.</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="10338" />
         <source>Save results in .veragrid files</source>
-        <translation>Save results in .veragrid files</translation>
+        <translation>Αποθήκευση αποτελεσμάτων σε αρχεία .veragrid</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="10377" />
         <source>File path</source>
-        <translation>File path</translation>
+        <translation>Διαδρομή αρχείου</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="10503" />
         <source>File Information</source>
-        <translation>File Information</translation>
+        <translation>Πληροφορίες αρχείου</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="10551" />
         <source>Server</source>
-        <translation>Server</translation>
+        <translation>Υπηρέτης</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="10557" />
         <source>Server jobs currently on cue</source>
-        <translation>Server jobs currently on cue</translation>
+        <translation>Εργασίες διακομιστή επί του παρόντος βρίσκονται σε εξέλιξη</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="10585" />
@@ -5842,82 +5821,82 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="10592" />
         <source>Type here the VeraGrid server URL (ask your IT team)</source>
-        <translation>Type here the VeraGrid server URL (ask your IT team)</translation>
+        <translation>Πληκτρολογήστε εδώ τη διεύθυνση URL διακομιστή VeraGrid (ρωτήστε την ομάδα IT σας)</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="10599" />
         <source>Port</source>
-        <translation>Port</translation>
+        <translation>Λιμάνι</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="10606" />
         <source>Type here the VeraGrid server Port (ask your IT team)</source>
-        <translation>Type here the VeraGrid server Port (ask your IT team)</translation>
+        <translation>Πληκτρολογήστε εδώ τη Θύρα διακομιστή VeraGrid (ρωτήστε την ομάδα IT σας)</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="10619" />
         <source>Password</source>
-        <translation>Password</translation>
+        <translation>Σύνθημα</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="10626" />
         <source>Type here the VeraGrid server password (ask your IT team)</source>
-        <translation>Type here the VeraGrid server password (ask your IT team)</translation>
+        <translation>Πληκτρολογήστε εδώ τον κωδικό πρόσβασης διακομιστή VeraGrid (ρωτήστε την ομάδα IT σας)</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="10636" />
         <source>Secure</source>
-        <translation>Secure</translation>
+        <translation>Ασφαλής</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="10694" />
         <source>Cancel process</source>
-        <translation>Cancel process</translation>
+        <translation>Ακύρωση διαδικασίας</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="10767" />
         <source>Export grid</source>
-        <translation>Export grid</translation>
+        <translation>Πλέγμα εξαγωγής</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="10793" />
         <source>Import data</source>
-        <translation>Import data</translation>
+        <translation>Εισαγωγή δεδομένων</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="10814" />
         <source>Help</source>
-        <translation>Help</translation>
+        <translation>Βοήθεια</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="10822" />
         <source>Actions</source>
-        <translation>Actions</translation>
+        <translation>Δράσεις</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="10835" />
         <source>Simulations</source>
-        <translation>Simulations</translation>
+        <translation>Προσομοιώσεις</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="10910" />
         <source>Diagram</source>
-        <translation>Diagram</translation>
+        <translation>Διάγραμμα</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="10914" />
         <source>Branches drawing style</source>
-        <translation>Branches drawing style</translation>
+        <translation>Στυλ σχεδίασης κλάδων</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="10954" />
         <source>plugins</source>
-        <translation>plugins</translation>
+        <translation>πρόσθετα</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="10959" />
         <source>Events</source>
-        <translation>Events</translation>
+        <translation>Εκδηλώσεις</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="10980" />
@@ -5927,7 +5906,7 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="11047" />
         <source>Open file</source>
-        <translation>Open file</translation>
+        <translation>Άνοιγμα αρχείου</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11053" />
@@ -5937,7 +5916,7 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="11062" />
         <source>Save</source>
-        <translation>Save</translation>
+        <translation>Εκτός</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11068" />
@@ -5948,12 +5927,12 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="11077" />
         <source>Take picture</source>
-        <translation>Take picture</translation>
+        <translation>Τραβήξτε φωτογραφία</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11089" />
         <source>New project</source>
-        <translation>New project</translation>
+        <translation>Νέο έργο</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11095" />
@@ -5963,12 +5942,12 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="11104" />
         <source>Power Flow</source>
-        <translation>Power Flow</translation>
+        <translation>Ροή ισχύος</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11107" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Power Flow&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Run a power flow analysis&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Power Flow&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Run a power flow analysis&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Ροή ισχύος&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Εκτελέστε μια ανάλυση ροής ισχύος&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11113" />
@@ -5978,12 +5957,12 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="11125" />
         <source>Power flow time series</source>
-        <translation>Power flow time series</translation>
+        <translation>Χρονική σειρά ροής ισχύος</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11128" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Power flow&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Run the power flow study with time series data&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Power flow&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Run the power flow study with time series data&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Ροή ισχύος&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Εκτελέστε τη μελέτη ροής ισχύος με δεδομένα χρονοσειρών&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11134" />
@@ -5993,12 +5972,12 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="11143" />
         <source>Expand</source>
-        <translation>Expand</translation>
+        <translation>Διαστέλλω</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11146" />
         <source>Expand distances</source>
-        <translation>Expand distances</translation>
+        <translation>Επεκτείνετε τις αποστάσεις</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11152" />
@@ -6008,12 +5987,12 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="11161" />
         <source>Shrink</source>
-        <translation>Shrink</translation>
+        <translation>Μαζεύω</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11164" />
         <source>Shrink distances</source>
-        <translation>Shrink distances</translation>
+        <translation>Συρρίκνωση αποστάσεων</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11170" />
@@ -6023,27 +6002,27 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="11182" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Stochastic power flow&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Perform a stochastic power flow over the time series data&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Stochastic power flow&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Perform a stochastic power flow over the time series data&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Στοχαστική ροή ισχύος&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Εκτελέστε μια στοχαστική ροή ισχύος στα δεδομένα χρονοσειρών&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11197" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Continuation power flow&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Run a continuation power flow over the snapshot data&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Continuation power flow&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Run a continuation power flow over the snapshot data&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Συνεχής ροή ισχύος&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Εκτελέστε μια συνεχή ροή ισχύος πάνω από τα δεδομένα στιγμιότυπου&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11209" />
         <source>About</source>
-        <translation>About</translation>
+        <translation>Για</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11221" />
         <source>center view</source>
-        <translation>center view</translation>
+        <translation>κεντρική όψη</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11224" />
         <source>Center view</source>
-        <translation>Center view</translation>
+        <translation>Κεντρική όψη</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11230" />
@@ -6053,42 +6032,42 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="11239" />
         <source>Short Circuit</source>
-        <translation>Short Circuit</translation>
+        <translation>Βραχυκύκλωμα</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11242" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Short Circuit&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Run a short circuit study over the snapshot data&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Short Circuit&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Run a short circuit study over the snapshot data&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Βραχυκύκλωμα&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Εκτελέστε μια μελέτη βραχυκυκλώματος στα δεδομένα στιγμιότυπου&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11254" />
         <source>Automatic grid layout</source>
-        <translation>Automatic grid layout</translation>
+        <translation>Αυτόματη διάταξη πλέγματος</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11257" />
         <source>Automatic layout the of the grid</source>
-        <translation>Automatic layout the of the grid</translation>
+        <translation>Αυτόματη διάταξη του πλέγματος</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11272" />
         <source>Blackout cascade</source>
-        <translation>Blackout cascade</translation>
+        <translation>Καταρράκτης συσκότισης</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11275" />
         <source>Run a simulation or step by step blackout cascade</source>
-        <translation>Run a simulation or step by step blackout cascade</translation>
+        <translation>Εκτελέστε μια προσομοίωση ή έναν καταρράκτη συσκότισης βήμα προς βήμα</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11287" />
         <source>Optimal power flow</source>
-        <translation>Optimal power flow</translation>
+        <translation>Βέλτιστη ροή ισχύος</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11290" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Optimal power flow&lt;/span&gt;&lt;/p&gt;&lt;p&gt;This runs an optimal power flow&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Optimal power flow&lt;/span&gt;&lt;/p&gt;&lt;p&gt;This runs an optimal power flow&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Βέλτιστη ροή ισχύος&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Αυτό εκτελεί μια βέλτιστη ροή ισχύος&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11296" />
@@ -6098,12 +6077,12 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="11305" />
         <source>Optimal power flow time series</source>
-        <translation>Optimal power flow time series</translation>
+        <translation>Βέλτιστη χρονική σειρά ροής ισχύος</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11308" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Optimal power flow&lt;/span&gt;&lt;/p&gt;&lt;p&gt;This runs an optimal power flow for the time series data&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Optimal power flow&lt;/span&gt;&lt;/p&gt;&lt;p&gt;This runs an optimal power flow for the time series data&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Βέλτιστη ροή ισχύος&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Αυτό εκτελεί μια βέλτιστη ροή ισχύος για τα δεδομένα χρονοσειράς&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11314" />
@@ -6113,42 +6092,42 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="11323" />
         <source>Detect transformers</source>
-        <translation>Detect transformers</translation>
+        <translation>Ανίχνευση μετασχηματιστών</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11326" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Detect transformers.&lt;/p&gt;&lt;p&gt;Use the nodes nominal voltage to determine which branches should be a transformer.&lt;/p&gt;&lt;p&gt;If a branch joins two nodes with different voltage levels, the branch should be a transformer.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Detect transformers.&lt;/p&gt;&lt;p&gt;Use the nodes nominal voltage to determine which branches should be a transformer.&lt;/p&gt;&lt;p&gt;If a branch joins two nodes with different voltage levels, the branch should be a transformer.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Ανίχνευση μετασχηματιστών.&lt;/p&gt;&lt;p&gt;Χρησιμοποιήστε την ονομαστική τάση των κόμβων για να προσδιορίσετε ποιοι κλάδοι πρέπει να είναι μετασχηματιστής.&lt;/p&gt;&lt;p&gt;Εάν ένας κλάδος ενώνει δύο κόμβους με διαφορετικά επίπεδα τάσης, ο κλάδος πρέπει να είναι μετασχηματιστής.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11338" />
         <source>Auto rate branches</source>
-        <translation>Auto rate branches</translation>
+        <translation>Αυτόματη βαθμολογία υποκαταστημάτων</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11341" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Automatic rating of the branches.&lt;/p&gt;&lt;p&gt;Use the branches calculated power to establish a rate, if the branch rate is unknown. A factor is available in the settings.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Automatic rating of the branches.&lt;/p&gt;&lt;p&gt;Use the branches calculated power to establish a rate, if the branch rate is unknown. A factor is available in the settings.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Αυτόματη βαθμολόγηση των υποκαταστημάτων.&lt;/p&gt;&lt;p&gt;Χρησιμοποιήστε την υπολογιζόμενη ισχύ των κλάδων για να καθορίσετε μια τιμή, εάν η τιμή διακλάδωσης είναι άγνωστη. Ένας παράγοντας είναι διαθέσιμος στις ρυθμίσεις.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11356" />
         <source>Storage location suggestion</source>
-        <translation>Storage location suggestion</translation>
+        <translation>Πρόταση τοποθεσίας αποθήκευσης</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11359" />
         <source>Suggest places where storage devices are useful</source>
-        <translation>Suggest places where storage devices are useful</translation>
+        <translation>Προτείνετε μέρη όπου οι συσκευές αποθήκευσης είναι χρήσιμες</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11371" />
         <source>Launch data analysis tool</source>
-        <translation>Launch data analysis tool</translation>
+        <translation>Εκκινήστε το εργαλείο ανάλυσης δεδομένων</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11374" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Data analysis&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Launch the data analysis tool that finds and tries to repair common grid modelling issues&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Data analysis&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Launch the data analysis tool that finds and tries to repair common grid modelling issues&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Ανάλυση δεδομένων&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Εκκινήστε το εργαλείο ανάλυσης δεδομένων που βρίσκει και προσπαθεί να επιδιορθώσει κοινά προβλήματα μοντελοποίησης πλέγματος&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11380" />
@@ -6158,7 +6137,7 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="11389" />
         <source>Online documentation</source>
-        <translation>Online documentation</translation>
+        <translation>Ηλεκτρονική τεκμηρίωση</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11395" />
@@ -6168,17 +6147,17 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="11404" />
         <source>Save as</source>
-        <translation>Save as</translation>
+        <translation>Αποθήκευση ως</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11416" />
         <source>Delete selected</source>
-        <translation>Delete selected</translation>
+        <translation>Διαγραφή επιλεγμένων</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11419" />
         <source>Delete selected objects from the diagrams and optionally from the database</source>
-        <translation>Delete selected objects from the diagrams and optionally from the database</translation>
+        <translation>Διαγράψτε επιλεγμένα αντικείμενα από τα διαγράμματα και προαιρετικά από τη βάση δεδομένων</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11425" />
@@ -6188,12 +6167,12 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="11434" />
         <source>Linear analysis</source>
-        <translation>Linear analysis</translation>
+        <translation>Γραμμική ανάλυση</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11437" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Linear analysis&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Perform linear analysis with distribution factors (PTDF, LODF)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Linear analysis&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Perform linear analysis with distribution factors (PTDF, LODF)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Γραμμική ανάλυση&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Εκτελέστε γραμμική ανάλυση με συντελεστές κατανομής (PTDF, LODF)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11443" />
@@ -6203,47 +6182,47 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="11452" />
         <source>Reset console</source>
-        <translation>Reset console</translation>
+        <translation>Επαναφορά κονσόλας</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11467" />
         <source>Set OPF results to power flow (non destructive)</source>
-        <translation>Set OPF results to power flow (non destructive)</translation>
+        <translation>Ρυθμίστε τα αποτελέσματα OPF σε ροή ισχύος (μη καταστροφική)</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11470" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Copy OPF data&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Set the OPF results into the power flow or time series simulations (non destructive)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Copy OPF data&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Set the OPF results into the power flow or time series simulations (non destructive)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Αντιγράψτε τα δεδομένα OPF&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Ρυθμίστε τα αποτελέσματα OPF στις προσομοιώσεις ροής ισχύος ή χρονοσειρών (μη καταστροφικές)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11482" />
         <source>Correct buses location</source>
-        <translation>Correct buses location</translation>
+        <translation>Σωστή θέση λεωφορείων</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11485" />
         <source>Set selected buses location closer to their neighbours</source>
-        <translation>Set selected buses location closer to their neighbours</translation>
+        <translation>Ορίστε την επιλεγμένη θέση των λεωφορείων πιο κοντά στους γείτονές τους</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11497" />
         <source>Copy OPF generation to database (destructive)</source>
-        <translation>Copy OPF generation to database (destructive)</translation>
+        <translation>Αντιγραφή παραγωγής OPF στη βάση δεδομένων (καταστροφικό)</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11500" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Copy OPF data&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Destructive copy of the OPF generation results to the input profiles&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Copy OPF data&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Destructive copy of the OPF generation results to the input profiles&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Αντιγράψτε τα δεδομένα OPF&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Καταστροφικό αντίγραφο της γενιάς OPF καταλήγει στα προφίλ εισόδου&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11512" />
         <source>Linear analysis time series power flow</source>
-        <translation>Linear analysis time series power flow</translation>
+        <translation>Ροή ισχύος χρονοσειράς γραμμικής ανάλυσης</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11515" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Linear analysis&lt;/span&gt;&lt;/p&gt;&lt;p&gt;PTDF based time series power flow&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Linear analysis&lt;/span&gt;&lt;/p&gt;&lt;p&gt;PTDF based time series power flow&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Γραμμική ανάλυση&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Ροή ισχύος χρονοσειράς βάσει PTDF&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11521" />
@@ -6253,12 +6232,12 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="11530" />
         <source>Import circuit</source>
-        <translation>Import circuit</translation>
+        <translation>Κύκλωμα εισαγωγής</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11533" />
         <source>Add circuit to the current circuit</source>
-        <translation>Add circuit to the current circuit</translation>
+        <translation>Προσθέστε κύκλωμα στο τρέχον κύκλωμα</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11539" />
@@ -6268,52 +6247,52 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="11551" />
         <source>Sync</source>
-        <translation>Sync</translation>
+        <translation>Συγχρονισμός</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11554" />
         <source>Sync with the file for colaborative editing of the grid</source>
-        <translation>Sync with the file for colaborative editing of the grid</translation>
+        <translation>Συγχρονισμός με το αρχείο για συνεργατική επεξεργασία του πλέγματος</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11563" />
         <source>Draw schematic</source>
-        <translation>Draw schematic</translation>
+        <translation>Σχεδιάστε σχηματικά</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11572" />
         <source>Sigma analysis</source>
-        <translation>Sigma analysis</translation>
+        <translation>Ανάλυση Sigma</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11575" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Sigma analysis&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Perform HELM-Sigma analysis over the snapshot data&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Sigma analysis&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Perform HELM-Sigma analysis over the snapshot data&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Ανάλυση Sigma&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Εκτελέστε ανάλυση HELM-Sigma πάνω από τα δεδομένα στιγμιότυπου&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11587" />
         <source>Clear "stuff running right now"</source>
-        <translation>Clear "stuff running right now"</translation>
+        <translation>Διαγραφή "πράγματα που τρέχουν αυτήν τη στιγμή"</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11599" />
         <source>Add default catalogue</source>
-        <translation>Add default catalogue</translation>
+        <translation>Προσθήκη προεπιλεγμένου καταλόγου</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11614" />
         <source>Find node groups</source>
-        <translation>Find node groups</translation>
+        <translation>Βρείτε ομάδες κόμβων</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11617" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Finds the electrically related nodes by using their electrical distance and the DBSCAN clustering method&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Finds the electrically related nodes by using their electrical distance and the DBSCAN clustering method&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Βρίσκει τους ηλεκτρικά σχετικούς κόμβους χρησιμοποιώντας την ηλεκτρική τους απόσταση και τη μέθοδο ομαδοποίησης DBSCAN&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11629" />
         <source>Grid Generator</source>
-        <translation>Grid Generator</translation>
+        <translation>Γεννήτρια Πλέγματος</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11635" />
@@ -6323,22 +6302,22 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="11644" />
         <source>Node load</source>
-        <translation>Node load</translation>
+        <translation>Φορτίο κόμβου</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11653" />
         <source>Generator generation</source>
-        <translation>Generator generation</translation>
+        <translation>Γεννήτρια γεννήτριας</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11662" />
         <source>Contingency analysis time series</source>
-        <translation>Contingency analysis time series</translation>
+        <translation>Χρονοσειρές ανάλυσης έκτακτης ανάγκης</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11665" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Contingency analysis&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Per form a contingency analysis with the selected method over the time series data&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Contingency analysis&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Per form a contingency analysis with the selected method over the time series data&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Ανάλυση έκτακτης ανάγκης&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Εκτελέστε μια ανάλυση έκτακτης ανάγκης με την επιλεγμένη μέθοδο για τα δεδομένα χρονοσειρών&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11671" />
@@ -6348,57 +6327,57 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="11680" />
         <source>Branch rates</source>
-        <translation>Branch rates</translation>
+        <translation>Τιμές υποκαταστημάτων</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11689" />
         <source>Set selected buses' Area</source>
-        <translation>Set selected buses' Area</translation>
+        <translation>Ορίστε την περιοχή επιλεγμένων λεωφορείων</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11701" />
         <source>Set selected buses' Zone</source>
-        <translation>Set selected buses' Zone</translation>
+        <translation>Ορίστε τη ζώνη επιλεγμένων λεωφορείων</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11713" />
         <source>Set seleted buses' Country</source>
-        <translation>Set seleted buses' Country</translation>
+        <translation>Ορίστε τη χώρα επιλεγμένων λεωφορείων</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11725" />
         <source>Import bus coordinates</source>
-        <translation>Import bus coordinates</translation>
+        <translation>Εισαγωγή συντεταγμένων διαύλου</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11737" />
         <source>Available Transfer Capacity</source>
-        <translation>Available Transfer Capacity</translation>
+        <translation>Διαθέσιμη χωρητικότητα μεταφοράς</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11740" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Net Transfer Capacity&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Perform a linear net transfer capacity assesment for the snapshot data&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Net Transfer Capacity&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Perform a linear net transfer capacity assesment for the snapshot data&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Καθαρή ικανότητα μεταφοράς&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Εκτελέστε μια γραμμική εκτίμηση καθαρής ικανότητας μεταφοράς για τα δεδομένα στιγμιότυπου&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11752" />
         <source>Available Transfer Capacity Time Series</source>
-        <translation>Available Transfer Capacity Time Series</translation>
+        <translation>Διαθέσιμη χρονική σειρά χωρητικότητας μεταφοράς</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11755" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Net Transfer Capacity&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Perform a linear net transfer capacity assesment for the time series data&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Net Transfer Capacity&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Perform a linear net transfer capacity assesment for the time series data&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Καθαρή ικανότητα μεταφοράς&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Εκτελέστε μια γραμμική εκτίμηση καθαρής ικανότητας μεταφοράς για τα δεδομένα χρονοσειρών&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11767" />
         <source>Contingency analysis</source>
-        <translation>Contingency analysis</translation>
+        <translation>Ανάλυση έκτακτης ανάγκης</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11770" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Contingency analysis&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Perform a contingency analysis with the selected method&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Contingency analysis&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Perform a contingency analysis with the selected method&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Ανάλυση έκτακτης ανάγκης&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Εκτελέστε μια ανάλυση έκτακτης ανάγκης με την επιλεγμένη μέθοδο&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11776" />
@@ -6408,27 +6387,27 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="11785" />
         <source>Optimal net transfer capacity</source>
-        <translation>Optimal net transfer capacity</translation>
+        <translation>Βέλτιστη καθαρή ικανότητα μεταφοράς</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11788" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Optimal Net Transfer Capacity&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Perform an optimal net transfer capacity optimization&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Optimal Net Transfer Capacity&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Perform an optimal net transfer capacity optimization&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Βέλτιστη καθαρή ικανότητα μεταφοράς&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Εκτελέστε μια βέλτιστη βελτιστοποίηση καθαρής ικανότητας μεταφοράς&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11800" />
         <source>Set schematic (x,y) from (lat,lon)</source>
-        <translation>Set schematic (x,y) from (lat,lon)</translation>
+        <translation>Ορισμός σχηματικού (x,y) από (lat,lon)</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11812" />
         <source>Inputs analysis</source>
-        <translation>Inputs analysis</translation>
+        <translation>Ανάλυση εισροών</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11815" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Inputs analysis&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Perform an analysis of the inputs for both the snapshot and time series data&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Inputs analysis&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Perform an analysis of the inputs for both the snapshot and time series data&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Ανάλυση εισροών&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Εκτελέστε μια ανάλυση των εισόδων τόσο για τα δεδομένα στιγμιότυπου όσο και για τα δεδομένα χρονοσειρών&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11821" />
@@ -6438,64 +6417,64 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="11830" />
         <source>Fuse devices</source>
-        <translation>Fuse devices</translation>
+        <translation>Συσκευές ασφαλειών</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11833" />
         <source>Fuse devices into a single device of each category per node</source>
-        <translation>Fuse devices into a single device of each category per node</translation>
+        <translation>Συνδέστε τις συσκευές σε μια ενιαία συσκευή κάθε κατηγορίας ανά κόμβο</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11845" />
         <location filename="../Main/MainWindow.ui" line="11848" />
         <source>Delete inconsistencies</source>
-        <translation>Delete inconsistencies</translation>
+        <translation>Διαγράψτε τις ασυνέπειες</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11860" />
         <source>Optimal NTC time series</source>
-        <translation>Optimal NTC time series</translation>
+        <translation>Βέλτιστη χρονοσειρά NTC</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11863" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Net Transfer Capacity&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Perform a net transfer capacity optimization over the time series data&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Net Transfer Capacity&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Perform a net transfer capacity optimization over the time series data&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Καθαρή ικανότητα μεταφοράς&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Εκτελέστε μια βελτιστοποίηση καθαρής ικανότητας μεταφοράς με βάση τα δεδομένα χρονοσειρών&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11875" />
         <source>re-index time</source>
-        <translation>re-index time</translation>
+        <translation>αναπροσαρμογή του χρόνου</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11887" />
         <source>Fix generators active based on the power</source>
-        <translation>Fix generators active based on the power</translation>
+        <translation>Διορθώστε τις ενεργές γεννήτριες με βάση την ισχύ</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11899" />
         <location filename="../Main/MainWindow.ui" line="11902" />
         <source>Fix loads active based on the power</source>
-        <translation>Fix loads active based on the power</translation>
+        <translation>Διορθώστε τα ενεργά φορτία με βάση την ισχύ</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11914" />
         <source>Initialize contingencies</source>
-        <translation>Initialize contingencies</translation>
+        <translation>Αρχικοποιήστε απρόβλεπτα</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11917" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Contingencies wizard&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Launch the contingencies wizard to automatically set up the contingency objects&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Contingencies wizard&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Launch the contingencies wizard to automatically set up the contingency objects&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Οδηγός απρόβλεπτων&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Εκκινήστε τον οδηγό απρόβλεπτων για να ρυθμίσετε αυτόματα τα αντικείμενα έκτακτης ανάγκης&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11929" />
         <source>Add selected as new contingency</source>
-        <translation>Add selected as new contingency</translation>
+        <translation>Προσθήκη επιλεγμένης ως νέας έκτακτης ανάγκης</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11932" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Add contingency&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Create a new contingency from the schematic selection&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Add contingency&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Create a new contingency from the schematic selection&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Προσθήκη έκτακτης ανάγκης&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Δημιουργήστε ένα νέο ενδεχόμενο από τη σχηματική επιλογή&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11938" />
@@ -6505,12 +6484,12 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="11947" />
         <source>Add selected as new investment</source>
-        <translation>Add selected as new investment</translation>
+        <translation>Προσθήκη επιλεγμένης ως νέας επένδυσης</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11950" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Investments&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Create new investment with the schematic selection&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Investments&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Create new investment with the schematic selection&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Επενδύσεις&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Δημιουργήστε νέα επένδυση με τη σχηματική επιλογή&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11956" />
@@ -6520,7 +6499,7 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="11965" />
         <source>Zoom in</source>
-        <translation>Zoom in</translation>
+        <translation>Μεγέθυνση</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11971" />
@@ -6530,7 +6509,7 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="11980" />
         <source>Zoom out</source>
-        <translation>Zoom out</translation>
+        <translation>Σμίκρυνση</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="11986" />
@@ -6540,27 +6519,27 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="11998" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Clustering&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Perform a clustering study of the time series data&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Clustering&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Perform a clustering study of the time series data&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Ομαδοποίηση&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Εκτελέστε μια μελέτη ομαδοποίησης των δεδομένων χρονοσειρών&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12016" />
         <source>Use clustering</source>
-        <translation>Use clustering</translation>
+        <translation>Χρησιμοποιήστε ομαδοποίηση</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12019" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Clustering&lt;/span&gt;&lt;/p&gt;&lt;p&gt;If active, the available clustering results are used in all the simulations that handle time series data non-destructivelly&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Clustering&lt;/span&gt;&lt;/p&gt;&lt;p&gt;If active, the available clustering results are used in all the simulations that handle time series data non-destructivelly&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Ομαδοποίηση&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Εάν είναι ενεργά, τα διαθέσιμα αποτελέσματα ομαδοποίησης χρησιμοποιούνται σε όλες τις προσομοιώσεις που χειρίζονται δεδομένα χρονοσειρών μη καταστροφικά&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12031" />
         <source>Investments evaluation</source>
-        <translation>Investments evaluation</translation>
+        <translation>Αξιολόγηση επενδύσεων</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12034" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Investments&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Perform the investments evaluation&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Investments&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Perform the investments evaluation&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Επενδύσεις&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Εκτελέστε την αξιολόγηση των επενδύσεων&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12040" />
@@ -6570,57 +6549,57 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="12049" />
         <source>New schematic from selection</source>
-        <translation>New schematic from selection</translation>
+        <translation>Νέο σχηματικό από την επιλογή</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12061" />
         <source>New schematic</source>
-        <translation>New schematic</translation>
+        <translation>Νέο σχηματικό</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12073" />
         <source>New map</source>
-        <translation>New map</translation>
+        <translation>Νέος χάρτης</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12085" />
         <source>Remove selected diagram</source>
-        <translation>Remove selected diagram</translation>
+        <translation>Αφαιρέστε το επιλεγμένο διάγραμμα</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12094" />
         <source>Report a bug or feature</source>
-        <translation>Report a bug or feature</translation>
+        <translation>Αναφορά σφάλματος ή λειτουργίας</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12106" />
         <source>Search</source>
-        <translation>Search</translation>
+        <translation>Ερευνα</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12118" />
         <source>Process topology</source>
-        <translation>Process topology</translation>
+        <translation>Τοπολογία διαδικασίας</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12130" />
         <source>Edit simulation time limits</source>
-        <translation>Edit simulation time limits</translation>
+        <translation>Επεξεργασία χρονικών ορίων προσομοίωσης</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12133" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Time series&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Edit simulation time limits&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Time series&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Edit simulation time limits&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Χρονικές σειρές&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Επεξεργασία χρονικών ορίων προσομοίωσης&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12148" />
         <source>activate time series</source>
-        <translation>activate time series</translation>
+        <translation>ενεργοποίηση χρονοσειρών</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12151" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Time series mode&lt;/span&gt;&lt;/p&gt;&lt;p&gt;When activated, the simulations run their time series version&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Time series mode&lt;/span&gt;&lt;/p&gt;&lt;p&gt;When activated, the simulations run their time series version&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Λειτουργία χρονοσειράς&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Όταν ενεργοποιηθούν, οι προσομοιώσεις εκτελούν την έκδοση χρονολογικής σειράς τους&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12157" />
@@ -6630,7 +6609,7 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="12166" />
         <source>Clean database</source>
-        <translation>Clean database</translation>
+        <translation>Καθαρή βάση δεδομένων</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12172" />
@@ -6640,72 +6619,72 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="12181" />
         <source>Scale</source>
-        <translation>Scale</translation>
+        <translation>Κλίμακα</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12184" />
         <source>Scale the system load and or generation</source>
-        <translation>Scale the system load and or generation</translation>
+        <translation>Κλιμακώστε το φορτίο του συστήματος και/ή την παραγωγή</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12196" />
         <source>Disable all results tags</source>
-        <translation>Disable all results tags</translation>
+        <translation>Απενεργοποιήστε όλες τις ετικέτες αποτελεσμάτων</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12208" />
         <source>Enable all results tags</source>
-        <translation>Enable all results tags</translation>
+        <translation>Ενεργοποίηση όλων των ετικετών αποτελεσμάτων</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12220" />
         <source>Detect substations</source>
-        <translation>Detect substations</translation>
+        <translation>Ανίχνευση υποσταθμών</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12232" />
         <source>Optimal hosting capacity</source>
-        <translation>Optimal hosting capacity</translation>
+        <translation>Βέλτιστη χωρητικότητα φιλοξενίας</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12235" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Nodal hosting capacity&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Run the nodal hosting capacity calculation using the selected optimization method&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Nodal hosting capacity&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Run the nodal hosting capacity calculation using the selected optimization method&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Κομβική ικανότητα φιλοξενίας&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Εκτελέστε τον υπολογισμό της χωρητικότητας κομβικής φιλοξενίας χρησιμοποιώντας την επιλεγμένη μέθοδο βελτιστοποίησης&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12250" />
         <source>Enable server mode</source>
-        <translation>Enable server mode</translation>
+        <translation>Ενεργοποίηση λειτουργίας διακομιστή</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12262" />
         <source>Record video</source>
-        <translation>Record video</translation>
+        <translation>Εγγραφή βίντεο</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12265" />
         <source>Record video of the schematic</source>
-        <translation>Record video of the schematic</translation>
+        <translation>Καταγράψτε το σχηματικό βίντεο</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12277" />
         <source>Save  differential</source>
-        <translation>Save  differential</translation>
+        <translation>Αποθήκευση διαφορικού</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12289" />
         <source>Consolidate coordinates</source>
-        <translation>Consolidate coordinates</translation>
+        <translation>Ενοποίηση συντεταγμένων</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12301" />
         <source>Add selected as new remedial action</source>
-        <translation>Add selected as new remedial action</translation>
+        <translation>Προσθήκη επιλεγμένη ως νέα διορθωτική ενέργεια</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12304" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Add remedial action&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Create a new remedial action from the schematic selection&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Add remedial action&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Create a new remedial action from the schematic selection&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Προσθήκη διορθωτικής δράσης&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Δημιουργήστε μια νέα διορθωτική ενέργεια από τη σχηματική επιλογή&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12310" />
@@ -6715,52 +6694,52 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="12319" />
         <source>Detect facilities</source>
-        <translation>Detect facilities</translation>
+        <translation>Ανίχνευση εγκαταστάσεων</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12328" />
         <source>Rotate</source>
-        <translation>Rotate</translation>
+        <translation>Γυρίζω</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12340" />
         <source>Reset diagram coordinates to database values</source>
-        <translation>Reset diagram coordinates to database values</translation>
+        <translation>Επαναφέρετε τις συντεταγμένες του διαγράμματος σε τιμές βάσης δεδομένων</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12352" />
         <source>Reliability analysis</source>
-        <translation>Reliability analysis</translation>
+        <translation>Ανάλυση αξιοπιστίας</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12355" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Reliability study&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Run the reliability calculation&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Reliability study&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Run the reliability calculation&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Μελέτη αξιοπιστίας&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Εκτελέστε τον υπολογισμό αξιοπιστίας&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12370" />
         <source>Color buses by...</source>
-        <translation>Color buses by...</translation>
+        <translation>Έγχρωμα λεωφορεία από...</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12382" />
         <source>Color substations by...</source>
-        <translation>Color substations by...</translation>
+        <translation>Έγχρωμοι υποσταθμοί από...</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12397" />
         <source>Select buses by...</source>
-        <translation>Select buses by...</translation>
+        <translation>Επιλέξτε λεωφορεία με...</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12424" />
         <source>Substation wizard</source>
-        <translation>Substation wizard</translation>
+        <translation>Οδηγός υποσταθμού</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12427" />
         <source>Add substation with a wizard form</source>
-        <translation>Add substation with a wizard form</translation>
+        <translation>Προσθήκη υποσταθμού με φόρμα οδηγού</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12430" />
@@ -6770,22 +6749,22 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="12442" />
         <source>Dynamic RMS Simulation</source>
-        <translation>Dynamic RMS Simulation</translation>
+        <translation>Δυναμική προσομοίωση RMS</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12445" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;RMS Simulation&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Run a dynamic RMS simulation&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;RMS Simulation&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Run a dynamic RMS simulation&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Προσομοίωση RMS&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Εκτελέστε μια δυναμική προσομοίωση RMS&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12457" />
         <source>Prepare RMS dynamic plots</source>
-        <translation>Prepare RMS dynamic plots</translation>
+        <translation>Προετοιμάστε δυναμικά σχέδια RMS</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12460" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Prepare RMS dynamic plots&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Open the RMS dynamic plot editor before running the simulation&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Prepare RMS dynamic plots&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Open the RMS dynamic plot editor before running the simulation&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Προετοιμάστε δυναμικά σχέδια RMS&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Ανοίξτε το πρόγραμμα επεξεργασίας δυναμικής γραφικής παράστασης RMS πριν εκτελέσετε την προσομοίωση&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12472" />
@@ -6796,32 +6775,32 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="12478" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Small Signal Simulation (RMS)&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Run an RMS Small Signal stability analysis simulation&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Small Signal Simulation (RMS)&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Run an RMS Small Signal stability analysis simulation&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Προσομοίωση μικρού σήματος (RMS)&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Εκτελέστε μια προσομοίωση ανάλυσης σταθερότητας μικρού σήματος RMS&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12490" />
         <source>Add rms event to selected</source>
-        <translation>Add rms event to selected</translation>
+        <translation>Προσθήκη συμβάντος rms στα επιλεγμένα</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12493" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Add RMS event&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Create a new RMS event to the schematic selection&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Add RMS event&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Create a new RMS event to the schematic selection&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Προσθήκη συμβάντος RMS&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Δημιουργήστε ένα νέο συμβάν RMS στη σχηματική επιλογή&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12508" />
         <source>Clear highlights</source>
-        <translation>Clear highlights</translation>
+        <translation>Καθαρά σημεία</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12523" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;State estimation&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Run a state estimation analysis&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;State estimation&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Run a state estimation analysis&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Εκτίμηση του κράτους&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Εκτελέστε μια ανάλυση εκτίμησης κατάστασης&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12535" />
         <source>Add short circuit events</source>
-        <translation>Add short circuit events</translation>
+        <translation>Προσθήκη συμβάντων βραχυκυκλώματος</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12547" />
@@ -6851,7 +6830,7 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="12592" />
         <source>Power Grid Models</source>
-        <translation>Power Grid Models</translation>
+        <translation>Μοντέλα ηλεκτρικού δικτύου</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12601" />
@@ -6881,53 +6860,53 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="12646" />
         <source>Profiles</source>
-        <translation>Profiles</translation>
+        <translation>Προφίλ</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12673" />
         <location filename="../Main/MainWindow.ui" line="12691" />
         <source>Catalogue</source>
-        <translation>Catalogue</translation>
+        <translation>Κατάλογος</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12700" />
         <source>Clean Room</source>
-        <translation>Clean Room</translation>
+        <translation>Καθαρό δωμάτιο</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12703" />
         <source>Cleam room utility to produce an machine learning statistical representation of the static time series</source>
-        <translation>Cleam room utility to produce an machine learning statistical representation of the static time series</translation>
+        <translation>Βοηθητικό πρόγραμμα Cleam room για την παραγωγή στατιστικής αναπαράστασης μηχανικής μάθησης της στατικής χρονοσειράς</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12715" />
         <source>Procedural grid expansion</source>
-        <translation>Procedural grid expansion</translation>
+        <translation>Διαδικαστική επέκταση πλέγματος</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12724" />
         <source>Catalogue element optimization</source>
-        <translation>Catalogue element optimization</translation>
+        <translation>Βελτιστοποίηση στοιχείων καταλόγου</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12733" />
         <source>Dynamic EMT Simulation</source>
-        <translation>Dynamic EMT Simulation</translation>
+        <translation>Δυναμική προσομοίωση EMT</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12736" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;EMT Simulation&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Run a dynamic EMT simulation&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;EMT Simulation&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Run a dynamic EMT simulation&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Προσομοίωση EMT&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Εκτελέστε μια δυναμική προσομοίωση EMT&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12748" />
         <source>Prepare EMT dynamic plots</source>
-        <translation>Prepare EMT dynamic plots</translation>
+        <translation>Προετοιμάστε δυναμικά σχέδια EMT</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12751" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Prepare EMT dynamic plots&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Open the EMT dynamic plot editor before running the simulation&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Prepare EMT dynamic plots&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Open the EMT dynamic plot editor before running the simulation&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Προετοιμάστε δυναμικά σχέδια EMT&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Ανοίξτε το πρόγραμμα επεξεργασίας δυναμικής γραφικής παράστασης EMT πριν εκτελέσετε την προσομοίωση&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12763" />
@@ -6938,17 +6917,17 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="12769" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Small Signal Simulation (EMT)&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Run an EMT Small Signal stability analysis simulation&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Small Signal Simulation (EMT)&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Run an EMT Small Signal stability analysis simulation&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Προσομοίωση μικρού σήματος (EMT)&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Εκτελέστε μια προσομοίωση ανάλυσης σταθερότητας μικρού σήματος EMT&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12777" />
         <source>Reticular</source>
-        <translation>Reticular</translation>
+        <translation>Δικτυωτή</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12782" />
         <source>Straight</source>
-        <translation>Straight</translation>
+        <translation>Ευθεία</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12791" />
@@ -6958,52 +6937,52 @@ Monte Carlo power flow results:</translation>
     <message>
         <location filename="../Main/MainWindow.ui" line="12794" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;VeraGrid AI &lt;/span&gt;&lt;/p&gt;&lt;p&gt;Show the VeraGrid AI chat&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;VeraGrid AI &lt;/span&gt;&lt;/p&gt;&lt;p&gt;Show the VeraGrid AI chat&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;VeraGrid AI&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Εμφάνιση της συνομιλίας VeraGrid AI&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12806" />
         <source>Power Flow 3-phase</source>
-        <translation>Power Flow 3-phase</translation>
+        <translation>Ροή ισχύος 3 φάσεων</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12809" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Power Flow 3-phase&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Run an unbalanced 3-phase power flow analysis&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Power Flow 3-phase&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Run an unbalanced 3-phase power flow analysis&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Ροή ισχύος 3 φάσεων&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Εκτελέστε μια μη ισορροπημένη τριφασική ανάλυση ροής ισχύος&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12824" />
         <source>Add emt event to selected</source>
-        <translation>Add emt event to selected</translation>
+        <translation>Προσθήκη συμβάντος emt στα επιλεγμένα</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12827" />
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Add EMT event&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Create a new EMT event to the schematic selection&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Add EMT event&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Create a new EMT event to the schematic selection&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-weight:700;"&gt;Προσθήκη συμβάντος EMT&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Δημιουργήστε ένα νέο συμβάν EMT στη σχηματική επιλογή&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12836" />
         <source>Set model (x,y) based on (lat, lon)</source>
-        <translation>Set model (x,y) based on (lat, lon)</translation>
+        <translation>Σύνολο μοντέλου (x,y) με βάση (lat, lon)</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12845" />
         <source>Restore investments</source>
-        <translation>Restore investments</translation>
+        <translation>Αποκαταστήστε τις επενδύσεις</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12857" />
         <source>Veragrid Scenario</source>
-        <translation>Veragrid Scenario</translation>
+        <translation>Σενάριο Veragrid</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12866" />
         <source>Show dynamic models editor</source>
-        <translation>Show dynamic models editor</translation>
+        <translation>Εμφάνιση προγράμματος επεξεργασίας δυναμικών μοντέλων</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="12878" />
         <source>Repair diagram</source>
-        <translation>Repair diagram</translation>
+        <translation>Διάγραμμα επισκευής</translation>
     </message>
 </context>
 <context>

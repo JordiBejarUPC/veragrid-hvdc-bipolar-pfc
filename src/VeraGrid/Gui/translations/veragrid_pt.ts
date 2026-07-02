@@ -596,7 +596,7 @@ li.checked::marcador { content: "\2612"; }
     </message>
     <message>
         <source>Chinese</source>
-        <translation>chinês</translation>
+        <translation>Chinês</translation>
     </message>
     <message>
         <source>German</source>
@@ -604,9 +604,9 @@ li.checked::marcador { content: "\2612"; }
     </message>
     <message>
         <source>Catalan</source>
-        <translation>catalão</translation>
+        <translation>Catalão</translation>
     </message>
-<message><source>Basque</source><translation>Basco</translation></message><message><source>Galician</source><translation>Galego</translation></message><message><source>Tongan</source><translation>tonganês</translation></message><message><source>Tuvaluan</source><translation>Tuvaluano</translation></message><message><source>Arabic</source><translation>árabe</translation></message><message><source>Italian</source><translation>italiano</translation></message><message><source>Greek</source><translation>grego</translation></message><message><source>Dutch</source><translation>Holandês</translation></message></context>
+<message><source>Basque</source><translation>Basco</translation></message><message><source>Galician</source><translation>Galego</translation></message><message><source>Tongan</source><translation>Tonganês</translation></message><message><source>Tuvaluan</source><translation>Tuvaluano</translation></message><message><source>Arabic</source><translation>Árabe</translation></message><message><source>Italian</source><translation>Italiano</translation></message><message><source>Greek</source><translation>Grego</translation></message><message><source>Dutch</source><translation>Holandês</translation></message></context>
 <context>
     <name>ControllableShuntEditorDialog</name>
     <message>

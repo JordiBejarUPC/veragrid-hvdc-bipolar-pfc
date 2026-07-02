@@ -580,7 +580,7 @@ li.checked::marker { content: "\2612"; }
     </message>
     <message>
         <source>English</source>
-        <translation>ingelesa</translation>
+        <translation>Ingelesa</translation>
     </message>
     <message>
         <source>Español</source>
@@ -588,25 +588,25 @@ li.checked::marker { content: "\2612"; }
     </message>
     <message>
         <source>French</source>
-        <translation>frantsesa</translation>
+        <translation>Frantsesa</translation>
     </message>
     <message>
         <source>Portuguese</source>
-        <translation>portugesa</translation>
+        <translation>Portugesa</translation>
     </message>
     <message>
         <source>Chinese</source>
-        <translation>txinera</translation>
+        <translation>Txinera</translation>
     </message>
     <message>
         <source>German</source>
-        <translation>alemana</translation>
+        <translation>Alemana</translation>
     </message>
     <message>
         <source>Catalan</source>
-        <translation>katalana</translation>
+        <translation>Katalana</translation>
     </message>
-<message><source>Basque</source><translation>Euskara</translation></message><message><source>Galician</source><translation>galegoa</translation></message><message><source>Tongan</source><translation>Tonga</translation></message><message><source>Tuvaluan</source><translation>Tuvaluarra</translation></message><message><source>Arabic</source><translation>arabiera</translation></message><message><source>Italian</source><translation>italiarra</translation></message><message><source>Greek</source><translation>grekoa</translation></message><message><source>Dutch</source><translation>holandarra</translation></message></context>
+<message><source>Basque</source><translation>Euskara</translation></message><message><source>Galician</source><translation>Galegoa</translation></message><message><source>Tongan</source><translation>Tonga</translation></message><message><source>Tuvaluan</source><translation>Tuvaluarra</translation></message><message><source>Arabic</source><translation>Arabiera</translation></message><message><source>Italian</source><translation>Italiarra</translation></message><message><source>Greek</source><translation>Grekoa</translation></message><message><source>Dutch</source><translation>Holandarra</translation></message></context>
 <context>
     <name>ControllableShuntEditorDialog</name>
     <message>

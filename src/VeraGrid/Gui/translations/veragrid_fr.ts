@@ -584,7 +584,7 @@ li.checked :: marqueur { content: "\2612"; }
     </message>
     <message>
         <source>Español</source>
-        <translation>espagnol</translation>
+        <translation>Espagnol</translation>
     </message>
     <message>
         <source>French</source>
@@ -592,7 +592,7 @@ li.checked :: marqueur { content: "\2612"; }
     </message>
     <message>
         <source>Portuguese</source>
-        <translation>portugais</translation>
+        <translation>Portugais</translation>
     </message>
     <message>
         <source>Chinese</source>
@@ -604,9 +604,9 @@ li.checked :: marqueur { content: "\2612"; }
     </message>
     <message>
         <source>Catalan</source>
-        <translation>catalan</translation>
+        <translation>Catalan</translation>
     </message>
-<message><source>Basque</source><translation>Basque</translation></message><message><source>Galician</source><translation>Galicien</translation></message><message><source>Tongan</source><translation>Tongien</translation></message><message><source>Tuvaluan</source><translation>Tuvaluan</translation></message><message><source>Arabic</source><translation>arabe</translation></message><message><source>Italian</source><translation>italien</translation></message><message><source>Greek</source><translation>grec</translation></message><message><source>Dutch</source><translation>Néerlandais</translation></message></context>
+<message><source>Basque</source><translation>Basque</translation></message><message><source>Galician</source><translation>Galicien</translation></message><message><source>Tongan</source><translation>Tongien</translation></message><message><source>Tuvaluan</source><translation>Tuvaluan</translation></message><message><source>Arabic</source><translation>Arabe</translation></message><message><source>Italian</source><translation>Italien</translation></message><message><source>Greek</source><translation>Grec</translation></message><message><source>Dutch</source><translation>Néerlandais</translation></message></context>
 <context>
     <name>ControllableShuntEditorDialog</name>
     <message>

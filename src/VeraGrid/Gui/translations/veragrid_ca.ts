@@ -588,25 +588,25 @@ li.checked::marker { content: "\2612"; }
     </message>
     <message>
         <source>French</source>
-        <translation>francès</translation>
+        <translation>Francès</translation>
     </message>
     <message>
         <source>Portuguese</source>
-        <translation>portuguès</translation>
+        <translation>Portuguès</translation>
     </message>
     <message>
         <source>Chinese</source>
-        <translation>xinès</translation>
+        <translation>Xinès</translation>
     </message>
     <message>
         <source>German</source>
-        <translation>alemany</translation>
+        <translation>Alemany</translation>
     </message>
     <message>
         <source>Catalan</source>
-        <translation>català</translation>
+        <translation>Català</translation>
     </message>
-<message><source>Basque</source><translation>basc</translation></message><message><source>Galician</source><translation>gallec</translation></message><message><source>Tongan</source><translation>Tonga</translation></message><message><source>Tuvaluan</source><translation>Tuvaluà</translation></message><message><source>Arabic</source><translation>àrab</translation></message><message><source>Italian</source><translation>italià</translation></message><message><source>Greek</source><translation>grec</translation></message><message><source>Dutch</source><translation>holandès</translation></message></context>
+<message><source>Basque</source><translation>Basc</translation></message><message><source>Galician</source><translation>Gallec</translation></message><message><source>Tongan</source><translation>Tonga</translation></message><message><source>Tuvaluan</source><translation>Tuvaluà</translation></message><message><source>Arabic</source><translation>Àrab</translation></message><message><source>Italian</source><translation>Italià</translation></message><message><source>Greek</source><translation>Grec</translation></message><message><source>Dutch</source><translation>Holandès</translation></message></context>
 <context>
     <name>ControllableShuntEditorDialog</name>
     <message>
