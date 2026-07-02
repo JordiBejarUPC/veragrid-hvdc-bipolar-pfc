@@ -313,6 +313,7 @@ class DiagramsMain(CompiledArraysMain):
 
         self.ui.actionSetReticularBranchStyles.triggered.connect(self.set_diagram_branches_reticular_style)
         self.ui.actionSetStraightBranchStyles.triggered.connect(self.set_diagram_branches_straight_style)
+        self.ui.actionRepair_diagram.triggered.connect(self.repair_selected_schematic_diagram)
 
         # Buttons
         self.ui.colour_results_pushButton.clicked.connect(self.colour_diagrams)
@@ -4012,3 +4013,15 @@ class DiagramsMain(CompiledArraysMain):
 
         if isinstance(diagram, SchematicWidget):
             diagram.set_all_branch_drawing_styles(SchematicAutoRouteStyle.STRAIGHT)
+
+    def repair_selected_schematic_diagram(self):
+        """
+        Repair suspicious legacy manual injection positions in the selected schematic.
+        """
+        diagram = self.get_selected_diagram_widget()
+
+        if isinstance(diagram, SchematicWidget):
+            repaired_count = diagram.repair_suspicious_injection_positions()
+            self.show_info_toast(f"Repaired {repaired_count} suspicious injection positions")
+        else:
+            self.show_warning_toast("The current diagram is not a schematic :(")

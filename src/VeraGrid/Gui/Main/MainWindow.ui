@@ -2369,8 +2369,8 @@
                 <rect>
                  <x>0</x>
                  <y>0</y>
-                 <width>274</width>
-                 <height>526</height>
+                 <width>98</width>
+                 <height>85</height>
                 </rect>
                </property>
                <attribute name="icon">
@@ -2425,7 +2425,7 @@
                 <rect>
                  <x>0</x>
                  <y>0</y>
-                 <width>86</width>
+                 <width>98</width>
                  <height>88</height>
                 </rect>
                </property>
@@ -10916,6 +10916,7 @@ QProgressBar::chunk{
     <addaction name="actionSmaller_nodes"/>
     <addaction name="actionAutoatic_layout"/>
     <addaction name="actionTry_to_fix_buses_location"/>
+    <addaction name="actionRepair_diagram"/>
     <addaction name="actionRotate"/>
     <addaction name="menuBranches_drawing_style"/>
     <addaction name="actionDisable_all_results_tags"/>
@@ -12856,6 +12857,18 @@ QProgressBar::chunk{
    </property>
    <property name="menuRole">
     <enum>QAction::MenuRole::NoRole</enum>
+   </property>
+  </action>
+  <action name="actionRepair_diagram">
+   <property name="icon">
+    <iconset resource="../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/fix.png</normaloff>:/Icons/icons/fix.png</iconset>
+   </property>
+   <property name="text">
+    <string>Repair diagram</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+S</string>
    </property>
   </action>
  </widget>
