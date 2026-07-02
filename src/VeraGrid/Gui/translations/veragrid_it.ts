@@ -631,7 +631,7 @@ li.checked::marker { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;&lt
     </message>
     <message>
         <source>Japanese</source>
-        <translation>giapponese</translation>
+        <translation>Giapponese</translation>
     </message>
 </context>
 <context>

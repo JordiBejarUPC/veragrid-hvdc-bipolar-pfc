@@ -625,7 +625,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
     </message>
     <message>
         <source>Greek</source>
-        <translation>griechisch</translation>
+        <translation>Griechisch</translation>
     </message>
     <message>
         <source>Dutch</source>
@@ -633,7 +633,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
     </message>
     <message>
         <source>Japanese</source>
-        <translation>japanisch</translation>
+        <translation>Japanisch</translation>
     </message>
 </context>
 <context>

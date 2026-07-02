@@ -579,7 +579,7 @@ li.checked::marker { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;&lt
     </message>
     <message>
         <source>English</source>
-        <translation>αγγλικός</translation>
+        <translation>Αγγλικός</translation>
     </message>
     <message>
         <source>Español</source>
@@ -595,7 +595,7 @@ li.checked::marker { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;&lt
     </message>
     <message>
         <source>Chinese</source>
-        <translation>κινέζικα</translation>
+        <translation>Κινέζικα</translation>
     </message>
     <message>
         <source>German</source>
@@ -603,7 +603,7 @@ li.checked::marker { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;&lt
     </message>
     <message>
         <source>Catalan</source>
-        <translation>καταλανικά</translation>
+        <translation>Καταλανικά</translation>
     </message>
     <message>
         <source>Basque</source>
@@ -615,11 +615,11 @@ li.checked::marker { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;&lt
     </message>
     <message>
         <source>Arabic</source>
-        <translation>αραβικός</translation>
+        <translation>Αραβικός</translation>
     </message>
     <message>
         <source>Italian</source>
-        <translation>ιταλικά</translation>
+        <translation>Ιταλικά</translation>
     </message>
     <message>
         <source>Greek</source>

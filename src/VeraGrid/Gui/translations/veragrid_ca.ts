@@ -589,19 +589,19 @@ li.checked::marker { content: &quot;\2612&quot;; }
     </message>
     <message>
         <source>French</source>
-        <translation>francès</translation>
+        <translation>Francès</translation>
     </message>
     <message>
         <source>Portuguese</source>
-        <translation>portuguès</translation>
+        <translation>Portuguès</translation>
     </message>
     <message>
         <source>Chinese</source>
-        <translation>xinès</translation>
+        <translation>Xinès</translation>
     </message>
     <message>
         <source>German</source>
-        <translation>alemany</translation>
+        <translation>Alemany</translation>
     </message>
     <message>
         <source>Catalan</source>
@@ -609,31 +609,31 @@ li.checked::marker { content: &quot;\2612&quot;; }
     </message>
     <message>
         <source>Basque</source>
-        <translation>basc</translation>
+        <translation>Basc</translation>
     </message>
     <message>
         <source>Galician</source>
-        <translation>gallec</translation>
+        <translation>Gallec</translation>
     </message>
     <message>
         <source>Arabic</source>
-        <translation>àrab</translation>
+        <translation>Àrab</translation>
     </message>
     <message>
         <source>Italian</source>
-        <translation>italià</translation>
+        <translation>Italià</translation>
     </message>
     <message>
         <source>Greek</source>
-        <translation>grec</translation>
+        <translation>Grec</translation>
     </message>
     <message>
         <source>Dutch</source>
-        <translation>holandès</translation>
+        <translation>Holandès</translation>
     </message>
     <message>
         <source>Japanese</source>
-        <translation>japonès</translation>
+        <translation>Japonès</translation>
     </message>
 </context>
 <context>

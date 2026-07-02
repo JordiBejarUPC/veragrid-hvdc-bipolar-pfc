@@ -633,7 +633,7 @@ li.checked::marcador { content: &quot;\2612&quot;; }
     </message>
     <message>
         <source>Japanese</source>
-        <translation>japonês</translation>
+        <translation>Japonês</translation>
     </message>
 </context>
 <context>
