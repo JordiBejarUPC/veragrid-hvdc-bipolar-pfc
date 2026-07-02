@@ -3,8 +3,17 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.  
 # SPDX-License-Identifier: MPL-2.0
 
+from PySide6 import QtCore, QtWidgets
 
-from PySide6 import QtWidgets
+
+def _tr(text: str) -> str:
+    """
+    Translate one message-box helper string.
+
+    :param text: Source text.
+    :returns: Translated text.
+    """
+    return QtCore.QCoreApplication.translate("messages", text)
 
 
 class CenteredMessageBox(QtWidgets.QMessageBox):
@@ -21,7 +30,7 @@ class CenteredMessageBox(QtWidgets.QMessageBox):
             )
 
 
-def info_msg(text, title="Information"):
+def info_msg(text, title=None):
     """
     Message box
     :param text: Text to display
@@ -30,12 +39,12 @@ def info_msg(text, title="Information"):
     msg = CenteredMessageBox()
     msg.setIcon(QtWidgets.QMessageBox.Icon.Information)
     msg.setText(text)
-    msg.setWindowTitle(title)
+    msg.setWindowTitle(_tr("Information") if title is None else title)
     msg.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
     return msg.exec()
 
 
-def warning_msg(text: str, title: str = "Warning") -> int:
+def warning_msg(text: str, title: str | None = None) -> int:
     """
     Message box
     :param text: Text to display
@@ -44,12 +53,12 @@ def warning_msg(text: str, title: str = "Warning") -> int:
     msg = CenteredMessageBox()
     msg.setIcon(QtWidgets.QMessageBox.Icon.Warning)
     msg.setText(text)
-    msg.setWindowTitle(title)
+    msg.setWindowTitle(_tr("Warning") if title is None else title)
     msg.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
     return msg.exec()
 
 
-def error_msg(text: str, title: str = "Error") -> int:
+def error_msg(text: str, title: str | None = None) -> int:
     """
     Message box
     :param text: Text to display
@@ -58,12 +67,12 @@ def error_msg(text: str, title: str = "Error") -> int:
     msg = CenteredMessageBox()
     msg.setIcon(QtWidgets.QMessageBox.Icon.Critical)
     msg.setText(text)
-    msg.setWindowTitle(title)
+    msg.setWindowTitle(_tr("Error") if title is None else title)
     msg.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
     return msg.exec()
 
 
-def yes_no_question(text: str, title: str = 'Question') -> bool:
+def yes_no_question(text: str, title: str | None = None) -> bool:
     """
     Question message
     :param text:
@@ -72,7 +81,7 @@ def yes_no_question(text: str, title: str = 'Question') -> bool:
     """
     buttonReply = QtWidgets.QMessageBox.question(
         None,
-        title,
+        _tr("Question") if title is None else title,
         text,
         QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
         QtWidgets.QMessageBox.StandardButton.No

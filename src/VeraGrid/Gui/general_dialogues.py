@@ -1368,17 +1368,17 @@ class FileTypeSelector(CenteredDialog):
         layout.addWidget(QLabel(txt))
 
         # Method
-        self.tpe_dict = {e.value: e for e in tpes}
         self.cb_method = QComboBox()
-        self.cb_method.addItems([e.value for e in tpes])
-        layout.addWidget(QLabel("Format:"))
+        for tpe in tpes:
+            self.cb_method.addItem(self.tr(tpe.value), tpe)
+        layout.addWidget(QLabel(self.tr("Format:")))
         layout.addWidget(self.cb_method)
 
         # --- VERTICAL SPACER ---
         layout.addSpacerItem(QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding))
 
         # Accept button
-        self.btn_accept = QPushButton("Accept")
+        self.btn_accept = QPushButton(self.tr("Accept"))
         layout.addWidget(self.btn_accept)
 
         # Logic connections
@@ -1389,7 +1389,7 @@ class FileTypeSelector(CenteredDialog):
 
     def accept_clicked(self):
         """Check if values are valid and close dialog."""
-        self.file_type = self.tpe_dict[self.cb_method.currentText()]
+        self.file_type = self.cb_method.currentData()
         self.was_accepted = True
         self.close()
 
@@ -1408,17 +1408,17 @@ class CgmesOptionsSelector(CenteredDialog):
         tpes = [CGMESVersions.v2_4_15, CGMESVersions.v3_0_0]
 
         # Method
-        self.tpe_dict = {e.value: e for e in tpes}
         self.cb_method = QComboBox()
-        self.cb_method.addItems([e.value for e in tpes])
-        layout.addWidget(QLabel("CGMES Version:"))
+        for tpe in tpes:
+            self.cb_method.addItem(self.tr(tpe.value), tpe)
+        layout.addWidget(QLabel(self.tr("CGMES Version:")))
         layout.addWidget(self.cb_method)
 
         # --- VERTICAL SPACER ---
         layout.addSpacerItem(QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding))
 
         # Accept button
-        self.btn_accept = QPushButton("Accept")
+        self.btn_accept = QPushButton(self.tr("Accept"))
         layout.addWidget(self.btn_accept)
 
         # Logic connections
@@ -1429,7 +1429,7 @@ class CgmesOptionsSelector(CenteredDialog):
 
     def accept_clicked(self):
         """Check if values are valid and close dialog."""
-        self.version = self.tpe_dict[self.cb_method.currentText()]
+        self.version = self.cb_method.currentData()
         self.was_accepted = True
         self.close()
 

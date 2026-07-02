@@ -68,6 +68,7 @@ from VeraGrid.Gui.FileDialogues.PsseDialogue.psse_import import PsseImportDialog
 from VeraGrid.Gui.ProceduralGrid.procedural_grid import ProceduralGridWindow
 from VeraGrid.Gui.AiAgent.ai_chat_dialogue import AiChatDialogue, AiBackendState
 from VeraGrid.Gui.AiAgent.ai_backend import ProviderType
+from VeraGrid.Gui.i18n import ApplicationTranslator
 from VeraGridEngine.IO.file_system import get_create_veragrid_folder
 from VeraGrid.Gui.general_dialogues import LogsDialogue
 
@@ -267,6 +268,7 @@ class BaseMainGui(QMainWindow):
         self.ai_chat_dialogue: AiChatDialogue | None = None
         self.ai_backend_state: AiBackendState = self.build_default_ai_backend_state()
         self.ai_restore_visible: bool = False
+        self.translation_controller: ApplicationTranslator | None = None
 
         # available engines --------------------------------------------------------------------------------------------
         engine_lst = [EngineType.VeraGrid]
@@ -329,6 +331,36 @@ class BaseMainGui(QMainWindow):
         self.ui.toComboBox.currentTextChanged.connect(self.update_from_to_list_views)
         self.ui.engineComboBox.currentTextChanged.connect(self.refresh_ai_context_if_available)
         self.ui.available_results_to_color_comboBox.currentTextChanged.connect(self.refresh_ai_context_if_available)
+
+    def changeEvent(self, event: QtCore.QEvent) -> None:
+        """
+        Refresh the generated UI text after one Qt language change event.
+
+        Qt only emits the language-change notification. The main window must
+        re-run the generated ``retranslateUi()`` function explicitly so every
+        Designer-owned label, menu and tab title is rebuilt in the new language.
+
+        :param event: Incoming Qt change event.
+        :returns: None.
+        """
+        QtWidgets.QMainWindow.changeEvent(self, event)
+
+        if event.type() == QtCore.QEvent.Type.LanguageChange:
+            self.ui.retranslateUi(self)
+            self.refresh_runtime_translations()
+        else:
+            pass
+
+    def refresh_runtime_translations(self) -> None:
+        """
+        Refresh Python-owned strings after the generated UI has been retransated.
+
+        Subclasses override this hook for strings that are not owned by the
+        ``.ui`` files, such as dynamic window titles or runtime-built combo-box items.
+
+        :returns: None.
+        """
+        pass
 
     def LOCK(self, val: bool = True) -> None:
         """
