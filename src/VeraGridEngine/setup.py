@@ -10,31 +10,14 @@ https://github.com/pypa/sampleproject
 """
 
 # Always prefer setuptools over distutils
+from pathlib import Path
 from setuptools import setup, find_packages
-import os
 from VeraGridEngine.__version__ import __VeraGridEngine_VERSION__
 
-here = os.path.abspath(os.path.dirname(__file__))
-
-long_description = """# VeraGrid
-
-This software aims to be a complete platform for power systems research and simulation.
-
-[Watch the video https](https://youtu.be/SY66WgLGo54)
-
-[Check out the documentation](https://veragrid.readthedocs.io)
-
-
-## Installation
-
-pip install VeraGridEngine
-
-For more options (including a standalone setup one), follow the
-[installation instructions]( https://veragrid.readthedocs.io/en/latest/getting_started/install.html)
-from the project's [documentation](https://veragrid.readthedocs.io)
-"""
-
 description = 'VeraGrid is a Power Systems simulation program intended for professional use and research'
+SRC_ROOT = Path(__file__).resolve().parent
+REPO_ROOT = SRC_ROOT.parents[1]
+long_description = (REPO_ROOT / 'README.md').read_text(encoding='utf-8')
 
 pkgs_to_exclude = ['docs', 'research', 'tests', 'tutorials', 'VeraGrid']
 

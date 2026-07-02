@@ -15,28 +15,11 @@ from setuptools import setup, find_packages
 
 from VeraGrid.__version__ import __VeraGrid_VERSION__
 
-long_description = '''# VeraGrid
-
-This software aims to be a complete platform for power systems research and simulation.
-
-[Watch the video https](https://youtu.be/SY66WgLGo54)
-
-[Check out the documentation](https://veragrid.readthedocs.io)
-
-
-## Installation
-
-pip install veragrid
-
-For more options (including a standalone setup one), follow the
-[installation instructions]( https://veragrid.readthedocs.io/en/latest/getting_started/install.html)
-from the project's [documentation](https://veragrid.readthedocs.io)
-'''
-
 description = 'VeraGrid is a Power Systems simulation program intended for professional use and research'
 
 SRC_ROOT = Path(__file__).resolve().parent
-base_path = SRC_ROOT / 'VeraGrid'
+REPO_ROOT = SRC_ROOT.parents[1]
+long_description = (REPO_ROOT / 'README.md').read_text(encoding='utf-8')
 
 pkgs_to_exclude = ['docs', 'research', 'tests', 'tutorials', 'VeraGridEngine']
 
