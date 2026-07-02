@@ -159,6 +159,8 @@ class ConfigurationMain(ResultsMain):
             [
                 ApplicationLanguage.SYSTEM,
                 ApplicationLanguage.ENGLISH,
+                ApplicationLanguage.FRENCH,
+                ApplicationLanguage.PORTUGUESE,
                 ApplicationLanguage.SPANISH,
             ]
         )
@@ -176,7 +178,13 @@ class ConfigurationMain(ResultsMain):
                 if language == ApplicationLanguage.ENGLISH:
                     display_text = self.tr("English")
                 else:
-                    display_text = self.tr("Español")
+                    if language == ApplicationLanguage.FRENCH:
+                        display_text = self.tr("French")
+                    else:
+                        if language == ApplicationLanguage.PORTUGUESE:
+                            display_text = self.tr("Portuguese")
+                        else:
+                            display_text = self.tr("Español")
 
             self.language_combo_box.addItem(display_text, language)
 
