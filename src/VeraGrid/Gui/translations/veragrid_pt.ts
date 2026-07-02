@@ -606,7 +606,39 @@ li.checked::marcador { content: "\2612"; }
         <source>Catalan</source>
         <translation>Catalão</translation>
     </message>
-<message><source>Basque</source><translation>Basco</translation></message><message><source>Galician</source><translation>Galego</translation></message><message><source>Tongan</source><translation>Tonganês</translation></message><message><source>Tuvaluan</source><translation>Tuvaluano</translation></message><message><source>Arabic</source><translation>Árabe</translation></message><message><source>Italian</source><translation>Italiano</translation></message><message><source>Greek</source><translation>Grego</translation></message><message><source>Dutch</source><translation>Holandês</translation></message></context>
+    <message>
+        <source>Basque</source>
+        <translation>Basco</translation>
+    </message>
+    <message>
+        <source>Galician</source>
+        <translation>Galego</translation>
+    </message>
+    <message>
+        <source>Tongan</source>
+        <translation>Tonganês</translation>
+    </message>
+    <message>
+        <source>Tuvaluan</source>
+        <translation>Tuvaluano</translation>
+    </message>
+    <message>
+        <source>Arabic</source>
+        <translation>Árabe</translation>
+    </message>
+    <message>
+        <source>Italian</source>
+        <translation>Italiano</translation>
+    </message>
+    <message>
+        <source>Greek</source>
+        <translation>Grego</translation>
+    </message>
+    <message>
+        <source>Dutch</source>
+        <translation>Holandês</translation>
+    </message>
+<message><source>Japanese</source><translation>japonês</translation></message></context>
 <context>
     <name>ControllableShuntEditorDialog</name>
     <message>

@@ -276,91 +276,91 @@ li.checked::marker { content: "\2612"; }&lt;/style&gt;&lt;/head&gt;&lt;body styl
     <name>AiChatDialogue</name>
     <message>
         <source>VeraGrid AI dialogue</source>
-        <translation>حوار VeraGrid AI</translation>
+        <translation type="vanished">حوار VeraGrid AI</translation>
     </message>
     <message>
         <source>Pick or type a GGUF file name</source>
-        <translation>اختر أو اكتب اسم ملف GGUF</translation>
+        <translation type="vanished">اختر أو اكتب اسم ملف GGUF</translation>
     </message>
     <message>
         <source>Provider model name</source>
-        <translation>اسم نموذج الموفر</translation>
+        <translation type="vanished">اسم نموذج الموفر</translation>
     </message>
     <message>
         <source>VeraGrid AI</source>
-        <translation>VeraGrid AI</translation>
+        <translation type="vanished">VeraGrid AI</translation>
     </message>
     <message>
         <source>Scan the configured path for GGUF files.</source>
-        <translation>قم بمسح المسار الذي تم تكوينه بحثًا عن ملفات GGUF.</translation>
+        <translation type="vanished">قم بمسح المسار الذي تم تكوينه بحثًا عن ملفات GGUF.</translation>
     </message>
     <message>
         <source>API key</source>
-        <translation>مفتاح API</translation>
+        <translation type="vanished">مفتاح API</translation>
     </message>
     <message>
         <source>Leave empty for unauthenticated endpoints</source>
-        <translation>اتركه فارغًا لنقاط النهاية غير المصادقة</translation>
+        <translation type="vanished">اتركه فارغًا لنقاط النهاية غير المصادقة</translation>
     </message>
     <message>
         <source>Query the configured backend for models.</source>
-        <translation>استعلم عن الواجهة الخلفية التي تم تكوينها للنماذج.</translation>
+        <translation type="vanished">استعلم عن الواجهة الخلفية التي تم تكوينها للنماذج.</translation>
     </message>
     <message>
         <source>Type a message before sending.</source>
-        <translation>اكتب رسالة قبل إرسالها.</translation>
+        <translation type="vanished">اكتب رسالة قبل إرسالها.</translation>
     </message>
     <message>
         <source>Resolve the pending tool approval or clear the chat first.</source>
-        <translation>حل مشكلة الموافقة على الأداة المعلقة أو مسح الدردشة أولاً.</translation>
+        <translation type="vanished">حل مشكلة الموافقة على الأداة المعلقة أو مسح الدردشة أولاً.</translation>
     </message>
     <message>
         <source>Stopping AI turn...</source>
-        <translation>جارٍ إيقاف الدوران AI...</translation>
+        <translation type="vanished">جارٍ إيقاف الدوران AI...</translation>
     </message>
     <message>
         <source>There is no running AI turn to stop.</source>
-        <translation>لا يوجد دوران AI قيد التشغيل للتوقف.</translation>
+        <translation type="vanished">لا يوجد دوران AI قيد التشغيل للتوقف.</translation>
     </message>
     <message>
         <source>Running simulation and analyzing the results...</source>
-        <translation>تشغيل المحاكاة وتحليل النتائج...</translation>
+        <translation type="vanished">تشغيل المحاكاة وتحليل النتائج...</translation>
     </message>
     <message>
         <source>There is no pending tool call to approve.</source>
-        <translation>لا توجد مكالمة أداة معلقة للموافقة عليها.</translation>
+        <translation type="vanished">لا توجد مكالمة أداة معلقة للموافقة عليها.</translation>
     </message>
     <message>
         <source>Wait for the current AI turn to finish.</source>
-        <translation>انتظر حتى ينتهي دور AI الحالي.</translation>
+        <translation type="vanished">انتظر حتى ينتهي دور AI الحالي.</translation>
     </message>
     <message>
         <source>Running AI turn...</source>
-        <translation>جارٍ تشغيل AI...</translation>
+        <translation type="vanished">جارٍ تشغيل AI...</translation>
     </message>
     <message>
         <source>Generating response</source>
-        <translation>توليد الاستجابة</translation>
+        <translation type="vanished">توليد الاستجابة</translation>
     </message>
     <message>
         <source>Running AI turn</source>
-        <translation>تشغيل بدوره AI</translation>
+        <translation type="vanished">تشغيل بدوره AI</translation>
     </message>
     <message>
         <source>Stop</source>
-        <translation>قف</translation>
+        <translation type="vanished">قف</translation>
     </message>
     <message>
         <source>Send</source>
-        <translation>يرسل</translation>
+        <translation type="vanished">يرسل</translation>
     </message>
     <message>
         <source>You</source>
-        <translation>أنت</translation>
+        <translation type="vanished">أنت</translation>
     </message>
     <message>
         <source>Tool</source>
-        <translation>أداة</translation>
+        <translation type="vanished">أداة</translation>
     </message>
 </context>
 <context>
@@ -559,11 +559,11 @@ li.checked::marker { content: "\2612"; }&lt;/style&gt;&lt;/head&gt;&lt;body styl
     <name>CgmesOptionsSelector</name>
     <message>
         <source>CGMES Version:</source>
-        <translation>الإصدار CGMES:</translation>
+        <translation type="vanished">الإصدار CGMES:</translation>
     </message>
     <message>
         <source>Accept</source>
-        <translation>يقبل</translation>
+        <translation type="vanished">يقبل</translation>
     </message>
 </context>
 <context>
@@ -604,7 +604,39 @@ li.checked::marker { content: "\2612"; }&lt;/style&gt;&lt;/head&gt;&lt;body styl
         <source>Catalan</source>
         <translation>الكاتالونية</translation>
     </message>
-<message><source>Basque</source><translation>الباسك</translation></message><message><source>Galician</source><translation>الجاليكية</translation></message><message><source>Tongan</source><translation>تونجا</translation></message><message><source>Tuvaluan</source><translation>توفالو</translation></message><message><source>Arabic</source><translation>عربي</translation></message><message><source>Italian</source><translation>ايطالي</translation></message><message><source>Greek</source><translation>اليونانية</translation></message><message><source>Dutch</source><translation>هولندي</translation></message></context>
+    <message>
+        <source>Basque</source>
+        <translation>الباسك</translation>
+    </message>
+    <message>
+        <source>Galician</source>
+        <translation>الجاليكية</translation>
+    </message>
+    <message>
+        <source>Tongan</source>
+        <translation>تونجا</translation>
+    </message>
+    <message>
+        <source>Tuvaluan</source>
+        <translation>توفالو</translation>
+    </message>
+    <message>
+        <source>Arabic</source>
+        <translation>عربي</translation>
+    </message>
+    <message>
+        <source>Italian</source>
+        <translation>ايطالي</translation>
+    </message>
+    <message>
+        <source>Greek</source>
+        <translation>اليونانية</translation>
+    </message>
+    <message>
+        <source>Dutch</source>
+        <translation>هولندي</translation>
+    </message>
+<message><source>Japanese</source><translation>يابانية</translation></message></context>
 <context>
     <name>ControllableShuntEditorDialog</name>
     <message>
@@ -1208,35 +1240,35 @@ li.checked::marker { content: "\2612"; }&lt;/style&gt;&lt;/head&gt;&lt;body styl
     <name>DynamicsResultsHandler</name>
     <message>
         <source>X-Y plot slot</source>
-        <translation>فتحة مؤامرة X-Y</translation>
+        <translation type="vanished">فتحة مؤامرة X-Y</translation>
     </message>
     <message>
         <source>Choose whether to place the dropped signal on the X axis or Y axis.</source>
-        <translation>اختر ما إذا كنت تريد وضع الإشارة المسقطة على المحور X أو المحور Y.</translation>
+        <translation type="vanished">اختر ما إذا كنت تريد وضع الإشارة المسقطة على المحور X أو المحور Y.</translation>
     </message>
     <message>
         <source>X axis</source>
-        <translation>المحور X</translation>
+        <translation type="vanished">المحور X</translation>
     </message>
     <message>
         <source>Y axis</source>
-        <translation>المحور ص</translation>
+        <translation type="vanished">المحور ص</translation>
     </message>
     <message>
         <source>Cancel</source>
-        <translation>يلغي</translation>
+        <translation type="vanished">يلغي</translation>
     </message>
     <message>
         <source>This X-Y plot already has X and Y signals. Replace X, replace Y, or cancel?</source>
-        <translation>تحتوي مؤامرة X-Y هذه بالفعل على إشارات X وY. استبدال X أو استبدال Y أو الإلغاء؟</translation>
+        <translation type="vanished">تحتوي مؤامرة X-Y هذه بالفعل على إشارات X وY. استبدال X أو استبدال Y أو الإلغاء؟</translation>
     </message>
     <message>
         <source>Replace X</source>
-        <translation>استبدل X</translation>
+        <translation type="vanished">استبدل X</translation>
     </message>
     <message>
         <source>Replace Y</source>
-        <translation>استبدل ي</translation>
+        <translation type="vanished">استبدل ي</translation>
     </message>
 </context>
 <context>
@@ -1251,68 +1283,68 @@ li.checked::marker { content: "\2612"; }&lt;/style&gt;&lt;/head&gt;&lt;body styl
     <name>FileTypeSelector</name>
     <message>
         <source>Format:</source>
-        <translation>شكل:</translation>
+        <translation type="vanished">شكل:</translation>
     </message>
     <message>
         <source>Accept</source>
-        <translation>يقبل</translation>
+        <translation type="vanished">يقبل</translation>
     </message>
 </context>
 <context>
     <name>FmuTemplateEditorDialog</name>
     <message>
         <source>FMU Template Editor</source>
-        <translation>محرر قوالب FMU</translation>
+        <translation type="vanished">محرر قوالب FMU</translation>
     </message>
     <message>
         <source>Browse...</source>
-        <translation>تصفح...</translation>
+        <translation type="vanished">تصفح...</translation>
     </message>
     <message>
         <source>Choose an FMU archive to load its metadata and build the visual block.</source>
-        <translation>اختر أرشيف FMU لتحميل بيانات التعريف الخاصة به وإنشاء الكتلة المرئية.</translation>
+        <translation type="vanished">اختر أرشيف FMU لتحميل بيانات التعريف الخاصة به وإنشاء الكتلة المرئية.</translation>
     </message>
     <message>
         <source>Name</source>
-        <translation>اسم</translation>
+        <translation type="vanished">اسم</translation>
     </message>
     <message>
         <source>FMU file</source>
-        <translation>ملف FMU</translation>
+        <translation type="vanished">ملف FMU</translation>
     </message>
     <message>
         <source>Device type</source>
-        <translation>نوع الجهاز</translation>
+        <translation type="vanished">نوع الجهاز</translation>
     </message>
     <message>
         <source>Domain</source>
-        <translation>اِختِصاص</translation>
+        <translation type="vanished">اِختِصاص</translation>
     </message>
     <message>
         <source>Mode</source>
-        <translation>وضع</translation>
+        <translation type="vanished">وضع</translation>
     </message>
     <message>
         <source>Metadata</source>
-        <translation>البيانات الوصفية</translation>
+        <translation type="vanished">البيانات الوصفية</translation>
     </message>
     <message>
         <source>Select FMU file</source>
-        <translation>حدد ملف FMU</translation>
+        <translation type="vanished">حدد ملف FMU</translation>
     </message>
     <message>
         <source>FMU files (*.fmu)</source>
-        <translation>ملفات FMU (*.fmu)</translation>
+        <translation type="vanished">ملفات FMU (*.fmu)</translation>
     </message>
     <message>
         <source>FMU file not found:
 {path}</source>
-        <translation>لم يتم العثور على ملف FMU:
+        <translation type="vanished">لم يتم العثور على ملف FMU:
 {path}</translation>
     </message>
     <message>
         <source>Choose an FMU file first.</source>
-        <translation>اختر ملف FMU أولاً.</translation>
+        <translation type="vanished">اختر ملف FMU أولاً.</translation>
     </message>
 </context>
 <context>
@@ -1337,337 +1369,337 @@ li.checked::marker { content: "\2612"; }&lt;/style&gt;&lt;/head&gt;&lt;body styl
     <name>IoMain</name>
     <message>
         <source>The file type {file_extension} is not accepted :(</source>
-        <translation>نوع الملف {file_extension} غير مقبول :(</translation>
+        <translation type="vanished">نوع الملف {file_extension} غير مقبول :(</translation>
     </message>
     <message>
         <source>Message</source>
-        <translation>رسالة</translation>
+        <translation type="vanished">رسالة</translation>
     </message>
     <message>
         <source>Are you sure that you want to quit the current grid and open a new one?
  If the process is cancelled the grid will remain.</source>
-        <translation>هل أنت متأكد أنك تريد إنهاء الشبكة الحالية وفتح شبكة جديدة؟
+        <translation type="vanished">هل أنت متأكد أنك تريد إنهاء الشبكة الحالية وفتح شبكة جديدة؟
  إذا تم إلغاء العملية ستبقى الشبكة.</translation>
     </message>
     <message>
         <source>Are you sure that you want to quit the current grid and create a new one?</source>
-        <translation>هل أنت متأكد أنك تريد إنهاء الشبكة الحالية وإنشاء شبكة جديدة؟</translation>
+        <translation type="vanished">هل أنت متأكد أنك تريد إنهاء الشبكة الحالية وإنشاء شبكة جديدة؟</translation>
     </message>
     <message>
         <source>There is a file being processed now.</source>
-        <translation>هناك ملف قيد المعالجة الآن.</translation>
+        <translation type="vanished">هناك ملف قيد المعالجة الآن.</translation>
     </message>
     <message>
         <source>Formats ({files_types})</source>
-        <translation>التنسيقات ({files_types})</translation>
+        <translation type="vanished">التنسيقات ({files_types})</translation>
     </message>
     <message>
         <source>The file does not exist :( 
  {file_name}</source>
-        <translation>الملف غير موجود :( 
+        <translation type="vanished">الملف غير موجود :( 
  {file_name}</translation>
     </message>
     <message>
         <source>File opening</source>
-        <translation>فتح الملف</translation>
+        <translation type="vanished">فتح الملف</translation>
     </message>
     <message>
         <source>No grid to load :(</source>
-        <translation>لا توجد شبكة للتحميل :(</translation>
+        <translation type="vanished">لا توجد شبكة للتحميل :(</translation>
     </message>
     <message>
         <source>Current: {circuit_name}</source>
-        <translation>الحالي: {circuit_name}</translation>
+        <translation type="vanished">الحالي: {circuit_name}</translation>
     </message>
     <message>
         <source>The grid is quite big, no diagram is automatically created</source>
-        <translation>الشبكة كبيرة جدًا، ولا يتم إنشاء أي رسم تخطيطي تلقائيًا</translation>
+        <translation type="vanished">الشبكة كبيرة جدًا، ولا يتم إنشاء أي رسم تخطيطي تلقائيًا</translation>
     </message>
     <message>
         <source>Sessions</source>
-        <translation>الجلسات</translation>
+        <translation type="vanished">الجلسات</translation>
     </message>
     <message>
         <source>Show Rosetta</source>
-        <translation>عرض روزيتا</translation>
+        <translation type="vanished">عرض روزيتا</translation>
     </message>
     <message>
         <source>Do you want to open the Rosetta CGMES browser?</source>
-        <translation>هل تريد فتح متصفح Rosetta CGMES؟</translation>
+        <translation type="vanished">هل تريد فتح متصفح Rosetta CGMES؟</translation>
     </message>
     <message>
         <source>Open CGMES file logger</source>
-        <translation>افتح مسجل الملفات CGMES</translation>
+        <translation type="vanished">افتح مسجل الملفات CGMES</translation>
     </message>
     <message>
         <source>Open file logger</source>
-        <translation>فتح مسجل الملف</translation>
+        <translation type="vanished">فتح مسجل الملف</translation>
     </message>
     <message>
         <source>Error while loading the file(s)</source>
-        <translation>حدث خطأ أثناء تحميل الملف (الملفات)</translation>
+        <translation type="vanished">حدث خطأ أثناء تحميل الملف (الملفات)</translation>
     </message>
     <message>
         <source>{name} {version} requires VeraGrid {veragrid_version}</source>
-        <translation>{name} {version} يتطلب VeraGrid {veragrid_version}</translation>
+        <translation type="vanished">{name} {version} يتطلب VeraGrid {veragrid_version}</translation>
     </message>
     <message>
         <source>Plugin install</source>
-        <translation>تثبيت البرنامج المساعد</translation>
+        <translation type="vanished">تثبيت البرنامج المساعد</translation>
     </message>
     <message>
         <source>There is already a plugin: {plugin_name} {plugin_version}. The new plugin is {new_version}. Install?</source>
-        <translation>يوجد بالفعل مكون إضافي: {plugin_name} {plugin_version}. البرنامج المساعد الجديد هو {new_version}. ثَبَّتَ؟</translation>
+        <translation type="vanished">يوجد بالفعل مكون إضافي: {plugin_name} {plugin_version}. البرنامج المساعد الجديد هو {new_version}. ثَبَّتَ؟</translation>
     </message>
     <message>
         <source>{name} {version} installed!</source>
-        <translation>تم تثبيت {name} {version}!</translation>
+        <translation type="vanished">تم تثبيت {name} {version}!</translation>
     </message>
     <message>
         <source>There is no manifest :(</source>
-        <translation>لا يوجد بيان :(</translation>
+        <translation type="vanished">لا يوجد بيان :(</translation>
     </message>
     <message>
         <source>Does not seem to be a plugin :/</source>
-        <translation>لا يبدو أنه مكون إضافي :/</translation>
+        <translation type="vanished">لا يبدو أنه مكون إضافي :/</translation>
     </message>
     <message>
         <source>CSV (*.csv)</source>
-        <translation>CSV (*.csv)</translation>
+        <translation type="vanished">CSV (*.csv)</translation>
     </message>
     <message>
         <source>Open CSV file</source>
-        <translation>افتح ملف CSV</translation>
+        <translation type="vanished">افتح ملف CSV</translation>
     </message>
     <message>
         <source>Grid merge</source>
-        <translation>دمج الشبكة</translation>
+        <translation type="vanished">دمج الشبكة</translation>
     </message>
     <message>
         <source>How do you want to represent the merged grid?</source>
-        <translation>كيف تريد تمثيل الشبكة المدمجة؟</translation>
+        <translation type="vanished">كيف تريد تمثيل الشبكة المدمجة؟</translation>
     </message>
     <message>
         <source>Create new diagram</source>
-        <translation>إنشاء رسم تخطيطي جديد</translation>
+        <translation type="vanished">إنشاء رسم تخطيطي جديد</translation>
     </message>
     <message>
         <source>Add to current diagram</source>
-        <translation>أضف إلى الرسم البياني الحالي</translation>
+        <translation type="vanished">أضف إلى الرسم البياني الحالي</translation>
     </message>
     <message>
         <source>No schematic diagram was selected...</source>
-        <translation>لم يتم تحديد أي رسم تخطيطي...</translation>
+        <translation type="vanished">لم يتم تحديد أي رسم تخطيطي...</translation>
     </message>
     <message>
         <source>Save file</source>
-        <translation>احفظ الملف</translation>
+        <translation type="vanished">احفظ الملف</translation>
     </message>
     <message>
         <source>VeraGrid zip (*.veragrid)</source>
-        <translation>VeraGrid الرمز البريدي (*.veragrid)</translation>
+        <translation type="vanished">VeraGrid الرمز البريدي (*.veragrid)</translation>
     </message>
     <message>
         <source>There is a saving procedure running.
 Cancel and retry?</source>
-        <translation>هناك إجراء حفظ قيد التشغيل.
+        <translation type="vanished">هناك إجراء حفظ قيد التشغيل.
 هل ترغب في الإلغاء وإعادة المحاولة؟</translation>
     </message>
     <message>
         <source>There is a file being processed..</source>
-        <translation>هناك ملف قيد المعالجة..</translation>
+        <translation type="vanished">هناك ملف قيد المعالجة..</translation>
     </message>
     <message>
         <source>Save file logger</source>
-        <translation>حفظ مسجل الملف</translation>
+        <translation type="vanished">حفظ مسجل الملف</translation>
     </message>
     <message>
         <source>Are you sure that you want to delete the current grid and replace it?</source>
-        <translation>هل أنت متأكد أنك تريد حذف الشبكة الحالية واستبدالها؟</translation>
+        <translation type="vanished">هل أنت متأكد أنك تريد حذف الشبكة الحالية واستبدالها؟</translation>
     </message>
     <message>
         <source>Model v. {model_version}</source>
-        <translation>الموديل ضد {model_version}</translation>
+        <translation type="vanished">الموديل ضد {model_version}</translation>
     </message>
     <message>
         <source>idtag. {idtag}</source>
-        <translation>معرف. {idtag}</translation>
+        <translation type="vanished">معرف. {idtag}</translation>
     </message>
     <message>
         <source>Random grid {bus_count} buses</source>
-        <translation>شبكة عشوائية الحافلات {bus_count}</translation>
+        <translation type="vanished">شبكة عشوائية الحافلات {bus_count}</translation>
     </message>
     <message>
         <source>Grid generated randomly using the RPGM algorithm.</source>
-        <translation>تم إنشاء الشبكة بشكل عشوائي باستخدام خوارزمية RPGM.</translation>
+        <translation type="vanished">تم إنشاء الشبكة بشكل عشوائي باستخدام خوارزمية RPGM.</translation>
     </message>
     <message>
         <source>Excel file (*.xlsx)</source>
-        <translation>ملف اكسل (*.xlsx)</translation>
+        <translation type="vanished">ملف اكسل (*.xlsx)</translation>
     </message>
     <message>
         <source>profiles of </source>
-        <translation>لمحات عن</translation>
+        <translation type="vanished">لمحات عن</translation>
     </message>
     <message>
         <source>There are no profiles!</source>
-        <translation>لا توجد ملفات شخصية!</translation>
+        <translation type="vanished">لا توجد ملفات شخصية!</translation>
     </message>
     <message>
         <source>Export object profiles</source>
-        <translation>تصدير ملفات تعريف الكائنات</translation>
+        <translation type="vanished">تصدير ملفات تعريف الكائنات</translation>
     </message>
     <message>
         <source>Zip file (*.zip)</source>
-        <translation>ملف مضغوط (*.zip)</translation>
+        <translation type="vanished">ملف مضغوط (*.zip)</translation>
     </message>
     <message>
         <source>Results of </source>
-        <translation>نتائج</translation>
+        <translation type="vanished">نتائج</translation>
     </message>
     <message>
         <source>There are no results available :/</source>
-        <translation>لا يوجد نتائج :/</translation>
+        <translation type="vanished">لا يوجد نتائج :/</translation>
     </message>
     <message>
         <source>Export all</source>
-        <translation>تصدير الكل</translation>
+        <translation type="vanished">تصدير الكل</translation>
     </message>
     <message>
         <source>Done!</source>
-        <translation>منتهي!</translation>
+        <translation type="vanished">منتهي!</translation>
     </message>
     <message>
         <source>Results parsing</source>
-        <translation>تحليل النتائج</translation>
+        <translation type="vanished">تحليل النتائج</translation>
     </message>
     <message>
         <source>Loaded '{study_name}' results from disk</source>
-        <translation>تم تحميل نتائج "{study_name}" من القرص</translation>
+        <translation type="vanished">تم تحميل نتائج "{study_name}" من القرص</translation>
     </message>
     <message>
         <source>No file driver declared :/</source>
-        <translation>لم يتم الإعلان عن برنامج تشغيل الملف :/</translation>
+        <translation type="vanished">لم يتم الإعلان عن برنامج تشغيل الملف :/</translation>
     </message>
     <message>
         <source>Select a driver inside a session</source>
-        <translation>حدد برنامج تشغيل داخل الجلسة</translation>
+        <translation type="vanished">حدد برنامج تشغيل داخل الجلسة</translation>
     </message>
     <message>
         <source>Driver load from disk</source>
-        <translation>تحميل برنامج التشغيل من القرص</translation>
+        <translation type="vanished">تحميل برنامج التشغيل من القرص</translation>
     </message>
     <message>
         <source>Load results from disk</source>
-        <translation>تحميل النتائج من القرص</translation>
+        <translation type="vanished">تحميل النتائج من القرص</translation>
     </message>
     <message>
         <source>Formats (*.json)</source>
-        <translation>التنسيقات (*.json)</translation>
+        <translation type="vanished">التنسيقات (*.json)</translation>
     </message>
     <message>
         <source>Open file</source>
-        <translation>افتح الملف</translation>
+        <translation type="vanished">افتح الملف</translation>
     </message>
     <message>
         <source>Contingencies import</source>
-        <translation>استيراد الطوارئ</translation>
+        <translation type="vanished">استيراد الطوارئ</translation>
     </message>
     <message>
         <source>JSON file (*.json)</source>
-        <translation>ملف JSON (*.json)</translation>
+        <translation type="vanished">ملف JSON (*.json)</translation>
     </message>
     <message>
         <source>Catalogue added!</source>
-        <translation>تمت إضافة الكتالوج!</translation>
+        <translation type="vanished">تمت إضافة الكتالوج!</translation>
     </message>
     <message>
         <source>Load catalogue</source>
-        <translation>تحميل الكتالوج</translation>
+        <translation type="vanished">تحميل الكتالوج</translation>
     </message>
     <message>
         <source>Open catalogue logger</source>
-        <translation>فتح مسجل الكتالوج</translation>
+        <translation type="vanished">فتح مسجل الكتالوج</translation>
     </message>
     <message>
         <source>Catalogue loaded!</source>
-        <translation>تم تحميل الكتالوج!</translation>
+        <translation type="vanished">تم تحميل الكتالوج!</translation>
     </message>
     <message>
         <source>Catalogue file (*.xlsx)</source>
-        <translation>ملف الكتالوج (*.xlsx)</translation>
+        <translation type="vanished">ملف الكتالوج (*.xlsx)</translation>
     </message>
     <message>
         <source>Catalogue Excel file (*.xlsx)</source>
-        <translation>ملف Excel للكتالوج (*.xlsx)</translation>
+        <translation type="vanished">ملف Excel للكتالوج (*.xlsx)</translation>
     </message>
     <message>
         <source>Save catalogue</source>
-        <translation>حفظ الكتالوج</translation>
+        <translation type="vanished">حفظ الكتالوج</translation>
     </message>
     <message>
         <source>Catalogue saved!</source>
-        <translation>تم حفظ الكتالوج!</translation>
+        <translation type="vanished">تم حفظ الكتالوج!</translation>
     </message>
     <message>
         <source>CIM (*.xml)</source>
-        <translation>CIM (*.xml)</translation>
+        <translation type="vanished">CIM (*.xml)</translation>
     </message>
     <message>
         <source>Export to CIM</source>
-        <translation>تصدير إلى CIM</translation>
+        <translation type="vanished">تصدير إلى CIM</translation>
     </message>
     <message>
         <source>Power Grid Models (*.pgm)</source>
-        <translation>نماذج شبكات الطاقة (*.pgm)</translation>
+        <translation type="vanished">نماذج شبكات الطاقة (*.pgm)</translation>
     </message>
     <message>
         <source>Export to Power Grid Models</source>
-        <translation>التصدير إلى نماذج شبكة الطاقة</translation>
+        <translation type="vanished">التصدير إلى نماذج شبكة الطاقة</translation>
     </message>
     <message>
         <source>Power Grid Models not installed :/</source>
-        <translation>نماذج شبكة الطاقة غير مثبتة :/</translation>
+        <translation type="vanished">نماذج شبكة الطاقة غير مثبتة :/</translation>
     </message>
     <message>
         <source>Electrical Json V3 (*.ejson3)</source>
-        <translation>الكهربائية Json V3 (*.ejson3)</translation>
+        <translation type="vanished">الكهربائية Json V3 (*.ejson3)</translation>
     </message>
     <message>
         <source>Export to JSON</source>
-        <translation>تصدير إلى JSON</translation>
+        <translation type="vanished">تصدير إلى JSON</translation>
     </message>
     <message>
         <source>VeraGrid HDF5 (*.gch5)</source>
-        <translation>VeraGrid HDF5 (*.gch5)</translation>
+        <translation type="vanished">VeraGrid HDF5 (*.gch5)</translation>
     </message>
     <message>
         <source>Export to VeraGrid HDF5</source>
-        <translation>تصدير إلى VeraGrid HDF5</translation>
+        <translation type="vanished">تصدير إلى VeraGrid HDF5</translation>
     </message>
     <message>
         <source>Excel (*.xlsx)</source>
-        <translation>اكسل (*.xlsx)</translation>
+        <translation type="vanished">اكسل (*.xlsx)</translation>
     </message>
     <message>
         <source>Export to Microsoft Excel</source>
-        <translation>تصدير إلى مايكروسوفت إكسل</translation>
+        <translation type="vanished">تصدير إلى مايكروسوفت إكسل</translation>
     </message>
     <message>
         <source>Sqlite (*.sqlite)</source>
-        <translation>سكليتي (*.sqlite)</translation>
+        <translation type="vanished">سكليتي (*.sqlite)</translation>
     </message>
     <message>
         <source>Export to Sqlite</source>
-        <translation>تصدير إلى Sqlite</translation>
+        <translation type="vanished">تصدير إلى Sqlite</translation>
     </message>
     <message>
         <source>VeraGrid (*.veragrid)</source>
-        <translation>VeraGrid (*.veragrid)</translation>
+        <translation type="vanished">VeraGrid (*.veragrid)</translation>
     </message>
     <message>
         <source>Export VeraGrid scenario</source>
-        <translation>تصدير سيناريو VeraGrid</translation>
+        <translation type="vanished">تصدير سيناريو VeraGrid</translation>
     </message>
 </context>
 <context>
@@ -2511,149 +2543,149 @@ Cancel and retry?</source>
     <name>ResultsMain</name>
     <message>
         <source>Delete driver</source>
-        <translation>حذف السائق</translation>
+        <translation type="vanished">حذف السائق</translation>
     </message>
     <message>
         <source>Rename group</source>
-        <translation>إعادة تسمية المجموعة</translation>
+        <translation type="vanished">إعادة تسمية المجموعة</translation>
     </message>
     <message>
         <source>Rename variable</source>
-        <translation>إعادة تسمية المتغير</translation>
+        <translation type="vanished">إعادة تسمية المتغير</translation>
     </message>
     <message>
         <source>Rename dynamic plot</source>
-        <translation>إعادة تسمية المؤامرة الديناميكية</translation>
+        <translation type="vanished">إعادة تسمية المؤامرة الديناميكية</translation>
     </message>
     <message>
         <source>Plot name</source>
-        <translation>اسم المؤامرة</translation>
+        <translation type="vanished">اسم المؤامرة</translation>
     </message>
     <message>
         <source>The plot group name is empty or already exists.</source>
-        <translation>اسم مجموعة الرسم فارغ أو موجود بالفعل.</translation>
+        <translation type="vanished">اسم مجموعة الرسم فارغ أو موجود بالفعل.</translation>
     </message>
     <message>
         <source>Select a plot group first.</source>
-        <translation>حدد مجموعة مؤامرة أولاً.</translation>
+        <translation type="vanished">حدد مجموعة مؤامرة أولاً.</translation>
     </message>
     <message>
         <source>There are no RMS dynamics results loaded.</source>
-        <translation>لم يتم تحميل نتائج ديناميكيات RMS.</translation>
+        <translation type="vanished">لم يتم تحميل نتائج ديناميكيات RMS.</translation>
     </message>
     <message>
         <source>Rename dynamic variable</source>
-        <translation>إعادة تسمية المتغير الديناميكي</translation>
+        <translation type="vanished">إعادة تسمية المتغير الديناميكي</translation>
     </message>
     <message>
         <source>Variable name</source>
-        <translation>اسم متغير</translation>
+        <translation type="vanished">اسم متغير</translation>
     </message>
     <message>
         <source>The variable name is empty or could not be changed.</source>
-        <translation>اسم المتغير فارغ أو لا يمكن تغييره.</translation>
+        <translation type="vanished">اسم المتغير فارغ أو لا يمكن تغييره.</translation>
     </message>
     <message>
         <source>New dynamic plot</source>
-        <translation>مؤامرة ديناميكية جديدة</translation>
+        <translation type="vanished">مؤامرة ديناميكية جديدة</translation>
     </message>
     <message>
         <source>Plot mode</source>
-        <translation>وضع المؤامرة</translation>
+        <translation type="vanished">وضع المؤامرة</translation>
     </message>
     <message>
         <source>Time Series (Y vs Time)</source>
-        <translation>السلسلة الزمنية (Y مقابل الوقت)</translation>
+        <translation type="vanished">السلسلة الزمنية (Y مقابل الوقت)</translation>
     </message>
     <message>
         <source>X-Y Plot (Y vs X)</source>
-        <translation>مؤامرة X-Y (Y مقابل X)</translation>
+        <translation type="vanished">مؤامرة X-Y (Y مقابل X)</translation>
     </message>
     <message>
         <source>The selected dynamic plot entry could not be deleted.</source>
-        <translation>لا يمكن حذف إدخال الرسم الديناميكي المحدد.</translation>
+        <translation type="vanished">لا يمكن حذف إدخال الرسم الديناميكي المحدد.</translation>
     </message>
     <message>
         <source>Select a plot group or variable first.</source>
-        <translation>حدد مجموعة مؤامرة أو متغير أولاً.</translation>
+        <translation type="vanished">حدد مجموعة مؤامرة أو متغير أولاً.</translation>
     </message>
     <message>
         <source>The selected dynamic plot entry could not be plotted.</source>
-        <translation>لا يمكن رسم إدخال الرسم الديناميكي المحدد.</translation>
+        <translation type="vanished">لا يمكن رسم إدخال الرسم الديناميكي المحدد.</translation>
     </message>
     <message>
         <source>There are {columns} columns, the plot might take a lot to render.
 Are you ok with potentially waiting a lot?</source>
-        <translation>توجد أعمدة {columns}، وقد يستغرق عرض المخطط الكثير.
+        <translation type="vanished">توجد أعمدة {columns}، وقد يستغرق عرض المخطط الكثير.
 هل أنت بخير مع احتمال الانتظار كثيرًا؟</translation>
     </message>
     <message>
         <source>Plot</source>
-        <translation>حبكة</translation>
+        <translation type="vanished">حبكة</translation>
     </message>
     <message>
         <source>Export results</source>
-        <translation>تصدير النتائج</translation>
+        <translation type="vanished">تصدير النتائج</translation>
     </message>
     <message>
         <source>CSV (*.csv);;Excel files (*.xlsx)</source>
-        <translation>CSV (*.csv)؛؛ملفات Excel (*.xlsx)</translation>
+        <translation type="vanished">CSV (*.csv)؛؛ملفات Excel (*.xlsx)</translation>
     </message>
     <message>
         <source> is not valid :(</source>
-        <translation>غير صالح :(</translation>
+        <translation type="vanished">غير صالح :(</translation>
     </message>
     <message>
         <source>There is no profile displayed, please display one</source>
-        <translation>لا يوجد ملف تعريف معروض، يرجى عرض واحد</translation>
+        <translation type="vanished">لا يوجد ملف تعريف معروض، يرجى عرض واحد</translation>
     </message>
     <message>
         <source>Copy profile to clipboard</source>
-        <translation>نسخ الملف الشخصي إلى الحافظة</translation>
+        <translation type="vanished">نسخ الملف الشخصي إلى الحافظة</translation>
     </message>
     <message>
         <source>Copied!</source>
-        <translation>منسوخ!</translation>
+        <translation type="vanished">منسوخ!</translation>
     </message>
     <message>
         <source>Filter parse</source>
-        <translation>تحليل التصفية</translation>
+        <translation type="vanished">تحليل التصفية</translation>
     </message>
     <message>
         <source>Do you want to delete the results driver {study_name}?</source>
-        <translation>هل تريد حذف برنامج تشغيل النتائج {study_name}؟</translation>
+        <translation type="vanished">هل تريد حذف برنامج تشغيل النتائج {study_name}؟</translation>
     </message>
     <message>
         <source>Message</source>
-        <translation>رسالة</translation>
+        <translation type="vanished">رسالة</translation>
     </message>
     <message>
         <source>Are you sure that you want to overwrite the generation, batteries and load snapshot values with the OPF results?</source>
-        <translation>هل أنت متأكد من أنك تريد استبدال قيم التوليد والبطاريات ولقطة التحميل بنتائج OPF؟</translation>
+        <translation type="vanished">هل أنت متأكد من أنك تريد استبدال قيم التوليد والبطاريات ولقطة التحميل بنتائج OPF؟</translation>
     </message>
     <message>
         <source>Overwrite profiles with OPF results</source>
-        <translation>استبدال الملفات الشخصية بنتائج OPF</translation>
+        <translation type="vanished">استبدال الملفات الشخصية بنتائج OPF</translation>
     </message>
     <message>
         <source>P snapshot set from the OPF results</source>
-        <translation>تم تعيين لقطة P من نتائج OPF</translation>
+        <translation type="vanished">تم تعيين لقطة P من نتائج OPF</translation>
     </message>
     <message>
         <source>The OPF time series has no results :(</source>
-        <translation>السلسلة الزمنية OPF ليس لها نتائج :(</translation>
+        <translation type="vanished">السلسلة الزمنية OPF ليس لها نتائج :(</translation>
     </message>
     <message>
         <source>Are you sure that you want to overwrite the generation, batteries and load profiles with the OPF time series results?</source>
-        <translation>هل أنت متأكد أنك تريد استبدال ملفات تعريف التوليد والبطاريات والتحميل بنتائج السلسلة الزمنية OPF؟</translation>
+        <translation type="vanished">هل أنت متأكد أنك تريد استبدال ملفات تعريف التوليد والبطاريات والتحميل بنتائج السلسلة الزمنية OPF؟</translation>
     </message>
     <message>
         <source>P profiles set from the OPF results</source>
-        <translation>تم تعيين ملفات التعريف P من نتائج OPF</translation>
+        <translation type="vanished">تم تعيين ملفات التعريف P من نتائج OPF</translation>
     </message>
     <message>
         <source>Export logs</source>
-        <translation>سجلات التصدير</translation>
+        <translation type="vanished">سجلات التصدير</translation>
     </message>
 </context>
 <context>
@@ -2720,503 +2752,503 @@ Are you ok with potentially waiting a lot?</source>
     <message>
         <source>VeraGrid internal commands.
 </source>
-        <translation>VeraGrid الأوامر الداخلية.</translation>
+        <translation type="vanished">VeraGrid الأوامر الداخلية.</translation>
     </message>
     <message>
         <source>If a command is unavailable is because the study has not been executed yet.</source>
-        <translation>إذا كان الأمر غير متاح، فذلك لأن الدراسة لم يتم تنفيذها بعد.</translation>
+        <translation type="vanished">إذا كان الأمر غير متاح، فذلك لأن الدراسة لم يتم تنفيذها بعد.</translation>
     </message>
     <message>
         <source>
 
 clc():	clear the console.</source>
-        <translation>clc(): امسح وحدة التحكم.</translation>
+        <translation type="vanished">clc(): امسح وحدة التحكم.</translation>
     </message>
     <message>
         <source>
 
 App functions:</source>
-        <translation>وظائف التطبيق:</translation>
+        <translation type="vanished">وظائف التطبيق:</translation>
     </message>
     <message>
         <source>	app.new_project(): Clear all.</source>
-        <translation>app.new_project(): مسح الكل.</translation>
+        <translation type="vanished">app.new_project(): مسح الكل.</translation>
     </message>
     <message>
         <source>	app.open_file(): Prompt to load VeraGrid compatible file</source>
-        <translation>app.open_file(): المطالبة بتحميل ملف متوافق مع VeraGrid</translation>
+        <translation type="vanished">app.open_file(): المطالبة بتحميل ملف متوافق مع VeraGrid</translation>
     </message>
     <message>
         <source>	app.save_file(): Prompt to save VeraGrid file</source>
-        <translation>app.save_file(): المطالبة بحفظ ملف VeraGrid</translation>
+        <translation type="vanished">app.save_file(): المطالبة بحفظ ملف VeraGrid</translation>
     </message>
     <message>
         <source>	app.export_diagram(): Prompt to export the diagram in png.</source>
-        <translation>app.export_diagram(): المطالبة بتصدير الرسم التخطيطي بتنسيق png.</translation>
+        <translation type="vanished">app.export_diagram(): المطالبة بتصدير الرسم التخطيطي بتنسيق png.</translation>
     </message>
     <message>
         <source>	app.create_schematic_from_api(): Create the schematic from the circuit information.</source>
-        <translation>app.create_schematic_from_api(): قم بإنشاء المخطط من معلومات الدائرة.</translation>
+        <translation type="vanished">app.create_schematic_from_api(): قم بإنشاء المخطط من معلومات الدائرة.</translation>
     </message>
     <message>
         <source>	app.adjust_all_node_width(): Adjust the width of all the nodes according to their name.</source>
-        <translation>app.adjust_all_node_width(): اضبط عرض جميع العقد وفقًا لأسمائها.</translation>
+        <translation type="vanished">app.adjust_all_node_width(): اضبط عرض جميع العقد وفقًا لأسمائها.</translation>
     </message>
     <message>
         <source>	app.numerical_circuit: get compilation of the assets.</source>
-        <translation>app.numerical_circuit: احصل على تجميع للأصول.</translation>
+        <translation type="vanished">app.numerical_circuit: احصل على تجميع للأصول.</translation>
     </message>
     <message>
         <source>	app.islands: get compilation of the assets split into the topological islands.</source>
-        <translation>app.islands: احصل على تجميع للأصول المقسمة إلى جزر طوبولوجية.</translation>
+        <translation type="vanished">app.islands: احصل على تجميع للأصول المقسمة إلى جزر طوبولوجية.</translation>
     </message>
     <message>
         <source>
 
 Circuit functions:</source>
-        <translation>وظائف الدائرة:</translation>
+        <translation type="vanished">وظائف الدائرة:</translation>
     </message>
     <message>
         <source>	app.circuit.plot_graph(): Plot a graph in a Matplotlib window. Call plt.show() after.</source>
-        <translation>app.circuit.plot_graph(): رسم رسم بياني في نافذة Matplotlib. اتصل بـ plt.show() بعد ذلك.</translation>
+        <translation type="vanished">app.circuit.plot_graph(): رسم رسم بياني في نافذة Matplotlib. اتصل بـ plt.show() بعد ذلك.</translation>
     </message>
     <message>
         <source>
 
 Power flow results:</source>
-        <translation>نتائج تدفق الطاقة:</translation>
+        <translation type="vanished">نتائج تدفق الطاقة:</translation>
     </message>
     <message>
         <source>	app.session.power_flow.voltage:	 the nodal voltages in per unit</source>
-        <translation>app.session.power_flow.voltage: الفولتية العقدية لكل وحدة</translation>
+        <translation type="vanished">app.session.power_flow.voltage: الفولتية العقدية لكل وحدة</translation>
     </message>
     <message>
         <source>	app.session.power_flow.current:	 the branch currents in per unit</source>
-        <translation>app.session.power_flow.current: التيارات الفرعية لكل وحدة</translation>
+        <translation type="vanished">app.session.power_flow.current: التيارات الفرعية لكل وحدة</translation>
     </message>
     <message>
         <source>	app.session.power_flow.loading:	 the branch loading in %</source>
-        <translation>app.session.power_flow.loading: تحميل الفرع بنسبة %</translation>
+        <translation type="vanished">app.session.power_flow.loading: تحميل الفرع بنسبة %</translation>
     </message>
     <message>
         <source>	app.session.power_flow.losses:	 the branch losses in per unit</source>
-        <translation>app.session.power_flow.losses: خسائر الفرع لكل وحدة</translation>
+        <translation type="vanished">app.session.power_flow.losses: خسائر الفرع لكل وحدة</translation>
     </message>
     <message>
         <source>	app.session.power_flow.power:	 the nodal power Injections in per unit</source>
-        <translation>app.session.power_flow.power: حقن الطاقة العقدية لكل وحدة</translation>
+        <translation type="vanished">app.session.power_flow.power: حقن الطاقة العقدية لكل وحدة</translation>
     </message>
     <message>
         <source>	app.session.power_flow.Sf:	 the branch power Injections in per unit at the "from" side</source>
-        <translation>app.session.power_flow.Sf: حقن الطاقة الفرعية لكل وحدة على الجانب "من".</translation>
+        <translation type="vanished">app.session.power_flow.Sf: حقن الطاقة الفرعية لكل وحدة على الجانب "من".</translation>
     </message>
     <message>
         <source>	app.session.power_flow.St:	 the branch power Injections in per unit at the "to" side</source>
-        <translation>app.session.power_flow.St: حقن الطاقة الفرعية لكل وحدة على الجانب "إلى".</translation>
+        <translation type="vanished">app.session.power_flow.St: حقن الطاقة الفرعية لكل وحدة على الجانب "إلى".</translation>
     </message>
     <message>
         <source>
 
 Short circuit results:</source>
-        <translation>نتائج الدائرة القصيرة:</translation>
+        <translation type="vanished">نتائج الدائرة القصيرة:</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.voltage:	 the nodal voltages in per unit</source>
-        <translation>app.session.short_circuit.voltage: الفولتية العقدية لكل وحدة</translation>
+        <translation type="vanished">app.session.short_circuit.voltage: الفولتية العقدية لكل وحدة</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.current:	 the branch currents in per unit</source>
-        <translation>app.session.short_circuit.current: التيارات الفرعية لكل وحدة</translation>
+        <translation type="vanished">app.session.short_circuit.current: التيارات الفرعية لكل وحدة</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.loading:	 the branch loading in %</source>
-        <translation>app.session.short_circuit.loading: تحميل الفرع بنسبة %</translation>
+        <translation type="vanished">app.session.short_circuit.loading: تحميل الفرع بنسبة %</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.losses:	 the branch losses in per unit</source>
-        <translation>app.session.short_circuit.losses: خسائر الفرع لكل وحدة</translation>
+        <translation type="vanished">app.session.short_circuit.losses: خسائر الفرع لكل وحدة</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.power:	 the nodal power Injections in per unit</source>
-        <translation>app.session.short_circuit.power: حقن الطاقة العقدية لكل وحدة</translation>
+        <translation type="vanished">app.session.short_circuit.power: حقن الطاقة العقدية لكل وحدة</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.power_from:	 the branch power Injections in per unit at the "from" side</source>
-        <translation>app.session.short_circuit.power_from: حقن طاقة الفرع لكل وحدة على الجانب "من"</translation>
+        <translation type="vanished">app.session.short_circuit.power_from: حقن طاقة الفرع لكل وحدة على الجانب "من"</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.power_to:	 the branch power Injections in per unit at the "to" side</source>
-        <translation>app.session.short_circuit.power_to: حقن طاقة الفرع لكل وحدة على الجانب "إلى"</translation>
+        <translation type="vanished">app.session.short_circuit.power_to: حقن طاقة الفرع لكل وحدة على الجانب "إلى"</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.short_circuit_power:	 Short circuit power in MVA of the grid nodes</source>
-        <translation>app.session.short_circuit.short_circuit_power: طاقة الدائرة القصيرة في MVA لعقد الشبكة</translation>
+        <translation type="vanished">app.session.short_circuit.short_circuit_power: طاقة الدائرة القصيرة في MVA لعقد الشبكة</translation>
     </message>
     <message>
         <source>
 
 Optimal power flow results:</source>
-        <translation>نتائج تدفق الطاقة الأمثل:</translation>
+        <translation type="vanished">نتائج تدفق الطاقة الأمثل:</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.voltage:	 the nodal voltages angles in rad</source>
-        <translation>app.session.optimal_power_flow.voltage: زوايا الفولتية العقدية بالراد</translation>
+        <translation type="vanished">app.session.optimal_power_flow.voltage: زوايا الفولتية العقدية بالراد</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.load_shedding:	 the branch loading in %</source>
-        <translation>app.session.optimal_power_flow.load_shedding: تحميل الفرع بنسبة %</translation>
+        <translation type="vanished">app.session.optimal_power_flow.load_shedding: تحميل الفرع بنسبة %</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.losses:	 the branch losses in per unit</source>
-        <translation>app.session.optimal_power_flow.losses: خسائر الفرع لكل وحدة</translation>
+        <translation type="vanished">app.session.optimal_power_flow.losses: خسائر الفرع لكل وحدة</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.Sbus:	 the nodal power Injections in MW</source>
-        <translation>app.session.optimal_power_flow.Sbus: حقن الطاقة العقدية في MW</translation>
+        <translation type="vanished">app.session.optimal_power_flow.Sbus: حقن الطاقة العقدية في MW</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.Sf:	 the branch power Sf</source>
-        <translation>app.session.optimal_power_flow.Sf: قوة الفرع Sf</translation>
+        <translation type="vanished">app.session.optimal_power_flow.Sf: قوة الفرع Sf</translation>
     </message>
     <message>
         <source>
 
 Time series power flow results:</source>
-        <translation>نتائج تدفق الطاقة للسلسلة الزمنية:</translation>
+        <translation type="vanished">نتائج تدفق الطاقة للسلسلة الزمنية:</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.time:	 Profiles time index (pandas DateTimeIndex object)</source>
-        <translation>app.session.power_flow_ts.time: فهرس وقت الملفات الشخصية (كائن الباندا DateTimeIndex)</translation>
+        <translation type="vanished">app.session.power_flow_ts.time: فهرس وقت الملفات الشخصية (كائن الباندا DateTimeIndex)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.load_profiles:	 Load profiles matrix (row: time, col: node)</source>
-        <translation>app.session.power_flow_ts.load_profiles: تحميل مصفوفة ملفات التعريف (الصف: الوقت، العمود: العقدة)</translation>
+        <translation type="vanished">app.session.power_flow_ts.load_profiles: تحميل مصفوفة ملفات التعريف (الصف: الوقت، العمود: العقدة)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.gen_profiles:	 Generation profiles matrix (row: time, col: node)</source>
-        <translation>app.session.power_flow_ts.gen_profiles: مصفوفة ملفات تعريف الجيل (الصف: الوقت، العمود: العقدة)</translation>
+        <translation type="vanished">app.session.power_flow_ts.gen_profiles: مصفوفة ملفات تعريف الجيل (الصف: الوقت، العمود: العقدة)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.voltages:	 nodal voltages results matrix (row: time, col: node)</source>
-        <translation>app.session.power_flow_ts.voltages: مصفوفة نتائج الفولتية العقدية (الصف: الوقت، العمود: العقدة)</translation>
+        <translation type="vanished">app.session.power_flow_ts.voltages: مصفوفة نتائج الفولتية العقدية (الصف: الوقت، العمود: العقدة)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.currents:	 Branches currents results matrix (row: time, col: branch)</source>
-        <translation>app.session.power_flow_ts.currents: مصفوفة نتائج تيارات الفروع (الصف: الوقت، العمود: الفرع)</translation>
+        <translation type="vanished">app.session.power_flow_ts.currents: مصفوفة نتائج تيارات الفروع (الصف: الوقت، العمود: الفرع)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.loadings:	 Branches loadings results matrix (row: time, col: branch)</source>
-        <translation>app.session.power_flow_ts.loadings: مصفوفة نتائج تحميلات الفروع (الصف: الوقت، العمود: الفرع)</translation>
+        <translation type="vanished">app.session.power_flow_ts.loadings: مصفوفة نتائج تحميلات الفروع (الصف: الوقت، العمود: الفرع)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.losses:	 Branches losses results matrix (row: time, col: branch)</source>
-        <translation>app.session.power_flow_ts.losses: مصفوفة نتائج خسائر الفروع (الصف: الوقت، العمود: الفرع)</translation>
+        <translation type="vanished">app.session.power_flow_ts.losses: مصفوفة نتائج خسائر الفروع (الصف: الوقت، العمود: الفرع)</translation>
     </message>
     <message>
         <source>
 
 Voltage stability power flow results:</source>
-        <translation>نتائج تدفق الطاقة استقرار الجهد:</translation>
+        <translation type="vanished">نتائج تدفق الطاقة استقرار الجهد:</translation>
     </message>
     <message>
         <source>	app.session.continuation_power_flow.voltage:	 Voltage values for every power multiplication factor.</source>
-        <translation>app.session.continuation_power_flow.voltage: قيم الجهد لكل عامل مضاعفة للطاقة.</translation>
+        <translation type="vanished">app.session.continuation_power_flow.voltage: قيم الجهد لكل عامل مضاعفة للطاقة.</translation>
     </message>
     <message>
         <source>	app.session.continuation_power_flow.lambda:	 Value of power multiplication factor applied</source>
-        <translation>app.session.continuation_power_flow.lambda: تم تطبيق قيمة عامل مضاعفة القدرة</translation>
+        <translation type="vanished">app.session.continuation_power_flow.lambda: تم تطبيق قيمة عامل مضاعفة القدرة</translation>
     </message>
     <message>
         <source>	app.session.continuation_power_flow.Sf:	 Power values for every power multiplication factor.</source>
-        <translation>app.session.continuation_power_flow.Sf: قيم الطاقة لكل عامل مضاعفة للطاقة.</translation>
+        <translation type="vanished">app.session.continuation_power_flow.Sf: قيم الطاقة لكل عامل مضاعفة للطاقة.</translation>
     </message>
     <message>
         <source>
 
 Monte Carlo power flow results:</source>
-        <translation>نتائج تدفق الطاقة مونت كارلو:</translation>
+        <translation type="vanished">نتائج تدفق الطاقة مونت كارلو:</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.V_avg:	 nodal voltage average result.</source>
-        <translation>app.session.stochastic_power_flow.V_avg: نتيجة متوسط ​​الجهد العقدي.</translation>
+        <translation type="vanished">app.session.stochastic_power_flow.V_avg: نتيجة متوسط ​​الجهد العقدي.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.I_avg:	 branch current average result.</source>
-        <translation>app.session.stochastic_power_flow.I_avg: متوسط ​​نتيجة الفرع الحالي.</translation>
+        <translation type="vanished">app.session.stochastic_power_flow.I_avg: متوسط ​​نتيجة الفرع الحالي.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.Loading_avg:	 branch loading average result.</source>
-        <translation>app.session.stochastic_power_flow.Loading_avg: متوسط ​​نتيجة تحميل الفرع.</translation>
+        <translation type="vanished">app.session.stochastic_power_flow.Loading_avg: متوسط ​​نتيجة تحميل الفرع.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.Losses_avg:	 branch losses average result.</source>
-        <translation>app.session.stochastic_power_flow.Losses_avg: نتيجة متوسط ​​خسائر الفروع.</translation>
+        <translation type="vanished">app.session.stochastic_power_flow.Losses_avg: نتيجة متوسط ​​خسائر الفروع.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.V_std:	 nodal voltage standard deviation result.</source>
-        <translation>app.session.stochastic_power_flow.V_std: نتيجة الانحراف المعياري للجهد العقدي.</translation>
+        <translation type="vanished">app.session.stochastic_power_flow.V_std: نتيجة الانحراف المعياري للجهد العقدي.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.I_std:	 branch current standard deviation result.</source>
-        <translation>app.session.stochastic_power_flow.I_std: نتيجة الانحراف المعياري الحالي للفرع.</translation>
+        <translation type="vanished">app.session.stochastic_power_flow.I_std: نتيجة الانحراف المعياري الحالي للفرع.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.Loading_std:	 branch loading standard deviation result.</source>
-        <translation>app.session.stochastic_power_flow.Loading_std: نتيجة الانحراف المعياري لتحميل الفرع.</translation>
+        <translation type="vanished">app.session.stochastic_power_flow.Loading_std: نتيجة الانحراف المعياري لتحميل الفرع.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.Losses_std:	 branch losses standard deviation result.</source>
-        <translation>app.session.stochastic_power_flow.Losses_std: نتيجة الانحراف المعياري لخسائر الفروع.</translation>
+        <translation type="vanished">app.session.stochastic_power_flow.Losses_std: نتيجة الانحراف المعياري لخسائر الفروع.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.V_avg_series:	 nodal voltage average series.</source>
-        <translation>app.session.stochastic_power_flow.V_avg_series: سلسلة متوسط ​​الجهد العقدي.</translation>
+        <translation type="vanished">app.session.stochastic_power_flow.V_avg_series: سلسلة متوسط ​​الجهد العقدي.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.V_std_series:	 branch current standard deviation series.</source>
-        <translation>app.session.stochastic_power_flow.V_std_series: سلسلة الانحراف المعياري الحالية الفرعية.</translation>
+        <translation type="vanished">app.session.stochastic_power_flow.V_std_series: سلسلة الانحراف المعياري الحالية الفرعية.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.error_series:	 Monte Carlo error series (the convergence value).</source>
-        <translation>app.session.stochastic_power_flow.error_series: سلسلة أخطاء مونت كارلو (قيمة التقارب).</translation>
+        <translation type="vanished">app.session.stochastic_power_flow.error_series: سلسلة أخطاء مونت كارلو (قيمة التقارب).</translation>
     </message>
     <message>
         <source>The same for app.latin_hypercube_sampling</source>
-        <translation>نفس الشيء بالنسبة لـ app.latin_hypercube_sampling</translation>
+        <translation type="vanished">نفس الشيء بالنسبة لـ app.latin_hypercube_sampling</translation>
     </message>
     <message>
         <source> does not exist :/</source>
-        <translation>غير موجود :/</translation>
+        <translation type="vanished">غير موجود :/</translation>
     </message>
     <message>
         <source>Open script</source>
-        <translation>افتح البرنامج النصي</translation>
+        <translation type="vanished">افتح البرنامج النصي</translation>
     </message>
     <message>
         <source>Are you sure you want to clear source code?</source>
-        <translation>هل أنت متأكد أنك تريد مسح كود المصدر؟</translation>
+        <translation type="vanished">هل أنت متأكد أنك تريد مسح كود المصدر؟</translation>
     </message>
     <message>
         <source>Clear source code</source>
-        <translation>مسح كود المصدر</translation>
+        <translation type="vanished">مسح كود المصدر</translation>
     </message>
     <message>
         <source>Please enter a name for the script</source>
-        <translation>الرجاء إدخال اسم للبرنامج النصي</translation>
+        <translation type="vanished">الرجاء إدخال اسم للبرنامج النصي</translation>
     </message>
     <message>
         <source>Save script</source>
-        <translation>حفظ البرنامج النصي</translation>
+        <translation type="vanished">حفظ البرنامج النصي</translation>
     </message>
     <message>
         <source>Do you want to delete {path}?</source>
-        <translation>هل تريد حذف {path}؟</translation>
+        <translation type="vanished">هل تريد حذف {path}؟</translation>
     </message>
     <message>
         <source>Delete source code file</source>
-        <translation>حذف ملف التعليمات البرمجية المصدر</translation>
+        <translation type="vanished">حذف ملف التعليمات البرمجية المصدر</translation>
     </message>
     <message>
         <source>Delete</source>
-        <translation>يمسح</translation>
+        <translation type="vanished">يمسح</translation>
     </message>
 </context>
 <context>
     <name>ServerMain</name>
     <message>
         <source>Server config file was erroneous, wrote a new one</source>
-        <translation>كان ملف تكوين الخادم خاطئًا، وكتب ملفًا جديدًا</translation>
+        <translation type="vanished">كان ملف تكوين الخادم خاطئًا، وكتب ملفًا جديدًا</translation>
     </message>
     <message>
         <source>The server connection is running, are you sure that you want to stop it?</source>
-        <translation>الاتصال بالخادم قيد التشغيل، هل أنت متأكد من رغبتك في إيقافه؟</translation>
+        <translation type="vanished">الاتصال بالخادم قيد التشغيل، هل أنت متأكد من رغبتك في إيقافه؟</translation>
     </message>
     <message>
         <source>Stop Server</source>
-        <translation>إيقاف الخادم</translation>
+        <translation type="vanished">إيقاف الخادم</translation>
     </message>
     <message>
         <source>Could not connect to the server :/</source>
-        <translation>لا يمكن الاتصال بالخادم :/</translation>
+        <translation type="vanished">لا يمكن الاتصال بالخادم :/</translation>
     </message>
     <message>
         <source>Connected!</source>
-        <translation>متصل!</translation>
+        <translation type="vanished">متصل!</translation>
     </message>
     <message>
         <source>Results received!</source>
-        <translation>تم استلام النتائج!</translation>
+        <translation type="vanished">تم استلام النتائج!</translation>
     </message>
 </context>
 <context>
     <name>ShortCircuitSelector</name>
     <message>
         <source>Short Circuit Configuration</source>
-        <translation>تكوين الدائرة القصيرة</translation>
+        <translation type="vanished">تكوين الدائرة القصيرة</translation>
     </message>
     <message>
         <source>Custom</source>
-        <translation>مخصص</translation>
+        <translation type="vanished">مخصص</translation>
     </message>
     <message>
         <source>Typical value</source>
-        <translation>قيمة نموذجية</translation>
+        <translation type="vanished">قيمة نموذجية</translation>
     </message>
     <message>
         <source>Solid 3ph fault</source>
-        <translation>خطأ 3ph الصلبة</translation>
+        <translation type="vanished">خطأ 3ph الصلبة</translation>
     </message>
     <message>
         <source>Near-bolted three-phase fault</source>
-        <translation>خطأ ثلاثي الطور قريب من التثبيت</translation>
+        <translation type="vanished">خطأ ثلاثي الطور قريب من التثبيت</translation>
     </message>
     <message>
         <source>Solid phase ground fault</source>
-        <translation>خطأ أرضي في المرحلة الصلبة</translation>
+        <translation type="vanished">خطأ أرضي في المرحلة الصلبة</translation>
     </message>
     <message>
         <source>Near-bolted phase-to-ground fault</source>
-        <translation>خطأ طور إلى الأرض قريب من التثبيت</translation>
+        <translation type="vanished">خطأ طور إلى الأرض قريب من التثبيت</translation>
     </message>
     <message>
         <source>Metallic conductor conductor contact</source>
-        <translation>موصل موصل معدني</translation>
+        <translation type="vanished">موصل موصل معدني</translation>
     </message>
     <message>
         <source>Low-impedance metallic conductor-to-conductor short</source>
-        <translation>موصل معدني منخفض المقاومة إلى موصل قصير</translation>
+        <translation type="vanished">موصل معدني منخفض المقاومة إلى موصل قصير</translation>
     </message>
     <message>
         <source>Excavator touching underground cable</source>
-        <translation>حفارة تلمس الكابل تحت الأرض</translation>
+        <translation type="vanished">حفارة تلمس الكابل تحت الأرض</translation>
     </message>
     <message>
         <source>Direct mechanical strike on underground cable</source>
-        <translation>ضربة ميكانيكية مباشرة على الكابل تحت الأرض</translation>
+        <translation type="vanished">ضربة ميكانيكية مباشرة على الكابل تحت الأرض</translation>
     </message>
     <message>
         <source>Excavator damaging cable partial arc</source>
-        <translation>حفارة إتلاف كابل القوس الجزئي</translation>
+        <translation type="vanished">حفارة إتلاف كابل القوس الجزئي</translation>
     </message>
     <message>
         <source>Cable damage with partial contact and arcing</source>
-        <translation>تلف الكابل مع الاتصال الجزئي والانحناء</translation>
+        <translation type="vanished">تلف الكابل مع الاتصال الجزئي والانحناء</translation>
     </message>
     <message>
         <source>Crane or machinery overhead arc</source>
-        <translation>رافعة أو قوس علوي للآلات</translation>
+        <translation type="vanished">رافعة أو قوس علوي للآلات</translation>
     </message>
     <message>
         <source>Arc from machinery approaching overhead line</source>
-        <translation>قوس من الآلات يقترب من الخط العلوي</translation>
+        <translation type="vanished">قوس من الآلات يقترب من الخط العلوي</translation>
     </message>
     <message>
         <source>Tree branch touching overhead line</source>
-        <translation>فرع الشجرة يلامس الخط العلوي</translation>
+        <translation type="vanished">فرع الشجرة يلامس الخط العلوي</translation>
     </message>
     <message>
         <source>Typical vegetation high-impedance fault</source>
-        <translation>خطأ عالي المقاومة للنباتات النموذجية</translation>
+        <translation type="vanished">خطأ عالي المقاومة للنباتات النموذجية</translation>
     </message>
     <message>
         <source>Wet tree or wet vegetation contact</source>
-        <translation>الاتصال بالشجرة الرطبة أو النباتات الرطبة</translation>
+        <translation type="vanished">الاتصال بالشجرة الرطبة أو النباتات الرطبة</translation>
     </message>
     <message>
         <source>Vegetation contact with lower resistance due to moisture</source>
-        <translation>اتصال النباتات مع مقاومة أقل بسبب الرطوبة</translation>
+        <translation type="vanished">اتصال النباتات مع مقاومة أقل بسبب الرطوبة</translation>
     </message>
     <message>
         <source>Dry tree or dry branch contact</source>
-        <translation>شجرة جافة أو اتصال فرع جاف</translation>
+        <translation type="vanished">شجرة جافة أو اتصال فرع جاف</translation>
     </message>
     <message>
         <source>Dry vegetation high-impedance fault</source>
-        <translation>النباتات الجافة خطأ مقاومة عالية</translation>
+        <translation type="vanished">النباتات الجافة خطأ مقاومة عالية</translation>
     </message>
     <message>
         <source>Downed conductor on wet soil</source>
-        <translation>موصل سقط على التربة الرطبة</translation>
+        <translation type="vanished">موصل سقط على التربة الرطبة</translation>
     </message>
     <message>
         <source>Downed conductor on relatively conductive ground</source>
-        <translation>موصل سقط على أرض موصلة نسبيا</translation>
+        <translation type="vanished">موصل سقط على أرض موصلة نسبيا</translation>
     </message>
     <message>
         <source>Downed conductor on gravel</source>
-        <translation>موصل سقط على الحصى</translation>
+        <translation type="vanished">موصل سقط على الحصى</translation>
     </message>
     <message>
         <source>Downed conductor on gravel or ballast</source>
-        <translation>موصل سقط على الحصى أو الصابورة</translation>
+        <translation type="vanished">موصل سقط على الحصى أو الصابورة</translation>
     </message>
     <message>
         <source>Downed conductor on asphalt or concrete</source>
-        <translation>موصل سقط على الأسفلت أو الخرسانة</translation>
+        <translation type="vanished">موصل سقط على الأسفلت أو الخرسانة</translation>
     </message>
     <message>
         <source>Downed conductor on poorly conductive surface</source>
-        <translation>موصل سقط على سطح موصل بشكل سيء</translation>
+        <translation type="vanished">موصل سقط على سطح موصل بشكل سيء</translation>
     </message>
     <message>
         <source>Insulator contamination or leakage fault</source>
-        <translation>تلوث العازل أو خطأ التسرب</translation>
+        <translation type="vanished">تلوث العازل أو خطأ التسرب</translation>
     </message>
     <message>
         <source>Leakage-type high-impedance fault</source>
-        <translation>خطأ عالي المقاومة من نوع التسرب</translation>
+        <translation type="vanished">خطأ عالي المقاومة من نوع التسرب</translation>
     </message>
     <message>
         <source>Generic arcing phase ground fault</source>
-        <translation>خطأ أرضي في مرحلة الانحناء العام</translation>
+        <translation type="vanished">خطأ أرضي في مرحلة الانحناء العام</translation>
     </message>
     <message>
         <source>Simple resistive arc approximation</source>
-        <translation>تقريب القوس المقاوم البسيط</translation>
+        <translation type="vanished">تقريب القوس المقاوم البسيط</translation>
     </message>
     <message>
         <source>Severe high resistance transmission fault</source>
-        <translation>خطأ شديد في انتقال المقاومة العالية</translation>
+        <translation type="vanished">خطأ شديد في انتقال المقاومة العالية</translation>
     </message>
     <message>
         <source>High-resistance EHV fault scenario</source>
-        <translation>سيناريو خطأ EHV عالي المقاومة</translation>
+        <translation type="vanished">سيناريو خطأ EHV عالي المقاومة</translation>
     </message>
     <message>
         <source>phases</source>
-        <translation>مراحل</translation>
+        <translation type="vanished">مراحل</translation>
     </message>
     <message>
         <source>abc</source>
-        <translation>اي بي سي</translation>
+        <translation type="vanished">اي بي سي</translation>
     </message>
     <message>
         <source>a</source>
-        <translation>أ</translation>
+        <translation type="vanished">أ</translation>
     </message>
     <message>
         <source>b</source>
-        <translation>ب</translation>
+        <translation type="vanished">ب</translation>
     </message>
     <message>
         <source>c</source>
-        <translation>ج</translation>
+        <translation type="vanished">ج</translation>
     </message>
     <message>
         <source>ab</source>
-        <translation>أب</translation>
+        <translation type="vanished">أب</translation>
     </message>
     <message>
         <source>bc</source>
-        <translation>قبل الميلاد</translation>
+        <translation type="vanished">قبل الميلاد</translation>
     </message>
     <message>
         <source>ca</source>
-        <translation>كاليفورنيا</translation>
+        <translation type="vanished">كاليفورنيا</translation>
     </message>
     <message>
         <source>sequences</source>
-        <translation>تسلسلات</translation>
+        <translation type="vanished">تسلسلات</translation>
     </message>
 </context>
 <context>
@@ -3288,15 +3320,15 @@ Monte Carlo power flow results:</source>
     <name>SubstationDesigner</name>
     <message>
         <source>Substation maker</source>
-        <translation>صانع المحطات الفرعية</translation>
+        <translation type="vanished">صانع المحطات الفرعية</translation>
     </message>
     <message>
         <source>Substation {number}</source>
-        <translation>المحطة الفرعية {number}</translation>
+        <translation type="vanished">المحطة الفرعية {number}</translation>
     </message>
     <message>
         <source>There are no voltage levels, so no substation will be created, ok?</source>
-        <translation>لا توجد مستويات جهد، لذلك لن يتم إنشاء محطة فرعية، حسنًا؟</translation>
+        <translation type="vanished">لا توجد مستويات جهد، لذلك لن يتم إنشاء محطة فرعية، حسنًا؟</translation>
     </message>
 </context>
 <context>
@@ -3650,19 +3682,19 @@ Monte Carlo power flow results:</source>
     <name>VeraGridMainGUI</name>
     <message>
         <source>VeraGrid {version}</source>
-        <translation>VeraGrid {version}</translation>
+        <translation type="vanished">VeraGrid {version}</translation>
     </message>
     <message>
         <source>Are you sure that you want to exit VeraGrid?</source>
-        <translation>هل أنت متأكد أنك تريد الخروج من VeraGrid؟</translation>
+        <translation type="vanished">هل أنت متأكد أنك تريد الخروج من VeraGrid؟</translation>
     </message>
     <message>
         <source>Close</source>
-        <translation>يغلق</translation>
+        <translation type="vanished">يغلق</translation>
     </message>
     <message>
         <source>No effect, select diagrams or database</source>
-        <translation>لا يوجد تأثير، حدد الرسوم البيانية أو قاعدة البيانات</translation>
+        <translation type="vanished">لا يوجد تأثير، حدد الرسوم البيانية أو قاعدة البيانات</translation>
     </message>
 </context>
 <context>

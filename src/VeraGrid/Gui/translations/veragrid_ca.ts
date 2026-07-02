@@ -588,25 +588,57 @@ li.checked::marker { content: "\2612"; }
     </message>
     <message>
         <source>French</source>
-        <translation>Francès</translation>
+        <translation>francès</translation>
     </message>
     <message>
         <source>Portuguese</source>
-        <translation>Portuguès</translation>
+        <translation>portuguès</translation>
     </message>
     <message>
         <source>Chinese</source>
-        <translation>Xinès</translation>
+        <translation>xinès</translation>
     </message>
     <message>
         <source>German</source>
-        <translation>Alemany</translation>
+        <translation>alemany</translation>
     </message>
     <message>
         <source>Catalan</source>
         <translation>Català</translation>
     </message>
-<message><source>Basque</source><translation>Basc</translation></message><message><source>Galician</source><translation>Gallec</translation></message><message><source>Tongan</source><translation>Tonga</translation></message><message><source>Tuvaluan</source><translation>Tuvaluà</translation></message><message><source>Arabic</source><translation>Àrab</translation></message><message><source>Italian</source><translation>Italià</translation></message><message><source>Greek</source><translation>Grec</translation></message><message><source>Dutch</source><translation>Holandès</translation></message></context>
+    <message>
+        <source>Basque</source>
+        <translation>basc</translation>
+    </message>
+    <message>
+        <source>Galician</source>
+        <translation>gallec</translation>
+    </message>
+    <message>
+        <source>Tongan</source>
+        <translation>Tonga</translation>
+    </message>
+    <message>
+        <source>Tuvaluan</source>
+        <translation>Tuvaluà</translation>
+    </message>
+    <message>
+        <source>Arabic</source>
+        <translation>àrab</translation>
+    </message>
+    <message>
+        <source>Italian</source>
+        <translation>italià</translation>
+    </message>
+    <message>
+        <source>Greek</source>
+        <translation>grec</translation>
+    </message>
+    <message>
+        <source>Dutch</source>
+        <translation>holandès</translation>
+    </message>
+<message><source>Japanese</source><translation>japonès</translation></message></context>
 <context>
     <name>ControllableShuntEditorDialog</name>
     <message>

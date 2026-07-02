@@ -278,91 +278,91 @@ li.checked::marker { content: "\2612"; }
     <name>AiChatDialogue</name>
     <message>
         <source>VeraGrid AI dialogue</source>
-        <translation>VeraGrid AI dialogue</translation>
+        <translation type="vanished">VeraGrid AI dialogue</translation>
     </message>
     <message>
         <source>Pick or type a GGUF file name</source>
-        <translation>Pick or type a GGUF file name</translation>
+        <translation type="vanished">Pick or type a GGUF file name</translation>
     </message>
     <message>
         <source>Provider model name</source>
-        <translation>Provider model name</translation>
+        <translation type="vanished">Provider model name</translation>
     </message>
     <message>
         <source>VeraGrid AI</source>
-        <translation>VeraGrid AI</translation>
+        <translation type="vanished">VeraGrid AI</translation>
     </message>
     <message>
         <source>Scan the configured path for GGUF files.</source>
-        <translation>Scan the configured path for GGUF files.</translation>
+        <translation type="vanished">Scan the configured path for GGUF files.</translation>
     </message>
     <message>
         <source>API key</source>
-        <translation>API key</translation>
+        <translation type="vanished">API key</translation>
     </message>
     <message>
         <source>Leave empty for unauthenticated endpoints</source>
-        <translation>Leave empty for unauthenticated endpoints</translation>
+        <translation type="vanished">Leave empty for unauthenticated endpoints</translation>
     </message>
     <message>
         <source>Query the configured backend for models.</source>
-        <translation>Query the configured backend for models.</translation>
+        <translation type="vanished">Query the configured backend for models.</translation>
     </message>
     <message>
         <source>Type a message before sending.</source>
-        <translation>Type a message before sending.</translation>
+        <translation type="vanished">Type a message before sending.</translation>
     </message>
     <message>
         <source>Resolve the pending tool approval or clear the chat first.</source>
-        <translation>Resolve the pending tool approval or clear the chat first.</translation>
+        <translation type="vanished">Resolve the pending tool approval or clear the chat first.</translation>
     </message>
     <message>
         <source>Stopping AI turn...</source>
-        <translation>Stopping AI turn...</translation>
+        <translation type="vanished">Stopping AI turn...</translation>
     </message>
     <message>
         <source>There is no running AI turn to stop.</source>
-        <translation>There is no running AI turn to stop.</translation>
+        <translation type="vanished">There is no running AI turn to stop.</translation>
     </message>
     <message>
         <source>Running simulation and analyzing the results...</source>
-        <translation>Running simulation and analyzing the results...</translation>
+        <translation type="vanished">Running simulation and analyzing the results...</translation>
     </message>
     <message>
         <source>There is no pending tool call to approve.</source>
-        <translation>There is no pending tool call to approve.</translation>
+        <translation type="vanished">There is no pending tool call to approve.</translation>
     </message>
     <message>
         <source>Wait for the current AI turn to finish.</source>
-        <translation>Wait for the current AI turn to finish.</translation>
+        <translation type="vanished">Wait for the current AI turn to finish.</translation>
     </message>
     <message>
         <source>Running AI turn...</source>
-        <translation>Running AI turn...</translation>
+        <translation type="vanished">Running AI turn...</translation>
     </message>
     <message>
         <source>Generating response</source>
-        <translation>Generating response</translation>
+        <translation type="vanished">Generating response</translation>
     </message>
     <message>
         <source>Running AI turn</source>
-        <translation>Running AI turn</translation>
+        <translation type="vanished">Running AI turn</translation>
     </message>
     <message>
         <source>Stop</source>
-        <translation>Stop</translation>
+        <translation type="vanished">Stop</translation>
     </message>
     <message>
         <source>Send</source>
-        <translation>Send</translation>
+        <translation type="vanished">Send</translation>
     </message>
     <message>
         <source>You</source>
-        <translation>You</translation>
+        <translation type="vanished">You</translation>
     </message>
     <message>
         <source>Tool</source>
-        <translation>Tool</translation>
+        <translation type="vanished">Tool</translation>
     </message>
 </context>
 <context>
@@ -561,11 +561,11 @@ li.checked::marker { content: "\2612"; }
     <name>CgmesOptionsSelector</name>
     <message>
         <source>CGMES Version:</source>
-        <translation>CGMES Version:</translation>
+        <translation type="vanished">CGMES Version:</translation>
     </message>
     <message>
         <source>Accept</source>
-        <translation>Accept</translation>
+        <translation type="vanished">Accept</translation>
     </message>
 </context>
 <context>
@@ -606,7 +606,39 @@ li.checked::marker { content: "\2612"; }
         <source>Catalan</source>
         <translation>Katalani</translation>
     </message>
-<message><source>Basque</source><translation>Pesike</translation></message><message><source>Galician</source><translation>Kalisia</translation></message><message><source>Tongan</source><translation>Tongan</translation></message><message><source>Tuvaluan</source><translation>Tuvaluan</translation></message><message><source>Arabic</source><translation>Faka-'Alepea</translation></message><message><source>Italian</source><translation>ʻĪtali</translation></message><message><source>Greek</source><translation>Kalisi</translation></message><message><source>Dutch</source><translation>Holani</translation></message></context>
+    <message>
+        <source>Basque</source>
+        <translation>Pesike</translation>
+    </message>
+    <message>
+        <source>Galician</source>
+        <translation>Kalisia</translation>
+    </message>
+    <message>
+        <source>Tongan</source>
+        <translation>Tongan</translation>
+    </message>
+    <message>
+        <source>Tuvaluan</source>
+        <translation>Tuvaluan</translation>
+    </message>
+    <message>
+        <source>Arabic</source>
+        <translation>Faka-'Alepea</translation>
+    </message>
+    <message>
+        <source>Italian</source>
+        <translation>ʻĪtali</translation>
+    </message>
+    <message>
+        <source>Greek</source>
+        <translation>Kalisi</translation>
+    </message>
+    <message>
+        <source>Dutch</source>
+        <translation>Holani</translation>
+    </message>
+<message><source>Japanese</source><translation>Siapani</translation></message></context>
 <context>
     <name>ControllableShuntEditorDialog</name>
     <message>
@@ -1210,35 +1242,35 @@ li.checked::marker { content: "\2612"; }
     <name>DynamicsResultsHandler</name>
     <message>
         <source>X-Y plot slot</source>
-        <translation>X-Y plot slot</translation>
+        <translation type="vanished">X-Y plot slot</translation>
     </message>
     <message>
         <source>Choose whether to place the dropped signal on the X axis or Y axis.</source>
-        <translation>Choose whether to place the dropped signal on the X axis or Y axis.</translation>
+        <translation type="vanished">Choose whether to place the dropped signal on the X axis or Y axis.</translation>
     </message>
     <message>
         <source>X axis</source>
-        <translation>X axis</translation>
+        <translation type="vanished">X axis</translation>
     </message>
     <message>
         <source>Y axis</source>
-        <translation>Y axis</translation>
+        <translation type="vanished">Y axis</translation>
     </message>
     <message>
         <source>Cancel</source>
-        <translation>Cancel</translation>
+        <translation type="vanished">Cancel</translation>
     </message>
     <message>
         <source>This X-Y plot already has X and Y signals. Replace X, replace Y, or cancel?</source>
-        <translation>This X-Y plot already has X and Y signals. Replace X, replace Y, or cancel?</translation>
+        <translation type="vanished">This X-Y plot already has X and Y signals. Replace X, replace Y, or cancel?</translation>
     </message>
     <message>
         <source>Replace X</source>
-        <translation>Replace X</translation>
+        <translation type="vanished">Replace X</translation>
     </message>
     <message>
         <source>Replace Y</source>
-        <translation>Replace Y</translation>
+        <translation type="vanished">Replace Y</translation>
     </message>
 </context>
 <context>
@@ -1253,68 +1285,68 @@ li.checked::marker { content: "\2612"; }
     <name>FileTypeSelector</name>
     <message>
         <source>Format:</source>
-        <translation>Format:</translation>
+        <translation type="vanished">Format:</translation>
     </message>
     <message>
         <source>Accept</source>
-        <translation>Accept</translation>
+        <translation type="vanished">Accept</translation>
     </message>
 </context>
 <context>
     <name>FmuTemplateEditorDialog</name>
     <message>
         <source>FMU Template Editor</source>
-        <translation>FMU Template Editor</translation>
+        <translation type="vanished">FMU Template Editor</translation>
     </message>
     <message>
         <source>Browse...</source>
-        <translation>Browse...</translation>
+        <translation type="vanished">Browse...</translation>
     </message>
     <message>
         <source>Choose an FMU archive to load its metadata and build the visual block.</source>
-        <translation>Choose an FMU archive to load its metadata and build the visual block.</translation>
+        <translation type="vanished">Choose an FMU archive to load its metadata and build the visual block.</translation>
     </message>
     <message>
         <source>Name</source>
-        <translation>Name</translation>
+        <translation type="vanished">Name</translation>
     </message>
     <message>
         <source>FMU file</source>
-        <translation>FMU file</translation>
+        <translation type="vanished">FMU file</translation>
     </message>
     <message>
         <source>Device type</source>
-        <translation>Device type</translation>
+        <translation type="vanished">Device type</translation>
     </message>
     <message>
         <source>Domain</source>
-        <translation>Domain</translation>
+        <translation type="vanished">Domain</translation>
     </message>
     <message>
         <source>Mode</source>
-        <translation>Mode</translation>
+        <translation type="vanished">Mode</translation>
     </message>
     <message>
         <source>Metadata</source>
-        <translation>Metadata</translation>
+        <translation type="vanished">Metadata</translation>
     </message>
     <message>
         <source>Select FMU file</source>
-        <translation>Select FMU file</translation>
+        <translation type="vanished">Select FMU file</translation>
     </message>
     <message>
         <source>FMU files (*.fmu)</source>
-        <translation>FMU files (*.fmu)</translation>
+        <translation type="vanished">FMU files (*.fmu)</translation>
     </message>
     <message>
         <source>FMU file not found:
 {path}</source>
-        <translation>FMU file not found:
+        <translation type="vanished">FMU file not found:
 {path}</translation>
     </message>
     <message>
         <source>Choose an FMU file first.</source>
-        <translation>Choose an FMU file first.</translation>
+        <translation type="vanished">Choose an FMU file first.</translation>
     </message>
 </context>
 <context>
@@ -1339,337 +1371,337 @@ li.checked::marker { content: "\2612"; }
     <name>IoMain</name>
     <message>
         <source>The file type {file_extension} is not accepted :(</source>
-        <translation>The file type {file_extension} is not accepted :(</translation>
+        <translation type="vanished">The file type {file_extension} is not accepted :(</translation>
     </message>
     <message>
         <source>Message</source>
-        <translation>Message</translation>
+        <translation type="vanished">Message</translation>
     </message>
     <message>
         <source>Are you sure that you want to quit the current grid and open a new one?
  If the process is cancelled the grid will remain.</source>
-        <translation>Are you sure that you want to quit the current grid and open a new one?
+        <translation type="vanished">Are you sure that you want to quit the current grid and open a new one?
  If the process is cancelled the grid will remain.</translation>
     </message>
     <message>
         <source>Are you sure that you want to quit the current grid and create a new one?</source>
-        <translation>Are you sure that you want to quit the current grid and create a new one?</translation>
+        <translation type="vanished">Are you sure that you want to quit the current grid and create a new one?</translation>
     </message>
     <message>
         <source>There is a file being processed now.</source>
-        <translation>There is a file being processed now.</translation>
+        <translation type="vanished">There is a file being processed now.</translation>
     </message>
     <message>
         <source>Formats ({files_types})</source>
-        <translation>Formats ({files_types})</translation>
+        <translation type="vanished">Formats ({files_types})</translation>
     </message>
     <message>
         <source>The file does not exist :( 
  {file_name}</source>
-        <translation>The file does not exist :( 
+        <translation type="vanished">The file does not exist :( 
  {file_name}</translation>
     </message>
     <message>
         <source>File opening</source>
-        <translation>File opening</translation>
+        <translation type="vanished">File opening</translation>
     </message>
     <message>
         <source>No grid to load :(</source>
-        <translation>No grid to load :(</translation>
+        <translation type="vanished">No grid to load :(</translation>
     </message>
     <message>
         <source>Current: {circuit_name}</source>
-        <translation>Current: {circuit_name}</translation>
+        <translation type="vanished">Current: {circuit_name}</translation>
     </message>
     <message>
         <source>The grid is quite big, no diagram is automatically created</source>
-        <translation>The grid is quite big, no diagram is automatically created</translation>
+        <translation type="vanished">The grid is quite big, no diagram is automatically created</translation>
     </message>
     <message>
         <source>Sessions</source>
-        <translation>Sessions</translation>
+        <translation type="vanished">Sessions</translation>
     </message>
     <message>
         <source>Show Rosetta</source>
-        <translation>Show Rosetta</translation>
+        <translation type="vanished">Show Rosetta</translation>
     </message>
     <message>
         <source>Do you want to open the Rosetta CGMES browser?</source>
-        <translation>Do you want to open the Rosetta CGMES browser?</translation>
+        <translation type="vanished">Do you want to open the Rosetta CGMES browser?</translation>
     </message>
     <message>
         <source>Open CGMES file logger</source>
-        <translation>Open CGMES file logger</translation>
+        <translation type="vanished">Open CGMES file logger</translation>
     </message>
     <message>
         <source>Open file logger</source>
-        <translation>Open file logger</translation>
+        <translation type="vanished">Open file logger</translation>
     </message>
     <message>
         <source>Error while loading the file(s)</source>
-        <translation>Error while loading the file(s)</translation>
+        <translation type="vanished">Error while loading the file(s)</translation>
     </message>
     <message>
         <source>{name} {version} requires VeraGrid {veragrid_version}</source>
-        <translation>{name} {version} requires VeraGrid {veragrid_version}</translation>
+        <translation type="vanished">{name} {version} requires VeraGrid {veragrid_version}</translation>
     </message>
     <message>
         <source>Plugin install</source>
-        <translation>Plugin install</translation>
+        <translation type="vanished">Plugin install</translation>
     </message>
     <message>
         <source>There is already a plugin: {plugin_name} {plugin_version}. The new plugin is {new_version}. Install?</source>
-        <translation>There is already a plugin: {plugin_name} {plugin_version}. The new plugin is {new_version}. Install?</translation>
+        <translation type="vanished">There is already a plugin: {plugin_name} {plugin_version}. The new plugin is {new_version}. Install?</translation>
     </message>
     <message>
         <source>{name} {version} installed!</source>
-        <translation>{name} {version} installed!</translation>
+        <translation type="vanished">{name} {version} installed!</translation>
     </message>
     <message>
         <source>There is no manifest :(</source>
-        <translation>There is no manifest :(</translation>
+        <translation type="vanished">There is no manifest :(</translation>
     </message>
     <message>
         <source>Does not seem to be a plugin :/</source>
-        <translation>Does not seem to be a plugin :/</translation>
+        <translation type="vanished">Does not seem to be a plugin :/</translation>
     </message>
     <message>
         <source>CSV (*.csv)</source>
-        <translation>CSV (*.csv)</translation>
+        <translation type="vanished">CSV (*.csv)</translation>
     </message>
     <message>
         <source>Open CSV file</source>
-        <translation>Open CSV file</translation>
+        <translation type="vanished">Open CSV file</translation>
     </message>
     <message>
         <source>Grid merge</source>
-        <translation>Grid merge</translation>
+        <translation type="vanished">Grid merge</translation>
     </message>
     <message>
         <source>How do you want to represent the merged grid?</source>
-        <translation>How do you want to represent the merged grid?</translation>
+        <translation type="vanished">How do you want to represent the merged grid?</translation>
     </message>
     <message>
         <source>Create new diagram</source>
-        <translation>Create new diagram</translation>
+        <translation type="vanished">Create new diagram</translation>
     </message>
     <message>
         <source>Add to current diagram</source>
-        <translation>Add to current diagram</translation>
+        <translation type="vanished">Add to current diagram</translation>
     </message>
     <message>
         <source>No schematic diagram was selected...</source>
-        <translation>No schematic diagram was selected...</translation>
+        <translation type="vanished">No schematic diagram was selected...</translation>
     </message>
     <message>
         <source>Save file</source>
-        <translation>Save file</translation>
+        <translation type="vanished">Save file</translation>
     </message>
     <message>
         <source>VeraGrid zip (*.veragrid)</source>
-        <translation>VeraGrid zip (*.veragrid)</translation>
+        <translation type="vanished">VeraGrid zip (*.veragrid)</translation>
     </message>
     <message>
         <source>There is a saving procedure running.
 Cancel and retry?</source>
-        <translation>There is a saving procedure running.
+        <translation type="vanished">There is a saving procedure running.
 Cancel and retry?</translation>
     </message>
     <message>
         <source>There is a file being processed..</source>
-        <translation>There is a file being processed..</translation>
+        <translation type="vanished">There is a file being processed..</translation>
     </message>
     <message>
         <source>Save file logger</source>
-        <translation>Save file logger</translation>
+        <translation type="vanished">Save file logger</translation>
     </message>
     <message>
         <source>Are you sure that you want to delete the current grid and replace it?</source>
-        <translation>Are you sure that you want to delete the current grid and replace it?</translation>
+        <translation type="vanished">Are you sure that you want to delete the current grid and replace it?</translation>
     </message>
     <message>
         <source>Model v. {model_version}</source>
-        <translation>Model v. {model_version}</translation>
+        <translation type="vanished">Model v. {model_version}</translation>
     </message>
     <message>
         <source>idtag. {idtag}</source>
-        <translation>idtag. {idtag}</translation>
+        <translation type="vanished">idtag. {idtag}</translation>
     </message>
     <message>
         <source>Random grid {bus_count} buses</source>
-        <translation>Random grid {bus_count} buses</translation>
+        <translation type="vanished">Random grid {bus_count} buses</translation>
     </message>
     <message>
         <source>Grid generated randomly using the RPGM algorithm.</source>
-        <translation>Grid generated randomly using the RPGM algorithm.</translation>
+        <translation type="vanished">Grid generated randomly using the RPGM algorithm.</translation>
     </message>
     <message>
         <source>Excel file (*.xlsx)</source>
-        <translation>Excel file (*.xlsx)</translation>
+        <translation type="vanished">Excel file (*.xlsx)</translation>
     </message>
     <message>
         <source>profiles of </source>
-        <translation>profiles of </translation>
+        <translation type="vanished">profiles of </translation>
     </message>
     <message>
         <source>There are no profiles!</source>
-        <translation>There are no profiles!</translation>
+        <translation type="vanished">There are no profiles!</translation>
     </message>
     <message>
         <source>Export object profiles</source>
-        <translation>Export object profiles</translation>
+        <translation type="vanished">Export object profiles</translation>
     </message>
     <message>
         <source>Zip file (*.zip)</source>
-        <translation>Zip file (*.zip)</translation>
+        <translation type="vanished">Zip file (*.zip)</translation>
     </message>
     <message>
         <source>Results of </source>
-        <translation>Results of </translation>
+        <translation type="vanished">Results of </translation>
     </message>
     <message>
         <source>There are no results available :/</source>
-        <translation>There are no results available :/</translation>
+        <translation type="vanished">There are no results available :/</translation>
     </message>
     <message>
         <source>Export all</source>
-        <translation>Export all</translation>
+        <translation type="vanished">Export all</translation>
     </message>
     <message>
         <source>Done!</source>
-        <translation>Done!</translation>
+        <translation type="vanished">Done!</translation>
     </message>
     <message>
         <source>Results parsing</source>
-        <translation>Results parsing</translation>
+        <translation type="vanished">Results parsing</translation>
     </message>
     <message>
         <source>Loaded '{study_name}' results from disk</source>
-        <translation>Loaded '{study_name}' results from disk</translation>
+        <translation type="vanished">Loaded '{study_name}' results from disk</translation>
     </message>
     <message>
         <source>No file driver declared :/</source>
-        <translation>No file driver declared :/</translation>
+        <translation type="vanished">No file driver declared :/</translation>
     </message>
     <message>
         <source>Select a driver inside a session</source>
-        <translation>Select a driver inside a session</translation>
+        <translation type="vanished">Select a driver inside a session</translation>
     </message>
     <message>
         <source>Driver load from disk</source>
-        <translation>Driver load from disk</translation>
+        <translation type="vanished">Driver load from disk</translation>
     </message>
     <message>
         <source>Load results from disk</source>
-        <translation>Load results from disk</translation>
+        <translation type="vanished">Load results from disk</translation>
     </message>
     <message>
         <source>Formats (*.json)</source>
-        <translation>Formats (*.json)</translation>
+        <translation type="vanished">Formats (*.json)</translation>
     </message>
     <message>
         <source>Open file</source>
-        <translation>Open file</translation>
+        <translation type="vanished">Open file</translation>
     </message>
     <message>
         <source>Contingencies import</source>
-        <translation>Contingencies import</translation>
+        <translation type="vanished">Contingencies import</translation>
     </message>
     <message>
         <source>JSON file (*.json)</source>
-        <translation>JSON file (*.json)</translation>
+        <translation type="vanished">JSON file (*.json)</translation>
     </message>
     <message>
         <source>Catalogue added!</source>
-        <translation>Catalogue added!</translation>
+        <translation type="vanished">Catalogue added!</translation>
     </message>
     <message>
         <source>Load catalogue</source>
-        <translation>Load catalogue</translation>
+        <translation type="vanished">Load catalogue</translation>
     </message>
     <message>
         <source>Open catalogue logger</source>
-        <translation>Open catalogue logger</translation>
+        <translation type="vanished">Open catalogue logger</translation>
     </message>
     <message>
         <source>Catalogue loaded!</source>
-        <translation>Catalogue loaded!</translation>
+        <translation type="vanished">Catalogue loaded!</translation>
     </message>
     <message>
         <source>Catalogue file (*.xlsx)</source>
-        <translation>Catalogue file (*.xlsx)</translation>
+        <translation type="vanished">Catalogue file (*.xlsx)</translation>
     </message>
     <message>
         <source>Catalogue Excel file (*.xlsx)</source>
-        <translation>Catalogue Excel file (*.xlsx)</translation>
+        <translation type="vanished">Catalogue Excel file (*.xlsx)</translation>
     </message>
     <message>
         <source>Save catalogue</source>
-        <translation>Save catalogue</translation>
+        <translation type="vanished">Save catalogue</translation>
     </message>
     <message>
         <source>Catalogue saved!</source>
-        <translation>Catalogue saved!</translation>
+        <translation type="vanished">Catalogue saved!</translation>
     </message>
     <message>
         <source>CIM (*.xml)</source>
-        <translation>CIM (*.xml)</translation>
+        <translation type="vanished">CIM (*.xml)</translation>
     </message>
     <message>
         <source>Export to CIM</source>
-        <translation>Export to CIM</translation>
+        <translation type="vanished">Export to CIM</translation>
     </message>
     <message>
         <source>Power Grid Models (*.pgm)</source>
-        <translation>Power Grid Models (*.pgm)</translation>
+        <translation type="vanished">Power Grid Models (*.pgm)</translation>
     </message>
     <message>
         <source>Export to Power Grid Models</source>
-        <translation>Export to Power Grid Models</translation>
+        <translation type="vanished">Export to Power Grid Models</translation>
     </message>
     <message>
         <source>Power Grid Models not installed :/</source>
-        <translation>Power Grid Models not installed :/</translation>
+        <translation type="vanished">Power Grid Models not installed :/</translation>
     </message>
     <message>
         <source>Electrical Json V3 (*.ejson3)</source>
-        <translation>Electrical Json V3 (*.ejson3)</translation>
+        <translation type="vanished">Electrical Json V3 (*.ejson3)</translation>
     </message>
     <message>
         <source>Export to JSON</source>
-        <translation>Export to JSON</translation>
+        <translation type="vanished">Export to JSON</translation>
     </message>
     <message>
         <source>VeraGrid HDF5 (*.gch5)</source>
-        <translation>VeraGrid HDF5 (*.gch5)</translation>
+        <translation type="vanished">VeraGrid HDF5 (*.gch5)</translation>
     </message>
     <message>
         <source>Export to VeraGrid HDF5</source>
-        <translation>Export to VeraGrid HDF5</translation>
+        <translation type="vanished">Export to VeraGrid HDF5</translation>
     </message>
     <message>
         <source>Excel (*.xlsx)</source>
-        <translation>Excel (*.xlsx)</translation>
+        <translation type="vanished">Excel (*.xlsx)</translation>
     </message>
     <message>
         <source>Export to Microsoft Excel</source>
-        <translation>Export to Microsoft Excel</translation>
+        <translation type="vanished">Export to Microsoft Excel</translation>
     </message>
     <message>
         <source>Sqlite (*.sqlite)</source>
-        <translation>Sqlite (*.sqlite)</translation>
+        <translation type="vanished">Sqlite (*.sqlite)</translation>
     </message>
     <message>
         <source>Export to Sqlite</source>
-        <translation>Export to Sqlite</translation>
+        <translation type="vanished">Export to Sqlite</translation>
     </message>
     <message>
         <source>VeraGrid (*.veragrid)</source>
-        <translation>VeraGrid (*.veragrid)</translation>
+        <translation type="vanished">VeraGrid (*.veragrid)</translation>
     </message>
     <message>
         <source>Export VeraGrid scenario</source>
-        <translation>Export VeraGrid scenario</translation>
+        <translation type="vanished">Export VeraGrid scenario</translation>
     </message>
 </context>
 <context>
@@ -2513,149 +2545,149 @@ Cancel and retry?</translation>
     <name>ResultsMain</name>
     <message>
         <source>Delete driver</source>
-        <translation>Delete driver</translation>
+        <translation type="vanished">Delete driver</translation>
     </message>
     <message>
         <source>Rename group</source>
-        <translation>Rename group</translation>
+        <translation type="vanished">Rename group</translation>
     </message>
     <message>
         <source>Rename variable</source>
-        <translation>Rename variable</translation>
+        <translation type="vanished">Rename variable</translation>
     </message>
     <message>
         <source>Rename dynamic plot</source>
-        <translation>Rename dynamic plot</translation>
+        <translation type="vanished">Rename dynamic plot</translation>
     </message>
     <message>
         <source>Plot name</source>
-        <translation>Plot name</translation>
+        <translation type="vanished">Plot name</translation>
     </message>
     <message>
         <source>The plot group name is empty or already exists.</source>
-        <translation>The plot group name is empty or already exists.</translation>
+        <translation type="vanished">The plot group name is empty or already exists.</translation>
     </message>
     <message>
         <source>Select a plot group first.</source>
-        <translation>Select a plot group first.</translation>
+        <translation type="vanished">Select a plot group first.</translation>
     </message>
     <message>
         <source>There are no RMS dynamics results loaded.</source>
-        <translation>There are no RMS dynamics results loaded.</translation>
+        <translation type="vanished">There are no RMS dynamics results loaded.</translation>
     </message>
     <message>
         <source>Rename dynamic variable</source>
-        <translation>Rename dynamic variable</translation>
+        <translation type="vanished">Rename dynamic variable</translation>
     </message>
     <message>
         <source>Variable name</source>
-        <translation>Variable name</translation>
+        <translation type="vanished">Variable name</translation>
     </message>
     <message>
         <source>The variable name is empty or could not be changed.</source>
-        <translation>The variable name is empty or could not be changed.</translation>
+        <translation type="vanished">The variable name is empty or could not be changed.</translation>
     </message>
     <message>
         <source>New dynamic plot</source>
-        <translation>New dynamic plot</translation>
+        <translation type="vanished">New dynamic plot</translation>
     </message>
     <message>
         <source>Plot mode</source>
-        <translation>Plot mode</translation>
+        <translation type="vanished">Plot mode</translation>
     </message>
     <message>
         <source>Time Series (Y vs Time)</source>
-        <translation>Time Series (Y vs Time)</translation>
+        <translation type="vanished">Time Series (Y vs Time)</translation>
     </message>
     <message>
         <source>X-Y Plot (Y vs X)</source>
-        <translation>X-Y Plot (Y vs X)</translation>
+        <translation type="vanished">X-Y Plot (Y vs X)</translation>
     </message>
     <message>
         <source>The selected dynamic plot entry could not be deleted.</source>
-        <translation>The selected dynamic plot entry could not be deleted.</translation>
+        <translation type="vanished">The selected dynamic plot entry could not be deleted.</translation>
     </message>
     <message>
         <source>Select a plot group or variable first.</source>
-        <translation>Select a plot group or variable first.</translation>
+        <translation type="vanished">Select a plot group or variable first.</translation>
     </message>
     <message>
         <source>The selected dynamic plot entry could not be plotted.</source>
-        <translation>The selected dynamic plot entry could not be plotted.</translation>
+        <translation type="vanished">The selected dynamic plot entry could not be plotted.</translation>
     </message>
     <message>
         <source>There are {columns} columns, the plot might take a lot to render.
 Are you ok with potentially waiting a lot?</source>
-        <translation>There are {columns} columns, the plot might take a lot to render.
+        <translation type="vanished">There are {columns} columns, the plot might take a lot to render.
 Are you ok with potentially waiting a lot?</translation>
     </message>
     <message>
         <source>Plot</source>
-        <translation>Plot</translation>
+        <translation type="vanished">Plot</translation>
     </message>
     <message>
         <source>Export results</source>
-        <translation>Export results</translation>
+        <translation type="vanished">Export results</translation>
     </message>
     <message>
         <source>CSV (*.csv);;Excel files (*.xlsx)</source>
-        <translation>CSV (*.csv);;Excel files (*.xlsx)</translation>
+        <translation type="vanished">CSV (*.csv);;Excel files (*.xlsx)</translation>
     </message>
     <message>
         <source> is not valid :(</source>
-        <translation> is not valid :(</translation>
+        <translation type="vanished"> is not valid :(</translation>
     </message>
     <message>
         <source>There is no profile displayed, please display one</source>
-        <translation>There is no profile displayed, please display one</translation>
+        <translation type="vanished">There is no profile displayed, please display one</translation>
     </message>
     <message>
         <source>Copy profile to clipboard</source>
-        <translation>Copy profile to clipboard</translation>
+        <translation type="vanished">Copy profile to clipboard</translation>
     </message>
     <message>
         <source>Copied!</source>
-        <translation>Copied!</translation>
+        <translation type="vanished">Copied!</translation>
     </message>
     <message>
         <source>Filter parse</source>
-        <translation>Filter parse</translation>
+        <translation type="vanished">Filter parse</translation>
     </message>
     <message>
         <source>Do you want to delete the results driver {study_name}?</source>
-        <translation>Do you want to delete the results driver {study_name}?</translation>
+        <translation type="vanished">Do you want to delete the results driver {study_name}?</translation>
     </message>
     <message>
         <source>Message</source>
-        <translation>Message</translation>
+        <translation type="vanished">Message</translation>
     </message>
     <message>
         <source>Are you sure that you want to overwrite the generation, batteries and load snapshot values with the OPF results?</source>
-        <translation>Are you sure that you want to overwrite the generation, batteries and load snapshot values with the OPF results?</translation>
+        <translation type="vanished">Are you sure that you want to overwrite the generation, batteries and load snapshot values with the OPF results?</translation>
     </message>
     <message>
         <source>Overwrite profiles with OPF results</source>
-        <translation>Overwrite profiles with OPF results</translation>
+        <translation type="vanished">Overwrite profiles with OPF results</translation>
     </message>
     <message>
         <source>P snapshot set from the OPF results</source>
-        <translation>P snapshot set from the OPF results</translation>
+        <translation type="vanished">P snapshot set from the OPF results</translation>
     </message>
     <message>
         <source>The OPF time series has no results :(</source>
-        <translation>The OPF time series has no results :(</translation>
+        <translation type="vanished">The OPF time series has no results :(</translation>
     </message>
     <message>
         <source>Are you sure that you want to overwrite the generation, batteries and load profiles with the OPF time series results?</source>
-        <translation>Are you sure that you want to overwrite the generation, batteries and load profiles with the OPF time series results?</translation>
+        <translation type="vanished">Are you sure that you want to overwrite the generation, batteries and load profiles with the OPF time series results?</translation>
     </message>
     <message>
         <source>P profiles set from the OPF results</source>
-        <translation>P profiles set from the OPF results</translation>
+        <translation type="vanished">P profiles set from the OPF results</translation>
     </message>
     <message>
         <source>Export logs</source>
-        <translation>Export logs</translation>
+        <translation type="vanished">Export logs</translation>
     </message>
 </context>
 <context>
@@ -2722,18 +2754,18 @@ Are you ok with potentially waiting a lot?</translation>
     <message>
         <source>VeraGrid internal commands.
 </source>
-        <translation>VeraGrid internal commands.
+        <translation type="vanished">VeraGrid internal commands.
 </translation>
     </message>
     <message>
         <source>If a command is unavailable is because the study has not been executed yet.</source>
-        <translation>If a command is unavailable is because the study has not been executed yet.</translation>
+        <translation type="vanished">If a command is unavailable is because the study has not been executed yet.</translation>
     </message>
     <message>
         <source>
 
 clc():	clear the console.</source>
-        <translation>
+        <translation type="vanished">
 
 clc():	clear the console.</translation>
     </message>
@@ -2741,503 +2773,503 @@ clc():	clear the console.</translation>
         <source>
 
 App functions:</source>
-        <translation>
+        <translation type="vanished">
 
 App functions:</translation>
     </message>
     <message>
         <source>	app.new_project(): Clear all.</source>
-        <translation>	app.new_project(): Clear all.</translation>
+        <translation type="vanished">	app.new_project(): Clear all.</translation>
     </message>
     <message>
         <source>	app.open_file(): Prompt to load VeraGrid compatible file</source>
-        <translation>	app.open_file(): Prompt to load VeraGrid compatible file</translation>
+        <translation type="vanished">	app.open_file(): Prompt to load VeraGrid compatible file</translation>
     </message>
     <message>
         <source>	app.save_file(): Prompt to save VeraGrid file</source>
-        <translation>	app.save_file(): Prompt to save VeraGrid file</translation>
+        <translation type="vanished">	app.save_file(): Prompt to save VeraGrid file</translation>
     </message>
     <message>
         <source>	app.export_diagram(): Prompt to export the diagram in png.</source>
-        <translation>	app.export_diagram(): Prompt to export the diagram in png.</translation>
+        <translation type="vanished">	app.export_diagram(): Prompt to export the diagram in png.</translation>
     </message>
     <message>
         <source>	app.create_schematic_from_api(): Create the schematic from the circuit information.</source>
-        <translation>	app.create_schematic_from_api(): Create the schematic from the circuit information.</translation>
+        <translation type="vanished">	app.create_schematic_from_api(): Create the schematic from the circuit information.</translation>
     </message>
     <message>
         <source>	app.adjust_all_node_width(): Adjust the width of all the nodes according to their name.</source>
-        <translation>	app.adjust_all_node_width(): Adjust the width of all the nodes according to their name.</translation>
+        <translation type="vanished">	app.adjust_all_node_width(): Adjust the width of all the nodes according to their name.</translation>
     </message>
     <message>
         <source>	app.numerical_circuit: get compilation of the assets.</source>
-        <translation>	app.numerical_circuit: get compilation of the assets.</translation>
+        <translation type="vanished">	app.numerical_circuit: get compilation of the assets.</translation>
     </message>
     <message>
         <source>	app.islands: get compilation of the assets split into the topological islands.</source>
-        <translation>	app.islands: get compilation of the assets split into the topological islands.</translation>
+        <translation type="vanished">	app.islands: get compilation of the assets split into the topological islands.</translation>
     </message>
     <message>
         <source>
 
 Circuit functions:</source>
-        <translation>
+        <translation type="vanished">
 
 Circuit functions:</translation>
     </message>
     <message>
         <source>	app.circuit.plot_graph(): Plot a graph in a Matplotlib window. Call plt.show() after.</source>
-        <translation>	app.circuit.plot_graph(): Plot a graph in a Matplotlib window. Call plt.show() after.</translation>
+        <translation type="vanished">	app.circuit.plot_graph(): Plot a graph in a Matplotlib window. Call plt.show() after.</translation>
     </message>
     <message>
         <source>
 
 Power flow results:</source>
-        <translation>
+        <translation type="vanished">
 
 Power flow results:</translation>
     </message>
     <message>
         <source>	app.session.power_flow.voltage:	 the nodal voltages in per unit</source>
-        <translation>	app.session.power_flow.voltage:	 the nodal voltages in per unit</translation>
+        <translation type="vanished">	app.session.power_flow.voltage:	 the nodal voltages in per unit</translation>
     </message>
     <message>
         <source>	app.session.power_flow.current:	 the branch currents in per unit</source>
-        <translation>	app.session.power_flow.current:	 the branch currents in per unit</translation>
+        <translation type="vanished">	app.session.power_flow.current:	 the branch currents in per unit</translation>
     </message>
     <message>
         <source>	app.session.power_flow.loading:	 the branch loading in %</source>
-        <translation>	app.session.power_flow.loading:	 the branch loading in %</translation>
+        <translation type="vanished">	app.session.power_flow.loading:	 the branch loading in %</translation>
     </message>
     <message>
         <source>	app.session.power_flow.losses:	 the branch losses in per unit</source>
-        <translation>	app.session.power_flow.losses:	 the branch losses in per unit</translation>
+        <translation type="vanished">	app.session.power_flow.losses:	 the branch losses in per unit</translation>
     </message>
     <message>
         <source>	app.session.power_flow.power:	 the nodal power Injections in per unit</source>
-        <translation>	app.session.power_flow.power:	 the nodal power Injections in per unit</translation>
+        <translation type="vanished">	app.session.power_flow.power:	 the nodal power Injections in per unit</translation>
     </message>
     <message>
         <source>	app.session.power_flow.Sf:	 the branch power Injections in per unit at the "from" side</source>
-        <translation>	app.session.power_flow.Sf:	 the branch power Injections in per unit at the "from" side</translation>
+        <translation type="vanished">	app.session.power_flow.Sf:	 the branch power Injections in per unit at the "from" side</translation>
     </message>
     <message>
         <source>	app.session.power_flow.St:	 the branch power Injections in per unit at the "to" side</source>
-        <translation>	app.session.power_flow.St:	 the branch power Injections in per unit at the "to" side</translation>
+        <translation type="vanished">	app.session.power_flow.St:	 the branch power Injections in per unit at the "to" side</translation>
     </message>
     <message>
         <source>
 
 Short circuit results:</source>
-        <translation>
+        <translation type="vanished">
 
 Short circuit results:</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.voltage:	 the nodal voltages in per unit</source>
-        <translation>	app.session.short_circuit.voltage:	 the nodal voltages in per unit</translation>
+        <translation type="vanished">	app.session.short_circuit.voltage:	 the nodal voltages in per unit</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.current:	 the branch currents in per unit</source>
-        <translation>	app.session.short_circuit.current:	 the branch currents in per unit</translation>
+        <translation type="vanished">	app.session.short_circuit.current:	 the branch currents in per unit</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.loading:	 the branch loading in %</source>
-        <translation>	app.session.short_circuit.loading:	 the branch loading in %</translation>
+        <translation type="vanished">	app.session.short_circuit.loading:	 the branch loading in %</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.losses:	 the branch losses in per unit</source>
-        <translation>	app.session.short_circuit.losses:	 the branch losses in per unit</translation>
+        <translation type="vanished">	app.session.short_circuit.losses:	 the branch losses in per unit</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.power:	 the nodal power Injections in per unit</source>
-        <translation>	app.session.short_circuit.power:	 the nodal power Injections in per unit</translation>
+        <translation type="vanished">	app.session.short_circuit.power:	 the nodal power Injections in per unit</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.power_from:	 the branch power Injections in per unit at the "from" side</source>
-        <translation>	app.session.short_circuit.power_from:	 the branch power Injections in per unit at the "from" side</translation>
+        <translation type="vanished">	app.session.short_circuit.power_from:	 the branch power Injections in per unit at the "from" side</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.power_to:	 the branch power Injections in per unit at the "to" side</source>
-        <translation>	app.session.short_circuit.power_to:	 the branch power Injections in per unit at the "to" side</translation>
+        <translation type="vanished">	app.session.short_circuit.power_to:	 the branch power Injections in per unit at the "to" side</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.short_circuit_power:	 Short circuit power in MVA of the grid nodes</source>
-        <translation>	app.session.short_circuit.short_circuit_power:	 Short circuit power in MVA of the grid nodes</translation>
+        <translation type="vanished">	app.session.short_circuit.short_circuit_power:	 Short circuit power in MVA of the grid nodes</translation>
     </message>
     <message>
         <source>
 
 Optimal power flow results:</source>
-        <translation>
+        <translation type="vanished">
 
 Optimal power flow results:</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.voltage:	 the nodal voltages angles in rad</source>
-        <translation>	app.session.optimal_power_flow.voltage:	 the nodal voltages angles in rad</translation>
+        <translation type="vanished">	app.session.optimal_power_flow.voltage:	 the nodal voltages angles in rad</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.load_shedding:	 the branch loading in %</source>
-        <translation>	app.session.optimal_power_flow.load_shedding:	 the branch loading in %</translation>
+        <translation type="vanished">	app.session.optimal_power_flow.load_shedding:	 the branch loading in %</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.losses:	 the branch losses in per unit</source>
-        <translation>	app.session.optimal_power_flow.losses:	 the branch losses in per unit</translation>
+        <translation type="vanished">	app.session.optimal_power_flow.losses:	 the branch losses in per unit</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.Sbus:	 the nodal power Injections in MW</source>
-        <translation>	app.session.optimal_power_flow.Sbus:	 the nodal power Injections in MW</translation>
+        <translation type="vanished">	app.session.optimal_power_flow.Sbus:	 the nodal power Injections in MW</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.Sf:	 the branch power Sf</source>
-        <translation>	app.session.optimal_power_flow.Sf:	 the branch power Sf</translation>
+        <translation type="vanished">	app.session.optimal_power_flow.Sf:	 the branch power Sf</translation>
     </message>
     <message>
         <source>
 
 Time series power flow results:</source>
-        <translation>
+        <translation type="vanished">
 
 Time series power flow results:</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.time:	 Profiles time index (pandas DateTimeIndex object)</source>
-        <translation>	app.session.power_flow_ts.time:	 Profiles time index (pandas DateTimeIndex object)</translation>
+        <translation type="vanished">	app.session.power_flow_ts.time:	 Profiles time index (pandas DateTimeIndex object)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.load_profiles:	 Load profiles matrix (row: time, col: node)</source>
-        <translation>	app.session.power_flow_ts.load_profiles:	 Load profiles matrix (row: time, col: node)</translation>
+        <translation type="vanished">	app.session.power_flow_ts.load_profiles:	 Load profiles matrix (row: time, col: node)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.gen_profiles:	 Generation profiles matrix (row: time, col: node)</source>
-        <translation>	app.session.power_flow_ts.gen_profiles:	 Generation profiles matrix (row: time, col: node)</translation>
+        <translation type="vanished">	app.session.power_flow_ts.gen_profiles:	 Generation profiles matrix (row: time, col: node)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.voltages:	 nodal voltages results matrix (row: time, col: node)</source>
-        <translation>	app.session.power_flow_ts.voltages:	 nodal voltages results matrix (row: time, col: node)</translation>
+        <translation type="vanished">	app.session.power_flow_ts.voltages:	 nodal voltages results matrix (row: time, col: node)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.currents:	 Branches currents results matrix (row: time, col: branch)</source>
-        <translation>	app.session.power_flow_ts.currents:	 Branches currents results matrix (row: time, col: branch)</translation>
+        <translation type="vanished">	app.session.power_flow_ts.currents:	 Branches currents results matrix (row: time, col: branch)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.loadings:	 Branches loadings results matrix (row: time, col: branch)</source>
-        <translation>	app.session.power_flow_ts.loadings:	 Branches loadings results matrix (row: time, col: branch)</translation>
+        <translation type="vanished">	app.session.power_flow_ts.loadings:	 Branches loadings results matrix (row: time, col: branch)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.losses:	 Branches losses results matrix (row: time, col: branch)</source>
-        <translation>	app.session.power_flow_ts.losses:	 Branches losses results matrix (row: time, col: branch)</translation>
+        <translation type="vanished">	app.session.power_flow_ts.losses:	 Branches losses results matrix (row: time, col: branch)</translation>
     </message>
     <message>
         <source>
 
 Voltage stability power flow results:</source>
-        <translation>
+        <translation type="vanished">
 
 Voltage stability power flow results:</translation>
     </message>
     <message>
         <source>	app.session.continuation_power_flow.voltage:	 Voltage values for every power multiplication factor.</source>
-        <translation>	app.session.continuation_power_flow.voltage:	 Voltage values for every power multiplication factor.</translation>
+        <translation type="vanished">	app.session.continuation_power_flow.voltage:	 Voltage values for every power multiplication factor.</translation>
     </message>
     <message>
         <source>	app.session.continuation_power_flow.lambda:	 Value of power multiplication factor applied</source>
-        <translation>	app.session.continuation_power_flow.lambda:	 Value of power multiplication factor applied</translation>
+        <translation type="vanished">	app.session.continuation_power_flow.lambda:	 Value of power multiplication factor applied</translation>
     </message>
     <message>
         <source>	app.session.continuation_power_flow.Sf:	 Power values for every power multiplication factor.</source>
-        <translation>	app.session.continuation_power_flow.Sf:	 Power values for every power multiplication factor.</translation>
+        <translation type="vanished">	app.session.continuation_power_flow.Sf:	 Power values for every power multiplication factor.</translation>
     </message>
     <message>
         <source>
 
 Monte Carlo power flow results:</source>
-        <translation>
+        <translation type="vanished">
 
 Monte Carlo power flow results:</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.V_avg:	 nodal voltage average result.</source>
-        <translation>	app.session.stochastic_power_flow.V_avg:	 nodal voltage average result.</translation>
+        <translation type="vanished">	app.session.stochastic_power_flow.V_avg:	 nodal voltage average result.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.I_avg:	 branch current average result.</source>
-        <translation>	app.session.stochastic_power_flow.I_avg:	 branch current average result.</translation>
+        <translation type="vanished">	app.session.stochastic_power_flow.I_avg:	 branch current average result.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.Loading_avg:	 branch loading average result.</source>
-        <translation>	app.session.stochastic_power_flow.Loading_avg:	 branch loading average result.</translation>
+        <translation type="vanished">	app.session.stochastic_power_flow.Loading_avg:	 branch loading average result.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.Losses_avg:	 branch losses average result.</source>
-        <translation>	app.session.stochastic_power_flow.Losses_avg:	 branch losses average result.</translation>
+        <translation type="vanished">	app.session.stochastic_power_flow.Losses_avg:	 branch losses average result.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.V_std:	 nodal voltage standard deviation result.</source>
-        <translation>	app.session.stochastic_power_flow.V_std:	 nodal voltage standard deviation result.</translation>
+        <translation type="vanished">	app.session.stochastic_power_flow.V_std:	 nodal voltage standard deviation result.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.I_std:	 branch current standard deviation result.</source>
-        <translation>	app.session.stochastic_power_flow.I_std:	 branch current standard deviation result.</translation>
+        <translation type="vanished">	app.session.stochastic_power_flow.I_std:	 branch current standard deviation result.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.Loading_std:	 branch loading standard deviation result.</source>
-        <translation>	app.session.stochastic_power_flow.Loading_std:	 branch loading standard deviation result.</translation>
+        <translation type="vanished">	app.session.stochastic_power_flow.Loading_std:	 branch loading standard deviation result.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.Losses_std:	 branch losses standard deviation result.</source>
-        <translation>	app.session.stochastic_power_flow.Losses_std:	 branch losses standard deviation result.</translation>
+        <translation type="vanished">	app.session.stochastic_power_flow.Losses_std:	 branch losses standard deviation result.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.V_avg_series:	 nodal voltage average series.</source>
-        <translation>	app.session.stochastic_power_flow.V_avg_series:	 nodal voltage average series.</translation>
+        <translation type="vanished">	app.session.stochastic_power_flow.V_avg_series:	 nodal voltage average series.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.V_std_series:	 branch current standard deviation series.</source>
-        <translation>	app.session.stochastic_power_flow.V_std_series:	 branch current standard deviation series.</translation>
+        <translation type="vanished">	app.session.stochastic_power_flow.V_std_series:	 branch current standard deviation series.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.error_series:	 Monte Carlo error series (the convergence value).</source>
-        <translation>	app.session.stochastic_power_flow.error_series:	 Monte Carlo error series (the convergence value).</translation>
+        <translation type="vanished">	app.session.stochastic_power_flow.error_series:	 Monte Carlo error series (the convergence value).</translation>
     </message>
     <message>
         <source>The same for app.latin_hypercube_sampling</source>
-        <translation>The same for app.latin_hypercube_sampling</translation>
+        <translation type="vanished">The same for app.latin_hypercube_sampling</translation>
     </message>
     <message>
         <source> does not exist :/</source>
-        <translation> does not exist :/</translation>
+        <translation type="vanished"> does not exist :/</translation>
     </message>
     <message>
         <source>Open script</source>
-        <translation>Open script</translation>
+        <translation type="vanished">Open script</translation>
     </message>
     <message>
         <source>Are you sure you want to clear source code?</source>
-        <translation>Are you sure you want to clear source code?</translation>
+        <translation type="vanished">Are you sure you want to clear source code?</translation>
     </message>
     <message>
         <source>Clear source code</source>
-        <translation>Clear source code</translation>
+        <translation type="vanished">Clear source code</translation>
     </message>
     <message>
         <source>Please enter a name for the script</source>
-        <translation>Please enter a name for the script</translation>
+        <translation type="vanished">Please enter a name for the script</translation>
     </message>
     <message>
         <source>Save script</source>
-        <translation>Save script</translation>
+        <translation type="vanished">Save script</translation>
     </message>
     <message>
         <source>Do you want to delete {path}?</source>
-        <translation>Do you want to delete {path}?</translation>
+        <translation type="vanished">Do you want to delete {path}?</translation>
     </message>
     <message>
         <source>Delete source code file</source>
-        <translation>Delete source code file</translation>
+        <translation type="vanished">Delete source code file</translation>
     </message>
     <message>
         <source>Delete</source>
-        <translation>Delete</translation>
+        <translation type="vanished">Delete</translation>
     </message>
 </context>
 <context>
     <name>ServerMain</name>
     <message>
         <source>Server config file was erroneous, wrote a new one</source>
-        <translation>Server config file was erroneous, wrote a new one</translation>
+        <translation type="vanished">Server config file was erroneous, wrote a new one</translation>
     </message>
     <message>
         <source>The server connection is running, are you sure that you want to stop it?</source>
-        <translation>The server connection is running, are you sure that you want to stop it?</translation>
+        <translation type="vanished">The server connection is running, are you sure that you want to stop it?</translation>
     </message>
     <message>
         <source>Stop Server</source>
-        <translation>Stop Server</translation>
+        <translation type="vanished">Stop Server</translation>
     </message>
     <message>
         <source>Could not connect to the server :/</source>
-        <translation>Could not connect to the server :/</translation>
+        <translation type="vanished">Could not connect to the server :/</translation>
     </message>
     <message>
         <source>Connected!</source>
-        <translation>Connected!</translation>
+        <translation type="vanished">Connected!</translation>
     </message>
     <message>
         <source>Results received!</source>
-        <translation>Results received!</translation>
+        <translation type="vanished">Results received!</translation>
     </message>
 </context>
 <context>
     <name>ShortCircuitSelector</name>
     <message>
         <source>Short Circuit Configuration</source>
-        <translation>Short Circuit Configuration</translation>
+        <translation type="vanished">Short Circuit Configuration</translation>
     </message>
     <message>
         <source>Custom</source>
-        <translation>Custom</translation>
+        <translation type="vanished">Custom</translation>
     </message>
     <message>
         <source>Typical value</source>
-        <translation>Typical value</translation>
+        <translation type="vanished">Typical value</translation>
     </message>
     <message>
         <source>Solid 3ph fault</source>
-        <translation>Solid 3ph fault</translation>
+        <translation type="vanished">Solid 3ph fault</translation>
     </message>
     <message>
         <source>Near-bolted three-phase fault</source>
-        <translation>Near-bolted three-phase fault</translation>
+        <translation type="vanished">Near-bolted three-phase fault</translation>
     </message>
     <message>
         <source>Solid phase ground fault</source>
-        <translation>Solid phase ground fault</translation>
+        <translation type="vanished">Solid phase ground fault</translation>
     </message>
     <message>
         <source>Near-bolted phase-to-ground fault</source>
-        <translation>Near-bolted phase-to-ground fault</translation>
+        <translation type="vanished">Near-bolted phase-to-ground fault</translation>
     </message>
     <message>
         <source>Metallic conductor conductor contact</source>
-        <translation>Metallic conductor conductor contact</translation>
+        <translation type="vanished">Metallic conductor conductor contact</translation>
     </message>
     <message>
         <source>Low-impedance metallic conductor-to-conductor short</source>
-        <translation>Low-impedance metallic conductor-to-conductor short</translation>
+        <translation type="vanished">Low-impedance metallic conductor-to-conductor short</translation>
     </message>
     <message>
         <source>Excavator touching underground cable</source>
-        <translation>Excavator touching underground cable</translation>
+        <translation type="vanished">Excavator touching underground cable</translation>
     </message>
     <message>
         <source>Direct mechanical strike on underground cable</source>
-        <translation>Direct mechanical strike on underground cable</translation>
+        <translation type="vanished">Direct mechanical strike on underground cable</translation>
     </message>
     <message>
         <source>Excavator damaging cable partial arc</source>
-        <translation>Excavator damaging cable partial arc</translation>
+        <translation type="vanished">Excavator damaging cable partial arc</translation>
     </message>
     <message>
         <source>Cable damage with partial contact and arcing</source>
-        <translation>Cable damage with partial contact and arcing</translation>
+        <translation type="vanished">Cable damage with partial contact and arcing</translation>
     </message>
     <message>
         <source>Crane or machinery overhead arc</source>
-        <translation>Crane or machinery overhead arc</translation>
+        <translation type="vanished">Crane or machinery overhead arc</translation>
     </message>
     <message>
         <source>Arc from machinery approaching overhead line</source>
-        <translation>Arc from machinery approaching overhead line</translation>
+        <translation type="vanished">Arc from machinery approaching overhead line</translation>
     </message>
     <message>
         <source>Tree branch touching overhead line</source>
-        <translation>Tree branch touching overhead line</translation>
+        <translation type="vanished">Tree branch touching overhead line</translation>
     </message>
     <message>
         <source>Typical vegetation high-impedance fault</source>
-        <translation>Typical vegetation high-impedance fault</translation>
+        <translation type="vanished">Typical vegetation high-impedance fault</translation>
     </message>
     <message>
         <source>Wet tree or wet vegetation contact</source>
-        <translation>Wet tree or wet vegetation contact</translation>
+        <translation type="vanished">Wet tree or wet vegetation contact</translation>
     </message>
     <message>
         <source>Vegetation contact with lower resistance due to moisture</source>
-        <translation>Vegetation contact with lower resistance due to moisture</translation>
+        <translation type="vanished">Vegetation contact with lower resistance due to moisture</translation>
     </message>
     <message>
         <source>Dry tree or dry branch contact</source>
-        <translation>Dry tree or dry branch contact</translation>
+        <translation type="vanished">Dry tree or dry branch contact</translation>
     </message>
     <message>
         <source>Dry vegetation high-impedance fault</source>
-        <translation>Dry vegetation high-impedance fault</translation>
+        <translation type="vanished">Dry vegetation high-impedance fault</translation>
     </message>
     <message>
         <source>Downed conductor on wet soil</source>
-        <translation>Downed conductor on wet soil</translation>
+        <translation type="vanished">Downed conductor on wet soil</translation>
     </message>
     <message>
         <source>Downed conductor on relatively conductive ground</source>
-        <translation>Downed conductor on relatively conductive ground</translation>
+        <translation type="vanished">Downed conductor on relatively conductive ground</translation>
     </message>
     <message>
         <source>Downed conductor on gravel</source>
-        <translation>Downed conductor on gravel</translation>
+        <translation type="vanished">Downed conductor on gravel</translation>
     </message>
     <message>
         <source>Downed conductor on gravel or ballast</source>
-        <translation>Downed conductor on gravel or ballast</translation>
+        <translation type="vanished">Downed conductor on gravel or ballast</translation>
     </message>
     <message>
         <source>Downed conductor on asphalt or concrete</source>
-        <translation>Downed conductor on asphalt or concrete</translation>
+        <translation type="vanished">Downed conductor on asphalt or concrete</translation>
     </message>
     <message>
         <source>Downed conductor on poorly conductive surface</source>
-        <translation>Downed conductor on poorly conductive surface</translation>
+        <translation type="vanished">Downed conductor on poorly conductive surface</translation>
     </message>
     <message>
         <source>Insulator contamination or leakage fault</source>
-        <translation>Insulator contamination or leakage fault</translation>
+        <translation type="vanished">Insulator contamination or leakage fault</translation>
     </message>
     <message>
         <source>Leakage-type high-impedance fault</source>
-        <translation>Leakage-type high-impedance fault</translation>
+        <translation type="vanished">Leakage-type high-impedance fault</translation>
     </message>
     <message>
         <source>Generic arcing phase ground fault</source>
-        <translation>Generic arcing phase ground fault</translation>
+        <translation type="vanished">Generic arcing phase ground fault</translation>
     </message>
     <message>
         <source>Simple resistive arc approximation</source>
-        <translation>Simple resistive arc approximation</translation>
+        <translation type="vanished">Simple resistive arc approximation</translation>
     </message>
     <message>
         <source>Severe high resistance transmission fault</source>
-        <translation>Severe high resistance transmission fault</translation>
+        <translation type="vanished">Severe high resistance transmission fault</translation>
     </message>
     <message>
         <source>High-resistance EHV fault scenario</source>
-        <translation>High-resistance EHV fault scenario</translation>
+        <translation type="vanished">High-resistance EHV fault scenario</translation>
     </message>
     <message>
         <source>phases</source>
-        <translation>phases</translation>
+        <translation type="vanished">phases</translation>
     </message>
     <message>
         <source>abc</source>
-        <translation>abc</translation>
+        <translation type="vanished">abc</translation>
     </message>
     <message>
         <source>a</source>
-        <translation>a</translation>
+        <translation type="vanished">a</translation>
     </message>
     <message>
         <source>b</source>
-        <translation>b</translation>
+        <translation type="vanished">b</translation>
     </message>
     <message>
         <source>c</source>
-        <translation>c</translation>
+        <translation type="vanished">c</translation>
     </message>
     <message>
         <source>ab</source>
-        <translation>ab</translation>
+        <translation type="vanished">ab</translation>
     </message>
     <message>
         <source>bc</source>
-        <translation>bc</translation>
+        <translation type="vanished">bc</translation>
     </message>
     <message>
         <source>ca</source>
-        <translation>ca</translation>
+        <translation type="vanished">ca</translation>
     </message>
     <message>
         <source>sequences</source>
-        <translation>sequences</translation>
+        <translation type="vanished">sequences</translation>
     </message>
 </context>
 <context>
@@ -3309,15 +3341,15 @@ Monte Carlo power flow results:</translation>
     <name>SubstationDesigner</name>
     <message>
         <source>Substation maker</source>
-        <translation>Substation maker</translation>
+        <translation type="vanished">Substation maker</translation>
     </message>
     <message>
         <source>Substation {number}</source>
-        <translation>Substation {number}</translation>
+        <translation type="vanished">Substation {number}</translation>
     </message>
     <message>
         <source>There are no voltage levels, so no substation will be created, ok?</source>
-        <translation>There are no voltage levels, so no substation will be created, ok?</translation>
+        <translation type="vanished">There are no voltage levels, so no substation will be created, ok?</translation>
     </message>
 </context>
 <context>
@@ -3671,19 +3703,19 @@ Monte Carlo power flow results:</translation>
     <name>VeraGridMainGUI</name>
     <message>
         <source>VeraGrid {version}</source>
-        <translation>VeraGrid {version}</translation>
+        <translation type="vanished">VeraGrid {version}</translation>
     </message>
     <message>
         <source>Are you sure that you want to exit VeraGrid?</source>
-        <translation>Are you sure that you want to exit VeraGrid?</translation>
+        <translation type="vanished">Are you sure that you want to exit VeraGrid?</translation>
     </message>
     <message>
         <source>Close</source>
-        <translation>Close</translation>
+        <translation type="vanished">Close</translation>
     </message>
     <message>
         <source>No effect, select diagrams or database</source>
-        <translation>No effect, select diagrams or database</translation>
+        <translation type="vanished">No effect, select diagrams or database</translation>
     </message>
 </context>
 <context>

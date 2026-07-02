@@ -606,7 +606,39 @@ li.checked::标记 { content: "\2612"; }
         <source>Catalan</source>
         <translation>加泰罗尼亚语</translation>
     </message>
-<message><source>Basque</source><translation>巴斯克</translation></message><message><source>Galician</source><translation>加利西亚语</translation></message><message><source>Tongan</source><translation>汤加</translation></message><message><source>Tuvaluan</source><translation>图瓦卢语</translation></message><message><source>Arabic</source><translation>阿拉伯</translation></message><message><source>Italian</source><translation>意大利语</translation></message><message><source>Greek</source><translation>希腊语</translation></message><message><source>Dutch</source><translation>荷兰语</translation></message></context>
+    <message>
+        <source>Basque</source>
+        <translation>巴斯克</translation>
+    </message>
+    <message>
+        <source>Galician</source>
+        <translation>加利西亚语</translation>
+    </message>
+    <message>
+        <source>Tongan</source>
+        <translation>汤加</translation>
+    </message>
+    <message>
+        <source>Tuvaluan</source>
+        <translation>图瓦卢语</translation>
+    </message>
+    <message>
+        <source>Arabic</source>
+        <translation>阿拉伯</translation>
+    </message>
+    <message>
+        <source>Italian</source>
+        <translation>意大利语</translation>
+    </message>
+    <message>
+        <source>Greek</source>
+        <translation>希腊语</translation>
+    </message>
+    <message>
+        <source>Dutch</source>
+        <translation>荷兰语</translation>
+    </message>
+<message><source>Japanese</source><translation>日本語</translation></message></context>
 <context>
     <name>ControllableShuntEditorDialog</name>
     <message>

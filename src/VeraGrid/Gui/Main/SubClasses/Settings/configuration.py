@@ -159,6 +159,7 @@ class ConfigurationMain(ResultsMain):
             [
                 ApplicationLanguage.SYSTEM,
                 ApplicationLanguage.ENGLISH,
+                ApplicationLanguage.JAPANESE,
                 ApplicationLanguage.BASQUE,
                 ApplicationLanguage.GALICIAN,
                 ApplicationLanguage.TONGAN,
@@ -189,46 +190,49 @@ class ConfigurationMain(ResultsMain):
                 if language == ApplicationLanguage.ENGLISH:
                     display_text = self.tr("English")
                 else:
-                    if language == ApplicationLanguage.BASQUE:
-                        display_text = self.tr("Basque")
+                    if language == ApplicationLanguage.JAPANESE:
+                        display_text = self.tr("Japanese")
                     else:
-                        if language == ApplicationLanguage.GALICIAN:
-                            display_text = self.tr("Galician")
+                        if language == ApplicationLanguage.BASQUE:
+                            display_text = self.tr("Basque")
                         else:
-                            if language == ApplicationLanguage.TONGAN:
-                                display_text = self.tr("Tongan")
+                            if language == ApplicationLanguage.GALICIAN:
+                                display_text = self.tr("Galician")
                             else:
-                                if language == ApplicationLanguage.TUVALUAN:
-                                    display_text = self.tr("Tuvaluan")
+                                if language == ApplicationLanguage.TONGAN:
+                                    display_text = self.tr("Tongan")
                                 else:
-                                    if language == ApplicationLanguage.ARABIC:
-                                        display_text = self.tr("Arabic")
+                                    if language == ApplicationLanguage.TUVALUAN:
+                                        display_text = self.tr("Tuvaluan")
                                     else:
-                                        if language == ApplicationLanguage.ITALIAN:
-                                            display_text = self.tr("Italian")
+                                        if language == ApplicationLanguage.ARABIC:
+                                            display_text = self.tr("Arabic")
                                         else:
-                                            if language == ApplicationLanguage.GREEK:
-                                                display_text = self.tr("Greek")
+                                            if language == ApplicationLanguage.ITALIAN:
+                                                display_text = self.tr("Italian")
                                             else:
-                                                if language == ApplicationLanguage.DUTCH:
-                                                    display_text = self.tr("Dutch")
+                                                if language == ApplicationLanguage.GREEK:
+                                                    display_text = self.tr("Greek")
                                                 else:
-                                                    if language == ApplicationLanguage.CATALAN:
-                                                        display_text = self.tr("Catalan")
+                                                    if language == ApplicationLanguage.DUTCH:
+                                                        display_text = self.tr("Dutch")
                                                     else:
-                                                        if language == ApplicationLanguage.CHINESE:
-                                                            display_text = self.tr("Chinese")
+                                                        if language == ApplicationLanguage.CATALAN:
+                                                            display_text = self.tr("Catalan")
                                                         else:
-                                                            if language == ApplicationLanguage.GERMAN:
-                                                                display_text = self.tr("German")
+                                                            if language == ApplicationLanguage.CHINESE:
+                                                                display_text = self.tr("Chinese")
                                                             else:
-                                                                if language == ApplicationLanguage.FRENCH:
-                                                                    display_text = self.tr("French")
+                                                                if language == ApplicationLanguage.GERMAN:
+                                                                    display_text = self.tr("German")
                                                                 else:
-                                                                    if language == ApplicationLanguage.PORTUGUESE:
-                                                                        display_text = self.tr("Portuguese")
+                                                                    if language == ApplicationLanguage.FRENCH:
+                                                                        display_text = self.tr("French")
                                                                     else:
-                                                                        display_text = self.tr("Español")
+                                                                        if language == ApplicationLanguage.PORTUGUESE:
+                                                                            display_text = self.tr("Portuguese")
+                                                                        else:
+                                                                            display_text = self.tr("Español")
 
             self.language_combo_box.addItem(display_text, language)
 

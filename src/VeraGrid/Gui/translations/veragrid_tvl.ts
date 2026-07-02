@@ -606,7 +606,7 @@ li.checked::marker { content: "\2612"; }
         <source>Catalan</source>
         <translation>Catalan</translation>
     </message>
-<message><source>Basque</source><translation>Basque</translation></message><message><source>Galician</source><translation>Galician</translation></message><message><source>Tongan</source><translation>Tongan</translation></message><message><source>Tuvaluan</source><translation>Tuvaluan</translation></message><message><source>Arabic</source><translation>Arabic</translation></message><message><source>Italian</source><translation>Italian</translation></message><message><source>Greek</source><translation>Greek</translation></message><message><source>Dutch</source><translation>Dutch</translation></message></context>
+<message><source>Basque</source><translation>Basque</translation></message><message><source>Galician</source><translation>Galician</translation></message><message><source>Tongan</source><translation>Tongan</translation></message><message><source>Tuvaluan</source><translation>Tuvaluan</translation></message><message><source>Arabic</source><translation>Arabic</translation></message><message><source>Italian</source><translation>Italian</translation></message><message><source>Greek</source><translation>Greek</translation></message><message><source>Dutch</source><translation>Dutch</translation></message><message><source>Japanese</source><translation>Japanese</translation></message></context>
 <context>
     <name>ControllableShuntEditorDialog</name>
     <message>

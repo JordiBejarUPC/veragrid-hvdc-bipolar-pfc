@@ -18,6 +18,7 @@ class ApplicationLanguage(Enum):
 
     SYSTEM = "system"
     ENGLISH = "en"
+    JAPANESE = "ja_JP"
     BASQUE = "eu_ES"
     GALICIAN = "gl_ES"
     TONGAN = "to_TO"
@@ -308,49 +309,52 @@ def language_from_name(name_text: str | None) -> ApplicationLanguage:
     if normalized_name == ApplicationLanguage.ENGLISH.name:
         return ApplicationLanguage.ENGLISH
     else:
-        if normalized_name == ApplicationLanguage.BASQUE.name:
-            return ApplicationLanguage.BASQUE
+        if normalized_name == ApplicationLanguage.JAPANESE.name:
+            return ApplicationLanguage.JAPANESE
         else:
-            if normalized_name == ApplicationLanguage.GALICIAN.name:
-                return ApplicationLanguage.GALICIAN
+            if normalized_name == ApplicationLanguage.BASQUE.name:
+                return ApplicationLanguage.BASQUE
             else:
-                if normalized_name == ApplicationLanguage.TONGAN.name:
-                    return ApplicationLanguage.TONGAN
+                if normalized_name == ApplicationLanguage.GALICIAN.name:
+                    return ApplicationLanguage.GALICIAN
                 else:
-                    if normalized_name == ApplicationLanguage.TUVALUAN.name:
-                        return ApplicationLanguage.TUVALUAN
+                    if normalized_name == ApplicationLanguage.TONGAN.name:
+                        return ApplicationLanguage.TONGAN
                     else:
-                        if normalized_name == ApplicationLanguage.ARABIC.name:
-                            return ApplicationLanguage.ARABIC
+                        if normalized_name == ApplicationLanguage.TUVALUAN.name:
+                            return ApplicationLanguage.TUVALUAN
                         else:
-                            if normalized_name == ApplicationLanguage.ITALIAN.name:
-                                return ApplicationLanguage.ITALIAN
+                            if normalized_name == ApplicationLanguage.ARABIC.name:
+                                return ApplicationLanguage.ARABIC
                             else:
-                                if normalized_name == ApplicationLanguage.GREEK.name:
-                                    return ApplicationLanguage.GREEK
+                                if normalized_name == ApplicationLanguage.ITALIAN.name:
+                                    return ApplicationLanguage.ITALIAN
                                 else:
-                                    if normalized_name == ApplicationLanguage.DUTCH.name:
-                                        return ApplicationLanguage.DUTCH
+                                    if normalized_name == ApplicationLanguage.GREEK.name:
+                                        return ApplicationLanguage.GREEK
                                     else:
-                                        if normalized_name == ApplicationLanguage.CATALAN.name:
-                                            return ApplicationLanguage.CATALAN
+                                        if normalized_name == ApplicationLanguage.DUTCH.name:
+                                            return ApplicationLanguage.DUTCH
                                         else:
-                                            if normalized_name == ApplicationLanguage.CHINESE.name:
-                                                return ApplicationLanguage.CHINESE
+                                            if normalized_name == ApplicationLanguage.CATALAN.name:
+                                                return ApplicationLanguage.CATALAN
                                             else:
-                                                if normalized_name == ApplicationLanguage.GERMAN.name:
-                                                    return ApplicationLanguage.GERMAN
+                                                if normalized_name == ApplicationLanguage.CHINESE.name:
+                                                    return ApplicationLanguage.CHINESE
                                                 else:
-                                                    if normalized_name == ApplicationLanguage.FRENCH.name:
-                                                        return ApplicationLanguage.FRENCH
+                                                    if normalized_name == ApplicationLanguage.GERMAN.name:
+                                                        return ApplicationLanguage.GERMAN
                                                     else:
-                                                        if normalized_name == ApplicationLanguage.PORTUGUESE.name:
-                                                            return ApplicationLanguage.PORTUGUESE
+                                                        if normalized_name == ApplicationLanguage.FRENCH.name:
+                                                            return ApplicationLanguage.FRENCH
                                                         else:
-                                                            if normalized_name == ApplicationLanguage.SPANISH.name:
-                                                                return ApplicationLanguage.SPANISH
+                                                            if normalized_name == ApplicationLanguage.PORTUGUESE.name:
+                                                                return ApplicationLanguage.PORTUGUESE
                                                             else:
-                                                                return ApplicationLanguage.SYSTEM
+                                                                if normalized_name == ApplicationLanguage.SPANISH.name:
+                                                                    return ApplicationLanguage.SPANISH
+                                                                else:
+                                                                    return ApplicationLanguage.SYSTEM
 
 
 def read_saved_language() -> ApplicationLanguage:

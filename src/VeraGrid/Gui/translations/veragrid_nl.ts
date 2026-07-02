@@ -276,91 +276,91 @@ li.checked::markering { content: "\2612"; }&lt;/style&gt;&lt;/head&gt;&lt;body s
     <name>AiChatDialogue</name>
     <message>
         <source>VeraGrid AI dialogue</source>
-        <translation>VeraGrid AI dialoog</translation>
+        <translation type="vanished">VeraGrid AI dialoog</translation>
     </message>
     <message>
         <source>Pick or type a GGUF file name</source>
-        <translation>Kies of typ een GGUF-bestandsnaam</translation>
+        <translation type="vanished">Kies of typ een GGUF-bestandsnaam</translation>
     </message>
     <message>
         <source>Provider model name</source>
-        <translation>Modelnaam van provider</translation>
+        <translation type="vanished">Modelnaam van provider</translation>
     </message>
     <message>
         <source>VeraGrid AI</source>
-        <translation>VeraGrid AI</translation>
+        <translation type="vanished">VeraGrid AI</translation>
     </message>
     <message>
         <source>Scan the configured path for GGUF files.</source>
-        <translation>Scan het geconfigureerde pad voor GGUF-bestanden.</translation>
+        <translation type="vanished">Scan het geconfigureerde pad voor GGUF-bestanden.</translation>
     </message>
     <message>
         <source>API key</source>
-        <translation>API-sleutel</translation>
+        <translation type="vanished">API-sleutel</translation>
     </message>
     <message>
         <source>Leave empty for unauthenticated endpoints</source>
-        <translation>Laat leeg voor niet-geverifieerde eindpunten</translation>
+        <translation type="vanished">Laat leeg voor niet-geverifieerde eindpunten</translation>
     </message>
     <message>
         <source>Query the configured backend for models.</source>
-        <translation>Query uitvoeren op de geconfigureerde backend voor modellen.</translation>
+        <translation type="vanished">Query uitvoeren op de geconfigureerde backend voor modellen.</translation>
     </message>
     <message>
         <source>Type a message before sending.</source>
-        <translation>Typ een bericht voordat u het verzendt.</translation>
+        <translation type="vanished">Typ een bericht voordat u het verzendt.</translation>
     </message>
     <message>
         <source>Resolve the pending tool approval or clear the chat first.</source>
-        <translation>Los de hangende goedkeuring van het hulpmiddel op of wis eerst de chat.</translation>
+        <translation type="vanished">Los de hangende goedkeuring van het hulpmiddel op of wis eerst de chat.</translation>
     </message>
     <message>
         <source>Stopping AI turn...</source>
-        <translation>AI-draai stoppen...</translation>
+        <translation type="vanished">AI-draai stoppen...</translation>
     </message>
     <message>
         <source>There is no running AI turn to stop.</source>
-        <translation>Er is geen lopende AI-beurt om te stoppen.</translation>
+        <translation type="vanished">Er is geen lopende AI-beurt om te stoppen.</translation>
     </message>
     <message>
         <source>Running simulation and analyzing the results...</source>
-        <translation>Simulatie uitvoeren en de resultaten analyseren...</translation>
+        <translation type="vanished">Simulatie uitvoeren en de resultaten analyseren...</translation>
     </message>
     <message>
         <source>There is no pending tool call to approve.</source>
-        <translation>Er is geen openstaande tooloproep ter goedkeuring.</translation>
+        <translation type="vanished">Er is geen openstaande tooloproep ter goedkeuring.</translation>
     </message>
     <message>
         <source>Wait for the current AI turn to finish.</source>
-        <translation>Wacht tot de huidige AI-beurt is voltooid.</translation>
+        <translation type="vanished">Wacht tot de huidige AI-beurt is voltooid.</translation>
     </message>
     <message>
         <source>Running AI turn...</source>
-        <translation>AI draaien...</translation>
+        <translation type="vanished">AI draaien...</translation>
     </message>
     <message>
         <source>Generating response</source>
-        <translation>Reactie genereren</translation>
+        <translation type="vanished">Reactie genereren</translation>
     </message>
     <message>
         <source>Running AI turn</source>
-        <translation>Draaiende AI-beurt</translation>
+        <translation type="vanished">Draaiende AI-beurt</translation>
     </message>
     <message>
         <source>Stop</source>
-        <translation>Stop</translation>
+        <translation type="vanished">Stop</translation>
     </message>
     <message>
         <source>Send</source>
-        <translation>Versturen</translation>
+        <translation type="vanished">Versturen</translation>
     </message>
     <message>
         <source>You</source>
-        <translation>Jij</translation>
+        <translation type="vanished">Jij</translation>
     </message>
     <message>
         <source>Tool</source>
-        <translation>Hulpmiddel</translation>
+        <translation type="vanished">Hulpmiddel</translation>
     </message>
 </context>
 <context>
@@ -559,11 +559,11 @@ li.checked::markering { content: "\2612"; }&lt;/style&gt;&lt;/head&gt;&lt;body s
     <name>CgmesOptionsSelector</name>
     <message>
         <source>CGMES Version:</source>
-        <translation>CGMES-versie:</translation>
+        <translation type="vanished">CGMES-versie:</translation>
     </message>
     <message>
         <source>Accept</source>
-        <translation>Accepteren</translation>
+        <translation type="vanished">Accepteren</translation>
     </message>
 </context>
 <context>
@@ -604,7 +604,39 @@ li.checked::markering { content: "\2612"; }&lt;/style&gt;&lt;/head&gt;&lt;body s
         <source>Catalan</source>
         <translation>Catalaans</translation>
     </message>
-<message><source>Basque</source><translation>Baskisch</translation></message><message><source>Galician</source><translation>Galicisch</translation></message><message><source>Tongan</source><translation>Tongaans</translation></message><message><source>Tuvaluan</source><translation>Tuvaluaans</translation></message><message><source>Arabic</source><translation>Arabisch</translation></message><message><source>Italian</source><translation>Italiaans</translation></message><message><source>Greek</source><translation>Grieks</translation></message><message><source>Dutch</source><translation>Nederlands</translation></message></context>
+    <message>
+        <source>Basque</source>
+        <translation>Baskisch</translation>
+    </message>
+    <message>
+        <source>Galician</source>
+        <translation>Galicisch</translation>
+    </message>
+    <message>
+        <source>Tongan</source>
+        <translation>Tongaans</translation>
+    </message>
+    <message>
+        <source>Tuvaluan</source>
+        <translation>Tuvaluaans</translation>
+    </message>
+    <message>
+        <source>Arabic</source>
+        <translation>Arabisch</translation>
+    </message>
+    <message>
+        <source>Italian</source>
+        <translation>Italiaans</translation>
+    </message>
+    <message>
+        <source>Greek</source>
+        <translation>Grieks</translation>
+    </message>
+    <message>
+        <source>Dutch</source>
+        <translation>Nederlands</translation>
+    </message>
+<message><source>Japanese</source><translation>Japanse</translation></message></context>
 <context>
     <name>ControllableShuntEditorDialog</name>
     <message>
@@ -1208,35 +1240,35 @@ li.checked::markering { content: "\2612"; }&lt;/style&gt;&lt;/head&gt;&lt;body s
     <name>DynamicsResultsHandler</name>
     <message>
         <source>X-Y plot slot</source>
-        <translation>X-Y-plotsleuf</translation>
+        <translation type="vanished">X-Y-plotsleuf</translation>
     </message>
     <message>
         <source>Choose whether to place the dropped signal on the X axis or Y axis.</source>
-        <translation>Kies of u het neergelaten signaal op de X-as of Y-as wilt plaatsen.</translation>
+        <translation type="vanished">Kies of u het neergelaten signaal op de X-as of Y-as wilt plaatsen.</translation>
     </message>
     <message>
         <source>X axis</source>
-        <translation>X-as</translation>
+        <translation type="vanished">X-as</translation>
     </message>
     <message>
         <source>Y axis</source>
-        <translation>Y-as</translation>
+        <translation type="vanished">Y-as</translation>
     </message>
     <message>
         <source>Cancel</source>
-        <translation>Annuleren</translation>
+        <translation type="vanished">Annuleren</translation>
     </message>
     <message>
         <source>This X-Y plot already has X and Y signals. Replace X, replace Y, or cancel?</source>
-        <translation>Deze X-Y-plot bevat al X- en Y-signalen. X vervangen, Y vervangen of annuleren?</translation>
+        <translation type="vanished">Deze X-Y-plot bevat al X- en Y-signalen. X vervangen, Y vervangen of annuleren?</translation>
     </message>
     <message>
         <source>Replace X</source>
-        <translation>Vervang X</translation>
+        <translation type="vanished">Vervang X</translation>
     </message>
     <message>
         <source>Replace Y</source>
-        <translation>Vervang Y</translation>
+        <translation type="vanished">Vervang Y</translation>
     </message>
 </context>
 <context>
@@ -1251,68 +1283,68 @@ li.checked::markering { content: "\2612"; }&lt;/style&gt;&lt;/head&gt;&lt;body s
     <name>FileTypeSelector</name>
     <message>
         <source>Format:</source>
-        <translation>Formaat:</translation>
+        <translation type="vanished">Formaat:</translation>
     </message>
     <message>
         <source>Accept</source>
-        <translation>Accepteren</translation>
+        <translation type="vanished">Accepteren</translation>
     </message>
 </context>
 <context>
     <name>FmuTemplateEditorDialog</name>
     <message>
         <source>FMU Template Editor</source>
-        <translation>FMU-sjablooneditor</translation>
+        <translation type="vanished">FMU-sjablooneditor</translation>
     </message>
     <message>
         <source>Browse...</source>
-        <translation>Blader...</translation>
+        <translation type="vanished">Blader...</translation>
     </message>
     <message>
         <source>Choose an FMU archive to load its metadata and build the visual block.</source>
-        <translation>Kies een FMU-archief om de metagegevens ervan te laden en het visuele blok samen te stellen.</translation>
+        <translation type="vanished">Kies een FMU-archief om de metagegevens ervan te laden en het visuele blok samen te stellen.</translation>
     </message>
     <message>
         <source>Name</source>
-        <translation>Naam</translation>
+        <translation type="vanished">Naam</translation>
     </message>
     <message>
         <source>FMU file</source>
-        <translation>FMU-bestand</translation>
+        <translation type="vanished">FMU-bestand</translation>
     </message>
     <message>
         <source>Device type</source>
-        <translation>Apparaattype</translation>
+        <translation type="vanished">Apparaattype</translation>
     </message>
     <message>
         <source>Domain</source>
-        <translation>Domein</translation>
+        <translation type="vanished">Domein</translation>
     </message>
     <message>
         <source>Mode</source>
-        <translation>Modus</translation>
+        <translation type="vanished">Modus</translation>
     </message>
     <message>
         <source>Metadata</source>
-        <translation>Metagegevens</translation>
+        <translation type="vanished">Metagegevens</translation>
     </message>
     <message>
         <source>Select FMU file</source>
-        <translation>Selecteer FMU-bestand</translation>
+        <translation type="vanished">Selecteer FMU-bestand</translation>
     </message>
     <message>
         <source>FMU files (*.fmu)</source>
-        <translation>FMU-bestanden (*.fmu)</translation>
+        <translation type="vanished">FMU-bestanden (*.fmu)</translation>
     </message>
     <message>
         <source>FMU file not found:
 {path}</source>
-        <translation>FMU-bestand niet gevonden:
+        <translation type="vanished">FMU-bestand niet gevonden:
 {path}</translation>
     </message>
     <message>
         <source>Choose an FMU file first.</source>
-        <translation>Kies eerst een FMU-bestand.</translation>
+        <translation type="vanished">Kies eerst een FMU-bestand.</translation>
     </message>
 </context>
 <context>
@@ -1337,337 +1369,337 @@ li.checked::markering { content: "\2612"; }&lt;/style&gt;&lt;/head&gt;&lt;body s
     <name>IoMain</name>
     <message>
         <source>The file type {file_extension} is not accepted :(</source>
-        <translation>Het bestandstype {file_extension} wordt niet geaccepteerd :(</translation>
+        <translation type="vanished">Het bestandstype {file_extension} wordt niet geaccepteerd :(</translation>
     </message>
     <message>
         <source>Message</source>
-        <translation>Bericht</translation>
+        <translation type="vanished">Bericht</translation>
     </message>
     <message>
         <source>Are you sure that you want to quit the current grid and open a new one?
  If the process is cancelled the grid will remain.</source>
-        <translation>Weet u zeker dat u het huidige raster wilt verlaten en een nieuw raster wilt openen?
+        <translation type="vanished">Weet u zeker dat u het huidige raster wilt verlaten en een nieuw raster wilt openen?
  Als het proces wordt geannuleerd, blijft het raster bestaan.</translation>
     </message>
     <message>
         <source>Are you sure that you want to quit the current grid and create a new one?</source>
-        <translation>Weet u zeker dat u het huidige raster wilt verlaten en een nieuw raster wilt maken?</translation>
+        <translation type="vanished">Weet u zeker dat u het huidige raster wilt verlaten en een nieuw raster wilt maken?</translation>
     </message>
     <message>
         <source>There is a file being processed now.</source>
-        <translation>Er wordt nu een bestand verwerkt.</translation>
+        <translation type="vanished">Er wordt nu een bestand verwerkt.</translation>
     </message>
     <message>
         <source>Formats ({files_types})</source>
-        <translation>Formaten ({files_types})</translation>
+        <translation type="vanished">Formaten ({files_types})</translation>
     </message>
     <message>
         <source>The file does not exist :( 
  {file_name}</source>
-        <translation>Het bestand bestaat niet :( 
+        <translation type="vanished">Het bestand bestaat niet :( 
  {file_name}</translation>
     </message>
     <message>
         <source>File opening</source>
-        <translation>Bestand openen</translation>
+        <translation type="vanished">Bestand openen</translation>
     </message>
     <message>
         <source>No grid to load :(</source>
-        <translation>Geen raster om te laden :(</translation>
+        <translation type="vanished">Geen raster om te laden :(</translation>
     </message>
     <message>
         <source>Current: {circuit_name}</source>
-        <translation>Huidig: {circuit_name}</translation>
+        <translation type="vanished">Huidig: {circuit_name}</translation>
     </message>
     <message>
         <source>The grid is quite big, no diagram is automatically created</source>
-        <translation>Het raster is vrij groot, er wordt niet automatisch een diagram gemaakt</translation>
+        <translation type="vanished">Het raster is vrij groot, er wordt niet automatisch een diagram gemaakt</translation>
     </message>
     <message>
         <source>Sessions</source>
-        <translation>Sessies</translation>
+        <translation type="vanished">Sessies</translation>
     </message>
     <message>
         <source>Show Rosetta</source>
-        <translation>Laat Rosetta zien</translation>
+        <translation type="vanished">Laat Rosetta zien</translation>
     </message>
     <message>
         <source>Do you want to open the Rosetta CGMES browser?</source>
-        <translation>Wilt u de Rosetta CGMES-browser openen?</translation>
+        <translation type="vanished">Wilt u de Rosetta CGMES-browser openen?</translation>
     </message>
     <message>
         <source>Open CGMES file logger</source>
-        <translation>Open de CGMES-bestandslogger</translation>
+        <translation type="vanished">Open de CGMES-bestandslogger</translation>
     </message>
     <message>
         <source>Open file logger</source>
-        <translation>Bestandslogger openen</translation>
+        <translation type="vanished">Bestandslogger openen</translation>
     </message>
     <message>
         <source>Error while loading the file(s)</source>
-        <translation>Fout bij het laden van de bestanden</translation>
+        <translation type="vanished">Fout bij het laden van de bestanden</translation>
     </message>
     <message>
         <source>{name} {version} requires VeraGrid {veragrid_version}</source>
-        <translation>{name} {version} vereist VeraGrid {veragrid_version}</translation>
+        <translation type="vanished">{name} {version} vereist VeraGrid {veragrid_version}</translation>
     </message>
     <message>
         <source>Plugin install</source>
-        <translation>Plug-in installeren</translation>
+        <translation type="vanished">Plug-in installeren</translation>
     </message>
     <message>
         <source>There is already a plugin: {plugin_name} {plugin_version}. The new plugin is {new_version}. Install?</source>
-        <translation>Er is al een plug-in: {plugin_name} {plugin_version}. De nieuwe plug-in is {new_version}. Installeren?</translation>
+        <translation type="vanished">Er is al een plug-in: {plugin_name} {plugin_version}. De nieuwe plug-in is {new_version}. Installeren?</translation>
     </message>
     <message>
         <source>{name} {version} installed!</source>
-        <translation>{name} {version} geïnstalleerd!</translation>
+        <translation type="vanished">{name} {version} geïnstalleerd!</translation>
     </message>
     <message>
         <source>There is no manifest :(</source>
-        <translation>Er is geen manifest :(</translation>
+        <translation type="vanished">Er is geen manifest :(</translation>
     </message>
     <message>
         <source>Does not seem to be a plugin :/</source>
-        <translation>Lijkt geen plug-in te zijn :/</translation>
+        <translation type="vanished">Lijkt geen plug-in te zijn :/</translation>
     </message>
     <message>
         <source>CSV (*.csv)</source>
-        <translation>CSV (*.csv)</translation>
+        <translation type="vanished">CSV (*.csv)</translation>
     </message>
     <message>
         <source>Open CSV file</source>
-        <translation>Open het CSV-bestand</translation>
+        <translation type="vanished">Open het CSV-bestand</translation>
     </message>
     <message>
         <source>Grid merge</source>
-        <translation>Raster samenvoegen</translation>
+        <translation type="vanished">Raster samenvoegen</translation>
     </message>
     <message>
         <source>How do you want to represent the merged grid?</source>
-        <translation>Hoe wilt u het samengevoegde raster weergeven?</translation>
+        <translation type="vanished">Hoe wilt u het samengevoegde raster weergeven?</translation>
     </message>
     <message>
         <source>Create new diagram</source>
-        <translation>Nieuw diagram maken</translation>
+        <translation type="vanished">Nieuw diagram maken</translation>
     </message>
     <message>
         <source>Add to current diagram</source>
-        <translation>Voeg toe aan huidig ​​diagram</translation>
+        <translation type="vanished">Voeg toe aan huidig ​​diagram</translation>
     </message>
     <message>
         <source>No schematic diagram was selected...</source>
-        <translation>Er is geen schematisch diagram geselecteerd...</translation>
+        <translation type="vanished">Er is geen schematisch diagram geselecteerd...</translation>
     </message>
     <message>
         <source>Save file</source>
-        <translation>Bestand opslaan</translation>
+        <translation type="vanished">Bestand opslaan</translation>
     </message>
     <message>
         <source>VeraGrid zip (*.veragrid)</source>
-        <translation>VeraGrid ritssluiting (*.veragrid)</translation>
+        <translation type="vanished">VeraGrid ritssluiting (*.veragrid)</translation>
     </message>
     <message>
         <source>There is a saving procedure running.
 Cancel and retry?</source>
-        <translation>Er wordt een opslagprocedure uitgevoerd.
+        <translation type="vanished">Er wordt een opslagprocedure uitgevoerd.
 Annuleren en opnieuw proberen?</translation>
     </message>
     <message>
         <source>There is a file being processed..</source>
-        <translation>Er wordt een bestand verwerkt..</translation>
+        <translation type="vanished">Er wordt een bestand verwerkt..</translation>
     </message>
     <message>
         <source>Save file logger</source>
-        <translation>Bestandslogger opslaan</translation>
+        <translation type="vanished">Bestandslogger opslaan</translation>
     </message>
     <message>
         <source>Are you sure that you want to delete the current grid and replace it?</source>
-        <translation>Weet u zeker dat u het huidige raster wilt verwijderen en vervangen?</translation>
+        <translation type="vanished">Weet u zeker dat u het huidige raster wilt verwijderen en vervangen?</translation>
     </message>
     <message>
         <source>Model v. {model_version}</source>
-        <translation>Model v. {model_version}</translation>
+        <translation type="vanished">Model v. {model_version}</translation>
     </message>
     <message>
         <source>idtag. {idtag}</source>
-        <translation>IDtag. {idtag}</translation>
+        <translation type="vanished">IDtag. {idtag}</translation>
     </message>
     <message>
         <source>Random grid {bus_count} buses</source>
-        <translation>Willekeurig raster {bus_count}-bussen</translation>
+        <translation type="vanished">Willekeurig raster {bus_count}-bussen</translation>
     </message>
     <message>
         <source>Grid generated randomly using the RPGM algorithm.</source>
-        <translation>Raster willekeurig gegenereerd met behulp van het RPGM-algoritme.</translation>
+        <translation type="vanished">Raster willekeurig gegenereerd met behulp van het RPGM-algoritme.</translation>
     </message>
     <message>
         <source>Excel file (*.xlsx)</source>
-        <translation>Excel-bestand (*.xlsx)</translation>
+        <translation type="vanished">Excel-bestand (*.xlsx)</translation>
     </message>
     <message>
         <source>profiles of </source>
-        <translation>profielen van</translation>
+        <translation type="vanished">profielen van</translation>
     </message>
     <message>
         <source>There are no profiles!</source>
-        <translation>Er zijn geen profielen!</translation>
+        <translation type="vanished">Er zijn geen profielen!</translation>
     </message>
     <message>
         <source>Export object profiles</source>
-        <translation>Objectprofielen exporteren</translation>
+        <translation type="vanished">Objectprofielen exporteren</translation>
     </message>
     <message>
         <source>Zip file (*.zip)</source>
-        <translation>Zip-bestand (*.zip)</translation>
+        <translation type="vanished">Zip-bestand (*.zip)</translation>
     </message>
     <message>
         <source>Results of </source>
-        <translation>Resultaten van</translation>
+        <translation type="vanished">Resultaten van</translation>
     </message>
     <message>
         <source>There are no results available :/</source>
-        <translation>Er zijn geen resultaten beschikbaar :/</translation>
+        <translation type="vanished">Er zijn geen resultaten beschikbaar :/</translation>
     </message>
     <message>
         <source>Export all</source>
-        <translation>Alles exporteren</translation>
+        <translation type="vanished">Alles exporteren</translation>
     </message>
     <message>
         <source>Done!</source>
-        <translation>Klaar!</translation>
+        <translation type="vanished">Klaar!</translation>
     </message>
     <message>
         <source>Results parsing</source>
-        <translation>Resultaten parseren</translation>
+        <translation type="vanished">Resultaten parseren</translation>
     </message>
     <message>
         <source>Loaded '{study_name}' results from disk</source>
-        <translation>Geladen '{study_name}'-resultaten van schijf</translation>
+        <translation type="vanished">Geladen '{study_name}'-resultaten van schijf</translation>
     </message>
     <message>
         <source>No file driver declared :/</source>
-        <translation>Geen bestandsstuurprogramma gedeclareerd :/</translation>
+        <translation type="vanished">Geen bestandsstuurprogramma gedeclareerd :/</translation>
     </message>
     <message>
         <source>Select a driver inside a session</source>
-        <translation>Selecteer een bestuurder binnen een sessie</translation>
+        <translation type="vanished">Selecteer een bestuurder binnen een sessie</translation>
     </message>
     <message>
         <source>Driver load from disk</source>
-        <translation>Stuurprogramma laden vanaf schijf</translation>
+        <translation type="vanished">Stuurprogramma laden vanaf schijf</translation>
     </message>
     <message>
         <source>Load results from disk</source>
-        <translation>Resultaten laden vanaf schijf</translation>
+        <translation type="vanished">Resultaten laden vanaf schijf</translation>
     </message>
     <message>
         <source>Formats (*.json)</source>
-        <translation>Formaten (*.json)</translation>
+        <translation type="vanished">Formaten (*.json)</translation>
     </message>
     <message>
         <source>Open file</source>
-        <translation>Bestand openen</translation>
+        <translation type="vanished">Bestand openen</translation>
     </message>
     <message>
         <source>Contingencies import</source>
-        <translation>Onvoorziene gebeurtenissen importeren</translation>
+        <translation type="vanished">Onvoorziene gebeurtenissen importeren</translation>
     </message>
     <message>
         <source>JSON file (*.json)</source>
-        <translation>JSON-bestand (*.json)</translation>
+        <translation type="vanished">JSON-bestand (*.json)</translation>
     </message>
     <message>
         <source>Catalogue added!</source>
-        <translation>Catalogus toegevoegd!</translation>
+        <translation type="vanished">Catalogus toegevoegd!</translation>
     </message>
     <message>
         <source>Load catalogue</source>
-        <translation>Catalogus laden</translation>
+        <translation type="vanished">Catalogus laden</translation>
     </message>
     <message>
         <source>Open catalogue logger</source>
-        <translation>Cataloguslogger openen</translation>
+        <translation type="vanished">Cataloguslogger openen</translation>
     </message>
     <message>
         <source>Catalogue loaded!</source>
-        <translation>Catalogus geladen!</translation>
+        <translation type="vanished">Catalogus geladen!</translation>
     </message>
     <message>
         <source>Catalogue file (*.xlsx)</source>
-        <translation>Catalogusbestand (*.xlsx)</translation>
+        <translation type="vanished">Catalogusbestand (*.xlsx)</translation>
     </message>
     <message>
         <source>Catalogue Excel file (*.xlsx)</source>
-        <translation>Catalogus Excel-bestand (*.xlsx)</translation>
+        <translation type="vanished">Catalogus Excel-bestand (*.xlsx)</translation>
     </message>
     <message>
         <source>Save catalogue</source>
-        <translation>Catalogus opslaan</translation>
+        <translation type="vanished">Catalogus opslaan</translation>
     </message>
     <message>
         <source>Catalogue saved!</source>
-        <translation>Catalogus opgeslagen!</translation>
+        <translation type="vanished">Catalogus opgeslagen!</translation>
     </message>
     <message>
         <source>CIM (*.xml)</source>
-        <translation>CIM (*.xml)</translation>
+        <translation type="vanished">CIM (*.xml)</translation>
     </message>
     <message>
         <source>Export to CIM</source>
-        <translation>Exporteren naar CIM</translation>
+        <translation type="vanished">Exporteren naar CIM</translation>
     </message>
     <message>
         <source>Power Grid Models (*.pgm)</source>
-        <translation>Elektriciteitsnetmodellen (*.pgm)</translation>
+        <translation type="vanished">Elektriciteitsnetmodellen (*.pgm)</translation>
     </message>
     <message>
         <source>Export to Power Grid Models</source>
-        <translation>Exporteren naar elektriciteitsnetmodellen</translation>
+        <translation type="vanished">Exporteren naar elektriciteitsnetmodellen</translation>
     </message>
     <message>
         <source>Power Grid Models not installed :/</source>
-        <translation>Elektriciteitsnetmodellen niet geïnstalleerd :/</translation>
+        <translation type="vanished">Elektriciteitsnetmodellen niet geïnstalleerd :/</translation>
     </message>
     <message>
         <source>Electrical Json V3 (*.ejson3)</source>
-        <translation>Elektrische Json V3 (*.ejson3)</translation>
+        <translation type="vanished">Elektrische Json V3 (*.ejson3)</translation>
     </message>
     <message>
         <source>Export to JSON</source>
-        <translation>Exporteren naar JSON</translation>
+        <translation type="vanished">Exporteren naar JSON</translation>
     </message>
     <message>
         <source>VeraGrid HDF5 (*.gch5)</source>
-        <translation>VeraGrid HDF5 (*.gch5)</translation>
+        <translation type="vanished">VeraGrid HDF5 (*.gch5)</translation>
     </message>
     <message>
         <source>Export to VeraGrid HDF5</source>
-        <translation>Exporteren naar VeraGrid HDF5</translation>
+        <translation type="vanished">Exporteren naar VeraGrid HDF5</translation>
     </message>
     <message>
         <source>Excel (*.xlsx)</source>
-        <translation>Excel (*.xlsx)</translation>
+        <translation type="vanished">Excel (*.xlsx)</translation>
     </message>
     <message>
         <source>Export to Microsoft Excel</source>
-        <translation>Exporteren naar Microsoft Excel</translation>
+        <translation type="vanished">Exporteren naar Microsoft Excel</translation>
     </message>
     <message>
         <source>Sqlite (*.sqlite)</source>
-        <translation>Sqlite (*.sqlite)</translation>
+        <translation type="vanished">Sqlite (*.sqlite)</translation>
     </message>
     <message>
         <source>Export to Sqlite</source>
-        <translation>Exporteren naar SQLite</translation>
+        <translation type="vanished">Exporteren naar SQLite</translation>
     </message>
     <message>
         <source>VeraGrid (*.veragrid)</source>
-        <translation>VeraGrid (*.veragrid)</translation>
+        <translation type="vanished">VeraGrid (*.veragrid)</translation>
     </message>
     <message>
         <source>Export VeraGrid scenario</source>
-        <translation>Exporteer het VeraGrid-scenario</translation>
+        <translation type="vanished">Exporteer het VeraGrid-scenario</translation>
     </message>
 </context>
 <context>
@@ -2511,149 +2543,149 @@ Annuleren en opnieuw proberen?</translation>
     <name>ResultsMain</name>
     <message>
         <source>Delete driver</source>
-        <translation>Bestuurder verwijderen</translation>
+        <translation type="vanished">Bestuurder verwijderen</translation>
     </message>
     <message>
         <source>Rename group</source>
-        <translation>Groep hernoemen</translation>
+        <translation type="vanished">Groep hernoemen</translation>
     </message>
     <message>
         <source>Rename variable</source>
-        <translation>Variabele hernoemen</translation>
+        <translation type="vanished">Variabele hernoemen</translation>
     </message>
     <message>
         <source>Rename dynamic plot</source>
-        <translation>Hernoem dynamische plot</translation>
+        <translation type="vanished">Hernoem dynamische plot</translation>
     </message>
     <message>
         <source>Plot name</source>
-        <translation>Naam van het perceel</translation>
+        <translation type="vanished">Naam van het perceel</translation>
     </message>
     <message>
         <source>The plot group name is empty or already exists.</source>
-        <translation>De plotgroepnaam is leeg of bestaat al.</translation>
+        <translation type="vanished">De plotgroepnaam is leeg of bestaat al.</translation>
     </message>
     <message>
         <source>Select a plot group first.</source>
-        <translation>Selecteer eerst een plotgroep.</translation>
+        <translation type="vanished">Selecteer eerst een plotgroep.</translation>
     </message>
     <message>
         <source>There are no RMS dynamics results loaded.</source>
-        <translation>Er zijn geen RMS-dynamiekresultaten geladen.</translation>
+        <translation type="vanished">Er zijn geen RMS-dynamiekresultaten geladen.</translation>
     </message>
     <message>
         <source>Rename dynamic variable</source>
-        <translation>Hernoem dynamische variabele</translation>
+        <translation type="vanished">Hernoem dynamische variabele</translation>
     </message>
     <message>
         <source>Variable name</source>
-        <translation>Variabele naam</translation>
+        <translation type="vanished">Variabele naam</translation>
     </message>
     <message>
         <source>The variable name is empty or could not be changed.</source>
-        <translation>De variabelenaam is leeg of kan niet worden gewijzigd.</translation>
+        <translation type="vanished">De variabelenaam is leeg of kan niet worden gewijzigd.</translation>
     </message>
     <message>
         <source>New dynamic plot</source>
-        <translation>Nieuw dynamisch plot</translation>
+        <translation type="vanished">Nieuw dynamisch plot</translation>
     </message>
     <message>
         <source>Plot mode</source>
-        <translation>Plot-modus</translation>
+        <translation type="vanished">Plot-modus</translation>
     </message>
     <message>
         <source>Time Series (Y vs Time)</source>
-        <translation>Tijdreeksen (Y versus tijd)</translation>
+        <translation type="vanished">Tijdreeksen (Y versus tijd)</translation>
     </message>
     <message>
         <source>X-Y Plot (Y vs X)</source>
-        <translation>X-Y-diagram (Y versus X)</translation>
+        <translation type="vanished">X-Y-diagram (Y versus X)</translation>
     </message>
     <message>
         <source>The selected dynamic plot entry could not be deleted.</source>
-        <translation>De geselecteerde dynamische plotinvoer kon niet worden verwijderd.</translation>
+        <translation type="vanished">De geselecteerde dynamische plotinvoer kon niet worden verwijderd.</translation>
     </message>
     <message>
         <source>Select a plot group or variable first.</source>
-        <translation>Selecteer eerst een plotgroep of variabele.</translation>
+        <translation type="vanished">Selecteer eerst een plotgroep of variabele.</translation>
     </message>
     <message>
         <source>The selected dynamic plot entry could not be plotted.</source>
-        <translation>De geselecteerde dynamische plotinvoer kon niet worden geplot.</translation>
+        <translation type="vanished">De geselecteerde dynamische plotinvoer kon niet worden geplot.</translation>
     </message>
     <message>
         <source>There are {columns} columns, the plot might take a lot to render.
 Are you ok with potentially waiting a lot?</source>
-        <translation>Er zijn {columns}-kolommen, het kan veel tijd kosten om de plot weer te geven.
+        <translation type="vanished">Er zijn {columns}-kolommen, het kan veel tijd kosten om de plot weer te geven.
 Vindt u het goed dat u mogelijk veel moet wachten?</translation>
     </message>
     <message>
         <source>Plot</source>
-        <translation>Verhaallijn</translation>
+        <translation type="vanished">Verhaallijn</translation>
     </message>
     <message>
         <source>Export results</source>
-        <translation>Resultaten exporteren</translation>
+        <translation type="vanished">Resultaten exporteren</translation>
     </message>
     <message>
         <source>CSV (*.csv);;Excel files (*.xlsx)</source>
-        <translation>CSV (*.csv);;Excel-bestanden (*.xlsx)</translation>
+        <translation type="vanished">CSV (*.csv);;Excel-bestanden (*.xlsx)</translation>
     </message>
     <message>
         <source> is not valid :(</source>
-        <translation>is niet geldig :(</translation>
+        <translation type="vanished">is niet geldig :(</translation>
     </message>
     <message>
         <source>There is no profile displayed, please display one</source>
-        <translation>Er wordt geen profiel weergegeven. Geef er alstublieft één weer</translation>
+        <translation type="vanished">Er wordt geen profiel weergegeven. Geef er alstublieft één weer</translation>
     </message>
     <message>
         <source>Copy profile to clipboard</source>
-        <translation>Kopieer profiel naar klembord</translation>
+        <translation type="vanished">Kopieer profiel naar klembord</translation>
     </message>
     <message>
         <source>Copied!</source>
-        <translation>Gekopieerd!</translation>
+        <translation type="vanished">Gekopieerd!</translation>
     </message>
     <message>
         <source>Filter parse</source>
-        <translation>Filter parseren</translation>
+        <translation type="vanished">Filter parseren</translation>
     </message>
     <message>
         <source>Do you want to delete the results driver {study_name}?</source>
-        <translation>Wilt u het resultatenstuurprogramma {study_name} verwijderen?</translation>
+        <translation type="vanished">Wilt u het resultatenstuurprogramma {study_name} verwijderen?</translation>
     </message>
     <message>
         <source>Message</source>
-        <translation>Bericht</translation>
+        <translation type="vanished">Bericht</translation>
     </message>
     <message>
         <source>Are you sure that you want to overwrite the generation, batteries and load snapshot values with the OPF results?</source>
-        <translation>Weet u zeker dat u de waarden voor opwekking, batterijen en laadmomentopname wilt overschrijven met de OPF-resultaten?</translation>
+        <translation type="vanished">Weet u zeker dat u de waarden voor opwekking, batterijen en laadmomentopname wilt overschrijven met de OPF-resultaten?</translation>
     </message>
     <message>
         <source>Overwrite profiles with OPF results</source>
-        <translation>Profielen overschrijven met OPF-resultaten</translation>
+        <translation type="vanished">Profielen overschrijven met OPF-resultaten</translation>
     </message>
     <message>
         <source>P snapshot set from the OPF results</source>
-        <translation>P-momentopname ingesteld op basis van de OPF-resultaten</translation>
+        <translation type="vanished">P-momentopname ingesteld op basis van de OPF-resultaten</translation>
     </message>
     <message>
         <source>The OPF time series has no results :(</source>
-        <translation>De tijdreeks OPF heeft geen resultaten :(</translation>
+        <translation type="vanished">De tijdreeks OPF heeft geen resultaten :(</translation>
     </message>
     <message>
         <source>Are you sure that you want to overwrite the generation, batteries and load profiles with the OPF time series results?</source>
-        <translation>Weet u zeker dat u de opwekkings-, accu- en belastingsprofielen wilt overschrijven met de OPF tijdreeksresultaten?</translation>
+        <translation type="vanished">Weet u zeker dat u de opwekkings-, accu- en belastingsprofielen wilt overschrijven met de OPF tijdreeksresultaten?</translation>
     </message>
     <message>
         <source>P profiles set from the OPF results</source>
-        <translation>P-profielen ingesteld op basis van de OPF-resultaten</translation>
+        <translation type="vanished">P-profielen ingesteld op basis van de OPF-resultaten</translation>
     </message>
     <message>
         <source>Export logs</source>
-        <translation>Logboeken exporteren</translation>
+        <translation type="vanished">Logboeken exporteren</translation>
     </message>
 </context>
 <context>
@@ -2720,503 +2752,503 @@ Vindt u het goed dat u mogelijk veel moet wachten?</translation>
     <message>
         <source>VeraGrid internal commands.
 </source>
-        <translation>VeraGrid interne opdrachten.</translation>
+        <translation type="vanished">VeraGrid interne opdrachten.</translation>
     </message>
     <message>
         <source>If a command is unavailable is because the study has not been executed yet.</source>
-        <translation>Als een commando niet beschikbaar is, komt dat doordat het onderzoek nog niet is uitgevoerd.</translation>
+        <translation type="vanished">Als een commando niet beschikbaar is, komt dat doordat het onderzoek nog niet is uitgevoerd.</translation>
     </message>
     <message>
         <source>
 
 clc():	clear the console.</source>
-        <translation>clc(): maak de console leeg.</translation>
+        <translation type="vanished">clc(): maak de console leeg.</translation>
     </message>
     <message>
         <source>
 
 App functions:</source>
-        <translation>App-functies:</translation>
+        <translation type="vanished">App-functies:</translation>
     </message>
     <message>
         <source>	app.new_project(): Clear all.</source>
-        <translation>app.new_project(): Alles wissen.</translation>
+        <translation type="vanished">app.new_project(): Alles wissen.</translation>
     </message>
     <message>
         <source>	app.open_file(): Prompt to load VeraGrid compatible file</source>
-        <translation>app.open_file(): Vraag om VeraGrid-compatibel bestand te laden</translation>
+        <translation type="vanished">app.open_file(): Vraag om VeraGrid-compatibel bestand te laden</translation>
     </message>
     <message>
         <source>	app.save_file(): Prompt to save VeraGrid file</source>
-        <translation>app.save_file(): Vraag om het VeraGrid-bestand op te slaan</translation>
+        <translation type="vanished">app.save_file(): Vraag om het VeraGrid-bestand op te slaan</translation>
     </message>
     <message>
         <source>	app.export_diagram(): Prompt to export the diagram in png.</source>
-        <translation>app.export_diagram(): Vraag om het diagram in png te exporteren.</translation>
+        <translation type="vanished">app.export_diagram(): Vraag om het diagram in png te exporteren.</translation>
     </message>
     <message>
         <source>	app.create_schematic_from_api(): Create the schematic from the circuit information.</source>
-        <translation>app.create_schematic_from_api(): Maak het schema op basis van de circuitinformatie.</translation>
+        <translation type="vanished">app.create_schematic_from_api(): Maak het schema op basis van de circuitinformatie.</translation>
     </message>
     <message>
         <source>	app.adjust_all_node_width(): Adjust the width of all the nodes according to their name.</source>
-        <translation>app.adjust_all_node_width(): Pas de breedte van alle knooppunten aan op basis van hun naam.</translation>
+        <translation type="vanished">app.adjust_all_node_width(): Pas de breedte van alle knooppunten aan op basis van hun naam.</translation>
     </message>
     <message>
         <source>	app.numerical_circuit: get compilation of the assets.</source>
-        <translation>app.numerical_circuit: verzamel compilatie van de activa.</translation>
+        <translation type="vanished">app.numerical_circuit: verzamel compilatie van de activa.</translation>
     </message>
     <message>
         <source>	app.islands: get compilation of the assets split into the topological islands.</source>
-        <translation>app.islands: krijg een compilatie van de activa opgesplitst in de topologische eilanden.</translation>
+        <translation type="vanished">app.islands: krijg een compilatie van de activa opgesplitst in de topologische eilanden.</translation>
     </message>
     <message>
         <source>
 
 Circuit functions:</source>
-        <translation>Circuitfuncties:</translation>
+        <translation type="vanished">Circuitfuncties:</translation>
     </message>
     <message>
         <source>	app.circuit.plot_graph(): Plot a graph in a Matplotlib window. Call plt.show() after.</source>
-        <translation>app.circuit.plot_graph(): Teken een grafiek in een Matplotlib-venster. Bel daarna plt.show().</translation>
+        <translation type="vanished">app.circuit.plot_graph(): Teken een grafiek in een Matplotlib-venster. Bel daarna plt.show().</translation>
     </message>
     <message>
         <source>
 
 Power flow results:</source>
-        <translation>Resultaten van de stroomstroom:</translation>
+        <translation type="vanished">Resultaten van de stroomstroom:</translation>
     </message>
     <message>
         <source>	app.session.power_flow.voltage:	 the nodal voltages in per unit</source>
-        <translation>app.session.power_flow.voltage: de knooppuntspanningen per eenheid</translation>
+        <translation type="vanished">app.session.power_flow.voltage: de knooppuntspanningen per eenheid</translation>
     </message>
     <message>
         <source>	app.session.power_flow.current:	 the branch currents in per unit</source>
-        <translation>app.session.power_flow.current: de takstromen per eenheid</translation>
+        <translation type="vanished">app.session.power_flow.current: de takstromen per eenheid</translation>
     </message>
     <message>
         <source>	app.session.power_flow.loading:	 the branch loading in %</source>
-        <translation>app.session.power_flow.loading: de vertakkingsbelasting in%</translation>
+        <translation type="vanished">app.session.power_flow.loading: de vertakkingsbelasting in%</translation>
     </message>
     <message>
         <source>	app.session.power_flow.losses:	 the branch losses in per unit</source>
-        <translation>app.session.power_flow.losses: de vertakkingsverliezen per eenheid</translation>
+        <translation type="vanished">app.session.power_flow.losses: de vertakkingsverliezen per eenheid</translation>
     </message>
     <message>
         <source>	app.session.power_flow.power:	 the nodal power Injections in per unit</source>
-        <translation>app.session.power_flow.power: de knooppuntstroominjecties per eenheid</translation>
+        <translation type="vanished">app.session.power_flow.power: de knooppuntstroominjecties per eenheid</translation>
     </message>
     <message>
         <source>	app.session.power_flow.Sf:	 the branch power Injections in per unit at the "from" side</source>
-        <translation>app.session.power_flow.Sf: de stroominjecties per eenheid aan de "van"-zijde</translation>
+        <translation type="vanished">app.session.power_flow.Sf: de stroominjecties per eenheid aan de "van"-zijde</translation>
     </message>
     <message>
         <source>	app.session.power_flow.St:	 the branch power Injections in per unit at the "to" side</source>
-        <translation>app.session.power_flow.St: de vertakkingsstroominjecties per eenheid aan de "naar"-zijde</translation>
+        <translation type="vanished">app.session.power_flow.St: de vertakkingsstroominjecties per eenheid aan de "naar"-zijde</translation>
     </message>
     <message>
         <source>
 
 Short circuit results:</source>
-        <translation>Resultaten van kortsluiting:</translation>
+        <translation type="vanished">Resultaten van kortsluiting:</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.voltage:	 the nodal voltages in per unit</source>
-        <translation>app.session.short_circuit.voltage: de knooppuntspanningen per eenheid</translation>
+        <translation type="vanished">app.session.short_circuit.voltage: de knooppuntspanningen per eenheid</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.current:	 the branch currents in per unit</source>
-        <translation>app.session.short_circuit.current: de takstromen per eenheid</translation>
+        <translation type="vanished">app.session.short_circuit.current: de takstromen per eenheid</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.loading:	 the branch loading in %</source>
-        <translation>app.session.short_circuit.loading: de vertakkingsbelasting in%</translation>
+        <translation type="vanished">app.session.short_circuit.loading: de vertakkingsbelasting in%</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.losses:	 the branch losses in per unit</source>
-        <translation>app.session.short_circuit.losses: de vertakkingsverliezen per eenheid</translation>
+        <translation type="vanished">app.session.short_circuit.losses: de vertakkingsverliezen per eenheid</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.power:	 the nodal power Injections in per unit</source>
-        <translation>app.session.short_circuit.power: de nodale stroominjecties per eenheid</translation>
+        <translation type="vanished">app.session.short_circuit.power: de nodale stroominjecties per eenheid</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.power_from:	 the branch power Injections in per unit at the "from" side</source>
-        <translation>app.session.short_circuit.power_from: de stroominjecties per eenheid aan de "van"-zijde</translation>
+        <translation type="vanished">app.session.short_circuit.power_from: de stroominjecties per eenheid aan de "van"-zijde</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.power_to:	 the branch power Injections in per unit at the "to" side</source>
-        <translation>app.session.short_circuit.power_to: de stroominjecties per eenheid aan de "naar"-zijde</translation>
+        <translation type="vanished">app.session.short_circuit.power_to: de stroominjecties per eenheid aan de "naar"-zijde</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.short_circuit_power:	 Short circuit power in MVA of the grid nodes</source>
-        <translation>app.session.short_circuit.short_circuit_power: kortsluitstroom in MVA van de netknooppunten</translation>
+        <translation type="vanished">app.session.short_circuit.short_circuit_power: kortsluitstroom in MVA van de netknooppunten</translation>
     </message>
     <message>
         <source>
 
 Optimal power flow results:</source>
-        <translation>Optimale krachtstroomresultaten:</translation>
+        <translation type="vanished">Optimale krachtstroomresultaten:</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.voltage:	 the nodal voltages angles in rad</source>
-        <translation>app.session.optimal_power_flow.voltage: de knooppuntspanningshoeken in rad</translation>
+        <translation type="vanished">app.session.optimal_power_flow.voltage: de knooppuntspanningshoeken in rad</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.load_shedding:	 the branch loading in %</source>
-        <translation>app.session.optimal_power_flow.load_shedding: de vertakkingsbelasting in%</translation>
+        <translation type="vanished">app.session.optimal_power_flow.load_shedding: de vertakkingsbelasting in%</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.losses:	 the branch losses in per unit</source>
-        <translation>app.session.optimal_power_flow.losses: de vertakkingsverliezen per eenheid</translation>
+        <translation type="vanished">app.session.optimal_power_flow.losses: de vertakkingsverliezen per eenheid</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.Sbus:	 the nodal power Injections in MW</source>
-        <translation>app.session.optimal_power_flow.Sbus: de knooppuntstroominjecties in MW</translation>
+        <translation type="vanished">app.session.optimal_power_flow.Sbus: de knooppuntstroominjecties in MW</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.Sf:	 the branch power Sf</source>
-        <translation>app.session.optimal_power_flow.Sf: de takstroom Sf</translation>
+        <translation type="vanished">app.session.optimal_power_flow.Sf: de takstroom Sf</translation>
     </message>
     <message>
         <source>
 
 Time series power flow results:</source>
-        <translation>Resultaten van de tijdreeksstroom:</translation>
+        <translation type="vanished">Resultaten van de tijdreeksstroom:</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.time:	 Profiles time index (pandas DateTimeIndex object)</source>
-        <translation>app.session.power_flow_ts.time: tijdindex van profielen (panda's DateTimeIndex-object)</translation>
+        <translation type="vanished">app.session.power_flow_ts.time: tijdindex van profielen (panda's DateTimeIndex-object)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.load_profiles:	 Load profiles matrix (row: time, col: node)</source>
-        <translation>app.session.power_flow_ts.load_profiles: Laadprofielenmatrix (rij: tijd, kolom: knooppunt)</translation>
+        <translation type="vanished">app.session.power_flow_ts.load_profiles: Laadprofielenmatrix (rij: tijd, kolom: knooppunt)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.gen_profiles:	 Generation profiles matrix (row: time, col: node)</source>
-        <translation>app.session.power_flow_ts.gen_profiles: Matrix voor generatieprofielen (rij: tijd, kolom: knooppunt)</translation>
+        <translation type="vanished">app.session.power_flow_ts.gen_profiles: Matrix voor generatieprofielen (rij: tijd, kolom: knooppunt)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.voltages:	 nodal voltages results matrix (row: time, col: node)</source>
-        <translation>app.session.power_flow_ts.voltages: resultatenmatrix voor knooppuntspanningen (rij: tijd, kolom: knooppunt)</translation>
+        <translation type="vanished">app.session.power_flow_ts.voltages: resultatenmatrix voor knooppuntspanningen (rij: tijd, kolom: knooppunt)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.currents:	 Branches currents results matrix (row: time, col: branch)</source>
-        <translation>app.session.power_flow_ts.currents: Vertakkingen huidige resultatenmatrix (rij: tijd, kolom: vertakking)</translation>
+        <translation type="vanished">app.session.power_flow_ts.currents: Vertakkingen huidige resultatenmatrix (rij: tijd, kolom: vertakking)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.loadings:	 Branches loadings results matrix (row: time, col: branch)</source>
-        <translation>app.session.power_flow_ts.loadings: Resultatenmatrix voor het laden van vertakkingen (rij: tijd, kolom: vertakking)</translation>
+        <translation type="vanished">app.session.power_flow_ts.loadings: Resultatenmatrix voor het laden van vertakkingen (rij: tijd, kolom: vertakking)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.losses:	 Branches losses results matrix (row: time, col: branch)</source>
-        <translation>app.session.power_flow_ts.losses: Resultatenmatrix voor vertakkingenverliezen (rij: tijd, kolom: vertakking)</translation>
+        <translation type="vanished">app.session.power_flow_ts.losses: Resultatenmatrix voor vertakkingenverliezen (rij: tijd, kolom: vertakking)</translation>
     </message>
     <message>
         <source>
 
 Voltage stability power flow results:</source>
-        <translation>Spanningsstabiliteit vermogensstroomresultaten:</translation>
+        <translation type="vanished">Spanningsstabiliteit vermogensstroomresultaten:</translation>
     </message>
     <message>
         <source>	app.session.continuation_power_flow.voltage:	 Voltage values for every power multiplication factor.</source>
-        <translation>app.session.continuation_power_flow.voltage: spanningswaarden voor elke vermogensvermenigvuldigingsfactor.</translation>
+        <translation type="vanished">app.session.continuation_power_flow.voltage: spanningswaarden voor elke vermogensvermenigvuldigingsfactor.</translation>
     </message>
     <message>
         <source>	app.session.continuation_power_flow.lambda:	 Value of power multiplication factor applied</source>
-        <translation>app.session.continuation_power_flow.lambda: Waarde van toegepaste vermenigvuldigingsfactor van het vermogen</translation>
+        <translation type="vanished">app.session.continuation_power_flow.lambda: Waarde van toegepaste vermenigvuldigingsfactor van het vermogen</translation>
     </message>
     <message>
         <source>	app.session.continuation_power_flow.Sf:	 Power values for every power multiplication factor.</source>
-        <translation>app.session.continuation_power_flow.Sf: Vermogenswaarden voor elke vermogensvermenigvuldigingsfactor.</translation>
+        <translation type="vanished">app.session.continuation_power_flow.Sf: Vermogenswaarden voor elke vermogensvermenigvuldigingsfactor.</translation>
     </message>
     <message>
         <source>
 
 Monte Carlo power flow results:</source>
-        <translation>Resultaten van de Monte Carlo-krachtstroom:</translation>
+        <translation type="vanished">Resultaten van de Monte Carlo-krachtstroom:</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.V_avg:	 nodal voltage average result.</source>
-        <translation>app.session.stochastic_power_flow.V_avg: gemiddeld resultaat van de knooppuntspanning.</translation>
+        <translation type="vanished">app.session.stochastic_power_flow.V_avg: gemiddeld resultaat van de knooppuntspanning.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.I_avg:	 branch current average result.</source>
-        <translation>app.session.stochastic_power_flow.I_avg: huidig ​​gemiddeld resultaat van de tak.</translation>
+        <translation type="vanished">app.session.stochastic_power_flow.I_avg: huidig ​​gemiddeld resultaat van de tak.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.Loading_avg:	 branch loading average result.</source>
-        <translation>app.session.stochastic_power_flow.Loading_avg: gemiddeld resultaat voor het laden van vertakkingen.</translation>
+        <translation type="vanished">app.session.stochastic_power_flow.Loading_avg: gemiddeld resultaat voor het laden van vertakkingen.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.Losses_avg:	 branch losses average result.</source>
-        <translation>app.session.stochastic_power_flow.Losses_avg: gemiddeld resultaat van takverliezen.</translation>
+        <translation type="vanished">app.session.stochastic_power_flow.Losses_avg: gemiddeld resultaat van takverliezen.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.V_std:	 nodal voltage standard deviation result.</source>
-        <translation>app.session.stochastic_power_flow.V_std: resultaat van de standaardafwijking van de knoopspanning.</translation>
+        <translation type="vanished">app.session.stochastic_power_flow.V_std: resultaat van de standaardafwijking van de knoopspanning.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.I_std:	 branch current standard deviation result.</source>
-        <translation>app.session.stochastic_power_flow.I_std: resultaat van de huidige standaardafwijking van de vertakking.</translation>
+        <translation type="vanished">app.session.stochastic_power_flow.I_std: resultaat van de huidige standaardafwijking van de vertakking.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.Loading_std:	 branch loading standard deviation result.</source>
-        <translation>app.session.stochastic_power_flow.Loading_std: standaardafwijkingsresultaat voor het laden van vertakkingen.</translation>
+        <translation type="vanished">app.session.stochastic_power_flow.Loading_std: standaardafwijkingsresultaat voor het laden van vertakkingen.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.Losses_std:	 branch losses standard deviation result.</source>
-        <translation>app.session.stochastic_power_flow.Losses_std: resultaat van de standaardafwijking van vertakkingsverliezen.</translation>
+        <translation type="vanished">app.session.stochastic_power_flow.Losses_std: resultaat van de standaardafwijking van vertakkingsverliezen.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.V_avg_series:	 nodal voltage average series.</source>
-        <translation>app.session.stochastic_power_flow.V_avg_series: gemiddelde reeks van knoopspanning.</translation>
+        <translation type="vanished">app.session.stochastic_power_flow.V_avg_series: gemiddelde reeks van knoopspanning.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.V_std_series:	 branch current standard deviation series.</source>
-        <translation>app.session.stochastic_power_flow.V_std_series: vertakkingsstroom standaardafwijkingsreeks.</translation>
+        <translation type="vanished">app.session.stochastic_power_flow.V_std_series: vertakkingsstroom standaardafwijkingsreeks.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.error_series:	 Monte Carlo error series (the convergence value).</source>
-        <translation>app.session.stochastic_power_flow.error_series: Monte Carlo-foutreeks (de convergentiewaarde).</translation>
+        <translation type="vanished">app.session.stochastic_power_flow.error_series: Monte Carlo-foutreeks (de convergentiewaarde).</translation>
     </message>
     <message>
         <source>The same for app.latin_hypercube_sampling</source>
-        <translation>Hetzelfde voor app.latin_hypercube_sampling</translation>
+        <translation type="vanished">Hetzelfde voor app.latin_hypercube_sampling</translation>
     </message>
     <message>
         <source> does not exist :/</source>
-        <translation>bestaat niet :/</translation>
+        <translation type="vanished">bestaat niet :/</translation>
     </message>
     <message>
         <source>Open script</source>
-        <translation>Script openen</translation>
+        <translation type="vanished">Script openen</translation>
     </message>
     <message>
         <source>Are you sure you want to clear source code?</source>
-        <translation>Weet u zeker dat u de broncode wilt wissen?</translation>
+        <translation type="vanished">Weet u zeker dat u de broncode wilt wissen?</translation>
     </message>
     <message>
         <source>Clear source code</source>
-        <translation>Broncode wissen</translation>
+        <translation type="vanished">Broncode wissen</translation>
     </message>
     <message>
         <source>Please enter a name for the script</source>
-        <translation>Voer een naam in voor het script</translation>
+        <translation type="vanished">Voer een naam in voor het script</translation>
     </message>
     <message>
         <source>Save script</source>
-        <translation>Script opslaan</translation>
+        <translation type="vanished">Script opslaan</translation>
     </message>
     <message>
         <source>Do you want to delete {path}?</source>
-        <translation>Wilt u {path} verwijderen?</translation>
+        <translation type="vanished">Wilt u {path} verwijderen?</translation>
     </message>
     <message>
         <source>Delete source code file</source>
-        <translation>Broncodebestand verwijderen</translation>
+        <translation type="vanished">Broncodebestand verwijderen</translation>
     </message>
     <message>
         <source>Delete</source>
-        <translation>Verwijderen</translation>
+        <translation type="vanished">Verwijderen</translation>
     </message>
 </context>
 <context>
     <name>ServerMain</name>
     <message>
         <source>Server config file was erroneous, wrote a new one</source>
-        <translation>Serverconfiguratiebestand was foutief, schreef een nieuw bestand</translation>
+        <translation type="vanished">Serverconfiguratiebestand was foutief, schreef een nieuw bestand</translation>
     </message>
     <message>
         <source>The server connection is running, are you sure that you want to stop it?</source>
-        <translation>De serververbinding is actief. Weet u zeker dat u deze wilt stoppen?</translation>
+        <translation type="vanished">De serververbinding is actief. Weet u zeker dat u deze wilt stoppen?</translation>
     </message>
     <message>
         <source>Stop Server</source>
-        <translation>Server stoppen</translation>
+        <translation type="vanished">Server stoppen</translation>
     </message>
     <message>
         <source>Could not connect to the server :/</source>
-        <translation>Kan geen verbinding maken met de server :/</translation>
+        <translation type="vanished">Kan geen verbinding maken met de server :/</translation>
     </message>
     <message>
         <source>Connected!</source>
-        <translation>Aangesloten!</translation>
+        <translation type="vanished">Aangesloten!</translation>
     </message>
     <message>
         <source>Results received!</source>
-        <translation>Resultaten ontvangen!</translation>
+        <translation type="vanished">Resultaten ontvangen!</translation>
     </message>
 </context>
 <context>
     <name>ShortCircuitSelector</name>
     <message>
         <source>Short Circuit Configuration</source>
-        <translation>Kortsluitingconfiguratie</translation>
+        <translation type="vanished">Kortsluitingconfiguratie</translation>
     </message>
     <message>
         <source>Custom</source>
-        <translation>Aangepast</translation>
+        <translation type="vanished">Aangepast</translation>
     </message>
     <message>
         <source>Typical value</source>
-        <translation>Typische waarde</translation>
+        <translation type="vanished">Typische waarde</translation>
     </message>
     <message>
         <source>Solid 3ph fault</source>
-        <translation>Solide 3ph-fout</translation>
+        <translation type="vanished">Solide 3ph-fout</translation>
     </message>
     <message>
         <source>Near-bolted three-phase fault</source>
-        <translation>Bijna vastgeschroefde driefasige fout</translation>
+        <translation type="vanished">Bijna vastgeschroefde driefasige fout</translation>
     </message>
     <message>
         <source>Solid phase ground fault</source>
-        <translation>Aardfout in vaste fase</translation>
+        <translation type="vanished">Aardfout in vaste fase</translation>
     </message>
     <message>
         <source>Near-bolted phase-to-ground fault</source>
-        <translation>Bijna vastgeschroefde fase-naar-aarde fout</translation>
+        <translation type="vanished">Bijna vastgeschroefde fase-naar-aarde fout</translation>
     </message>
     <message>
         <source>Metallic conductor conductor contact</source>
-        <translation>Metalen geleidergeleidercontact</translation>
+        <translation type="vanished">Metalen geleidergeleidercontact</translation>
     </message>
     <message>
         <source>Low-impedance metallic conductor-to-conductor short</source>
-        <translation>Kortsluiting tussen metalen geleider en geleider met lage impedantie</translation>
+        <translation type="vanished">Kortsluiting tussen metalen geleider en geleider met lage impedantie</translation>
     </message>
     <message>
         <source>Excavator touching underground cable</source>
-        <translation>Graafmachine raakt ondergrondse kabel</translation>
+        <translation type="vanished">Graafmachine raakt ondergrondse kabel</translation>
     </message>
     <message>
         <source>Direct mechanical strike on underground cable</source>
-        <translation>Directe mechanische aanslag op ondergrondse kabel</translation>
+        <translation type="vanished">Directe mechanische aanslag op ondergrondse kabel</translation>
     </message>
     <message>
         <source>Excavator damaging cable partial arc</source>
-        <translation>Graafmachine beschadigt kabel gedeeltelijke boog</translation>
+        <translation type="vanished">Graafmachine beschadigt kabel gedeeltelijke boog</translation>
     </message>
     <message>
         <source>Cable damage with partial contact and arcing</source>
-        <translation>Kabelschade met gedeeltelijk contact en vonkontlading</translation>
+        <translation type="vanished">Kabelschade met gedeeltelijk contact en vonkontlading</translation>
     </message>
     <message>
         <source>Crane or machinery overhead arc</source>
-        <translation>Kraan- of machine-bovenboog</translation>
+        <translation type="vanished">Kraan- of machine-bovenboog</translation>
     </message>
     <message>
         <source>Arc from machinery approaching overhead line</source>
-        <translation>Boog van machines die de bovenleiding naderen</translation>
+        <translation type="vanished">Boog van machines die de bovenleiding naderen</translation>
     </message>
     <message>
         <source>Tree branch touching overhead line</source>
-        <translation>Boomtak raakt de bovenleiding</translation>
+        <translation type="vanished">Boomtak raakt de bovenleiding</translation>
     </message>
     <message>
         <source>Typical vegetation high-impedance fault</source>
-        <translation>Typische fout met hoge impedantie in de vegetatie</translation>
+        <translation type="vanished">Typische fout met hoge impedantie in de vegetatie</translation>
     </message>
     <message>
         <source>Wet tree or wet vegetation contact</source>
-        <translation>Contact met natte bomen of natte vegetatie</translation>
+        <translation type="vanished">Contact met natte bomen of natte vegetatie</translation>
     </message>
     <message>
         <source>Vegetation contact with lower resistance due to moisture</source>
-        <translation>Vegetatiecontact met lagere weerstand door vocht</translation>
+        <translation type="vanished">Vegetatiecontact met lagere weerstand door vocht</translation>
     </message>
     <message>
         <source>Dry tree or dry branch contact</source>
-        <translation>Droog boom- of droog takcontact</translation>
+        <translation type="vanished">Droog boom- of droog takcontact</translation>
     </message>
     <message>
         <source>Dry vegetation high-impedance fault</source>
-        <translation>Hoge impedantiefout bij droge vegetatie</translation>
+        <translation type="vanished">Hoge impedantiefout bij droge vegetatie</translation>
     </message>
     <message>
         <source>Downed conductor on wet soil</source>
-        <translation>Neergestorte geleider op natte grond</translation>
+        <translation type="vanished">Neergestorte geleider op natte grond</translation>
     </message>
     <message>
         <source>Downed conductor on relatively conductive ground</source>
-        <translation>Neergestorte geleider op relatief geleidende aarde</translation>
+        <translation type="vanished">Neergestorte geleider op relatief geleidende aarde</translation>
     </message>
     <message>
         <source>Downed conductor on gravel</source>
-        <translation>Neergehaalde geleider op grind</translation>
+        <translation type="vanished">Neergehaalde geleider op grind</translation>
     </message>
     <message>
         <source>Downed conductor on gravel or ballast</source>
-        <translation>Neergestorte geleider op grind of ballast</translation>
+        <translation type="vanished">Neergestorte geleider op grind of ballast</translation>
     </message>
     <message>
         <source>Downed conductor on asphalt or concrete</source>
-        <translation>Neergestorte geleider op asfalt of beton</translation>
+        <translation type="vanished">Neergestorte geleider op asfalt of beton</translation>
     </message>
     <message>
         <source>Downed conductor on poorly conductive surface</source>
-        <translation>Neergestorte geleider op slecht geleidend oppervlak</translation>
+        <translation type="vanished">Neergestorte geleider op slecht geleidend oppervlak</translation>
     </message>
     <message>
         <source>Insulator contamination or leakage fault</source>
-        <translation>Vervuiling van de isolator of lekkagefout</translation>
+        <translation type="vanished">Vervuiling van de isolator of lekkagefout</translation>
     </message>
     <message>
         <source>Leakage-type high-impedance fault</source>
-        <translation>Lekkage-type hoge impedantiefout</translation>
+        <translation type="vanished">Lekkage-type hoge impedantiefout</translation>
     </message>
     <message>
         <source>Generic arcing phase ground fault</source>
-        <translation>Algemene aardfout tijdens boogfase</translation>
+        <translation type="vanished">Algemene aardfout tijdens boogfase</translation>
     </message>
     <message>
         <source>Simple resistive arc approximation</source>
-        <translation>Eenvoudige resistieve boogbenadering</translation>
+        <translation type="vanished">Eenvoudige resistieve boogbenadering</translation>
     </message>
     <message>
         <source>Severe high resistance transmission fault</source>
-        <translation>Ernstige transmissiefout met hoge weerstand</translation>
+        <translation type="vanished">Ernstige transmissiefout met hoge weerstand</translation>
     </message>
     <message>
         <source>High-resistance EHV fault scenario</source>
-        <translation>EHV-foutscenario met hoge weerstand</translation>
+        <translation type="vanished">EHV-foutscenario met hoge weerstand</translation>
     </message>
     <message>
         <source>phases</source>
-        <translation>fasen</translation>
+        <translation type="vanished">fasen</translation>
     </message>
     <message>
         <source>abc</source>
-        <translation>abc</translation>
+        <translation type="vanished">abc</translation>
     </message>
     <message>
         <source>a</source>
-        <translation>A</translation>
+        <translation type="vanished">A</translation>
     </message>
     <message>
         <source>b</source>
-        <translation>B</translation>
+        <translation type="vanished">B</translation>
     </message>
     <message>
         <source>c</source>
-        <translation>C</translation>
+        <translation type="vanished">C</translation>
     </message>
     <message>
         <source>ab</source>
-        <translation>ab</translation>
+        <translation type="vanished">ab</translation>
     </message>
     <message>
         <source>bc</source>
-        <translation>bc</translation>
+        <translation type="vanished">bc</translation>
     </message>
     <message>
         <source>ca</source>
-        <translation>ca</translation>
+        <translation type="vanished">ca</translation>
     </message>
     <message>
         <source>sequences</source>
-        <translation>sequenties</translation>
+        <translation type="vanished">sequenties</translation>
     </message>
 </context>
 <context>
@@ -3288,15 +3320,15 @@ Monte Carlo power flow results:</source>
     <name>SubstationDesigner</name>
     <message>
         <source>Substation maker</source>
-        <translation>Onderstation maker</translation>
+        <translation type="vanished">Onderstation maker</translation>
     </message>
     <message>
         <source>Substation {number}</source>
-        <translation>Onderstation {number}</translation>
+        <translation type="vanished">Onderstation {number}</translation>
     </message>
     <message>
         <source>There are no voltage levels, so no substation will be created, ok?</source>
-        <translation>Er zijn geen spanningsniveaus, dus er wordt geen onderstation gecreëerd, oké?</translation>
+        <translation type="vanished">Er zijn geen spanningsniveaus, dus er wordt geen onderstation gecreëerd, oké?</translation>
     </message>
 </context>
 <context>
@@ -3650,19 +3682,19 @@ Monte Carlo power flow results:</source>
     <name>VeraGridMainGUI</name>
     <message>
         <source>VeraGrid {version}</source>
-        <translation>VeraGrid {version}</translation>
+        <translation type="vanished">VeraGrid {version}</translation>
     </message>
     <message>
         <source>Are you sure that you want to exit VeraGrid?</source>
-        <translation>Weet u zeker dat u VeraGrid wilt afsluiten?</translation>
+        <translation type="vanished">Weet u zeker dat u VeraGrid wilt afsluiten?</translation>
     </message>
     <message>
         <source>Close</source>
-        <translation>Dichtbij</translation>
+        <translation type="vanished">Dichtbij</translation>
     </message>
     <message>
         <source>No effect, select diagrams or database</source>
-        <translation>Geen effect, selecteer diagrammen of database</translation>
+        <translation type="vanished">Geen effect, selecteer diagrammen of database</translation>
     </message>
 </context>
 <context>

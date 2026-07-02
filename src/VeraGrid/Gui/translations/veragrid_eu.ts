@@ -278,91 +278,91 @@ li.checked::marker { content: "\2612"; }
     <name>AiChatDialogue</name>
     <message>
         <source>VeraGrid AI dialogue</source>
-        <translation>VeraGrid AI dialogue</translation>
+        <translation type="vanished">VeraGrid AI dialogue</translation>
     </message>
     <message>
         <source>Pick or type a GGUF file name</source>
-        <translation>Aukeratu edo idatzi GGUF fitxategi-izen bat</translation>
+        <translation type="vanished">Aukeratu edo idatzi GGUF fitxategi-izen bat</translation>
     </message>
     <message>
         <source>Provider model name</source>
-        <translation>Hornitzailearen ereduaren izena</translation>
+        <translation type="vanished">Hornitzailearen ereduaren izena</translation>
     </message>
     <message>
         <source>VeraGrid AI</source>
-        <translation>VeraGrid AI</translation>
+        <translation type="vanished">VeraGrid AI</translation>
     </message>
     <message>
         <source>Scan the configured path for GGUF files.</source>
-        <translation>Eskaneatu konfiguratutako bidea GGUF fitxategietarako.</translation>
+        <translation type="vanished">Eskaneatu konfiguratutako bidea GGUF fitxategietarako.</translation>
     </message>
     <message>
         <source>API key</source>
-        <translation>API giltza</translation>
+        <translation type="vanished">API giltza</translation>
     </message>
     <message>
         <source>Leave empty for unauthenticated endpoints</source>
-        <translation>Utzi hutsik autentifikatu gabeko amaierako puntuetarako</translation>
+        <translation type="vanished">Utzi hutsik autentifikatu gabeko amaierako puntuetarako</translation>
     </message>
     <message>
         <source>Query the configured backend for models.</source>
-        <translation>Kontsultatu ereduetarako konfiguratutako backend-a.</translation>
+        <translation type="vanished">Kontsultatu ereduetarako konfiguratutako backend-a.</translation>
     </message>
     <message>
         <source>Type a message before sending.</source>
-        <translation>Idatzi mezu bat bidali aurretik.</translation>
+        <translation type="vanished">Idatzi mezu bat bidali aurretik.</translation>
     </message>
     <message>
         <source>Resolve the pending tool approval or clear the chat first.</source>
-        <translation>Ebatzi zain dagoen tresnaren onarpena edo garbitu txata lehenik.</translation>
+        <translation type="vanished">Ebatzi zain dagoen tresnaren onarpena edo garbitu txata lehenik.</translation>
     </message>
     <message>
         <source>Stopping AI turn...</source>
-        <translation>AI txanda gelditzen...</translation>
+        <translation type="vanished">AI txanda gelditzen...</translation>
     </message>
     <message>
         <source>There is no running AI turn to stop.</source>
-        <translation>Ez dago martxan gelditzeko AI txandarik.</translation>
+        <translation type="vanished">Ez dago martxan gelditzeko AI txandarik.</translation>
     </message>
     <message>
         <source>Running simulation and analyzing the results...</source>
-        <translation>Simulazioa martxan jarri eta emaitzak aztertzen...</translation>
+        <translation type="vanished">Simulazioa martxan jarri eta emaitzak aztertzen...</translation>
     </message>
     <message>
         <source>There is no pending tool call to approve.</source>
-        <translation>Ez dago tresna-deialdirik onartzeko.</translation>
+        <translation type="vanished">Ez dago tresna-deialdirik onartzeko.</translation>
     </message>
     <message>
         <source>Wait for the current AI turn to finish.</source>
-        <translation>Itxaron oraingo AI txanda amaitu arte.</translation>
+        <translation type="vanished">Itxaron oraingo AI txanda amaitu arte.</translation>
     </message>
     <message>
         <source>Running AI turn...</source>
-        <translation>AI txanda martxan...</translation>
+        <translation type="vanished">AI txanda martxan...</translation>
     </message>
     <message>
         <source>Generating response</source>
-        <translation>Erantzuna sortzea</translation>
+        <translation type="vanished">Erantzuna sortzea</translation>
     </message>
     <message>
         <source>Running AI turn</source>
-        <translation>AI txanda martxan</translation>
+        <translation type="vanished">AI txanda martxan</translation>
     </message>
     <message>
         <source>Stop</source>
-        <translation>Gelditu</translation>
+        <translation type="vanished">Gelditu</translation>
     </message>
     <message>
         <source>Send</source>
-        <translation>Bidali</translation>
+        <translation type="vanished">Bidali</translation>
     </message>
     <message>
         <source>You</source>
-        <translation>Zuk</translation>
+        <translation type="vanished">Zuk</translation>
     </message>
     <message>
         <source>Tool</source>
-        <translation>Tresna</translation>
+        <translation type="vanished">Tresna</translation>
     </message>
 </context>
 <context>
@@ -561,11 +561,11 @@ li.checked::marker { content: "\2612"; }
     <name>CgmesOptionsSelector</name>
     <message>
         <source>CGMES Version:</source>
-        <translation>CGMES Bertsioa:</translation>
+        <translation type="vanished">CGMES Bertsioa:</translation>
     </message>
     <message>
         <source>Accept</source>
-        <translation>Onartu</translation>
+        <translation type="vanished">Onartu</translation>
     </message>
 </context>
 <context>
@@ -606,7 +606,39 @@ li.checked::marker { content: "\2612"; }
         <source>Catalan</source>
         <translation>Katalana</translation>
     </message>
-<message><source>Basque</source><translation>Euskara</translation></message><message><source>Galician</source><translation>Galegoa</translation></message><message><source>Tongan</source><translation>Tonga</translation></message><message><source>Tuvaluan</source><translation>Tuvaluarra</translation></message><message><source>Arabic</source><translation>Arabiera</translation></message><message><source>Italian</source><translation>Italiarra</translation></message><message><source>Greek</source><translation>Grekoa</translation></message><message><source>Dutch</source><translation>Holandarra</translation></message></context>
+    <message>
+        <source>Basque</source>
+        <translation>Euskara</translation>
+    </message>
+    <message>
+        <source>Galician</source>
+        <translation>Galegoa</translation>
+    </message>
+    <message>
+        <source>Tongan</source>
+        <translation>Tonga</translation>
+    </message>
+    <message>
+        <source>Tuvaluan</source>
+        <translation>Tuvaluarra</translation>
+    </message>
+    <message>
+        <source>Arabic</source>
+        <translation>Arabiera</translation>
+    </message>
+    <message>
+        <source>Italian</source>
+        <translation>italiarra</translation>
+    </message>
+    <message>
+        <source>Greek</source>
+        <translation>Grekoa</translation>
+    </message>
+    <message>
+        <source>Dutch</source>
+        <translation>Holandarra</translation>
+    </message>
+<message><source>Japanese</source><translation>japoniarra</translation></message></context>
 <context>
     <name>ControllableShuntEditorDialog</name>
     <message>
@@ -1210,35 +1242,35 @@ li.checked::marker { content: "\2612"; }
     <name>DynamicsResultsHandler</name>
     <message>
         <source>X-Y plot slot</source>
-        <translation>X-Y lursailaren zirrikitua</translation>
+        <translation type="vanished">X-Y lursailaren zirrikitua</translation>
     </message>
     <message>
         <source>Choose whether to place the dropped signal on the X axis or Y axis.</source>
-        <translation>Aukeratu eroritako seinalea X ardatzean edo Y ardatzean jarri nahi duzun.</translation>
+        <translation type="vanished">Aukeratu eroritako seinalea X ardatzean edo Y ardatzean jarri nahi duzun.</translation>
     </message>
     <message>
         <source>X axis</source>
-        <translation>X ardatza</translation>
+        <translation type="vanished">X ardatza</translation>
     </message>
     <message>
         <source>Y axis</source>
-        <translation>Y ardatza</translation>
+        <translation type="vanished">Y ardatza</translation>
     </message>
     <message>
         <source>Cancel</source>
-        <translation>Utzi</translation>
+        <translation type="vanished">Utzi</translation>
     </message>
     <message>
         <source>This X-Y plot already has X and Y signals. Replace X, replace Y, or cancel?</source>
-        <translation>X-Y grafiko honek X eta Y seinaleak ditu dagoeneko. X ordeztu, Y ordezkatu edo bertan behera utzi?</translation>
+        <translation type="vanished">X-Y grafiko honek X eta Y seinaleak ditu dagoeneko. X ordeztu, Y ordezkatu edo bertan behera utzi?</translation>
     </message>
     <message>
         <source>Replace X</source>
-        <translation>Ordeztu X</translation>
+        <translation type="vanished">Ordeztu X</translation>
     </message>
     <message>
         <source>Replace Y</source>
-        <translation>Ordeztu Y</translation>
+        <translation type="vanished">Ordeztu Y</translation>
     </message>
 </context>
 <context>
@@ -1253,68 +1285,68 @@ li.checked::marker { content: "\2612"; }
     <name>FileTypeSelector</name>
     <message>
         <source>Format:</source>
-        <translation>Formatua:</translation>
+        <translation type="vanished">Formatua:</translation>
     </message>
     <message>
         <source>Accept</source>
-        <translation>Onartu</translation>
+        <translation type="vanished">Onartu</translation>
     </message>
 </context>
 <context>
     <name>FmuTemplateEditorDialog</name>
     <message>
         <source>FMU Template Editor</source>
-        <translation>FMU txantiloien editorea</translation>
+        <translation type="vanished">FMU txantiloien editorea</translation>
     </message>
     <message>
         <source>Browse...</source>
-        <translation>Arakatu...</translation>
+        <translation type="vanished">Arakatu...</translation>
     </message>
     <message>
         <source>Choose an FMU archive to load its metadata and build the visual block.</source>
-        <translation>Aukeratu FMU artxibo bat bere metadatuak kargatzeko eta ikusizko blokea eraikitzeko.</translation>
+        <translation type="vanished">Aukeratu FMU artxibo bat bere metadatuak kargatzeko eta ikusizko blokea eraikitzeko.</translation>
     </message>
     <message>
         <source>Name</source>
-        <translation>Izena</translation>
+        <translation type="vanished">Izena</translation>
     </message>
     <message>
         <source>FMU file</source>
-        <translation>FMU fitxategia</translation>
+        <translation type="vanished">FMU fitxategia</translation>
     </message>
     <message>
         <source>Device type</source>
-        <translation>Gailu mota</translation>
+        <translation type="vanished">Gailu mota</translation>
     </message>
     <message>
         <source>Domain</source>
-        <translation>Domeinua</translation>
+        <translation type="vanished">Domeinua</translation>
     </message>
     <message>
         <source>Mode</source>
-        <translation>Modua</translation>
+        <translation type="vanished">Modua</translation>
     </message>
     <message>
         <source>Metadata</source>
-        <translation>Metadatuak</translation>
+        <translation type="vanished">Metadatuak</translation>
     </message>
     <message>
         <source>Select FMU file</source>
-        <translation>Hautatu FMU fitxategia</translation>
+        <translation type="vanished">Hautatu FMU fitxategia</translation>
     </message>
     <message>
         <source>FMU files (*.fmu)</source>
-        <translation>FMU fitxategiak (*.fmu)</translation>
+        <translation type="vanished">FMU fitxategiak (*.fmu)</translation>
     </message>
     <message>
         <source>FMU file not found:
 {path}</source>
-        <translation>FMU fitxategia ez da aurkitu:
+        <translation type="vanished">FMU fitxategia ez da aurkitu:
 {path}</translation>
     </message>
     <message>
         <source>Choose an FMU file first.</source>
-        <translation>Aukeratu lehenik FMU fitxategi bat.</translation>
+        <translation type="vanished">Aukeratu lehenik FMU fitxategi bat.</translation>
     </message>
 </context>
 <context>
@@ -1339,337 +1371,337 @@ li.checked::marker { content: "\2612"; }
     <name>IoMain</name>
     <message>
         <source>The file type {file_extension} is not accepted :(</source>
-        <translation>{file_extension} fitxategi mota ez da onartzen :(</translation>
+        <translation type="vanished">{file_extension} fitxategi mota ez da onartzen :(</translation>
     </message>
     <message>
         <source>Message</source>
-        <translation>Mezua</translation>
+        <translation type="vanished">Mezua</translation>
     </message>
     <message>
         <source>Are you sure that you want to quit the current grid and open a new one?
  If the process is cancelled the grid will remain.</source>
-        <translation>Ziur uneko saretik irten eta berri bat ireki nahi duzula?
+        <translation type="vanished">Ziur uneko saretik irten eta berri bat ireki nahi duzula?
  Prozesua bertan behera uzten bada sareta mantenduko da.</translation>
     </message>
     <message>
         <source>Are you sure that you want to quit the current grid and create a new one?</source>
-        <translation>Ziur uneko saretik irten eta berri bat sortu nahi duzula?</translation>
+        <translation type="vanished">Ziur uneko saretik irten eta berri bat sortu nahi duzula?</translation>
     </message>
     <message>
         <source>There is a file being processed now.</source>
-        <translation>Fitxategi bat prozesatzen ari da.</translation>
+        <translation type="vanished">Fitxategi bat prozesatzen ari da.</translation>
     </message>
     <message>
         <source>Formats ({files_types})</source>
-        <translation>Formatuak ({files_types})</translation>
+        <translation type="vanished">Formatuak ({files_types})</translation>
     </message>
     <message>
         <source>The file does not exist :( 
  {file_name}</source>
-        <translation>Fitxategia ez da existitzen :( 
+        <translation type="vanished">Fitxategia ez da existitzen :( 
  {file_name}</translation>
     </message>
     <message>
         <source>File opening</source>
-        <translation>Fitxategia irekitzea</translation>
+        <translation type="vanished">Fitxategia irekitzea</translation>
     </message>
     <message>
         <source>No grid to load :(</source>
-        <translation>Ez dago sarerik kargatzeko :(</translation>
+        <translation type="vanished">Ez dago sarerik kargatzeko :(</translation>
     </message>
     <message>
         <source>Current: {circuit_name}</source>
-        <translation>Oraingoa: {circuit_name}</translation>
+        <translation type="vanished">Oraingoa: {circuit_name}</translation>
     </message>
     <message>
         <source>The grid is quite big, no diagram is automatically created</source>
-        <translation>Sarea nahiko handia da, ez da automatikoki diagramarik sortzen</translation>
+        <translation type="vanished">Sarea nahiko handia da, ez da automatikoki diagramarik sortzen</translation>
     </message>
     <message>
         <source>Sessions</source>
-        <translation>Saioak</translation>
+        <translation type="vanished">Saioak</translation>
     </message>
     <message>
         <source>Show Rosetta</source>
-        <translation>Erakutsi Rosetta</translation>
+        <translation type="vanished">Erakutsi Rosetta</translation>
     </message>
     <message>
         <source>Do you want to open the Rosetta CGMES browser?</source>
-        <translation>Rosetta CGMES arakatzailea ireki nahi duzu?</translation>
+        <translation type="vanished">Rosetta CGMES arakatzailea ireki nahi duzu?</translation>
     </message>
     <message>
         <source>Open CGMES file logger</source>
-        <translation>Ireki CGMES fitxategien erregistratzailea</translation>
+        <translation type="vanished">Ireki CGMES fitxategien erregistratzailea</translation>
     </message>
     <message>
         <source>Open file logger</source>
-        <translation>Ireki fitxategien erregistratzailea</translation>
+        <translation type="vanished">Ireki fitxategien erregistratzailea</translation>
     </message>
     <message>
         <source>Error while loading the file(s)</source>
-        <translation>Errore bat gertatu da fitxategia(k) kargatzean</translation>
+        <translation type="vanished">Errore bat gertatu da fitxategia(k) kargatzean</translation>
     </message>
     <message>
         <source>{name} {version} requires VeraGrid {veragrid_version}</source>
-        <translation>{name} {version} behar du VeraGrid {veragrid_version}</translation>
+        <translation type="vanished">{name} {version} behar du VeraGrid {veragrid_version}</translation>
     </message>
     <message>
         <source>Plugin install</source>
-        <translation>Plugin instalatzea</translation>
+        <translation type="vanished">Plugin instalatzea</translation>
     </message>
     <message>
         <source>There is already a plugin: {plugin_name} {plugin_version}. The new plugin is {new_version}. Install?</source>
-        <translation>Dagoeneko plugin bat dago: {plugin_name} {plugin_version}. Plugin berria {new_version} da. Instalatu?</translation>
+        <translation type="vanished">Dagoeneko plugin bat dago: {plugin_name} {plugin_version}. Plugin berria {new_version} da. Instalatu?</translation>
     </message>
     <message>
         <source>{name} {version} installed!</source>
-        <translation>{name} {version} instalatuta!</translation>
+        <translation type="vanished">{name} {version} instalatuta!</translation>
     </message>
     <message>
         <source>There is no manifest :(</source>
-        <translation>Ez dago manifesturik :(</translation>
+        <translation type="vanished">Ez dago manifesturik :(</translation>
     </message>
     <message>
         <source>Does not seem to be a plugin :/</source>
-        <translation>Ez dirudi plugin bat denik :/</translation>
+        <translation type="vanished">Ez dirudi plugin bat denik :/</translation>
     </message>
     <message>
         <source>CSV (*.csv)</source>
-        <translation>CSV (*.csv)</translation>
+        <translation type="vanished">CSV (*.csv)</translation>
     </message>
     <message>
         <source>Open CSV file</source>
-        <translation>Ireki CSV fitxategia</translation>
+        <translation type="vanished">Ireki CSV fitxategia</translation>
     </message>
     <message>
         <source>Grid merge</source>
-        <translation>Sare-konbinazioa</translation>
+        <translation type="vanished">Sare-konbinazioa</translation>
     </message>
     <message>
         <source>How do you want to represent the merged grid?</source>
-        <translation>Nola irudikatu nahi duzu sare bateratua?</translation>
+        <translation type="vanished">Nola irudikatu nahi duzu sare bateratua?</translation>
     </message>
     <message>
         <source>Create new diagram</source>
-        <translation>Sortu diagrama berria</translation>
+        <translation type="vanished">Sortu diagrama berria</translation>
     </message>
     <message>
         <source>Add to current diagram</source>
-        <translation>Gehitu uneko diagramari</translation>
+        <translation type="vanished">Gehitu uneko diagramari</translation>
     </message>
     <message>
         <source>No schematic diagram was selected...</source>
-        <translation>Ez da diagrama eskematikorik hautatu...</translation>
+        <translation type="vanished">Ez da diagrama eskematikorik hautatu...</translation>
     </message>
     <message>
         <source>Save file</source>
-        <translation>Gorde fitxategia</translation>
+        <translation type="vanished">Gorde fitxategia</translation>
     </message>
     <message>
         <source>VeraGrid zip (*.veragrid)</source>
-        <translation>VeraGrid zip (*.veragrid)</translation>
+        <translation type="vanished">VeraGrid zip (*.veragrid)</translation>
     </message>
     <message>
         <source>There is a saving procedure running.
 Cancel and retry?</source>
-        <translation>Aurrezteko prozedura bat dago martxan.
+        <translation type="vanished">Aurrezteko prozedura bat dago martxan.
 Utzi eta berriro saiatu?</translation>
     </message>
     <message>
         <source>There is a file being processed..</source>
-        <translation>Fitxategi bat prozesatzen ari da..</translation>
+        <translation type="vanished">Fitxategi bat prozesatzen ari da..</translation>
     </message>
     <message>
         <source>Save file logger</source>
-        <translation>Gorde fitxategia erregistratzailea</translation>
+        <translation type="vanished">Gorde fitxategia erregistratzailea</translation>
     </message>
     <message>
         <source>Are you sure that you want to delete the current grid and replace it?</source>
-        <translation>Ziur uneko sarea ezabatu eta ordeztu nahi duzula?</translation>
+        <translation type="vanished">Ziur uneko sarea ezabatu eta ordeztu nahi duzula?</translation>
     </message>
     <message>
         <source>Model v. {model_version}</source>
-        <translation>Eredua v. {model_version}</translation>
+        <translation type="vanished">Eredua v. {model_version}</translation>
     </message>
     <message>
         <source>idtag. {idtag}</source>
-        <translation>idtag. {idtag}</translation>
+        <translation type="vanished">idtag. {idtag}</translation>
     </message>
     <message>
         <source>Random grid {bus_count} buses</source>
-        <translation>Ausazko sareta {bus_count} autobusak</translation>
+        <translation type="vanished">Ausazko sareta {bus_count} autobusak</translation>
     </message>
     <message>
         <source>Grid generated randomly using the RPGM algorithm.</source>
-        <translation>RPGM algoritmoa erabiliz ausaz sortutako sareta.</translation>
+        <translation type="vanished">RPGM algoritmoa erabiliz ausaz sortutako sareta.</translation>
     </message>
     <message>
         <source>Excel file (*.xlsx)</source>
-        <translation>Excel fitxategia (*.xlsx)</translation>
+        <translation type="vanished">Excel fitxategia (*.xlsx)</translation>
     </message>
     <message>
         <source>profiles of </source>
-        <translation>ren profilak </translation>
+        <translation type="vanished">ren profilak </translation>
     </message>
     <message>
         <source>There are no profiles!</source>
-        <translation>Ez dago profilik!</translation>
+        <translation type="vanished">Ez dago profilik!</translation>
     </message>
     <message>
         <source>Export object profiles</source>
-        <translation>Esportatu objektuen profilak</translation>
+        <translation type="vanished">Esportatu objektuen profilak</translation>
     </message>
     <message>
         <source>Zip file (*.zip)</source>
-        <translation>Zip fitxategia (*.zip)</translation>
+        <translation type="vanished">Zip fitxategia (*.zip)</translation>
     </message>
     <message>
         <source>Results of </source>
-        <translation>-ren emaitzak </translation>
+        <translation type="vanished">-ren emaitzak </translation>
     </message>
     <message>
         <source>There are no results available :/</source>
-        <translation>Ez dago emaitzarik eskuragarri :/</translation>
+        <translation type="vanished">Ez dago emaitzarik eskuragarri :/</translation>
     </message>
     <message>
         <source>Export all</source>
-        <translation>Esportatu guztiak</translation>
+        <translation type="vanished">Esportatu guztiak</translation>
     </message>
     <message>
         <source>Done!</source>
-        <translation>Eginda!</translation>
+        <translation type="vanished">Eginda!</translation>
     </message>
     <message>
         <source>Results parsing</source>
-        <translation>Emaitzen analisia</translation>
+        <translation type="vanished">Emaitzen analisia</translation>
     </message>
     <message>
         <source>Loaded '{study_name}' results from disk</source>
-        <translation>Diskotik '{study_name}' emaitzak kargatu dira</translation>
+        <translation type="vanished">Diskotik '{study_name}' emaitzak kargatu dira</translation>
     </message>
     <message>
         <source>No file driver declared :/</source>
-        <translation>Ez da fitxategi kontrolatzailerik deklaratu :/</translation>
+        <translation type="vanished">Ez da fitxategi kontrolatzailerik deklaratu :/</translation>
     </message>
     <message>
         <source>Select a driver inside a session</source>
-        <translation>Hautatu gidari bat saio baten barruan</translation>
+        <translation type="vanished">Hautatu gidari bat saio baten barruan</translation>
     </message>
     <message>
         <source>Driver load from disk</source>
-        <translation>Diskotik kontrolatzailea kargatzea</translation>
+        <translation type="vanished">Diskotik kontrolatzailea kargatzea</translation>
     </message>
     <message>
         <source>Load results from disk</source>
-        <translation>Kargatu emaitzak diskotik</translation>
+        <translation type="vanished">Kargatu emaitzak diskotik</translation>
     </message>
     <message>
         <source>Formats (*.json)</source>
-        <translation>Formatuak (*.json)</translation>
+        <translation type="vanished">Formatuak (*.json)</translation>
     </message>
     <message>
         <source>Open file</source>
-        <translation>Ireki fitxategia</translation>
+        <translation type="vanished">Ireki fitxategia</translation>
     </message>
     <message>
         <source>Contingencies import</source>
-        <translation>Kontingentziak inportatzea</translation>
+        <translation type="vanished">Kontingentziak inportatzea</translation>
     </message>
     <message>
         <source>JSON file (*.json)</source>
-        <translation>JSON fitxategia (*.json)</translation>
+        <translation type="vanished">JSON fitxategia (*.json)</translation>
     </message>
     <message>
         <source>Catalogue added!</source>
-        <translation>Katalogoa gehitu da!</translation>
+        <translation type="vanished">Katalogoa gehitu da!</translation>
     </message>
     <message>
         <source>Load catalogue</source>
-        <translation>Kargatu katalogoa</translation>
+        <translation type="vanished">Kargatu katalogoa</translation>
     </message>
     <message>
         <source>Open catalogue logger</source>
-        <translation>Ireki katalogoaren erregistratzailea</translation>
+        <translation type="vanished">Ireki katalogoaren erregistratzailea</translation>
     </message>
     <message>
         <source>Catalogue loaded!</source>
-        <translation>Katalogoa kargatuta!</translation>
+        <translation type="vanished">Katalogoa kargatuta!</translation>
     </message>
     <message>
         <source>Catalogue file (*.xlsx)</source>
-        <translation>Katalogoko fitxategia (*.xlsx)</translation>
+        <translation type="vanished">Katalogoko fitxategia (*.xlsx)</translation>
     </message>
     <message>
         <source>Catalogue Excel file (*.xlsx)</source>
-        <translation>Katalogoko Excel fitxategia (*.xlsx)</translation>
+        <translation type="vanished">Katalogoko Excel fitxategia (*.xlsx)</translation>
     </message>
     <message>
         <source>Save catalogue</source>
-        <translation>Gorde katalogoa</translation>
+        <translation type="vanished">Gorde katalogoa</translation>
     </message>
     <message>
         <source>Catalogue saved!</source>
-        <translation>Katalogoa gorde da!</translation>
+        <translation type="vanished">Katalogoa gorde da!</translation>
     </message>
     <message>
         <source>CIM (*.xml)</source>
-        <translation>CIM (*.xml)</translation>
+        <translation type="vanished">CIM (*.xml)</translation>
     </message>
     <message>
         <source>Export to CIM</source>
-        <translation>Esportatu CIMra</translation>
+        <translation type="vanished">Esportatu CIMra</translation>
     </message>
     <message>
         <source>Power Grid Models (*.pgm)</source>
-        <translation>Sare elektrikoaren ereduak (*.pgm)</translation>
+        <translation type="vanished">Sare elektrikoaren ereduak (*.pgm)</translation>
     </message>
     <message>
         <source>Export to Power Grid Models</source>
-        <translation>Esportatu sare elektrikoaren ereduetara</translation>
+        <translation type="vanished">Esportatu sare elektrikoaren ereduetara</translation>
     </message>
     <message>
         <source>Power Grid Models not installed :/</source>
-        <translation>Sare elektrikoaren ereduak ez daude instalatuta :/</translation>
+        <translation type="vanished">Sare elektrikoaren ereduak ez daude instalatuta :/</translation>
     </message>
     <message>
         <source>Electrical Json V3 (*.ejson3)</source>
-        <translation>Json V3 elektrikoa (*.ejson3)</translation>
+        <translation type="vanished">Json V3 elektrikoa (*.ejson3)</translation>
     </message>
     <message>
         <source>Export to JSON</source>
-        <translation>Esportatu JSONra</translation>
+        <translation type="vanished">Esportatu JSONra</translation>
     </message>
     <message>
         <source>VeraGrid HDF5 (*.gch5)</source>
-        <translation>VeraGrid HDF5 (*.gch5)</translation>
+        <translation type="vanished">VeraGrid HDF5 (*.gch5)</translation>
     </message>
     <message>
         <source>Export to VeraGrid HDF5</source>
-        <translation>Esportatu VeraGrid HDF5ra</translation>
+        <translation type="vanished">Esportatu VeraGrid HDF5ra</translation>
     </message>
     <message>
         <source>Excel (*.xlsx)</source>
-        <translation>Excel (*.xlsx)</translation>
+        <translation type="vanished">Excel (*.xlsx)</translation>
     </message>
     <message>
         <source>Export to Microsoft Excel</source>
-        <translation>Esportatu Microsoft Excel-era</translation>
+        <translation type="vanished">Esportatu Microsoft Excel-era</translation>
     </message>
     <message>
         <source>Sqlite (*.sqlite)</source>
-        <translation>Sqlite (*.sqlite)</translation>
+        <translation type="vanished">Sqlite (*.sqlite)</translation>
     </message>
     <message>
         <source>Export to Sqlite</source>
-        <translation>Esportatu Sqlite-ra</translation>
+        <translation type="vanished">Esportatu Sqlite-ra</translation>
     </message>
     <message>
         <source>VeraGrid (*.veragrid)</source>
-        <translation>VeraGrid (*.veragrid)</translation>
+        <translation type="vanished">VeraGrid (*.veragrid)</translation>
     </message>
     <message>
         <source>Export VeraGrid scenario</source>
-        <translation>Esportatu VeraGrid eszenatokia</translation>
+        <translation type="vanished">Esportatu VeraGrid eszenatokia</translation>
     </message>
 </context>
 <context>
@@ -2513,149 +2545,149 @@ Utzi eta berriro saiatu?</translation>
     <name>ResultsMain</name>
     <message>
         <source>Delete driver</source>
-        <translation>Ezabatu gidaria</translation>
+        <translation type="vanished">Ezabatu gidaria</translation>
     </message>
     <message>
         <source>Rename group</source>
-        <translation>Aldatu taldeari</translation>
+        <translation type="vanished">Aldatu taldeari</translation>
     </message>
     <message>
         <source>Rename variable</source>
-        <translation>Aldatu aldagaia</translation>
+        <translation type="vanished">Aldatu aldagaia</translation>
     </message>
     <message>
         <source>Rename dynamic plot</source>
-        <translation>Aldatu izena lursail dinamikoa</translation>
+        <translation type="vanished">Aldatu izena lursail dinamikoa</translation>
     </message>
     <message>
         <source>Plot name</source>
-        <translation>Lursailaren izena</translation>
+        <translation type="vanished">Lursailaren izena</translation>
     </message>
     <message>
         <source>The plot group name is empty or already exists.</source>
-        <translation>Lursail-taldearen izena hutsik dago edo dagoeneko badago.</translation>
+        <translation type="vanished">Lursail-taldearen izena hutsik dago edo dagoeneko badago.</translation>
     </message>
     <message>
         <source>Select a plot group first.</source>
-        <translation>Hautatu lursail-talde bat lehenik.</translation>
+        <translation type="vanished">Hautatu lursail-talde bat lehenik.</translation>
     </message>
     <message>
         <source>There are no RMS dynamics results loaded.</source>
-        <translation>Ez dago RMS dinamikaren emaitzarik kargatu.</translation>
+        <translation type="vanished">Ez dago RMS dinamikaren emaitzarik kargatu.</translation>
     </message>
     <message>
         <source>Rename dynamic variable</source>
-        <translation>Aldatu aldagai dinamikoa</translation>
+        <translation type="vanished">Aldatu aldagai dinamikoa</translation>
     </message>
     <message>
         <source>Variable name</source>
-        <translation>Aldagaiaren izena</translation>
+        <translation type="vanished">Aldagaiaren izena</translation>
     </message>
     <message>
         <source>The variable name is empty or could not be changed.</source>
-        <translation>Aldagaiaren izena hutsik dago edo ezin izan da aldatu.</translation>
+        <translation type="vanished">Aldagaiaren izena hutsik dago edo ezin izan da aldatu.</translation>
     </message>
     <message>
         <source>New dynamic plot</source>
-        <translation>Lursail dinamiko berria</translation>
+        <translation type="vanished">Lursail dinamiko berria</translation>
     </message>
     <message>
         <source>Plot mode</source>
-        <translation>Plot modua</translation>
+        <translation type="vanished">Plot modua</translation>
     </message>
     <message>
         <source>Time Series (Y vs Time)</source>
-        <translation>Denbora-seriea (Y vs Denbora)</translation>
+        <translation type="vanished">Denbora-seriea (Y vs Denbora)</translation>
     </message>
     <message>
         <source>X-Y Plot (Y vs X)</source>
-        <translation>X-Y grafikoa (Y vs X)</translation>
+        <translation type="vanished">X-Y grafikoa (Y vs X)</translation>
     </message>
     <message>
         <source>The selected dynamic plot entry could not be deleted.</source>
-        <translation>Ezin izan da hautatutako grafiko dinamikoko sarrera ezabatu.</translation>
+        <translation type="vanished">Ezin izan da hautatutako grafiko dinamikoko sarrera ezabatu.</translation>
     </message>
     <message>
         <source>Select a plot group or variable first.</source>
-        <translation>Hautatu lursail-talde edo aldagai bat lehenik.</translation>
+        <translation type="vanished">Hautatu lursail-talde edo aldagai bat lehenik.</translation>
     </message>
     <message>
         <source>The selected dynamic plot entry could not be plotted.</source>
-        <translation>Hautatutako grafiko dinamikoaren sarrera ezin izan da marraztu.</translation>
+        <translation type="vanished">Hautatutako grafiko dinamikoaren sarrera ezin izan da marraztu.</translation>
     </message>
     <message>
         <source>There are {columns} columns, the plot might take a lot to render.
 Are you ok with potentially waiting a lot?</source>
-        <translation>{columns} zutabeak daude, baliteke grafikoa errendatzeko asko behar izatea.
+        <translation type="vanished">{columns} zutabeak daude, baliteke grafikoa errendatzeko asko behar izatea.
 Ondo al zaude potentzialki asko itxarotea?</translation>
     </message>
     <message>
         <source>Plot</source>
-        <translation>Lursaila</translation>
+        <translation type="vanished">Lursaila</translation>
     </message>
     <message>
         <source>Export results</source>
-        <translation>Esportatu emaitzak</translation>
+        <translation type="vanished">Esportatu emaitzak</translation>
     </message>
     <message>
         <source>CSV (*.csv);;Excel files (*.xlsx)</source>
-        <translation>CSV (*.csv);;Excel fitxategiak (*.xlsx)</translation>
+        <translation type="vanished">CSV (*.csv);;Excel fitxategiak (*.xlsx)</translation>
     </message>
     <message>
         <source> is not valid :(</source>
-        <translation> ez du balio :(</translation>
+        <translation type="vanished"> ez du balio :(</translation>
     </message>
     <message>
         <source>There is no profile displayed, please display one</source>
-        <translation>Ez dago profilik bistaratzen, mesedez bistaratu bat</translation>
+        <translation type="vanished">Ez dago profilik bistaratzen, mesedez bistaratu bat</translation>
     </message>
     <message>
         <source>Copy profile to clipboard</source>
-        <translation>Kopiatu profila arbelean</translation>
+        <translation type="vanished">Kopiatu profila arbelean</translation>
     </message>
     <message>
         <source>Copied!</source>
-        <translation>Kopiatu!</translation>
+        <translation type="vanished">Kopiatu!</translation>
     </message>
     <message>
         <source>Filter parse</source>
-        <translation>Iragazki analisia</translation>
+        <translation type="vanished">Iragazki analisia</translation>
     </message>
     <message>
         <source>Do you want to delete the results driver {study_name}?</source>
-        <translation>{study_name} emaitzen kontrolatzailea ezabatu nahi duzu?</translation>
+        <translation type="vanished">{study_name} emaitzen kontrolatzailea ezabatu nahi duzu?</translation>
     </message>
     <message>
         <source>Message</source>
-        <translation>Mezua</translation>
+        <translation type="vanished">Mezua</translation>
     </message>
     <message>
         <source>Are you sure that you want to overwrite the generation, batteries and load snapshot values with the OPF results?</source>
-        <translation>Ziur OPF emaitzekin sorrera, bateriak eta argazkien karga-balioak gainidatzi nahi dituzula?</translation>
+        <translation type="vanished">Ziur OPF emaitzekin sorrera, bateriak eta argazkien karga-balioak gainidatzi nahi dituzula?</translation>
     </message>
     <message>
         <source>Overwrite profiles with OPF results</source>
-        <translation>Gainidatzi profilak OPF emaitzekin</translation>
+        <translation type="vanished">Gainidatzi profilak OPF emaitzekin</translation>
     </message>
     <message>
         <source>P snapshot set from the OPF results</source>
-        <translation>P argazki multzoa OPF emaitzetatik abiatuta</translation>
+        <translation type="vanished">P argazki multzoa OPF emaitzetatik abiatuta</translation>
     </message>
     <message>
         <source>The OPF time series has no results :(</source>
-        <translation>OPF denbora serieak ez du emaitzarik :(</translation>
+        <translation type="vanished">OPF denbora serieak ez du emaitzarik :(</translation>
     </message>
     <message>
         <source>Are you sure that you want to overwrite the generation, batteries and load profiles with the OPF time series results?</source>
-        <translation>Ziur sorkuntza, bateriak eta karga-profilak gainidatzi nahi dituzula OPF denbora serieko emaitzekin?</translation>
+        <translation type="vanished">Ziur sorkuntza, bateriak eta karga-profilak gainidatzi nahi dituzula OPF denbora serieko emaitzekin?</translation>
     </message>
     <message>
         <source>P profiles set from the OPF results</source>
-        <translation>P profilak OPF emaitzetatik ezarrita</translation>
+        <translation type="vanished">P profilak OPF emaitzetatik ezarrita</translation>
     </message>
     <message>
         <source>Export logs</source>
-        <translation>Esportatu erregistroak</translation>
+        <translation type="vanished">Esportatu erregistroak</translation>
     </message>
 </context>
 <context>
@@ -2722,18 +2754,18 @@ Ondo al zaude potentzialki asko itxarotea?</translation>
     <message>
         <source>VeraGrid internal commands.
 </source>
-        <translation>VeraGrid barne-komandoak.
+        <translation type="vanished">VeraGrid barne-komandoak.
 </translation>
     </message>
     <message>
         <source>If a command is unavailable is because the study has not been executed yet.</source>
-        <translation>Komando bat erabilgarri ez badago azterketa oraindik exekutatu ez delako da.</translation>
+        <translation type="vanished">Komando bat erabilgarri ez badago azterketa oraindik exekutatu ez delako da.</translation>
     </message>
     <message>
         <source>
 
 clc():	clear the console.</source>
-        <translation>
+        <translation type="vanished">
 
 clc(): garbitu kontsola.</translation>
     </message>
@@ -2741,503 +2773,503 @@ clc(): garbitu kontsola.</translation>
         <source>
 
 App functions:</source>
-        <translation>
+        <translation type="vanished">
 
 Aplikazioaren funtzioak:</translation>
     </message>
     <message>
         <source>	app.new_project(): Clear all.</source>
-        <translation>	app.new_project(): Garbitu guztiak.</translation>
+        <translation type="vanished">	app.new_project(): Garbitu guztiak.</translation>
     </message>
     <message>
         <source>	app.open_file(): Prompt to load VeraGrid compatible file</source>
-        <translation>	app.open_file(): eskatu VeraGrid fitxategi bateragarria kargatzeko</translation>
+        <translation type="vanished">	app.open_file(): eskatu VeraGrid fitxategi bateragarria kargatzeko</translation>
     </message>
     <message>
         <source>	app.save_file(): Prompt to save VeraGrid file</source>
-        <translation>	app.save_file(): eskatu VeraGrid fitxategia gordetzeko</translation>
+        <translation type="vanished">	app.save_file(): eskatu VeraGrid fitxategia gordetzeko</translation>
     </message>
     <message>
         <source>	app.export_diagram(): Prompt to export the diagram in png.</source>
-        <translation>	app.export_diagram(): Diagrama png-n esportatzeko eskatu.</translation>
+        <translation type="vanished">	app.export_diagram(): Diagrama png-n esportatzeko eskatu.</translation>
     </message>
     <message>
         <source>	app.create_schematic_from_api(): Create the schematic from the circuit information.</source>
-        <translation>	app.create_schematic_from_api(): Sortu eskema zirkuituaren informaziotik.</translation>
+        <translation type="vanished">	app.create_schematic_from_api(): Sortu eskema zirkuituaren informaziotik.</translation>
     </message>
     <message>
         <source>	app.adjust_all_node_width(): Adjust the width of all the nodes according to their name.</source>
-        <translation>	app.adjust_all_node_width(): Doitu nodo guztien zabalera izenaren arabera.</translation>
+        <translation type="vanished">	app.adjust_all_node_width(): Doitu nodo guztien zabalera izenaren arabera.</translation>
     </message>
     <message>
         <source>	app.numerical_circuit: get compilation of the assets.</source>
-        <translation>app.numerical_circuit: lortu aktiboen konpilazioa.</translation>
+        <translation type="vanished">app.numerical_circuit: lortu aktiboen konpilazioa.</translation>
     </message>
     <message>
         <source>	app.islands: get compilation of the assets split into the topological islands.</source>
-        <translation>	app.islands: lortu uharte topologikoetan banatutako aktiboen konpilazioa.</translation>
+        <translation type="vanished">	app.islands: lortu uharte topologikoetan banatutako aktiboen konpilazioa.</translation>
     </message>
     <message>
         <source>
 
 Circuit functions:</source>
-        <translation>
+        <translation type="vanished">
 
 Zirkuituaren funtzioak:</translation>
     </message>
     <message>
         <source>	app.circuit.plot_graph(): Plot a graph in a Matplotlib window. Call plt.show() after.</source>
-        <translation>	app.circuit.plot_graph(): Marraztu grafiko bat Matplotlib leiho batean. Deitu plt.show() ondoren.</translation>
+        <translation type="vanished">	app.circuit.plot_graph(): Marraztu grafiko bat Matplotlib leiho batean. Deitu plt.show() ondoren.</translation>
     </message>
     <message>
         <source>
 
 Power flow results:</source>
-        <translation>
+        <translation type="vanished">
 
 Potentzia-fluxuaren emaitzak:</translation>
     </message>
     <message>
         <source>	app.session.power_flow.voltage:	 the nodal voltages in per unit</source>
-        <translation>	app.session.power_flow.voltage: unitate bakoitzeko tentsio nodalak</translation>
+        <translation type="vanished">	app.session.power_flow.voltage: unitate bakoitzeko tentsio nodalak</translation>
     </message>
     <message>
         <source>	app.session.power_flow.current:	 the branch currents in per unit</source>
-        <translation>	app.session.power_flow.current: adar-korronteak unitate bakoitzeko</translation>
+        <translation type="vanished">	app.session.power_flow.current: adar-korronteak unitate bakoitzeko</translation>
     </message>
     <message>
         <source>	app.session.power_flow.loading:	 the branch loading in %</source>
-        <translation>	app.session.power_flow.loading: adarraren karga %-an</translation>
+        <translation type="vanished">	app.session.power_flow.loading: adarraren karga %-an</translation>
     </message>
     <message>
         <source>	app.session.power_flow.losses:	 the branch losses in per unit</source>
-        <translation>	app.session.power_flow.losses: unitate bakoitzeko adar-galerak</translation>
+        <translation type="vanished">	app.session.power_flow.losses: unitate bakoitzeko adar-galerak</translation>
     </message>
     <message>
         <source>	app.session.power_flow.power:	 the nodal power Injections in per unit</source>
-        <translation>	app.session.power_flow.power: potentzia nodal Injekzioak unitate bakoitzeko</translation>
+        <translation type="vanished">	app.session.power_flow.power: potentzia nodal Injekzioak unitate bakoitzeko</translation>
     </message>
     <message>
         <source>	app.session.power_flow.Sf:	 the branch power Injections in per unit at the "from" side</source>
-        <translation>	app.session.power_flow.Sf: adar-potentzia Injekzioak unitate bakoitzeko "aldetik" aldean</translation>
+        <translation type="vanished">	app.session.power_flow.Sf: adar-potentzia Injekzioak unitate bakoitzeko "aldetik" aldean</translation>
     </message>
     <message>
         <source>	app.session.power_flow.St:	 the branch power Injections in per unit at the "to" side</source>
-        <translation>	app.session.power_flow.St: adar-potentzia Injekzioak unitate bakoitzeko "to" aldean</translation>
+        <translation type="vanished">	app.session.power_flow.St: adar-potentzia Injekzioak unitate bakoitzeko "to" aldean</translation>
     </message>
     <message>
         <source>
 
 Short circuit results:</source>
-        <translation>
+        <translation type="vanished">
 
 Zirkuitu laburren emaitzak:</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.voltage:	 the nodal voltages in per unit</source>
-        <translation>	app.session.short_circuit.voltage: unitate bakoitzeko tentsio nodalak</translation>
+        <translation type="vanished">	app.session.short_circuit.voltage: unitate bakoitzeko tentsio nodalak</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.current:	 the branch currents in per unit</source>
-        <translation>	app.session.short_circuit.current: adar-korronteak unitate bakoitzeko</translation>
+        <translation type="vanished">	app.session.short_circuit.current: adar-korronteak unitate bakoitzeko</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.loading:	 the branch loading in %</source>
-        <translation>	app.session.short_circuit.loading: adarraren karga %-an</translation>
+        <translation type="vanished">	app.session.short_circuit.loading: adarraren karga %-an</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.losses:	 the branch losses in per unit</source>
-        <translation>	app.session.short_circuit.losses: unitate bakoitzeko adar-galerak</translation>
+        <translation type="vanished">	app.session.short_circuit.losses: unitate bakoitzeko adar-galerak</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.power:	 the nodal power Injections in per unit</source>
-        <translation>	app.session.short_circuit.power: potentzia nodal Injekzioak unitate bakoitzeko</translation>
+        <translation type="vanished">	app.session.short_circuit.power: potentzia nodal Injekzioak unitate bakoitzeko</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.power_from:	 the branch power Injections in per unit at the "from" side</source>
-        <translation>	app.session.short_circuit.power_from: adar-potentzia Injekzioak unitate bakoitzeko "tik" aldean</translation>
+        <translation type="vanished">	app.session.short_circuit.power_from: adar-potentzia Injekzioak unitate bakoitzeko "tik" aldean</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.power_to:	 the branch power Injections in per unit at the "to" side</source>
-        <translation>	app.session.short_circuit.power_to: adar potentzia Injekzioak unitate bakoitzeko "to" aldean</translation>
+        <translation type="vanished">	app.session.short_circuit.power_to: adar potentzia Injekzioak unitate bakoitzeko "to" aldean</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.short_circuit_power:	 Short circuit power in MVA of the grid nodes</source>
-        <translation>app.session.short_circuit.short_circuit_power: sareko nodoen MVA zirkuitu laburren potentzia</translation>
+        <translation type="vanished">app.session.short_circuit.short_circuit_power: sareko nodoen MVA zirkuitu laburren potentzia</translation>
     </message>
     <message>
         <source>
 
 Optimal power flow results:</source>
-        <translation>
+        <translation type="vanished">
 
 Potentzia-fluxuaren emaitza optimoak:</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.voltage:	 the nodal voltages angles in rad</source>
-        <translation>	app.session.optimal_power_flow.voltage: tentsio nodal angeluak rad</translation>
+        <translation type="vanished">	app.session.optimal_power_flow.voltage: tentsio nodal angeluak rad</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.load_shedding:	 the branch loading in %</source>
-        <translation>	app.session.optimal_power_flow.load_shedding: adarraren karga %-an</translation>
+        <translation type="vanished">	app.session.optimal_power_flow.load_shedding: adarraren karga %-an</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.losses:	 the branch losses in per unit</source>
-        <translation>	app.session.optimal_power_flow.losses: unitate bakoitzeko adar-galerak</translation>
+        <translation type="vanished">	app.session.optimal_power_flow.losses: unitate bakoitzeko adar-galerak</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.Sbus:	 the nodal power Injections in MW</source>
-        <translation>	app.session.optimal_power_flow.Sbus: MW-ko potentzia nodalaren injekzioak</translation>
+        <translation type="vanished">	app.session.optimal_power_flow.Sbus: MW-ko potentzia nodalaren injekzioak</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.Sf:	 the branch power Sf</source>
-        <translation>	app.session.optimal_power_flow.Sf: adar potentzia Sf</translation>
+        <translation type="vanished">	app.session.optimal_power_flow.Sf: adar potentzia Sf</translation>
     </message>
     <message>
         <source>
 
 Time series power flow results:</source>
-        <translation>
+        <translation type="vanished">
 
 Denbora serieko potentzia-fluxuaren emaitzak:</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.time:	 Profiles time index (pandas DateTimeIndex object)</source>
-        <translation>	app.session.power_flow_ts.time: Profilen denbora-indizea (pandas DateTimeIndex objektua)</translation>
+        <translation type="vanished">	app.session.power_flow_ts.time: Profilen denbora-indizea (pandas DateTimeIndex objektua)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.load_profiles:	 Load profiles matrix (row: time, col: node)</source>
-        <translation>	app.session.power_flow_ts.load_profiles: Kargatu profilen matrizea (erranka: denbora, col: nodoa)</translation>
+        <translation type="vanished">	app.session.power_flow_ts.load_profiles: Kargatu profilen matrizea (erranka: denbora, col: nodoa)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.gen_profiles:	 Generation profiles matrix (row: time, col: node)</source>
-        <translation>	app.session.power_flow_ts.gen_profiles: Belaunaldi-profilen matrizea (erranka: denbora, kol: nodoa)</translation>
+        <translation type="vanished">	app.session.power_flow_ts.gen_profiles: Belaunaldi-profilen matrizea (erranka: denbora, kol: nodoa)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.voltages:	 nodal voltages results matrix (row: time, col: node)</source>
-        <translation>	app.session.power_flow_ts.voltages: tentsio nodal emaitzen matrizea (erranka: denbora, kol: nodoa)</translation>
+        <translation type="vanished">	app.session.power_flow_ts.voltages: tentsio nodal emaitzen matrizea (erranka: denbora, kol: nodoa)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.currents:	 Branches currents results matrix (row: time, col: branch)</source>
-        <translation>	app.session.power_flow_ts.currents: Adarrak korronteen emaitzen matrizea (erranka: denbora, col: adarra)</translation>
+        <translation type="vanished">	app.session.power_flow_ts.currents: Adarrak korronteen emaitzen matrizea (erranka: denbora, col: adarra)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.loadings:	 Branches loadings results matrix (row: time, col: branch)</source>
-        <translation>	app.session.power_flow_ts.loadings: Adarrak kargatzen emaitzen matrizea (erranka: denbora, col: adarra)</translation>
+        <translation type="vanished">	app.session.power_flow_ts.loadings: Adarrak kargatzen emaitzen matrizea (erranka: denbora, col: adarra)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.losses:	 Branches losses results matrix (row: time, col: branch)</source>
-        <translation>	app.session.power_flow_ts.loss: adar-galeren emaitzen matrizea (erranka: denbora, col: adarra)</translation>
+        <translation type="vanished">	app.session.power_flow_ts.loss: adar-galeren emaitzen matrizea (erranka: denbora, col: adarra)</translation>
     </message>
     <message>
         <source>
 
 Voltage stability power flow results:</source>
-        <translation>
+        <translation type="vanished">
 
 Tentsio-egonkortasunaren potentzia-fluxuaren emaitzak:</translation>
     </message>
     <message>
         <source>	app.session.continuation_power_flow.voltage:	 Voltage values for every power multiplication factor.</source>
-        <translation>	app.session.continuation_power_flow.voltage: potentzia biderkatzeko faktore bakoitzeko tentsio-balioak.</translation>
+        <translation type="vanished">	app.session.continuation_power_flow.voltage: potentzia biderkatzeko faktore bakoitzeko tentsio-balioak.</translation>
     </message>
     <message>
         <source>	app.session.continuation_power_flow.lambda:	 Value of power multiplication factor applied</source>
-        <translation>	app.session.continuation_power_flow.lambda: aplikatutako potentzia biderkatzailearen balioa</translation>
+        <translation type="vanished">	app.session.continuation_power_flow.lambda: aplikatutako potentzia biderkatzailearen balioa</translation>
     </message>
     <message>
         <source>	app.session.continuation_power_flow.Sf:	 Power values for every power multiplication factor.</source>
-        <translation>	app.session.continuation_power_flow.Sf: Potentzia-balioak biderkatze-faktore bakoitzeko.</translation>
+        <translation type="vanished">	app.session.continuation_power_flow.Sf: Potentzia-balioak biderkatze-faktore bakoitzeko.</translation>
     </message>
     <message>
         <source>
 
 Monte Carlo power flow results:</source>
-        <translation>
+        <translation type="vanished">
 
 Monte Carloko potentzia-fluxuaren emaitzak:</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.V_avg:	 nodal voltage average result.</source>
-        <translation>app.session.stochastic_power_flow.V_avg: tentsio nodalaren batez besteko emaitza.</translation>
+        <translation type="vanished">app.session.stochastic_power_flow.V_avg: tentsio nodalaren batez besteko emaitza.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.I_avg:	 branch current average result.</source>
-        <translation>	app.session.stochastic_power_flow.I_avg: adar-uneko batez besteko emaitza.</translation>
+        <translation type="vanished">	app.session.stochastic_power_flow.I_avg: adar-uneko batez besteko emaitza.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.Loading_avg:	 branch loading average result.</source>
-        <translation>	app.session.stochastic_power_flow.Loading_avg:	 branch loading average result.</translation>
+        <translation type="vanished">	app.session.stochastic_power_flow.Loading_avg:	 branch loading average result.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.Losses_avg:	 branch losses average result.</source>
-        <translation>	app.session.stochastic_power_flow.Losses_avg: adar-galeren batez besteko emaitza.</translation>
+        <translation type="vanished">	app.session.stochastic_power_flow.Losses_avg: adar-galeren batez besteko emaitza.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.V_std:	 nodal voltage standard deviation result.</source>
-        <translation>	app.session.stochastic_power_flow.V_std: tentsio nodalaren desbideratze estandarraren emaitza.</translation>
+        <translation type="vanished">	app.session.stochastic_power_flow.V_std: tentsio nodalaren desbideratze estandarraren emaitza.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.I_std:	 branch current standard deviation result.</source>
-        <translation>	app.session.stochastic_power_flow.I_std: adar-uneko desbideratze estandarraren emaitza.</translation>
+        <translation type="vanished">	app.session.stochastic_power_flow.I_std: adar-uneko desbideratze estandarraren emaitza.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.Loading_std:	 branch loading standard deviation result.</source>
-        <translation>	app.session.stochastic_power_flow.Loading_std:	 branch loading standard deviation result.</translation>
+        <translation type="vanished">	app.session.stochastic_power_flow.Loading_std:	 branch loading standard deviation result.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.Losses_std:	 branch losses standard deviation result.</source>
-        <translation>	app.session.stochastic_power_flow.Losses_std: adar-galerak desbideratze estandarraren emaitza.</translation>
+        <translation type="vanished">	app.session.stochastic_power_flow.Losses_std: adar-galerak desbideratze estandarraren emaitza.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.V_avg_series:	 nodal voltage average series.</source>
-        <translation>	app.session.stochastic_power_flow.V_avg_series:	 nodal voltage average series.</translation>
+        <translation type="vanished">	app.session.stochastic_power_flow.V_avg_series:	 nodal voltage average series.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.V_std_series:	 branch current standard deviation series.</source>
-        <translation>	app.session.stochastic_power_flow.V_std_series: adar-uneko desbideratze estandarraren seriea.</translation>
+        <translation type="vanished">	app.session.stochastic_power_flow.V_std_series: adar-uneko desbideratze estandarraren seriea.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.error_series:	 Monte Carlo error series (the convergence value).</source>
-        <translation>	app.session.stochastic_power_flow.error_series:	 Monte Carlo error series (the convergence value).</translation>
+        <translation type="vanished">	app.session.stochastic_power_flow.error_series:	 Monte Carlo error series (the convergence value).</translation>
     </message>
     <message>
         <source>The same for app.latin_hypercube_sampling</source>
-        <translation>The same for app.latin_hypercube_sampling</translation>
+        <translation type="vanished">The same for app.latin_hypercube_sampling</translation>
     </message>
     <message>
         <source> does not exist :/</source>
-        <translation> does not exist :/</translation>
+        <translation type="vanished"> does not exist :/</translation>
     </message>
     <message>
         <source>Open script</source>
-        <translation>Open script</translation>
+        <translation type="vanished">Open script</translation>
     </message>
     <message>
         <source>Are you sure you want to clear source code?</source>
-        <translation>Are you sure you want to clear source code?</translation>
+        <translation type="vanished">Are you sure you want to clear source code?</translation>
     </message>
     <message>
         <source>Clear source code</source>
-        <translation>Clear source code</translation>
+        <translation type="vanished">Clear source code</translation>
     </message>
     <message>
         <source>Please enter a name for the script</source>
-        <translation>Please enter a name for the script</translation>
+        <translation type="vanished">Please enter a name for the script</translation>
     </message>
     <message>
         <source>Save script</source>
-        <translation>Save script</translation>
+        <translation type="vanished">Save script</translation>
     </message>
     <message>
         <source>Do you want to delete {path}?</source>
-        <translation>Do you want to delete {path}?</translation>
+        <translation type="vanished">Do you want to delete {path}?</translation>
     </message>
     <message>
         <source>Delete source code file</source>
-        <translation>Delete source code file</translation>
+        <translation type="vanished">Delete source code file</translation>
     </message>
     <message>
         <source>Delete</source>
-        <translation>Ezabatu</translation>
+        <translation type="vanished">Ezabatu</translation>
     </message>
 </context>
 <context>
     <name>ServerMain</name>
     <message>
         <source>Server config file was erroneous, wrote a new one</source>
-        <translation>Zerbitzariaren konfigurazio fitxategia akatsa zen, berri bat idatzi zuen</translation>
+        <translation type="vanished">Zerbitzariaren konfigurazio fitxategia akatsa zen, berri bat idatzi zuen</translation>
     </message>
     <message>
         <source>The server connection is running, are you sure that you want to stop it?</source>
-        <translation>Zerbitzariaren konexioa martxan dago, ziur al zaude gelditu nahi duzula?</translation>
+        <translation type="vanished">Zerbitzariaren konexioa martxan dago, ziur al zaude gelditu nahi duzula?</translation>
     </message>
     <message>
         <source>Stop Server</source>
-        <translation>Stop Server</translation>
+        <translation type="vanished">Stop Server</translation>
     </message>
     <message>
         <source>Could not connect to the server :/</source>
-        <translation>Ezin izan da zerbitzarira konektatu :/</translation>
+        <translation type="vanished">Ezin izan da zerbitzarira konektatu :/</translation>
     </message>
     <message>
         <source>Connected!</source>
-        <translation>Connected!</translation>
+        <translation type="vanished">Connected!</translation>
     </message>
     <message>
         <source>Results received!</source>
-        <translation>Results received!</translation>
+        <translation type="vanished">Results received!</translation>
     </message>
 </context>
 <context>
     <name>ShortCircuitSelector</name>
     <message>
         <source>Short Circuit Configuration</source>
-        <translation>Zirkuitu Laburren Konfigurazioa</translation>
+        <translation type="vanished">Zirkuitu Laburren Konfigurazioa</translation>
     </message>
     <message>
         <source>Custom</source>
-        <translation>Custom</translation>
+        <translation type="vanished">Custom</translation>
     </message>
     <message>
         <source>Typical value</source>
-        <translation>Typical value</translation>
+        <translation type="vanished">Typical value</translation>
     </message>
     <message>
         <source>Solid 3ph fault</source>
-        <translation>Solid 3ph fault</translation>
+        <translation type="vanished">Solid 3ph fault</translation>
     </message>
     <message>
         <source>Near-bolted three-phase fault</source>
-        <translation>Ia torlojudun faila trifasikoa</translation>
+        <translation type="vanished">Ia torlojudun faila trifasikoa</translation>
     </message>
     <message>
         <source>Solid phase ground fault</source>
-        <translation>Solid phase ground fault</translation>
+        <translation type="vanished">Solid phase ground fault</translation>
     </message>
     <message>
         <source>Near-bolted phase-to-ground fault</source>
-        <translation>Ia-boltedatutako fase-lurrarekiko akatsa</translation>
+        <translation type="vanished">Ia-boltedatutako fase-lurrarekiko akatsa</translation>
     </message>
     <message>
         <source>Metallic conductor conductor contact</source>
-        <translation>Eroale metalikoko eroale kontaktua</translation>
+        <translation type="vanished">Eroale metalikoko eroale kontaktua</translation>
     </message>
     <message>
         <source>Low-impedance metallic conductor-to-conductor short</source>
-        <translation>Inpedantzia baxuko eroale metalikotik eroale laburra</translation>
+        <translation type="vanished">Inpedantzia baxuko eroale metalikotik eroale laburra</translation>
     </message>
     <message>
         <source>Excavator touching underground cable</source>
-        <translation>Lurpeko kablea ukitzen duen hondeamakina</translation>
+        <translation type="vanished">Lurpeko kablea ukitzen duen hondeamakina</translation>
     </message>
     <message>
         <source>Direct mechanical strike on underground cable</source>
-        <translation>Zuzeneko kolpe mekanikoa lurpeko kablean</translation>
+        <translation type="vanished">Zuzeneko kolpe mekanikoa lurpeko kablean</translation>
     </message>
     <message>
         <source>Excavator damaging cable partial arc</source>
-        <translation>Hondeamakina kablearen arku partziala kaltetzen du</translation>
+        <translation type="vanished">Hondeamakina kablearen arku partziala kaltetzen du</translation>
     </message>
     <message>
         <source>Cable damage with partial contact and arcing</source>
-        <translation>Kableen kalteak kontaktu partzialarekin eta arkuarekin</translation>
+        <translation type="vanished">Kableen kalteak kontaktu partzialarekin eta arkuarekin</translation>
     </message>
     <message>
         <source>Crane or machinery overhead arc</source>
-        <translation>Crane or machinery overhead arc</translation>
+        <translation type="vanished">Crane or machinery overhead arc</translation>
     </message>
     <message>
         <source>Arc from machinery approaching overhead line</source>
-        <translation>Arc from machinery approaching overhead line</translation>
+        <translation type="vanished">Arc from machinery approaching overhead line</translation>
     </message>
     <message>
         <source>Tree branch touching overhead line</source>
-        <translation>Tree branch touching overhead line</translation>
+        <translation type="vanished">Tree branch touching overhead line</translation>
     </message>
     <message>
         <source>Typical vegetation high-impedance fault</source>
-        <translation>Landaredi tipikoa inpedantzia handiko faila</translation>
+        <translation type="vanished">Landaredi tipikoa inpedantzia handiko faila</translation>
     </message>
     <message>
         <source>Wet tree or wet vegetation contact</source>
-        <translation>Wet tree or wet vegetation contact</translation>
+        <translation type="vanished">Wet tree or wet vegetation contact</translation>
     </message>
     <message>
         <source>Vegetation contact with lower resistance due to moisture</source>
-        <translation>Landarediaren kontaktua hezetasunaren ondorioz erresistentzia baxuagoarekin</translation>
+        <translation type="vanished">Landarediaren kontaktua hezetasunaren ondorioz erresistentzia baxuagoarekin</translation>
     </message>
     <message>
         <source>Dry tree or dry branch contact</source>
-        <translation>Zuhaitz lehorra edo adar lehorra kontaktua</translation>
+        <translation type="vanished">Zuhaitz lehorra edo adar lehorra kontaktua</translation>
     </message>
     <message>
         <source>Dry vegetation high-impedance fault</source>
-        <translation>Dry vegetation high-impedance fault</translation>
+        <translation type="vanished">Dry vegetation high-impedance fault</translation>
     </message>
     <message>
         <source>Downed conductor on wet soil</source>
-        <translation>Downed conductor on wet soil</translation>
+        <translation type="vanished">Downed conductor on wet soil</translation>
     </message>
     <message>
         <source>Downed conductor on relatively conductive ground</source>
-        <translation>Downed conductor on relatively conductive ground</translation>
+        <translation type="vanished">Downed conductor on relatively conductive ground</translation>
     </message>
     <message>
         <source>Downed conductor on gravel</source>
-        <translation>Legar gainean eroritako eroalea</translation>
+        <translation type="vanished">Legar gainean eroritako eroalea</translation>
     </message>
     <message>
         <source>Downed conductor on gravel or ballast</source>
-        <translation>Downed conductor on gravel or ballast</translation>
+        <translation type="vanished">Downed conductor on gravel or ballast</translation>
     </message>
     <message>
         <source>Downed conductor on asphalt or concrete</source>
-        <translation>Downed conductor on asphalt or concrete</translation>
+        <translation type="vanished">Downed conductor on asphalt or concrete</translation>
     </message>
     <message>
         <source>Downed conductor on poorly conductive surface</source>
-        <translation>Downed conductor on poorly conductive surface</translation>
+        <translation type="vanished">Downed conductor on poorly conductive surface</translation>
     </message>
     <message>
         <source>Insulator contamination or leakage fault</source>
-        <translation>Insulator contamination or leakage fault</translation>
+        <translation type="vanished">Insulator contamination or leakage fault</translation>
     </message>
     <message>
         <source>Leakage-type high-impedance fault</source>
-        <translation>Ihes motako inpedantzia handiko matxura</translation>
+        <translation type="vanished">Ihes motako inpedantzia handiko matxura</translation>
     </message>
     <message>
         <source>Generic arcing phase ground fault</source>
-        <translation>Generic arcing phase ground fault</translation>
+        <translation type="vanished">Generic arcing phase ground fault</translation>
     </message>
     <message>
         <source>Simple resistive arc approximation</source>
-        <translation>Arku erresistentearen hurbilketa sinplea</translation>
+        <translation type="vanished">Arku erresistentearen hurbilketa sinplea</translation>
     </message>
     <message>
         <source>Severe high resistance transmission fault</source>
-        <translation>Severe high resistance transmission fault</translation>
+        <translation type="vanished">Severe high resistance transmission fault</translation>
     </message>
     <message>
         <source>High-resistance EHV fault scenario</source>
-        <translation>High-resistance EHV fault scenario</translation>
+        <translation type="vanished">High-resistance EHV fault scenario</translation>
     </message>
     <message>
         <source>phases</source>
-        <translation>faseak</translation>
+        <translation type="vanished">faseak</translation>
     </message>
     <message>
         <source>abc</source>
-        <translation>abc</translation>
+        <translation type="vanished">abc</translation>
     </message>
     <message>
         <source>a</source>
-        <translation>a</translation>
+        <translation type="vanished">a</translation>
     </message>
     <message>
         <source>b</source>
-        <translation>b</translation>
+        <translation type="vanished">b</translation>
     </message>
     <message>
         <source>c</source>
-        <translation>c</translation>
+        <translation type="vanished">c</translation>
     </message>
     <message>
         <source>ab</source>
-        <translation>ab</translation>
+        <translation type="vanished">ab</translation>
     </message>
     <message>
         <source>bc</source>
-        <translation>bc</translation>
+        <translation type="vanished">bc</translation>
     </message>
     <message>
         <source>ca</source>
-        <translation>ca</translation>
+        <translation type="vanished">ca</translation>
     </message>
     <message>
         <source>sequences</source>
-        <translation>sekuentziak</translation>
+        <translation type="vanished">sekuentziak</translation>
     </message>
 </context>
 <context>
@@ -3309,15 +3341,15 @@ Monte Carloko potentzia-fluxuaren emaitzak:</translation>
     <name>SubstationDesigner</name>
     <message>
         <source>Substation maker</source>
-        <translation>Azpiestazio-egilea</translation>
+        <translation type="vanished">Azpiestazio-egilea</translation>
     </message>
     <message>
         <source>Substation {number}</source>
-        <translation>{number} azpiestazioa</translation>
+        <translation type="vanished">{number} azpiestazioa</translation>
     </message>
     <message>
         <source>There are no voltage levels, so no substation will be created, ok?</source>
-        <translation>Ez dago tentsio mailarik, beraz ez da azpiestaziorik sortuko, ok?</translation>
+        <translation type="vanished">Ez dago tentsio mailarik, beraz ez da azpiestaziorik sortuko, ok?</translation>
     </message>
 </context>
 <context>
@@ -3671,19 +3703,19 @@ Monte Carloko potentzia-fluxuaren emaitzak:</translation>
     <name>VeraGridMainGUI</name>
     <message>
         <source>VeraGrid {version}</source>
-        <translation>VeraGrid {version}</translation>
+        <translation type="vanished">VeraGrid {version}</translation>
     </message>
     <message>
         <source>Are you sure that you want to exit VeraGrid?</source>
-        <translation>Ziur VeraGrid irten nahi duzula?</translation>
+        <translation type="vanished">Ziur VeraGrid irten nahi duzula?</translation>
     </message>
     <message>
         <source>Close</source>
-        <translation>Itxi</translation>
+        <translation type="vanished">Itxi</translation>
     </message>
     <message>
         <source>No effect, select diagrams or database</source>
-        <translation>Ez dago eraginik, hautatu diagramak edo datu-baseak</translation>
+        <translation type="vanished">Ez dago eraginik, hautatu diagramak edo datu-baseak</translation>
     </message>
 </context>
 <context>
