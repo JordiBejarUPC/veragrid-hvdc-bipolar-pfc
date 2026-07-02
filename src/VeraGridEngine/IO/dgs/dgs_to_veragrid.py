@@ -889,6 +889,8 @@ def convert_dgs_to_overhead_line_type_electrical_parameters(
         R0=typtow.R_c0[0][0],
         X=typtow.X_c1[0][0],
         X0=typtow.X_c0[0][0],
+        B=typtow.B_c1[0][0],
+        B0=typtow.B_c0[0][0],
     )
 
     return ohl_type
@@ -2728,7 +2730,12 @@ def convert_dgs_to_line(
         else:
             applied_template = False
     elif seq_template is not None:
-        line.apply_template(obj=seq_template, Sbase=baseMVA, freq=freq, logger=logger)
+        # Use high-precision rounding so very short (~1 m) connector segments do
+        # not have their tiny per-unit series R/X rounded away to exactly zero
+        # (which would create an infinite-admittance branch). Matches the
+        # line-section path above.
+        line.apply_template(obj=seq_template, Sbase=baseMVA, freq=freq, logger=logger,
+                            decimals_rounding=16)
         applied_template = True
     elif ohl_template is not None:
         # OverheadLineType uses a 1-based circuit index. Default to circuit 1 here.
@@ -5640,7 +5647,8 @@ def _apply_elmtow_tower_coupling(dgs_grid: DgsCircuit,
                                  overhead_line_type_dict: Dict[str, dev.OverheadLineType],
                                  baseMVA: float,
                                  frequency: float,
-                                 logger: Logger) -> None:
+                                 logger: Logger,
+                                 sequence_templates_dict: Dict[str, dev.SequenceLineType] | None = None) -> None:
     """
     Apply elmtow tower coupling.
 
@@ -5650,8 +5658,12 @@ def _apply_elmtow_tower_coupling(dgs_grid: DgsCircuit,
     :param baseMVA: baseMVA parameter.
     :param frequency: frequency parameter.
     :param logger: logger parameter.
+    :param sequence_templates_dict: templates for TypTow defined with electrical (i_mode=1)
+        parameters, which are registered as SequenceLineType rather than OverheadLineType.
     :return: Function result.
     """
+    if sequence_templates_dict is None:
+        sequence_templates_dict = dict()
     for elmtow in dgs_grid.elmtows:
         if int(elmtow.outserv) != 0:
             continue
@@ -5676,6 +5688,12 @@ def _apply_elmtow_tower_coupling(dgs_grid: DgsCircuit,
         ohl_type = overhead_line_type_dict.get(geo_id)
         if ohl_type is None:
             ohl_type = overhead_line_type_dict.get(geo_ptr)
+        # Fallback: TypTow defined with electrical parameters (i_mode=1) are registered
+        # as SequenceLineType in the sequence-template dict, not the overhead-line dict.
+        if ohl_type is None:
+            ohl_type = sequence_templates_dict.get(geo_id)
+            if ohl_type is None:
+                ohl_type = sequence_templates_dict.get(geo_ptr)
         if ohl_type is None:
             logger.add_warning(
                 f"referenced tower type not found",
@@ -5684,6 +5702,8 @@ def _apply_elmtow_tower_coupling(dgs_grid: DgsCircuit,
                 value=str(geo_ptr)
             )
             continue
+
+        is_seq_template = isinstance(ohl_type, dev.SequenceLineType)
 
         for idx, line_ptr in enumerate(elmtow.plines):
             if line_ptr is None:
@@ -5704,8 +5724,21 @@ def _apply_elmtow_tower_coupling(dgs_grid: DgsCircuit,
             circuit_idx = int(idx) + 1
             for api_line in api_lines:
                 try:
-                    api_line.set_circuit_idx(val=circuit_idx, obj=ohl_type)
-                    api_line.apply_template(obj=ohl_type, Sbase=baseMVA, freq=frequency, logger=logger)
+                    if is_seq_template:
+                        # electrical (sequence) template: circuit index does not apply.
+                        # Use high-precision rounding to preserve short-segment impedance.
+                        api_line.apply_template(obj=ohl_type, Sbase=baseMVA, freq=frequency,
+                                                logger=logger, decimals_rounding=16)
+                    else:
+                        # Several distinct lines can share a single-circuit tower geometry
+                        # (the ElmTow couples them, but the TypTow defines fewer circuits than
+                        # coupled lines). For a balanced power flow the inter-circuit mutual
+                        # coupling is ignored, so clamp to the tower's self (last) circuit and
+                        # apply its impedance instead of leaving the line with none.
+                        n_circ = int(ohl_type.n_circuits)
+                        eff_circuit_idx = circuit_idx if circuit_idx <= n_circ else n_circ
+                        api_line.set_circuit_idx(val=eff_circuit_idx, obj=ohl_type)
+                        api_line.apply_template(obj=ohl_type, Sbase=baseMVA, freq=frequency, logger=logger)
                 except ValueError as e:
                     logger.add_warning(
                         str(e).strip() or "Failed to apply tower template.",
@@ -5912,6 +5945,7 @@ def dgs_to_circuit(path: str,
         baseMVA=baseMVA,
         frequency=frequency,
         logger=logger,
+        sequence_templates_dict=typlne_dict,
     )
 
     _add_elmzpu_series_reactances(
