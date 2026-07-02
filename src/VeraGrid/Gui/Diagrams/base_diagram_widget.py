@@ -300,7 +300,7 @@ class BaseDiagramWidget(QSplitter):
         """
         self.diagram.name = val
 
-    def _get_selected(self) -> List[GenericDiagramWidget]:
+    def get_selected(self) -> List[GenericDiagramWidget]:
         """
 
         :return:
@@ -461,7 +461,7 @@ class BaseDiagramWidget(QSplitter):
         Delete the selected items from the diagram
         :param delete_from_db:
         """
-        self.delete_with_dialogue(selected=self._get_selected(),
+        self.delete_with_dialogue(selected=self.get_selected(),
                                   delete_from_db=delete_from_db)
 
     def delete_diagram_elements(self, elements: List[ALL_DEV_TYPES]):
@@ -721,6 +721,19 @@ class BaseDiagramWidget(QSplitter):
         Clear the schematic
         """
         self.graphics_manager.clear()
+
+    def prepare_to_delete(self) -> None:
+        """
+        Release widget-owned state before the Qt widget itself is destroyed.
+        """
+        self.clear()
+        self.object_editor_table.setModel(None)
+        self.api_object = None
+        self.results_dictionary.clear()
+
+        if self._video is not None:
+            self._video.release()
+            self._video = None
 
     def set_data(self, diagram: SchematicDiagram):
         """

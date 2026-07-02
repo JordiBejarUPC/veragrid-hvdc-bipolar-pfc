@@ -3,6 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
+import gc
 import os
 import pathlib
 from typing import Union, List, Callable
@@ -451,12 +452,17 @@ class IoMain(ScenariosMain):
                     # scenario. Reassigning through self.circuit would rebuild a fresh
                     # single-root MultiVerse and discard the loaded multiverse information.
                     self.multiverse = self.open_file_thread_object.multiverse
-                    self.ui.activeScenarioLabel.setText(f"Current: {self.circuit.name}")
+                    if self.circuit is not None:
+                        self.ui.activeScenarioLabel.setText(f"Current: {self.circuit.name}")
                     self.file_name = self.open_file_thread_object.file_name
 
                 elif self.open_file_thread_object.circuit is not None:
                     self.circuit = self.open_file_thread_object.circuit
                     self.file_name = self.open_file_thread_object.file_name
+
+                if self.circuit is None:
+                    self.show_error_toast("No grid to load :(")
+                    return
 
                 if self.circuit.has_diagrams():
                     # create the diagrams that came with the file
@@ -842,6 +848,11 @@ class IoMain(ScenariosMain):
 
         :return: None.
         """
+        # Re-enable the cyclic GC that was disabled in save_file_now() before the worker
+        # thread started. This slot runs on the main thread (queued from done_signal), so any
+        # collection it now allows will finalize Qt objects on the correct thread.
+        gc.enable()
+
         if self.save_file_thread_object.logger is not None:
             if len(self.save_file_thread_object.logger) > 0:
                 dlg = LogsDialogue('Save file logger', self.save_file_thread_object.logger)

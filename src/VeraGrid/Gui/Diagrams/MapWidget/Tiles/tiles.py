@@ -117,6 +117,7 @@ class Tiles(BaseTiles):
 
         # callback must be set by higher-level code
         self.callback: Union[None, Callable[[int, float, float, QPixmap, bool], None]] = None
+        self._shutdown: bool = False
 
         # calculate a re-request age, if specified
         self.re_request_age = (time.time() - self.refresh_tiles_after_days * self.SecondsInADay)
@@ -349,6 +350,23 @@ class Tiles(BaseTiles):
                 self.request_queue.queue.clear()
             self.queued_requests.clear()
 
+    def shutdown(self) -> None:
+        """
+        Stop tile callbacks and background workers for this tile source.
+        """
+        if self._shutdown:
+            return
+
+        self._shutdown = True
+        self.callback = None
+        self.FlushRequests()
+
+        for worker in self.workers:
+            worker.stop()
+
+        for worker in self.workers:
+            worker.wait(2000)
+
     def get_server_tile(self, level: int, x: float, y: float) -> None:
         """
         Start the process to get a server tile.
@@ -374,7 +392,7 @@ class Tiles(BaseTiles):
         tile_path = self.cache.tile_path((level, x, y))
         return os.path.exists(tile_path)
 
-    def setCallback(self, callback: Callable[[int, float, float, QPixmap, bool], None]):
+    def setCallback(self, callback: Callable[[int, float, float, QPixmap, bool], None] | None):
         """Set the "tile available" callback.
 
         callback  reference to object to call when tile is found.
@@ -409,8 +427,7 @@ class Tiles(BaseTiles):
         if self.callback:
             self.callback(level, x, y, image, True)
         else:
-            msg = f'tile_is_available: self.callback is NOT SET!'
-            raise RuntimeError(msg) from None
+            pass
 
     def SetAgeThresholdDays(self, num_days):
         """

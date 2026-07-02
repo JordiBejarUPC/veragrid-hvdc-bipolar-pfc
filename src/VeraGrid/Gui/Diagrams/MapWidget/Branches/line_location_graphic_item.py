@@ -12,6 +12,7 @@ from PySide6 import QtWidgets
 from PySide6.QtCore import Qt, QPointF
 from PySide6.QtGui import QBrush, QColor
 
+from VeraGrid.Gui.Diagrams.generic_graphics import GenericDiagramWidget
 from VeraGrid.Gui.messages import yes_no_question
 from VeraGridEngine.Devices.Branches.line_locations import LineLocation
 from VeraGrid.Gui.Diagrams.MapWidget.Branches.map_line_container import MapLineContainer
@@ -268,11 +269,14 @@ class LineLocationGraphicItem(QtWidgets.QGraphicsEllipseItem, NodeTemplate):
 
         has_substation = False
 
-        for graphic_obj in self.editor._get_selected():
-            if hasattr(graphic_obj, 'api_object'):
-                if hasattr(graphic_obj.api_object, 'device_type'):
-                    if graphic_obj.api_object.device_type == DeviceType.SubstationDevice:
-                        has_substation = True
+        for graphic_obj in self.editor.get_selected():
+            if isinstance(graphic_obj, GenericDiagramWidget):
+                if graphic_obj.api_object.device_type == DeviceType.SubstationDevice:
+                    has_substation = True
+                else:
+                    pass
+            else:
+                pass
 
         if has_substation:
 
@@ -350,4 +354,3 @@ class LineLocationGraphicItem(QtWidgets.QGraphicsEllipseItem, NodeTemplate):
         pen = self.pen()
         pen.setWidth(width)
         self.setPen(pen)
-

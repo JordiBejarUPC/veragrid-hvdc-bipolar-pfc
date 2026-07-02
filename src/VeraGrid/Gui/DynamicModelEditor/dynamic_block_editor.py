@@ -64,6 +64,7 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_dialogs import AddBlockVaria
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics import BlockItem, BlockPositionChangedCallback, \
     BranchingItem, ConnectionItem, DiagramScene, GenericBlockItem, RoundBaseArithmeticOpItem, RectBaseArithmeticOpItem, \
     GraphicsView, PairedItem, PortItem, ProtectedConnectionBlockItem
+from VeraGrid.Session.dynamic_editor_entries import DynamicEditorEntry
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_library import DynamicEditorLibrary, LibraryTreeFilterProxyModel
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_models import BlockParameterKind, BlockParameterRow, \
     BlockTableFilterProxyModel, EditParameterDialog, InspectModel, WrappableBlockTableModel, _build_block_uid_lookup, \
@@ -446,6 +447,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.scene: DiagramScene = DiagramScene(self)
         self.changes_applied: bool = False
         self.has_unapplied_changes: bool = False
+        self.dynamic_editor_entry: DynamicEditorEntry | None = None
+        self._prepared_to_delete: bool = False
 
         self.blocktype2templatebuilder = get_blocktype2template_builder_dict()
 
@@ -2693,6 +2696,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         conn: ConnectionItem
         connections_to_remove: List[ConnectionItem] = list()
         child_block: Block
+
+        if isinstance(item, (BlockItem, GenericBlockItem)):
+            item.close_editor_window()
+        else:
+            pass
 
         # find connections to remove
         for port in item.inputs + item.outputs:
@@ -6152,6 +6160,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         node: Any
         con: Any
 
+        self.close_child_editor_windows()
         self.scene.clear()
 
         # Recreate nodes
@@ -6294,10 +6303,37 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     def get_dynamic_editor_display_title(self) -> str:
         """
         Return the user-facing title for this editor instance.
+
+        :return: Visible title for the workspace tab and window.
         """
 
         object_name = self.api_object.name if self.api_object is not None else "Dynamic object"
         return f"{object_name} [{self.mode.name}]"
+
+    def get_dynamic_editor_entry(self) -> DynamicEditorEntry | None:
+        """
+        Return the workspace entry associated with this editor page.
+
+        :return: Dynamic-editor entry or ``None`` when none is assigned.
+        """
+        return self.dynamic_editor_entry
+
+    def set_dynamic_editor_entry(self, entry: DynamicEditorEntry | None) -> None:
+        """
+        Store the workspace entry associated with this editor page.
+
+        :param entry: Dynamic-editor entry assigned by the workspace session.
+        :return: None.
+        """
+        self.dynamic_editor_entry = entry
+
+    def get_dynamic_editor_mode(self) -> DynamicSimulationMode:
+        """
+        Return the workspace mode associated with this editor page.
+
+        :return: Dynamic simulation mode for this page.
+        """
+        return self.mode
 
     def can_close_editor(self, parent: QtWidgets.QWidget | None = None) -> bool:
         """
@@ -6332,6 +6368,33 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         except (RuntimeError, TypeError):
             pass
 
+    def close_child_editor_windows(self) -> None:
+        """
+        Close any floating child editors opened from block items in this scene.
+
+        :return: None.
+        """
+        scene_item: QtWidgets.QGraphicsItem
+        for scene_item in list(self.scene.items()):
+            if isinstance(scene_item, (BlockItem, GenericBlockItem)):
+                scene_item.close_editor_window()
+            else:
+                pass
+
+    def prepare_to_delete(self) -> None:
+        """
+        Release editor-owned Qt objects before deleting this editor widget.
+
+        :return: None.
+        """
+        if self._prepared_to_delete:
+            return
+
+        self._prepared_to_delete = True
+        self.close_child_editor_windows()
+        self.disconnect_editor_signals()
+        self.scene.clear()
+
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         """
         Close the editor. Ask for confirmation when there are unapplied changes.
@@ -6339,8 +6402,12 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param event:
         :return:
         """
+        if self._prepared_to_delete:
+            event.accept()
+            return
+
         if self.can_close_editor(self):
-            self.disconnect_editor_signals()
+            self.prepare_to_delete()
             event.accept()
         else:
             event.ignore()
