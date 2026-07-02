@@ -14,7 +14,6 @@ import VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor as dynamic_block_edi
 import VeraGridEngine.api as gce
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics import _transformer_modal_config_allows_modify
 from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.lookup_table_dialog import LookupArrayLinearDialog
 from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.lookup_table_dialog import LookupMatrixLinearDialog
 from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.lookup_table_dialog import _copy_selected_table_range_to_clipboard
