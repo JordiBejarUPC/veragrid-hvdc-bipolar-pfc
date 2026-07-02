@@ -133,6 +133,60 @@ def traverse_objects(name, obj, lst: list, i=0):
                             traverse_objects(name=name + "/" + name2, obj=obj2, lst=lst, i=i + 1)
 
 
+def get_splitter_section_hint(splitter: QtWidgets.QSplitter, section_index: int) -> int:
+    """
+    Return the current size hint for one splitter section.
+
+    :param splitter: Splitter to inspect.
+    :param section_index: Section index inside the splitter.
+    :returns: Preferred section size along the splitter orientation.
+    """
+    section_widget: QtWidgets.QWidget | None = splitter.widget(section_index)
+
+    if section_widget is None:
+        return 0
+    else:
+        section_widget.updateGeometry()
+
+        if splitter.orientation() == QtCore.Qt.Orientation.Horizontal:
+            return max(section_widget.minimumSizeHint().width(), section_widget.minimumWidth())
+        else:
+            return max(section_widget.minimumSizeHint().height(), section_widget.minimumHeight())
+
+
+def refresh_translated_splitter_layouts(root_widget: QtWidgets.QWidget) -> None:
+    """
+    Refresh splitter sections after a language change.
+
+    When translated labels become wider, Qt retranslates the text but can keep
+    old splitter allocations until another layout pass happens. This helper
+    nudges every splitter to re-evaluate its section sizes against the updated
+    widget hints.
+
+    :param root_widget: Top-level widget owning the splitters.
+    :returns: None.
+    """
+    splitter: QtWidgets.QSplitter
+
+    for splitter in root_widget.findChildren(QtWidgets.QSplitter):
+        current_sizes: list[int] = splitter.sizes()
+        desired_sizes: list[int] = list(current_sizes)
+        section_index: int
+
+        if len(current_sizes) == 0:
+            pass
+        else:
+            for section_index in range(splitter.count()):
+                section_hint: int = get_splitter_section_hint(splitter=splitter, section_index=section_index)
+
+                if desired_sizes[section_index] < section_hint:
+                    desired_sizes[section_index] = section_hint
+                else:
+                    pass
+
+            splitter.setSizes(desired_sizes)
+
+
 class BaseMainGui(QMainWindow):
     """
     DiagramFunctionsMain
@@ -357,6 +411,7 @@ class BaseMainGui(QMainWindow):
             self.ui.retranslateUi(self)
             restore_action_shortcut_states(self, self._action_shortcut_states)
             self.refresh_runtime_translations()
+            QtCore.QTimer.singleShot(0, self.refresh_translated_layouts)
         else:
             pass
 
@@ -370,6 +425,14 @@ class BaseMainGui(QMainWindow):
         :returns: None.
         """
         pass
+
+    def refresh_translated_layouts(self) -> None:
+        """
+        Refresh splitter geometry after translated texts have changed widget hints.
+
+        :returns: None.
+        """
+        refresh_translated_splitter_layouts(root_widget=self)
 
     def LOCK(self, val: bool = True) -> None:
         """
