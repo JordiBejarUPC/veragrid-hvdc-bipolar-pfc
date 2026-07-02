@@ -54,20 +54,18 @@ for package in packages:
     if not excluded:
         packages2.append(package)
 
-package_data = {'VeraGrid': ['*.md',
-                            '*.rst',
-                            'LICENSE.txt',
-                            'setup.py',
-                            'Gui/AiAgent/knowledge/*.md',
-                            'Gui/translations/*.qm',
-                            'Gui/translations/*.ts',
-                            'data/cables.csv',
-                            'data/transformers.csv',
-                            'data/wires.csv',
-                            'data/sequence_lines.csv',
-                            'data/VeraGrid.svg',
-                            'data/VeraGrid.ico'],
-                }
+package_data = {
+    'Gui.AiAgent.knowledge': ['*.md'],
+    'Gui.translations': ['*.qm'],
+    'data': [
+        'cables.csv',
+        'transformers.csv',
+        'wires.csv',
+        'sequence_lines.csv',
+        'VeraGrid.svg',
+        'VeraGrid.ico',
+    ],
+}
 
 dependencies = ["numpy>=2.2.0,<3",
                 "PySide6>=6.8.0",  # 5.14 breaks the UI generation for development, 6.7.0 breaks all
