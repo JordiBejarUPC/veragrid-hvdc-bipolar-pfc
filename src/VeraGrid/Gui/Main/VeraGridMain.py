@@ -119,9 +119,9 @@ class VeraGridMainGUI(ScriptingMain):
                 self.delete_selected_db_table_objects()
 
             else:
-                self.show_warning_toast("No effect, select diagrams or database")
+                self.show_warning_toast(self.tr("No effect, select diagrams or database"))
         else:
-            self.show_warning_toast("No effect, select diagrams or database")
+            self.show_warning_toast(self.tr("No effect, select diagrams or database"))
 
     def save_all_config(self) -> None:
         """

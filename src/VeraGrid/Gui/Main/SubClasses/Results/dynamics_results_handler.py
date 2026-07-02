@@ -4615,16 +4615,28 @@ class DynamicsResultsHandler:
         del candidate_label
         x_entry: DynamicResultSeries | DynamicPlotEntry | Var | None = group.get_entry_for_role(role=DynamicPlotEntryRole.X_AXIS)
         y_entry: DynamicResultSeries | DynamicPlotEntry | Var | None = group.get_entry_for_role(role=DynamicPlotEntryRole.Y_AXIS)
-        title: str = "X-Y plot slot"
+        title: str = QtCore.QCoreApplication.translate("DynamicsResultsHandler", "X-Y plot slot")
 
         if x_entry is None and y_entry is None:
             if self.dialog_parent is not None:
                 message_box: QtWidgets.QMessageBox = QtWidgets.QMessageBox(self.dialog_parent)
                 message_box.setWindowTitle(title)
-                message_box.setText("Choose whether to place the dropped signal on the X axis or Y axis.")
-                replace_x_button: QtWidgets.QAbstractButton = message_box.addButton("X axis", QtWidgets.QMessageBox.ButtonRole.AcceptRole)
-                replace_y_button: QtWidgets.QAbstractButton = message_box.addButton("Y axis", QtWidgets.QMessageBox.ButtonRole.AcceptRole)
-                message_box.addButton("Cancel", QtWidgets.QMessageBox.ButtonRole.RejectRole)
+                message_box.setText(QtCore.QCoreApplication.translate(
+                    "DynamicsResultsHandler",
+                    "Choose whether to place the dropped signal on the X axis or Y axis.",
+                ))
+                replace_x_button: QtWidgets.QAbstractButton = message_box.addButton(
+                    QtCore.QCoreApplication.translate("DynamicsResultsHandler", "X axis"),
+                    QtWidgets.QMessageBox.ButtonRole.AcceptRole,
+                )
+                replace_y_button: QtWidgets.QAbstractButton = message_box.addButton(
+                    QtCore.QCoreApplication.translate("DynamicsResultsHandler", "Y axis"),
+                    QtWidgets.QMessageBox.ButtonRole.AcceptRole,
+                )
+                message_box.addButton(
+                    QtCore.QCoreApplication.translate("DynamicsResultsHandler", "Cancel"),
+                    QtWidgets.QMessageBox.ButtonRole.RejectRole,
+                )
                 message_box.exec()
                 clicked_button: QtWidgets.QAbstractButton | None = message_box.clickedButton()
                 if clicked_button is replace_x_button:
@@ -4646,10 +4658,22 @@ class DynamicsResultsHandler:
                     if self.dialog_parent is not None:
                         message_box = QtWidgets.QMessageBox(self.dialog_parent)
                         message_box.setWindowTitle(title)
-                        message_box.setText("This X-Y plot already has X and Y signals. Replace X, replace Y, or cancel?")
-                        replace_x_button = message_box.addButton("Replace X", QtWidgets.QMessageBox.ButtonRole.AcceptRole)
-                        replace_y_button = message_box.addButton("Replace Y", QtWidgets.QMessageBox.ButtonRole.AcceptRole)
-                        message_box.addButton("Cancel", QtWidgets.QMessageBox.ButtonRole.RejectRole)
+                        message_box.setText(QtCore.QCoreApplication.translate(
+                            "DynamicsResultsHandler",
+                            "This X-Y plot already has X and Y signals. Replace X, replace Y, or cancel?",
+                        ))
+                        replace_x_button = message_box.addButton(
+                            QtCore.QCoreApplication.translate("DynamicsResultsHandler", "Replace X"),
+                            QtWidgets.QMessageBox.ButtonRole.AcceptRole,
+                        )
+                        replace_y_button = message_box.addButton(
+                            QtCore.QCoreApplication.translate("DynamicsResultsHandler", "Replace Y"),
+                            QtWidgets.QMessageBox.ButtonRole.AcceptRole,
+                        )
+                        message_box.addButton(
+                            QtCore.QCoreApplication.translate("DynamicsResultsHandler", "Cancel"),
+                            QtWidgets.QMessageBox.ButtonRole.RejectRole,
+                        )
                         message_box.exec()
                         clicked_button = message_box.clickedButton()
                         if clicked_button is replace_x_button:
