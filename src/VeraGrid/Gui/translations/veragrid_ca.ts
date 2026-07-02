@@ -278,91 +278,91 @@ li.checked::marker { content: "\2612"; }
     <name>AiChatDialogue</name>
     <message>
         <source>VeraGrid AI dialogue</source>
-        <translation>Diàleg d'IA de VeraGrid</translation>
+        <translation type="vanished">Diàleg d'IA de VeraGrid</translation>
     </message>
     <message>
         <source>Pick or type a GGUF file name</source>
-        <translation>Trieu o escriviu un nom de fitxer GGUF</translation>
+        <translation type="vanished">Trieu o escriviu un nom de fitxer GGUF</translation>
     </message>
     <message>
         <source>Provider model name</source>
-        <translation>Nom del model del proveïdor</translation>
+        <translation type="vanished">Nom del model del proveïdor</translation>
     </message>
     <message>
         <source>VeraGrid AI</source>
-        <translation>VeraGrid AI</translation>
+        <translation type="vanished">VeraGrid AI</translation>
     </message>
     <message>
         <source>Scan the configured path for GGUF files.</source>
-        <translation>Escaneja el camí configurat per als fitxers GGUF.</translation>
+        <translation type="vanished">Escaneja el camí configurat per als fitxers GGUF.</translation>
     </message>
     <message>
         <source>API key</source>
-        <translation>Clau API</translation>
+        <translation type="vanished">Clau API</translation>
     </message>
     <message>
         <source>Leave empty for unauthenticated endpoints</source>
-        <translation>Deixeu-lo en blanc per als punts finals no autenticats</translation>
+        <translation type="vanished">Deixeu-lo en blanc per als punts finals no autenticats</translation>
     </message>
     <message>
         <source>Query the configured backend for models.</source>
-        <translation>Consulteu el backend configurat per als models.</translation>
+        <translation type="vanished">Consulteu el backend configurat per als models.</translation>
     </message>
     <message>
         <source>Type a message before sending.</source>
-        <translation>Escriviu un missatge abans d'enviar-lo.</translation>
+        <translation type="vanished">Escriviu un missatge abans d'enviar-lo.</translation>
     </message>
     <message>
         <source>Resolve the pending tool approval or clear the chat first.</source>
-        <translation>Resol l'aprovació de l'eina pendent o esborra primer el xat.</translation>
+        <translation type="vanished">Resol l'aprovació de l'eina pendent o esborra primer el xat.</translation>
     </message>
     <message>
         <source>Stopping AI turn...</source>
-        <translation>S'està aturant el gir de AI...</translation>
+        <translation type="vanished">S'està aturant el gir de AI...</translation>
     </message>
     <message>
         <source>There is no running AI turn to stop.</source>
-        <translation>No hi ha cap gir AI en funcionament per aturar-se.</translation>
+        <translation type="vanished">No hi ha cap gir AI en funcionament per aturar-se.</translation>
     </message>
     <message>
         <source>Running simulation and analyzing the results...</source>
-        <translation>Execució de la simulació i anàlisi dels resultats...</translation>
+        <translation type="vanished">Execució de la simulació i anàlisi dels resultats...</translation>
     </message>
     <message>
         <source>There is no pending tool call to approve.</source>
-        <translation>No hi ha cap convocatòria d'eina pendent per aprovar.</translation>
+        <translation type="vanished">No hi ha cap convocatòria d'eina pendent per aprovar.</translation>
     </message>
     <message>
         <source>Wait for the current AI turn to finish.</source>
-        <translation>Espereu que finalitzi el torn actual de AI.</translation>
+        <translation type="vanished">Espereu que finalitzi el torn actual de AI.</translation>
     </message>
     <message>
         <source>Running AI turn...</source>
-        <translation>S'està executant el gir AI...</translation>
+        <translation type="vanished">S'està executant el gir AI...</translation>
     </message>
     <message>
         <source>Generating response</source>
-        <translation>Generant resposta</translation>
+        <translation type="vanished">Generant resposta</translation>
     </message>
     <message>
         <source>Running AI turn</source>
-        <translation>Executant el torn AI</translation>
+        <translation type="vanished">Executant el torn AI</translation>
     </message>
     <message>
         <source>Stop</source>
-        <translation>Atureu-vos</translation>
+        <translation type="vanished">Atureu-vos</translation>
     </message>
     <message>
         <source>Send</source>
-        <translation>Enviar</translation>
+        <translation type="vanished">Enviar</translation>
     </message>
     <message>
         <source>You</source>
-        <translation>tu</translation>
+        <translation type="vanished">tu</translation>
     </message>
     <message>
         <source>Tool</source>
-        <translation>Eina</translation>
+        <translation type="vanished">Eina</translation>
     </message>
 </context>
 <context>
@@ -561,22 +561,22 @@ li.checked::marker { content: "\2612"; }
     <name>CgmesOptionsSelector</name>
     <message>
         <source>CGMES Version:</source>
-        <translation>Versió CGMES:</translation>
+        <translation type="vanished">Versió CGMES:</translation>
     </message>
     <message>
         <source>Accept</source>
-        <translation>Acceptar</translation>
+        <translation type="vanished">Acceptar</translation>
     </message>
 </context>
 <context>
     <name>ConfigurationMain</name>
     <message>
         <source>Language</source>
-        <translation>Idioma</translation>
+        <translation>Llengua</translation>
     </message>
     <message>
         <source>System default</source>
-        <translation>Predeterminat del sistema</translation>
+        <translation>Sistema predeterminat</translation>
     </message>
     <message>
         <source>English</source>
@@ -588,21 +588,25 @@ li.checked::marker { content: "\2612"; }
     </message>
     <message>
         <source>French</source>
-        <translation>Francès</translation>
+        <translation>francès</translation>
     </message>
     <message>
         <source>Portuguese</source>
-        <translation>Portuguès</translation>
+        <translation>portuguès</translation>
     </message>
     <message>
         <source>Chinese</source>
-        <translation>Xinès</translation>
+        <translation>xinès</translation>
     </message>
     <message>
         <source>German</source>
-        <translation>Alemany</translation>
+        <translation>alemany</translation>
     </message>
-<message><source>Catalan</source><translation>Català</translation></message></context>
+    <message>
+        <source>Catalan</source>
+        <translation>català</translation>
+    </message>
+<message><source>Basque</source><translation>basc</translation></message><message><source>Galician</source><translation>gallec</translation></message><message><source>Tongan</source><translation>Tonga</translation></message><message><source>Tuvaluan</source><translation>Tuvaluà</translation></message><message><source>Arabic</source><translation>àrab</translation></message><message><source>Italian</source><translation>italià</translation></message><message><source>Greek</source><translation>grec</translation></message><message><source>Dutch</source><translation>holandès</translation></message></context>
 <context>
     <name>ControllableShuntEditorDialog</name>
     <message>
@@ -1206,35 +1210,35 @@ li.checked::marker { content: "\2612"; }
     <name>DynamicsResultsHandler</name>
     <message>
         <source>X-Y plot slot</source>
-        <translation>Ranura de trama X-Y</translation>
+        <translation type="vanished">Ranura de trama X-Y</translation>
     </message>
     <message>
         <source>Choose whether to place the dropped signal on the X axis or Y axis.</source>
-        <translation>Trieu si voleu col·locar el senyal caigut a l'eix X o a l'eix Y.</translation>
+        <translation type="vanished">Trieu si voleu col·locar el senyal caigut a l'eix X o a l'eix Y.</translation>
     </message>
     <message>
         <source>X axis</source>
-        <translation>eix X</translation>
+        <translation type="vanished">eix X</translation>
     </message>
     <message>
         <source>Y axis</source>
-        <translation>Eix Y</translation>
+        <translation type="vanished">Eix Y</translation>
     </message>
     <message>
         <source>Cancel</source>
-        <translation>Cancel·la</translation>
+        <translation type="vanished">Cancel·la</translation>
     </message>
     <message>
         <source>This X-Y plot already has X and Y signals. Replace X, replace Y, or cancel?</source>
-        <translation>Aquesta trama X-Y ja té senyals X i Y. Substituir X, substituir Y o cancel·lar?</translation>
+        <translation type="vanished">Aquesta trama X-Y ja té senyals X i Y. Substituir X, substituir Y o cancel·lar?</translation>
     </message>
     <message>
         <source>Replace X</source>
-        <translation>Substitueix X</translation>
+        <translation type="vanished">Substitueix X</translation>
     </message>
     <message>
         <source>Replace Y</source>
-        <translation>Substitueix Y</translation>
+        <translation type="vanished">Substitueix Y</translation>
     </message>
 </context>
 <context>
@@ -1249,68 +1253,68 @@ li.checked::marker { content: "\2612"; }
     <name>FileTypeSelector</name>
     <message>
         <source>Format:</source>
-        <translation>Format:</translation>
+        <translation type="vanished">Format:</translation>
     </message>
     <message>
         <source>Accept</source>
-        <translation>Acceptar</translation>
+        <translation type="vanished">Acceptar</translation>
     </message>
 </context>
 <context>
     <name>FmuTemplateEditorDialog</name>
     <message>
         <source>FMU Template Editor</source>
-        <translation>Editor de plantilles FMU</translation>
+        <translation type="vanished">Editor de plantilles FMU</translation>
     </message>
     <message>
         <source>Browse...</source>
-        <translation>Navega...</translation>
+        <translation type="vanished">Navega...</translation>
     </message>
     <message>
         <source>Choose an FMU archive to load its metadata and build the visual block.</source>
-        <translation>Trieu un arxiu FMU per carregar les seves metadades i crear el bloc visual.</translation>
+        <translation type="vanished">Trieu un arxiu FMU per carregar les seves metadades i crear el bloc visual.</translation>
     </message>
     <message>
         <source>Name</source>
-        <translation>Nom</translation>
+        <translation type="vanished">Nom</translation>
     </message>
     <message>
         <source>FMU file</source>
-        <translation>Fitxer FMU</translation>
+        <translation type="vanished">Fitxer FMU</translation>
     </message>
     <message>
         <source>Device type</source>
-        <translation>Tipus de dispositiu</translation>
+        <translation type="vanished">Tipus de dispositiu</translation>
     </message>
     <message>
         <source>Domain</source>
-        <translation>Domini</translation>
+        <translation type="vanished">Domini</translation>
     </message>
     <message>
         <source>Mode</source>
-        <translation>Mode</translation>
+        <translation type="vanished">Mode</translation>
     </message>
     <message>
         <source>Metadata</source>
-        <translation>Metadades</translation>
+        <translation type="vanished">Metadades</translation>
     </message>
     <message>
         <source>Select FMU file</source>
-        <translation>Seleccioneu el fitxer FMU</translation>
+        <translation type="vanished">Seleccioneu el fitxer FMU</translation>
     </message>
     <message>
         <source>FMU files (*.fmu)</source>
-        <translation>Fitxers FMU (*.fmu)</translation>
+        <translation type="vanished">Fitxers FMU (*.fmu)</translation>
     </message>
     <message>
         <source>FMU file not found:
 {path}</source>
-        <translation>No s'ha trobat el fitxer FMU:
+        <translation type="vanished">No s'ha trobat el fitxer FMU:
 {path}</translation>
     </message>
     <message>
         <source>Choose an FMU file first.</source>
-        <translation>Trieu primer un fitxer FMU.</translation>
+        <translation type="vanished">Trieu primer un fitxer FMU.</translation>
     </message>
 </context>
 <context>
@@ -1335,337 +1339,337 @@ li.checked::marker { content: "\2612"; }
     <name>IoMain</name>
     <message>
         <source>The file type {file_extension} is not accepted :(</source>
-        <translation>El tipus de fitxer {file_extension} no s'accepta :(</translation>
+        <translation type="vanished">El tipus de fitxer {file_extension} no s'accepta :(</translation>
     </message>
     <message>
         <source>Message</source>
-        <translation>Missatge</translation>
+        <translation type="vanished">Missatge</translation>
     </message>
     <message>
         <source>Are you sure that you want to quit the current grid and open a new one?
  If the process is cancelled the grid will remain.</source>
-        <translation>Esteu segur que voleu sortir de la graella actual i obrir-ne una de nova?
+        <translation type="vanished">Esteu segur que voleu sortir de la graella actual i obrir-ne una de nova?
  Si el procés es cancel·la, la graella es mantindrà.</translation>
     </message>
     <message>
         <source>Are you sure that you want to quit the current grid and create a new one?</source>
-        <translation>Esteu segur que voleu sortir de la graella actual i crear-ne una de nova?</translation>
+        <translation type="vanished">Esteu segur que voleu sortir de la graella actual i crear-ne una de nova?</translation>
     </message>
     <message>
         <source>There is a file being processed now.</source>
-        <translation>Ara s'està processant un fitxer.</translation>
+        <translation type="vanished">Ara s'està processant un fitxer.</translation>
     </message>
     <message>
         <source>Formats ({files_types})</source>
-        <translation>Formats ({files_types})</translation>
+        <translation type="vanished">Formats ({files_types})</translation>
     </message>
     <message>
         <source>The file does not exist :( 
  {file_name}</source>
-        <translation>El fitxer no existeix :( 
+        <translation type="vanished">El fitxer no existeix :( 
  {file_name}</translation>
     </message>
     <message>
         <source>File opening</source>
-        <translation>Obertura del fitxer</translation>
+        <translation type="vanished">Obertura del fitxer</translation>
     </message>
     <message>
         <source>No grid to load :(</source>
-        <translation>No hi ha quadrícula per carregar :(</translation>
+        <translation type="vanished">No hi ha quadrícula per carregar :(</translation>
     </message>
     <message>
         <source>Current: {circuit_name}</source>
-        <translation>Actual: {circuit_name}</translation>
+        <translation type="vanished">Actual: {circuit_name}</translation>
     </message>
     <message>
         <source>The grid is quite big, no diagram is automatically created</source>
-        <translation>La graella és bastant gran, no es crea cap diagrama automàticament</translation>
+        <translation type="vanished">La graella és bastant gran, no es crea cap diagrama automàticament</translation>
     </message>
     <message>
         <source>Sessions</source>
-        <translation>Sessions</translation>
+        <translation type="vanished">Sessions</translation>
     </message>
     <message>
         <source>Show Rosetta</source>
-        <translation>Mostra Rosetta</translation>
+        <translation type="vanished">Mostra Rosetta</translation>
     </message>
     <message>
         <source>Do you want to open the Rosetta CGMES browser?</source>
-        <translation>Voleu obrir el navegador Rosetta CGMES?</translation>
+        <translation type="vanished">Voleu obrir el navegador Rosetta CGMES?</translation>
     </message>
     <message>
         <source>Open CGMES file logger</source>
-        <translation>Obriu el registrador de fitxers CGMES</translation>
+        <translation type="vanished">Obriu el registrador de fitxers CGMES</translation>
     </message>
     <message>
         <source>Open file logger</source>
-        <translation>Obre el registrador de fitxers</translation>
+        <translation type="vanished">Obre el registrador de fitxers</translation>
     </message>
     <message>
         <source>Error while loading the file(s)</source>
-        <translation>S'ha produït un error en carregar els fitxers</translation>
+        <translation type="vanished">S'ha produït un error en carregar els fitxers</translation>
     </message>
     <message>
         <source>{name} {version} requires VeraGrid {veragrid_version}</source>
-        <translation>{name} {version} requereix VeraGrid {veragrid_version}</translation>
+        <translation type="vanished">{name} {version} requereix VeraGrid {veragrid_version}</translation>
     </message>
     <message>
         <source>Plugin install</source>
-        <translation>Instal·lació del connector</translation>
+        <translation type="vanished">Instal·lació del connector</translation>
     </message>
     <message>
         <source>There is already a plugin: {plugin_name} {plugin_version}. The new plugin is {new_version}. Install?</source>
-        <translation>Ja hi ha un connector: {plugin_name} {plugin_version}. El nou connector és {new_version}. Instal·lar?</translation>
+        <translation type="vanished">Ja hi ha un connector: {plugin_name} {plugin_version}. El nou connector és {new_version}. Instal·lar?</translation>
     </message>
     <message>
         <source>{name} {version} installed!</source>
-        <translation>{name} {version} instal·lat!</translation>
+        <translation type="vanished">{name} {version} instal·lat!</translation>
     </message>
     <message>
         <source>There is no manifest :(</source>
-        <translation>No hi ha cap manifest :(</translation>
+        <translation type="vanished">No hi ha cap manifest :(</translation>
     </message>
     <message>
         <source>Does not seem to be a plugin :/</source>
-        <translation>No sembla ser un connector :/</translation>
+        <translation type="vanished">No sembla ser un connector :/</translation>
     </message>
     <message>
         <source>CSV (*.csv)</source>
-        <translation>CSV (*.csv)</translation>
+        <translation type="vanished">CSV (*.csv)</translation>
     </message>
     <message>
         <source>Open CSV file</source>
-        <translation>Obriu el fitxer CSV</translation>
+        <translation type="vanished">Obriu el fitxer CSV</translation>
     </message>
     <message>
         <source>Grid merge</source>
-        <translation>Combinació de graella</translation>
+        <translation type="vanished">Combinació de graella</translation>
     </message>
     <message>
         <source>How do you want to represent the merged grid?</source>
-        <translation>Com voleu representar la graella combinada?</translation>
+        <translation type="vanished">Com voleu representar la graella combinada?</translation>
     </message>
     <message>
         <source>Create new diagram</source>
-        <translation>Crea un diagrama nou</translation>
+        <translation type="vanished">Crea un diagrama nou</translation>
     </message>
     <message>
         <source>Add to current diagram</source>
-        <translation>Afegeix al diagrama actual</translation>
+        <translation type="vanished">Afegeix al diagrama actual</translation>
     </message>
     <message>
         <source>No schematic diagram was selected...</source>
-        <translation>No s'ha seleccionat cap diagrama esquemàtic...</translation>
+        <translation type="vanished">No s'ha seleccionat cap diagrama esquemàtic...</translation>
     </message>
     <message>
         <source>Save file</source>
-        <translation>Desa el fitxer</translation>
+        <translation type="vanished">Desa el fitxer</translation>
     </message>
     <message>
         <source>VeraGrid zip (*.veragrid)</source>
-        <translation>VeraGrid zip (*.veragrid)</translation>
+        <translation type="vanished">VeraGrid zip (*.veragrid)</translation>
     </message>
     <message>
         <source>There is a saving procedure running.
 Cancel and retry?</source>
-        <translation>S'està executant un procediment d'estalvi.
+        <translation type="vanished">S'està executant un procediment d'estalvi.
 Cancel·lar i tornar-ho a provar?</translation>
     </message>
     <message>
         <source>There is a file being processed..</source>
-        <translation>S'està processant un fitxer...</translation>
+        <translation type="vanished">S'està processant un fitxer...</translation>
     </message>
     <message>
         <source>Save file logger</source>
-        <translation>Guarda el registre de fitxers</translation>
+        <translation type="vanished">Guarda el registre de fitxers</translation>
     </message>
     <message>
         <source>Are you sure that you want to delete the current grid and replace it?</source>
-        <translation>Esteu segur que voleu suprimir la graella actual i substituir-la?</translation>
+        <translation type="vanished">Esteu segur que voleu suprimir la graella actual i substituir-la?</translation>
     </message>
     <message>
         <source>Model v. {model_version}</source>
-        <translation>Model v. {model_version}</translation>
+        <translation type="vanished">Model v. {model_version}</translation>
     </message>
     <message>
         <source>idtag. {idtag}</source>
-        <translation>identificador. {idtag}</translation>
+        <translation type="vanished">identificador. {idtag}</translation>
     </message>
     <message>
         <source>Random grid {bus_count} buses</source>
-        <translation>Autobusos {bus_count} de graella aleatòria</translation>
+        <translation type="vanished">Autobusos {bus_count} de graella aleatòria</translation>
     </message>
     <message>
         <source>Grid generated randomly using the RPGM algorithm.</source>
-        <translation>Quadrícula generada aleatòriament mitjançant l'algoritme RPGM.</translation>
+        <translation type="vanished">Quadrícula generada aleatòriament mitjançant l'algoritme RPGM.</translation>
     </message>
     <message>
         <source>Excel file (*.xlsx)</source>
-        <translation>Fitxer Excel (*.xlsx)</translation>
+        <translation type="vanished">Fitxer Excel (*.xlsx)</translation>
     </message>
     <message>
         <source>profiles of </source>
-        <translation>perfils de </translation>
+        <translation type="vanished">perfils de </translation>
     </message>
     <message>
         <source>There are no profiles!</source>
-        <translation>No hi ha perfils!</translation>
+        <translation type="vanished">No hi ha perfils!</translation>
     </message>
     <message>
         <source>Export object profiles</source>
-        <translation>Exporta perfils d'objectes</translation>
+        <translation type="vanished">Exporta perfils d'objectes</translation>
     </message>
     <message>
         <source>Zip file (*.zip)</source>
-        <translation>Fitxer zip (*.zip)</translation>
+        <translation type="vanished">Fitxer zip (*.zip)</translation>
     </message>
     <message>
         <source>Results of </source>
-        <translation>Resultats de </translation>
+        <translation type="vanished">Resultats de </translation>
     </message>
     <message>
         <source>There are no results available :/</source>
-        <translation>No hi ha resultats disponibles :/</translation>
+        <translation type="vanished">No hi ha resultats disponibles :/</translation>
     </message>
     <message>
         <source>Export all</source>
-        <translation>Exportar-ho tot</translation>
+        <translation type="vanished">Exportar-ho tot</translation>
     </message>
     <message>
         <source>Done!</source>
-        <translation>Fet!</translation>
+        <translation type="vanished">Fet!</translation>
     </message>
     <message>
         <source>Results parsing</source>
-        <translation>Anàlisi de resultats</translation>
+        <translation type="vanished">Anàlisi de resultats</translation>
     </message>
     <message>
         <source>Loaded '{study_name}' results from disk</source>
-        <translation>S'han carregat els resultats "{study_name}" des del disc</translation>
+        <translation type="vanished">S'han carregat els resultats "{study_name}" des del disc</translation>
     </message>
     <message>
         <source>No file driver declared :/</source>
-        <translation>No s'ha declarat cap controlador de fitxer :/</translation>
+        <translation type="vanished">No s'ha declarat cap controlador de fitxer :/</translation>
     </message>
     <message>
         <source>Select a driver inside a session</source>
-        <translation>Seleccioneu un controlador dins d'una sessió</translation>
+        <translation type="vanished">Seleccioneu un controlador dins d'una sessió</translation>
     </message>
     <message>
         <source>Driver load from disk</source>
-        <translation>Càrrega del controlador des del disc</translation>
+        <translation type="vanished">Càrrega del controlador des del disc</translation>
     </message>
     <message>
         <source>Load results from disk</source>
-        <translation>Carregueu els resultats des del disc</translation>
+        <translation type="vanished">Carregueu els resultats des del disc</translation>
     </message>
     <message>
         <source>Formats (*.json)</source>
-        <translation>Formats (*.json)</translation>
+        <translation type="vanished">Formats (*.json)</translation>
     </message>
     <message>
         <source>Open file</source>
-        <translation>Obre el fitxer</translation>
+        <translation type="vanished">Obre el fitxer</translation>
     </message>
     <message>
         <source>Contingencies import</source>
-        <translation>Importació de contingències</translation>
+        <translation type="vanished">Importació de contingències</translation>
     </message>
     <message>
         <source>JSON file (*.json)</source>
-        <translation>Fitxer JSON (*.json)</translation>
+        <translation type="vanished">Fitxer JSON (*.json)</translation>
     </message>
     <message>
         <source>Catalogue added!</source>
-        <translation>Catàleg afegit!</translation>
+        <translation type="vanished">Catàleg afegit!</translation>
     </message>
     <message>
         <source>Load catalogue</source>
-        <translation>Carrega el catàleg</translation>
+        <translation type="vanished">Carrega el catàleg</translation>
     </message>
     <message>
         <source>Open catalogue logger</source>
-        <translation>Obre el registre del catàleg</translation>
+        <translation type="vanished">Obre el registre del catàleg</translation>
     </message>
     <message>
         <source>Catalogue loaded!</source>
-        <translation>Catàleg carregat!</translation>
+        <translation type="vanished">Catàleg carregat!</translation>
     </message>
     <message>
         <source>Catalogue file (*.xlsx)</source>
-        <translation>Fitxer de catàleg (*.xlsx)</translation>
+        <translation type="vanished">Fitxer de catàleg (*.xlsx)</translation>
     </message>
     <message>
         <source>Catalogue Excel file (*.xlsx)</source>
-        <translation>Fitxer Excel del catàleg (*.xlsx)</translation>
+        <translation type="vanished">Fitxer Excel del catàleg (*.xlsx)</translation>
     </message>
     <message>
         <source>Save catalogue</source>
-        <translation>Guarda el catàleg</translation>
+        <translation type="vanished">Guarda el catàleg</translation>
     </message>
     <message>
         <source>Catalogue saved!</source>
-        <translation>Catàleg guardat!</translation>
+        <translation type="vanished">Catàleg guardat!</translation>
     </message>
     <message>
         <source>CIM (*.xml)</source>
-        <translation>CIM (*.xml)</translation>
+        <translation type="vanished">CIM (*.xml)</translation>
     </message>
     <message>
         <source>Export to CIM</source>
-        <translation>Exporta a CIM</translation>
+        <translation type="vanished">Exporta a CIM</translation>
     </message>
     <message>
         <source>Power Grid Models (*.pgm)</source>
-        <translation>Models de xarxa elèctrica (*.pgm)</translation>
+        <translation type="vanished">Models de xarxa elèctrica (*.pgm)</translation>
     </message>
     <message>
         <source>Export to Power Grid Models</source>
-        <translation>Exportació a models de xarxa elèctrica</translation>
+        <translation type="vanished">Exportació a models de xarxa elèctrica</translation>
     </message>
     <message>
         <source>Power Grid Models not installed :/</source>
-        <translation>Models de xarxa elèctrica no instal·lats :/</translation>
+        <translation type="vanished">Models de xarxa elèctrica no instal·lats :/</translation>
     </message>
     <message>
         <source>Electrical Json V3 (*.ejson3)</source>
-        <translation>Json V3 elèctric (*.ejson3)</translation>
+        <translation type="vanished">Json V3 elèctric (*.ejson3)</translation>
     </message>
     <message>
         <source>Export to JSON</source>
-        <translation>Exporta a JSON</translation>
+        <translation type="vanished">Exporta a JSON</translation>
     </message>
     <message>
         <source>VeraGrid HDF5 (*.gch5)</source>
-        <translation>VeraGrid HDF5 (*.gch5)</translation>
+        <translation type="vanished">VeraGrid HDF5 (*.gch5)</translation>
     </message>
     <message>
         <source>Export to VeraGrid HDF5</source>
-        <translation>Exporta a VeraGrid HDF5</translation>
+        <translation type="vanished">Exporta a VeraGrid HDF5</translation>
     </message>
     <message>
         <source>Excel (*.xlsx)</source>
-        <translation>Excel (*.xlsx)</translation>
+        <translation type="vanished">Excel (*.xlsx)</translation>
     </message>
     <message>
         <source>Export to Microsoft Excel</source>
-        <translation>Exporta a Microsoft Excel</translation>
+        <translation type="vanished">Exporta a Microsoft Excel</translation>
     </message>
     <message>
         <source>Sqlite (*.sqlite)</source>
-        <translation>Sqlite (*.sqlite)</translation>
+        <translation type="vanished">Sqlite (*.sqlite)</translation>
     </message>
     <message>
         <source>Export to Sqlite</source>
-        <translation>Exporta a Sqlite</translation>
+        <translation type="vanished">Exporta a Sqlite</translation>
     </message>
     <message>
         <source>VeraGrid (*.veragrid)</source>
-        <translation>VeraGrid (*.veragrid)</translation>
+        <translation type="vanished">VeraGrid (*.veragrid)</translation>
     </message>
     <message>
         <source>Export VeraGrid scenario</source>
-        <translation>Exporta l'escenari VeraGrid</translation>
+        <translation type="vanished">Exporta l'escenari VeraGrid</translation>
     </message>
 </context>
 <context>
@@ -2509,149 +2513,149 @@ Cancel·lar i tornar-ho a provar?</translation>
     <name>ResultsMain</name>
     <message>
         <source>Delete driver</source>
-        <translation>Esborra el controlador</translation>
+        <translation type="vanished">Esborra el controlador</translation>
     </message>
     <message>
         <source>Rename group</source>
-        <translation>Canvia el nom del grup</translation>
+        <translation type="vanished">Canvia el nom del grup</translation>
     </message>
     <message>
         <source>Rename variable</source>
-        <translation>Canvia el nom de la variable</translation>
+        <translation type="vanished">Canvia el nom de la variable</translation>
     </message>
     <message>
         <source>Rename dynamic plot</source>
-        <translation>Canvia el nom de la trama dinàmica</translation>
+        <translation type="vanished">Canvia el nom de la trama dinàmica</translation>
     </message>
     <message>
         <source>Plot name</source>
-        <translation>Nom de la trama</translation>
+        <translation type="vanished">Nom de la trama</translation>
     </message>
     <message>
         <source>The plot group name is empty or already exists.</source>
-        <translation>El nom del grup de trames està buit o ja existeix.</translation>
+        <translation type="vanished">El nom del grup de trames està buit o ja existeix.</translation>
     </message>
     <message>
         <source>Select a plot group first.</source>
-        <translation>Seleccioneu primer un grup de trames.</translation>
+        <translation type="vanished">Seleccioneu primer un grup de trames.</translation>
     </message>
     <message>
         <source>There are no RMS dynamics results loaded.</source>
-        <translation>No hi ha resultats de dinàmiques RMS carregats.</translation>
+        <translation type="vanished">No hi ha resultats de dinàmiques RMS carregats.</translation>
     </message>
     <message>
         <source>Rename dynamic variable</source>
-        <translation>Canvia el nom de la variable dinàmica</translation>
+        <translation type="vanished">Canvia el nom de la variable dinàmica</translation>
     </message>
     <message>
         <source>Variable name</source>
-        <translation>Nom de la variable</translation>
+        <translation type="vanished">Nom de la variable</translation>
     </message>
     <message>
         <source>The variable name is empty or could not be changed.</source>
-        <translation>El nom de la variable està buit o no s'ha pogut canviar.</translation>
+        <translation type="vanished">El nom de la variable està buit o no s'ha pogut canviar.</translation>
     </message>
     <message>
         <source>New dynamic plot</source>
-        <translation>Nova trama dinàmica</translation>
+        <translation type="vanished">Nova trama dinàmica</translation>
     </message>
     <message>
         <source>Plot mode</source>
-        <translation>Mode de trama</translation>
+        <translation type="vanished">Mode de trama</translation>
     </message>
     <message>
         <source>Time Series (Y vs Time)</source>
-        <translation>Sèries temporals (Y vs Temps)</translation>
+        <translation type="vanished">Sèries temporals (Y vs Temps)</translation>
     </message>
     <message>
         <source>X-Y Plot (Y vs X)</source>
-        <translation>Gràfic X-Y (Y vs X)</translation>
+        <translation type="vanished">Gràfic X-Y (Y vs X)</translation>
     </message>
     <message>
         <source>The selected dynamic plot entry could not be deleted.</source>
-        <translation>L'entrada de trama dinàmica seleccionada no s'ha pogut suprimir.</translation>
+        <translation type="vanished">L'entrada de trama dinàmica seleccionada no s'ha pogut suprimir.</translation>
     </message>
     <message>
         <source>Select a plot group or variable first.</source>
-        <translation>Seleccioneu primer un grup de trames o una variable.</translation>
+        <translation type="vanished">Seleccioneu primer un grup de trames o una variable.</translation>
     </message>
     <message>
         <source>The selected dynamic plot entry could not be plotted.</source>
-        <translation>No s'ha pogut representar l'entrada de traçat dinàmic seleccionada.</translation>
+        <translation type="vanished">No s'ha pogut representar l'entrada de traçat dinàmic seleccionada.</translation>
     </message>
     <message>
         <source>There are {columns} columns, the plot might take a lot to render.
 Are you ok with potentially waiting a lot?</source>
-        <translation>Hi ha columnes {columns}, la trama pot trigar molt a representar-se.
+        <translation type="vanished">Hi ha columnes {columns}, la trama pot trigar molt a representar-se.
 Estàs d'acord amb potencialment esperar molt?</translation>
     </message>
     <message>
         <source>Plot</source>
-        <translation>Trama</translation>
+        <translation type="vanished">Trama</translation>
     </message>
     <message>
         <source>Export results</source>
-        <translation>Exportar resultats</translation>
+        <translation type="vanished">Exportar resultats</translation>
     </message>
     <message>
         <source>CSV (*.csv);;Excel files (*.xlsx)</source>
-        <translation>CSV (*.csv);;Fitxers Excel (*.xlsx)</translation>
+        <translation type="vanished">CSV (*.csv);;Fitxers Excel (*.xlsx)</translation>
     </message>
     <message>
         <source> is not valid :(</source>
-        <translation> no és vàlid :(</translation>
+        <translation type="vanished"> no és vàlid :(</translation>
     </message>
     <message>
         <source>There is no profile displayed, please display one</source>
-        <translation>No es mostra cap perfil, si us plau, mostreu-ne un</translation>
+        <translation type="vanished">No es mostra cap perfil, si us plau, mostreu-ne un</translation>
     </message>
     <message>
         <source>Copy profile to clipboard</source>
-        <translation>Copia el perfil al porta-retalls</translation>
+        <translation type="vanished">Copia el perfil al porta-retalls</translation>
     </message>
     <message>
         <source>Copied!</source>
-        <translation>Copiat!</translation>
+        <translation type="vanished">Copiat!</translation>
     </message>
     <message>
         <source>Filter parse</source>
-        <translation>Anàlisi del filtre</translation>
+        <translation type="vanished">Anàlisi del filtre</translation>
     </message>
     <message>
         <source>Do you want to delete the results driver {study_name}?</source>
-        <translation>Voleu suprimir el controlador de resultats {study_name}?</translation>
+        <translation type="vanished">Voleu suprimir el controlador de resultats {study_name}?</translation>
     </message>
     <message>
         <source>Message</source>
-        <translation>Missatge</translation>
+        <translation type="vanished">Missatge</translation>
     </message>
     <message>
         <source>Are you sure that you want to overwrite the generation, batteries and load snapshot values with the OPF results?</source>
-        <translation>Esteu segur que voleu sobreescriure la generació, les bateries i els valors de la instantània de càrrega amb els resultats de OPF?</translation>
+        <translation type="vanished">Esteu segur que voleu sobreescriure la generació, les bateries i els valors de la instantània de càrrega amb els resultats de OPF?</translation>
     </message>
     <message>
         <source>Overwrite profiles with OPF results</source>
-        <translation>Sobreescriu els perfils amb els resultats de OPF</translation>
+        <translation type="vanished">Sobreescriu els perfils amb els resultats de OPF</translation>
     </message>
     <message>
         <source>P snapshot set from the OPF results</source>
-        <translation>P instantània conjunta dels resultats de OPF</translation>
+        <translation type="vanished">P instantània conjunta dels resultats de OPF</translation>
     </message>
     <message>
         <source>The OPF time series has no results :(</source>
-        <translation>La sèrie temporal OPF no té resultats :(</translation>
+        <translation type="vanished">La sèrie temporal OPF no té resultats :(</translation>
     </message>
     <message>
         <source>Are you sure that you want to overwrite the generation, batteries and load profiles with the OPF time series results?</source>
-        <translation>Esteu segur que voleu sobreescriure els perfils de generació, bateries i càrrega amb els resultats de la sèrie temporal OPF?</translation>
+        <translation type="vanished">Esteu segur que voleu sobreescriure els perfils de generació, bateries i càrrega amb els resultats de la sèrie temporal OPF?</translation>
     </message>
     <message>
         <source>P profiles set from the OPF results</source>
-        <translation>Perfils P establerts a partir dels resultats de OPF</translation>
+        <translation type="vanished">Perfils P establerts a partir dels resultats de OPF</translation>
     </message>
     <message>
         <source>Export logs</source>
-        <translation>Exportar registres</translation>
+        <translation type="vanished">Exportar registres</translation>
     </message>
 </context>
 <context>
@@ -2718,18 +2722,18 @@ Estàs d'acord amb potencialment esperar molt?</translation>
     <message>
         <source>VeraGrid internal commands.
 </source>
-        <translation>VeraGrid ordres internes.
+        <translation type="vanished">VeraGrid ordres internes.
 </translation>
     </message>
     <message>
         <source>If a command is unavailable is because the study has not been executed yet.</source>
-        <translation>Si una ordre no està disponible és perquè l'estudi encara no s'ha executat.</translation>
+        <translation type="vanished">Si una ordre no està disponible és perquè l'estudi encara no s'ha executat.</translation>
     </message>
     <message>
         <source>
 
 clc():	clear the console.</source>
-        <translation>
+        <translation type="vanished">
 
 clc(): esborra la consola.</translation>
     </message>
@@ -2737,501 +2741,501 @@ clc(): esborra la consola.</translation>
         <source>
 
 App functions:</source>
-        <translation>
+        <translation type="vanished">
 
 Funcions de l'aplicació:</translation>
     </message>
     <message>
         <source>	app.new_project(): Clear all.</source>
-        <translation>	app.new_project(): esborra-ho tot.</translation>
+        <translation type="vanished">	app.new_project(): esborra-ho tot.</translation>
     </message>
     <message>
         <source>	app.open_file(): Prompt to load VeraGrid compatible file</source>
-        <translation>	app.open_file(): demana per carregar el fitxer compatible amb VeraGrid</translation>
+        <translation type="vanished">	app.open_file(): demana per carregar el fitxer compatible amb VeraGrid</translation>
     </message>
     <message>
         <source>	app.save_file(): Prompt to save VeraGrid file</source>
-        <translation>	app.save_file(): demana per desar el fitxer VeraGrid</translation>
+        <translation type="vanished">	app.save_file(): demana per desar el fitxer VeraGrid</translation>
     </message>
     <message>
         <source>	app.export_diagram(): Prompt to export the diagram in png.</source>
-        <translation>	app.export_diagram(): Sol·licitar exportar el diagrama en png.</translation>
+        <translation type="vanished">	app.export_diagram(): Sol·licitar exportar el diagrama en png.</translation>
     </message>
     <message>
         <source>	app.create_schematic_from_api(): Create the schematic from the circuit information.</source>
-        <translation>	app.create_schematic_from_api(): creeu l'esquema a partir de la informació del circuit.</translation>
+        <translation type="vanished">	app.create_schematic_from_api(): creeu l'esquema a partir de la informació del circuit.</translation>
     </message>
     <message>
         <source>	app.adjust_all_node_width(): Adjust the width of all the nodes according to their name.</source>
-        <translation>	app.adjust_all_node_width(): ajusta l'amplada de tots els nodes segons el seu nom.</translation>
+        <translation type="vanished">	app.adjust_all_node_width(): ajusta l'amplada de tots els nodes segons el seu nom.</translation>
     </message>
     <message>
         <source>	app.numerical_circuit: get compilation of the assets.</source>
-        <translation>	app.numerical_circuit: obteniu la compilació dels actius.</translation>
+        <translation type="vanished">	app.numerical_circuit: obteniu la compilació dels actius.</translation>
     </message>
     <message>
         <source>	app.islands: get compilation of the assets split into the topological islands.</source>
-        <translation>app.islands: obteniu una compilació dels actius dividits en illes topològiques.</translation>
+        <translation type="vanished">app.islands: obteniu una compilació dels actius dividits en illes topològiques.</translation>
     </message>
     <message>
         <source>
 
 Circuit functions:</source>
-        <translation>
+        <translation type="vanished">
 
 Funcions del circuit:</translation>
     </message>
     <message>
         <source>	app.circuit.plot_graph(): Plot a graph in a Matplotlib window. Call plt.show() after.</source>
-        <translation>	app.circuit.plot_graph(): Traceu un gràfic en una finestra Matplotlib. Truqueu a plt.show() després.</translation>
+        <translation type="vanished">	app.circuit.plot_graph(): Traceu un gràfic en una finestra Matplotlib. Truqueu a plt.show() després.</translation>
     </message>
     <message>
         <source>
 
 Power flow results:</source>
-        <translation>
+        <translation type="vanished">
 
 Resultats del flux d'energia:</translation>
     </message>
     <message>
         <source>	app.session.power_flow.voltage:	 the nodal voltages in per unit</source>
-        <translation>	app.session.power_flow.voltage: les tensions nodals per unitat</translation>
+        <translation type="vanished">	app.session.power_flow.voltage: les tensions nodals per unitat</translation>
     </message>
     <message>
         <source>	app.session.power_flow.current:	 the branch currents in per unit</source>
-        <translation>	app.session.power_flow.current: els corrents de branca per unitat</translation>
+        <translation type="vanished">	app.session.power_flow.current: els corrents de branca per unitat</translation>
     </message>
     <message>
         <source>	app.session.power_flow.loading:	 the branch loading in %</source>
-        <translation>	app.session.power_flow.loading: la càrrega de la branca en %</translation>
+        <translation type="vanished">	app.session.power_flow.loading: la càrrega de la branca en %</translation>
     </message>
     <message>
         <source>	app.session.power_flow.losses:	 the branch losses in per unit</source>
-        <translation>	app.session.power_flow.losses: les pèrdues de branca per unitat</translation>
+        <translation type="vanished">	app.session.power_flow.losses: les pèrdues de branca per unitat</translation>
     </message>
     <message>
         <source>	app.session.power_flow.power:	 the nodal power Injections in per unit</source>
-        <translation>	app.session.power_flow.power: les injeccions de potència nodal per unitat</translation>
+        <translation type="vanished">	app.session.power_flow.power: les injeccions de potència nodal per unitat</translation>
     </message>
     <message>
         <source>	app.session.power_flow.Sf:	 the branch power Injections in per unit at the "from" side</source>
-        <translation>	app.session.power_flow.Sf: les injeccions de potència de la branca per unitat al costat "des de"</translation>
+        <translation type="vanished">	app.session.power_flow.Sf: les injeccions de potència de la branca per unitat al costat "des de"</translation>
     </message>
     <message>
         <source>	app.session.power_flow.St:	 the branch power Injections in per unit at the "to" side</source>
-        <translation>	app.session.power_flow.St: la potència de la branca Injeccions per unitat al costat "a"</translation>
+        <translation type="vanished">	app.session.power_flow.St: la potència de la branca Injeccions per unitat al costat "a"</translation>
     </message>
     <message>
         <source>
 
 Short circuit results:</source>
-        <translation>
+        <translation type="vanished">
 
 Resultats del curtcircuit:</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.voltage:	 the nodal voltages in per unit</source>
-        <translation>	app.session.short_circuit.voltage: les tensions nodals per unitat</translation>
+        <translation type="vanished">	app.session.short_circuit.voltage: les tensions nodals per unitat</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.current:	 the branch currents in per unit</source>
-        <translation>	app.session.short_circuit.current: els corrents de branca per unitat</translation>
+        <translation type="vanished">	app.session.short_circuit.current: els corrents de branca per unitat</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.loading:	 the branch loading in %</source>
-        <translation>	app.session.short_circuit.loading: la càrrega de la branca en %</translation>
+        <translation type="vanished">	app.session.short_circuit.loading: la càrrega de la branca en %</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.losses:	 the branch losses in per unit</source>
-        <translation>	app.session.short_circuit.losses: les pèrdues de branca per unitat</translation>
+        <translation type="vanished">	app.session.short_circuit.losses: les pèrdues de branca per unitat</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.power:	 the nodal power Injections in per unit</source>
-        <translation>	app.session.short_circuit.power: la potència nodal Injeccions per unitat</translation>
+        <translation type="vanished">	app.session.short_circuit.power: la potència nodal Injeccions per unitat</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.power_from:	 the branch power Injections in per unit at the "from" side</source>
-        <translation>	app.session.short_circuit.power_from: la potència de la branca Injeccions per unitat al costat "des de"</translation>
+        <translation type="vanished">	app.session.short_circuit.power_from: la potència de la branca Injeccions per unitat al costat "des de"</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.power_to:	 the branch power Injections in per unit at the "to" side</source>
-        <translation>	app.session.short_circuit.power_to: la potència de la branca Injeccions per unitat al costat "a"</translation>
+        <translation type="vanished">	app.session.short_circuit.power_to: la potència de la branca Injeccions per unitat al costat "a"</translation>
     </message>
     <message>
         <source>	app.session.short_circuit.short_circuit_power:	 Short circuit power in MVA of the grid nodes</source>
-        <translation>	app.session.short_circuit.short_circuit_power: potència de curtcircuit a MVA dels nodes de la xarxa</translation>
+        <translation type="vanished">	app.session.short_circuit.short_circuit_power: potència de curtcircuit a MVA dels nodes de la xarxa</translation>
     </message>
     <message>
         <source>
 
 Optimal power flow results:</source>
-        <translation>Resultats òptims de flux d'energia:</translation>
+        <translation type="vanished">Resultats òptims de flux d'energia:</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.voltage:	 the nodal voltages angles in rad</source>
-        <translation>	app.session.optimal_power_flow.voltage: els angles de voltatges nodals en rad</translation>
+        <translation type="vanished">	app.session.optimal_power_flow.voltage: els angles de voltatges nodals en rad</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.load_shedding:	 the branch loading in %</source>
-        <translation>	app.session.optimal_power_flow.load_shedding: la càrrega de la branca en %</translation>
+        <translation type="vanished">	app.session.optimal_power_flow.load_shedding: la càrrega de la branca en %</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.losses:	 the branch losses in per unit</source>
-        <translation>	app.session.optimal_power_flow.losses: les pèrdues de branca per unitat</translation>
+        <translation type="vanished">	app.session.optimal_power_flow.losses: les pèrdues de branca per unitat</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.Sbus:	 the nodal power Injections in MW</source>
-        <translation>	app.session.optimal_power_flow.Sbus: les injeccions de potència nodal a MW</translation>
+        <translation type="vanished">	app.session.optimal_power_flow.Sbus: les injeccions de potència nodal a MW</translation>
     </message>
     <message>
         <source>	app.session.optimal_power_flow.Sf:	 the branch power Sf</source>
-        <translation>	app.session.optimal_power_flow.Sf: la potència de la branca Sf</translation>
+        <translation type="vanished">	app.session.optimal_power_flow.Sf: la potència de la branca Sf</translation>
     </message>
     <message>
         <source>
 
 Time series power flow results:</source>
-        <translation>
+        <translation type="vanished">
 
 Resultats del flux d'energia de sèrie temporal:</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.time:	 Profiles time index (pandas DateTimeIndex object)</source>
-        <translation>	app.session.power_flow_ts.time: índex de temps dels perfils (objecte pandas DateTimeIndex)</translation>
+        <translation type="vanished">	app.session.power_flow_ts.time: índex de temps dels perfils (objecte pandas DateTimeIndex)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.load_profiles:	 Load profiles matrix (row: time, col: node)</source>
-        <translation>	app.session.power_flow_ts.load_profiles: Carrega la matriu de perfils (fila: temps, col.: node)</translation>
+        <translation type="vanished">	app.session.power_flow_ts.load_profiles: Carrega la matriu de perfils (fila: temps, col.: node)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.gen_profiles:	 Generation profiles matrix (row: time, col: node)</source>
-        <translation>	app.session.power_flow_ts.gen_profiles: matriu de perfils de generació (fila: temps, col.: node)</translation>
+        <translation type="vanished">	app.session.power_flow_ts.gen_profiles: matriu de perfils de generació (fila: temps, col.: node)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.voltages:	 nodal voltages results matrix (row: time, col: node)</source>
-        <translation>	app.session.power_flow_ts.voltages: matriu de resultats de voltatges nodals (fila: temps, col.: node)</translation>
+        <translation type="vanished">	app.session.power_flow_ts.voltages: matriu de resultats de voltatges nodals (fila: temps, col.: node)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.currents:	 Branches currents results matrix (row: time, col: branch)</source>
-        <translation>	app.session.power_flow_ts.currents: matriu de resultats de corrents de branques (fila: temps, col.: branca)</translation>
+        <translation type="vanished">	app.session.power_flow_ts.currents: matriu de resultats de corrents de branques (fila: temps, col.: branca)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.loadings:	 Branches loadings results matrix (row: time, col: branch)</source>
-        <translation>	app.session.power_flow_ts.loadings: matriu de resultats de càrregues de branques (fila: hora, col.: branca)</translation>
+        <translation type="vanished">	app.session.power_flow_ts.loadings: matriu de resultats de càrregues de branques (fila: hora, col.: branca)</translation>
     </message>
     <message>
         <source>	app.session.power_flow_ts.losses:	 Branches losses results matrix (row: time, col: branch)</source>
-        <translation>	app.session.power_flow_ts.losses: matriu de resultats de pèrdues de ramificacions (fila: temps, col.: branca)</translation>
+        <translation type="vanished">	app.session.power_flow_ts.losses: matriu de resultats de pèrdues de ramificacions (fila: temps, col.: branca)</translation>
     </message>
     <message>
         <source>
 
 Voltage stability power flow results:</source>
-        <translation>
+        <translation type="vanished">
 
 Resultats del flux de potència d'estabilitat de voltatge:</translation>
     </message>
     <message>
         <source>	app.session.continuation_power_flow.voltage:	 Voltage values for every power multiplication factor.</source>
-        <translation>	app.session.continuation_power_flow.voltage: valors de voltatge per a cada factor de multiplicació de potència.</translation>
+        <translation type="vanished">	app.session.continuation_power_flow.voltage: valors de voltatge per a cada factor de multiplicació de potència.</translation>
     </message>
     <message>
         <source>	app.session.continuation_power_flow.lambda:	 Value of power multiplication factor applied</source>
-        <translation>	app.session.continuation_power_flow.lambda: valor del factor de multiplicació de potència aplicat</translation>
+        <translation type="vanished">	app.session.continuation_power_flow.lambda: valor del factor de multiplicació de potència aplicat</translation>
     </message>
     <message>
         <source>	app.session.continuation_power_flow.Sf:	 Power values for every power multiplication factor.</source>
-        <translation>	app.session.continuation_power_flow.Sf: valors de potència per a cada factor de multiplicació de potència.</translation>
+        <translation type="vanished">	app.session.continuation_power_flow.Sf: valors de potència per a cada factor de multiplicació de potència.</translation>
     </message>
     <message>
         <source>
 
 Monte Carlo power flow results:</source>
-        <translation>
+        <translation type="vanished">
 
 Resultats del flux d'energia de Montecarlo:</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.V_avg:	 nodal voltage average result.</source>
-        <translation>	app.session.stochastic_power_flow.V_avg: resultat mitjà de voltatge nodal.</translation>
+        <translation type="vanished">	app.session.stochastic_power_flow.V_avg: resultat mitjà de voltatge nodal.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.I_avg:	 branch current average result.</source>
-        <translation>app.session.stochastic_power_flow.I_avg: resultat mitjà actual de la branca.</translation>
+        <translation type="vanished">app.session.stochastic_power_flow.I_avg: resultat mitjà actual de la branca.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.Loading_avg:	 branch loading average result.</source>
-        <translation>	app.session.stochastic_power_flow.Loading_avg: resultat mitjà de càrrega de branca.</translation>
+        <translation type="vanished">	app.session.stochastic_power_flow.Loading_avg: resultat mitjà de càrrega de branca.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.Losses_avg:	 branch losses average result.</source>
-        <translation>	app.session.stochastic_power_flow.Losses_avg: resultat mitjà de pèrdues de branques.</translation>
+        <translation type="vanished">	app.session.stochastic_power_flow.Losses_avg: resultat mitjà de pèrdues de branques.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.V_std:	 nodal voltage standard deviation result.</source>
-        <translation>	app.session.stochastic_power_flow.V_std: resultat de la desviació estàndard de la tensió nodal.</translation>
+        <translation type="vanished">	app.session.stochastic_power_flow.V_std: resultat de la desviació estàndard de la tensió nodal.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.I_std:	 branch current standard deviation result.</source>
-        <translation>	app.session.stochastic_power_flow.I_std: resultat de la desviació estàndard actual de la branca.</translation>
+        <translation type="vanished">	app.session.stochastic_power_flow.I_std: resultat de la desviació estàndard actual de la branca.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.Loading_std:	 branch loading standard deviation result.</source>
-        <translation>	app.session.stochastic_power_flow.Loading_std: resultat de la desviació estàndard de la càrrega de la branca.</translation>
+        <translation type="vanished">	app.session.stochastic_power_flow.Loading_std: resultat de la desviació estàndard de la càrrega de la branca.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.Losses_std:	 branch losses standard deviation result.</source>
-        <translation>	app.session.stochastic_power_flow.Losses_std: resultat de la desviació estàndard de les pèrdues de branca.</translation>
+        <translation type="vanished">	app.session.stochastic_power_flow.Losses_std: resultat de la desviació estàndard de les pèrdues de branca.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.V_avg_series:	 nodal voltage average series.</source>
-        <translation>	app.session.stochastic_power_flow.V_avg_series: sèrie mitjana de tensió nodal.</translation>
+        <translation type="vanished">	app.session.stochastic_power_flow.V_avg_series: sèrie mitjana de tensió nodal.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.V_std_series:	 branch current standard deviation series.</source>
-        <translation>	app.session.stochastic_power_flow.V_std_series: branca la sèrie de desviació estàndard actual.</translation>
+        <translation type="vanished">	app.session.stochastic_power_flow.V_std_series: branca la sèrie de desviació estàndard actual.</translation>
     </message>
     <message>
         <source>	app.session.stochastic_power_flow.error_series:	 Monte Carlo error series (the convergence value).</source>
-        <translation>	app.session.stochastic_power_flow.error_series: sèrie d'errors de Monte Carlo (el valor de convergència).</translation>
+        <translation type="vanished">	app.session.stochastic_power_flow.error_series: sèrie d'errors de Monte Carlo (el valor de convergència).</translation>
     </message>
     <message>
         <source>The same for app.latin_hypercube_sampling</source>
-        <translation>El mateix per a app.latin_hypercube_sampling</translation>
+        <translation type="vanished">El mateix per a app.latin_hypercube_sampling</translation>
     </message>
     <message>
         <source> does not exist :/</source>
-        <translation> no existeix :/</translation>
+        <translation type="vanished"> no existeix :/</translation>
     </message>
     <message>
         <source>Open script</source>
-        <translation>Guió obert</translation>
+        <translation type="vanished">Guió obert</translation>
     </message>
     <message>
         <source>Are you sure you want to clear source code?</source>
-        <translation>Esteu segur que voleu esborrar el codi font?</translation>
+        <translation type="vanished">Esteu segur que voleu esborrar el codi font?</translation>
     </message>
     <message>
         <source>Clear source code</source>
-        <translation>Esborra el codi font</translation>
+        <translation type="vanished">Esborra el codi font</translation>
     </message>
     <message>
         <source>Please enter a name for the script</source>
-        <translation>Introduïu un nom per a l'script</translation>
+        <translation type="vanished">Introduïu un nom per a l'script</translation>
     </message>
     <message>
         <source>Save script</source>
-        <translation>Desa l'script</translation>
+        <translation type="vanished">Desa l'script</translation>
     </message>
     <message>
         <source>Do you want to delete {path}?</source>
-        <translation>Voleu suprimir {path}?</translation>
+        <translation type="vanished">Voleu suprimir {path}?</translation>
     </message>
     <message>
         <source>Delete source code file</source>
-        <translation>Suprimeix el fitxer de codi font</translation>
+        <translation type="vanished">Suprimeix el fitxer de codi font</translation>
     </message>
     <message>
         <source>Delete</source>
-        <translation>Suprimeix</translation>
+        <translation type="vanished">Suprimeix</translation>
     </message>
 </context>
 <context>
     <name>ServerMain</name>
     <message>
         <source>Server config file was erroneous, wrote a new one</source>
-        <translation>El fitxer de configuració del servidor era erroni, en va escriure un de nou</translation>
+        <translation type="vanished">El fitxer de configuració del servidor era erroni, en va escriure un de nou</translation>
     </message>
     <message>
         <source>The server connection is running, are you sure that you want to stop it?</source>
-        <translation>La connexió del servidor s'està executant, esteu segur que voleu aturar-la?</translation>
+        <translation type="vanished">La connexió del servidor s'està executant, esteu segur que voleu aturar-la?</translation>
     </message>
     <message>
         <source>Stop Server</source>
-        <translation>Atura el servidor</translation>
+        <translation type="vanished">Atura el servidor</translation>
     </message>
     <message>
         <source>Could not connect to the server :/</source>
-        <translation>No s'ha pogut connectar al servidor :/</translation>
+        <translation type="vanished">No s'ha pogut connectar al servidor :/</translation>
     </message>
     <message>
         <source>Connected!</source>
-        <translation>Connectat!</translation>
+        <translation type="vanished">Connectat!</translation>
     </message>
     <message>
         <source>Results received!</source>
-        <translation>Resultats rebuts!</translation>
+        <translation type="vanished">Resultats rebuts!</translation>
     </message>
 </context>
 <context>
     <name>ShortCircuitSelector</name>
     <message>
         <source>Short Circuit Configuration</source>
-        <translation>Configuració de curtcircuit</translation>
+        <translation type="vanished">Configuració de curtcircuit</translation>
     </message>
     <message>
         <source>Custom</source>
-        <translation>Personalitzat</translation>
+        <translation type="vanished">Personalitzat</translation>
     </message>
     <message>
         <source>Typical value</source>
-        <translation>Valor típic</translation>
+        <translation type="vanished">Valor típic</translation>
     </message>
     <message>
         <source>Solid 3ph fault</source>
-        <translation>Falla sòlida 3ph</translation>
+        <translation type="vanished">Falla sòlida 3ph</translation>
     </message>
     <message>
         <source>Near-bolted three-phase fault</source>
-        <translation>Falla trifàsica gairebé cargolada</translation>
+        <translation type="vanished">Falla trifàsica gairebé cargolada</translation>
     </message>
     <message>
         <source>Solid phase ground fault</source>
-        <translation>Falla a terra en fase sòlida</translation>
+        <translation type="vanished">Falla a terra en fase sòlida</translation>
     </message>
     <message>
         <source>Near-bolted phase-to-ground fault</source>
-        <translation>Falla de fase a terra gairebé cargolada</translation>
+        <translation type="vanished">Falla de fase a terra gairebé cargolada</translation>
     </message>
     <message>
         <source>Metallic conductor conductor contact</source>
-        <translation>Contacte conductor conductor metàl·lic</translation>
+        <translation type="vanished">Contacte conductor conductor metàl·lic</translation>
     </message>
     <message>
         <source>Low-impedance metallic conductor-to-conductor short</source>
-        <translation>Curt conductor a conductor metàl·lic de baixa impedància</translation>
+        <translation type="vanished">Curt conductor a conductor metàl·lic de baixa impedància</translation>
     </message>
     <message>
         <source>Excavator touching underground cable</source>
-        <translation>Excavadora tocant cable subterrani</translation>
+        <translation type="vanished">Excavadora tocant cable subterrani</translation>
     </message>
     <message>
         <source>Direct mechanical strike on underground cable</source>
-        <translation>Coup mecànic directe sobre cable subterrani</translation>
+        <translation type="vanished">Coup mecànic directe sobre cable subterrani</translation>
     </message>
     <message>
         <source>Excavator damaging cable partial arc</source>
-        <translation>L'excavadora fa malbé l'arc parcial del cable</translation>
+        <translation type="vanished">L'excavadora fa malbé l'arc parcial del cable</translation>
     </message>
     <message>
         <source>Cable damage with partial contact and arcing</source>
-        <translation>Danys al cable amb contacte parcial i arc</translation>
+        <translation type="vanished">Danys al cable amb contacte parcial i arc</translation>
     </message>
     <message>
         <source>Crane or machinery overhead arc</source>
-        <translation>Arc aeri de grua o maquinària</translation>
+        <translation type="vanished">Arc aeri de grua o maquinària</translation>
     </message>
     <message>
         <source>Arc from machinery approaching overhead line</source>
-        <translation>Arc de la maquinària que s'acosta a la línia aèria</translation>
+        <translation type="vanished">Arc de la maquinària que s'acosta a la línia aèria</translation>
     </message>
     <message>
         <source>Tree branch touching overhead line</source>
-        <translation>Branca d'arbre tocant la línia aèria</translation>
+        <translation type="vanished">Branca d'arbre tocant la línia aèria</translation>
     </message>
     <message>
         <source>Typical vegetation high-impedance fault</source>
-        <translation>Falla d'alta impedància de vegetació típica</translation>
+        <translation type="vanished">Falla d'alta impedància de vegetació típica</translation>
     </message>
     <message>
         <source>Wet tree or wet vegetation contact</source>
-        <translation>Arbre humit o contacte amb vegetació humida</translation>
+        <translation type="vanished">Arbre humit o contacte amb vegetació humida</translation>
     </message>
     <message>
         <source>Vegetation contact with lower resistance due to moisture</source>
-        <translation>Contacte amb vegetació amb menor resistència a causa de la humitat</translation>
+        <translation type="vanished">Contacte amb vegetació amb menor resistència a causa de la humitat</translation>
     </message>
     <message>
         <source>Dry tree or dry branch contact</source>
-        <translation>Contacte amb arbre sec o branca seca</translation>
+        <translation type="vanished">Contacte amb arbre sec o branca seca</translation>
     </message>
     <message>
         <source>Dry vegetation high-impedance fault</source>
-        <translation>Falla d'alta impedància de vegetació seca</translation>
+        <translation type="vanished">Falla d'alta impedància de vegetació seca</translation>
     </message>
     <message>
         <source>Downed conductor on wet soil</source>
-        <translation>Conductor abatut sobre sòl humit</translation>
+        <translation type="vanished">Conductor abatut sobre sòl humit</translation>
     </message>
     <message>
         <source>Downed conductor on relatively conductive ground</source>
-        <translation>Conductor abatut sobre un terreny relativament conductor</translation>
+        <translation type="vanished">Conductor abatut sobre un terreny relativament conductor</translation>
     </message>
     <message>
         <source>Downed conductor on gravel</source>
-        <translation>Conductor abatut sobre grava</translation>
+        <translation type="vanished">Conductor abatut sobre grava</translation>
     </message>
     <message>
         <source>Downed conductor on gravel or ballast</source>
-        <translation>Conductor abatut sobre grava o llast</translation>
+        <translation type="vanished">Conductor abatut sobre grava o llast</translation>
     </message>
     <message>
         <source>Downed conductor on asphalt or concrete</source>
-        <translation>Conductor abatut sobre asfalt o formigó</translation>
+        <translation type="vanished">Conductor abatut sobre asfalt o formigó</translation>
     </message>
     <message>
         <source>Downed conductor on poorly conductive surface</source>
-        <translation>Conductor abatut a una superfície poc conductora</translation>
+        <translation type="vanished">Conductor abatut a una superfície poc conductora</translation>
     </message>
     <message>
         <source>Insulator contamination or leakage fault</source>
-        <translation>Contaminació de l'aïllant o fallada de fuites</translation>
+        <translation type="vanished">Contaminació de l'aïllant o fallada de fuites</translation>
     </message>
     <message>
         <source>Leakage-type high-impedance fault</source>
-        <translation>Falla d'alta impedància tipus fuga</translation>
+        <translation type="vanished">Falla d'alta impedància tipus fuga</translation>
     </message>
     <message>
         <source>Generic arcing phase ground fault</source>
-        <translation>Falla a terra genèrica de la fase d'arc</translation>
+        <translation type="vanished">Falla a terra genèrica de la fase d'arc</translation>
     </message>
     <message>
         <source>Simple resistive arc approximation</source>
-        <translation>Aproximació simple d'arc resistiu</translation>
+        <translation type="vanished">Aproximació simple d'arc resistiu</translation>
     </message>
     <message>
         <source>Severe high resistance transmission fault</source>
-        <translation>Falla greu de transmissió d'alta resistència</translation>
+        <translation type="vanished">Falla greu de transmissió d'alta resistència</translation>
     </message>
     <message>
         <source>High-resistance EHV fault scenario</source>
-        <translation>Escenari de fallada EHV d'alta resistència</translation>
+        <translation type="vanished">Escenari de fallada EHV d'alta resistència</translation>
     </message>
     <message>
         <source>phases</source>
-        <translation>fases</translation>
+        <translation type="vanished">fases</translation>
     </message>
     <message>
         <source>abc</source>
-        <translation>abc</translation>
+        <translation type="vanished">abc</translation>
     </message>
     <message>
         <source>a</source>
-        <translation>a</translation>
+        <translation type="vanished">a</translation>
     </message>
     <message>
         <source>b</source>
-        <translation>b</translation>
+        <translation type="vanished">b</translation>
     </message>
     <message>
         <source>c</source>
-        <translation>c</translation>
+        <translation type="vanished">c</translation>
     </message>
     <message>
         <source>ab</source>
-        <translation>ab</translation>
+        <translation type="vanished">ab</translation>
     </message>
     <message>
         <source>bc</source>
-        <translation>bc</translation>
+        <translation type="vanished">bc</translation>
     </message>
     <message>
         <source>ca</source>
-        <translation>ca</translation>
+        <translation type="vanished">ca</translation>
     </message>
     <message>
         <source>sequences</source>
-        <translation>seqüències</translation>
+        <translation type="vanished">seqüències</translation>
     </message>
 </context>
 <context>
@@ -3303,15 +3307,15 @@ Resultats del flux d'energia de Montecarlo:</translation>
     <name>SubstationDesigner</name>
     <message>
         <source>Substation maker</source>
-        <translation>Fabricant de subestació</translation>
+        <translation type="vanished">Fabricant de subestació</translation>
     </message>
     <message>
         <source>Substation {number}</source>
-        <translation>Subestació {number}</translation>
+        <translation type="vanished">Subestació {number}</translation>
     </message>
     <message>
         <source>There are no voltage levels, so no substation will be created, ok?</source>
-        <translation>No hi ha nivells de tensió, així que no es crearà cap subestació, d'acord?</translation>
+        <translation type="vanished">No hi ha nivells de tensió, així que no es crearà cap subestació, d'acord?</translation>
     </message>
 </context>
 <context>
@@ -3665,19 +3669,19 @@ Resultats del flux d'energia de Montecarlo:</translation>
     <name>VeraGridMainGUI</name>
     <message>
         <source>VeraGrid {version}</source>
-        <translation>VeraGrid {version}</translation>
+        <translation type="vanished">VeraGrid {version}</translation>
     </message>
     <message>
         <source>Are you sure that you want to exit VeraGrid?</source>
-        <translation>Esteu segur que voleu sortir de VeraGrid?</translation>
+        <translation type="vanished">Esteu segur que voleu sortir de VeraGrid?</translation>
     </message>
     <message>
         <source>Close</source>
-        <translation>Tancar</translation>
+        <translation type="vanished">Tancar</translation>
     </message>
     <message>
         <source>No effect, select diagrams or database</source>
-        <translation>Sense efecte, seleccioneu diagrames o base de dades</translation>
+        <translation type="vanished">Sense efecte, seleccioneu diagrames o base de dades</translation>
     </message>
 </context>
 <context>

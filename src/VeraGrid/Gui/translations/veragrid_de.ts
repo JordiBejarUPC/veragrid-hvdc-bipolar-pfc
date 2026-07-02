@@ -278,7 +278,7 @@ li.checked::marker { content: "\2612"; }
     <name>AiChatDialogue</name>
     <message>
         <source>VeraGrid AI dialogue</source>
-        <translation>VeraGrid KI-Dialog</translation>
+        <translation type="vanished">VeraGrid KI-Dialog</translation>
     </message>
     <message>
         <source>Pick or type a GGUF file name</source>
@@ -290,7 +290,7 @@ li.checked::marker { content: "\2612"; }
     </message>
     <message>
         <source>VeraGrid AI</source>
-        <translation>VeraGrid AI</translation>
+        <translation type="vanished">VeraGrid AI</translation>
     </message>
     <message>
         <source>Scan the configured path for GGUF files.</source>
@@ -596,13 +596,17 @@ li.checked::marker { content: "\2612"; }
     </message>
     <message>
         <source>Chinese</source>
-        <translation>Chinesisch</translation>
+        <translation>chinesisch</translation>
     </message>
     <message>
         <source>German</source>
         <translation>Deutsch</translation>
     </message>
-<message><source>Catalan</source><translation>Katalanisch</translation></message></context>
+    <message>
+        <source>Catalan</source>
+        <translation>katalanisch</translation>
+    </message>
+<message><source>Basque</source><translation>baskisch</translation></message><message><source>Galician</source><translation>galizisch</translation></message><message><source>Tongan</source><translation>Tonganisch</translation></message><message><source>Tuvaluan</source><translation>Tuvaluisch</translation></message><message><source>Arabic</source><translation>Arabisch</translation></message><message><source>Italian</source><translation>Italienisch</translation></message><message><source>Greek</source><translation>griechisch</translation></message><message><source>Dutch</source><translation>Niederländisch</translation></message></context>
 <context>
     <name>ControllableShuntEditorDialog</name>
     <message>
@@ -1463,7 +1467,7 @@ li.checked::marker { content: "\2612"; }
     </message>
     <message>
         <source>VeraGrid zip (*.veragrid)</source>
-        <translation>VeraGrid zip (*.veragrid)</translation>
+        <translation type="vanished">VeraGrid zip (*.veragrid)</translation>
     </message>
     <message>
         <source>There is a saving procedure running.

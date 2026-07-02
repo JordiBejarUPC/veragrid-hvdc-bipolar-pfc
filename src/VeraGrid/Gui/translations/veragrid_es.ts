@@ -576,7 +576,7 @@ li.checked::marker { content: "\2612"; }
     </message>
     <message>
         <source>System default</source>
-        <translation>Predeterminado del sistema</translation>
+        <translation>Valor predeterminado del sistema</translation>
     </message>
     <message>
         <source>English</source>
@@ -592,7 +592,7 @@ li.checked::marker { content: "\2612"; }
     </message>
     <message>
         <source>Portuguese</source>
-        <translation>Portugués</translation>
+        <translation>portugués</translation>
     </message>
     <message>
         <source>Chinese</source>
@@ -602,7 +602,11 @@ li.checked::marker { content: "\2612"; }
         <source>German</source>
         <translation>Alemán</translation>
     </message>
-<message><source>Catalan</source><translation>Catalán</translation></message></context>
+    <message>
+        <source>Catalan</source>
+        <translation>catalán</translation>
+    </message>
+<message><source>Basque</source><translation>vasco</translation></message><message><source>Galician</source><translation>gallego</translation></message><message><source>Tongan</source><translation>tongano</translation></message><message><source>Tuvaluan</source><translation>tuvaluano</translation></message><message><source>Arabic</source><translation>árabe</translation></message><message><source>Italian</source><translation>italiano</translation></message><message><source>Greek</source><translation>Griego</translation></message><message><source>Dutch</source><translation>Holandés</translation></message></context>
 <context>
     <name>ControllableShuntEditorDialog</name>
     <message>

@@ -278,7 +278,7 @@ li.checked::标记 { content: "\2612"; }
     <name>AiChatDialogue</name>
     <message>
         <source>VeraGrid AI dialogue</source>
-        <translation>VeraGrid AI 对话</translation>
+        <translation type="vanished">VeraGrid AI 对话</translation>
     </message>
     <message>
         <source>Pick or type a GGUF file name</source>
@@ -290,7 +290,7 @@ li.checked::标记 { content: "\2612"; }
     </message>
     <message>
         <source>VeraGrid AI</source>
-        <translation>VeraGrid AI</translation>
+        <translation type="vanished">VeraGrid AI</translation>
     </message>
     <message>
         <source>Scan the configured path for GGUF files.</source>
@@ -602,7 +602,11 @@ li.checked::标记 { content: "\2612"; }
         <source>German</source>
         <translation>德语</translation>
     </message>
-<message><source>Catalan</source><translation>加泰罗尼亚语</translation></message></context>
+    <message>
+        <source>Catalan</source>
+        <translation>加泰罗尼亚语</translation>
+    </message>
+<message><source>Basque</source><translation>巴斯克</translation></message><message><source>Galician</source><translation>加利西亚语</translation></message><message><source>Tongan</source><translation>汤加</translation></message><message><source>Tuvaluan</source><translation>图瓦卢语</translation></message><message><source>Arabic</source><translation>阿拉伯</translation></message><message><source>Italian</source><translation>意大利语</translation></message><message><source>Greek</source><translation>希腊语</translation></message><message><source>Dutch</source><translation>荷兰语</translation></message></context>
 <context>
     <name>ControllableShuntEditorDialog</name>
     <message>
@@ -1463,7 +1467,7 @@ li.checked::标记 { content: "\2612"; }
     </message>
     <message>
         <source>VeraGrid zip (*.veragrid)</source>
-        <translation>VeraGrid zip (*.veragrid)</translation>
+        <translation type="vanished">VeraGrid zip (*.veragrid)</translation>
     </message>
     <message>
         <source>There is a saving procedure running.

@@ -278,7 +278,7 @@ li.checked::marcador { content: "\2612"; }
     <name>AiChatDialogue</name>
     <message>
         <source>VeraGrid AI dialogue</source>
-        <translation>Diálogo de IA VeraGrid</translation>
+        <translation type="vanished">Diálogo de IA VeraGrid</translation>
     </message>
     <message>
         <source>Pick or type a GGUF file name</source>
@@ -290,7 +290,7 @@ li.checked::marcador { content: "\2612"; }
     </message>
     <message>
         <source>VeraGrid AI</source>
-        <translation>VeraGrid AI</translation>
+        <translation type="vanished">VeraGrid AI</translation>
     </message>
     <message>
         <source>Scan the configured path for GGUF files.</source>
@@ -572,7 +572,7 @@ li.checked::marcador { content: "\2612"; }
     <name>ConfigurationMain</name>
     <message>
         <source>Language</source>
-        <translation>Idioma</translation>
+        <translation>Linguagem</translation>
     </message>
     <message>
         <source>System default</source>
@@ -596,13 +596,17 @@ li.checked::marcador { content: "\2612"; }
     </message>
     <message>
         <source>Chinese</source>
-        <translation>Chinês</translation>
+        <translation>chinês</translation>
     </message>
     <message>
         <source>German</source>
         <translation>Alemão</translation>
     </message>
-<message><source>Catalan</source><translation>Catalão</translation></message></context>
+    <message>
+        <source>Catalan</source>
+        <translation>catalão</translation>
+    </message>
+<message><source>Basque</source><translation>Basco</translation></message><message><source>Galician</source><translation>Galego</translation></message><message><source>Tongan</source><translation>tonganês</translation></message><message><source>Tuvaluan</source><translation>Tuvaluano</translation></message><message><source>Arabic</source><translation>árabe</translation></message><message><source>Italian</source><translation>italiano</translation></message><message><source>Greek</source><translation>grego</translation></message><message><source>Dutch</source><translation>Holandês</translation></message></context>
 <context>
     <name>ControllableShuntEditorDialog</name>
     <message>
@@ -1463,7 +1467,7 @@ li.checked::marcador { content: "\2612"; }
     </message>
     <message>
         <source>VeraGrid zip (*.veragrid)</source>
-        <translation>VeraGrid zip (*.veragrid)</translation>
+        <translation type="vanished">VeraGrid zip (*.veragrid)</translation>
     </message>
     <message>
         <source>There is a saving procedure running.
