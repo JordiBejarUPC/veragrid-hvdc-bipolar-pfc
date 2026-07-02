@@ -586,7 +586,23 @@ li.checked::marcador { content: "\2612"; }
         <source>Español</source>
         <translation>Espanhol</translation>
     </message>
-<message><source>French</source><translation>Francês</translation></message><message><source>Portuguese</source><translation>Português</translation></message></context>
+    <message>
+        <source>French</source>
+        <translation>Francês</translation>
+    </message>
+    <message>
+        <source>Portuguese</source>
+        <translation>Português</translation>
+    </message>
+    <message>
+        <source>Chinese</source>
+        <translation>Chinês</translation>
+    </message>
+    <message>
+        <source>German</source>
+        <translation>Alemão</translation>
+    </message>
+<message><source>Catalan</source><translation>Catalão</translation></message></context>
 <context>
     <name>ControllableShuntEditorDialog</name>
     <message>

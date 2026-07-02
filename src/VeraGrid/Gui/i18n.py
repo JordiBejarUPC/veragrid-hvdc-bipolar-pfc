@@ -18,6 +18,9 @@ class ApplicationLanguage(Enum):
 
     SYSTEM = "system"
     ENGLISH = "en"
+    CATALAN = "ca_ES"
+    CHINESE = "zh_CN"
+    GERMAN = "de_DE"
     FRENCH = "fr_FR"
     PORTUGUESE = "pt_PT"
     SPANISH = "es_ES"
@@ -297,16 +300,25 @@ def language_from_name(name_text: str | None) -> ApplicationLanguage:
     if normalized_name == ApplicationLanguage.ENGLISH.name:
         return ApplicationLanguage.ENGLISH
     else:
-        if normalized_name == ApplicationLanguage.FRENCH.name:
-            return ApplicationLanguage.FRENCH
+        if normalized_name == ApplicationLanguage.CATALAN.name:
+            return ApplicationLanguage.CATALAN
         else:
-            if normalized_name == ApplicationLanguage.PORTUGUESE.name:
-                return ApplicationLanguage.PORTUGUESE
+            if normalized_name == ApplicationLanguage.CHINESE.name:
+                return ApplicationLanguage.CHINESE
             else:
-                if normalized_name == ApplicationLanguage.SPANISH.name:
-                    return ApplicationLanguage.SPANISH
+                if normalized_name == ApplicationLanguage.GERMAN.name:
+                    return ApplicationLanguage.GERMAN
                 else:
-                    return ApplicationLanguage.SYSTEM
+                    if normalized_name == ApplicationLanguage.FRENCH.name:
+                        return ApplicationLanguage.FRENCH
+                    else:
+                        if normalized_name == ApplicationLanguage.PORTUGUESE.name:
+                            return ApplicationLanguage.PORTUGUESE
+                        else:
+                            if normalized_name == ApplicationLanguage.SPANISH.name:
+                                return ApplicationLanguage.SPANISH
+                            else:
+                                return ApplicationLanguage.SYSTEM
 
 
 def read_saved_language() -> ApplicationLanguage:
