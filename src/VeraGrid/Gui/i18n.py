@@ -260,6 +260,58 @@ def get_requested_language_code(
         return normalize_language_code(str(language.value))
 
 
+def get_language_flag_icon_path(language: ApplicationLanguage) -> str:
+    """
+    Return the Qt resource path for one language selector flag icon.
+
+    :param language: Language shown in the selector.
+    :returns: Qt resource path for the matching flag icon.
+    """
+    if language == ApplicationLanguage.SYSTEM:
+        return ":/Icons/icons/flag_system.png"
+    else:
+        if language == ApplicationLanguage.ENGLISH:
+            return ":/Icons/icons/flag_en.png"
+        else:
+            if language == ApplicationLanguage.JAPANESE:
+                return ":/Icons/icons/flag_ja.png"
+            else:
+                if language == ApplicationLanguage.BASQUE:
+                    return ":/Icons/icons/flag_eu.png"
+                else:
+                    if language == ApplicationLanguage.GALICIAN:
+                        return ":/Icons/icons/flag_gl.png"
+                    else:
+                        if language == ApplicationLanguage.ARABIC:
+                            return ":/Icons/icons/flag_ar.png"
+                        else:
+                            if language == ApplicationLanguage.ITALIAN:
+                                return ":/Icons/icons/flag_it.png"
+                            else:
+                                if language == ApplicationLanguage.GREEK:
+                                    return ":/Icons/icons/flag_el.png"
+                                else:
+                                    if language == ApplicationLanguage.DUTCH:
+                                        return ":/Icons/icons/flag_nl.png"
+                                    else:
+                                        if language == ApplicationLanguage.CATALAN:
+                                            return ":/Icons/icons/flag_ca.png"
+                                        else:
+                                            if language == ApplicationLanguage.CHINESE:
+                                                return ":/Icons/icons/flag_zh.png"
+                                            else:
+                                                if language == ApplicationLanguage.GERMAN:
+                                                    return ":/Icons/icons/flag_de.png"
+                                                else:
+                                                    if language == ApplicationLanguage.FRENCH:
+                                                        return ":/Icons/icons/flag_fr.png"
+                                                    else:
+                                                        if language == ApplicationLanguage.PORTUGUESE:
+                                                            return ":/Icons/icons/flag_pt.png"
+                                                        else:
+                                                            return ":/Icons/icons/flag_es.png"
+
+
 def load_translator(prefix: str, directory: str, candidates: list[str]) -> QTranslator | None:
     """
     Load one Qt translator by trying each locale candidate in order.

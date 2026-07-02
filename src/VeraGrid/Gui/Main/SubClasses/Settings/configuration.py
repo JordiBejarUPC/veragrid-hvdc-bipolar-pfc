@@ -5,14 +5,19 @@
 import json
 import os
 from typing import Dict, Union, Any
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 
 import VeraGrid.ThirdParty.qdarktheme as qdarktheme
 from VeraGridEngine.IO.file_system import get_create_veragrid_folder
 from VeraGrid.Gui.Main.SubClasses.Results.results import ResultsMain
 from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
 from VeraGrid.Gui.Diagrams.generic_graphics import set_dark_mode, set_light_mode
-from VeraGrid.Gui.i18n import ApplicationLanguage, ApplicationTranslator, language_from_name
+from VeraGrid.Gui.i18n import (
+    ApplicationLanguage,
+    ApplicationTranslator,
+    get_language_flag_icon_path,
+    language_from_name,
+)
 from VeraGrid.plugins import PluginsInfo, PluginFunction
 from VeraGrid.Gui.gui_functions import add_menu_entry
 
@@ -142,6 +147,8 @@ class ConfigurationMain(ResultsMain):
 
         :returns: None.
         """
+        # Keep the flag icons legible in the selector regardless of the platform style.
+        self.language_combo_box.setIconSize(QtCore.QSize(18, 18))
         self.refresh_language_combo_box_texts()
         self.language_combo_box.currentIndexChanged.connect(self.language_selection_changed)
 
@@ -226,7 +233,12 @@ class ConfigurationMain(ResultsMain):
                                                                 else:
                                                                     display_text = self.tr("Español")
 
-            self.language_combo_box.addItem(display_text, language)
+            # The selector stores the stable enum in item data and only decorates the row with a flag icon.
+            self.language_combo_box.addItem(
+                QtGui.QIcon(get_language_flag_icon_path(language)),
+                display_text,
+                language,
+            )
 
         selected_index: int = self.language_combo_box.findData(current_language)
         if selected_index >= 0:
