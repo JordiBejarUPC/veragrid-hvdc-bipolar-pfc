@@ -3,10 +3,10 @@ from __future__ import annotations
 from typing import Optional
 
 from PySide6 import QtGui, QtWidgets
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QObject, Qt
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QDialog, QDialogButtonBox, QLabel, QScrollArea, QTableWidget, QTableWidgetItem, \
-    QVBoxLayout, QWidget
+    QHBoxLayout, QSizePolicy, QToolButton, QVBoxLayout, QWidget
 
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
@@ -654,12 +654,23 @@ class ValidationSectionDialog(QDialog):
     __slots__ = ("_section_results",)
 
     def __init__(self, section_results: list[ValidationSection], parent: Optional[QtWidgets.QWidget] = None) -> None:
+        """
+        Build one validation-results dialog.
+
+        :param section_results: Ordered validation sections to render.
+        :param parent: Optional parent widget.
+        :return: None.
+        """
         super().__init__(parent)
         self._section_results: list[ValidationSection] = section_results
         self.setWindowTitle("Model Consistency Validation")
         self.resize(860, 620)
 
         layout: QVBoxLayout = QVBoxLayout(self)
+        # The outer layout keeps the scroll area and the close button compact so
+        # the report can fit more validation content before requiring scrolling.
+        layout.setContentsMargins(6, 6, 6, 6)
+        layout.setSpacing(4)
 
         scroll_area: QScrollArea = QScrollArea(self)
         scroll_area.setWidgetResizable(True)
@@ -670,6 +681,10 @@ class ValidationSectionDialog(QDialog):
         scroll_widget: QWidget = QWidget(scroll_area)
         scroll_area.setWidget(scroll_widget)
         scroll_layout: QVBoxLayout = QVBoxLayout(scroll_widget)
+        # The inner layout uses tight spacing so each section title stays visually
+        # attached to its content and the full report is denser to read.
+        scroll_layout.setContentsMargins(6, 6, 6, 6)
+        scroll_layout.setSpacing(2)
 
         intro_label: QLabel = QLabel(
             "Run an informational validation of the edited model structure, mappings, initialization, and port connectivity. "
@@ -677,33 +692,99 @@ class ValidationSectionDialog(QDialog):
         )
         intro_label.setWordWrap(True)
         scroll_layout.addWidget(intro_label)
+        scroll_layout.addSpacing(2)
 
         section: ValidationSection
         for section in self._section_results:
             self._add_section_widget(layout=scroll_layout, section=section)
+
+        # Keep the compact validation rows anchored to the top of the scroll
+        # area so extra dialog height becomes empty space below the sections.
+        scroll_layout.addStretch(1)
 
         button_box: QDialogButtonBox = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok, self)
         button_box.accepted.connect(self.accept)
         layout.addWidget(button_box)
 
     def _add_section_widget(self, layout: QVBoxLayout, section: ValidationSection) -> None:
-        title_label: QLabel = QLabel(section.get_title())
-        title_font: QtGui.QFont = title_label.font()
-        title_font.setBold(True)
-        title_font.setPointSize(title_font.pointSize() + 1)
-        title_label.setFont(title_font)
-        layout.addWidget(title_label)
+        """
+        Append one rendered validation section to the dialog layout.
 
+        :param layout: Parent vertical layout receiving the widgets.
+        :param section: Validation section to render.
+        :return: None.
+        """
         rows: list[ValidationRow] = section.get_rows()
+        has_issues: bool = len(rows) > 0
+        section_header_widget: QWidget = QWidget(self)
+        section_header_layout: QHBoxLayout = QHBoxLayout(section_header_widget)
+        title_background_color: QColor = section_header_widget.palette().color(QtGui.QPalette.ColorRole.Button)
+
+        # The header row must stay compact and use the active Qt theme background
+        # so the collapsed state visually matches the dynamic-editor toolbar style.
+        section_header_layout.setContentsMargins(0, 0, 0, 0)
+        section_header_layout.setSpacing(0)
+        section_header_widget.setStyleSheet(
+            f"background-color: {title_background_color.name()}; color: #173042;"
+        )
+        section_header_widget.setMinimumHeight(0)
+        section_header_widget.setMaximumHeight(24)
+
+        # The left control owns the expand/collapse state and shows the section
+        # title using the standard Qt arrow affordance.
+        title_button: QToolButton = QToolButton(section_header_widget)
+        title_button.setText(section.get_title())
+        title_button.setCheckable(True)
+        title_button.setChecked(False)
+        title_button.setArrowType(Qt.ArrowType.RightArrow)
+        title_button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        title_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        title_button.setContentsMargins(2, 0, 2, 0)
+        title_button.setMinimumHeight(16)
+        title_button.setMaximumHeight(20)
+        title_button.setStyleSheet(
+            "border: none; background: transparent; color: #173042; padding-top: 0px; padding-bottom: 0px;"
+        )
+
+        # The right status text keeps the collapsed overview readable without
+        # requiring the user to expand every validation section.
+        status_summary_label: QLabel = QLabel(section_header_widget)
+        if has_issues:
+            status_summary_label.setText("Issues found")
+            status_summary_label.setStyleSheet("color: #b42318; background: transparent;")
+        else:
+            status_summary_label.setText("All good")
+            status_summary_label.setStyleSheet("color: #027a48; background: transparent;")
+        status_summary_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        status_summary_label.setContentsMargins(0, 0, 2, 0)
+        status_summary_label.setMinimumHeight(16)
+        status_summary_label.setMaximumHeight(20)
+
+        section_header_layout.addWidget(title_button)
+        section_header_layout.addWidget(status_summary_label)
+        layout.addWidget(section_header_widget)
+
+        # The content widget starts collapsed and is toggled only from the header
+        # control so the report opens as a compact section summary list.
+        section_content_widget: QWidget = QWidget(self)
+        section_content_layout: QVBoxLayout = QVBoxLayout(section_content_widget)
+        section_content_layout.setContentsMargins(0, 0, 0, 0)
+        section_content_layout.setSpacing(0)
+        section_content_widget.setVisible(False)
+
         if len(rows) == 0:
-            status_label: QLabel = QLabel("All good")
-            status_label.setStyleSheet("color: #027a48;")
-            layout.addWidget(status_label)
+            # A successful section already exposes its status in the collapsed
+            # header summary, so the expanded body stays empty instead of
+            # repeating the same message.
+            pass
         else:
             if section.get_show_issue_label():
+                # The warning label is kept, but spacing is reduced so the table is
+                # still visible together with the section title in normal cases.
                 warning_label: QLabel = QLabel("Issues found in this section")
                 warning_label.setStyleSheet("color: #b42318;")
-                layout.addWidget(warning_label)
+                warning_label.setContentsMargins(4, 0, 4, 0)
+                section_content_layout.addWidget(warning_label)
             else:
                 pass
 
@@ -717,6 +798,7 @@ class ValidationSectionDialog(QDialog):
             table_widget.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
             table_widget.verticalHeader().setVisible(False)
             table_widget.horizontalHeader().setStretchLastSection(True)
+            table_widget.setContentsMargins(0, 0, 0, 0)
             table_widget.horizontalHeader().setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
             table_widget.horizontalHeader().setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.Stretch)
 
@@ -744,7 +826,31 @@ class ValidationSectionDialog(QDialog):
                 table_widget.verticalHeader().length() + table_widget.horizontalHeader().height() + 8)
             table_widget.setMaximumHeight(
                 table_widget.verticalHeader().length() + table_widget.horizontalHeader().height() + 8)
-            layout.addWidget(table_widget)
+            section_content_layout.addWidget(table_widget)
+
+        title_button.toggled.connect(section_content_widget.setVisible)
+        title_button.toggled.connect(self._update_section_toggle_arrow)
+        layout.addWidget(section_content_widget)
+        layout.addSpacing(1)
+
+    def _update_section_toggle_arrow(self, expanded: bool) -> None:
+        """
+        Update one section-header arrow to match its expanded state.
+
+        :param expanded: Whether the controlled section content is visible.
+        :return: None.
+        """
+        sender_button: QObject | None = self.sender()
+
+        # The slot is shared by all section buttons, so the sender must be
+        # resolved and checked before mutating the arrow visual state.
+        if isinstance(sender_button, QToolButton):
+            if expanded:
+                sender_button.setArrowType(Qt.ArrowType.DownArrow)
+            else:
+                sender_button.setArrowType(Qt.ArrowType.RightArrow)
+        else:
+            pass
 
 
 def get_emt_phase_group(reference: VarPowerFlowReferenceType | None) -> str | None:
