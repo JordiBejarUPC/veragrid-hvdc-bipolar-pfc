@@ -755,7 +755,9 @@ class SimulationsMain(TimeEventsMain):
         :return: QStandardItemModel with one top-level row per Pareto combination
         """
         model: QtGui.QStandardItemModel = QtGui.QStandardItemModel()
-        model.setHorizontalHeaderLabels(["Pareto combination"] + list(drv.results.f_names))
+        model.setHorizontalHeaderLabels(
+            [QtCore.QCoreApplication.translate("SimulationsMain", "Pareto combination")] + list(drv.results.f_names)
+        )
 
         # Iterate only over Pareto-front rows. sorting_indices points back into the
         # full _x/_f arrays, so drv.results.x[i, :] is still the right way to look
@@ -765,7 +767,11 @@ class SimulationsMain(TimeEventsMain):
         for i in drv.results.sorting_indices:
             idx: np.ndarray = np.where(drv.results.x[i, :] != 0)[0]
             if len(idx):
-                label_item: QtGui.QStandardItem = QtGui.QStandardItem(f"Pareto combination {i}")
+                label_item: QtGui.QStandardItem = QtGui.QStandardItem(
+                    QtCore.QCoreApplication.translate("SimulationsMain", "Pareto combination {index}").format(
+                        index=i,
+                    )
+                )
                 label_item.setData(int(i), QtCore.Qt.ItemDataRole.UserRole)
                 row_items: List[QtGui.QStandardItem] = [label_item] + [
                     QtGui.QStandardItem(f"{fi:.2f}") for fi in drv.results.f[i, :]
@@ -799,7 +805,9 @@ class SimulationsMain(TimeEventsMain):
         :return: QStandardItemModel with one top-level row per Pareto combination
         """
         model: QtGui.QStandardItemModel = QtGui.QStandardItemModel()
-        model.setHorizontalHeaderLabels(["Pareto combination"] + list(drv.results.f_names))
+        model.setHorizontalHeaderLabels(
+            [QtCore.QCoreApplication.translate("SimulationsMain", "Pareto combination")] + list(drv.results.f_names)
+        )
 
         # Iterate over Pareto-front rows only. sorting_indices points back into
         # the full _x/_f arrays, so drv.results.x[i, :] is the right slice. We
@@ -808,7 +816,11 @@ class SimulationsMain(TimeEventsMain):
         # sorting or filtering applied to the view.
         for i in drv.results.sorting_indices:
             x_vec: np.ndarray = drv.results.x[i, :]
-            label_item: QtGui.QStandardItem = QtGui.QStandardItem(f"Pareto combination {i}")
+            label_item: QtGui.QStandardItem = QtGui.QStandardItem(
+                QtCore.QCoreApplication.translate("SimulationsMain", "Pareto combination {index}").format(
+                    index=i,
+                )
+            )
             label_item.setData(int(i), QtCore.Qt.ItemDataRole.UserRole)
             row_items: List[QtGui.QStandardItem] = [label_item] + [
                 QtGui.QStandardItem(f"{fi:.2f}") for fi in drv.results.f[i, :]
@@ -835,7 +847,7 @@ class SimulationsMain(TimeEventsMain):
         :return:
         """
         model = QtGui.QStandardItemModel()
-        model.setHorizontalHeaderLabels(["Short circuits"])
+        model.setHorizontalHeaderLabels([QtCore.QCoreApplication.translate("SimulationsMain", "Short circuits")])
 
         for i, sc_name in enumerate(drv.results.sc_names):
             row_items = [QtGui.QStandardItem(sc_name)]

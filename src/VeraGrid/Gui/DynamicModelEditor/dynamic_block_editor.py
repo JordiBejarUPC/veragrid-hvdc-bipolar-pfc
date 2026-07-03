@@ -424,7 +424,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.block_role: int = int(QtCore.Qt.ItemDataRole.UserRole) + 300
         self.mime_type: str = "application/x-veragrid-dynamics-block"
 
-        self.setWindowTitle("Dynamic Model Editor")
+        self.setWindowTitle(self.tr("Dynamic Model Editor"))
 
         self.ui.splitter.setStretchFactor(0, 6)
         self.ui.splitter.setStretchFactor(1, 10)
@@ -442,7 +442,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         self._emt_bus_fallback_warning_shown: bool = False
         self._selected_side_block: Block | None = None
-        self.setWindowTitle(f"Dynamic Model Editor [{self.mode.name}]")
+        self.setWindowTitle(self.tr("Dynamic Model Editor [{mode}]").format(mode=self.mode.name))
         self.block_counters: Dict[BlockType, int] = dict()
         self.scene: DiagramScene = DiagramScene(self)
         self.changes_applied: bool = False
@@ -506,7 +506,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.variables_model.set_mode(DynamicTableModelMode.VARIABLES)
         self.variables_model.set_delegates()
         self.variables_search = QLineEdit()
-        self.variables_search.setPlaceholderText("Search variables...")
+        self.variables_search.setPlaceholderText(self.tr("Search variables..."))
         self.variables_search.setClearButtonEnabled(True)
         self.ui.verticalLayout_7.insertWidget(0, self.variables_search)
         self.variables_proxy = BlockTableFilterProxyModel(search_role=self.BLOCK_SEARCH_ROLE,
@@ -539,7 +539,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.parameters_model.set_mode(DynamicTableModelMode.PARAMETERS)
         self.parameters_model.set_delegates()
         self.parameters_search = QLineEdit()
-        self.parameters_search.setPlaceholderText("Search parameters...")
+        self.parameters_search.setPlaceholderText(self.tr("Search parameters..."))
         self.parameters_search.setClearButtonEnabled(True)
         self.ui.verticalLayout_8.insertWidget(0, self.parameters_search)
         self.parameters_proxy = BlockTableFilterProxyModel(search_role=self.BLOCK_SEARCH_ROLE,
@@ -571,7 +571,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.equations_model.set_mode(DynamicTableModelMode.EQUATIONS)
         self.equations_model.set_delegates()
         self.equations_search = QLineEdit()
-        self.equations_search.setPlaceholderText("Search equations...")
+        self.equations_search.setPlaceholderText(self.tr("Search equations..."))
         self.equations_search.setClearButtonEnabled(True)
         self.ui.verticalLayout_9.insertWidget(0, self.equations_search)
         self.equations_proxy = BlockTableFilterProxyModel(search_role=self.BLOCK_SEARCH_ROLE,
@@ -650,6 +650,40 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
         self.rebuild_scene_from_diagram()
+
+    def changeEvent(self, event: QtCore.QEvent) -> None:
+        """
+        Refresh runtime-owned editor strings after a Qt language change.
+
+        :param event: Incoming Qt change event.
+        :return: None.
+        """
+        QtWidgets.QMainWindow.changeEvent(self, event)
+
+        if event.type() == QtCore.QEvent.Type.LanguageChange:
+            self.ui.retranslateUi(self)
+            self.refresh_runtime_translations()
+        else:
+            pass
+
+    def refresh_runtime_translations(self) -> None:
+        """
+        Refresh the editor strings that are created from Python code.
+
+        :return: None.
+        """
+        self.setWindowTitle(self.tr("Dynamic Model Editor [{mode}]").format(mode=self.mode.name))
+        self.variables_search.setPlaceholderText(self.tr("Search variables..."))
+        self.parameters_search.setPlaceholderText(self.tr("Search parameters..."))
+        self.equations_search.setPlaceholderText(self.tr("Search equations..."))
+        item: Any
+        for item in self.scene.items():
+            refresh_port_metadata = getattr(item, "refresh_port_metadata", None)
+            if callable(refresh_port_metadata):
+                refresh_port_metadata()
+            else:
+                pass
+        self.scene.update()
     # Todo: remove this function when all the dialogs are unified
     def set_modal_template_metadata(self, block: Block,
                                     kind: str,

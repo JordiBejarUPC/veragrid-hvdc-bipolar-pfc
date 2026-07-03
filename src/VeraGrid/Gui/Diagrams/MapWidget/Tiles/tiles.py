@@ -410,16 +410,24 @@ class Tiles(BaseTiles):
         image   tile image data
         error   True if image is 'error' image, don't cache in that case
         """
+        tile_key: tuple[int, float, float] = (level, x, y)
 
-        # put image into in-memory cache, but error images don't go to disk
-        self.cache[(level, x, y)] = image
-        if not error:
-            self.cache.add(key=(level, x, y), image=image)
+        # Keep error tiles in the in-memory LRU only.
+        # Writing them through the normal cache assignment would persist the red
+        # fallback tile to disk because PyCacheBack.__setitem__() is write-through.
+        if error:
+            dict.__setitem__(self.cache, tile_key, image)
+            self.cache._reorder_lru(tile_key)
+            self.cache._enforce_lru_size()
+        else:
+            # Successful tiles still use the normal write-through cache path so the
+            # in-memory and on-disk caches stay synchronized.
+            self.cache[tile_key] = image
 
         # delete the request from the queued requests
         # note that it may not be there - a level change can flush the dict
         try:
-            del self.queued_requests[(level, x, y)]
+            del self.queued_requests[tile_key]
         except KeyError:
             pass
 

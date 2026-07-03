@@ -68,6 +68,12 @@ from VeraGrid.Gui.FileDialogues.PsseDialogue.psse_import import PsseImportDialog
 from VeraGrid.Gui.ProceduralGrid.procedural_grid import ProceduralGridWindow
 from VeraGrid.Gui.AiAgent.ai_chat_dialogue import AiChatDialogue, AiBackendState
 from VeraGrid.Gui.AiAgent.ai_backend import ProviderType
+from VeraGrid.Gui.i18n import (
+    ActionShortcutState,
+    ApplicationTranslator,
+    collect_action_shortcut_states,
+    restore_action_shortcut_states,
+)
 from VeraGridEngine.IO.file_system import get_create_veragrid_folder
 from VeraGrid.Gui.general_dialogues import LogsDialogue
 
@@ -127,6 +133,60 @@ def traverse_objects(name, obj, lst: list, i=0):
                             traverse_objects(name=name + "/" + name2, obj=obj2, lst=lst, i=i + 1)
 
 
+def get_splitter_section_hint(splitter: QtWidgets.QSplitter, section_index: int) -> int:
+    """
+    Return the current size hint for one splitter section.
+
+    :param splitter: Splitter to inspect.
+    :param section_index: Section index inside the splitter.
+    :returns: Preferred section size along the splitter orientation.
+    """
+    section_widget: QtWidgets.QWidget | None = splitter.widget(section_index)
+
+    if section_widget is None:
+        return 0
+    else:
+        section_widget.updateGeometry()
+
+        if splitter.orientation() == QtCore.Qt.Orientation.Horizontal:
+            return max(section_widget.minimumSizeHint().width(), section_widget.minimumWidth())
+        else:
+            return max(section_widget.minimumSizeHint().height(), section_widget.minimumHeight())
+
+
+def refresh_translated_splitter_layouts(root_widget: QtWidgets.QWidget) -> None:
+    """
+    Refresh splitter sections after a language change.
+
+    When translated labels become wider, Qt retranslates the text but can keep
+    old splitter allocations until another layout pass happens. This helper
+    nudges every splitter to re-evaluate its section sizes against the updated
+    widget hints.
+
+    :param root_widget: Top-level widget owning the splitters.
+    :returns: None.
+    """
+    splitter: QtWidgets.QSplitter
+
+    for splitter in root_widget.findChildren(QtWidgets.QSplitter):
+        current_sizes: list[int] = splitter.sizes()
+        desired_sizes: list[int] = list(current_sizes)
+        section_index: int
+
+        if len(current_sizes) == 0:
+            pass
+        else:
+            for section_index in range(splitter.count()):
+                section_hint: int = get_splitter_section_hint(splitter=splitter, section_index=section_index)
+
+                if desired_sizes[section_index] < section_hint:
+                    desired_sizes[section_index] = section_hint
+                else:
+                    pass
+
+            splitter.setSizes(desired_sizes)
+
+
 class BaseMainGui(QMainWindow):
     """
     DiagramFunctionsMain
@@ -141,6 +201,9 @@ class BaseMainGui(QMainWindow):
         QMainWindow.__init__(self, parent)
         self.ui = Ui_mainWindow()
         self.ui.setupUi(self)
+        # Cache the source-language shortcuts once so language changes do not overwrite them
+        # with translated shortcut strings that Qt may parse differently or drop entirely.
+        self._action_shortcut_states: list[ActionShortcutState] = collect_action_shortcut_states(self)
 
         # Declare circuit
         # self.circuit: MultiCircuit = MultiCircuit()
@@ -267,6 +330,7 @@ class BaseMainGui(QMainWindow):
         self.ai_chat_dialogue: AiChatDialogue | None = None
         self.ai_backend_state: AiBackendState = self.build_default_ai_backend_state()
         self.ai_restore_visible: bool = False
+        self.translation_controller: ApplicationTranslator | None = None
 
         # available engines --------------------------------------------------------------------------------------------
         engine_lst = [EngineType.VeraGrid]
@@ -329,6 +393,46 @@ class BaseMainGui(QMainWindow):
         self.ui.toComboBox.currentTextChanged.connect(self.update_from_to_list_views)
         self.ui.engineComboBox.currentTextChanged.connect(self.refresh_ai_context_if_available)
         self.ui.available_results_to_color_comboBox.currentTextChanged.connect(self.refresh_ai_context_if_available)
+
+    def changeEvent(self, event: QtCore.QEvent) -> None:
+        """
+        Refresh the generated UI text after one Qt language change event.
+
+        Qt only emits the language-change notification. The main window must
+        re-run the generated ``retranslateUi()`` function explicitly so every
+        Designer-owned label, menu and tab title is rebuilt in the new language.
+
+        :param event: Incoming Qt change event.
+        :returns: None.
+        """
+        QtWidgets.QMainWindow.changeEvent(self, event)
+
+        if event.type() == QtCore.QEvent.Type.LanguageChange:
+            self.ui.retranslateUi(self)
+            restore_action_shortcut_states(self, self._action_shortcut_states)
+            self.refresh_runtime_translations()
+            QtCore.QTimer.singleShot(0, self.refresh_translated_layouts)
+        else:
+            pass
+
+    def refresh_runtime_translations(self) -> None:
+        """
+        Refresh Python-owned strings after the generated UI has been retransated.
+
+        Subclasses override this hook for strings that are not owned by the
+        ``.ui`` files, such as dynamic window titles or runtime-built combo-box items.
+
+        :returns: None.
+        """
+        pass
+
+    def refresh_translated_layouts(self) -> None:
+        """
+        Refresh splitter geometry after translated texts have changed widget hints.
+
+        :returns: None.
+        """
+        refresh_translated_splitter_layouts(root_widget=self)
 
     def LOCK(self, val: bool = True) -> None:
         """
