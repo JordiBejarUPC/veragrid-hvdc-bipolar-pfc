@@ -3587,8 +3587,14 @@
                 <property name="text">
                  <string>General settings</string>
                 </property>
+                <property name="textFormat">
+                 <enum>Qt::TextFormat::PlainText</enum>
+                </property>
                 <property name="alignment">
                  <set>Qt::AlignmentFlag::AlignBottom|Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft</set>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
                 </property>
                </widget>
               </item>
@@ -4333,7 +4339,11 @@
                   <string>Find the tolerance that best represents the load values for power flow</string>
                  </property>
                  <property name="text">
-                  <string>Find</string>
+                  <string/>
+                 </property>
+                 <property name="icon">
+                  <iconset resource="../Icons/icons.qrc">
+                   <normaloff>:/Icons/icons/calculator.png</normaloff>:/Icons/icons/calculator.png</iconset>
                  </property>
                 </widget>
                </item>

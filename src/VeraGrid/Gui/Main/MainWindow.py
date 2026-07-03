@@ -2383,7 +2383,9 @@ class Ui_mainWindow(object):
         font3 = QFont()
         font3.setPointSize(16)
         self.label_69.setFont(font3)
+        self.label_69.setTextFormat(Qt.TextFormat.PlainText)
         self.label_69.setAlignment(Qt.AlignmentFlag.AlignBottom|Qt.AlignmentFlag.AlignLeading|Qt.AlignmentFlag.AlignLeft)
+        self.label_69.setWordWrap(True)
 
         self.horizontalLayout_13.addWidget(self.label_69)
 
@@ -2685,6 +2687,7 @@ class Ui_mainWindow(object):
         self.find_automatic_precission_Button = QPushButton(self.frame_19)
         self.find_automatic_precission_Button.setObjectName(u"find_automatic_precission_Button")
         self.find_automatic_precission_Button.setMaximumSize(QSize(50, 16777215))
+        self.find_automatic_precission_Button.setIcon(icon129)
 
         self.gridLayout_22.addWidget(self.find_automatic_precission_Button, 8, 2, 1, 1)
 
@@ -6389,7 +6392,7 @@ class Ui_mainWindow(object):
 #if QT_CONFIG(tooltip)
         self.find_automatic_precission_Button.setToolTip(QCoreApplication.translate("mainWindow", u"Find the tolerance that best represents the load values for power flow", None))
 #endif // QT_CONFIG(tooltip)
-        self.find_automatic_precission_Button.setText(QCoreApplication.translate("mainWindow", u"Find", None))
+        self.find_automatic_precission_Button.setText("")
         self.label_6.setText(QCoreApplication.translate("mainWindow", u"Max. iterations", None))
 #if QT_CONFIG(tooltip)
         self.control_remote_voltage_checkBox.setToolTip(QCoreApplication.translate("mainWindow", u"General switch for generators remote voltage control", None))
