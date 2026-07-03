@@ -5,13 +5,19 @@
 import json
 import os
 from typing import Dict, Union, Any
-from PySide6 import QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 
 import VeraGrid.ThirdParty.qdarktheme as qdarktheme
 from VeraGridEngine.IO.file_system import get_create_veragrid_folder
 from VeraGrid.Gui.Main.SubClasses.Results.results import ResultsMain
 from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
 from VeraGrid.Gui.Diagrams.generic_graphics import set_dark_mode, set_light_mode
+from VeraGrid.Gui.i18n import (
+    ApplicationLanguage,
+    ApplicationTranslator,
+    get_language_flag_icon_path,
+    language_from_name,
+)
 from VeraGrid.plugins import PluginsInfo, PluginFunction
 from VeraGrid.Gui.gui_functions import add_menu_entry
 
@@ -116,6 +122,12 @@ class ConfigurationMain(ResultsMain):
         # plugins
         self.plugins_info = PluginsInfo()
 
+        # The language widgets are declared in MainWindow.ui and only need
+        # runtime population and signal wiring here.
+        self.language_label: QtWidgets.QLabel = self.ui.language_label
+        self.language_combo_box: QtWidgets.QComboBox = self.ui.language_combo_box
+        self.create_language_controls()
+
         # check boxes
         # Use the checkbox state-change signal so the theme refresh path runs for both
         # user clicks and programmatic setChecked() calls during configuration loading.
@@ -127,6 +139,186 @@ class ConfigurationMain(ResultsMain):
         self.ui.snapshot_dateTimeEdit.dateTimeChanged.connect(self.snapshot_datetime_changed)
 
         self.plugin_windows_list = list()
+        self.translation_controller: ApplicationTranslator | None = None
+
+    def create_language_controls(self) -> None:
+        """
+        Initialize the language selector embedded in the main settings grid.
+
+        :returns: None.
+        """
+        # Keep the flag icons legible in the selector regardless of the platform style.
+        self.language_combo_box.setIconSize(QtCore.QSize(18, 18))
+        self.refresh_language_combo_box_texts()
+        self.language_combo_box.currentIndexChanged.connect(self.language_selection_changed)
+
+    def refresh_language_combo_box_texts(self) -> None:
+        """
+        Rebuild the language selector labels in the currently active language.
+
+        The combo stores enum values as item data and only the visible text is
+        rewritten, which keeps persistence stable across translations.
+
+        :returns: None.
+        """
+        current_language: ApplicationLanguage = self.get_selected_language()
+        available_languages: list[ApplicationLanguage] = list(
+            [
+                ApplicationLanguage.SYSTEM,
+                ApplicationLanguage.ENGLISH,
+                ApplicationLanguage.JAPANESE,
+                ApplicationLanguage.BASQUE,
+                ApplicationLanguage.GALICIAN,
+                ApplicationLanguage.ARABIC,
+                ApplicationLanguage.ITALIAN,
+                ApplicationLanguage.GREEK,
+                ApplicationLanguage.DUTCH,
+                ApplicationLanguage.CATALAN,
+                ApplicationLanguage.CHINESE,
+                ApplicationLanguage.GERMAN,
+                ApplicationLanguage.FRENCH,
+                ApplicationLanguage.PORTUGUESE,
+                ApplicationLanguage.SPANISH,
+            ]
+        )
+
+        self.language_label.setText(self.tr("Language"))
+        self.language_combo_box.blockSignals(True)
+        self.language_combo_box.clear()
+
+        language: ApplicationLanguage
+
+        for language in available_languages:
+            if language == ApplicationLanguage.SYSTEM:
+                display_text: str = self.tr("System default")
+            else:
+                if language == ApplicationLanguage.ENGLISH:
+                    display_text = self.tr("English")
+                else:
+                    if language == ApplicationLanguage.JAPANESE:
+                        display_text = self.tr("Japanese")
+                    else:
+                        if language == ApplicationLanguage.BASQUE:
+                            display_text = self.tr("Basque")
+                        else:
+                            if language == ApplicationLanguage.GALICIAN:
+                                display_text = self.tr("Galician")
+                            else:
+                                if language == ApplicationLanguage.ARABIC:
+                                    display_text = self.tr("Arabic")
+                                else:
+                                    if language == ApplicationLanguage.ITALIAN:
+                                        display_text = self.tr("Italian")
+                                    else:
+                                        if language == ApplicationLanguage.GREEK:
+                                            display_text = self.tr("Greek")
+                                        else:
+                                            if language == ApplicationLanguage.DUTCH:
+                                                display_text = self.tr("Dutch")
+                                            else:
+                                                if language == ApplicationLanguage.CATALAN:
+                                                    display_text = self.tr("Catalan")
+                                                else:
+                                                    if language == ApplicationLanguage.CHINESE:
+                                                        display_text = self.tr("Chinese")
+                                                    else:
+                                                        if language == ApplicationLanguage.GERMAN:
+                                                            display_text = self.tr("German")
+                                                        else:
+                                                            if language == ApplicationLanguage.FRENCH:
+                                                                display_text = self.tr("French")
+                                                            else:
+                                                                if language == ApplicationLanguage.PORTUGUESE:
+                                                                    display_text = self.tr("Portuguese")
+                                                                else:
+                                                                    display_text = self.tr("Español")
+
+            # The selector stores the stable enum in item data and only decorates the row with a flag icon.
+            self.language_combo_box.addItem(
+                QtGui.QIcon(get_language_flag_icon_path(language)),
+                display_text,
+                language,
+            )
+
+        selected_index: int = self.language_combo_box.findData(current_language)
+        if selected_index >= 0:
+            self.language_combo_box.setCurrentIndex(selected_index)
+        else:
+            self.language_combo_box.setCurrentIndex(0)
+
+        self.language_combo_box.blockSignals(False)
+
+    def set_translation_controller(self, translation_controller: ApplicationTranslator) -> None:
+        """
+        Attach the application translation controller to this settings controller.
+
+        :param translation_controller: Shared application translation controller.
+        :returns: None.
+        """
+        self.translation_controller = translation_controller
+        self.refresh_language_combo_box_texts()
+
+        current_language: ApplicationLanguage = translation_controller.get_current_language()
+        selected_index: int = self.language_combo_box.findData(current_language)
+
+        self.language_combo_box.blockSignals(True)
+        if selected_index >= 0:
+            self.language_combo_box.setCurrentIndex(selected_index)
+        else:
+            self.language_combo_box.setCurrentIndex(0)
+        self.language_combo_box.blockSignals(False)
+
+    def get_selected_language(self) -> ApplicationLanguage:
+        """
+        Return the language currently selected in the GUI.
+
+        :returns: Selected application language.
+        """
+        combo_data: object = self.language_combo_box.currentData()
+
+        if isinstance(combo_data, ApplicationLanguage):
+            return combo_data
+        else:
+            return ApplicationLanguage.SYSTEM
+
+    def set_selected_language(self, language: ApplicationLanguage) -> None:
+        """
+        Select one language option in the GUI without triggering signal loops.
+
+        :param language: Language to select.
+        :returns: None.
+        """
+        selected_index: int = self.language_combo_box.findData(language)
+
+        self.language_combo_box.blockSignals(True)
+        if selected_index >= 0:
+            self.language_combo_box.setCurrentIndex(selected_index)
+        else:
+            self.language_combo_box.setCurrentIndex(0)
+        self.language_combo_box.blockSignals(False)
+
+    def language_selection_changed(self, _index: int) -> None:
+        """
+        Apply the newly selected language to the running application.
+
+        :param _index: Qt combo-box index.
+        :returns: None.
+        """
+        if self.translation_controller is not None:
+            selected_language: ApplicationLanguage = self.get_selected_language()
+            self.translation_controller.set_language(selected_language)
+            self.save_gui_config()
+        else:
+            pass
+
+    def refresh_runtime_translations(self) -> None:
+        """
+        Refresh runtime-owned main-window strings after a language change.
+
+        :returns: None.
+        """
+        super().refresh_runtime_translations()
+        self.refresh_language_combo_box_texts()
 
     def change_theme_mode(self, _checked: bool | None = None) -> None:
         """
@@ -363,6 +555,14 @@ class ConfigurationMain(ResultsMain):
         data = dict()
         gui_struct_to_data(data, struct)
 
+        # Persist the language as an enum name so the saved value remains stable
+        # even when the visible language labels themselves are translated.
+        graphics_data: object = data.get("graphics", None)
+        if isinstance(graphics_data, dict):
+            graphics_data["language"] = self.get_selected_language().name
+        else:
+            pass
+
         return data
 
     def save_gui_config(self):
@@ -388,6 +588,22 @@ class ConfigurationMain(ResultsMain):
             set_dark_mode()
         else:
             set_light_mode()
+
+        graphics_data: object = data.get("graphics", None)
+        if isinstance(graphics_data, dict):
+            saved_language_name: object = graphics_data.get("language", None)
+            if isinstance(saved_language_name, str):
+                selected_language: ApplicationLanguage = language_from_name(saved_language_name)
+                self.set_selected_language(selected_language)
+
+                if self.translation_controller is not None:
+                    self.translation_controller.set_language(selected_language)
+                else:
+                    pass
+            else:
+                pass
+        else:
+            pass
 
     def load_gui_config(self) -> None:
         """

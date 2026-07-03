@@ -261,7 +261,7 @@ class DiagramsMain(CompiledArraysMain):
         if 'fivethirtyeight' in plt.style.available:
             self.ui.plt_style_comboBox.setCurrentText('fivethirtyeight')
 
-        self.ui.diagramSearchLineEdit.setPlaceholderText("Type to search in the current diagram")
+        self.ui.diagramSearchLineEdit.setPlaceholderText(self.tr("Type to search in the current diagram"))
 
         # configure matplotlib for pandas time series
         register_matplotlib_converters()
@@ -313,6 +313,7 @@ class DiagramsMain(CompiledArraysMain):
 
         self.ui.actionSetReticularBranchStyles.triggered.connect(self.set_diagram_branches_reticular_style)
         self.ui.actionSetStraightBranchStyles.triggered.connect(self.set_diagram_branches_straight_style)
+        self.ui.actionRepair_diagram.triggered.connect(self.repair_selected_schematic_diagram)
 
         # Buttons
         self.ui.colour_results_pushButton.clicked.connect(self.colour_diagrams)
@@ -416,8 +417,9 @@ class DiagramsMain(CompiledArraysMain):
 
                 # if the ask, checkbox is checked, then ask
                 if self.ui.ask_before_appliying_layout_checkBox.isChecked():
-                    reply = QtWidgets.QMessageBox.question(self, 'Message',
-                                                           'Are you sure that you want to try an automatic layout?',
+                    reply = QtWidgets.QMessageBox.question(self,
+                                                           self.tr("Message"),
+                                                           self.tr("Are you sure that you want to try an automatic layout?"),
                                                            QtWidgets.QMessageBox.StandardButton.Yes,
                                                            QtWidgets.QMessageBox.StandardButton.No)
 
@@ -2801,8 +2803,12 @@ class DiagramsMain(CompiledArraysMain):
                 f_name = str(os.path.join(self.project_directory, self.ui.grid_name_line_edit.text()))
 
                 # call dialog to select the file
-                filename, type_selected = QtWidgets.QFileDialog.getSaveFileName(self, 'Save image file',
-                                                                                f_name, files_types)
+                filename, type_selected = QtWidgets.QFileDialog.getSaveFileName(
+                    self,
+                    self.tr('Save image file'),
+                    f_name,
+                    self.tr(files_types),
+                )
 
                 if filename != "":
                     if 'svg' in type_selected:
@@ -2832,8 +2838,12 @@ class DiagramsMain(CompiledArraysMain):
                     f_name = str(os.path.join(self.project_directory, self.ui.grid_name_line_edit.text()))
 
                     # call dialog to select the file
-                    filename, type_selected = QtWidgets.QFileDialog.getSaveFileName(self, 'Save video file',
-                                                                                    f_name, files_types)
+                    filename, type_selected = QtWidgets.QFileDialog.getSaveFileName(
+                        self,
+                        self.tr('Save video file'),
+                        f_name,
+                        self.tr(files_types),
+                    )
 
                     if filename != "":
                         if type_selected == "MP4 (*.mp4)" and not filename.endswith('.mp4'):
@@ -4012,3 +4022,15 @@ class DiagramsMain(CompiledArraysMain):
 
         if isinstance(diagram, SchematicWidget):
             diagram.set_all_branch_drawing_styles(SchematicAutoRouteStyle.STRAIGHT)
+
+    def repair_selected_schematic_diagram(self):
+        """
+        Repair suspicious legacy manual injection positions in the selected schematic.
+        """
+        diagram = self.get_selected_diagram_widget()
+
+        if isinstance(diagram, SchematicWidget):
+            repaired_count = diagram.repair_suspicious_injection_positions()
+            self.show_info_toast(f"Repaired {repaired_count} suspicious injection positions")
+        else:
+            self.show_warning_toast("The current diagram is not a schematic :(")

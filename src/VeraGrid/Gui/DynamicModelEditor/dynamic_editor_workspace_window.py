@@ -80,6 +80,29 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         self.ui.searchInTreeLineEdit.setClearButtonEnabled(True)
         self.ui.searchInTreeLineEdit.textChanged.connect(self._apply_tree_filter)
 
+    def changeEvent(self, event: QtCore.QEvent) -> None:
+        """
+        Refresh runtime-owned workspace strings after a Qt language change.
+
+        :param event: Incoming Qt change event.
+        :return: None.
+        """
+        QtWidgets.QMainWindow.changeEvent(self, event)
+
+        if event.type() == QtCore.QEvent.Type.LanguageChange:
+            self.ui.retranslateUi(self)
+            self.refresh_runtime_translations()
+        else:
+            pass
+
+    def refresh_runtime_translations(self) -> None:
+        """
+        Refresh the workspace strings that are created from Python code.
+
+        :return: None.
+        """
+        self._refresh_window_title()
+
     def get_open_workspaces(self) -> list["DynamicEditorWorkspaceWindow"]:
         """
         Return the open workspaces that share this window session.
@@ -443,10 +466,18 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
 
         menu = QtWidgets.QMenu(self.ui.treeView)
         if DynamicSimulationMode.RMS in entry.available_modes:
-            action = add_menu_entry(menu=menu, text="Open RMS", function_ptr=self._open_tree_rms_from_menu)
+            action = add_menu_entry(
+                menu=menu,
+                text=self.tr("Open RMS editor"),
+                function_ptr=self._open_tree_rms_from_menu,
+            )
             action.setData(QtCore.QPersistentModelIndex(index))
         if DynamicSimulationMode.EMT in entry.available_modes:
-            action = add_menu_entry(menu=menu, text="Open EMT", function_ptr=self._open_tree_emt_from_menu)
+            action = add_menu_entry(
+                menu=menu,
+                text=self.tr("Open EMT editor"),
+                function_ptr=self._open_tree_emt_from_menu,
+            )
             action.setData(QtCore.QPersistentModelIndex(index))
 
         if menu.isEmpty():
@@ -704,8 +735,8 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         """
         current_page = self.current_page()
         if current_page is None:
-            self.setWindowTitle("Dynamic Editor Workspace")
+            self.setWindowTitle(self.tr("Dynamic Editor Workspace"))
             return
 
         current_title = self.editor_tabs.tabText(self.editor_tabs.currentIndex())
-        self.setWindowTitle(f"Dynamic Editor - {current_title}")
+        self.setWindowTitle(self.tr("Dynamic Editor - {title}").format(title=current_title))

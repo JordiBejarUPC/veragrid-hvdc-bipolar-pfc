@@ -1556,9 +1556,11 @@ class SchematicWidget(BaseDiagramWidget):
                     width_value = 0.0
                     height_value = 0.0
 
+                scene_position: QPointF = graphic_object.scenePos()
+
                 self.update_diagram_element(device=api_object,
-                                            x=graphic_object.pos().x(),
-                                            y=graphic_object.pos().y(),
+                                            x=scene_position.x(),
+                                            y=scene_position.y(),
                                             w=width_value,
                                             h=height_value,
                                             r=graphic_object.rotation(),
@@ -1566,6 +1568,217 @@ class SchematicWidget(BaseDiagramWidget):
                                             graphic_object=graphic_object)
             else:
                 pass
+
+    @staticmethod
+    def _clamp_manual_injection_alignment(alignment: Any) -> float:
+        """
+        Clamp one optional manual injection alignment value.
+
+        :param alignment: Raw alignment value.
+        :return: Clamped normalized alignment.
+        """
+        if alignment is None:
+            return 0.5
+        else:
+            pass
+
+        alignment_value: float = float(alignment)
+
+        if alignment_value < 0.0:
+            return 0.0
+        elif alignment_value > 1.0:
+            return 1.0
+        else:
+            return alignment_value
+
+    @staticmethod
+    def _is_plausible_manual_injection_local_position(owner_graphic: Any,
+                                                      injection_graphic: Any,
+                                                      local_position: QPointF,
+                                                      multiplier: float) -> bool:
+        """
+        Check whether one manual child position is broadly plausible in owner-local coordinates.
+
+        :param owner_graphic: Parent node graphic.
+        :param injection_graphic: Child injection graphic.
+        :param local_position: Candidate position in owner-local coordinates.
+        :param multiplier: Width-based plausibility margin multiplier.
+        :return: ``True`` when the local point looks reasonable.
+        """
+        margin: float = max(0.0, float(multiplier) * float(owner_graphic.w))
+        min_x: float = -float(injection_graphic.w) - margin
+        max_x: float = float(owner_graphic.w) + margin
+        min_y: float = -float(injection_graphic.h) - margin
+        max_y: float = float(owner_graphic.h) + margin
+
+        return min_x <= float(local_position.x()) <= max_x and min_y <= float(local_position.y()) <= max_y
+
+    @staticmethod
+    def _build_manual_injection_local_position_from_dock(owner_graphic: Any,
+                                                         injection_graphic: Any,
+                                                         dock: dict[str, Any]) -> QPointF:
+        """
+        Rebuild the expected owner-local position from persisted manual dock metadata.
+
+        The dock metadata stores side, alignment, and offset derived from the
+        child local coordinates. Rebuilding that position gives a stronger
+        legacy-repair signal than a large plausibility box because it preserves
+        the user's original dock intent.
+
+        :param owner_graphic: Parent node graphic.
+        :param injection_graphic: Child injection graphic.
+        :param dock: Persisted dock metadata.
+        :return: Expected owner-local child origin.
+        """
+        side_value: str = str(dock.get("side", "bottom")).strip().lower()
+        alignment: float = SchematicWidget._clamp_manual_injection_alignment(dock.get("alignment", None))
+        offset: float = max(0.0, float(dock.get("offset", 0.0)))
+
+        if side_value == "top":
+            x_pos = float(owner_graphic.w) * alignment - float(injection_graphic.w) * 0.5
+            y_pos = -float(injection_graphic.h) - 40.0 - offset
+        elif side_value == "left":
+            x_pos = -float(injection_graphic.w) - 40.0 - offset
+            y_pos = float(owner_graphic.h) * alignment - float(injection_graphic.h) * 0.5
+        elif side_value == "right":
+            x_pos = float(owner_graphic.w) + 40.0 + offset
+            y_pos = float(owner_graphic.h) * alignment - float(injection_graphic.h) * 0.5
+        else:
+            x_pos = float(owner_graphic.w) * alignment - float(injection_graphic.w) * 0.5
+            y_pos = float(owner_graphic.get_bottom_dock_baseline()) + offset
+
+        return QPointF(x_pos, y_pos)
+
+    def repair_suspicious_injection_positions(self, multiplier: float = 4.0) -> int:
+        """
+        Repair legacy manual injection positions that were accidentally persisted in owner-local space.
+
+        Only injections with ``auto_layout == False`` are considered. The helper
+        repairs a point only when the canonical scene-space interpretation is not
+        plausible but the raw stored value treated as owner-local is plausible.
+
+        :param multiplier: Width-based plausibility margin multiplier.
+        :return: Number of repaired injections.
+        """
+        repaired_count: int = 0
+        owners_to_refresh: list[BusGraphicItem] = list()
+        device_type: DeviceType
+
+        for device_type in (
+                DeviceType.GeneratorDevice,
+                DeviceType.BatteryDevice,
+                DeviceType.StaticGeneratorDevice,
+                DeviceType.ShuntDevice,
+                DeviceType.ControllableShuntDevice,
+                DeviceType.LoadDevice,
+                DeviceType.ExternalGridDevice,
+                DeviceType.CurrentInjectionDevice,
+        ):
+            for graphic_object in self._get_device_type_graphics(device_type, InjectionTemplateGraphicItem):
+                location: GraphicLocation | None = self.diagram.query_point(graphic_object.api_object)
+                should_inspect_graphic: bool = location is not None
+                dock: dict[str, Any] = dict()
+                owner_graphic: BusGraphicItem | None = None
+
+                # The repair only makes sense for persisted manual layouts.
+                # Automatic layouts and graphics without stored coordinates are ignored explicitly.
+                if should_inspect_graphic:
+                    dock = self.diagram.get_dock(graphic_object.api_object)
+                    if bool(dock.get("auto_layout", True)):
+                        should_inspect_graphic = False
+                    else:
+                        should_inspect_graphic = True
+                else:
+                    should_inspect_graphic = False
+
+                # The repair logic needs a concrete owner graphic because the legacy bug
+                # mixed owner-local coordinates with scene coordinates.
+                if should_inspect_graphic:
+                    owner_graphic = graphic_object.parent
+
+                    if owner_graphic is None:
+                        should_inspect_graphic = False
+                    else:
+                        should_inspect_graphic = True
+                else:
+                    owner_graphic = None
+
+                if should_inspect_graphic and owner_graphic is not None and location is not None:
+                    # Evaluate the stored point both as canonical scene coordinates and
+                    # as the legacy broken owner-local coordinates.
+                    scene_candidate_local: QPointF = owner_graphic.mapFromScene(QPointF(float(location.x),
+                                                                                        float(location.y)))
+                    raw_candidate_local: QPointF = QPointF(float(location.x), float(location.y))
+
+                    # Rebuild the expected docked local position from the saved dock metadata.
+                    # This gives a much stronger signal than a wide plausibility box alone.
+                    expected_local: QPointF = SchematicWidget._build_manual_injection_local_position_from_dock(
+                        owner_graphic=owner_graphic,
+                        injection_graphic=graphic_object,
+                        dock=dock
+                    )
+                    raw_distance_to_expected: float = float(np.hypot(float(raw_candidate_local.x()
+                                                                            - expected_local.x()),
+                                                                     float(raw_candidate_local.y()
+                                                                           - expected_local.y())))
+                    scene_distance_to_expected: float = float(np.hypot(float(scene_candidate_local.x()
+                                                                              - expected_local.x()),
+                                                                       float(scene_candidate_local.y()
+                                                                             - expected_local.y())))
+                    repair_distance_margin: float = max(20.0, float(owner_graphic.w) * 0.1)
+
+                    # The legacy bug stores the intended owner-local point directly in the
+                    # scene-space slots. When that happens, the raw stored values remain much
+                    # closer to the dock-derived expectation than the scene-space interpretation.
+                    # A clear distance win is enough for the manual repair tool.
+                    scene_is_plausible: bool = SchematicWidget._is_plausible_manual_injection_local_position(
+                        owner_graphic=owner_graphic,
+                        injection_graphic=graphic_object,
+                        local_position=scene_candidate_local,
+                        multiplier=multiplier
+                    )
+                    raw_is_plausible: bool = SchematicWidget._is_plausible_manual_injection_local_position(
+                        owner_graphic=owner_graphic,
+                        injection_graphic=graphic_object,
+                        local_position=raw_candidate_local,
+                        multiplier=multiplier
+                    )
+
+                    if raw_distance_to_expected + repair_distance_margin < scene_distance_to_expected:
+                        should_repair: bool = True
+                    elif raw_is_plausible and not scene_is_plausible:
+                        should_repair = True
+                    else:
+                        should_repair = False
+
+                    # Rewrite the stored point back to canonical scene coordinates.
+                    if should_repair:
+                        graphic_object.setPos(float(raw_candidate_local.x()), float(raw_candidate_local.y()))
+                        scene_position: QPointF = graphic_object.scenePos()
+                        self.update_diagram_element(device=graphic_object.api_object,
+                                                    x=scene_position.x(),
+                                                    y=scene_position.y(),
+                                                    w=float(graphic_object.w),
+                                                    h=float(graphic_object.h),
+                                                    r=float(graphic_object.rotation()),
+                                                    draw_labels=graphic_object.draw_labels,
+                                                    graphic_object=graphic_object)
+                        repaired_count += 1
+
+                        if not any(owner_graphic is existing_owner for existing_owner in owners_to_refresh):
+                            owners_to_refresh.append(owner_graphic)
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    pass
+
+        owner_graphic: BusGraphicItem
+        for owner_graphic in owners_to_refresh:
+            owner_graphic.arrange_children()
+
+        return repaired_count
 
     def set_selected_buses(self, buses: List[Bus]):
         """

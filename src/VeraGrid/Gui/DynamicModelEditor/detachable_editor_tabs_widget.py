@@ -43,20 +43,20 @@ class DynamicEditorPickerDialog(QtWidgets.QDialog):
         self.verticalLayout.setContentsMargins(12, 12, 12, 12)
 
         self.quickOpenGroupBox = QGroupBox(self)
-        self.quickOpenGroupBox.setTitle("Quick Open")
+        self.quickOpenGroupBox.setTitle(self.tr("Quick Open"))
         self.horizontalLayoutQuick = QHBoxLayout(self.quickOpenGroupBox)
 
-        self.quickOpenLabel = QLabel("Open the current block in the other mode.", self.quickOpenGroupBox)
+        self.quickOpenLabel = QLabel(self.tr("Open the current block in the other mode."), self.quickOpenGroupBox)
         self.quickOpenLabel.setWordWrap(True)
         self.horizontalLayoutQuick.addWidget(self.quickOpenLabel)
 
-        self.quickOpenButton = QPushButton("Open", self.quickOpenGroupBox)
+        self.quickOpenButton = QPushButton(self.tr("Open"), self.quickOpenGroupBox)
         self.horizontalLayoutQuick.addWidget(self.quickOpenButton)
 
         self.verticalLayout.addWidget(self.quickOpenGroupBox)
 
         self.searchLineEdit = QLineEdit(self)
-        self.searchLineEdit.setPlaceholderText("Search dynamic editors")
+        self.searchLineEdit.setPlaceholderText(self.tr("Search dynamic editors"))
         self.searchLineEdit.setClearButtonEnabled(True)
         self.verticalLayout.addWidget(self.searchLineEdit)
 
@@ -73,14 +73,14 @@ class DynamicEditorPickerDialog(QtWidgets.QDialog):
         header.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(2, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
 
-        for col, text in enumerate(["Name", "Type", "Modes"]):
+        for col, text in enumerate([self.tr("Name"), self.tr("Type"), self.tr("Modes")]):
             self.entriesTableWidget.setHorizontalHeaderItem(col, QTableWidgetItem(text))
 
         self.verticalLayout.addWidget(self.entriesTableWidget)
 
         self.horizontalLayoutMode = QHBoxLayout()
 
-        self.modeLabel = QLabel("Mode", self)
+        self.modeLabel = QLabel(self.tr("Mode"), self)
         self.horizontalLayoutMode.addWidget(self.modeLabel)
 
         self.modeComboBox = QComboBox(self)
@@ -106,6 +106,34 @@ class DynamicEditorPickerDialog(QtWidgets.QDialog):
         self._configure_quick_open(current_entry=current_entry, current_mode=current_mode)
         self._apply_filter("")
 
+    def changeEvent(self, event: QtCore.QEvent) -> None:
+        """
+        Refresh runtime-owned dialog strings after a Qt language change.
+
+        :param event: Incoming Qt change event.
+        :return: None.
+        """
+        QtWidgets.QDialog.changeEvent(self, event)
+
+        if event.type() == QtCore.QEvent.Type.LanguageChange:
+            self.refresh_runtime_translations()
+        else:
+            pass
+
+    def refresh_runtime_translations(self) -> None:
+        """
+        Refresh the picker strings created directly from Python code.
+
+        :return: None.
+        """
+        self.quickOpenGroupBox.setTitle(self.tr("Quick Open"))
+        self.quickOpenLabel.setText(self.tr("Open the current block in the other mode."))
+        self.quickOpenButton.setText(self.tr("Open"))
+        self.searchLineEdit.setPlaceholderText(self.tr("Search dynamic editors"))
+        self.modeLabel.setText(self.tr("Mode"))
+        self.entriesTableWidget.setHorizontalHeaderLabels([self.tr("Name"), self.tr("Type"), self.tr("Modes")])
+        self._configure_quick_open(current_entry=self._quick_entry, current_mode=self._selected_mode)
+
     def _configure_quick_open(self,
                               current_entry: DynamicEditorEntry | None,
                               current_mode: DynamicSimulationMode | None) -> None:
@@ -120,8 +148,10 @@ class DynamicEditorPickerDialog(QtWidgets.QDialog):
 
         self._quick_mode = alternate_modes[0]
         self.quickOpenGroupBox.setVisible(True)
-        self.quickOpenLabel.setText(f"Open the current block in {self._quick_mode.name}.")
-        self.quickOpenButton.setText(f"Open {self._quick_mode.name}")
+        self.quickOpenLabel.setText(
+            self.tr("Open the current block in {mode}.").format(mode=self._quick_mode.name)
+        )
+        self.quickOpenButton.setText(self.tr("Open {mode}").format(mode=self._quick_mode.name))
 
     def _apply_filter(self, text: str) -> None:
         needle = text.strip().lower()
@@ -204,7 +234,21 @@ class DynamicEditorAddButton(QtWidgets.QToolButton):
         self.setAcceptDrops(True)
         self.setText("+")
         self.setAutoRaise(True)
-        self.setToolTip("Open another Dynamic Editor")
+        self.setToolTip(self.tr("Open another Dynamic Editor"))
+
+    def changeEvent(self, event: QtCore.QEvent) -> None:
+        """
+        Refresh the button tooltip after a Qt language change.
+
+        :param event: Incoming Qt change event.
+        :return: None.
+        """
+        QtWidgets.QToolButton.changeEvent(self, event)
+
+        if event.type() == QtCore.QEvent.Type.LanguageChange:
+            self.setToolTip(self.tr("Open another Dynamic Editor"))
+        else:
+            pass
 
     def dragEnterEvent(self, event: QtGui.QDragEnterEvent) -> None:
         if event.mimeData().hasFormat(DYNAMIC_EDITOR_TAB_MIME):
