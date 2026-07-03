@@ -75,6 +75,21 @@ def _transformer_modal_config_allows_modify(modal_kind: str | None, modal_config
         return modal_kind is not None
 
 
+def _build_port_tooltip(direction: str, index: int, variable_name: str) -> str:
+    """
+    Build one translated tooltip for a block-editor port.
+
+    :param direction: Port direction label.
+    :param index: Zero-based port index.
+    :param variable_name: Variable currently exposed by the port.
+    :return: User-facing tooltip text.
+    """
+    return QtCore.QCoreApplication.translate(
+        "DynamicEditorGraphics",
+        "{direction} {index}: {name}",
+    ).format(direction=direction, index=index, name=variable_name)
+
+
 class BlockPositionChangedCallback:
     __slots__ = ("_editor", "_block_uid")
 
@@ -1155,7 +1170,7 @@ class GenericBlockItem(QGraphicsRectItem):
                 else:
                     pass
                 variable_name = self.subsys.in_vars[i].name
-                port.setToolTip(f"Input {i}: {variable_name}")
+                port.setToolTip(_build_port_tooltip("Input", i, variable_name))
                 label_item = self.input_labels[i]
                 label_item.setPlainText(truncate_port_label(variable_name, _get_editor_constants(self.editor).PORT_LABEL_MAX_CHARS))
 
@@ -1165,7 +1180,7 @@ class GenericBlockItem(QGraphicsRectItem):
                 else:
                     pass
                 variable_name = self.subsys.out_vars[i].name
-                port.setToolTip(f"Output {i}: {variable_name}")
+                port.setToolTip(_build_port_tooltip("Output", i, variable_name))
                 label_item = self.output_labels[i]
                 label_item.setPlainText(truncate_port_label(variable_name, _get_editor_constants(self.editor).PORT_LABEL_MAX_CHARS))
         else:
@@ -1416,7 +1431,7 @@ class PairedItem(QGraphicsPolygonItem):
                 else:
                     pass
                 variable_name = self.subsys.in_vars[i].name
-                port.setToolTip(f"Input {i}: {variable_name}")
+                port.setToolTip(_build_port_tooltip("Input", i, variable_name))
 
             for i, port in enumerate(self.outputs):
                 if port.base_var is None:
@@ -1424,7 +1439,7 @@ class PairedItem(QGraphicsPolygonItem):
                 else:
                     pass
                 variable_name = self.subsys.out_vars[i].name
-                port.setToolTip(f"Output {i}: {variable_name}")
+                port.setToolTip(_build_port_tooltip("Output", i, variable_name))
         else:
             pass
 
@@ -1651,7 +1666,7 @@ class BlockItem(QGraphicsRectItem):
                 else:
                     pass
                 variable_name = self.subsys.in_vars[i].name
-                port.setToolTip(f"Input {i}: {variable_name}")
+                port.setToolTip(_build_port_tooltip("Input", i, variable_name))
                 # label_item = self.input_labels[i]
                 # label_item.setPlainText(truncate_port_label(variable_name, _get_editor_constants(self.editor).PORT_LABEL_MAX_CHARS))
 
@@ -1661,7 +1676,7 @@ class BlockItem(QGraphicsRectItem):
                 else:
                     pass
                 variable_name = self.subsys.out_vars[i].name
-                port.setToolTip(f"Output {i}: {variable_name}")
+                port.setToolTip(_build_port_tooltip("Output", i, variable_name))
                 # label_item = self.output_labels[i]
                 # label_item.setPlainText(truncate_port_label(variable_name, _get_editor_constants(self.editor).PORT_LABEL_MAX_CHARS))
         else:

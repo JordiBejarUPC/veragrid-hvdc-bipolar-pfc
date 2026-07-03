@@ -9,6 +9,7 @@ import numpy as np
 import cv2
 from matplotlib import pyplot as plt
 
+from PySide6 import QtCore
 from PySide6.QtGui import QIcon, QImage
 from PySide6.QtWidgets import (QListView, QTableView, QVBoxLayout, QHBoxLayout, QFrame, QSplitter, QAbstractItemView,
                                QGraphicsItem, QToolBox, QComboBox)
@@ -141,6 +142,9 @@ class BaseDiagramWidget(QSplitter):
     for the schematic and the map
     """
 
+    LIBRARY_TRANSLATION_CONTEXT: str = "BlockEditorWindow"
+    PROPERTIES_TRANSLATION_CONTEXT: str = "TemplateDeviceEditorDialog"
+
     def __init__(self,
                  gui: VeraGridMainGUI | DiagramsMain,
                  diagram: Union[SchematicDiagram, MapDiagram],
@@ -217,8 +221,16 @@ class BaseDiagramWidget(QSplitter):
 
         # Add the library and properties views as toolbox pages.
         self.left_panel_toolbox: QToolBox = QToolBox(self)
-        self.left_panel_toolbox.addItem(self.frame1, QIcon(":/Icons/icons/Catalogue.png"), "Library")
-        self.left_panel_toolbox.addItem(self.frame2, QIcon(":/Icons/icons/data.png"), "Properties")
+        self.left_panel_toolbox.addItem(
+            self.frame1,
+            QIcon(":/Icons/icons/Catalogue.png"),
+            self._translate_library_label(),
+        )
+        self.left_panel_toolbox.addItem(
+            self.frame2,
+            QIcon(":/Icons/icons/data.png"),
+            self._translate_properties_label(),
+        )
         self.addWidget(self.left_panel_toolbox)
         # self.addWidget(self.editor_graphics_view)
 
@@ -248,6 +260,51 @@ class BaseDiagramWidget(QSplitter):
         # video pointer
         self._video: Union[None, cv2.VideoWriter] = None
         self._video_export_active: bool = False
+
+    def changeEvent(self, event: QtCore.QEvent) -> None:
+        """
+        Refresh runtime-owned diagram strings after a Qt language change.
+
+        :param event: Incoming Qt change event.
+        :return: None.
+        """
+        QSplitter.changeEvent(self, event)
+
+        if event.type() == QtCore.QEvent.Type.LanguageChange:
+            self.refresh_runtime_translations()
+        else:
+            pass
+
+    def _translate_library_label(self) -> str:
+        """
+        Return the translated label used by the shared diagram library tab.
+
+        :return: User-facing library label.
+        """
+        return QtCore.QCoreApplication.translate(
+            self.LIBRARY_TRANSLATION_CONTEXT,
+            "Library",
+        )
+
+    def _translate_properties_label(self) -> str:
+        """
+        Return the translated label used by the shared diagram properties tab.
+
+        :return: User-facing properties label.
+        """
+        return QtCore.QCoreApplication.translate(
+            self.PROPERTIES_TRANSLATION_CONTEXT,
+            "Properties",
+        )
+
+    def refresh_runtime_translations(self) -> None:
+        """
+        Refresh the diagram strings created directly from Python code.
+
+        :return: None.
+        """
+        self.left_panel_toolbox.setItemText(0, self._translate_library_label())
+        self.left_panel_toolbox.setItemText(1, self._translate_properties_label())
 
     def set_video_export_active(self, value: bool) -> None:
         """

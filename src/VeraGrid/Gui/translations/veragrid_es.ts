@@ -371,32 +371,32 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../DynamicModelEditor/block_editor.ui" line="14"/>
         <source>BlockEditorWindow</source>
-        <translation>Exportar informe completo</translation>
+        <translation>Editor de bloques</translation>
     </message>
     <message>
         <location filename="../DynamicModelEditor/block_editor.ui" line="116"/>
         <source>Library</source>
-        <translation>Copiar tabla sigma</translation>
+        <translation>Biblioteca</translation>
     </message>
     <message>
         <location filename="../DynamicModelEditor/block_editor.ui" line="155"/>
         <source>Search basic blocks</source>
-        <translation>Planificador de contingencias</translation>
+        <translation>Buscar bloques basicos</translation>
     </message>
     <message>
         <location filename="../DynamicModelEditor/block_editor.ui" line="181"/>
         <source>Variables</source>
-        <translation>Máx.</translation>
+        <translation>Variables</translation>
     </message>
     <message>
         <location filename="../DynamicModelEditor/block_editor.ui" line="215"/>
         <source>Parameters</source>
-        <translation> kV</translation>
+        <translation>Parametros</translation>
     </message>
     <message>
         <location filename="../DynamicModelEditor/block_editor.ui" line="249"/>
         <source>Equations</source>
-        <translation>Mín.</translation>
+        <translation>Ecuaciones</translation>
     </message>
 </context>
 <context>
@@ -404,22 +404,22 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../CatalogueElementsDialogue/catalogue_elements_gui.ui" line="6"/>
         <source>Add catalogue elements</source>
-        <translation>Añadir ramas</translation>
+        <translation>Añadir elementos del catálogo</translation>
     </message>
     <message>
         <location filename="../CatalogueElementsDialogue/catalogue_elements_gui.ui" line="18"/>
         <source>Select the catalogue elements to add</source>
-        <translation>Filtrar ramas por tensión</translation>
+        <translation>Seleccione los elementos del catálogo que desea añadir</translation>
     </message>
     <message>
         <location filename="../CatalogueElementsDialogue/catalogue_elements_gui.ui" line="46"/>
         <source>Select all</source>
-        <translation> MW</translation>
+        <translation>Seleccionar todo</translation>
     </message>
     <message>
         <location filename="../CatalogueElementsDialogue/catalogue_elements_gui.ui" line="53"/>
         <source>Select none</source>
-        <translation> %</translation>
+        <translation>No seleccionar ninguno</translation>
     </message>
 </context>
 <context>
@@ -427,37 +427,37 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_export_gui.ui" line="14"/>
         <source>CGMES Export</source>
-        <translation>Potencia de contingencia</translation>
+        <translation>Exportación CGMES</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_export_gui.ui" line="35"/>
         <source>Profiles to export</source>
-        <translation>Añadir inyecciones</translation>
+        <translation>Perfiles a exportar</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_export_gui.ui" line="101"/>
         <source>Select the CGMES boundary set (single zip file)</source>
-        <translation>Filtrar por potencia</translation>
+        <translation>Seleccione el conjunto de límites CGMES (archivo zip único)</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_export_gui.ui" line="104"/>
         <source>Select</source>
-        <translation>N-</translation>
+        <translation>Seleccionar</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_export_gui.ui" line="111"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If active the CGMEs mapping will be:&lt;/p&gt;&lt;p&gt;GeographicalRegion &amp;lt;-&amp;gt; Area&lt;/p&gt;&lt;p&gt;SubGeographicalRegion &amp;lt;-&amp;gt; Zone&lt;/p&gt;&lt;p&gt;Otherwise:&lt;/p&gt;&lt;p&gt;GeographicalRegion &amp;lt;-&amp;gt; Country&lt;/p&gt;&lt;p&gt;SubGeographicalRegion &amp;lt;-&amp;gt; Community&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>Generar automáticamente todas las contingencias N-x siguiendo la configuración inferior</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Si está activo, el mapeo CGMES será:&lt;/p&gt;&lt;p&gt;GeographicalRegion &amp;lt;-&amp;gt; Área&lt;/p&gt;&lt;p&gt;SubGeographicalRegion &amp;lt;-&amp;gt; Zona&lt;/p&gt;&lt;p&gt;En caso contrario:&lt;/p&gt;&lt;p&gt;GeographicalRegion &amp;lt;-&amp;gt; País&lt;/p&gt;&lt;p&gt;SubGeographicalRegion &amp;lt;-&amp;gt; Comunidad&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_export_gui.ui" line="114"/>
         <source>Map regions like raw files</source>
-        <translation>Generar</translation>
+        <translation>Mapear regiones como en archivos RAW</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_export_gui.ui" line="121"/>
         <source>One file per profile</source>
-        <translation>Copiar al portapapeles</translation>
+        <translation>Un archivo por perfil</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_export_gui.ui" line="128"/>
@@ -482,27 +482,27 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_export_gui.ui" line="221"/>
         <source>CGMES</source>
-        <translation> deg</translation>
+        <translation>CGMES</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_export_gui.ui" line="228"/>
         <source>Boundary set</source>
-        <translation>Latitud</translation>
+        <translation>Conjunto de límites</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_export_gui.ui" line="235"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Converters and DC lines in CGMES are attempted to be converted to the simplified HvdcLine objects in VeraGrid&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>Potencia</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Se intentará convertir los convertidores y las líneas de CC de CGMES en objetos HvdcLine simplificados en VeraGrid.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_export_gui.ui" line="238"/>
         <source>Treat DC equipement as HvdcLines</source>
-        <translation>Bus</translation>
+        <translation>Tratar el equipo de CC como líneas HVDC</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_export_gui.ui" line="273"/>
         <source>Path of the CGMES default boundary set (single zip file)</source>
-        <translation>Generador</translation>
+        <translation>Ruta del conjunto de límites CGMES predeterminado (archivo zip único)</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_export_gui.ui" line="276"/>
@@ -520,37 +520,37 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_import_gui.ui" line="14"/>
         <source>CGMES Import</source>
-        <translation>PANEL DE PUNTUACIÓN</translation>
+        <translation>Importación CGMES</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_import_gui.ui" line="26"/>
         <source>CGMES Version</source>
-        <translation>Un único panel para incidencias estructurales, condicionamiento numérico y margen de estabilidad sigma. Revise qué está mal, corrija elementos seguros y exporte un informe listo para la toma de decisiones.</translation>
+        <translation>Versión CGMES</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_import_gui.ui" line="36"/>
         <source>Topology Mode</source>
-        <translation>Red</translation>
+        <translation>Modo de topología</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_import_gui.ui" line="46"/>
         <source>Recovery Mode</source>
-        <translation>Actualizar puntuación</translation>
+        <translation>Modo de recuperación</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_import_gui.ui" line="56"/>
         <source>Map areas like RAW (Region→Area, SubRegion→Zone)</source>
-        <translation>Corregir incidencias seguras</translation>
+        <translation>Mapear áreas como en RAW (Región→Área, Subregión→Zona)</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_import_gui.ui" line="63"/>
         <source>Try mapping DC network to HVDC line devices</source>
-        <translation>Exportar informe</translation>
+        <translation>Intentar mapear la red de CC a dispositivos de línea HVDC</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_import_gui.ui" line="70"/>
         <source>Create one busbar section per connectivity node</source>
-        <translation>cardCaption</translation>
+        <translation>Crear una sección de barras por nodo de conectividad</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CGMESDialogue/cgmes_import_gui.ui" line="90"/>
@@ -641,22 +641,22 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../DeviceEditors/ControllableShuntEditor/controllable_shunt_editor_gui.ui" line="14"/>
         <source>Controllable shunt editor</source>
-        <translation>cardValue</translation>
+        <translation>Editor de shunt controlable</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/ControllableShuntEditor/controllable_shunt_editor_gui.ui" line="25"/>
         <source>Add</source>
-        <translation>--</translation>
+        <translation>Añadir</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/ControllableShuntEditor/controllable_shunt_editor_gui.ui" line="32"/>
         <source>Delete</source>
-        <translation>Grado --</translation>
+        <translation>Eliminar</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/ControllableShuntEditor/controllable_shunt_editor_gui.ui" line="52"/>
         <source>Done</source>
-        <translation>La puntuación combina la gravedad de las incidencias con el margen de estabilidad sigma.</translation>
+        <translation>Hecho</translation>
     </message>
 </context>
 <context>
@@ -664,12 +664,12 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../DeviceEditors/DcLineEditor/dc_line_editor_gui.ui" line="14"/>
         <source>Line editor</source>
-        <translation>Incidencias totales</translation>
+        <translation>Editor de línea</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/DcLineEditor/dc_line_editor_gui.ui" line="20"/>
         <source>Available templates</source>
-        <translation>0</translation>
+        <translation>Plantillas disponibles</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/DcLineEditor/dc_line_editor_gui.ui" line="30"/>
@@ -679,17 +679,17 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../DeviceEditors/DcLineEditor/dc_line_editor_gui.ui" line="44"/>
         <source>L: Line length [km]</source>
-        <translation>Incidencias críticas</translation>
+        <translation>L: Longitud de línea [km]</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/DcLineEditor/dc_line_editor_gui.ui" line="64"/>
         <source>Imax: Max. current [kA]</source>
-        <translation>Los errores y divergencias merecen atención prioritaria.</translation>
+        <translation>Imax: Corriente máxima [kA]</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/DcLineEditor/dc_line_editor_gui.ui" line="81"/>
         <source>R: Resistance [Ohm/km]</source>
-        <translation>Corrección automática disponible</translation>
+        <translation>R: Resistencia [Ohm/km]</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/DcLineEditor/dc_line_editor_gui.ui" line="98"/>
@@ -702,7 +702,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../FileDialogues/DgsDialogue/dgs_export_gui.ui" line="14"/>
         <source>DGS Export</source>
-        <translation>Asistente de potencia eólica</translation>
+        <translation>Exportación DGS</translation>
     </message>
     <message>
         <location filename="../FileDialogues/DgsDialogue/dgs_export_gui.ui" line="35"/>
@@ -730,17 +730,17 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../FileDialogues/DgsDialogue/dgs_import_gui.ui" line="14"/>
         <source>DGS Import</source>
-        <translation>Datos de la turbina eólica</translation>
+        <translation>Importación DGS</translation>
     </message>
     <message>
         <location filename="../FileDialogues/DgsDialogue/dgs_import_gui.ui" line="26"/>
         <source>Use VSC model for controllable injections</source>
-        <translation>Altura del buje</translation>
+        <translation>Usar modelo VSC para inyecciones controlables</translation>
     </message>
     <message>
         <location filename="../FileDialogues/DgsDialogue/dgs_import_gui.ui" line="33"/>
         <source>Use dynamic information (when available)</source>
-        <translation> m</translation>
+        <translation>Usar información dinámica (cuando esté disponible)</translation>
     </message>
     <message>
         <location filename="../FileDialogues/DgsDialogue/dgs_import_gui.ui" line="53"/>
@@ -760,17 +760,17 @@ li.checked::marker { content: &quot;\2612&quot;; }
         <location filename="../SubstationDesigner/substation_designer_gui.ui" line="14"/>
         <location filename="../SyncDialogue/sync_gui.ui" line="14"/>
         <source>Dialog</source>
-        <translation>Dialogo</translation>
+        <translation>Diálogo</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LoadDesigner/load_designer_ui.ui" line="60"/>
         <source>Definition by peak points</source>
-        <translation>Diálogo</translation>
+        <translation>Definición por puntos pico</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LoadDesigner/load_designer_ui.ui" line="102"/>
         <source>Night valley</source>
-        <translation>Transformador</translation>
+        <translation>Valle nocturno</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LoadDesigner/load_designer_ui.ui" line="120"/>
@@ -783,32 +783,32 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../DeviceEditors/LoadDesigner/load_designer_ui.ui" line="154"/>
         <source>Morning Peak</source>
-        <translation>Subestación</translation>
+        <translation>Pico matinal</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LoadDesigner/load_designer_ui.ui" line="206"/>
         <source>Afternoon valley</source>
-        <translation>Cable</translation>
+        <translation>Valle de la tarde</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LoadDesigner/load_designer_ui.ui" line="258"/>
         <source>Evening Peak</source>
-        <translation>Turbina</translation>
+        <translation>Pico vespertino</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LoadDesigner/load_designer_ui.ui" line="356"/>
         <source>Definition by data points</source>
-        <translation>(Solo puede seleccionarse uno a la vez.)</translation>
+        <translation>Definición por puntos de datos</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CoordinatesInput/coordinates_input_gui.ui" line="72"/>
         <source>Bus longitude</source>
-        <translation>Insertar componente de catálogo</translation>
+        <translation>Longitud del bus</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CoordinatesInput/coordinates_input_gui.ui" line="82"/>
         <source>Load file</source>
-        <translation>Reactor</translation>
+        <translation>Cargar archivo</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CoordinatesInput/coordinates_input_gui.ui" line="96"/>
@@ -819,39 +819,39 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../FileDialogues/CoordinatesInput/coordinates_input_gui.ui" line="116"/>
         <source>Bus y position</source>
-        <translation>Aparamenta</translation>
+        <translation>Posición y del bus</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CoordinatesInput/coordinates_input_gui.ui" line="149"/>
         <location filename="../SubstationDesigner/substation_designer_gui.ui" line="40"/>
         <source>Code</source>
-        <translation>Seleccione los datos del componente que desea añadir al catálogo:</translation>
+        <translation>Código</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CoordinatesInput/coordinates_input_gui.ui" line="156"/>
         <source>Bus latitude</source>
-        <translation>Ventana principal</translation>
+        <translation>Latitud del bus</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CoordinatesInput/coordinates_input_gui.ui" line="163"/>
         <source>Bus x position</source>
-        <translation>Gráfico</translation>
+        <translation>Posición x del bus</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CoordinatesInput/coordinates_input_gui.ui" line="170"/>
         <source>Match mathod:</source>
-        <translation> p.u./km</translation>
+        <translation>Método de coincidencia:</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CoordinatesInput/coordinates_input_gui.ui" line="184"/>
         <source>Assigning magnitudes</source>
-        <translation>Potencia de red</translation>
+        <translation>Asignación de magnitudes</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CoordinatesInput/coordinates_input_gui.ui" line="256"/>
         <location filename="../FileDialogues/ProfilesInput/profiles_from_data_gui.ui" line="390"/>
         <source>Do it!</source>
-        <translation>Número de nodos</translation>
+        <translation>¡Hazlo!</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CoordinatesInput/coordinates_input_gui.ui" line="262"/>
@@ -864,17 +864,17 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../FileDialogues/CoordinatesInput/coordinates_input_gui.ui" line="273"/>
         <source>Match</source>
-        <translation>Susceptancia (B)</translation>
+        <translation>Coincidir</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ProfilesInput/profiles_from_data_gui.ui" line="66"/>
         <source>Import file</source>
-        <translation>Resistencia (R)</translation>
+        <translation>Importar archivo</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ProfilesInput/profiles_from_data_gui.ui" line="80"/>
         <source>Plot selected profile</source>
-        <translation>Relación de expansión</translation>
+        <translation>Graficar perfil seleccionado</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ProfilesInput/profiles_from_data_gui.ui" line="107"/>
@@ -884,88 +884,88 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../FileDialogues/ProfilesInput/profiles_from_data_gui.ui" line="142"/>
         <source>Transform the input profile names</source>
-        <translation>Dispositivos</translation>
+        <translation>Transformar los nombres de los perfiles de entrada</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ProfilesInput/profiles_from_data_gui.ui" line="218"/>
         <source>Automatic link profiles to objects based on their name</source>
-        <translation>Nodos de carga</translation>
+        <translation>Vincular automáticamente perfiles con objetos según su nombre</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ProfilesInput/profiles_from_data_gui.ui" line="232"/>
         <source>Auto-link string simmilarity</source>
-        <translation>Nodos de generación</translation>
+        <translation>Similitud de cadenas para autoenlace</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ProfilesInput/profiles_from_data_gui.ui" line="251"/>
         <source>Random-link profiles and objects</source>
-        <translation>Reactancia (X)</translation>
+        <translation>Vincular perfiles y objetos aleatoriamente</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ProfilesInput/profiles_from_data_gui.ui" line="265"/>
         <source>Assign profile to all objects</source>
-        <translation>Factor de potencia</translation>
+        <translation>Asignar perfil a todos los objetos</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ProfilesInput/profiles_from_data_gui.ui" line="279"/>
         <source>Assign profile to object selection</source>
-        <translation>Vista previa</translation>
+        <translation>Asignar perfil a la selección de objetos</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ProfilesInput/profiles_from_data_gui.ui" line="330"/>
         <source>Set multiplier</source>
-        <translation>Crear red</translation>
+        <translation>Establecer multiplicador</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ProfilesInput/profiles_from_data_gui.ui" line="344"/>
         <source>The profiles for the unassigned objects are set to zero, otherwise they are not set and they remain the default value form the snapshot</source>
-        <translation>Correcciones seguras disponibles desde el panel.</translation>
+        <translation>Los perfiles de los objetos no asignados se establecen en cero; de lo contrario no se establecen y conservan el valor predeterminado de la instantánea.</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ProfilesInput/profiles_from_data_gui.ui" line="347"/>
         <source>Set unassigned to zero</source>
-        <translation>Margen sigma</translation>
+        <translation>Establecer no asignados a cero</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ProfilesInput/profiles_from_data_gui.ui" line="370"/>
         <source>Check if you want the profiles to be normalized on the base object property</source>
-        <translation>Distancia mínima de estabilidad respecto al borde sigma.</translation>
+        <translation>Marque si desea que los perfiles se normalicen respecto a la propiedad base del objeto</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ProfilesInput/profiles_from_data_gui.ui" line="373"/>
         <source>normalized</source>
-        <translation>Cómo usar este panel</translation>
+        <translation>normalizado</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ProfilesInput/profiles_from_data_gui.ui" line="407"/>
         <source>Clear selection</source>
-        <translation>Utilice las secciones inferiores del panel para revisar la visión ejecutiva, los hallazgos detallados, la narrativa de acciones, la vista de estabilidad sigma y los controles de umbral.</translation>
+        <translation>Limpiar selección</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ProfilesInput/profiles_from_models_gui.ui" line="47"/>
         <location filename="../GridMerge/grid_merge_gui.ui" line="53"/>
         <source>Add</source>
-        <translation>sectionTitle</translation>
+        <translation>Añadir</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ProfilesInput/profiles_from_models_gui.ui" line="58"/>
         <source>Clear</source>
-        <translation>Hallazgos</translation>
+        <translation>Limpiar</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ProfilesInput/profiles_from_models_gui.ui" line="149"/>
         <source>If checked, the objects are match using the code property, otherwise the idtag property is used</source>
-        <translation>Filtrar por gravedad, soporte de autocorrección o texto libre.</translation>
+        <translation>Si se marca, los objetos se emparejan usando la propiedad código; de lo contrario se usa la propiedad idtag</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ProfilesInput/profiles_from_models_gui.ui" line="152"/>
         <source>Match using code</source>
-        <translation>Solo autocorregibles</translation>
+        <translation>Coincidir usando código</translation>
     </message>
     <message>
         <location filename="../GridMerge/grid_diff_gui.ui" line="14"/>
         <source>Grid Diff</source>
-        <translation>Buscar mensaje, dispositivo, propiedad o valor</translation>
+        <translation>Diferencia de red</translation>
     </message>
     <message>
         <location filename="../GridMerge/grid_diff_gui.ui" line="44"/>
@@ -975,22 +975,22 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../GridMerge/grid_diff_gui.ui" line="82"/>
         <source>Open the base circuit to compare with</source>
-        <translation>Estabilidad sigma</translation>
+        <translation>Abrir el circuito base con el que comparar</translation>
     </message>
     <message>
         <location filename="../GridMerge/grid_diff_gui.ui" line="85"/>
         <source>Open base</source>
-        <translation>Análisis sigma pendiente.</translation>
+        <translation>Abrir base</translation>
     </message>
     <message>
         <location filename="../GridMerge/grid_diff_gui.ui" line="105"/>
         <source>Save the differentiated grid</source>
-        <translation>Controles de evaluación</translation>
+        <translation>Guardar la red diferenciada</translation>
     </message>
     <message>
         <location filename="../GridMerge/grid_diff_gui.ui" line="108"/>
         <source>Save diff</source>
-        <translation>Ajuste los límites usados por los diagnósticos y, a continuación, actualice la puntuación para comparar escenarios antes de exportar el informe.</translation>
+        <translation>Guardar diferencia</translation>
     </message>
     <message>
         <location filename="../GridMerge/grid_merge_gui.ui" line="14"/>
@@ -1000,68 +1000,68 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../GridMerge/grid_merge_gui.ui" line="50"/>
         <source>The elements of the grid will be added with new idtags. This is useful in the case you want to compose a new grid from grids that are the same.</source>
-        <translation>Rango Vset del generador (mín. / máx.)</translation>
+        <translation>Los elementos de la red se añadirán con nuevos idtags. Esto es útil si desea componer una nueva red a partir de redes iguales.</translation>
     </message>
     <message>
         <location filename="../GridMerge/grid_merge_gui.ui" line="73"/>
         <source>Aply the selected changes</source>
-        <translation>Módulo de tap del transformador (mín. / máx.)</translation>
+        <translation>Aplicar los cambios seleccionados</translation>
     </message>
     <message>
         <location filename="../GridMerge/grid_merge_gui.ui" line="76"/>
         <source>Merge</source>
-        <translation>Tolerancia del tap virtual (%)</translation>
+        <translation>Fusionar</translation>
     </message>
     <message>
         <location filename="../ProceduralGrid/map_warning_ui.ui" line="20"/>
         <source>Please select a Map diagram before expanding the grid.</source>
-        <translation>Tolerancia de desajuste de tensión en líneas (%)</translation>
+        <translation>Seleccione un diagrama de mapa antes de expandir la red.</translation>
     </message>
     <message>
         <location filename="../ProceduralGrid/map_warning_ui.ui" line="27"/>
         <location filename="../ProceduralGrid/voltage_warning_ui.ui" line="41"/>
         <source>OK</source>
-        <translation>Vcc del transformador (%) mín. / máx.</translation>
+        <translation>OK</translation>
     </message>
     <message>
         <location filename="../ProceduralGrid/procedural_grid_ui.ui" line="14"/>
         <source>Procedural grid expansion</source>
-        <translation>Aplicar también correcciones seguras a los perfiles de series temporales</translation>
+        <translation>Expansión procedimental de red</translation>
     </message>
     <message>
         <location filename="../ProceduralGrid/procedural_grid_ui.ui" line="55"/>
         <source>Procedural grid method</source>
-        <translation>Acciones</translation>
+        <translation>Método de red procedimental</translation>
     </message>
     <message>
         <location filename="../ProceduralGrid/procedural_grid_ui.ui" line="65"/>
         <source>Substation to connect</source>
-        <translation>Principal</translation>
+        <translation>Subestación a conectar</translation>
     </message>
     <message>
         <location filename="../ProceduralGrid/procedural_grid_ui.ui" line="75"/>
         <source> Substations</source>
-        <translation>Actualizar puntuación</translation>
+        <translation> Subestaciones</translation>
     </message>
     <message>
         <location filename="../ProceduralGrid/procedural_grid_ui.ui" line="91"/>
         <source>Compute the N closest candiate substations</source>
-        <translation>Corregir incidencias seguras</translation>
+        <translation>Calcular las N subestaciones candidatas más cercanas</translation>
     </message>
     <message>
         <location filename="../ProceduralGrid/procedural_grid_ui.ui" line="94"/>
         <source>Get candiates</source>
-        <translation>Exportar solo incidencias</translation>
+        <translation>Obtener candidatos</translation>
     </message>
     <message>
         <location filename="../ProceduralGrid/procedural_grid_ui.ui" line="101"/>
         <source>Connection substation candidates</source>
-        <translation>Panel de salud de la red</translation>
+        <translation>Candidatos de conexión de subestación</translation>
     </message>
     <message>
         <location filename="../ProceduralGrid/procedural_grid_ui.ui" line="108"/>
         <source>List of subations that can be connected to the selected substations</source>
-        <translation>PANEL DE PUNTUACIÓN</translation>
+        <translation>Lista de subestaciones que pueden conectarse a las subestaciones seleccionadas</translation>
     </message>
     <message>
         <location filename="../ProceduralGrid/procedural_grid_ui.ui" line="197"/>
@@ -1077,13 +1077,13 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../ProceduralGrid/voltage_warning_ui.ui" line="20"/>
         <source>The following substations have voltage levels not present in the grid:</source>
-        <translation>Actualizar puntuación</translation>
+        <translation>Las siguientes subestaciones tienen niveles de tensión no presentes en la red:</translation>
     </message>
     <message>
         <location filename="../SubstationDesigner/substation_designer_gui.ui" line="25"/>
         <location filename="../SubstationDesigner/substation_designer_gui.ui" line="97"/>
         <source> º</source>
-        <translation>Corregir incidencias seguras</translation>
+        <translation> º</translation>
     </message>
     <message>
         <location filename="../SubstationDesigner/substation_designer_gui.ui" line="52"/>
@@ -1098,78 +1098,78 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../SubstationDesigner/substation_designer_gui.ui" line="175"/>
         <source>Add voltage level</source>
-        <translation>Puntuación global</translation>
+        <translation>Añadir nivel de tensión</translation>
     </message>
     <message>
         <location filename="../SubstationDesigner/substation_designer_gui.ui" line="178"/>
         <source>+</source>
-        <translation>cardValue</translation>
+        <translation>+</translation>
     </message>
     <message>
         <location filename="../SubstationDesigner/substation_designer_gui.ui" line="190"/>
         <source>Remove voltage level</source>
-        <translation>--</translation>
+        <translation>Eliminar nivel de tensión</translation>
     </message>
     <message>
         <location filename="../SubstationDesigner/substation_designer_gui.ui" line="193"/>
         <source>-</source>
-        <translation>Grado --</translation>
+        <translation>-</translation>
     </message>
     <message>
         <location filename="../SubstationDesigner/substation_designer_gui.ui" line="224"/>
         <source>Create substation</source>
-        <translation>La puntuación combina la gravedad de las incidencias con el margen de estabilidad sigma.</translation>
+        <translation>Crear subestación</translation>
     </message>
     <message>
         <location filename="../SubstationDesigner/substation_designer_gui.ui" line="227"/>
         <source>Create</source>
-        <translation>Incidencias totales</translation>
+        <translation>Crear</translation>
     </message>
     <message>
         <location filename="../SubstationDesigner/substation_designer_gui.ui" line="242"/>
         <source>Voltage levels</source>
-        <translation>0</translation>
+        <translation>Niveles de tensión</translation>
     </message>
     <message>
         <location filename="../SyncDialogue/sync_gui.ui" line="72"/>
         <source>Accept selected</source>
-        <translation>Todos los mensajes incluidos en la puntuación actual.</translation>
+        <translation>Aceptar seleccionados</translation>
     </message>
     <message>
         <location filename="../SyncDialogue/sync_gui.ui" line="86"/>
         <source>Reject selected changes</source>
-        <translation>Incidencias críticas</translation>
+        <translation>Rechazar cambios seleccionados</translation>
     </message>
     <message>
         <location filename="../SyncDialogue/sync_gui.ui" line="113"/>
         <source>Process all changes as especified</source>
-        <translation>Los errores y divergencias merecen atención prioritaria.</translation>
+        <translation>Procesar todos los cambios según lo especificado</translation>
     </message>
     <message>
         <location filename="../SyncDialogue/sync_gui.ui" line="116"/>
         <location filename="../SystemScaler/system_scaler_ui.ui" line="188"/>
         <source>Do it</source>
-        <translation>Corrección automática disponible</translation>
+        <translation>Hazlo</translation>
     </message>
     <message>
         <location filename="../SystemScaler/system_scaler_ui.ui" line="14"/>
         <source>System Scaler</source>
-        <translation>Correcciones seguras disponibles desde el panel.</translation>
+        <translation>Escalador del sistema</translation>
     </message>
     <message>
         <location filename="../SystemScaler/system_scaler_ui.ui" line="133"/>
         <source>Add scaling checkpoint</source>
-        <translation>Margen sigma</translation>
+        <translation>Añadir punto de control de escalado</translation>
     </message>
     <message>
         <location filename="../SystemScaler/system_scaler_ui.ui" line="147"/>
         <source>Remove scaling checkpoint</source>
-        <translation>Distancia mínima de estabilidad respecto al borde sigma.</translation>
+        <translation>Eliminar punto de control de escalado</translation>
     </message>
     <message>
         <location filename="../SystemScaler/system_scaler_ui.ui" line="174"/>
         <source>Plot the proposed scaling</source>
-        <translation>Cómo usar este panel</translation>
+        <translation>Graficar el escalado propuesto</translation>
     </message>
 </context>
 <context>
@@ -1177,62 +1177,62 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../DynamicModelEditor/dynamic_editor_workspace.ui" line="14"/>
         <source>Dynamic Editor Workspace</source>
-        <translation>Utilice las secciones inferiores del panel para revisar la visión ejecutiva, los hallazgos detallados, la narrativa de acciones, la vista de estabilidad sigma y los controles de umbral.</translation>
+        <translation>Espacio de trabajo del editor dinámico</translation>
     </message>
     <message>
         <location filename="../DynamicModelEditor/dynamic_editor_workspace.ui" line="79"/>
         <source>Type to search the device</source>
-        <translation>sectionTitle</translation>
+        <translation>Escriba para buscar el dispositivo</translation>
     </message>
     <message>
         <location filename="../DynamicModelEditor/dynamic_editor_workspace.ui" line="126"/>
         <source>toolBar</source>
-        <translation>Hallazgos</translation>
+        <translation>Barra de herramientas</translation>
     </message>
     <message>
         <location filename="../DynamicModelEditor/dynamic_editor_workspace.ui" line="157"/>
         <source>CheckModel</source>
-        <translation>Filtrar por gravedad, soporte de autocorrección o texto libre.</translation>
+        <translation>Comprobar modelo</translation>
     </message>
     <message>
         <location filename="../DynamicModelEditor/dynamic_editor_workspace.ui" line="160"/>
         <source>Inspect model</source>
-        <translation>Solo autocorregibles</translation>
+        <translation>Inspeccionar modelo</translation>
     </message>
     <message>
         <location filename="../DynamicModelEditor/dynamic_editor_workspace.ui" line="172"/>
         <source>Center</source>
-        <translation>Buscar mensaje, dispositivo, propiedad o valor</translation>
+        <translation>Centrar</translation>
     </message>
     <message>
         <location filename="../DynamicModelEditor/dynamic_editor_workspace.ui" line="184"/>
         <source>Zoom in</source>
-        <translation>Qué necesita atención</translation>
+        <translation>Acercar</translation>
     </message>
     <message>
         <location filename="../DynamicModelEditor/dynamic_editor_workspace.ui" line="196"/>
         <source>Zoom out</source>
-        <translation>Estabilidad sigma</translation>
+        <translation>Alejar</translation>
     </message>
     <message>
         <location filename="../DynamicModelEditor/dynamic_editor_workspace.ui" line="211"/>
         <source>Delete all</source>
-        <translation>Análisis sigma pendiente.</translation>
+        <translation>Eliminar todo</translation>
     </message>
     <message>
         <location filename="../DynamicModelEditor/dynamic_editor_workspace.ui" line="214"/>
         <source>Delete all blocks to start from scratch.</source>
-        <translation>Controles de evaluación</translation>
+        <translation>Elimine todos los bloques para empezar desde cero.</translation>
     </message>
     <message>
         <location filename="../DynamicModelEditor/dynamic_editor_workspace.ui" line="226"/>
         <source>Validate</source>
-        <translation>Ajuste los límites usados por los diagnósticos y, a continuación, actualice la puntuación para comparar escenarios antes de exportar el informe.</translation>
+        <translation>Validar</translation>
     </message>
     <message>
         <location filename="../DynamicModelEditor/dynamic_editor_workspace.ui" line="238"/>
         <source>view tree</source>
-        <translation>Desequilibrio de potencia activa (%)</translation>
+        <translation>ver árbol</translation>
     </message>
 </context>
 <context>
@@ -1275,7 +1275,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../FileDialogues/ProfilesInput/excel_sheet_selection.ui" line="20"/>
         <source>Excel sheet selection</source>
-        <translation>Rango Vset del generador (mín. / máx.)</translation>
+        <translation>Selección de hoja de Excel</translation>
     </message>
 </context>
 <context>
@@ -1351,17 +1351,17 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../DeviceEditors/GeneratorEditor/generator_editor_gui.ui" line="14"/>
         <source>Reactive power curve editor</source>
-        <translation>Módulo de tap del transformador (mín. / máx.)</translation>
+        <translation>Editor de curva de potencia reactiva</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/GeneratorEditor/generator_editor_gui.ui" line="75"/>
         <source>Add</source>
-        <translation>Tolerancia del tap virtual (%)</translation>
+        <translation>Añadir</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/GeneratorEditor/generator_editor_gui.ui" line="95"/>
         <source>Del</source>
-        <translation>Tolerancia de desajuste de tensión en líneas (%)</translation>
+        <translation>Eliminar</translation>
     </message>
 </context>
 <context>
@@ -1706,12 +1706,12 @@ Cancel and retry?</source>
     <message>
         <location filename="../DeviceEditors/LineEditor/line_editor_gui.ui" line="14"/>
         <source>Line editor</source>
-        <translation>Vcc del transformador (%) mín. / máx.</translation>
+        <translation>Editor de línea</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LineEditor/line_editor_gui.ui" line="20"/>
         <source>Available templates</source>
-        <translation>Aplicar también correcciones seguras a los perfiles de series temporales</translation>
+        <translation>Plantillas disponibles</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LineEditor/line_editor_gui.ui" line="57"/>
@@ -1721,22 +1721,22 @@ Cancel and retry?</source>
     <message>
         <location filename="../DeviceEditors/LineEditor/line_editor_gui.ui" line="74"/>
         <source>Circuit index:</source>
-        <translation>Principal</translation>
+        <translation>Índice de circuito:</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LineEditor/line_editor_gui.ui" line="91"/>
         <source>L: Line length</source>
-        <translation>Actualizar puntuación</translation>
+        <translation>L: Longitud de línea</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LineEditor/line_editor_gui.ui" line="98"/>
         <source> km</source>
-        <translation>Corregir incidencias seguras</translation>
+        <translation> km</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LineEditor/line_editor_gui.ui" line="111"/>
         <source>R: Resistance</source>
-        <translation>Exportar solo incidencias</translation>
+        <translation>R: Resistencia</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LineEditor/line_editor_gui.ui" line="118"/>
@@ -1791,12 +1791,12 @@ Cancel and retry?</source>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="133"/>
         <source>SCORING DASHBOARD</source>
-        <translation>PANEL DE PUNTUACION</translation>
+        <translation>PANEL DE PUNTUACIÓN</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="150"/>
         <source>One dashboard for structural issues, numerical conditioning and sigma stability margin. Review what is wrong, fix safe items and export a decision-ready report.</source>
-        <translation>Un unico panel para incidencias estructurales, condicionamiento numerico y margen de estabilidad sigma. Revise que esta mal, corrija elementos seguros y exporte un informe listo para la toma de decisiones.</translation>
+        <translation>Un único panel para incidencias estructurales, condicionamiento numérico y margen de estabilidad sigma. Revise qué está mal, corrija los elementos seguros y exporte un informe listo para la toma de decisiones.</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="157"/>
@@ -1806,7 +1806,7 @@ Cancel and retry?</source>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="184"/>
         <source>Refresh Score</source>
-        <translation>Actualizar puntuacion</translation>
+        <translation>Actualizar puntuación</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="191"/>
@@ -1830,7 +1830,7 @@ Cancel and retry?</source>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="249"/>
         <source>Overall Score</source>
-        <translation>Puntuacion global</translation>
+        <translation>Puntuación global</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="258"/>
@@ -1855,7 +1855,7 @@ Cancel and retry?</source>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="303"/>
         <source>Score blends issue severity with sigma stability margin.</source>
-        <translation>La puntuacion combina la gravedad de las incidencias con el margen de estabilidad sigma.</translation>
+        <translation>La puntuación combina la gravedad de las incidencias con el margen de estabilidad sigma.</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="340"/>
@@ -1872,22 +1872,22 @@ Cancel and retry?</source>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="360"/>
         <source>All messages included in the current score.</source>
-        <translation>Todos los mensajes incluidos en la puntuacion actual.</translation>
+        <translation>Todos los mensajes incluidos en la puntuación actual.</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="397"/>
         <source>Critical Issues</source>
-        <translation>Incidencias criticas</translation>
+        <translation>Incidencias críticas</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="417"/>
         <source>Errors and divergences deserve first attention.</source>
-        <translation>Los errores y divergencias merecen atencion prioritaria.</translation>
+        <translation>Los errores y divergencias merecen atención prioritaria.</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="454"/>
         <source>Auto-Fix Ready</source>
-        <translation>Autocorreccion disponible</translation>
+        <translation>Autocorrección disponible</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="474"/>
@@ -1902,17 +1902,17 @@ Cancel and retry?</source>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="531"/>
         <source>Minimum stability distance from the sigma boundary.</source>
-        <translation>Distancia minima de estabilidad respecto al borde sigma.</translation>
+        <translation>Distancia mínima de estabilidad respecto al borde sigma.</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="562"/>
         <source>How To Use This Dashboard</source>
-        <translation>Como usar este panel</translation>
+        <translation>Cómo usar este panel</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="572"/>
         <source>Use the dashboard sections below to review the executive overview, detailed findings, action narrative, sigma stability view and threshold controls.</source>
-        <translation>Utilice las secciones inferiores del panel para revisar la vision ejecutiva, los hallazgos detallados, la narrativa de acciones, la vista de estabilidad sigma y los controles de umbral.</translation>
+        <translation>Utilice las secciones inferiores del panel para revisar la visión ejecutiva, los hallazgos detallados, la narrativa de acciones, la vista de estabilidad sigma y los controles de umbral.</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="630"/>
@@ -1920,7 +1920,7 @@ Cancel and retry?</source>
         <location filename="../Analysis/analysis_gui.ui" line="795"/>
         <location filename="../Analysis/analysis_gui.ui" line="872"/>
         <source>sectionTitle</source>
-        <translation>Titulo de seccion</translation>
+        <translation>Título de sección</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="633"/>
@@ -1930,7 +1930,7 @@ Cancel and retry?</source>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="653"/>
         <source>Filter by severity, auto-fix support or free text.</source>
-        <translation>Filtrar por gravedad, soporte de autocorreccion o texto libre.</translation>
+        <translation>Filtrar por gravedad, soporte de autocorrección o texto libre.</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="673"/>
@@ -1945,7 +1945,7 @@ Cancel and retry?</source>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="737"/>
         <source>What Needs Attention</source>
-        <translation>Que necesita atencion</translation>
+        <translation>Qué necesita atención</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="798"/>
@@ -1955,17 +1955,17 @@ Cancel and retry?</source>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="818"/>
         <source>Sigma analysis pending.</source>
-        <translation>Analisis sigma pendiente.</translation>
+        <translation>Análisis sigma pendiente.</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="875"/>
         <source>Assessment Controls</source>
-        <translation>Controles de evaluacion</translation>
+        <translation>Controles de evaluación</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="885"/>
         <source>Adjust the guardrails used by the diagnostics, then refresh the score to compare scenarios before exporting the report.</source>
-        <translation>Ajuste los limites usados por los diagnosticos y, a continuacion, actualice la puntuacion para comparar escenarios antes de exportar el informe.</translation>
+        <translation>Ajuste los límites usados por los diagnósticos y, a continuación, actualice la puntuación para comparar escenarios antes de exportar el informe.</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="931"/>
@@ -1980,7 +1980,7 @@ Cancel and retry?</source>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="994"/>
         <source>Transformer tap module (min / max)</source>
-        <translation>Modulo de tap del transformador (min. / max.)</translation>
+        <translation>Módulo de tap del transformador (min. / max.)</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="1037"/>
@@ -1990,7 +1990,7 @@ Cancel and retry?</source>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="1057"/>
         <source>Line voltage mismatch tolerance (%)</source>
-        <translation>Tolerancia de desajuste de tension en lineas (%)</translation>
+        <translation>Tolerancia de desajuste de tensión en líneas (%)</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="1077"/>
@@ -2000,7 +2000,7 @@ Cancel and retry?</source>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="1116"/>
         <source>Apply safe fixes to time-series profiles too</source>
-        <translation>Aplicar tambien correcciones seguras a los perfiles de series temporales</translation>
+        <translation>Aplicar también correcciones seguras a los perfiles de series temporales</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="1163"/>
@@ -2016,7 +2016,7 @@ Cancel and retry?</source>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="1189"/>
         <source>Refresh score</source>
-        <translation>Actualizar puntuacion</translation>
+        <translation>Actualizar puntuación</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="1194"/>
@@ -2064,12 +2064,12 @@ Cancel and retry?</source>
     <message>
         <location filename="../ContingencyPlanner/contingency_planner_gui.ui" line="93"/>
         <source>Add branches</source>
-        <translation>Anadir ramas</translation>
+        <translation>Añadir ramas</translation>
     </message>
     <message>
         <location filename="../ContingencyPlanner/contingency_planner_gui.ui" line="103"/>
         <source>Filter branches by voltage</source>
-        <translation>Filtrar ramas por tension</translation>
+        <translation>Filtrar ramas por tensión</translation>
     </message>
     <message>
         <location filename="../ContingencyPlanner/contingency_planner_gui.ui" line="151"/>
@@ -2095,7 +2095,7 @@ Cancel and retry?</source>
     <message>
         <location filename="../ContingencyPlanner/contingency_planner_gui.ui" line="181"/>
         <source>Add Injections</source>
-        <translation>Anadir inyecciones</translation>
+        <translation>Añadir inyecciones</translation>
     </message>
     <message>
         <location filename="../ContingencyPlanner/contingency_planner_gui.ui" line="188"/>
@@ -2110,7 +2110,7 @@ Cancel and retry?</source>
     <message>
         <location filename="../ContingencyPlanner/contingency_planner_gui.ui" line="272"/>
         <source>Automatically generate the all the N-x contingencies following the settings below</source>
-        <translation>Generar automaticamente todas las contingencias N-x siguiendo la configuracion inferior</translation>
+        <translation>Generar automáticamente todas las contingencias N-x siguiendo la configuración inferior</translation>
     </message>
     <message>
         <location filename="../ContingencyPlanner/contingency_planner_gui.ui" line="275"/>
@@ -2198,7 +2198,7 @@ Cancel and retry?</source>
     <message>
         <location filename="../DeviceEditors/GeneratorEditor/WindPowerWizard/wind_power_wizard_gui.ui" line="14"/>
         <source>Wind power wizard</source>
-        <translation>Asistente de potencia eolica</translation>
+        <translation>Asistente de potencia eólica</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/GeneratorEditor/WindPowerWizard/wind_power_wizard_gui.ui" line="61"/>
@@ -2213,7 +2213,7 @@ Cancel and retry?</source>
     <message>
         <location filename="../DeviceEditors/GeneratorEditor/WindPowerWizard/wind_power_wizard_gui.ui" line="84"/>
         <source>Plot design curves</source>
-        <translation>Graficar curvas de diseno</translation>
+        <translation>Graficar curvas de diseño</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/GeneratorEditor/WindPowerWizard/wind_power_wizard_gui.ui" line="103"/>
@@ -2223,7 +2223,7 @@ Cancel and retry?</source>
     <message>
         <location filename="../DeviceEditors/GeneratorEditor/WindPowerWizard/wind_power_wizard_gui.ui" line="109"/>
         <source>Wind turbine data</source>
-        <translation>Datos de la turbina eolica</translation>
+        <translation>Datos de la turbina eólica</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/GeneratorEditor/WindPowerWizard/wind_power_wizard_gui.ui" line="182"/>
@@ -2249,7 +2249,7 @@ Cancel and retry?</source>
     <message>
         <location filename="../FileDialogues/LoadCatalogue/SelectComponents.ui" line="14"/>
         <source>Dialog</source>
-        <translation>Dialogo</translation>
+        <translation>Diálogo</translation>
     </message>
     <message>
         <location filename="../FileDialogues/LoadCatalogue/SelectComponents.ui" line="33"/>
@@ -2259,12 +2259,12 @@ Cancel and retry?</source>
     <message>
         <location filename="../FileDialogues/LoadCatalogue/SelectComponents.ui" line="43"/>
         <source>Line</source>
-        <translation>Linea</translation>
+        <translation>Línea</translation>
     </message>
     <message>
         <location filename="../FileDialogues/LoadCatalogue/SelectComponents.ui" line="53"/>
         <source>Substation</source>
-        <translation>Subestacion</translation>
+        <translation>Subestación</translation>
     </message>
     <message>
         <location filename="../FileDialogues/LoadCatalogue/SelectComponents.ui" line="63"/>
@@ -2284,7 +2284,7 @@ Cancel and retry?</source>
     <message>
         <location filename="../FileDialogues/LoadCatalogue/SelectComponents.ui" line="95"/>
         <source>Insert Catalogue Component</source>
-        <translation>Insertar componente de catalogo</translation>
+        <translation>Insertar componente de catálogo</translation>
     </message>
     <message>
         <location filename="../FileDialogues/LoadCatalogue/SelectComponents.ui" line="102"/>
@@ -2299,7 +2299,7 @@ Cancel and retry?</source>
     <message>
         <location filename="../FileDialogues/LoadCatalogue/SelectComponents.ui" line="122"/>
         <source>Please select the component data to add to the catalogue:</source>
-        <translation>Seleccione los datos del componente que desea anadir al catalogo:</translation>
+        <translation>Seleccione los datos del componente que desea añadir al catálogo:</translation>
     </message>
     <message>
         <location filename="../GridGenerator/grid_generator_gui.ui" line="14"/>
@@ -2310,7 +2310,7 @@ Cancel and retry?</source>
     <message>
         <location filename="../GridGenerator/grid_generator_gui.ui" line="191"/>
         <source>Graph</source>
-        <translation>Grafico</translation>
+        <translation>Gráfico</translation>
     </message>
     <message>
         <location filename="../GridGenerator/grid_generator_gui.ui" line="198"/>
@@ -2327,7 +2327,7 @@ Cancel and retry?</source>
     <message>
         <location filename="../GridGenerator/grid_generator_gui.ui" line="231"/>
         <source>Number of nodes</source>
-        <translation>Numero de nodos</translation>
+        <translation>Número de nodos</translation>
     </message>
     <message>
         <location filename="../GridGenerator/grid_generator_gui.ui" line="238"/>
@@ -2342,7 +2342,7 @@ Cancel and retry?</source>
     <message>
         <location filename="../GridGenerator/grid_generator_gui.ui" line="300"/>
         <source>Expansion ratio</source>
-        <translation>Relacion de expansion</translation>
+        <translation>Relación de expansión</translation>
     </message>
     <message>
         <location filename="../GridGenerator/grid_generator_gui.ui" line="307"/>
@@ -2362,7 +2362,7 @@ Cancel and retry?</source>
     <message>
         <location filename="../GridGenerator/grid_generator_gui.ui" line="479"/>
         <source>Generation nodes</source>
-        <translation>Nodos de generacion</translation>
+        <translation>Nodos de generación</translation>
     </message>
     <message>
         <location filename="../GridGenerator/grid_generator_gui.ui" line="486"/>
