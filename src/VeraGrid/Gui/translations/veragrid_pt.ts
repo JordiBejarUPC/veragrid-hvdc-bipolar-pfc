@@ -2286,11 +2286,7 @@ Cancelar e tentar novamente?</translation>
     <message>
         <location filename="../DeviceEditors/LineEditor/line_editor_gui.ui" line="178"/>
         <source> uS/km</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source> uS/km</source>
-        <translation type="vanished"> uS/km</translation>
+        <translation type="unfinished"> uS/km</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LineEditor/line_editor_gui.ui" line="212"/>

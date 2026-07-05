@@ -21,9 +21,6 @@ if TYPE_CHECKING:
     from VeraGrid.Gui.object_model import ObjectsModel
 
 
-CONTEXT_MENU_TRANSLATION_CONTEXT = "ContextMenu"
-
-
 def translate_context_menu_text(text: str) -> str:
     """
     Translate one runtime-created context-menu label.
@@ -34,60 +31,8 @@ def translate_context_menu_text(text: str) -> str:
     if text == "":
         return text
 
-    translated_text: str = QtCore.QCoreApplication.translate(CONTEXT_MENU_TRANSLATION_CONTEXT, text)
+    translated_text: str = QtCore.QCoreApplication.translate("ContextMenu", text)
     return translated_text if translated_text != "" else text
-
-
-def translate_menu_labels_for_runtime(menu: QtWidgets.QMenu) -> None:
-    """
-    Translate every label in one menu tree immediately before it is shown.
-
-    This catches context menus built with raw ``QMenu.addAction()`` calls in
-    addition to the helper-based menus.
-
-    :param menu: Menu to update.
-    :return: Nothing.
-    """
-    if menu.title() != "":
-        menu.setTitle(translate_context_menu_text(menu.title()))
-
-    for action in menu.actions():
-        if action.text() != "":
-            action.setText(translate_context_menu_text(action.text()))
-        submenu = action.menu()
-        if submenu is not None:
-            translate_menu_labels_for_runtime(submenu)
-
-
-def _patch_qmenu_exec_translation() -> None:
-    """
-    Wrap ``QMenu.exec`` and ``QMenu.exec_`` once so handwritten menus translate on display.
-
-    :return: Nothing.
-    """
-    if getattr(QtWidgets.QMenu, "_veragrid_context_menu_i18n_patched", False):
-        return
-
-    original_exec = QtWidgets.QMenu.exec
-
-    def exec_with_translation(self, *args, **kwargs):
-        translate_menu_labels_for_runtime(self)
-        return original_exec(self, *args, **kwargs)
-
-    QtWidgets.QMenu.exec = exec_with_translation
-
-    original_exec_ = getattr(QtWidgets.QMenu, "exec_", None)
-    if callable(original_exec_) and original_exec_ is not original_exec:
-        def exec_with_translation(self, *args, **kwargs):
-            translate_menu_labels_for_runtime(self)
-            return original_exec_(self, *args, **kwargs)
-
-        QtWidgets.QMenu.exec_ = exec_with_translation
-
-    QtWidgets.QMenu._veragrid_context_menu_i18n_patched = True
-
-
-_patch_qmenu_exec_translation()
 
 
 class TreeDelegate(QtWidgets.QItemDelegate):

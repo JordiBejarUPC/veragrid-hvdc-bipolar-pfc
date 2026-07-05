@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (QGraphicsItem, QGraphicsItemGroup, QMenu,
                                QGraphicsSceneHoverEvent, QGraphicsTextItem, QStyleOptionGraphicsItem, QWidget)
 from VeraGrid.Gui.messages import yes_no_question, error_msg
 from VeraGrid.Gui.DeviceEditors.TemplateDeviceEditor.template_device_editor import TemplateDeviceEditor
-from VeraGrid.Gui.gui_functions import add_menu_entry
+from VeraGrid.Gui.gui_functions import add_menu_entry, translate_context_menu_text
 from VeraGrid.Gui.Diagrams.generic_graphics import (GenericDiagramWidget, ACTIVE, DEACTIVATED, OTHER, Square, Circle,
                                                     Polygon, Condenser, InjectionSymbolBase, DraggableLabelItem)
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.route_geometry import (merge_route_with_endpoints,
@@ -1576,58 +1576,58 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         menu = QMenu()
 
         add_menu_entry(menu=menu,
-                       text="Active",
+                       text=translate_context_menu_text("Active"),
                        function_ptr=self.enable_disable_toggle,
                        checkeable=True,
                        checked_value=self.api_object.active)
 
         add_menu_entry(menu=menu,
-                       text="Change bus",
+                       text=translate_context_menu_text("Change bus"),
                        function_ptr=self.change_bus,
                        icon_path=":/Icons/icons/move_bus.png")
 
         add_menu_entry(menu=menu,
-                       text="Draw labels",
+                       text=translate_context_menu_text("Draw labels"),
                        function_ptr=self.enable_disable_label_drawing,
                        checkeable=True,
                        checked_value=self.draw_labels)
 
         add_menu_entry(menu=menu,
-                       text="Editor",
+                       text=translate_context_menu_text("Editor"),
                        function_ptr=self.open_device_editor,
                        icon_path=":/Icons/icons/edit.png")
 
         add_menu_entry(menu=menu,
-                       text="Move behind converter",
+                       text=translate_context_menu_text("Move behind converter"),
                        function_ptr=self.move_behind_converter,
                        icon_path=":/Icons/icons/to_vsc.png")
 
         add_menu_entry(menu=menu,
-                       text="Plot profiles",
+                       text=translate_context_menu_text("Plot profiles"),
                        function_ptr=self.plot,
                        icon_path=":/Icons/icons/plot.png")
 
         add_menu_entry(menu=menu,
-                       text="RMS Editor",
+                       text=translate_context_menu_text("RMS Editor"),
                        function_ptr=self.edit_dynamic_rms,
                        icon_path=":/Icons/icons/dyn_edit.png")
 
         add_menu_entry(menu=menu,
-                       text="EMT Editor",
+                       text=translate_context_menu_text("EMT Editor"),
                        function_ptr=self.edit_dynamic_emt,
                        icon_path=":/Icons/icons/dyn_emt_edit.png")
 
         menu.addSeparator()
 
         add_menu_entry(menu=menu,
-                       text="Rotate 90",
+                       text=translate_context_menu_text("Rotate 90"),
                        function_ptr=self.rotate_90,
                        icon_path=":/Icons/icons/rotate.svg")
 
         menu.addSeparator()
 
         add_menu_entry(menu=menu,
-                       text="Delete",
+                       text=translate_context_menu_text("Delete"),
                        function_ptr=self.delete,
                        icon_path=":/Icons/icons/delete_schematic.png")
 

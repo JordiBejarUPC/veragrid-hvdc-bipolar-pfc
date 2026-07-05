@@ -7,7 +7,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from PySide6 import QtWidgets
-from VeraGrid.Gui.gui_functions import add_menu_entry
+from VeraGrid.Gui.gui_functions import add_menu_entry, translate_context_menu_text
 from VeraGrid.Gui.profile_wizard_utils import fill_substation_weather_profiles
 from VeraGrid.Gui.Diagrams.MapWidget.Injections.map_injections_template_graphics import MapInjectionTemplateGraphicItem
 from VeraGrid.Gui.DeviceEditors.LoadDesigner.load_designer import LoadDesigner
@@ -64,20 +64,20 @@ class MapLoadGraphicItem(MapInjectionTemplateGraphicItem):
         """
         if self.api_object is not None:
             menu = self.get_base_context_menu()
-            menu.addSection("Load")
+            menu.addSection(translate_context_menu_text("Load"))
 
             add_menu_entry(menu=menu,
-                           text="Load profile wizard",
+                           text=translate_context_menu_text("Load profile wizard"),
                            function_ptr=self.load_profile_wizard,
                            icon_path=":/Icons/icons/load_wizard.png")
 
             add_menu_entry(menu=menu,
-                           text="RMS Editor",
+                           text=translate_context_menu_text("RMS Editor"),
                            function_ptr=self.edit_rms,
                            icon_path=":/Icons/icons/dyn_edit.png")
 
             add_menu_entry(menu=menu,
-                           text="EMT Editor",
+                           text=translate_context_menu_text("EMT Editor"),
                            function_ptr=self.edit_emt,
                            icon_path=":/Icons/icons/dyn_emt_edit.png")
 

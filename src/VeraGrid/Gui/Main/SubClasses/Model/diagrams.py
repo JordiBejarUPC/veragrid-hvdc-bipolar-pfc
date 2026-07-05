@@ -3542,28 +3542,28 @@ class DiagramsMain(CompiledArraysMain):
         context_menu = QtWidgets.QMenu(parent=self.ui.diagramsListView)
 
         gf.add_menu_entry(menu=context_menu,
-                          text="New schematic",
+                          text=self.tr("New schematic"),
                           icon_path=":/Icons/icons/schematic.png",
                           function_ptr=self.add_complete_bus_branch_diagram)
 
         gf.add_menu_entry(menu=context_menu,
-                          text="New schematic from selection",
+                          text=self.tr("New schematic from selection"),
                           icon_path=":/Icons/icons/schematic.png",
                           function_ptr=self.new_bus_branch_diagram_from_selection)
 
         gf.add_menu_entry(menu=context_menu,
-                          text="New map",
+                          text=self.tr("New map"),
                           icon_path=":/Icons/icons/map (add).png",
                           function_ptr=self.add_map_diagram)
 
         gf.add_menu_entry(menu=context_menu,
-                          text="Duplicate",
+                          text=self.tr("Duplicate"),
                           icon_path=":/Icons/icons/copy.png",
                           function_ptr=self.duplicate_diagram)
 
         context_menu.addSeparator()
         gf.add_menu_entry(menu=context_menu,
-                          text="Remove",
+                          text=self.tr("Remove"),
                           icon_path=":/Icons/icons/delete3.png",
                           function_ptr=self.remove_diagram)
 

@@ -1306,16 +1306,16 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         if self.api_object is None:
             if self.is_vsc3_terminal_connection():
                 current_route_style = self.get_branch_auto_route_style()
-                route_style_menu = menu.addMenu("Auto route style")
-                reticular_action = route_style_menu.addAction("Reticular")
-                straight_action = route_style_menu.addAction("Straight")
+                route_style_menu = menu.addMenu(translate_context_menu_text("Auto route style"))
+                reticular_action = route_style_menu.addAction(translate_context_menu_text("Reticular"))
+                straight_action = route_style_menu.addAction(translate_context_menu_text("Straight"))
             else:
                 return
         else:
             current_route_style = self.get_branch_auto_route_style()
-            route_style_menu = menu.addMenu("Auto route style")
-            reticular_action = route_style_menu.addAction("Reticular")
-            straight_action = route_style_menu.addAction("Straight")
+            route_style_menu = menu.addMenu(translate_context_menu_text("Auto route style"))
+            reticular_action = route_style_menu.addAction(translate_context_menu_text("Reticular"))
+            straight_action = route_style_menu.addAction(translate_context_menu_text("Straight"))
 
         reticular_action.setCheckable(True)
         straight_action.setCheckable(True)

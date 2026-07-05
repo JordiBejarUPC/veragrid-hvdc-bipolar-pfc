@@ -635,7 +635,7 @@ class ConfigurationMain(ResultsMain):
         self.ui.menuplugins.clear()
 
         add_menu_entry(menu=self.ui.menuplugins,
-                       text="Reload",
+                       text=self.tr("Reload"),
                        icon_path=":/Icons/icons/undo.png",
                        function_ptr=self.add_plugins)
 
