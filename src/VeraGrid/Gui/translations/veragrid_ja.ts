@@ -2283,7 +2283,7 @@ Cancel and retry?</source>
     </message>
     <message>
         <location filename="../DeviceEditors/LineEditor/line_editor_gui.ui" line="178"/>
-        <source> uS/Km</source>
+        <source> uS/km</source>
         <translation>uS/キロ</translation>
     </message>
     <message>
@@ -3018,7 +3018,7 @@ Cancel and retry?</source>
     </message>
     <message>
         <location filename="../FileDialogues/PsseDialogue/psse_import_gui.ui" line="78"/>
-        <source>Flatten viatual taps</source>
+        <source>Flatten virtual taps</source>
         <translation>バイアチュアルタップを平らにする</translation>
     </message>
 </context>

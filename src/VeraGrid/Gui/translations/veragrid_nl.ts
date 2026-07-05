@@ -2283,7 +2283,7 @@ Annuleren en opnieuw proberen?</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LineEditor/line_editor_gui.ui" line="178"/>
-        <source> uS/Km</source>
+        <source> uS/km</source>
         <translation>uS/km</translation>
     </message>
     <message>
@@ -3018,7 +3018,7 @@ Annuleren en opnieuw proberen?</translation>
     </message>
     <message>
         <location filename="../FileDialogues/PsseDialogue/psse_import_gui.ui" line="78"/>
-        <source>Flatten viatual taps</source>
+        <source>Flatten virtual taps</source>
         <translation>Maak viatuele tikken plat</translation>
     </message>
 </context>

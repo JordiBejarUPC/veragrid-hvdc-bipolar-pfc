@@ -2285,8 +2285,8 @@ Cancel and retry?</source>
     </message>
     <message>
         <location filename="../DeviceEditors/LineEditor/line_editor_gui.ui" line="178"/>
-        <source> uS/Km</source>
-        <translation> uS/Km</translation>
+        <source> uS/km</source>
+        <translation> uS/km</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LineEditor/line_editor_gui.ui" line="212"/>
@@ -2315,7 +2315,7 @@ Cancel and retry?</source>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="150"/>
         <source>One dashboard for structural issues, numerical conditioning and sigma stability margin. Review what is wrong, fix safe items and export a decision-ready report.</source>
-        <translation>Un único panel para incidencias estructurales, condicionamiento numérico y margen de estabilidad sigma. Revise qué está mal, corrija los elementos seguros y exporte un informe listo para la toma de decisiones.</translation>
+        <translation>Un único panel para incidencias estructurales, condicionamiento numérico y margen de estabilidad sigma. Revise qué está mal, corrija los elementos y exporte un informe listo para la toma de decisiones.</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="157"/>
@@ -2330,7 +2330,7 @@ Cancel and retry?</source>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="191"/>
         <source>Fix Safe Issues</source>
-        <translation>Corregir incidencias seguras</translation>
+        <translation>Corregir incidencias</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="198"/>
@@ -2431,7 +2431,7 @@ Cancel and retry?</source>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="572"/>
         <source>Use the dashboard sections below to review the executive overview, detailed findings, action narrative, sigma stability view and threshold controls.</source>
-        <translation>Utilice las secciones inferiores del panel para revisar la visión ejecutiva, los hallazgos detallados, la narrativa de acciones, la vista de estabilidad sigma y los controles de umbral.</translation>
+        <translation>Utilice las secciones inferiores del panel para revisar la visión ejecutiva, los hallazgos detallados, la narrativa de acciones, la vista de estabilidad sigma y los umbrales.</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="630"/>
@@ -2454,7 +2454,7 @@ Cancel and retry?</source>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="673"/>
         <source>Only auto-fixable</source>
-        <translation>Solo autocorregibles</translation>
+        <translation>Sólo autocorregibles</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="680"/>
@@ -2519,7 +2519,7 @@ Cancel and retry?</source>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="1116"/>
         <source>Apply safe fixes to time-series profiles too</source>
-        <translation>Aplicar también correcciones seguras a los perfiles de series temporales</translation>
+        <translation>Aplicar correcciones seguras a los perfiles de series temporales</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="1163"/>
@@ -2540,7 +2540,7 @@ Cancel and retry?</source>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="1194"/>
         <source>Fix safe issues</source>
-        <translation>Corregir incidencias seguras</translation>
+        <translation>Corregir incidencias</translation>
     </message>
     <message>
         <location filename="../Analysis/analysis_gui.ui" line="1199"/>
@@ -2629,7 +2629,7 @@ Cancel and retry?</source>
     <message>
         <location filename="../ContingencyPlanner/contingency_planner_gui.ui" line="272"/>
         <source>Automatically generate the all the N-x contingencies following the settings below</source>
-        <translation>Generar automáticamente todas las contingencias N-x siguiendo la configuración inferior</translation>
+        <translation>Generar automáticamente todas las contingencias N-x siguiendo la configuración siguente</translation>
     </message>
     <message>
         <location filename="../ContingencyPlanner/contingency_planner_gui.ui" line="275"/>
@@ -2678,7 +2678,7 @@ Cancel and retry?</source>
         <location filename="../DeviceEditors/GeneratorEditor/WindPowerWizard/wind_power_wizard_gui.ui" line="123"/>
         <location filename="../DeviceEditors/GeneratorEditor/WindPowerWizard/wind_power_wizard_gui.ui" line="146"/>
         <source> deg</source>
-        <translation> deg</translation>
+        <translation> º</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/GeneratorEditor/SolarPowerWizard/solar_power_wizard_gui.ui" line="128"/>
@@ -2910,7 +2910,7 @@ Cancel and retry?</source>
     <message>
         <location filename="../FileDialogues/MatpowerDialogue/matpower_export_gui.ui" line="14"/>
         <source>MATPOWER Export</source>
-        <translation>Exportación MATPOWER</translation>
+        <translation>Exportar a MATPOWER</translation>
     </message>
     <message>
         <location filename="../FileDialogues/MatpowerDialogue/matpower_export_gui.ui" line="35"/>
@@ -2938,7 +2938,7 @@ Cancel and retry?</source>
     <message>
         <location filename="../FileDialogues/PsseDialogue/psse_export_gui.ui" line="14"/>
         <source>PSS/e Export</source>
-        <translation>Exportación PSS/e</translation>
+        <translation>Exportación a PSS/e</translation>
     </message>
     <message>
         <location filename="../FileDialogues/PsseDialogue/psse_export_gui.ui" line="35"/>
@@ -3020,7 +3020,7 @@ Cancel and retry?</source>
     </message>
     <message>
         <location filename="../FileDialogues/PsseDialogue/psse_import_gui.ui" line="78"/>
-        <source>Flatten viatual taps</source>
+        <source>Flatten virtual taps</source>
         <translation>Aplanar taps virtuales</translation>
     </message>
 </context>
@@ -3029,7 +3029,7 @@ Cancel and retry?</source>
     <message>
         <location filename="../GridReduce/grid_reduce_gui.ui" line="14"/>
         <source>Grid Merge</source>
-        <translation>Fusión de red</translation>
+        <translation>Fusionar red</translation>
     </message>
     <message>
         <location filename="../GridReduce/grid_reduce_gui.ui" line="68"/>
@@ -3135,7 +3135,7 @@ Cancel and retry?</source>
         <source>There are {columns} columns, the plot might take a lot to render.
 Are you ok with potentially waiting a lot?</source>
         <translation type="vanished">Hay {columns} columnas; el gráfico puede tardar bastante en renderizarse.
-¿Está de acuerdo con esperar bastante si fuera necesario?</translation>
+¿Está de acuerdo?</translation>
     </message>
     <message>
         <source>Plot</source>
@@ -3155,7 +3155,7 @@ Are you ok with potentially waiting a lot?</source>
     </message>
     <message>
         <source>There is no profile displayed, please display one</source>
-        <translation type="vanished">No hay ningún perfil mostrado; muestre uno, por favor</translation>
+        <translation type="vanished">No hay ningún perfil mostrado; por favor muestre uno</translation>
     </message>
     <message>
         <source>Copy profile to clipboard</source>
@@ -3171,7 +3171,7 @@ Are you ok with potentially waiting a lot?</source>
     </message>
     <message>
         <source>Do you want to delete the results driver {study_name}?</source>
-        <translation type="vanished">¿Desea eliminar el controlador de resultados {study_name}?</translation>
+        <translation type="vanished">¿Desea eliminar el resultado {study_name}?</translation>
     </message>
     <message>
         <source>Message</source>
@@ -3187,7 +3187,7 @@ Are you ok with potentially waiting a lot?</source>
     </message>
     <message>
         <source>P snapshot set from the OPF results</source>
-        <translation type="vanished">Instantánea P establecida a partir de los resultados del OPF</translation>
+        <translation type="vanished">Valores de P establecidos en la instantánea a partir de los resultados del OPF</translation>
     </message>
     <message>
         <source>The OPF time series has no results :(</source>
@@ -3199,7 +3199,7 @@ Are you ok with potentially waiting a lot?</source>
     </message>
     <message>
         <source>P profiles set from the OPF results</source>
-        <translation type="vanished">Perfiles P establecidos a partir de los resultados del OPF</translation>
+        <translation type="vanished">Perfiles de P establecidos a partir de los resultados del OPF</translation>
     </message>
     <message>
         <source>Export logs</source>
@@ -3633,19 +3633,19 @@ Resultados del flujo de potencia Monte Carlo:</translation>
     </message>
     <message>
         <source>Solid 3ph fault</source>
-        <translation type="vanished">Falla trifásica sólida</translation>
+        <translation type="vanished">Falta trifásica sólida</translation>
     </message>
     <message>
         <source>Near-bolted three-phase fault</source>
-        <translation type="vanished">Falla trifásica casi franca</translation>
+        <translation type="vanished">Falta trifásica casi franca</translation>
     </message>
     <message>
         <source>Solid phase ground fault</source>
-        <translation type="vanished">Falla sólida fase-tierra</translation>
+        <translation type="vanished">Falta sólida fase-tierra</translation>
     </message>
     <message>
         <source>Near-bolted phase-to-ground fault</source>
-        <translation type="vanished">Falla fase-tierra casi franca</translation>
+        <translation type="vanished">Falta fase-tierra casi franca</translation>
     </message>
     <message>
         <source>Metallic conductor conductor contact</source>
@@ -3685,7 +3685,7 @@ Resultados del flujo de potencia Monte Carlo:</translation>
     </message>
     <message>
         <source>Typical vegetation high-impedance fault</source>
-        <translation type="vanished">Falla típica de vegetación de alta impedancia</translation>
+        <translation type="vanished">Falta típica de vegetación de alta impedancia</translation>
     </message>
     <message>
         <source>Wet tree or wet vegetation contact</source>
@@ -3701,7 +3701,7 @@ Resultados del flujo de potencia Monte Carlo:</translation>
     </message>
     <message>
         <source>Dry vegetation high-impedance fault</source>
-        <translation type="vanished">Falla de vegetación seca de alta impedancia</translation>
+        <translation type="vanished">Falta de vegetación seca de alta impedancia</translation>
     </message>
     <message>
         <source>Downed conductor on wet soil</source>
@@ -3729,15 +3729,15 @@ Resultados del flujo de potencia Monte Carlo:</translation>
     </message>
     <message>
         <source>Insulator contamination or leakage fault</source>
-        <translation type="vanished">Falla por contaminación o fuga en aislador</translation>
+        <translation type="vanished">Falta por contaminación o fuga en aislador</translation>
     </message>
     <message>
         <source>Leakage-type high-impedance fault</source>
-        <translation type="vanished">Falla de alta impedancia tipo fuga</translation>
+        <translation type="vanished">Falta de alta impedancia tipo fuga</translation>
     </message>
     <message>
         <source>Generic arcing phase ground fault</source>
-        <translation type="vanished">Falla genérica fase-tierra con arco</translation>
+        <translation type="vanished">Falta genérica fase-tierra con arco</translation>
     </message>
     <message>
         <source>Simple resistive arc approximation</source>
@@ -3745,7 +3745,7 @@ Resultados del flujo de potencia Monte Carlo:</translation>
     </message>
     <message>
         <source>Severe high resistance transmission fault</source>
-        <translation type="vanished">Falla severa de transmisión con alta resistencia</translation>
+        <translation type="vanished">Falta severa de transmisión con alta resistencia</translation>
     </message>
     <message>
         <source>High-resistance EHV fault scenario</source>
