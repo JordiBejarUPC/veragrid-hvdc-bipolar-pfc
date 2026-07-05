@@ -7561,23 +7561,23 @@ Monte Carlo power flow results:</source>
         <translation>维修图</translation>
     </message>
 </context>
-<context>
-    <name>messages</name>
-    <message>
-        <source>Information</source>
-        <translation type="vanished">信息</translation>
-    </message>
-    <message>
-        <source>Warning</source>
-        <translation type="vanished">警告</translation>
-    </message>
-    <message>
-        <source>Error</source>
-        <translation type="vanished">错误</translation>
-    </message>
-    <message>
-        <source>Question</source>
-        <translation type="vanished">问题</translation>
-    </message>
-</context>
+    <context>
+        <name>messages</name>
+        <message>
+            <source>Information</source>
+            <translation>信息</translation>
+        </message>
+        <message>
+            <source>Warning</source>
+            <translation>警告</translation>
+        </message>
+        <message>
+            <source>Error</source>
+            <translation>错误</translation>
+        </message>
+        <message>
+            <source>Question</source>
+            <translation>问题</translation>
+        </message>
+    </context>
 </TS>

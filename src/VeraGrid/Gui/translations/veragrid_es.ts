@@ -7561,23 +7561,23 @@ Resultados del flujo de potencia Monte Carlo:</translation>
         <translation>Reparar diagrama</translation>
     </message>
 </context>
-<context>
-    <name>messages</name>
-    <message>
-        <source>Information</source>
-        <translation type="vanished">Información</translation>
-    </message>
-    <message>
-        <source>Warning</source>
-        <translation type="vanished">Advertencia</translation>
-    </message>
-    <message>
-        <source>Error</source>
-        <translation type="vanished">Error</translation>
-    </message>
-    <message>
-        <source>Question</source>
-        <translation type="vanished">Pregunta</translation>
-    </message>
-</context>
+    <context>
+        <name>messages</name>
+        <message>
+            <source>Information</source>
+            <translation>Información</translation>
+        </message>
+        <message>
+            <source>Warning</source>
+            <translation>Advertencia</translation>
+        </message>
+        <message>
+            <source>Error</source>
+            <translation>Error</translation>
+        </message>
+        <message>
+            <source>Question</source>
+            <translation>Pregunta</translation>
+        </message>
+    </context>
 </TS>
