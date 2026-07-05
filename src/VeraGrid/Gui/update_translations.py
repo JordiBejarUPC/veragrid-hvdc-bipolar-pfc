@@ -56,7 +56,7 @@ def _reactivate_manual_context_translations(ts_file: Path) -> None:
     updated_block: str
     updated_contents: str = contents
 
-    for context_name in ["ContextMenu", "ConfigurationMain"]:
+    for context_name in ["ContextMenu", "ConfigurationMain", "messages"]:
         context_pattern = rf"<context>\s*<name>{context_name}</name>.*?</context>"
         context_match = re.search(context_pattern, updated_contents, re.DOTALL)
 
@@ -65,6 +65,11 @@ def _reactivate_manual_context_translations(ts_file: Path) -> None:
         else:
             original_block = context_match.group(0)
             updated_block = original_block.replace('<translation type="vanished">', "<translation>")
+            updated_block = re.sub(
+                r'<translation type="unfinished">([^<]+)</translation>',
+                r"<translation>\1</translation>",
+                updated_block,
+            )
             updated_contents = updated_contents.replace(original_block, updated_block, 1)
 
     if updated_contents == contents:
