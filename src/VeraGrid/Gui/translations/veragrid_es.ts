@@ -573,7 +573,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <name>ConfigurationMain</name>
     <message>
         <source>Language</source>
-        <translation type="vanished">Idioma</translation>
+        <translation>Idioma</translation>
     </message>
     <message>
         <source>System default</source>
@@ -596,8 +596,16 @@ li.checked::marker { content: &quot;\2612&quot;; }
         <translation type="vanished">Portugués</translation>
     </message>
     <message>
-        <source>Chinese</source>
-        <translation type="vanished">Chino</translation>
+        <source>Mandarin</source>
+        <translation>Mandarín</translation>
+    </message>
+    <message>
+        <source>Hindi</source>
+        <translation>Hindi</translation>
+    </message>
+    <message>
+        <source>Cantonese</source>
+        <translation>Cantonés</translation>
     </message>
     <message>
         <source>German</source>

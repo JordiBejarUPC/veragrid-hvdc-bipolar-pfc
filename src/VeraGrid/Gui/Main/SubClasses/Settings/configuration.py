@@ -175,6 +175,8 @@ class ConfigurationMain(ResultsMain):
                 ApplicationLanguage.DUTCH,
                 ApplicationLanguage.CATALAN,
                 ApplicationLanguage.CHINESE,
+                ApplicationLanguage.HINDI,
+                ApplicationLanguage.CANTONESE,
                 ApplicationLanguage.GERMAN,
                 ApplicationLanguage.FRENCH,
                 ApplicationLanguage.PORTUGUESE,
@@ -220,18 +222,24 @@ class ConfigurationMain(ResultsMain):
                                                     display_text = self.tr("Catalan")
                                                 else:
                                                     if language == ApplicationLanguage.CHINESE:
-                                                        display_text = self.tr("Chinese")
+                                                        display_text = self.tr("Mandarin")
                                                     else:
-                                                        if language == ApplicationLanguage.GERMAN:
-                                                            display_text = self.tr("German")
+                                                        if language == ApplicationLanguage.HINDI:
+                                                            display_text = self.tr("Hindi")
                                                         else:
-                                                            if language == ApplicationLanguage.FRENCH:
-                                                                display_text = self.tr("French")
+                                                            if language == ApplicationLanguage.CANTONESE:
+                                                                display_text = self.tr("Cantonese")
                                                             else:
-                                                                if language == ApplicationLanguage.PORTUGUESE:
-                                                                    display_text = self.tr("Portuguese")
+                                                                if language == ApplicationLanguage.GERMAN:
+                                                                    display_text = self.tr("German")
                                                                 else:
-                                                                    display_text = self.tr("Español")
+                                                                    if language == ApplicationLanguage.FRENCH:
+                                                                        display_text = self.tr("French")
+                                                                    else:
+                                                                        if language == ApplicationLanguage.PORTUGUESE:
+                                                                            display_text = self.tr("Portuguese")
+                                                                        else:
+                                                                            display_text = self.tr("Español")
 
             # The selector stores the stable enum in item data and only decorates the row with a flag icon.
             self.language_combo_box.addItem(

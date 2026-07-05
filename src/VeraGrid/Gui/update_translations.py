@@ -41,39 +41,40 @@ def _get_translation_source_files(translations_dir: Path) -> list[Path]:
     return ts_files
 
 
-def _reactivate_context_menu_translations(ts_file: Path) -> None:
+def _reactivate_manual_context_translations(ts_file: Path) -> None:
     """
-    Restore runtime context-menu translations after ``lupdate`` marks them vanished.
+    Restore manual translation contexts after ``lupdate`` marks them vanished.
 
     :param ts_file: Translation source file to patch.
     :returns: Nothing.
     """
     contents: str = ts_file.read_text(encoding="utf-8")
-    context_match: re.Match[str] | None = re.search(
-        r"<context>\s*<name>ContextMenu</name>.*?</context>",
-        contents,
-        re.DOTALL,
-    )
+    context_name: str
+    context_pattern: str
+    context_match: re.Match[str] | None
+    original_block: str
+    updated_block: str
+    updated_contents: str = contents
 
-    if context_match is None:
+    for context_name in ["ContextMenu", "ConfigurationMain"]:
+        context_pattern = rf"<context>\s*<name>{context_name}</name>.*?</context>"
+        context_match = re.search(context_pattern, updated_contents, re.DOTALL)
+
+        if context_match is None:
+            pass
+        else:
+            original_block = context_match.group(0)
+            updated_block = original_block.replace('<translation type="vanished">', "<translation>")
+            updated_contents = updated_contents.replace(original_block, updated_block, 1)
+
+    if updated_contents == contents:
         return
     else:
         pass
 
-    original_block: str = context_match.group(0)
-    updated_block: str = original_block.replace('<translation type="vanished">', "<translation>")
-
-    if updated_block == original_block:
-        return
-    else:
-        pass
-
-    # Only the ContextMenu block is rewritten so translator-managed formatting
-    # outside that runtime catalog remains untouched.
-    ts_file.write_text(
-        contents.replace(original_block, updated_block, 1),
-        encoding="utf-8",
-    )
+    # Only the manual runtime contexts are rewritten so translator-managed
+    # formatting outside those catalogs remains untouched.
+    ts_file.write_text(updated_contents, encoding="utf-8")
 
 
 def update_translations() -> None:
@@ -107,7 +108,7 @@ def update_translations() -> None:
 
     ts_file: Path
     for ts_file in ts_files:
-        _reactivate_context_menu_translations(ts_file=ts_file)
+        _reactivate_manual_context_translations(ts_file=ts_file)
 
     # Compile each catalog to the qm file with the same stem in the same folder.
     for ts_file in ts_files:

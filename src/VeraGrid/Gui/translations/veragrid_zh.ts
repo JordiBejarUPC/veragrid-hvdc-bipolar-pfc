@@ -573,7 +573,7 @@ li.checked::标记 { content: &quot;\2612&quot;; }
     <name>ConfigurationMain</name>
     <message>
         <source>Language</source>
-        <translation type="vanished">语言</translation>
+        <translation>语言</translation>
     </message>
     <message>
         <source>System default</source>
@@ -596,8 +596,16 @@ li.checked::标记 { content: &quot;\2612&quot;; }
         <translation type="vanished">葡萄牙语</translation>
     </message>
     <message>
-        <source>Chinese</source>
-        <translation type="vanished">中文</translation>
+        <source>Mandarin</source>
+        <translation>普通话</translation>
+    </message>
+    <message>
+        <source>Hindi</source>
+        <translation>印地语</translation>
+    </message>
+    <message>
+        <source>Cantonese</source>
+        <translation>廣東話</translation>
     </message>
     <message>
         <source>German</source>
